@@ -1,0 +1,72 @@
+[project]
+name = "nemotron"
+version = "0.1.0"
+description = "Reproducible training recipes for NVIDIA Nemotron model family - transparent pipelines for data preparation, training, and evaluation across all stages"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Nemotron Contributors"}
+]
+keywords = ["nemotron", "nvidia", "llm", "training", "reproducible", "pipelines", "machine-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "pydantic>=2.0.0",
+    "tyro>=0.8.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+wandb = ["wandb>=0.15.0"]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "wandb>=0.15.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/nemotron/nemotron"
+Documentation = "https://github.com/nemotron/nemotron#readme"
+Repository = "https://github.com/nemotron/nemotron"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nemotron"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
