@@ -1,21 +1,7 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """
 Nemotron: Reproducible Training Recipes for NVIDIA Nemotron Models
 
-Transparent - Reproducible - Production-Ready
+Transparent • Reproducible • Production-Ready
 
 The nemotron package provides a transparent framework for building
 reproducible training pipelines. Used to create complete training recipes
@@ -23,15 +9,36 @@ for NVIDIA Nemotron models with full data preparation, training, and
 evaluation stages.
 
 Example:
-    >>> from nemotron.kit import Artifact
-    >>> from pydantic import Field
+    >>> from nemotron.artifact import Artifact
     >>> from pathlib import Path
+    >>> from pydantic import Field
     >>>
     >>> class Dataset(Artifact):
     ...     num_examples: int = Field(gt=0)
+    ...     train_path: Path
     >>>
-    >>> dataset = Dataset(path=Path("/tmp/data"), num_examples=1000)
+    >>> dataset = Dataset(
+    ...     path=Path("/tmp/data"),
+    ...     num_examples=1000,
+    ...     train_path=Path("/tmp/data/train.parquet")
+    ... )
     >>> dataset.save()
 """
 
 __version__ = "0.1.0"
+
+from nemotron.artifact import (
+    Artifact,
+    LineageTracker,
+    apply_scale,
+    print_complete,
+    set_lineage_tracker,
+)
+
+__all__ = [
+    "Artifact",
+    "LineageTracker",
+    "apply_scale",
+    "print_complete",
+    "set_lineage_tracker",
+]
