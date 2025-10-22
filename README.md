@@ -421,11 +421,18 @@ Your feedback helps shape the future of Nemotron models!
 
 ## Documentation
 
-- [Nemotron 3 Nano Training Guide](docs/nemotron/nano3/README.md) – training recipe
-- [NeMo-Run Configuration](docs/nemo_runspec/nemo-run.md) – execution profiles and job orchestration
-- [Data Preparation](docs/nemotron/data-prep.md) – data preparation module
-- [Contributing Guidelines](CONTRIBUTING.md) – how to contribute
-- [Changelog](CHANGELOG.md) – version history
+Full, reproducible training pipelines will be included in the `nemotron` package at `src/nemotron/recipes/`.
+
+### Each Recipe Includes
+- 🎨 **Synthetic Data Generation** - Scripts to generate synthetic datasets using [NVIDIA-NeMo/DataDesigner](https://github.com/NVIDIA-NeMo/DataDesigner)
+- 🗂️ **Data Curation** - Scripts to prepare training data using [NVIDIA NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) for scalable data processing, filtering, and quality enhancement
+- 🔁 **Training** - Complete training loops with hyperparameters using:
+  - [NVIDIA-NeMo/Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main) for Megatron models
+  - [NVIDIA-NeMo/Automodel](https://github.com/NVIDIA-NeMo/Automodel) for HuggingFace models
+  - [NVIDIA-NeMo/NeMo-RL](https://github.com/NVIDIA-NeMo/RL/tree/main) when RL is needed
+  - Includes GPU-accelerated last-mile data processing (tokenization + optional sequence packing) for optimal training efficiency
+- 📊 **Evaluation** - Benchmark evaluation on standard suites using [NVIDIA NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)
+- 📖 **Documentation** - Detailed explanations of each stage
 
 ---
 
