@@ -43,12 +43,13 @@ They are optimized for deployment across a spectrum of compute tiers (edge, sing
 Full, reproducible training pipelines will be included in the `nemotron` package at `src/nemotron/recipes/`.
 
 ### Each Recipe Includes
-- 🗂️ **Data Curation** - Scripts to prepare training data using [NVIDIA-NeMo/Curator](https://github.com/NVIDIA-NeMo/Curator)
+- 🗂️ **Data Curation** - Scripts to prepare training data using [NVIDIA NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) for scalable data processing, filtering, and quality enhancement
 - 🔁 **Training** - Complete training loops with hyperparameters using:
   - [NVIDIA-NeMo/Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main) for Megatron models
   - [NVIDIA-NeMo/Automodel](https://github.com/NVIDIA-NeMo/Automodel) for HuggingFace models
   - [NVIDIA-NeMo/NeMo-RL](https://github.com/NVIDIA-NeMo/RL/tree/main) when RL is needed
-- 📊 **Evaluation** - Benchmark evaluation on standard suites using [NVIDIA-NeMo/Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)
+  - Includes GPU-accelerated last-mile data processing (tokenization + optional sequence packing) for optimal training efficiency
+- 📊 **Evaluation** - Benchmark evaluation on standard suites using [NVIDIA NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)
 - 📖 **Documentation** - Detailed explanations of each stage
 
 ---
