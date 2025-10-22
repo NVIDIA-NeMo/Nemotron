@@ -2,6 +2,8 @@
 
 This guide explains how to contribute a new training recipe for a Nemotron model.
 
+**Before you start**, read [design.md](design.md) to understand the moving parts of the a recipe.
+
 ---
 
 ## Recipe Structure
@@ -25,6 +27,8 @@ src/nemotron/recipes/
         └── ... (RLHF, DPO, etc.)
 ```
 
+**CLI Convention**: Each stage script uses [tyro](https://github.com/brentyi/tyro) (popularized by [torchtitan](https://github.com/pytorch/torchtitan)) for automatic CLI generation from dataclasses. This gives you type-safe configuration and auto-generated `--help` documentation for free.
+
 ---
 
 ## The Three-Step Pattern
@@ -34,6 +38,8 @@ Every training stage has three steps that follow the same pattern:
 ### Step 1: Data Curation
 
 **Purpose**: Prepare high-quality training data
+
+**Dependencies**: Typically uses [NVIDIA NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) for scalable data processing, filtering, and quality enhancement.
 
 ```python
 # src/nemotron/recipes/{model_name}/stage0_pretrain/data_curation.py
@@ -90,6 +96,15 @@ if __name__ == "__main__":
 ### Step 2: Training
 
 **Purpose**: Train the model on curated data
+
+**Dependencies**:
+- Training frameworks (depends on model architecture and training approach):
+  - [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) for Megatron-based models
+  - [Automodel](https://github.com/NVIDIA-NeMo/Automodel) for HuggingFace-based models
+  - [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) when reinforcement learning is required
+- **Last-mile data processing**: GPU-accelerated tokenization and optional sequence packing for optimal training efficiency
+
+**Note**: Training includes a last-mile data processing step that performs tokenization and optionally sequence packing in a GPU-accelerated manner to maximize throughput and minimize preprocessing bottlenecks. This approach keeps the interface between data curation and training very clean—data curation outputs raw text data, while training handles all model-specific preprocessing (tokenization, packing) on-the-fly during training.
 
 ```python
 # src/nemotron/recipes/{model_name}/stage0_pretrain/training.py
@@ -159,6 +174,8 @@ if __name__ == "__main__":
 
 **Purpose**: Benchmark the trained model
 
+**Dependencies**: Typically uses [NVIDIA NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) for standardized benchmark evaluation.
+
 ```python
 # src/nemotron/recipes/{model_name}/stage0_pretrain/evaluation.py
 from dataclasses import dataclass, field
@@ -219,12 +236,21 @@ Artifacts are validated outputs that track:
 
 All artifacts inherit from `nemotron.artifact.Artifact` and use Pydantic for validation.
 
-### 2. Config Pattern
+### 2. CLI with Tyro
 
-- Use `@dataclass` for configuration
-- Use `tyro.cli(main)` for automatic CLI generation
+Each stage uses [tyro](https://github.com/brentyi/tyro) for the command-line interface (popularized by [torchtitan](https://github.com/pytorch/torchtitan)). This allows us to:
+- Define configuration using Python `@dataclass`
+- Get CLI entrypoints automatically from type annotations
+- Generate `--help` documentation for free from docstrings and type hints
+- Maintain type safety between CLI and code
+
+**Pattern**:
+- Use `@dataclass` for configuration with typed fields
+- Call `tyro.cli(main)` to auto-generate the CLI
 - Always include `scale` and `seed` parameters
 - Support both local paths and tracked artifacts for inputs
+
+Example: `tyro.cli(main)` automatically converts this dataclass into a CLI with `--output-dir`, `--scale`, `--seed`, etc.
 
 ### 3. Scale Factors
 
