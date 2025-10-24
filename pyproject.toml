@@ -70,3 +70,6 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = []
+
+[tool.ruff.format]
+exclude = ["*.ipynb"]
