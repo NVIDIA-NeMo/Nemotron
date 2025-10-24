@@ -1,0 +1,37 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    - id: end-of-file-fixer
+      # only include python files
+      files: \.py$
+    - id: trailing-whitespace
+      # only include python files
+      files: \.py$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.9.9" # Use the appropriate version
+    hooks:
+    - id: ruff
+      args: ["--fix"]
+    - id: ruff
+      args: ["check", "--select", "I", "--fix"]
+    - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: no-underscore-md
+        name: "Disallow '_' in Markdown filenames"
+        language: system
+        entry: |
+          bash -c '
+            # Report the offending files
+            echo "[pre-commit] ERROR: Found Markdown files with underscores:" >&2
+            for file in "$@"; do
+              echo "  - $file (use hyphens instead)" >&2
+            done
+            exit 1
+          '
+        files: '.*\/[^\/]*_[^\/]*\.md$'
+        exclude: '^\.github/'
+        types: [file]
