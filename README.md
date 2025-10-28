@@ -33,8 +33,8 @@ They are optimized for deployment across a spectrum of compute tiers (edge, sing
 
 ### More Resources
 
-- **[Usage Cookbook](usage-cookbook/)** - Practical deployment and simple model usage guides for Nemotron models *(coming soon)*
-- **[Usage Examples](usage-examples/)** - Practical use-case examples and apps
+- **[Usage Cookbook](usage-cookbook/)** - Practical deployment and simple model usage guides for Nemotron models
+- **[Usage Examples](usage-examples/)** - Practical use-case examples and apps *(coming soon)*
 
 ---
 
@@ -60,8 +60,8 @@ Learn how to deploy and use the models through an API.
 
 | Model | Best For | Key Features | Trade-offs | Resources |
 |-------|----------|--------------|------------|-----------|
-| [**Llama-3.3-Nemotron-Super-49B-v1.5**](https://huggingface.co/nvidia/Llama-3_3-Nemotron-Super-49B-v1_5) | Production deployments needing strong reasoning with efficiency | • 128K context<br>• Single H200 GPU<br>• RAG & tool calling<br>• Optimized via NAS | Balances accuracy & throughput | [📁 Cookbooks](./Llama-Nemotron-Super-49B-v1.5/) |
-| [**NVIDIA-Nemotron-Nano-9B-v2**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) | Resource-constrained environments needing flexible reasoning | • 9B params<br>• Hybrid Mamba-2 architecture<br>• Controllable reasoning traces<br>• Unified reasoning/non-reasoning | Smaller model with configurable reasoning | [📁 Cookbooks](./Nemotron-Nano-9B-v2/) |
+| [**Llama-3.3-Nemotron-Super-49B-v1.5**](https://huggingface.co/nvidia/Llama-3_3-Nemotron-Super-49B-v1_5) | Production deployments needing strong reasoning with efficiency | • 128K context<br>• Single H200 GPU<br>• RAG & tool calling<br>• Optimized via NAS | Balances accuracy & throughput | [📁 Cookbooks](./usage-cookbook/Llama-Nemotron-Super-49B-v1.5/) |
+| [**NVIDIA-Nemotron-Nano-9B-v2**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) | Resource-constrained environments needing flexible reasoning | • 9B params<br>• Hybrid Mamba-2 architecture<br>• Controllable reasoning traces<br>• Unified reasoning/non-reasoning | Smaller model with configurable reasoning | [📁 Cookbooks](./usage-cookbook/Nemotron-Nano-9B-v2/) |
 
 ## Contributing
 
