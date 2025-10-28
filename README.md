@@ -45,7 +45,6 @@ Have an idea for improving Nemotron models? Visit the **[Nemotron Ideas Portal](
 - 🗳️ **Vote** on existing feature requests
 - 💭 **Submit** your own ideas and suggestions
 - 📊 **See** what the community is requesting
-- 🤝 **Engage** with other Nemotron users and developers
 
 Your feedback helps shape the future of Nemotron models!
 
