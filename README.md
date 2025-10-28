@@ -33,8 +33,8 @@ They are optimized for deployment across a spectrum of compute tiers (edge, sing
 
 ### More Resources
 
-- **[Usage Cookbook](usage-cookbook/)** - Practical deployment and simple model usage guides for Nemotron models *(coming soon)*
-- **[Usage Examples](usage-examples/)** - Practical use-case examples and apps
+- **[Usage Cookbook](usage-cookbook/)** - Practical deployment and simple model usage guides for Nemotron models
+- **[Usage Examples](usage-examples/)** - Practical use-case examples and apps *(coming soon)*
 
 ---
 
