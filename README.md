@@ -38,6 +38,18 @@ They are optimized for deployment across a spectrum of compute tiers (edge, sing
 
 ---
 
+## 💡 Feature Requests & Ideas
+
+Have an idea for improving Nemotron models? Visit the **[Nemotron Ideas Portal](https://nemotron.ideas.nvidia.com/)** to:
+
+- 🗳️ **Vote** on existing feature requests
+- 💭 **Submit** your own ideas and suggestions
+- 📊 **See** what the community is requesting
+
+Your feedback helps shape the future of Nemotron models!
+
+---
+
 ## Training Recipes (Coming Soon)
 
 Full, reproducible training pipelines will be included in the `nemotron` package at `src/nemotron/recipes/`.
