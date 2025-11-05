@@ -64,7 +64,7 @@ make inference for the test dataset
 
 ## 📊 Sample Dataset
 
-This project provides sample datasets, the Kaggle Titanic Datasets [train.csv](https://www.kaggle.com/competitions/titanic) and [test.csv](https://www.kaggle.com/competitions/titanic) into the data folder. You can also create **train-1M**, an extrapolated version scaled to 1M rows of the train.csv using the script extrapolation.py. 
+This project provides sample datasets, you can download the Kaggle Titanic Datasets [train.csv](https://www.kaggle.com/competitions/titanic) and [test.csv](https://www.kaggle.com/competitions/titanic) into the data folder. You can also create **train-1M**, an extrapolated version scaled to 1M rows of the train.csv using the script extrapolation.py. 
 
 
 **Note:**  
