@@ -1,0 +1,59 @@
+# grpo_langgraph_cli.yaml
+cluster:
+  num_nodes: 1
+  gpus_per_node: 8                   # Using 8 A100 GPUs on a single node
+
+policy:
+  model_name: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+  tokenizer:
+    name: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+    chat_template: null              # No special chat template (direct prompt/response format)
+  precision: bf16
+  dtensor_cfg:                       # Enable DTensor for distributed training:contentReference[oaicite:0]{index=0}
+    enabled: true
+    cpu_offload: true
+    activation_checkpointing: true
+    sequence_parallel: true
+    # tensor_parallel_size can be set if model splitting is needed; default 1 for FSDP
+  generation:
+    backend: vllm                   # Use vLLM backend for fast text generation:contentReference[oaicite:1]{index=1}
+    vllm_cfg:
+      tensor_parallel_size: 2       # Use 2 GPUs for generation parallelism
+      gpu_memory_utilization: 0.8   # Fraction of GPU memory for vLLM caching
+
+# GRPO algorithm hyperparameters
+grpo:
+  num_prompts_per_step: 32          # Number of prompts processed per training step:contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}
+  num_generations_per_prompt: 1     # Generations per prompt (one rollout per prompt)
+  max_num_steps: 1000               # Total training update steps
+  max_rollout_turns: 1              # Single-turn episodes (one tool call per prompt)
+  normalize_rewards: false          # Use raw reward (no normalization)
+  use_leave_one_out_baseline: true  # Baseline uses leave-one-out averaging for stability
+  val_period: 50                    # Validate every 50 training steps
+  val_batch_size: 32                # Batch size for each validation run
+  val_at_start: true                # Run an initial validation before training begins
+
+# Dataset paths for training and validation (exported from Data Designer)
+dataset:
+  train_file: "data/langgraph_cli/train.jsonl"
+  val_file: "data/langgraph_cli/val.jsonl"
+
+# Checkpointing configuration
+checkpointing:
+  checkpoint_dir: "checkpoints/grpo_langgraph_cli"
+  checkpoint_every_n_steps: 100     # Save model checkpoint every 100 steps
+
+# Logging configuration
+logger:
+  wandb_enabled: false
+  tensorboard_enabled: false
+  log_dir: "results/grpo_langgraph_cli"
+  # (Optionally set wandb.project, wandb.name, etc., if using Weights & Biases)
+ 
+# Environment configuration for LangGraph CLI
+env:
+  lang_graph_cli:
+    cfg:
+      num_workers: 4                # Use 4 parallel workers for environment rollouts (if supported)
+      # (Environment will compare model JSON output to expected JSON and give reward 1.0 for exact match,
+      # partial reward for correct tool or flags, etc., as defined in LangGraphCLIEnv logic)

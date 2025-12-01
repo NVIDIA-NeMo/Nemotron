@@ -1,0 +1,10 @@
+[project]
+name = "build-a-computer-use-agent-with-synthetic-data"
+version = "0.1.0"
+description = "A simple computer use Agent augmented with LangGraph CLI commands!"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "jupyter>=1.1.1",
+    "nemo-microservices[data-designer]>=1.4.0",
+]
