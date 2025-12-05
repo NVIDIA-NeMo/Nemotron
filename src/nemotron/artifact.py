@@ -296,29 +296,32 @@ def apply_scale(count: int, scale: str) -> int:
 def print_complete(
     artifacts: dict[str, Artifact],
     title: str = "Complete",
+    output_json: bool = False,
 ) -> None:
     """Print completion message.
 
     - Rich table to stderr (for humans)
-    - JSON to stdout (for piping)
+    - JSON to stdout only when explicitly requested (for pipeline composition)
 
     Args:
         artifacts: Dictionary mapping step names to artifacts
         title: Title for the completion message
+        output_json: If True, output JSON to stdout for piping
 
     Example:
         >>> dataset = Dataset(path=Path("/tmp/data"), num_examples=1000)
         >>> print_complete({"data_prep": dataset})
     """
-    # Output JSON to stdout for piping
-    if len(artifacts) == 1:
-        # Single artifact - output its JSON for piping
-        artifact = next(iter(artifacts.values()))
-        print(artifact.to_json(), flush=True)
-    else:
-        # Multiple artifacts - output list
-        output = {name: art.to_json() for name, art in artifacts.items()}
-        print(json.dumps(output), flush=True)
+    # Output JSON to stdout only when explicitly requested
+    if output_json:
+        if len(artifacts) == 1:
+            # Single artifact - output its JSON for piping
+            artifact = next(iter(artifacts.values()))
+            print(artifact.to_json(), flush=True)
+        else:
+            # Multiple artifacts - output list
+            output = {name: art.to_json() for name, art in artifacts.items()}
+            print(json.dumps(output), flush=True)
 
     # Output human-readable table to stderr
     try:

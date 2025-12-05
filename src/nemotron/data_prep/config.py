@@ -1,6 +1,7 @@
-"""Configuration dataclasses for the tokenization pipeline."""
+"""Pipeline configuration models."""
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -9,9 +10,83 @@ import numpy as np
 VALID_OUTPUT_DTYPES = {"int32", "int64", "uint16"}
 
 
+# ============================================================================
+# Public Configuration Models (New API)
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class TokenizerConfig:
+    """Tokenizer configuration.
+
+    Attributes:
+        model: HuggingFace model name/path, SentencePiece model path,
+               or tiktoken encoding name
+        type: Tokenizer backend (huggingface, sentencepiece, tiktoken)
+        add_bos: Prepend BOS token to each document
+        add_eos: Append EOS token to each document
+        trust_remote_code: Allow custom code in HF tokenizers
+    """
+
+    model: str
+    type: Literal["huggingface", "sentencepiece", "tiktoken"] = "huggingface"
+    add_bos: bool = False
+    add_eos: bool = True
+    trust_remote_code: bool = False
+
+
+@dataclass(frozen=True)
+class OutputConfig:
+    """Output configuration.
+
+    Attributes:
+        dir: Output directory (local path or cloud URI)
+        num_shards: Number of output shards (for parallel processing)
+        dtype: Token dtype (int32, int64, uint16)
+        min_doc_chars: Skip documents shorter than this
+        max_doc_tokens: Truncate documents longer than this
+        max_rows: Limit rows processed per shard (useful for quick tests)
+    """
+
+    dir: Path
+    num_shards: int = 128
+    dtype: Literal["int32", "int64", "uint16"] = "int32"
+    min_doc_chars: int | None = None
+    max_doc_tokens: int | None = None
+    max_rows: int | None = None
+
+
+@dataclass(frozen=True)
+class PipelineConfig:
+    """Complete pipeline configuration.
+
+    Attributes:
+        tokenizer: Tokenizer settings
+        output: Output settings
+        num_actors: Number of Ray actors for parallel processing
+        sample: Shard sampling spec ("10%", "5", or None for all)
+        sample_seed: Random seed for sampling
+        force: Force new run (ignore cached results)
+        split: Split ratio for single-blend mode (e.g., "99990,8,2")
+    """
+
+    tokenizer: TokenizerConfig
+    output: OutputConfig
+    num_actors: int = 4
+    sample: str | int | None = None
+    sample_seed: int = 42
+    force: bool = False
+    split: str | None = None  # Only used in single-blend mode
+
+
+# ============================================================================
+# Internal Configuration Classes (Used by pipeline internals)
+# ============================================================================
+
+
 @dataclass
-class DatasetConfig:
-    """Configuration for a single dataset source."""
+class InternalDatasetConfig:
+    """Configuration for a single dataset source (internal use)."""
 
     name: str  # Unique identifier
     path: str  # hf://..., s3://..., or local path/glob
@@ -26,10 +101,10 @@ class DatasetConfig:
 
 
 @dataclass
-class TokenizerConfig:
-    """Configuration for the tokenizer."""
+class InternalTokenizerConfig:
+    """Configuration for the tokenizer (internal use)."""
 
-    type: Literal["huggingface", "sentencepiece"]
+    type: Literal["huggingface", "sentencepiece", "tiktoken"]
     model: str  # Model name or path
     revision: str | None = None  # Model revision (resolved to SHA)
     add_eos: bool = True
@@ -38,8 +113,8 @@ class TokenizerConfig:
 
 
 @dataclass
-class OutputConfig:
-    """Configuration for output generation."""
+class InternalOutputConfig:
+    """Configuration for output generation (internal use)."""
 
     num_shards: int  # Required - explicit shard count
     dtype: str = "int32"
@@ -58,23 +133,6 @@ class OutputConfig:
             np.dtype(self.dtype)
         except TypeError as e:
             raise ValueError(f"Invalid numpy dtype '{self.dtype}': {e}")
-
-
-@dataclass
-class PipelineConfig:
-    """Complete pipeline configuration."""
-
-    datasets: list[DatasetConfig]
-    tokenizer: TokenizerConfig
-    output: OutputConfig
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "PipelineConfig":
-        """Create config from dictionary (e.g., loaded from JSON)."""
-        datasets = [DatasetConfig(**d) for d in data["datasets"]]
-        tokenizer = TokenizerConfig(**data["tokenizer"])
-        output = OutputConfig(**data["output"])
-        return cls(datasets=datasets, tokenizer=tokenizer, output=output)
 
 
 @dataclass
@@ -149,3 +207,16 @@ class SourceChangedError(Exception):
     """Raised when source data has changed since plan creation."""
 
     pass
+
+
+# ============================================================================
+# Aliases for backward compatibility with existing internal code
+# ============================================================================
+
+# These aliases allow existing internal modules (planning.py, discovery.py, etc.)
+# to continue using the old names without modification
+DatasetConfig = InternalDatasetConfig
+# Note: TokenizerConfig is now the public frozen dataclass
+# Internal code should use InternalTokenizerConfig
+# OutputConfig is now the public frozen dataclass
+# Internal code should use InternalOutputConfig
