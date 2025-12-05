@@ -1,21 +1,27 @@
-"""Main orchestration for the tokenization pipeline."""
+"""Pipeline orchestration for tokenizing data blends."""
+
+from __future__ import annotations
 
 import hashlib
 import json
 import logging
+import os
 import time
 from dataclasses import asdict, dataclass
-from typing import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
 
-import numpy as np
 import ray
 
 from nemotron.data_prep.config import (
     DatasetConfig,
-    OutputConfig,
+    InternalOutputConfig,
+    InternalTokenizerConfig,
+    PipelineConfig,
     ShardPlan,
     SourceChangedError,
     TokenizerConfig,
+    OutputConfig,
 )
 from nemotron.data_prep.filesystem import (
     ensure_dir,
@@ -33,111 +39,315 @@ from nemotron.data_prep.discovery import get_dataset_metadata
 from nemotron.data_prep.tokenizer import ShardProcessor
 from nemotron.data_prep import console as con
 
+if TYPE_CHECKING:
+    from nemotron.data_prep.blend import DataBlend, Dataset
+
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Result Types
+# ============================================================================
+
+
+@dataclass
+class SplitResult:
+    """Result for a single split.
+
+    Attributes:
+        name: Split name ("all", "train", "valid", "test")
+        run_hash: Unique hash for this processing run
+        output_dir: Directory containing tokenized shards
+        data_paths: Megatron-Bridge format ["weight", "path", ...]
+        num_shards: Number of shards produced
+        total_tokens: Total tokens across all shards
+        total_sequences: Total sequences (documents) processed
+    """
+
+    name: str
+    run_hash: str
+    output_dir: Path
+    data_paths: list[str]
+    num_shards: int
+    total_tokens: int
+    total_sequences: int
 
 
 @dataclass
 class PipelineResult:
-    """Result of a pipeline run."""
+    """Complete pipeline result.
 
-    output_dir: str
-    run_hash: str
-    datasets: dict[str, dict]
-    total_tokens: int
-    total_sequences: int
+    Attributes:
+        output_dir: Root output directory
+        blend_path: Path to generated blend.json
+        splits: Results by split name
+        is_per_split: True if per-split mode was used
+        split_ratio: Split ratio if single-blend mode (e.g., "99990,8,2")
+        elapsed_sec: Total processing time
+    """
+
+    output_dir: Path
+    blend_path: Path
+    splits: dict[str, SplitResult]
+    is_per_split: bool
+    split_ratio: str | None
     elapsed_sec: float
 
+    @property
+    def total_tokens(self) -> int:
+        """Total tokens across all splits."""
+        return sum(s.total_tokens for s in self.splits.values())
 
-@dataclass
-class DatasetExecutionPlan:
-    """Execution plan for a single dataset."""
-
-    name: str
-    config: DatasetConfig
-    plan: ShardPlan
-    dataset_dir: str
-    receipts_dir: str
-    pending_indices: list[int]
-    cached_stats: dict
+    @property
+    def total_sequences(self) -> int:
+        """Total sequences across all splits."""
+        return sum(s.total_sequences for s in self.splits.values())
 
 
-def tokenize_to_binidx(
-    config_path: str,
-    output_dir: str,
-    sample: str | int | None = None,
-    sample_seed: int = 42,
-    num_actors: int = 4,
-    force: bool = False,
-) -> PipelineResult:
-    """
-    Run tokenization pipeline with true resume support.
+# ============================================================================
+# Public API
+# ============================================================================
 
-    Args:
-        config_path: Path to blend config JSON
-        output_dir: Output directory (local or cloud URI)
-        sample: Shard-level sample spec ("10%" or count)
-        sample_seed: Random seed for sampling
-        num_actors: Number of ShardProcessor actors
-        force: Create new run (new namespace)
+
+def get_default_num_actors() -> int:
+    """Infer default number of Ray actors from available CPUs.
+
+    Uses os.cpu_count() but caps at a reasonable maximum to avoid
+    overwhelming the system. Leaves some headroom for the main process.
 
     Returns:
-        PipelineResult with statistics and output location
+        Number of actors to use (min 2, max 32, ~75% of CPUs)
     """
-    start_time = time.time()
+    cpu_count = os.cpu_count() or 4
+    # Use ~75% of CPUs, minimum 2, maximum 32
+    return max(2, min(32, int(cpu_count * 0.75)))
+
+
+def tokenize(
+    blend: DataBlend,
+    config: PipelineConfig,
+) -> PipelineResult:
+    """Tokenize data blend to Megatron-Bridge format.
+
+    Processes raw text data from HuggingFace, S3, or local sources into
+    tokenized .bin/.idx shards compatible with Megatron training.
+
+    Args:
+        blend: Data blend specification (datasets and weights)
+        config: Pipeline configuration (tokenizer, output settings)
+
+    Returns:
+        PipelineResult with paths to tokenized data and blend.json
+
+    Output Format:
+        The generated blend.json is directly compatible with Megatron-Bridge:
+
+        Single blend mode:
+            {"data_paths": ["1.0", "/path/shard", ...], "split": "99990,8,2"}
+
+        Per-split mode:
+            {"train_data_paths": [...], "valid_data_paths": [...], ...}
+
+    Example:
+        from nemotron.data_prep import tokenize, DataBlend, PipelineConfig
+        from nemotron.data_prep.config import TokenizerConfig, OutputConfig
+
+        blend = DataBlend.load("data_blend.json")
+        config = PipelineConfig(
+            tokenizer=TokenizerConfig(model="meta-llama/Llama-3.2-1B"),
+            output=OutputConfig(dir=Path("./output"), num_shards=128),
+        )
+        result = tokenize(blend, config)
+        print(f"Use with Megatron-Bridge: --data-path {result.blend_path}")
+    """
+    start = time.time()
+
+    if blend.is_per_split:
+        result = _tokenize_per_split(blend, config)
+    else:
+        result = _tokenize_single(blend, config)
+
+    # Update elapsed time
+    result = PipelineResult(
+        output_dir=result.output_dir,
+        blend_path=result.blend_path,
+        splits=result.splits,
+        is_per_split=result.is_per_split,
+        split_ratio=result.split_ratio,
+        elapsed_sec=time.time() - start,
+    )
+
+    return result
+
+
+# ============================================================================
+# Internal Processing Functions
+# ============================================================================
+
+
+def _tokenize_single(blend: DataBlend, config: PipelineConfig) -> PipelineResult:
+    """Process single blend (Megatron-Bridge splits by ratio at training)."""
+    split_result = _process_split(
+        datasets=blend.datasets,
+        split_name="all",
+        config=config,
+    )
+
+    # Generate blend.json with data_paths and optional split ratio
+    blend_data: dict = {
+        "data_paths": split_result.data_paths,
+    }
+    if config.split:
+        blend_data["split"] = config.split
+
+    blend_path = config.output.dir / "blend.json"
+    _write_json(blend_path, blend_data)
+
+    return PipelineResult(
+        output_dir=config.output.dir,
+        blend_path=blend_path,
+        splits={"all": split_result},
+        is_per_split=False,
+        split_ratio=config.split,
+        elapsed_sec=0,
+    )
+
+
+def _tokenize_per_split(blend: DataBlend, config: PipelineConfig) -> PipelineResult:
+    """Process each split separately (train/valid/test)."""
+    splits: dict[str, SplitResult] = {}
+    blend_data: dict[str, list[str]] = {}
+
+    for split_name, datasets in blend.splits.items():
+        # Create split-specific output config
+        split_output = OutputConfig(
+            dir=config.output.dir / split_name,
+            num_shards=config.output.num_shards,
+            dtype=config.output.dtype,
+            min_doc_chars=config.output.min_doc_chars,
+            max_doc_tokens=config.output.max_doc_tokens,
+            max_rows=config.output.max_rows,
+        )
+
+        split_config = PipelineConfig(
+            tokenizer=config.tokenizer,
+            output=split_output,
+            num_actors=config.num_actors,
+            sample=config.sample,
+            sample_seed=config.sample_seed,
+            force=config.force,
+            split=None,  # No split ratio for per-split mode
+        )
+
+        split_result = _process_split(
+            datasets=datasets,
+            split_name=split_name,
+            config=split_config,
+        )
+
+        splits[split_name] = split_result
+        blend_data[f"{split_name}_data_paths"] = split_result.data_paths
+
+    # Generate combined blend.json
+    blend_path = config.output.dir / "blend.json"
+    _write_json(blend_path, blend_data)
+
+    return PipelineResult(
+        output_dir=config.output.dir,
+        blend_path=blend_path,
+        splits=splits,
+        is_per_split=True,
+        split_ratio=None,
+        elapsed_sec=0,
+    )
+
+
+def _process_split(
+    datasets: list[Dataset],
+    split_name: str,
+    config: PipelineConfig,
+) -> SplitResult:
+    """Process a list of datasets into tokenized shards.
+
+    This function orchestrates the full tokenization pipeline:
+    1. Create shard plans for each dataset
+    2. Process shards in parallel using Ray actors
+    3. Aggregate results and build data_paths list
+    """
+    from nemotron.data_prep.blend import Dataset
 
     # Get filesystem
-    fs, base_path = get_filesystem(output_dir)
+    fs, base_path = get_filesystem(str(config.output.dir))
 
-    # Load config
-    with open(config_path) as f:
-        config = json.load(f)
-
-    # Validate
-    if "num_shards" not in config.get("output", {}):
-        raise ValueError("output.num_shards is required")
+    # Build internal config dict for planning/processing
+    pipeline_dict = {
+        "datasets": [
+            {
+                "name": d.name,
+                "path": d.path,
+                "weight": d.weight,
+                "split": d.split,
+                "subset": d.subset,
+                "text_field": d.text_field,
+            }
+            for d in datasets
+        ],
+        "tokenizer": {
+            "type": config.tokenizer.type,
+            "model": config.tokenizer.model,
+            "add_bos": config.tokenizer.add_bos,
+            "add_eos": config.tokenizer.add_eos,
+            "trust_remote_code": config.tokenizer.trust_remote_code,
+        },
+        "output": {
+            "num_shards": config.output.num_shards,
+            "dtype": config.output.dtype,
+            "min_doc_chars": config.output.min_doc_chars,
+            "max_doc_tokens": config.output.max_doc_tokens,
+            "max_rows": config.output.max_rows,
+        },
+    }
 
     # Compute run hash (includes sampling params)
-    run_config = config.copy()
-    if sample is not None:
-        run_config["_sample"] = {"spec": str(sample), "seed": sample_seed}
+    run_config = pipeline_dict.copy()
+    if config.sample is not None:
+        run_config["_sample"] = {"spec": str(config.sample), "seed": config.sample_seed}
     config_hash = hashlib.sha256(
         json.dumps(run_config, sort_keys=True).encode()
     ).hexdigest()[:16]
 
     # Run namespace
-    run_hash = config_hash if not force else f"{config_hash}_{int(time.time())}"
+    run_hash = config_hash if not config.force else f"{config_hash}_{int(time.time())}"
     run_dir = f"{base_path}/runs/{run_hash}"
     ensure_dir(fs, run_dir)
 
     # Freeze config
     write_json(fs, f"{run_dir}/config.json", run_config)
 
-    tokenizer_config = TokenizerConfig(**config["tokenizer"])
-    output_config = OutputConfig(**config["output"])
+    tokenizer_config = InternalTokenizerConfig(**pipeline_dict["tokenizer"])
+    output_config = InternalOutputConfig(**pipeline_dict["output"])
 
-    # ========================================
-    # PHASE 1: Planning
-    # ========================================
+    # Planning phase
     con.planning_header()
 
-    execution_plans: list[DatasetExecutionPlan] = []
+    execution_plans: list[_DatasetExecutionPlan] = []
     plan_hashes = {}
     resolved_tokenizer = None
     plan_infos = []
 
-    for dataset_entry in config["datasets"]:
+    for dataset_entry in pipeline_dict["datasets"]:
         dataset_config = DatasetConfig(**dataset_entry)
         name = dataset_config.name
 
         # Create or load plan
-        plan = load_or_create_plan(
+        plan = _load_or_create_plan(
             dataset_config=dataset_config,
             output_config=output_config,
             tokenizer_config=tokenizer_config,
             config_hash=config_hash,
             run_dir=run_dir,
             fs=fs,
-            force=force,
+            force=config.force,
         )
 
         plan_hashes[name] = plan.plan_hash
@@ -153,12 +363,12 @@ def tokenize_to_binidx(
 
         # Get pending shards and cached stats
         all_pending = get_pending_shards(plan, receipts_dir, fs)
-        cached_stats = aggregate_stats_from_receipts(receipts_dir, plan, fs)
+        cached_stats = _aggregate_stats_from_receipts(receipts_dir, plan, fs)
 
         # Apply sampling
         sampled_count = None
-        if sample is not None:
-            pending_indices = apply_shard_sampling(all_pending, plan, sample, sample_seed)
+        if config.sample is not None:
+            pending_indices = apply_shard_sampling(all_pending, plan, config.sample, config.sample_seed)
             sampled_count = len(pending_indices)
         else:
             pending_indices = all_pending
@@ -185,7 +395,7 @@ def tokenize_to_binidx(
 
         # Store execution plan
         execution_plans.append(
-            DatasetExecutionPlan(
+            _DatasetExecutionPlan(
                 name=name,
                 config=dataset_config,
                 plan=plan,
@@ -199,9 +409,7 @@ def tokenize_to_binidx(
     # Show plan summary
     con.plan_summary(plan_infos, run_hash)
 
-    # ========================================
-    # PHASE 2: Execution
-    # ========================================
+    # Execution phase
     results = {}
     has_work = any(ep.pending_indices for ep in execution_plans)
 
@@ -210,8 +418,10 @@ def tokenize_to_binidx(
 
         # Create live status panel with all datasets
         live_status = con.create_live_status(
-            datasets=[(ep.name, len(ep.pending_indices) or ep.cached_stats["num_shards_completed"])
-                      for ep in execution_plans],
+            datasets=[
+                (ep.name, len(ep.pending_indices) or ep.cached_stats["num_shards_completed"])
+                for ep in execution_plans
+            ],
             run_hash=run_hash,
         )
         live_status.start()
@@ -227,7 +437,7 @@ def tokenize_to_binidx(
                 live_status.start_dataset(ep.name)
 
                 # Process shards with actor pool
-                process_shards_with_actors(
+                _process_shards_with_actors(
                     pending_indices=ep.pending_indices,
                     plan=ep.plan,
                     dataset_dir=ep.dataset_dir,
@@ -235,12 +445,12 @@ def tokenize_to_binidx(
                     dataset_config=ep.config,
                     output_config=output_config,
                     fs=fs,
-                    num_actors=num_actors,
+                    num_actors=config.num_actors,
                     on_progress=lambda name=ep.name: live_status.advance_dataset(name),
                 )
 
                 # Aggregate final stats
-                results[ep.name] = aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+                results[ep.name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
                 live_status.complete_dataset(ep.name)
         finally:
             live_status.stop()
@@ -250,28 +460,128 @@ def tokenize_to_binidx(
             results[ep.name] = ep.cached_stats
 
     # Generate outputs
-    generate_blend_file(run_dir, config, plan_hashes, fs)
-    generate_manifest(run_dir, config, results, plan_hashes, run_hash, resolved_tokenizer, fs)
+    _generate_manifest(run_dir, pipeline_dict, results, plan_hashes, run_hash, resolved_tokenizer, fs)
 
-    elapsed = time.time() - start_time
+    # Build data_paths in Megatron-Bridge format
+    data_paths: list[str] = []
+    for dataset_entry in pipeline_dict["datasets"]:
+        name = dataset_entry["name"]
+        weight = dataset_entry.get("weight", 1.0)
 
-    return PipelineResult(
-        output_dir=output_dir,
+        if weight > 0 and name in plan_hashes:
+            plan_hash = plan_hashes[name]
+            prefix = f"{run_dir}/datasets/{name}/{plan_hash}/shard"
+            data_paths.append(str(weight))
+            data_paths.append(prefix)
+
+    return SplitResult(
+        name=split_name,
         run_hash=run_hash,
-        datasets=results,
+        output_dir=Path(config.output.dir),
+        data_paths=data_paths,
+        num_shards=config.output.num_shards,
         total_tokens=sum(r.get("total_tokens", 0) for r in results.values()),
         total_sequences=sum(r.get("total_sequences", 0) for r in results.values()),
-        elapsed_sec=elapsed,
     )
 
 
-def process_shards_with_actors(
+def _write_json(path: Path, data: dict) -> None:
+    """Write JSON file with atomic write."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(".json.tmp")
+    with open(temp_path, "w") as f:
+        json.dump(data, f, indent=2)
+    temp_path.rename(path)
+
+
+# ============================================================================
+# Internal Helper Classes and Functions
+# ============================================================================
+
+
+@dataclass
+class _DatasetExecutionPlan:
+    """Execution plan for a single dataset."""
+
+    name: str
+    config: DatasetConfig
+    plan: ShardPlan
+    dataset_dir: str
+    receipts_dir: str
+    pending_indices: list[int]
+    cached_stats: dict
+
+
+class _PlanDriftError(Exception):
+    """Raised when a new plan would create drift from existing plans."""
+
+    pass
+
+
+def _load_or_create_plan(
+    dataset_config: DatasetConfig,
+    output_config: InternalOutputConfig,
+    tokenizer_config: InternalTokenizerConfig,
+    config_hash: str,
+    run_dir: str,
+    fs,
+    force: bool = False,
+) -> ShardPlan:
+    """Load existing plan or create new one.
+
+    Enforces single active plan per dataset unless force=True.
+    This prevents silent drift where source changes create orphaned plans.
+    """
+    # Create plan to get hash
+    plan = create_shard_plan(
+        dataset_config=dataset_config,
+        output_config=output_config,
+        tokenizer_config=tokenizer_config,
+        config_hash=config_hash,
+        fs=fs,
+    )
+
+    dataset_plans_dir = f"{run_dir}/datasets/{dataset_config.name}"
+    plan_path = f"{dataset_plans_dir}/{plan.plan_hash}/plan.json"
+
+    if fs.exists(plan_path):
+        # Load and verify
+        existing_data = read_json(fs, plan_path)
+        if existing_data.get("source_fingerprint") != plan.source_fingerprint:
+            raise SourceChangedError(f"Source data changed for {dataset_config.name}")
+        return ShardPlan.from_dict(existing_data)
+
+    # Check for existing plans with different hashes (drift detection)
+    if not force:
+        try:
+            existing_plan_dirs = [
+                d for d in fs.ls(dataset_plans_dir) if fs.isdir(d) and fs.exists(f"{d}/plan.json")
+            ]
+            if existing_plan_dirs:
+                existing_hashes = [d.split("/")[-1] for d in existing_plan_dirs]
+                raise _PlanDriftError(
+                    f"Dataset '{dataset_config.name}' has existing plan(s): {existing_hashes}. "
+                    f"New plan hash {plan.plan_hash} would create drift. "
+                    f"Use --force to create a new run namespace, or delete the existing run."
+                )
+        except FileNotFoundError:
+            pass  # No existing plans, OK to create
+
+    # Save new plan
+    plan_dir = f"{dataset_plans_dir}/{plan.plan_hash}"
+    ensure_dir(fs, plan_dir)
+    write_json(fs, plan_path, serialize_shard_plan(plan))
+
+    return plan
+
+
+def _process_shards_with_actors(
     pending_indices: list[int],
     plan: ShardPlan,
     dataset_dir: str,
     receipts_dir: str,
     dataset_config: DatasetConfig,
-    output_config: OutputConfig,
+    output_config: InternalOutputConfig,
     fs,
     num_actors: int,
     on_progress: Callable[[], None] | None = None,
@@ -370,72 +680,7 @@ def process_shards_with_actors(
             process_loop(lambda: progress.advance(task))
 
 
-class PlanDriftError(Exception):
-    """Raised when a new plan would create drift from existing plans."""
-
-    pass
-
-
-def load_or_create_plan(
-    dataset_config: DatasetConfig,
-    output_config: OutputConfig,
-    tokenizer_config: TokenizerConfig,
-    config_hash: str,
-    run_dir: str,
-    fs,
-    force: bool = False,
-) -> ShardPlan:
-    """
-    Load existing plan or create new one.
-
-    Enforces single active plan per dataset unless force=True.
-    This prevents silent drift where source changes create orphaned plans.
-    """
-    # Create plan to get hash
-    plan = create_shard_plan(
-        dataset_config=dataset_config,
-        output_config=output_config,
-        tokenizer_config=tokenizer_config,
-        config_hash=config_hash,
-        fs=fs,
-    )
-
-    dataset_plans_dir = f"{run_dir}/datasets/{dataset_config.name}"
-    plan_path = f"{dataset_plans_dir}/{plan.plan_hash}/plan.json"
-
-    if fs.exists(plan_path):
-        # Load and verify
-        existing_data = read_json(fs, plan_path)
-        if existing_data.get("source_fingerprint") != plan.source_fingerprint:
-            raise SourceChangedError(f"Source data changed for {dataset_config.name}")
-        return ShardPlan.from_dict(existing_data)
-
-    # Check for existing plans with different hashes (drift detection)
-    if not force:
-        try:
-            existing_plan_dirs = [
-                d for d in fs.ls(dataset_plans_dir)
-                if fs.isdir(d) and fs.exists(f"{d}/plan.json")
-            ]
-            if existing_plan_dirs:
-                existing_hashes = [d.split("/")[-1] for d in existing_plan_dirs]
-                raise PlanDriftError(
-                    f"Dataset '{dataset_config.name}' has existing plan(s): {existing_hashes}. "
-                    f"New plan hash {plan.plan_hash} would create drift. "
-                    f"Use --force to create a new run namespace, or delete the existing run."
-                )
-        except FileNotFoundError:
-            pass  # No existing plans, OK to create
-
-    # Save new plan
-    plan_dir = f"{dataset_plans_dir}/{plan.plan_hash}"
-    ensure_dir(fs, plan_dir)
-    write_json(fs, plan_path, serialize_shard_plan(plan))
-
-    return plan
-
-
-def aggregate_stats_from_receipts(
+def _aggregate_stats_from_receipts(
     receipts_dir: str,
     plan: ShardPlan,
     fs,
@@ -459,10 +704,7 @@ def aggregate_stats_from_receipts(
     for receipt_file in receipt_files:
         try:
             receipt = read_json(fs, receipt_file)
-            if (
-                receipt.get("status") == "completed"
-                and receipt.get("plan_hash") == plan.plan_hash
-            ):
+            if receipt.get("status") == "completed" and receipt.get("plan_hash") == plan.plan_hash:
                 stats["num_shards_completed"] += 1
                 stats["total_sequences"] += receipt["stats"]["num_sequences"]
                 stats["total_tokens"] += receipt["stats"]["total_tokens"]
@@ -474,29 +716,7 @@ def aggregate_stats_from_receipts(
     return stats
 
 
-def generate_blend_file(
-    run_dir: str,
-    config: dict,
-    plan_hashes: dict[str, str],
-    fs,
-):
-    """Generate Megatron blend file using tracked plan hashes."""
-    blend = []
-
-    for dataset_entry in config["datasets"]:
-        name = dataset_entry["name"]
-        weight = dataset_entry.get("weight", 1.0)
-        include = dataset_entry.get("include_in_blend", True)
-
-        if weight > 0 and include and name in plan_hashes:
-            plan_hash = plan_hashes[name]
-            prefix = f"{run_dir}/datasets/{name}/{plan_hash}/shard"
-            blend.append([weight, prefix])
-
-    write_json(fs, f"{run_dir}/blend.json", {"datasets": blend})
-
-
-def generate_manifest(
+def _generate_manifest(
     run_dir: str,
     config: dict,
     results: dict,

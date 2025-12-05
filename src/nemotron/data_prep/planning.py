@@ -15,10 +15,10 @@ from fsspec import AbstractFileSystem
 from nemotron.data_prep.config import (
     DatasetConfig,
     FileInfo,
-    OutputConfig,
+    InternalOutputConfig,
+    InternalTokenizerConfig,
     ShardAssignment,
     ShardPlan,
-    TokenizerConfig,
 )
 from nemotron.data_prep.discovery import discover_input_files
 from nemotron.data_prep.filesystem import read_json
@@ -75,7 +75,7 @@ def create_size_balanced_assignments(
     return assignments
 
 
-def resolve_tokenizer(config: TokenizerConfig) -> dict:
+def resolve_tokenizer(config: InternalTokenizerConfig) -> dict:
     """Resolve tokenizer to immutable revision."""
     result = {
         "type": config.type,
@@ -160,8 +160,8 @@ def compute_source_fingerprint(files: list[FileInfo], dataset_config: DatasetCon
 
 def create_shard_plan(
     dataset_config: DatasetConfig,
-    output_config: OutputConfig,
-    tokenizer_config: TokenizerConfig,
+    output_config: InternalOutputConfig,
+    tokenizer_config: InternalTokenizerConfig,
     config_hash: str,
     fs: AbstractFileSystem,
 ) -> ShardPlan:

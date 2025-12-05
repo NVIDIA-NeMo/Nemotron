@@ -61,6 +61,7 @@ dmypy.json
 .env.local
 
 # Project specific
+output/
 outputs/
 logs/
 checkpoints/
