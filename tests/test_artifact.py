@@ -5,18 +5,19 @@ Tests for nemotron artifact functionality.
 import json
 import tempfile
 from pathlib import Path
+from typing import Annotated
 
 import pytest
 from pydantic import Field
 
-from nemotron.artifact import Artifact, apply_scale
+from nemotron.kit import Artifact, apply_scale
 
 
 class SampleDataset(Artifact):
     """Sample artifact for testing."""
 
-    num_examples: int = Field(gt=0)
-    quality: float = Field(ge=0.0, le=1.0)
+    num_examples: Annotated[int, Field(gt=0)]
+    quality: Annotated[float, Field(ge=0.0, le=1.0)]
 
 
 def test_artifact_save_and_load():
