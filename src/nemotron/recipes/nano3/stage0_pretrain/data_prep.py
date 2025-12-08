@@ -6,26 +6,39 @@ CLI Usage:
     # With defaults
     uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep
 
-    # Fast iteration (10% sample)
-    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --sample 10%
+    # Fast iteration (limit to 1000 samples)
+    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --sample 1000
 
-    # Custom settings
+    # With config file (YAML, TOML, or JSON)
+    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --config-file config.yaml
+
+    # Config file + CLI override (CLI wins)
+    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep \\
+        --config-file config.yaml --sample 500
+
+    # Custom settings via CLI
     uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep \\
         --output-dir /data/tokenized \\
         --num-shards 256 \\
         --tokenizer-model nvidia/Llama-3.1-Nemotron-Nano-8B-Instruct
 
+Example config.yaml:
+    ```yaml
+    output_dir: /data/tokenized
+    num_shards: 256
+    tokenizer_model: nvidia/Llama-3.1-Nemotron-Nano-8B-Instruct
+    sample: 1000  # Limit for fast iteration
+    ```
+
 Programmatic Usage:
-    from nemotron.recipes.nano3.stage0_pretrain.data_prep import (
-        nano3_data_prep_config,
-        run_data_prep,
-    )
+    from nemotron.recipes.nano3.stage0_pretrain.data_prep import Nano3DataPrepConfig
+    from nemotron.data_prep import run_data_prep
 
     # Get config with Nano3 defaults
-    config = nano3_data_prep_config()
+    config = Nano3DataPrepConfig()
 
     # Or customize
-    config = nano3_data_prep_config(sample="10%", num_shards=64)
+    config = Nano3DataPrepConfig(sample=1000, num_shards=64)
 
     # Execute
     artifact = run_data_prep(config)
@@ -33,253 +46,151 @@ Programmatic Usage:
 """
 
 from dataclasses import dataclass, field
-import os
+from enum import Enum
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import Field
+import tyro
 
-from nemotron.artifact import Artifact, print_complete
-from nemotron.data_prep import (
-    DataBlend,
-    PipelineConfig,
-    TokenizerConfig,
-    OutputConfig,
-    tokenize,
-)
+from nemotron.kit import cli, print_step_complete
+from nemotron.data_prep import DataPrepArtifact, DataPrepConfig, run_data_prep, PipelineConfig, TokenizerConfig, OutputConfig, DataBlend, tokenize
 
 
-# Default blend file for Nano3 pretraining
-DATA_BLEND_PATH = Path(__file__).parent / "data_blend.json"
+# Base path for nano3 recipe
+NANO3_RECIPE_PATH = Path(__file__).parent.parent
 
 
-# ============================================================================
-# Output Artifact
-# ============================================================================
+class Stage(str, Enum):
+    """Training stage for data preparation."""
+
+    pretrain = "pretrain"
+    sft = "sft"
+    rl = "rl"
 
 
-class DataPrepArtifact(Artifact):
-    """Output artifact for data preparation step.
-
-    The blend_path points to a Megatron-Bridge compatible blend.json that can
-    be passed directly to training recipes.
-    """
-
-    blend_path: Path = Field(description="Path to blend.json for Megatron-Bridge")
-    total_tokens: int = Field(ge=0, description="Total tokens processed")
-    total_sequences: int = Field(ge=0, description="Total documents processed")
-    elapsed_sec: float = Field(ge=0, description="Processing time in seconds")
-    split_ratio: str | None = Field(
-        default=None, description="Split ratio if single-blend mode (e.g., '99990,8,2')"
-    )
-    is_per_split: bool = Field(
-        default=False, description="True if train/valid/test were tokenized separately"
-    )
-
-
-# ============================================================================
-# Configuration
-# ============================================================================
+# Stage directory mapping
+STAGE_DIRS = {
+    Stage.pretrain: "stage0_pretrain",
+    Stage.sft: "stage1_sft",
+    Stage.rl: "stage2_rl",
+}
 
 
 @dataclass
-class DataPrepConfig:
-    """Configuration for Nano3 data preparation.
+class Nano3DataPrepConfig:
+    """Data preparation config with Nano3-specific defaults.
 
-    All parameters have sensible defaults for Nano3 pretraining.
-    Use nano3_data_prep_config() for recommended settings.
-    """
-
-    # Data source
-    blend_path: Path = field(default_factory=lambda: DATA_BLEND_PATH)
-
-    # Output
-    output_dir: Path = Path("./output/nano3/stage0_pretrain")
-    num_shards: int = 128
-    split: str | None = "99990,8,2"  # train:valid:test ratio
-
-    # Tokenizer (Nano3 uses Llama-3.2 base)
-    tokenizer_model: str = "meta-llama/Llama-3.2-1B"
-    add_bos: bool = False
-    add_eos: bool = True
-
-    # Processing
-    text_field: str = "text"
-    min_doc_chars: int | None = None
-    max_doc_tokens: int | None = None
-
-    # Execution
-    sample: int | None = None  # Limit rows per dataset (for quick tests)
-    num_actors: int | None = None  # Auto-detect from CPU count
-    force: bool = False
-
-
-# ============================================================================
-# Config Helper
-# ============================================================================
-
-
-def nano3_data_prep_config(
-    blend_path: Path | str | None = None,
-    output_dir: Path | str | None = None,
-    num_shards: int = 128,
-    split: str | None = "99990,8,2",
-    tokenizer_model: str = "meta-llama/Llama-3.2-1B",
-    add_bos: bool = False,
-    add_eos: bool = True,
-    text_field: str = "text",
-    min_doc_chars: int | None = None,
-    max_doc_tokens: int | None = None,
-    sample: int | None = None,
-    num_actors: int | None = None,
-    force: bool = False,
-) -> DataPrepConfig:
-    """Return data preparation config with Nano3 defaults.
-
-    Recommended defaults:
+    Defaults:
     - Llama-3.2-1B tokenizer (Nano3 base model)
     - 128 shards (suitable for multi-node training)
     - 99990:8:2 split ratio (~99.99% train)
     - EOS tokens appended (standard for pretraining)
 
-    Args:
-        blend_path: Path to data blend JSON (default: built-in Nano3 blend)
-        output_dir: Output directory for tokenized data
-        num_shards: Number of output shards for parallel loading
-        split: Train:valid:test ratio (e.g., "99990,8,2") or None to disable
-        tokenizer_model: HuggingFace tokenizer model name
-        add_bos: Prepend BOS token to documents
-        add_eos: Append EOS token to documents
-        text_field: Default text field name in datasets
-        min_doc_chars: Skip documents shorter than this
-        max_doc_tokens: Truncate documents longer than this
-        sample: Limit rows per dataset (for quick tests, e.g., 1000)
-        num_actors: Ray actors for parallel processing (None = auto)
-        force: Force new run, ignoring cache
-
-    Returns:
-        DataPrepConfig ready for run_data_prep()
-
-    Example:
-        # Default config
-        config = nano3_data_prep_config()
-
-        # Fast iteration
-        config = nano3_data_prep_config(sample="10%")
-
-        # Custom tokenizer and shards
-        config = nano3_data_prep_config(
-            tokenizer_model="nvidia/Llama-3.1-Nemotron-Nano-8B-Instruct",
-            num_shards=256,
-        )
+    Use --stage/-s to select pretrain, sft, or rl data blend.
     """
-    return DataPrepConfig(
-        blend_path=Path(blend_path) if blend_path else DATA_BLEND_PATH,
-        output_dir=Path(output_dir) if output_dir else Path("./output/nano3/stage0_pretrain"),
-        num_shards=num_shards,
-        split=split,
-        tokenizer_model=tokenizer_model,
-        add_bos=add_bos,
-        add_eos=add_eos,
-        text_field=text_field,
-        min_doc_chars=min_doc_chars,
-        max_doc_tokens=max_doc_tokens,
-        sample=sample,
-        num_actors=num_actors,
-        force=force,
+
+    # Stage selection - displayed first
+    stage: Annotated[
+        Stage,
+        tyro.conf.arg(aliases=["-s"]),
+    ] = Stage.pretrain
+    """Training stage: pretrain, sft, or rl"""
+
+    blend_path: Path = field(
+        default_factory=lambda: NANO3_RECIPE_PATH / STAGE_DIRS[Stage.pretrain] / "data_blend.json"
     )
+    """Path to data blend JSON file"""
 
-
-# ============================================================================
-# Execution
-# ============================================================================
-
-
-def run_data_prep(config: DataPrepConfig) -> DataPrepArtifact:
-    """Execute data preparation pipeline.
-
-    Loads the data blend, tokenizes all datasets, and produces a
-    Megatron-Bridge compatible blend.json.
-
-    Args:
-        config: Data preparation configuration
-
-    Returns:
-        DataPrepArtifact with blend.json path and metrics
-    """
-    # Load data blend specification
-    blend = DataBlend.load(config.blend_path)
-
-    # Apply default text_field to datasets that use default
-    for split_datasets in blend.splits.values():
-        for dataset in split_datasets:
-            if dataset.text_field == "text" and config.text_field != "text":
-                # Use object.__setattr__ since Dataset is a Pydantic model
-                object.__setattr__(dataset, "text_field", config.text_field)
-
-    # Auto-detect num_actors from CPU count
-    num_actors = config.num_actors
-    if num_actors is None:
-        cpu_count = os.cpu_count() or 4
-        num_actors = max(2, min(32, cpu_count * 3 // 4))
-
-    # Build pipeline config
-    # When sampling, use 1 shard to get exactly `sample` rows per dataset
-    num_shards = config.num_shards
-    if config.sample is not None:
-        num_shards = 1
-
-    pipeline_config = PipelineConfig(
-        tokenizer=TokenizerConfig(
-            model=config.tokenizer_model,
-            add_bos=config.add_bos,
-            add_eos=config.add_eos,
-        ),
-        output=OutputConfig(
-            dir=config.output_dir,
-            num_shards=num_shards,
-            min_doc_chars=config.min_doc_chars,
-            max_doc_tokens=config.max_doc_tokens,
-            max_rows=config.sample,
-        ),
-        num_actors=num_actors,
-        force=config.force,
-        split=config.split,
+    output_dir: Path = field(
+        default_factory=lambda: Path(f"./output/nano3/{STAGE_DIRS[Stage.pretrain]}")
     )
+    """Output directory for tokenized data"""
 
-    # Run tokenization pipeline
-    result = tokenize(blend, pipeline_config)
+    num_shards: int = 128
+    """Number of output shards for parallel loading"""
 
-    # Build output artifact
-    artifact = DataPrepArtifact(
-        path=result.output_dir,
-        blend_path=result.blend_path,
-        total_tokens=result.total_tokens,
-        total_sequences=result.total_sequences,
-        elapsed_sec=result.elapsed_sec,
-        split_ratio=result.split_ratio,
-        is_per_split=result.is_per_split,
-        metrics={
-            "total_tokens": float(result.total_tokens),
-            "total_sequences": float(result.total_sequences),
-            "elapsed_sec": result.elapsed_sec,
-        },
-    )
-    artifact.save()
+    split: str | None = "99990,8,2"
+    """Train:valid:test ratio (e.g., '99990,8,2') or None to disable"""
 
-    return artifact
+    tokenizer_model: str = "meta-llama/Llama-3.2-1B"
+    """HuggingFace tokenizer model name"""
+
+    add_bos: bool = False
+    """Prepend BOS token to documents"""
+
+    add_eos: bool = True
+    """Append EOS token to documents"""
+
+    text_field: str = "text"
+    """Default text field name in datasets"""
+
+    min_doc_chars: int | None = None
+    """Skip documents shorter than this"""
+
+    max_doc_tokens: int | None = None
+    """Truncate documents longer than this"""
+
+    sample: int | None = None
+    """Limit rows per dataset (for quick tests)"""
+
+    num_actors: int | None = None
+    """Ray actors for parallel processing (None = auto)"""
+
+    force: bool = False
+    """Force new run, ignoring cache"""
+
+    def __post_init__(self) -> None:
+        """Update blend_path and output_dir based on stage and sample."""
+        selected_stage = self.stage
+
+        # Check if blend_path is still the default pretrain path
+        default_pretrain_blend = NANO3_RECIPE_PATH / STAGE_DIRS[Stage.pretrain] / "data_blend.json"
+        if self.blend_path == default_pretrain_blend and selected_stage != Stage.pretrain:
+            self.blend_path = NANO3_RECIPE_PATH / STAGE_DIRS[selected_stage] / "data_blend.json"
+
+        # Check if output_dir is still the default pretrain path
+        default_pretrain_output = Path(f"./output/nano3/{STAGE_DIRS[Stage.pretrain]}")
+        if self.output_dir == default_pretrain_output:
+            # Update for stage if not pretrain
+            if selected_stage != Stage.pretrain:
+                self.output_dir = Path(f"./output/nano3/{STAGE_DIRS[selected_stage]}")
+            # Append sample size to path if sampling
+            if self.sample is not None:
+                self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def main(config: DataPrepConfig) -> DataPrepArtifact:
+def main(cfg: Nano3DataPrepConfig) -> DataPrepArtifact:
     """CLI entry point for data preparation.
 
     Runs the pipeline and prints completion summary.
     """
-    artifact = run_data_prep(config)
-    print_complete({"data_prep": artifact})
+    # Convert to DataPrepConfig for run_data_prep
+    data_prep_config = DataPrepConfig(
+        blend_path=cfg.blend_path,
+        output_dir=cfg.output_dir,
+        num_shards=cfg.num_shards,
+        split=cfg.split,
+        tokenizer_model=cfg.tokenizer_model,
+        add_bos=cfg.add_bos,
+        add_eos=cfg.add_eos,
+        text_field=cfg.text_field,
+        min_doc_chars=cfg.min_doc_chars,
+        max_doc_tokens=cfg.max_doc_tokens,
+        sample=cfg.sample,
+        num_actors=cfg.num_actors,
+        force=cfg.force,
+    )
+    artifact = run_data_prep(data_prep_config)
+
+    # Set semantic artifact name: nano3/{stage}/data[?sample=N]
+    name_parts = [f"nano3/{cfg.stage.value}/data"]
+    if cfg.sample is not None:
+        name_parts.append(f"?sample={cfg.sample}")
+    artifact.name = "".join(name_parts)
+
+    print_step_complete(data_prep=artifact)
     return artifact
 
 
 if __name__ == "__main__":
-    import tyro
-
-    tyro.cli(main)
+    cli(main)

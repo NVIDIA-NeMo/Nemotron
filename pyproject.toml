@@ -26,13 +26,16 @@ dependencies = [
     "pydantic>=2.0.0",
     "tyro>=0.8.0",
     "rich>=13.0.0",
-    "ray>=2.9.0",
+    "ray==2.50.1",
     "fsspec>=2024.0.0",
     "numpy>=1.24.0",
     "pyarrow>=14.0.0",
     "xxhash>=3.4.0",
     "transformers>=4.36.0",
     "huggingface_hub>=0.20.0",
+    "pyyaml>=6.0",
+    "tomli>=2.0.0;python_version<'3.11'",
+    "colorama>=0.4.6",
 ]
 
 [project.optional-dependencies]
@@ -53,10 +56,20 @@ all = [
     "sentencepiece>=0.2.0",
 ]
 
+# Note: megatron-bridge is required for training but not listed as a dependency
+# because it requires CUDA/nvcc to build. Install separately in GPU environments:
+#   pip install megatron-bridge>=0.1.0
+
 [project.urls]
 Homepage = "https://github.com/nemotron/nemotron"
 Documentation = "https://github.com/nemotron/nemotron#readme"
 Repository = "https://github.com/nemotron/nemotron"
+
+[project.scripts]
+nemotron = "nemotron.__main__:main"
+
+[project.entry-points."fsspec.specs"]
+art = "nemotron.art.filesystem:ArtifactFileSystem"
 
 [build-system]
 requires = ["hatchling"]
@@ -83,3 +96,11 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = []
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
