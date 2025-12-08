@@ -71,6 +71,9 @@ from nemotron.kit.trackers import (
     set_lineage_tracker,
 )
 
+# Track module for semantic URI resolution
+from nemotron.kit import track
+
 __all__ = [
     # Config
     "cli",
@@ -100,6 +103,8 @@ __all__ = [
     # Exceptions
     "ArtifactNotFoundError",
     "ArtifactVersionNotFoundError",
+    # Track
+    "track",
 ]
 
 

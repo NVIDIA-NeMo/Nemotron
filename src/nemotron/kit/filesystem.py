@@ -11,6 +11,7 @@ from fsspec import AbstractFileSystem
 
 from nemotron.kit.exceptions import ArtifactNotFoundError, ArtifactVersionNotFoundError
 from nemotron.kit.registry import get_registry
+from nemotron.kit.track import STAGE_DIRS, get_config
 
 
 class ArtifactFileSystem(AbstractFileSystem):
@@ -73,12 +74,81 @@ class ArtifactFileSystem(AbstractFileSystem):
 
         return name, version, file_path
 
+    def _resolve_semantic(self, uri: str) -> tuple[str, str] | None:
+        """Resolve semantic URI like nano3/pretrain/data?sample=10000/file.json.
+
+        Returns:
+            Tuple of (base_path, file_path) or None if not a semantic URI.
+        """
+        if uri.startswith("art://"):
+            uri = uri[6:]
+
+        # Skip if has version specifier (name:version format)
+        first_part = uri.split("?")[0].split("/")[0]
+        if ":" in first_part:
+            return None
+
+        # Parse query params
+        params: dict[str, str] = {}
+        file_path = ""
+        if "?" in uri:
+            base, rest = uri.split("?", 1)
+            if "/" in rest:
+                params_str, file_path = rest.split("/", 1)
+            else:
+                params_str = rest
+            for p in params_str.split("&"):
+                if "=" in p:
+                    k, v = p.split("=", 1)
+                    params[k] = v
+        else:
+            parts = uri.split("/")
+            if len(parts) > 3:
+                base = "/".join(parts[:3])
+                file_path = "/".join(parts[3:])
+            else:
+                base = uri
+
+        parts = base.split("/")
+        if len(parts) < 3:
+            return None
+
+        recipe, stage, step = parts[0], parts[1], parts[2]
+        stage_dir = STAGE_DIRS.get(stage)
+        if stage_dir is None:
+            return None
+
+        config = get_config()
+
+        if config.backend == "wandb":
+            import wandb
+
+            artifact_name = f"{recipe}-{stage}-{step}"
+            if "sample" in params:
+                artifact_name += f"-sample-{params['sample']}"
+            artifact = wandb.use_artifact(f"{artifact_name}:latest")
+            base_path = artifact.download()  # Returns string path
+        else:
+            # fsspec backend - can be any fsspec URI (local, hf://, s3://, etc.)
+            base_path = f"{config.output_root}/{recipe}/{stage_dir}"
+            if "sample" in params:
+                base_path = f"{base_path}/sample-{params['sample']}"
+
+        return base_path, file_path
+
     def _resolve(self, path: str) -> tuple[Path, str]:
         """Resolve art:// path to local filesystem path.
 
         Returns:
             Tuple of (artifact_root_path, relative_file_path)
         """
+        # Try semantic resolution first
+        semantic = self._resolve_semantic(path)
+        if semantic is not None:
+            base_path, file_path = semantic
+            return Path(base_path), file_path
+
+        # Fall back to registry (name:version format)
         name, version, file_path = self._parse_uri(path)
         registry = get_registry()
         artifact_path = registry.resolve(name, version)

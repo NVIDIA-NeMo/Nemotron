@@ -1412,6 +1412,11 @@ wandb = [
     { name = "wandb" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
@@ -1441,6 +1446,9 @@ requires-dist = [
     { name = "xxhash", specifier = ">=3.4.0" },
 ]
 provides-extras = ["wandb", "s3", "gcs", "sentencepiece", "dev", "all"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "numpy"

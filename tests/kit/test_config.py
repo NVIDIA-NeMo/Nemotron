@@ -303,3 +303,154 @@ class TestConfigFileFormats:
             assert config.batch_size == 96
         finally:
             Path(config_path).unlink()
+
+
+class TestDefaults:
+    """Tests for the defaults parameter."""
+
+    def test_defaults_callable_simple(self):
+        """Test defaults callable provides base values."""
+
+        def my_defaults() -> SimpleConfig:
+            return SimpleConfig(batch_size=64, learning_rate=0.01, name="from_defaults")
+
+        manager = ConfigManager(SimpleConfig, defaults=my_defaults)
+        config = manager.parse_args([])
+
+        assert config.batch_size == 64
+        assert config.learning_rate == 0.01
+        assert config.name == "from_defaults"
+
+    def test_defaults_overridden_by_cli(self):
+        """Test CLI args override defaults."""
+
+        def my_defaults() -> SimpleConfig:
+            return SimpleConfig(batch_size=64, learning_rate=0.01, name="from_defaults")
+
+        manager = ConfigManager(SimpleConfig, defaults=my_defaults)
+        config = manager.parse_args(["--batch-size", "128"])
+
+        assert config.batch_size == 128  # CLI overrides
+        assert config.learning_rate == 0.01  # from defaults
+        assert config.name == "from_defaults"  # from defaults
+
+    def test_defaults_overridden_by_config_file(self):
+        """Test config file overrides defaults."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            f.write("batch_size: 256\n")
+            config_path = f.name
+
+        def my_defaults() -> SimpleConfig:
+            return SimpleConfig(batch_size=64, learning_rate=0.01, name="from_defaults")
+
+        try:
+            manager = ConfigManager(SimpleConfig, defaults=my_defaults)
+            config = manager.parse_args(["--config-file", config_path])
+
+            assert config.batch_size == 256  # config file overrides
+            assert config.learning_rate == 0.01  # from defaults (not in file)
+            assert config.name == "from_defaults"  # from defaults (not in file)
+        finally:
+            Path(config_path).unlink()
+
+    def test_defaults_cli_overrides_config_file(self):
+        """Test precedence: CLI > config file > defaults."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            f.write("batch_size: 256\nlearning_rate: 0.001\n")
+            config_path = f.name
+
+        def my_defaults() -> SimpleConfig:
+            return SimpleConfig(batch_size=64, learning_rate=0.01, name="from_defaults")
+
+        try:
+            manager = ConfigManager(SimpleConfig, defaults=my_defaults)
+            config = manager.parse_args([
+                "--config-file", config_path,
+                "--batch-size", "512",
+            ])
+
+            assert config.batch_size == 512  # CLI overrides all
+            assert config.learning_rate == 0.001  # config file overrides defaults
+            assert config.name == "from_defaults"  # from defaults (not in file or CLI)
+        finally:
+            Path(config_path).unlink()
+
+    def test_defaults_nested_config(self):
+        """Test defaults with nested dataclass."""
+
+        def my_defaults() -> NestedConfig:
+            return NestedConfig(
+                model=NestedConfig.ModelConfig(hidden_size=1024, num_layers=12),
+                training=NestedConfig.TrainingConfig(steps=10000, lr=0.0001),
+                seed=99,
+            )
+
+        manager = ConfigManager(NestedConfig, defaults=my_defaults)
+        config = manager.parse_args([])
+
+        assert config.model.hidden_size == 1024
+        assert config.model.num_layers == 12
+        assert config.training.steps == 10000
+        assert config.training.lr == 0.0001
+        assert config.seed == 99
+
+    def test_defaults_nested_partial_override(self):
+        """Test config file partially overrides nested defaults."""
+        yaml_content = """
+model:
+  hidden_size: 512
+seed: 123
+"""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            f.write(yaml_content)
+            config_path = f.name
+
+        def my_defaults() -> NestedConfig:
+            return NestedConfig(
+                model=NestedConfig.ModelConfig(hidden_size=1024, num_layers=12),
+                training=NestedConfig.TrainingConfig(steps=10000, lr=0.0001),
+                seed=99,
+            )
+
+        try:
+            manager = ConfigManager(NestedConfig, defaults=my_defaults)
+            config = manager.parse_args(["--config-file", config_path])
+
+            assert config.model.hidden_size == 512  # overridden by file
+            assert config.model.num_layers == 12  # from defaults (not in file)
+            assert config.training.steps == 10000  # from defaults
+            assert config.training.lr == 0.0001  # from defaults
+            assert config.seed == 123  # overridden by file
+        finally:
+            Path(config_path).unlink()
+
+    def test_cli_with_defaults(self):
+        """Test cli() function with defaults parameter."""
+
+        def my_defaults() -> SimpleConfig:
+            return SimpleConfig(batch_size=64, learning_rate=0.01, name="from_defaults")
+
+        config = cli(SimpleConfig, args=["--batch-size", "128"], defaults=my_defaults)
+
+        assert config.batch_size == 128  # CLI overrides
+        assert config.learning_rate == 0.01  # from defaults
+        assert config.name == "from_defaults"  # from defaults
+
+    def test_cli_with_defaults_and_function(self):
+        """Test cli() with function that takes dataclass and defaults."""
+
+        def my_defaults() -> SimpleConfig:
+            return SimpleConfig(batch_size=64, learning_rate=0.01, name="from_defaults")
+
+        def train(config: SimpleConfig) -> int:
+            return config.batch_size * 2
+
+        result = cli(train, args=[], defaults=my_defaults)
+
+        assert result == 128  # 64 * 2
