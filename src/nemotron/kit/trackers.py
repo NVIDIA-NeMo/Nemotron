@@ -1,14 +1,77 @@
 """
-Optional tracking backend implementations for nemotron.
+Lineage tracking backends for nemotron.kit.
 
-Supports W&B and custom trackers.
+Provides the LineageTracker protocol and implementations for W&B and no-op tracking.
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from nemotron.artifact import Artifact
+    from nemotron.kit.artifact import Artifact
+
+
+class LineageTracker(Protocol):
+    """Protocol for lineage tracking backends (W&B, MLflow, custom).
+
+    Implement these 4 methods to integrate with any tracking system.
+    """
+
+    def is_active(self) -> bool:
+        """Check if tracking is currently active."""
+        ...
+
+    def use_artifact(self, ref: str, artifact_type: str) -> Path:
+        """Mark artifact as used (for lineage). Returns local path.
+
+        Args:
+            ref: Artifact reference (e.g., "team/project/data:v1")
+            artifact_type: Type of artifact (e.g., "dataset", "checkpoint")
+
+        Returns:
+            Local path where artifact is available
+        """
+        ...
+
+    def log_artifact(
+        self, artifact: "Artifact", name: str, used_refs: list[str]
+    ) -> dict[str, Any]:
+        """Log artifact to tracking backend.
+
+        Args:
+            artifact: The artifact to log
+            name: Name for the artifact
+            used_refs: List of artifact references that were used to create this
+
+        Returns:
+            Dictionary with tracking metadata (artifact_id, url, etc.)
+        """
+        ...
+
+    def get_run_id(self) -> str | None:
+        """Get current run ID."""
+        ...
+
+
+# Global tracker instance
+_tracker: LineageTracker | None = None
+
+
+def set_lineage_tracker(tracker: LineageTracker | None) -> None:
+    """Set the artifact tracking backend.
+
+    Examples:
+        >>> from nemotron.kit import WandbTracker
+        >>> set_lineage_tracker(WandbTracker())  # Use W&B
+        >>> set_lineage_tracker(None)  # Disable tracking
+    """
+    global _tracker
+    _tracker = tracker
+
+
+def get_lineage_tracker() -> LineageTracker | None:
+    """Get the current artifact tracker."""
+    return _tracker
 
 
 class WandbTracker:
@@ -18,11 +81,10 @@ class WandbTracker:
 
     Example:
         >>> import wandb
-        >>> from nemotron.artifact import set_tracker
-        >>> from nemotron.trackers import WandbTracker
+        >>> from nemotron.kit import set_lineage_tracker, WandbTracker
         >>>
         >>> wandb.init(project="my-project")
-        >>> set_tracker(WandbTracker())
+        >>> set_lineage_tracker(WandbTracker())
         >>> # Now all artifact.save() calls log to W&B
     """
 
@@ -66,7 +128,9 @@ class WandbTracker:
 
         return Path(artifact_dir)
 
-    def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
+    def log_artifact(
+        self, artifact: "Artifact", name: str, used_refs: list[str]
+    ) -> dict[str, Any]:
         """Log artifact to W&B.
 
         Args:
@@ -134,10 +198,9 @@ class NoOpTracker:
     Useful for testing or explicitly disabling tracking.
 
     Example:
-        >>> from nemotron.artifact import set_tracker
-        >>> from nemotron.trackers import NoOpTracker
+        >>> from nemotron.kit import set_lineage_tracker, NoOpTracker
         >>>
-        >>> set_tracker(NoOpTracker())  # Disable tracking
+        >>> set_lineage_tracker(NoOpTracker())  # Disable tracking
     """
 
     def is_active(self) -> bool:
@@ -148,7 +211,9 @@ class NoOpTracker:
         """Raises error - cannot use artifacts without tracking."""
         raise RuntimeError("NoOpTracker cannot load artifacts")
 
-    def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
+    def log_artifact(
+        self, artifact: "Artifact", name: str, used_refs: list[str]
+    ) -> dict[str, Any]:
         """Returns empty metadata."""
         return {
             "artifact_id": None,
