@@ -22,7 +22,7 @@ Examples:
 """
 
 from __future__ import annotations
-
+from dataclasses import dataclass
 from typing import Annotated, Union
 
 import tyro
@@ -41,9 +41,6 @@ except ImportError:
 # =============================================================================
 # Placeholder Configs
 # =============================================================================
-
-
-from dataclasses import dataclass
 
 
 @dataclass

@@ -43,7 +43,7 @@ class ConfigManager[T]:
     detected automatically based on file extension.
 
     Configuration precedence:
-        CLI args > config file > dataclass defaults
+        CLI args > config file > defaults() > dataclass defaults
 
     Example:
         >>> from dataclasses import dataclass
@@ -58,16 +58,23 @@ class ConfigManager[T]:
         >>> config = manager.parse_args(["--config-file", "config.yaml"])
     """
 
-    def __init__(self, config_cls: Type[T]):
+    def __init__(
+        self,
+        config_cls: Type[T],
+        defaults: Callable[[], T] | None = None,
+    ):
         """
         Initialize ConfigManager with a dataclass type.
 
         Args:
             config_cls: A dataclass type to use as the configuration schema.
+            defaults: Optional callable that returns a default config instance.
+                     Used for model-specific defaults from external recipe functions.
         """
         if not is_dataclass(config_cls):
             raise TypeError(f"{config_cls.__name__} must be a dataclass")
         self.config_cls = config_cls
+        self.defaults = defaults
         self.config: T | None = None
         self._setup_tyro_registry()
 
@@ -93,14 +100,19 @@ class ConfigManager[T]:
         # Optionally merge with custom config module
         config_cls = self._maybe_add_custom_config(filtered_args, file_values)
 
-        # Create base config from file values or defaults
-        base_config = (
-            self._dict_to_dataclass(config_cls, file_values)
-            if file_values
-            else config_cls()
-        )
+        # Build base config with precedence: defaults() < config file
+        # Start with defaults() if provided, otherwise dataclass defaults
+        if self.defaults is not None:
+            base_config = self.defaults()
+            # Overlay file values on top of defaults
+            if file_values:
+                base_config = self._merge_dict_into_dataclass(base_config, file_values)
+        elif file_values:
+            base_config = self._dict_to_dataclass(config_cls, file_values)
+        else:
+            base_config = config_cls()
 
-        # Parse CLI with file values as defaults
+        # Parse CLI with base config as defaults (CLI has highest precedence)
         self.config = tyro.cli(
             config_cls,
             args=filtered_args,
@@ -309,6 +321,55 @@ class ConfigManager[T]:
                     result[f.name] = value
         return cls(**result)
 
+    def _merge_dict_into_dataclass(self, instance: T, data: dict[str, Any]) -> T:
+        """
+        Merge dictionary values into an existing dataclass instance.
+
+        Creates a new instance with values from data overlaid on instance.
+        Handles nested dataclasses recursively.
+
+        Args:
+            instance: Existing dataclass instance (e.g., from defaults()).
+            data: Dictionary with config values to overlay.
+
+        Returns:
+            New dataclass instance with merged values.
+
+        Raises:
+            ValueError: If data contains invalid field names.
+        """
+        cls = type(instance)
+        if not is_dataclass(cls):
+            return data  # type: ignore
+
+        valid_fields = {f.name for f in fields(cls)}
+        if invalid := set(data) - valid_fields - {"custom_config_module"}:
+            raise ValueError(
+                f"Invalid fields in config for {cls.__name__}: {invalid}. "
+                f"Valid fields: {valid_fields}"
+            )
+
+        # Start with all values from the existing instance
+        result = {}
+        for f in fields(cls):
+            existing_value = getattr(instance, f.name)
+            if f.name in data:
+                new_value = data[f.name]
+                # Recursively merge nested dataclasses
+                if is_dataclass(f.type) and isinstance(new_value, dict):
+                    if is_dataclass(existing_value):
+                        result[f.name] = self._merge_dict_into_dataclass(
+                            existing_value, new_value
+                        )
+                    else:
+                        result[f.name] = self._dict_to_dataclass(f.type, new_value)
+                else:
+                    result[f.name] = new_value
+            else:
+                result[f.name] = existing_value
+
+        return cls(**result)
+
     def _setup_tyro_registry(self) -> None:
         """Set up custom tyro parsing rules."""
         self._registry = tyro.constructors.ConstructorRegistry()
@@ -426,6 +487,7 @@ def cli(
     *,
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
+    defaults: Callable[[], T] | None = None,
 ) -> T: ...
 
 
@@ -436,6 +498,7 @@ def cli(
     *,
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
+    defaults: Callable[[], Any] | None = None,
 ) -> T: ...
 
 
@@ -445,6 +508,7 @@ def cli(
     *,
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
+    defaults: Callable[[], Any] | None = None,
 ) -> T:
     """
     Drop-in replacement for tyro.cli with config file and artifact piping support.
@@ -457,11 +521,17 @@ def cli(
     - Maps artifact fields to config fields per the parse_inputs mapping
     - Injects values as CLI args (lowest priority, can be overridden)
 
+    Configuration precedence (highest to lowest):
+        CLI args > config file > defaults() > dataclass defaults
+
     Args:
         config_or_main: Either a dataclass type or a function with typed parameters.
         args: CLI arguments. Defaults to sys.argv[1:].
         parse_inputs: Mapping of artifact fields to config fields for stdin piping.
                      Format: {"artifact_name.field": "config.nested.field"}
+        defaults: Optional callable that returns a default config instance.
+                 Used for model-specific defaults from external recipe functions.
+                 Example: defaults=nemotron_nano_v2
 
     Returns:
         For dataclass: populated instance.
@@ -485,6 +555,10 @@ def cli(
         # With artifact piping
         >>> cli(main, parse_inputs={"data.blend_path": "data.data_path"})
         # Enables: python data_prep.py | python train.py
+
+        # With model-specific defaults
+        >>> from megatron.bridge.recipes import nemotron_nano_v2
+        >>> cli(main, defaults=nemotron_nano_v2)
     """
     if args is None:
         args = sys.argv[1:]
@@ -497,7 +571,7 @@ def cli(
 
     # Check if it's a dataclass or a callable
     if is_dataclass(config_or_main):
-        manager = ConfigManager(config_or_main)
+        manager = ConfigManager(config_or_main, defaults=defaults)
         return manager.parse_args(args)
 
     # It's a callable - extract config type from signature if possible
@@ -512,7 +586,7 @@ def cli(
         param = params[0]
         if param.annotation != inspect.Parameter.empty and is_dataclass(param.annotation):
             # Function takes a single dataclass - use ConfigManager
-            manager = ConfigManager(param.annotation)
+            manager = ConfigManager(param.annotation, defaults=defaults)
             config = manager.parse_args(args)
             return func(config)
 
@@ -520,6 +594,7 @@ def cli(
     # and using ConfigManager with that
     config_cls = _func_to_dataclass(func)
     if config_cls is not None:
+        # Note: defaults is not supported for auto-generated dataclasses from functions
         manager = ConfigManager(config_cls)
         config = manager.parse_args(args)
         # Convert dataclass back to kwargs

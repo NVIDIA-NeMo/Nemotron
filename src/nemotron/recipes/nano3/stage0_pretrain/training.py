@@ -2,6 +2,7 @@
 """Pretrain script for Nemotron Nano3.
 
 Uses Megatron-Bridge's ConfigContainer for full training configuration.
+Model-specific defaults are loaded from nemotron_nano_v2 recipe.
 
 Usage:
     # Piped from data_prep (preferred for pipelines)
@@ -21,6 +22,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import rich
+from nemotron.kit import cli
+
 if TYPE_CHECKING:
     from megatron.bridge.training.config import ConfigContainer
 
@@ -30,12 +34,17 @@ def main(config: ConfigContainer):
     from megatron.bridge.training.gpt_step import forward_step
     from megatron.bridge.training.pretrain import pretrain
 
-    return pretrain(config=config, forward_step_func=forward_step)
+    rich.print(config)
+
+    # return pretrain(config=config, forward_step_func=forward_step)
 
 
 if __name__ == "__main__":
     from megatron.bridge.training.config import ConfigContainer
+    from megatron.bridge.recipes.nemotronh.nemotron_nano_v2 import nemotron_nano_v2
 
-    from nemotron.kit import cli
-
-    cli(main, parse_inputs={"data.blend_path": "config.data.data_path"})
+    cli(
+        main,
+        defaults=nemotron_nano_v2,
+        parse_inputs={"data.blend_path": "config.data.data_path"},
+    )

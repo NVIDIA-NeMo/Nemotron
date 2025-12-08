@@ -99,3 +99,8 @@ ignore = []
 
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
