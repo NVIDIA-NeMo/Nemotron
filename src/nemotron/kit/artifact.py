@@ -1,7 +1,7 @@
 """
 Core artifact module for nemotron.kit.
 
-Provides the Artifact base class, TrackingInfo, and utilities.
+Provides the Artifact base class, typed subclasses, and utilities.
 """
 
 import json
@@ -26,35 +26,32 @@ class TrackingInfo(BaseModel):
 
 
 class Artifact(BaseModel):
-    """Base class for all step outputs.
+    """Path-centric artifact with optional typed metadata.
 
-    Every nemotron step produces an Artifact with validated fields and
-    automatic save/load functionality.
+    Core philosophy: An artifact IS a path with metadata.
 
-    Example:
-        >>> from pathlib import Path
-        >>> from typing import Annotated
-        >>> from pydantic import Field
-        >>> from nemotron.kit import Artifact
+    Simple usage (no subclass needed):
+        >>> artifact = Artifact(path=Path("/data/model"), type="model")
+        >>> artifact.metadata["step"] = 10000
+
+    Typed subclass for validation and IDE support:
+        >>> class ModelArtifact(Artifact):
+        ...     step: int
+        ...     final_loss: float | None = None
         >>>
-        >>> class Dataset(Artifact):
-        ...     num_examples: Annotated[int, Field(gt=0)]
-        ...     train_path: Path
-        >>>
-        >>> dataset = Dataset(
-        ...     path=Path("/tmp/data"),
-        ...     num_examples=1000,
-        ...     train_path=Path("/tmp/data/train.parquet"),
-        ...     metrics={"num_examples": 1000}
-        ... )
-        >>> dataset.save()
-        >>> loaded = Dataset.load(path=Path("/tmp/data"))
+        >>> model = ModelArtifact(path=Path("/data/model"), step=10000)
+        >>> model.step  # IDE autocomplete works
+        >>> model.metadata["step"]  # Also accessible here
     """
 
-    # Core fields (automatically included)
-    schema_version: Annotated[int, Field(default=1, description="Artifact schema version")]
+    # === Core fields ===
+    path: Annotated[Path, Field(description="Filesystem path to the artifact")]
     type: Annotated[str, Field(default="artifact", description="Artifact type")]
-    path: Annotated[Path, Field(description="Local filesystem path where artifact is stored")]
+    metadata: Annotated[
+        dict[str, Any], Field(default_factory=dict, description="Artifact metadata")
+    ]
+
+    # === Provenance fields ===
     created_at: Annotated[
         str,
         Field(
@@ -63,29 +60,69 @@ class Artifact(BaseModel):
         ),
     ]
     producer: Annotated[str | None, Field(default=None, description="Run ID or 'local'")]
-    metrics: Annotated[
-        dict[str, float], Field(default_factory=dict, description="Numeric metrics (for logging)")
-    ]
-    attrs: Annotated[dict[str, Any], Field(default_factory=dict, description="Additional attributes")]
     tracking: Annotated[TrackingInfo | None, Field(default=None, description="Tracking metadata")]
     name: Annotated[str | None, Field(default=None, description="Semantic artifact name (e.g., nano3/pretrain/data)")]
 
-    # Registry metadata (set after publish)
+    # === Private registry state ===
     _name: str | None = None
     _version: int | None = None
-
-    # Track which artifacts were used to create this one (for lineage)
     _used_artifacts: list[str] = []
+
+    @classmethod
+    def _get_metadata_fields(cls) -> set[str]:
+        """Get fields that should be synced to metadata dict.
+
+        These are fields defined in subclasses but not in Artifact base.
+        """
+        base_fields = {
+            "path", "type", "metadata", "created_at", "producer", "tracking", "name"
+        }
+        if hasattr(cls, "model_fields"):
+            return set(cls.model_fields.keys()) - base_fields
+        return set()
 
     @model_validator(mode="before")
     @classmethod
-    def set_defaults(cls, data: Any) -> Any:
-        """Set default values for type field based on class name."""
-        if isinstance(data, dict):
-            if "type" not in data or data["type"] == "artifact":
-                # Use the actual class name (e.g., "Dataset", "Checkpoint")
-                data["type"] = cls.__name__.lower()
+    def _setup_defaults(cls, data: Any) -> Any:
+        """Set default type and sync metadata fields."""
+        if not isinstance(data, dict):
+            return data
+
+        # Set type from class name if not provided
+        if "type" not in data or data["type"] == "artifact":
+            data["type"] = cls.__name__
+
+        # Ensure metadata dict exists
+        if "metadata" not in data:
+            data["metadata"] = {}
+
+        # Pull typed fields from metadata if provided there (for loading)
+        metadata_fields = cls._get_metadata_fields()
+        for field_name in metadata_fields:
+            if field_name not in data and field_name in data["metadata"]:
+                data[field_name] = data["metadata"][field_name]
+
         return data
+
+    @model_validator(mode="after")
+    def _sync_to_metadata(self) -> Self:
+        """Push typed fields into metadata dict after validation."""
+        metadata_fields = self._get_metadata_fields()
+        for field_name in metadata_fields:
+            if hasattr(self, field_name):
+                value = getattr(self, field_name)
+                if value is not None:
+                    self.metadata[field_name] = value
+        return self
+
+    @property
+    def metrics(self) -> dict[str, float]:
+        """Extract numeric metrics from metadata for logging."""
+        return {
+            k: float(v)
+            for k, v in self.metadata.items()
+            if isinstance(v, (int, float)) and not isinstance(v, bool)
+        }
 
     @property
     def uri(self) -> str | None:
@@ -110,10 +147,10 @@ class Artifact(BaseModel):
         return f"art://{self.path.resolve()}"
 
     def save(self, name: str | None = None) -> None:
-        """Save artifact to path/metadata.json (atomic write).
+        """Save artifact metadata to path/metadata.json (atomic write).
 
         If tracking is active, also logs to tracking backend.
-        If art.init() was called, publishes to registry.
+        If kit.init() was called, publishes to registry.
 
         Args:
             name: Optional name for artifact in registry. Defaults to type.
@@ -157,7 +194,7 @@ class Artifact(BaseModel):
             if is_initialized():
                 registry = get_registry()
                 artifact_name = name or self.type
-                version = registry.publish(artifact_name, self.path)
+                version = registry.publish(artifact_name, self.path, metadata=self.metadata)
                 self._name = artifact_name
                 self._version = version.version
         except ImportError:
@@ -180,16 +217,6 @@ class Artifact(BaseModel):
 
         Returns:
             Loaded artifact instance
-
-        Example:
-            >>> # From local path
-            >>> dataset = Dataset.load(path=Path("/tmp/data"))
-            >>>
-            >>> # From tracked artifact
-            >>> dataset = Dataset.load(tracked_artifact="team/project/data:v1")
-            >>>
-            >>> # From stdin (when piping)
-            >>> dataset = Dataset.load()  # Reads from stdin
         """
         tracker = get_lineage_tracker()
 
@@ -245,10 +272,6 @@ class Artifact(BaseModel):
 
         Returns:
             Loaded artifact instance
-
-        Example:
-            >>> dataset = Dataset.from_uri("art://my-dataset:v1")
-            >>> dataset = Dataset.from_uri("art://my-dataset:latest")
         """
         from nemotron.kit.registry import get_registry
 
@@ -298,6 +321,83 @@ class Artifact(BaseModel):
     def __str__(self) -> str:
         """String representation for piping to stdout."""
         return self.to_json()
+
+
+# =============================================================================
+# Typed Artifact Subclasses
+# =============================================================================
+
+
+class DataBlendsArtifact(Artifact):
+    """Tokenized data blends artifact (output of data_prep).
+
+    The path points directly to the blend.json file.
+    """
+
+    total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
+    total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
+    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+
+    def save(self, name: str | None = None) -> None:
+        """Save artifact metadata to path's parent directory.
+
+        Since DataBlendsArtifact.path points to blend.json (a file),
+        metadata.json is written to the same directory as blend.json.
+        """
+        # Use parent directory since self.path is a file (blend.json)
+        output_dir = self.path.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get tracker if active
+        tracker = get_lineage_tracker()
+        if tracker and tracker.is_active():
+            if self.producer is None:
+                self.producer = tracker.get_run_id() or "local"
+
+            artifact_name = name or self.type
+            tracking_metadata = tracker.log_artifact(self, artifact_name, self._used_artifacts)
+            self.tracking = TrackingInfo(**tracking_metadata)
+        else:
+            if self.producer is None:
+                self.producer = "local"
+
+        # Write metadata.json atomically in the parent directory
+        metadata_path = output_dir / "metadata.json"
+        temp_path = output_dir / ".metadata.json.tmp"
+
+        with open(temp_path, "w") as f:
+            json.dump(self.model_dump(mode="json"), f, indent=2, default=str)
+
+        temp_path.rename(metadata_path)
+
+        # Publish to registry if initialized
+        try:
+            from nemotron.kit import is_initialized
+            from nemotron.kit.registry import get_registry
+
+            if is_initialized():
+                registry = get_registry()
+                artifact_name = name or self.type
+                version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
+                self._name = artifact_name
+                self._version = version.version
+        except ImportError:
+            pass
+
+
+class ModelArtifact(Artifact):
+    """Model checkpoint artifact (output of training).
+
+    The path points to the checkpoint directory.
+    """
+
+    step: Annotated[int, Field(ge=0, description="Training step")]
+    final_loss: Annotated[float | None, Field(default=None, description="Final training loss")]
+
+
+# =============================================================================
+# Utilities
+# =============================================================================
 
 
 def apply_scale(count: int, scale: str) -> int:
@@ -353,12 +453,8 @@ def print_step_complete(
         **artifacts: Named artifacts (e.g., data=artifact, model=checkpoint)
 
     Example:
-        >>> # New syntax (preferred)
         >>> print_step_complete(data=data_artifact)
         >>> print_step_complete(data=data_artifact, model=model_artifact)
-        >>>
-        >>> # Legacy syntax (still supported)
-        >>> print_step_complete({"data_prep": dataset})
     """
     # Support legacy dict syntax for backward compatibility
     if args and isinstance(args[0], dict):
@@ -375,7 +471,7 @@ def print_step_complete(
 
     # Output human-readable panel to stderr
     try:
-        from rich.console import Console, Group
+        from rich.console import Console
         from rich.panel import Panel
         from rich.text import Text
 
@@ -392,8 +488,10 @@ def print_step_complete(
             # Add metrics if present
             if artifact.metrics:
                 lines.append("Metrics: ", style="dim")
-                metrics_parts = [f"{k}={v:,.0f}" if v > 100 else f"{k}={v:.2f}"
-                                for k, v in artifact.metrics.items()]
+                metrics_parts = [
+                    f"{k}={v:,.0f}" if v > 100 else f"{k}={v:.2f}"
+                    for k, v in artifact.metrics.items()
+                ]
                 lines.append(", ".join(metrics_parts), style="green")
 
             panel = Panel(
@@ -418,8 +516,10 @@ def print_step_complete(
             sys.stderr.write(f"  {artifact.art_path}\n\n")
             sys.stderr.write(f"  Path: {artifact.path.resolve()}\n")
             if artifact.metrics:
-                metrics_parts = [f"{k}={v:,.0f}" if v > 100 else f"{k}={v:.2f}"
-                                for k, v in artifact.metrics.items()]
+                metrics_parts = [
+                    f"{k}={v:,.0f}" if v > 100 else f"{k}={v:.2f}"
+                    for k, v in artifact.metrics.items()
+                ]
                 sys.stderr.write(f"  Metrics: {', '.join(metrics_parts)}\n")
         sys.stderr.write("=" * 70 + "\n")
         sys.stderr.flush()
