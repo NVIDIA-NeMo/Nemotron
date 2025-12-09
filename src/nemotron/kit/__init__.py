@@ -53,8 +53,18 @@ from typing import Any
 # Config
 from nemotron.kit.config import ConfigManager, cli
 
+# Run (nemo-run integration)
+from nemotron.kit.run import RunConfig, build_executor, load_run_profile
+
 # Artifacts
-from nemotron.kit.artifact import Artifact, TrackingInfo, apply_scale, print_step_complete
+from nemotron.kit.artifact import (
+    Artifact,
+    DataBlendsArtifact,
+    ModelArtifact,
+    TrackingInfo,
+    apply_scale,
+    print_step_complete,
+)
 from nemotron.kit.exceptions import ArtifactNotFoundError, ArtifactVersionNotFoundError
 from nemotron.kit.registry import ArtifactEntry, ArtifactRegistry, ArtifactVersion
 
@@ -78,8 +88,14 @@ __all__ = [
     # Config
     "cli",
     "ConfigManager",
+    # Run (nemo-run integration)
+    "RunConfig",
+    "build_executor",
+    "load_run_profile",
     # Artifacts
     "Artifact",
+    "DataBlendsArtifact",
+    "ModelArtifact",
     "TrackingInfo",
     "apply_scale",
     "print_step_complete",

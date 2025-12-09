@@ -18,7 +18,7 @@ Examples:
     nemotron nano3 pretrain --mock --max-steps 1000
 
     # Direct module access still works
-    python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --sample 1000
+    python -m nemotron.recipes.nano3.data_prep --sample 1000
 """
 
 from __future__ import annotations
@@ -28,14 +28,14 @@ from typing import Annotated, Union
 import tyro
 from tyro.conf import OmitArgPrefixes, subcommand
 
-from nemotron.recipes.nano3.stage0_pretrain.data_prep import Nano3DataPrepConfig
+from nemotron.recipes.nano3.data_prep import Nano3DataPrepConfig
 
 # Import ConfigContainer for training config
 # Prefer megatron-bridge if available, otherwise use local stub for CLI development
 try:
     from megatron.bridge.training.config import ConfigContainer as TrainingConfig
 except ImportError:
-    from nemotron.config import ConfigContainer as TrainingConfig
+    from nemotron.kit.megatron_stub import ConfigContainer as TrainingConfig
 
 
 # =============================================================================
@@ -103,7 +103,7 @@ def cli(config: Annotated[Nano3Command, OmitArgPrefixes]) -> int:
     """
     match config:
         case Nano3DataPrepConfig() as cfg:
-            from nemotron.recipes.nano3.stage0_pretrain.data_prep import main
+            from nemotron.recipes.nano3.data_prep import main
 
             main(cfg)
             return 0

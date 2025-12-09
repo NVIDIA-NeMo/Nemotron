@@ -149,10 +149,8 @@ class WandbTracker:
             name=name,
             type=artifact.type,
             metadata={
-                "schema_version": artifact.schema_version,
                 "created_at": artifact.created_at,
-                "metrics": artifact.metrics,
-                "attrs": artifact.attrs,
+                **artifact.metadata,
             },
         )
 

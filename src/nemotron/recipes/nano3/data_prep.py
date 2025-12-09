@@ -1,23 +1,22 @@
-"""Data preparation for Nemotron Nano3 pretraining.
+"""Data preparation for Nemotron Nano3 training stages.
 
-Tokenizes raw text data into Megatron-Bridge format for pretraining.
+Tokenizes raw text data into Megatron-Bridge format for training.
 
 CLI Usage:
-    # With defaults
-    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep
+    # Pretrain stage (default)
+    uv run python -m nemotron.recipes.nano3.data_prep --stage pretrain
 
-    # Fast iteration (limit to 1000 samples)
-    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --sample 1000
+    # SFT stage
+    uv run python -m nemotron.recipes.nano3.data_prep -s sft
+
+    # RL stage with sampling
+    uv run python -m nemotron.recipes.nano3.data_prep -s rl --sample 1000
 
     # With config file (YAML, TOML, or JSON)
-    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --config-file config.yaml
-
-    # Config file + CLI override (CLI wins)
-    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep \\
-        --config-file config.yaml --sample 500
+    uv run python -m nemotron.recipes.nano3.data_prep -s pretrain --config-file config.yaml
 
     # Custom settings via CLI
-    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_prep \\
+    uv run python -m nemotron.recipes.nano3.data_prep -s sft \\
         --output-dir /data/tokenized \\
         --num-shards 256 \\
         --tokenizer-model nvidia/Llama-3.1-Nemotron-Nano-8B-Instruct
@@ -31,18 +30,18 @@ Example config.yaml:
     ```
 
 Programmatic Usage:
-    from nemotron.recipes.nano3.stage0_pretrain.data_prep import Nano3DataPrepConfig
+    from nemotron.recipes.nano3.data_prep import Nano3DataPrepConfig, Stage
     from nemotron.data_prep import run_data_prep
 
-    # Get config with Nano3 defaults
-    config = Nano3DataPrepConfig()
+    # Pretrain stage (default)
+    config = Nano3DataPrepConfig(stage=Stage.pretrain)
 
-    # Or customize
-    config = Nano3DataPrepConfig(sample=1000, num_shards=64)
+    # SFT stage with sampling
+    config = Nano3DataPrepConfig(stage=Stage.sft, sample=1000)
 
     # Execute
     artifact = run_data_prep(config)
-    print(f"Blend file: {artifact.blend_path}")
+    print(f"Blend path: {artifact.path}")
 """
 
 from dataclasses import dataclass, field
@@ -52,12 +51,12 @@ from typing import Annotated
 
 import tyro
 
-from nemotron.kit import cli, print_step_complete
-from nemotron.data_prep import DataPrepArtifact, DataPrepConfig, run_data_prep, PipelineConfig, TokenizerConfig, OutputConfig, DataBlend, tokenize
+from nemotron.kit import cli, print_step_complete, DataBlendsArtifact
+from nemotron.data_prep import DataPrepConfig, run_data_prep
 
 
 # Base path for nano3 recipe
-NANO3_RECIPE_PATH = Path(__file__).parent.parent
+NANO3_RECIPE_PATH = Path(__file__).parent
 
 
 class Stage(str, Enum):
@@ -97,7 +96,7 @@ class Nano3DataPrepConfig:
     """Training stage: pretrain, sft, or rl"""
 
     blend_path: Path = field(
-        default_factory=lambda: NANO3_RECIPE_PATH / STAGE_DIRS[Stage.pretrain] / "data_blend.json"
+        default_factory=lambda: NANO3_RECIPE_PATH / STAGE_DIRS[Stage.pretrain] / "data_blend_raw.json"
     )
     """Path to data blend JSON file"""
 
@@ -144,9 +143,9 @@ class Nano3DataPrepConfig:
         selected_stage = self.stage
 
         # Check if blend_path is still the default pretrain path
-        default_pretrain_blend = NANO3_RECIPE_PATH / STAGE_DIRS[Stage.pretrain] / "data_blend.json"
+        default_pretrain_blend = NANO3_RECIPE_PATH / STAGE_DIRS[Stage.pretrain] / "data_blend_raw.json"
         if self.blend_path == default_pretrain_blend and selected_stage != Stage.pretrain:
-            self.blend_path = NANO3_RECIPE_PATH / STAGE_DIRS[selected_stage] / "data_blend.json"
+            self.blend_path = NANO3_RECIPE_PATH / STAGE_DIRS[selected_stage] / "data_blend_raw.json"
 
         # Check if output_dir is still the default pretrain path
         default_pretrain_output = Path(f"./output/nano3/{STAGE_DIRS[Stage.pretrain]}")
@@ -159,7 +158,7 @@ class Nano3DataPrepConfig:
                 self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def main(cfg: Nano3DataPrepConfig) -> DataPrepArtifact:
+def main(cfg: Nano3DataPrepConfig) -> DataBlendsArtifact:
     """CLI entry point for data preparation.
 
     Runs the pipeline and prints completion summary.

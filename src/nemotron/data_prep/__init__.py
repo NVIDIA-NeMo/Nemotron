@@ -18,7 +18,7 @@ Quick Start:
     artifact = run_data_prep(config)
 
     # Use output with Megatron-Bridge
-    print(f"Blend file: {artifact.blend_path}")
+    print(f"Blend path: {artifact.path}")
 
 Output Format:
     The generated blend.json is directly compatible with Megatron-Bridge's
@@ -28,43 +28,11 @@ Output Format:
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated
-
-from pydantic import Field
 
 from nemotron.data_prep.blend import DataBlend, Dataset
 from nemotron.data_prep.config import PipelineConfig, TokenizerConfig, OutputConfig
 from nemotron.data_prep.pipeline import tokenize, PipelineResult, SplitResult
-from nemotron.kit import Artifact
-
-
-class DataPrepArtifact(Artifact):
-    """Output artifact for data preparation step.
-
-    The blend_path points to a Megatron-Bridge compatible blend.json that can
-    be passed directly to training recipes.
-
-    Example:
-        >>> from nemotron.data_prep import DataPrepArtifact
-        >>> artifact = DataPrepArtifact(
-        ...     path=Path("./output"),
-        ...     blend_path=Path("./output/blend.json"),
-        ...     total_tokens=1_000_000,
-        ...     total_sequences=10_000,
-        ...     elapsed_sec=120.5,
-        ... )
-    """
-
-    blend_path: Annotated[Path, Field(description="Path to blend.json for Megatron-Bridge")]
-    total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
-    total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
-    elapsed_sec: Annotated[float, Field(ge=0, description="Processing time in seconds")]
-    split_ratio: Annotated[
-        str | None, Field(default=None, description="Split ratio if single-blend mode (e.g., '99990,8,2')")
-    ]
-    is_per_split: Annotated[
-        bool, Field(default=False, description="True if train/valid/test were tokenized separately")
-    ]
+from nemotron.kit.artifact import DataBlendsArtifact
 
 
 @dataclass
@@ -128,7 +96,7 @@ class DataPrepConfig:
     """Force new run, ignoring cache"""
 
 
-def run_data_prep(config: DataPrepConfig) -> DataPrepArtifact:
+def run_data_prep(config: DataPrepConfig) -> DataBlendsArtifact:
     """Execute data preparation pipeline.
 
     Loads the data blend, tokenizes all datasets, and produces a
@@ -138,7 +106,7 @@ def run_data_prep(config: DataPrepConfig) -> DataPrepArtifact:
         config: Data preparation configuration
 
     Returns:
-        DataPrepArtifact with blend.json path and metrics
+        DataBlendsArtifact with blend.json path and metrics
 
     Example:
         >>> from nemotron.data_prep import DataPrepConfig, run_data_prep
@@ -147,7 +115,7 @@ def run_data_prep(config: DataPrepConfig) -> DataPrepArtifact:
         ...     output_dir=Path("./output"),
         ... )
         >>> artifact = run_data_prep(config)
-        >>> print(f"Blend file: {artifact.blend_path}")
+        >>> print(f"Blend path: {artifact.path}")
     """
     # Load data blend specification
     blend = DataBlend.load(config.blend_path)
@@ -192,20 +160,12 @@ def run_data_prep(config: DataPrepConfig) -> DataPrepArtifact:
     # Run tokenization pipeline
     result = tokenize(blend, pipeline_config)
 
-    # Build output artifact
-    artifact = DataPrepArtifact(
-        path=result.output_dir,
-        blend_path=result.blend_path,
+    # Build output artifact - path points to blend.json
+    artifact = DataBlendsArtifact(
+        path=result.blend_path,
         total_tokens=result.total_tokens,
         total_sequences=result.total_sequences,
         elapsed_sec=result.elapsed_sec,
-        split_ratio=result.split_ratio,
-        is_per_split=result.is_per_split,
-        metrics={
-            "total_tokens": float(result.total_tokens),
-            "total_sequences": float(result.total_sequences),
-            "elapsed_sec": result.elapsed_sec,
-        },
     )
     artifact.save()
 
@@ -219,7 +179,7 @@ __all__ = [
     # High-level API
     "DataPrepConfig",
     "run_data_prep",
-    "DataPrepArtifact",
+    "DataBlendsArtifact",
     # Low-level configuration
     "PipelineConfig",
     "TokenizerConfig",
