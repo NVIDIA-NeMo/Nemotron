@@ -488,6 +488,8 @@ def cli(
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
     defaults: Callable[[], T] | None = None,
+    ray: bool = False,
+    pre_ray_start_commands: list[str] | None = None,
 ) -> T: ...
 
 
@@ -499,6 +501,8 @@ def cli(
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
     defaults: Callable[[], Any] | None = None,
+    ray: bool = False,
+    pre_ray_start_commands: list[str] | None = None,
 ) -> T: ...
 
 
@@ -509,9 +513,11 @@ def cli(
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
     defaults: Callable[[], Any] | None = None,
+    ray: bool = False,
+    pre_ray_start_commands: list[str] | None = None,
 ) -> T:
     """
-    Drop-in replacement for tyro.cli with config file and artifact piping support.
+    Drop-in replacement for tyro.cli with config file, artifact piping, and nemo-run support.
 
     Supports loading configuration from YAML, TOML, or JSON files via
     --config-file. CLI arguments override config file values.
@@ -520,6 +526,10 @@ def cli(
     - Reads artifact JSON from stdin (output of previous step's print_step_complete())
     - Maps artifact fields to config fields per the parse_inputs mapping
     - Injects values as CLI args (lowest priority, can be overridden)
+
+    When --run <profile> is provided, executes via nemo-run with the named profile
+    from run.toml/yaml/json. Supports all nemo-run executors: local, docker, slurm,
+    skypilot, dgxcloud, lepton.
 
     Configuration precedence (highest to lowest):
         CLI args > config file > defaults() > dataclass defaults
@@ -532,6 +542,8 @@ def cli(
         defaults: Optional callable that returns a default config instance.
                  Used for model-specific defaults from external recipe functions.
                  Example: defaults=nemotron_nano_v2
+        ray: Whether this recipe requires Ray for execution (e.g., RL training).
+        pre_ray_start_commands: Commands to run before Ray starts (only used if ray=True).
 
     Returns:
         For dataclass: populated instance.
@@ -559,9 +571,27 @@ def cli(
         # With model-specific defaults
         >>> from megatron.bridge.recipes import nemotron_nano_v2
         >>> cli(main, defaults=nemotron_nano_v2)
+
+        # Execute via nemo-run
+        >>> # python train.py --run draco
+        >>> cli(main, defaults=nemotron_nano_v2)
+
+        # With Ray support (for RL training)
+        >>> cli(main, ray=True, pre_ray_start_commands=["pip install nemo-rl"])
     """
     if args is None:
         args = sys.argv[1:]
+
+    # Check for --run <profile> and handle nemo-run execution
+    run_name, run_overrides, remaining_args = _extract_run_args(args)
+    if run_name is not None:
+        return _execute_with_nemo_run(
+            run_name=run_name,
+            run_overrides=run_overrides,
+            script_args=remaining_args,
+            ray=ray,
+            pre_ray_start_commands=pre_ray_start_commands,
+        )
 
     # Apply parse_inputs from stdin artifacts if provided
     if parse_inputs:
@@ -636,3 +666,115 @@ def _func_to_dataclass(func: Callable) -> Type | None:
             dc_fields.append((param.name, param.annotation))
 
     return make_dataclass(f"{func.__name__}_Config", dc_fields)
+
+
+def _extract_run_args(args: list[str]) -> tuple[str | None, dict[str, str], list[str]]:
+    """Extract --run arguments from CLI args.
+
+    Parses --run <profile> and --run.<key> <value> overrides from args,
+    returning the profile name, overrides dict, and remaining args.
+
+    Args:
+        args: Original CLI arguments.
+
+    Returns:
+        Tuple of (profile_name, overrides_dict, remaining_args).
+        profile_name is None if --run not specified.
+    """
+    run_name: str | None = None
+    run_overrides: dict[str, str] = {}
+    remaining: list[str] = []
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+
+        # Handle --run <profile>
+        if arg == "--run":
+            if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                run_name = args[i + 1]
+                i += 2
+                continue
+            else:
+                raise ValueError("--run requires a profile name")
+
+        # Handle --run=<profile>
+        if arg.startswith("--run="):
+            run_name = arg.split("=", 1)[1]
+            i += 1
+            continue
+
+        # Handle --run.<key> <value> or --run.<key>=<value>
+        if arg.startswith("--run."):
+            key = arg[6:]  # Remove "--run."
+            if "=" in key:
+                key, value = key.split("=", 1)
+                run_overrides[key] = value
+            elif i + 1 < len(args):
+                run_overrides[key] = args[i + 1]
+                i += 2
+                continue
+            else:
+                raise ValueError(f"--run.{key} requires a value")
+            i += 1
+            continue
+
+        remaining.append(arg)
+        i += 1
+
+    return run_name, run_overrides, remaining
+
+
+def _execute_with_nemo_run(
+    run_name: str,
+    run_overrides: dict[str, str],
+    script_args: list[str],
+    ray: bool,
+    pre_ray_start_commands: list[str] | None,
+) -> None:
+    """Execute the current script via nemo-run.
+
+    Args:
+        run_name: Profile name from run.toml/yaml/json.
+        run_overrides: CLI overrides for the run config.
+        script_args: Arguments to pass to the script.
+        ray: Whether to use Ray execution.
+        pre_ray_start_commands: Commands to run before Ray starts.
+
+    Raises:
+        SystemExit: After nemo-run execution completes.
+    """
+    from nemotron.kit.run import load_run_profile, run_with_nemo_run
+
+    # Load and apply overrides to run config
+    run_config = load_run_profile(run_name)
+
+    # Apply CLI overrides
+    for key, value in run_overrides.items():
+        if hasattr(run_config, key):
+            # Handle type conversion for common types
+            field_type = type(getattr(run_config, key))
+            if field_type == bool:
+                value = value.lower() in ("true", "1", "yes")
+            elif field_type == int:
+                value = int(value)
+            elif field_type == list:
+                value = value.split(",") if value else []
+            setattr(run_config, key, value)
+        else:
+            raise ValueError(f"Unknown run config field: {key}")
+
+    # Get the script path from sys.argv[0]
+    script_path = sys.argv[0]
+
+    # Execute via nemo-run
+    exit_code = run_with_nemo_run(
+        script_path=script_path,
+        script_args=script_args,
+        run_config=run_config,
+        ray=ray,
+        pre_ray_start_commands=pre_ray_start_commands,
+    )
+
+    # Exit with the same code
+    sys.exit(exit_code)

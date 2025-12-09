@@ -10,7 +10,7 @@ from typing import Annotated
 import pytest
 from pydantic import Field
 
-from nemotron.kit import Artifact, apply_scale
+from nemotron.kit import Artifact, DataBlendsArtifact, ModelArtifact, apply_scale
 
 
 class SampleDataset(Artifact):
@@ -30,7 +30,6 @@ def test_artifact_save_and_load():
             path=output_dir,
             num_examples=100,
             quality=0.85,
-            metrics={"num_examples": 100, "quality": 0.85},
         )
 
         # Save
@@ -44,7 +43,9 @@ def test_artifact_save_and_load():
         loaded = SampleDataset.load(path=output_dir)
         assert loaded.num_examples == 100
         assert loaded.quality == 0.85
-        assert loaded.metrics["num_examples"] == 100
+        # Typed fields are synced to metadata
+        assert loaded.metadata["num_examples"] == 100
+        assert loaded.metadata["quality"] == 0.85
 
 
 def test_artifact_validation():
@@ -53,16 +54,16 @@ def test_artifact_validation():
         output_dir = Path(tmpdir) / "test_validation"
 
         # Valid artifact
-        valid = SampleDataset(path=output_dir, num_examples=100, quality=0.5, metrics={})
+        valid = SampleDataset(path=output_dir, num_examples=100, quality=0.5)
         assert valid.num_examples == 100
 
         # Invalid: negative num_examples
         with pytest.raises(Exception):  # Pydantic ValidationError
-            SampleDataset(path=output_dir, num_examples=-1, quality=0.5, metrics={})
+            SampleDataset(path=output_dir, num_examples=-1, quality=0.5)
 
         # Invalid: quality out of range
         with pytest.raises(Exception):  # Pydantic ValidationError
-            SampleDataset(path=output_dir, num_examples=100, quality=1.5, metrics={})
+            SampleDataset(path=output_dir, num_examples=100, quality=1.5)
 
 
 def test_artifact_metadata_format():
@@ -74,8 +75,6 @@ def test_artifact_metadata_format():
             path=output_dir,
             num_examples=50,
             quality=0.75,
-            metrics={"accuracy": 0.9},
-            attrs={"source": "test"},
         )
         artifact.save()
 
@@ -84,13 +83,30 @@ def test_artifact_metadata_format():
             metadata = json.load(f)
 
         # Verify required fields
-        assert metadata["schema_version"] == 1
-        assert metadata["type"] == "sampledataset"
+        assert metadata["type"] == "SampleDataset"
         assert metadata["num_examples"] == 50
         assert metadata["quality"] == 0.75
-        assert metadata["metrics"]["accuracy"] == 0.9
-        assert metadata["attrs"]["source"] == "test"
         assert metadata["producer"] == "local"
+        # Typed fields are in metadata dict
+        assert metadata["metadata"]["num_examples"] == 50
+        assert metadata["metadata"]["quality"] == 0.75
+
+
+def test_artifact_metrics_property():
+    """Test that metrics property extracts numeric values from metadata."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir) / "test_metrics"
+
+        artifact = SampleDataset(
+            path=output_dir,
+            num_examples=100,
+            quality=0.85,
+        )
+
+        # Metrics should be extracted from metadata
+        metrics = artifact.metrics
+        assert metrics["num_examples"] == 100.0
+        assert metrics["quality"] == 0.85
 
 
 def test_apply_scale():
@@ -117,7 +133,166 @@ def test_artifact_type_inference():
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir) / "test_type"
 
-        artifact = SampleDataset(path=output_dir, num_examples=10, quality=0.5, metrics={})
+        artifact = SampleDataset(path=output_dir, num_examples=10, quality=0.5)
 
-        # Type should be lowercase class name
-        assert artifact.type == "sampledataset"
+        # Type should be class name
+        assert artifact.type == "SampleDataset"
+
+
+def test_data_blends_artifact():
+    """Test DataBlendsArtifact typed subclass."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "blend.json"
+
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+            elapsed_sec=120.5,
+        )
+
+        # Typed fields accessible directly
+        assert artifact.total_tokens == 1_000_000
+        assert artifact.total_sequences == 10_000
+        assert artifact.elapsed_sec == 120.5
+
+        # Also in metadata
+        assert artifact.metadata["total_tokens"] == 1_000_000
+        assert artifact.metadata["total_sequences"] == 10_000
+
+        # Type inferred from class name
+        assert artifact.type == "DataBlendsArtifact"
+
+
+def test_data_blends_artifact_save():
+    """Test DataBlendsArtifact.save() writes metadata.json to parent directory."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "output" / "blend.json"
+
+        # Create blend.json file first (simulating pipeline.py behavior)
+        blend_path.parent.mkdir(parents=True, exist_ok=True)
+        blend_path.write_text('{"blends": []}')
+
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+            elapsed_sec=120.5,
+        )
+
+        # Save should not fail even though blend.json already exists
+        artifact.save()
+
+        # metadata.json should be in the parent directory (same as blend.json)
+        metadata_path = blend_path.parent / "metadata.json"
+        assert metadata_path.exists()
+
+        # Verify metadata content
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+
+        assert metadata["type"] == "DataBlendsArtifact"
+        assert metadata["total_tokens"] == 1_000_000
+        assert metadata["total_sequences"] == 10_000
+        assert metadata["producer"] == "local"
+
+
+def test_model_artifact():
+    """Test ModelArtifact typed subclass."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        checkpoint_path = Path(tmpdir) / "checkpoint"
+
+        artifact = ModelArtifact(
+            path=checkpoint_path,
+            step=10000,
+            final_loss=1.234,
+        )
+
+        # Typed fields accessible directly
+        assert artifact.step == 10000
+        assert artifact.final_loss == 1.234
+
+        # Also in metadata
+        assert artifact.metadata["step"] == 10000
+        assert artifact.metadata["final_loss"] == 1.234
+
+        # Type inferred from class name
+        assert artifact.type == "ModelArtifact"
+
+
+def test_artifact_metadata_sync():
+    """Test that typed fields sync to metadata and back."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir) / "test_sync"
+
+        # Create artifact with typed fields
+        artifact = SampleDataset(
+            path=output_dir,
+            num_examples=42,
+            quality=0.99,
+        )
+        artifact.save()
+
+        # Load from disk
+        loaded = SampleDataset.load(path=output_dir)
+
+        # Typed fields should be restored
+        assert loaded.num_examples == 42
+        assert loaded.quality == 0.99
+
+        # And synced to metadata
+        assert loaded.metadata["num_examples"] == 42
+        assert loaded.metadata["quality"] == 0.99
+
+
+def test_simple_artifact_no_subclass():
+    """Test using Artifact directly with metadata dict."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir) / "test_simple"
+
+        # Create simple artifact without subclass
+        artifact = Artifact(
+            path=output_dir,
+            type="custom",
+            metadata={"custom_field": 123, "another": "value"},
+        )
+        artifact.save()
+
+        # Load and verify
+        loaded = Artifact.load(path=output_dir)
+        assert loaded.type == "custom"
+        assert loaded.metadata["custom_field"] == 123
+        assert loaded.metadata["another"] == "value"
+
+
+def test_artifact_art_path_with_name():
+    """Test that art_path uses semantic name when set."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir) / "test_name"
+
+        # Create artifact with semantic name
+        artifact = SampleDataset(
+            path=output_dir,
+            num_examples=10,
+            quality=0.5,
+            name="nano3/pretrain/data",
+        )
+
+        # art_path should use the semantic name
+        assert artifact.art_path == "art://nano3/pretrain/data"
+
+
+def test_artifact_art_path_fallback():
+    """Test that art_path falls back to full path when no name."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir) / "test_fallback"
+
+        # Create artifact without name
+        artifact = SampleDataset(
+            path=output_dir,
+            num_examples=10,
+            quality=0.5,
+        )
+
+        # art_path should be the full path
+        assert artifact.art_path == f"art://{output_dir.resolve()}"
