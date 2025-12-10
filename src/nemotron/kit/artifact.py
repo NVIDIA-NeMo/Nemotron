@@ -332,11 +332,24 @@ class DataBlendsArtifact(Artifact):
     """Tokenized data blends artifact (output of data_prep).
 
     The path points directly to the blend.json file.
+
+    Source URIs are tracked for W&B lineage:
+    - source_datasets: URIs of input datasets (hf://..., s3://..., file://...)
+    - tokenizer_uri: URI of the tokenizer model (hf://models/...)
     """
 
     total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
     elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+
+    # Source URIs for lineage tracking
+    source_datasets: Annotated[
+        list[str],
+        Field(default_factory=list, description="URIs of input datasets"),
+    ]
+    tokenizer_uri: Annotated[
+        str | None, Field(default=None, description="URI of tokenizer model")
+    ]
 
     def save(self, name: str | None = None) -> None:
         """Save artifact metadata to path's parent directory.
