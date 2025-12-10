@@ -1,21 +1,23 @@
 {
   "datasets": [
     {
-      "name": "nemotron-math",
-      "path": "hf://nvidia/Nemotron-CC-Math-v1",
-      "subset": "4plus",
+      "name": "nemotron-sft-general",
+      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
+      "subset": "Nemotron-SFT-General",
       "text_field": "text",
       "weight": 1.0
     },
     {
-      "name": "nemotron-cc-v2",
-      "path": "hf://nvidia/Nemotron-CC-v2",
+      "name": "nemotron-sft-code",
+      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
+      "subset": "Nemotron-SFT-Code",
       "text_field": "text",
       "weight": 1.0
     },
     {
-      "name": "nemotron-cc-v2.1",
-      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "name": "nemotron-sft-math",
+      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
+      "subset": "Nemotron-SFT-MATH",
       "text_field": "text",
       "weight": 1.0
     }

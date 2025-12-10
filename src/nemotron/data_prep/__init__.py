@@ -1,7 +1,12 @@
 """Data preparation for Megatron training.
 
-Tokenizes raw text data from HuggingFace, S3, or local sources into
-.bin/.idx format compatible with Megatron-Bridge and Megatron-Core.
+Processes raw text data from HuggingFace, S3, or local sources into
+various training formats compatible with Megatron-Bridge and Megatron-Core.
+
+Supported output formats:
+- **binidx**: Tokenized .bin/.idx files (default, for pretraining)
+- **jsonl**: JSONL files with optional transforms (for SFT/RL, no tokenization)
+- **packed**: Packed sequences in .npy format (for efficient SFT training)
 
 Quick Start:
     from nemotron.data_prep import DataPrepConfig, run_data_prep
@@ -20,6 +25,22 @@ Quick Start:
     # Use output with Megatron-Bridge
     print(f"Blend path: {artifact.path}")
 
+Low-Level API (last_mile_process):
+    from nemotron.data_prep import last_mile_process, DataBlend, PipelineConfig
+    from nemotron.data_prep.config import OutputConfig, JsonlOutputConfig
+    from nemotron.data_prep.formats.transforms import sft
+
+    blend = DataBlend.load("data_blend.json")
+
+    # JSONL output for SFT
+    config = PipelineConfig(
+        output=OutputConfig(
+            dir=Path("./sft_data"),
+            format=JsonlOutputConfig(transform=sft(input="instruction", output="response")),
+        ),
+    )
+    result = last_mile_process(blend, config)
+
 Output Format:
     The generated blend.json is directly compatible with Megatron-Bridge's
     get_blend_fields_from_data_paths() function.
@@ -30,8 +51,32 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nemotron.data_prep.blend import DataBlend, Dataset
-from nemotron.data_prep.config import PipelineConfig, TokenizerConfig, OutputConfig
-from nemotron.data_prep.pipeline import tokenize, PipelineResult, SplitResult
+from nemotron.data_prep.config import (
+    PipelineConfig,
+    TokenizerConfig,
+    OutputConfig,
+    BinIdxOutputConfig,
+    JsonlOutputConfig,
+    PackedOutputConfig,
+    Transform,
+)
+from nemotron.data_prep.pipeline import (
+    last_mile_process,
+    tokenize,
+    PipelineResult,
+    SplitResult,
+)
+from nemotron.data_prep.formats.transforms import (
+    sft,
+    openai_chat,
+    sharegpt,
+    passthrough,
+    select,
+    rename,
+    SftRecord,
+    OpenAIChatRecord,
+    ShareGPTRecord,
+)
 from nemotron.kit.artifact import DataBlendsArtifact
 
 
@@ -139,26 +184,33 @@ def run_data_prep(config: DataPrepConfig) -> DataBlendsArtifact:
     if config.sample is not None:
         num_shards = 1
 
+    # Build output config with format that has num_shards
+    # When num_shards is specified, clear shard_size to avoid conflict
+    output_format = BinIdxOutputConfig(
+        num_shards=num_shards,
+        shard_size=None if num_shards is not None else "256MB",
+    )
+
     pipeline_config = PipelineConfig(
+        output=OutputConfig(
+            dir=config.output_dir,
+            format=output_format,
+            min_doc_chars=config.min_doc_chars,
+            max_doc_tokens=config.max_doc_tokens,
+            max_rows=config.sample,
+        ),
         tokenizer=TokenizerConfig(
             model=config.tokenizer_model,
             add_bos=config.add_bos,
             add_eos=config.add_eos,
-        ),
-        output=OutputConfig(
-            dir=config.output_dir,
-            num_shards=num_shards,
-            min_doc_chars=config.min_doc_chars,
-            max_doc_tokens=config.max_doc_tokens,
-            max_rows=config.sample,
         ),
         num_actors=num_actors,
         force=config.force,
         split=config.split,
     )
 
-    # Run tokenization pipeline
-    result = tokenize(blend, pipeline_config)
+    # Run processing pipeline
+    result = last_mile_process(blend, pipeline_config)
 
     # Build output artifact - path points to blend.json
     artifact = DataBlendsArtifact(
@@ -184,8 +236,25 @@ __all__ = [
     "PipelineConfig",
     "TokenizerConfig",
     "OutputConfig",
+    # Output format configs
+    "BinIdxOutputConfig",
+    "JsonlOutputConfig",
+    "PackedOutputConfig",
+    "Transform",
+    # Transform factories
+    "sft",
+    "openai_chat",
+    "sharegpt",
+    "passthrough",
+    "select",
+    "rename",
+    # Transform type definitions
+    "SftRecord",
+    "OpenAIChatRecord",
+    "ShareGPTRecord",
     # Execution
-    "tokenize",
+    "last_mile_process",
+    "tokenize",  # Deprecated alias
     # Results
     "PipelineResult",
     "SplitResult",
