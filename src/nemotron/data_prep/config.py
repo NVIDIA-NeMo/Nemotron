@@ -2,12 +2,15 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Literal, Union
 
 import numpy as np
 
 # Valid dtypes for indexed dataset output (must match DTYPE_CODES in indexed_dataset.py)
 VALID_OUTPUT_DTYPES = {"int32", "int64", "uint16"}
+
+# Type alias for transform functions
+Transform = Callable[[dict], dict | None]
 
 
 # ============================================================================
@@ -35,25 +38,127 @@ class TokenizerConfig:
     trust_remote_code: bool = False
 
 
+# ============================================================================
+# Output Format Configurations
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class BinIdxOutputConfig:
+    """Configuration for Megatron .bin/.idx indexed dataset output.
+
+    This is the default format, producing tokenized binary files compatible
+    with Megatron-Bridge and Megatron-Core.
+
+    Attributes:
+        format: Format identifier (always "binidx")
+        shard_size: Target size per shard (e.g., "256MB"). Mutually exclusive with num_shards.
+        num_shards: Exact number of output shards. Mutually exclusive with shard_size.
+        dtype: Token dtype (int32, int64, uint16)
+    """
+
+    format: Literal["binidx"] = "binidx"
+    shard_size: str | int | None = "256MB"
+    num_shards: int | None = None
+    dtype: Literal["int32", "int64", "uint16"] = "int32"
+
+    def __post_init__(self) -> None:
+        if self.shard_size is not None and self.num_shards is not None:
+            raise ValueError("Specify either shard_size or num_shards, not both")
+
+
+@dataclass(frozen=True)
+class JsonlOutputConfig:
+    """Configuration for JSONL output (no tokenization).
+
+    Outputs structured JSONL files for SFT/RL training, applying optional
+    transforms to convert records to the desired format.
+
+    Attributes:
+        format: Format identifier (always "jsonl")
+        shard_size: Target size per shard (e.g., "256MB"). Mutually exclusive with num_shards.
+        num_shards: Exact number of output shards. Mutually exclusive with shard_size.
+        transform: Optional callable to transform records. Returns dict or None to skip.
+        compression: Output compression ("none" for .jsonl, "zstd" for .jsonl.zst)
+    """
+
+    format: Literal["jsonl"] = "jsonl"
+    shard_size: str | int | None = "256MB"
+    num_shards: int | None = None
+    transform: Transform | None = None
+    compression: Literal["none", "zstd"] = "none"
+
+    def __post_init__(self) -> None:
+        if self.shard_size is not None and self.num_shards is not None:
+            raise ValueError("Specify either shard_size or num_shards, not both")
+
+
+@dataclass(frozen=True)
+class PackedOutputConfig:
+    """Configuration for packed sequence output.
+
+    Tokenizes and packs sequences into efficient batches compatible with
+    GPTSFTPackedDataset. Output is .npy files with packed sequences.
+
+    Attributes:
+        format: Format identifier (always "packed")
+        shard_size: Target size per shard (e.g., "256MB"). Mutually exclusive with num_shards.
+        num_shards: Exact number of output shards. Mutually exclusive with shard_size.
+        dtype: Token dtype (int32, int64, uint16)
+        pack_size: Maximum tokens per packed sequence
+        algorithm: Packing algorithm ("first_fit_decreasing", "first_fit_shuffle", "concatenative")
+    """
+
+    format: Literal["packed"] = "packed"
+    shard_size: str | int | None = "256MB"
+    num_shards: int | None = None
+    dtype: Literal["int32", "int64", "uint16"] = "int32"
+    pack_size: int = 2048
+    algorithm: Literal["first_fit_decreasing", "first_fit_shuffle", "concatenative"] = (
+        "first_fit_shuffle"
+    )
+
+    def __post_init__(self) -> None:
+        if self.shard_size is not None and self.num_shards is not None:
+            raise ValueError("Specify either shard_size or num_shards, not both")
+        if self.pack_size <= 0:
+            raise ValueError(f"pack_size must be positive, got {self.pack_size}")
+
+
+# Union type for all output formats
+OutputFormat = Union[BinIdxOutputConfig, JsonlOutputConfig, PackedOutputConfig]
+
+
 @dataclass(frozen=True)
 class OutputConfig:
     """Output configuration.
 
     Attributes:
         dir: Output directory (local path or cloud URI)
-        num_shards: Number of output shards (for parallel processing)
-        dtype: Token dtype (int32, int64, uint16)
-        min_doc_chars: Skip documents shorter than this
-        max_doc_tokens: Truncate documents longer than this
+        format: Output format configuration (BinIdxOutputConfig, JsonlOutputConfig, or PackedOutputConfig)
+        min_doc_chars: Skip documents shorter than this (for tokenized formats)
+        max_doc_tokens: Truncate documents longer than this (for tokenized formats)
         max_rows: Limit rows processed per shard (useful for quick tests)
+
+    Deprecated attributes (for backward compatibility):
+        num_shards: Use format.num_shards instead
+        dtype: Use format.dtype instead
     """
 
     dir: Path
-    num_shards: int = 128
-    dtype: Literal["int32", "int64", "uint16"] = "int32"
+    format: OutputFormat = field(default_factory=BinIdxOutputConfig)
     min_doc_chars: int | None = None
     max_doc_tokens: int | None = None
     max_rows: int | None = None
+    # Deprecated - for backward compatibility
+    num_shards: int | None = None
+    dtype: Literal["int32", "int64", "uint16"] | None = None
+
+    def __post_init__(self) -> None:
+        # Handle backward compatibility: if old-style num_shards/dtype provided,
+        # we need to handle them. But since this is frozen, we can't modify.
+        # The pipeline should check for these and warn.
+        pass
 
 
 @dataclass(frozen=True)
@@ -61,8 +166,8 @@ class PipelineConfig:
     """Complete pipeline configuration.
 
     Attributes:
-        tokenizer: Tokenizer settings
         output: Output settings
+        tokenizer: Tokenizer settings (required for binidx/packed formats, optional for jsonl)
         num_actors: Number of Ray actors for parallel processing
         sample: Shard sampling spec ("10%", "5", or None for all)
         sample_seed: Random seed for sampling
@@ -70,8 +175,8 @@ class PipelineConfig:
         split: Split ratio for single-blend mode (e.g., "99990,8,2")
     """
 
-    tokenizer: TokenizerConfig
     output: OutputConfig
+    tokenizer: TokenizerConfig | None = None
     num_actors: int = 4
     sample: str | int | None = None
     sample_seed: int = 42

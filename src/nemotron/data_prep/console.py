@@ -45,15 +45,21 @@ def planning_header() -> None:
     console.print("[bold]Planning...[/bold]")
 
 
-def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str) -> None:
+def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int | None = None) -> None:
     """Print a summary table of all dataset plans."""
+    # Resolve num_actors to actual value (auto-detect if None)
+    if num_actors is None:
+        import os
+        cpu_count = os.cpu_count() or 4
+        num_actors = max(2, min(32, int(cpu_count * 0.75)))
+
     console.print()
 
     # Check if any dataset has HF metadata
     has_hf_metadata = any(ds.hf_rows or ds.hf_size for ds in datasets)
 
     table = Table(title="Execution Plan", show_header=True)
-    table.add_column("Dataset", style="cyan")
+    table.add_column("Dataset", style="cyan", no_wrap=True)
     if has_hf_metadata:
         table.add_column("Size", justify="right", style="dim")
         table.add_column("Rows", justify="right", style="dim")
@@ -95,11 +101,12 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str) -> None:
     console.print(table)
 
     # Summary line
+    actors_info = f" using [cyan]{num_actors} workers[/cyan]"
     if total_pending == 0:
         console.print(f"\n[green]All shards cached.[/green] Run hash: [yellow]{run_hash}[/yellow]")
     else:
         console.print(
-            f"\n[bold]Will process {total_pending} shard(s)[/bold] "
+            f"\n[bold]Will process {total_pending} shard(s)[/bold]{actors_info} "
             f"({total_cached} cached). Run hash: [yellow]{run_hash}[/yellow]"
         )
     console.print()

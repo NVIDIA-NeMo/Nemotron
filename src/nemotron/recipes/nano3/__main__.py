@@ -2,33 +2,39 @@
 """Nano3 training recipe CLI.
 
 Subcommands:
-    nemotron nano3 data curate   - Curate training data with NeMo Curator (coming soon)
-    nemotron nano3 data prep     - Download from HF Hub and tokenize with Ray Data
-    nemotron nano3 pretrain      - Run pretraining with Megatron-Bridge (stage0)
-    nemotron nano3 sft           - Run supervised fine-tuning with Megatron-Bridge (coming soon)
-    nemotron nano3 rl            - Run reinforcement learning with NeMo-RL (coming soon)
+    nemotron nano3 data curate        - Curate training data with NeMo Curator (coming soon)
+    nemotron nano3 data prep pretrain - Tokenize data for pretraining (bin/idx format)
+    nemotron nano3 data prep sft      - Prepare data for SFT (JSONL format)
+    nemotron nano3 data prep rl       - Prepare data for RL (JSONL chat format)
+    nemotron nano3 pretrain           - Run pretraining with Megatron-Bridge (stage0)
+    nemotron nano3 sft                - Run supervised fine-tuning with Megatron-Bridge (coming soon)
+    nemotron nano3 rl                 - Run reinforcement learning with NeMo-RL (coming soon)
 
 Examples:
-    # Data preparation (use --stage/-s to select stage)
-    nemotron nano3 data prep --sample 1000
-    nemotron nano3 data prep --stage sft
-    nemotron nano3 data prep -s rl --sample 100
+    # Data preparation per stage
+    nemotron nano3 data prep pretrain --sample 1000
+    nemotron nano3 data prep sft --sample 100
+    nemotron nano3 data prep rl --sample 100
 
     # Pretraining (requires megatron-bridge)
     nemotron nano3 pretrain --mock --max-steps 1000
 
     # Direct module access still works
-    python -m nemotron.recipes.nano3.data_prep --sample 1000
+    python -m nemotron.recipes.nano3.stage0_pretrain.data_prep --sample 1000
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Annotated, Union
 
-import tyro
-from tyro.conf import OmitArgPrefixes, subcommand
+from nemotron.kit import App
 
-from nemotron.recipes.nano3.data_prep import Nano3DataPrepConfig
+from nemotron.recipes.nano3.stage0_pretrain.data_prep import PreTrainDataPrepConfig
+from nemotron.recipes.nano3.stage0_pretrain.data_prep import main as pretrain_data_main
+from nemotron.recipes.nano3.stage1_sft.data_prep import SFTDataPrepConfig
+from nemotron.recipes.nano3.stage1_sft.data_prep import main as sft_data_main
+from nemotron.recipes.nano3.stage2_rl.data_prep import RLDataPrepConfig
+from nemotron.recipes.nano3.stage2_rl.data_prep import main as rl_data_main
 
 # Import ConfigContainer for training config
 # Prefer megatron-bridge if available, otherwise use local stub for CLI development
@@ -39,7 +45,7 @@ except ImportError:
 
 
 # =============================================================================
-# Placeholder Configs
+# Placeholder Configs and Handlers
 # =============================================================================
 
 
@@ -64,76 +70,57 @@ class RlConfig:
     pass
 
 
+def curate_main(config: DataCurateConfig) -> int:
+    """Handle data curation command."""
+    print("Data curation coming soon")
+    return 1
+
+
+def training_main(config: TrainingConfig) -> int:
+    """Handle pretraining command."""
+    from nemotron.recipes.nano3.stage0_pretrain.training import main
+
+    main(config)
+    return 0
+
+
+def sft_main(config: SftConfig) -> int:
+    """Handle SFT command."""
+    print("Supervised fine-tuning coming soon")
+    return 1
+
+
+def rl_main(config: RlConfig) -> int:
+    """Handle RL command."""
+    print("Reinforcement learning coming soon")
+    return 1
+
+
 # =============================================================================
-# Command Type Alias
+# Build CLI with App
 # =============================================================================
 
-Nano3Command = Union[
-    Annotated[
-        DataCurateConfig,
-        subcommand(name="data curate", description="Curate training data with NeMo Curator (coming soon)", prefix_name=False),
-    ],
-    Annotated[
-        Nano3DataPrepConfig,
-        subcommand(
-            name="data prep",
-            description="Download from HF Hub and tokenize with Ray Data (use --stage/-s for stage-specific data)",
-            prefix_name=False,
-        ),
-    ],
-    Annotated[
-        TrainingConfig,
-        subcommand(name="pretrain", description="Run pretraining with Megatron-Bridge (stage0)", prefix_name=False),
-    ],
-    Annotated[
-        SftConfig,
-        subcommand(name="sft", description="Run supervised fine-tuning with Megatron-Bridge (coming soon)", prefix_name=False),
-    ],
-    Annotated[
-        RlConfig,
-        subcommand(name="rl", description="Run reinforcement learning with NeMo-RL (coming soon)", prefix_name=False),
-    ],
-]
+app = App("nano3", description="Nano3 training recipe")
 
+# Nested groups
+data = app.group("data", description="Data curation and preparation commands")
+prep = data.group("prep", description="Prepare data for training stages")
 
-def cli(config: Annotated[Nano3Command, OmitArgPrefixes]) -> int:
-    """Nano3 training recipe.
+# Data prep commands
+prep.command("pretrain", PreTrainDataPrepConfig, pretrain_data_main, description="Tokenize data for pretraining (bin/idx format)")
+prep.command("sft", SFTDataPrepConfig, sft_data_main, description="Prepare data for SFT (JSONL format)")
+prep.command("rl", RLDataPrepConfig, rl_data_main, description="Prepare data for RL (JSONL chat format)")
 
-    Run data preparation or training for the Nano3 model.
-    """
-    match config:
-        case Nano3DataPrepConfig() as cfg:
-            from nemotron.recipes.nano3.data_prep import main
+# Data curation command
+data.command("curate", DataCurateConfig, curate_main, description="Curate training data with NeMo Curator (coming soon)")
 
-            main(cfg)
-            return 0
+# Top-level training commands
+app.command("pretrain", TrainingConfig, training_main, description="Run pretraining with Megatron-Bridge (stage0)")
+app.command("sft", SftConfig, sft_main, description="Run supervised fine-tuning with Megatron-Bridge (coming soon)")
+app.command("rl", RlConfig, rl_main, description="Run reinforcement learning with NeMo-RL (coming soon)")
 
-        case DataCurateConfig():
-            print("Data curation coming soon")
-            return 1
-
-        case TrainingConfig() as cfg:
-            from nemotron.recipes.nano3.stage0_pretrain.training import main
-
-            main(cfg)
-            return 0
-
-        case SftConfig():
-            print("Supervised fine-tuning coming soon")
-            return 1
-
-        case RlConfig():
-            print("Reinforcement learning coming soon")
-            return 1
-
-        case _:
-            print(f"Unknown command: {config}")
-            return 1
-
+# Build the tyro-compatible CLI function (for external import)
+cli = app.build()
 
 if __name__ == "__main__":
-    import sys
-
-    result = tyro.cli(cli)
-    if isinstance(result, int):
-        sys.exit(result)
+    app.run()

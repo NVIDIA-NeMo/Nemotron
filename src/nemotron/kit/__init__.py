@@ -53,6 +53,9 @@ from typing import Any
 # Config
 from nemotron.kit.config import ConfigManager, cli
 
+# CLI App
+from nemotron.kit.app import App
+
 # Run (nemo-run integration)
 from nemotron.kit.run import RunConfig, build_executor, load_run_profile
 
@@ -84,10 +87,15 @@ from nemotron.kit.trackers import (
 # Track module for semantic URI resolution
 from nemotron.kit import track
 
+# Wandb configuration
+from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured
+
 __all__ = [
     # Config
     "cli",
     "ConfigManager",
+    # CLI App
+    "App",
     # Run (nemo-run integration)
     "RunConfig",
     "build_executor",
@@ -121,6 +129,9 @@ __all__ = [
     "ArtifactVersionNotFoundError",
     # Track
     "track",
+    # Wandb configuration
+    "WandbConfig",
+    "init_wandb_if_configured",
 ]
 
 
