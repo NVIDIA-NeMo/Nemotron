@@ -288,10 +288,18 @@ class App:
             else:
                 break
 
-        # Initialize wandb from global options if configured
+        # Initialize wandb from global options or run.toml
         if global_options is not None and global_options.wandb_project is not None:
+            # CLI args take precedence
             from nemotron.kit.wandb import init_wandb_if_configured
             init_wandb_if_configured(global_options.to_wandb_config(), job_type="cli")
+        else:
+            # Try loading from run.toml [wandb] section
+            from nemotron.kit.run import load_wandb_config
+            from nemotron.kit.wandb import init_wandb_if_configured
+            wandb_config = load_wandb_config()
+            if wandb_config is not None:
+                init_wandb_if_configured(wandb_config, job_type="cli")
 
         # Dispatch to handler
         handler = handlers.get(type(config))

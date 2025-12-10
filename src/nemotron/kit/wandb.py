@@ -62,6 +62,7 @@ class WandbConfig:
 def init_wandb_if_configured(
     wandb_config: WandbConfig | None,
     job_type: str = "data-prep",
+    tags: list[str] | None = None,
 ) -> None:
     """Initialize kit with wandb backend if WandbConfig is provided and enabled.
 
@@ -71,10 +72,11 @@ def init_wandb_if_configured(
     Args:
         wandb_config: WandbConfig instance or None
         job_type: W&B job type for categorizing runs (default: "data-prep")
+        tags: Additional tags to add to the run (merged with config tags)
 
     Example:
         >>> def main(cfg: MyConfig):
-        ...     init_wandb_if_configured(cfg.wandb, job_type="training")
+        ...     init_wandb_if_configured(cfg.wandb, job_type="training", tags=["pretrain"])
         ...     # Artifacts will now be tracked in W&B
     """
     if wandb_config is None or not wandb_config.enabled:
@@ -98,11 +100,72 @@ def init_wandb_if_configured(
         )
 
     if wandb.run is None:
+        # Merge config tags with additional tags
+        all_tags: list[str] = []
+        if wandb_config.tags:
+            all_tags.extend(wandb_config.tags)
+        if tags:
+            all_tags.extend(tags)
+
         wandb.init(
             project=wandb_config.project,
             entity=wandb_config.entity,
             name=wandb_config.run_name,
-            tags=list(wandb_config.tags) if wandb_config.tags else None,
+            tags=all_tags if all_tags else None,
             notes=wandb_config.notes,
             job_type=job_type,
         )
+
+
+def add_wandb_tags(tags: list[str]) -> None:
+    """Add tags to the active wandb run if one exists.
+
+    This can be called after wandb is initialized to add stage-specific tags.
+    Tags are merged with any existing tags on the run.
+
+    Args:
+        tags: List of tags to add to the run
+
+    Example:
+        >>> add_wandb_tags(["data-prep", "pretrain"])
+    """
+    try:
+        import wandb
+
+        if wandb.run is not None and tags:
+            # Get existing tags and merge
+            existing_tags = list(wandb.run.tags) if wandb.run.tags else []
+            new_tags = list(set(existing_tags + tags))  # Deduplicate
+            wandb.run.tags = new_tags
+    except ImportError:
+        pass
+    except Exception:
+        pass  # Don't fail if tags can't be added
+
+
+def finish_wandb(exit_code: int = 0) -> None:
+    """Finish the active wandb run if one exists.
+
+    This should be called at the end of a successful run to properly close
+    the wandb session. Without this, runs will appear as "crashed" in the
+    W&B dashboard.
+
+    Args:
+        exit_code: Exit code to report. 0 for success, non-zero for failure.
+
+    Example:
+        >>> try:
+        ...     # Do work
+        ...     artifact.save()
+        ...     finish_wandb(exit_code=0)
+        ... except Exception:
+        ...     finish_wandb(exit_code=1)
+        ...     raise
+    """
+    try:
+        import wandb
+
+        if wandb.run is not None:
+            wandb.finish(exit_code=exit_code)
+    except ImportError:
+        pass

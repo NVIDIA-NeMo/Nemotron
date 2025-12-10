@@ -90,7 +90,7 @@ from nemotron.kit.trackers import (
 from nemotron.kit import track
 
 # Wandb configuration
-from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured
+from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured, add_wandb_tags
 
 __all__ = [
     # Config
@@ -136,6 +136,7 @@ __all__ = [
     # Wandb configuration
     "WandbConfig",
     "init_wandb_if_configured",
+    "add_wandb_tags",
 ]
 
 

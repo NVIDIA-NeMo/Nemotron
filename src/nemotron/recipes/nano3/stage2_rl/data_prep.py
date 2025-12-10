@@ -6,11 +6,11 @@ Usage:
     python -m nemotron.recipes.nano3.stage2_rl.data_prep [options]
 
 Examples:
-    # Basic processing (flat output)
+    # Default processing (train/val/test split)
     python -m nemotron.recipes.nano3.stage2_rl.data_prep
 
-    # With train/val/test split
-    python -m nemotron.recipes.nano3.stage2_rl.data_prep --split_output=train_val_test
+    # Flat output without splitting
+    python -m nemotron.recipes.nano3.stage2_rl.data_prep --split_output=none
 
     # Quick test with sample
     python -m nemotron.recipes.nano3.stage2_rl.data_prep --sample=100
@@ -27,9 +27,12 @@ from nemotron.data_prep import (
     OutputConfig,
     last_mile_process,
 )
-from nemotron.data_prep.config import JsonlOutputConfig
-from nemotron.data_prep.formats.transforms import openai_chat
+from nemotron.data_prep.config import DatasetConfig, JsonlOutputConfig
+from nemotron.data_prep.discovery import get_dataset_metadata
+from nemotron.data_prep.formats.transforms import nemotron_rl
 from nemotron.kit import DataBlendsArtifact, cli, print_step_complete
+from nemotron.kit.trackers import InputDatasetInfo
+from nemotron.kit.wandb import add_wandb_tags, finish_wandb
 
 STAGE_PATH = Path(__file__).parent
 
@@ -39,7 +42,7 @@ class RLDataPrepConfig:
     """RL data preparation config.
 
     Converts to JSONL with OpenAI chat format for RLHF training.
-    RL doesn't support blends, so output is a flat directory of JSONL files.
+    By default outputs train/val/test splits as separate JSONL files.
     """
 
     blend_path: Path = field(default_factory=lambda: STAGE_PATH / "data_blend_raw.json")
@@ -51,8 +54,8 @@ class RLDataPrepConfig:
     shard_size: str = "256MB"
     """Target size per shard (e.g., '256MB', '1GB')"""
 
-    messages_field: str = "messages"
-    """Field name for messages in source data"""
+    # Note: messages_field removed - nemotron_rl transform extracts from
+    # responses_create_params.input directly
 
     sample: int | None = None
     """Limit rows per dataset (for quick tests)"""
@@ -63,8 +66,8 @@ class RLDataPrepConfig:
     force: bool = False
     """Force new run, ignoring cache"""
 
-    split_output: Literal["none", "train_val_test"] = "none"
-    """Split output into train/val/test directories (default: single flat output)"""
+    split_output: Literal["none", "train_val_test"] = "train_val_test"
+    """Split output into train/val/test directories (default: train_val_test)"""
 
     train_ratio: float = 0.98
     """Ratio of data for training when split_output='train_val_test'"""
@@ -86,13 +89,16 @@ class RLDataPrepConfig:
 
 
 def _run_single_blend(
-    blend: DataBlend, cfg: RLDataPrepConfig, num_actors: int
+    blend: DataBlend,
+    cfg: RLDataPrepConfig,
+    num_actors: int,
+    source_datasets: list[InputDatasetInfo],
 ) -> DataBlendsArtifact:
     """Process blend without train/val/test splitting."""
     # Build pipeline config with JSONL output format
     format_config = JsonlOutputConfig(
         shard_size=cfg.shard_size,
-        transform=openai_chat(messages=cfg.messages_field),
+        transform=nemotron_rl(),
     )
 
     pipeline_config = PipelineConfig(
@@ -109,18 +115,23 @@ def _run_single_blend(
     # Run processing pipeline
     result = last_mile_process(blend, pipeline_config)
 
-    # Build output artifact
+    # Build output artifact with source datasets for lineage tracking
     artifact = DataBlendsArtifact(
         path=result.blend_path,
         total_tokens=result.total_tokens,
         total_sequences=result.total_sequences,
         elapsed_sec=result.elapsed_sec,
+        source_datasets=source_datasets,
+        # No tokenizer for RL (JSONL format)
     )
     return artifact
 
 
 def _run_split_blend(
-    blend: DataBlend, cfg: RLDataPrepConfig, num_actors: int
+    blend: DataBlend,
+    cfg: RLDataPrepConfig,
+    num_actors: int,
+    source_datasets: list[InputDatasetInfo],
 ) -> DataBlendsArtifact:
     """Process blend with train/val/test splitting.
 
@@ -154,7 +165,7 @@ def _run_split_blend(
         # Build pipeline config for this split
         format_config = JsonlOutputConfig(
             shard_size=cfg.shard_size,
-            transform=openai_chat(messages=cfg.messages_field),
+            transform=nemotron_rl(),
         )
 
         # Calculate max_rows for this split based on ratio
@@ -199,18 +210,23 @@ def _run_split_blend(
 
     elapsed = time.time() - start_time
 
-    # Return artifact pointing to manifest
+    # Return artifact pointing to manifest with source datasets for lineage
     artifact = DataBlendsArtifact(
         path=manifest_path,
         total_tokens=0,
         total_sequences=total_sequences,
         elapsed_sec=elapsed,
+        source_datasets=source_datasets,
+        # No tokenizer for RL (JSONL format)
     )
     return artifact
 
 
 def main(cfg: RLDataPrepConfig) -> DataBlendsArtifact:
     """Run RL data preparation."""
+    # Add stage-specific tags to wandb run
+    add_wandb_tags(["data-prep", "rl"])
+
     # Load data blend
     blend = DataBlend.load(cfg.blend_path)
 
@@ -220,14 +236,46 @@ def main(cfg: RLDataPrepConfig) -> DataBlendsArtifact:
         cpu_count = os.cpu_count() or 4
         num_actors = max(2, min(32, cpu_count * 3 // 4))
 
+    # Collect source datasets with metadata for lineage tracking
+    source_datasets: list[InputDatasetInfo] = []
+    seen_keys: set[str] = set()
+    for dataset in blend.datasets:
+        # Use path+subset as key since same path can have different subsets
+        key = f"{dataset.path}|{dataset.subset or ''}"
+        if key not in seen_keys:
+            seen_keys.add(key)
+            ds_config = DatasetConfig(
+                name=dataset.name,
+                path=dataset.path,
+                split=dataset.split,
+                subset=dataset.subset,
+                text_field=dataset.text_field,
+            )
+            hf_metadata = get_dataset_metadata(ds_config)
+            source_datasets.append(
+                InputDatasetInfo(
+                    uri=dataset.path,
+                    name=dataset.name,
+                    weight=dataset.weight,
+                    split=dataset.split,
+                    subset=dataset.subset,
+                    text_field=dataset.text_field,
+                    num_rows=hf_metadata.num_rows,
+                    size_bytes=hf_metadata.size_bytes,
+                )
+            )
+
     # Run appropriate processing
     if cfg.split_output == "train_val_test":
-        artifact = _run_split_blend(blend, cfg, num_actors)
+        artifact = _run_split_blend(blend, cfg, num_actors, source_datasets)
     else:
-        artifact = _run_single_blend(blend, cfg, num_actors)
+        artifact = _run_single_blend(blend, cfg, num_actors, source_datasets)
 
     artifact.name = f"nano3/rl/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     artifact.save()
+
+    # Mark wandb run as successful
+    finish_wandb(exit_code=0)
 
     print_step_complete(data_prep=artifact)
     return artifact

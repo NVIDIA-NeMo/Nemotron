@@ -13,7 +13,10 @@ import json
 import sys
 from dataclasses import field, fields, is_dataclass, make_dataclass
 from pathlib import Path
-from typing import Any, Callable, Type, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, Type, TypeVar, overload
+
+if TYPE_CHECKING:
+    from nemotron.kit.wandb import WandbConfig
 
 import tyro
 
@@ -45,6 +48,9 @@ class ConfigManager[T]:
     Configuration precedence:
         CLI args > config file > defaults() > dataclass defaults
 
+    Global sections (wandb, run) in config files are extracted separately
+    and can be accessed via get_wandb_config() after parsing.
+
     Example:
         >>> from dataclasses import dataclass
         >>> from nemotron.config import ConfigManager
@@ -56,7 +62,12 @@ class ConfigManager[T]:
         >>>
         >>> manager = ConfigManager(TrainingConfig)
         >>> config = manager.parse_args(["--config-file", "config.yaml"])
+        >>> wandb_config = manager.get_wandb_config()  # From [wandb] section
     """
+
+    # Sections that are extracted from config files before validation
+    # These are global settings, not recipe-specific
+    GLOBAL_SECTIONS = {"wandb", "run", "custom_config_module"}
 
     def __init__(
         self,
@@ -76,6 +87,7 @@ class ConfigManager[T]:
         self.config_cls = config_cls
         self.defaults = defaults
         self.config: T | None = None
+        self._wandb_config: dict[str, Any] | None = None
         self._setup_tyro_registry()
 
     def parse_args(self, args: list[str] | None = None) -> T:
@@ -93,6 +105,13 @@ class ConfigManager[T]:
 
         # Load config file if specified
         file_values = self._maybe_load_config_file(args)
+
+        # Extract global sections (wandb, run) before validation
+        if file_values:
+            file_values, global_sections = self._extract_global_sections(file_values)
+            self._wandb_config = global_sections.get("wandb")
+        else:
+            global_sections = {}
 
         # Filter out config file args before passing to tyro
         filtered_args = self._filter_config_file_args(args)
@@ -121,6 +140,54 @@ class ConfigManager[T]:
         )
 
         return self.config
+
+    def _extract_global_sections(
+        self, file_values: dict[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Extract global sections (wandb, run) from config file values.
+
+        These sections are not part of the recipe config and should be
+        handled separately.
+
+        Args:
+            file_values: Raw config file contents.
+
+        Returns:
+            Tuple of (recipe_config, global_sections).
+        """
+        recipe_config = {}
+        global_sections = {}
+
+        for key, value in file_values.items():
+            if key in self.GLOBAL_SECTIONS:
+                global_sections[key] = value
+            else:
+                recipe_config[key] = value
+
+        return recipe_config, global_sections
+
+    def get_wandb_config(self) -> "WandbConfig | None":
+        """Get WandbConfig from the [wandb] section of the config file.
+
+        Returns:
+            WandbConfig instance if [wandb] section exists, None otherwise.
+        """
+        if self._wandb_config is None:
+            return None
+
+        from nemotron.kit.wandb import WandbConfig
+
+        wandb_dict = dict(self._wandb_config)
+
+        # Convert tags from list to tuple if present
+        if "tags" in wandb_dict and isinstance(wandb_dict["tags"], list):
+            wandb_dict["tags"] = tuple(wandb_dict["tags"])
+
+        # Map run_name from TOML (allow shorthand "name")
+        if "name" in wandb_dict and "run_name" not in wandb_dict:
+            wandb_dict["run_name"] = wandb_dict.pop("name")
+
+        return WandbConfig(**wandb_dict)
 
     def _filter_config_file_args(self, args: list[str]) -> list[str]:
         """Remove --config-file related arguments from args list."""
@@ -599,10 +666,20 @@ def cli(
         if stdin_artifacts:
             args = _apply_parse_inputs(args, parse_inputs, stdin_artifacts)
 
+    # Helper to initialize wandb from config file if present
+    def _maybe_init_wandb_from_config(manager: ConfigManager) -> None:
+        """Initialize wandb from [wandb] section in config file if present."""
+        wandb_config = manager.get_wandb_config()
+        if wandb_config is not None:
+            from nemotron.kit.wandb import init_wandb_if_configured
+            init_wandb_if_configured(wandb_config, job_type="cli")
+
     # Check if it's a dataclass or a callable
     if is_dataclass(config_or_main):
         manager = ConfigManager(config_or_main, defaults=defaults)
-        return manager.parse_args(args)
+        config = manager.parse_args(args)
+        _maybe_init_wandb_from_config(manager)
+        return config
 
     # It's a callable - extract config type from signature if possible
     func = config_or_main
@@ -618,6 +695,7 @@ def cli(
             # Function takes a single dataclass - use ConfigManager
             manager = ConfigManager(param.annotation, defaults=defaults)
             config = manager.parse_args(args)
+            _maybe_init_wandb_from_config(manager)
             return func(config)
 
     # Fall back to building a dataclass from function parameters
@@ -627,6 +705,7 @@ def cli(
         # Note: defaults is not supported for auto-generated dataclasses from functions
         manager = ConfigManager(config_cls)
         config = manager.parse_args(args)
+        _maybe_init_wandb_from_config(manager)
         # Convert dataclass back to kwargs
         kwargs = {f.name: getattr(config, f.name) for f in fields(config_cls)}
         return func(**kwargs)

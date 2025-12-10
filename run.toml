@@ -1,0 +1,7 @@
+[wandb]
+project = "nemotron"
+entity = "romeyn"
+
+[local]
+executor = "local"
+nproc_per_node = 8

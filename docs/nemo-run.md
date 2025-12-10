@@ -243,7 +243,51 @@ nodes = 16
 time = "08:00:00"
 ```
 
-## Configuration Reference
+## W&B Configuration
+
+You can configure Weights & Biases tracking in the same `run.toml` file using the `[wandb]` section:
+
+```toml
+# run.toml
+
+[wandb]
+project = "my-project"
+entity = "my-team"
+tags = ["training", "nano3"]
+notes = "Training run with optimized hyperparameters"
+
+[draco]
+executor = "slurm"
+account = "my-account"
+partition = "gpu"
+nodes = 4
+```
+
+When a `[wandb]` section is present, W&B tracking is automatically enabled for all commands. This is equivalent to passing `--wandb.project my-project --wandb.entity my-team` on the CLI.
+
+You can also include `[wandb]` in your recipe config files (YAML/TOML/JSON) passed via `--config-file`:
+
+```yaml
+# config.yaml
+batch_size: 32
+learning_rate: 1e-4
+
+wandb:
+  project: my-project
+  entity: my-team
+```
+
+### W&B Configuration Reference
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `project` | str | - | W&B project name (required to enable tracking) |
+| `entity` | str | - | W&B entity/team name |
+| `run_name` | str | - | W&B run name (auto-generated if not set) |
+| `tags` | list | `[]` | Tags for filtering runs |
+| `notes` | str | - | Notes/description for the run |
+
+## Execution Profile Reference
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

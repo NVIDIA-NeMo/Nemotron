@@ -67,6 +67,7 @@ logs/
 checkpoints/
 data/
 workspace/
+wandb/
 
 # Claude Code
 CLAUDE.md

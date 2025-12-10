@@ -125,8 +125,55 @@ class PackedOutputConfig:
             raise ValueError(f"pack_size must be positive, got {self.pack_size}")
 
 
+@dataclass(frozen=True)
+class ChatSftOutputConfig:
+    """Configuration for chat-templated SFT output with loss masking.
+
+    Applies materialize.py chat template logic to OpenAI-format messages,
+    tokenizes with role-based loss masking, and outputs packed .npy files
+    compatible with GPTSFTPackedDataset.
+
+    Pipeline:
+    1. Apply chat template → role-labeled chunks
+    2. Tokenize chunks → input_ids
+    3. Build loss_mask (0=system/user, 1=assistant)
+    4. Pack sequences → .npy output
+
+    Attributes:
+        format: Format identifier (always "chat_sft")
+        shard_size: Target size per shard (e.g., "256MB"). Mutually exclusive with num_shards.
+        num_shards: Exact number of output shards. Mutually exclusive with shard_size.
+        dtype: Token dtype (int32, int64, uint16)
+        pack_size: Maximum tokens per packed sequence
+        algorithm: Packing algorithm ("first_fit_decreasing", "first_fit_shuffle", "concatenative")
+        chat_template: "nano3", path to .jinja file, or inline template string
+        messages_field: Field name for messages in input records
+        tools_field: Field name for tools in input records
+    """
+
+    format: Literal["chat_sft"] = "chat_sft"
+    shard_size: str | int | None = "256MB"
+    num_shards: int | None = None
+    dtype: Literal["int32", "int64", "uint16"] = "int32"
+    pack_size: int = 2048
+    algorithm: Literal["first_fit_decreasing", "first_fit_shuffle", "concatenative"] = (
+        "first_fit_shuffle"
+    )
+    chat_template: str | None = None
+    messages_field: str = "messages"
+    tools_field: str = "tools"
+
+    def __post_init__(self) -> None:
+        if self.shard_size is not None and self.num_shards is not None:
+            raise ValueError("Specify either shard_size or num_shards, not both")
+        if self.pack_size <= 0:
+            raise ValueError(f"pack_size must be positive, got {self.pack_size}")
+
+
 # Union type for all output formats
-OutputFormat = Union[BinIdxOutputConfig, JsonlOutputConfig, PackedOutputConfig]
+OutputFormat = Union[
+    BinIdxOutputConfig, JsonlOutputConfig, PackedOutputConfig, ChatSftOutputConfig
+]
 
 
 @dataclass(frozen=True)
