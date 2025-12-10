@@ -2,11 +2,12 @@
 """Nemotron CLI entry point.
 
 Usage:
-    nemotron nano3 data prep --help
+    nemotron nano3 data prep pretrain --help
+    nemotron nano3 data prep sft --help
+    nemotron nano3 data prep rl --help
     nemotron nano3 pretrain --help
     nemotron nano3 sft --help
     nemotron nano3 rl --help
-    nemotron nano3 eval --help
 """
 
 from __future__ import annotations
@@ -28,25 +29,12 @@ def main() -> None:
     recipe = args[0]
 
     if recipe == "nano3":
-        # Multi-word subcommands: join "data prep" -> "data prep" as single arg
-        remaining = args[1:]
-        multi_word_commands = ["data prep", "data curate"]
+        # Pass remaining args directly to nano3 app
+        sys.argv = [sys.argv[0]] + args[1:]
 
-        # Check if first two args form a multi-word command
-        if len(remaining) >= 2:
-            candidate = f"{remaining[0]} {remaining[1]}"
-            if candidate in multi_word_commands:
-                remaining = [candidate] + remaining[2:]
+        from nemotron.recipes.nano3 import app
 
-        sys.argv = [sys.argv[0]] + remaining
-
-        import tyro
-
-        from nemotron.recipes.nano3 import cli as nano3_cli
-
-        result = tyro.cli(nano3_cli)
-        if isinstance(result, int):
-            sys.exit(result)
+        app.run()
     elif recipe in ("--help", "-h"):
         print("Usage: nemotron <recipe> <command> [options]")
         print("\nRecipes:")
