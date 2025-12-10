@@ -58,6 +58,7 @@ from nemotron.data_prep.config import (
     BinIdxOutputConfig,
     JsonlOutputConfig,
     PackedOutputConfig,
+    ChatSftOutputConfig,
     Transform,
 )
 from nemotron.data_prep.pipeline import (
@@ -78,7 +79,9 @@ from nemotron.data_prep.formats.transforms import (
     ShareGPTRecord,
 )
 from nemotron.kit.artifact import DataBlendsArtifact
-from nemotron.kit.trackers import tokenizer_to_uri
+from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
+from nemotron.kit.wandb import finish_wandb
+from nemotron.data_prep.discovery import get_dataset_metadata
 
 
 @dataclass
@@ -140,6 +143,9 @@ class DataPrepConfig:
 
     force: bool = False
     """Force new run, ignoring cache"""
+
+    artifact_name: str | None = None
+    """Semantic artifact name (e.g., 'nano3/pretrain/data')"""
 
 
 def run_data_prep(config: DataPrepConfig) -> DataBlendsArtifact:
@@ -213,12 +219,38 @@ def run_data_prep(config: DataPrepConfig) -> DataBlendsArtifact:
     # Run processing pipeline
     result = last_mile_process(blend, pipeline_config)
 
-    # Collect source dataset URIs for lineage tracking
-    source_datasets: list[str] = []
+    # Collect source datasets with metadata for lineage tracking
+    source_datasets: list[InputDatasetInfo] = []
+    seen_keys: set[str] = set()
     for split_datasets in blend.splits.values():
         for dataset in split_datasets:
-            if dataset.path not in source_datasets:
-                source_datasets.append(dataset.path)
+            # Use path+subset as key since same path can have different subsets
+            key = f"{dataset.path}|{dataset.subset or ''}"
+            if key not in seen_keys:
+                seen_keys.add(key)
+                # Build dataset config for metadata fetching
+                from nemotron.data_prep.config import DatasetConfig
+
+                ds_config = DatasetConfig(
+                    name=dataset.name,
+                    path=dataset.path,
+                    split=dataset.split,
+                    subset=dataset.subset,
+                    text_field=dataset.text_field,
+                )
+                hf_metadata = get_dataset_metadata(ds_config)
+                source_datasets.append(
+                    InputDatasetInfo(
+                        uri=dataset.path,
+                        name=dataset.name,
+                        weight=dataset.weight,
+                        split=dataset.split,
+                        subset=dataset.subset,
+                        text_field=dataset.text_field,
+                        num_rows=hf_metadata.num_rows,
+                        size_bytes=hf_metadata.size_bytes,
+                    )
+                )
 
     # Create tokenizer URI for lineage tracking
     tok_uri = tokenizer_to_uri(config.tokenizer_model)
@@ -231,8 +263,29 @@ def run_data_prep(config: DataPrepConfig) -> DataBlendsArtifact:
         elapsed_sec=result.elapsed_sec,
         source_datasets=source_datasets,
         tokenizer_uri=tok_uri,
+        name=config.artifact_name,  # Semantic name for W&B artifact naming
     )
     artifact.save()
+
+    # Mark wandb run as successful (before Ray shutdown to avoid socket noise)
+    finish_wandb(exit_code=0)
+
+    # Gracefully shutdown Ray - suppress stderr during cleanup
+    try:
+        import ray
+        if ray.is_initialized():
+            import sys
+            import io
+
+            # Temporarily suppress stderr during Ray shutdown (socket cleanup noise)
+            old_stderr = sys.stderr
+            sys.stderr = io.StringIO()
+            try:
+                ray.shutdown()
+            finally:
+                sys.stderr = old_stderr
+    except Exception:
+        pass
 
     return artifact
 
@@ -253,6 +306,7 @@ __all__ = [
     "BinIdxOutputConfig",
     "JsonlOutputConfig",
     "PackedOutputConfig",
+    "ChatSftOutputConfig",
     "Transform",
     # Transform factories
     "sft",

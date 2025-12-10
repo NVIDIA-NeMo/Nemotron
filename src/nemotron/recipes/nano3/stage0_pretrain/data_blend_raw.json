@@ -181,6 +181,27 @@
       "subset": "Nemotron-Pretraining-Wiki-Rewrite",
       "text_field": "text",
       "weight": 1.0
+    },
+    {
+      "name": "nemotron-sft-general",
+      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
+      "subset": "Nemotron-SFT-General",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-sft-code",
+      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
+      "subset": "Nemotron-SFT-Code",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-sft-math",
+      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
+      "subset": "Nemotron-SFT-MATH",
+      "text_field": "text",
+      "weight": 1.0
     }
   ]
 }

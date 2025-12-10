@@ -12,7 +12,7 @@ from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from nemotron.kit.trackers import get_lineage_tracker
+from nemotron.kit.trackers import InputDatasetInfo, get_lineage_tracker
 
 
 class TrackingInfo(BaseModel):
@@ -186,17 +186,20 @@ class Artifact(BaseModel):
         # Atomic rename
         temp_path.rename(metadata_path)
 
-        # Publish to registry if initialized
+        # Publish to registry if initialized (skip for wandb backend - tracker handles it)
         try:
-            from nemotron.kit import is_initialized
+            from nemotron.kit import get_config, is_initialized
             from nemotron.kit.registry import get_registry
 
             if is_initialized():
-                registry = get_registry()
-                artifact_name = name or self.type
-                version = registry.publish(artifact_name, self.path, metadata=self.metadata)
-                self._name = artifact_name
-                self._version = version.version
+                config = get_config()
+                # Skip registry publish for wandb backend - WandbTracker already logged it
+                if config and config.backend != "wandb":
+                    registry = get_registry()
+                    artifact_name = name or self.type
+                    version = registry.publish(artifact_name, self.path, metadata=self.metadata)
+                    self._name = artifact_name
+                    self._version = version.version
         except ImportError:
             # Registry not available, skip
             pass
@@ -334,7 +337,7 @@ class DataBlendsArtifact(Artifact):
     The path points directly to the blend.json file.
 
     Source URIs are tracked for W&B lineage:
-    - source_datasets: URIs of input datasets (hf://..., s3://..., file://...)
+    - source_datasets: Input datasets with metadata (or URIs for backwards compat)
     - tokenizer_uri: URI of the tokenizer model (hf://models/...)
     """
 
@@ -342,10 +345,11 @@ class DataBlendsArtifact(Artifact):
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
     elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
 
-    # Source URIs for lineage tracking
+    # Source datasets for lineage tracking
+    # Accepts InputDatasetInfo (with metadata) or str (URI only, for backwards compat)
     source_datasets: Annotated[
-        list[str],
-        Field(default_factory=list, description="URIs of input datasets"),
+        list[InputDatasetInfo | str],
+        Field(default_factory=list, description="Input datasets with metadata"),
     ]
     tokenizer_uri: Annotated[
         str | None, Field(default=None, description="URI of tokenizer model")
@@ -367,7 +371,18 @@ class DataBlendsArtifact(Artifact):
             if self.producer is None:
                 self.producer = tracker.get_run_id() or "local"
 
-            artifact_name = name or self.type
+            # Derive artifact name from semantic name if set
+            # e.g., "nano3/sft/data" -> "DataBlendsArtifact-sft"
+            # e.g., "nano3/pretrain/data" -> "DataBlendsArtifact-pretrain"
+            artifact_name = name
+            if artifact_name is None and self.name:
+                # Extract stage from semantic name (e.g., "nano3/sft/data" -> "sft")
+                parts = self.name.split("/")
+                if len(parts) >= 2:
+                    stage = parts[1].split("?")[0]  # Remove query params like ?sample=100
+                    artifact_name = f"{self.type}-{stage}"
+            artifact_name = artifact_name or self.type
+
             tracking_metadata = tracker.log_artifact(self, artifact_name, self._used_artifacts)
             self.tracking = TrackingInfo(**tracking_metadata)
         else:
@@ -383,17 +398,20 @@ class DataBlendsArtifact(Artifact):
 
         temp_path.rename(metadata_path)
 
-        # Publish to registry if initialized
+        # Publish to registry if initialized (skip for wandb backend - tracker handles it)
         try:
-            from nemotron.kit import is_initialized
+            from nemotron.kit import get_config, is_initialized
             from nemotron.kit.registry import get_registry
 
             if is_initialized():
-                registry = get_registry()
-                artifact_name = name or self.type
-                version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
-                self._name = artifact_name
-                self._version = version.version
+                config = get_config()
+                # Skip registry publish for wandb backend - WandbTracker already logged it
+                if config and config.backend != "wandb":
+                    registry = get_registry()
+                    artifact_name = name or self.type
+                    version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
+                    self._name = artifact_name
+                    self._version = version.version
         except ImportError:
             pass
 

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from nemotron.data_prep import DataPrepConfig, run_data_prep
 from nemotron.kit import DataBlendsArtifact, cli, print_step_complete
+from nemotron.kit.wandb import add_wandb_tags
 
 STAGE_PATH = Path(__file__).parent
 
@@ -68,6 +69,12 @@ class PreTrainDataPrepConfig:
 
 def main(cfg: PreTrainDataPrepConfig) -> DataBlendsArtifact:
     """Run pretrain data preparation."""
+    # Add stage-specific tags to wandb run
+    add_wandb_tags(["data-prep", "pretrain"])
+
+    # Build artifact name (e.g., "nano3/pretrain/data" or "nano3/pretrain/data?sample=100")
+    artifact_name = f"nano3/pretrain/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
+
     data_prep_config = DataPrepConfig(
         blend_path=cfg.blend_path,
         output_dir=cfg.output_dir,
@@ -82,9 +89,9 @@ def main(cfg: PreTrainDataPrepConfig) -> DataBlendsArtifact:
         sample=cfg.sample,
         num_actors=cfg.num_actors,
         force=cfg.force,
+        artifact_name=artifact_name,
     )
     artifact = run_data_prep(data_prep_config)
-    artifact.name = f"nano3/pretrain/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     print_step_complete(data_prep=artifact)
     return artifact
 

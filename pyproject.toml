@@ -36,6 +36,7 @@ dependencies = [
     "pyyaml>=6.0",
     "tomli>=2.0.0;python_version<'3.11'",
     "colorama>=0.4.6",
+    "wandb>=0.23.1",
 ]
 
 [project.optional-dependencies]
