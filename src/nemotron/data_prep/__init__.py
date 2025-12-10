@@ -78,6 +78,7 @@ from nemotron.data_prep.formats.transforms import (
     ShareGPTRecord,
 )
 from nemotron.kit.artifact import DataBlendsArtifact
+from nemotron.kit.trackers import tokenizer_to_uri
 
 
 @dataclass
@@ -212,12 +213,24 @@ def run_data_prep(config: DataPrepConfig) -> DataBlendsArtifact:
     # Run processing pipeline
     result = last_mile_process(blend, pipeline_config)
 
+    # Collect source dataset URIs for lineage tracking
+    source_datasets: list[str] = []
+    for split_datasets in blend.splits.values():
+        for dataset in split_datasets:
+            if dataset.path not in source_datasets:
+                source_datasets.append(dataset.path)
+
+    # Create tokenizer URI for lineage tracking
+    tok_uri = tokenizer_to_uri(config.tokenizer_model)
+
     # Build output artifact - path points to blend.json
     artifact = DataBlendsArtifact(
         path=result.blend_path,
         total_tokens=result.total_tokens,
         total_sequences=result.total_sequences,
         elapsed_sec=result.elapsed_sec,
+        source_datasets=source_datasets,
+        tokenizer_uri=tok_uri,
     )
     artifact.save()
 

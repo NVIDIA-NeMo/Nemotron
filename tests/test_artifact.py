@@ -296,3 +296,103 @@ def test_artifact_art_path_fallback():
 
         # art_path should be the full path
         assert artifact.art_path == f"art://{output_dir.resolve()}"
+
+
+def test_data_blends_artifact_with_source_uris():
+    """Test DataBlendsArtifact with source URIs for lineage tracking."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "output" / "blend.json"
+        blend_path.parent.mkdir(parents=True, exist_ok=True)
+        blend_path.write_text('{"blends": []}')
+
+        # Create artifact with source URIs
+        source_datasets = [
+            "hf://nvidia/Nemotron-CC-v2",
+            "s3://my-bucket/data/train.jsonl",
+            "/local/path/to/data",
+        ]
+        tokenizer_uri = "https://huggingface.co/meta-llama/Llama-3.2-1B"
+
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+            elapsed_sec=120.5,
+            source_datasets=source_datasets,
+            tokenizer_uri=tokenizer_uri,
+        )
+
+        # Verify source URIs are accessible
+        assert artifact.source_datasets == source_datasets
+        assert artifact.tokenizer_uri == tokenizer_uri
+
+        # Save and verify metadata includes source URIs
+        artifact.save()
+        metadata_path = blend_path.parent / "metadata.json"
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+
+        assert metadata["source_datasets"] == source_datasets
+        assert metadata["tokenizer_uri"] == tokenizer_uri
+        # Also in nested metadata dict
+        assert metadata["metadata"]["source_datasets"] == source_datasets
+        assert metadata["metadata"]["tokenizer_uri"] == tokenizer_uri
+
+
+def test_data_blends_artifact_default_source_uris():
+    """Test DataBlendsArtifact defaults for source URIs."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "blend.json"
+
+        # Create artifact without source URIs
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+        )
+
+        # Default values
+        assert artifact.source_datasets == []
+        assert artifact.tokenizer_uri is None
+
+
+def test_to_wandb_uri():
+    """Test URI conversion for W&B artifact references."""
+    from nemotron.kit.trackers import to_wandb_uri
+
+    # HuggingFace dataset
+    assert to_wandb_uri("hf://nvidia/Nemotron-CC-v2") == "https://huggingface.co/datasets/nvidia/Nemotron-CC-v2"
+    assert to_wandb_uri("hf://allenai/c4") == "https://huggingface.co/datasets/allenai/c4"
+
+    # S3 and GCS URIs pass through
+    assert to_wandb_uri("s3://bucket/key") == "s3://bucket/key"
+    assert to_wandb_uri("gs://bucket/key") == "gs://bucket/key"
+
+    # HTTP/HTTPS pass through
+    assert to_wandb_uri("https://example.com/data.json") == "https://example.com/data.json"
+
+    # file:// pass through
+    assert to_wandb_uri("file:///path/to/data") == "file:///path/to/data"
+
+    # Local paths convert to file://
+    result = to_wandb_uri("/data/train.jsonl")
+    assert result.startswith("file:///")
+    assert "train.jsonl" in result
+
+
+def test_tokenizer_to_uri():
+    """Test tokenizer URI generation."""
+    from nemotron.kit.trackers import tokenizer_to_uri
+
+    # HuggingFace model
+    assert tokenizer_to_uri("meta-llama/Llama-3.2-1B") == "https://huggingface.co/meta-llama/Llama-3.2-1B"
+    assert tokenizer_to_uri("nvidia/Llama-3.1-Nemotron-70B-Instruct-HF") == "https://huggingface.co/nvidia/Llama-3.1-Nemotron-70B-Instruct-HF"
+
+    # With revision
+    result = tokenizer_to_uri("meta-llama/Llama-3.2-1B", revision="abc123")
+    assert result == "https://huggingface.co/meta-llama/Llama-3.2-1B/tree/abc123"
+
+    # Local path
+    result = tokenizer_to_uri("/path/to/tokenizer")
+    assert result.startswith("file:///")
+    assert "tokenizer" in result

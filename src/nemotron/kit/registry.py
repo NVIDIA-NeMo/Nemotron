@@ -242,7 +242,11 @@ class ArtifactRegistry:
         source_path: Path,
         metadata: dict[str, Any] | None = None,
     ) -> ArtifactVersion:
-        """Publish using W&B backend."""
+        """Publish using W&B backend with URI references.
+
+        Uses add_reference() instead of add_dir() to track artifact location
+        without uploading content. This enables lineage tracking via URIs.
+        """
         # Create W&B artifact
         artifact = self._wandb.Artifact(
             name=name,
@@ -250,11 +254,21 @@ class ArtifactRegistry:
             metadata=metadata or {},
         )
 
-        # Add source directory
-        if source_path.is_dir():
-            artifact.add_dir(str(source_path))
-        else:
-            artifact.add_file(str(source_path))
+        # Use URI reference instead of uploading content
+        # This tracks the artifact location for lineage without copying data
+        source_uri = f"file://{source_path.resolve()}"
+        try:
+            artifact.add_reference(
+                source_uri,
+                name="artifact",
+                checksum=True,
+            )
+        except Exception:
+            # Fallback to add_dir/add_file if reference fails
+            if source_path.is_dir():
+                artifact.add_dir(str(source_path))
+            else:
+                artifact.add_file(str(source_path))
 
         # Log artifact (requires active run or creates one)
         if self._wandb.run is None:

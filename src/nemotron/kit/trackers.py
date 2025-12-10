@@ -6,9 +6,65 @@ Provides the LineageTracker protocol and implementations for W&B and no-op track
 
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
+from urllib.parse import quote
 
 if TYPE_CHECKING:
     from nemotron.kit.artifact import Artifact
+
+
+def to_wandb_uri(path: str) -> str:
+    """Convert a data path to a W&B-compatible reference URI.
+
+    Args:
+        path: Data path in various formats:
+            - hf://repo/name -> https://huggingface.co/datasets/repo/name
+            - s3://bucket/key -> s3://bucket/key (unchanged)
+            - gs://bucket/key -> gs://bucket/key (unchanged)
+            - /local/path -> file:///local/path
+
+    Returns:
+        W&B-compatible URI for add_reference()
+    """
+    if path.startswith("hf://"):
+        # HuggingFace dataset: hf://nvidia/Nemotron-CC -> https://huggingface.co/datasets/nvidia/Nemotron-CC
+        repo = path[5:]  # Remove "hf://"
+        return f"https://huggingface.co/datasets/{repo}"
+    elif path.startswith("s3://") or path.startswith("gs://"):
+        # Cloud storage URIs are already compatible
+        return path
+    elif path.startswith("http://") or path.startswith("https://"):
+        # HTTP URLs are already compatible
+        return path
+    elif path.startswith("file://"):
+        # Already a file URI
+        return path
+    else:
+        # Local path - convert to file:// URI
+        # Ensure absolute path
+        abs_path = Path(path).resolve()
+        return f"file://{abs_path}"
+
+
+def tokenizer_to_uri(model: str, revision: str | None = None) -> str:
+    """Convert a tokenizer model name/path to a reference URI.
+
+    Args:
+        model: Tokenizer model name (e.g., "meta-llama/Llama-3.2-1B") or local path
+        revision: Optional git revision/commit SHA for HuggingFace models
+
+    Returns:
+        URI for the tokenizer
+    """
+    if "/" in model and not model.startswith("/"):
+        # HuggingFace model name
+        base_url = f"https://huggingface.co/{quote(model, safe='/')}"
+        if revision:
+            return f"{base_url}/tree/{revision}"
+        return base_url
+    else:
+        # Local path
+        abs_path = Path(model).resolve()
+        return f"file://{abs_path}"
 
 
 class LineageTracker(Protocol):
@@ -131,7 +187,12 @@ class WandbTracker:
     def log_artifact(
         self, artifact: "Artifact", name: str, used_refs: list[str]
     ) -> dict[str, Any]:
-        """Log artifact to W&B.
+        """Log artifact to W&B using URI references for lineage tracking.
+
+        For DataBlendsArtifact, adds references to:
+        - Source datasets (from artifact.source_datasets)
+        - Tokenizer model (from artifact.tokenizer_uri)
+        - The output blend.json itself
 
         Args:
             artifact: The artifact to log
@@ -144,18 +205,72 @@ class WandbTracker:
         if not self.is_active():
             raise RuntimeError("No active W&B run. Call wandb.init() first.")
 
+        # Build metadata including source URIs if present
+        metadata = {
+            "created_at": artifact.created_at,
+            **artifact.metadata,
+        }
+
         # Create W&B artifact
         wb_artifact = self.wandb.Artifact(
             name=name,
             type=artifact.type,
-            metadata={
-                "created_at": artifact.created_at,
-                **artifact.metadata,
-            },
+            metadata=metadata,
         )
 
-        # Add the artifact directory
-        wb_artifact.add_dir(str(artifact.path))
+        # Check if artifact has source URIs (DataBlendsArtifact)
+        source_datasets = getattr(artifact, "source_datasets", None)
+        tokenizer_uri = getattr(artifact, "tokenizer_uri", None)
+
+        if source_datasets or tokenizer_uri:
+            # Use URI references for lineage tracking
+            # Add reference to each source dataset
+            if source_datasets:
+                for i, dataset_path in enumerate(source_datasets):
+                    uri = to_wandb_uri(dataset_path)
+                    # Use checksum=False for remote URIs that may not support checksumming
+                    checksum = uri.startswith("file://")
+                    try:
+                        wb_artifact.add_reference(
+                            uri,
+                            name=f"source_dataset_{i}",
+                            checksum=checksum,
+                        )
+                    except Exception:
+                        # Some URIs may not be supported, log and continue
+                        pass
+
+            # Add reference to tokenizer
+            if tokenizer_uri:
+                try:
+                    wb_artifact.add_reference(
+                        tokenizer_uri,
+                        name="tokenizer",
+                        checksum=False,  # HuggingFace models don't support checksumming
+                    )
+                except Exception:
+                    pass
+
+            # Add the actual output directory as a reference (not uploaded)
+            artifact_path = artifact.path
+            if artifact_path.is_file():
+                artifact_path = artifact_path.parent
+            output_uri = f"file://{artifact_path.resolve()}"
+            try:
+                wb_artifact.add_reference(
+                    output_uri,
+                    name="output",
+                    checksum=True,
+                )
+            except Exception:
+                # Fallback to add_dir if reference fails
+                wb_artifact.add_dir(str(artifact_path))
+        else:
+            # No source URIs - fallback to add_dir for backward compatibility
+            artifact_path = artifact.path
+            if artifact_path.is_file():
+                artifact_path = artifact_path.parent
+            wb_artifact.add_dir(str(artifact_path))
 
         # Log metrics to run
         if artifact.metrics:
@@ -177,12 +292,18 @@ class WandbTracker:
         # Wait for artifact to be logged (to get ID)
         logged.wait()
 
+        # Collect all tracked URIs
+        tracked_uris = list(source_datasets or [])
+        if tokenizer_uri:
+            tracked_uris.append(tokenizer_uri)
+
         return {
             "artifact_id": f"{logged.entity}/{logged.project}/{logged.name}:{logged.version}",
             "artifact_type": artifact.type,
             "run_id": self.wandb.run.id,
             "url": logged.url if hasattr(logged, "url") else None,
             "used_artifacts": used_refs,
+            "source_uris": tracked_uris,
         }
 
     def get_run_id(self) -> str | None:
