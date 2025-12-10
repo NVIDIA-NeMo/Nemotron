@@ -192,6 +192,7 @@ class DatasetStatus:
     total_shards: int
     completed_shards: int = 0
     status: str = "pending"  # pending, processing, cached, complete
+    tokens: int = 0  # Tokens processed for this dataset
 
 
 @dataclass
@@ -209,6 +210,11 @@ class LiveExecutionStatus:
     _progress: Progress | None = field(default=None, repr=False)
     _current_task_id: int | None = field(default=None, repr=False)
     _current_index: int = field(default=0, repr=False)
+    _wandb_step: int = field(default=0, repr=False)
+    _last_wandb_log_time: float = field(default=0.0, repr=False)
+    _wandb_log_interval: float = field(default=10.0, repr=False)  # Log every 10 seconds
+    _start_time: float = field(default=0.0, repr=False)  # Pipeline start time
+    _total_tokens: int = field(default=0, repr=False)  # Cumulative tokens processed
 
     def _get_summary_counts(self) -> tuple[int, int, int, int]:
         """Get counts of datasets by status."""
@@ -217,6 +223,56 @@ class LiveExecutionStatus:
         pending = sum(1 for ds in self.datasets if ds.status == "pending")
         processing = sum(1 for ds in self.datasets if ds.status == "processing")
         return done, cached, pending, processing
+
+    def _log_progress_to_wandb(self, force: bool = False) -> None:
+        """Log current progress to W&B for charts.
+
+        Args:
+            force: If True, log immediately regardless of time throttling.
+                   Used for final completion to ensure we capture 100%.
+        """
+        import time as time_module
+
+        try:
+            import wandb
+
+            if wandb.run is None:
+                return
+
+            # Time-based throttling: only log every N seconds unless forced
+            current_time = time_module.time()
+            if not force and (current_time - self._last_wandb_log_time) < self._wandb_log_interval:
+                return
+
+            self._last_wandb_log_time = current_time
+
+            done, cached, pending, processing = self._get_summary_counts()
+            total = len(self.datasets)
+            completed = done + cached
+
+            # Calculate throughput
+            elapsed = current_time - self._start_time if self._start_time > 0 else 0
+            tokens_per_sec = self._total_tokens / elapsed if elapsed > 0 else 0
+
+            self._wandb_step += 1
+            wandb.log(
+                {
+                    "data_prep/progress/datasets_completed": completed,
+                    "data_prep/progress/datasets_total": total,
+                    "data_prep/progress/datasets_done": done,
+                    "data_prep/progress/datasets_cached": cached,
+                    "data_prep/progress/datasets_pending": pending,
+                    "data_prep/progress/completion_pct": (completed / total * 100) if total > 0 else 0,
+                    "data_prep/progress/tokens": self._total_tokens,
+                    "data_prep/progress/tokens_per_sec": tokens_per_sec,
+                    "data_prep/progress/elapsed_sec": elapsed,
+                },
+                commit=True,  # Force immediate sync to W&B
+            )
+        except ImportError:
+            pass
+        except Exception:
+            pass  # Don't fail pipeline on W&B errors
 
     def _build_summary_line(self) -> Text:
         """Build a compact summary line."""
@@ -253,6 +309,9 @@ class LiveExecutionStatus:
 
     def start(self) -> None:
         """Start the live display."""
+        import time as time_module
+
+        self._start_time = time_module.time()
         self._live = Live(
             self._build_display(),
             console=console,
@@ -315,6 +374,10 @@ class LiveExecutionStatus:
         self._progress = None
         self._current_task_id = None
         self.refresh()
+        # Force log if this is the last dataset to ensure we capture 100%
+        done, cached, pending, _ = self._get_summary_counts()
+        is_last = (pending == 0)
+        self._log_progress_to_wandb(force=is_last)
 
     def cache_dataset(self, name: str) -> None:
         """Mark a dataset as cached."""
@@ -324,6 +387,25 @@ class LiveExecutionStatus:
                 ds.completed_shards = ds.total_shards
                 break
         self.refresh()
+        # Force log if this is the last dataset to ensure we capture 100%
+        done, cached, pending, _ = self._get_summary_counts()
+        is_last = (pending == 0)
+        self._log_progress_to_wandb(force=is_last)
+
+    def report_tokens(self, name: str, tokens: int) -> None:
+        """Report tokens processed for a dataset (for throughput tracking).
+
+        Args:
+            name: Dataset name
+            tokens: Number of tokens processed
+        """
+        for ds in self.datasets:
+            if ds.name == name:
+                ds.tokens = tokens
+                break
+        self._total_tokens = sum(ds.tokens for ds in self.datasets)
+        # Log progress with updated token count
+        self._log_progress_to_wandb()
 
 
 def create_live_status(

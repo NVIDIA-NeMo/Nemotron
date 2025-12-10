@@ -82,13 +82,15 @@ from nemotron.kit.trackers import (
     WandbTracker,
     get_lineage_tracker,
     set_lineage_tracker,
+    to_wandb_uri,
+    tokenizer_to_uri,
 )
 
 # Track module for semantic URI resolution
 from nemotron.kit import track
 
 # Wandb configuration
-from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured
+from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured, add_wandb_tags
 
 __all__ = [
     # Config
@@ -124,6 +126,8 @@ __all__ = [
     "NoOpTracker",
     "set_lineage_tracker",
     "get_lineage_tracker",
+    "to_wandb_uri",
+    "tokenizer_to_uri",
     # Exceptions
     "ArtifactNotFoundError",
     "ArtifactVersionNotFoundError",
@@ -132,6 +136,7 @@ __all__ = [
     # Wandb configuration
     "WandbConfig",
     "init_wandb_if_configured",
+    "add_wandb_tags",
 ]
 
 

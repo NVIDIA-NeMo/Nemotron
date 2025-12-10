@@ -16,6 +16,15 @@ Example:
     >>>
     >>> config = RunConfig(executor="slurm", account="my-account", partition="gpu")
     >>> executor = build_executor(config, env_vars={"NCCL_DEBUG": "INFO"})
+
+Wandb configuration can also be stored in run.toml:
+    >>> # run.toml
+    >>> # [wandb]
+    >>> # project = "my-project"
+    >>> # entity = "my-team"
+    >>>
+    >>> from nemotron.kit.run import load_wandb_config
+    >>> wandb_config = load_wandb_config()  # Returns WandbConfig or None
 """
 
 from __future__ import annotations
@@ -26,7 +35,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    pass
+    from nemotron.kit.wandb import WandbConfig
 
 Executor = Literal["local", "docker", "slurm", "skypilot", "dgxcloud", "lepton"]
 """Supported nemo-run executor types."""
@@ -386,6 +395,56 @@ def load_run_profile(name: str, config_path: Path | None = None) -> RunConfig:
 
     all_profiles = _load_config_file(config_path)
     return _resolve_profile(name, all_profiles, seen=set())
+
+
+def load_wandb_config(config_path: Path | None = None) -> "WandbConfig | None":
+    """Load wandb configuration from run.toml [wandb] section.
+
+    The [wandb] section is a top-level section in run.toml that configures
+    W&B tracking for all profiles. This allows centralizing wandb settings
+    alongside execution profiles.
+
+    Example run.toml:
+        [wandb]
+        project = "my-project"
+        entity = "my-team"
+        tags = ["training", "v1"]
+
+        [draco]
+        executor = "slurm"
+        account = "my-account"
+
+    Args:
+        config_path: Optional explicit path to config file.
+
+    Returns:
+        WandbConfig instance if [wandb] section exists, None otherwise.
+    """
+    from nemotron.kit.wandb import WandbConfig
+
+    if config_path is None:
+        config_path = _find_run_config()
+    if config_path is None:
+        return None
+
+    all_sections = _load_config_file(config_path)
+    wandb_section = all_sections.get("wandb")
+
+    if wandb_section is None:
+        return None
+
+    # Convert tags from list to tuple if present
+    if "tags" in wandb_section and isinstance(wandb_section["tags"], list):
+        wandb_section["tags"] = tuple(wandb_section["tags"])
+
+    # Map run_name from TOML (snake_case is more natural in TOML)
+    if "run_name" in wandb_section:
+        pass  # Already correct field name
+    elif "name" in wandb_section:
+        # Allow shorthand "name" in TOML
+        wandb_section["run_name"] = wandb_section.pop("name")
+
+    return WandbConfig(**wandb_section)
 
 
 def run_with_nemo_run(

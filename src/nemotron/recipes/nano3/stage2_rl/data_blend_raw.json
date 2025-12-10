@@ -1,66 +1,39 @@
 {
   "datasets": [
     {
-      "name": "nemotron-post-training-math",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "math",
-      "text_field": "messages",
+      "name": "rl-knowledge-mcqa",
+      "path": "hf://nvidia/Nemotron-RL-knowledge-mcqa",
+      "split": "train",
       "weight": 1.0
     },
     {
-      "name": "nemotron-post-training-code",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "code",
-      "text_field": "messages",
+      "name": "rl-knowledge-openqa",
+      "path": "hf://nvidia/Nemotron-RL-knowledge-openqa",
+      "split": "train",
       "weight": 1.0
     },
     {
-      "name": "nemotron-post-training-stem",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "stem",
-      "text_field": "messages",
+      "name": "rl-knowledge-web_search-mcqa",
+      "path": "hf://nvidia/Nemotron-RL-knowledge-web_search-mcqa",
+      "split": "train",
       "weight": 1.0
     },
     {
-      "name": "nemotron-post-training-chat",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "chat",
-      "text_field": "messages",
+      "name": "rl-math-OpenMathReasoning",
+      "path": "hf://nvidia/Nemotron-RL-math-OpenMathReasoning",
+      "split": "train",
       "weight": 1.0
     },
     {
-      "name": "nemotron-post-training-multilingual-ja",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "multilingual_ja",
-      "text_field": "messages",
+      "name": "rl-agent-workplace_assistant",
+      "path": "hf://nvidia/Nemotron-RL-agent-workplace_assistant",
+      "split": "train",
       "weight": 1.0
     },
     {
-      "name": "nemotron-post-training-multilingual-de",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "multilingual_de",
-      "text_field": "messages",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-post-training-multilingual-it",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "multilingual_it",
-      "text_field": "messages",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-post-training-multilingual-es",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "multilingual_es",
-      "text_field": "messages",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-post-training-multilingual-fr",
-      "path": "hf://nvidia/Nemotron-Post-Training-Dataset-v2",
-      "split": "multilingual_fr",
-      "text_field": "messages",
+      "name": "rl-instruction_following",
+      "path": "hf://nvidia/Nemotron-RL-instruction_following",
+      "split": "train",
       "weight": 1.0
     }
   ]

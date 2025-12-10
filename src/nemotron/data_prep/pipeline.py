@@ -25,6 +25,7 @@ from nemotron.data_prep.config import (
     BinIdxOutputConfig,
     JsonlOutputConfig,
     PackedOutputConfig,
+    ChatSftOutputConfig,
 )
 from nemotron.data_prep.filesystem import (
     ensure_dir,
@@ -46,6 +47,79 @@ if TYPE_CHECKING:
     from nemotron.data_prep.blend import DataBlend, Dataset
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# W&B Logging Helpers
+# =============================================================================
+
+
+def log_pipeline_metrics_to_wandb(result: PipelineResult) -> None:
+    """Log pipeline metrics to wandb if active.
+
+    Args:
+        result: The completed pipeline result
+    """
+    try:
+        import wandb
+
+        if wandb.run is None:
+            return
+
+        # Summary metrics
+        wandb.log(
+            {
+                "data_prep/total_tokens": result.total_tokens,
+                "data_prep/total_sequences": result.total_sequences,
+                "data_prep/elapsed_sec": result.elapsed_sec,
+                "data_prep/tokens_per_second": result.total_tokens
+                / max(result.elapsed_sec, 0.001),
+            }
+        )
+
+        # Per-split breakdown
+        for split_name, split_result in result.splits.items():
+            wandb.log(
+                {
+                    f"data_prep/{split_name}/tokens": split_result.total_tokens,
+                    f"data_prep/{split_name}/sequences": split_result.total_sequences,
+                }
+            )
+    except ImportError:
+        pass
+
+
+def log_cache_stats_to_wandb(
+    cached_tokens: int,
+    cached_sequences: int,
+    pending_shards: int,
+    total_shards: int,
+) -> None:
+    """Log cache hit statistics to wandb.
+
+    Args:
+        cached_tokens: Number of tokens served from cache
+        cached_sequences: Number of sequences served from cache
+        pending_shards: Number of shards that need processing
+        total_shards: Total number of shards
+    """
+    try:
+        import wandb
+
+        if wandb.run is None:
+            return
+
+        cache_hit_rate = (total_shards - pending_shards) / max(total_shards, 1)
+        wandb.log(
+            {
+                "data_prep/cache_hit_rate": cache_hit_rate,
+                "data_prep/cached_tokens": cached_tokens,
+                "data_prep/cached_sequences": cached_sequences,
+                "data_prep/pending_shards": pending_shards,
+            }
+        )
+    except ImportError:
+        pass
 
 
 # ============================================================================
@@ -87,6 +161,7 @@ class PipelineResult:
         is_per_split: True if per-split mode was used
         split_ratio: Split ratio if single-blend mode (e.g., "99990,8,2")
         elapsed_sec: Total processing time
+        from_cache: True if all results were served from cache
     """
 
     output_dir: Path
@@ -95,6 +170,7 @@ class PipelineResult:
     is_per_split: bool
     split_ratio: str | None
     elapsed_sec: float
+    from_cache: bool = False
 
     @property
     def total_tokens(self) -> int:
@@ -183,7 +259,7 @@ def last_mile_process(
     format_type = getattr(format_config, "format", "binidx")
 
     # Validate tokenizer requirement
-    if format_type in ("binidx", "packed") and config.tokenizer is None:
+    if format_type in ("binidx", "packed", "chat_sft") and config.tokenizer is None:
         raise ValueError(f"tokenizer is required for '{format_type}' output format")
     if format_type == "jsonl" and config.tokenizer is not None:
         logger.warning("Tokenizer ignored for JSONL format")
@@ -193,6 +269,8 @@ def last_mile_process(
         result = _process_jsonl_blend(blend, config)
     elif format_type == "packed":
         result = _process_packed_blend(blend, config)
+    elif format_type == "chat_sft":
+        result = _process_chat_sft_blend(blend, config)
     else:
         # Default: binidx (tokenized)
         if blend.is_per_split:
@@ -200,7 +278,7 @@ def last_mile_process(
         else:
             result = _tokenize_single(blend, config)
 
-    # Update elapsed time
+    # Update elapsed time, preserving from_cache flag
     result = PipelineResult(
         output_dir=result.output_dir,
         blend_path=result.blend_path,
@@ -208,7 +286,12 @@ def last_mile_process(
         is_per_split=result.is_per_split,
         split_ratio=result.split_ratio,
         elapsed_sec=time.time() - start,
+        from_cache=result.from_cache,
     )
+
+    # Log metrics to wandb if active
+    if not result.from_cache:
+        log_pipeline_metrics_to_wandb(result)
 
     return result
 
@@ -483,6 +566,8 @@ def _process_split(
                 if not ep.pending_indices:
                     # All cached
                     results[ep.name] = ep.cached_stats
+                    # Report cached tokens for throughput tracking
+                    live_status.report_tokens(ep.name, ep.cached_stats.get("total_tokens", 0))
                     live_status.cache_dataset(ep.name)
                     continue
 
@@ -503,6 +588,8 @@ def _process_split(
 
                 # Aggregate final stats
                 results[ep.name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+                # Report tokens for throughput tracking
+                live_status.report_tokens(ep.name, results[ep.name].get("total_tokens", 0))
                 live_status.complete_dataset(ep.name)
         finally:
             live_status.stop()
@@ -1398,3 +1485,250 @@ def _aggregate_packed_stats(dataset_dir: str, receipts_dir: str, fs) -> dict:
             pass
 
     return stats
+
+
+# ============================================================================
+# Chat SFT Processing (Tokenization + Loss Masking + Packing)
+# ============================================================================
+
+
+def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> PipelineResult:
+    """Process blend to chat-templated SFT output (.npy files with loss masks).
+
+    Applies materialize.py chat template logic, tokenizes with role-based
+    loss masking, and packs sequences into .npy files compatible with
+    GPTSFTPackedDataset.
+    """
+    from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+    from nemotron.data_prep.discovery import discover_input_files
+
+    format_config = config.output.format
+    assert isinstance(format_config, ChatSftOutputConfig)
+
+    # Get filesystem
+    fs, base_path = get_filesystem(str(config.output.dir))
+
+    # Compute run hash (includes tokenizer, pack_size, algorithm, chat_template)
+    run_config = {
+        "datasets": [
+            {
+                "name": d.name,
+                "path": d.path,
+                "weight": d.weight,
+                "split": d.split,
+                "subset": d.subset,
+            }
+            for d in blend.datasets
+        ],
+        "tokenizer": {
+            "type": config.tokenizer.type,
+            "model": config.tokenizer.model,
+            "add_bos": config.tokenizer.add_bos,
+            "add_eos": config.tokenizer.add_eos,
+            "trust_remote_code": config.tokenizer.trust_remote_code,
+        },
+        "output": {
+            "format": "chat_sft",
+            "pack_size": format_config.pack_size,
+            "algorithm": format_config.algorithm,
+            "dtype": format_config.dtype,
+            "chat_template": format_config.chat_template,
+            "messages_field": format_config.messages_field,
+            "tools_field": format_config.tools_field,
+        },
+    }
+    if config.sample is not None:
+        run_config["_sample"] = {"spec": str(config.sample), "seed": config.sample_seed}
+
+    config_hash = hashlib.sha256(
+        json.dumps(run_config, sort_keys=True).encode()
+    ).hexdigest()[:16]
+
+    run_hash = config_hash if not config.force else f"{config_hash}_{int(time.time())}"
+    run_dir = f"{base_path}/runs/{run_hash}"
+    ensure_dir(fs, run_dir)
+
+    # Freeze config
+    write_json(fs, f"{run_dir}/config.json", run_config)
+
+    # Determine num_shards from format config
+    num_shards = _resolve_num_shards(format_config, blend, fs)
+
+    # Resolve tokenizer to get SHA for determinism
+    from nemotron.data_prep.planning import resolve_tokenizer
+
+    tokenizer_config = InternalTokenizerConfig(**run_config["tokenizer"])
+    resolved_tokenizer = resolve_tokenizer(tokenizer_config)
+
+    # Process each dataset
+    results = {}
+    data_paths: list[str] = []
+
+    con.planning_header()
+
+    for dataset in blend.datasets:
+        name = dataset.name
+
+        # Create dataset directory structure
+        dataset_dir = f"{run_dir}/datasets/{name}"
+        receipts_dir = f"{dataset_dir}/receipts"
+        ensure_dir(fs, dataset_dir)
+        ensure_dir(fs, receipts_dir)
+
+        # Get files for this dataset
+        dataset_config = DatasetConfig(
+            name=dataset.name,
+            path=dataset.path,
+            split=dataset.split,
+            subset=dataset.subset,
+            text_field=dataset.text_field,
+        )
+        files = discover_input_files(dataset_config, fs)
+
+        # Display info
+        logger.info(
+            f"Processing dataset '{name}' with {len(files)} files -> "
+            f"{num_shards} chat SFT shards (pack_size={format_config.pack_size}, "
+            f"chat_template={format_config.chat_template})"
+        )
+
+        # Process with actors
+        if files:
+            _process_chat_sft_shards_with_actors(
+                files=files,
+                num_shards=num_shards,
+                dataset_dir=dataset_dir,
+                receipts_dir=receipts_dir,
+                resolved_tokenizer=resolved_tokenizer,
+                format_config=format_config,
+                max_doc_tokens=config.output.max_doc_tokens,
+                max_rows=config.output.max_rows,
+                fs=fs,
+                num_actors=config.num_actors,
+            )
+
+        # Aggregate stats (reuse packed stats aggregation - same format)
+        stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
+        results[name] = stats
+
+        # Build data_paths
+        weight = dataset.weight
+        if weight > 0:
+            prefix = f"{dataset_dir}/shard"
+            data_paths.append(str(weight))
+            data_paths.append(prefix)
+
+    # Generate blend.json
+    blend_data: dict = {"data_paths": data_paths}
+    if config.split:
+        blend_data["split"] = config.split
+
+    blend_path = config.output.dir / "blend.json"
+    _write_json(blend_path, blend_data)
+
+    return PipelineResult(
+        output_dir=config.output.dir,
+        blend_path=blend_path,
+        splits={
+            "all": SplitResult(
+                name="all",
+                run_hash=run_hash,
+                output_dir=config.output.dir,
+                data_paths=data_paths,
+                num_shards=num_shards,
+                total_tokens=sum(r.get("total_tokens", 0) for r in results.values()),
+                total_sequences=sum(r.get("num_sequences", 0) for r in results.values()),
+            )
+        },
+        is_per_split=False,
+        split_ratio=config.split,
+        elapsed_sec=0,
+    )
+
+
+def _process_chat_sft_shards_with_actors(
+    files: list,
+    num_shards: int,
+    dataset_dir: str,
+    receipts_dir: str,
+    resolved_tokenizer: dict,
+    format_config: ChatSftOutputConfig,
+    max_doc_tokens: int | None,
+    max_rows: int | None,
+    fs,
+    num_actors: int,
+) -> None:
+    """Process files to chat SFT packed shards using Ray actors."""
+    from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+    from dataclasses import asdict
+
+    # Determine filesystem protocol
+    protocol = fs.protocol
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+    fs_protocol = protocol if protocol != "file" else "file"
+
+    # Create actor pool
+    actors = [
+        ChatSftShardProcessor.remote(
+            resolved_tokenizer=resolved_tokenizer,
+            messages_field=format_config.messages_field,
+            tools_field=format_config.tools_field,
+            pack_size=format_config.pack_size,
+            algorithm=format_config.algorithm,
+            dtype=format_config.dtype,
+            chat_template=format_config.chat_template,
+            max_doc_tokens=max_doc_tokens,
+            max_rows=max_rows,
+            seed=42,  # Fixed seed for reproducibility
+        )
+        for _ in range(num_actors)
+    ]
+
+    # Distribute files across shards (round-robin)
+    shard_assignments: dict[int, list] = {i: [] for i in range(num_shards)}
+    for i, file_info in enumerate(files):
+        shard_idx = i % num_shards
+        # Convert FileInfo to dict for Ray serialization
+        if hasattr(file_info, "__dict__"):
+            shard_assignments[shard_idx].append(asdict(file_info))
+        else:
+            shard_assignments[shard_idx].append(file_info)
+
+    # Submit tasks with backpressure
+    max_in_flight = num_actors * 2
+    shard_queue = list(range(num_shards))
+    actor_idx = 0
+    pending_list: list = []
+    future_to_shard: dict = {}
+
+    def submit_task(shard_index: int) -> None:
+        nonlocal actor_idx
+        actor = actors[actor_idx % num_actors]
+        actor_idx += 1
+        future = actor.process_shard.remote(
+            shard_index=shard_index,
+            files=shard_assignments[shard_index],
+            output_dir=dataset_dir,
+            receipts_dir=receipts_dir,
+            fs_protocol=fs_protocol,
+        )
+        pending_list.append(future)
+        future_to_shard[future] = shard_index
+
+    # Initial submission
+    while shard_queue and len(pending_list) < max_in_flight:
+        submit_task(shard_queue.pop(0))
+
+    # Process with backpressure
+    while pending_list:
+        done, pending_list = ray.wait(pending_list, num_returns=1, timeout=60)
+        for future in done:
+            shard_index = future_to_shard.pop(future)
+            try:
+                ray.get(future)
+            except Exception as e:
+                logger.error(f"Chat SFT shard {shard_index} failed: {e}")
+
+            if shard_queue:
+                submit_task(shard_queue.pop(0))

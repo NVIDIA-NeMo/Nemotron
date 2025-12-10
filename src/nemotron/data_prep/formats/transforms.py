@@ -146,6 +146,39 @@ def sharegpt(*, conversations: str = "conversations") -> Transform:
     return transform
 
 
+def nemotron_rl() -> Transform:
+    """Extract messages and tools from Nemotron RL dataset format.
+
+    Nemotron RL datasets store messages in `responses_create_params.input`
+    and optionally tools in `responses_create_params.tools`.
+
+    Returns:
+        Transform function producing OpenAIChatRecord with optional tools.
+
+    Example:
+        >>> transform = nemotron_rl()
+        >>> transform({
+        ...     "responses_create_params": {
+        ...         "input": [{"role": "user", "content": "Hi"}],
+        ...         "tools": [{"name": "search", ...}]
+        ...     }
+        ... })
+        {'messages': [{'role': 'user', 'content': 'Hi'}], 'tools': [...]}
+    """
+
+    def transform(record: dict) -> dict | None:
+        try:
+            params = record["responses_create_params"]
+            result: dict = {"messages": params["input"]}
+            if "tools" in params and params["tools"]:
+                result["tools"] = params["tools"]
+            return result
+        except (KeyError, TypeError):
+            return None
+
+    return transform
+
+
 def passthrough() -> Transform:
     """Pass records through unchanged.
 
@@ -220,6 +253,7 @@ __all__ = [
     # Factory functions
     "sft",
     "openai_chat",
+    "nemotron_rl",
     "sharegpt",
     "passthrough",
     "select",
