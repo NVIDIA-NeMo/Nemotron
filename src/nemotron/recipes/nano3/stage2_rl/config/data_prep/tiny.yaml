@@ -11,7 +11,7 @@ run:
 # This config uses sampling for quick testing.
 
 # Path to data blend JSON file
-blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_blend_raw.json
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_prep/data_blend_raw.json
 
 # Output directory for JSONL data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage2_rl_tiny

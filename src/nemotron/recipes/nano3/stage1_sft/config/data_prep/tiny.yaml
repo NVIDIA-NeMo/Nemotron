@@ -11,7 +11,7 @@ run:
 # This config uses only 2 datasets with sampling for quick testing.
 
 # Path to tiny data blend JSON file (only 2 datasets)
-blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage1_sft/config/data_blend_tiny.json
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage1_sft/config/data_prep/data_blend_tiny.json
 
 # Output directory for packed .npy data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage1_sft_tiny

@@ -12,7 +12,7 @@ run:
 #   PWD: Current working directory (for path resolution)
 
 # Path to data blend JSON file
-blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage1_sft/config/data_blend_raw.json
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage1_sft/config/data_prep/data_blend_raw.json
 
 # Output directory for packed .npy data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage1_sft
