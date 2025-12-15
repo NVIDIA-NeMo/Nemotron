@@ -34,10 +34,7 @@ They are optimized for deployment across a spectrum of compute tiers (edge, sing
 ### More Resources
 
 - **[Usage Cookbook](usage-cookbook/)** - Practical deployment and simple model usage guides for Nemotron models
-- **[Use Case Examples](use-case-examples/)** - Practical use-case examples and apps
-- **[Nemotron Developer Page](https://developer.nvidia.com/nemotron)** - Developer resources for the Nemotron family of models
-- **[Nemotron Research Hub](https://research.nvidia.com/labs/nemotron/)** - Research affiliated with the Nemotron effort
-- **[Nemotron Datasets](https://huggingface.co/nvidia/datasets?search=nemotron)** - Datasets part of various Nemotron collections, from pre-training to post-training
+- **[Use Case Examples](use-case-examples/)** - Practical use-case examples and apps *(more coming soon)*
 
 ---
 
@@ -75,12 +72,12 @@ Learn how to deploy and use the models through an API.
 
 | Model | Best For | Key Features | Trade-offs | Resources |
 |-------|----------|--------------|------------|-----------|
-| [**NVIDIA-Nemotron-3-Nano**](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) | High-throughput agentic workflows, reasoning, tool-use, chat | • 31.6B total / 3.6B active (MoE)<br>• Hybrid Mamba-Transformer MoE<br>• 1M-token context window<br>• Reasoning ON/OFF + thinking budget | Sparse MoE trades total params for efficiency | [📁 Cookbooks](./usage-cookbook/Nemotron-3-Nano/) |
 | [**Llama-3.3-Nemotron-Super-49B-v1.5**](https://huggingface.co/nvidia/Llama-3_3-Nemotron-Super-49B-v1_5) | Production deployments needing strong reasoning with efficiency | • 128K context<br>• Single H200 GPU<br>• RAG & tool calling<br>• Optimized via NAS | Balances accuracy & throughput | [📁 Cookbooks](./usage-cookbook/Llama-Nemotron-Super-49B-v1.5/) |
 | [**NVIDIA-Nemotron-Nano-9B-v2**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) | Resource-constrained environments needing flexible reasoning | • 9B params<br>• Hybrid Mamba-2 architecture<br>• Controllable reasoning traces<br>• Unified reasoning/non-reasoning | Smaller model with configurable reasoning | [📁 Cookbooks](./usage-cookbook/Nemotron-Nano-9B-v2/) |
 | [**NVIDIA-Nemotron-Nano-12B-v2-VL**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL) | Document intelligence and video understanding | • 12B VLM<br>• Video & multi-image reasoning<br>• Controllable reasoning (/think mode)<br>• Efficient Video Sampling (EVS) | Vision-language with configurable reasoning | [📁 Cookbooks](./usage-cookbook/Nemotron-Nano2-VL/) |
 | [**Llama-3.1-Nemotron-Safety-Guard-8B-v3**](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3) | Multilingual content moderation with cultural nuance | • 9 languages<br>• 23 safety categories<br>• Cultural sensitivity<br>• NeMo Guardrails integration | Focused on safety/moderation tasks | [📁 Cookbooks](./usage-cookbook/Llama-3.1-Nemotron-Safety-Guard-V3/) |
 | **Nemotron-Parse** (link coming soon!) | Document parsing for RAG and AI agents | • VLM for document parsing<br>• Table extraction (LaTeX)<br>• Semantic segmentation<br>• Spatial grounding (bbox) | Specialized for document structure | [📁 Cookbooks](./usage-cookbook/Nemotron-Parse-v1.1/) |
+
 
 
 ## Nemotron Use Case Examples
