@@ -11,7 +11,7 @@ run:
 # This config uses sampling for quick testing.
 
 # Path to data blend JSON file
-blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw.json
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw_small.json
 
 # Output directory for tokenized data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage0_pretrain_tiny
@@ -26,7 +26,7 @@ valid_shards: 1
 test_shards: 1
 
 # HuggingFace tokenizer model name
-tokenizer_model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+tokenizer_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
 
 # Prepend BOS token to documents
 add_bos: false

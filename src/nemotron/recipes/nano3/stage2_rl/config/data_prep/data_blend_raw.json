@@ -1,38 +1,8 @@
 {
   "datasets": [
     {
-      "name": "rl-knowledge-mcqa",
-      "path": "hf://nvidia/Nemotron-RL-knowledge-mcqa",
-      "split": "train",
-      "weight": 1.0
-    },
-    {
-      "name": "rl-knowledge-openqa",
-      "path": "hf://nvidia/Nemotron-RL-knowledge-openqa",
-      "split": "train",
-      "weight": 1.0
-    },
-    {
-      "name": "rl-knowledge-web_search-mcqa",
-      "path": "hf://nvidia/Nemotron-RL-knowledge-web_search-mcqa",
-      "split": "train",
-      "weight": 1.0
-    },
-    {
-      "name": "rl-math-OpenMathReasoning",
-      "path": "hf://nvidia/Nemotron-RL-math-OpenMathReasoning",
-      "split": "train",
-      "weight": 1.0
-    },
-    {
-      "name": "rl-agent-workplace_assistant",
-      "path": "hf://nvidia/Nemotron-RL-agent-workplace_assistant",
-      "split": "train",
-      "weight": 1.0
-    },
-    {
-      "name": "rl-instruction_following",
-      "path": "hf://nvidia/Nemotron-RL-instruction_following",
+      "name": "nemotron-3-nano-rl-training-blend",
+      "path": "nvidia/Nemotron-3-Nano-RL-Training-Blend",
       "split": "train",
       "weight": 1.0
     }
