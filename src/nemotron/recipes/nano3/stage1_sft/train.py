@@ -40,6 +40,7 @@ from nemotron.kit.wandb import (
     patch_wandb_checkpoint_logging,
     patch_wandb_http_handler_skip_digest_verification,
     patch_wandb_init_for_lineage,
+    patch_wandb_local_file_handler_skip_digest_verification,
     patch_wandb_runid_for_seeded_random,
 )
 
@@ -65,6 +66,7 @@ def main() -> None:
         sys.exit(1)
 
     patch_wandb_http_handler_skip_digest_verification()
+    patch_wandb_local_file_handler_skip_digest_verification()
 
     # Fix "Invalid Client ID digest" error caused by seeded random (wandb bug)
     # See: https://github.com/wandb/wandb/pull/11039

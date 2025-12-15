@@ -157,7 +157,7 @@ app.command(
     description="Run pretraining with Megatron-Bridge (stage0)",
     artifacts={
         "data": ArtifactInput(
-            default_name="PretrainDataArtifact-pretrain",
+            default_name="PretrainBlendsArtifact-pretrain",
             mappings={"path": "fn.per_split_data_args_path"},
         ),
     },

@@ -495,6 +495,16 @@ class WandbTracker:
             if artifact_path.is_file() and artifact_path.name == "blend.json":
                 # Add only the blend.json file (small, viewable in UI)
                 wb_artifact.add_file(str(artifact_path), name="blend.json")
+            elif artifact.type == "PretrainBlendsArtifact":
+                # For PretrainBlendsArtifact, add blend.json explicitly
+                # The blend_path is stored in metadata
+                blend_path = artifact.metadata.get("blend_path")
+                if blend_path and Path(blend_path).exists():
+                    wb_artifact.add_file(str(blend_path), name="blend.json")
+                # Also add metadata.json for artifact loading
+                metadata_path = artifact_path / "metadata.json"
+                if metadata_path.exists():
+                    wb_artifact.add_file(str(metadata_path), name="metadata.json")
             else:
                 # Generic artifact - add directory reference
                 # Use checksum=False to avoid digest mismatch errors when files change

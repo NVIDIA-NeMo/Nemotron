@@ -93,10 +93,12 @@ def main() -> None:
     from nemotron.kit.wandb import (
         patch_nemo_rl_checkpoint_logging,
         patch_wandb_http_handler_skip_digest_verification,
+        patch_wandb_local_file_handler_skip_digest_verification,
         patch_wandb_runid_for_seeded_random,
     )
 
     patch_wandb_http_handler_skip_digest_verification()
+    patch_wandb_local_file_handler_skip_digest_verification()
     patch_wandb_runid_for_seeded_random()
     patch_nemo_rl_checkpoint_logging()
 
