@@ -78,3 +78,6 @@ wandb/
 # Claude Code
 CLAUDE.md
 .claude/
+
+# Compiled config
+config.yaml
