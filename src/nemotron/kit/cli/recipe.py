@@ -22,7 +22,6 @@ from nemotron.kit.artifact import ArtifactInput
 from nemotron.kit.cli.config import ConfigBuilder
 from nemotron.kit.cli.display import display_job_config, display_job_submission
 from nemotron.kit.cli.globals import GlobalContext, split_unknown_args
-from nemotron.kit.tui.recipe_tui import RecipeTuiMeta, run_recipe_tui
 
 console = Console()
 
@@ -141,38 +140,6 @@ def recipe(
                 and not passthrough
             )
 
-            tui_result = None
-            if is_bare:
-                tui_artifacts: dict[str, ArtifactInput] = {
-                    slot: ArtifactInput(
-                        default_name=str(spec.get("default", "")),
-                        mappings=dict(spec.get("mappings", {})),
-                    )
-                    for slot, spec in (artifacts or {}).items()
-                }
-
-                tui_result = run_recipe_tui(
-                    RecipeTuiMeta(
-                        recipe_name=name,
-                        script_path=script_path,
-                        config_dir=config_dir,
-                        default_config=default_config,
-                        artifacts=tui_artifacts,
-                    )
-                )
-                if tui_result is None:
-                    return
-
-                global_ctx.run = None
-                global_ctx.batch = None
-                if tui_result.profile:
-                    if tui_result.detached:
-                        global_ctx.batch = tui_result.profile
-                    else:
-                        global_ctx.run = tui_result.profile
-
-                global_ctx.config = tui_result.config_path or None
-
             # Build configuration
             builder = ConfigBuilder(
                 recipe_name=name,
@@ -184,10 +151,7 @@ def recipe(
             )
 
             # Load and merge config
-            if tui_result is not None:
-                builder._train_config = tui_result.train_config
-            else:
-                builder.load_and_merge()
+            builder.load_and_merge()
 
             # TODO: Resolve artifacts if run.data etc. specified
             # This would apply mappings from artifact metadata to config
@@ -408,7 +372,10 @@ def _execute_nemo_run(
 
         ray_job.start(
             command=cmd,
-            workdir=".",
+            # Pass empty workdir to use our CodePackager instead of nemo-run's rsync.
+            # CodePackager uses git ls-files which properly excludes .git and
+            # respects .gitignore, making the transfer much faster.
+            workdir="",
             pre_ray_start_commands=setup_commands,
             runtime_env_yaml=runtime_env_yaml,
         )

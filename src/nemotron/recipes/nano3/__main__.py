@@ -196,7 +196,4 @@ app.command(
 cli = app.build()
 
 if __name__ == "__main__":
-    from nemotron.kit.tui import maybe_run_stage_tui
-
-    if not maybe_run_stage_tui(app):
-        app.run()
+    app.run()
