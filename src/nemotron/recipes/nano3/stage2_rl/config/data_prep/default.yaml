@@ -1,0 +1,43 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py311
+
+# Default config for RL data preparation
+#
+# Usage:
+#   nemotron nano3 data prep rl
+#   nemotron nano3 data prep rl sample=100 force=true
+#
+# Environment variables:
+#   PWD: Current working directory (for path resolution)
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_prep/data_blend_raw.json
+
+# Output directory for JSONL data (outputs to job directory for persistence)
+output_dir: ${oc.env:PWD}/../output/stage2_rl
+
+# Target size per shard (e.g., '256MB', '1GB')
+shard_size: 256MB
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Ray actors for parallel processing (null = auto)
+num_actors: null
+
+# Force new run, ignoring cache
+force: false
+
+# Split output into train/val/test directories: 'none' or 'train_val_test'
+split_output: train_val_test
+
+# Ratio of data for training when split_output='train_val_test'
+train_ratio: 0.98
+
+# Ratio of data for validation when split_output='train_val_test'
+val_ratio: 0.01
+
+# Mode: 'copy' uses passthrough transform and HF dataset's existing splits,
+# 'process' applies nemotron_rl transform and custom splits
+mode: copy

@@ -1,0 +1,31 @@
+run:
+  data: PretrainBlendsArtifact-pretrain:latest
+  env:
+    container: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2
+
+recipe:
+  _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_pretrain_config
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 1700
+  global_batch_size: 32
+
+# model:
+#   pipeline_model_parallel_size: 2
+
+# tokenizer:
+#   tokenizer_type: HuggingFaceTokenizer
+#   tokenizer_model: meta-llama/Llama-3.2-1B
+
+scheduler:
+  lr_warmup_iters: 32
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+
+checkpoint:
+  save: /nemo_run/pretrain
+  save_interval: 20

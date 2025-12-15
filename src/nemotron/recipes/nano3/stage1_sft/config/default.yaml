@@ -1,0 +1,31 @@
+# Nemotron Nano3 SFT (Supervised Fine-Tuning) Configuration
+#
+# Usage:
+#   python train.py --config /path/to/config.yaml
+#   python train.py --config /path/to/config.yaml train.train_iters=5000
+
+# Recipe configuration
+# _target_ specifies the recipe function (defaults to nemotron_nano_9b_v2_finetune_config if omitted)
+# Other fields are passed as kwargs to the recipe function
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_nano_9b_v2_finetune_config
+  # Additional recipe kwargs:
+  # tensor_model_parallel_size: 4
+  # pipeline_model_parallel_size: 1
+  # global_batch_size: 256
+  # micro_batch_size: 1
+  # train_iters: 10000
+  # lr: 1.0e-4
+  # min_lr: 1.0e-5
+  # seq_length: 4096
+
+# Logging configuration - uses run.wandb section from env.toml
+logger:
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+  wandb_exp_name: ${run.recipe.name}
+
+
+checkpoint:
+  save: /nemo_run/sft
+  save_interval: 20

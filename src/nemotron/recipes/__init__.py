@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@ This package contains full training pipelines for various Nemotron models,
 including data curation, training, and evaluation stages.
 
 Available Recipes:
-- nano2: Nemotron Nano 2 (2B parameters)
+- nano3: Nemotron Nano 3 (2B parameters)
 - chipnemo: ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation)
 
 Usage:
     # Run complete stage
-    uv run python -m nemotron.recipes.nano2.stage0_pretrain --scale tiny
+    uv run python -m nemotron.recipes.nano3.stage0_pretrain --scale tiny
 
     # Run individual steps
-    uv run python -m nemotron.recipes.nano2.stage0_pretrain.data_curation --scale tiny
+    uv run python -m nemotron.recipes.nano3.stage0_pretrain.data_curation --scale tiny
 """
