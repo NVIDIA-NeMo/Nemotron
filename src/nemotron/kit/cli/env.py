@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Environment profile loading from env.toml (with run.toml fallback).
 
 Handles loading executor configurations and profile inheritance.
@@ -7,7 +21,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -17,7 +31,7 @@ else:
     import tomli as tomllib
 
 
-def find_env_file(start_dir: Optional[Path] = None) -> Optional[Path]:
+def find_env_file(start_dir: Path | None = None) -> Path | None:
     """Find env.toml (or run.toml fallback) walking up from start_dir.
 
     Args:
@@ -47,7 +61,7 @@ def find_env_file(start_dir: Optional[Path] = None) -> Optional[Path]:
     return None
 
 
-def load_env_file(config_path: Optional[Path] = None) -> Dict[str, Any]:
+def load_env_file(config_path: Path | None = None) -> dict[str, Any]:
     """Load env.toml file contents.
 
     Args:
@@ -66,7 +80,7 @@ def load_env_file(config_path: Optional[Path] = None) -> Dict[str, Any]:
         return tomllib.load(f)
 
 
-def load_env_profile(name: str, config_path: Optional[Path] = None) -> DictConfig:
+def load_env_profile(name: str, config_path: Path | None = None) -> DictConfig:
     """Load a named profile from env.toml with inheritance support.
 
     Profiles can extend other profiles using `extends = "parent"`.
@@ -85,16 +99,14 @@ def load_env_profile(name: str, config_path: Optional[Path] = None) -> DictConfi
 
     if name not in all_profiles:
         available = [k for k in all_profiles.keys() if k != "wandb"]
-        raise ValueError(
-            f"Profile '{name}' not found in env.toml. Available: {available}"
-        )
+        raise ValueError(f"Profile '{name}' not found in env.toml. Available: {available}")
 
     return _resolve_profile(name, all_profiles, set())
 
 
 def _resolve_profile(
     name: str,
-    all_profiles: Dict[str, Any],
+    all_profiles: dict[str, Any],
     visited: set[str],
 ) -> DictConfig:
     """Recursively resolve profile with inheritance.
@@ -117,9 +129,7 @@ def _resolve_profile(
     if "extends" in profile:
         parent_name = profile.pop("extends")
         if parent_name not in all_profiles:
-            raise ValueError(
-                f"Profile '{name}' extends unknown profile '{parent_name}'"
-            )
+            raise ValueError(f"Profile '{name}' extends unknown profile '{parent_name}'")
         parent = _resolve_profile(parent_name, all_profiles, visited)
         # Merge: child overrides parent
         profile = OmegaConf.merge(parent, OmegaConf.create(profile))
@@ -129,7 +139,7 @@ def _resolve_profile(
     return profile
 
 
-def get_wandb_config(config_path: Optional[Path] = None) -> Optional[DictConfig]:
+def get_wandb_config(config_path: Path | None = None) -> DictConfig | None:
     """Get wandb configuration from env.toml if present.
 
     Args:
@@ -146,7 +156,7 @@ def get_wandb_config(config_path: Optional[Path] = None) -> Optional[DictConfig]
     return None
 
 
-def get_cli_config(config_path: Optional[Path] = None) -> Optional[DictConfig]:
+def get_cli_config(config_path: Path | None = None) -> DictConfig | None:
     """Get CLI display configuration from env.toml if present.
 
     Args:

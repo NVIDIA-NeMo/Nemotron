@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
@@ -11,9 +25,10 @@ Adapted from torchtitan's ConfigManager with extended format support.
 import importlib
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import field, fields, is_dataclass, make_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
 if TYPE_CHECKING:
     from nemotron.kit.wandb import WandbConfig
@@ -71,7 +86,7 @@ class ConfigManager(Generic[T]):
 
     def __init__(
         self,
-        config_cls: Type[T],
+        config_cls: type[T],
         defaults: Callable[[], T] | None = None,
     ):
         """
@@ -262,8 +277,7 @@ class ConfigManager(Generic[T]):
         if suffix in (".yaml", ".yml"):
             if not YAML_AVAILABLE:
                 raise ImportError(
-                    "PyYAML is required for YAML config files. "
-                    "Install with: pip install pyyaml"
+                    "PyYAML is required for YAML config files. Install with: pip install pyyaml"
                 )
             with open(path) as f:
                 return yaml.safe_load(f) or {}
@@ -278,13 +292,12 @@ class ConfigManager(Generic[T]):
 
         else:
             raise ValueError(
-                f"Unsupported config format: {suffix}. "
-                "Supported formats: .yaml, .yml, .toml, .json"
+                f"Unsupported config format: {suffix}. Supported formats: .yaml, .yml, .toml, .json"
             )
 
     def _maybe_add_custom_config(
         self, args: list[str], file_values: dict[str, Any] | None
-    ) -> Type[T]:
+    ) -> type[T]:
         """
         Find and merge custom config module if specified.
 
@@ -310,13 +323,11 @@ class ConfigManager(Generic[T]):
         # Import and merge
         custom_config = importlib.import_module(module_path)
         if not hasattr(custom_config, "Config"):
-            raise AttributeError(
-                f"Custom config module {module_path} must define a 'Config' class"
-            )
+            raise AttributeError(f"Custom config module {module_path} must define a 'Config' class")
         return self._merge_configs(self.config_cls, custom_config.Config)
 
     @staticmethod
-    def _merge_configs(base: Type[T], custom: Type) -> Type[T]:
+    def _merge_configs(base: type[T], custom: type) -> type[T]:
         """
         Merge base config with custom extensions.
 
@@ -354,7 +365,7 @@ class ConfigManager(Generic[T]):
 
         return make_dataclass(f"Merged{base.__name__}", result, bases=(base,))
 
-    def _dict_to_dataclass(self, cls: Type[T], data: dict[str, Any]) -> T:
+    def _dict_to_dataclass(self, cls: type[T], data: dict[str, Any]) -> T:
         """
         Convert dictionary to dataclass, handling nested structures.
 
@@ -425,9 +436,7 @@ class ConfigManager(Generic[T]):
                 # Recursively merge nested dataclasses
                 if is_dataclass(f.type) and isinstance(new_value, dict):
                     if is_dataclass(existing_value):
-                        result[f.name] = self._merge_dict_into_dataclass(
-                            existing_value, new_value
-                        )
+                        result[f.name] = self._merge_dict_into_dataclass(existing_value, new_value)
                     else:
                         result[f.name] = self._dict_to_dataclass(f.type, new_value)
                 else:
@@ -467,7 +476,7 @@ class ConfigManager(Generic[T]):
             with code expecting filesystem paths (like Megatron-Bridge).
             """
             # Only apply to str fields (not Path - let those be handled normally)
-            if type_info.type != str:
+            if type_info.type is not str:
                 return None
 
             return tyro.constructors.PrimitiveConstructorSpec(
@@ -642,7 +651,7 @@ def _apply_parse_inputs(
 
 @overload
 def cli(
-    config_cls: Type[T],
+    config_cls: type[T],
     /,
     *,
     args: list[str] | None = None,
@@ -671,7 +680,7 @@ def cli(
 
 
 def cli(
-    config_or_main: Type[T] | Callable[..., T],
+    config_or_main: type[T] | Callable[..., T],
     /,
     *,
     args: list[str] | None = None,
@@ -792,9 +801,9 @@ def cli(
     cli_fn_kwargs: dict[str, Any] = {}
     if kwargs_schema is not None:
         from nemotron.kit.app import _typeddict_to_dataclass
+
         kwargs_dataclass = _typeddict_to_dataclass(kwargs_schema, prefix="fn.")
-        # Extract --fn.* args from args list
-        fn_args = [a for a in args if a.startswith("--fn.")]
+        # Extract --fn.* args with their values from args list
         fn_args_with_values = []
         i = 0
         while i < len(args):
@@ -854,7 +863,9 @@ def cli(
 
     # If defaults_fn is provided, call it with fn_kwargs and use result as defaults
     if defaults_fn is not None:
-        defaults = lambda: defaults_fn(**fn_kwargs)
+
+        def defaults():
+            return defaults_fn(**fn_kwargs)
 
     # Helper to initialize wandb from config file if present
     def _maybe_init_wandb_from_config(manager: ConfigManager) -> None:
@@ -862,6 +873,7 @@ def cli(
         wandb_config = manager.get_wandb_config()
         if wandb_config is not None:
             from nemotron.kit.wandb import init_wandb_if_configured
+
             init_wandb_if_configured(wandb_config, job_type="cli")
 
     # Check if it's a dataclass or a callable
@@ -904,7 +916,7 @@ def cli(
     return tyro.cli(func, args=args)
 
 
-def _func_to_dataclass(func: Callable) -> Type | None:
+def _func_to_dataclass(func: Callable) -> type | None:
     """
     Convert function signature to a dataclass for config file support.
 
@@ -1035,7 +1047,10 @@ def _extract_run_args(args: list[str]) -> tuple[str | None, dict[str, str], list
 
     # Validate mutual exclusivity
     if run_name is not None and launch_name is not None:
-        raise ValueError("--run and --batch are mutually exclusive. Use --run for attached execution or --batch for detached execution.")
+        raise ValueError(
+            "--run and --batch are mutually exclusive. "
+            "Use --run for attached execution or --batch for detached execution."
+        )
 
     # Determine final name and whether batch mode is active
     is_launch = launch_name is not None
@@ -1081,11 +1096,11 @@ def _execute_with_nemo_run(
         if hasattr(run_config, key):
             # Handle type conversion for common types
             field_type = type(getattr(run_config, key))
-            if field_type == bool:
+            if field_type is bool:
                 value = value.lower() in ("true", "1", "yes")
-            elif field_type == int:
+            elif field_type is int:
                 value = int(value)
-            elif field_type == list:
+            elif field_type is list:
                 value = value.split(",") if value else []
             setattr(run_config, key, value)
         else:

@@ -1,8 +1,21 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Size parsing and formatting utilities."""
 
 import math
 import re
-from typing import Union
 
 _SIZE_PATTERN = re.compile(r"(\d+(?:\.\d+)?)\s*([KMGTPEZY]i?)?B?", re.IGNORECASE)
 _BYTE_SIZES = {
@@ -16,7 +29,7 @@ _BYTE_SIZES = {
 }
 
 
-def parse_byte_size(size: Union[int, float, str]) -> int:
+def parse_byte_size(size: int | float | str) -> int:
     """Parse human-readable size to bytes.
 
     Accepts integers, floats, or strings with optional unit suffixes.
@@ -94,7 +107,7 @@ def format_byte_size(size: int) -> str:
     return f"{size:.1f}EB"
 
 
-def compute_num_shards(total_bytes: int, shard_size: Union[str, int]) -> int:
+def compute_num_shards(total_bytes: int, shard_size: str | int) -> int:
     """Compute number of shards from target shard size.
 
     Args:

@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Chat template utilities for SFT data preparation.
 
 Exact port of materialize.py logic for chat template application and
@@ -38,20 +52,16 @@ def replace_json_args(messages: list[dict]) -> list[dict]:
         if messages[i]["role"] == "assistant":
             if messages[i].get("tool_calls"):
                 for j in range(len(messages[i]["tool_calls"])):
-                    if isinstance(
-                        messages[i]["tool_calls"][j]["function"]["arguments"], str
-                    ):
-                        messages[i]["tool_calls"][j]["function"]["arguments"] = (
-                            json.loads(
-                                messages[i]["tool_calls"][j]["function"]["arguments"]
-                            )
+                    if isinstance(messages[i]["tool_calls"][j]["function"]["arguments"], str):
+                        messages[i]["tool_calls"][j]["function"]["arguments"] = json.loads(
+                            messages[i]["tool_calls"][j]["function"]["arguments"]
                         )
     return messages
 
 
 def find_last_user_message_end(
     messages: list[dict],
-    tokenizer: "PreTrainedTokenizerBase",
+    tokenizer: PreTrainedTokenizerBase,
     enable_thinking: bool = True,
     tools: list | None = None,
 ) -> int:
@@ -76,12 +86,9 @@ def find_last_user_message_end(
     last_user_idx = max(i for i, msg in enumerate(messages) if msg["role"] == "user")
 
     # Render up to the last user message (inclusive)
-    if (
-        enable_thinking
-        and (
-            "reasoning_content" not in messages[last_user_idx + 1]
-            or messages[last_user_idx + 1]["reasoning_content"] == ""
-        )
+    if enable_thinking and (
+        "reasoning_content" not in messages[last_user_idx + 1]
+        or messages[last_user_idx + 1]["reasoning_content"] == ""
     ):
         # Manual hack for empty reasoning content mismatch
         template_up_to_last_user = tokenizer.apply_chat_template(
@@ -106,7 +113,7 @@ def find_last_user_message_end(
 
 def split_template_into_messages(
     messages: list[dict],
-    tokenizer: "PreTrainedTokenizerBase",
+    tokenizer: PreTrainedTokenizerBase,
     start_from_last_user: bool = True,
     enable_thinking: bool = True,
     tools: list | None = None,
@@ -206,7 +213,7 @@ def split_template_into_messages(
         # Verify incremental rendering matches full template
         if template_up_to_here != full_template[:current_pos]:
             raise ValueError(
-                f"Template mismatch at message {i}: incremental rendering doesn't match full template"
+                f"Template mismatch at message {i}: incremental rendering doesn't match full"
             )
 
         result.append({"role": messages[i]["role"], "content": chunk_text})
@@ -217,7 +224,7 @@ def split_template_into_messages(
 
 def create_masked_messages(
     messages: list[dict],
-    tokenizer: "PreTrainedTokenizerBase",
+    tokenizer: PreTrainedTokenizerBase,
     tools: list | None = None,
 ) -> list[tuple[list[dict], list[dict]]]:
     """Create message chunks for masking, optionally splitting at user turns.
@@ -239,9 +246,7 @@ def create_masked_messages(
         Exact port of materialize.py::create_masked_messages()
     """
     # Check if conversation has thinking (determines splitting strategy)
-    has_thinking = any(
-        "reasoning_content" in msg and msg["reasoning_content"] for msg in messages
-    )
+    has_thinking = any("reasoning_content" in msg and msg["reasoning_content"] for msg in messages)
 
     if has_thinking:
         # Split based on user messages - create chunks up to each user message

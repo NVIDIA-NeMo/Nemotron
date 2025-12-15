@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Pipeline orchestration for processing data blends into training formats."""
 
 from __future__ import annotations
@@ -7,27 +21,27 @@ import json
 import logging
 import os
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import ray
 
+from nemotron.data_prep import console as con
 from nemotron.data_prep.config import (
+    ChatSftOutputConfig,
     DatasetConfig,
     InternalOutputConfig,
     InternalTokenizerConfig,
+    JsonlOutputConfig,
+    OutputConfig,
+    PackedOutputConfig,
     PipelineConfig,
-    PerSplitConfig,
     ShardPlan,
     SourceChangedError,
-    TokenizerConfig,
-    OutputConfig,
-    BinIdxOutputConfig,
-    JsonlOutputConfig,
-    PackedOutputConfig,
-    ChatSftOutputConfig,
 )
+from nemotron.data_prep.discovery import get_dataset_metadata
 from nemotron.data_prep.filesystem import (
     ensure_dir,
     get_filesystem,
@@ -40,9 +54,7 @@ from nemotron.data_prep.planning import (
     get_pending_shards,
     serialize_shard_plan,
 )
-from nemotron.data_prep.discovery import get_dataset_metadata
 from nemotron.data_prep.shard_processor import ShardProcessor
-from nemotron.data_prep import console as con
 
 if TYPE_CHECKING:
     from nemotron.data_prep.blend import DataBlend, Dataset
@@ -73,8 +85,7 @@ def log_pipeline_metrics_to_wandb(result: PipelineResult) -> None:
                 "data_prep/total_tokens": result.total_tokens,
                 "data_prep/total_sequences": result.total_sequences,
                 "data_prep/elapsed_sec": result.elapsed_sec,
-                "data_prep/tokens_per_second": result.total_tokens
-                / max(result.elapsed_sec, 0.001),
+                "data_prep/tokens_per_second": result.total_tokens / max(result.elapsed_sec, 0.001),
             }
         )
 
@@ -513,7 +524,6 @@ def _process_split(
     2. Process shards in parallel using Ray actors
     3. Aggregate results and build data_paths list
     """
-    from nemotron.data_prep.blend import Dataset
 
     # Get filesystem
     fs, base_path = get_filesystem(str(config.output.dir))
@@ -551,9 +561,7 @@ def _process_split(
     run_config = pipeline_dict.copy()
     if config.sample is not None:
         run_config["_sample"] = {"spec": str(config.sample), "seed": config.sample_seed}
-    config_hash = hashlib.sha256(
-        json.dumps(run_config, sort_keys=True).encode()
-    ).hexdigest()[:16]
+    config_hash = hashlib.sha256(json.dumps(run_config, sort_keys=True).encode()).hexdigest()[:16]
 
     # Run namespace
     run_hash = config_hash if not config.force else f"{config_hash}_{int(time.time())}"
@@ -607,7 +615,9 @@ def _process_split(
         # Apply sampling
         sampled_count = None
         if config.sample is not None:
-            pending_indices = apply_shard_sampling(all_pending, plan, config.sample, config.sample_seed)
+            pending_indices = apply_shard_sampling(
+                all_pending, plan, config.sample, config.sample_seed
+            )
             sampled_count = len(pending_indices)
         else:
             pending_indices = all_pending
@@ -690,7 +700,9 @@ def _process_split(
             results[ep.name] = ep.cached_stats
 
     # Generate outputs
-    _generate_manifest(run_dir, pipeline_dict, results, plan_hashes, run_hash, resolved_tokenizer, fs)
+    _generate_manifest(
+        run_dir, pipeline_dict, results, plan_hashes, run_hash, resolved_tokenizer, fs
+    )
 
     # Build data_paths in Megatron-Bridge format
     data_paths: list[str] = []
@@ -866,15 +878,17 @@ def _process_all_shards_parallel(
                 }
 
             for shard_idx in ep.pending_indices:
-                all_tasks.append((
-                    ep.name,
-                    shard_idx,
-                    assignment_dicts[shard_idx],
-                    ep.plan.plan_hash,
-                    ep.dataset_dir,
-                    ep.receipts_dir,
-                    ep,  # Keep reference to execution plan for aggregation
-                ))
+                all_tasks.append(
+                    (
+                        ep.name,
+                        shard_idx,
+                        assignment_dicts[shard_idx],
+                        ep.plan.plan_hash,
+                        ep.dataset_dir,
+                        ep.receipts_dir,
+                        ep,  # Keep reference to execution plan for aggregation
+                    )
+                )
 
         # Submit tasks with backpressure
         max_in_flight = num_actors * 2
@@ -1054,9 +1068,7 @@ def _process_shards_with_actors(
 
                 # Cancel truly stuck tasks
                 for future, shard_index, elapsed in tasks_to_cancel:
-                    logger.error(
-                        f"Cancelling shard {shard_index} after {elapsed:.0f}s timeout"
-                    )
+                    logger.error(f"Cancelling shard {shard_index} after {elapsed:.0f}s timeout")
                     try:
                         ray.cancel(future, force=True)
                     except Exception as e:
@@ -1185,7 +1197,6 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
     Transforms records according to the configured transform function
     and writes to JSONL files (optionally compressed).
     """
-    from nemotron.data_prep.jsonl_processor import JsonlShardProcessor
 
     format_config = config.output.format
     assert isinstance(format_config, JsonlOutputConfig)
@@ -1213,9 +1224,7 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
     if config.sample is not None:
         run_config["_sample"] = {"spec": str(config.sample), "seed": config.sample_seed}
 
-    config_hash = hashlib.sha256(
-        json.dumps(run_config, sort_keys=True).encode()
-    ).hexdigest()[:16]
+    config_hash = hashlib.sha256(json.dumps(run_config, sort_keys=True).encode()).hexdigest()[:16]
 
     run_hash = config_hash if not config.force else f"{config_hash}_{int(time.time())}"
     run_dir = f"{base_path}/runs/{run_hash}"
@@ -1354,7 +1363,7 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
 
 def _resolve_num_shards(format_config, blend: DataBlend, fs) -> int:
     """Resolve num_shards from format config (shard_size or explicit num_shards)."""
-    from nemotron.data_prep.utils.size import compute_num_shards, parse_byte_size
+    from nemotron.data_prep.utils.size import compute_num_shards
 
     if format_config.num_shards is not None:
         return format_config.num_shards
@@ -1441,7 +1450,9 @@ def _process_jsonl_shards_with_actors(
         actor_idx += 1
         future = actor.process_shard.remote(
             shard_index=shard_index,
-            files=[f.__dict__ if hasattr(f, "__dict__") else f for f in shard_assignments[shard_index]],
+            files=[
+                f.__dict__ if hasattr(f, "__dict__") else f for f in shard_assignments[shard_index]
+            ],
             output_dir=dataset_dir,
             fs_protocol=fs_protocol,
         )
@@ -1505,7 +1516,6 @@ def _process_packed_blend(blend: DataBlend, config: PipelineConfig) -> PipelineR
     Tokenizes records and packs them into efficient batches compatible with
     Megatron-Bridge's GPTSFTPackedDataset.
     """
-    from nemotron.data_prep.packed_processor import PackedShardProcessor
     from nemotron.data_prep.discovery import discover_input_files
 
     format_config = config.output.format
@@ -1544,9 +1554,7 @@ def _process_packed_blend(blend: DataBlend, config: PipelineConfig) -> PipelineR
     if config.sample is not None:
         run_config["_sample"] = {"spec": str(config.sample), "seed": config.sample_seed}
 
-    config_hash = hashlib.sha256(
-        json.dumps(run_config, sort_keys=True).encode()
-    ).hexdigest()[:16]
+    config_hash = hashlib.sha256(json.dumps(run_config, sort_keys=True).encode()).hexdigest()[:16]
 
     run_hash = config_hash if not config.force else f"{config_hash}_{int(time.time())}"
     run_dir = f"{base_path}/runs/{run_hash}"
@@ -1666,8 +1674,9 @@ def _process_packed_shards_with_actors(
     num_actors: int,
 ) -> None:
     """Process files to packed shards using Ray actors."""
-    from nemotron.data_prep.packed_processor import PackedShardProcessor
     from dataclasses import asdict
+
+    from nemotron.data_prep.packed_processor import PackedShardProcessor
 
     # Determine filesystem protocol
     protocol = fs.protocol
@@ -1823,9 +1832,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
     if config.sample is not None:
         run_config["_sample"] = {"spec": str(config.sample), "seed": config.sample_seed}
 
-    config_hash = hashlib.sha256(
-        json.dumps(run_config, sort_keys=True).encode()
-    ).hexdigest()[:16]
+    config_hash = hashlib.sha256(json.dumps(run_config, sort_keys=True).encode()).hexdigest()[:16]
 
     run_hash = config_hash if not config.force else f"{config_hash}_{int(time.time())}"
     run_dir = f"{base_path}/runs/{run_hash}"
@@ -1871,9 +1878,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
         files = discover_input_files(dataset_config, fs)
 
         # Display discovered info
-        logger.info(
-            f"Discovered dataset '{name}' with {len(files)} files"
-        )
+        logger.info(f"Discovered dataset '{name}' with {len(files)} files")
 
         dataset_plans.append((dataset, dataset_dir, receipts_dir, files))
 
@@ -1910,8 +1915,9 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
         con.execution_header()
 
         # Create actor pool ONCE and reuse across all datasets
-        from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
         from dataclasses import asdict
+
+        from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
 
         actors = [
             ChatSftShardProcessor.remote(
@@ -1934,9 +1940,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
         # Create live status panel with all datasets
         live_status = con.create_live_status(
             datasets=[
-                (dataset.name, num_shards)
-                for dataset, _, _, files in dataset_plans
-                if files
+                (dataset.name, num_shards) for dataset, _, _, files in dataset_plans if files
             ],
             run_hash=run_hash,
         )
@@ -1950,15 +1954,15 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
             fs_protocol = protocol if protocol != "file" else "file"
 
             # Build all tasks upfront - process ALL datasets in parallel
-            all_tasks: list[tuple[str, str, str, int, list]] = []  # (name, dataset_dir, receipts_dir, shard_idx, files)
+            all_tasks: list[
+                tuple[str, str, str, int, list]
+            ] = []  # (name, dataset_dir, receipts_dir, shard_idx, files)
             for dataset, dataset_dir, receipts_dir, files in dataset_plans:
                 if not files:
                     continue
                 # Each dataset gets 1 shard (since num_shards is computed per-dataset with 1 file)
                 # Convert files to dicts for Ray serialization
-                files_as_dicts = [
-                    asdict(f) if hasattr(f, "__dict__") else f for f in files
-                ]
+                files_as_dicts = [asdict(f) if hasattr(f, "__dict__") else f for f in files]
                 all_tasks.append((dataset.name, dataset_dir, receipts_dir, 0, files_as_dicts))
                 live_status.start_dataset(dataset.name)
 

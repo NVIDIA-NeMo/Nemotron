@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Input file discovery for various sources (HuggingFace, S3, GCS, local)."""
 
 import functools
@@ -70,8 +84,8 @@ def fetch_hf_dataset_metadata(
     Returns:
         DatasetMetadata with size and row count info
     """
-    import urllib.request
     import json
+    import urllib.request
 
     try:
         # Build API URL (don't filter by config - do it client-side)
@@ -86,6 +100,7 @@ def fetch_hf_dataset_metadata(
         if not token:
             try:
                 from huggingface_hub import HfFolder
+
                 token = HfFolder.get_token()
             except Exception:
                 pass  # huggingface_hub not installed or no token
@@ -113,7 +128,9 @@ def fetch_hf_dataset_metadata(
                                 return DatasetMetadata(
                                     num_rows=sp.get("num_rows"),
                                     size_bytes=sp_bytes,
-                                    num_rows_str=_format_rows(sp["num_rows"]) if sp.get("num_rows") else None,
+                                    num_rows_str=_format_rows(sp["num_rows"])
+                                    if sp.get("num_rows")
+                                    else None,
                                     size_str=_format_size(sp_bytes) if sp_bytes else None,
                                 )
                     # No split specified, use config totals directly
@@ -194,6 +211,7 @@ def discover_hf_files(config: DatasetConfig) -> list[FileInfo]:
     if not token:
         try:
             from huggingface_hub import HfFolder
+
             token = HfFolder.get_token()
         except Exception:
             pass  # No token available
@@ -319,7 +337,11 @@ def discover_filesystem_files(
                 mtime = info["mtime"]
             elif "LastModified" in info:
                 # S3 returns datetime
-                mtime = info["LastModified"].timestamp() if hasattr(info["LastModified"], "timestamp") else None
+                mtime = (
+                    info["LastModified"].timestamp()
+                    if hasattr(info["LastModified"], "timestamp")
+                    else None
+                )
 
             # Extract version_id for S3/GCS versioned objects
             version_id = info.get("VersionId") or info.get("version_id")

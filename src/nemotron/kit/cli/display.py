@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Rich display utilities for CLI output.
 
 Includes:
@@ -64,12 +78,14 @@ def _display_run_section(job_config: DictConfig) -> None:
     yaml_str = OmegaConf.to_yaml(run, resolve=False)
 
     syntax = Syntax(yaml_str.rstrip(), "yaml", theme=_get_theme(), line_numbers=False)
-    CONSOLE.print(Panel(
-        syntax,
-        title="[bold green]run[/bold green]",
-        border_style="green",
-        expand=False,
-    ))
+    CONSOLE.print(
+        Panel(
+            syntax,
+            title="[bold green]run[/bold green]",
+            border_style="green",
+            expand=False,
+        )
+    )
     CONSOLE.print()
 
 
@@ -118,14 +134,14 @@ def _rewrite_paths_for_remote(obj: any, repo_root_str: str) -> any:
             return obj.replace("${oc.env:PWD}", "/nemo_run/code")
 
         # Rewrite ${oc.env:NEMO_RUN_DIR,...}/... to /nemo_run/...
-        match = re.match(r'\$\{oc\.env:NEMO_RUN_DIR[^}]*\}(.*)', obj)
+        match = re.match(r"\$\{oc\.env:NEMO_RUN_DIR[^}]*\}(.*)", obj)
         if match:
             suffix = match.group(1)
             return f"/nemo_run{suffix}"
 
         # Rewrite absolute paths under repo_root to /nemo_run/code/...
         if obj.startswith(repo_root_str):
-            rel_path = obj[len(repo_root_str):].lstrip("/")
+            rel_path = obj[len(repo_root_str) :].lstrip("/")
             return f"/nemo_run/code/{rel_path}"
 
     return obj
@@ -143,6 +159,7 @@ def _display_config_section(job_config: DictConfig, *, for_remote: bool = False)
     if for_remote:
         # Rewrite paths for remote execution display
         import os
+
         repo_root_str = os.getcwd()
         config_dict = _rewrite_paths_for_remote(config_dict, repo_root_str)
     else:
@@ -154,12 +171,14 @@ def _display_config_section(job_config: DictConfig, *, for_remote: bool = False)
     yaml_str = OmegaConf.to_yaml(config_without_run, resolve=False)
 
     syntax = Syntax(yaml_str.rstrip(), "yaml", theme=_get_theme(), line_numbers=False)
-    CONSOLE.print(Panel(
-        syntax,
-        title="[bold green]config[/bold green]",
-        border_style="green",
-        expand=False,
-    ))
+    CONSOLE.print(
+        Panel(
+            syntax,
+            title="[bold green]config[/bold green]",
+            border_style="green",
+            expand=False,
+        )
+    )
     CONSOLE.print()
 
 
@@ -253,4 +272,3 @@ def display_ray_job_submission(
     CONSOLE.print()
     CONSOLE.print(Panel(tree, border_style="green", expand=False))
     CONSOLE.print()
-

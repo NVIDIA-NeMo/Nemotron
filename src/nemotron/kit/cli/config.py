@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Configuration loading, merging, and saving.
 
 Handles the full config pipeline:
@@ -213,7 +227,7 @@ def _rewrite_paths_for_remote(obj: any, repo_root: Path) -> any:
 
         # Rewrite ${oc.env:NEMO_RUN_DIR,...}/... to /nemo_run/...
         # Handles both ${oc.env:NEMO_RUN_DIR} and ${oc.env:NEMO_RUN_DIR,.}
-        match = re.match(r'\$\{oc\.env:NEMO_RUN_DIR[^}]*\}(.*)', obj)
+        match = re.match(r"\$\{oc\.env:NEMO_RUN_DIR[^}]*\}(.*)", obj)
         if match:
             suffix = match.group(1)
             return f"/nemo_run{suffix}"
@@ -221,15 +235,13 @@ def _rewrite_paths_for_remote(obj: any, repo_root: Path) -> any:
         # Rewrite absolute paths under repo_root to /nemo_run/code/...
         repo_root_str = str(repo_root)
         if obj.startswith(repo_root_str):
-            rel_path = obj[len(repo_root_str):].lstrip("/")
+            rel_path = obj[len(repo_root_str) :].lstrip("/")
             return f"/nemo_run/code/{rel_path}"
 
     return obj
 
 
-def extract_train_config(
-    job_config: DictConfig, *, for_remote: bool = False
-) -> DictConfig:
+def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) -> DictConfig:
     """Extract the script-only config from job config.
 
     Keeps only the fields needed for train.py:
@@ -391,9 +403,7 @@ class ConfigBuilder:
         self._train_config = load_config(config_path)
 
         # Apply dotlist overrides
-        self._train_config = apply_dotlist_overrides(
-            self._train_config, self.ctx.dotlist
-        )
+        self._train_config = apply_dotlist_overrides(self._train_config, self.ctx.dotlist)
 
         return self._train_config
 
@@ -418,7 +428,9 @@ class ConfigBuilder:
 
         return self._job_config
 
-    def save(self, *, rewrite_paths: bool | None = None, packager: str = "pattern") -> tuple[Path, Path]:
+    def save(
+        self, *, rewrite_paths: bool | None = None, packager: str = "pattern"
+    ) -> tuple[Path, Path]:
         """Save configs to disk.
 
         Must call build_job_config() first.

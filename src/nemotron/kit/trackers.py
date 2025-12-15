@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Lineage tracking backends for nemotron.kit.
 
@@ -161,9 +175,7 @@ class LineageTracker(Protocol):
         """
         ...
 
-    def log_artifact(
-        self, artifact: "Artifact", name: str, used_refs: list[str]
-    ) -> dict[str, Any]:
+    def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
         """Log artifact to tracking backend.
 
         Args:
@@ -313,7 +325,9 @@ class WandbTracker:
                 project_path = f"{self.wandb.run.entity}/{self.wandb.run.project}"
                 existing = api.artifact(f"{project_path}/{artifact_name}:latest")
                 # Artifact exists - use it by reference string
-                artifact_ref = f"{existing.entity}/{existing.project}/{existing.name}:{existing.version}"
+                artifact_ref = (
+                    f"{existing.entity}/{existing.project}/{existing.name}:{existing.version}"
+                )
                 self.wandb.run.use_artifact(artifact_ref)
                 artifact_refs.append(artifact_ref)
                 artifact_objects.append(existing)
@@ -388,7 +402,9 @@ class WandbTracker:
             project_path = f"{self.wandb.run.entity}/{self.wandb.run.project}"
             existing = api.artifact(f"{project_path}/{artifact_name}:latest")
             # Artifact exists - use it by reference
-            artifact_ref = f"{existing.entity}/{existing.project}/{existing.name}:{existing.version}"
+            artifact_ref = (
+                f"{existing.entity}/{existing.project}/{existing.name}:{existing.version}"
+            )
             self.wandb.run.use_artifact(artifact_ref)
             return artifact_ref, existing
         except Exception:
@@ -417,9 +433,7 @@ class WandbTracker:
             except Exception:
                 return None, None
 
-    def log_artifact(
-        self, artifact: "Artifact", name: str, used_refs: list[str]
-    ) -> dict[str, Any]:
+    def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
         """Log artifact to W&B using URI references for lineage tracking.
 
         For DataBlendsArtifact, registers input datasets as separate artifacts
@@ -446,13 +460,15 @@ class WandbTracker:
         if source_datasets:
             # source_datasets can be list[InputDatasetInfo] or list[str]
             if source_datasets and isinstance(source_datasets[0], InputDatasetInfo):
-                input_artifact_refs, input_artifact_objects = self._register_input_datasets(source_datasets)
+                input_artifact_refs, input_artifact_objects = self._register_input_datasets(
+                    source_datasets
+                )
             else:
                 # Legacy: list[str] - convert to InputDatasetInfo
-                legacy_datasets = [
-                    InputDatasetInfo(uri=uri) for uri in source_datasets
-                ]
-                input_artifact_refs, input_artifact_objects = self._register_input_datasets(legacy_datasets)
+                legacy_datasets = [InputDatasetInfo(uri=uri) for uri in source_datasets]
+                input_artifact_refs, input_artifact_objects = self._register_input_datasets(
+                    legacy_datasets
+                )
 
         # Register tokenizer as an input artifact for lineage
         tokenizer_artifact_ref: str | None = None
@@ -606,9 +622,7 @@ class NoOpTracker:
         """Raises error - cannot use artifacts without tracking."""
         raise RuntimeError("NoOpTracker cannot load artifacts")
 
-    def log_artifact(
-        self, artifact: "Artifact", name: str, used_refs: list[str]
-    ) -> dict[str, Any]:
+    def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
         """Returns empty metadata."""
         return {
             "artifact_id": None,

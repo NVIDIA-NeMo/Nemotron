@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """@recipe decorator for defining CLI commands.
 
 The decorator attaches metadata and standardizes the execution flow
@@ -18,7 +32,6 @@ from typing import Any
 import typer
 from rich.console import Console
 
-from nemotron.kit.artifact import ArtifactInput
 from nemotron.kit.cli.config import ConfigBuilder
 from nemotron.kit.cli.display import display_job_config, display_job_submission
 from nemotron.kit.cli.globals import GlobalContext, split_unknown_args
@@ -117,9 +130,7 @@ def recipe(
 
             # Split unknown args into dotlist and passthrough
             # Also extract any global options that appear after the subcommand
-            dotlist, passthrough, global_ctx = split_unknown_args(
-                ctx.args or [], global_ctx
-            )
+            dotlist, passthrough, global_ctx = split_unknown_args(ctx.args or [], global_ctx)
             global_ctx.dotlist = dotlist
             global_ctx.passthrough = passthrough
 
@@ -129,16 +140,10 @@ def recipe(
                 raise typer.Exit(1)
 
             if global_ctx.stage and not global_ctx.profile:
-                typer.echo("Error: --stage requires --run or --batch to specify target cluster", err=True)
+                typer.echo(
+                    "Error: --stage requires --run or --batch to specify target cluster", err=True
+                )
                 raise typer.Exit(1)
-
-            is_bare = (
-                global_ctx.config is None
-                and global_ctx.profile is None
-                and not global_ctx.dry_run
-                and not dotlist
-                and not passthrough
-            )
 
             # Build configuration
             builder = ConfigBuilder(
@@ -187,6 +192,7 @@ def recipe(
             env_config = None
             if hasattr(builder.job_config, "run") and hasattr(builder.job_config.run, "env"):
                 from omegaconf import OmegaConf
+
                 env_config = OmegaConf.to_container(builder.job_config.run.env, resolve=True)
 
             # Build env vars for display (needs job_config for wandb settings)
@@ -312,7 +318,12 @@ def _execute_nemo_run(
 
     # Build executor with flat file layout (main.py, config.yaml)
     executor = _build_executor(
-        env_config, job_config, script_path, train_path, job_dir, env_vars,
+        env_config,
+        job_config,
+        script_path,
+        train_path,
+        job_dir,
+        env_vars,
         torchrun=torchrun,
         ray=ray,
         attached=attached,
@@ -364,9 +375,7 @@ def _execute_nemo_run(
 
         runtime_env_yaml = None
         if runtime_env["env_vars"]:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".yaml", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
                 pyyaml.dump(runtime_env, f)
                 runtime_env_yaml = f.name
 
@@ -741,8 +750,6 @@ def _execute_stage_only(
         packager: Packager type ("pattern", "code", "self_contained")
         torchrun: Whether to use torchrun launcher
     """
-    from rich.panel import Panel
-    from rich.tree import Tree
 
     try:
         import nemo_run as run
@@ -791,7 +798,6 @@ def _execute_stage_only(
     code_dir.mkdir(exist_ok=True)
 
     if packager == "self_contained":
-        from nemotron.kit.packaging import SelfContainedPackager
         from nemotron.kit.packaging.self_contained_packager import inline_imports
 
         # Inline imports to create main.py
@@ -821,7 +827,11 @@ def _execute_stage_only(
     gpus = env_config.get("gpus_per_node") or env_config.get("ntasks_per_node", 8)
 
     # Create run.sh script that sets env vars and runs training
-    run_script_lines = ["#!/bin/bash", "# Auto-generated training script with environment setup", ""]
+    run_script_lines = [
+        "#!/bin/bash",
+        "# Auto-generated training script with environment setup",
+        "",
+    ]
     run_script_lines.append("# Environment variables for W&B and HuggingFace")
     for key, value in env_vars.items():
         # Escape single quotes in values
@@ -830,7 +840,9 @@ def _execute_stage_only(
     run_script_lines.append("")
     run_script_lines.append("# Run training")
     if torchrun:
-        run_script_lines.append(f'torchrun --nproc_per_node={gpus} main.py --config config.yaml "$@"')
+        run_script_lines.append(
+            f'torchrun --nproc_per_node={gpus} main.py --config config.yaml "$@"'
+        )
     else:
         run_script_lines.append('python main.py --config config.yaml "$@"')
     run_script = "\n".join(run_script_lines) + "\n"
@@ -868,7 +880,6 @@ def _print_stage_commands(
         torchrun: Whether to use torchrun launcher
     """
     from rich.panel import Panel
-    from rich.syntax import Syntax
 
     host = env_config.get("host", "localhost")
     user = env_config.get("user", "")
@@ -892,17 +903,21 @@ def _print_stage_commands(
     srun_parts = ["srun"]
     if account:
         srun_parts.append(f"--account={account}")
-    srun_parts.extend([
-        f"--partition={partition}",
-        f"--nodes={nodes}",
-        f"--ntasks-per-node={gpus}",
-        f"--gpus-per-node={gpus}",
-        f"--time={time_limit}",
-    ])
+    srun_parts.extend(
+        [
+            f"--partition={partition}",
+            f"--nodes={nodes}",
+            f"--ntasks-per-node={gpus}",
+            f"--gpus-per-node={gpus}",
+            f"--time={time_limit}",
+        ]
+    )
     if sqsh_path:
         srun_parts.append(f"--container-image={sqsh_path}")
         # Mount stage_dir to both /workspace and /nemo_run to match real nemo-run behavior
-        srun_parts.append(f"--container-mounts={stage_dir}:{container_mount_path},{stage_dir}:/nemo_run,/lustre:/lustre")
+        srun_parts.append(
+            f"--container-mounts={stage_dir}:{container_mount_path},{stage_dir}:/nemo_run,/lustre:/lustre"
+        )
         srun_parts.append(f"--container-workdir={container_mount_path}")
     srun_parts.append("--pty bash")
     srun_cmd_display = " \\\n    ".join(srun_parts)
@@ -920,21 +935,23 @@ def _print_stage_commands(
         env_info = f"[bold cyan]Environment:[/bold cyan] {', '.join(env_keys)}\n"
 
     # Display
-    console.print(Panel.fit(
-        f"[bold cyan]Files staged to:[/bold cyan] {stage_dir}\n"
-        f"[bold cyan]Mounted at:[/bold cyan] {container_mount_path} and /nemo_run\n"
-        f"{env_info}\n"
-        f"[bold cyan]1. SSH to cluster:[/bold cyan]\n"
-        f"   [green]ssh {user}@{host}[/green]\n\n"
-        f"[bold cyan]2. Start interactive job:[/bold cyan]\n"
-        f"   [green]{srun_cmd_display}[/green]\n\n"
-        f"[bold cyan]3. Run training:[/bold cyan]\n"
-        f"   [green]./run.sh[/green]\n\n"
-        f"[dim]Tip: Keep the srun session alive while iterating. "
-        f"Re-run with --stage to update files, then run ./run.sh again.[/dim]",
-        title="[bold]Interactive Debugging[/bold]",
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Files staged to:[/bold cyan] {stage_dir}\n"
+            f"[bold cyan]Mounted at:[/bold cyan] {container_mount_path} and /nemo_run\n"
+            f"{env_info}\n"
+            f"[bold cyan]1. SSH to cluster:[/bold cyan]\n"
+            f"   [green]ssh {user}@{host}[/green]\n\n"
+            f"[bold cyan]2. Start interactive job:[/bold cyan]\n"
+            f"   [green]{srun_cmd_display}[/green]\n\n"
+            f"[bold cyan]3. Run training:[/bold cyan]\n"
+            f"   [green]./run.sh[/green]\n\n"
+            f"[dim]Tip: Keep the srun session alive while iterating. "
+            f"Re-run with --stage to update files, then run ./run.sh again.[/dim]",
+            title="[bold]Interactive Debugging[/bold]",
+            border_style="green",
+        )
+    )
 
     # Print single-line srun command for easy copying
     # Use print() instead of console.print() to avoid Rich text wrapping

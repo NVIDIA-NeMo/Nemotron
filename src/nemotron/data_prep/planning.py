@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Shard plan creation with size-balanced file assignment."""
 
 import hashlib
@@ -44,8 +58,7 @@ def create_size_balanced_assignments(
 
     # Initialize assignments
     assignments = [
-        ShardAssignment(shard_index=i, files=[], total_bytes=0)
-        for i in range(num_shards)
+        ShardAssignment(shard_index=i, files=[], total_bytes=0) for i in range(num_shards)
     ]
 
     # Check if file sizes are available
@@ -345,5 +358,7 @@ def serialize_shard_plan(plan: ShardPlan) -> dict:
     result = asdict(plan)
     # Convert FileInfo objects in assignments
     for assignment in result["file_assignments"]:
-        assignment["files"] = [asdict(f) if hasattr(f, "__dict__") else f for f in assignment["files"]]
+        assignment["files"] = [
+            asdict(f) if hasattr(f, "__dict__") else f for f in assignment["files"]
+        ]
     return result

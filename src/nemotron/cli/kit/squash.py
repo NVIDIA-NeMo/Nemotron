@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Squash command - convert Docker images to squash files on remote clusters.
 
 Usage:
@@ -6,8 +20,6 @@ Usage:
 """
 
 from __future__ import annotations
-
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -25,7 +37,7 @@ def squash(
         ...,
         help="Env profile name from env.toml (e.g., 'dlw')",
     ),
-    container: Optional[str] = typer.Argument(
+    container: str | None = typer.Argument(
         None,
         help="Docker image to squash (e.g., 'nvcr.io/nvidian/nemo:25.11-nano-v3.rc2')",
     ),
@@ -65,9 +77,7 @@ def squash(
         raise typer.Exit(1)
 
     if not remote_job_dir:
-        console.print(
-            f"[red bold]Error:[/red bold] Profile '{profile}' missing remote_job_dir"
-        )
+        console.print(f"[red bold]Error:[/red bold] Profile '{profile}' missing remote_job_dir")
         raise typer.Exit(1)
 
     if not container:
@@ -129,7 +139,7 @@ def squash(
         tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
 
     # Run enroot import
-    console.print(f"[bold]Importing container...[/bold]")
+    console.print("[bold]Importing container...[/bold]")
     console.print(f"  {container}")
     console.print(f"  -> {remote_path}")
     console.print()
@@ -143,18 +153,22 @@ def squash(
 
     if result.ok:
         console.print()
-        console.print(Panel(
-            f"[green]Successfully imported:[/green]\n{remote_path}",
-            title="[bold green]Complete[/bold green]",
-            border_style="green",
-            expand=False,
-        ))
+        console.print(
+            Panel(
+                f"[green]Successfully imported:[/green]\n{remote_path}",
+                title="[bold green]Complete[/bold green]",
+                border_style="green",
+                expand=False,
+            )
+        )
     else:
         console.print()
-        console.print(Panel(
-            f"[red]Failed to import container[/red]\n{result.stderr or 'Unknown error'}",
-            title="[bold red]Error[/bold red]",
-            border_style="red",
-            expand=False,
-        ))
+        console.print(
+            Panel(
+                f"[red]Failed to import container[/red]\n{result.stderr or 'Unknown error'}",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+                expand=False,
+            )
+        )
         raise typer.Exit(1)

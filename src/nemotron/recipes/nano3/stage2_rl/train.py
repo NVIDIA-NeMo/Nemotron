@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """RL (Reinforcement Learning) script for Nemotron Nano3.
 
 Uses NeMo-RL's GRPO algorithm for reinforcement learning training.
@@ -19,12 +34,12 @@ from __future__ import annotations
 # Flag to indicate this module requires Ray execution
 RAY = True
 
-import argparse
-import json
-import os
-import pprint
-from itertools import chain, repeat
-from typing import TYPE_CHECKING, Optional
+import argparse  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import pprint  # noqa: E402
+from itertools import chain, repeat  # noqa: E402
+from typing import TYPE_CHECKING  # noqa: E402
 
 if TYPE_CHECKING:
     from nemo_rl.algorithms.grpo import MasterConfig
@@ -47,9 +62,7 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
     return args, overrides
 
 
-def setup_single_nemo_gym_dataset(
-    jsonl_fpath: str, tokenizer, num_repeats: Optional[int] = None
-):
+def setup_single_nemo_gym_dataset(jsonl_fpath: str, tokenizer, num_repeats: int | None = None):
     """Load and prepare a NeMo-Gym dataset from JSONL file."""
     from nemo_rl.data.datasets import AllTaskProcessedDataset
     from nemo_rl.data.interfaces import DatumSpec
@@ -64,8 +77,7 @@ def setup_single_nemo_gym_dataset(
         previous_length = len(nemo_gym_examples)
         nemo_gym_examples = list(
             chain.from_iterable(
-                repeat(nemo_gym_example, num_repeats)
-                for nemo_gym_example in nemo_gym_examples
+                repeat(nemo_gym_example, num_repeats) for nemo_gym_example in nemo_gym_examples
             )
         )
         print(
@@ -78,7 +90,9 @@ def setup_single_nemo_gym_dataset(
         for idx, nemo_gym_example in enumerate(nemo_gym_examples)
     ]
 
-    passthrough_task_processor = lambda datum_dict, *args, **kwargs: datum_dict
+    def passthrough_task_processor(datum_dict, *args, **kwargs):
+        return datum_dict
+
     return AllTaskProcessedDataset(
         nemo_rl_compatible_examples,
         tokenizer,
@@ -104,11 +118,10 @@ def main() -> None:
 
     # Increase W&B single object size warning threshold
     import wandb.util
+
     wandb.util.VALUE_BYTES_LIMIT = 10_000_000
 
     import ray
-    from omegaconf import OmegaConf
-
     from nemo_rl.algorithms.grpo import (
         _should_use_nemo_gym,
         grpo_train,
@@ -125,6 +138,7 @@ def main() -> None:
     from nemo_rl.models.generation import configure_generation_config
     from nemo_rl.utils.config import load_config, parse_hydra_overrides
     from nemo_rl.utils.logger import get_next_experiment_dir
+    from omegaconf import OmegaConf
 
     OmegaConf.register_new_resolver("mul", lambda a, b: a * b)
 
@@ -156,9 +170,7 @@ def main() -> None:
 
     # Setup tokenizer
     tokenizer = get_tokenizer(config["policy"]["tokenizer"])
-    assert config["policy"]["generation"] is not None, (
-        "A generation config is required for GRPO"
-    )
+    assert config["policy"]["generation"] is not None, "A generation config is required for GRPO"
     config["policy"]["generation"] = configure_generation_config(
         config["policy"]["generation"], tokenizer
     )
@@ -224,9 +236,7 @@ def main() -> None:
     )
     nemo_gym = NemoGym.options(
         runtime_env={
-            "py_executable": get_actor_python_env(
-                "nemo_rl.environments.nemo_gym.NemoGym"
-            ),
+            "py_executable": get_actor_python_env("nemo_rl.environments.nemo_gym.NemoGym"),
         }
     ).remote(nemo_gym_config)
     # Blocking wait for NeMo-Gym to spin up

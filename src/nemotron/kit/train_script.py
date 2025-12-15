@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
@@ -27,7 +41,7 @@ import argparse
 import os
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -175,7 +189,7 @@ def _parse_override_value(value: str) -> Any:
     return value
 
 
-def omegaconf_to_dataclass(config: DictConfig, cls: Type[T]) -> T:
+def omegaconf_to_dataclass(config: DictConfig, cls: type[T]) -> T:
     """Convert OmegaConf DictConfig to a dataclass instance.
 
     Handles nested dataclasses and Path fields.
@@ -197,7 +211,7 @@ def omegaconf_to_dataclass(config: DictConfig, cls: Type[T]) -> T:
     return _dict_to_dataclass(resolved, cls)
 
 
-def _dict_to_dataclass(data: dict[str, Any], cls: Type[T]) -> T:
+def _dict_to_dataclass(data: dict[str, Any], cls: type[T]) -> T:
     """Recursively convert dict to dataclass.
 
     Args:

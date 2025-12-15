@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Data preparation for Megatron training.
 
 Processes raw text data from HuggingFace, S3, or local sources into
@@ -52,37 +66,37 @@ from pathlib import Path
 
 from nemotron.data_prep.blend import DataBlend, Dataset
 from nemotron.data_prep.config import (
-    PipelineConfig,
-    PerSplitConfig,
-    TokenizerConfig,
-    OutputConfig,
     BinIdxOutputConfig,
-    JsonlOutputConfig,
-    PackedOutputConfig,
     ChatSftOutputConfig,
+    JsonlOutputConfig,
+    OutputConfig,
+    PackedOutputConfig,
+    PerSplitConfig,
+    PipelineConfig,
+    TokenizerConfig,
     Transform,
 )
+from nemotron.data_prep.discovery import get_dataset_metadata
+from nemotron.data_prep.formats.transforms import (
+    OpenAIChatRecord,
+    SftRecord,
+    ShareGPTRecord,
+    openai_chat,
+    passthrough,
+    rename,
+    select,
+    sft,
+    sharegpt,
+)
 from nemotron.data_prep.pipeline import (
-    last_mile_process,
-    tokenize,
     PipelineResult,
     SplitResult,
+    last_mile_process,
+    tokenize,
 )
-from nemotron.data_prep.formats.transforms import (
-    sft,
-    openai_chat,
-    sharegpt,
-    passthrough,
-    select,
-    rename,
-    SftRecord,
-    OpenAIChatRecord,
-    ShareGPTRecord,
-)
-from nemotron.kit.artifact import DataBlendsArtifact, PretrainBlendsArtifact, PretrainDataArtifact
+from nemotron.kit.artifact import DataBlendsArtifact, PretrainBlendsArtifact
 from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
 from nemotron.kit.wandb import finish_wandb
-from nemotron.data_prep.discovery import get_dataset_metadata
 
 
 @dataclass
@@ -154,7 +168,9 @@ class DataPrepConfig:
     """Semantic artifact name (e.g., 'nano3/pretrain/data')"""
 
 
-def run_data_prep(config: DataPrepConfig, *, artifact_class: type = PretrainBlendsArtifact) -> DataBlendsArtifact | PretrainBlendsArtifact:
+def run_data_prep(
+    config: DataPrepConfig, *, artifact_class: type = PretrainBlendsArtifact
+) -> DataBlendsArtifact | PretrainBlendsArtifact:
     """Execute data preparation pipeline.
 
     Loads the data blend, tokenizes all datasets, and produces a
@@ -309,9 +325,10 @@ def run_data_prep(config: DataPrepConfig, *, artifact_class: type = PretrainBlen
     # Gracefully shutdown Ray - suppress stderr during cleanup
     try:
         import ray
+
         if ray.is_initialized():
-            import sys
             import io
+            import sys
 
             # Temporarily suppress stderr during Ray shutdown (socket cleanup noise)
             old_stderr = sys.stderr

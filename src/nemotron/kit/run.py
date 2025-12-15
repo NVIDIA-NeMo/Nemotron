@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
@@ -807,10 +821,12 @@ def run_with_nemo_run(
         # This is needed because uv run requires being in the correct workspace,
         # but the packager extracts files to /nemo_run/code
         if packager == "self_contained":
-            setup_commands.extend([
-                "cp /nemo_run/code/main.py .",
-                "cp /nemo_run/code/config.yaml .",
-            ])
+            setup_commands.extend(
+                [
+                    "cp /nemo_run/code/main.py .",
+                    "cp /nemo_run/code/config.yaml .",
+                ]
+            )
 
         # Prepend log clearing if remote_job_dir is configured
         if log_clear_cmd:
@@ -864,9 +880,7 @@ def run_with_nemo_run(
         # Create temporary runtime_env YAML file if we have env vars to pass
         runtime_env_yaml = None
         if runtime_env["env_vars"]:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".yaml", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
                 yaml.dump(runtime_env, f)
                 runtime_env_yaml = f.name
 

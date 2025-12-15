@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 fsspec filesystem implementation for art:// URIs.
 
@@ -95,7 +109,7 @@ class ArtifactFileSystem(AbstractFileSystem):
                 # Build artifact ref from parts up to and including this one (minus version)
                 artifact_ref = "/".join(parts[:i] + [name_part] if name_part else parts[:i])
                 # File path is everything after
-                file_path = "/".join(parts[i + 1:]) if i + 1 < len(parts) else ""
+                file_path = "/".join(parts[i + 1 :]) if i + 1 < len(parts) else ""
                 break
         else:
             # No version specifier found - entire path could be artifact name or name/file
@@ -354,7 +368,9 @@ class ArtifactFileSystem(AbstractFileSystem):
         except (ArtifactNotFoundError, ArtifactVersionNotFoundError):
             return False
 
-    def cat_file(self, path: str, start: int | None = None, end: int | None = None, **kwargs: Any) -> bytes:
+    def cat_file(
+        self, path: str, start: int | None = None, end: int | None = None, **kwargs: Any
+    ) -> bytes:
         """Read entire file content.
 
         Args:

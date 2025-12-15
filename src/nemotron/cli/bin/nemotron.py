@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Nemotron CLI - Main entry point.
 
 Usage:
@@ -10,11 +25,9 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Optional
-
 import typer
 
-from nemotron.kit.cli.globals import GlobalContext, global_callback
+from nemotron.kit.cli.globals import global_callback
 
 # Create root app with global callback
 app = typer.Typer(
@@ -28,19 +41,19 @@ app = typer.Typer(
 @app.callback()
 def main_callback(
     ctx: typer.Context,
-    config: Optional[str] = typer.Option(
+    config: str | None = typer.Option(
         None,
         "-c",
         "--config",
         help="Config name (looks in recipe's config/ dir) or path",
     ),
-    run: Optional[str] = typer.Option(
+    run: str | None = typer.Option(
         None,
         "-r",
         "--run",
         help="Execute attached via nemo-run with specified env profile",
     ),
-    batch: Optional[str] = typer.Option(
+    batch: str | None = typer.Option(
         None,
         "-b",
         "--batch",

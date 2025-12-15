@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Global CLI options and context management.
 
 Provides the GlobalContext dataclass and typer callback for handling
@@ -6,9 +20,7 @@ global options like --config, --run, --batch, --dry-run.
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 import typer
 
@@ -26,13 +38,13 @@ class GlobalContext:
         passthrough: Other args to pass to script (--mock, etc.)
     """
 
-    config: Optional[str] = None
-    run: Optional[str] = None
-    batch: Optional[str] = None
+    config: str | None = None
+    run: str | None = None
+    batch: str | None = None
     dry_run: bool = False
     stage: bool = False
-    dotlist: List[str] = field(default_factory=list)
-    passthrough: List[str] = field(default_factory=list)
+    dotlist: list[str] = field(default_factory=list)
+    passthrough: list[str] = field(default_factory=list)
 
     @property
     def mode(self) -> str:
@@ -44,15 +56,15 @@ class GlobalContext:
         return "local"
 
     @property
-    def profile(self) -> Optional[str]:
+    def profile(self) -> str | None:
         """Get the env profile name (from --run or --batch)."""
         return self.run or self.batch
 
 
 def split_unknown_args(
-    args: List[str],
-    global_ctx: Optional["GlobalContext"] = None,
-) -> tuple[List[str], List[str], "GlobalContext"]:
+    args: list[str],
+    global_ctx: GlobalContext | None = None,
+) -> tuple[list[str], list[str], GlobalContext]:
     """Split unknown args into dotlist overrides and passthrough args.
 
     Also extracts any global options that appear in unknown args
@@ -119,19 +131,19 @@ def split_unknown_args(
 
 def global_callback(
     ctx: typer.Context,
-    config: Optional[str] = typer.Option(
+    config: str | None = typer.Option(
         None,
         "-c",
         "--config",
         help="Config name (looks in recipe's config/ dir) or path",
     ),
-    run: Optional[str] = typer.Option(
+    run: str | None = typer.Option(
         None,
         "-r",
         "--run",
         help="Execute attached via nemo-run with specified env profile",
     ),
-    batch: Optional[str] = typer.Option(
+    batch: str | None = typer.Option(
         None,
         "-b",
         "--batch",

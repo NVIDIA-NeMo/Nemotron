@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Core artifact module for nemotron.kit.
 
@@ -62,7 +76,10 @@ class Artifact(BaseModel):
     ]
     producer: Annotated[str | None, Field(default=None, description="Run ID or 'local'")]
     tracking: Annotated[TrackingInfo | None, Field(default=None, description="Tracking metadata")]
-    name: Annotated[str | None, Field(default=None, description="Semantic artifact name (e.g., nano3/pretrain/data)")]
+    name: Annotated[
+        str | None,
+        Field(default=None, description="Semantic artifact name (e.g., nano3/pretrain/data)"),
+    ]
 
     # === Private registry state ===
     _name: str | None = None
@@ -75,9 +92,7 @@ class Artifact(BaseModel):
 
         These are fields defined in subclasses but not in Artifact base.
         """
-        base_fields = {
-            "path", "type", "metadata", "created_at", "producer", "tracking", "name"
-        }
+        base_fields = {"path", "type", "metadata", "created_at", "producer", "tracking", "name"}
         if hasattr(cls, "model_fields"):
             return set(cls.model_fields.keys()) - base_fields
         return set()
@@ -349,12 +364,20 @@ class DataBlendsArtifact(Artifact):
 
     total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
-    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+    elapsed_sec: Annotated[
+        float, Field(default=0.0, ge=0, description="Processing time in seconds")
+    ]
 
     # Per-split token counts (optional, populated in per-split mode)
-    train_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in train split")]
-    valid_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in valid split")]
-    test_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in test split")]
+    train_tokens: Annotated[
+        int | None, Field(default=None, ge=0, description="Tokens in train split")
+    ]
+    valid_tokens: Annotated[
+        int | None, Field(default=None, ge=0, description="Tokens in valid split")
+    ]
+    test_tokens: Annotated[
+        int | None, Field(default=None, ge=0, description="Tokens in test split")
+    ]
 
     # Source datasets for lineage tracking
     # Accepts InputDatasetInfo (with metadata) or str (URI only, for backwards compat)
@@ -362,9 +385,7 @@ class DataBlendsArtifact(Artifact):
         list[InputDatasetInfo | str],
         Field(default_factory=list, description="Input datasets with metadata"),
     ]
-    tokenizer_uri: Annotated[
-        str | None, Field(default=None, description="URI of tokenizer model")
-    ]
+    tokenizer_uri: Annotated[str | None, Field(default=None, description="URI of tokenizer model")]
 
     def save(self, name: str | None = None) -> None:
         """Save artifact metadata to path's parent directory.
@@ -440,7 +461,9 @@ class PretrainBlendsArtifact(Artifact):
 
     total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
-    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+    elapsed_sec: Annotated[
+        float, Field(default=0.0, ge=0, description="Processing time in seconds")
+    ]
 
     # Sharding configuration
     num_shards: Annotated[int, Field(ge=1, description="Number of output shards")]
@@ -449,18 +472,22 @@ class PretrainBlendsArtifact(Artifact):
     blend_path: Annotated[str | None, Field(default=None, description="Path to blend.json file")]
 
     # Per-split token counts (optional, populated in per-split mode)
-    train_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in train split")]
-    valid_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in valid split")]
-    test_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in test split")]
+    train_tokens: Annotated[
+        int | None, Field(default=None, ge=0, description="Tokens in train split")
+    ]
+    valid_tokens: Annotated[
+        int | None, Field(default=None, ge=0, description="Tokens in valid split")
+    ]
+    test_tokens: Annotated[
+        int | None, Field(default=None, ge=0, description="Tokens in test split")
+    ]
 
     # Source datasets for lineage tracking
     source_datasets: Annotated[
         list[InputDatasetInfo | str],
         Field(default_factory=list, description="Input datasets with metadata"),
     ]
-    tokenizer_uri: Annotated[
-        str | None, Field(default=None, description="URI of tokenizer model")
-    ]
+    tokenizer_uri: Annotated[str | None, Field(default=None, description="URI of tokenizer model")]
 
     def save(self, name: str | None = None) -> None:
         """Save artifact metadata to output directory.
@@ -534,7 +561,9 @@ class SFTDataArtifact(Artifact):
 
     total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
     total_sequences: Annotated[int, Field(ge=0, description="Total sequences after packing")]
-    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+    elapsed_sec: Annotated[
+        float, Field(default=0.0, ge=0, description="Processing time in seconds")
+    ]
 
     # Packing configuration
     pack_size: Annotated[int, Field(ge=1, description="Maximum tokens per packed sequence")]
@@ -544,9 +573,7 @@ class SFTDataArtifact(Artifact):
         list[InputDatasetInfo | str],
         Field(default_factory=list, description="Input datasets with metadata"),
     ]
-    tokenizer_uri: Annotated[
-        str | None, Field(default=None, description="URI of tokenizer model")
-    ]
+    tokenizer_uri: Annotated[str | None, Field(default=None, description="URI of tokenizer model")]
 
     def save(self, name: str | None = None) -> None:
         """Save artifact metadata to output directory."""
@@ -613,7 +640,9 @@ class PretrainDataArtifact(Artifact):
 
     total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
-    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+    elapsed_sec: Annotated[
+        float, Field(default=0.0, ge=0, description="Processing time in seconds")
+    ]
 
     # Sharding configuration
     num_shards: Annotated[int, Field(ge=1, description="Number of output shards")]
@@ -623,9 +652,7 @@ class PretrainDataArtifact(Artifact):
         list[InputDatasetInfo | str],
         Field(default_factory=list, description="Input datasets with metadata"),
     ]
-    tokenizer_uri: Annotated[
-        str | None, Field(default=None, description="URI of tokenizer model")
-    ]
+    tokenizer_uri: Annotated[str | None, Field(default=None, description="URI of tokenizer model")]
 
     def save(self, name: str | None = None) -> None:
         """Save artifact metadata to output directory."""
@@ -693,7 +720,9 @@ class SplitJsonlDataArtifact(Artifact):
     """
 
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
-    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+    elapsed_sec: Annotated[
+        float, Field(default=0.0, ge=0, description="Processing time in seconds")
+    ]
 
     # Source datasets for lineage tracking
     source_datasets: Annotated[

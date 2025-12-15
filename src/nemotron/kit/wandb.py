@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
@@ -98,9 +112,7 @@ def init_wandb_if_configured(
     try:
         import wandb
     except ImportError:
-        raise ImportError(
-            "wandb is required for W&B tracking. Install with: pip install wandb"
-        )
+        raise ImportError("wandb is required for W&B tracking. Install with: pip install wandb")
 
     if wandb.run is None:
         # Merge config tags with additional tags
@@ -344,10 +356,10 @@ def patch_wandb_runid_for_seeded_random() -> None:
     _independent_random = random_module.Random()
     _independent_random.seed(os.urandom(32))  # Seed from OS entropy
 
-    _ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789"
+    id_chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 
     def patched_generate_fast_id(length: int = 8) -> str:
-        return "".join(_independent_random.choices(_ID_CHARS, k=length))
+        return "".join(_independent_random.choices(id_chars, k=length))
 
     # Patch both the source module AND the artifact module's imported reference
     runid.generate_fast_id = patched_generate_fast_id
@@ -364,7 +376,7 @@ def patch_wandb_checkpoint_logging() -> None:
     ensure artifacts are committed immediately.
     """
     from pathlib import Path
-    from typing import Any, Optional
+    from typing import Any
 
     global _CHECKPOINT_LOGGING_PATCHED
     if _CHECKPOINT_LOGGING_PATCHED:
@@ -376,7 +388,7 @@ def patch_wandb_checkpoint_logging() -> None:
         checkpoint_path: str,
         save_dir: str,
         iteration: int,
-        wandb_writer: Optional[Any],
+        wandb_writer: Any | None,
     ) -> None:
         if not wandb_writer or not wandb_writer.run:
             return
@@ -401,7 +413,9 @@ def patch_wandb_checkpoint_logging() -> None:
 
             # Write tracker file for later reference
             wandb_tracker_filename = wandb_utils._get_wandb_artifact_tracker_filename(save_dir)
-            wandb_tracker_filename.write_text(f"{wandb_writer.run.entity}/{wandb_writer.run.project}")
+            wandb_tracker_filename.write_text(
+                f"{wandb_writer.run.entity}/{wandb_writer.run.project}"
+            )
         except Exception as e:
             logger.error(f"[WANDB] Failed to log checkpoint artifact: {e}")
 
@@ -475,7 +489,9 @@ def patch_nemo_rl_checkpoint_logging() -> None:
 
             # Wait for commit to ensure artifact is visible immediately
             logged.wait()
-            logger.info(f"[WANDB] RL checkpoint artifact committed: {artifact_name}:{artifact_version}")
+            logger.info(
+                f"[WANDB] RL checkpoint artifact committed: {artifact_name}:{artifact_version}"
+            )
 
         except Exception as e:
             logger.error(f"[WANDB] Failed to log RL checkpoint artifact: {e}")

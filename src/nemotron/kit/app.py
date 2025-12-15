@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
@@ -28,9 +42,18 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field, make_dataclass
 from pathlib import Path
-from typing import Annotated, Any, Callable, Union, get_args, get_origin, get_type_hints, is_typeddict
+from typing import (
+    Annotated,
+    Any,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+    is_typeddict,
+)
 
 import tyro
 from tyro.conf import OmitArgPrefixes, OmitSubcommandPrefixes, subcommand
@@ -57,7 +80,7 @@ class GlobalOptions:
         tyro.conf.arg(
             name="run",
             aliases=("-r",),
-            help="Execute via nemo-run with profile from run.toml. Use --run.<key> to override profile values.",
+            help="Execute via nemo-run with profile from run.toml. Use --run.<key> to override.",
         ),
     ] = None
 
@@ -242,8 +265,19 @@ class App:
         """
         self.name = name
         self.description = description
-        # Commands: (name, config, handler, description, artifacts, defaults_fn, kwargs_schema, script_path)
-        self._commands: list[tuple[str, type, Callable, str, dict[str, ArtifactInput] | None, Callable[..., Any] | None, type | None, str | None]] = []
+        # Commands tuple: (name, config, handler, desc, artifacts, defaults_fn, kwargs, path)
+        self._commands: list[
+            tuple[
+                str,
+                type,
+                Callable,
+                str,
+                dict[str, ArtifactInput] | None,
+                Callable[..., Any] | None,
+                type | None,
+                str | None,
+            ]
+        ] = []
         self._groups: dict[str, App] = {}
         # Script paths for direct execution (subcommand -> script_path)
         self._script_paths: dict[str, str] = {}
@@ -328,14 +362,31 @@ class App:
         """
         if kwargs_schema is not None and defaults_fn is None:
             raise ValueError("kwargs_schema requires defaults_fn to be set")
-        self._commands.append((name, config, handler, description or config.__doc__ or "", artifacts, defaults_fn, kwargs_schema, script_path))
+        self._commands.append(
+            (
+                name,
+                config,
+                handler,
+                description or config.__doc__ or "",
+                artifacts,
+                defaults_fn,
+                kwargs_schema,
+                script_path,
+            )
+        )
         if script_path is not None:
             self._script_paths[name] = script_path
 
     def _build_union(
         self, include_global_options: bool = False
-    ) -> tuple[type, dict[type, Callable], dict[type, dict[str, ArtifactInput] | None], dict[type, Callable[..., Any] | None], dict[type, type | None]]:
-        """Build Union type, handler mapping, artifacts mapping, defaults_fn mapping, and kwargs_schema mapping for tyro.
+    ) -> tuple[
+        type,
+        dict[type, Callable],
+        dict[type, dict[str, ArtifactInput] | None],
+        dict[type, Callable[..., Any] | None],
+        dict[type, type | None],
+    ]:
+        """Build Union type and handler/artifacts/defaults_fn/kwargs_schema mappings for tyro.
 
         Args:
             include_global_options: Whether to include GlobalOptions in leaf commands
@@ -353,7 +404,16 @@ class App:
         union_members: list[type] = []
 
         # Add direct commands
-        for name, config, handler, desc, artifacts, defaults_fn, kwargs_schema, _script_path in self._commands:
+        for (
+            name,
+            config,
+            handler,
+            desc,
+            artifacts,
+            defaults_fn,
+            kwargs_schema,
+            _script_path,
+        ) in self._commands:
             if include_global_options:
                 # Create a wrapper that includes both config and global options
                 # Command config first, global options last (appears at bottom of help)
@@ -387,7 +447,9 @@ class App:
                     frozen=True,
                 )
                 wrapper.__doc__ = config.__doc__
-                annotated = Annotated[wrapper, subcommand(name=name, description=desc, prefix_name=False)]
+                annotated = Annotated[
+                    wrapper, subcommand(name=name, description=desc, prefix_name=False)
+                ]
                 union_members.append(annotated)
                 # Store both wrapper and config -> handler mapping
                 # (wrapper for lookup before unwrap, config for lookup after unwrap)
@@ -400,7 +462,9 @@ class App:
                 # Store kwargs_schema for the unwrapped config type
                 kwargs_schema_map[config] = kwargs_schema
             else:
-                annotated = Annotated[config, subcommand(name=name, description=desc, prefix_name=False)]
+                annotated = Annotated[
+                    config, subcommand(name=name, description=desc, prefix_name=False)
+                ]
                 union_members.append(annotated)
                 handlers[config] = handler
                 artifacts_map[config] = artifacts
@@ -409,7 +473,9 @@ class App:
 
         # Add groups as wrapper dataclasses
         for group_name, group_app in self._groups.items():
-            group_union, group_handlers, group_artifacts, group_defaults_fn, group_kwargs_schema = group_app._build_union(include_global_options)
+            group_union, group_handlers, group_artifacts, group_defaults_fn, group_kwargs_schema = (
+                group_app._build_union(include_global_options)
+            )
             handlers.update(group_handlers)
             artifacts_map.update(group_artifacts)
             defaults_fn_map.update(group_defaults_fn)
@@ -423,25 +489,44 @@ class App:
             )
             wrapper.__doc__ = group_app.description or ""
 
-            annotated = Annotated[wrapper, subcommand(name=group_name, description=group_app.description, prefix_name=False)]
+            annotated = Annotated[
+                wrapper,
+                subcommand(name=group_name, description=group_app.description, prefix_name=False),
+            ]
             union_members.append(annotated)
             # Mark wrapper for unwrapping (handler=None signals it's a wrapper)
             handlers[wrapper] = None  # type: ignore
 
-        return Union[tuple(union_members)], handlers, artifacts_map, defaults_fn_map, kwargs_schema_map  # type: ignore
+        # Build union from tuple of members - must use Union[] for dynamic construction
+        union_type: type = Union[tuple(union_members)]  # type: ignore[valid-type]  # noqa: UP007
+        return (
+            union_type,
+            handlers,
+            artifacts_map,
+            defaults_fn_map,
+            kwargs_schema_map,
+        )
 
     def build(
         self, include_global_options: bool = False
-    ) -> tuple[type, dict[type, Callable], dict[type, dict[str, ArtifactInput] | None], dict[type, Callable[..., Any] | None], dict[type, type | None]]:
-        """Build the tyro-compatible Union type, handler mapping, artifacts mapping, defaults_fn mapping, and kwargs_schema mapping.
+    ) -> tuple[
+        type,
+        dict[type, Callable],
+        dict[type, dict[str, ArtifactInput] | None],
+        dict[type, Callable[..., Any] | None],
+        dict[type, type | None],
+    ]:
+        """Build the tyro-compatible Union type and all mappings.
 
         Args:
             include_global_options: Whether to include GlobalOptions in leaf commands
 
         Returns:
-            Tuple of (annotated Union type for tyro.cli, handler mapping, artifacts mapping, defaults_fn mapping, kwargs_schema mapping)
+            Tuple of (annotated Union type, handler map, artifacts map, defaults_fn map, kwargs map)
         """
-        union_type, handlers, artifacts_map, defaults_fn_map, kwargs_schema_map = self._build_union(include_global_options)
+        union_type, handlers, artifacts_map, defaults_fn_map, kwargs_schema_map = self._build_union(
+            include_global_options
+        )
         # Create annotated type for tyro.cli - OmitArgPrefixes removes prefixes from args
         annotated_union = Annotated[union_type, OmitArgPrefixes]  # type: ignore
         return annotated_union, handlers, artifacts_map, defaults_fn_map, kwargs_schema_map
@@ -450,7 +535,7 @@ class App:
         """Get the script path for a subcommand.
 
         Args:
-            subcommand_parts: List of subcommand parts (e.g., ['pretrain'] or ['data', 'prep', 'pretrain'])
+            subcommand_parts: List of subcommand parts (e.g., ['pretrain'])
 
         Returns:
             Script path if the command has one, None otherwise.
@@ -492,7 +577,8 @@ class App:
             return
 
         # Read stdin artifacts if piped (for pipeline composition)
-        from nemotron.kit.config import _read_stdin_artifacts, _load_artifact_metadata
+        from nemotron.kit.config import _read_stdin_artifacts
+
         stdin_artifacts = _read_stdin_artifacts()
 
         # Pre-process: extract config file path (but don't load yet - we need the config class)
@@ -504,8 +590,10 @@ class App:
         # This allows users to use either: sample=1000 or --sample 1000
         filtered_args = _convert_hydra_to_tyro_args(filtered_args)
 
-        # Build tyro Union type, handler mapping, artifacts mapping, defaults_fn mapping, and kwargs_schema mapping with global options
-        union_type, handlers, artifacts_map, defaults_fn_map, kwargs_schema_map = self.build(include_global_options=True)
+        # Build tyro Union type and all mappings with global options
+        union_type, handlers, artifacts_map, defaults_fn_map, kwargs_schema_map = self.build(
+            include_global_options=True
+        )
 
         # Run tyro directly on the Union type (not a function) for cleaner help output
         # tyro now parses --art.<name>, --fn.<name> options directly
@@ -565,19 +653,14 @@ class App:
 
         # Call defaults_fn if provided with combined kwargs
         if defaults_fn is not None and fn_kwargs:
-            # Call defaults_fn with extracted kwargs
-            # Note: The result is used as defaults, but since tyro already parsed,
-            # we apply any values from defaults_fn that weren't overridden by CLI
-            default_config = defaults_fn(**fn_kwargs)
-            # For now, we just invoke defaults_fn for its side effects and tracking
+            # Call defaults_fn with extracted kwargs for its side effects and tracking
             # The actual config values come from tyro parsing and artifact application below
+            defaults_fn(**fn_kwargs)
 
         # Apply artifact references to config by constructing art:// URIs
         # and letting the resolve_artifact_uri function handle resolution
         if (art_refs or stdin_artifacts) and artifacts:
-            config = _apply_artifact_refs_to_config(
-                config, art_refs, stdin_artifacts, artifacts
-            )
+            config = _apply_artifact_refs_to_config(config, art_refs, stdin_artifacts, artifacts)
 
         # Display compiled configuration (always, like pretrain)
         _display_config(config, global_options)
@@ -590,11 +673,13 @@ class App:
         if global_options is not None and global_options.wandb_project is not None:
             # CLI args take precedence
             from nemotron.kit.wandb import init_wandb_if_configured
+
             init_wandb_if_configured(global_options.to_wandb_config(), job_type="cli")
         else:
             # Try loading from run.toml [wandb] section
             from nemotron.kit.run import load_wandb_config
             from nemotron.kit.wandb import init_wandb_if_configured
+
             wandb_config = load_wandb_config()
             if wandb_config is not None:
                 init_wandb_if_configured(wandb_config, job_type="cli")
@@ -728,7 +813,10 @@ def _extract_run_args(args: list[str]) -> tuple[str | None, dict[str, str], list
 
     # Validate mutual exclusivity
     if run_name is not None and launch_name is not None:
-        raise ValueError("--run and --batch are mutually exclusive. Use --run for attached execution or --batch for detached execution.")
+        raise ValueError(
+            "--run and --batch are mutually exclusive. "
+            "Use --run for attached execution or --batch for detached execution."
+        )
 
     # Determine final name and whether launch mode is active
     is_launch = launch_name is not None
@@ -788,7 +876,6 @@ def _apply_artifact_refs_to_config(
     Returns:
         Updated config with artifact paths resolved
     """
-    from dataclasses import fields as dataclass_fields, replace
     from nemotron.kit.config import resolve_artifact_uri
 
     updates: dict[str, Any] = {}
@@ -907,7 +994,7 @@ def _apply_nested_updates(config: Any, updates: dict[str, Any]) -> Any:
     Returns:
         Updated config
     """
-    from dataclasses import replace, is_dataclass
+    from dataclasses import is_dataclass, replace
 
     flat_updates = {}
     for key, value in updates.items():
@@ -952,11 +1039,7 @@ def _build_art_uri(ref: str, default_name: str) -> str:
         return ref
 
     # Check if it's a version-only reference (e.g., "v10", "latest", "10")
-    is_version_only = (
-        ref == "latest"
-        or ref.startswith("v") and ref[1:].isdigit()
-        or ref.isdigit()
-    )
+    is_version_only = ref == "latest" or ref.startswith("v") and ref[1:].isdigit() or ref.isdigit()
 
     if is_version_only:
         # Use default artifact name with the version
@@ -1047,12 +1130,14 @@ def _display_config(config: Any, global_options: GlobalOptions | None) -> None:
     if run_info:
         yaml_str = yaml.dump(run_info, default_flow_style=False, sort_keys=False)
         syntax = Syntax(yaml_str.rstrip(), "yaml", theme=theme, line_numbers=False)
-        console.print(Panel(
-            syntax,
-            title="[bold green]run[/bold green]",
-            border_style="green",
-            expand=False,
-        ))
+        console.print(
+            Panel(
+                syntax,
+                title="[bold green]run[/bold green]",
+                border_style="green",
+                expand=False,
+            )
+        )
         console.print()
 
     # Display config
@@ -1062,12 +1147,14 @@ def _display_config(config: Any, global_options: GlobalOptions | None) -> None:
         config_dict = _convert_paths_to_strings(config_dict)
         yaml_str = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
         syntax = Syntax(yaml_str.rstrip(), "yaml", theme=theme, line_numbers=False)
-        console.print(Panel(
-            syntax,
-            title="[bold green]config[/bold green]",
-            border_style="green",
-            expand=False,
-        ))
+        console.print(
+            Panel(
+                syntax,
+                title="[bold green]config[/bold green]",
+                border_style="green",
+                expand=False,
+            )
+        )
         console.print()
 
 
@@ -1096,7 +1183,7 @@ def _get_script_config_path(subcommand_parts: list[str]) -> Path | None:
     if parts and parts[0] == "nano3":
         parts = parts[1:]
 
-    # Handle data prep commands: ['data', 'prep', 'pretrain'] -> stage0_pretrain/config/data_prep.yaml
+    # Handle data prep: ['data', 'prep', 'pretrain'] -> stage0_pretrain/config/data_prep.yaml
     if len(parts) >= 3 and parts[0] == "data" and parts[1] == "prep":
         stage = parts[2]  # e.g., "pretrain", "sft", "rl"
 
@@ -1132,7 +1219,6 @@ def _display_script_config(
         console: Rich console instance
         theme: Syntax highlighting theme
     """
-    import yaml
     from rich.panel import Panel
     from rich.syntax import Syntax
 
@@ -1142,11 +1228,12 @@ def _display_script_config(
         return
 
     try:
+        from omegaconf import OmegaConf
+
         from nemotron.kit.train_script import (
             apply_hydra_overrides,
             load_omegaconf_yaml,
         )
-        from omegaconf import OmegaConf
 
         # Load base config
         config = load_omegaconf_yaml(config_path)
@@ -1192,12 +1279,14 @@ def _display_script_config(
         yaml_str = OmegaConf.to_yaml(config, resolve=True)
 
         syntax = Syntax(yaml_str.rstrip(), "yaml", theme=theme, line_numbers=False)
-        console.print(Panel(
-            syntax,
-            title="[bold green]config[/bold green]",
-            border_style="green",
-            expand=False,
-        ))
+        console.print(
+            Panel(
+                syntax,
+                title="[bold green]config[/bold green]",
+                border_style="green",
+                expand=False,
+            )
+        )
         console.print()
 
     except Exception:
@@ -1252,12 +1341,35 @@ def _display_run_config(
     # Add all non-None env fields from the profile
     # These are all the Slurm/executor-related fields
     env_fields = [
-        "account", "partition", "run_partition", "batch_partition", "time",
-        "job_name", "nodes", "nproc_per_node", "ntasks_per_node", "gpus_per_node",
-        "mem", "exclusive", "cpus_per_task", "cpus_per_gpu", "gpus_per_task",
-        "mem_per_gpu", "mem_per_cpu", "qos", "constraint", "exclude", "gres", "array",
-        "tunnel", "host", "user", "identity", "remote_job_dir",
-        "container_image", "mounts",
+        "account",
+        "partition",
+        "run_partition",
+        "batch_partition",
+        "time",
+        "job_name",
+        "nodes",
+        "nproc_per_node",
+        "ntasks_per_node",
+        "gpus_per_node",
+        "mem",
+        "exclusive",
+        "cpus_per_task",
+        "cpus_per_gpu",
+        "gpus_per_task",
+        "mem_per_gpu",
+        "mem_per_cpu",
+        "qos",
+        "constraint",
+        "exclude",
+        "gres",
+        "array",
+        "tunnel",
+        "host",
+        "user",
+        "identity",
+        "remote_job_dir",
+        "container_image",
+        "mounts",
     ]
     for field_name in env_fields:
         value = getattr(profile, field_name, None)
@@ -1295,19 +1407,27 @@ def _display_run_config(
 
     yaml_str = yaml.dump(run_info, default_flow_style=False, sort_keys=False)
     syntax = Syntax(yaml_str.rstrip(), "yaml", theme=theme, line_numbers=False)
-    console.print(Panel(
-        syntax,
-        title="[bold green]run[/bold green]",
-        border_style="green",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            syntax,
+            title="[bold green]run[/bold green]",
+            border_style="green",
+            expand=False,
+        )
+    )
     console.print()
 
     # Display data prep config panel if this is a data prep command
     _display_script_config(subcommand_parts, script_args, console, theme)
 
 
-def _execute_with_nemo_run(run_name: str, overrides: dict[str, str], remaining_args: list[str], is_launch: bool = False, app: "App | None" = None) -> None:
+def _execute_with_nemo_run(
+    run_name: str,
+    overrides: dict[str, str],
+    remaining_args: list[str],
+    is_launch: bool = False,
+    app: App | None = None,
+) -> None:
     """Execute command via nemo-run with the specified profile.
 
     Args:
@@ -1317,7 +1437,13 @@ def _execute_with_nemo_run(run_name: str, overrides: dict[str, str], remaining_a
         is_launch: If True, force detach=True for detached execution
         app: Optional App instance for looking up script paths
     """
-    from nemotron.kit.run import load_run_profile, load_wandb_config, build_executor, run_with_nemo_run, resolve_partition
+    from nemotron.kit.run import (
+        build_executor,
+        load_run_profile,
+        load_wandb_config,
+        resolve_partition,
+        run_with_nemo_run,
+    )
 
     # Load profile from run.toml
     profile = load_run_profile(run_name)
@@ -1340,11 +1466,11 @@ def _execute_with_nemo_run(run_name: str, overrides: dict[str, str], remaining_a
         if hasattr(profile, key):
             # Handle type conversion for common types
             field_type = type(getattr(profile, key))
-            if field_type == bool:
+            if field_type is bool:
                 value = value.lower() in ("true", "1", "yes")
-            elif field_type == int:
+            elif field_type is int:
                 value = int(value)
-            elif field_type == list:
+            elif field_type is list:
                 value = value.split(",") if value else []
             setattr(profile, key, value)
         else:
@@ -1387,7 +1513,7 @@ def _execute_with_nemo_run(run_name: str, overrides: dict[str, str], remaining_a
             # Direct script execution - use relative path from workdir
             # nemo-run's SlurmRayJob rsyncs to {cluster_dir}/code and sets workdir there
             # so we can use relative paths directly (no /nemo_run mount for Ray jobs)
-            script_args = remaining_args[len(subcommand_parts):]
+            script_args = remaining_args[len(subcommand_parts) :]
             run_with_nemo_run(
                 script_path=direct_script_path,
                 script_args=script_args,
@@ -1416,6 +1542,7 @@ def _execute_with_nemo_run(run_name: str, overrides: dict[str, str], remaining_a
             print("Error: nemo-run is required for --run support")
             print("Install with: pip install nemo-run")
             import sys
+
             sys.exit(1)
 
         with run.Experiment(experiment_name) as exp:
@@ -1432,7 +1559,7 @@ def _execute_with_nemo_run(run_name: str, overrides: dict[str, str], remaining_a
             # Direct script execution - no pip install needed
             # Script only depends on megatron-bridge which is in the container
             # Extract script args (everything after the subcommand)
-            script_args = remaining_args[len(subcommand_parts):]
+            script_args = remaining_args[len(subcommand_parts) :]
             # Script path is relative to /nemo_run/code
             container_script_path = f"/nemo_run/code/{direct_script_path}"
 
@@ -1453,14 +1580,15 @@ def _check_module_ray_flag(subcommand_parts: list[str]) -> bool:
     Returns:
         True if the module has RAY = True, False otherwise.
     """
-    # Map CLI subcommands to module paths
-    # e.g., ['nano3', 'data', 'prep', 'pretrain'] -> nemotron.recipes.nano3.stage0_pretrain.data_prep
+    # Map CLI subcommands to module paths (e.g., ['nano3', 'data', 'prep', 'pretrain']
+    # -> nemotron.recipes.nano3.stage0_pretrain.data_prep)
     module_path = _subcommand_to_module(subcommand_parts)
     if module_path is None:
         return False
 
     try:
         import importlib
+
         module = importlib.import_module(module_path)
         return getattr(module, "RAY", False)
     except (ImportError, AttributeError):
@@ -1585,7 +1713,9 @@ def _filter_config_file_args(args: list[str]) -> list[str]:
 
         if arg in ("--config-file", "-c", "--config") and i + 1 < len(args):
             i += 2  # Skip flag and value
-        elif arg.startswith("--config-file=") or arg.startswith("--config=") or arg.startswith("-c="):
+        elif (
+            arg.startswith("--config-file=") or arg.startswith("--config=") or arg.startswith("-c=")
+        ):
             i += 1  # Skip combined flag=value
         else:
             filtered.append(arg)

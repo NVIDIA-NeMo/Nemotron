@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
@@ -143,7 +157,7 @@ class SelfContainedPackager(Packager):
             # Check if it's a /nemo_run/code path
             if obj.startswith(self.remote_code_dir + "/"):
                 # Extract relative path after /nemo_run/code/
-                rel_path = obj[len(self.remote_code_dir) + 1:]
+                rel_path = obj[len(self.remote_code_dir) + 1 :]
                 local_path = repo_root / rel_path
                 # If the local file exists, add to extra_files
                 if local_path.exists() and local_path.is_file():
@@ -392,8 +406,7 @@ def inline_imports(
                     for alias in node.names:
                         if alias.name == "*":
                             raise ValueError(
-                                "Star import not supported in SelfContainedPackager: "
-                                f"{entry_path}"
+                                f"Star import not supported in SelfContainedPackager: {entry_path}"
                             )
                         if alias.asname and alias.asname != alias.name:
                             entry_alias_assignments.append(f"{alias.asname} = {alias.name}\n")
@@ -482,9 +495,7 @@ def inline_imports(
         exports = sorted(block.exports)
         if exports:
             args = ", ".join(f"{n}={n}" for n in exports)
-            out.append(
-                f"__nemotron_namespaces['{block.module}'] = types.SimpleNamespace({args})\n"
-            )
+            out.append(f"__nemotron_namespaces['{block.module}'] = types.SimpleNamespace({args})\n")
         else:
             out.append(f"__nemotron_namespaces['{block.module}'] = types.SimpleNamespace()\n")
         out.append(f"# --- end inlined: {block.module} ---\n\n")

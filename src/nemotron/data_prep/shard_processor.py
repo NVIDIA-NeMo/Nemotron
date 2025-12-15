@@ -1,9 +1,23 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """ShardProcessor Ray actor for parallel shard processing."""
 
 import json
 import logging
 import time
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
 import pyarrow.parquet as pq
@@ -103,9 +117,7 @@ class ShardProcessor:
 
             # Process files SEQUENTIALLY for determinism
             for file_info in files:
-                rows_processed = self._process_file(
-                    file_info, builder, stats, fs, rows_processed
-                )
+                rows_processed = self._process_file(file_info, builder, stats, fs, rows_processed)
                 # Stop if we've hit max_rows
                 if self.max_rows and rows_processed >= self.max_rows:
                     break
@@ -207,9 +219,7 @@ class ShardProcessor:
         hit_max_rows = False
 
         # Parquet iterator yields (texts, num_filtered) tuples
-        for texts, num_filtered_by_length in self._iter_parquet_batches_from_path(
-            local_path, fs
-        ):
+        for texts, num_filtered_by_length in self._iter_parquet_batches_from_path(local_path, fs):
             if hit_max_rows:
                 break
 
@@ -467,7 +477,7 @@ class ShardProcessor:
                     if line.strip():
                         yield json.loads(line)
         else:
-            with open(path, "r") as f:
+            with open(path) as f:
                 for line in f:
                     if line.strip():
                         yield json.loads(line)

@@ -1,7 +1,20 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Rich console utilities for pipeline output."""
 
 from dataclasses import dataclass, field
-from typing import Callable
 
 from rich.console import Console, Group
 from rich.live import Live
@@ -45,11 +58,14 @@ def planning_header() -> None:
     console.print("[bold]Planning...[/bold]")
 
 
-def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int | None = None) -> None:
+def plan_summary(
+    datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int | None = None
+) -> None:
     """Print a summary table of all dataset plans."""
     # Resolve num_actors to actual value (auto-detect if None)
     if num_actors is None:
         import os
+
         cpu_count = os.cpu_count() or 4
         num_actors = max(2, min(32, int(cpu_count * 0.75)))
 
@@ -93,13 +109,15 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
         if has_hf_metadata:
             row.append(ds.hf_size or "-")
             row.append(ds.hf_rows or "-")
-        row.extend([
-            str(ds.num_shards),
-            str(ds.num_files),
-            cached_str,
-            str(pending) if pending > 0 else "-",
-            status,
-        ])
+        row.extend(
+            [
+                str(ds.num_shards),
+                str(ds.num_files),
+                cached_str,
+                str(pending) if pending > 0 else "-",
+                status,
+            ]
+        )
 
         table.add_row(*row)
 
@@ -107,13 +125,15 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
         wandb_row = [ds.name]
         if has_hf_metadata:
             wandb_row.extend([ds.hf_size or "-", ds.hf_rows or "-"])
-        wandb_row.extend([
-            ds.num_shards,
-            ds.num_files,
-            ds.cached if ds.cached > 0 else 0,
-            pending if pending > 0 else 0,
-            status_plain,
-        ])
+        wandb_row.extend(
+            [
+                ds.num_shards,
+                ds.num_files,
+                ds.cached if ds.cached > 0 else 0,
+                pending if pending > 0 else 0,
+                status_plain,
+            ]
+        )
         wandb_rows.append(wandb_row)
 
     console.print(table)
@@ -130,7 +150,9 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
     console.print()
 
     # Log to W&B if active
-    _log_plan_to_wandb(wandb_rows, has_hf_metadata, run_hash, num_actors, total_pending, total_cached)
+    _log_plan_to_wandb(
+        wandb_rows, has_hf_metadata, run_hash, num_actors, total_pending, total_cached
+    )
 
 
 def _log_plan_to_wandb(
@@ -158,14 +180,16 @@ def _log_plan_to_wandb(
         wandb_table = wandb.Table(columns=columns, data=rows)
 
         # Log the table
-        wandb.log({
-            "data_prep/execution_plan": wandb_table,
-            "data_prep/run_hash": run_hash,
-            "data_prep/num_workers": num_actors,
-            "data_prep/total_pending_shards": total_pending,
-            "data_prep/total_cached_shards": total_cached,
-            "data_prep/num_datasets": len(rows),
-        })
+        wandb.log(
+            {
+                "data_prep/execution_plan": wandb_table,
+                "data_prep/run_hash": run_hash,
+                "data_prep/num_workers": num_actors,
+                "data_prep/total_pending_shards": total_pending,
+                "data_prep/total_cached_shards": total_cached,
+                "data_prep/num_datasets": len(rows),
+            }
+        )
     except ImportError:
         pass
     except Exception:
@@ -335,7 +359,9 @@ class LiveExecutionStatus:
                     "data_prep/progress/datasets_done": done,
                     "data_prep/progress/datasets_cached": cached,
                     "data_prep/progress/datasets_pending": pending,
-                    "data_prep/progress/completion_pct": (completed / total * 100) if total > 0 else 0,
+                    "data_prep/progress/completion_pct": (completed / total * 100)
+                    if total > 0
+                    else 0,
                     "data_prep/progress/tokens": self._total_tokens,
                     "data_prep/progress/tokens_per_sec": tokens_per_sec,
                     "data_prep/progress/elapsed_sec": elapsed,
@@ -479,7 +505,8 @@ class LiveExecutionStatus:
             if ds.completed_shards >= ds.total_shards:
                 line = f"  [green]{status_char}[/green] [green]{ds.name}[/green] [dim]✓[/dim]"
             else:
-                line = f"  [cyan]{status_char}[/cyan] {ds.name} [dim]{ds.completed_shards}/{ds.total_shards}[/dim]"
+                prog = f"{ds.completed_shards}/{ds.total_shards}"
+                line = f"  [cyan]{status_char}[/cyan] {ds.name} [dim]{prog}[/dim]"
             lines.append(Text.from_markup(line))
 
         # Add page indicator if multiple pages
@@ -528,9 +555,7 @@ class LiveExecutionStatus:
             console=console,
             transient=True,
         )
-        self._overall_task_id = self._progress.add_task(
-            "Processing", total=total_shards
-        )
+        self._overall_task_id = self._progress.add_task("Processing", total=total_shards)
 
         self._live = Live(
             self._build_display(),
@@ -594,7 +619,7 @@ class LiveExecutionStatus:
         self.refresh()
         # Force log if this is the last dataset to ensure we capture 100%
         done, cached, pending, processing = self._get_summary_counts()
-        is_last = (pending == 0 and processing == 0)
+        is_last = pending == 0 and processing == 0
         self._log_progress_to_wandb(force=is_last)
 
     def cache_dataset(self, name: str) -> None:
@@ -607,7 +632,7 @@ class LiveExecutionStatus:
         self.refresh()
         # Force log if this is the last dataset to ensure we capture 100%
         done, cached, pending, _ = self._get_summary_counts()
-        is_last = (pending == 0)
+        is_last = pending == 0
         self._log_progress_to_wandb(force=is_last)
 
     def report_tokens(self, name: str, tokens: int) -> None:
@@ -651,9 +676,7 @@ class LiveExecutionStatus:
         self._log_progress_to_wandb()
 
 
-def create_live_status(
-    datasets: list[tuple[str, int]], run_hash: str
-) -> LiveExecutionStatus:
+def create_live_status(datasets: list[tuple[str, int]], run_hash: str) -> LiveExecutionStatus:
     """Create a live execution status tracker.
 
     Args:

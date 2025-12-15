@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """ChatSftShardProcessor Ray actor for parallel chat-templated SFT output processing.
 
 Applies chat templates to OpenAI-format messages, tokenizes with role-based
@@ -15,8 +29,8 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import numpy as np
 import pyarrow.parquet as pq
@@ -179,9 +193,7 @@ class ChatSftShardProcessor:
 
         # Process files SEQUENTIALLY for determinism
         for file_info in file_infos:
-            rows_processed = self._process_file(
-                file_info, builder, stats, fs, rows_processed
-            )
+            rows_processed = self._process_file(file_info, builder, stats, fs, rows_processed)
             # Stop if we've hit max_rows
             if self.max_rows and rows_processed >= self.max_rows:
                 break
@@ -339,9 +351,7 @@ class ChatSftShardProcessor:
             builder.add_sequence(input_ids, loss_mask=loss_mask)
             stats["num_output_sequences"] += 1
 
-    def _tokenize_chunks_with_mask(
-        self, chunks: list[dict]
-    ) -> tuple[list[int], list[int]]:
+    def _tokenize_chunks_with_mask(self, chunks: list[dict]) -> tuple[list[int], list[int]]:
         """Tokenize chunks and generate loss_mask based on role.
 
         Loss mask: 0 for system/user chunks, 1 for assistant chunks.
@@ -394,9 +404,7 @@ class ChatSftShardProcessor:
             parquet_file = pq.ParquetFile(path)
             yield from self._iter_parquet_batches_as_dicts(parquet_file)
 
-    def _iter_parquet_batches_as_dicts(
-        self, parquet_file: pq.ParquetFile
-    ) -> Iterator[dict]:
+    def _iter_parquet_batches_as_dicts(self, parquet_file: pq.ParquetFile) -> Iterator[dict]:
         """Iterate batches from parquet file as dicts."""
         for batch in parquet_file.iter_batches(batch_size=1000):
             table = batch.to_pydict()
@@ -414,7 +422,7 @@ class ChatSftShardProcessor:
                     if line.strip():
                         yield json.loads(line)
         else:
-            with open(path, "r") as f:
+            with open(path) as f:
                 for line in f:
                     if line.strip():
                         yield json.loads(line)

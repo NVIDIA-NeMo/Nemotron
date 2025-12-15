@@ -1,3 +1,17 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Artifact registry for nemotron.kit.
 
@@ -147,9 +161,7 @@ class ArtifactRegistry:
         if index_path.exists():
             with open(index_path) as f:
                 data = json.load(f)
-            self._entries = {
-                name: ArtifactEntry.from_dict(entry) for name, entry in data.items()
-            }
+            self._entries = {name: ArtifactEntry.from_dict(entry) for name, entry in data.items()}
 
     def _save_index(self) -> None:
         """Save registry index to disk."""
@@ -286,9 +298,11 @@ class ArtifactRegistry:
             logged.wait()
 
         # Create version entry
+        entity = self.wandb_entity or logged.entity
+        art_path = f"{entity}/{self.wandb_project}/{name}:{logged.version}"
         version = ArtifactVersion(
             version=int(logged.version.lstrip("v")),
-            path=f"{self.wandb_entity or logged.entity}/{self.wandb_project}/{name}:{logged.version}",
+            path=art_path,
             created_at=datetime.now().astimezone().isoformat(),
             metadata=metadata or {},
         )
@@ -432,9 +446,7 @@ def get_registry() -> ArtifactRegistry:
         RuntimeError: If kit.init() hasn't been called
     """
     if _registry is None:
-        raise RuntimeError(
-            "Artifact registry not initialized. Call kit.init() first."
-        )
+        raise RuntimeError("Artifact registry not initialized. Call kit.init() first.")
     return _registry
 
 

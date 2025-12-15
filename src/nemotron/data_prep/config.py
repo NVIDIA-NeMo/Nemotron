@@ -1,8 +1,23 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Pipeline configuration models."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Literal, Union
+from typing import Literal
 
 import numpy as np
 
@@ -175,9 +190,7 @@ class ChatSftOutputConfig:
 
 
 # Union type for all output formats
-OutputFormat = Union[
-    BinIdxOutputConfig, JsonlOutputConfig, PackedOutputConfig, ChatSftOutputConfig
-]
+OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | PackedOutputConfig | ChatSftOutputConfig
 
 
 @dataclass(frozen=True)
@@ -186,7 +199,7 @@ class OutputConfig:
 
     Attributes:
         dir: Output directory (local path or cloud URI)
-        format: Output format configuration (BinIdxOutputConfig, JsonlOutputConfig, or PackedOutputConfig)
+        format: Output format configuration (BinIdxOutputConfig, JsonlOutputConfig, etc.)
         min_doc_chars: Skip documents shorter than this (for tokenized formats)
         max_doc_tokens: Truncate documents longer than this (for tokenized formats)
         max_rows: Limit rows processed per shard (useful for quick tests)
@@ -241,7 +254,7 @@ class PipelineConfig:
         sample: Shard sampling spec ("10%", "5", or None for all)
         sample_seed: Random seed for sampling
         force: Force new run (ignore cached results)
-        split: Split ratio for single-blend mode (e.g., "99990,8,2"). Deprecated in favor of per_split.
+        split: Split ratio for single-blend mode (e.g., "99990,8,2"). Deprecated.
         per_split: Per-split output configuration for Megatron-Bridge per_split_data_args_path
     """
 
