@@ -1,0 +1,51 @@
+# Default config for pretrain data preparation
+#
+# Usage:
+#   python data_prep.py --config config/data_prep.yaml
+#   python data_prep.py --config config/data_prep.yaml sample=100 force=true
+#
+# Environment variables:
+#   NEMO_RUN_DIR: Output directory root (default: current directory)
+#   PWD: Current working directory (for blend_path resolution)
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_blend_raw.json
+
+# Output directory for tokenized data
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/output/nano3/stage0_pretrain
+
+# Number of output shards for parallel loading
+num_shards: 128
+
+# Number of shards for validation split
+valid_shards: 1
+
+# Number of shards for test split
+test_shards: 1
+
+# HuggingFace tokenizer model name
+tokenizer_model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+
+# Prepend BOS token to documents
+add_bos: false
+
+# Append EOS token to documents
+add_eos: true
+
+# Default text field name in datasets
+text_field: text
+
+# Skip documents shorter than this (null = no limit)
+min_doc_chars: null
+
+# Truncate documents longer than this (null = no limit)
+max_doc_tokens: null
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Ray actors for parallel processing (null = auto)
+num_actors: null
+
+# Force new run, ignoring cache
+force: false

@@ -72,6 +72,9 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
     total_pending = 0
     total_cached = 0
 
+    # Collect data for W&B table
+    wandb_rows = []
+
     for ds in datasets:
         pending = ds.sampled if ds.sampled is not None else ds.pending
         total_pending += pending
@@ -79,8 +82,10 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
 
         if pending == 0:
             status = "[green]cached[/green]"
+            status_plain = "cached"
         else:
             status = f"[yellow]{pending} to process[/yellow]"
+            status_plain = f"{pending} to process"
 
         cached_str = str(ds.cached) if ds.cached > 0 else "-"
 
@@ -98,6 +103,19 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
 
         table.add_row(*row)
 
+        # Build W&B row (without Rich markup)
+        wandb_row = [ds.name]
+        if has_hf_metadata:
+            wandb_row.extend([ds.hf_size or "-", ds.hf_rows or "-"])
+        wandb_row.extend([
+            ds.num_shards,
+            ds.num_files,
+            ds.cached if ds.cached > 0 else 0,
+            pending if pending > 0 else 0,
+            status_plain,
+        ])
+        wandb_rows.append(wandb_row)
+
     console.print(table)
 
     # Summary line
@@ -110,6 +128,48 @@ def plan_summary(datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int
             f"({total_cached} cached). Run hash: [yellow]{run_hash}[/yellow]"
         )
     console.print()
+
+    # Log to W&B if active
+    _log_plan_to_wandb(wandb_rows, has_hf_metadata, run_hash, num_actors, total_pending, total_cached)
+
+
+def _log_plan_to_wandb(
+    rows: list[list],
+    has_hf_metadata: bool,
+    run_hash: str,
+    num_actors: int,
+    total_pending: int,
+    total_cached: int,
+) -> None:
+    """Log execution plan as W&B Table."""
+    try:
+        import wandb
+
+        if wandb.run is None:
+            return
+
+        # Build column names
+        columns = ["Dataset"]
+        if has_hf_metadata:
+            columns.extend(["Size", "Rows"])
+        columns.extend(["Shards", "Files", "Cached", "Pending", "Status"])
+
+        # Create W&B table
+        wandb_table = wandb.Table(columns=columns, data=rows)
+
+        # Log the table
+        wandb.log({
+            "data_prep/execution_plan": wandb_table,
+            "data_prep/run_hash": run_hash,
+            "data_prep/num_workers": num_actors,
+            "data_prep/total_pending_shards": total_pending,
+            "data_prep/total_cached_shards": total_cached,
+            "data_prep/num_datasets": len(rows),
+        })
+    except ImportError:
+        pass
+    except Exception:
+        pass  # Don't fail pipeline on W&B errors
 
 
 def execution_header() -> None:
@@ -193,28 +253,35 @@ class DatasetStatus:
     completed_shards: int = 0
     status: str = "pending"  # pending, processing, cached, complete
     tokens: int = 0  # Tokens processed for this dataset
+    # Compute metrics (updated during processing)
+    rows_processed: int = 0  # Number of rows processed
+    throughput: float = 0.0  # Rows per second
+    start_time: float = 0.0  # When processing started (timestamp)
 
 
 @dataclass
 class LiveExecutionStatus:
     """Manages live status display during pipeline execution.
 
-    Shows a compact 2-line display:
-    - Line 1: Progress bar for current dataset
-    - Line 2: Summary (e.g., "Dataset 3/20 | 5 done, 2 cached, 12 pending")
+    Shows a multi-line display for parallel processing:
+    - Line 1: Overall progress bar (total shards across all datasets)
+    - Line 2+: Active datasets being processed (cycles through 3 at a time)
+    - Last line: Summary stats with page indicator
     """
 
     datasets: list[DatasetStatus] = field(default_factory=list)
     run_hash: str = ""
     _live: Live | None = field(default=None, repr=False)
     _progress: Progress | None = field(default=None, repr=False)
-    _current_task_id: int | None = field(default=None, repr=False)
-    _current_index: int = field(default=0, repr=False)
+    _overall_task_id: int | None = field(default=None, repr=False)
+    _current_page: int = field(default=0, repr=False)  # Current page for cycling display
+    _page_cycle_counter: int = field(default=0, repr=False)  # Counter for auto-cycling
     _wandb_step: int = field(default=0, repr=False)
     _last_wandb_log_time: float = field(default=0.0, repr=False)
     _wandb_log_interval: float = field(default=10.0, repr=False)  # Log every 10 seconds
     _start_time: float = field(default=0.0, repr=False)  # Pipeline start time
     _total_tokens: int = field(default=0, repr=False)  # Cumulative tokens processed
+    _max_display: int = field(default=3, repr=False)  # Max datasets to show per page
 
     def _get_summary_counts(self) -> tuple[int, int, int, int]:
         """Get counts of datasets by status."""
@@ -223,6 +290,12 @@ class LiveExecutionStatus:
         pending = sum(1 for ds in self.datasets if ds.status == "pending")
         processing = sum(1 for ds in self.datasets if ds.status == "processing")
         return done, cached, pending, processing
+
+    def _get_total_shards_progress(self) -> tuple[int, int]:
+        """Get total shards completed and total shards across all datasets."""
+        total_completed = sum(ds.completed_shards for ds in self.datasets)
+        total_shards = sum(ds.total_shards for ds in self.datasets)
+        return total_completed, total_shards
 
     def _log_progress_to_wandb(self, force: bool = False) -> None:
         """Log current progress to W&B for charts.
@@ -278,29 +351,157 @@ class LiveExecutionStatus:
         """Build a compact summary line."""
         done, cached, pending, processing = self._get_summary_counts()
         total = len(self.datasets)
-        current = done + cached + processing
+        completed_shards, total_shards = self._get_total_shards_progress()
 
         parts = []
         if done > 0:
             parts.append(f"[green]{done} done[/green]")
         if cached > 0:
             parts.append(f"[dim]{cached} cached[/dim]")
-        if pending > 0:
-            parts.append(f"[dim]{pending} pending[/dim]")
+        if processing > 0:
+            parts.append(f"[cyan]{processing} active[/cyan]")
 
-        summary = f"[bold]Dataset {current}/{total}[/bold]"
+        summary = f"[bold]Datasets {done + cached}/{total}[/bold]"
         if parts:
             summary += " | " + ", ".join(parts)
 
         return Text.from_markup(summary)
 
+    def _format_tokens(self, tokens: int) -> str:
+        """Format token count in human-readable format."""
+        if tokens >= 1_000_000_000:
+            return f"{tokens / 1_000_000_000:.1f}B"
+        elif tokens >= 1_000_000:
+            return f"{tokens / 1_000_000:.1f}M"
+        elif tokens >= 1_000:
+            return f"{tokens / 1_000:.1f}K"
+        return str(tokens)
+
+    def _format_throughput(self, rows_per_sec: float) -> str:
+        """Format throughput in human-readable format."""
+        if rows_per_sec >= 1_000:
+            return f"{rows_per_sec / 1_000:.1f}K/s"
+        elif rows_per_sec >= 1:
+            return f"{rows_per_sec:.0f}/s"
+        elif rows_per_sec > 0:
+            return f"{rows_per_sec:.2f}/s"
+        return "-"
+
+    def _build_active_datasets_table(self) -> Table | None:
+        """Build a table display for currently active datasets.
+
+        Cycles through pages of datasets like an airport arrival board.
+        Shows max 3 datasets per page with compute metrics.
+        """
+        active = [ds for ds in self.datasets if ds.status == "processing"]
+
+        if not active:
+            return None
+
+        # Calculate pagination
+        total_pages = (len(active) + self._max_display - 1) // self._max_display
+        if total_pages == 0:
+            total_pages = 1
+
+        # Ensure current page is valid
+        if self._current_page >= total_pages:
+            self._current_page = 0
+
+        # Get datasets for current page
+        start_idx = self._current_page * self._max_display
+        end_idx = min(start_idx + self._max_display, len(active))
+        page_datasets = active[start_idx:end_idx]
+
+        # Build page indicator for title
+        if total_pages > 1:
+            dots = " ".join("●" if i == self._current_page else "○" for i in range(total_pages))
+            title = f"Active Tasks  [dim]{dots}[/dim]"
+        else:
+            title = "Active Tasks"
+
+        # Create table
+        table = Table(
+            title=title,
+            box=None,
+            show_header=True,
+            header_style="dim",
+            padding=(0, 1),
+            collapse_padding=True,
+        )
+        table.add_column("Dataset", style="cyan", no_wrap=True, min_width=20)
+        table.add_column("Progress", justify="center", min_width=8)
+        table.add_column("Rows", justify="right", min_width=8)
+        table.add_column("Tokens", justify="right", min_width=8)
+        table.add_column("Speed", justify="right", min_width=8)
+
+        for ds in page_datasets:
+            # Progress indicator
+            if ds.completed_shards >= ds.total_shards:
+                progress = "[green]✓[/green]"
+            else:
+                progress = f"{ds.completed_shards}/{ds.total_shards}"
+
+            # Format metrics
+            rows_str = f"{ds.rows_processed:,}" if ds.rows_processed > 0 else "-"
+            tokens_str = self._format_tokens(ds.tokens) if ds.tokens > 0 else "-"
+            speed_str = self._format_throughput(ds.throughput)
+
+            table.add_row(ds.name, progress, rows_str, tokens_str, speed_str)
+
+        return table
+
+    def _build_active_datasets_display(self) -> list[Text]:
+        """Build display lines for currently active datasets (legacy fallback)."""
+        # This method is kept for compatibility but we now prefer the table
+        active = [ds for ds in self.datasets if ds.status == "processing"]
+        lines = []
+
+        if not active:
+            return lines
+
+        # Calculate pagination
+        total_pages = (len(active) + self._max_display - 1) // self._max_display
+        if total_pages == 0:
+            total_pages = 1
+
+        # Ensure current page is valid
+        if self._current_page >= total_pages:
+            self._current_page = 0
+
+        # Get datasets for current page
+        start_idx = self._current_page * self._max_display
+        end_idx = min(start_idx + self._max_display, len(active))
+        page_datasets = active[start_idx:end_idx]
+
+        for ds in page_datasets:
+            status_char = "●" if ds.completed_shards > 0 else "○"
+
+            if ds.completed_shards >= ds.total_shards:
+                line = f"  [green]{status_char}[/green] [green]{ds.name}[/green] [dim]✓[/dim]"
+            else:
+                line = f"  [cyan]{status_char}[/cyan] {ds.name} [dim]{ds.completed_shards}/{ds.total_shards}[/dim]"
+            lines.append(Text.from_markup(line))
+
+        # Add page indicator if multiple pages
+        if total_pages > 1:
+            dots = " ".join("●" if i == self._current_page else "○" for i in range(total_pages))
+            page_indicator = f"  [dim]{dots}  ({self._current_page + 1}/{total_pages})[/dim]"
+            lines.append(Text.from_markup(page_indicator))
+
+        return lines
+
     def _build_display(self) -> Group:
-        """Build the compact live display (no panel border)."""
+        """Build the live display for parallel execution."""
         elements = []
 
-        # Add progress bar if processing
+        # Add overall progress bar
         if self._progress is not None:
             elements.append(self._progress)
+
+        # Add active datasets table (preferred) or fallback to text lines
+        active_table = self._build_active_datasets_table()
+        if active_table is not None:
+            elements.append(active_table)
 
         # Add summary line
         elements.append(self._build_summary_line())
@@ -312,6 +513,25 @@ class LiveExecutionStatus:
         import time as time_module
 
         self._start_time = time_module.time()
+
+        # Calculate total shards across all datasets
+        total_shards = sum(ds.total_shards for ds in self.datasets)
+
+        # Create overall progress bar
+        self._progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]Overall[/bold blue]"),
+            BarColumn(bar_width=40),
+            MofNCompleteColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        )
+        self._overall_task_id = self._progress.add_task(
+            "Processing", total=total_shards
+        )
+
         self._live = Live(
             self._build_display(),
             console=console,
@@ -325,32 +545,31 @@ class LiveExecutionStatus:
         if self._live:
             self._live.stop()
             self._live = None
+        self._progress = None
+        self._overall_task_id = None
 
     def refresh(self) -> None:
-        """Refresh the live display."""
+        """Refresh the live display and cycle pages."""
         if self._live:
+            # Auto-cycle pages every ~2 seconds (8 refresh calls at 4 fps)
+            self._page_cycle_counter += 1
+            if self._page_cycle_counter >= 8:
+                self._page_cycle_counter = 0
+                active = [ds for ds in self.datasets if ds.status == "processing"]
+                total_pages = (len(active) + self._max_display - 1) // self._max_display
+                if total_pages > 1:
+                    self._current_page = (self._current_page + 1) % total_pages
+
             self._live.update(self._build_display())
 
     def start_dataset(self, name: str) -> None:
-        """Mark a dataset as processing and create progress bar."""
-        for i, ds in enumerate(self.datasets):
+        """Mark a dataset as processing (for parallel execution)."""
+        import time as time_module
+
+        for ds in self.datasets:
             if ds.name == name:
                 ds.status = "processing"
-                self._current_index = i
-                # Create progress bar for this dataset
-                self._progress = Progress(
-                    SpinnerColumn(),
-                    TextColumn(f"[cyan]{name}[/cyan]"),
-                    BarColumn(bar_width=30),
-                    MofNCompleteColumn(),
-                    TaskProgressColumn(),
-                    TimeElapsedColumn(),
-                    console=console,
-                    transient=True,
-                )
-                self._current_task_id = self._progress.add_task(
-                    "Processing", total=ds.total_shards
-                )
+                ds.start_time = time_module.time()
                 break
         self.refresh()
 
@@ -359,8 +578,9 @@ class LiveExecutionStatus:
         for ds in self.datasets:
             if ds.name == name:
                 ds.completed_shards += 1
-                if self._progress and self._current_task_id is not None:
-                    self._progress.advance(self._current_task_id)
+                # Advance overall progress bar
+                if self._progress and self._overall_task_id is not None:
+                    self._progress.advance(self._overall_task_id)
                 break
         self.refresh()
 
@@ -371,12 +591,10 @@ class LiveExecutionStatus:
                 ds.status = "complete"
                 ds.completed_shards = ds.total_shards
                 break
-        self._progress = None
-        self._current_task_id = None
         self.refresh()
         # Force log if this is the last dataset to ensure we capture 100%
-        done, cached, pending, _ = self._get_summary_counts()
-        is_last = (pending == 0)
+        done, cached, pending, processing = self._get_summary_counts()
+        is_last = (pending == 0 and processing == 0)
         self._log_progress_to_wandb(force=is_last)
 
     def cache_dataset(self, name: str) -> None:
@@ -405,6 +623,31 @@ class LiveExecutionStatus:
                 break
         self._total_tokens = sum(ds.tokens for ds in self.datasets)
         # Log progress with updated token count
+        self._log_progress_to_wandb()
+
+    def report_metrics(self, name: str, rows: int = 0, tokens: int = 0) -> None:
+        """Report compute metrics for a dataset.
+
+        Args:
+            name: Dataset name
+            rows: Number of rows processed
+            tokens: Number of tokens processed
+        """
+        import time as time_module
+
+        for ds in self.datasets:
+            if ds.name == name:
+                ds.rows_processed = rows
+                ds.tokens = tokens
+                # Calculate throughput
+                if ds.start_time > 0:
+                    elapsed = time_module.time() - ds.start_time
+                    if elapsed > 0:
+                        ds.throughput = rows / elapsed
+                break
+
+        self._total_tokens = sum(ds.tokens for ds in self.datasets)
+        self.refresh()
         self._log_progress_to_wandb()
 
 

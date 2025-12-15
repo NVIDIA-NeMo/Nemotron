@@ -1,0 +1,59 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py311
+
+# Default config for SFT data preparation
+#
+# Usage:
+#   nemotron nano3 data prep sft
+#   nemotron nano3 data prep sft sample=100 force=true
+#
+# Environment variables:
+#   PWD: Current working directory (for path resolution)
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage1_sft/config/data_blend_raw.json
+
+# Output directory for packed .npy data (outputs to job directory for persistence)
+output_dir: ${oc.env:PWD}/../output/stage1_sft
+
+# HuggingFace tokenizer model name
+tokenizer_model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+
+# Maximum tokens per packed sequence
+pack_size: 4096
+
+# Target size per shard (e.g., '256MB', '1GB')
+shard_size: 256MB
+
+# Split ratios (must sum to 1.0)
+train_ratio: 0.98
+valid_ratio: 0.01
+test_ratio: 0.01
+
+# Chat template: 'nano3', path to .jinja file, or inline template
+chat_template: nano3
+
+# Field name for OpenAI-format messages in input records
+messages_field: messages
+
+# Field name for tools definition in input records
+tools_field: tools
+
+# Filter to only include records where used_in contains this value
+used_in_filter: nano_v3
+
+# Field name for used_in filtering
+used_in_field: used_in
+
+# Truncate sequences longer than this (null = no limit)
+max_doc_tokens: null
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Ray actors for parallel processing (null = auto)
+num_actors: null
+
+# Force new run, ignoring cache
+force: false

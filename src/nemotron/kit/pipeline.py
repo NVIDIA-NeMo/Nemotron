@@ -324,6 +324,9 @@ def run_nemo_run(
 
     # Build and run experiment
     with run.Experiment(config.job_name) as exp:
+        # Inject experiment_id for artifact aliasing across tasks
+        executor.env_vars["NEMO_EXPERIMENT_ID"] = exp._id
+
         for step in steps:
             # Build script path from module's __file__
             script_path = step.module_file

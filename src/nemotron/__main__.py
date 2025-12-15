@@ -2,28 +2,36 @@
 """Nemotron CLI entry point.
 
 Usage:
-    nemotron nano3 data prep pretrain --help
-    nemotron nano3 data prep sft --help
-    nemotron nano3 data prep rl --help
-    nemotron nano3 pretrain --help
-    nemotron nano3 sft --help
-    nemotron nano3 rl --help
+    nemotron nano3 pretrain -c test                       # local execution
+    nemotron nano3 pretrain --config test --run dlw       # nemo-run attached
+    nemotron nano3 pretrain -c test -r dlw train.train_iters=5000
+    nemotron nano3 pretrain -c test --dry-run             # preview config
+
+Legacy usage (still supported):
+    nemotron-legacy nano3 pretrain --help
 """
 
 from __future__ import annotations
 
-import sys
-
 
 def main() -> None:
     """Main CLI entry point."""
+    from nemotron.cli.bin.nemotron import main as typer_main
+
+    typer_main()
+
+
+def main_legacy() -> None:
+    """Legacy CLI entry point using tyro-based App."""
+    import sys
+
     args = sys.argv[1:]
 
     if not args:
-        print("Usage: nemotron <recipe> <command> [options]")
+        print("Usage: nemotron-legacy <recipe> <command> [options]")
         print("\nRecipes:")
         print("  nano3    Nano3 training recipe")
-        print("\nRun 'nemotron <recipe> --help' for more information.")
+        print("\nRun 'nemotron-legacy <recipe> --help' for more information.")
         sys.exit(1)
 
     recipe = args[0]
@@ -32,14 +40,19 @@ def main() -> None:
         # Pass remaining args directly to nano3 app
         sys.argv = [sys.argv[0]] + args[1:]
 
+        # Stage TUI interception (only for bare: pretrain|sft|rl)
+        from nemotron.kit.tui import maybe_run_stage_tui
         from nemotron.recipes.nano3 import app
+
+        if maybe_run_stage_tui(app):
+            sys.exit(0)
 
         app.run()
     elif recipe in ("--help", "-h"):
-        print("Usage: nemotron <recipe> <command> [options]")
+        print("Usage: nemotron-legacy <recipe> <command> [options]")
         print("\nRecipes:")
         print("  nano3    Nano3 training recipe")
-        print("\nRun 'nemotron <recipe> --help' for more information.")
+        print("\nRun 'nemotron-legacy <recipe> --help' for more information.")
     else:
         print(f"Unknown recipe: {recipe}")
         print("Available recipes: nano3")

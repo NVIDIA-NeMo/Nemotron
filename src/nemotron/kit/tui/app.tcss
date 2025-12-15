@@ -1,0 +1,75 @@
+Screen {
+    background: $background;
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+}
+
+StageConfigScreen {
+    width: 100%;
+    height: 1fr;
+}
+
+NeMoTronBanner {
+    width: 100%;
+    border: round #76b900;
+    border-title-align: center;
+    padding: 0 1;
+    text-align: center;
+    content-align: center middle;
+    color: #76b900;
+    background: $background;
+}
+
+.placeholder {
+    color: $text-muted;
+    padding: 1 2;
+}
+
+RunControls {
+    width: 100%;
+    height: 4;
+    border-top: solid $border;
+    padding: 0 2;
+    layout: horizontal;
+    align: left middle;
+}
+
+#run-status {
+    width: 1fr;
+    color: $text-muted;
+}
+
+#btn-run {
+    background: #76b900;
+    color: black;
+}
+
+#btn-launch {
+    background: $warning;
+    color: $text;
+    margin-left: 1;
+}
+
+TabbedContent {
+    width: 100%;
+    height: 1fr;
+}
+
+VerticalScroll {
+    height: 1fr;
+}
+
+ArtifactPicker {
+    height: 1fr;
+}
+
+ConfigForm {
+    height: 1fr;
+}
+
+ConfigEditor {
+    height: 1fr;
+}

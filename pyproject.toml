@@ -2,7 +2,6 @@
 name = "nemotron"
 version = "0.1.0"
 description = "Reproducible training recipes for NVIDIA Nemotron model family - transparent pipelines for data preparation, training, and evaluation across all stages"
-readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
@@ -24,9 +23,12 @@ classifiers = [
 
 dependencies = [
     "pydantic>=2.0.0",
+    "typer>=0.12.0",
     "tyro>=0.8.0",
+    "omegaconf>=2.3.0",
     "rich>=13.0.0",
-    "ray==2.50.1",
+    "textual>=0.70.0",
+    "ray==2.49.2",
     "fsspec>=2024.0.0",
     "numpy>=1.24.0",
     "pyarrow>=14.0.0",
@@ -35,8 +37,10 @@ dependencies = [
     "huggingface_hub>=0.20.0",
     "pyyaml>=6.0",
     "tomli>=2.0.0;python_version<'3.11'",
+    "tomlkit>=0.12.0",
     "colorama>=0.4.6",
     "wandb>=0.23.1",
+    "jinja2>=3.0.0",  # Required for chat templates in transformers
 ]
 
 [project.optional-dependencies]
@@ -68,6 +72,7 @@ Repository = "https://github.com/nemotron/nemotron"
 
 [project.scripts]
 nemotron = "nemotron.__main__:main"
+nemotron-legacy = "nemotron.__main__:main_legacy"
 
 [project.entry-points."fsspec.specs"]
 art = "nemotron.art.filesystem:ArtifactFileSystem"
@@ -104,4 +109,7 @@ package = true
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+]
+run = [
+    "nemo-run>=0.4.0",
 ]

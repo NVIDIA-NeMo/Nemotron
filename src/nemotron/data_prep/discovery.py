@@ -2,6 +2,7 @@
 
 import functools
 import logging
+import os
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -80,13 +81,16 @@ def fetch_hf_dataset_metadata(
         request = urllib.request.Request(url)
 
         # Try to get HuggingFace token for authentication
-        try:
-            from huggingface_hub import HfFolder
-            token = HfFolder.get_token()
-            if token:
-                request.add_header("Authorization", f"Bearer {token}")
-        except Exception:
-            pass  # No token available, try without auth
+        # Check HF_TOKEN env var first (for remote execution), then local cache
+        token = os.environ.get("HF_TOKEN")
+        if not token:
+            try:
+                from huggingface_hub import HfFolder
+                token = HfFolder.get_token()
+            except Exception:
+                pass  # huggingface_hub not installed or no token
+        if token:
+            request.add_header("Authorization", f"Bearer {token}")
 
         # Fetch metadata
         with urllib.request.urlopen(request, timeout=10) as response:
@@ -184,7 +188,17 @@ def discover_hf_files(config: DatasetConfig) -> list[FileInfo]:
     from huggingface_hub import HfApi
 
     hf_path = config.path[5:]  # Remove hf:// prefix
-    api = HfApi()
+
+    # Get token from env var (for remote execution) or local cache
+    token = os.environ.get("HF_TOKEN")
+    if not token:
+        try:
+            from huggingface_hub import HfFolder
+            token = HfFolder.get_token()
+        except Exception:
+            pass  # No token available
+
+    api = HfApi(token=token)
 
     # Resolve revision to SHA for determinism
     dataset_info = api.dataset_info(hf_path, revision=config.revision)
@@ -197,17 +211,38 @@ def discover_hf_files(config: DatasetConfig) -> list[FileInfo]:
     for sibling in dataset_info.siblings:
         filename = sibling.rfilename
 
-        # Match pattern: data/{split}-XXXXX-of-YYYYY.parquet or similar
-        # Require split to be a path component (not just substring)
-        # Valid: "train-00000", "data/train-00000", "en/train/file.parquet"
-        # Invalid: "training-data", "retrain-00000"
-        if not filename.endswith(".parquet"):
+        # Match data files: parquet or jsonl
+        # Valid extensions: .parquet, .jsonl, .json
+        is_data_file = (
+            filename.endswith(".parquet")
+            or filename.endswith(".jsonl")
+            or filename.endswith(".json")
+        )
+        if not is_data_file:
             continue
 
         # Check if subset is specified and matches
+        # HuggingFace datasets use various patterns:
+        # - data/{subset}-{split}-00000.parquet (subset as filename prefix)
+        # - {subset}/{split}-00000.parquet (subset as directory)
+        # - data/{subset}/{split}-00000.parquet (subset as subdirectory)
+        # - data/{subset}.jsonl (subset as filename without split)
         if config.subset:
-            if f"/{config.subset}/" not in filename and not filename.startswith(
-                f"{config.subset}/"
+            subset = config.subset
+            # Get the base filename without extension for matching
+            base_filename = filename.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            # Check various patterns where subset can appear
+            if not (
+                f"/{subset}/" in filename  # subset as directory
+                or filename.startswith(f"{subset}/")  # subset at start as directory
+                or f"/{subset}-" in filename  # subset as filename prefix after path
+                or f"/{subset}_" in filename  # subset with underscore separator
+                or filename.startswith(f"{subset}-")  # subset at start of filename
+                or filename.startswith(f"{subset}_")  # subset with underscore at start
+                or f"data/{subset}-" in filename  # common HF pattern: data/{subset}-
+                or f"data/{subset}_" in filename  # common HF pattern with underscore
+                or base_filename == subset  # exact match: data/{subset}.jsonl
+                or f"/{subset}." in filename  # subset before extension: data/{subset}.jsonl
             ):
                 continue
 

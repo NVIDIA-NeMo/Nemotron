@@ -295,12 +295,12 @@ class ArtifactRegistry:
 
         return version
 
-    def resolve(self, name: str, version: int | None = None) -> Path:
+    def resolve(self, name: str, version: int | str | None = None) -> Path:
         """Resolve artifact to local path.
 
         Args:
             name: Artifact name
-            version: Version number (None for latest)
+            version: Version number, alias string, or None for latest
 
         Returns:
             Local path to artifact
@@ -316,7 +316,7 @@ class ArtifactRegistry:
         else:
             raise ValueError(f"Unknown backend: {self.backend}")
 
-    def _resolve_fsspec(self, name: str, version: int | None = None) -> Path:
+    def _resolve_fsspec(self, name: str, version: int | str | None = None) -> Path:
         """Resolve using fsspec backend."""
         entry = self._entries.get(name)
         if entry is None:
@@ -327,18 +327,33 @@ class ArtifactRegistry:
             artifact_version = entry.latest_version()
             if artifact_version is None:
                 raise ArtifactVersionNotFoundError(name, "latest")
+        elif isinstance(version, str):
+            # String: treat as alias
+            if version == "latest":
+                artifact_version = entry.latest_version()
+            elif version in entry.aliases:
+                resolved_version = entry.aliases[version]
+                artifact_version = entry.get_version(resolved_version)
+            else:
+                raise ArtifactVersionNotFoundError(name, version)
+            if artifact_version is None:
+                raise ArtifactVersionNotFoundError(name, version)
         else:
+            # Integer: direct version lookup
             artifact_version = entry.get_version(version)
             if artifact_version is None:
                 raise ArtifactVersionNotFoundError(name, version)
 
         return Path(artifact_version.path)
 
-    def _resolve_wandb(self, name: str, version: int | None = None) -> Path:
+    def _resolve_wandb(self, name: str, version: int | str | None = None) -> Path:
         """Resolve using W&B backend."""
         # Build artifact reference
         if version is None:
             ref = f"{name}:latest"
+        elif isinstance(version, str):
+            # String alias - W&B handles natively
+            ref = f"{name}:{version}"
         else:
             ref = f"{name}:v{version}"
 

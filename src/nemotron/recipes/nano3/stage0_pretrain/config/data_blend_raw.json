@@ -120,30 +120,9 @@
       "weight": 1.0
     },
     {
-      "name": "nemotron-pretraining-code-sft",
-      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
-      "subset": "Nemotron-Pretraining-Code-SFT",
-      "text_field": "text",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-pretraining-dqa",
-      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
-      "subset": "Nemotron-Pretraining-DQA",
-      "text_field": "text",
-      "weight": 1.0
-    },
-    {
       "name": "nemotron-pretraining-infinibyte-reasoning",
       "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
       "subset": "Nemotron-Pretraining-InfiniByte-Reasoning",
-      "text_field": "text",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-pretraining-math-sft",
-      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
-      "subset": "Nemotron-Pretraining-Math-SFT",
       "text_field": "text",
       "weight": 1.0
     },
@@ -179,27 +158,6 @@
       "name": "nemotron-pretraining-wiki-rewrite",
       "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
       "subset": "Nemotron-Pretraining-Wiki-Rewrite",
-      "text_field": "text",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-sft-general",
-      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
-      "subset": "Nemotron-SFT-General",
-      "text_field": "text",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-sft-code",
-      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
-      "subset": "Nemotron-SFT-Code",
-      "text_field": "text",
-      "weight": 1.0
-    },
-    {
-      "name": "nemotron-sft-math",
-      "path": "hf://nvidia/Nemotron-Pretraining-SFT-v1",
-      "subset": "Nemotron-SFT-MATH",
       "text_field": "text",
       "weight": 1.0
     }
