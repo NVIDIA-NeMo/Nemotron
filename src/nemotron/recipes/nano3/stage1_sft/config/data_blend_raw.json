@@ -1,0 +1,73 @@
+{
+  "datasets": [
+    {
+      "name": "science-mcq",
+      "path": "hf://nvidia/Nemotron-Science-v1",
+      "subset": "MCQ"
+    },
+    {
+      "name": "science-rqa",
+      "path": "hf://nvidia/Nemotron-Science-v1",
+      "subset": "RQA"
+    },
+    {
+      "name": "instruction-following-chat",
+      "path": "hf://nvidia/Nemotron-Instruction-Following-Chat-v1",
+      "subset": "chat_if"
+    },
+    {
+      "name": "instruction-following-structured",
+      "path": "hf://nvidia/Nemotron-Instruction-Following-Chat-v1",
+      "subset": "structured_outputs"
+    },
+    {
+      "name": "math-proofs-lean",
+      "path": "hf://nvidia/Nemotron-Math-Proofs-v1",
+      "subset": "lean"
+    },
+    {
+      "name": "swe",
+      "path": "hf://nvidia/Nemotron-SWE-v1"
+    },
+    {
+      "name": "agentic-interactive",
+      "path": "hf://nvidia/Nemotron-Agentic-v1",
+      "subset": "interactive_agent"
+    },
+    {
+      "name": "agentic-tool-calling",
+      "path": "hf://nvidia/Nemotron-Agentic-v1",
+      "subset": "tool_calling"
+    },
+    {
+      "name": "competitive-cpp-00",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_cpp.part_00"
+    },
+    {
+      "name": "competitive-cpp-01",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_cpp.part_01"
+    },
+    {
+      "name": "competitive-python-00",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_python.part_00"
+    },
+    {
+      "name": "competitive-python-01",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_python.part_01"
+    },
+    {
+      "name": "infinibyte-00",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "infinibyte.part_00"
+    },
+    {
+      "name": "infinibyte-01",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "infinibyte.part_01"
+    }
+  ]
+}

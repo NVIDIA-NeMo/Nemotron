@@ -13,7 +13,7 @@ import json
 import sys
 from dataclasses import field, fields, is_dataclass, make_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Type, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar, overload
 
 if TYPE_CHECKING:
     from nemotron.kit.wandb import WandbConfig
@@ -38,7 +38,7 @@ T = TypeVar("T")
 CONFIG_FILE_KEYS = {"--config-file", "--config_file", "--config"}
 
 
-class ConfigManager[T]:
+class ConfigManager(Generic[T]):
     """
     Parses, merges, and validates configuration from files and CLI.
 
@@ -454,6 +454,90 @@ class ConfigManager[T]:
                 str_from_instance=lambda instance: [",".join(instance)],
             )
 
+        @self._registry.primitive_rule
+        def art_uri_rule(type_info: tyro.constructors.PrimitiveTypeInfo):
+            """Resolve art:// URIs to local paths during parsing.
+
+            When a string field receives an art:// URI, this rule:
+            1. Resolves the artifact to a local path via ArtifactFileSystem
+            2. Registers W&B lineage via wandb.use_artifact() if a run is active
+            3. Returns the local path string
+
+            This ensures config fields receive actual local paths that work
+            with code expecting filesystem paths (like Megatron-Bridge).
+            """
+            # Only apply to str fields (not Path - let those be handled normally)
+            if type_info.type != str:
+                return None
+
+            return tyro.constructors.PrimitiveConstructorSpec(
+                nargs=1,
+                metavar="PATH_OR_ART_URI",
+                instance_from_str=lambda args: resolve_artifact_uri(args[0]),
+                is_instance=lambda x: isinstance(x, str),
+                str_from_instance=lambda x: [str(x)],
+            )
+
+
+def resolve_artifact_uri(uri: str) -> str:
+    """Resolve art:// URI to local path, registering W&B lineage.
+
+    This function is called during tyro CLI parsing when a string field
+    receives an art:// URI. It:
+    1. Resolves the artifact to a local filesystem path
+    2. Registers W&B lineage via wandb.use_artifact() if a run is active
+    3. Returns the local path as a string
+
+    Args:
+        uri: Either an art:// URI or a local path. If not an art:// URI,
+             returns the input unchanged.
+
+    Returns:
+        Local filesystem path (as string).
+
+    Examples:
+        >>> resolve_artifact_uri("art://DataBlendsArtifact-pretrain:v10/blend.json")
+        '/path/to/wandb/artifacts/DataBlendsArtifact-pretrain-v10/blend.json'
+
+        >>> resolve_artifact_uri("art://romeyn/nemotron/DataBlendsArtifact-pretrain:v10")
+        '/path/to/wandb/artifacts/...'
+
+        >>> resolve_artifact_uri("/local/path/to/file.json")
+        '/local/path/to/file.json'  # Unchanged
+    """
+    if not uri.startswith("art://"):
+        return uri  # Already a local path, return unchanged
+
+    from nemotron.kit.filesystem import ArtifactFileSystem
+
+    fs = ArtifactFileSystem()
+
+    # Resolve the URI to local path
+    artifact_path, file_path = fs._resolve(uri)
+
+    # Register W&B lineage if in an active run
+    try:
+        import wandb
+
+        if wandb.run is not None:
+            # Extract artifact name and version from URI for use_artifact()
+            name, version, _ = fs._parse_uri(uri)
+
+            # Build the artifact reference for W&B
+            if version is not None:
+                artifact_ref = f"{name}:v{version}"
+            else:
+                artifact_ref = f"{name}:latest"
+
+            # Register usage for lineage tracking
+            wandb.use_artifact(artifact_ref)
+    except ImportError:
+        pass  # wandb not installed, skip lineage tracking
+
+    # Build the full path including any file path within the artifact
+    full_path = artifact_path / file_path if file_path else artifact_path
+    return str(full_path)
+
 
 def _read_stdin_artifacts() -> dict[str, dict] | None:
     """Read artifacts from stdin if piped.
@@ -500,23 +584,27 @@ def _apply_parse_inputs(
     args: list[str],
     parse_inputs: dict[str, str],
     stdin_artifacts: dict[str, dict],
-) -> list[str]:
-    """Inject artifact fields as CLI args.
+) -> tuple[list[str], dict[str, Any]]:
+    """Inject artifact fields as CLI args or collect as fn kwargs.
 
     Args:
         args: Original CLI arguments.
-        parse_inputs: Mapping of "artifact.field" -> "config.field".
+        parse_inputs: Mapping of "artifact.field" -> "config.field" or "fn.kwarg_name".
+                     Entries with "fn." prefix are collected as kwargs for defaults_fn().
         stdin_artifacts: Artifacts read from stdin.
 
     Returns:
-        Modified args list with artifact values prepended.
+        Tuple of (modified_args, fn_kwargs):
+        - modified_args: Args list with artifact values prepended (for non-fn. entries)
+        - fn_kwargs: Dict of kwargs to pass to defaults_fn() (for fn. entries)
 
     Raises:
         ValueError: If artifact field doesn't exist.
     """
     new_args = list(args)
+    fn_kwargs: dict[str, Any] = {}
 
-    for artifact_field, config_field in parse_inputs.items():
+    for artifact_field, target in parse_inputs.items():
         # Parse "data.blend_path" -> artifact="data", field="blend_path"
         if "." not in artifact_field:
             raise ValueError(
@@ -541,10 +629,15 @@ def _apply_parse_inputs(
 
         value = metadata[field_name]
         if value is not None:
-            # Prepend as CLI arg (lowest priority, CLI overrides)
-            new_args = [f"--{config_field}", str(value)] + new_args
+            # Check if this is a fn.* target (kwarg for defaults_fn)
+            if target.startswith("fn."):
+                kwarg_name = target[3:]  # Remove "fn." prefix
+                fn_kwargs[kwarg_name] = value
+            else:
+                # Prepend as CLI arg (lowest priority, CLI overrides)
+                new_args = [f"--{target}", str(value)] + new_args
 
-    return new_args
+    return new_args, fn_kwargs
 
 
 @overload
@@ -555,6 +648,8 @@ def cli(
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
     defaults: Callable[[], T] | None = None,
+    defaults_fn: Callable[..., T] | None = None,
+    kwargs_schema: type | None = None,
     ray: bool = False,
     pre_ray_start_commands: list[str] | None = None,
 ) -> T: ...
@@ -568,6 +663,8 @@ def cli(
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
     defaults: Callable[[], Any] | None = None,
+    defaults_fn: Callable[..., Any] | None = None,
+    kwargs_schema: type | None = None,
     ray: bool = False,
     pre_ray_start_commands: list[str] | None = None,
 ) -> T: ...
@@ -580,6 +677,8 @@ def cli(
     args: list[str] | None = None,
     parse_inputs: dict[str, str] | None = None,
     defaults: Callable[[], Any] | None = None,
+    defaults_fn: Callable[..., Any] | None = None,
+    kwargs_schema: type | None = None,
     ray: bool = False,
     pre_ray_start_commands: list[str] | None = None,
 ) -> T:
@@ -592,7 +691,8 @@ def cli(
     When parse_inputs is provided, enables Unix-style piping between steps:
     - Reads artifact JSON from stdin (output of previous step's print_step_complete())
     - Maps artifact fields to config fields per the parse_inputs mapping
-    - Injects values as CLI args (lowest priority, can be overridden)
+    - Entries with "fn." prefix are passed as kwargs to defaults_fn()
+    - Other entries are injected as CLI args (lowest priority, can be overridden)
 
     When --run <profile> is provided, executes via nemo-run with the named profile
     from run.toml/yaml/json. Supports all nemo-run executors: local, docker, slurm,
@@ -606,9 +706,22 @@ def cli(
         args: CLI arguments. Defaults to sys.argv[1:].
         parse_inputs: Mapping of artifact fields to config fields for stdin piping.
                      Format: {"artifact_name.field": "config.nested.field"}
+                     Use "fn." prefix to pass values to defaults_fn():
+                     {"artifact_name.field": "fn.kwarg_name"}
         defaults: Optional callable that returns a default config instance.
                  Used for model-specific defaults from external recipe functions.
                  Example: defaults=nemotron_nano_v2
+        defaults_fn: Optional callable that returns a default config instance.
+                    Unlike defaults, this is called with kwargs extracted from
+                    parse_inputs entries with "fn." prefix. The result becomes
+                    the defaults value. Useful for recipe functions that need
+                    runtime arguments (e.g., per_split_data_args_path).
+                    Example: defaults_fn=nano_3_pretrain_config
+        kwargs_schema: Optional TypedDict class defining kwargs for defaults_fn.
+                      Fields from this TypedDict become CLI arguments (--fn.<field-name>)
+                      that are passed to defaults_fn(). Requires defaults_fn to be set.
+                      Artifact fn. values take precedence over CLI kwargs.
+                      Example: kwargs_schema=NemotronNext3Bv2CommonKwargs
         ray: Whether this recipe requires Ray for execution (e.g., RL training).
         pre_ray_start_commands: Commands to run before Ray starts (only used if ray=True).
 
@@ -639,6 +752,16 @@ def cli(
         >>> from megatron.bridge.recipes import nemotron_nano_v2
         >>> cli(main, defaults=nemotron_nano_v2)
 
+        # With defaults_fn and fn. prefix (passes artifact value to recipe function)
+        >>> cli(main, defaults_fn=nano_3_pretrain_config,
+        ...     parse_inputs={"data.blend_path": "fn.per_split_data_args_path"})
+
+        # With kwargs_schema (exposes TypedDict fields as CLI args for defaults_fn)
+        >>> cli(main, defaults_fn=nano_3_pretrain_config,
+        ...     kwargs_schema=NemotronNext3Bv2CommonKwargs,
+        ...     parse_inputs={"data.blend_path": "fn.per_split_data_args_path"})
+        # Now supports: python train.py --fn.seq-length 4096 --fn.mock
+
         # Execute via nemo-run
         >>> # python train.py --run draco
         >>> cli(main, defaults=nemotron_nano_v2)
@@ -649,8 +772,8 @@ def cli(
     if args is None:
         args = sys.argv[1:]
 
-    # Check for --run <profile> and handle nemo-run execution
-    run_name, run_overrides, remaining_args = _extract_run_args(args)
+    # Check for --run/--batch <profile> and handle nemo-run execution
+    run_name, run_overrides, remaining_args, is_launch = _extract_run_args(args)
     if run_name is not None:
         return _execute_with_nemo_run(
             run_name=run_name,
@@ -658,13 +781,80 @@ def cli(
             script_args=remaining_args,
             ray=ray,
             pre_ray_start_commands=pre_ray_start_commands,
+            is_launch=is_launch,
         )
 
+    # Validate kwargs_schema requires defaults_fn
+    if kwargs_schema is not None and defaults_fn is None:
+        raise ValueError("kwargs_schema requires defaults_fn to be set")
+
+    # Parse kwargs_schema CLI args (--fn.* args) if provided
+    cli_fn_kwargs: dict[str, Any] = {}
+    if kwargs_schema is not None:
+        from nemotron.kit.app import _typeddict_to_dataclass
+        kwargs_dataclass = _typeddict_to_dataclass(kwargs_schema, prefix="fn.")
+        # Extract --fn.* args from args list
+        fn_args = [a for a in args if a.startswith("--fn.")]
+        fn_args_with_values = []
+        i = 0
+        while i < len(args):
+            if args[i].startswith("--fn."):
+                fn_args_with_values.append(args[i])
+                # Check if next arg is the value (not another flag)
+                if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                    fn_args_with_values.append(args[i + 1])
+                    i += 2
+                else:
+                    i += 1
+            else:
+                i += 1
+
+        if fn_args_with_values:
+            # Parse the fn.* args using tyro
+            parsed_kwargs = tyro.cli(kwargs_dataclass, args=fn_args_with_values)
+            # Extract non-None values
+            for field_name in getattr(parsed_kwargs, "__dataclass_fields__", {}):
+                value = getattr(parsed_kwargs, field_name)
+                if value is not None:
+                    cli_fn_kwargs[field_name] = value
+
+        # Remove --fn.* args from main args list
+        filtered_args = []
+        i = 0
+        while i < len(args):
+            if args[i].startswith("--fn."):
+                # Skip flag and its value if present
+                if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                    i += 2
+                else:
+                    i += 1
+            else:
+                filtered_args.append(args[i])
+                i += 1
+        args = filtered_args
+
     # Apply parse_inputs from stdin artifacts if provided
+    artifact_fn_kwargs: dict[str, Any] = {}
     if parse_inputs:
         stdin_artifacts = _read_stdin_artifacts()
         if stdin_artifacts:
-            args = _apply_parse_inputs(args, parse_inputs, stdin_artifacts)
+            args, artifact_fn_kwargs = _apply_parse_inputs(args, parse_inputs, stdin_artifacts)
+
+    # Validate fn.* usage requires defaults_fn
+    if artifact_fn_kwargs and defaults_fn is None:
+        fn_keys = [k for k, v in parse_inputs.items() if v.startswith("fn.")]
+        raise ValueError(
+            f"parse_inputs contains 'fn.' targets {fn_keys} but defaults_fn is not provided. "
+            "Either remove the 'fn.' prefix or provide defaults_fn."
+        )
+
+    # Merge kwargs: CLI kwargs as base, artifact fn. kwargs override
+    fn_kwargs: dict[str, Any] = dict(cli_fn_kwargs)
+    fn_kwargs.update(artifact_fn_kwargs)  # Artifact values take precedence
+
+    # If defaults_fn is provided, call it with fn_kwargs and use result as defaults
+    if defaults_fn is not None:
+        defaults = lambda: defaults_fn(**fn_kwargs)
 
     # Helper to initialize wandb from config file if present
     def _maybe_init_wandb_from_config(manager: ConfigManager) -> None:
@@ -747,20 +937,27 @@ def _func_to_dataclass(func: Callable) -> Type | None:
     return make_dataclass(f"{func.__name__}_Config", dc_fields)
 
 
-def _extract_run_args(args: list[str]) -> tuple[str | None, dict[str, str], list[str]]:
-    """Extract --run arguments from CLI args.
+def _extract_run_args(args: list[str]) -> tuple[str | None, dict[str, str], list[str], bool]:
+    """Extract --run/--batch arguments from CLI args.
 
     Parses --run <profile> and --run.<key> <value> overrides from args,
-    returning the profile name, overrides dict, and remaining args.
+    or --batch <profile> and --batch.<key> <value> overrides.
+    Returns the profile name, overrides dict, remaining args, and whether
+    batch mode (detached execution) was used.
 
     Args:
         args: Original CLI arguments.
 
     Returns:
-        Tuple of (profile_name, overrides_dict, remaining_args).
-        profile_name is None if --run not specified.
+        Tuple of (profile_name, overrides_dict, remaining_args, is_launch).
+        profile_name is None if neither --run nor --batch specified.
+        is_launch is True when --batch was used (implies detach=True).
+
+    Raises:
+        ValueError: If both --run and --batch are specified.
     """
     run_name: str | None = None
+    launch_name: str | None = None
     run_overrides: dict[str, str] = {}
     remaining: list[str] = []
 
@@ -798,10 +995,53 @@ def _extract_run_args(args: list[str]) -> tuple[str | None, dict[str, str], list
             i += 1
             continue
 
+        # Handle --batch / -b <profile>
+        if arg == "--batch" or arg == "-b":
+            if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                launch_name = args[i + 1]
+                i += 2
+                continue
+            else:
+                raise ValueError("--batch requires a profile name")
+
+        # Handle --batch=<profile> or -b=<profile>
+        if arg.startswith("--batch="):
+            launch_name = arg.split("=", 1)[1]
+            i += 1
+            continue
+
+        if arg.startswith("-b="):
+            launch_name = arg.split("=", 1)[1]
+            i += 1
+            continue
+
+        # Handle --batch.<key> <value> or --batch.<key>=<value>
+        if arg.startswith("--batch."):
+            key = arg[8:]  # Remove "--batch."
+            if "=" in key:
+                key, value = key.split("=", 1)
+                run_overrides[key] = value
+            elif i + 1 < len(args):
+                run_overrides[key] = args[i + 1]
+                i += 2
+                continue
+            else:
+                raise ValueError(f"--batch.{key} requires a value")
+            i += 1
+            continue
+
         remaining.append(arg)
         i += 1
 
-    return run_name, run_overrides, remaining
+    # Validate mutual exclusivity
+    if run_name is not None and launch_name is not None:
+        raise ValueError("--run and --batch are mutually exclusive. Use --run for attached execution or --batch for detached execution.")
+
+    # Determine final name and whether batch mode is active
+    is_launch = launch_name is not None
+    final_name = launch_name if is_launch else run_name
+
+    return final_name, run_overrides, remaining, is_launch
 
 
 def _execute_with_nemo_run(
@@ -810,6 +1050,7 @@ def _execute_with_nemo_run(
     script_args: list[str],
     ray: bool,
     pre_ray_start_commands: list[str] | None,
+    is_launch: bool = False,
 ) -> None:
     """Execute the current script via nemo-run.
 
@@ -819,6 +1060,7 @@ def _execute_with_nemo_run(
         script_args: Arguments to pass to the script.
         ray: Whether to use Ray execution.
         pre_ray_start_commands: Commands to run before Ray starts.
+        is_launch: If True, force detach=True for detached execution.
 
     Raises:
         SystemExit: After nemo-run execution completes.
@@ -827,6 +1069,12 @@ def _execute_with_nemo_run(
 
     # Load and apply overrides to run config
     run_config = load_run_profile(run_name)
+
+    # Force detach=True and ray_mode="job" when using --batch
+    # ray_mode="job" ensures the cluster terminates after the job completes
+    if is_launch:
+        run_config.detach = True
+        run_config.ray_mode = "job"
 
     # Apply CLI overrides
     for key, value in run_overrides.items():

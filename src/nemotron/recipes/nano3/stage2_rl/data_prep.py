@@ -1,22 +1,29 @@
+#!/usr/bin/env python3
 """Data preparation for Nano3 RL stage.
 
 Converts datasets to JSONL format with OpenAI chat messages.
 
 Usage:
-    python -m nemotron.recipes.nano3.stage2_rl.data_prep [options]
+    # With default config
+    python data_prep.py
 
-Examples:
-    # Default processing (train/val/test split)
-    python -m nemotron.recipes.nano3.stage2_rl.data_prep
+    # With custom config file
+    python data_prep.py --config /path/to/config.yaml
+
+    # With CLI overrides (Hydra-style)
+    python data_prep.py sample=100 force=true
 
     # Flat output without splitting
-    python -m nemotron.recipes.nano3.stage2_rl.data_prep --split_output=none
+    python data_prep.py split_output=none
 
-    # Quick test with sample
-    python -m nemotron.recipes.nano3.stage2_rl.data_prep --sample=100
+    # Via nemotron CLI with nemo-run
+    nemotron nano3 data prep rl --run prep --sample 10000
 """
 
+from __future__ import annotations
+
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -30,11 +37,27 @@ from nemotron.data_prep import (
 from nemotron.data_prep.config import DatasetConfig, JsonlOutputConfig
 from nemotron.data_prep.discovery import get_dataset_metadata
 from nemotron.data_prep.formats.transforms import nemotron_rl
-from nemotron.kit import DataBlendsArtifact, cli, print_step_complete
+from nemotron.kit import SplitJsonlDataArtifact, print_step_complete
 from nemotron.kit.trackers import InputDatasetInfo
+from nemotron.kit.train_script import (
+    apply_hydra_overrides,
+    init_wandb_from_env,
+    load_omegaconf_yaml,
+    omegaconf_to_dataclass,
+    parse_config_and_overrides,
+)
 from nemotron.kit.wandb import add_wandb_tags, finish_wandb
 
 STAGE_PATH = Path(__file__).parent
+
+# Default config path relative to this file
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep.yaml"
+
+# Use NEMO_RUN_DIR for output when running via nemo-run (avoids writing to code dir)
+_OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
+
+# Module-level flag for Ray execution (used by nemotron CLI)
+RAY = True
 
 
 @dataclass
@@ -45,10 +68,10 @@ class RLDataPrepConfig:
     By default outputs train/val/test splits as separate JSONL files.
     """
 
-    blend_path: Path = field(default_factory=lambda: STAGE_PATH / "data_blend_raw.json")
+    blend_path: Path = field(default_factory=lambda: STAGE_PATH / "config/data_blend_raw.json")
     """Path to data blend JSON file"""
 
-    output_dir: Path = field(default_factory=lambda: Path("./output/nano3/stage2_rl"))
+    output_dir: Path = field(default_factory=lambda: _OUTPUT_BASE / "output/nano3/stage2_rl")
     """Output directory for JSONL data"""
 
     shard_size: str = "256MB"
@@ -76,8 +99,16 @@ class RLDataPrepConfig:
     """Ratio of data for validation when split_output='train_val_test'"""
 
     def __post_init__(self) -> None:
+        # Ensure paths are Path objects
+        if isinstance(self.blend_path, str):
+            self.blend_path = Path(self.blend_path)
+        if isinstance(self.output_dir, str):
+            self.output_dir = Path(self.output_dir)
+
+        # Add sample suffix to output_dir if sampling
         if self.sample is not None:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
+
         # Validate split ratios
         if self.split_output == "train_val_test":
             test_ratio = 1.0 - self.train_ratio - self.val_ratio
@@ -93,7 +124,7 @@ def _run_single_blend(
     cfg: RLDataPrepConfig,
     num_actors: int,
     source_datasets: list[InputDatasetInfo],
-) -> DataBlendsArtifact:
+) -> SplitJsonlDataArtifact:
     """Process blend without train/val/test splitting."""
     # Build pipeline config with JSONL output format
     format_config = JsonlOutputConfig(
@@ -116,13 +147,12 @@ def _run_single_blend(
     result = last_mile_process(blend, pipeline_config)
 
     # Build output artifact with source datasets for lineage tracking
-    artifact = DataBlendsArtifact(
+    # Using SplitJsonlDataArtifact since JSONL doesn't tokenize
+    artifact = SplitJsonlDataArtifact(
         path=result.blend_path,
-        total_tokens=result.total_tokens,
         total_sequences=result.total_sequences,
         elapsed_sec=result.elapsed_sec,
         source_datasets=source_datasets,
-        # No tokenizer for RL (JSONL format)
     )
     return artifact
 
@@ -132,7 +162,7 @@ def _run_split_blend(
     cfg: RLDataPrepConfig,
     num_actors: int,
     source_datasets: list[InputDatasetInfo],
-) -> DataBlendsArtifact:
+) -> SplitJsonlDataArtifact:
     """Process blend with train/val/test splitting.
 
     Creates separate output directories for train, val, and test splits.
@@ -211,19 +241,35 @@ def _run_split_blend(
     elapsed = time.time() - start_time
 
     # Return artifact pointing to manifest with source datasets for lineage
-    artifact = DataBlendsArtifact(
+    # Using SplitJsonlDataArtifact since JSONL doesn't tokenize
+    artifact = SplitJsonlDataArtifact(
         path=manifest_path,
-        total_tokens=0,
         total_sequences=total_sequences,
         elapsed_sec=elapsed,
         source_datasets=source_datasets,
-        # No tokenizer for RL (JSONL format)
     )
+
+    # Add train/val paths directly to metadata for artifact resolution
+    # These are used by the rl training command via artifact mappings
+    if "train" in split_paths:
+        artifact.metadata["train"] = str(split_paths["train"])
+    if "val" in split_paths:
+        artifact.metadata["val"] = str(split_paths["val"])
+    if "test" in split_paths:
+        artifact.metadata["test"] = str(split_paths["test"])
+
     return artifact
 
 
-def main(cfg: RLDataPrepConfig) -> DataBlendsArtifact:
-    """Run RL data preparation."""
+def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
+    """Run RL data preparation.
+
+    Args:
+        cfg: RL data prep configuration.
+
+    Returns:
+        SplitJsonlDataArtifact with paths to JSONL data.
+    """
     # Add stage-specific tags to wandb run
     add_wandb_tags(["data-prep", "rl"])
 
@@ -281,5 +327,39 @@ def main(cfg: RLDataPrepConfig) -> DataBlendsArtifact:
     return artifact
 
 
+def main(cfg: RLDataPrepConfig | None = None) -> SplitJsonlDataArtifact:
+    """Entry point for RL data preparation.
+
+    Args:
+        cfg: Config from CLI framework, or None when run directly as script.
+
+    Returns:
+        SplitJsonlDataArtifact with paths to JSONL data.
+    """
+    if cfg is None:
+        # Called directly as script - parse config ourselves
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
+
+        # Load YAML config
+        try:
+            config = load_omegaconf_yaml(config_path)
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        # Apply CLI overrides (Hydra-style: key=value)
+        if cli_overrides:
+            config = apply_hydra_overrides(config, cli_overrides)
+
+        # Convert to dataclass
+        cfg = omegaconf_to_dataclass(config, RLDataPrepConfig)
+
+    # Initialize wandb from environment variables (set by nemo-run)
+    init_wandb_from_env()
+
+    # Run data prep
+    return run_data_prep_main(cfg)
+
+
 if __name__ == "__main__":
-    cli(main, ray=True)
+    main()

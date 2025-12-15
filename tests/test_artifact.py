@@ -356,6 +356,81 @@ def test_data_blends_artifact_default_source_uris():
         assert artifact.tokenizer_uri is None
 
 
+def test_data_blends_artifact_per_split_tokens():
+    """Test DataBlendsArtifact with per-split token counts."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "output" / "blend.json"
+        blend_path.parent.mkdir(parents=True, exist_ok=True)
+        blend_path.write_text('{"blends": []}')
+
+        # Create artifact with per-split tokens
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+            elapsed_sec=120.5,
+            train_tokens=900_000,
+            valid_tokens=50_000,
+            test_tokens=50_000,
+        )
+
+        # Verify per-split tokens are accessible
+        assert artifact.train_tokens == 900_000
+        assert artifact.valid_tokens == 50_000
+        assert artifact.test_tokens == 50_000
+
+        # Save and verify metadata includes per-split tokens
+        artifact.save()
+        metadata_path = blend_path.parent / "metadata.json"
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+
+        assert metadata["train_tokens"] == 900_000
+        assert metadata["valid_tokens"] == 50_000
+        assert metadata["test_tokens"] == 50_000
+        # Also in nested metadata dict
+        assert metadata["metadata"]["train_tokens"] == 900_000
+        assert metadata["metadata"]["valid_tokens"] == 50_000
+        assert metadata["metadata"]["test_tokens"] == 50_000
+
+
+def test_data_blends_artifact_per_split_tokens_defaults():
+    """Test DataBlendsArtifact defaults for per-split token counts."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "blend.json"
+
+        # Create artifact without per-split tokens
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+        )
+
+        # Default values should be None
+        assert artifact.train_tokens is None
+        assert artifact.valid_tokens is None
+        assert artifact.test_tokens is None
+
+
+def test_data_blends_artifact_partial_per_split_tokens():
+    """Test DataBlendsArtifact with partial per-split token counts."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        blend_path = Path(tmpdir) / "blend.json"
+
+        # Create artifact with only train_tokens (valid and test None)
+        artifact = DataBlendsArtifact(
+            path=blend_path,
+            total_tokens=1_000_000,
+            total_sequences=10_000,
+            train_tokens=900_000,
+        )
+
+        # train_tokens should be set, others None
+        assert artifact.train_tokens == 900_000
+        assert artifact.valid_tokens is None
+        assert artifact.test_tokens is None
+
+
 def test_to_wandb_uri():
     """Test URI conversion for W&B artifact references."""
     from nemotron.kit.trackers import to_wandb_uri
@@ -515,3 +590,139 @@ def test_config_manager_no_wandb_section():
 
         assert config.batch_size == 64
         assert manager.get_wandb_config() is None
+
+
+def test_resolve_partition_default():
+    """Test resolve_partition returns base partition when no overrides."""
+    from nemotron.kit.run import RunConfig, resolve_partition
+
+    config = RunConfig(partition="batch")
+
+    # Both run and launch should return base partition
+    assert resolve_partition(config, is_launch=False) == "batch"
+    assert resolve_partition(config, is_launch=True) == "batch"
+
+
+def test_resolve_partition_run_override():
+    """Test resolve_partition uses run_partition for attached execution."""
+    from nemotron.kit.run import RunConfig, resolve_partition
+
+    config = RunConfig(
+        partition="batch",
+        run_partition="interactive",
+    )
+
+    # --run should use run_partition
+    assert resolve_partition(config, is_launch=False) == "interactive"
+    # --batch should still use base partition
+    assert resolve_partition(config, is_launch=True) == "batch"
+
+
+def test_resolve_partition_batch_override():
+    """Test resolve_partition uses batch_partition for detached execution."""
+    from nemotron.kit.run import RunConfig, resolve_partition
+
+    config = RunConfig(
+        partition="batch",
+        batch_partition="backfill",
+    )
+
+    # --run should use base partition
+    assert resolve_partition(config, is_launch=False) == "batch"
+    # --batch should use batch_partition
+    assert resolve_partition(config, is_launch=True) == "backfill"
+
+
+def test_resolve_partition_both_overrides():
+    """Test resolve_partition with both run_partition and batch_partition."""
+    from nemotron.kit.run import RunConfig, resolve_partition
+
+    config = RunConfig(
+        partition="batch",
+        run_partition="interactive",
+        batch_partition="backfill",
+    )
+
+    # --run uses run_partition
+    assert resolve_partition(config, is_launch=False) == "interactive"
+    # --batch uses batch_partition
+    assert resolve_partition(config, is_launch=True) == "backfill"
+
+
+def test_resolve_partition_no_base():
+    """Test resolve_partition when no base partition is set."""
+    from nemotron.kit.run import RunConfig, resolve_partition
+
+    config = RunConfig(
+        run_partition="interactive",
+        batch_partition="backfill",
+    )
+
+    # Uses specific partitions when available
+    assert resolve_partition(config, is_launch=False) == "interactive"
+    assert resolve_partition(config, is_launch=True) == "backfill"
+
+
+def test_resolve_partition_none():
+    """Test resolve_partition returns None when no partition is configured."""
+    from nemotron.kit.run import RunConfig, resolve_partition
+
+    config = RunConfig()
+
+    assert resolve_partition(config, is_launch=False) is None
+    assert resolve_partition(config, is_launch=True) is None
+
+
+def test_load_run_profile_with_partition_overrides():
+    """Test loading run profile with run_partition and batch_partition fields."""
+    from nemotron.kit.run import load_run_profile, resolve_partition
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_toml = Path(tmpdir) / "run.toml"
+        run_toml.write_text("""
+[slurm]
+executor = "slurm"
+account = "my-account"
+partition = "batch"
+run_partition = "interactive"
+batch_partition = "backfill"
+""")
+        profile = load_run_profile("slurm", config_path=run_toml)
+
+        assert profile.partition == "batch"
+        assert profile.run_partition == "interactive"
+        assert profile.batch_partition == "backfill"
+
+        # Verify resolution
+        assert resolve_partition(profile, is_launch=False) == "interactive"
+        assert resolve_partition(profile, is_launch=True) == "backfill"
+
+
+def test_partition_inheritance():
+    """Test partition fields are properly inherited via extends."""
+    from nemotron.kit.run import load_run_profile, resolve_partition
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_toml = Path(tmpdir) / "run.toml"
+        run_toml.write_text("""
+[base]
+executor = "slurm"
+account = "my-account"
+partition = "batch"
+run_partition = "interactive"
+
+[child]
+extends = "base"
+batch_partition = "backfill"
+""")
+        profile = load_run_profile("child", config_path=run_toml)
+
+        # partition and run_partition inherited from base
+        assert profile.partition == "batch"
+        assert profile.run_partition == "interactive"
+        # batch_partition defined in child
+        assert profile.batch_partition == "backfill"
+
+        # Verify resolution
+        assert resolve_partition(profile, is_launch=False) == "interactive"
+        assert resolve_partition(profile, is_launch=True) == "backfill"

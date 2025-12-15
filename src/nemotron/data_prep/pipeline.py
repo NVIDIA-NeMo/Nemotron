@@ -18,6 +18,7 @@ from nemotron.data_prep.config import (
     InternalOutputConfig,
     InternalTokenizerConfig,
     PipelineConfig,
+    PerSplitConfig,
     ShardPlan,
     SourceChangedError,
     TokenizerConfig,
@@ -247,7 +248,7 @@ def last_mile_process(
 
         # BinIdx output (tokenization)
         config = PipelineConfig(
-            tokenizer=TokenizerConfig(model="meta-llama/Llama-3.2-1B"),
+            tokenizer=TokenizerConfig(model="nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
             output=OutputConfig(dir=Path("./output")),
         )
         result = last_mile_process(blend, config)
@@ -322,19 +323,38 @@ def tokenize(
 
 
 def _tokenize_single(blend: DataBlend, config: PipelineConfig) -> PipelineResult:
-    """Process single blend (Megatron-Bridge splits by ratio at training)."""
+    """Process single blend.
+
+    If config.per_split is set, distributes shards into train/valid/test splits
+    and outputs {"train": [...], "valid": [...], "test": [...]} JSON format
+    compatible with Megatron-Bridge's per_split_data_args_path parameter.
+
+    Otherwise, outputs {"data_paths": [...], "split": "..."} format for
+    runtime split by ratio.
+    """
     split_result = _process_split(
         datasets=blend.datasets,
         split_name="all",
         config=config,
     )
 
-    # Generate blend.json with data_paths and optional split ratio
-    blend_data: dict = {
-        "data_paths": split_result.data_paths,
-    }
-    if config.split:
-        blend_data["split"] = config.split
+    # Check if per-split output mode is enabled
+    if config.per_split is not None and config.per_split.enabled:
+        blend_data = _distribute_shards_to_splits(
+            data_paths=split_result.data_paths,
+            num_shards=split_result.num_shards,
+            valid_shards=config.per_split.valid_shards,
+            test_shards=config.per_split.test_shards,
+        )
+        is_per_split = True
+        split_ratio = None
+    else:
+        # Generate blend.json with data_paths and optional split ratio
+        blend_data = {"data_paths": split_result.data_paths}
+        if config.split:
+            blend_data["split"] = config.split
+        is_per_split = False
+        split_ratio = config.split
 
     blend_path = config.output.dir / "blend.json"
     _write_json(blend_path, blend_data)
@@ -343,14 +363,97 @@ def _tokenize_single(blend: DataBlend, config: PipelineConfig) -> PipelineResult
         output_dir=config.output.dir,
         blend_path=blend_path,
         splits={"all": split_result},
-        is_per_split=False,
-        split_ratio=config.split,
+        is_per_split=is_per_split,
+        split_ratio=split_ratio,
         elapsed_sec=0,
     )
 
 
+def _distribute_shards_to_splits(
+    data_paths: list[str],
+    num_shards: int,
+    valid_shards: int = 1,
+    test_shards: int = 1,
+    seed: int = 42,
+) -> dict[str, list[str]]:
+    """Distribute shard paths into train/valid/test splits.
+
+    Collects all shards from all datasets into a pool, then randomly selects
+    shards for test and valid splits. The remaining shards go to train.
+
+    The data_paths format is: ["weight", "path", "weight", "path", ...]
+    where paths are shard prefixes (e.g., /path/to/shard).
+
+    Output format compatible with Megatron-Bridge's per_split_data_args_path:
+    {"train": ["weight", "path_0000", "weight", "path_0001", ...], "valid": [...], "test": [...]}
+
+    Args:
+        data_paths: Megatron-Bridge format path list ["weight", "path", ...]
+        num_shards: Total number of shards per dataset
+        valid_shards: Number of shards for validation (total, not per-dataset)
+        test_shards: Number of shards for test (total, not per-dataset)
+        seed: Random seed for reproducible shard selection
+
+    Returns:
+        Dict with "train", "valid", "test" keys containing data_paths lists
+    """
+    import random
+
+    # Parse weight/path pairs from data_paths
+    # Format: ["1.0", "/path/dataset1/shard", "0.5", "/path/dataset2/shard", ...]
+    pairs = []
+    for i in range(0, len(data_paths), 2):
+        if i + 1 < len(data_paths):
+            weight = data_paths[i]
+            prefix = data_paths[i + 1]
+            pairs.append((weight, prefix))
+
+    # Collect ALL shards from ALL datasets into one pool
+    # Each entry is (weight, shard_path) where shard_path has the _XXXX suffix
+    all_shards: list[tuple[str, str]] = []
+    for weight, prefix in pairs:
+        for shard_idx in range(num_shards):
+            all_shards.append((weight, f"{prefix}_{shard_idx:06d}"))
+
+    # Use seeded RNG for reproducibility
+    rng = random.Random(seed)
+
+    # Randomly select shards for test and valid
+    # Ensure we don't request more shards than available
+    total_shards = len(all_shards)
+    actual_test_shards = min(test_shards, total_shards)
+    remaining_after_test = total_shards - actual_test_shards
+    actual_valid_shards = min(valid_shards, remaining_after_test)
+
+    # Shuffle and partition
+    shuffled = all_shards.copy()
+    rng.shuffle(shuffled)
+
+    test_selection = shuffled[:actual_test_shards]
+    valid_selection = shuffled[actual_test_shards : actual_test_shards + actual_valid_shards]
+    train_selection = shuffled[actual_test_shards + actual_valid_shards :]
+
+    # Convert back to flat list format ["weight", "path", "weight", "path", ...]
+    def flatten(shard_pairs: list[tuple[str, str]]) -> list[str]:
+        result: list[str] = []
+        for weight, path in shard_pairs:
+            result.append(weight)
+            result.append(path)
+        return result
+
+    return {
+        "train": flatten(train_selection),
+        "valid": flatten(valid_selection),
+        "test": flatten(test_selection),
+    }
+
+
 def _tokenize_per_split(blend: DataBlend, config: PipelineConfig) -> PipelineResult:
-    """Process each split separately (train/valid/test)."""
+    """Process each split separately (train/valid/test).
+
+    Generates blend.json with {"train": [...], "valid": [...], "test": [...]}
+    format compatible with Megatron-Bridge's per_split_data_args_path parameter.
+    """
     splits: dict[str, SplitResult] = {}
     blend_data: dict[str, list[str]] = {}
 
@@ -381,7 +484,8 @@ def _tokenize_per_split(blend: DataBlend, config: PipelineConfig) -> PipelineRes
         )
 
         splits[split_name] = split_result
-        blend_data[f"{split_name}_data_paths"] = split_result.data_paths
+        # Use simple key names for Megatron-Bridge compatibility
+        blend_data[split_name] = split_result.data_paths
 
     # Generate combined blend.json
     blend_path = config.output.dir / "blend.json"
@@ -562,35 +666,22 @@ def _process_split(
         live_status.start()
 
         try:
+            # Handle cached datasets first
             for ep in execution_plans:
                 if not ep.pending_indices:
-                    # All cached
                     results[ep.name] = ep.cached_stats
-                    # Report cached tokens for throughput tracking
                     live_status.report_tokens(ep.name, ep.cached_stats.get("total_tokens", 0))
                     live_status.cache_dataset(ep.name)
-                    continue
 
-                live_status.start_dataset(ep.name)
-
-                # Process shards with actor pool
-                _process_shards_with_actors(
-                    pending_indices=ep.pending_indices,
-                    plan=ep.plan,
-                    dataset_dir=ep.dataset_dir,
-                    receipts_dir=ep.receipts_dir,
-                    dataset_config=ep.config,
-                    output_config=output_config,
-                    fs=fs,
-                    num_actors=config.num_actors,
-                    on_progress=lambda name=ep.name: live_status.advance_dataset(name),
-                )
-
-                # Aggregate final stats
-                results[ep.name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
-                # Report tokens for throughput tracking
-                live_status.report_tokens(ep.name, results[ep.name].get("total_tokens", 0))
-                live_status.complete_dataset(ep.name)
+            # Process ALL pending shards from ALL datasets in parallel
+            _process_all_shards_parallel(
+                execution_plans=[ep for ep in execution_plans if ep.pending_indices],
+                output_config=output_config,
+                fs=fs,
+                num_actors=config.num_actors,
+                live_status=live_status,
+                results=results,
+            )
         finally:
             live_status.stop()
     else:
@@ -714,6 +805,141 @@ def _load_or_create_plan(
     return plan
 
 
+def _process_all_shards_parallel(
+    execution_plans: list[_DatasetExecutionPlan],
+    output_config: InternalOutputConfig,
+    fs,
+    num_actors: int,
+    live_status,
+    results: dict,
+) -> None:
+    """Process ALL pending shards from ALL datasets in parallel.
+
+    This maximizes parallelism by submitting shards from all datasets
+    to a shared actor pool, rather than processing datasets sequentially.
+    """
+    from nemotron.data_prep.shard_processor import ShardProcessor
+
+    if not execution_plans:
+        return
+
+    # Determine filesystem protocol
+    protocol = fs.protocol
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+    fs_protocol = protocol if protocol != "file" else "file"
+
+    # Create shared actor pool
+    # Use the first plan's tokenizer config (should be same for all)
+    first_plan = execution_plans[0].plan
+    actors = [
+        ShardProcessor.remote(
+            resolved_tokenizer=first_plan.resolved_tokenizer,
+            text_field=execution_plans[0].config.text_field,
+            min_doc_chars=output_config.min_doc_chars,
+            max_doc_tokens=output_config.max_doc_tokens,
+            dtype=output_config.dtype,
+            max_rows=output_config.max_rows,
+        )
+        for _ in range(num_actors)
+    ]
+
+    try:
+        # Build all tasks from all datasets
+        # Task: (dataset_name, shard_index, assignment_dict, plan_hash, dataset_dir, receipts_dir)
+        all_tasks: list[tuple] = []
+        dataset_pending_counts: dict[str, int] = {}
+        dataset_completed_counts: dict[str, int] = {}
+
+        for ep in execution_plans:
+            live_status.start_dataset(ep.name)
+            dataset_pending_counts[ep.name] = len(ep.pending_indices)
+            dataset_completed_counts[ep.name] = 0
+
+            # Convert assignments to dicts for Ray serialization
+            assignment_dicts = {}
+            for a in ep.plan.file_assignments:
+                assignment_dicts[a.shard_index] = {
+                    "shard_index": a.shard_index,
+                    "files": [asdict(f) for f in a.files],
+                    "total_bytes": a.total_bytes,
+                }
+
+            for shard_idx in ep.pending_indices:
+                all_tasks.append((
+                    ep.name,
+                    shard_idx,
+                    assignment_dicts[shard_idx],
+                    ep.plan.plan_hash,
+                    ep.dataset_dir,
+                    ep.receipts_dir,
+                    ep,  # Keep reference to execution plan for aggregation
+                ))
+
+        # Submit tasks with backpressure
+        max_in_flight = num_actors * 2
+        task_queue = list(all_tasks)
+        actor_idx = 0
+        pending_list: list = []
+        future_to_task: dict = {}
+
+        def submit_task(task: tuple) -> None:
+            nonlocal actor_idx
+            name, shard_idx, assignment, plan_hash, dataset_dir, receipts_dir, ep = task
+            actor = actors[actor_idx % num_actors]
+            actor_idx += 1
+            future = actor.process_shard.remote(
+                shard_index=shard_idx,
+                assignment=assignment,
+                plan_hash=plan_hash,
+                output_dir=dataset_dir,
+                receipts_dir=receipts_dir,
+                fs_protocol=fs_protocol,
+            )
+            pending_list.append(future)
+            future_to_task[future] = task
+
+        # Initial submission
+        while task_queue and len(pending_list) < max_in_flight:
+            submit_task(task_queue.pop(0))
+
+        # Process with backpressure
+        while pending_list:
+            done, pending_list = ray.wait(pending_list, num_returns=1, timeout=60)
+            for future in done:
+                task = future_to_task.pop(future)
+                name = task[0]
+                ep = task[6]
+
+                try:
+                    ray.get(future)
+                except Exception as e:
+                    logger.error(f"Shard {task[1]} for {name} failed: {e}")
+
+                # Update progress
+                live_status.advance_dataset(name)
+                dataset_completed_counts[name] += 1
+
+                # Check if dataset is complete
+                if dataset_completed_counts[name] >= dataset_pending_counts[name]:
+                    # Aggregate final stats for this dataset
+                    results[name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+                    live_status.report_metrics(
+                        name,
+                        rows=results[name].get("total_sequences", 0),
+                        tokens=results[name].get("total_tokens", 0),
+                    )
+                    live_status.complete_dataset(name)
+
+                # Submit next task if available
+                if task_queue:
+                    submit_task(task_queue.pop(0))
+    finally:
+        # Clean up actors
+        for actor in actors:
+            ray.kill(actor)
+
+
 def _process_shards_with_actors(
     pending_indices: list[int],
     plan: ShardPlan,
@@ -769,6 +995,11 @@ def _process_shards_with_actors(
     # Track futures as list directly to avoid repeated dict->list conversion in ray.wait
     pending_list: list = []
     future_to_shard: dict = {}
+    future_to_start_time: dict = {}  # Track when each task was submitted
+
+    # Timeout configuration
+    task_warn_timeout = 120  # Log warning after 2 minutes
+    task_cancel_timeout = 600  # Cancel task after 10 minutes
 
     def submit_task(shard_index: int) -> None:
         nonlocal actor_idx
@@ -784,10 +1015,14 @@ def _process_shards_with_actors(
         )
         pending_list.append(future)
         future_to_shard[future] = shard_index
+        future_to_start_time[future] = time.time()
 
     # Initial submission up to max_in_flight
     while shard_queue and len(pending_list) < max_in_flight:
         submit_task(shard_queue.pop(0))
+
+    # Track which tasks we've already warned about
+    warned_tasks: set = set()
 
     # Process with backpressure
     def process_loop(advance_fn: Callable[[], None]) -> None:
@@ -796,8 +1031,56 @@ def _process_shards_with_actors(
             # ray.wait returns (done, remaining) - use remaining directly
             done, pending_list = ray.wait(pending_list, num_returns=1, timeout=60)
 
+            # Handle timeout: log info about long-running tasks
+            if not done and pending_list:
+                current_time = time.time()
+                tasks_to_cancel = []
+
+                for future in pending_list:
+                    shard_index = future_to_shard.get(future)
+                    start_time = future_to_start_time.get(future, current_time)
+                    elapsed = current_time - start_time
+
+                    # Check for tasks that should be cancelled
+                    if elapsed > task_cancel_timeout:
+                        tasks_to_cancel.append((future, shard_index, elapsed))
+                    # Log warning for long-running tasks (only once per task)
+                    elif elapsed > task_warn_timeout and future not in warned_tasks:
+                        warned_tasks.add(future)
+                        logger.warning(
+                            f"Shard {shard_index} has been running for {elapsed:.0f}s "
+                            f"(likely slow HuggingFace download)"
+                        )
+
+                # Cancel truly stuck tasks
+                for future, shard_index, elapsed in tasks_to_cancel:
+                    logger.error(
+                        f"Cancelling shard {shard_index} after {elapsed:.0f}s timeout"
+                    )
+                    try:
+                        ray.cancel(future, force=True)
+                    except Exception as e:
+                        logger.debug(f"Failed to cancel task: {e}")
+
+                    # Remove from tracking
+                    pending_list.remove(future)
+                    future_to_shard.pop(future, None)
+                    future_to_start_time.pop(future, None)
+                    warned_tasks.discard(future)
+
+                    # Count as completed (with error) to unblock progress
+                    advance_fn()
+
+                    # Submit replacement task if queue has more
+                    if shard_queue:
+                        submit_task(shard_queue.pop(0))
+
+                continue
+
             for future in done:
                 shard_index = future_to_shard.pop(future)
+                future_to_start_time.pop(future, None)
+                warned_tasks.discard(future)
                 try:
                     ray.get(future)
                     advance_fn()
@@ -1560,12 +1843,14 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
     tokenizer_config = InternalTokenizerConfig(**run_config["tokenizer"])
     resolved_tokenizer = resolve_tokenizer(tokenizer_config)
 
-    # Process each dataset
+    # Planning phase: discover files for all datasets first
     results = {}
     data_paths: list[str] = []
 
     con.planning_header()
 
+    # Discover files for all datasets
+    dataset_plans: list[tuple] = []  # (dataset, dataset_dir, receipts_dir, files)
     for dataset in blend.datasets:
         name = dataset.name
 
@@ -1585,43 +1870,197 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
         )
         files = discover_input_files(dataset_config, fs)
 
-        # Display info
+        # Display discovered info
         logger.info(
-            f"Processing dataset '{name}' with {len(files)} files -> "
-            f"{num_shards} chat SFT shards (pack_size={format_config.pack_size}, "
-            f"chat_template={format_config.chat_template})"
+            f"Discovered dataset '{name}' with {len(files)} files"
         )
 
-        # Process with actors
-        if files:
-            _process_chat_sft_shards_with_actors(
-                files=files,
+        dataset_plans.append((dataset, dataset_dir, receipts_dir, files))
+
+    # Build plan info for display
+    plan_infos = []
+    for dataset, dataset_dir, receipts_dir, files in dataset_plans:
+        # Check cached stats
+        cached_stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
+        cached_shards = cached_stats.get("num_shards_completed", 0)
+
+        plan_infos.append(
+            con.DatasetPlanInfo(
+                name=dataset.name,
+                plan_hash=run_hash[:8],
                 num_shards=num_shards,
-                dataset_dir=dataset_dir,
-                receipts_dir=receipts_dir,
+                num_files=len(files),
+                pending=num_shards - cached_shards if files else 0,
+                cached=cached_shards,
+                cached_tokens=cached_stats.get("total_tokens", 0),
+                cached_sequences=cached_stats.get("num_sequences", 0),
+                sampled=num_shards if config.output.max_rows else None,
+                hf_rows=None,
+                hf_size=None,
+            )
+        )
+
+    # Show plan summary
+    con.plan_summary(plan_infos, run_hash, num_actors=config.num_actors)
+
+    # Execution phase
+    has_work = any(len(files) > 0 for _, _, _, files in dataset_plans)
+
+    if has_work:
+        con.execution_header()
+
+        # Create actor pool ONCE and reuse across all datasets
+        from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+        from dataclasses import asdict
+
+        actors = [
+            ChatSftShardProcessor.remote(
                 resolved_tokenizer=resolved_tokenizer,
-                format_config=format_config,
+                messages_field=format_config.messages_field,
+                tools_field=format_config.tools_field,
+                pack_size=format_config.pack_size,
+                algorithm=format_config.algorithm,
+                dtype=format_config.dtype,
+                chat_template=format_config.chat_template,
                 max_doc_tokens=config.output.max_doc_tokens,
                 max_rows=config.output.max_rows,
-                fs=fs,
-                num_actors=config.num_actors,
+                seed=42,
+                used_in_filter=format_config.used_in_filter,
+                used_in_field=format_config.used_in_field,
             )
+            for _ in range(config.num_actors)
+        ]
 
-        # Aggregate stats (reuse packed stats aggregation - same format)
-        stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
-        results[name] = stats
+        # Create live status panel with all datasets
+        live_status = con.create_live_status(
+            datasets=[
+                (dataset.name, num_shards)
+                for dataset, _, _, files in dataset_plans
+                if files
+            ],
+            run_hash=run_hash,
+        )
+        live_status.start()
 
-        # Build data_paths
-        weight = dataset.weight
-        if weight > 0:
-            prefix = f"{dataset_dir}/shard"
-            data_paths.append(str(weight))
-            data_paths.append(prefix)
+        try:
+            # Determine filesystem protocol
+            protocol = fs.protocol
+            if isinstance(protocol, tuple):
+                protocol = protocol[0]
+            fs_protocol = protocol if protocol != "file" else "file"
+
+            # Build all tasks upfront - process ALL datasets in parallel
+            all_tasks: list[tuple[str, str, str, int, list]] = []  # (name, dataset_dir, receipts_dir, shard_idx, files)
+            for dataset, dataset_dir, receipts_dir, files in dataset_plans:
+                if not files:
+                    continue
+                # Each dataset gets 1 shard (since num_shards is computed per-dataset with 1 file)
+                # Convert files to dicts for Ray serialization
+                files_as_dicts = [
+                    asdict(f) if hasattr(f, "__dict__") else f for f in files
+                ]
+                all_tasks.append((dataset.name, dataset_dir, receipts_dir, 0, files_as_dicts))
+                live_status.start_dataset(dataset.name)
+
+            # Submit all tasks with backpressure
+            num_actors = len(actors)
+            max_in_flight = num_actors * 2
+            task_queue = list(all_tasks)
+            actor_idx = 0
+            pending_list: list = []
+            future_to_task: dict = {}
+
+            def submit_task(task: tuple) -> None:
+                nonlocal actor_idx
+                name, dataset_dir, receipts_dir, shard_idx, files_dicts = task
+                actor = actors[actor_idx % num_actors]
+                actor_idx += 1
+                future = actor.process_shard.remote(
+                    shard_index=shard_idx,
+                    files=files_dicts,
+                    output_dir=dataset_dir,
+                    receipts_dir=receipts_dir,
+                    fs_protocol=fs_protocol,
+                )
+                pending_list.append(future)
+                future_to_task[future] = task
+
+            # Initial submission
+            while task_queue and len(pending_list) < max_in_flight:
+                submit_task(task_queue.pop(0))
+
+            # Process with backpressure
+            while pending_list:
+                done, pending_list = ray.wait(pending_list, num_returns=1, timeout=60)
+                for future in done:
+                    task = future_to_task.pop(future)
+                    name = task[0]
+                    dataset_dir = task[1]
+                    receipts_dir = task[2]
+                    try:
+                        ray.get(future)
+                    except Exception as e:
+                        logger.error(f"Chat SFT shard for {name} failed: {e}")
+
+                    # Update progress
+                    live_status.advance_dataset(name)
+
+                    # Aggregate stats for this dataset
+                    stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
+                    results[name] = stats
+                    live_status.report_metrics(
+                        name,
+                        rows=stats.get("num_sequences", 0),
+                        tokens=stats.get("total_tokens", 0),
+                    )
+                    live_status.complete_dataset(name)
+
+                    # Submit next task if available
+                    if task_queue:
+                        submit_task(task_queue.pop(0))
+
+            # Build data_paths for all completed datasets
+            for dataset, dataset_dir, receipts_dir, files in dataset_plans:
+                if not files:
+                    continue
+                weight = dataset.weight
+                if weight > 0:
+                    prefix = f"{dataset_dir}/shard"
+                    data_paths.append(str(weight))
+                    data_paths.append(prefix)
+        finally:
+            live_status.stop()
+            # Clean up actors
+            for actor in actors:
+                ray.kill(actor)
+    else:
+        # No work to do - all datasets empty or cached
+        for dataset, dataset_dir, receipts_dir, files in dataset_plans:
+            stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
+            results[dataset.name] = stats
+            weight = dataset.weight
+            if weight > 0:
+                prefix = f"{dataset_dir}/shard"
+                data_paths.append(str(weight))
+                data_paths.append(prefix)
 
     # Generate blend.json
-    blend_data: dict = {"data_paths": data_paths}
-    if config.split:
-        blend_data["split"] = config.split
+    # Check if per-split output mode is enabled
+    if config.per_split is not None and config.per_split.enabled:
+        blend_data = _distribute_shards_to_splits(
+            data_paths=data_paths,
+            num_shards=num_shards,
+            valid_shards=config.per_split.valid_shards,
+            test_shards=config.per_split.test_shards,
+        )
+        is_per_split = True
+        split_ratio = None
+    else:
+        blend_data = {"data_paths": data_paths}
+        if config.split:
+            blend_data["split"] = config.split
+        is_per_split = False
+        split_ratio = config.split
 
     blend_path = config.output.dir / "blend.json"
     _write_json(blend_path, blend_data)
@@ -1640,26 +2079,26 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                 total_sequences=sum(r.get("num_sequences", 0) for r in results.values()),
             )
         },
-        is_per_split=False,
-        split_ratio=config.split,
+        is_per_split=is_per_split,
+        split_ratio=split_ratio,
         elapsed_sec=0,
     )
 
 
-def _process_chat_sft_shards_with_actors(
+def _process_chat_sft_shards_with_actors_pool(
+    actors: list,
     files: list,
     num_shards: int,
     dataset_dir: str,
     receipts_dir: str,
-    resolved_tokenizer: dict,
-    format_config: ChatSftOutputConfig,
-    max_doc_tokens: int | None,
     max_rows: int | None,
     fs,
-    num_actors: int,
+    on_progress: Callable[[], None] | None = None,
 ) -> None:
-    """Process files to chat SFT packed shards using Ray actors."""
-    from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+    """Process files to chat SFT packed shards using existing Ray actor pool.
+
+    This version takes a pre-created actor pool to allow reuse across datasets.
+    """
     from dataclasses import asdict
 
     # Determine filesystem protocol
@@ -1668,22 +2107,7 @@ def _process_chat_sft_shards_with_actors(
         protocol = protocol[0]
     fs_protocol = protocol if protocol != "file" else "file"
 
-    # Create actor pool
-    actors = [
-        ChatSftShardProcessor.remote(
-            resolved_tokenizer=resolved_tokenizer,
-            messages_field=format_config.messages_field,
-            tools_field=format_config.tools_field,
-            pack_size=format_config.pack_size,
-            algorithm=format_config.algorithm,
-            dtype=format_config.dtype,
-            chat_template=format_config.chat_template,
-            max_doc_tokens=max_doc_tokens,
-            max_rows=max_rows,
-            seed=42,  # Fixed seed for reproducibility
-        )
-        for _ in range(num_actors)
-    ]
+    num_actors = len(actors)
 
     # Distribute files across shards (round-robin)
     shard_assignments: dict[int, list] = {i: [] for i in range(num_shards)}
@@ -1727,8 +2151,69 @@ def _process_chat_sft_shards_with_actors(
             shard_index = future_to_shard.pop(future)
             try:
                 ray.get(future)
+                if on_progress:
+                    on_progress()
             except Exception as e:
                 logger.error(f"Chat SFT shard {shard_index} failed: {e}")
+                if on_progress:
+                    on_progress()
 
             if shard_queue:
                 submit_task(shard_queue.pop(0))
+
+
+def _process_chat_sft_shards_with_actors(
+    files: list,
+    num_shards: int,
+    dataset_dir: str,
+    receipts_dir: str,
+    resolved_tokenizer: dict,
+    format_config: ChatSftOutputConfig,
+    max_doc_tokens: int | None,
+    max_rows: int | None,
+    fs,
+    num_actors: int,
+    on_progress: Callable[[], None] | None = None,
+) -> None:
+    """Process files to chat SFT packed shards using Ray actors.
+
+    This creates its own actor pool - for single dataset processing.
+    For processing multiple datasets, use _process_chat_sft_shards_with_actors_pool
+    with a shared actor pool.
+    """
+    from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+
+    # Create actor pool
+    actors = [
+        ChatSftShardProcessor.remote(
+            resolved_tokenizer=resolved_tokenizer,
+            messages_field=format_config.messages_field,
+            tools_field=format_config.tools_field,
+            pack_size=format_config.pack_size,
+            algorithm=format_config.algorithm,
+            dtype=format_config.dtype,
+            chat_template=format_config.chat_template,
+            max_doc_tokens=max_doc_tokens,
+            max_rows=max_rows,
+            seed=42,  # Fixed seed for reproducibility
+            used_in_filter=format_config.used_in_filter,
+            used_in_field=format_config.used_in_field,
+        )
+        for _ in range(num_actors)
+    ]
+
+    try:
+        _process_chat_sft_shards_with_actors_pool(
+            actors=actors,
+            files=files,
+            num_shards=num_shards,
+            dataset_dir=dataset_dir,
+            receipts_dir=receipts_dir,
+            max_rows=max_rows,
+            fs=fs,
+            on_progress=on_progress,
+        )
+    finally:
+        # Clean up actors
+        for actor in actors:
+            ray.kill(actor)

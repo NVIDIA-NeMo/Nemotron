@@ -1,0 +1,38 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py311
+
+# Tiny config for RL data preparation (fast iteration/testing)
+#
+# Usage:
+#   nemotron nano3 data prep rl --config tiny
+#   nemotron nano3 data prep rl --config tiny --run prep
+#
+# This config uses sampling for quick testing.
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_blend_raw.json
+
+# Output directory for JSONL data (outputs to job directory for persistence)
+output_dir: ${oc.env:PWD}/../output/stage2_rl_tiny
+
+# Target size per shard - smaller for tiny config
+shard_size: 64MB
+
+# Limit rows per dataset for quick tests - small sample for tiny
+sample: 1000
+
+# Ray actors for parallel processing (null = auto)
+num_actors: null
+
+# Force new run, ignoring cache
+force: false
+
+# Split output into train/val/test directories: 'none' or 'train_val_test'
+split_output: train_val_test
+
+# Ratio of data for training when split_output='train_val_test'
+train_ratio: 0.98
+
+# Ratio of data for validation when split_output='train_val_test'
+val_ratio: 0.01

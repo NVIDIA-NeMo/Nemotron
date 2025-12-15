@@ -44,35 +44,67 @@ class ArtifactFileSystem(AbstractFileSystem):
     def _parse_uri(self, path: str) -> tuple[str, int | None, str]:
         """Parse art:// URI into components.
 
+        Supports multiple formats:
+        - art://name:v1/file.txt - simple artifact with version
+        - art://name/file.txt - simple artifact (latest)
+        - art://entity/project/name:v1/file.txt - full W&B path with version
+        - art://entity/project/name:v1 - full W&B path, no file
+
         Args:
-            path: URI like "art://name:v1/file.txt" or "name:v1/file.txt"
+            path: URI like "art://name:v1/file.txt" or "entity/project/name:v1/file.txt"
 
         Returns:
             Tuple of (artifact_name, version, file_path)
+            For W&B paths, artifact_name includes entity/project/name
         """
         # Remove protocol prefix if present
         if path.startswith("art://"):
             path = path[6:]
 
-        # Split into artifact ref and file path
-        parts = path.split("/", 1)
-        artifact_ref = parts[0]
-        file_path = parts[1] if len(parts) > 1 else ""
+        # Find version specifier (last occurrence of :vN or :latest or :N)
+        # The artifact reference is everything before the version specifier
+        # The file path is everything after the artifact reference
 
-        # Parse artifact name and version
-        if ":" in artifact_ref:
-            name, version_str = artifact_ref.rsplit(":", 1)
-            if version_str == "latest":
-                version = None
-            elif version_str.startswith("v"):
-                version = int(version_str[1:])
-            else:
-                version = int(version_str)
+        # First, check if there's a version specifier
+        version: int | None = None
+        artifact_ref = ""
+        file_path = ""
+
+        # Look for version pattern: :vN, :latest, or :N at the end of a segment
+        # Split on / and look for : in each part
+        parts = path.split("/")
+
+        for i, part in enumerate(parts):
+            if ":" in part:
+                # This part contains the version specifier
+                name_part, version_str = part.rsplit(":", 1)
+
+                # Parse version
+                if version_str == "latest":
+                    version = None
+                elif version_str.startswith("v"):
+                    version = int(version_str[1:])
+                else:
+                    try:
+                        version = int(version_str)
+                    except ValueError:
+                        # Not a valid version, treat the whole thing as the name
+                        name_part = part
+                        version = None
+
+                # Build artifact ref from parts up to and including this one (minus version)
+                artifact_ref = "/".join(parts[:i] + [name_part] if name_part else parts[:i])
+                # File path is everything after
+                file_path = "/".join(parts[i + 1:]) if i + 1 < len(parts) else ""
+                break
         else:
-            name = artifact_ref
+            # No version specifier found - entire path could be artifact name or name/file
+            # Heuristic: if there's no version, assume no file path (user wants artifact root)
+            artifact_ref = path
+            file_path = ""
             version = None
 
-        return name, version, file_path
+        return artifact_ref, version, file_path
 
     def _resolve_semantic(self, uri: str) -> tuple[str, str] | None:
         """Resolve semantic URI like nano3/pretrain/data?sample=10000/file.json.
@@ -139,20 +171,77 @@ class ArtifactFileSystem(AbstractFileSystem):
     def _resolve(self, path: str) -> tuple[Path, str]:
         """Resolve art:// path to local filesystem path.
 
+        Supports multiple URI formats:
+        - art://name:version - local registry lookup
+        - art://entity/project/name:version - full W&B artifact path
+        - art://recipe/stage/step - semantic URI (e.g., nano3/pretrain/data)
+
         Returns:
             Tuple of (artifact_root_path, relative_file_path)
         """
-        # Try semantic resolution first
+        # Try semantic resolution first (for nano3/pretrain/data format)
         semantic = self._resolve_semantic(path)
         if semantic is not None:
             base_path, file_path = semantic
             return Path(base_path), file_path
 
-        # Fall back to registry (name:version format)
+        # Parse the URI
         name, version, file_path = self._parse_uri(path)
-        registry = get_registry()
-        artifact_path = registry.resolve(name, version)
-        return artifact_path, file_path
+
+        # Check if name contains slashes (W&B full path: entity/project/artifact_name)
+        if "/" in name:
+            local_path = self._resolve_wandb_full_path(name, version)
+            return local_path, file_path
+
+        # Try local registry first
+        try:
+            registry = get_registry()
+            artifact_path = registry.resolve(name, version)
+            return artifact_path, file_path
+        except ArtifactNotFoundError:
+            # Fall back to W&B with short name (uses current project)
+            local_path = self._resolve_wandb_short_name(name, version)
+            return local_path, file_path
+
+    def _resolve_wandb_full_path(self, full_name: str, version: int | None) -> Path:
+        """Resolve full W&B artifact path (entity/project/name).
+
+        Args:
+            full_name: Full artifact path like "romeyn/nemotron/DataBlendsArtifact-pretrain"
+            version: Version number (e.g., 10 for v10) or None for latest
+
+        Returns:
+            Local path to downloaded artifact
+        """
+        import wandb
+
+        version_str = f":v{version}" if version is not None else ":latest"
+        artifact = wandb.Api().artifact(f"{full_name}{version_str}")
+        return Path(artifact.download())
+
+    def _resolve_wandb_short_name(self, name: str, version: int | None) -> Path:
+        """Resolve short artifact name using current W&B project.
+
+        Args:
+            name: Artifact name (without entity/project)
+            version: Version number or None for latest
+
+        Returns:
+            Local path to downloaded artifact
+        """
+        import wandb
+
+        config = get_config()
+
+        # Build the project path from config
+        if config.wandb_entity:
+            project = f"{config.wandb_entity}/{config.wandb_project}"
+        else:
+            project = config.wandb_project
+
+        version_str = f":v{version}" if version is not None else ":latest"
+        artifact = wandb.Api().artifact(f"{project}/{name}{version_str}")
+        return Path(artifact.download())
 
     def _open(
         self,

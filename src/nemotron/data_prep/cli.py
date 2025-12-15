@@ -79,12 +79,32 @@ def _get_num_actors(num_actors: int | None) -> int:
 
 def run_command(args: RunCommand) -> None:
     """Execute the run command."""
+    # Configure runtime_env to exclude large directories from Ray's working directory upload.
+    # Without this, Ray auto-packages the working directory including output/, wandb/, etc.
+    # which can easily exceed Ray's 512MB GCS limit.
+    runtime_env = {
+        "excludes": [
+            "output/",
+            "outputs/",
+            "wandb/",
+            "data/",
+            "checkpoints/",
+            "*.bin",
+            "*.idx",
+            "*.npy",
+            "__pycache__/",
+            ".git/",
+            ".venv/",
+            "*.egg-info/",
+        ]
+    }
+
     # Initialize Ray
     try:
-        ray.init(args.ray_address, ignore_reinit_error=True)
+        ray.init(args.ray_address, ignore_reinit_error=True, runtime_env=runtime_env)
     except Exception:
         # Fall back to local mode if cluster not available
-        ray.init(ignore_reinit_error=True)
+        ray.init(ignore_reinit_error=True, runtime_env=runtime_env)
 
     # Auto-detect num_actors after Ray is initialized
     num_actors = _get_num_actors(args.num_actors)

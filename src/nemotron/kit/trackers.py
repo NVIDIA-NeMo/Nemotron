@@ -4,6 +4,7 @@ Lineage tracking backends for nemotron.kit.
 Provides the LineageTracker protocol and implementations for W&B and no-op tracking.
 """
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
@@ -496,6 +497,8 @@ class WandbTracker:
                 wb_artifact.add_file(str(artifact_path), name="blend.json")
             else:
                 # Generic artifact - add directory reference
+                # Use checksum=False to avoid digest mismatch errors when files change
+                # between data prep runs (the path is what matters for lineage)
                 if artifact_path.is_file():
                     artifact_path = artifact_path.parent
                 output_uri = f"file://{artifact_path.resolve()}"
@@ -503,7 +506,7 @@ class WandbTracker:
                     wb_artifact.add_reference(
                         output_uri,
                         name="output",
-                        checksum=True,
+                        checksum=False,
                     )
                 except Exception:
                     # Fallback to add_dir if reference fails
@@ -541,6 +544,12 @@ class WandbTracker:
 
         # Wait for artifact to be logged (to get ID)
         logged.wait()
+
+        # Add experiment_id as alias for cross-task artifact discovery
+        experiment_id = os.environ.get("NEMO_EXPERIMENT_ID")
+        if experiment_id:
+            logged.aliases.append(experiment_id)
+            logged.save()
 
         # Collect all tracked URIs
         tracked_uris: list[str] = []

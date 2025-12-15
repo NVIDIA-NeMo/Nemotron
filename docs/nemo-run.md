@@ -115,18 +115,31 @@ python -m nemotron.recipes.nano3.stage2_rl.train --run draco
 ## CLI Options
 
 ```bash
-# Select a profile
+# Select a profile (attached execution - waits for completion)
 python train.py --run <profile-name>
+
+# Batch mode (detached execution - submits and exits immediately)
+python train.py --batch <profile-name>
 
 # Override profile settings
 python train.py --run draco --run.nodes 8 --run.time 08:00:00
+python train.py --batch draco --batch.nodes 8 --batch.time 08:00:00
 
 # Dry-run (preview what would be executed)
 python train.py --run draco --run.dry-run
 
-# Detached mode (submit and exit)
+# Detached mode (submit and exit) - same as using --batch
 python train.py --run draco --run.detach
 ```
+
+### `--run` vs `--batch`
+
+| Option | Behavior | Use Case |
+|--------|----------|----------|
+| `--run` | Attached execution, waits for job to complete | Interactive development, monitoring output |
+| `--batch` | Detached execution, submits and exits immediately | Long-running training jobs, job queues |
+
+The `--batch` option automatically sets `detach=True` and `ray_mode="job"` (ensuring Ray clusters terminate after the job completes).
 
 ## Supported Executors
 
@@ -181,6 +194,21 @@ host = "cluster.example.com"
 user = "username"
 identity = "~/.ssh/id_rsa"
 ```
+
+#### Partition Overrides
+
+You can specify different partitions for `--run` (attached) vs `--batch` (detached) execution:
+
+```toml
+[draco]
+executor = "slurm"
+account = "my-account"
+partition = "batch"           # Default partition
+run_partition = "interactive" # Used for --run (attached)
+batch_partition = "backfill"  # Used for --batch (detached)
+```
+
+This is useful when your cluster has separate partitions for interactive and batch workloads.
 
 ### SkyPilot
 
@@ -287,6 +315,34 @@ wandb:
 | `tags` | list | `[]` | Tags for filtering runs |
 | `notes` | str | - | Notes/description for the run |
 
+## CLI Display Settings
+
+You can customize how the CLI displays configuration output using the `[cli]` section:
+
+```toml
+# run.toml or env.toml
+
+[cli]
+theme = "github-light"
+```
+
+The `theme` setting controls the syntax highlighting theme used when displaying compiled configurations. This applies to both `--dry-run` output and regular execution.
+
+### Available Themes
+
+Any Pygments theme is supported. Popular choices include:
+
+| Theme | Description |
+|-------|-------------|
+| `monokai` | Dark theme (default) |
+| `github-light` | Light theme matching GitHub |
+| `github-dark` | Dark theme matching GitHub |
+| `dracula` | Popular dark theme |
+| `one-dark` | Atom One Dark theme |
+| `nord` | Nord color palette |
+| `solarized-dark` | Solarized dark |
+| `solarized-light` | Solarized light |
+
 ## Execution Profile Reference
 
 | Field | Type | Default | Description |
@@ -297,7 +353,9 @@ wandb:
 | `container_image` | str | - | Container image |
 | `mounts` | list | `[]` | Mount points (e.g., `/host:/container`) |
 | `account` | str | - | Slurm account |
-| `partition` | str | - | Slurm partition |
+| `partition` | str | - | Slurm partition (default for both --run and --batch) |
+| `run_partition` | str | - | Partition override for `--run` (attached execution) |
+| `batch_partition` | str | - | Partition override for `--batch` (detached execution) |
 | `time` | str | `"04:00:00"` | Job time limit |
 | `job_name` | str | `"nemo-run"` | Job name |
 | `tunnel` | str | `"local"` | Slurm tunnel: local or ssh |

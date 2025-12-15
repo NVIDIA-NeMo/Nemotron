@@ -6,6 +6,7 @@ Provides the Artifact base class, typed subclasses, and utilities.
 
 import json
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Self
@@ -287,6 +288,7 @@ class Artifact(BaseModel):
         uri_path = uri[6:]  # Remove "art://"
 
         # Parse name and version
+        version: int | str | None
         if ":" in uri_path:
             name, version_str = uri_path.rsplit(":", 1)
             if version_str == "latest":
@@ -294,7 +296,11 @@ class Artifact(BaseModel):
             elif version_str.startswith("v"):
                 version = int(version_str[1:])
             else:
-                version = int(version_str)
+                # Try numeric; otherwise treat as alias
+                try:
+                    version = int(version_str)
+                except ValueError:
+                    version = version_str  # Alias string
         else:
             name = uri_path
             version = None
@@ -332,7 +338,7 @@ class Artifact(BaseModel):
 
 
 class DataBlendsArtifact(Artifact):
-    """Tokenized data blends artifact (output of data_prep).
+    """Tokenized data blends artifact (output of pretrain/RL data_prep).
 
     The path points directly to the blend.json file.
 
@@ -344,6 +350,11 @@ class DataBlendsArtifact(Artifact):
     total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
     elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+
+    # Per-split token counts (optional, populated in per-split mode)
+    train_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in train split")]
+    valid_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in valid split")]
+    test_tokens: Annotated[int | None, Field(default=None, ge=0, description="Tokens in test split")]
 
     # Source datasets for lineage tracking
     # Accepts InputDatasetInfo (with metadata) or str (URI only, for backwards compat)
@@ -416,6 +427,243 @@ class DataBlendsArtifact(Artifact):
             pass
 
 
+class SFTDataArtifact(Artifact):
+    """Packed SFT data artifact (output of SFT data_prep).
+
+    Contains packed .npy files with tokenized and packed chat sequences.
+    The path points to the output directory containing training.npy, validation.npy, etc.
+
+    Source URIs are tracked for W&B lineage:
+    - source_datasets: Input datasets with metadata (or URIs for backwards compat)
+    - tokenizer_uri: URI of the tokenizer model (hf://models/...)
+    """
+
+    total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
+    total_sequences: Annotated[int, Field(ge=0, description="Total sequences after packing")]
+    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+
+    # Packing configuration
+    pack_size: Annotated[int, Field(ge=1, description="Maximum tokens per packed sequence")]
+
+    # Source datasets for lineage tracking
+    source_datasets: Annotated[
+        list[InputDatasetInfo | str],
+        Field(default_factory=list, description="Input datasets with metadata"),
+    ]
+    tokenizer_uri: Annotated[
+        str | None, Field(default=None, description="URI of tokenizer model")
+    ]
+
+    def save(self, name: str | None = None) -> None:
+        """Save artifact metadata to output directory."""
+        output_dir = self.path
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get tracker if active
+        tracker = get_lineage_tracker()
+        if tracker and tracker.is_active():
+            if self.producer is None:
+                self.producer = tracker.get_run_id() or "local"
+
+            # Derive artifact name from semantic name if set
+            artifact_name = name
+            if artifact_name is None and self.name:
+                parts = self.name.split("/")
+                if len(parts) >= 2:
+                    stage = parts[1].split("?")[0]
+                    artifact_name = f"{self.type}-{stage}"
+            artifact_name = artifact_name or self.type
+
+            tracking_metadata = tracker.log_artifact(self, artifact_name, self._used_artifacts)
+            self.tracking = TrackingInfo(**tracking_metadata)
+        else:
+            if self.producer is None:
+                self.producer = "local"
+
+        # Write metadata.json atomically
+        metadata_path = output_dir / "metadata.json"
+        temp_path = output_dir / ".metadata.json.tmp"
+
+        with open(temp_path, "w") as f:
+            json.dump(self.model_dump(mode="json"), f, indent=2, default=str)
+
+        temp_path.rename(metadata_path)
+
+        # Publish to registry if initialized
+        try:
+            from nemotron.kit import get_config, is_initialized
+            from nemotron.kit.registry import get_registry
+
+            if is_initialized():
+                config = get_config()
+                if config and config.backend != "wandb":
+                    registry = get_registry()
+                    artifact_name = name or self.type
+                    version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
+                    self._name = artifact_name
+                    self._version = version.version
+        except ImportError:
+            pass
+
+
+class PretrainDataArtifact(Artifact):
+    """Pretrain data artifact (output of pretrain data_prep).
+
+    Contains tokenized bin/idx files for pretraining.
+    The path points to the output directory containing sharded data files.
+
+    Source URIs are tracked for W&B lineage:
+    - source_datasets: Input datasets with metadata (or URIs for backwards compat)
+    - tokenizer_uri: URI of the tokenizer model (hf://models/...)
+    """
+
+    total_tokens: Annotated[int, Field(ge=0, description="Total tokens processed")]
+    total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
+    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+
+    # Sharding configuration
+    num_shards: Annotated[int, Field(ge=1, description="Number of output shards")]
+
+    # Source datasets for lineage tracking
+    source_datasets: Annotated[
+        list[InputDatasetInfo | str],
+        Field(default_factory=list, description="Input datasets with metadata"),
+    ]
+    tokenizer_uri: Annotated[
+        str | None, Field(default=None, description="URI of tokenizer model")
+    ]
+
+    def save(self, name: str | None = None) -> None:
+        """Save artifact metadata to output directory."""
+        output_dir = self.path
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get tracker if active
+        tracker = get_lineage_tracker()
+        if tracker and tracker.is_active():
+            if self.producer is None:
+                self.producer = tracker.get_run_id() or "local"
+
+            # Derive artifact name from semantic name if set
+            artifact_name = name
+            if artifact_name is None and self.name:
+                parts = self.name.split("/")
+                if len(parts) >= 2:
+                    stage = parts[1].split("?")[0]
+                    artifact_name = f"{self.type}-{stage}"
+            artifact_name = artifact_name or self.type
+
+            tracking_metadata = tracker.log_artifact(self, artifact_name, self._used_artifacts)
+            self.tracking = TrackingInfo(**tracking_metadata)
+        else:
+            if self.producer is None:
+                self.producer = "local"
+
+        # Write metadata.json atomically
+        metadata_path = output_dir / "metadata.json"
+        temp_path = output_dir / ".metadata.json.tmp"
+
+        with open(temp_path, "w") as f:
+            json.dump(self.model_dump(mode="json"), f, indent=2, default=str)
+
+        temp_path.rename(metadata_path)
+
+        # Publish to registry if initialized
+        try:
+            from nemotron.kit import get_config, is_initialized
+            from nemotron.kit.registry import get_registry
+
+            if is_initialized():
+                config = get_config()
+                if config and config.backend != "wandb":
+                    registry = get_registry()
+                    artifact_name = name or self.type
+                    version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
+                    self._name = artifact_name
+                    self._version = version.version
+        except ImportError:
+            pass
+
+
+class SplitJsonlDataArtifact(Artifact):
+    """Split JSONL data artifact (output of non-tokenized data_prep).
+
+    Used for RL and other stages that output JSONL files without tokenization.
+    The path points directly to the manifest.json file.
+
+    Unlike DataBlendsArtifact, this does not track token counts since the
+    data is not tokenized.
+
+    Source URIs are tracked for W&B lineage:
+    - source_datasets: Input datasets with metadata (or URIs for backwards compat)
+    """
+
+    total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
+    elapsed_sec: Annotated[float, Field(default=0.0, ge=0, description="Processing time in seconds")]
+
+    # Source datasets for lineage tracking
+    source_datasets: Annotated[
+        list[InputDatasetInfo | str],
+        Field(default_factory=list, description="Input datasets with metadata"),
+    ]
+
+    def save(self, name: str | None = None) -> None:
+        """Save artifact metadata to path's parent directory.
+
+        Since SplitJsonlDataArtifact.path points to manifest.json (a file),
+        metadata.json is written to the same directory.
+        """
+        # Use parent directory since self.path is a file (blend.json/manifest.json)
+        output_dir = self.path.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get tracker if active
+        tracker = get_lineage_tracker()
+        if tracker and tracker.is_active():
+            if self.producer is None:
+                self.producer = tracker.get_run_id() or "local"
+
+            # Derive artifact name from semantic name if set
+            artifact_name = name
+            if artifact_name is None and self.name:
+                parts = self.name.split("/")
+                if len(parts) >= 2:
+                    stage = parts[1].split("?")[0]
+                    artifact_name = f"{self.type}-{stage}"
+            artifact_name = artifact_name or self.type
+
+            tracking_metadata = tracker.log_artifact(self, artifact_name, self._used_artifacts)
+            self.tracking = TrackingInfo(**tracking_metadata)
+        else:
+            if self.producer is None:
+                self.producer = "local"
+
+        # Write metadata.json atomically in the parent directory
+        metadata_path = output_dir / "metadata.json"
+        temp_path = output_dir / ".metadata.json.tmp"
+
+        with open(temp_path, "w") as f:
+            json.dump(self.model_dump(mode="json"), f, indent=2, default=str)
+
+        temp_path.rename(metadata_path)
+
+        # Publish to registry if initialized
+        try:
+            from nemotron.kit import get_config, is_initialized
+            from nemotron.kit.registry import get_registry
+
+            if is_initialized():
+                config = get_config()
+                if config and config.backend != "wandb":
+                    registry = get_registry()
+                    artifact_name = name or self.type
+                    version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
+                    self._name = artifact_name
+                    self._version = version.version
+        except ImportError:
+            pass
+
+
 class ModelArtifact(Artifact):
     """Model checkpoint artifact (output of training).
 
@@ -424,6 +672,56 @@ class ModelArtifact(Artifact):
 
     step: Annotated[int, Field(ge=0, description="Training step")]
     final_loss: Annotated[float | None, Field(default=None, description="Final training loss")]
+
+
+# =============================================================================
+# Artifact Input for CLI Commands
+# =============================================================================
+
+
+@dataclass
+class ArtifactInput:
+    """Defines an artifact input slot for a CLI command.
+
+    Used with App.command() to specify named artifact inputs that can be
+    provided via --art.<name> CLI arguments or stdin piping.
+
+    Example:
+        >>> app.command(
+        ...     "pretrain",
+        ...     TrainingConfig,
+        ...     training_main,
+        ...     artifacts={
+        ...         "data": ArtifactInput(
+        ...             default_name="DataBlendsArtifact-pretrain",
+        ...             mappings={"path": "dataset.data_path"},
+        ...         ),
+        ...     },
+        ... )
+
+    Then users can run:
+        nemotron nano3 pretrain --art.data v10
+        nemotron nano3 pretrain --art.data DataBlendsArtifact-pretrain:latest
+        nemotron nano3 pretrain --art.data romeyn/nemotron/DataBlendsArtifact-pretrain:v10
+    """
+
+    default_name: str
+    """Default W&B artifact name (e.g., 'DataBlendsArtifact-pretrain').
+
+    Used when only a version is provided (e.g., --art.data v10 or --art.data latest).
+    """
+
+    mappings: dict[str, str]
+    """Mapping from artifact metadata fields to config field paths.
+
+    Keys are field names from the artifact's metadata.json (e.g., 'path').
+    Values are dot-separated config field paths (e.g., 'dataset.data_path').
+
+    Example: {"path": "dataset.data_path"} means:
+    - Load artifact metadata
+    - Get metadata["path"] value
+    - Set config.dataset.data_path = that value
+    """
 
 
 # =============================================================================

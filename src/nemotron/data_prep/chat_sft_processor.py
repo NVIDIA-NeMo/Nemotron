@@ -57,6 +57,8 @@ class ChatSftShardProcessor:
         max_doc_tokens: int | None = None,
         max_rows: int | None = None,
         seed: int | None = None,
+        used_in_filter: str | None = None,
+        used_in_field: str = "used_in",
     ):
         """Initialize chat SFT processor.
 
@@ -71,6 +73,8 @@ class ChatSftShardProcessor:
             max_doc_tokens: Truncate sequences longer than this.
             max_rows: Maximum rows to process per shard.
             seed: Random seed for shuffle-based algorithms.
+            used_in_filter: Filter to only include records where used_in contains this value.
+            used_in_field: Field name for used_in filtering (default: "used_in").
         """
         from transformers import AutoTokenizer
 
@@ -82,6 +86,8 @@ class ChatSftShardProcessor:
         self.max_doc_tokens = max_doc_tokens
         self.max_rows = max_rows
         self.seed = seed
+        self.used_in_filter = used_in_filter
+        self.used_in_field = used_in_field
 
         # Load HuggingFace tokenizer with full chat template support
         self._tokenizer = AutoTokenizer.from_pretrained(
@@ -266,6 +272,13 @@ class ChatSftShardProcessor:
         stats: dict,
     ) -> None:
         """Process a single record using materialize.py logic."""
+        # Apply used_in filter if configured
+        if self.used_in_filter:
+            used_in = record.get(self.used_in_field)
+            if not self._matches_used_in_filter(used_in):
+                stats["num_filtered"] += 1
+                return
+
         messages = record.get(self.messages_field)
         tools = record.get(self.tools_field)
 
@@ -409,6 +422,33 @@ class ChatSftShardProcessor:
     def _is_remote_path(self, path: str) -> bool:
         """Check if path is a remote path (S3/GCS/etc)."""
         return path.startswith(("s3://", "gs://", "gcs://", "az://", "abfs://"))
+
+    def _matches_used_in_filter(self, used_in: str | list | None) -> bool:
+        """Check if record's used_in field matches the filter.
+
+        Args:
+            used_in: Value of the used_in field (can be string, list, or None).
+
+        Returns:
+            True if the filter matches, False otherwise.
+        """
+        if used_in is None:
+            return False
+
+        # Handle list format (e.g., ["nano_v3", "prod_v1"])
+        if isinstance(used_in, list):
+            return self.used_in_filter in used_in
+
+        # Handle string format (e.g., "nano_v3" or "nano_v3,prod_v1")
+        if isinstance(used_in, str):
+            # Check for exact match first
+            if used_in == self.used_in_filter:
+                return True
+            # Check comma-separated values
+            values = [v.strip() for v in used_in.split(",")]
+            return self.used_in_filter in values
+
+        return False
 
     def _write_empty_receipt(
         self,

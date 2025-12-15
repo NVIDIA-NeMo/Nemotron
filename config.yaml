@@ -1,0 +1,14 @@
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_blend_raw.json
+output_dir: ${oc.env:PWD}/../output/stage0_pretrain
+num_shards: 128
+valid_shards: 1
+test_shards: 1
+tokenizer_model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+add_bos: false
+add_eos: true
+text_field: text
+min_doc_chars: null
+max_doc_tokens: null
+sample: 10000
+num_actors: null
+force: false

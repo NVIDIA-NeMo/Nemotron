@@ -75,6 +75,16 @@ def create_size_balanced_assignments(
     return assignments
 
 
+def _is_local_path(model: str) -> bool:
+    """Check if model refers to a local filesystem path."""
+    return (
+        model.startswith("/")
+        or model.startswith("./")
+        or model.startswith("../")
+        or Path(model).exists()
+    )
+
+
 def resolve_tokenizer(config: InternalTokenizerConfig) -> dict:
     """Resolve tokenizer to immutable revision."""
     result = {
@@ -89,19 +99,29 @@ def resolve_tokenizer(config: InternalTokenizerConfig) -> dict:
         from huggingface_hub import HfApi
         from transformers import AutoTokenizer
 
-        api = HfApi()
+        is_local = _is_local_path(config.model)
 
-        try:
-            model_info = api.model_info(config.model, revision=config.revision)
-            result["resolved_revision"] = model_info.sha
-        except Exception:
-            # Fallback for local models
-            result["resolved_revision"] = config.revision or "local"
+        if is_local:
+            # Local model - no revision needed
+            result["resolved_revision"] = "local"
+            revision_for_tokenizer = None
+        else:
+            # HuggingFace model - resolve to immutable SHA
+            api = HfApi()
+            try:
+                model_info = api.model_info(config.model, revision=config.revision)
+                result["resolved_revision"] = model_info.sha
+                revision_for_tokenizer = model_info.sha
+            except Exception:
+                # api.model_info() failed but this is a HF model, not local
+                # Use the user-specified revision (or None for default)
+                result["resolved_revision"] = config.revision
+                revision_for_tokenizer = config.revision
 
         # Get vocab size
         tokenizer = AutoTokenizer.from_pretrained(
             config.model,
-            revision=result["resolved_revision"],
+            revision=revision_for_tokenizer,
             trust_remote_code=config.trust_remote_code,
         )
         result["vocab_size"] = len(tokenizer)
