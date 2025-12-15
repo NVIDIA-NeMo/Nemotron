@@ -256,6 +256,9 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
             rsync_opts = (rsync_opts + " " if rsync_opts else "") + "--info=progress2"
         if "--timeout" not in rsync_opts:
             rsync_opts = (rsync_opts + " " if rsync_opts else "") + "--timeout=60"
+        # Use --delete for faster incremental syncs (removes stale files on remote)
+        if "--delete" not in rsync_opts:
+            rsync_opts = (rsync_opts + " " if rsync_opts else "") + "--delete"
         kwargs["rsync_opts"] = rsync_opts
 
         # Default exclusions for our repo (avoid syncing large non-runtime dirs).
@@ -268,7 +271,11 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
                 "__pycache__",
                 ".ruff_cache",
                 ".pytest_cache",
+                ".mypy_cache",
+                ".nemotron",
+                ".conductor",
                 "output",
+                "outputs",
                 "artifacts",
                 "wandb",
                 "usage-cookbook",

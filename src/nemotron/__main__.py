@@ -40,12 +40,7 @@ def main_legacy() -> None:
         # Pass remaining args directly to nano3 app
         sys.argv = [sys.argv[0]] + args[1:]
 
-        # Stage TUI interception (only for bare: pretrain|sft|rl)
-        from nemotron.kit.tui import maybe_run_stage_tui
         from nemotron.recipes.nano3 import app
-
-        if maybe_run_stage_tui(app):
-            sys.exit(0)
 
         app.run()
     elif recipe in ("--help", "-h"):
