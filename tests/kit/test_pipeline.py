@@ -12,19 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nemo_runspec.pipeline (PipelineConfig, run_pipeline)."""
+"""Tests for nemotron.kit.pipeline (PipelineConfig, run_pipeline)."""
 
+import subprocess
+import sys
+from dataclasses import fields
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
-from nemo_runspec.pipeline import (
-    PipelineConfig,
-    generate_pipeline_commands,
+import pytest
+
+from nemotron.kit import PipelineConfig, Step, run_pipeline
+from nemotron.kit.pipeline import (
     generate_sbatch_script,
+    generate_pipeline_commands,
     run_local,
-    run_pipeline,
 )
-from nemo_runspec.step import Step
 
 
 def create_mock_module(name: str, file_path: str | None = None) -> ModuleType:
@@ -299,7 +302,9 @@ class TestGeneratePipelineCommands:
         module = create_mock_module("test.step")
         steps = [Step(name="test", module=module, torchrun=True)]
 
-        commands = generate_pipeline_commands(config, steps, extra_args=["--batch-size", "64"])
+        commands = generate_pipeline_commands(
+            config, steps, extra_args=["--batch-size", "64"]
+        )
 
         assert "--batch-size" in commands
         assert "64" in commands

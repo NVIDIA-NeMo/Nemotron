@@ -16,18 +16,17 @@ Recipes are complete training pipelines that take you from raw data to a fully t
 | Recipe | Description | Status |
 |--------|-------------|--------|
 | [nano3](./nano3/) | Nemotron Nano 3 (31.6B total / 3.6B active params) - 3-stage training pipeline | Available |
-| [evaluator](./evaluator/) | Pre-built evaluation configs for Nemotron models using NeMo Evaluator | Available |
 | chipnemo | ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation) | Planned |
 
 ## Prerequisites (v0)
 
-> **Slurm Only**: This initial release has been tested exclusively with Slurm execution. Support for additional NeMo-Run executors (local, Docker, SkyPilot, DGX Cloud) is planned for future releases.
+The current version is built for Slurm cluster execution with W&B integration:
 
-- **Slurm cluster**: GPU nodes (H100 recommended)
+- **Slurm cluster**: Job submission via [NeMo-Run](https://github.com/NVIDIA-NeMo/Run)
 - **Weights & Biases**: Required for experiment tracking and artifact lineage
 - **Container images**: NeMo containers (e.g., `nvcr.io/nvidian/nemo:25.11-nano-v3.rc2`)
 
-> Future versions will also make the artifact backend configurable, removing the W&B requirement.
+> **Note**: Future versions will make the artifact backend configurable, removing the W&B requirement.
 
 ## Quick Start
 
@@ -52,19 +51,19 @@ mounts = ["/lustre:/lustre"]
 
 > **Note**: Container images are specified in the recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
 
-See [docs/nemo_runspec/nemo-run.md](../../docs/nemo_runspec/nemo-run.md) for complete profile configuration options.
+See [docs/nemo-run.md](../../docs/nemo-run.md) for complete profile configuration options.
 
 ### 2. Run a Recipe
 
 ```bash
 # Prepare data for pretraining
-uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
+nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 
 # Run pretraining on Slurm
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
+nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
 # Check what would be executed (dry-run)
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
+nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
 ## Execution Methods
@@ -86,13 +85,13 @@ The main entrypoint for running recipes. It integrates natively with [NeMo-Run](
 
 ```bash
 # Attached: waits for job, streams logs to terminal
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
+nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
 # Detached: submits job and returns immediately
-uv run nemotron nano3 pretrain -c tiny --batch YOUR-CLUSTER
+nemotron nano3 pretrain -c tiny --batch YOUR-CLUSTER
 
 # Preview execution plan (no submission)
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
+nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
 ### Direct Script Execution
@@ -110,17 +109,17 @@ torchrun --nproc_per_node=8 train.py --config /path/to/config.yaml
 ## CLI Command Structure
 
 ```bash
-uv run nemotron <recipe> <command> [options]
+nemotron <recipe> <command> [options]
 
 # Data preparation commands
-uv run nemotron nano3 data prep pretrain [--run <profile>] [options]
-uv run nemotron nano3 data prep sft [--run <profile>] [options]
-uv run nemotron nano3 data prep rl [--run <profile>] [options]
+nemotron nano3 data prep pretrain [--run <profile>] [options]
+nemotron nano3 data prep sft [--run <profile>] [options]
+nemotron nano3 data prep rl [--run <profile>] [options]
 
 # Training commands
-uv run nemotron nano3 pretrain [--run <profile>] [-c <config>] [overrides]
-uv run nemotron nano3 sft [--run <profile>] [-c <config>] [overrides]
-uv run nemotron nano3 rl [--run <profile>] [-c <config>] [overrides]
+nemotron nano3 pretrain [--run <profile>] [-c <config>] [overrides]
+nemotron nano3 sft [--run <profile>] [-c <config>] [overrides]
+nemotron nano3 rl [--run <profile>] [-c <config>] [overrides]
 ```
 
 ## Artifact Lineage
@@ -141,5 +140,5 @@ Each stage can reference artifacts from previous stages, ensuring reproducibilit
 
 ## Further Reading
 
-- [NeMo-Run Configuration](../../docs/nemo_runspec/nemo-run.md) - Detailed guide on execution profiles and env.toml setup
+- [NeMo-Run Configuration](../../docs/nemo-run.md) - Detailed guide on execution profiles and env.toml setup
 - [Nano3 Recipe](./nano3/) - Complete documentation for the Nemotron Nano 3 training pipeline

@@ -1,17 +1,8 @@
 run:
-  data: SplitJsonlDataArtifact-rl:latest
-  model: sft:latest  # Megatron checkpoint to finetune from
+  data: DataBlendsArtifact-rl:latest
+  model: sft:latest
   env:
-    container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano
-
-# Initial checkpoint for finetuning (Megatron format from SFT)
-initial_checkpoint: ${art:model,path}
-
-# Convert Megatron checkpoint to HuggingFace format using Megatron-Bridge
-# When true: converts initial_checkpoint to HF format, uses it for both vLLM and training
-# When false (default): vLLM uses base HF model, training loads weights via fake step_0 checkpoint
-convert_initial_checkpoint_to_hf: false
-converted_checkpoint_dir: null  # Optional: specify output dir, defaults to <checkpoint>_hf
+    container: nvcr.io/nvidian/nemo-rl:25.11-nano-v3.rc2
 
 # GRPO Algorithm Configuration for training Nano v3
 grpo:
@@ -84,10 +75,9 @@ checkpointing:
   checkpoint_must_save_by: "00:03:40:00"
 
 policy:
-  # HuggingFace model for architecture (vLLM init + HF→Megatron conversion)
-  model_name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  model_name: ${art:model,path}
   tokenizer:
-    name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+    name: ${policy.model_name} ## specify if you'd like to use a tokenizer different from the model's default
   train_global_batch_size: 2048
   train_micro_batch_size: 1
   generation_batch_size: 64 # Only used when generating using HF backend
@@ -260,8 +250,8 @@ policy:
         num_nodes: null # Decides number of nodes to be dedicated to generation
 
 data:
-  train_jsonl_fpath: ${art:data,train}
-  validation_jsonl_fpath: ${art:data,train}
+  train_jsonl_fpath: ${art:data,path}/training.jsonl
+  validation_jsonl_fpath: ${art:data,path}/validation.jsonl
   shuffle: False
   num_workers: 1
 
@@ -292,14 +282,14 @@ env:
 logger:
   log_dir: "logs"  # Base directory for all logs
   num_val_samples_to_print: 0 # Number of validation samples to pretty print on terminal
-  wandb_enabled: true
+  wandb_enabled: false
   tensorboard_enabled: false
   mlflow_enabled: false  # Disable MLflow logging
   monitor_gpus: true  # If true, will monitor GPU usage and log to wandb and/or tensorboard
   swanlab_enabled: false # Disable SwanLab logging
   wandb:
-    project: "${run.wandb.project}"
-    name: "${run.wandb.entity}"
+    project: "grpo-dev"
+    name: "grpo-dev-logger"
   tensorboard: {}
   mlflow:
     experiment_name: "grpo-dev"
@@ -310,4 +300,4 @@ logger:
 
 cluster:
   gpus_per_node: 8
-  num_nodes: 1
+  num_nodes: 32

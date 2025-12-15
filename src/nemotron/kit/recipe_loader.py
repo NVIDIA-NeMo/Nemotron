@@ -15,8 +15,6 @@
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
-"""Helpers for loading recipe callables and extracting config-driven kwargs."""
-
 from __future__ import annotations
 
 import importlib

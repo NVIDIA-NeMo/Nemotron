@@ -6,8 +6,6 @@ Fine-tune the pretrained model to follow instructions using Megatron-Bridge.
 
 This stage takes instruction-following datasets in OpenAI chat format, applies chat templates with role-based loss masking, and fine-tunes the pretrained model. The output is an instruction-following model ready for alignment training.
 
-> **Open-Source Data Only**: This recipe trains exclusively on the open-sourced subset of SFT data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use this recipe as a reference implementation to apply the methodology with your own data.
-
 | Component | Description |
 |-----------|-------------|
 | `data_prep.py` | Applies chat templates, tokenizes to packed .npy format |
@@ -20,13 +18,13 @@ This stage takes instruction-following datasets in OpenAI chat format, applies c
 
 ```bash
 # 1. Prepare data (apply chat templates, tokenize to .npy)
-uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
+nemotron nano3 data prep sft --run YOUR-CLUSTER
 
 # 2. Run SFT
-uv run nemotron nano3 sft --run YOUR-CLUSTER
+nemotron nano3 sft --run YOUR-CLUSTER
 
 # Quick test with tiny config
-uv run nemotron nano3 sft -c tiny --run YOUR-CLUSTER
+nemotron nano3 sft -c tiny --run YOUR-CLUSTER
 ```
 
 ### Direct Script Execution
@@ -59,7 +57,7 @@ The `data_prep.py` script processes OpenAI-format chat data into packed sequence
 ### CLI Command
 
 ```bash
-uv run nemotron nano3 data prep sft [options]
+nemotron nano3 data prep sft [options]
 ```
 
 | Option | Description |
@@ -141,7 +139,7 @@ The `train.py` script runs supervised fine-tuning using Megatron-Bridge.
 ### CLI Command
 
 ```bash
-uv run nemotron nano3 sft [options] [overrides...]
+nemotron nano3 sft [options] [overrides...]
 ```
 
 | Option | Description |
@@ -176,13 +174,13 @@ uv run nemotron nano3 sft [options] [overrides...]
 
 ```bash
 # More training iterations
-uv run nemotron nano3 sft -c tiny train.train_iters=5000
+nemotron nano3 sft -c tiny train.train_iters=5000
 
 # Different learning rate
-uv run nemotron nano3 sft -c tiny optimizer.lr=1e-5
+nemotron nano3 sft -c tiny optimizer.lr=1e-5
 
 # Load specific pretrained checkpoint
-uv run nemotron nano3 sft -c tiny checkpoint.load=/path/to/pretrain/checkpoint
+nemotron nano3 sft -c tiny checkpoint.load=/path/to/pretrain/checkpoint
 ```
 
 ## Running with NeMo-Run
@@ -214,35 +212,33 @@ mounts = ["/lustre:/lustre"]
 
 ```bash
 # Attached (wait for completion)
-uv run nemotron nano3 sft -c tiny --run YOUR-CLUSTER
+nemotron nano3 sft -c tiny --run YOUR-CLUSTER
 
 # Detached (submit and exit)
-uv run nemotron nano3 sft -c tiny --batch YOUR-CLUSTER
+nemotron nano3 sft -c tiny --batch YOUR-CLUSTER
 
 # Preview without executing
-uv run nemotron nano3 sft -c tiny --run YOUR-CLUSTER --dry-run
+nemotron nano3 sft -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo-run.md](../../../../docs/nemo-run.md) for complete configuration options.
 
 ## Artifact Lineage
 
-```mermaid
-flowchart TB
-    prev["ModelArtifact-pretrain<br/>(from Stage 0)"] --> train
-    inst["Instruction Datasets<br/>(OpenAI chat format)"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-sft<br/>(packed .npy files)"]
-    data --> train["train.py"]
-    train --> model["ModelArtifact-sft<br/>(fine-tuned checkpoint)"]
-    model --> next["Stage 2: RL"]
-
-    style prev fill:#e1f5fe
-    style inst fill:#f3e5f5
-    style dp fill:#f3e5f5
-    style data fill:#f3e5f5
-    style train fill:#f3e5f5
-    style model fill:#f3e5f5
-    style next fill:#e8f5e9
+```
+ModelArtifact-pretrain (from Stage 0)
+     ↓
+Instruction Datasets (OpenAI chat format)
+     ↓
+data_prep.py
+     ↓
+DataBlendsArtifact-sft (packed .npy files)
+     ↓
+train.py
+     ↓
+ModelArtifact-sft (fine-tuned checkpoint)
+     ↓
+[Stage 2: RL]
 ```
 
 ## Next Steps

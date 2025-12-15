@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import typer
 
-from nemo_runspec.cli_context import global_callback
+from nemotron.kit.cli.globals import global_callback
 
 # Create root app with global callback
 app = typer.Typer(
@@ -35,7 +35,6 @@ app = typer.Typer(
     help="Nemotron CLI - Reproducible training recipes",
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
-    rich_markup_mode="rich",
 )
 
 
@@ -71,22 +70,17 @@ def main_callback(
         "--stage",
         help="Stage script + config to remote cluster for interactive debugging",
     ),
-    force_squash: bool = typer.Option(
-        False,
-        "--force-squash",
-        help="Force re-squash container image even if it already exists",
-    ),
 ) -> None:
     """Nemotron CLI - Reproducible training recipes."""
     # Delegate to global_callback
-    global_callback(ctx, config, run, batch, dry_run, stage, force_squash)
+    global_callback(ctx, config, run, batch, dry_run, stage)
 
 
 # Import and register recipe groups
 def _register_groups() -> None:
     """Register all recipe groups with the main app."""
-    from nemotron.cli.commands.nano3 import nano3_app
     from nemotron.cli.kit import kit_app
+    from nemotron.cli.nano3 import nano3_app
 
     app.add_typer(nano3_app, name="nano3")
     app.add_typer(kit_app, name="kit")

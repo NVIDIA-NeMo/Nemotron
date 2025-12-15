@@ -1,24 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# [tool.runspec]
-# schema = "1"
-# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
-# name = "nano3/pretrain"
-# image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
-# setup = "NeMo and all training dependencies are pre-installed in the image."
-#
-# [tool.runspec.run]
-# launch = "torchrun"
-#
-# [tool.runspec.config]
-# dir = "./config"
-# default = "default"
-# format = "omegaconf"
-#
-# [tool.runspec.resources]
-# nodes = 2
-# gpus_per_node = 8
-# ///
 
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -39,15 +19,16 @@
 Uses Megatron-Bridge's ConfigContainer for full training configuration.
 Dynamically loads the recipe function specified in the YAML config.
 
-CLI:
-    nemotron nano3 pretrain              # local execution
-    nemotron nano3 pretrain --run dgx    # submit to cluster
-
-Execution logic: src/nemotron/cli/commands/nano3/pretrain.py
-
-Direct usage:
+Usage:
+    # With YAML config file (required)
     python /path/to/train.py --config /path/to/pretrain.yaml
+
+    # With CLI overrides (Hydra syntax)
     python /path/to/train.py --config /path/to/pretrain.yaml train.train_iters=5000
+
+    # As module (requires nemotron package installed)
+    torchrun --nproc_per_node=8 -m nemotron.recipes.nano3.stage0_pretrain.train \
+        --config /path/to/pretrain.yaml
 """
 
 from __future__ import annotations
@@ -68,9 +49,9 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 from omegaconf import OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
-from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
+from nemotron.kit.resolvers import register_resolvers_from_config
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
-from nemotron.kit.wandb_kit import (
+from nemotron.kit.wandb import (
     patch_wandb_checkpoint_logging,
     patch_wandb_http_handler_skip_digest_verification,
     patch_wandb_init_for_lineage,
@@ -99,18 +80,15 @@ def main() -> None:
         logger.error(str(e))
         sys.exit(1)
 
-    # -------------------------------------------------------------------------
-    # WANDB MONKEY-PATCHES
-    # These patches work around bugs in wandb and Megatron-Bridge.
-    # See nemotron/kit/wandb_kit.py for detailed "Why" / "Remove when" documentation.
-    # -------------------------------------------------------------------------
     patch_wandb_http_handler_skip_digest_verification()
     patch_wandb_local_file_handler_skip_digest_verification()
-    patch_wandb_runid_for_seeded_random()
-    patch_wandb_checkpoint_logging()
 
-    # Clear artifact cache to ensure fresh downloads (important for :latest resolution)
-    clear_artifact_cache()
+    # Fix "Invalid Client ID digest" error caused by seeded random (wandb bug)
+    # See: https://github.com/wandb/wandb/pull/11039
+    patch_wandb_runid_for_seeded_random()
+
+    # Apply monkey patch for wandb checkpoint artifact logging
+    patch_wandb_checkpoint_logging()
 
     # Resolve artifacts before wandb.init() (Megatron-Bridge initializes wandb).
     qualified_names = register_resolvers_from_config(
@@ -130,7 +108,6 @@ def main() -> None:
         config,
         default_target=DEFAULT_RECIPE_TARGET,
     )
-
     try:
         recipe_func = import_recipe_function(recipe_target)
     except Exception as e:
@@ -162,6 +139,16 @@ def main() -> None:
     apply_overrides(cfg, final_overrides_as_dict, excluded_fields)
 
     pretrain(config=cfg, forward_step_func=forward_step)
+
+    # # Finish wandb run to ensure all artifacts are synced
+    # try:
+    #     import wandb
+    #     if wandb.run is not None:
+    #         logger.info("[WANDB] Finishing wandb run...")
+    #         wandb.finish()
+    #         logger.info("[WANDB] Wandb run finished")
+    # except Exception as e:
+    #     logger.warning(f"[WANDB] Failed to finish wandb run: {e}")
 
     if torch.distributed.is_initialized():
         torch.distributed.destroy_process_group()
