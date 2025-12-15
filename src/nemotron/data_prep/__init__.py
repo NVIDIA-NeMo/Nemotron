@@ -288,9 +288,9 @@ def run_data_prep(config: DataPrepConfig, *, artifact_class: type = PretrainData
     # Create tokenizer URI for lineage tracking
     tok_uri = tokenizer_to_uri(config.tokenizer_model)
 
-    # Build output artifact - path points to blend.json
+    # Build output artifact - path points to output directory
     artifact = artifact_class(
-        path=result.blend_path,
+        path=result.output_dir,
         total_tokens=result.total_tokens,
         total_sequences=result.total_sequences,
         elapsed_sec=result.elapsed_sec,

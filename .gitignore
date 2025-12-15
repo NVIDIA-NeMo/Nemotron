@@ -60,6 +60,8 @@ dmypy.json
 # Environment
 .env
 .env.local
+env.toml
+conductor.json
 
 # Project specific
 output/
@@ -75,3 +77,4 @@ wandb/
 
 # Claude Code
 CLAUDE.md
+.claude/

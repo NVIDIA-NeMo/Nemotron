@@ -41,7 +41,7 @@ from nemotron.data_prep.planning import (
     serialize_shard_plan,
 )
 from nemotron.data_prep.discovery import get_dataset_metadata
-from nemotron.data_prep.tokenizer import ShardProcessor
+from nemotron.data_prep.shard_processor import ShardProcessor
 from nemotron.data_prep import console as con
 
 if TYPE_CHECKING:
