@@ -37,3 +37,7 @@ train_ratio: 0.98
 
 # Ratio of data for validation when split_output='train_val_test'
 val_ratio: 0.01
+
+# Mode: 'copy' uses passthrough transform and HF dataset's existing splits,
+# 'process' applies nemotron_rl transform and custom splits
+mode: copy

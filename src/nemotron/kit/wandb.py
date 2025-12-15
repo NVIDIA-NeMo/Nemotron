@@ -175,6 +175,7 @@ def finish_wandb(exit_code: int = 0) -> None:
 
 
 _HTTP_HANDLER_PATCHED = False
+_LOCAL_FILE_HANDLER_PATCHED = False
 _WANDB_INIT_PATCHED = False
 _LINEAGE_REGISTERED = False
 _RUNID_PATCHED = False
@@ -229,6 +230,37 @@ def patch_wandb_http_handler_skip_digest_verification() -> None:
         logger.debug("Patched wandb HTTP handler to skip digest verification")
     except Exception as e:
         logger.warning(f"Failed to patch wandb HTTP handler: {e}")
+
+
+def patch_wandb_local_file_handler_skip_digest_verification() -> None:
+    """Best-effort patch to skip digest verification for local file reference artifacts.
+
+    Local file references can become stale if data prep is re-run with different
+    parameters, causing W&B to reject artifact downloads due to digest mismatch.
+    """
+    global _LOCAL_FILE_HANDLER_PATCHED
+    if _LOCAL_FILE_HANDLER_PATCHED:
+        return
+
+    try:
+        from wandb.sdk.artifacts.storage_handlers import local_file_handler
+
+        original_load_path = local_file_handler.LocalFileHandler.load_path
+
+        def patched_load_path(self, manifest_entry, local: bool = False):
+            # Skip digest verification - just return the local path
+            path = getattr(manifest_entry, "ref", None)
+            if path and path.startswith("file://"):
+                path = path[7:]  # Remove "file://" prefix
+            if path is None:
+                return original_load_path(self, manifest_entry, local=local)
+            return path
+
+        local_file_handler.LocalFileHandler.load_path = patched_load_path
+        _LOCAL_FILE_HANDLER_PATCHED = True
+        logger.debug("Patched wandb LocalFileHandler to skip digest verification")
+    except Exception as e:
+        logger.warning(f"Failed to patch wandb LocalFileHandler: {e}")
 
 
 def patch_wandb_init_for_lineage(

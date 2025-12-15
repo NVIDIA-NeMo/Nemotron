@@ -79,7 +79,7 @@ from nemotron.data_prep.formats.transforms import (
     OpenAIChatRecord,
     ShareGPTRecord,
 )
-from nemotron.kit.artifact import DataBlendsArtifact, PretrainDataArtifact
+from nemotron.kit.artifact import DataBlendsArtifact, PretrainBlendsArtifact, PretrainDataArtifact
 from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
 from nemotron.kit.wandb import finish_wandb
 from nemotron.data_prep.discovery import get_dataset_metadata
@@ -154,7 +154,7 @@ class DataPrepConfig:
     """Semantic artifact name (e.g., 'nano3/pretrain/data')"""
 
 
-def run_data_prep(config: DataPrepConfig, *, artifact_class: type = PretrainDataArtifact) -> DataBlendsArtifact | PretrainDataArtifact:
+def run_data_prep(config: DataPrepConfig, *, artifact_class: type = PretrainBlendsArtifact) -> DataBlendsArtifact | PretrainBlendsArtifact:
     """Execute data preparation pipeline.
 
     Loads the data blend, tokenizes all datasets, and produces a
@@ -288,9 +288,11 @@ def run_data_prep(config: DataPrepConfig, *, artifact_class: type = PretrainData
     # Create tokenizer URI for lineage tracking
     tok_uri = tokenizer_to_uri(config.tokenizer_model)
 
-    # Build output artifact - path points to output directory
+    # Build output artifact - path points to output directory, blend_path to blend.json
+    blend_json_path = result.output_dir / "blend.json"
     artifact = artifact_class(
         path=result.output_dir,
+        blend_path=str(blend_json_path),
         total_tokens=result.total_tokens,
         total_sequences=result.total_sequences,
         elapsed_sec=result.elapsed_sec,
