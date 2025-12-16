@@ -97,13 +97,20 @@ def _get_distributed_info() -> tuple[int, int]:
 def _get_job_id() -> str:
     """Get a unique job identifier for the current run.
 
-    Uses SLURM_JOB_ID if available (Slurm jobs), otherwise falls back to
-    a combination of hostname and process start time for uniqueness.
+    Priority order:
+    1. NEMO_EXPERIMENT_ID - unique per nemo-run execution (most reliable)
+    2. SLURM_JOB_ID - unique per Slurm job
+    3. TORCHELASTIC_RUN_ID + hostname - unique per torchrun execution
 
     Returns:
         Unique job identifier string.
     """
-    # Prefer Slurm job ID if available
+    # Prefer NEMO_EXPERIMENT_ID - set by nemo-run, unique per execution
+    nemo_exp_id = os.environ.get("NEMO_EXPERIMENT_ID")
+    if nemo_exp_id:
+        return f"nemo_{nemo_exp_id}"
+
+    # Fall back to Slurm job ID if available
     slurm_job_id = os.environ.get("SLURM_JOB_ID")
     if slurm_job_id:
         return f"slurm_{slurm_job_id}"
@@ -224,13 +231,21 @@ def resolve_artifact_pre_init(
     (e.g. Megatron-Bridge). It returns `qualified_name` so lineage can be
     registered once a run becomes active.
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     name, version = _parse_artifact_ref(artifact_ref)
     version_str = _normalize_version(version)
+
+    # Don't cache :latest lookups - always fetch fresh to get actual latest version
+    # Only cache explicit version references (v1, v2, etc.)
+    use_cache = version_str != "latest"
     cache_key = (
         f"pre_init:{name}:{version_str}:{entity or ''}:{project or ''}:{int(patch_http_digest)}"
     )
 
-    if cache_key in _ARTIFACT_CACHE:
+    if use_cache and cache_key in _ARTIFACT_CACHE:
         return _ARTIFACT_CACHE[cache_key]
 
     import wandb
@@ -244,7 +259,18 @@ def resolve_artifact_pre_init(
             # Best-effort: do not fail artifact resolution because patching failed.
             pass
 
-    api = wandb.Api()
+    # Clear any W&B internal caches to ensure fresh artifact lookups
+    # This is important when resolving :latest to get the actual latest version
+    try:
+        # Clear the artifact cache directory state if possible
+        if hasattr(wandb, "_artifacts_cache"):
+            wandb._artifacts_cache = None
+    except Exception:
+        pass
+
+    # Create fresh API instance for each lookup
+    # timeout=30 ensures reasonable API response time
+    api = wandb.Api(timeout=30)
 
     resolved_entity = entity or os.environ.get("WANDB_ENTITY")
     resolved_project = project or os.environ.get("WANDB_PROJECT") or "nemotron"
@@ -256,8 +282,42 @@ def resolve_artifact_pre_init(
     else:
         full_ref = f"{resolved_project}/{name}:{version_str}"
 
+    # Use print for critical debug info (logger may not be configured yet)
+    print(f"[ARTIFACT] Resolving artifact: {full_ref} (requested version: {version_str})")
+    logger.info(f"[ARTIFACT] Resolving artifact: {full_ref}")
+
+    # Fetch artifact metadata fresh from W&B API (no caching at API level)
+    # Note: api.artifact() makes a fresh network request each time
     artifact = api.artifact(full_ref)
+
+    # Log which version :latest actually resolved to
+    print(f"[ARTIFACT] W&B resolved to version: {artifact.version} (qualified: {artifact.qualified_name})")
+    logger.info(f"[ARTIFACT] Resolved to version: {artifact.version} (qualified: {artifact.qualified_name})")
+
     local_path = artifact.download(skip_cache=True)
+
+    logger.info(f"[ARTIFACT] Downloaded to: {local_path}")
+
+    # Log contents of downloaded artifact directory
+    local_path_obj = Path(local_path)
+    if local_path_obj.exists():
+        try:
+            contents = list(local_path_obj.iterdir())
+            logger.info(f"[ARTIFACT] Contents: {[f.name for f in contents]}")
+
+            # Check for metadata.json specifically
+            metadata_path = local_path_obj / "metadata.json"
+            if metadata_path.exists():
+                logger.info(f"[ARTIFACT] metadata.json found at {metadata_path}")
+            else:
+                logger.warning(f"[ARTIFACT] metadata.json NOT found at {metadata_path}")
+                # List all files recursively to help debug
+                all_files = list(local_path_obj.rglob("*"))
+                logger.info(f"[ARTIFACT] All files (recursive): {[str(f) for f in all_files[:20]]}")
+        except Exception as e:
+            logger.warning(f"[ARTIFACT] Could not list directory: {e}")
+    else:
+        logger.warning(f"[ARTIFACT] Download path does not exist: {local_path}")
 
     result = {
         "path": local_path,
@@ -267,7 +327,9 @@ def resolve_artifact_pre_init(
         "qualified_name": getattr(artifact, "qualified_name", None),
     }
 
-    _ARTIFACT_CACHE[cache_key] = result
+    # Only cache explicit version lookups, not :latest
+    if use_cache:
+        _ARTIFACT_CACHE[cache_key] = result
     return result
 
 
@@ -280,9 +342,28 @@ def _read_artifact_metadata(artifact_path: str) -> dict[str, Any]:
     Returns:
         Parsed metadata dict, or empty dict if not found.
     """
-    metadata_path = Path(artifact_path) / "metadata.json"
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    artifact_path_obj = Path(artifact_path)
+    metadata_path = artifact_path_obj / "metadata.json"
+
+    logger.info(f"Looking for metadata.json at: {metadata_path}")
+    logger.info(f"Artifact path exists: {artifact_path_obj.exists()}")
+
+    if artifact_path_obj.exists():
+        try:
+            contents = list(artifact_path_obj.iterdir())
+            logger.info(f"Contents of artifact directory: {[f.name for f in contents]}")
+        except Exception as e:
+            logger.warning(f"Could not list artifact directory: {e}")
+
     if metadata_path.exists():
+        logger.info(f"metadata.json found, reading...")
         return json.loads(metadata_path.read_text())
+
+    logger.warning(f"metadata.json NOT found at {metadata_path}")
     return {}
 
 
@@ -293,14 +374,17 @@ def _art_resolver(name: str, field: str = "path") -> str:
         name: Artifact key from run.artifacts (e.g., "data", "model")
         field: Field to return (default: "path"). Options:
             - path, version, name, type: Basic artifact fields
-            - metadata.X: Read field X from artifact's metadata.json
+            - Any field from metadata.json (e.g., pack_size, training_path)
+            - metadata.X: Explicit metadata field access (legacy syntax)
 
     Returns:
         The requested field value as string
 
     Examples:
         ${art:data,path}              -> /path/to/artifact
-        ${art:data,metadata.pack_size} -> 4096
+        ${art:data,pack_size}         -> 4096 (from metadata.json)
+        ${art:data,training_path}     -> /path/to/training_4096.npy
+        ${art:data,metadata.pack_size} -> 4096 (explicit metadata syntax)
     """
     if name not in _ARTIFACT_REGISTRY:
         raise KeyError(
@@ -311,7 +395,7 @@ def _art_resolver(name: str, field: str = "path") -> str:
 
     artifact_info = _ARTIFACT_REGISTRY[name]
 
-    # Handle metadata.* fields by reading from metadata.json
+    # Handle explicit metadata.* prefix (legacy syntax)
     if field.startswith("metadata."):
         metadata_field = field[len("metadata.") :]
         artifact_path = artifact_info.get("path")
@@ -326,13 +410,26 @@ def _art_resolver(name: str, field: str = "path") -> str:
             )
         return str(metadata[metadata_field])
 
-    if field not in artifact_info:
-        raise KeyError(
-            f"Unknown field '{field}' for artifact '{name}'. "
-            f"Available fields: {list(artifact_info.keys())} or metadata.*"
-        )
+    # Check if field is in artifact_info first
+    if field in artifact_info:
+        return str(artifact_info[field])
 
-    return str(artifact_info[field])
+    # Fall back to reading from metadata.json
+    artifact_path = artifact_info.get("path")
+    if artifact_path:
+        metadata = _read_artifact_metadata(artifact_path)
+        if field in metadata:
+            return str(metadata[field])
+
+    # Field not found anywhere
+    available_fields = list(artifact_info.keys())
+    if artifact_path:
+        metadata = _read_artifact_metadata(artifact_path)
+        available_fields.extend([f for f in metadata.keys() if f not in available_fields])
+
+    raise KeyError(
+        f"Unknown field '{field}' for artifact '{name}'. Available fields: {available_fields}"
+    )
 
 
 def register_resolvers(
@@ -373,6 +470,17 @@ def register_resolvers(
             marker_path = _get_marker_path(artifacts)
 
             if rank == 0:
+                # Rank 0: ALWAYS delete any existing marker file first to ensure fresh download.
+                # This prevents stale marker files from causing other ranks to read old cached data.
+                # Even though marker_path includes job_id, we delete it unconditionally to ensure
+                # the current run always gets fresh artifacts (important for :latest resolution).
+                if marker_path.exists():
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"[ARTIFACT] Rank 0: Deleting existing marker file to force fresh download: {marker_path}")
+                    marker_path.unlink()
+
                 # Rank 0: download artifacts and write marker file
                 results: dict[str, dict[str, Any]] = {}
                 for key, artifact_ref in artifacts.items():

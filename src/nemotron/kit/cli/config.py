@@ -30,6 +30,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from nemotron.kit.cli.env import get_wandb_config, load_env_profile
 from nemotron.kit.cli.globals import GlobalContext
+from nemotron.kit.cli.utils import rewrite_paths_for_remote, resolve_run_interpolations
 
 
 def find_config_file(config_name: str, config_dir: Path) -> Path:
@@ -166,81 +167,6 @@ def build_job_config(
     return job_config
 
 
-def _resolve_run_interpolations(obj: any, run_data: dict) -> any:
-    """Recursively resolve ${run.*} interpolations in a dict/list.
-
-    Only resolves ${run.X.Y} style interpolations, preserves other
-    interpolations like ${art:data,path}.
-
-    Args:
-        obj: Object to process (dict, list, or scalar)
-        run_data: The run section data to resolve from
-
-    Returns:
-        Object with ${run.*} interpolations resolved
-    """
-    if isinstance(obj, dict):
-        return {k: _resolve_run_interpolations(v, run_data) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_resolve_run_interpolations(item, run_data) for item in obj]
-    elif isinstance(obj, str) and obj.startswith("${run.") and obj.endswith("}"):
-        # Extract the path: ${run.wandb.project} -> wandb.project
-        path = obj[6:-1]  # Remove "${run." and "}"
-        # Navigate run_data to get the value
-        parts = path.split(".")
-        value = run_data
-        for part in parts:
-            if isinstance(value, dict) and part in value:
-                value = value[part]
-            else:
-                return obj  # Can't resolve, keep original
-        return value
-    else:
-        return obj
-
-
-def _rewrite_paths_for_remote(obj: any, repo_root: Path) -> any:
-    """Recursively rewrite paths for remote execution.
-
-    Rewrites:
-    - ${oc.env:PWD}/... → /nemo_run/code/...
-    - ${oc.env:NEMO_RUN_DIR,...}/... → /nemo_run/...
-    - Absolute paths under repo_root → /nemo_run/code/...
-
-    Args:
-        obj: Object to process (dict, list, or scalar)
-        repo_root: Local repository root path
-
-    Returns:
-        Object with paths rewritten for remote execution
-    """
-    import re
-
-    if isinstance(obj, dict):
-        return {k: _rewrite_paths_for_remote(v, repo_root) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_rewrite_paths_for_remote(item, repo_root) for item in obj]
-    elif isinstance(obj, str):
-        # Rewrite ${oc.env:PWD}/... to /nemo_run/code/...
-        if "${oc.env:PWD}" in obj:
-            return obj.replace("${oc.env:PWD}", "/nemo_run/code")
-
-        # Rewrite ${oc.env:NEMO_RUN_DIR,...}/... to /nemo_run/...
-        # Handles both ${oc.env:NEMO_RUN_DIR} and ${oc.env:NEMO_RUN_DIR,.}
-        match = re.match(r"\$\{oc\.env:NEMO_RUN_DIR[^}]*\}(.*)", obj)
-        if match:
-            suffix = match.group(1)
-            return f"/nemo_run{suffix}"
-
-        # Rewrite absolute paths under repo_root to /nemo_run/code/...
-        repo_root_str = str(repo_root)
-        if obj.startswith(repo_root_str):
-            rel_path = obj[len(repo_root_str) :].lstrip("/")
-            return f"/nemo_run/code/{rel_path}"
-
-    return obj
-
-
 def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) -> DictConfig:
     """Extract the script-only config from job config.
 
@@ -269,10 +195,10 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
 
         # Rewrite paths for remote execution
         repo_root = Path.cwd()
-        config_dict = _rewrite_paths_for_remote(config_dict, repo_root)
+        config_dict = rewrite_paths_for_remote(config_dict, repo_root)
 
         # Resolve ${run.wandb.*} and ${run.recipe.*} interpolations
-        config_dict = _resolve_run_interpolations(config_dict, run_section)
+        config_dict = resolve_run_interpolations(config_dict, run_section)
 
         # Build a minimal run section with just artifact references
         run_for_train = {}
@@ -298,7 +224,7 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
                 run_for_train[key] = value
 
         # Resolve ${run.wandb.*} and ${run.recipe.*} interpolations
-        resolved_config = _resolve_run_interpolations(config_dict, run_section)
+        resolved_config = resolve_run_interpolations(config_dict, run_section)
 
         # Add minimal run section with needed fields (artifacts only)
         if run_for_train:

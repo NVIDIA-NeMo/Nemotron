@@ -125,7 +125,7 @@ class TestNano3DataPrepTrainIntegration:
                 json.dump(blend_data, f)
 
             # Simulate Megatron-Bridge loading (exact code from loaders.py:76-89)
-            with open(blend_path, "r") as f:
+            with open(blend_path) as f:
                 per_split_data_args = json.load(f)
                 # Each element in blend_per_split should be a list of files (and optional
                 # weights), so split string if needed.
@@ -186,9 +186,9 @@ class TestNano3DataPrepTrainIntegration:
 
         for split_name, split_data in result.items():
             for i in range(1, len(split_data), 2):  # Every other item is a path
-                assert pattern.match(
-                    split_data[i]
-                ), f"Path {split_data[i]} in {split_name} doesn't match naming convention"
+                assert pattern.match(split_data[i]), (
+                    f"Path {split_data[i]} in {split_name} doesn't match naming convention"
+                )
 
     def test_distribute_shards_deterministic_with_seed(self):
         """Test that shard distribution is deterministic with same seed."""
@@ -280,7 +280,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "PretrainBlendsArtifact-pretrain"
+                self.name = "TestBlendsArtifact"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -296,13 +296,13 @@ class TestWandbArtifactIntegration:
         # Step 1: Config pattern matching train.py default.yaml
         cfg = OmegaConf.create(
             {
-                "run": {"data": "PretrainBlendsArtifact-pretrain:latest"},
+                "run": {"data": "TestBlendsArtifact:latest"},
                 "recipe": {"per_split_data_args_path": "${art:data,path}/blend.json"},
             }
         )
 
         # Step 2: Register resolvers (as train.py does)
-        qualified_names = resolvers.register_resolvers_from_config(cfg, mode="pre_init")
+        resolvers.register_resolvers_from_config(cfg, mode="pre_init")
 
         # Step 3: Resolve config (as train.py does before calling recipe)
         resolved = OmegaConf.to_container(cfg, resolve=True)
@@ -310,10 +310,12 @@ class TestWandbArtifactIntegration:
 
         # Verify path resolution
         assert per_split_data_args_path == str(downloaded_dir / "blend.json")
-        assert Path(per_split_data_args_path).exists(), f"blend.json not found at {per_split_data_args_path}"
+        assert Path(per_split_data_args_path).exists(), (
+            f"blend.json not found at {per_split_data_args_path}"
+        )
 
         # Step 4: Simulate Megatron-Bridge loading (exact code from loaders.py:76-89)
-        with open(per_split_data_args_path, "r") as f:
+        with open(per_split_data_args_path) as f:
             per_split_data_args = json.load(f)
             # Each element in blend_per_split should be a list of files (and optional
             # weights), so split string if needed.
@@ -356,7 +358,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "PretrainBlendsArtifact-pretrain"
+                self.name = "TestBlendsArtifact"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -371,7 +373,7 @@ class TestWandbArtifactIntegration:
 
         cfg = OmegaConf.create(
             {
-                "run": {"data": "PretrainBlendsArtifact-pretrain:latest"},
+                "run": {"data": "TestBlendsArtifact:latest"},
                 "recipe": {"per_split_data_args_path": "${art:data,path}/blend.json"},
             }
         )
@@ -402,7 +404,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "PretrainBlendsArtifact-pretrain"
+                self.name = "TestBlendsArtifact"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -418,7 +420,7 @@ class TestWandbArtifactIntegration:
         # Config pattern matching train.py test.yaml
         cfg = OmegaConf.create(
             {
-                "run": {"data": "PretrainBlendsArtifact-pretrain:latest"},
+                "run": {"data": "TestBlendsArtifact:latest"},
                 "recipe": {"per_split_data_args_path": "${art:data,path}/blend.json"},
             }
         )
@@ -427,7 +429,7 @@ class TestWandbArtifactIntegration:
 
         resolved = OmegaConf.to_container(cfg, resolve=True)
         assert resolved["recipe"]["per_split_data_args_path"] == str(downloaded_dir / "blend.json")
-        assert "ent/proj/PretrainBlendsArtifact-pretrain:latest" in qualified_names[0]
+        assert "ent/proj/TestBlendsArtifact:latest" in qualified_names[0]
 
     def test_wandb_lineage_registration(self, monkeypatch):
         """Test that train.py pattern correctly registers lineage."""
@@ -455,13 +457,13 @@ class TestWandbArtifactIntegration:
 
         # Pattern from train.py
         wb.patch_wandb_init_for_lineage(
-            artifact_qualified_names=["ent/proj/PretrainBlendsArtifact-pretrain:v5"],
+            artifact_qualified_names=["ent/proj/TestBlendsArtifact:v5"],
             tags=["pretrain"],
         )
 
         fake_wandb.init()
 
-        assert "ent/proj/PretrainBlendsArtifact-pretrain:v5" in used_artifacts
+        assert "ent/proj/TestBlendsArtifact:v5" in used_artifacts
         assert "pretrain" in fake_run.tags
 
     def test_artifact_metadata_contains_required_fields(self):
@@ -596,9 +598,9 @@ class TestPathNormalization:
         fs, normalized = get_filesystem(path_with_dot)
 
         # The normalized path should not contain '/.'
-        assert "/." not in normalized and not normalized.endswith(
-            "."
-        ), f"Path still contains '.': {normalized}"
+        assert "/." not in normalized and not normalized.endswith("."), (
+            f"Path still contains '.': {normalized}"
+        )
 
     def test_get_filesystem_preserves_s3_paths(self):
         """Test that S3 paths are not modified."""

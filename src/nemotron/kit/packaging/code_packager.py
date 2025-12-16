@@ -15,6 +15,8 @@
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
+"""nemo-run packager that bundles the nemotron repo for remote execution."""
+
 from __future__ import annotations
 
 import tarfile

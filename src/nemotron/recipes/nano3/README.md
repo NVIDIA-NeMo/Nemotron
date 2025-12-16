@@ -6,7 +6,7 @@ A complete 3-stage training pipeline for Nemotron 3 Nano, an open, efficient Mix
 
 **Tech Report**: [Nemotron 3 Nano: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Model for Agentic Reasoning](https://arxiv.org/abs/2506.XXXXX)
 
-> **Important**: These training recipes use only the **open-sourced subset** of the training data. Results are not expected to match the full tech report benchmarks. The recipes serve as a **reference implementation** for reproducing the training methodology with your own data.
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
 
 ## Model Overview
 
@@ -41,26 +41,29 @@ Nemotron 3 Nano achieves better or on-par accuracy than competitive models while
 
 ## Training Pipeline
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Nemotron Nano 3 Pipeline                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Stage 0: Pretraining          Stage 1: SFT           Stage 2: RL          │
-│  ┌─────────────────────┐      ┌─────────────────┐    ┌─────────────────┐   │
-│  │ Raw Text Corpus     │      │ Instruction     │    │ Preference      │   │
-│  │        ↓            │      │ Datasets        │    │ Datasets        │   │
-│  │ data_prep.py        │      │      ↓          │    │      ↓          │   │
-│  │ (bin/idx format)    │      │ data_prep.py    │    │ data_prep.py    │   │
-│  │        ↓            │      │ (.npy format)   │    │ (JSONL format)  │   │
-│  │ train.py            │      │      ↓          │    │      ↓          │   │
-│  │ (Megatron-Bridge)   │──────│ train.py        │────│ train.py        │   │
-│  │        ↓            │      │ (Megatron-Br.)  │    │ (NeMo-RL/GRPO)  │   │
-│  │ Base Model          │      │      ↓          │    │      ↓          │   │
-│  └─────────────────────┘      │ Instruct Model  │    │ Aligned Model   │   │
-│                               └─────────────────┘    └─────────────────┘   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph stage0["Stage 0: Pretraining"]
+        direction LR
+        raw["Raw Text Corpus"] --> dp0["data_prep.py<br/>(bin/idx)"] --> train0["train.py<br/>(Megatron-Bridge)"] --> base["Base Model"]
+    end
+
+    subgraph stage1["Stage 1: SFT"]
+        direction LR
+        inst["Instruction Datasets"] --> dp1["data_prep.py<br/>(.npy)"] --> train1["train.py<br/>(Megatron-Bridge)"] --> instruct["Instruct Model"]
+    end
+
+    subgraph stage2["Stage 2: RL"]
+        direction LR
+        pref["Preference Datasets"] --> dp2["data_prep.py<br/>(JSONL)"] --> train2["train.py<br/>(NeMo-RL/GRPO)"] --> aligned["Aligned Model"]
+    end
+
+    base --> train1
+    instruct --> train2
+
+    style stage0 fill:#e1f5fe
+    style stage1 fill:#f3e5f5
+    style stage2 fill:#e8f5e9
 ```
 
 | Stage | Purpose | Framework | Output |
@@ -73,7 +76,9 @@ Nemotron 3 Nano achieves better or on-par accuracy than competitive models while
 
 ### v0 Requirements
 
-- **Slurm cluster**: The current version is built for Slurm execution via [NeMo-Run](https://github.com/NVIDIA-NeMo/Run)
+> **Slurm Only**: This initial release has been tested exclusively with Slurm execution. Support for additional NeMo-Run executors (local, Docker, SkyPilot, DGX Cloud) is planned for future releases.
+
+- **Slurm cluster**: GPU nodes (H100 recommended)
 - **Weights & Biases**: Required for experiment tracking and artifact lineage (future versions will be backend-agnostic)
 - **Container images**: NeMo containers with Megatron-Bridge and NeMo-RL
 
@@ -98,7 +103,7 @@ mounts = ["/lustre:/lustre"]
 
 > **Note**: Container images are specified in the recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
 
-See [docs/nemo-run.md](../../../docs/nemo-run.md) for complete configuration options.
+See [docs/train/nemo-run.md](../../../docs/train/nemo-run.md) for complete configuration options.
 
 ## Quick Start
 
@@ -106,16 +111,16 @@ See [docs/nemo-run.md](../../../docs/nemo-run.md) for complete configuration opt
 
 ```bash
 # Stage 0: Data prep + Pretraining
-nemotron nano3 data prep pretrain --run YOUR-CLUSTER
-nemotron nano3 pretrain --run YOUR-CLUSTER
+uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
+uv run nemotron nano3 pretrain --run YOUR-CLUSTER
 
 # Stage 1: Data prep + SFT
-nemotron nano3 data prep sft --run YOUR-CLUSTER
-nemotron nano3 sft --run YOUR-CLUSTER
+uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
+uv run nemotron nano3 sft --run YOUR-CLUSTER
 
 # Stage 2: Data prep + RL
-nemotron nano3 data prep rl --run YOUR-CLUSTER
-nemotron nano3 rl --run YOUR-CLUSTER
+uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
+uv run nemotron nano3 rl --run YOUR-CLUSTER
 ```
 
 ### Testing with Tiny Config
@@ -124,10 +129,10 @@ Use the `tiny` config variant for quick testing:
 
 ```bash
 # Quick test with small dataset sample
-nemotron nano3 data prep pretrain --run YOUR-CLUSTER --sample 1000
+uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER --sample 1000
 
 # Quick training test (small model, few iterations)
-nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 ```
 
 ## CLI Commands
@@ -136,26 +141,26 @@ nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
 ```bash
 # Pretrain data: tokenize to Megatron bin/idx format
-nemotron nano3 data prep pretrain [--run <profile>] [--sample N] [--force]
+uv run nemotron nano3 data prep pretrain [--run <profile>] [--sample N] [--force]
 
 # SFT data: apply chat templates, tokenize to .npy
-nemotron nano3 data prep sft [--run <profile>] [--sample N] [--force]
+uv run nemotron nano3 data prep sft [--run <profile>] [--sample N] [--force]
 
 # RL data: convert to JSONL chat format
-nemotron nano3 data prep rl [--run <profile>] [--sample N] [--force]
+uv run nemotron nano3 data prep rl [--run <profile>] [--sample N] [--force]
 ```
 
 ### Training
 
 ```bash
 # Pretraining
-nemotron nano3 pretrain [--run <profile>] [-c <config>] [overrides...]
+uv run nemotron nano3 pretrain [--run <profile>] [-c <config>] [overrides...]
 
 # Supervised Fine-Tuning
-nemotron nano3 sft [--run <profile>] [-c <config>] [overrides...]
+uv run nemotron nano3 sft [--run <profile>] [-c <config>] [overrides...]
 
 # Reinforcement Learning
-nemotron nano3 rl [--run <profile>] [-c <config>] [overrides...]
+uv run nemotron nano3 rl [--run <profile>] [-c <config>] [overrides...]
 ```
 
 ### Execution Options
@@ -188,28 +193,38 @@ Override config values on the command line:
 
 ```bash
 # Override training iterations
-nemotron nano3 pretrain -c tiny train.train_iters=5000
+uv run nemotron nano3 pretrain -c tiny train.train_iters=5000
 
 # Override batch size
-nemotron nano3 pretrain -c tiny train.global_batch_size=64
+uv run nemotron nano3 pretrain -c tiny train.global_batch_size=64
 ```
 
 ## Artifact Flow
 
 The pipeline uses W&B Artifacts to track lineage between stages:
 
-```
-DataBlendsArtifact-pretrain  ──→  nemotron nano3 pretrain  ──→  ModelArtifact-pretrain
-                                                                       │
-DataBlendsArtifact-sft       ──→  nemotron nano3 sft       ←───────────┘
-                                         │
-                                         ↓
-                                  ModelArtifact-sft
-                                         │
-DataBlendsArtifact-rl        ──→  nemotron nano3 rl        ←───────────┘
-                                         │
-                                         ↓
-                                  ModelArtifact-rl (Final)
+```mermaid
+flowchart TB
+    subgraph pretrain["Pretraining"]
+        data0["DataBlendsArtifact-pretrain"] --> cmd0["uv run nemotron nano3 pretrain"]
+        cmd0 --> model0["ModelArtifact-pretrain"]
+    end
+
+    subgraph sft["SFT"]
+        data1["DataBlendsArtifact-sft"] --> cmd1["uv run nemotron nano3 sft"]
+        model0 --> cmd1
+        cmd1 --> model1["ModelArtifact-sft"]
+    end
+
+    subgraph rl["RL"]
+        data2["DataBlendsArtifact-rl"] --> cmd2["uv run nemotron nano3 rl"]
+        model1 --> cmd2
+        cmd2 --> model2["ModelArtifact-rl<br/>(Final)"]
+    end
+
+    style pretrain fill:#e1f5fe
+    style sft fill:#f3e5f5
+    style rl fill:#e8f5e9
 ```
 
 Artifacts are automatically linked when you run stages in sequence, providing full traceability from raw data to final model.
@@ -222,10 +237,10 @@ The main entrypoint integrates with [NeMo-Run](https://github.com/NVIDIA-NeMo/Ru
 
 ```bash
 # Submit to Slurm cluster
-nemotron nano3 pretrain -c tiny --run megatron
+uv run nemotron nano3 pretrain -c tiny --run megatron
 
 # Check execution plan before submitting
-nemotron nano3 pretrain -c tiny --run megatron --dry-run
+uv run nemotron nano3 pretrain -c tiny --run megatron --dry-run
 ```
 
 ### Direct Script Execution
@@ -249,5 +264,5 @@ torchrun --nproc_per_node=8 train.py --config config/tiny.yaml
 
 ## Further Reading
 
-- [NeMo-Run Configuration](../../../docs/nemo-run.md) - Complete guide to env.toml and execution profiles
+- [NeMo-Run Configuration](../../../docs/train/nemo-run.md) - Complete guide to env.toml and execution profiles
 - [Recipes Overview](../README.md) - General information about Nemotron recipes

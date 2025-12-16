@@ -21,6 +21,8 @@ STAGE_DIRS = {"pretrain": "stage0_pretrain", "sft": "stage1_sft", "rl": "stage2_
 
 @dataclass
 class TrackConfig:
+    """Configuration for artifact tracking and resolution."""
+
     backend: str  # "fsspec" or "wandb"
     output_root: str | None = None  # For fsspec backend (can be any fsspec URI)
 

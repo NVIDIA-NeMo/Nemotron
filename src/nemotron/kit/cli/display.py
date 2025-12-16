@@ -30,6 +30,7 @@ from rich.syntax import Syntax
 from rich.tree import Tree
 
 from nemotron.kit.cli.env import get_cli_config
+from nemotron.kit.cli.utils import rewrite_paths_for_remote, resolve_run_interpolations
 
 # Global console instance
 CONSOLE = Console()
@@ -89,64 +90,6 @@ def _display_run_section(job_config: DictConfig) -> None:
     CONSOLE.print()
 
 
-def _resolve_run_interpolations(obj: any, run_data: dict) -> any:
-    """Recursively resolve ${run.*} interpolations in a dict/list.
-
-    Only resolves ${run.X.Y} style interpolations, preserves other
-    interpolations like ${art:data,path}.
-    """
-    if isinstance(obj, dict):
-        return {k: _resolve_run_interpolations(v, run_data) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_resolve_run_interpolations(item, run_data) for item in obj]
-    elif isinstance(obj, str) and obj.startswith("${run.") and obj.endswith("}"):
-        # Extract the path: ${run.wandb.project} -> wandb.project
-        path = obj[6:-1]  # Remove "${run." and "}"
-        parts = path.split(".")
-        value = run_data
-        for part in parts:
-            if isinstance(value, dict) and part in value:
-                value = value[part]
-            else:
-                return obj  # Can't resolve, keep original
-        return value
-    else:
-        return obj
-
-
-def _rewrite_paths_for_remote(obj: any, repo_root_str: str) -> any:
-    """Recursively rewrite paths for remote execution display.
-
-    Rewrites:
-    - ${oc.env:PWD}/... → /nemo_run/code/...
-    - ${oc.env:NEMO_RUN_DIR,...}/... → /nemo_run/...
-    - Absolute paths under repo_root → /nemo_run/code/...
-    """
-    import re
-
-    if isinstance(obj, dict):
-        return {k: _rewrite_paths_for_remote(v, repo_root_str) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_rewrite_paths_for_remote(item, repo_root_str) for item in obj]
-    elif isinstance(obj, str):
-        # Rewrite ${oc.env:PWD}/... to /nemo_run/code/...
-        if "${oc.env:PWD}" in obj:
-            return obj.replace("${oc.env:PWD}", "/nemo_run/code")
-
-        # Rewrite ${oc.env:NEMO_RUN_DIR,...}/... to /nemo_run/...
-        match = re.match(r"\$\{oc\.env:NEMO_RUN_DIR[^}]*\}(.*)", obj)
-        if match:
-            suffix = match.group(1)
-            return f"/nemo_run{suffix}"
-
-        # Rewrite absolute paths under repo_root to /nemo_run/code/...
-        if obj.startswith(repo_root_str):
-            rel_path = obj[len(repo_root_str) :].lstrip("/")
-            return f"/nemo_run/code/{rel_path}"
-
-    return obj
-
-
 def _display_config_section(job_config: DictConfig, *, for_remote: bool = False) -> None:
     """Display the training config as syntax-highlighted YAML."""
     # Create a copy without resolving interpolations
@@ -161,10 +104,10 @@ def _display_config_section(job_config: DictConfig, *, for_remote: bool = False)
         import os
 
         repo_root_str = os.getcwd()
-        config_dict = _rewrite_paths_for_remote(config_dict, repo_root_str)
+        config_dict = rewrite_paths_for_remote(config_dict, repo_root_str)
     else:
         # Resolve ${run.*} interpolations for display
-        config_dict = _resolve_run_interpolations(config_dict, run_section)
+        config_dict = resolve_run_interpolations(config_dict, run_section)
 
     # Convert back to OmegaConf for YAML serialization
     config_without_run = OmegaConf.create(config_dict)

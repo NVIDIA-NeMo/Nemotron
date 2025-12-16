@@ -31,8 +31,8 @@ Example:
     >>> config = RunConfig(executor="slurm", account="my-account", partition="gpu")
     >>> executor = build_executor(config, env_vars={"NCCL_DEBUG": "INFO"})
 
-Wandb configuration can also be stored in run.toml:
-    >>> # run.toml
+Wandb configuration can also be stored in env.toml:
+    >>> # env.toml
     >>> # [wandb]
     >>> # project = "my-project"
     >>> # entity = "my-team"
@@ -561,28 +561,20 @@ def _build_packager() -> Any:
     )
 
 
-def _find_run_config() -> Path | None:
-    """Find run config file in cwd or walking up to project root.
-
-    Searches for: env.toml, run.toml, run.yaml, run.yml, run.json
-
-    Returns:
-        Path to run config file, or None if not found.
-    """
-    filenames = ["env.toml", "run.toml", "run.yaml", "run.yml", "run.json"]
+def _find_env_toml() -> Path | None:
+    """Find env.toml in cwd or walking up to project root."""
     for path in [Path.cwd(), *Path.cwd().parents]:
-        for filename in filenames:
-            run_file = path / filename
-            if run_file.exists():
-                return run_file
+        env_file = path / "env.toml"
+        if env_file.exists():
+            return env_file
         # Stop at project root
         if (path / "pyproject.toml").exists():
             break
     return None
 
 
-def _load_config_file(config_path: Path) -> dict[str, Any]:
-    """Load configuration file (TOML, YAML, or JSON).
+def _load_env_toml(config_path: Path) -> dict[str, Any]:
+    """Load env.toml configuration.
 
     Args:
         config_path: Path to config file.
@@ -590,30 +582,16 @@ def _load_config_file(config_path: Path) -> dict[str, Any]:
     Returns:
         Dictionary of profile name -> profile settings.
     """
-    suffix = config_path.suffix.lower()
+    if config_path.suffix.lower() != ".toml":
+        raise ValueError(f"Expected a .toml config file, got: {config_path}")
 
-    if suffix == ".toml":
-        if sys.version_info >= (3, 11):
-            import tomllib
-        else:
-            import tomli as tomllib
-        with open(config_path, "rb") as f:
-            return tomllib.load(f)
-
-    elif suffix in (".yaml", ".yml"):
-        import yaml
-
-        with open(config_path) as f:
-            return yaml.safe_load(f) or {}
-
-    elif suffix == ".json":
-        import json
-
-        with open(config_path) as f:
-            return json.load(f)
-
+    if sys.version_info >= (3, 11):
+        import tomllib
     else:
-        raise ValueError(f"Unsupported config format: {suffix}")
+        import tomli as tomllib
+
+    with open(config_path, "rb") as f:
+        return tomllib.load(f)
 
 
 def _resolve_profile(name: str, all_profiles: dict[str, Any], seen: set[str]) -> RunConfig:
@@ -635,7 +613,7 @@ def _resolve_profile(name: str, all_profiles: dict[str, Any], seen: set[str]) ->
     seen.add(name)
 
     if name not in all_profiles:
-        raise ValueError(f"Profile '{name}' not found in run config")
+        raise ValueError(f"Profile '{name}' not found in env.toml")
 
     profile = all_profiles[name].copy()
     extends = profile.pop("extends", None)
@@ -652,7 +630,7 @@ def _resolve_profile(name: str, all_profiles: dict[str, Any], seen: set[str]) ->
 
 
 def load_run_profile(name: str, config_path: Path | None = None) -> RunConfig:
-    """Load a named profile from run config file.
+    """Load a named profile from env.toml.
 
     Args:
         name: Profile name to load.
@@ -662,23 +640,22 @@ def load_run_profile(name: str, config_path: Path | None = None) -> RunConfig:
         RunConfig instance with resolved settings.
 
     Raises:
-        FileNotFoundError: If no run config file found.
+        FileNotFoundError: If no env.toml found.
         ValueError: If profile not found or inheritance error.
     """
     if config_path is None:
-        config_path = _find_run_config()
+        config_path = _find_env_toml()
     if config_path is None:
-        raise FileNotFoundError("No run config file found (run.toml/yaml/json)")
+        raise FileNotFoundError("No env.toml found")
 
-    all_profiles = _load_config_file(config_path)
+    all_profiles = _load_env_toml(config_path)
     return _resolve_profile(name, all_profiles, seen=set())
 
 
 def list_run_profiles(config_path: Path | None = None) -> list[str]:
-    """List available run profiles from run config.
+    """List available run profiles from env.toml.
 
-    Profiles are top-level sections in run.toml/yaml/json, excluding the special
-    [wandb] section.
+    Profiles are top-level sections in env.toml, excluding the special [wandb] section.
 
     Args:
         config_path: Optional explicit path to config file.
@@ -687,23 +664,22 @@ def list_run_profiles(config_path: Path | None = None) -> list[str]:
         Sorted list of profile names.
     """
     if config_path is None:
-        config_path = _find_run_config()
+        config_path = _find_env_toml()
     if config_path is None:
         return []
 
-    sections = _load_config_file(config_path)
+    sections = _load_env_toml(config_path)
     profiles = [k for k in sections.keys() if k != "wandb"]
     return sorted(profiles)
 
 
 def load_wandb_config(config_path: Path | None = None) -> WandbConfig | None:
-    """Load wandb configuration from run.toml [wandb] section.
+    """Load wandb configuration from env.toml [wandb] section.
 
-    The [wandb] section is a top-level section in run.toml that configures
-    W&B tracking for all profiles. This allows centralizing wandb settings
-    alongside execution profiles.
+    The [wandb] section is a top-level section in env.toml that configures W&B tracking
+    for all profiles. This allows centralizing wandb settings alongside execution profiles.
 
-    Example run.toml:
+    Example env.toml:
         [wandb]
         project = "my-project"
         entity = "my-team"
@@ -722,11 +698,11 @@ def load_wandb_config(config_path: Path | None = None) -> WandbConfig | None:
     from nemotron.kit.wandb import WandbConfig
 
     if config_path is None:
-        config_path = _find_run_config()
+        config_path = _find_env_toml()
     if config_path is None:
         return None
 
-    all_sections = _load_config_file(config_path)
+    all_sections = _load_env_toml(config_path)
     wandb_section = all_sections.get("wandb")
 
     if wandb_section is None:

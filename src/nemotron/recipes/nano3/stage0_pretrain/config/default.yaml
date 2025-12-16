@@ -1,5 +1,5 @@
 run:
-  data: PretrainBlendsArtifact-pretrain:latest
+  data: PretrainBlendsArtifact-default:latest
   env:
     container: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2
 

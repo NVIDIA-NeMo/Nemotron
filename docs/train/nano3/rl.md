@@ -1,14 +1,19 @@
 # Stage 2: Reinforcement Learning (RL)
 
-Align the instruction-tuned model using GRPO (Group Relative Policy Optimization) with NeMo-RL.
+This stage aligns the instruction-tuned model using GRPO (Group Relative Policy Optimization) with NeMo-RL.
 
 ## Overview
 
-This stage takes the SFT model and further aligns it using reinforcement learning. The GRPO algorithm optimizes the policy based on reward signals from NeMo-Gym environments, producing a final aligned model.
+RL training transforms the SFT model into a fully aligned model through multiple reinforcement learning methodologies. The approach follows [Tech Report Section 3.2](https://arxiv.org/abs/2506.XXXXX).
 
-Nemotron 3 Nano is trained in three stages: supervised fine tuning (SFT), multi-environment reinforcement learning (RLVR), and reinforcement learning from human feedback (RLHF) (see [Tech Report Section 3.2](https://arxiv.org/abs/2506.XXXXX)). During SFT, we trained Nemotron 3 Nano on a diverse set of chat, agentic, and reasoning tasks to imbue the model with reasoning budget control, reasoning on/off control, and tool-integrated reasoning capabilities. Following SFT, we used multi-environment RL to strengthen model capabilities. We trained on all environments simultaneously, resulting in a smooth and uniform improvement in model capabilities. During RLHF, we utilized a large and accurate generative reward model (GenRM) to enhance the performance of Nemotron 3 Nano on key chat benchmarks.
+The RL pipeline consists of three components:
+1. **RLVR (RL from Verifiable Rewards)** — Multi-environment training with verifiable reward signals
+2. **RLHF with GenRM** — Generative reward model-based alignment
+3. **DPO for tool hallucination** — Preference learning to reduce spurious tool calls
 
-> **Note**: This recipe uses only the **open-sourced subset** of RL data. Results are not expected to match the full tech report benchmarks. This serves as a **reference implementation** for the RL methodology.
+Training alternates between RLVR and RLHF stages: one RLVR stage immediately after SFT, one RLHF stage, then a final RLVR stage.
+
+> **Open-Source Data Only**: This recipe trains exclusively on the open-sourced subset of RL data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use this recipe as a reference implementation to apply the methodology with your own data.
 
 | Component | Description |
 |-----------|-------------|
@@ -16,83 +21,177 @@ Nemotron 3 Nano is trained in three stages: supervised fine tuning (SFT), multi-
 | `train.py` | Runs GRPO training using NeMo-RL with Ray |
 | `config/` | Configuration files for data prep and training |
 
-## Multi-Environment Reinforcement Learning from Verifiable Rewards (RLVR)
+## Multi-Environment RLVR
 
-We employ a unified RLVR stage, training on all environments simultaneously. This results in stable gains across all benchmarks throughout training, while single environment training often results in co-reward degradation of other benchmarks. We do two stages of each RLVR: one immediately after SFT and one after RLHF.
+Multi-environment RLVR trains on all reward environments simultaneously, resulting in stable gains across all benchmarks throughout training. Single-environment training often causes co-reward degradation of other benchmarks.
 
 ### Environments
 
-We train on five different reward environments using NeMo-Gym:
+Training uses 7 reward environments through NeMo-Gym:
 
-| Environment | Datasets | Description |
-|-------------|----------|-------------|
-| **Competition Math** | DAPO, SkyWorks | Mathematical reasoning with verifiable solutions |
-| **Competition Coding** | Competitive coding problems | Code correctness verification with test cases |
-| **Question Answering** | Multiple choice datasets | STEM-focused QA with verifiable answers |
-| **Structured Outputs** | JSON schema adherence | Strong JSON schema compliance with syntactic validity |
-| **Instruction Following** | IFEval-style environments | Multi-constraint instruction compliance verification |
-| **Long Context** | Challenging long-context QA pairs | Multi-document synthesis with reference verification |
+| Environment | Dataset | Description |
+|-------------|---------|-------------|
+| **Competition Math** | DAPO, SkyWorks math | Mathematical reasoning with 17k and 156k tasks respectively |
+| **Competition Coding** | Competitive coding problems | Code correctness verification with test case execution |
+| **Question Answering** | Multiple choice STEM datasets | Verifiable answers generated from information in reference documents |
+| **Structured Outputs** | JSON schema tasks | Strong JSON schema adherence enforced through strict complexity controls and rejection sampling |
+| **Instruction Following** | IFEval, Multi-Challenge | Multi-constraint instruction compliance verification |
+| **Long Context** | 12K challenging QA pairs | Multi-document synthesis with 256k total input tokens |
 | **Agentic Tool Use** | Workplace Assistant, Multi-Turn Agent | Tool call correctness and sandbox task completion |
 
-### Infrastructure
+#### Agentic Tool Use Details
 
-RL at the frontier of model post-training is currently defined by scaling up to an increasing diversity of tasks or environments designed for the model to learn increasingly general capabilities. Scaling RL to many environments requires a high-performance, extensible, and standardized interface for coordinating between rollouts and training.
+**Workplace Assistant**: A multi-step verifiable tool-calling setup adapted from Stylos (2024). Tests the agent's ability to execute tasks in a workplace setting with:
+- 5 databases
+- 26 tools
+- 690 tasks representing common business activities (sending emails, scheduling meetings, etc.)
 
-We use **NeMo-Gym** based on the abstraction of servers. There are three core varieties of servers in Gym:
-1. **Agents** (2) models, and (3) resources
-2. An agent server implements the rollout kernel at a RL environment
-3. A model server wraps an inference engine such as vLLM to provide a prompt-response API
+Correctness is verified by executing tool calls and comparing results to ground truth database state.
 
-### GRPO Algorithm Details
+**Multi-Turn Agent**: Conversational agent environment testing tool use capabilities. Comprising ~1K tasks, this environment simulates complex banking scenarios like assisting customers with unblocking credit cards or solving account disputes. Correctness is verified by executing tool calls and comparing the resulting database state against predefined ground truth.
 
-We train Nemotron 3 Nano using synchronous GRPO with masked importance sampling to mitigate training-inference alignment mismatch. Key hyperparameters:
-- **Prompts per step**: 128
-- **Generations per prompt**: 16
-- **Batch Size**: 128 prompts per batch, 16 generations per prompt
-- **MoE Load Balancing**: DeepSeek's aux-loss-free load balancing strategy with keep updating our update-on-policy
-- **Cosine Annealing**: Epsilon filtering with 4% limit
+### Infrastructure: NeMo-Gym
 
-Our entire training run is done with a maximum generation length of 49K tokens. We use cosine filtering, which we find boosts performance on reasoning-intensive benchmarks.
+NeMo-Gym provides the infrastructure for scaling RL to many environments. The architecture uses three server types:
+
+1. **Agent servers** — Implement rollout kernels for RL environments
+2. **Model servers** — Wrap inference engines (vLLM) for prompt-response APIs
+3. **Resource servers** — Manage compute allocation
+
+### GRPO Algorithm
+
+Training uses synchronous GRPO with masked importance sampling to mitigate training-inference alignment mismatch.
+
+| Parameter | Value |
+|-----------|-------|
+| **Prompts per step** | 128 |
+| **Generations per prompt** | 16 |
+| **Learning Rate** | Specified in config |
+| **Max Generation Length** | 49K tokens |
+| **MoE Load Balancing** | DeepSeek aux-loss-free strategy |
+| **Epsilon Filtering** | Cosine annealing with 4% limit |
+
+Cosine filtering boosts performance on reasoning-intensive benchmarks.
 
 ### Curriculum Sampling
 
-We compare curriculum sampling against random sampling using an intermediate SFT checkpoint, maintaining identical domain ratios in both cases. As shown in the tech report, curriculum sampling ensures stable learning across multiple domains throughout training. In contrast, random sampling biases the model toward easier tasks, preventing it from effectively learning more challenging ones.
+Curriculum sampling ensures stable learning across multiple domains throughout training, while random sampling biases models toward easier tasks.
 
-For each domain, we model the target pass-rate distribution as a Gaussian function, shifting from high pass-rate (easier) samples early in training to low pass-rate (harder) samples later. The target mean of Gaussian distribution decreases linearly throughout training steps. Within each batch, samples from different domains are shuffled. This Gaussian sampling strategy prevents overfitting to either overly easy or overly difficult examples, ensuring a balanced learning progression.
+The curriculum strategy:
+1. Model target pass-rate distribution as a Gaussian function for each domain
+2. Shift from high pass-rate (easier) samples early in training to low pass-rate (harder) samples later
+3. Decrease target mean of Gaussian distribution linearly throughout training
+4. Shuffle samples from different domains within each batch
+
+This Gaussian sampling prevents overfitting to either overly easy or overly difficult examples.
+
+### Data Mixture and Curriculum
+
+Training on all environments simultaneously provides:
+- Stable gains across all benchmarks throughout training
+- Prevention of co-reward degradation seen in single-environment training
+- Smooth and uniform improvement in model capabilities
+
+Once training progress plateaus (batch-wise pass rate stabilizes), the best RL checkpoint is used as the re-profile starting point. The pipeline then constructs a new curriculum and repeats.
 
 ## Reinforcement Learning from Human Feedback (RLHF)
 
-### GenRM: Generative Reward Model Training
+### GenRM: Generative Reward Model
 
-Many recent works have demonstrated that generative reward models (GenRM) generalize better than traditional Bradley-Terry models, reducing the risk of reward hacking during RLHF. Building on the methodology of GenRM, we train Qwen3-253B-A22B-Thinking-2507 using Qwen3-253B-A22B-Thinking-2507 to become a GenRM with GRPO algorithm.
+Generative reward models (GenRM) generalize better than traditional Bradley-Terry models, reducing risk of reward hacking during RLHF.
 
-Given the conversation history, a new user request, and two candidate assistant responses, the GenRM first reasons through the strengths and weaknesses of both responses, then produces an individual helpfulness score for each response as well as a ranking score. For GenRM training, we use 128 prompts per batch, 8 generations per prompt, and do one gradient step on the full batch.
+The GenRM training process:
+1. Given conversation history, user request, and two candidate responses
+2. GenRM reasons through strengths and weaknesses of both responses
+3. Produces individual helpfulness scores and a ranking score
 
-### RLHF with Group Relative Length Control
+| Parameter | Value |
+|-----------|-------|
+| **Prompts per batch** | 128 |
+| **Generations per prompt** | 8 |
+| **Gradient steps** | 1 per full batch |
 
-With a trained GenRM, we conduct RLHF on the same set of prompts. Same as RLVR, we use a batch of 128 prompts and 16 responses per prompt. Notably competing all pairs of N responses would require O(N) comparisons per prompt, which scales quadratically and becomes prohibitively expensive for large N. Instead, we adopt a circular comparison strategy where each response is compared only with its neighbor: `r₁→r₂→r₃→...→rₙ→r₁`, yielding exactly N comparisons.
+### RLHF Training with GenRM
 
-Key RLHF training details:
-- **Length-Normalized Reward Adjustment**: We compute a zero-mean, group-relative length bonus that encourages shorter responses within a group
-- **Quality-Gated Conciseness Bonus**: We introduce optimal bonuses for the shortest responses without sacrificing quality
+With a trained GenRM, RLHF proceeds using the same prompt structure as RLVR.
 
-### Reasoning Control
+#### Circular Comparison Strategy
 
-Nemotron 3 Nano allows for two different forms of reasoning control: reasoning on/off control and token budget control. Similar to NVIDIA (2025), to enable reasoning on/off control we strip the reasoning traces from a random 10% of samples, and to enable budget control, we randomly truncate 3% of reasoning traces to different reasoning budgets, before continuing with the original post-reasoning response.
+Computing all pairs of N responses requires O(N²) comparisons—prohibitively expensive for large N. Instead, a circular comparison strategy compares each response only with its neighbor:
+
+```
+r₁ → r₂ → r₃ → ... → rₙ → r₁
+```
+
+This yields exactly N comparisons per batch.
+
+#### Length-Normalized Reward Adjustment
+
+To ensure fair comparison across responses of varying lengths:
+
+1. **Normalize lengths** within each group (preserving overall reward scale)
+2. **Center the adjustment** to be zero-mean within groups
+3. **Apply quality-gated conciseness bonus** for shorter responses without sacrificing quality
+
+The base reward R^{base} for response rₖ is computed by averaging scores from pairwise comparisons with neighboring responses. The length bonus encourages concise responses through:
+
+- Scaling parameter α = 0.5
+- Length mean normalization within groups
+- Quality threshold gating
+
+#### RLHF Hyperparameters
+
+| Parameter | Value |
+|-----------|-------|
+| **Prompts per batch** | 128 |
+| **Responses per prompt** | 16 |
+| **Comparison strategy** | Circular (N comparisons) |
+| **Length bonus α** | 0.5 |
+
+## Reasoning Control
+
+Nemotron 3 Nano supports two forms of reasoning control:
+
+1. **Reasoning on/off control** — Strip reasoning traces from a random 10% of samples during training
+2. **Token budget control** — Randomly truncate 3% of reasoning traces to different reasoning budgets, then continue with original post-reasoning response
 
 ## DPO for Reducing Tool Hallucination
 
-Reducing hallucinated tool usage is one of the key objectives of our alignment experiments. Although our released model does not rely on DPO, because reinforcement learning (RL) already achieved comparable performance, we nevertheless explored DPO as an additional technique due to its simplicity and minimal computational overhead. As shown in the tech report, a very small amount of DPO training yields meaningful reductions in hallucinated tool calls and improves reasoning stability.
+DPO (Direct Preference Optimization) reduces hallucinated tool usage as a complementary technique to RL. While the released model achieves comparable performance through RL alone, DPO provides additional improvement with minimal computational overhead.
 
-### Training Setup for DPO
-- **Learning Rate**: 3e-6
-- **Batch Size**: 128
-- **Training Steps**: 50
-- **SFT Loss Coefficient**: 0.2
-- **DPO Loss Coefficient**: 1.0
-- **KL Loss Coefficient**: 0.05
+### DPO Data Construction
 
-For AIME25, accuracy increases from 80.88% to 84.58%, indicating that DPO not only suppresses undesirable tool-related behaviors but also enhances overall solution quality.
+Data is constructed using 2,000 reasoning tasks with 1,000 math/science problems and 1,000 STEM multiple-choice questions. For each problem, 32 on-policy solutions are generated, then processed through the DPO data-construction pipeline:
+
+1. **Assign preference labels** based on correctness and tool-usage patterns
+2. **Categorize into three types**:
+   - **With-Tools**: Tools available, labels depend on final answer correctness
+   - **Hallucination-Penalty**: Tools not declared but hallucinated tool invocation labeled as rejected
+   - **No-Tools**: Neither exposure to tools nor hallucination
+
+The pipeline produces ~50k preference samples.
+
+### DPO Training Setup
+
+| Parameter | Value |
+|-----------|-------|
+| **Learning Rate** | 3e-6 |
+| **Batch Size** | 128 |
+| **Training Steps** | 50 |
+| **SFT Loss Coefficient** | 0.2 |
+| **DPO Loss Coefficient** | 1.0 |
+| **KL Loss Coefficient** | 0.05 |
+
+### DPO Results
+
+DPO demonstrates that minimal training meaningfully reduces hallucinated tool calls:
+
+| Metric | Before DPO | After DPO |
+|--------|------------|-----------|
+| **AIME25 Accuracy** | 80.88% | 84.58% |
+| **Hallucination Rate** | 8.33% | 0.7% |
+
+The improvement indicates DPO not only suppresses undesirable tool-related behaviors but enhances overall solution quality.
 
 ## Quick Start
 
@@ -100,13 +199,13 @@ For AIME25, accuracy increases from 80.88% to 84.58%, indicating that DPO not on
 
 ```bash
 # 1. Prepare data (convert to JSONL format)
-nemotron nano3 data prep rl --run YOUR-CLUSTER
+uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
 
 # 2. Run RL training
-nemotron nano3 rl --run YOUR-CLUSTER
+uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 # Quick test with tiny config
-nemotron nano3 rl -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 ```
 
 ### Direct Script Execution
@@ -115,10 +214,10 @@ Inside a container on a compute node (requires NeMo-RL and Ray):
 
 ```bash
 # Data preparation
-python data_prep.py --config config/data_prep.yaml
+uv run python data_prep.py --config config/data_prep.yaml
 
-# Training (Ray will be initialized internally)
-python train.py --config config/grpo_nanov3.yaml
+# Training (Ray initialized internally)
+uv run python train.py --config config/grpo_nanov3.yaml
 ```
 
 ## Data Preparation
@@ -128,7 +227,7 @@ The `data_prep.py` script converts datasets to JSONL format compatible with NeMo
 ### CLI Command
 
 ```bash
-nemotron nano3 data prep rl [options]
+uv run nemotron nano3 data prep rl [options]
 ```
 
 | Option | Description |
@@ -139,7 +238,7 @@ nemotron nano3 data prep rl [options]
 
 ### Input
 
-RL datasets defined in `config/data_blend_raw.json`. The data is transformed using the `nemotron_rl` transform which extracts from `responses_create_params.input`.
+RL datasets defined in `config/data_blend_raw.json`. Data is transformed using the `nemotron_rl` transform which extracts from `responses_create_params.input`.
 
 ### Output
 
@@ -182,21 +281,16 @@ The `train.py` script runs GRPO training using NeMo-RL with Ray for distributed 
 ### CLI Command
 
 ```bash
-nemotron nano3 rl [options] [overrides...]
+uv run nemotron nano3 rl [options] [overrides...]
 ```
 
 | Option | Description |
 |--------|-------------|
-| `--run <profile>` | **Attached** - submits and waits, streaming logs |
-| `--batch <profile>` | **Detached** - submits and exits immediately |
+| `--run <profile>` | Attached—submits and waits, streaming logs |
+| `--batch <profile>` | Detached—submits and exits immediately |
 | `-c <config>` | Config file (e.g., `-c tiny` for testing) |
 | `--dry-run` | Preview execution plan |
 | `key=value` | Override config values (Hydra-style) |
-
-#### `--run` vs `--batch`
-
-- **`--run`**: Use for interactive development, debugging, and short test runs where you want to see logs in real-time
-- **`--batch`**: Use for long training runs (hours/days), job queues, and overnight/unattended runs
 
 ### Input
 
@@ -216,7 +310,7 @@ nemotron nano3 rl [options] [overrides...]
 |------|---------|
 | `config/grpo_nanov3.yaml` | Production GRPO configuration |
 | `config/tiny.yaml` | Testing variant |
-| `config/data_blend_raw.json` | RL dataset blend (6 datasets) |
+| `config/data_blend_raw.json` | RL dataset blend |
 
 ### Key Configuration Sections
 
@@ -246,16 +340,16 @@ env:
 
 ```bash
 # More iterations
-nemotron nano3 rl -c tiny grpo.num_iterations=200
+uv run nemotron nano3 rl -c tiny grpo.num_iterations=200
 
 # Different temperature
-nemotron nano3 rl -c tiny policy.generation.temperature=0.8
+uv run nemotron nano3 rl -c tiny policy.generation.temperature=0.8
 
 # Different learning rate
-nemotron nano3 rl -c tiny grpo.learning_rate=5e-7
+uv run nemotron nano3 rl -c tiny grpo.learning_rate=5e-7
 
 # Multiple overrides
-nemotron nano3 rl -c tiny \
+uv run nemotron nano3 rl -c tiny \
     grpo.num_iterations=200 \
     policy.generation.temperature=0.8 \
     grpo.learning_rate=5e-7
@@ -286,51 +380,54 @@ exclusive = true
 mounts = ["/lustre:/lustre"]
 ```
 
-> **Note**: Container images are specified in the recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
+Container images are specified in recipe config files, not in env.toml.
 
 ### Execution Examples
 
 ```bash
 # Attached (wait for completion, stream logs)
-nemotron nano3 rl -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 
 # Detached (submit and exit immediately)
-nemotron nano3 rl -c tiny --batch YOUR-CLUSTER
+uv run nemotron nano3 rl -c tiny --batch YOUR-CLUSTER
 
 # Preview without executing
-nemotron nano3 rl -c tiny --run YOUR-CLUSTER --dry-run
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [nemo-run.md](../../nemo-run.md) for complete configuration options.
+See [nemo-run.md](../nemo-run.md) for complete configuration options.
 
 ## GRPO Algorithm
 
-GRPO (Group Relative Policy Optimization) is a reinforcement learning algorithm that:
+GRPO (Group Relative Policy Optimization) optimizes the policy through:
 
-1. **Generates responses** from the current policy
-2. **Evaluates** responses using NeMo-Gym reward environments
-3. **Computes group-relative advantages** across response groups
-4. **Updates the policy** to favor higher-reward responses
+1. **Generate responses** from current policy
+2. **Evaluate** using NeMo-Gym reward environments
+3. **Compute group-relative advantages** across response groups
+4. **Update policy** to favor higher-reward responses
 
 Key features:
 - Efficient batched generation and evaluation
 - Ray-based distributed training
-- Integration with NeMo-Gym for flexible reward computation
+- NeMo-Gym integration for flexible reward computation
+- Masked importance sampling for training-inference alignment
 
 ## Artifact Lineage
 
-```
-ModelArtifact-sft (from Stage 1)
-     ↓
-RL Datasets (preference/reward data)
-     ↓
-data_prep.py
-     ↓
-DataBlendsArtifact-rl (JSONL files)
-     ↓
-train.py (GRPO with NeMo-RL)
-     ↓
-ModelArtifact-rl (final aligned model)
+```mermaid
+flowchart TB
+    prev["ModelArtifact-sft<br/>(from Stage 1)"] --> train
+    rl["RL Datasets<br/>(preference/reward data)"] --> dp["data_prep.py"]
+    dp --> data["DataBlendsArtifact-rl<br/>(JSONL files)"]
+    data --> train["train.py<br/>(GRPO with NeMo-RL)"]
+    train --> model["ModelArtifact-rl<br/>(final aligned model)"]
+
+    style prev fill:#f3e5f5
+    style rl fill:#e8f5e9
+    style dp fill:#e8f5e9
+    style data fill:#e8f5e9
+    style train fill:#e8f5e9
+    style model fill:#e8f5e9
 ```
 
 ## Requirements
@@ -340,12 +437,10 @@ ModelArtifact-rl (final aligned model)
 - **NeMo-Gym**: Provides reward environments
 - **GPU nodes**: Recommended 8 GPUs per node
 
-## Previous Stages
-
-- [Stage 0: Pretraining](./pretrain.md) - Pretrain the base model
-- [Stage 1: SFT](./sft.md) - Instruction tuning
-
 ## Reference
 
-- [Recipe Source](../../../src/nemotron/recipes/nano3/stage2_rl/) - Implementation details
+- [Tech Report Section 3.2](https://arxiv.org/abs/2506.XXXXX) — RL methodology
+- [Stage 0: Pretraining](./pretrain.md) — Pretrain the base model
+- [Stage 1: SFT](./sft.md) — Instruction tuning
+- [Recipe Source](../../../src/nemotron/recipes/nano3/stage2_rl/) — Implementation details
 - [Back to Overview](./README.md)

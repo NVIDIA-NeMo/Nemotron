@@ -23,13 +23,13 @@ compatible with Megatron-Bridge's per_split_data_args_path parameter.
 
 Usage:
     # With default config
-    python data_prep.py
+    uv run python data_prep.py
 
     # With custom config file
-    python data_prep.py --config /path/to/config.yaml
+    uv run python data_prep.py --config /path/to/config.yaml
 
     # With CLI overrides (Hydra-style)
-    python data_prep.py sample=100 force=true
+    uv run python data_prep.py sample=100 force=true
 
     # Via nemotron CLI with nemo-run
     nemotron nano3 data prep pretrain --run prep --sample 10000
@@ -115,6 +115,9 @@ class PreTrainDataPrepConfig:
     force: bool = False
     """Force new run, ignoring cache"""
 
+    config_name: str = "default"
+    """Config name used for artifact naming (e.g., 'default', 'tiny', 'test')"""
+
     def __post_init__(self) -> None:
         # Ensure paths are Path objects
         if isinstance(self.blend_path, str):
@@ -137,10 +140,12 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
         PretrainBlendsArtifact with paths to tokenized data.
     """
     # Add stage-specific tags to wandb run
-    add_wandb_tags(["data-prep", "pretrain"])
+    add_wandb_tags(["data-prep", "pretrain", cfg.config_name])
 
-    # Build artifact name (e.g., "nano3/pretrain/data" or "nano3/pretrain/data?sample=100")
-    artifact_name = f"nano3/pretrain/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
+    # Build artifact name using config_name.
+    # Example: "nano3/default/data" or "nano3/tiny/data?sample=100".
+    sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""
+    artifact_name = f"nano3/{cfg.config_name}/data{sample_suffix}"
 
     data_prep_config = DataPrepConfig(
         blend_path=cfg.blend_path,

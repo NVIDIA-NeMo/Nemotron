@@ -450,7 +450,10 @@ def test_to_wandb_uri():
     from nemotron.kit.trackers import to_wandb_uri
 
     # HuggingFace dataset
-    assert to_wandb_uri("hf://nvidia/Nemotron-CC-v2") == "https://huggingface.co/datasets/nvidia/Nemotron-CC-v2"
+    assert (
+        to_wandb_uri("hf://nvidia/Nemotron-CC-v2")
+        == "https://huggingface.co/datasets/nvidia/Nemotron-CC-v2"
+    )
     assert to_wandb_uri("hf://allenai/c4") == "https://huggingface.co/datasets/allenai/c4"
 
     # S3 and GCS URIs pass through
@@ -474,8 +477,14 @@ def test_tokenizer_to_uri():
     from nemotron.kit.trackers import tokenizer_to_uri
 
     # HuggingFace model
-    assert tokenizer_to_uri("meta-llama/Llama-3.2-1B") == "https://huggingface.co/meta-llama/Llama-3.2-1B"
-    assert tokenizer_to_uri("nvidia/Llama-3.1-Nemotron-70B-Instruct-HF") == "https://huggingface.co/nvidia/Llama-3.1-Nemotron-70B-Instruct-HF"
+    assert (
+        tokenizer_to_uri("meta-llama/Llama-3.2-1B")
+        == "https://huggingface.co/meta-llama/Llama-3.2-1B"
+    )
+    assert (
+        tokenizer_to_uri("nvidia/Llama-3.1-Nemotron-70B-Instruct-HF")
+        == "https://huggingface.co/nvidia/Llama-3.1-Nemotron-70B-Instruct-HF"
+    )
 
     # With revision
     result = tokenizer_to_uri("meta-llama/Llama-3.2-1B", revision="abc123")
@@ -488,13 +497,13 @@ def test_tokenizer_to_uri():
 
 
 def test_load_wandb_config_from_toml():
-    """Test loading wandb config from run.toml."""
+    """Test loading wandb config from env.toml."""
     from nemotron.kit.run import load_wandb_config
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a run.toml with wandb section
-        run_toml = Path(tmpdir) / "run.toml"
-        run_toml.write_text("""
+        # Create an env.toml with wandb section
+        env_toml = Path(tmpdir) / "env.toml"
+        env_toml.write_text("""
 [wandb]
 project = "test-project"
 entity = "test-team"
@@ -506,7 +515,7 @@ executor = "local"
 nproc_per_node = 8
 """)
         # Load wandb config
-        config = load_wandb_config(config_path=run_toml)
+        config = load_wandb_config(config_path=env_toml)
 
         assert config is not None
         assert config.project == "test-project"
@@ -521,15 +530,15 @@ def test_load_wandb_config_missing_section():
     from nemotron.kit.run import load_wandb_config
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a run.toml without wandb section
-        run_toml = Path(tmpdir) / "run.toml"
-        run_toml.write_text("""
+        # Create an env.toml without wandb section
+        env_toml = Path(tmpdir) / "env.toml"
+        env_toml.write_text("""
 [local]
 executor = "local"
 nproc_per_node = 8
 """)
         # Load wandb config - should return None
-        config = load_wandb_config(config_path=run_toml)
+        config = load_wandb_config(config_path=env_toml)
         assert config is None
 
 
@@ -538,72 +547,16 @@ def test_load_wandb_config_with_name_shorthand():
     from nemotron.kit.run import load_wandb_config
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        run_toml = Path(tmpdir) / "run.toml"
-        run_toml.write_text("""
+        env_toml = Path(tmpdir) / "env.toml"
+        env_toml.write_text("""
 [wandb]
 project = "test-project"
 name = "my-run-name"
 """)
-        config = load_wandb_config(config_path=run_toml)
+        config = load_wandb_config(config_path=env_toml)
 
         assert config is not None
         assert config.run_name == "my-run-name"
-
-
-def test_config_manager_extracts_wandb_section():
-    """Test that ConfigManager extracts [wandb] section from config files."""
-    from dataclasses import dataclass
-    from nemotron.kit.config import ConfigManager
-
-    @dataclass
-    class TestConfig:
-        batch_size: int = 32
-        learning_rate: float = 1e-4
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a config file with wandb section
-        config_file = Path(tmpdir) / "config.toml"
-        config_file.write_text("""
-batch_size = 64
-learning_rate = 1e-3
-
-[wandb]
-project = "my-project"
-entity = "my-team"
-""")
-        # Parse config
-        manager = ConfigManager(TestConfig)
-        config = manager.parse_args(["--config-file", str(config_file)])
-
-        # Recipe config should be parsed
-        assert config.batch_size == 64
-        assert config.learning_rate == 1e-3
-
-        # Wandb config should be extracted
-        wandb_config = manager.get_wandb_config()
-        assert wandb_config is not None
-        assert wandb_config.project == "my-project"
-        assert wandb_config.entity == "my-team"
-
-
-def test_config_manager_no_wandb_section():
-    """Test ConfigManager when no [wandb] section is present."""
-    from dataclasses import dataclass
-    from nemotron.kit.config import ConfigManager
-
-    @dataclass
-    class TestConfig:
-        batch_size: int = 32
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        config_file = Path(tmpdir) / "config.toml"
-        config_file.write_text("batch_size = 64")
-
-        manager = ConfigManager(TestConfig)
-        config = manager.parse_args(["--config-file", str(config_file)])
-
-        assert config.batch_size == 64
-        assert manager.get_wandb_config() is None
 
 
 def test_resolve_partition_default():
@@ -692,8 +645,8 @@ def test_load_run_profile_with_partition_overrides():
     from nemotron.kit.run import load_run_profile, resolve_partition
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        run_toml = Path(tmpdir) / "run.toml"
-        run_toml.write_text("""
+        env_toml = Path(tmpdir) / "env.toml"
+        env_toml.write_text("""
 [slurm]
 executor = "slurm"
 account = "my-account"
@@ -701,7 +654,7 @@ partition = "batch"
 run_partition = "interactive"
 batch_partition = "backfill"
 """)
-        profile = load_run_profile("slurm", config_path=run_toml)
+        profile = load_run_profile("slurm", config_path=env_toml)
 
         assert profile.partition == "batch"
         assert profile.run_partition == "interactive"
@@ -717,8 +670,8 @@ def test_partition_inheritance():
     from nemotron.kit.run import load_run_profile, resolve_partition
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        run_toml = Path(tmpdir) / "run.toml"
-        run_toml.write_text("""
+        env_toml = Path(tmpdir) / "env.toml"
+        env_toml.write_text("""
 [base]
 executor = "slurm"
 account = "my-account"
@@ -729,7 +682,7 @@ run_partition = "interactive"
 extends = "base"
 batch_partition = "backfill"
 """)
-        profile = load_run_profile("child", config_path=run_toml)
+        profile = load_run_profile("child", config_path=env_toml)
 
         # partition and run_partition inherited from base
         assert profile.partition == "batch"

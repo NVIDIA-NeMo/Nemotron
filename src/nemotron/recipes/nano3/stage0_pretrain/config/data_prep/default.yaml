@@ -12,7 +12,7 @@ run:
 #   PWD: Current working directory (for path resolution)
 
 # Path to data blend JSON file
-blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw_small.json
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw.json
 
 # Output directory for tokenized data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage0_pretrain
@@ -52,3 +52,6 @@ num_actors: null
 
 # Force new run, ignoring cache
 force: false
+
+# Config name for artifact naming (produces PretrainBlendsArtifact-default)
+config_name: default

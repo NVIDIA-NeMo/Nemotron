@@ -159,6 +159,18 @@ def main() -> None:
         print(f"Overrides: {overrides}")
         config = parse_hydra_overrides(config, overrides)
 
+    # Register nemotron artifact resolver for ${art:...} interpolations
+    # This must happen before OmegaConf.to_container() resolves the config
+    from nemotron.kit.resolvers import clear_artifact_cache, register_resolvers_from_config
+
+    clear_artifact_cache()
+    register_resolvers_from_config(
+        config,
+        artifacts_key="run",
+        mode="pre_init",
+        pre_init_patch_http_digest=False,
+    )
+
     config: MasterConfig = OmegaConf.to_container(config, resolve=True)
     print("Applied CLI overrides")
 

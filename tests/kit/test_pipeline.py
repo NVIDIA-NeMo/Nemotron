@@ -14,18 +14,13 @@
 
 """Tests for nemotron.kit.pipeline (PipelineConfig, run_pipeline)."""
 
-import subprocess
-import sys
-from dataclasses import fields
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from nemotron.kit import PipelineConfig, Step, run_pipeline
 from nemotron.kit.pipeline import (
-    generate_sbatch_script,
     generate_pipeline_commands,
+    generate_sbatch_script,
     run_local,
 )
 
@@ -302,9 +297,7 @@ class TestGeneratePipelineCommands:
         module = create_mock_module("test.step")
         steps = [Step(name="test", module=module, torchrun=True)]
 
-        commands = generate_pipeline_commands(
-            config, steps, extra_args=["--batch-size", "64"]
-        )
+        commands = generate_pipeline_commands(config, steps, extra_args=["--batch-size", "64"])
 
         assert "--batch-size" in commands
         assert "64" in commands

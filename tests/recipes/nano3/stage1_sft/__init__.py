@@ -12,9 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Entry point for python -m nemotron.data_prep."""
-
-from nemotron.data_prep.cli import main
-
-if __name__ == "__main__":
-    main()
+"""Tests for nano3/stage1_sft recipe."""

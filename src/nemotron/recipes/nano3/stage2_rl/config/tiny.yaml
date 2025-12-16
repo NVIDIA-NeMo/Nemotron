@@ -1,5 +1,5 @@
 run:
-  data: DataBlendsArtifact-rl:latest
+  data: SplitJsonlDataArtifact-rl:latest
   model: sft:latest
   env:
     container: nvcr.io/nvidian/nemo-rl:25.11-nano-v3.rc2
@@ -250,8 +250,8 @@ policy:
         num_nodes: null # Decides number of nodes to be dedicated to generation
 
 data:
-  train_jsonl_fpath: ${art:data,path}/training.jsonl
-  validation_jsonl_fpath: ${art:data,path}/validation.jsonl
+  train_jsonl_fpath: ${art:data,train}
+  validation_jsonl_fpath: ${art:data,val}
   shuffle: False
   num_workers: 1
 

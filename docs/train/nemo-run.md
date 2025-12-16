@@ -1,135 +1,91 @@
 # Running Recipes with NeMo-Run
 
-Nemotron recipes work out of the box without any additional dependencies. For distributed execution on clusters or cloud, you can optionally use [NeMo-Run](https://github.com/NVIDIA-NeMo/Run) by adding `--run <profile>` to any recipe command.
+Nemotron recipes use [NeMo-Run](https://github.com/NVIDIA-NeMo/Run) for job orchestration. Add `--run <profile>` to any recipe command to execute on your target infrastructure.
+
+> **Slurm Only (v0)**: This initial release has been tested exclusively with Slurm execution. Support for additional NeMo-Run executors (local, Docker, SkyPilot, DGX Cloud) is planned for future releases.
 
 ## Quick Start
 
 ```bash
-# Local execution (works without nemo-run)
-python -m nemotron.recipes.nano3.stage0_pretrain.train --config.data.mock
+# Execute on a Slurm cluster
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
-# Optional: Execute on a Slurm cluster (requires nemo-run)
-python -m nemotron.recipes.nano3.stage0_pretrain.train --run draco --config.data.mock
-
-# Optional: Execute in Docker (requires nemo-run)
-python -m nemotron.recipes.nano3.data_prep --run docker
-
-# Optional: Execute on AWS via SkyPilot (requires nemo-run)
-python -m nemotron.recipes.nano3.stage0_pretrain.train --run aws
+# Direct script execution (inside container on compute node)
+uv run python train.py --config config/tiny.yaml
 ```
-
-## Installation
-
-NeMo-Run is **optional**. Install it only if you need distributed execution:
-
-```bash
-pip install nemo-run
-```
-
-Without nemo-run installed, all recipes run locally using standard Python/torchrun.
 
 ## Setting Up Run Profiles
 
-Create a `run.toml` (or `run.yaml` / `run.json`) in your project root. Each section defines a named execution profile:
+Create an `env.toml` in your project root. Each section defines a named execution profile:
 
 ```toml
-# run.toml
+# env.toml
 
-[local]
-executor = "local"
-nproc_per_node = 8
+[wandb]
+project = "nemotron"
+entity = "YOUR-TEAM"
 
-[docker]
-executor = "docker"
-container_image = "nvcr.io/nvidia/nemo:24.01"
-nproc_per_node = 8
-runtime = "nvidia"
-mounts = ["/data:/data"]
-
-[draco]
+[YOUR-CLUSTER]
 executor = "slurm"
-account = "my-account"
-partition = "gpu"
-nodes = 4
-nproc_per_node = 8
-time = "04:00:00"
-container_image = "nvcr.io/nvidia/nemo:24.01"
-mounts = ["/data:/data", "/models:/models"]
-
-[aws]
-executor = "skypilot"
-cloud = "aws"
-gpus = "A100:8"
+account = "YOUR-ACCOUNT"
+partition = "batch"
 nodes = 2
-cluster_name = "nemotron-training"
+ntasks_per_node = 8
+gpus_per_node = 8
+mem = "0"
+exclusive = true
+mounts = ["/lustre:/lustre"]
 ```
+
+Container images are specified in recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
 
 ## Running Recipes
 
 ### Data Preparation
 
 ```bash
-# Local
-python -m nemotron.recipes.nano3.data_prep --sample 1000
-
 # On Slurm cluster
-python -m nemotron.recipes.nano3.data_prep --run draco --sample 1000
-
-# In Docker
-python -m nemotron.recipes.nano3.data_prep --run docker --sample 1000
+uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER --sample 1000
 ```
 
 ### Pretraining
 
 ```bash
-# Local with mock data
-python -m nemotron.recipes.nano3.stage0_pretrain.train --config.data.mock
+# On Slurm
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
-# On Slurm with 4 nodes
-python -m nemotron.recipes.nano3.stage0_pretrain.train --run draco
-
-# On Slurm with 8 nodes (override profile)
-python -m nemotron.recipes.nano3.stage0_pretrain.train --run draco --run.nodes 8
+# On Slurm with node override
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER run.nodes=8
 ```
 
 ### Supervised Fine-Tuning
 
 ```bash
-# Local
-python -m nemotron.recipes.nano3.stage1_sft.train
-
 # On Slurm
-python -m nemotron.recipes.nano3.stage1_sft.train --run draco
+uv run nemotron nano3 sft -c tiny --run YOUR-CLUSTER
 ```
 
 ### RL Training
 
 ```bash
-# Local (requires Ray)
-python -m nemotron.recipes.nano3.stage2_rl.train
-
 # On Slurm (Ray cluster started automatically)
-python -m nemotron.recipes.nano3.stage2_rl.train --run draco
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 ```
 
 ## CLI Options
 
 ```bash
-# Select a profile (attached execution - waits for completion)
-python train.py --run <profile-name>
+# Attached execution - waits for completion, streams logs
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
-# Batch mode (detached execution - submits and exits immediately)
-python train.py --batch <profile-name>
+# Detached execution - submits and exits immediately
+uv run nemotron nano3 pretrain -c tiny --batch YOUR-CLUSTER
 
-# Override profile settings
-python train.py --run draco --run.nodes 8 --run.time 08:00:00
-python train.py --batch draco --batch.nodes 8 --batch.time 08:00:00
+# Override config values (Hydra-style)
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER train.train_iters=5000
 
 # Dry-run (preview what would be executed)
-python train.py --run draco --run.dry-run
-
-# Detached mode (submit and exit) - same as using --batch
-python train.py --run draco --run.detach
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
 ### `--run` vs `--batch`
@@ -141,50 +97,32 @@ python train.py --run draco --run.detach
 
 The `--batch` option automatically sets `detach=True` and `ray_mode="job"` (ensuring Ray clusters terminate after the job completes).
 
-## Supported Executors
-
-### Local
-
-Runs locally using torchrun. Good for development and testing.
-
-```toml
-[local]
-executor = "local"
-nproc_per_node = 8
-env_vars = ["NCCL_DEBUG=INFO"]
-```
-
-### Docker
-
-Runs in a Docker container with GPU support.
-
-```toml
-[docker]
-executor = "docker"
-container_image = "nvcr.io/nvidia/nemo:24.01"
-nproc_per_node = 8
-runtime = "nvidia"
-ipc_mode = "host"
-shm_size = "16g"
-mounts = ["/data:/data"]
-```
-
-### Slurm
+## Slurm Configuration
 
 Submits jobs to a Slurm cluster. Supports both local and SSH submission.
 
+### Local Submission
+
+Submit from a machine with direct access to the Slurm scheduler:
+
 ```toml
-[slurm-local]
+[YOUR-CLUSTER]
 executor = "slurm"
 account = "my-account"
 partition = "gpu"
 nodes = 4
-nproc_per_node = 8
+ntasks_per_node = 8
+gpus_per_node = 8
 time = "04:00:00"
-container_image = "nvcr.io/nvidia/nemo:24.01"
 mounts = ["/data:/data"]
+```
 
-[slurm-ssh]
+### SSH Tunnel Submission
+
+Submit from a remote machine via SSH:
+
+```toml
+[YOUR-CLUSTER]
 executor = "slurm"
 account = "my-account"
 partition = "gpu"
@@ -195,12 +133,12 @@ user = "username"
 identity = "~/.ssh/id_rsa"
 ```
 
-#### Partition Overrides
+### Partition Overrides
 
 You can specify different partitions for `--run` (attached) vs `--batch` (detached) execution:
 
 ```toml
-[draco]
+[YOUR-CLUSTER]
 executor = "slurm"
 account = "my-account"
 partition = "batch"           # Default partition
@@ -209,44 +147,6 @@ batch_partition = "backfill"  # Used for --batch (detached)
 ```
 
 This is useful when your cluster has separate partitions for interactive and batch workloads.
-
-### SkyPilot
-
-Launches cloud instances via SkyPilot (AWS, GCP, Azure).
-
-```toml
-[aws]
-executor = "skypilot"
-cloud = "aws"
-gpus = "A100:8"
-nodes = 2
-cluster_name = "nemotron-training"
-setup = "pip install -e ."
-```
-
-### DGX Cloud
-
-Runs on NVIDIA DGX Cloud.
-
-```toml
-[dgx]
-executor = "dgxcloud"
-project_name = "nemotron"
-nodes = 4
-nproc_per_node = 8
-pvcs = ["data-pvc:/data"]
-```
-
-### Lepton
-
-Runs on Lepton AI.
-
-```toml
-[lepton]
-executor = "lepton"
-resource_shape = "gpu-a100-80gb"
-node_group = "default"
-```
 
 ## Profile Inheritance
 
@@ -258,25 +158,39 @@ executor = "slurm"
 account = "my-account"
 partition = "gpu"
 time = "04:00:00"
-container_image = "nvcr.io/nvidia/nemo:24.01"
 
-[draco]
+[YOUR-CLUSTER]
 extends = "base-slurm"
 nodes = 4
-nproc_per_node = 8
+ntasks_per_node = 8
+gpus_per_node = 8
 
-[draco-large]
-extends = "draco"
+[YOUR-CLUSTER-large]
+extends = "YOUR-CLUSTER"
 nodes = 16
 time = "08:00:00"
 ```
 
+## Other Executors (Coming Soon)
+
+NeMo-Run supports additional executors that will be tested and documented in future releases:
+
+| Executor | Description | Status |
+|----------|-------------|--------|
+| `local` | Local execution with torchrun | Planned |
+| `docker` | Docker container with GPU support | Planned |
+| `skypilot` | Cloud instances (AWS, GCP, Azure) | Planned |
+| `dgxcloud` | NVIDIA DGX Cloud | Planned |
+| `lepton` | Lepton AI | Planned |
+
+See the [NeMo-Run documentation](https://github.com/NVIDIA-NeMo/Run) for configuration details.
+
 ## W&B Configuration
 
-You can configure Weights & Biases tracking in the same `run.toml` file using the `[wandb]` section:
+You can configure Weights & Biases tracking in `env.toml` using the `[wandb]` section:
 
 ```toml
-# run.toml
+# env.toml
 
 [wandb]
 project = "my-project"
@@ -320,7 +234,7 @@ wandb:
 You can customize how the CLI displays configuration output using the `[cli]` section:
 
 ```toml
-# run.toml or env.toml
+# env.toml
 
 [cli]
 theme = "github-light"
@@ -369,20 +283,20 @@ Any Pygments theme is supported. Popular choices include:
 
 ## Ray-Enabled Recipes
 
-Some recipes (like data preparation and RL training) use Ray for distributed execution. This is configured at the recipe level, not in run.toml. When you run a Ray-enabled recipe with `--run`, the Ray cluster is set up automatically on the target infrastructure.
+Some recipes (like data preparation and RL training) use Ray for distributed execution. This is configured at the recipe level, not in env.toml. When you run a Ray-enabled recipe with `--run`, the Ray cluster is set up automatically on the target infrastructure.
 
 ```bash
 # Data prep uses Ray internally
-python -m nemotron.recipes.nano3.data_prep --run draco
+uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 
 # RL training uses Ray internally
-python -m nemotron.recipes.nano3.stage2_rl.train --run draco
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 ```
 
 You can optionally specify `ray_working_dir` in your profile for Ray jobs:
 
 ```toml
-[draco]
+[YOUR-CLUSTER]
 executor = "slurm"
 account = "my-account"
 partition = "gpu"

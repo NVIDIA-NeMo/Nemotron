@@ -25,16 +25,8 @@ This module provides everything you need to build training recipes:
 - W&B and fsspec storage backends
 
 Quick Start:
-    >>> from nemotron.kit import cli, Artifact, Step
-    >>> from dataclasses import dataclass
+    >>> from nemotron.kit import Artifact, Step
     >>> from pydantic import Field
-    >>>
-    >>> # Config with file support
-    >>> @dataclass
-    ... class Config:
-    ...     batch_size: int = 32
-    >>>
-    >>> config = cli(Config)  # Supports --config-file config.yaml
     >>>
     >>> # Artifact with validation
     >>> class Dataset(Artifact):
@@ -67,9 +59,6 @@ from typing import Any
 # Track module for semantic URI resolution
 from nemotron.kit import track
 
-# CLI App
-from nemotron.kit.app import App
-
 # Artifacts
 from nemotron.kit.artifact import (
     Artifact,
@@ -84,8 +73,7 @@ from nemotron.kit.artifact import (
     print_step_complete,
 )
 
-# Config
-from nemotron.kit.config import ConfigManager, cli
+# Exceptions
 from nemotron.kit.exceptions import ArtifactNotFoundError, ArtifactVersionNotFoundError
 
 # Pipeline
@@ -111,11 +99,6 @@ from nemotron.kit.trackers import (
 from nemotron.kit.wandb import WandbConfig, add_wandb_tags, init_wandb_if_configured
 
 __all__ = [
-    # Config
-    "cli",
-    "ConfigManager",
-    # CLI App
-    "App",
     # Run (nemo-run integration)
     "RunConfig",
     "build_executor",

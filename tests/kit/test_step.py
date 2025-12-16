@@ -17,8 +17,6 @@
 import sys
 from types import ModuleType
 
-import pytest
-
 from nemotron.kit import Step
 
 

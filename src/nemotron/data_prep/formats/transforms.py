@@ -254,6 +254,66 @@ def rename(**field_mapping: str) -> Transform:
     return transform
 
 
+def resolve_hf_placeholders(
+    resolver: "HFPlaceholderResolver | None" = None,
+) -> Transform:
+    """Create transform that resolves HuggingFace placeholder records.
+
+    For records with `_hf_placeholder` field:
+        - Fetches the actual data from external HF dataset (DAPO, Skywork)
+        - Applies template restoration (prefix/suffix or {question} replacement)
+        - Returns record with question, expected_answer, and responses_create_params
+
+    For records without `_hf_placeholder`:
+        - Falls back to nemotron_rl() extraction (responses_create_params.input)
+
+    Args:
+        resolver: Pre-initialized HFPlaceholderResolver. If None, one will be
+                 created on first use (lazy initialization).
+
+    Returns:
+        Transform function that resolves placeholders or extracts RL format.
+
+    Example:
+        >>> from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver
+        >>> resolver = HFPlaceholderResolver.create()
+        >>> transform = resolve_hf_placeholders(resolver)
+        >>> # For placeholder record:
+        >>> transform({"_hf_placeholder": {"row": 0, ...}, "dataset": "..."})
+        {'question': '...', 'expected_answer': '...', 'responses_create_params': {...}}
+        >>> # For normal record:
+        >>> transform({"responses_create_params": {"input": [...]}})
+        {'messages': [...]}
+    """
+    from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver
+
+    # Mutable container for lazy initialization
+    _resolver_holder: list[HFPlaceholderResolver | None] = [resolver]
+
+    def get_resolver() -> HFPlaceholderResolver:
+        if _resolver_holder[0] is None:
+            _resolver_holder[0] = HFPlaceholderResolver.create()
+        return _resolver_holder[0]
+
+    # Get the nemotron_rl transform for non-placeholder records
+    rl_transform = nemotron_rl()
+
+    def transform(record: dict) -> dict | None:
+        # Check if this is a placeholder record
+        if "_hf_placeholder" in record:
+            resolver = get_resolver()
+            resolved = resolver.resolve(record)
+            if resolved is not None:
+                return resolved
+            # If resolution fails, skip the record
+            return None
+
+        # Not a placeholder - use nemotron_rl extraction
+        return rl_transform(record)
+
+    return transform
+
+
 __all__ = [
     # Type definitions
     "Transform",
@@ -271,4 +331,5 @@ __all__ = [
     "passthrough",
     "select",
     "rename",
+    "resolve_hf_placeholders",
 ]

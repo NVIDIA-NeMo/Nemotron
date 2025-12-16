@@ -434,10 +434,10 @@ class WandbTracker:
                 return None, None
 
     def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
-        """Log artifact to W&B using URI references for lineage tracking.
+        """Log artifact to W&B using artifact's own methods for files/references.
 
-        For DataBlendsArtifact, registers input datasets as separate artifacts
-        with "raw" alias and creates lineage from inputs to this output.
+        Each artifact class defines what files to upload and what references to add
+        via get_wandb_files() and get_wandb_references() methods.
 
         Args:
             artifact: The artifact to log
@@ -450,15 +450,13 @@ class WandbTracker:
         if not self.is_active():
             raise RuntimeError("No active W&B run. Call wandb.init() first.")
 
-        # Check if artifact has source datasets (DataBlendsArtifact)
-        source_datasets = getattr(artifact, "source_datasets", None)
-        tokenizer_uri = getattr(artifact, "tokenizer_uri", None)
-
         # Register input datasets as separate artifacts for lineage
         input_artifact_refs: list[str] = []
         input_artifact_objects: list[Any] = []
+
+        # Parse input URIs and register them
+        source_datasets = getattr(artifact, "source_datasets", None)
         if source_datasets:
-            # source_datasets can be list[InputDatasetInfo] or list[str]
             if source_datasets and isinstance(source_datasets[0], InputDatasetInfo):
                 input_artifact_refs, input_artifact_objects = self._register_input_datasets(
                     source_datasets
@@ -471,8 +469,7 @@ class WandbTracker:
                 )
 
         # Register tokenizer as an input artifact for lineage
-        tokenizer_artifact_ref: str | None = None
-        tokenizer_artifact_obj: Any | None = None
+        tokenizer_uri = getattr(artifact, "tokenizer_uri", None)
         if tokenizer_uri:
             tokenizer_artifact_ref, tokenizer_artifact_obj = self._register_tokenizer(tokenizer_uri)
             if tokenizer_artifact_ref:
@@ -480,7 +477,7 @@ class WandbTracker:
             if tokenizer_artifact_obj:
                 input_artifact_objects.append(tokenizer_artifact_obj)
 
-        # Build metadata including source URIs if present
+        # Build metadata
         metadata = {
             "created_at": artifact.created_at,
             **artifact.metadata,
@@ -493,76 +490,19 @@ class WandbTracker:
             metadata=metadata,
         )
 
-        if source_datasets or tokenizer_uri:
-            # Add reference to tokenizer
-            if tokenizer_uri:
-                try:
-                    wb_artifact.add_reference(
-                        tokenizer_uri,
-                        name="tokenizer",
-                        checksum=False,  # HuggingFace models don't support checksumming
-                    )
-                except Exception:
-                    pass
+        # Add files defined by the artifact (e.g., metadata.json, blend.json)
+        for local_path, artifact_name in artifact.get_wandb_files():
+            try:
+                wb_artifact.add_file(local_path, name=artifact_name)
+            except Exception:
+                pass  # File may not exist yet
 
-            # For DataBlendsArtifact, add blend.json directly so it's viewable in W&B UI
-            # Don't add output reference - the lineage to input datasets is sufficient
-            artifact_path = artifact.path
-            if artifact_path.is_file() and artifact_path.name == "blend.json":
-                # Add only the blend.json file (small, viewable in UI)
-                wb_artifact.add_file(str(artifact_path), name="blend.json")
-            elif artifact.type == "PretrainBlendsArtifact":
-                # For PretrainBlendsArtifact, add blend.json explicitly
-                # Try multiple locations for blend.json:
-                # 1. From metadata blend_path (absolute path)
-                # 2. In artifact directory (artifact.path / "blend.json")
-                blend_added = False
-                blend_path = artifact.metadata.get("blend_path")
-                if blend_path and Path(blend_path).exists():
-                    wb_artifact.add_file(str(blend_path), name="blend.json")
-                    blend_added = True
-                elif artifact_path.is_dir():
-                    # Fallback: try blend.json in artifact directory
-                    alt_blend_path = artifact_path / "blend.json"
-                    if alt_blend_path.exists():
-                        wb_artifact.add_file(str(alt_blend_path), name="blend.json")
-                        blend_added = True
-
-                if not blend_added:
-                    # Log warning if blend.json couldn't be found
-                    import logging
-
-                    logging.getLogger(__name__).warning(
-                        f"blend.json not found for PretrainBlendsArtifact. "
-                        f"Tried: {blend_path}, {artifact_path / 'blend.json'}"
-                    )
-
-                # Also add metadata.json for artifact loading
-                metadata_path = artifact_path / "metadata.json"
-                if metadata_path.exists():
-                    wb_artifact.add_file(str(metadata_path), name="metadata.json")
-            else:
-                # Generic artifact - add directory reference
-                # Use checksum=False to avoid digest mismatch errors when files change
-                # between data prep runs (the path is what matters for lineage)
-                if artifact_path.is_file():
-                    artifact_path = artifact_path.parent
-                output_uri = f"file://{artifact_path.resolve()}"
-                try:
-                    wb_artifact.add_reference(
-                        output_uri,
-                        name="output",
-                        checksum=False,
-                    )
-                except Exception:
-                    # Fallback to add_dir if reference fails
-                    wb_artifact.add_dir(str(artifact_path))
-        else:
-            # No source URIs - fallback to add_dir for backward compatibility
-            artifact_path = artifact.path
-            if artifact_path.is_file():
-                artifact_path = artifact_path.parent
-            wb_artifact.add_dir(str(artifact_path))
+        # Add references defined by the artifact (e.g., output directory on shared storage)
+        for uri, ref_name in artifact.get_wandb_references():
+            try:
+                wb_artifact.add_reference(uri, name=ref_name, checksum=False)
+            except Exception:
+                pass  # Reference may fail for some paths
 
         # Log metrics to run
         if artifact.metrics:
@@ -591,22 +531,18 @@ class WandbTracker:
         # Wait for artifact to be logged (to get ID)
         logged.wait()
 
+        # Add "latest" alias so :latest resolves to this version
+        # W&B doesn't automatically update :latest when new versions are created
+        if "latest" not in logged.aliases:
+            logged.aliases.append("latest")
+
         # Add experiment_id as alias for cross-task artifact discovery
         experiment_id = os.environ.get("NEMO_EXPERIMENT_ID")
         if experiment_id:
             logged.aliases.append(experiment_id)
-            logged.save()
 
-        # Collect all tracked URIs
-        tracked_uris: list[str] = []
-        if source_datasets:
-            for ds in source_datasets:
-                if isinstance(ds, InputDatasetInfo):
-                    tracked_uris.append(ds.uri)
-                else:
-                    tracked_uris.append(ds)
-        if tokenizer_uri:
-            tracked_uris.append(tokenizer_uri)
+        # Save all alias changes
+        logged.save()
 
         return {
             "artifact_id": f"{logged.entity}/{logged.project}/{logged.name}:{logged.version}",
@@ -614,7 +550,7 @@ class WandbTracker:
             "run_id": self.wandb.run.id,
             "url": logged.url if hasattr(logged, "url") else None,
             "used_artifacts": used_refs,
-            "source_uris": tracked_uris,
+            "source_uris": artifact.get_input_uris(),
             "input_artifact_refs": input_artifact_refs,
         }
 
