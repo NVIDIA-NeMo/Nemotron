@@ -19,12 +19,13 @@
 Applies chat templates to OpenAI-format messages, tokenizes with role-based
 loss masking, and outputs packed .npy files compatible with GPTSFTPackedDataset.
 
-Output structure:
+Output structure (Megatron-Bridge compatible):
     output_dir/
-        training.npy      # All training data concatenated
-        validation.npy    # All validation data concatenated
-        test.npy          # All test data concatenated
-        metadata.json     # Split metadata and packing info
+        training_{pack_size}.npy    # All training data concatenated
+        validation_{pack_size}.npy  # All validation data concatenated
+        test_{pack_size}.npy        # All test data concatenated
+        {pack_size}_metadata.jsonl  # Megatron-Bridge compatible packing metadata
+        metadata.json               # Nemotron metadata with split info
 
 Compatible with Megatron-Bridge's FinetuningDatasetConfig with PackedSequenceSpecs.
 
@@ -265,13 +266,16 @@ def _concatenate_and_split_npy(
     valid_sequences = [all_sequences[i] for i in valid_indices]
     test_sequences = [all_sequences[i] for i in test_indices]
 
-    # Ensure output directory exists
+    # Ensure output directory exists and resolve to absolute path
+    # This is critical for W&B artifacts - paths must be absolute for remote access
+    output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save each split as a single .npy file
-    train_path = output_dir / "training.npy"
-    valid_path = output_dir / "validation.npy"
-    test_path = output_dir / "test.npy"
+    # Save each split as a single .npy file with pack_size in filename
+    # Format: {split}_{pack_size}.npy (Megatron-Bridge compatible)
+    train_path = output_dir / f"training_{pack_size}.npy"
+    valid_path = output_dir / f"validation_{pack_size}.npy"
+    test_path = output_dir / f"test_{pack_size}.npy"
 
     np.save(train_path, train_sequences, allow_pickle=True)
     logger.info(f"Saved {len(train_sequences)} training sequences to {train_path}")
@@ -282,14 +286,71 @@ def _concatenate_and_split_npy(
     np.save(test_path, test_sequences, allow_pickle=True)
     logger.info(f"Saved {len(test_sequences)} test sequences to {test_path}")
 
-    # Write metadata
+    # Compute packing statistics for Megatron-Bridge compatible metadata
+    def compute_packing_stats(sequences: list) -> dict:
+        """Compute packing statistics for a list of sequences."""
+        if not sequences:
+            return {
+                "max_samples_per_bin": 0,
+                "dataset_max_seqlen": 0,
+                "packing_factor": 0.0,
+                "packing_efficiency": 0.0,
+                "pack_size": pack_size,
+                "min_packed_seqlen": 0,
+            }
+        # Count samples per bin and sequence lengths
+        samples_per_bin = []
+        packed_seqlens = []
+        max_seqlen = 0
+        for seq in sequences:
+            num_samples = len(seq.get("seq_start_id", [1]))  # Default to 1 if no boundaries
+            samples_per_bin.append(num_samples)
+            seq_len = len(seq.get("input_ids", []))
+            packed_seqlens.append(seq_len)
+            # Track max sequence length across all sub-sequences
+            for i, start in enumerate(seq.get("seq_start_id", [0])):
+                if i + 1 < len(seq.get("seq_start_id", [])):
+                    end = seq["seq_start_id"][i + 1]
+                else:
+                    end = len(seq.get("input_ids", []))
+                max_seqlen = max(max_seqlen, end - start)
+
+        total_tokens = sum(packed_seqlens)
+
+        packing_factor = round(sum(samples_per_bin) / len(sequences), 2) if sequences else 0.0
+        packing_efficiency = (
+            round(total_tokens / (len(sequences) * pack_size) * 100, 2) if sequences else 0.0
+        )
+        return {
+            "max_samples_per_bin": max(samples_per_bin) if samples_per_bin else 0,
+            "dataset_max_seqlen": max_seqlen,
+            "packing_factor": packing_factor,
+            "packing_efficiency": packing_efficiency,
+            "pack_size": pack_size,
+            "min_packed_seqlen": min(packed_seqlens) if packed_seqlens else 0,
+        }
+
+    # Compute stats for each split
+    train_stats = compute_packing_stats(train_sequences)
+    valid_stats = compute_packing_stats(valid_sequences)
+    test_stats = compute_packing_stats(test_sequences)
+
+    # Write Megatron-Bridge compatible metadata.jsonl
+    # Format: JSON list with one entry per dataset (train, valid, test)
+    mb_metadata_path = output_dir / f"{pack_size}_metadata.jsonl"
+    mb_metadata = [train_stats, valid_stats, test_stats]
+    with open(mb_metadata_path, "w") as f:
+        json.dump(mb_metadata, f, indent=2)
+    logger.info(f"Saved Megatron-Bridge compatible metadata to {mb_metadata_path}")
+
+    # Write nemotron metadata.json (backward compatible)
     metadata = {
         "pack_size": pack_size,
         "seed": seed,
         "splits": {
-            "train": {"sequences": len(train_sequences), "path": str(train_path)},
-            "valid": {"sequences": len(valid_sequences), "path": str(valid_path)},
-            "test": {"sequences": len(test_sequences), "path": str(test_path)},
+            "train": {"sequences": len(train_sequences), "path": str(train_path), **train_stats},
+            "valid": {"sequences": len(valid_sequences), "path": str(valid_path), **valid_stats},
+            "test": {"sequences": len(test_sequences), "path": str(test_path), **test_stats},
         },
         "total_sequences": total_sequences,
         "train_ratio": train_ratio,
@@ -307,6 +368,10 @@ def _concatenate_and_split_npy(
         "valid": {"sequences": len(valid_sequences), "path": str(valid_path)},
         "test": {"sequences": len(test_sequences), "path": str(test_path)},
         "total_sequences": total_sequences,
+        "training_path": str(train_path),
+        "validation_path": str(valid_path),
+        "test_path": str(test_path),
+        "metadata_path": str(mb_metadata_path),
     }
 
 
@@ -424,15 +489,20 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
     # Create tokenizer URI for lineage tracking
     tok_uri = tokenizer_to_uri(cfg.tokenizer_model)
 
-    # Build output artifact - path points to output_dir (contains training.npy, etc.)
+    # Build output artifact - path points to output_dir (contains training_{pack_size}.npy, etc.)
+    # Use resolved absolute path for W&B artifact storage
     artifact = SFTDataArtifact(
-        path=cfg.output_dir,
+        path=cfg.output_dir.resolve(),
         total_tokens=result.total_tokens,
         total_sequences=split_stats["total_sequences"],
         elapsed_sec=elapsed_sec,
         pack_size=cfg.pack_size,
         source_datasets=source_datasets,
         tokenizer_uri=tok_uri,
+        training_path=split_stats["training_path"],
+        validation_path=split_stats["validation_path"],
+        test_path=split_stats["test_path"],
+        metadata_path=split_stats["metadata_path"],
     )
     artifact.name = f"nano3/sft/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     artifact.save()

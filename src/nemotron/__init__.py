@@ -23,15 +23,9 @@ for NVIDIA Nemotron models with full data preparation, training, and
 evaluation stages.
 
 Example:
-    >>> from nemotron.kit import cli, Artifact
-    >>> from dataclasses import dataclass
+    >>> from nemotron.kit import Artifact
     >>> from pydantic import Field
-    >>>
-    >>> @dataclass
-    ... class Config:
-    ...     batch_size: int = 32
-    >>>
-    >>> config = cli(Config)  # Supports --config-file config.yaml
+    >>> from pathlib import Path
     >>>
     >>> class Dataset(Artifact):
     ...     num_examples: int = Field(gt=0)

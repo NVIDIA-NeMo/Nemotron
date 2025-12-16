@@ -7,25 +7,28 @@ run:
 recipe:
   _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_finetune_config
   packed_sequence: true
+  peft: null  # Disable LoRA, do full SFT
 
-# Override dataset config to use packed .npy files from data_prep
+# Dataset config for pre-packed .npy files from data_prep
+# train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download
 dataset:
-  _target_: megatron.bridge.training.config.FinetuningDatasetConfig
   dataset_root: ${art:data,path}
   seq_length: ${art:data,pack_size}
   packed_sequence_specs:
-    _target_: megatron.bridge.data.datasets.packed_sequence.PackedSequenceSpecs
     packed_sequence_size: ${art:data,pack_size}
-    packed_train_data_path: ${art:data,path}/training.npy
-    packed_val_data_path: ${art:data,path}/validation.npy
-    packed_metadata_path: ${art:data,path}/metadata.json
+    packed_train_data_path: ${art:data,training_path}
+    packed_val_data_path: ${art:data,validation_path}
+    packed_metadata_path: ${art:data,metadata_path}
 
 train:
   train_iters: 1700
   global_batch_size: 32
 
-# model:
-#   pipeline_model_parallel_size: 2
+model:
+  seq_length: ${art:data,pack_size}
+  # Match pretrain parallelism settings for checkpoint compatibility
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
 
 # tokenizer:
 #   tokenizer_type: HuggingFaceTokenizer
@@ -42,4 +45,6 @@ logger:
 checkpoint:
   save: /nemo_run/sft
   save_interval: 20
-  pretrained_checkpoint: ${run.model,pretrain}
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true  # Skip loading optimizer state from pretrained checkpoint
+  # ckpt_step: ${art:model,iteration}  # Optional: set to load specific iteration from artifact

@@ -25,7 +25,6 @@ dependencies = [
     "nemo-run>=0.4.0",
     "pydantic>=2.0.0",
     "typer>=0.12.0",
-    "tyro>=0.8.0",
     "omegaconf>=2.3.0",
     "rich>=13.0.0",
     "textual>=0.70.0",
@@ -73,7 +72,6 @@ Repository = "https://github.com/nemotron/nemotron"
 
 [project.scripts]
 nemotron = "nemotron.__main__:main"
-nemotron-legacy = "nemotron.__main__:main_legacy"
 
 [project.entry-points."fsspec.specs"]
 art = "nemotron.art.filesystem:ArtifactFileSystem"
@@ -99,6 +97,10 @@ disallow_untyped_defs = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+exclude = [
+    "usage-cookbook",
+    "use-case-examples",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

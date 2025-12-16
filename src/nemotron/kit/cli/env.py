@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Environment profile loading from env.toml (with run.toml fallback).
+"""Environment profile loading from env.toml.
 
 Handles loading executor configurations and profile inheritance.
 """
@@ -32,27 +32,21 @@ else:
 
 
 def find_env_file(start_dir: Path | None = None) -> Path | None:
-    """Find env.toml (or run.toml fallback) walking up from start_dir.
+    """Find env.toml walking up from start_dir.
 
     Args:
         start_dir: Directory to start searching from. Defaults to cwd.
 
     Returns:
-        Path to env.toml or run.toml if found, None otherwise.
+        Path to env.toml if found, None otherwise.
     """
     if start_dir is None:
         start_dir = Path.cwd()
 
     for path in [start_dir, *start_dir.parents]:
-        # Prefer env.toml
         env_file = path / "env.toml"
         if env_file.exists():
             return env_file
-
-        # Fallback to run.toml during transition
-        run_file = path / "run.toml"
-        if run_file.exists():
-            return run_file
 
         # Stop at project root (has pyproject.toml)
         if (path / "pyproject.toml").exists():

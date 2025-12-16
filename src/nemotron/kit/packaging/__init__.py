@@ -15,6 +15,12 @@
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
+"""Packaging helpers for remote execution.
+
+This subpackage provides nemo-run Packager implementations used to ship code and
+configs to remote executors (e.g., Slurm) in a reproducible way.
+"""
+
 from nemotron.kit.packaging.code_packager import CodePackager
 from nemotron.kit.packaging.self_contained_packager import SelfContainedPackager
 

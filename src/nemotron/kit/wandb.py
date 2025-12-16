@@ -368,12 +368,70 @@ def patch_wandb_runid_for_seeded_random() -> None:
     logger.info("[WANDB] Patched generate_fast_id in both runid and artifact modules")
 
 
+def _resolve_to_lustre_path(path: str) -> str:
+    """Resolve a container path to the actual Lustre path.
+
+    When running in a container, /nemo_run is a bind mount that maps to the actual
+    Lustre path. This function resolves the path using:
+    1. NEMO_RUN_DIR environment variable (if set)
+    2. Reading /proc/mounts to find bind mount source
+
+    Args:
+        path: Path string, possibly starting with /nemo_run/
+
+    Returns:
+        Path with /nemo_run/ replaced by actual Lustre path
+    """
+    import os
+    from pathlib import Path as PathLib
+
+    resolved = str(PathLib(path).resolve())
+
+    # If path doesn't start with /nemo_run, nothing to do
+    if not resolved.startswith("/nemo_run"):
+        return resolved
+
+    # Method 1: Use NEMO_RUN_DIR environment variable
+    nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
+    if nemo_run_dir and nemo_run_dir != "/nemo_run":
+        logger.info(f"[WANDB] Using NEMO_RUN_DIR={nemo_run_dir} for path resolution")
+        if resolved.startswith("/nemo_run/"):
+            return resolved.replace("/nemo_run/", f"{nemo_run_dir}/", 1)
+        elif resolved == "/nemo_run":
+            return nemo_run_dir
+
+    # Method 2: Try to find /nemo_run bind mount source from /proc/mounts
+    try:
+        with open("/proc/mounts", "r") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2:
+                    source, target = parts[0], parts[1]
+                    if target == "/nemo_run" and source.startswith("/"):
+                        logger.info(f"[WANDB] Found /nemo_run bind mount: {source}")
+                        if resolved.startswith("/nemo_run/"):
+                            return resolved.replace("/nemo_run/", f"{source}/", 1)
+                        elif resolved == "/nemo_run":
+                            return source
+    except (OSError, IOError) as e:
+        logger.warning(f"[WANDB] Could not read /proc/mounts: {e}")
+
+    logger.warning(
+        f"[WANDB] Could not resolve /nemo_run to Lustre path. "
+        f"Set NEMO_RUN_DIR environment variable to the actual Lustre path."
+    )
+    return resolved
+
+
 def patch_wandb_checkpoint_logging() -> None:
     """Monkey patch on_save_checkpoint_success to use add_reference like Megatron-Bridge.
 
     The original Megatron-Bridge code uses add_reference(checksum=False) but doesn't
     call wait(), so artifacts don't show up in real-time. This patch adds wait() to
     ensure artifacts are committed immediately.
+
+    IMPORTANT: Uses _resolve_to_lustre_path to convert container mount paths (/nemo_run/)
+    to actual Lustre paths, so artifacts can be accessed from other jobs.
     """
     from pathlib import Path
     from typing import Any
@@ -394,15 +452,34 @@ def patch_wandb_checkpoint_logging() -> None:
             return
 
         try:
-            checkpoint_path_resolved = str(Path(checkpoint_path).resolve())
+            # Resolve the checkpoint path to absolute
+            checkpoint_path_resolved = Path(checkpoint_path).resolve()
+
+            # Verify checkpoint directory actually exists before logging
+            if not checkpoint_path_resolved.exists():
+                logger.warning(
+                    f"[WANDB] Checkpoint path does not exist, skipping artifact: {checkpoint_path_resolved}"
+                )
+                return
+
+            # Store the save_dir (parent of checkpoint) as absolute_path
+            # Megatron-Bridge expects pretrained_checkpoint to be the save directory,
+            # and it constructs the full checkpoint path by appending iter_XXXXXX
+            save_dir_resolved = _resolve_to_lustre_path(str(Path(save_dir).resolve()))
+            absolute_path = save_dir_resolved
+
             artifact_name, artifact_version = wandb_utils._get_artifact_name_and_version(
                 Path(save_dir), Path(checkpoint_path)
             )
 
-            # Create artifact with file reference (like Megatron-Bridge)
-            metadata = {"iteration": iteration}
+            # Create artifact with file reference
+            # Use the container path that actually exists for add_reference validation,
+            # but store the absolute path in metadata for cross-job access
+            metadata = {"iteration": iteration, "absolute_path": absolute_path}
             artifact = wandb_writer.Artifact(artifact_name, type="model", metadata=metadata)
-            artifact.add_reference(f"file://{checkpoint_path_resolved}", checksum=False)
+
+            # Use the resolved container path (which exists) for add_reference
+            artifact.add_reference(f"file://{str(checkpoint_path_resolved)}", checksum=False)
 
             # Log artifact with alias
             logged = wandb_writer.run.log_artifact(artifact, aliases=[artifact_version])
@@ -474,14 +551,19 @@ def patch_nemo_rl_checkpoint_logging() -> None:
 
             # Final checkpoint path after rename
             final_checkpoint_path = checkpoint_path.parent / f"step_{step}"
+            # Resolve to absolute container path (for add_reference validation)
             checkpoint_path_resolved = str(final_checkpoint_path.resolve())
+            # Get the absolute shared filesystem path for cross-job access
+            absolute_path = _resolve_to_lustre_path(str(final_checkpoint_path))
 
             # Create artifact with naming convention matching pretrain/sft
             artifact_name = "rl"
             artifact_version = f"step_{step}"
 
-            metadata = {"step": step}
+            # Store absolute_path in metadata for cross-job access
+            metadata = {"step": step, "absolute_path": absolute_path}
             artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+            # Use the resolved container path (which exists) for add_reference
             artifact.add_reference(f"file://{checkpoint_path_resolved}", checksum=False)
 
             # Log artifact with alias

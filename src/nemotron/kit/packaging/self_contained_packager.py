@@ -80,8 +80,10 @@ class SelfContainedPackager(Packager):
 
         repo_root = Path(path)
         output_file = os.path.join(job_dir, f"{name}.tar.gz")
+        # Always regenerate the tarball to pick up code changes.
+        # The previous caching behavior caused stale code to be used.
         if os.path.exists(output_file):
-            return output_file
+            os.remove(output_file)
 
         staging_dir = Path(job_dir) / "code"
         staging_dir.mkdir(parents=True, exist_ok=True)

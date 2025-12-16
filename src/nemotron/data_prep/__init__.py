@@ -221,9 +221,12 @@ def run_data_prep(
         shard_size=None if num_shards is not None else "256MB",
     )
 
+    # Resolve output_dir to absolute path for W&B artifact storage
+    output_dir = config.output_dir.resolve() if hasattr(config.output_dir, 'resolve') else Path(config.output_dir).resolve()
+
     pipeline_config = PipelineConfig(
         output=OutputConfig(
-            dir=config.output_dir,
+            dir=output_dir,
             format=output_format,
             min_doc_chars=config.min_doc_chars,
             max_doc_tokens=config.max_doc_tokens,

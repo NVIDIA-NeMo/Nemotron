@@ -6,6 +6,8 @@ Pretrain Nemotron Nano 3 on a large text corpus using Megatron-Bridge.
 
 This stage tokenizes raw text data and trains the base language model from scratch. It produces a pretrained checkpoint that serves as the foundation for subsequent instruction tuning (SFT) and alignment (RL) stages.
 
+> **Open-Source Data Only**: This recipe trains exclusively on the open-sourced subset of pretraining data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use this recipe as a reference implementation to apply the methodology with your own data.
+
 | Component | Description |
 |-----------|-------------|
 | `data_prep.py` | Tokenizes raw text into Megatron bin/idx format |
@@ -18,13 +20,13 @@ This stage tokenizes raw text data and trains the base language model from scrat
 
 ```bash
 # 1. Prepare data (tokenize to bin/idx format)
-nemotron nano3 data prep pretrain --run YOUR-CLUSTER
+uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 
 # 2. Run pretraining
-nemotron nano3 pretrain --run YOUR-CLUSTER
+uv run nemotron nano3 pretrain --run YOUR-CLUSTER
 
 # Quick test with tiny config
-nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 ```
 
 ### Direct Script Execution
@@ -49,7 +51,7 @@ The `data_prep.py` script tokenizes raw text datasets into Megatron's binary for
 ### CLI Command
 
 ```bash
-nemotron nano3 data prep pretrain [options]
+uv run nemotron nano3 data prep pretrain [options]
 ```
 
 | Option | Description |
@@ -108,7 +110,7 @@ The `train.py` script runs pretraining using Megatron-Bridge.
 ### CLI Command
 
 ```bash
-nemotron nano3 pretrain [options] [overrides...]
+uv run nemotron nano3 pretrain [options] [overrides...]
 ```
 
 | Option | Description |
@@ -169,13 +171,13 @@ checkpoint:
 
 ```bash
 # More training iterations
-nemotron nano3 pretrain -c tiny train.train_iters=5000
+uv run nemotron nano3 pretrain -c tiny train.train_iters=5000
 
 # Larger batch size
-nemotron nano3 pretrain -c tiny train.global_batch_size=64
+uv run nemotron nano3 pretrain -c tiny train.global_batch_size=64
 
 # Different checkpoint location
-nemotron nano3 pretrain -c tiny checkpoint.save=/path/to/checkpoints
+uv run nemotron nano3 pretrain -c tiny checkpoint.save=/path/to/checkpoints
 ```
 
 ## Running with NeMo-Run
@@ -207,31 +209,33 @@ mounts = ["/lustre:/lustre"]
 
 ```bash
 # Attached (wait for completion)
-nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
 
 # Detached (submit and exit)
-nemotron nano3 pretrain -c tiny --batch YOUR-CLUSTER
+uv run nemotron nano3 pretrain -c tiny --batch YOUR-CLUSTER
 
 # Preview without executing
-nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
+uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo-run.md](../../../../docs/nemo-run.md) for complete configuration options.
+See [docs/train/nemo-run.md](../../../../docs/train/nemo-run.md) for complete configuration options.
 
 ## Artifact Lineage
 
-```
-Raw Text Data
-     ↓
-data_prep.py
-     ↓
-DataBlendsArtifact-pretrain (bin/idx files + blend.json)
-     ↓
-train.py
-     ↓
-ModelArtifact-pretrain (checkpoint)
-     ↓
-[Stage 1: SFT]
+```mermaid
+flowchart TB
+    raw["Raw Text Data"] --> dp["data_prep.py"]
+    dp --> data["DataBlendsArtifact-pretrain<br/>(bin/idx files + blend.json)"]
+    data --> train["train.py"]
+    train --> model["ModelArtifact-pretrain<br/>(checkpoint)"]
+    model --> next["Stage 1: SFT"]
+
+    style raw fill:#e1f5fe
+    style dp fill:#e1f5fe
+    style data fill:#e1f5fe
+    style train fill:#e1f5fe
+    style model fill:#e1f5fe
+    style next fill:#f3e5f5
 ```
 
 ## Next Steps

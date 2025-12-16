@@ -823,6 +823,9 @@ def _execute_stage_only(
     # Build environment variables (same as _execute_nemo_run)
     env_vars = _build_env_vars(job_config, env_config)
 
+    # Override NEMO_RUN_DIR for --stage mode: /nemo_run maps to stage_dir, not remote_job_dir
+    env_vars["NEMO_RUN_DIR"] = stage_dir
+
     # Get GPU count for torchrun
     gpus = env_config.get("gpus_per_node") or env_config.get("ntasks_per_node", 8)
 
@@ -919,6 +922,11 @@ def _print_stage_commands(
             f"--container-mounts={stage_dir}:{container_mount_path},{stage_dir}:/nemo_run,/lustre:/lustre"
         )
         srun_parts.append(f"--container-workdir={container_mount_path}")
+
+    # Add NEMO_RUN_DIR to srun command - critical for resolving /nemo_run mount to actual Lustre path
+    if env_vars and "NEMO_RUN_DIR" in env_vars:
+        srun_parts.append(f"--export=ALL,NEMO_RUN_DIR={env_vars['NEMO_RUN_DIR']}")
+
     srun_parts.append("--pty bash")
     srun_cmd_display = " \\\n    ".join(srun_parts)
     srun_cmd_oneline = " ".join(srun_parts)

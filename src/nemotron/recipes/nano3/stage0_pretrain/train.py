@@ -49,7 +49,7 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 from omegaconf import OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
-from nemotron.kit.resolvers import register_resolvers_from_config
+from nemotron.kit.resolvers import clear_artifact_cache, register_resolvers_from_config
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb import (
     patch_wandb_checkpoint_logging,
@@ -90,6 +90,9 @@ def main() -> None:
     # Apply monkey patch for wandb checkpoint artifact logging
     patch_wandb_checkpoint_logging()
 
+    # Clear artifact cache to ensure fresh downloads (important for :latest resolution)
+    clear_artifact_cache()
+
     # Resolve artifacts before wandb.init() (Megatron-Bridge initializes wandb).
     qualified_names = register_resolvers_from_config(
         config,
@@ -108,6 +111,7 @@ def main() -> None:
         config,
         default_target=DEFAULT_RECIPE_TARGET,
     )
+
     try:
         recipe_func = import_recipe_function(recipe_target)
     except Exception as e:

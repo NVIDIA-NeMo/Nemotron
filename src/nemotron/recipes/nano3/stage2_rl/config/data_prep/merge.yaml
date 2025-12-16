@@ -1,0 +1,46 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py311
+
+# Config for RL data preparation (merge mode)
+#
+# Merges datasets from a raw data blend into a single JSONL output, then splits
+# into train/val/test based on configurable ratios.
+#
+# This is useful when you have multiple source datasets that need to be combined
+# and then split into training splits, rather than using pre-existing HF splits.
+#
+# For placeholder resolution (DAPO, Skywork datasets), use data_prep.py instead.
+#
+# Usage:
+#   python data_prep_merge.py
+#   python data_prep_merge.py sample=100 force=true train_ratio=0.9
+#
+# Environment variables:
+#   PWD: Current working directory (for path resolution)
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_prep/data_blend_raw.json
+
+# Output directory for JSONL data (outputs to job directory for persistence)
+output_dir: ${oc.env:PWD}/../output/stage2_rl_merged
+
+# Target size per shard (e.g., '256MB', '1GB')
+shard_size: 256MB
+
+# Split ratios (must sum to 1.0)
+train_ratio: 0.98
+valid_ratio: 0.01
+test_ratio: 0.01
+
+# Random seed for shuffling before split
+seed: 42
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Ray actors for parallel processing (null = auto)
+num_actors: null
+
+# Force new run, ignoring cache
+force: false

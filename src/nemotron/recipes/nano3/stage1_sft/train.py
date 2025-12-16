@@ -36,9 +36,11 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 import torch
-from megatron.bridge.training.config import ConfigContainer
+from megatron.bridge.data.datasets.packed_sequence import PackedSequenceSpecs
+from megatron.bridge.training.config import ConfigContainer, FinetuningDatasetConfig
 from megatron.bridge.training.finetune import finetune
 from megatron.bridge.training.gpt_step import forward_step
 from megatron.bridge.training.utils.omegaconf_utils import (
@@ -46,10 +48,10 @@ from megatron.bridge.training.utils.omegaconf_utils import (
     create_omegaconf_dict_config,
     parse_hydra_overrides,
 )
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
-from nemotron.kit.resolvers import register_resolvers_from_config
+from nemotron.kit.resolvers import clear_artifact_cache, register_resolvers_from_config
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb import (
     patch_wandb_checkpoint_logging,
@@ -67,6 +69,40 @@ DEFAULT_CONFIG_PATH = Path(__file__).parent / "config" / "default.yaml"
 
 # Default recipe function
 DEFAULT_RECIPE_TARGET = "megatron.bridge.recipes.nemotronh.nemotron_nano_9b_v2_finetune_config"
+
+
+def _build_dataset_config(dataset_config: DictConfig, current_dataset: Any) -> FinetuningDatasetConfig:
+    """Build a FinetuningDatasetConfig from YAML config.
+
+    This creates a proper FinetuningDatasetConfig (not HFDatasetConfig) to avoid
+    downloading HuggingFace datasets. The dataset config uses pre-packed .npy files.
+
+    Args:
+        dataset_config: The dataset section from YAML config (resolved)
+        current_dataset: The current dataset config from the recipe (for defaults)
+
+    Returns:
+        A FinetuningDatasetConfig instance
+    """
+    # Build PackedSequenceSpecs if provided
+    packed_specs = None
+    if "packed_sequence_specs" in dataset_config:
+        specs_dict = dataset_config["packed_sequence_specs"]
+        # PackedSequenceSpecs.__post_init__ converts string paths to Path/MultiStoragePath
+        packed_specs = PackedSequenceSpecs(
+            packed_sequence_size=specs_dict.get("packed_sequence_size", -1),
+            packed_train_data_path=specs_dict.get("packed_train_data_path"),
+            packed_val_data_path=specs_dict.get("packed_val_data_path"),
+            packed_metadata_path=specs_dict.get("packed_metadata_path"),
+        )
+
+    # Build FinetuningDatasetConfig with values from YAML, falling back to current config
+    return FinetuningDatasetConfig(
+        dataset_root=dataset_config.get("dataset_root", getattr(current_dataset, "dataset_root", None)),
+        seq_length=dataset_config.get("seq_length", getattr(current_dataset, "seq_length", 4096)),
+        packed_sequence_specs=packed_specs,
+        dataloader_type=dataset_config.get("dataloader_type", getattr(current_dataset, "dataloader_type", "batch")),
+    )
 
 
 def main() -> None:
@@ -87,6 +123,9 @@ def main() -> None:
 
     # Apply monkey patch for wandb checkpoint artifact logging
     patch_wandb_checkpoint_logging()
+
+    # Clear artifact cache to ensure fresh downloads (important for :latest resolution)
+    clear_artifact_cache()
 
     # Resolve artifacts before wandb.init() (Megatron-Bridge initializes wandb).
     qualified_names = register_resolvers_from_config(
@@ -115,11 +154,14 @@ def main() -> None:
     cfg: ConfigContainer = recipe_func(**recipe_kwargs)
 
     # Convert the initial Python dataclass to an OmegaConf DictConfig for merging
+    # Do this BEFORE building our custom dataset config (which contains MultiStoragePath)
     merged_omega_conf, excluded_fields = create_omegaconf_dict_config(cfg)
 
-    # Merge config overrides (excluding recipe field)
+    # Get config overrides (excluding recipe, run, and dataset)
     config_overrides = OmegaConf.to_container(config, resolve=False)
     config_overrides.pop("recipe", None)
+    config_overrides.pop("run", None)
+    config_overrides.pop("dataset", None)  # We handle dataset separately below
 
     if config_overrides:
         logger.debug(f"Merging config overrides: {list(config_overrides.keys())}")
@@ -134,7 +176,25 @@ def main() -> None:
         logger.debug("Hydra-style command-line overrides applied successfully.")
 
     final_overrides_as_dict = OmegaConf.to_container(merged_omega_conf, resolve=True)
+
+    # Don't let apply_overrides touch the dataset - we handle it separately
+    final_overrides_as_dict.pop("dataset", None)
     apply_overrides(cfg, final_overrides_as_dict, excluded_fields)
+
+    # Handle dataset config AFTER apply_overrides - build FinetuningDatasetConfig directly
+    # This avoids HFDatasetConfig which tries to download from HuggingFace
+    # PackedSequenceSpecs.__post_init__ converts paths to Path/MultiStoragePath automatically
+    if "dataset" in config:
+        dataset_config = OmegaConf.to_container(config.dataset, resolve=True)
+        dataset_config.pop("_target_", None)
+        cfg.dataset = _build_dataset_config(dataset_config, cfg.dataset)
+        logger.info(f"Built dataset config: {type(cfg.dataset).__name__}")
+
+    # Debug: print key config values
+    print(f"DEBUG: checkpoint.pretrained_checkpoint = {cfg.checkpoint.pretrained_checkpoint}")
+    print(f"DEBUG: dataset type = {type(cfg.dataset).__name__}")
+    if hasattr(cfg.dataset, "packed_sequence_specs") and cfg.dataset.packed_sequence_specs:
+        print(f"DEBUG: packed_sequence_specs.packed_train_data_path = {cfg.dataset.packed_sequence_specs.packed_train_data_path}")
 
     finetune(config=cfg, forward_step_func=forward_step)
 

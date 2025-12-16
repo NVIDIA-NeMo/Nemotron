@@ -6,6 +6,8 @@ Align the instruction-tuned model using GRPO (Group Relative Policy Optimization
 
 This stage takes the SFT model and further aligns it using reinforcement learning. The GRPO algorithm optimizes the policy based on reward signals from NeMo-Gym environments, producing a final aligned model.
 
+> **Open-Source Data Only**: This recipe trains exclusively on the open-sourced subset of RL data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use this recipe as a reference implementation to apply the methodology with your own data.
+
 | Component | Description |
 |-----------|-------------|
 | `data_prep.py` | Converts datasets to JSONL format for NeMo-RL |
@@ -18,13 +20,13 @@ This stage takes the SFT model and further aligns it using reinforcement learnin
 
 ```bash
 # 1. Prepare data (convert to JSONL format)
-nemotron nano3 data prep rl --run YOUR-CLUSTER
+uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
 
 # 2. Run RL training
-nemotron nano3 rl --run YOUR-CLUSTER
+uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 # Quick test with tiny config
-nemotron nano3 rl -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 ```
 
 ### Direct Script Execution
@@ -46,7 +48,7 @@ The `data_prep.py` script converts datasets to JSONL format compatible with NeMo
 ### CLI Command
 
 ```bash
-nemotron nano3 data prep rl [options]
+uv run nemotron nano3 data prep rl [options]
 ```
 
 | Option | Description |
@@ -100,7 +102,7 @@ The `train.py` script runs GRPO training using NeMo-RL with Ray for distributed 
 ### CLI Command
 
 ```bash
-nemotron nano3 rl [options] [overrides...]
+uv run nemotron nano3 rl [options] [overrides...]
 ```
 
 | Option | Description |
@@ -159,13 +161,13 @@ env:
 
 ```bash
 # More iterations
-nemotron nano3 rl -c tiny grpo.num_iterations=200
+uv run nemotron nano3 rl -c tiny grpo.num_iterations=200
 
 # Different temperature
-nemotron nano3 rl -c tiny policy.generation.temperature=0.8
+uv run nemotron nano3 rl -c tiny policy.generation.temperature=0.8
 
 # Different learning rate
-nemotron nano3 rl -c tiny grpo.learning_rate=5e-7
+uv run nemotron nano3 rl -c tiny grpo.learning_rate=5e-7
 ```
 
 ## Running with NeMo-Run
@@ -199,16 +201,16 @@ mounts = ["/lustre:/lustre"]
 
 ```bash
 # Attached (wait for completion)
-nemotron nano3 rl -c tiny --run YOUR-CLUSTER
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 
 # Detached (submit and exit)
-nemotron nano3 rl -c tiny --batch YOUR-CLUSTER
+uv run nemotron nano3 rl -c tiny --batch YOUR-CLUSTER
 
 # Preview without executing
-nemotron nano3 rl -c tiny --run YOUR-CLUSTER --dry-run
+uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo-run.md](../../../../docs/nemo-run.md) for complete configuration options.
+See [docs/train/nemo-run.md](../../../../docs/train/nemo-run.md) for complete configuration options.
 
 ## GRPO Algorithm
 
@@ -226,18 +228,20 @@ Key features:
 
 ## Artifact Lineage
 
-```
-ModelArtifact-sft (from Stage 1)
-     ↓
-RL Datasets (preference/reward data)
-     ↓
-data_prep.py
-     ↓
-DataBlendsArtifact-rl (JSONL files)
-     ↓
-train.py (GRPO with NeMo-RL)
-     ↓
-ModelArtifact-rl (final aligned model)
+```mermaid
+flowchart TB
+    prev["ModelArtifact-sft<br/>(from Stage 1)"] --> train
+    rl["RL Datasets<br/>(preference/reward data)"] --> dp["data_prep.py"]
+    dp --> data["DataBlendsArtifact-rl<br/>(JSONL files)"]
+    data --> train["train.py<br/>(GRPO with NeMo-RL)"]
+    train --> model["ModelArtifact-rl<br/>(final aligned model)"]
+
+    style prev fill:#f3e5f5
+    style rl fill:#e8f5e9
+    style dp fill:#e8f5e9
+    style data fill:#e8f5e9
+    style train fill:#e8f5e9
+    style model fill:#e8f5e9
 ```
 
 ## Requirements

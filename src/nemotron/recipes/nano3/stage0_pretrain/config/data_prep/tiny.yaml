@@ -1,6 +1,6 @@
 run:
   env:
-    container: anyscale/ray:2.49.2-py311
+    container: anyscale/ray:2.49.2-py312
 
 # Tiny config for pretrain data preparation (fast iteration/testing)
 #
@@ -51,3 +51,6 @@ num_actors: null
 
 # Force new run, ignoring cache
 force: false
+
+# Config name for artifact naming (produces PretrainBlendsArtifact-tiny)
+config_name: tiny
