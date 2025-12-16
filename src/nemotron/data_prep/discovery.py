@@ -33,8 +33,15 @@ logger = logging.getLogger(__name__)
 
 @functools.lru_cache(maxsize=32)
 def _get_split_pattern(split: str) -> re.Pattern:
-    """Get compiled regex pattern for split matching. Cached for reuse."""
-    return re.compile(rf"(^|/){re.escape(split)}(-|/|$)")
+    """Get compiled regex pattern for split matching. Cached for reuse.
+
+    Matches split as a proper path/filename component:
+    - train-00000.parquet (hyphen separator)
+    - train/file.parquet (directory separator)
+    - train.jsonl (dot before extension)
+    - data/train (at end of path)
+    """
+    return re.compile(rf"(^|/){re.escape(split)}(-|/|\.|$)")
 
 
 @dataclass
