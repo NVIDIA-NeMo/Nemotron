@@ -1,6 +1,6 @@
 run:
   env:
-    container: anyscale/ray:2.49.2-py311
+    container: anyscale/ray:2.49.2-py312
 
 # Tiny config for pretrain data preparation (fast iteration/testing)
 #

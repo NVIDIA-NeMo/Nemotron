@@ -94,11 +94,38 @@ def _get_distributed_info() -> tuple[int, int]:
     return rank, world_size
 
 
+def _get_job_id() -> str:
+    """Get a unique job identifier for the current run.
+
+    Uses SLURM_JOB_ID if available (Slurm jobs), otherwise falls back to
+    a combination of hostname and process start time for uniqueness.
+
+    Returns:
+        Unique job identifier string.
+    """
+    # Prefer Slurm job ID if available
+    slurm_job_id = os.environ.get("SLURM_JOB_ID")
+    if slurm_job_id:
+        return f"slurm_{slurm_job_id}"
+
+    # Fall back to hostname + parent PID (the torchrun launcher PID)
+    # This ensures all workers in the same job get the same ID
+    import socket
+
+    hostname = socket.gethostname()
+    # Use TORCHELASTIC_RUN_ID if available (set by torchrun)
+    run_id = os.environ.get("TORCHELASTIC_RUN_ID", str(os.getppid()))
+    return f"{hostname}_{run_id}"
+
+
 def _get_marker_path(artifacts: dict[str, str]) -> Path:
-    """Generate a unique marker file path based on artifact references.
+    """Generate a unique marker file path based on artifact references AND job ID.
 
     Uses NEMO_RUN_DIR (shared filesystem) if available for multi-node jobs,
     otherwise falls back to TMPDIR or /tmp.
+
+    The marker path now includes a job identifier to prevent stale marker files
+    from previous runs being read by workers in the current run.
 
     Args:
         artifacts: Dict of artifact key -> artifact reference.
@@ -110,10 +137,13 @@ def _get_marker_path(artifacts: dict[str, str]) -> Path:
     artifacts_str = json.dumps(sorted(artifacts.items()))
     hash_suffix = hashlib.md5(artifacts_str.encode()).hexdigest()[:8]
 
+    # Include job ID to prevent reading stale marker files from previous runs
+    job_id = _get_job_id()
+
     # Prefer NEMO_RUN_DIR (shared filesystem) for multi-node jobs
     # Fall back to TMPDIR or /tmp for single-node or local runs
     base_dir = os.environ.get("NEMO_RUN_DIR") or os.environ.get("TMPDIR", "/tmp")
-    return Path(base_dir) / f".nemotron_artifacts_{hash_suffix}"
+    return Path(base_dir) / f".nemotron_artifacts_{hash_suffix}_{job_id}"
 
 
 def _wait_for_artifacts(marker_path: Path, timeout: int = 600) -> dict[str, Any]:

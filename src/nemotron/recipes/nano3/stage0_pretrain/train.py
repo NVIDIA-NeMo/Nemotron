@@ -108,6 +108,7 @@ def main() -> None:
         config,
         default_target=DEFAULT_RECIPE_TARGET,
     )
+
     try:
         recipe_func = import_recipe_function(recipe_target)
     except Exception as e:

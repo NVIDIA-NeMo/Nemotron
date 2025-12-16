@@ -271,6 +271,9 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
         repo_root = Path.cwd()
         config_dict = _rewrite_paths_for_remote(config_dict, repo_root)
 
+        # Resolve ${run.wandb.*} and ${run.recipe.*} interpolations
+        config_dict = _resolve_run_interpolations(config_dict, run_section)
+
         # Build a minimal run section with just artifact references
         run_for_train = {}
         for key, value in run_section.items():

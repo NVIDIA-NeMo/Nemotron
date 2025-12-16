@@ -513,10 +513,30 @@ class WandbTracker:
                 wb_artifact.add_file(str(artifact_path), name="blend.json")
             elif artifact.type == "PretrainBlendsArtifact":
                 # For PretrainBlendsArtifact, add blend.json explicitly
-                # The blend_path is stored in metadata
+                # Try multiple locations for blend.json:
+                # 1. From metadata blend_path (absolute path)
+                # 2. In artifact directory (artifact.path / "blend.json")
+                blend_added = False
                 blend_path = artifact.metadata.get("blend_path")
                 if blend_path and Path(blend_path).exists():
                     wb_artifact.add_file(str(blend_path), name="blend.json")
+                    blend_added = True
+                elif artifact_path.is_dir():
+                    # Fallback: try blend.json in artifact directory
+                    alt_blend_path = artifact_path / "blend.json"
+                    if alt_blend_path.exists():
+                        wb_artifact.add_file(str(alt_blend_path), name="blend.json")
+                        blend_added = True
+
+                if not blend_added:
+                    # Log warning if blend.json couldn't be found
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        f"blend.json not found for PretrainBlendsArtifact. "
+                        f"Tried: {blend_path}, {artifact_path / 'blend.json'}"
+                    )
+
                 # Also add metadata.json for artifact loading
                 metadata_path = artifact_path / "metadata.json"
                 if metadata_path.exists():

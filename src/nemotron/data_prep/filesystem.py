@@ -15,6 +15,7 @@
 """Filesystem utilities using fsspec for cloud-native operations."""
 
 import json
+import os
 from typing import Any
 
 from fsspec import AbstractFileSystem
@@ -22,7 +23,23 @@ from fsspec.core import url_to_fs
 
 
 def get_filesystem(path: str) -> tuple[AbstractFileSystem, str]:
-    """Get filesystem and normalized path from a URI."""
+    """Get filesystem and normalized path from a URI.
+
+    For local paths, resolves '..' and '.' components to produce absolute paths.
+    This ensures paths in blend.json are fully resolved and portable.
+    """
+    # For local paths (no scheme or file://), normalize first
+    # This resolves '..' and '.' components
+    if not path.startswith(("s3://", "gs://", "gcs://", "hdfs://", "http://", "https://")):
+        # Handle file:// scheme
+        if path.startswith("file://"):
+            local_path = path[7:]
+            resolved = os.path.realpath(local_path)
+            path = f"file://{resolved}"
+        else:
+            # Plain local path - resolve it
+            path = os.path.realpath(path)
+
     fs, normalized = url_to_fs(path)
     return fs, normalized
 

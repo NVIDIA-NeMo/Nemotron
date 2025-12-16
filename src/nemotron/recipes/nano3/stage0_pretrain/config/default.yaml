@@ -1,37 +1,17 @@
-# Nemotron Nano3 Pretraining Configuration
-#
-# Usage:
-#   python train.py --config /path/to/config.yaml
-#   python train.py --config /path/to/config.yaml train.train_iters=5000
+run:
+  data: PretrainBlendsArtifact-pretrain:latest
+  env:
+    container: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2
 
-# Recipe configuration
-# _target_ specifies the recipe function (defaults to nemotron_next_3b_v2_pretrain_config if omitted)
-# Other fields are passed as kwargs to the recipe function
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_next_3b_v2.nemotron_next_3b_v2_pretrain_config
-  per_split_data_args_path: null  # Path to per-split data args file (blend.json)
-  # Additional recipe kwargs:
-  # tensor_model_parallel_size: 4
-  # pipeline_model_parallel_size: 1
-  # global_batch_size: 256
-  # micro_batch_size: 1
-  # train_iters: 10000
-  # lr: 1.0e-4
-  # min_lr: 1.0e-5
-  # seq_length: 4096
+  per_split_data_args_path: ${art:data,path}/blend.json
 
-# Logging configuration - uses run.wandb section from env.toml
 logger:
-  wandb_project: ${run.wandb.project}
-  wandb_entity: ${run.wandb.entity}
-  wandb_exp_name: ${run.recipe.name}
+  log_interval: 10
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
 
-# ConfigContainer field overrides (applied after recipe function returns)
-# Example overrides:
-# train:
-#   train_iters: 5000
-#   global_batch_size: 512
-# scheduler:
-#   lr_warmup_iters: 500
-# checkpoint:
-#   save_interval: 1000
+checkpoint:
+  save: /nemo_run/pretrain
+  save_interval: 20
