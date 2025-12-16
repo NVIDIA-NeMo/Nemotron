@@ -58,6 +58,7 @@ Your feedback helps shape the future of Nemotron models!
 Full, reproducible training pipelines will be included in the `nemotron` package at `src/nemotron/recipes/`.
 
 ### Each Recipe Includes
+- 🎨 **Synthetic Data Generation** - Scripts to generate synthetic datasets using [NVIDIA-NeMo/DataDesigner](https://github.com/NVIDIA-NeMo/DataDesigner)
 - 🗂️ **Data Curation** - Scripts to prepare training data using [NVIDIA-NeMo/Curator](https://github.com/NVIDIA-NeMo/Curator)
 - 🔁 **Training** - Complete training loops with hyperparameters using:
   - [NVIDIA-NeMo/Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main) for Megatron models
