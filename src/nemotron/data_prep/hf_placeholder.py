@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration for placeholder datasets that need resolution
 # Maps dataset names (as they appear in the blend) to their HF source info
+# Reference: https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend/blob/main/create_nanov3_jsonl.py
 TARGET_DATASETS: dict[str, dict[str, Any]] = {
     "nano_v3_sft_profiled_dapo17k": {
         "hf_dataset": "BytedTsinghua-SIA/DAPO-Math-17k",
@@ -46,10 +47,9 @@ TARGET_DATASETS: dict[str, dict[str, Any]] = {
     },
     "nano_v3_sft_profiled_skywork_no_omni": {
         "hf_dataset": "Skywork/Skywork-OR1-RL-Data",
-        "split": "train",
-        # These paths need to be verified against the actual dataset structure
-        "question_path": ["problem"],
-        "answer_path": ["answer"],
+        "split": "math",
+        "question_path": ["prompt", 0, "content"],
+        "answer_path": ["reward_model", "ground_truth"],
         "template_type": "skywork",
     },
 }
@@ -139,20 +139,24 @@ def restore_skywork_question(hf_question: str, template: str) -> str:
 class HFPlaceholderResolver:
     """Resolver for HuggingFace placeholder records.
 
-    Pre-loads external HF datasets and provides a method to resolve
-    placeholder records to their full content.
+    Pre-loads external HF datasets using ray.data.from_huggingface() for
+    scalable distributed loading, then materializes to PyArrow tables
+    for efficient row-index access during placeholder resolution.
 
     Usage:
         >>> resolver = HFPlaceholderResolver.create()
         >>> resolved = resolver.resolve(placeholder_record)
     """
 
-    datasets: dict[str, Any]  # dataset name -> loaded HF Dataset
+    tables: dict[str, Any]  # dataset name -> PyArrow Table for indexed access
     configs: dict[str, PlaceholderConfig]  # dataset name -> config
 
     @classmethod
     def create(cls, target_datasets: dict[str, dict] | None = None) -> "HFPlaceholderResolver":
-        """Create a resolver with pre-loaded HF datasets.
+        """Create a resolver with pre-loaded HF datasets via Ray.
+
+        Uses ray.data.from_huggingface() for scalable dataset loading,
+        then materializes to PyArrow tables for efficient row-index access.
 
         Args:
             target_datasets: Optional custom target dataset config.
@@ -161,12 +165,14 @@ class HFPlaceholderResolver:
         Returns:
             Initialized resolver with loaded datasets
         """
+        import pyarrow as pa
+        import ray.data
         from datasets import load_dataset
 
         if target_datasets is None:
             target_datasets = TARGET_DATASETS
 
-        datasets: dict[str, Any] = {}
+        tables: dict[str, pa.Table] = {}
         configs: dict[str, PlaceholderConfig] = {}
 
         for name, cfg in target_datasets.items():
@@ -181,16 +187,43 @@ class HFPlaceholderResolver:
 
             logger.info(f"Loading HF dataset: {config.hf_dataset} (split: {config.split})")
             try:
-                datasets[name] = load_dataset(
+                # Load via datasets library first
+                hf_ds = load_dataset(
                     config.hf_dataset,
                     split=config.split,
                 )
-                logger.info(f"Loaded {len(datasets[name])} rows from {config.hf_dataset}")
+                # Convert to Ray Dataset for scalable processing
+                ray_ds = ray.data.from_huggingface(hf_ds)
+                # Materialize to PyArrow table for efficient row-index access
+                # This is needed because placeholder resolution requires random access by row index
+                arrow_table = ray_ds.to_arrow()
+                tables[name] = arrow_table
+                logger.info(f"Loaded {len(arrow_table)} rows from {config.hf_dataset}")
             except Exception as e:
                 logger.warning(f"Failed to load {config.hf_dataset}: {e}")
-                datasets[name] = None
+                tables[name] = None
 
-        return cls(datasets=datasets, configs=configs)
+        return cls(tables=tables, configs=configs)
+
+    def get_loaded_datasets_info(self) -> list[dict[str, Any]]:
+        """Return metadata about loaded external datasets for lineage tracking.
+
+        Returns:
+            List of dicts with dataset info (uri, name, split, num_rows, etc.)
+            for each successfully loaded external dataset.
+        """
+        datasets_info = []
+        for name, config in self.configs.items():
+            table = self.tables.get(name)
+            if table is not None:
+                datasets_info.append({
+                    "uri": f"hf://{config.hf_dataset}",
+                    "name": name,
+                    "split": config.split,
+                    "num_rows": len(table),
+                    "source_type": "hf_placeholder",
+                })
+        return datasets_info
 
     def resolve(self, record: dict) -> dict | None:
         """Resolve a placeholder record to its full content.
@@ -212,8 +245,8 @@ class HFPlaceholderResolver:
             return None
 
         config = self.configs[dataset_name]
-        hf_dataset = self.datasets.get(dataset_name)
-        if hf_dataset is None:
+        table = self.tables.get(dataset_name)
+        if table is None:
             logger.warning(f"Dataset not loaded: {dataset_name}")
             return None
 
@@ -225,16 +258,20 @@ class HFPlaceholderResolver:
             logger.warning(f"Missing row index in placeholder for {dataset_name}")
             return None
 
-        if row_idx < 0 or row_idx >= len(hf_dataset):
+        if row_idx < 0 or row_idx >= len(table):
             logger.warning(
                 f"Row index {row_idx} out of bounds for {dataset_name} "
-                f"(size: {len(hf_dataset)})"
+                f"(size: {len(table)})"
             )
             return None
 
-        # Fetch the actual record from HuggingFace
+        # Fetch the actual record from PyArrow table
         try:
-            hf_record = hf_dataset[row_idx]
+            # Slice single row and convert to dict
+            row_table = table.slice(row_idx, 1)
+            row_dict = row_table.to_pydict()
+            # Convert from {col: [value]} to {col: value}
+            hf_record = {k: v[0] if v else None for k, v in row_dict.items()}
         except Exception as e:
             logger.warning(f"Failed to fetch row {row_idx} from {dataset_name}: {e}")
             return None

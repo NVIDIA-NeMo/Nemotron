@@ -53,6 +53,7 @@ from pathlib import Path
 
 from nemotron.data_prep import (
     DataBlend,
+    Dataset,
     OutputConfig,
     PipelineConfig,
     last_mile_process,
@@ -184,7 +185,7 @@ def _run_resolve(
         # Create a single-dataset blend for this split
         split_blend = DataBlend(
             datasets=[
-                DataBlend.Dataset(
+                Dataset(
                     name=dataset.name,
                     path=dataset.path,
                     split=hf_split,  # Use the HF split name
@@ -307,6 +308,17 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
                     size_bytes=hf_metadata.size_bytes,
                 )
             )
+
+    # Add external placeholder datasets (DAPO, Skywork) for lineage tracking
+    for ext_ds_info in resolver.get_loaded_datasets_info():
+        source_datasets.append(
+            InputDatasetInfo(
+                uri=ext_ds_info["uri"],
+                name=ext_ds_info["name"],
+                split=ext_ds_info["split"],
+                num_rows=ext_ds_info["num_rows"],
+            )
+        )
 
     # Run resolve processing
     artifact = _run_resolve(blend, cfg, num_actors, source_datasets, resolver)
