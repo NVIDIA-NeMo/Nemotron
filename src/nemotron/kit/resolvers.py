@@ -298,6 +298,68 @@ def resolve_artifact_pre_init(
 
     logger.info(f"[ARTIFACT] Downloaded to: {local_path}")
 
+    # Check if artifact contains file:// references (e.g., model checkpoints on shared storage)
+    # If so, extract the actual path from the reference instead of using the W&B download path
+    reference_path = None
+    try:
+        # First check if artifact metadata has absolute_path (preferred for cross-job access)
+        artifact_metadata = artifact.metadata or {}
+        if "absolute_path" in artifact_metadata:
+            reference_path = artifact_metadata["absolute_path"]
+            print(f"[ARTIFACT] Found absolute_path in metadata: {reference_path}")
+            logger.info(f"[ARTIFACT] Using absolute_path from metadata: {reference_path}")
+
+            # Handle legacy artifacts where absolute_path points to iter_XXXXXX directory
+            # instead of the save_dir. Megatron-Bridge expects pretrained_checkpoint to be
+            # the save_dir, and uses ckpt_step to determine which iteration to load.
+            # For legacy artifacts, extract the iteration and normalize path to save_dir.
+            import re
+            path_obj = Path(reference_path)
+            iter_match = re.match(r"^iter_(\d+)$", path_obj.name)
+            if iter_match:
+                # Extract iteration from path (legacy artifact)
+                extracted_iteration = int(iter_match.group(1))
+                # Normalize to save_dir (parent)
+                reference_path = str(path_obj.parent)
+                print(f"[ARTIFACT] Legacy artifact: extracted iteration={extracted_iteration}, normalized path to save_dir: {reference_path}")
+                logger.info(f"[ARTIFACT] Normalized iter_XXXXXX path to parent save_dir: {reference_path}")
+                # Store extracted iteration in metadata for ${art:model,iteration} resolver
+                # Only if not already present (don't override actual metadata)
+                if "iteration" not in artifact_metadata:
+                    artifact_metadata["iteration"] = extracted_iteration
+        else:
+            # Fall back to extracting from file:// references
+            manifest = artifact.manifest
+            if manifest and hasattr(manifest, "entries"):
+                entries = manifest.entries
+                # Look for file:// references in the manifest
+                for entry_name, entry in entries.items():
+                    if hasattr(entry, "ref") and entry.ref and entry.ref.startswith("file://"):
+                        # Extract the path from the file:// URI
+                        ref_path = entry.ref[7:]  # Remove "file://" prefix
+                        # Get the parent directory (checkpoint directory)
+                        ref_dir = str(Path(ref_path).parent)
+
+                        # Map /nemo_run/ paths to actual Lustre path using NEMO_RUN_DIR
+                        # This handles artifacts created with container mount paths
+                        nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
+                        if nemo_run_dir and nemo_run_dir != "/nemo_run":
+                            if ref_dir.startswith("/nemo_run/"):
+                                ref_dir = ref_dir.replace("/nemo_run/", f"{nemo_run_dir}/", 1)
+                            elif ref_dir.startswith("/nemo_run"):
+                                ref_dir = ref_dir.replace("/nemo_run", nemo_run_dir, 1)
+
+                        if reference_path is None:
+                            reference_path = ref_dir
+                            print(f"[ARTIFACT] Found file reference, using path: {reference_path}")
+                            logger.info(f"[ARTIFACT] Found file reference: {entry.ref} -> {reference_path}")
+                        break
+    except Exception as e:
+        logger.warning(f"[ARTIFACT] Could not check for references: {e}")
+
+    # Use reference path if available, otherwise use download path
+    effective_path = reference_path if reference_path else local_path
+
     # Log contents of downloaded artifact directory
     local_path_obj = Path(local_path)
     if local_path_obj.exists():
@@ -320,12 +382,29 @@ def resolve_artifact_pre_init(
         logger.warning(f"[ARTIFACT] Download path does not exist: {local_path}")
 
     result = {
-        "path": local_path,
+        "path": effective_path,
         "version": getattr(artifact, "version", None),
         "name": getattr(artifact, "name", name),
         "type": getattr(artifact, "type", None),
         "qualified_name": getattr(artifact, "qualified_name", None),
+        # Store the W&B download path separately for metadata access
+        # This is needed when the effective_path is a file reference to shared storage
+        # but metadata.json was uploaded to W&B
+        "metadata_dir": local_path,
     }
+
+    # Include iteration from artifact metadata (for model checkpoint artifacts)
+    # This is used by ${art:model,iteration} resolver to set checkpoint.ckpt_step
+    # Check artifact_metadata (which may have been updated with extracted iteration from path)
+    # or fall back to the original W&B artifact metadata
+    iteration = artifact_metadata.get("iteration")
+    if iteration is None:
+        # Check original W&B artifact metadata
+        original_metadata = artifact.metadata or {}
+        iteration = original_metadata.get("iteration")
+    if iteration is not None:
+        result["iteration"] = iteration
+        print(f"[ARTIFACT] Stored iteration={result['iteration']} for resolver access")
 
     # Only cache explicit version lookups, not :latest
     if use_cache:
@@ -367,7 +446,7 @@ def _read_artifact_metadata(artifact_path: str) -> dict[str, Any]:
     return {}
 
 
-def _art_resolver(name: str, field: str = "path") -> str:
+def _art_resolver(name: str, field: str = "path") -> Any:
     """OmegaConf resolver for ${art:NAME,FIELD} syntax.
 
     Args:
@@ -378,13 +457,13 @@ def _art_resolver(name: str, field: str = "path") -> str:
             - metadata.X: Explicit metadata field access (legacy syntax)
 
     Returns:
-        The requested field value as string
+        The requested field value (preserves original type: int, float, str, etc.)
 
     Examples:
-        ${art:data,path}              -> /path/to/artifact
-        ${art:data,pack_size}         -> 4096 (from metadata.json)
-        ${art:data,training_path}     -> /path/to/training_4096.npy
-        ${art:data,metadata.pack_size} -> 4096 (explicit metadata syntax)
+        ${art:data,path}              -> /path/to/artifact (str)
+        ${art:data,pack_size}         -> 4096 (int from metadata.json)
+        ${art:data,training_path}     -> /path/to/training_4096.npy (str)
+        ${art:data,metadata.pack_size} -> 4096 (int, explicit metadata syntax)
     """
     if name not in _ARTIFACT_REGISTRY:
         raise KeyError(
@@ -395,36 +474,38 @@ def _art_resolver(name: str, field: str = "path") -> str:
 
     artifact_info = _ARTIFACT_REGISTRY[name]
 
+    # Use metadata_dir for reading metadata.json (W&B download location)
+    # Falls back to path if metadata_dir not available (for backwards compat)
+    metadata_dir = artifact_info.get("metadata_dir") or artifact_info.get("path")
+
     # Handle explicit metadata.* prefix (legacy syntax)
     if field.startswith("metadata."):
         metadata_field = field[len("metadata.") :]
-        artifact_path = artifact_info.get("path")
-        if not artifact_path:
+        if not metadata_dir:
             raise KeyError(f"Artifact '{name}' has no path, cannot read metadata")
 
-        metadata = _read_artifact_metadata(artifact_path)
+        metadata = _read_artifact_metadata(metadata_dir)
         if metadata_field not in metadata:
             raise KeyError(
                 f"Field '{metadata_field}' not found in metadata.json for artifact '{name}'. "
                 f"Available fields: {list(metadata.keys())}"
             )
-        return str(metadata[metadata_field])
+        return metadata[metadata_field]
 
-    # Check if field is in artifact_info first
-    if field in artifact_info:
-        return str(artifact_info[field])
+    # Check if field is in artifact_info first (excludes metadata_dir from direct access)
+    if field in artifact_info and field != "metadata_dir":
+        return artifact_info[field]
 
     # Fall back to reading from metadata.json
-    artifact_path = artifact_info.get("path")
-    if artifact_path:
-        metadata = _read_artifact_metadata(artifact_path)
+    if metadata_dir:
+        metadata = _read_artifact_metadata(metadata_dir)
         if field in metadata:
-            return str(metadata[field])
+            return metadata[field]
 
     # Field not found anywhere
-    available_fields = list(artifact_info.keys())
-    if artifact_path:
-        metadata = _read_artifact_metadata(artifact_path)
+    available_fields = [k for k in artifact_info.keys() if k != "metadata_dir"]
+    if metadata_dir:
+        metadata = _read_artifact_metadata(metadata_dir)
         available_fields.extend([f for f in metadata.keys() if f not in available_fields])
 
     raise KeyError(
@@ -483,24 +564,31 @@ def register_resolvers(
 
                 # Rank 0: download artifacts and write marker file
                 results: dict[str, dict[str, Any]] = {}
+                print(f"[ARTIFACT] Rank 0: Resolving {len(artifacts)} artifacts: {list(artifacts.keys())}")
                 for key, artifact_ref in artifacts.items():
-                    if mode == "active_run":
-                        name, version = _parse_artifact_ref(artifact_ref)
-                        result = _resolve_artifact_active_run(name, version)
-                    elif mode == "pre_init":
-                        result = resolve_artifact_pre_init(
-                            artifact_ref,
-                            patch_http_digest=pre_init_patch_http_digest,
-                        )
-                    else:
-                        raise ValueError(f"Unknown resolver mode: {mode}")
+                    print(f"[ARTIFACT] Rank 0: Starting resolution of '{key}' -> '{artifact_ref}'")
+                    try:
+                        if mode == "active_run":
+                            name, version = _parse_artifact_ref(artifact_ref)
+                            result = _resolve_artifact_active_run(name, version)
+                        elif mode == "pre_init":
+                            result = resolve_artifact_pre_init(
+                                artifact_ref,
+                                patch_http_digest=pre_init_patch_http_digest,
+                            )
+                        else:
+                            raise ValueError(f"Unknown resolver mode: {mode}")
 
-                    _ARTIFACT_REGISTRY[key] = result
-                    results[key] = result
+                        _ARTIFACT_REGISTRY[key] = result
+                        results[key] = result
 
-                    qname = result.get("qualified_name")
-                    if qname:
-                        qualified_names.append(str(qname))
+                        qname = result.get("qualified_name")
+                        if qname:
+                            qualified_names.append(str(qname))
+                        print(f"[ARTIFACT] Rank 0: Successfully resolved '{key}' -> {result.get('path')}")
+                    except Exception as e:
+                        print(f"[ARTIFACT] Rank 0: ERROR resolving '{key}' ({artifact_ref}): {e}")
+                        raise
 
                 # Signal completion to other ranks
                 marker_path.parent.mkdir(parents=True, exist_ok=True)
@@ -520,23 +608,30 @@ def register_resolvers(
                 qualified_names = data["qualified_names"]
         else:
             # Single process mode: download directly (existing behavior)
+            print(f"[ARTIFACT] Single process: Resolving {len(artifacts)} artifacts: {list(artifacts.keys())}")
             for key, artifact_ref in artifacts.items():
-                if mode == "active_run":
-                    name, version = _parse_artifact_ref(artifact_ref)
-                    result = _resolve_artifact_active_run(name, version)
-                elif mode == "pre_init":
-                    result = resolve_artifact_pre_init(
-                        artifact_ref,
-                        patch_http_digest=pre_init_patch_http_digest,
-                    )
-                else:
-                    raise ValueError(f"Unknown resolver mode: {mode}")
+                print(f"[ARTIFACT] Starting resolution of '{key}' -> '{artifact_ref}'")
+                try:
+                    if mode == "active_run":
+                        name, version = _parse_artifact_ref(artifact_ref)
+                        result = _resolve_artifact_active_run(name, version)
+                    elif mode == "pre_init":
+                        result = resolve_artifact_pre_init(
+                            artifact_ref,
+                            patch_http_digest=pre_init_patch_http_digest,
+                        )
+                    else:
+                        raise ValueError(f"Unknown resolver mode: {mode}")
 
-                _ARTIFACT_REGISTRY[key] = result
+                    _ARTIFACT_REGISTRY[key] = result
 
-                qname = result.get("qualified_name")
-                if qname:
-                    qualified_names.append(str(qname))
+                    qname = result.get("qualified_name")
+                    if qname:
+                        qualified_names.append(str(qname))
+                    print(f"[ARTIFACT] Successfully resolved '{key}' -> {result.get('path')}")
+                except Exception as e:
+                    print(f"[ARTIFACT] ERROR resolving '{key}' ({artifact_ref}): {e}")
+                    raise
 
     # Register the resolver
     # ${art.data.path} -> _art_resolver("data", "path")
@@ -599,9 +694,13 @@ def register_resolvers_from_config(
         # Extract artifact references from the section
         # Artifact refs are string values that look like W&B artifact names
         if isinstance(section_dict, dict):
+            print(f"[ARTIFACT] Scanning config section '{artifacts_key}' for artifact references...")
             for key, value in section_dict.items():
-                if _is_artifact_reference(value):
+                is_ref = _is_artifact_reference(value)
+                print(f"[ARTIFACT]   {key}={repr(value)} -> is_artifact_reference={is_ref}")
+                if is_ref:
                     artifacts[key] = value
+            print(f"[ARTIFACT] Detected artifacts: {artifacts}")
 
     if artifacts:
         return register_resolvers(

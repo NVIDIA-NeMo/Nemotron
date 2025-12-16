@@ -31,6 +31,7 @@ from omegaconf import DictConfig, OmegaConf
 from nemotron.kit.cli.env import get_wandb_config, load_env_profile
 from nemotron.kit.cli.globals import GlobalContext
 from nemotron.kit.cli.utils import rewrite_paths_for_remote, resolve_run_interpolations
+from nemotron.kit.resolvers import _is_artifact_reference
 
 
 def find_config_file(config_name: str, config_dir: Path) -> Path:
@@ -203,7 +204,7 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
         # Build a minimal run section with just artifact references
         run_for_train = {}
         for key, value in run_section.items():
-            if isinstance(value, str) and "Artifact" in value:
+            if _is_artifact_reference(value):
                 run_for_train[key] = value
 
         if run_for_train:
@@ -220,7 +221,7 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
         # Build a minimal run section with just artifact references
         run_for_train = {}
         for key, value in run_section.items():
-            if isinstance(value, str) and "Artifact" in value:
+            if _is_artifact_reference(value):
                 run_for_train[key] = value
 
         # Resolve ${run.wandb.*} and ${run.recipe.*} interpolations
