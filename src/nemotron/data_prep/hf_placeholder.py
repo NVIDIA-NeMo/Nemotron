@@ -166,8 +166,6 @@ class HFPlaceholderResolver:
             Initialized resolver with loaded datasets
         """
         import pyarrow as pa
-        import ray.data
-        from datasets import load_dataset
 
         if target_datasets is None:
             target_datasets = TARGET_DATASETS
@@ -187,18 +185,53 @@ class HFPlaceholderResolver:
 
             logger.info(f"Loading HF dataset: {config.hf_dataset} (split: {config.split})")
             try:
-                # Load via datasets library first
-                hf_ds = load_dataset(
-                    config.hf_dataset,
-                    split=config.split,
-                )
-                # Convert to Ray Dataset for scalable processing
-                ray_ds = ray.data.from_huggingface(hf_ds)
-                # Materialize to PyArrow table for efficient row-index access
-                # This is needed because placeholder resolution requires random access by row index
-                arrow_table = ray_ds.to_arrow()
-                tables[name] = arrow_table
-                logger.info(f"Loaded {len(arrow_table)} rows from {config.hf_dataset}")
+                # Load parquet files directly from HuggingFace Hub using huggingface_hub
+                # This avoids datasets library internal API compatibility issues
+                from huggingface_hub import HfFileSystem
+
+                fs = HfFileSystem()
+
+                # Try multiple patterns since HF datasets have varying structures:
+                # 1. data/{split}-*.parquet (e.g., Skywork: data/math-00000-of-00001.parquet)
+                # 2. data/*.parquet (e.g., DAPO: data/dapo-math-17k.parquet - single file)
+                # 3. {split}/*.parquet (standard split directory)
+                # 4. default/{split}/*.parquet (default config)
+                patterns = [
+                    f"datasets/{config.hf_dataset}/data/{config.split}-*.parquet",
+                    f"datasets/{config.hf_dataset}/data/*.parquet",
+                    f"datasets/{config.hf_dataset}/{config.split}/*.parquet",
+                    f"datasets/{config.hf_dataset}/default/{config.split}/*.parquet",
+                ]
+
+                parquet_files = []
+                for pattern in patterns:
+                    parquet_files = fs.glob(pattern)
+                    if parquet_files:
+                        logger.info(f"Found parquet files with pattern: {pattern}")
+                        break
+
+                if parquet_files:
+                    # Read all parquet files and concatenate
+                    import pyarrow.parquet as pq
+
+                    tables_list = []
+                    for pq_file in parquet_files:
+                        with fs.open(pq_file, "rb") as f:
+                            table = pq.read_table(f)
+                            tables_list.append(table)
+
+                    if tables_list:
+                        arrow_table = pa.concat_tables(tables_list)
+                        tables[name] = arrow_table
+                        logger.info(f"Loaded {len(arrow_table)} rows from {config.hf_dataset}")
+                    else:
+                        logger.warning(f"No data found in parquet files for {config.hf_dataset}")
+                        tables[name] = None
+                else:
+                    logger.warning(
+                        f"No parquet files found for {config.hf_dataset} split={config.split}"
+                    )
+                    tables[name] = None
             except Exception as e:
                 logger.warning(f"Failed to load {config.hf_dataset}: {e}")
                 tables[name] = None

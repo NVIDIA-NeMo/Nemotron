@@ -265,7 +265,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
         SplitJsonlDataArtifact with paths to resolved JSONL data.
     """
     # Add stage-specific tags to wandb run
-    add_wandb_tags(["data-prep", "rl", "resolve"])
+    add_wandb_tags(["data-prep", "rl"])
 
     # Load data blend
     blend = DataBlend.load(cfg.blend_path)
