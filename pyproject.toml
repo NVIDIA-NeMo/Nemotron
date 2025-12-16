@@ -35,6 +35,7 @@ dependencies = [
     "xxhash>=3.4.0",
     "transformers>=4.36.0",
     "huggingface_hub>=0.20.0",
+    "datasets>=2.14.0",  # Required for ray.data.from_huggingface
     "pyyaml>=6.0",
     "tomli>=2.0.0;python_version<'3.11'",
     "tomlkit>=0.12.0",
