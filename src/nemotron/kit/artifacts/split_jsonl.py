@@ -34,6 +34,13 @@ class SplitJsonlDataArtifact(Artifact):
     Unlike DataBlendsArtifact, this does not track token counts since the
     data is not tokenized.
 
+    Output files:
+    - train/train.jsonl: Training data
+    - val/val.jsonl: Validation data
+    - test/test.jsonl: Test data
+    - manifest.json: Manifest with paths to split files
+    - metadata.json: Nemotron artifact metadata
+
     Source URIs are tracked for W&B lineage:
     - source_datasets: Input datasets with metadata (or URIs for backwards compat)
     """
@@ -41,6 +48,17 @@ class SplitJsonlDataArtifact(Artifact):
     total_sequences: Annotated[int, Field(ge=0, description="Total documents processed")]
     elapsed_sec: Annotated[
         float, Field(default=0.0, ge=0, description="Processing time in seconds")
+    ]
+
+    # Explicit paths to split files
+    train: Annotated[
+        str | None, Field(default=None, description="Path to train JSONL directory")
+    ]
+    val: Annotated[
+        str | None, Field(default=None, description="Path to validation JSONL directory")
+    ]
+    test: Annotated[
+        str | None, Field(default=None, description="Path to test JSONL directory")
     ]
 
     # Source datasets for lineage tracking

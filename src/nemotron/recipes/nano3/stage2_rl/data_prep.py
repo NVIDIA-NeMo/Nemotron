@@ -216,7 +216,18 @@ def _run_resolve(
         # Run processing for this split
         result = last_mile_process(split_blend, pipeline_config)
         total_sequences += result.total_sequences
-        split_paths[output_split_name] = result.blend_path
+
+        # Extract actual JSONL shard path from result
+        # data_paths format: ["weight", "shard_prefix", ...]
+        shard_prefix = result.splits["all"].data_paths[1]
+        # Find the actual JSONL file by globbing (shard naming uses variable digit padding)
+        shard_files = sorted(Path(shard_prefix).parent.glob("shard_*.jsonl"))
+        if shard_files:
+            jsonl_path = shard_files[0]
+        else:
+            raise FileNotFoundError(f"No JSONL shard files found at {shard_prefix}")
+
+        split_paths[output_split_name] = str(jsonl_path.resolve())
 
     # Resolve output_dir to absolute path for W&B artifact storage
     output_dir = cfg.output_dir.resolve()
@@ -240,17 +251,16 @@ def _run_resolve(
 
     elapsed = time.time() - start_time
 
-    # Build artifact
+    # Build artifact with split paths as typed fields
     artifact = SplitJsonlDataArtifact(
         path=manifest_path,
         total_sequences=total_sequences,
         elapsed_sec=elapsed,
         source_datasets=source_datasets,
+        train=resolved_split_paths.get("train"),
+        val=resolved_split_paths.get("val"),
+        test=resolved_split_paths.get("test"),
     )
-
-    # Add split paths to metadata for artifact resolution (using resolved absolute paths)
-    for split_name, split_path in resolved_split_paths.items():
-        artifact.metadata[split_name] = split_path
 
     return artifact
 

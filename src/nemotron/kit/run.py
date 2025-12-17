@@ -729,6 +729,8 @@ def run_with_nemo_run(
     ray: bool = False,
     pre_ray_start_commands: list[str] | None = None,
     packager: str = "code",
+    workdir: str | None = None,
+    run_command: str | None = None,
 ) -> int:
     """Execute script via nemo-run, optionally with Ray.
 
@@ -739,6 +741,8 @@ def run_with_nemo_run(
         ray: Whether to use Ray for execution.
         pre_ray_start_commands: Commands to run before Ray starts.
         packager: Packager type ("code", "self_contained", "pattern").
+        workdir: Container working directory for Ray jobs (e.g., "/opt/nemo-rl").
+        run_command: Custom command template (supports {script} and {config} placeholders).
 
     Returns:
         Exit code (0 = success).
@@ -785,39 +789,65 @@ def run_with_nemo_run(
             log_file = f"{run_config.remote_job_dir}/{job_name}/logs/ray-job.log"
             log_clear_cmd = f": > {log_file} 2>/dev/null || true"
 
-        # Setup commands to prepare the environment before running
-        # Use uv sync to ensure nemotron package is available (for Ray workers too)
-        # Clear __pycache__ to avoid stale bytecode issues
-        setup_commands = [
-            "find . -type d -name __pycache__ -delete 2>/dev/null || true",
-            "uv sync --reinstall-package nemotron",
-        ]
+        # Build setup commands based on packager type and workdir
+        if pre_ray_start_commands is not None:
+            # Use explicitly provided commands
+            setup_commands = list(pre_ray_start_commands)
+        elif packager == "self_contained":
+            # For self_contained packager, skip uv sync (dependencies in container)
+            setup_commands = [
+                "find . -type d -name __pycache__ -delete 2>/dev/null || true",
+            ]
+        else:
+            # Default setup for other packagers
+            setup_commands = [
+                "find . -type d -name __pycache__ -delete 2>/dev/null || true",
+                "uv sync --reinstall-package nemotron",
+            ]
 
-        # For self_contained packager, copy files from /nemo_run/code to working dir
-        # This is needed because uv run requires being in the correct workspace,
-        # but the packager extracts files to /nemo_run/code
+        # For self_contained packager, copy files from /nemo_run/code to workdir
+        # and use main.py instead of the original script path
         if packager == "self_contained":
-            setup_commands.extend(
-                [
-                    "cp /nemo_run/code/main.py .",
-                    "cp /nemo_run/code/config.yaml .",
-                ]
-            )
+            if workdir:
+                # Copy files to workdir and cd there
+                setup_commands.extend(
+                    [
+                        f"cp /nemo_run/code/main.py {workdir}/",
+                        f"cp /nemo_run/code/config.yaml {workdir}/",
+                        f"cd {workdir}",
+                    ]
+                )
+            else:
+                # Copy files to current directory
+                setup_commands.extend(
+                    [
+                        "cp /nemo_run/code/main.py .",
+                        "cp /nemo_run/code/config.yaml .",
+                    ]
+                )
+            remote_script = "main.py"
+        else:
+            remote_script = script_path
 
         # Prepend log clearing if remote_job_dir is configured
         if log_clear_cmd:
             setup_commands.insert(0, log_clear_cmd)
-        if pre_ray_start_commands is None:
-            pre_ray_start_commands = setup_commands
-        else:
-            # Prepend setup commands if not already present
-            for cmd in reversed(setup_commands):
-                if cmd not in pre_ray_start_commands:
-                    pre_ray_start_commands = [cmd] + pre_ray_start_commands
 
-        # Use uv run to execute script with proper project environment
-        # This ensures Ray workers also use the same environment
-        cmd = f"uv run python {script_path}"
+        # Build the command to run
+        # For self_contained packager, config is at config.yaml; otherwise use script_args
+        config_file = "config.yaml" if packager == "self_contained" else None
+        if run_command:
+            # Use custom run command template with placeholders
+            cmd = run_command.format(script=remote_script, config=config_file or "")
+            # Prepend cd to workdir if set (pre_ray_start_commands run before Ray, not in job)
+            if workdir:
+                cmd = f"cd {workdir} && {cmd}"
+        elif workdir and packager == "self_contained":
+            cmd = f"cd {workdir} && python {remote_script}"
+        elif workdir:
+            cmd = f"cd {workdir} && uv run python {remote_script}"
+        else:
+            cmd = f"uv run python {remote_script}"
         if script_args:
             cmd += " " + " ".join(script_args)
 
@@ -879,7 +909,7 @@ def run_with_nemo_run(
         ray_job.start(
             command=cmd,
             workdir=ray_workdir,
-            pre_ray_start_commands=pre_ray_start_commands,
+            pre_ray_start_commands=setup_commands,
             runtime_env_yaml=runtime_env_yaml,
         )
 

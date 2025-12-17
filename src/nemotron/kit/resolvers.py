@@ -501,12 +501,19 @@ def _art_resolver(name: str, field: str = "path") -> Any:
         metadata = _read_artifact_metadata(metadata_dir)
         if field in metadata:
             return metadata[field]
+        # Also check nested "metadata" dict (for fields stored via artifact.metadata["field"])
+        nested_metadata = metadata.get("metadata", {})
+        if field in nested_metadata:
+            return nested_metadata[field]
 
     # Field not found anywhere
     available_fields = [k for k in artifact_info.keys() if k != "metadata_dir"]
     if metadata_dir:
         metadata = _read_artifact_metadata(metadata_dir)
         available_fields.extend([f for f in metadata.keys() if f not in available_fields])
+        # Include nested metadata fields
+        nested_metadata = metadata.get("metadata", {})
+        available_fields.extend([f for f in nested_metadata.keys() if f not in available_fields])
 
     raise KeyError(
         f"Unknown field '{field}' for artifact '{name}'. Available fields: {available_fields}"

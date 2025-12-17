@@ -233,6 +233,44 @@ def _is_nemotron_import(node: ast.AST, *, package_prefix: str) -> bool:
     return False
 
 
+def _collect_all_nemotron_imports(
+    mod_ast: ast.Module, *, package_prefix: str
+) -> list[ast.Import | ast.ImportFrom]:
+    """Collect all nemotron imports from the entire AST tree, including nested scopes.
+
+    Uses ast.walk() to find imports inside functions, classes, conditionals, etc.
+    """
+    imports: list[ast.Import | ast.ImportFrom] = []
+    for node in ast.walk(mod_ast):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if _is_nemotron_import(node, package_prefix=package_prefix):
+                imports.append(node)
+    return imports
+
+
+class _NemotronImportRemover(ast.NodeTransformer):
+    """AST transformer that removes nemotron imports from the tree.
+
+    Handles both top-level and nested imports (inside functions, classes, etc.).
+    Import statements are replaced with `pass` to avoid empty blocks.
+    """
+
+    def __init__(self, package_prefix: str):
+        self.package_prefix = package_prefix
+
+    def visit_Import(self, node: ast.Import) -> ast.AST | None:
+        if _is_nemotron_import(node, package_prefix=self.package_prefix):
+            # Replace with pass to avoid empty function bodies
+            return ast.Pass()
+        return node
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.AST | None:
+        if _is_nemotron_import(node, package_prefix=self.package_prefix):
+            # Replace with pass to avoid empty function bodies
+            return ast.Pass()
+        return node
+
+
 def _resolve_module_path(repo_root: Path, module: str) -> Path:
     """Resolve a module name to a file path under a `src/` layout.
 
@@ -288,7 +326,10 @@ def _parse_module_for_inlining(
     repo_root: Path,
     package_prefix: str,
 ) -> tuple[_ModuleInline, list[str]]:
-    """Parse a module and split it into (inline block, dependency modules)."""
+    """Parse a module and split it into (inline block, dependency modules).
+
+    Collects dependencies from both top-level and nested imports (inside functions, etc.).
+    """
     path = _resolve_module_path(repo_root, module)
     text = _read_text(path)
     lines = text.splitlines(keepends=True)
@@ -299,6 +340,22 @@ def _parse_module_for_inlining(
     prelude_assignments: list[str] = []
     dependencies: list[str] = []
 
+    # Collect dependencies from ALL nemotron imports (including nested ones)
+    all_nemotron_imports = _collect_all_nemotron_imports(mod_ast, package_prefix=package_prefix)
+    for imp_node in all_nemotron_imports:
+        if isinstance(imp_node, ast.ImportFrom) and imp_node.module:
+            if imp_node.module not in dependencies:
+                dependencies.append(imp_node.module)
+            for alias in imp_node.names:
+                if alias.name == "*":
+                    raise ValueError(
+                        f"Star import not supported in SelfContainedPackager: {module}"
+                    )
+        elif isinstance(imp_node, ast.Import):
+            for alias in imp_node.names:
+                if alias.name not in dependencies:
+                    dependencies.append(alias.name)
+
     for node in mod_ast.body:
         # Never inline/emit __future__ imports from library modules.
         if isinstance(node, ast.ImportFrom) and node.module == "__future__":
@@ -306,19 +363,13 @@ def _parse_module_for_inlining(
 
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if _is_nemotron_import(node, package_prefix=package_prefix):
-                # Track dependency modules and synthesize alias assignments where needed.
+                # Track alias assignments for top-level imports only
                 if isinstance(node, ast.ImportFrom) and node.module:
-                    dependencies.append(node.module)
                     for alias in node.names:
-                        if alias.name == "*":
-                            raise ValueError(
-                                f"Star import not supported in SelfContainedPackager: {module}"
-                            )
                         if alias.asname and alias.asname != alias.name:
                             prelude_assignments.append(f"{alias.asname} = {alias.name}\n")
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
-                        dependencies.append(alias.name)
                         asname = alias.asname
                         if asname:
                             prelude_assignments.append(
@@ -354,6 +405,7 @@ def inline_imports(
 
     The resulting script:
     - removes `import {package_prefix}...` and `from {package_prefix}...` statements
+      (both top-level and nested inside functions/classes)
     - appends source for referenced modules (under `repo_root/src/`)
     - synthesizes `types.SimpleNamespace` objects for `import nemotron.x as x` patterns
       so that attribute access continues to work.
@@ -392,6 +444,22 @@ def inline_imports(
     entry_module_aliases: list[tuple[str, str]] = []  # (module, asname)
     entry_dependencies: list[str] = []
 
+    # Collect dependencies from ALL nemotron imports (including nested ones in functions)
+    all_nemotron_imports = _collect_all_nemotron_imports(entry_ast, package_prefix=package_prefix)
+    for imp_node in all_nemotron_imports:
+        if isinstance(imp_node, ast.ImportFrom) and imp_node.module:
+            if imp_node.module not in entry_dependencies:
+                entry_dependencies.append(imp_node.module)
+            for alias in imp_node.names:
+                if alias.name == "*":
+                    raise ValueError(
+                        f"Star import not supported in SelfContainedPackager: {entry_path}"
+                    )
+        elif isinstance(imp_node, ast.Import):
+            for alias in imp_node.names:
+                if alias.name not in entry_dependencies:
+                    entry_dependencies.append(alias.name)
+
     for node in entry_ast.body:
         # Skip shebang/docstring handled above.
         if node is entry_ast.body[0] and docstring_src:
@@ -403,26 +471,26 @@ def inline_imports(
 
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if _is_nemotron_import(node, package_prefix=package_prefix):
+                # Track alias assignments for top-level imports
                 if isinstance(node, ast.ImportFrom) and node.module:
-                    entry_dependencies.append(node.module)
                     for alias in node.names:
-                        if alias.name == "*":
-                            raise ValueError(
-                                f"Star import not supported in SelfContainedPackager: {entry_path}"
-                            )
                         if alias.asname and alias.asname != alias.name:
                             entry_alias_assignments.append(f"{alias.asname} = {alias.name}\n")
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
                         if alias.asname:
                             entry_module_aliases.append((alias.name, alias.asname))
-                        entry_dependencies.append(alias.name)
                 continue
 
             entry_external_imports.append(_node_source(entry_lines, node))
             continue
 
-        entry_body_parts.append(_node_source(entry_lines, node))
+        # For non-import statements, use AST transformation to remove nested imports
+        # then unparse back to source. This handles imports inside functions/classes.
+        remover = _NemotronImportRemover(package_prefix)
+        transformed_node = remover.visit(node)
+        ast.fix_missing_locations(transformed_node)
+        entry_body_parts.append(ast.unparse(transformed_node) + "\n")
 
     # DFS inline modules with dependencies-first ordering.
     module_blocks: dict[str, _ModuleInline] = {}

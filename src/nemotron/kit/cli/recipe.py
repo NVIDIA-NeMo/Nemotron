@@ -50,6 +50,10 @@ class RecipeMetadata:
         artifacts: Artifact slot definitions for resolution
         torchrun: Whether to use torchrun launcher
         ray: Whether this recipe requires Ray
+        packager: Packager type ("pattern", "code", "self_contained")
+        workdir: Container working directory for Ray jobs (e.g., "/opt/nemo-rl")
+        pre_ray_start_commands: Shell commands to run before Ray starts
+        run_command: Custom command template to run the script (e.g., "python {script} --config {config}")
     """
 
     name: str
@@ -60,6 +64,9 @@ class RecipeMetadata:
     torchrun: bool = True
     ray: bool = False
     packager: str = "pattern"
+    workdir: str | None = None
+    pre_ray_start_commands: list[str] | None = None
+    run_command: str | None = None
 
 
 def recipe(
@@ -72,6 +79,9 @@ def recipe(
     torchrun: bool = True,
     ray: bool = False,
     packager: str = "pattern",
+    workdir: str | None = None,
+    pre_ray_start_commands: list[str] | None = None,
+    run_command: str | None = None,
 ) -> Callable:
     """Decorator marking a function as a recipe command.
 
@@ -95,6 +105,16 @@ def recipe(
             is not provided (default: "default").
         torchrun: Whether to use torchrun launcher (default: True)
         ray: Whether this recipe requires Ray for execution (default: False)
+        packager: Packager type ("pattern", "code", "self_contained") (default: "pattern")
+        workdir: Container working directory for Ray jobs (e.g., "/opt/nemo-rl").
+            Can be overridden via YAML config at `run.env.workdir`.
+        pre_ray_start_commands: Shell commands to run before Ray starts.
+            Can be overridden via YAML config at `run.env.pre_ray_start_commands`.
+        run_command: Custom command template to run the script. Supports placeholders:
+            {script} - the script path (e.g., "main.py")
+            {config} - the config path (e.g., "config.yaml")
+            Example: "python {script} --config {config}"
+            Can be overridden via YAML config at `run.env.run_command`.
 
     Example:
         @recipe(
@@ -112,6 +132,12 @@ def recipe(
             config_dir="src/nemotron/recipes/nano3/stage2_rl/config",
             torchrun=False,
             ray=True,
+            packager="self_contained",
+            workdir="/opt/nemo-rl",
+            pre_ray_start_commands=[
+                "find . -type d -name __pycache__ -delete 2>/dev/null || true",
+            ],
+            run_command="uv run python {script} --config {config}",
         )
         def rl(ctx: typer.Context):
             '''Run RL training with Ray.'''
@@ -216,6 +242,9 @@ def recipe(
                     torchrun=torchrun,
                     ray=ray,
                     packager=packager,
+                    workdir=workdir,
+                    pre_ray_start_commands=pre_ray_start_commands,
+                    run_command=run_command,
                 )
 
         # Attach metadata to function for introspection
@@ -228,6 +257,9 @@ def recipe(
             torchrun=torchrun,
             ray=ray,
             packager=packager,
+            workdir=workdir,
+            pre_ray_start_commands=pre_ray_start_commands,
+            run_command=run_command,
         )
 
         return wrapper
@@ -288,6 +320,9 @@ def _execute_nemo_run(
     torchrun: bool = True,
     ray: bool = False,
     packager: str = "pattern",
+    workdir: str | None = None,
+    pre_ray_start_commands: list[str] | None = None,
+    run_command: str | None = None,
 ) -> None:
     """Execute script via nemo-run.
 
@@ -301,6 +336,10 @@ def _execute_nemo_run(
         env_vars: Pre-built environment variables
         torchrun: Whether to use torchrun launcher
         ray: Whether this recipe requires Ray
+        packager: Packager type ("pattern", "code", "self_contained")
+        workdir: Container working directory for Ray jobs (e.g., "/opt/nemo-rl")
+        pre_ray_start_commands: Shell commands to run before Ray starts
+        run_command: Custom command template (supports {script} and {config} placeholders)
     """
     import time
 
@@ -351,17 +390,70 @@ def _execute_nemo_run(
         repo_config = Path.cwd() / "config.yaml"
         shutil.copy2(train_path, repo_config)
 
-        # Setup commands to prepare the environment before running
-        setup_commands = [
-            "find . -type d -name __pycache__ -delete 2>/dev/null || true",
-            "uv sync --reinstall-package nemotron",
-        ]
+        # Check for YAML overrides for workdir, pre_ray_start_commands, and run_command
+        effective_workdir = workdir
+        effective_pre_ray_start_commands = pre_ray_start_commands
+        effective_run_command = run_command
+        if env_config.get("workdir"):
+            effective_workdir = env_config["workdir"]
+        if env_config.get("pre_ray_start_commands"):
+            effective_pre_ray_start_commands = env_config["pre_ray_start_commands"]
+        if env_config.get("run_command"):
+            effective_run_command = env_config["run_command"]
 
-        # Get the actual script path from the recipe config
-        actual_script = job_config.run.recipe.script
+        # Build setup commands based on packager type and workdir
+        if effective_pre_ray_start_commands is not None:
+            # Use explicitly provided commands (user handles all setup)
+            setup_commands = list(effective_pre_ray_start_commands)
+        elif packager == "self_contained":
+            # For self_contained packager, skip uv sync (dependencies in container)
+            # and copy files from /nemo_run/code to workdir
+            setup_commands = [
+                "find . -type d -name __pycache__ -delete 2>/dev/null || true",
+            ]
+            if effective_workdir:
+                setup_commands.extend(
+                    [
+                        f"cp /nemo_run/code/main.py {effective_workdir}/",
+                        f"cp /nemo_run/code/config.yaml {effective_workdir}/",
+                    ]
+                )
+            else:
+                setup_commands.extend(
+                    [
+                        "cp /nemo_run/code/main.py .",
+                        "cp /nemo_run/code/config.yaml .",
+                    ]
+                )
+        else:
+            # Default setup for other packagers
+            setup_commands = [
+                "find . -type d -name __pycache__ -delete 2>/dev/null || true",
+                "uv sync --reinstall-package nemotron",
+            ]
 
-        # Build the command to run using actual script path and config.yaml at repo root
-        cmd = f"uv run python {actual_script} --config config.yaml"
+        # Determine remote script path
+        if packager == "self_contained":
+            remote_script = "main.py"
+        else:
+            # Get the actual script path from the recipe config
+            remote_script = job_config.run.recipe.script
+
+        # Build the command to run
+        config_file = "config.yaml"
+        if effective_run_command:
+            # Use custom run command template with placeholders
+            cmd = effective_run_command.format(script=remote_script, config=config_file)
+            # Prepend cd to workdir if set (pre_ray_start_commands run before Ray, not in job)
+            if effective_workdir:
+                cmd = f"cd {effective_workdir} && {cmd}"
+        elif effective_workdir and packager == "self_contained":
+            # Already cd'd in setup_commands, run directly
+            cmd = f"cd {effective_workdir} && python {remote_script} --config {config_file}"
+        elif effective_workdir:
+            cmd = f"cd {effective_workdir} && uv run python {remote_script} --config {config_file}"
+        else:
+            cmd = f"uv run python {remote_script} --config {config_file}"
         if passthrough:
             cmd += " " + " ".join(passthrough)
 
@@ -512,6 +604,7 @@ def _build_executor(
             "gpus_per_node": env_config.get("gpus_per_node"),
             "time": env_config.get("time", "04:00:00"),
             "container_image": container_image,
+            "container_mounts": env_config.get("mounts"),
             "tunnel": tunnel,
             "packager": packager,
             "mem": env_config.get("mem"),
