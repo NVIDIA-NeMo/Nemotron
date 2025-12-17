@@ -77,7 +77,7 @@ checkpointing:
 policy:
   model_name: ${art:model,path}
   tokenizer:
-    name: ${policy.model_name} ## specify if you'd like to use a tokenizer different from the model's default
+    name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
   train_global_batch_size: 2048
   train_micro_batch_size: 1
   generation_batch_size: 64 # Only used when generating using HF backend
@@ -251,7 +251,7 @@ policy:
 
 data:
   train_jsonl_fpath: ${art:data,train}
-  validation_jsonl_fpath: ${art:data,val}
+  validation_jsonl_fpath: ${art:data,train}
   shuffle: False
   num_workers: 1
 
@@ -282,14 +282,14 @@ env:
 logger:
   log_dir: "logs"  # Base directory for all logs
   num_val_samples_to_print: 0 # Number of validation samples to pretty print on terminal
-  wandb_enabled: false
+  wandb_enabled: true
   tensorboard_enabled: false
   mlflow_enabled: false  # Disable MLflow logging
   monitor_gpus: true  # If true, will monitor GPU usage and log to wandb and/or tensorboard
   swanlab_enabled: false # Disable SwanLab logging
   wandb:
-    project: "grpo-dev"
-    name: "grpo-dev-logger"
+    project: "${run.wandb.project}"
+    name: "${run.wandb.entity}"
   tensorboard: {}
   mlflow:
     experiment_name: "grpo-dev"
@@ -300,4 +300,4 @@ logger:
 
 cluster:
   gpus_per_node: 8
-  num_nodes: 32
+  num_nodes: 1

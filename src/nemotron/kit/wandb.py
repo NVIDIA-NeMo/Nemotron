@@ -99,7 +99,12 @@ def init_wandb_if_configured(
     if wandb_config is None or not wandb_config.enabled:
         return
 
-    import nemotron.kit as kit
+    # Use importlib to avoid being detected by SelfContainedPackager's AST-based
+    # import inliner. This function isn't used by RL training, but the packager
+    # would otherwise inline the entire nemotron.kit module (which requires pydantic).
+    import importlib
+
+    kit = importlib.import_module("nemotron.kit")
 
     # Initialize kit with wandb backend (enables artifact tracking)
     kit.init(

@@ -36,6 +36,10 @@ CONFIG_DIR = "src/nemotron/recipes/nano3/stage2_rl/config"
     torchrun=False,
     ray=True,
     packager="self_contained",
+    workdir=None,  # Don't auto-prepend cd; we handle it in run_command
+    pre_ray_start_commands=[],
+    # Files are in cwd ($CLUSTER_DIR/code), copy to /opt/nemo-rl then run with uv
+    run_command="cp ./main.py /opt/nemo-rl/ && cp ./config.yaml /opt/nemo-rl/ && cd /opt/nemo-rl && uv run python {script} --config {config}",
 )
 def rl(ctx: typer.Context) -> None:
     """Run reinforcement learning with NeMo-RL GRPO (stage2).
