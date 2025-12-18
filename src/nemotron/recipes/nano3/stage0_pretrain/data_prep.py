@@ -142,6 +142,21 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     # Add stage-specific tags to wandb run
     add_wandb_tags(["data-prep", "pretrain", cfg.config_name])
 
+    # Log config to W&B
+    try:
+        import wandb
+        from dataclasses import asdict
+
+        if wandb.run is not None:
+            # Convert config to dict, handling Path objects
+            config_dict = asdict(cfg)
+            for key, value in config_dict.items():
+                if isinstance(value, Path):
+                    config_dict[key] = str(value)
+            wandb.config.update(config_dict)
+    except ImportError:
+        pass
+
     # Build artifact name using config_name.
     # Example: "nano3/default/data" or "nano3/tiny/data?sample=100".
     sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""

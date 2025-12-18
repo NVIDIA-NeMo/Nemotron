@@ -473,10 +473,10 @@ def _execute_nemo_run(
 
         ray_job.start(
             command=cmd,
-            # Pass empty workdir to use our CodePackager instead of nemo-run's rsync.
-            # CodePackager uses git ls-files which properly excludes .git and
-            # respects .gitignore, making the transfer much faster.
-            workdir="",
+            # Pass workdir with trailing slash to rsync the repo contents to remote.
+            # nemo-run uses --filter=':- .gitignore' which respects .gitignore patterns.
+            # The trailing slash ensures contents are synced (not the parent dir itself).
+            workdir=str(Path.cwd()) + "/",
             pre_ray_start_commands=setup_commands,
             runtime_env_yaml=runtime_env_yaml,
         )
@@ -494,13 +494,34 @@ def _execute_nemo_run(
                 # Wait up to 10 minutes for log file to appear
                 ray_job.logs(follow=True, timeout=600)
             except KeyboardInterrupt:
-                typer.echo("\n[info] Ctrl-C detected, stopping Ray cluster...")
+                typer.echo("\n")
+                job_id = ray_job.backend.job_id
+                typer.echo(f"[info] Ctrl-C detected. Job {job_id} is still running.")
+                typer.echo("")
+                typer.echo("  [d] Detach - keep job running in background")
+                typer.echo("  [c] Cancel - stop the job")
+                typer.echo("  [enter] Detach (default)")
+                typer.echo("")
+
                 try:
-                    ray_job.stop()
-                    typer.echo("[info] Ray cluster stopped")
-                except Exception as e:
-                    typer.echo(f"[warning] Failed to stop Ray cluster: {e}")
-                raise typer.Exit(130)
+                    choice = input("Choice [d/c]: ").strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    # Second Ctrl+C or EOF means detach
+                    choice = "d"
+
+                if choice == "c":
+                    typer.echo("[info] Cancelling job...")
+                    try:
+                        ray_job.stop()
+                        typer.echo(f"[info] Job {job_id} cancelled")
+                    except Exception as e:
+                        typer.echo(f"[warning] Failed to cancel job: {e}")
+                    raise typer.Exit(130)
+                else:
+                    typer.echo(f"[info] Detaching. Job {job_id} continues running.")
+                    typer.echo(f"[info] To view logs: squeue -u $USER | grep {job_id}")
+                    typer.echo(f"[info] To cancel: scancel {job_id}")
+                    raise typer.Exit(0)
     else:
         # Standard execution via nemo-run Script
         entrypoint = "python"
@@ -548,6 +569,14 @@ def _build_executor(
         nemo-run Executor instance
     """
     import nemo_run as run
+
+    # Apply patches to nemo-run before building executor
+    from nemotron.kit.run import (
+        patch_nemo_run_ray_template_for_cpu,
+        patch_nemo_run_rsync_accept_new_host_keys,
+    )
+    patch_nemo_run_rsync_accept_new_host_keys()
+    patch_nemo_run_ray_template_for_cpu()
 
     executor_type = env_config.get("executor", "local")
 
@@ -602,9 +631,10 @@ def _build_executor(
             "nodes": env_config.get("nodes", 1),
             "ntasks_per_node": env_config.get("ntasks_per_node", 1),
             "gpus_per_node": env_config.get("gpus_per_node"),
+            "cpus_per_task": env_config.get("cpus_per_task"),
             "time": env_config.get("time", "04:00:00"),
             "container_image": container_image,
-            "container_mounts": env_config.get("mounts"),
+            "container_mounts": env_config.get("mounts") or [],
             "tunnel": tunnel,
             "packager": packager,
             "mem": env_config.get("mem"),
