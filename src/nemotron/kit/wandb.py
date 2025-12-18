@@ -21,6 +21,20 @@ This module provides a WandbConfig dataclass that can be passed via CLI to enabl
 W&B artifact tracking. When configured, it automatically initializes the kit
 wandb backend.
 
+Monkey-Patches
+--------------
+This module contains several monkey-patches to work around bugs in wandb and
+upstream libraries (Megatron-Bridge, NeMo-RL). These patches are applied early
+in train.py scripts before wandb is initialized.
+
+Each patch function documents:
+- **Why**: The bug or limitation being worked around
+- **Upstream**: Link to upstream issue/PR if applicable
+- **Remove when**: Conditions under which the patch can be safely removed
+
+Patches should be removed once upstream fixes are available and we bump our
+minimum version requirements. Check the docstrings for specific removal criteria.
+
 Example:
     >>> from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured
     >>>
@@ -203,10 +217,20 @@ _PENDING_TAGS: set[str] = set()
 
 
 def patch_wandb_http_handler_skip_digest_verification() -> None:
-    """Best-effort patch to skip digest verification for HTTP reference artifacts.
+    """Skip digest verification for HTTP reference artifacts.
 
-    Some reference artifact backends (e.g. HuggingFace URLs) can return varying ETags
-    over time, causing W&B to reject downloads due to digest mismatch.
+    Why:
+        HuggingFace URLs (and some other backends) return varying ETags over time.
+        W&B stores the ETag as a digest when creating the artifact, but when
+        downloading, the ETag may have changed, causing "digest mismatch" errors.
+
+    Upstream:
+        No upstream issue filed yet. W&B's HTTPHandler doesn't support
+        skip_verification option.
+
+    Remove when:
+        - W&B adds a `skip_verification` parameter to HTTPHandler, OR
+        - HuggingFace stabilizes their ETags for model files
     """
     global _HTTP_HANDLER_PATCHED
     if _HTTP_HANDLER_PATCHED:
@@ -250,10 +274,20 @@ def patch_wandb_http_handler_skip_digest_verification() -> None:
 
 
 def patch_wandb_local_file_handler_skip_digest_verification() -> None:
-    """Best-effort patch to skip digest verification for local file reference artifacts.
+    """Skip digest verification for local file reference artifacts.
 
-    Local file references can become stale if data prep is re-run with different
-    parameters, causing W&B to reject artifact downloads due to digest mismatch.
+    Why:
+        Local file references become stale when data prep is re-run. The original
+        artifact stores a checksum of the file, but if the file is regenerated
+        (even with identical content), the checksum verification fails because
+        W&B compares against the stored digest.
+
+    Upstream:
+        No upstream issue filed yet. W&B's LocalFileHandler doesn't support
+        skip_verification option.
+
+    Remove when:
+        - W&B adds a `skip_verification` parameter to LocalFileHandler
     """
     global _LOCAL_FILE_HANDLER_PATCHED
     if _LOCAL_FILE_HANDLER_PATCHED:
@@ -285,10 +319,27 @@ def patch_wandb_init_for_lineage(
     artifact_qualified_names: list[str],
     tags: list[str] | None = None,
 ) -> None:
-    """Patch `wandb.init()` so that, once a run is active, lineage is registered.
+    """Patch wandb.init() to register artifact lineage after initialization.
 
-    Intended for setups where another library owns `wandb.init()` (e.g. Megatron-Bridge)
-    but this project resolves artifacts before that init happens.
+    Why:
+        Megatron-Bridge owns wandb.init(), but we resolve artifacts (via ${art:...}
+        interpolations) before MB calls init(). Without this patch, artifact lineage
+        (input artifacts used by the run) would not be recorded because wandb.run
+        doesn't exist yet when we resolve artifacts.
+
+    How:
+        We wrap wandb.init() to call _register_lineage_if_possible() after the
+        original init completes. This registers all pending artifacts as inputs
+        to the run using wandb.run.use_artifact().
+
+    Upstream:
+        Not a bug - this is an architectural limitation. Megatron-Bridge doesn't
+        provide a post-init hook.
+
+    Remove when:
+        - We take over wandb.init() ourselves, OR
+        - Megatron-Bridge provides a post-init callback/hook, OR
+        - We restructure artifact resolution to happen after wandb.init()
     """
     global _WANDB_INIT_PATCHED
 
@@ -340,11 +391,24 @@ def _register_lineage_if_possible() -> None:
 
 
 def patch_wandb_runid_for_seeded_random() -> None:
-    """Patch wandb's generate_fast_id to use an independent random instance.
+    """Patch wandb's generate_fast_id to use OS entropy instead of global random.
 
-    This fixes the "Invalid Client ID digest" error that occurs when random.seed()
-    is called before artifact creation (common in ML training for reproducibility).
-    See: https://github.com/wandb/wandb/pull/11039
+    Why:
+        ML training code commonly calls random.seed() for reproducibility before
+        wandb artifacts are created. W&B's generate_fast_id() uses Python's global
+        random module, so after seeding, all runs generate the same artifact IDs,
+        causing "Invalid Client ID digest" errors.
+
+    How:
+        We replace generate_fast_id() with a version that uses an independent
+        Random instance seeded from os.urandom(), unaffected by global seeding.
+
+    Upstream:
+        https://github.com/wandb/wandb/pull/11039 (fix merged but not yet released)
+
+    Remove when:
+        - wandb >= X.Y.Z (version containing the fix) is required in pyproject.toml
+        - Check the PR above to find which version includes the fix
     """
     global _RUNID_PATCHED
     if _RUNID_PATCHED:
@@ -429,14 +493,27 @@ def _resolve_to_lustre_path(path: str) -> str:
 
 
 def patch_wandb_checkpoint_logging() -> None:
-    """Monkey patch on_save_checkpoint_success to use add_reference like Megatron-Bridge.
+    """Patch Megatron-Bridge's checkpoint logging to call wait() after log_artifact.
 
-    The original Megatron-Bridge code uses add_reference(checksum=False) but doesn't
-    call wait(), so artifacts don't show up in real-time. This patch adds wait() to
-    ensure artifacts are committed immediately.
+    Why:
+        Megatron-Bridge's on_save_checkpoint_success() logs checkpoint artifacts
+        using wandb.run.log_artifact() but doesn't call logged.wait(). Without
+        wait(), artifacts are uploaded asynchronously and may not appear in the
+        W&B UI until much later (or not at all if the job crashes).
 
-    IMPORTANT: Uses _resolve_to_lustre_path to convert container mount paths (/nemo_run/)
-    to actual Lustre paths, so artifacts can be accessed from other jobs.
+    How:
+        We replace on_save_checkpoint_success with a version that:
+        1. Creates the artifact with file reference
+        2. Logs the artifact
+        3. Calls wait() to ensure immediate commit
+        4. Also resolves container paths (/nemo_run/) to actual Lustre paths
+           so artifacts can be accessed from other jobs
+
+    Upstream:
+        No issue filed yet. Megatron-Bridge should add wait() call.
+
+    Remove when:
+        - Megatron-Bridge adds wait() to on_save_checkpoint_success upstream
     """
     from pathlib import Path
     from typing import Any
@@ -507,17 +584,31 @@ def patch_wandb_checkpoint_logging() -> None:
 
 
 def patch_nemo_rl_checkpoint_logging() -> None:
-    """Monkey patch NeMo-RL's CheckpointManager to log checkpoint artifacts to W&B.
+    """Patch NeMo-RL's CheckpointManager to log checkpoint artifacts to W&B.
 
-    NeMo-RL uses a different checkpoint mechanism than Megatron-Bridge. This patch
-    wraps CheckpointManager.finalize_checkpoint() to log the checkpoint as a W&B
-    artifact after the checkpoint is finalized.
+    Why:
+        NeMo-RL's CheckpointManager saves checkpoints locally but doesn't log them
+        as W&B artifacts. This means RL checkpoints aren't tracked in W&B and can't
+        be referenced using ${art:...} in downstream stages.
 
-    The artifact is created with:
-    - type: "model"
-    - name: "rl" (to match pretrain/sft naming convention)
-    - metadata: step number extracted from checkpoint path
-    - file reference: local path to checkpoint directory
+    How:
+        We wrap CheckpointManager.finalize_checkpoint() to:
+        1. Call the original finalize (renames tmp_step_X to step_X)
+        2. Create a W&B artifact with file reference to the checkpoint
+        3. Log with aliases (step_N, latest)
+        4. Call wait() to ensure immediate commit
+
+    Artifact format:
+        - type: "model"
+        - name: "rl" (matches pretrain/sft naming convention)
+        - metadata: step number, absolute_path (resolved Lustre path)
+        - file reference: local path to checkpoint directory
+
+    Upstream:
+        No issue filed yet. NeMo-RL should add native W&B artifact logging.
+
+    Remove when:
+        - NeMo-RL adds native W&B artifact logging for checkpoints
     """
     from pathlib import Path
     from typing import Any
