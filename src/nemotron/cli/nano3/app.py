@@ -22,16 +22,19 @@ from __future__ import annotations
 import typer
 
 from nemotron.cli.nano3.data import data_app
+from nemotron.cli.nano3.help import RecipeCommand, make_recipe_command
 from nemotron.cli.nano3.model import model_app
 from nemotron.cli.nano3.pretrain import pretrain
 from nemotron.cli.nano3.rl import rl
 from nemotron.cli.nano3.sft import sft
+
 
 # Create nano3 app
 nano3_app = typer.Typer(
     name="nano3",
     help="Nano3 training recipe",
     no_args_is_help=True,
+    rich_markup_mode="rich",
 )
 
 # Register data subgroup
@@ -40,27 +43,51 @@ nano3_app.add_typer(data_app, name="data")
 # Register model subgroup
 nano3_app.add_typer(model_app, name="model")
 
-# Register commands
+# Register commands with custom command class for enhanced help
+# Pretrain has data artifact override
 nano3_app.command(
     name="pretrain",
     context_settings={
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
+    rich_help_panel="Training Stages",
+    cls=make_recipe_command(
+        artifact_overrides={"data": "Pretrain data artifact (bin/idx blends)"},
+        config_dir="src/nemotron/recipes/nano3/stage0_pretrain/config",
+    ),
 )(pretrain)
 
+# SFT has data and model artifact overrides
 nano3_app.command(
     name="sft",
     context_settings={
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
+    rich_help_panel="Training Stages",
+    cls=make_recipe_command(
+        artifact_overrides={
+            "model": "Base model checkpoint artifact",
+            "data": "SFT data artifact (packed .npy)",
+        },
+        config_dir="src/nemotron/recipes/nano3/stage1_sft/config",
+    ),
 )(sft)
 
+# RL has data and model artifact overrides
 nano3_app.command(
     name="rl",
     context_settings={
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
+    rich_help_panel="Training Stages",
+    cls=make_recipe_command(
+        artifact_overrides={
+            "model": "SFT model checkpoint artifact",
+            "data": "RL data artifact (JSONL prompts)",
+        },
+        config_dir="src/nemotron/recipes/nano3/stage2_rl/config",
+    ),
 )(rl)

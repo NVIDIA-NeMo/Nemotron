@@ -31,19 +31,5 @@ from nemotron.kit.cli.recipe import recipe
     packager="code",
 )
 def rl(ctx: typer.Context) -> None:
-    """Prepare data for RL (JSONL chat format).
-
-    Config sources merged in order:
-    1. Default config (default.yaml)
-    2. Named config via -c/--config
-    3. env.toml profile via --run/--batch (merged into run.env)
-    4. CLI dotlist overrides (e.g., sample=1000)
-
-    Examples:
-        nemotron nano3 data prep rl                    # local execution
-        nemotron nano3 data prep rl sample=1000        # with sampling
-        nemotron nano3 data prep rl --config tiny      # use tiny config
-        nemotron nano3 data prep rl --run prep         # nemo-run attached
-        nemotron nano3 data prep rl --dry-run          # preview config
-    """
+    """Prepare data for RL (JSONL chat format)."""
     ...

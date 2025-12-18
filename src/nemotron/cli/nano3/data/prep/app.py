@@ -21,21 +21,26 @@ import typer
 from nemotron.cli.nano3.data.prep.pretrain import pretrain
 from nemotron.cli.nano3.data.prep.rl import rl
 from nemotron.cli.nano3.data.prep.sft import sft
+from nemotron.cli.nano3.help import make_recipe_command
 
 # Create prep app
 prep_app = typer.Typer(
     name="prep",
     help="Prepare data for training stages",
     no_args_is_help=True,
+    rich_markup_mode="rich",
 )
 
-# Register commands with allow_extra_args for dotlist overrides
+# Register commands with custom help and allow_extra_args for dotlist overrides
 prep_app.command(
     name="pretrain",
     context_settings={
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
+    cls=make_recipe_command(
+        config_dir="src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep",
+    ),
 )(pretrain)
 
 prep_app.command(
@@ -44,6 +49,9 @@ prep_app.command(
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
+    cls=make_recipe_command(
+        config_dir="src/nemotron/recipes/nano3/stage1_sft/config/data_prep",
+    ),
 )(sft)
 
 prep_app.command(
@@ -52,4 +60,7 @@ prep_app.command(
         "allow_extra_args": True,
         "ignore_unknown_options": True,
     },
+    cls=make_recipe_command(
+        config_dir="src/nemotron/recipes/nano3/stage2_rl/config/data_prep",
+    ),
 )(rl)

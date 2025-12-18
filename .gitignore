@@ -81,3 +81,6 @@ CLAUDE.md
 
 # Compiled config
 config.yaml
+
+# Documentation build
+docs/_build/
