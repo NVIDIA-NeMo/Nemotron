@@ -82,11 +82,7 @@ jobs:
               (c) => c.user.type === "Bot" && c.body.includes("Documentation Preview")
             );
 
-            const body = `## Documentation Preview
-
-:book: **Preview URL:** ${previewUrl}
-
-_Built from commit ${context.sha.substring(0, 7)}_`;
+            const body = `## Documentation Preview\n\n📖 **Preview URL:** ${previewUrl}\n\n_Built from commit ${context.sha.substring(0, 7)}_`;
 
             if (botComment) {
               await github.rest.issues.updateComment({
