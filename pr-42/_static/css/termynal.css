@@ -1,0 +1,144 @@
+/**
+ * termynal.css
+ * Styling for Termynal terminal animations.
+ *
+ * @author Ines Montani <ines@ines.io>
+ * @license MIT
+ *
+ * Adapted for NVIDIA Sphinx theme
+ */
+
+:root {
+    --termynal-bg: #252a33;
+    --termynal-text: #eee;
+    --termynal-text-subtle: #a2a2a2;
+    --termynal-comment: #76b900;  /* NVIDIA green */
+}
+
+[data-termynal] {
+    width: 100%;
+    max-width: 100%;
+    background: var(--termynal-bg);
+    color: var(--termynal-text);
+    font-size: 15px;
+    font-family: 'Roboto Mono', 'Fira Mono', Consolas, Menlo, Monaco, 'Courier New', Courier, monospace;
+    border-radius: 4px;
+    padding: 75px 45px 35px;
+    position: relative;
+    box-sizing: border-box;
+    line-height: 1.4;
+    margin: 1em 0;
+}
+
+/* macOS-style window chrome */
+[data-termynal]:before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #d9515d;
+    box-shadow: 25px 0 0 #f4c025, 50px 0 0 #3ec930;
+}
+
+/* "bash" label at top */
+[data-termynal]:after {
+    content: 'bash';
+    position: absolute;
+    color: var(--termynal-text-subtle);
+    top: 5px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+}
+
+/* Control links (fast/restart) */
+a[data-terminal-control] {
+    text-align: right;
+    display: block;
+    color: #aebbff;
+    font-size: 0.85em;
+    margin-top: 0.5em;
+}
+
+a[data-terminal-control]:hover {
+    color: #d4dbff;
+    text-decoration: none;
+}
+
+/* Line styling */
+[data-ty] {
+    display: block;
+    line-height: 2;
+}
+
+[data-ty]:before {
+    content: '';
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Input prompt ($) */
+[data-ty="input"]:before,
+[data-ty-prompt]:before {
+    margin-right: 0.75em;
+    color: var(--termynal-text-subtle);
+}
+
+[data-ty="input"]:before {
+    content: '$';
+}
+
+/* Custom prompt */
+[data-ty][data-ty-prompt]:before {
+    content: attr(data-ty-prompt);
+}
+
+/* Cursor animation */
+[data-ty-cursor]:after {
+    content: attr(data-ty-cursor);
+    font-family: monospace;
+    margin-left: 0.5em;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+/* Comment styling */
+.termynal-comment {
+    color: var(--termynal-comment);
+    font-style: italic;
+}
+
+/* Container wrapper for .termy divs */
+.termy {
+    margin: 1.5em 0;
+}
+
+/* Hide the original code block when inside .termy */
+.termy .highlight {
+    display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    [data-termynal] {
+        padding: 55px 20px 25px;
+        font-size: 13px;
+    }
+
+    [data-termynal]:before {
+        width: 12px;
+        height: 12px;
+        top: 12px;
+        left: 12px;
+        box-shadow: 20px 0 0 #f4c025, 40px 0 0 #3ec930;
+    }
+}
