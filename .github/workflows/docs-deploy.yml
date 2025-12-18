@@ -18,7 +18,7 @@ on:
   push:
     branches:
       - dev
-      # - main  # Uncomment after dev is merged into main
+      - main
     paths:
       - "docs/**"
       - "pyproject.toml"
@@ -46,8 +46,13 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
-      - name: Build documentation
-        run: uv run --group docs sphinx-build docs docs/_build/html -W --keep-going
+      - name: Build documentation (dev)
+        if: github.ref == 'refs/heads/dev'
+        run: DOCS_VERSION=dev uv run --group docs sphinx-build docs docs/_build/html -W --keep-going
+
+      - name: Build documentation (stable)
+        if: github.ref == 'refs/heads/main'
+        run: DOCS_VERSION=stable uv run --group docs sphinx-build docs docs/_build/html -W --keep-going
 
       - name: Deploy docs (dev branch)
         if: github.ref == 'refs/heads/dev'
@@ -62,15 +67,15 @@ jobs:
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "docs: deploy dev from ${{ github.sha }}"
 
-      # Uncomment after dev is merged into main
-      # - name: Deploy docs (main branch)
-      #   if: github.ref == 'refs/heads/main'
-      #   uses: peaceiris/actions-gh-pages@v4
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     publish_dir: ./docs/_build/html
-      #     publish_branch: gh-pages
-      #     keep_files: true
-      #     user_name: "github-actions[bot]"
-      #     user_email: "github-actions[bot]@users.noreply.github.com"
-      #     commit_message: "docs: deploy from ${{ github.sha }}"
+      - name: Deploy docs (main branch)
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_build/html
+          publish_branch: gh-pages
+          destination_dir: stable
+          keep_files: true
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_message: "docs: deploy stable from ${{ github.sha }}"
