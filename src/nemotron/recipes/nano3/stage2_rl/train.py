@@ -103,7 +103,12 @@ def setup_single_nemo_gym_dataset(jsonl_fpath: str, tokenizer, num_repeats: int 
 
 def main() -> None:
     """Main entry point for GRPO training."""
-    # Apply wandb monkey patches early, before any wandb imports/init
+    # -------------------------------------------------------------------------
+    # WANDB MONKEY-PATCHES
+    # These patches work around bugs in wandb and NeMo-RL.
+    # See nemotron/kit/wandb.py for detailed "Why" / "Remove when" documentation.
+    # Applied early, before any wandb imports/init.
+    # -------------------------------------------------------------------------
     from nemotron.kit.wandb import (
         patch_nemo_rl_checkpoint_logging,
         patch_wandb_http_handler_skip_digest_verification,

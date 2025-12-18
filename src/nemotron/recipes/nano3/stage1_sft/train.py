@@ -114,14 +114,14 @@ def main() -> None:
         logger.error(str(e))
         sys.exit(1)
 
+    # -------------------------------------------------------------------------
+    # WANDB MONKEY-PATCHES
+    # These patches work around bugs in wandb and Megatron-Bridge.
+    # See nemotron/kit/wandb.py for detailed "Why" / "Remove when" documentation.
+    # -------------------------------------------------------------------------
     patch_wandb_http_handler_skip_digest_verification()
     patch_wandb_local_file_handler_skip_digest_verification()
-
-    # Fix "Invalid Client ID digest" error caused by seeded random (wandb bug)
-    # See: https://github.com/wandb/wandb/pull/11039
     patch_wandb_runid_for_seeded_random()
-
-    # Apply monkey patch for wandb checkpoint artifact logging
     patch_wandb_checkpoint_logging()
 
     # Clear artifact cache to ensure fresh downloads (important for :latest resolution)
