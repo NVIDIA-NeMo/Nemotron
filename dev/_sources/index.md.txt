@@ -1,6 +1,10 @@
 # Nemotron Training Recipes
 
-Reproducible training recipes for the NVIDIA Nemotron model family — transparent pipelines for data preparation, training, and evaluation across all stages.
+**Open and efficient models for agentic AI** — reproducible training pipelines with fully transparent data, techniques, and weights.
+
+<div style="text-align: center; margin: 2rem 0;">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/_y9SEtn1lU8" title="Nemotron Overview" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
 
 ## Quick Start
 
@@ -70,6 +74,15 @@ The Nemotron training pipeline follows a three-stage approach with full artifact
 | 0 | [Pretraining](train/nano3/pretrain.md) | Base model training on large text corpus |
 | 1 | [SFT](train/nano3/sft.md) | Supervised fine-tuning for instruction following |
 | 2 | [RL](train/nano3/rl.md) | Reinforcement learning for alignment |
+
+## Why Nemotron?
+
+| | |
+|---|---|
+| **Open Models** | Transparent training data, techniques, and weights for community innovation |
+| **Compute Efficiency** | Model pruning enabling higher throughput via TensorRT-LLM |
+| **High Accuracy** | Built on frontier open models with human-aligned reasoning |
+| **Flexible Deployment** | Deploy anywhere — edge, single GPU, or data center with NIM |
 
 ## Key Features
 
