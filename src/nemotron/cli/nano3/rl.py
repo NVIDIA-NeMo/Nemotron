@@ -42,19 +42,5 @@ CONFIG_DIR = "src/nemotron/recipes/nano3/stage2_rl/config"
     run_command="cp ./main.py /opt/nemo-rl/ && cp ./config.yaml /opt/nemo-rl/ && cd /opt/nemo-rl && uv run python {script} --config {config}",
 )
 def rl(ctx: typer.Context) -> None:
-    """Run reinforcement learning with NeMo-RL GRPO (stage2).
-
-    Config sources merged in order:
-    1. Default config (tiny.yaml)
-    2. Named config via -c/--config
-    3. env.toml profile via --run/--batch (merged into run.env)
-    4. CLI dotlist overrides (e.g., grpo.num_iterations=100)
-
-    Examples:
-        nemotron nano3 rl -c tiny                       # local execution
-        nemotron nano3 rl --config tiny --run dlw       # nemo-run attached
-        nemotron nano3 rl -c tiny -r dlw grpo.num_iterations=100
-        nemotron nano3 rl -c tiny --dry-run             # preview config
-        nemotron nano3 rl -c tiny --batch dlw --mock    # detached + passthrough
-    """
+    """Run reinforcement learning with NeMo-RL GRPO (stage2)."""
     ...

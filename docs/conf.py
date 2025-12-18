@@ -20,15 +20,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import os
-
 project = "Nemotron"
-copyright = "2026, NVIDIA Corporation"
+copyright = "2025, NVIDIA Corporation"
 author = "NVIDIA Corporation"
-
-# Version is set by CI via DOCS_VERSION env var (dev or stable)
-# Defaults to "dev" for local builds
-release = os.environ.get("DOCS_VERSION", "nightly")
+release = "latest"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -81,13 +76,13 @@ html_js_files = [
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
     "switcher": {
-        "json_url": "../versions1.json",
+        "json_url": "versions1.json",
         "version_match": release,
     },
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/NVIDIA-NeMo/Nemotron",
+            "url": "https://github.com/NVIDIA/nemotron",
             "icon": "fa-brands fa-github",
         }
     ],

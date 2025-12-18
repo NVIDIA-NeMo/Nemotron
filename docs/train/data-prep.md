@@ -1,6 +1,8 @@
 # Data Preparation Module
 
-The `nemotron.data_prep` module focuses on **last-mile data processing**—transforming curated datasets into training-ready formats. It bridges the gap between data curation (handled by [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator)) and model training, producing outputs compatible with the NVIDIA AI training stack.
+The `nemotron.data_prep` module focuses on **last-mile data processing**—transforming curated datasets into training-ready formats. It bridges the gap between data curation (handled by [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator)) and model training, producing outputs compatible with the NVIDIA AI training stack.
+
+> **Coming Soon**: Native integration with [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) for data curation and [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) for synthetic data generation. These integrations will enable end-to-end data pipelines from raw sources to training-ready formats.
 
 ## Overview
 
@@ -14,9 +16,10 @@ Built on top of [Ray](https://ray.io/), the data preparation module provides:
 
 ### Data Pipeline: Curator → Data Prep → Training
 
-This module is designed to work alongside [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) in a two-stage data pipeline:
+This module is designed to work alongside [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) in a two-stage data pipeline:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
 flowchart LR
     subgraph sources["📁 Raw Data"]
         CC["CommonCrawl"]
@@ -51,7 +54,7 @@ flowchart LR
 ```
 
 **Typical workflow:**
-1. Use **[NeMo Curator](https://github.com/NVIDIA/NeMo-Curator)** to curate raw data at scale—deduplication, quality filtering, language identification, PII removal
+1. Use **[NeMo Curator](https://github.com/NVIDIA-NeMo/Curator)** to curate raw data at scale—deduplication, quality filtering, language identification, PII removal
 2. Use **Data Prep** to transform curated data into training-ready formats—tokenization, chat templating, sequence packing, loss mask generation
 
 This separation allows you to curate once and prepare data multiple times for different training configurations (different tokenizers, sequence lengths, or output formats).
@@ -62,11 +65,11 @@ Each training stage in a recipe includes a dedicated data preparation step that 
 
 | Stage | Data Prep Output | Training Framework | Guide |
 |-------|------------------|-------------------|-------|
-| Stage 0: Pretrain | bin/idx indexed datasets | Megatron-Bridge | [pretrain.md](./nano3/pretrain.md#data-preparation) |
-| Stage 1: SFT | Packed .npy with loss masks | Megatron-Bridge | [sft.md](./nano3/sft.md#data-preparation) |
-| Stage 2: RL | JSONL with OpenAI chat format | NeMo-RL | [rl.md](./nano3/rl.md#data-preparation) |
+| Stage 0: Pretrain | bin/idx indexed datasets | [Megatron-Bridge](./nvidia-stack.md#megatron-bridge) | [pretrain.md](./nano3/pretrain.md#data-preparation) |
+| Stage 1: SFT | Packed .npy with loss masks | [Megatron-Bridge](./nvidia-stack.md#megatron-bridge) | [sft.md](./nano3/sft.md#data-preparation) |
+| Stage 2: RL | JSONL with OpenAI chat format | [NeMo-RL](./nvidia-stack.md#nemo-rl) | [rl.md](./nano3/rl.md#data-preparation) |
 
-Run data preparation for any stage using the CLI:
+Run data preparation for any stage using the [CLI](./cli.md):
 
 ```bash
 uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER   # Stage 0
@@ -74,9 +77,11 @@ uv run nemotron nano3 data prep sft --run YOUR-CLUSTER        # Stage 1
 uv run nemotron nano3 data prep rl --run YOUR-CLUSTER         # Stage 2
 ```
 
+> **Note**: The `--run YOUR-CLUSTER` flag submits jobs via [NeMo-Run](./nemo-run.md). See [Execution through NeMo-Run](./nemo-run.md) for setup.
+
 ### NeMo-Run Integration
 
-The module integrates natively with [NeMo-Run](https://github.com/NVIDIA/NeMo-Run) for job orchestration. Submit data preparation jobs to various executors (Slurm, local, Docker, cloud) directly from your local machine:
+The module integrates natively with [NeMo-Run](./nemo-run.md) for job orchestration. Submit data preparation jobs to various executors (Slurm, local, Docker, cloud) directly from your local machine:
 
 ```bash
 # Submit to Slurm cluster
@@ -98,7 +103,7 @@ account = "YOUR-ACCOUNT"
 partition = "batch"
 ```
 
-See [nemo-run.md](./nemo-run.md) for complete configuration options.
+See [Execution through NeMo-Run](./nemo-run.md) for complete configuration options.
 
 ## Choosing an API
 
@@ -478,7 +483,7 @@ output/
 **blend.json format** (per-split mode):
 ```json
 {
-  "train": [["1.0", "/path/to/train/shard_000000"], ...],
+  "train": [["1.0", "/path/to/train/shard_000000"], ["1.0", "/path/to/train/shard_000001"]],
   "valid": [["1.0", "/path/to/valid/shard_000000"]],
   "test": [["1.0", "/path/to/test/shard_000000"]]
 }
@@ -551,3 +556,13 @@ Core dependencies:
 Optional dependencies:
 - `orjson` - Fast JSON serialization (falls back to stdlib json)
 - `zstandard` - Zstd compression for JSONL output
+
+## Further Reading
+
+- [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) — Data curation at scale (coming soon)
+- [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) — Synthetic data generation (coming soon)
+- [NVIDIA AI Stack](./nvidia-stack.md) — Megatron-Core, Megatron-Bridge, NeMo-RL documentation
+- [Execution through NeMo-Run](./nemo-run.md) — Job orchestration and execution profiles
+- [CLI Framework](./cli.md) — CLI building and recipe decorators
+- [Artifact Lineage](./artifacts.md) — W&B artifact system and lineage tracking
+- [Nano3 Recipe](./nano3/README.md) — Complete training recipe example

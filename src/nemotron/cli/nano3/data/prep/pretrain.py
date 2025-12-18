@@ -31,19 +31,5 @@ from nemotron.kit.cli.recipe import recipe
     packager="code",
 )
 def pretrain(ctx: typer.Context) -> None:
-    """Tokenize data for pretraining (bin/idx format).
-
-    Config sources merged in order:
-    1. Default config (default.yaml)
-    2. Named config via -c/--config
-    3. env.toml profile via --run/--batch (merged into run.env)
-    4. CLI dotlist overrides (e.g., sample=1000)
-
-    Examples:
-        nemotron nano3 data prep pretrain                  # local execution
-        nemotron nano3 data prep pretrain sample=1000      # with sampling
-        nemotron nano3 data prep pretrain --config tiny    # use tiny config
-        nemotron nano3 data prep pretrain --run prep       # nemo-run attached
-        nemotron nano3 data prep pretrain --dry-run        # preview config
-    """
+    """Tokenize data for pretraining (bin/idx format)."""
     ...

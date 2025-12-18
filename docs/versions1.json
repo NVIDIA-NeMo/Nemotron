@@ -1,6 +1,7 @@
 [
     {
-        "version": "nightly",
-        "url": "https://docs.nvidia.com/nemotron/nightly/"
+        "preferred": true,
+        "version": "latest",
+        "url": "https://docs.nvidia.com/nemotron/latest/"
     }
 ]

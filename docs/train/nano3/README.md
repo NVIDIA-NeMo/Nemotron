@@ -1,41 +1,85 @@
 # Nemotron 3 Nano Training Recipe
 
-This recipe provides a complete, reproducible training pipeline for Nemotron 3 Nano—an open, efficient Mixture-of-Experts hybrid Mamba-Transformer model optimized for agentic reasoning.
+A complete, reproducible training pipeline for Nemotron 3 Nano—an open, efficient Mixture-of-Experts hybrid Mamba-Transformer model optimized for agentic reasoning.
 
-## Why Complete Training Pipelines
+## Quick Start
 
-Training a production model involves interconnected components where isolated examples miss critical interactions between stages. This recipe shows the complete journey from raw data to deployment-ready model, demonstrating:
+### Prerequisites
 
-- **How data quality affects downstream performance** across pretraining, SFT, and RL stages
-- **Which training techniques work together** in practice, not just theory
-- **Where validation gates prevent failures** and ensure reproducibility
-- **How to balance competing objectives** across the three training stages
+- **Slurm cluster** with GPU nodes (H100 recommended) — see [Execution through NeMo-Run](../nemo-run.md)
+- **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../artifacts.md)
+- **Container images**:
+  - Training: `nvcr.io/nvidia/nemo:25.11.nemotron_3_nano`
+  - RL: `nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano`
 
-Because this is a complete system, practitioners can extract specific techniques with confidence. Each component has been proven to work in a production context.
+### Installation
 
-### What You Can Extract
+```bash
+git clone https://github.com/NVIDIA/nemotron
+cd nemotron
+uv sync
+```
 
-This recipe provides battle-tested implementations of:
+### Configuration
 
-| Technique | Description | Stage |
-|-----------|-------------|-------|
-| **Curriculum-based pretraining** | Two-phase data mixture with quality-based weighting | Pretrain |
-| **Long-context extension** | CPT methodology for extending to 1M context | Pretrain |
-| **Multi-domain SFT** | 12+ data domains with chat templates and role-based loss masking | SFT |
-| **InfinityByte code synthesis** | Cross-domain competitive coding data generation | SFT |
-| **Tool-calling fine-tuning** | Recovery of tool-use capabilities post-SFT | SFT |
-| **Budget-controlled reasoning** | Truncated reasoning traces for controllable compute | SFT/RL |
-| **Multi-environment RLVR** | Simultaneous training across 7 reward environments | RL |
-| **GenRM reward modeling** | Generative reward model with circular comparison | RL |
-| **DPO for tool hallucination** | Reducing spurious tool calls through preference learning | RL |
+Create an `env.toml` file (see [Execution through NeMo-Run](../nemo-run.md) for details):
 
-> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
+```toml
+[wandb]
+project = "nemotron"
+entity = "YOUR-TEAM"
 
-## Model Overview
+[YOUR-CLUSTER]
+executor = "slurm"
+account = "YOUR-ACCOUNT"
+partition = "batch"
+nodes = 2
+ntasks_per_node = 8
+gpus_per_node = 8
+mounts = ["/lustre:/lustre"]
+```
 
-Nemotron 3 Nano achieves better or on-par accuracy than competitive models while having up to 3.3x higher inference throughput. The model demonstrates enhanced agentic, reasoning, and chat abilities with support for extended context lengths up to 1M tokens.
+### Run the Pipeline
 
-### Specifications
+<div class="termy">
+
+```console
+// Stage 0: Pretraining
+$ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
+$ uv run nemotron nano3 pretrain --run YOUR-CLUSTER
+
+// Stage 1: Supervised Fine-Tuning
+$ uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
+$ uv run nemotron nano3 sft --run YOUR-CLUSTER
+
+// Stage 2: Reinforcement Learning
+$ uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
+$ uv run nemotron nano3 rl --run YOUR-CLUSTER
+```
+
+</div>
+
+## Resources
+
+- **Tech Report**: [Nemotron 3 Nano Technical Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf)
+- **Model Weights**:
+  - [NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16) (Base model)
+  - [NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) (Instruct model)
+  - [NVIDIA-Nemotron-3-Nano-30B-A3B-FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8) (FP8 quantized)
+- **Model Collection**: [NVIDIA Nemotron v3 Collection](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3)
+- **Training Datasets**:
+  - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)
+  - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) (SFT and RL data)
+
+## Training Pipeline
+
+| Stage | Name | Purpose | Guide |
+|-------|------|---------|-------|
+| 0 | [Pretraining](./pretrain.md) | Base model on 25T tokens with curriculum learning | [pretrain.md](./pretrain.md) |
+| 1 | [SFT](./sft.md) | Multi-domain instruction tuning with 12+ data sources | [sft.md](./sft.md) |
+| 2 | [RL](./rl.md) | GRPO alignment with multi-environment rewards | [rl.md](./rl.md) |
+
+## Model Specifications
 
 | Specification | Value |
 |---------------|-------|
@@ -45,223 +89,46 @@ Nemotron 3 Nano achieves better or on-par accuracy than competitive models while
 | **Context Length** | Up to 1M tokens |
 | **Architecture** | Hybrid Mamba-Transformer with sparse MoE |
 
-### Architecture Details
+> For architecture details, see [Tech Report Section 2.1](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf).
 
-The model uses a hybrid Mamba-Transformer architecture with sparse Mixture-of-Experts layers replacing standard FFN layers. This design achieves better accuracy at a fraction of the active parameter count through granular MoE architectures with shared experts.
-
-| Component | Value |
-|-----------|-------|
-| Num Layers | 32 |
-| Model Dimension | 3008 |
-| Q-heads | 32 |
-| K/V-heads | 8 |
-| Head Dimension | 128 |
-| Mamba State Dimension | 128 |
-| Mamba Groups | 8 |
-| Mamba Heads | 64 |
-| Mamba Head Dimension | 64 |
-| Expert Dimension | 1856 |
-| Total Routable Experts | 128 |
-| Num Activated Experts | 6 |
-| Shared Experts | 2 |
-
-The MoE layers use DeepSeek's aux-loss-free load balancing strategy with an update rate of 1e-3 and a load balancing loss coefficient of 1e-4.
-
-### Resources
-
-- **Tech Report**: [Nemotron 3 Nano: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Model for Agentic Reasoning](https://arxiv.org/abs/2506.XXXXX)
-- **Model Weights**:
-  - [NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16) (Base model)
-  - [NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) (Instruct model)
-  - [NVIDIA-Nemotron-3-Nano-30B-A3B-FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8) (FP8 quantized)
-- **Model Collection**: [NVIDIA Nemotron v3 Collection](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3)
-
-## Training Pipeline
-
-The training proceeds in three stages, each building on the previous with full lineage tracking:
-
-| Stage | Name | Purpose | Framework | Guide |
-|-------|------|---------|-----------|-------|
-| 0 | [Pretraining](./pretrain.md) | Base model on 25T tokens with curriculum learning | Megatron-Bridge | [pretrain.md](./pretrain.md) |
-| 1 | [SFT](./sft.md) | Multi-domain instruction tuning with 12+ data sources | Megatron-Bridge | [sft.md](./sft.md) |
-| 2 | [RL](./rl.md) | GRPO alignment with multi-environment rewards | NeMo-RL | [rl.md](./rl.md) |
+## Stage Summaries
 
 ### Stage 0: Pretraining
 
-Pretraining uses a two-phase curriculum on 25 trillion tokens:
+Two-phase curriculum on 25 trillion tokens: Phase 1 (23.5T) focuses on diversity across web, code, math, and multilingual data; Phase 2 (1.5T) emphasizes high-quality sources. Includes long-context extension to 1M tokens.
 
-- **Phase 1**: High diversity with 23.5T tokens across web, code, math, and multilingual data
-- **Phase 2**: Quality-focused with 1.5T tokens prioritizing high-quality sources
-
-The long-context phase (LC-Phase) extends context to 1M tokens using 121B additional tokens with 8-way context/tensor/expert parallelism on H100 GPUs.
+→ [Pretraining Guide](./pretrain.md)
 
 ### Stage 1: Supervised Fine-Tuning
 
-SFT covers 12+ data domains using improved techniques over Nemotron Nano 2:
+Multi-domain instruction tuning covering 12+ data domains including competition math/code, InfinityByte cross-domain synthesis, STEM reasoning, conversational tool use, and multilingual support.
 
-- **Competition math and code** with tool-integrated reasoning
-- **InfinityByte** cross-domain code synthesis
-- **Synthetic STEM reasoning** via the RQA dataset
-- **Conversational tool use** with multi-turn trajectories
-- **Long context** with 256k token examples
-- **Formal proofs** using Lean theorem proving
-- **Multilingual** coverage across 5 target languages
-
-Data filtering removes malformed examples, pathological repetitions, and outputs with political/nationalistic narratives.
+→ [SFT Guide](./sft.md)
 
 ### Stage 2: Reinforcement Learning
 
-Post-training includes three RL methodologies:
+Multi-environment RLVR training across 7 reward environments using GRPO, plus GenRM-based RLHF and DPO for reducing tool hallucination.
 
-1. **RLVR (RL from Verifiable Rewards)** - Unified training across 7 environments simultaneously using GRPO with curriculum sampling
-2. **RLHF with GenRM** - Generative reward model with circular comparison strategy and length-normalized reward adjustment
-3. **DPO for tool hallucination** - Preference learning to reduce spurious tool calls (improves AIME25 accuracy from 80.88% to 84.58%)
+→ [RL Guide](./rl.md)
 
-## NVIDIA AI Stack
+## Execution Options
 
-This pipeline leverages production-grade components from the NVIDIA AI Stack:
-
-| Component | Purpose | Used In |
-|-----------|---------|---------|
-| **[NeMo Curator](https://github.com/NVIDIA/NeMo-Curator)** | Data curation at 100TB+ scale | Pretraining data *(coming soon)* |
-| **[Megatron-Core + Bridge](https://github.com/NVIDIA/Megatron-LM)** | Distributed training with advanced parallelism | Stage 0, Stage 1 |
-| **[NeMo-RL](https://github.com/NVIDIA/NeMo-RL)** | SFT, DPO, PPO, GRPO alignment | Stage 2 |
-| **[ModelOpt](https://github.com/NVIDIA/TensorRT-Model-Optimizer)** | Pruning, quantization, distillation | Optimization *(coming soon)* |
-| **[NeMo-Eval](https://github.com/NVIDIA/NeMo-Eval)** | Comprehensive benchmark evaluation | Evaluation *(coming soon)* |
-| **[NeMo-Run](https://github.com/NVIDIA/NeMo-Run)** | Job orchestration across Slurm, Docker, cloud | All stages |
-
-## Prerequisites
-
-### Requirements (v0)
-
-> **Slurm Only**: This initial release has been tested exclusively with Slurm execution. Support for additional NeMo-Run executors (local, Docker, SkyPilot, DGX Cloud) is planned for future releases.
-
-- **Slurm cluster** with GPU nodes (H100 recommended)
-- **Weights & Biases account** for experiment tracking and artifact lineage
-- **Container images**:
-  - Data prep: `anyscale/ray:2.49.2-py311`
-  - Training: `nvcr.io/nvidian/nemo:25.11-nano-v3.rc2`
-  - RL: NeMo-RL container
-
-> Future versions will also support configurable artifact backends beyond W&B.
-
-### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd nemotron
-
-# Install with uv (recommended)
-uv sync
-
-# Or with pip
-uv pip install -e .
-```
-
-## Configuration
-
-Create an `env.toml` file to configure execution profiles:
-
-```toml
-# Weights & Biases configuration
-[wandb]
-project = "nemotron"
-entity = "YOUR-TEAM"
-
-# CLI display settings
-[cli]
-theme = "github-light"
-
-# Cluster execution profile
-[YOUR-CLUSTER]
-executor = "slurm"
-account = "YOUR-ACCOUNT"
-partition = "batch"
-nodes = 2
-ntasks_per_node = 8
-gpus_per_node = 8
-mem = "0"
-exclusive = true
-mounts = ["/lustre:/lustre"]
-```
-
-Container images are specified in recipe config files (e.g., `config/tiny.yaml`), not in env.toml. See [nemo-run.md](../nemo-run.md) for complete configuration options.
-
-## Quick Start
-
-### Testing with Tiny Config
-
-Validate the setup with the `tiny` configuration before running full-scale training:
-
-```bash
-# Test data preparation
-uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER --sample 1000
-
-# Test training (small model, few iterations)
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
-```
-
-### Full Training Pipeline
-
-```bash
-# Stage 0: Pretraining
-uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
-uv run nemotron nano3 pretrain --run YOUR-CLUSTER
-
-# Stage 1: Supervised Fine-Tuning
-uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
-uv run nemotron nano3 sft --run YOUR-CLUSTER
-
-# Stage 2: Reinforcement Learning
-uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
-uv run nemotron nano3 rl --run YOUR-CLUSTER
-```
-
-## Execution Methods
-
-### CLI Execution (Recommended)
-
-The `nemotron` CLI integrates with NeMo-Run for execution across Slurm, local, Docker, and cloud backends.
+All commands support [NeMo-Run](../nemo-run.md) execution modes:
 
 | Option | Behavior | Use Case |
 |--------|----------|----------|
-| `--run <profile>` | Attached—submits job and streams logs | Interactive development, debugging |
-| `--batch <profile>` | Detached—submits and exits immediately | Long-running jobs, queued execution |
+| `--run <profile>` | Attached—submits job and streams logs | Interactive development |
+| `--batch <profile>` | Detached—submits and exits immediately | Long-running jobs |
+| `--dry-run` | Preview execution plan | Validation |
 
-```bash
-# Attached: wait for completion, stream logs
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER
-
-# Detached: submit and return immediately
-uv run nemotron nano3 pretrain -c tiny --batch YOUR-CLUSTER
-
-# Preview without execution
-uv run nemotron nano3 pretrain -c tiny --run YOUR-CLUSTER --dry-run
-```
-
-### Direct Script Execution
-
-For debugging inside a container on a compute node:
-
-```bash
-cd src/nemotron/recipes/nano3/stage0_pretrain
-
-# Data prep
-uv run python data_prep.py --config config/data_prep.yaml
-
-# Single-node training
-uv run python train.py --config config/tiny.yaml
-
-# Distributed training
-uv run torchrun --nproc_per_node=8 train.py --config config/tiny.yaml
-```
+See [Execution through NeMo-Run](../nemo-run.md) for profile configuration and advanced options.
 
 ## Artifact Lineage
 
-The pipeline tracks full lineage via W&B Artifacts:
+The pipeline tracks full lineage via [W&B Artifacts](../artifacts.md), enabling traceability from raw data to final model.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
 flowchart TB
     subgraph pretrain["Stage 0: Pretraining"]
         raw["Raw Text Data"] --> data0["DataBlendsArtifact-pretrain<br/>(bin/idx)"]
@@ -281,68 +148,117 @@ flowchart TB
         cmd2 --> model2["ModelArtifact-rl<br/>(Final Model)"]
     end
 
-    style pretrain fill:#e1f5fe
-    style sft fill:#f3e5f5
-    style rl fill:#e8f5e9
+    style pretrain fill:#e1f5fe,stroke:#2196f3
+    style sft fill:#f3e5f5,stroke:#9c27b0
+    style rl fill:#e8f5e9,stroke:#4caf50
 ```
 
-Each artifact links automatically when running stages in sequence, providing full traceability from raw data to final model.
+→ [Artifact Lineage & W&B Integration](../artifacts.md)
+
+## Open-Source Data
+
+> **Note**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
+
+## Coming Soon
+
+Native integrations with NVIDIA's NeMo ecosystem:
+
+| Tool | Description | Status |
+|------|-------------|--------|
+| [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) | Scalable data curation—deduplication, quality filtering, PII removal | Planned |
+| [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) | Synthetic data generation for instruction tuning and alignment | Planned |
+| [NeMo Export-Deploy](https://github.com/NVIDIA-NeMo/Export-Deploy) | Model export to TensorRT-LLM and deployment | Planned |
+| [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) | Comprehensive model evaluation and benchmarking | Planned |
+
+These integrations will enable end-to-end pipelines from data curation to model evaluation.
 
 ## CLI Reference
 
-### Data Preparation
+<div class="termy">
 
-```bash
-uv run nemotron nano3 data prep pretrain [--run <profile>] [--sample N] [--force]
-uv run nemotron nano3 data prep sft [--run <profile>] [--sample N] [--force]
-uv run nemotron nano3 data prep rl [--run <profile>] [--sample N] [--force]
+```console
+// Show available commands
+$ uv run nemotron nano3 --help
+Usage: nemotron nano3 [OPTIONS] COMMAND [ARGS]...
+
+ Nano3 training recipe
+
+╭─ Commands ───────────────────────────────────────────────────────────────╮
+│ data       Data curation and preparation commands                        │
+│ model      Model evaluation and import commands                          │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Training Stages ────────────────────────────────────────────────────────╮
+│ pretrain   Run pretraining with Megatron-Bridge (stage0).                │
+│ sft        Run supervised fine-tuning with Megatron-Bridge (stage1).     │
+│ rl         Run reinforcement learning with NeMo-RL GRPO (stage2).        │
+╰──────────────────────────────────────────────────────────────────────────╯
+
+// View training command help (SFT example with artifact overrides)
+$ uv run nemotron nano3 sft --help
+Usage: nemotron nano3 sft [OPTIONS]
+
+ Run supervised fine-tuning with Megatron-Bridge (stage1).
+
+╭─ Options ────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                            │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Global Options ─────────────────────────────────────────────────────────╮
+│  -c, --config NAME       Config name or path                             │
+│  -r, --run PROFILE       Submit to cluster (attached)                    │
+│  -b, --batch PROFILE     Submit to cluster (detached)                    │
+│  -d, --dry-run           Preview config without execution                │
+│  --stage                 Stage files for interactive debugging           │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Configs (-c/--config) ──────────────────────────────────────────────────╮
+│ Built-in: default, tiny                                                  │
+│ Custom: -c /path/to/your/config.yaml                                     │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Artifact Overrides (W&B artifact references) ───────────────────────────╮
+│  run.model     Base model checkpoint artifact                            │
+│  run.data      SFT data artifact (packed .npy)                           │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Run Overrides (override env.toml settings) ─────────────────────────────╮
+│  run.env.nodes               Number of nodes                             │
+│  run.env.nproc_per_node      GPUs per node                               │
+│  run.env.partition           Slurm partition                             │
+│  run.env.account             Slurm account                               │
+│  run.env.time                Job time limit (e.g., 04:00:00)             │
+│  run.env.container_image     Override container image                    │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ env.toml Profiles ──────────────────────────────────────────────────────╮
+│ Available profiles: YOUR-CLUSTER, YOUR-CLUSTER-large                     │
+│ Usage: --run PROFILE or --batch PROFILE                                  │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Examples ───────────────────────────────────────────────────────────────╮
+│ $ ... sft -c tiny                    Local execution                     │
+│ $ ... sft -c tiny --dry-run          Preview config                      │
+│ $ ... sft -c tiny --run my-cluster   Submit to cluster                   │
+│ $ ... sft -c tiny -r cluster run.env.nodes=4                             │
+╰──────────────────────────────────────────────────────────────────────────╯
 ```
 
-### Training
-
-```bash
-uv run nemotron nano3 pretrain [--run|--batch <profile>] [-c <config>] [overrides...]
-uv run nemotron nano3 sft [--run|--batch <profile>] [-c <config>] [overrides...]
-uv run nemotron nano3 rl [--run|--batch <profile>] [-c <config>] [overrides...]
-```
-
-### Options
-
-| Option | Description |
-|--------|-------------|
-| `--run <profile>` | Attached execution with log streaming |
-| `--batch <profile>` | Detached execution |
-| `-c <config>` | Select config from stage's config/ directory |
-| `--dry-run` | Preview execution plan |
+</div>
 
 ## Troubleshooting
 
-**W&B authentication**:
+**W&B authentication**: See [W&B Integration](../wandb.md) for setup.
 ```bash
 wandb login
 ```
 
-**Container not found**: Verify image path in config files. For SSH tunnels, ensure squashed images exist on remote.
+**Container not found**: Verify image path in config files.
 
-**Job submission fails**: Check Slurm account and partition in env.toml.
-
-```bash
-# Show available commands
-uv run nemotron nano3 --help
-
-# Show options for a command
-uv run nemotron nano3 pretrain --help
-```
-
-## Stage Guides
-
-- [Stage 0: Pretraining](./pretrain.md) — Base model training on large text corpus
-- [Stage 1: SFT](./sft.md) — Supervised fine-tuning for instruction following
-- [Stage 2: RL](./rl.md) — Reinforcement learning for alignment
-- [Importing Models & Data](./import.md) — Import existing checkpoints as W&B artifacts
+**Job submission fails**: Check Slurm account and partition in `env.toml`. See [Execution through NeMo-Run](../nemo-run.md).
 
 ## Further Reading
 
-- [NeMo-Run Configuration](../nemo-run.md) — Execution profiles and env.toml setup
-- [Data Preparation](../data-prep.md) — Data preparation module documentation
-- [Recipe Source](../../../src/nemotron/recipes/nano3/) — Implementation details
+- [Stage 0: Pretraining](./pretrain.md)
+- [Stage 1: SFT](./sft.md)
+- [Stage 2: RL](./rl.md)
+- [Importing Models & Data](./import.md)
+- [Artifact Lineage](../artifacts.md)
+- [Execution through NeMo-Run](../nemo-run.md)
+- [W&B Integration](../wandb.md)
+- [NVIDIA AI Stack](../nvidia-stack.md)
+- [CLI Framework](../cli.md)
+- [Data Preparation Module](../data-prep.md)
