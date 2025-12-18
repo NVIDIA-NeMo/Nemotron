@@ -1,11 +1,30 @@
 # NVIDIA Nemotron Developer Repository
 
-Developer companion repo for working with NVIDIA's Nemotron models: inference, fine-tuning, agents, visual reasoning, deployment, and complete training recipes.
+**Open and efficient models for agentic AI** — training recipes, deployment guides, and use-case examples for the Nemotron family.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Docs](https://img.shields.io/badge/docs-dev-76B900.svg)](https://nvidia-nemo.github.io/Nemotron/dev/)
+
+<div align="center">
+
+[![Watch the Nemotron Overview](https://img.youtube.com/vi/_y9SEtn1lU8/maxresdefault.jpg)](https://www.youtube.com/watch?v=_y9SEtn1lU8)
+
+**[Watch: Nemotron Overview](https://www.youtube.com/watch?v=_y9SEtn1lU8)**
+
+</div>
+
+---
+
+## Why Nemotron?
+
+| | |
+|---|---|
+| **Open Models** | Fully transparent training data, techniques, and weights for community innovation |
+| **Compute Efficiency** | Model pruning and optimization enabling higher throughput via TensorRT-LLM |
+| **High Accuracy** | Built on frontier open models with human-aligned reasoning for agentic workflows |
+| **Flexible Deployment** | Deploy anywhere — edge, single GPU, or data center with NIM microservices |
 
 ---
 
@@ -25,9 +44,15 @@ nemotron/
 
 ## What is Nemotron?
 
-[NVIDIA Nemotron](https://developer.nvidia.com/nemotron) is a family of open, high-efficiency models with fully transparent training data, weights, and recipes.
+[NVIDIA Nemotron](https://www.nvidia.com/en-us/ai-data-science/foundation-models/nemotron/) is a family of open, high-efficiency multimodal models purpose-built for agentic AI.
 
-Nemotron models are designed for **agentic AI workflows**—they excel at coding, math, scientific reasoning, tool calling, instruction following, and visual reasoning. Models are optimized for deployment across edge, single GPU, and data center environments, with support for NeMo, TensorRT-LLM, vLLM, SGLang, and NIM microservices.
+**Model Tiers:**
+
+- **Nano** — Optimized for edge and PC deployments
+- **Super** — Single GPU deployment with highest throughput
+- **Ultra** — Multi-GPU datacenter applications
+
+Nemotron models excel at coding, math, scientific reasoning, tool calling, instruction following, and visual reasoning. Deploy across edge, single GPU, or data center environments with support for NeMo, TensorRT-LLM, vLLM, SGLang, and NIM microservices.
 
 ---
 
@@ -136,4 +161,4 @@ Apache 2.0 License — see [LICENSE](LICENSE) for details.
 
 ---
 
-**NVIDIA Nemotron** — Open, transparent, and reproducible.
+**NVIDIA Nemotron** — Open and efficient models for agentic AI.
