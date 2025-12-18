@@ -194,6 +194,37 @@ OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | PackedOutputConfig | Cha
 
 
 @dataclass(frozen=True)
+class RayDataConfig:
+    """Configuration for Ray Data shard-task execution.
+
+    These settings map directly to Ray Data's ActorPoolStrategy and
+    map_batches parameters, providing explicit control over resource usage.
+
+    When enabled, uses Ray Data's streaming executor for shard processing
+    instead of manual actor pool management. Benefits include:
+    - Automatic actor lifecycle management (no leaked actors)
+    - Integrated backpressure with Ray's resource manager
+    - Explicit CPU accounting per actor
+
+    Attributes:
+        enabled: Enable Ray Data execution (vs legacy manual actors)
+        min_actors: Minimum actors to keep alive (warm pool)
+        max_actors: Maximum actors. None means use all available CPUs.
+        cpus_per_actor: CPUs allocated per actor (explicit accounting)
+        max_tasks_in_flight_per_actor: Pipelining depth to reduce scheduling
+            bubbles and keep actors fed. Note: does not by itself parallelize
+            a single actor; true I/O latency hiding requires either more actors
+            (with fractional num_cpus) or async internal concurrency.
+    """
+
+    enabled: bool = False
+    min_actors: int = 2
+    max_actors: int | None = None  # None = use all available CPUs
+    cpus_per_actor: float = 1.0
+    max_tasks_in_flight_per_actor: int = 2
+
+
+@dataclass(frozen=True)
 class OutputConfig:
     """Output configuration.
 
@@ -250,22 +281,23 @@ class PipelineConfig:
     Attributes:
         output: Output settings
         tokenizer: Tokenizer settings (required for binidx/packed formats, optional for jsonl)
-        num_actors: Number of Ray actors for parallel processing
         sample: Shard sampling spec ("10%", "5", or None for all)
         sample_seed: Random seed for sampling
         force: Force new run (ignore cached results)
         split: Split ratio for single-blend mode (e.g., "99990,8,2"). Deprecated.
         per_split: Per-split output configuration for Megatron-Bridge per_split_data_args_path
+        ray_data: Ray Data execution configuration. When enabled and ray_data.enabled=True,
+            uses Ray Data's ActorPoolStrategy for shard processing instead of manual actors.
     """
 
     output: OutputConfig
     tokenizer: TokenizerConfig | None = None
-    num_actors: int = 4
     sample: str | int | None = None
     sample_seed: int = 42
     force: bool = False
     split: str | None = None  # Deprecated - use per_split instead
     per_split: PerSplitConfig | None = None
+    ray_data: RayDataConfig | None = None
 
 
 # ============================================================================

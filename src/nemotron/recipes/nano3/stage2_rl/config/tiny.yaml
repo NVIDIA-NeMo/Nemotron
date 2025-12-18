@@ -2,7 +2,7 @@ run:
   data: SplitJsonlDataArtifact-rl:latest
   model: sft:latest
   env:
-    container: nvcr.io/nvidian/nemo-rl:25.11-nano-v3.rc2
+    container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano
 
 # GRPO Algorithm Configuration for training Nano v3
 grpo:

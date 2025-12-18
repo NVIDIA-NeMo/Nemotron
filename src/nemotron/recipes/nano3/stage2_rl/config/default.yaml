@@ -2,8 +2,7 @@ run:
   data: DataBlendsArtifact-rl:latest
   model: sft:latest
   env:
-    container: nvcr.io/nvidian/nemo-rl:25.11-nano-v3.rc2
-
+    container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano
 
 # GRPO Algorithm Configuration for training Nano v3
 grpo:
@@ -78,7 +77,7 @@ checkpointing:
 policy:
   model_name: "/path/to/hf_checkpoint"
   tokenizer:
-    name: ${policy.model_name} ## specify if you'd like to use a tokenizer different from the model's default
+    name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
   train_global_batch_size: 2048
   train_micro_batch_size: 1
   generation_batch_size: 64 # Only used when generating using HF backend

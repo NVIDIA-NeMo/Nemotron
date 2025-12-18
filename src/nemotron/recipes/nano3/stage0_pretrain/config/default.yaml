@@ -1,10 +1,10 @@
 run:
-  data: PretrainBlendsArtifact-default:latest
+  data: PretrainBlendsArtifact-tiny:latest
   env:
-    container: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
 
 recipe:
-  _target_: megatron.bridge.recipes.nemotronh.nemotron_next_3b_v2.nemotron_next_3b_v2_pretrain_config
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_pretrain_config
   per_split_data_args_path: ${art:data,path}/blend.json
 
 logger:

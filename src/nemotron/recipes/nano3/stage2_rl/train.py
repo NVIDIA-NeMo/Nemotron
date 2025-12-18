@@ -154,7 +154,8 @@ def main() -> None:
     if not args.config:
         args.config = os.path.join(
             os.path.dirname(__file__),
-            "grpo_nanov3.yaml",
+            "config",
+            "default.yaml",
         )
 
     config = load_config(args.config)

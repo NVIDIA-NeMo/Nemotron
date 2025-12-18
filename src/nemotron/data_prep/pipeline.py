@@ -38,6 +38,7 @@ from nemotron.data_prep.config import (
     OutputConfig,
     PackedOutputConfig,
     PipelineConfig,
+    RayDataConfig,
     ShardPlan,
     SourceChangedError,
 )
@@ -200,18 +201,24 @@ class PipelineResult:
 # ============================================================================
 
 
-def get_default_num_actors() -> int:
-    """Infer default number of Ray actors from available CPUs.
+def get_num_actors_from_cluster() -> int:
+    """Get number of actors from Ray cluster resources.
 
-    Uses os.cpu_count() but caps at a reasonable maximum to avoid
-    overwhelming the system. Leaves some headroom for the main process.
+    Queries the Ray cluster for available CPUs. Falls back to os.cpu_count()
+    if Ray cluster info is unavailable.
 
     Returns:
-        Number of actors to use (min 2, max 32, ~75% of CPUs)
+        Number of actors to use (minimum 2)
     """
+    try:
+        cluster_cpus = int(ray.cluster_resources().get("CPU", 0))
+        if cluster_cpus > 0:
+            return max(2, cluster_cpus)
+    except Exception:
+        pass
+    # Fallback to local CPU count
     cpu_count = os.cpu_count() or 4
-    # Use ~75% of CPUs, minimum 2, maximum 32
-    return max(2, min(32, int(cpu_count * 0.75)))
+    return max(2, cpu_count)
 
 
 def last_mile_process(
@@ -481,11 +488,11 @@ def _tokenize_per_split(blend: DataBlend, config: PipelineConfig) -> PipelineRes
         split_config = PipelineConfig(
             tokenizer=config.tokenizer,
             output=split_output,
-            num_actors=config.num_actors,
             sample=config.sample,
             sample_seed=config.sample_seed,
             force=config.force,
             split=None,  # No split ratio for per-split mode
+            ray_data=config.ray_data,
         )
 
         split_result = _process_split(
@@ -655,8 +662,8 @@ def _process_split(
             )
         )
 
-    # Show plan summary
-    con.plan_summary(plan_infos, run_hash, num_actors=config.num_actors)
+    # Show plan summary (auto-detect workers from cluster)
+    con.plan_summary(plan_infos, run_hash)
 
     # Execution phase
     results = {}
@@ -688,9 +695,9 @@ def _process_split(
                 execution_plans=[ep for ep in execution_plans if ep.pending_indices],
                 output_config=output_config,
                 fs=fs,
-                num_actors=config.num_actors,
                 live_status=live_status,
                 results=results,
+                ray_data_config=config.ray_data,
             )
         finally:
             live_status.stop()
@@ -821,19 +828,38 @@ def _process_all_shards_parallel(
     execution_plans: list[_DatasetExecutionPlan],
     output_config: InternalOutputConfig,
     fs,
-    num_actors: int,
     live_status,
     results: dict,
+    ray_data_config: RayDataConfig | None = None,
 ) -> None:
     """Process ALL pending shards from ALL datasets in parallel.
 
     This maximizes parallelism by submitting shards from all datasets
     to a shared actor pool, rather than processing datasets sequentially.
-    """
-    from nemotron.data_prep.shard_processor import ShardProcessor
 
+    When ray_data_config is provided and enabled, uses Ray Data's ActorPoolStrategy
+    for actor lifecycle management. Otherwise, uses legacy manual actor management.
+    """
     if not execution_plans:
         return
+
+    # Dispatch to Ray Data executor if enabled
+    if ray_data_config is not None and ray_data_config.enabled:
+        _process_shards_ray_data(
+            execution_plans=execution_plans,
+            output_config=output_config,
+            fs=fs,
+            ray_data_config=ray_data_config,
+            live_status=live_status,
+            results=results,
+        )
+        return
+
+    # Legacy path: manual actor management
+    from nemotron.data_prep.shard_processor import ShardProcessor
+
+    # Auto-detect num_actors from cluster
+    num_actors = get_num_actors_from_cluster()
 
     # Determine filesystem protocol
     protocol = fs.protocol
@@ -954,6 +980,191 @@ def _process_all_shards_parallel(
             ray.kill(actor)
 
 
+def _process_shards_ray_data(
+    execution_plans: list[_DatasetExecutionPlan],
+    output_config: InternalOutputConfig,
+    fs,
+    ray_data_config: RayDataConfig,
+    live_status,
+    results: dict,
+) -> None:
+    """Process shards using Ray Data ActorPoolStrategy.
+
+    This function provides the Ray Data-based alternative to manual actor management.
+    Key benefits:
+    - Automatic actor lifecycle management (no leaked actors)
+    - Integrated backpressure with Ray's resource manager
+    - Explicit CPU accounting per actor via num_cpus parameter
+
+    Args:
+        execution_plans: List of dataset execution plans with pending shards
+        output_config: Output configuration (dtype, min_doc_chars, etc.)
+        fs: fsspec filesystem instance
+        ray_data_config: Ray Data execution configuration
+        live_status: Live status panel for progress reporting
+        results: Dict to populate with per-dataset stats
+    """
+    from nemotron.data_prep.ray_data import (
+        BinIdxShardTaskUDF,
+        RayDataExecConfig,
+        ShardTask,
+        execute_shard_tasks,
+    )
+
+    if not execution_plans:
+        return
+
+    # Determine filesystem protocol for output
+    protocol = fs.protocol
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+    fs_protocol = protocol if protocol != "file" else "file"
+
+    # Get resolved tokenizer from first plan
+    # NOTE: Assumes tokenizer is globally uniform across all execution plans.
+    # If not guaranteed, would need to group tasks by tokenizer and run separate Ray Data jobs.
+    first_plan = execution_plans[0].plan
+    resolved_tokenizer = first_plan.resolved_tokenizer
+
+    # Verify tokenizer uniformity (hard requirement for v1)
+    for ep in execution_plans[1:]:
+        if ep.plan.resolved_tokenizer != resolved_tokenizer:
+            raise ValueError(
+                f"Tokenizer mismatch: dataset '{ep.name}' uses different tokenizer. "
+                f"Ray Data executor requires uniform tokenizer across all datasets in v1. "
+                f"Group datasets by tokenizer or disable Ray Data execution."
+            )
+
+    # Build task list across all datasets
+    tasks: list[ShardTask] = []
+    dataset_pending_counts: dict[str, int] = {}
+    dataset_completed_counts: dict[str, int] = {}
+
+    for ep in execution_plans:
+        live_status.start_dataset(ep.name)
+        dataset_pending_counts[ep.name] = len(ep.pending_indices)
+        dataset_completed_counts[ep.name] = 0
+
+        # HANDLE ZERO PENDING SHARDS: Immediately complete
+        # (otherwise complete_dataset is never called since on_result isn't triggered)
+        if len(ep.pending_indices) == 0:
+            results[ep.name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+            live_status.report_metrics(
+                ep.name,
+                rows=results[ep.name].get("total_sequences", 0),
+                tokens=results[ep.name].get("total_tokens", 0),
+            )
+            live_status.complete_dataset(ep.name)
+            continue  # Don't add tasks for this dataset
+
+        # Convert assignments to dicts (same as legacy)
+        assignment_dicts = {}
+        for a in ep.plan.file_assignments:
+            assignment_dicts[a.shard_index] = {
+                "shard_index": a.shard_index,
+                "files": [asdict(f) for f in a.files],
+                "total_bytes": a.total_bytes,
+            }
+
+        for shard_idx in ep.pending_indices:
+            tasks.append(
+                ShardTask.from_assignment(
+                    assignment=assignment_dicts[shard_idx],
+                    dataset_name=ep.name,
+                    plan_hash=ep.plan.plan_hash,
+                    shard_index=shard_idx,
+                    output_dir=ep.dataset_dir,
+                    receipts_dir=ep.receipts_dir,
+                    fs_protocol=fs_protocol,
+                    kind="binidx",
+                    text_field=ep.config.text_field,
+                )
+            )
+
+    # Skip if no tasks to execute
+    if not tasks:
+        return
+
+    # Resolve max_actors: None means use all available CPUs from Ray cluster
+    if ray_data_config.max_actors is None:
+        try:
+            cluster_cpus = int(ray.cluster_resources().get("CPU", 0))
+            max_actors = max(2, cluster_cpus)  # At least 2 actors
+        except Exception:
+            # Fallback if Ray cluster info unavailable
+            import os
+            max_actors = os.cpu_count() or 32
+    else:
+        max_actors = ray_data_config.max_actors
+
+    # Configure execution
+    exec_cfg = RayDataExecConfig(
+        min_actors=ray_data_config.min_actors,
+        max_actors=max_actors,
+        cpus_per_actor=ray_data_config.cpus_per_actor,
+        max_tasks_in_flight_per_actor=ray_data_config.max_tasks_in_flight_per_actor,
+    )
+
+    # Execution plan lookup for result handling
+    ep_by_name = {ep.name: ep for ep in execution_plans}
+
+    # Track which datasets have been reported for phase updates
+    # (report phase for first active dataset only to avoid noise)
+    active_datasets = [ep.name for ep in execution_plans if ep.pending_indices]
+
+    def on_result(r: dict) -> None:
+        """Callback for each completed task."""
+        name = r.get("dataset_name")
+        if not name:
+            return
+
+        # Report timing metrics for bottleneck analysis (W&B)
+        live_status.report_shard_timing(r)
+
+        # Update progress
+        live_status.advance_dataset(name)
+        dataset_completed_counts[name] = dataset_completed_counts.get(name, 0) + 1
+
+        # Check if dataset is complete
+        if dataset_completed_counts[name] >= dataset_pending_counts.get(name, 0):
+            ep = ep_by_name.get(name)
+            if ep:
+                # Aggregate final stats for this dataset
+                results[name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+                live_status.report_metrics(
+                    name,
+                    rows=results[name].get("total_sequences", 0),
+                    tokens=results[name].get("total_tokens", 0),
+                )
+                live_status.complete_dataset(name)
+
+    def on_progress(p: dict) -> None:
+        """Callback for periodic progress updates."""
+        phase = p.get("phase", "processing")
+        detail = p.get("detail", "")
+
+        # Report phase to all active datasets that haven't completed
+        for ds_name in active_datasets:
+            if dataset_completed_counts.get(ds_name, 0) < dataset_pending_counts.get(ds_name, 0):
+                live_status.report_phase(ds_name, phase, detail)
+
+    # Execute tasks via Ray Data
+    execute_shard_tasks(
+        tasks,
+        udf_cls=BinIdxShardTaskUDF,
+        udf_constructor_kwargs={
+            "resolved_tokenizer": resolved_tokenizer,
+            "min_doc_chars": output_config.min_doc_chars,
+            "max_doc_tokens": output_config.max_doc_tokens,
+            "dtype": output_config.dtype,
+            "max_rows": output_config.max_rows,
+        },
+        exec_cfg=exec_cfg,
+        on_result=on_result,
+        on_progress=on_progress,
+    )
+
+
 def _process_shards_with_actors(
     pending_indices: list[int],
     plan: ShardPlan,
@@ -962,7 +1173,6 @@ def _process_shards_with_actors(
     dataset_config: DatasetConfig,
     output_config: InternalOutputConfig,
     fs,
-    num_actors: int,
     on_progress: Callable[[], None] | None = None,
 ):
     """Process pending shards using actor pool.
@@ -976,6 +1186,9 @@ def _process_shards_with_actors(
         protocol = protocol[0]
     # Map protocol names to fsspec protocol identifiers
     fs_protocol = protocol if protocol != "file" else "file"
+
+    # Auto-detect num_actors from cluster
+    num_actors = get_num_actors_from_cluster()
 
     # Create actor pool
     actors = [
@@ -1293,8 +1506,8 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
 
         dataset_plans.append((dataset, dataset_dir, files, cached_stats))
 
-    # Show plan summary
-    con.plan_summary(plan_infos, run_hash, num_actors=config.num_actors)
+    # Show plan summary (auto-detect workers from cluster)
+    con.plan_summary(plan_infos, run_hash)
 
     # Execution phase
     has_work = any(
@@ -1319,7 +1532,6 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
                 compression=format_config.compression,
                 max_rows=config.output.max_rows,
                 fs=fs,
-                num_actors=config.num_actors,
             )
 
         # Aggregate stats
@@ -1408,7 +1620,6 @@ def _process_jsonl_shards_with_actors(
     compression: str,
     max_rows: int | None,
     fs,
-    num_actors: int,
 ) -> None:
     """Process files to JSONL shards using Ray actors."""
     from nemotron.data_prep.jsonl_processor import JsonlShardProcessor
@@ -1418,6 +1629,9 @@ def _process_jsonl_shards_with_actors(
     if isinstance(protocol, tuple):
         protocol = protocol[0]
     fs_protocol = protocol if protocol != "file" else "file"
+
+    # Auto-detect num_actors from cluster
+    num_actors = get_num_actors_from_cluster()
 
     # Create actor pool
     actors = [
@@ -1617,7 +1831,6 @@ def _process_packed_blend(blend: DataBlend, config: PipelineConfig) -> PipelineR
                 max_doc_tokens=config.output.max_doc_tokens,
                 max_rows=config.output.max_rows,
                 fs=fs,
-                num_actors=config.num_actors,
             )
 
         # Aggregate stats
@@ -1671,7 +1884,6 @@ def _process_packed_shards_with_actors(
     max_doc_tokens: int | None,
     max_rows: int | None,
     fs,
-    num_actors: int,
 ) -> None:
     """Process files to packed shards using Ray actors."""
     from dataclasses import asdict
@@ -1683,6 +1895,9 @@ def _process_packed_shards_with_actors(
     if isinstance(protocol, tuple):
         protocol = protocol[0]
     fs_protocol = protocol if protocol != "file" else "file"
+
+    # Auto-detect num_actors from cluster
+    num_actors = get_num_actors_from_cluster()
 
     # Create actor pool
     actors = [
@@ -1905,8 +2120,8 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
             )
         )
 
-    # Show plan summary
-    con.plan_summary(plan_infos, run_hash, num_actors=config.num_actors)
+    # Show plan summary (auto-detect workers from cluster)
+    con.plan_summary(plan_infos, run_hash)
 
     # Execution phase
     has_work = any(len(files) > 0 for _, _, _, files in dataset_plans)
@@ -1918,6 +2133,9 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
         from dataclasses import asdict
 
         from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+
+        # Auto-detect num_actors from cluster
+        num_actors = get_num_actors_from_cluster()
 
         actors = [
             ChatSftShardProcessor.remote(
@@ -1934,7 +2152,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                 used_in_filter=format_config.used_in_filter,
                 used_in_field=format_config.used_in_field,
             )
-            for _ in range(config.num_actors)
+            for _ in range(num_actors)
         ]
 
         # Create live status panel with all datasets
@@ -2176,7 +2394,6 @@ def _process_chat_sft_shards_with_actors(
     max_doc_tokens: int | None,
     max_rows: int | None,
     fs,
-    num_actors: int,
     on_progress: Callable[[], None] | None = None,
 ) -> None:
     """Process files to chat SFT packed shards using Ray actors.
@@ -2186,6 +2403,9 @@ def _process_chat_sft_shards_with_actors(
     with a shared actor pool.
     """
     from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+
+    # Auto-detect num_actors from cluster
+    num_actors = get_num_actors_from_cluster()
 
     # Create actor pool
     actors = [

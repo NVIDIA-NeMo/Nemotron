@@ -158,14 +158,29 @@ class DataPrepConfig:
     sample: int | None = None
     """Limit rows per dataset (for quick tests)"""
 
-    num_actors: int | None = None
-    """Ray actors for parallel processing (None = auto)"""
-
     force: bool = False
     """Force new run, ignoring cache"""
 
     artifact_name: str | None = None
     """Semantic artifact name (e.g., 'nano3/pretrain/data')"""
+
+    # Ray Data execution
+    ray_data_enabled: bool = True
+    """Enable Ray Data executor for shard processing.
+    Uses Ray Data's ActorPoolStrategy for automatic actor lifecycle
+    management, resource accounting, and bottleneck metrics in W&B."""
+
+    ray_data_min_actors: int = 2
+    """Minimum actors for Ray Data executor (warm pool)"""
+
+    ray_data_max_actors: int | None = None
+    """Maximum actors for Ray Data executor (None = use all available CPUs)"""
+
+    ray_data_cpus_per_actor: float = 1.0
+    """CPUs per actor for Ray Data executor"""
+
+    ray_data_max_tasks_in_flight: int = 2
+    """Max tasks in flight per actor (pipelining depth)"""
 
 
 def run_data_prep(
@@ -202,12 +217,6 @@ def run_data_prep(
                 # Use object.__setattr__ since Dataset is a Pydantic model
                 object.__setattr__(dataset, "text_field", config.text_field)
 
-    # Auto-detect num_actors from CPU count
-    num_actors = config.num_actors
-    if num_actors is None:
-        cpu_count = os.cpu_count() or 4
-        num_actors = max(2, min(32, cpu_count * 3 // 4))
-
     # Build pipeline config
     # When sampling, use 1 shard to get exactly `sample` rows per dataset
     num_shards = config.num_shards
@@ -224,29 +233,7 @@ def run_data_prep(
     # Resolve output_dir to absolute path for W&B artifact storage
     output_dir = config.output_dir.resolve() if hasattr(config.output_dir, 'resolve') else Path(config.output_dir).resolve()
 
-    pipeline_config = PipelineConfig(
-        output=OutputConfig(
-            dir=output_dir,
-            format=output_format,
-            min_doc_chars=config.min_doc_chars,
-            max_doc_tokens=config.max_doc_tokens,
-            max_rows=config.sample,
-        ),
-        tokenizer=TokenizerConfig(
-            model=config.tokenizer_model,
-            add_bos=config.add_bos,
-            add_eos=config.add_eos,
-        ),
-        num_actors=num_actors,
-        force=config.force,
-        split=config.split,
-        per_split=config.per_split,
-    )
-
-    # Initialize Ray with runtime_env excludes to prevent large directories from
-    # being packaged. Without this, Ray auto-packages the working directory when
-    # actors are created, which can exceed the 512MB GCS limit if output/ or other
-    # large directories are present.
+    # Initialize Ray early so we can query cluster resources
     import ray
 
     if not ray.is_initialized():
@@ -267,6 +254,74 @@ def run_data_prep(
             ]
         }
         ray.init(address="auto", ignore_reinit_error=True, runtime_env=runtime_env)
+
+    # Build Ray Data config if enabled, auto-detecting cluster resources
+    ray_data_config = None
+    if config.ray_data_enabled:
+        from nemotron.data_prep.config import RayDataConfig
+
+        # Auto-detect available CPUs from Ray cluster
+        # Fallback chain: Ray cluster -> SLURM env var -> os.cpu_count()
+        cluster_resources = ray.cluster_resources()
+        ray_cpus = cluster_resources.get("CPU", 0)
+        slurm_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", 0))
+        os_cpus = os.cpu_count() or 4
+
+        # Use the highest available CPU count (Ray may report fewer due to config issues)
+        available_cpus = max(int(ray_cpus), slurm_cpus, os_cpus)
+
+        # Use most of available CPUs for actors (leave some headroom)
+        # min_actors = start with good parallelism
+        # max_actors = allow scaling up to use all CPUs
+        cpus_per_actor = config.ray_data_cpus_per_actor
+        auto_max_actors = int(available_cpus * 0.9 / cpus_per_actor)  # Use 90% of CPUs
+        if config.ray_data_max_actors is not None:
+            max_actors = min(config.ray_data_max_actors, auto_max_actors)
+        else:
+            max_actors = auto_max_actors
+        min_actors = min(config.ray_data_min_actors, max_actors)
+
+        # Log resource detection for debugging
+        print(f"Ray cluster resources: {cluster_resources}")
+        print(f"CPU detection: Ray={ray_cpus}, SLURM={slurm_cpus}, os={os_cpus} -> using {available_cpus}")
+        print(f"Ray Data config: min_actors={min_actors}, max_actors={max_actors}")
+
+        # Log W&B status for debugging
+        try:
+            import wandb
+            if wandb.run is not None:
+                print(f"[W&B] Active run: {wandb.run.name} (id={wandb.run.id})")
+            else:
+                print("[W&B] No active run - metrics will not be logged")
+        except ImportError:
+            print("[W&B] wandb not installed")
+
+        ray_data_config = RayDataConfig(
+            enabled=True,
+            min_actors=min_actors,
+            max_actors=max_actors,
+            cpus_per_actor=cpus_per_actor,
+            max_tasks_in_flight_per_actor=config.ray_data_max_tasks_in_flight,
+        )
+
+    pipeline_config = PipelineConfig(
+        output=OutputConfig(
+            dir=output_dir,
+            format=output_format,
+            min_doc_chars=config.min_doc_chars,
+            max_doc_tokens=config.max_doc_tokens,
+            max_rows=config.sample,
+        ),
+        tokenizer=TokenizerConfig(
+            model=config.tokenizer_model,
+            add_bos=config.add_bos,
+            add_eos=config.add_eos,
+        ),
+        force=config.force,
+        split=config.split,
+        per_split=config.per_split,
+        ray_data=ray_data_config,
+    )
 
     # Run processing pipeline
     result = last_mile_process(blend, pipeline_config)

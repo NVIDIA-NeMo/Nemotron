@@ -59,15 +59,23 @@ def planning_header() -> None:
 
 
 def plan_summary(
-    datasets: list[DatasetPlanInfo], run_hash: str, num_actors: int | None = None
+    datasets: list[DatasetPlanInfo], run_hash: str
 ) -> None:
     """Print a summary table of all dataset plans."""
-    # Resolve num_actors to actual value (auto-detect if None)
-    if num_actors is None:
-        import os
+    # Auto-detect num_actors from Ray cluster
+    import os
 
-        cpu_count = os.cpu_count() or 4
-        num_actors = max(2, min(32, int(cpu_count * 0.75)))
+    import ray
+
+    try:
+        cluster_cpus = int(ray.cluster_resources().get("CPU", 0))
+        if cluster_cpus > 0:
+            num_actors = cluster_cpus
+        else:
+            num_actors = os.cpu_count() or 4
+    except Exception:
+        num_actors = os.cpu_count() or 4
+    num_actors = max(2, num_actors)
 
     console.print()
 
@@ -281,6 +289,50 @@ class DatasetStatus:
     rows_processed: int = 0  # Number of rows processed
     throughput: float = 0.0  # Rows per second
     start_time: float = 0.0  # When processing started (timestamp)
+    # Phase tracking for progress visibility
+    phase: str = ""  # Current phase: downloading, reading, tokenizing, writing
+    phase_detail: str = ""  # Optional detail (e.g., "3/10 files", "15K rows")
+
+
+@dataclass
+class BottleneckMetrics:
+    """Rolling window of shard timing metrics for bottleneck identification."""
+
+    # Cumulative timing (seconds) from all shards
+    time_download: float = 0.0
+    time_read: float = 0.0
+    time_tokenize: float = 0.0
+    time_write: float = 0.0
+    time_total: float = 0.0
+    # Counts
+    num_shards: int = 0
+    num_errors: int = 0
+    # Peak memory (if available)
+    peak_memory_mb: float = 0.0
+
+    def add_shard_stats(self, stats: dict) -> None:
+        """Update metrics from a shard's stats dict."""
+        self.time_download += stats.get("time_download_sec", 0.0)
+        self.time_read += stats.get("time_read_sec", 0.0)
+        self.time_tokenize += stats.get("time_tokenize_sec", 0.0)
+        self.time_write += stats.get("time_write_sec", 0.0)
+        self.time_total += stats.get("time_total_sec", 0.0)
+        self.num_shards += 1
+        self.num_errors += stats.get("num_errors", 0)
+        if "peak_memory_mb" in stats:
+            self.peak_memory_mb = max(self.peak_memory_mb, stats["peak_memory_mb"])
+
+    def get_percentages(self) -> dict[str, float]:
+        """Get time breakdown as percentages."""
+        total = self.time_download + self.time_read + self.time_tokenize + self.time_write
+        if total <= 0:
+            return {"download_pct": 0, "read_pct": 0, "tokenize_pct": 0, "write_pct": 0}
+        return {
+            "download_pct": (self.time_download / total) * 100,
+            "read_pct": (self.time_read / total) * 100,
+            "tokenize_pct": (self.time_tokenize / total) * 100,
+            "write_pct": (self.time_write / total) * 100,
+        }
 
 
 @dataclass
@@ -306,6 +358,7 @@ class LiveExecutionStatus:
     _start_time: float = field(default=0.0, repr=False)  # Pipeline start time
     _total_tokens: int = field(default=0, repr=False)  # Cumulative tokens processed
     _max_display: int = field(default=3, repr=False)  # Max datasets to show per page
+    _bottleneck_metrics: BottleneckMetrics = field(default_factory=BottleneckMetrics, repr=False)
 
     def _get_summary_counts(self) -> tuple[int, int, int, int]:
         """Get counts of datasets by status."""
@@ -324,11 +377,17 @@ class LiveExecutionStatus:
     def _log_progress_to_wandb(self, force: bool = False) -> None:
         """Log current progress to W&B for charts.
 
+        Logs both aggregate metrics and per-dataset progress, creating
+        a chart for each dataset showing shards completed over time.
+
         Args:
             force: If True, log immediately regardless of time throttling.
                    Used for final completion to ensure we capture 100%.
         """
+        import logging
         import time as time_module
+
+        logger = logging.getLogger(__name__)
 
         try:
             import wandb
@@ -352,26 +411,69 @@ class LiveExecutionStatus:
             tokens_per_sec = self._total_tokens / elapsed if elapsed > 0 else 0
 
             self._wandb_step += 1
-            wandb.log(
-                {
-                    "data_prep/progress/datasets_completed": completed,
-                    "data_prep/progress/datasets_total": total,
-                    "data_prep/progress/datasets_done": done,
-                    "data_prep/progress/datasets_cached": cached,
-                    "data_prep/progress/datasets_pending": pending,
-                    "data_prep/progress/completion_pct": (completed / total * 100)
-                    if total > 0
-                    else 0,
-                    "data_prep/progress/tokens": self._total_tokens,
-                    "data_prep/progress/tokens_per_sec": tokens_per_sec,
-                    "data_prep/progress/elapsed_sec": elapsed,
-                },
-                commit=True,  # Force immediate sync to W&B
-            )
+
+            # Define metrics on first call to ensure W&B creates charts
+            if self._wandb_step == 1:
+                try:
+                    # Aggregate metrics use elapsed_sec as x-axis
+                    wandb.define_metric("data_prep/progress/*", step_metric="data_prep/progress/elapsed_sec")
+                    wandb.define_metric("data_prep/bottleneck/*", step_metric="data_prep/progress/elapsed_sec")
+                    # Per-dataset metrics also use elapsed_sec as x-axis
+                    wandb.define_metric("data_prep/datasets/*", step_metric="data_prep/progress/elapsed_sec")
+                except Exception:
+                    pass  # define_metric may fail on older W&B versions
+
+            # Build log dict with aggregate metrics
+            log_data = {
+                "data_prep/progress/datasets_completed": completed,
+                "data_prep/progress/datasets_total": total,
+                "data_prep/progress/datasets_done": done,
+                "data_prep/progress/datasets_cached": cached,
+                "data_prep/progress/datasets_pending": pending,
+                "data_prep/progress/completion_pct": (completed / total * 100)
+                if total > 0
+                else 0,
+                "data_prep/progress/tokens": self._total_tokens,
+                "data_prep/progress/tokens_per_sec": tokens_per_sec,
+                "data_prep/progress/elapsed_sec": elapsed,
+            }
+
+            # Add per-dataset progress metrics
+            # This creates a separate chart for each dataset showing shards completed
+            for ds in self.datasets:
+                # Sanitize dataset name for W&B metric key (replace special chars)
+                safe_name = ds.name.replace("/", "_").replace("-", "_").replace(".", "_")
+                progress_pct = (ds.completed_shards / ds.total_shards * 100) if ds.total_shards > 0 else 0
+
+                log_data[f"data_prep/datasets/{safe_name}/shards_completed"] = ds.completed_shards
+                log_data[f"data_prep/datasets/{safe_name}/shards_total"] = ds.total_shards
+                log_data[f"data_prep/datasets/{safe_name}/progress_pct"] = progress_pct
+                log_data[f"data_prep/datasets/{safe_name}/tokens"] = ds.tokens
+
+            # Add bottleneck metrics if we have timing data
+            if self._bottleneck_metrics.num_shards > 0:
+                pcts = self._bottleneck_metrics.get_percentages()
+                log_data.update(
+                    {
+                        "data_prep/bottleneck/download_pct": pcts["download_pct"],
+                        "data_prep/bottleneck/read_pct": pcts["read_pct"],
+                        "data_prep/bottleneck/tokenize_pct": pcts["tokenize_pct"],
+                        "data_prep/bottleneck/write_pct": pcts["write_pct"],
+                        "data_prep/bottleneck/shards_processed": self._bottleneck_metrics.num_shards,
+                        "data_prep/bottleneck/errors": self._bottleneck_metrics.num_errors,
+                    }
+                )
+                if self._bottleneck_metrics.peak_memory_mb > 0:
+                    log_data["data_prep/resources/peak_memory_mb"] = (
+                        self._bottleneck_metrics.peak_memory_mb
+                    )
+
+            wandb.log(log_data, commit=True)  # Force immediate sync to W&B
+            logger.debug(f"[W&B] Logged data_prep metrics: step={self._wandb_step}, tokens={self._total_tokens}, datasets={len(self.datasets)}")
         except ImportError:
             pass
-        except Exception:
-            pass  # Don't fail pipeline on W&B errors
+        except Exception as e:
+            logger.warning(f"[W&B] Failed to log metrics: {e}")
 
     def _build_summary_line(self) -> Text:
         """Build a compact summary line."""
@@ -455,12 +557,26 @@ class LiveExecutionStatus:
             collapse_padding=True,
         )
         table.add_column("Dataset", style="cyan", no_wrap=True, min_width=20)
+        table.add_column("Phase", justify="left", min_width=12)
         table.add_column("Progress", justify="center", min_width=8)
-        table.add_column("Rows", justify="right", min_width=8)
         table.add_column("Tokens", justify="right", min_width=8)
         table.add_column("Speed", justify="right", min_width=8)
 
         for ds in page_datasets:
+            # Phase indicator with detail
+            if ds.phase:
+                phase_str = f"[yellow]{ds.phase}[/yellow]"
+                if ds.phase_detail:
+                    phase_str += f" [dim]{ds.phase_detail}[/dim]"
+            else:
+                # Show elapsed time when no phase info yet
+                if ds.start_time > 0:
+                    import time as time_module
+                    elapsed = time_module.time() - ds.start_time
+                    phase_str = f"[dim]starting... {elapsed:.0f}s[/dim]"
+                else:
+                    phase_str = "[dim]starting...[/dim]"
+
             # Progress indicator
             if ds.completed_shards >= ds.total_shards:
                 progress = "[green]✓[/green]"
@@ -468,11 +584,10 @@ class LiveExecutionStatus:
                 progress = f"{ds.completed_shards}/{ds.total_shards}"
 
             # Format metrics
-            rows_str = f"{ds.rows_processed:,}" if ds.rows_processed > 0 else "-"
             tokens_str = self._format_tokens(ds.tokens) if ds.tokens > 0 else "-"
             speed_str = self._format_throughput(ds.throughput)
 
-            table.add_row(ds.name, progress, rows_str, tokens_str, speed_str)
+            table.add_row(ds.name, phase_str, progress, tokens_str, speed_str)
 
         return table
 
@@ -674,6 +789,38 @@ class LiveExecutionStatus:
         self._total_tokens = sum(ds.tokens for ds in self.datasets)
         self.refresh()
         self._log_progress_to_wandb()
+
+    def report_shard_timing(self, stats: dict) -> None:
+        """Report timing stats from a completed shard for bottleneck analysis.
+
+        Called by Ray Data executor's on_result callback with shard stats dict
+        containing timing breakdowns: time_download_sec, time_read_sec,
+        time_tokenize_sec, time_write_sec, time_total_sec.
+
+        Args:
+            stats: Shard stats dict with timing information
+        """
+        self._bottleneck_metrics.add_shard_stats(stats)
+        # Log to W&B with throttling for live updates
+        self._log_progress_to_wandb()
+
+    def report_phase(self, name: str, phase: str, detail: str = "") -> None:
+        """Report the current processing phase for a dataset.
+
+        Used to show what's happening during long-running operations like
+        HuggingFace downloads.
+
+        Args:
+            name: Dataset name
+            phase: Current phase (e.g., "downloading", "reading", "tokenizing", "writing")
+            detail: Optional detail string (e.g., "3/10 files", "15K rows")
+        """
+        for ds in self.datasets:
+            if ds.name == name:
+                ds.phase = phase
+                ds.phase_detail = detail
+                break
+        self.refresh()
 
 
 def create_live_status(datasets: list[tuple[str, int]], run_hash: str) -> LiveExecutionStatus:

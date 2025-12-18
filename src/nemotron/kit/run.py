@@ -230,6 +230,121 @@ def resolve_partition(config: RunConfig, is_launch: bool) -> str | None:
     return config.partition
 
 
+def patch_nemo_run_ray_template_for_cpu() -> None:
+    """Patch nemo-run Ray template to properly handle CPU-only partitions.
+
+    The default nemo_run Ray template hardcodes gpus_per_node=8 and calculates
+    CPUs as 16*gpus_per_node, which results in 0 CPUs for CPU-only partitions.
+
+    This patch modifies the template location to use our custom template that
+    auto-detects CPUs from SLURM environment variables.
+    """
+    import os
+    import tempfile
+    from pathlib import Path
+
+    try:
+        # Use 'from ... import' syntax to avoid issues with 'run' being shadowed
+        # by the nemo_run.run function when using 'import nemo_run.run.ray.slurm'
+        from nemo_run.run.ray import slurm as slurm_mod
+    except Exception:
+        return
+
+    if getattr(slurm_mod, "_nemotron_cpu_template_patched", False):
+        return
+
+    # Get the path to our custom template
+    custom_template_dir = Path(__file__).parent / "templates"
+    custom_template_name = "ray_cpu.sub.j2"
+
+    # Check if our custom template exists
+    template_path = custom_template_dir / custom_template_name
+    if not template_path.exists():
+        return
+
+    def patched_create(
+        self,
+        pre_ray_start_commands=None,
+        dryrun=False,
+        command=None,
+        workdir=None,
+        command_groups=None,
+    ):
+        """Patched create that uses custom CPU-aware Ray template."""
+        name = self.name
+        executor = self.executor
+        cluster_dir = os.path.join(executor.tunnel.job_dir, name)
+
+        # Use custom template for CPU-aware Ray cluster
+        ray_sbatch = slurm_mod.SlurmRayRequest(
+            name=name,
+            cluster_dir=cluster_dir,
+            template_name=custom_template_name,
+            template_dir=str(custom_template_dir),
+            executor=executor,
+            pre_ray_start_commands=pre_ray_start_commands,
+            command=command,
+            workdir=workdir,
+            command_groups=command_groups,
+            launch_cmd=["sbatch", "--requeue", "--parsable", "--dependency=singleton"],
+        ).materialize()
+
+        if dryrun:
+            slurm_mod.logger.debug(f"Dry run: Ray cluster '{name}'")
+            print(ray_sbatch)
+            return None
+
+        slurm_mod.logger.info(f"Creating Ray cluster '{name}'")
+        # Check if a cluster with this name already exists
+        status = self.status()
+
+        if status["job_id"] is not None:
+            job_state = status["state"]
+            if job_state in ["PENDING", "RUNNING", "CONFIGURING"]:
+                slurm_mod.logger.debug(
+                    f"Ray cluster '{name}' already exists with ID {status['job_id']} "
+                    f"and is currently in {job_state} state. "
+                    f"Skipping creation."
+                )
+                return None
+            elif job_state not in [
+                "COMPLETING",
+                "COMPLETED",
+                "CANCELLED",
+                "FAILED",
+                "TIMEOUT",
+                "NOT_FOUND",
+            ]:
+                slurm_mod.logger.warning(
+                    f"Ray cluster '{name}' exists with ID {status['job_id']} "
+                    f"in state {job_state}. Creating new cluster anyway."
+                )
+
+        # Submit to SLURM - same logic as original nemo-run
+        executor.tunnel.connect()
+        executor.tunnel.run(f"mkdir -p {cluster_dir}")
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=True) as f:
+            f.write(ray_sbatch)
+            f.flush()
+            os.fsync(f.fileno())
+            ray_sbatch_path = f.name
+            executor.tunnel.put(ray_sbatch_path, os.path.join(cluster_dir, "ray.sub"))
+
+        sbatch_cmd = ["sbatch", "--parsable", os.path.join(cluster_dir, "ray.sub")]
+        job_id = executor.tunnel.run(" ".join(sbatch_cmd)).stdout.strip()
+
+        # Store job_id in cluster_map
+        self.cluster_map[name] = job_id
+
+        slurm_mod.logger.info(f"Slurm job for Ray cluster '{name}' created with ID {job_id}")
+
+        return job_id
+
+    slurm_mod.SlurmRayCluster.create = patched_create
+    slurm_mod._nemotron_cpu_template_patched = True
+
+
 def patch_nemo_run_rsync_accept_new_host_keys() -> None:
     """Patch nemo-run rsync to avoid hanging on first-time host key prompts.
 
@@ -266,8 +381,7 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
         kwargs["ssh_opts"] = ssh_opts
 
         rsync_opts = kwargs.get("rsync_opts", "") or ""
-        if "--info=progress2" not in rsync_opts:
-            rsync_opts = (rsync_opts + " " if rsync_opts else "") + "--info=progress2"
+        # Note: --info=progress2 removed because older rsync versions on some clusters don't support it
         if "--timeout" not in rsync_opts:
             rsync_opts = (rsync_opts + " " if rsync_opts else "") + "--timeout=60"
         # Use --delete for faster incremental syncs (removes stale files on remote)
@@ -277,6 +391,8 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
 
         # Default exclusions for our repo (avoid syncing large non-runtime dirs).
         # Users can override by passing `exclude=...` explicitly.
+        # Note: Use patterns anchored at root (e.g., "/artifacts") to avoid
+        # excluding source directories like src/nemotron/kit/artifacts.
         kwargs.setdefault(
             "exclude",
             (
@@ -288,10 +404,10 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
                 ".mypy_cache",
                 ".nemotron",
                 ".conductor",
-                "output",
-                "outputs",
-                "artifacts",
-                "wandb",
+                "/output",
+                "/outputs",
+                "/artifacts",
+                "/wandb",
                 "usage-cookbook",
                 "use-case-examples",
             ),
@@ -344,6 +460,7 @@ def build_executor(config: RunConfig, env_vars: dict[str, str] | None = None) ->
         ) from e
 
     patch_nemo_run_rsync_accept_new_host_keys()
+    patch_nemo_run_ray_template_for_cpu()
 
     # Parse and merge environment variables
     merged_env = {}
