@@ -9,7 +9,7 @@
 
 <div align="center">
 
-[![Watch the Nemotron Overview](https://img.youtube.com/vi/_y9SEtn1lU8/maxresdefault.jpg)](https://www.youtube.com/watch?v=_y9SEtn1lU8)
+[![Watch the Nemotron Overview](https://img.youtube.com/vi/_y9SEtn1lU8/hqdefault.jpg)](https://www.youtube.com/watch?v=_y9SEtn1lU8)
 
 **[Watch: Nemotron Overview](https://www.youtube.com/watch?v=_y9SEtn1lU8)**
 
