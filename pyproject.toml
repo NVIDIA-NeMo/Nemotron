@@ -1,0 +1,129 @@
+[project]
+name = "nemotron"
+version = "0.1.0"
+description = "Reproducible training recipes for NVIDIA Nemotron model family - transparent pipelines for data preparation, training, and evaluation across all stages"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Nemotron Contributors"}
+]
+keywords = ["nemotron", "nvidia", "llm", "training", "reproducible", "pipelines", "machine-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "nemo-run>=0.4.0",
+    "pydantic>=2.0.0",
+    "typer>=0.12.0",
+    "omegaconf>=2.3.0",
+    "rich>=13.0.0",
+    "textual>=0.70.0",
+    "ray==2.49.2",
+    "fsspec>=2024.0.0",
+    "numpy>=1.24.0",
+    "pyarrow>=14.0.0",
+    "xxhash>=3.4.0",
+    "transformers>=4.36.0",
+    "huggingface_hub>=0.20.0",
+    "datasets>=2.14.0",  # Required for ray.data.from_huggingface
+    "pyyaml>=6.0",
+    "tomli>=2.0.0;python_version<'3.11'",
+    "tomlkit>=0.12.0",
+    "colorama>=0.4.6",
+    "wandb>=0.23.1",
+    "jinja2>=3.0.0",  # Required for chat templates in transformers
+]
+
+[project.optional-dependencies]
+wandb = ["wandb>=0.15.0"]
+s3 = ["s3fs>=2024.0.0"]
+gcs = ["gcsfs>=2024.0.0"]
+sentencepiece = ["sentencepiece>=0.2.0"]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "wandb>=0.15.0",
+    "s3fs>=2024.0.0",
+    "gcsfs>=2024.0.0",
+    "sentencepiece>=0.2.0",
+]
+
+# Note: megatron-bridge is required for training but not listed as a dependency
+# because it requires CUDA/nvcc to build. Install separately in GPU environments:
+#   pip install megatron-bridge>=0.1.0
+
+[project.urls]
+Homepage = "https://github.com/nemotron/nemotron"
+Documentation = "https://github.com/nemotron/nemotron#readme"
+Repository = "https://github.com/nemotron/nemotron"
+
+[project.scripts]
+nemotron = "nemotron.__main__:main"
+
+[project.entry-points."fsspec.specs"]
+art = "nemotron.art.filesystem:ArtifactFileSystem"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nemotron"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+    "usage-cookbook",
+    "use-case-examples",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+run = [
+    "nemo-run>=0.4.0",
+]
+docs = [
+    "myst-parser>=4.0.1",
+    "nvidia-sphinx-theme>=0.0.8",
+    "sphinx>=8.1.3",
+    "sphinx-autobuild>=2024.10.3",
+    "sphinx-autodoc2>=0.5.0",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-design>=0.6.0",
+    "sphinxcontrib-mermaid",
+]

@@ -1,0 +1,206 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Squash command - convert Docker images to squash files on remote clusters.
+
+Usage:
+    nemotron kit squash dlw nvcr.io/nvidian/nemo:25.11-nano-v3.rc2
+    nemotron kit squash dlw --all  # squash all containers from config
+"""
+
+from __future__ import annotations
+
+import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+from nemotron.kit.cli.env import load_env_profile
+from nemotron.kit.cli.squash import check_sqsh_exists, container_to_sqsh_name
+
+console = Console()
+
+
+def squash(
+    profile: str = typer.Argument(
+        ...,
+        help="Env profile name from env.toml (e.g., 'dlw')",
+    ),
+    container: str | None = typer.Argument(
+        None,
+        help="Docker image to squash (e.g., 'nvcr.io/nvidian/nemo:25.11-nano-v3.rc2')",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "-d",
+        "--dry-run",
+        help="Show what would be done without executing",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Force re-squash even if squash file already exists",
+    ),
+) -> None:
+    """Convert Docker images to squash files on remote cluster.
+
+    Connects to the cluster via SSH and uses enroot to import Docker images
+    as squash files. Uses deterministic naming so existing images are skipped.
+
+    Examples:
+        nemotron kit squash dlw nvcr.io/nvidian/nemo:25.11-nano-v3.rc2
+        nemotron kit squash dlw rayproject/ray:nightly-extra-py312-cpu
+        nemotron kit squash dlw nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 --dry-run
+    """
+    # Load env profile
+    try:
+        env_config = load_env_profile(profile)
+    except (FileNotFoundError, KeyError) as e:
+        console.print(f"[red bold]Error:[/red bold] {e}")
+        raise typer.Exit(1)
+
+    # Validate profile has required fields
+    host = env_config.get("host")
+    user = env_config.get("user")
+    remote_job_dir = env_config.get("remote_job_dir")
+
+    if not host or not user:
+        console.print(
+            f"[red bold]Error:[/red bold] Profile '{profile}' missing host or user for SSH"
+        )
+        raise typer.Exit(1)
+
+    if not remote_job_dir:
+        console.print(f"[red bold]Error:[/red bold] Profile '{profile}' missing remote_job_dir")
+        raise typer.Exit(1)
+
+    if not container:
+        console.print("[red bold]Error:[/red bold] Container image is required")
+        console.print("\nUsage: nemotron kit squash <profile> <container>")
+        console.print("Example: nemotron kit squash dlw nvcr.io/nvidian/nemo:25.11-nano-v3.rc2")
+        raise typer.Exit(1)
+
+    # Generate squash filename
+    sqsh_name = container_to_sqsh_name(container)
+    remote_path = f"{remote_job_dir}/{sqsh_name}"
+
+    # Show configuration
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_column("Key", style="dim")
+    table.add_column("Value")
+    table.add_row("Profile", f"[cyan]{profile}[/cyan]")
+    table.add_row("Host", f"{user}@{host}")
+    table.add_row("Container", container)
+    table.add_row("Output", remote_path)
+    console.print(Panel(table, title="[bold]Squash Configuration[/bold]", expand=False))
+    console.print()
+
+    if dry_run:
+        console.print("[yellow]Dry-run mode - no changes will be made[/yellow]")
+        console.print()
+        console.print(f"Would run on {host}:")
+        console.print(f"  enroot import --output {remote_path} docker://{container}")
+        return
+
+    # Connect to cluster
+    try:
+        import nemo_run as run
+    except ImportError:
+        console.print("[red bold]Error:[/red bold] nemo-run is required for squash")
+        console.print("Install with: pip install nemo-run")
+        raise typer.Exit(1)
+
+    with console.status("[bold blue]Connecting to cluster..."):
+        tunnel = run.SSHTunnel(
+            host=host,
+            user=user,
+            job_dir=remote_job_dir,
+        )
+        tunnel.connect()
+
+    console.print("[green]Connected![/green]")
+    console.print()
+
+    # Check if already exists (unless force is set)
+    if not force and check_sqsh_exists(tunnel, remote_path):
+        console.print(f"[yellow]Squash file already exists:[/yellow] {remote_path}")
+        console.print("[dim]Skipping import. Use --force to re-squash.[/dim]")
+        tunnel.cleanup()
+        return
+
+    # Ensure remote directory exists
+    with console.status("[bold blue]Creating remote directory..."):
+        tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
+
+    # Remove existing file if force is set
+    if force:
+        console.print("[yellow]Removing existing squash file...[/yellow]")
+        tunnel.run(f"rm -f {remote_path}", hide=True)
+
+    # Build salloc command to run enroot import on a compute node
+    # (login nodes don't have enough memory for enroot import)
+    account = env_config.get("account")
+    partition = env_config.get("run_partition") or env_config.get("partition")
+    time_limit = env_config.get("time", "04:00:00")
+    gpus_per_node = env_config.get("gpus_per_node")
+
+    salloc_args = []
+    if account:
+        salloc_args.append(f"--account={account}")
+    if partition:
+        salloc_args.append(f"--partition={partition}")
+    salloc_args.append("--nodes=1")
+    salloc_args.append("--ntasks-per-node=1")
+    if gpus_per_node:
+        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
+    salloc_args.append(f"--time={time_limit}")
+
+    enroot_cmd = f"enroot import --output {remote_path} docker://{container}"
+    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
+
+    # Run enroot import via salloc
+    console.print("[bold]Allocating compute node and importing container...[/bold]")
+    console.print(f"  {container}")
+    console.print(f"  -> {remote_path}")
+    console.print()
+    console.print(f"[dim]$ {cmd}[/dim]")
+    console.print()
+    console.print("[dim]This may take several minutes...[/dim]")
+    console.print()
+
+    result = tunnel.run(cmd, hide=False, warn=True)
+
+    tunnel.cleanup()
+
+    if result.ok:
+        console.print()
+        console.print(
+            Panel(
+                f"[green]Successfully imported:[/green]\n{remote_path}",
+                title="[bold green]Complete[/bold green]",
+                border_style="green",
+                expand=False,
+            )
+        )
+    else:
+        console.print()
+        console.print(
+            Panel(
+                f"[red]Failed to import container[/red]\n{result.stderr or 'Unknown error'}",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+                expand=False,
+            )
+        )
+        raise typer.Exit(1)

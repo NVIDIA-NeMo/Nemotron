@@ -1,0 +1,56 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# Tiny config for pretrain data preparation (fast iteration/testing)
+#
+# Usage:
+#   nemotron nano3 data prep pretrain --config tiny
+#   nemotron nano3 data prep pretrain --config tiny --run prep
+#
+# This config uses sampling for quick testing.
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw_small.json
+
+# Output directory for tokenized data (outputs to job directory for persistence)
+output_dir: ${oc.env:PWD}/../output/stage0_pretrain_tiny
+
+# Number of output shards - smaller for tiny config
+num_shards: 4
+
+# Number of shards for validation split
+valid_shards: 1
+
+# Number of shards for test split
+test_shards: 1
+
+# HuggingFace tokenizer model name
+tokenizer_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+
+# Prepend BOS token to documents
+add_bos: false
+
+# Append EOS token to documents
+add_eos: true
+
+# Default text field name in datasets
+text_field: text
+
+# Skip documents shorter than this (null = no limit)
+min_doc_chars: null
+
+# Truncate documents longer than this (null = no limit)
+max_doc_tokens: null
+
+# Limit rows per dataset for quick tests - small sample for tiny
+sample: 1000
+
+# Ray actors for parallel processing (null = auto)
+num_actors: null
+
+# Force new run, ignoring cache
+force: false
+
+# Config name for artifact naming (produces PretrainBlendsArtifact-tiny)
+config_name: tiny

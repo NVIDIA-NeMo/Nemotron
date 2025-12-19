@@ -1,0 +1,52 @@
+run:
+  data: SFTDataArtifact-sft:latest
+  model: pretrain:latest
+  env:
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
+  packed_sequence: true
+  peft: null  # Disable LoRA, do full SFT
+
+# Dataset config for pre-packed .npy files from data_prep
+# train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download
+dataset:
+  dataset_root: ${art:data,path}
+  seq_length: ${art:data,pack_size}
+  packed_sequence_specs:
+    packed_sequence_size: ${art:data,pack_size}
+    packed_train_data_path: ${art:data,training_path}
+    packed_val_data_path: ${art:data,validation_path}
+    packed_metadata_path: ${art:data,metadata_path}
+
+train:
+  train_iters: 1700
+  global_batch_size: 4
+
+model:
+  seq_length: ${art:data,pack_size}
+  pipeline_model_parallel_size: 1
+  tensor_model_parallel_size: 4
+  context_parallel_size: 2
+  hidden_size: 1344
+  calculate_per_token_loss: True
+
+# tokenizer:
+#   tokenizer_type: HuggingFaceTokenizer
+#   tokenizer_model: meta-llama/Llama-3.2-1B
+
+scheduler:
+  lr_warmup_iters: 4
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+
+checkpoint:
+  save: /nemo_run/sft
+  save_interval: 20
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true  # Skip loading optimizer state from pretrained checkpoint
+  # ckpt_step: ${art:model,iteration}  # Optional: set to load specific iteration from artifact

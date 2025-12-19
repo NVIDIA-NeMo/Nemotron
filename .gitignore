@@ -47,6 +47,7 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+*.ipynb
 
 # mypy
 .mypy_cache/
@@ -59,13 +60,27 @@ dmypy.json
 # Environment
 .env
 .env.local
+env.toml
+conductor.json
 
 # Project specific
+output/
 outputs/
 logs/
 checkpoints/
 data/
+!src/nemotron/cli/nano3/data/
 workspace/
+wandb/
+.nemotron/
+.conductor/
 
 # Claude Code
 CLAUDE.md
+.claude/
+
+# Compiled config
+config.yaml
+
+# Documentation build
+docs/_build/
