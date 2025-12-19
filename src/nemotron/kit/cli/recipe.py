@@ -245,6 +245,7 @@ def recipe(
                     workdir=workdir,
                     pre_ray_start_commands=pre_ray_start_commands,
                     run_command=run_command,
+                    force_squash=global_ctx.force_squash,
                 )
 
         # Attach metadata to function for introspection
@@ -323,6 +324,7 @@ def _execute_nemo_run(
     workdir: str | None = None,
     pre_ray_start_commands: list[str] | None = None,
     run_command: str | None = None,
+    force_squash: bool = False,
 ) -> None:
     """Execute script via nemo-run.
 
@@ -340,6 +342,7 @@ def _execute_nemo_run(
         workdir: Container working directory for Ray jobs (e.g., "/opt/nemo-rl")
         pre_ray_start_commands: Shell commands to run before Ray starts
         run_command: Custom command template (supports {script} and {config} placeholders)
+        force_squash: Whether to force re-squash container image
     """
     import time
 
@@ -367,6 +370,7 @@ def _execute_nemo_run(
         ray=ray,
         attached=attached,
         packager=packager,
+        force_squash=force_squash,
     )
 
     # Script args use flat names on remote
@@ -551,6 +555,7 @@ def _build_executor(
     ray: bool = False,
     attached: bool = True,
     packager: str = "pattern",
+    force_squash: bool = False,
 ) -> Any:
     """Build nemo-run executor from env config.
 
@@ -564,6 +569,7 @@ def _build_executor(
         torchrun: Whether to use torchrun launcher
         ray: Whether this recipe requires Ray
         attached: Whether running in attached mode (--run vs --batch)
+        force_squash: Whether to force re-squash container image
 
     Returns:
         nemo-run Executor instance
@@ -616,7 +622,9 @@ def _build_executor(
         if container_image and tunnel and remote_job_dir:
             # Connect tunnel to check/create squashed image
             tunnel.connect()
-            container_image = _ensure_squashed_image(tunnel, container_image, remote_job_dir)
+            container_image = _ensure_squashed_image(
+                tunnel, container_image, remote_job_dir, env_config, force=force_squash
+            )
 
         # Select partition based on mode (--run uses run_partition, --batch uses batch_partition)
         if attached:
@@ -801,31 +809,48 @@ def _get_squash_path(container_image: str, remote_job_dir: str) -> str:
     return f"{remote_job_dir}/{sqsh_name}"
 
 
-def _ensure_squashed_image(tunnel: Any, container_image: str, remote_job_dir: str) -> str:
+def _ensure_squashed_image(
+    tunnel: Any,
+    container_image: str,
+    remote_job_dir: str,
+    env_config: dict,
+    *,
+    force: bool = False,
+) -> str:
     """Ensure the container image is squashed on the remote cluster.
 
-    Checks if a squashed version exists, and if not, creates it using enroot.
+    Checks if a squashed version exists, and if not, creates it using enroot
+    on a compute node via salloc.
 
     Args:
         tunnel: SSHTunnel instance (already connected)
         container_image: Docker container image to squash
         remote_job_dir: Remote directory for squashed images
+        env_config: Environment config with slurm settings (account, partition, time)
+        force: If True, re-squash even if file already exists
 
     Returns:
         Path to the squashed image file
     """
     sqsh_path = _get_squash_path(container_image, remote_job_dir)
 
-    # Check if squashed image already exists
-    with console.status("[bold blue]Checking for squashed image..."):
-        result = tunnel.run(f"test -f {sqsh_path} && echo exists", hide=True, warn=True)
+    # Check if squashed image already exists (unless force is set)
+    if not force:
+        with console.status("[bold blue]Checking for squashed image..."):
+            result = tunnel.run(f"test -f {sqsh_path} && echo exists", hide=True, warn=True)
 
-    if result.ok and "exists" in result.stdout:
-        console.print(f"[green]✓[/green] Using existing squashed image: [cyan]{sqsh_path}[/cyan]")
-        return sqsh_path
+        if result.ok and "exists" in result.stdout:
+            console.print(
+                f"[green]✓[/green] Using existing squashed image: [cyan]{sqsh_path}[/cyan]"
+            )
+            return sqsh_path
 
     # Need to create the squashed image
-    console.print("[yellow]![/yellow] Squashed image not found, creating...")
+    if force:
+        console.print("[yellow]![/yellow] Force re-squash requested, removing existing file...")
+        tunnel.run(f"rm -f {sqsh_path}", hide=True)
+    else:
+        console.print("[yellow]![/yellow] Squashed image not found, creating...")
     console.print(f"  [dim]Image:[/dim] {container_image}")
     console.print(f"  [dim]Output:[/dim] {sqsh_path}")
     console.print()
@@ -833,12 +858,35 @@ def _ensure_squashed_image(tunnel: Any, container_image: str, remote_job_dir: st
     # Ensure directory exists
     tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
 
-    # Run enroot import (this can take a while)
-    with console.status(
-        "[bold blue]Importing container with enroot (this may take several minutes)..."
-    ):
-        cmd = f"enroot import --output {sqsh_path} docker://{container_image}"
-        result = tunnel.run(cmd, hide=False, warn=True)
+    # Build salloc command to run enroot import on a compute node
+    # (login nodes don't have enough memory for enroot import)
+    account = env_config.get("account")
+    partition = env_config.get("run_partition") or env_config.get("partition")
+    time_limit = env_config.get("time", "04:00:00")
+    gpus_per_node = env_config.get("gpus_per_node")
+
+    salloc_args = []
+    if account:
+        salloc_args.append(f"--account={account}")
+    if partition:
+        salloc_args.append(f"--partition={partition}")
+    salloc_args.append("--nodes=1")
+    salloc_args.append("--ntasks-per-node=1")
+    if gpus_per_node:
+        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
+    salloc_args.append(f"--time={time_limit}")
+
+    enroot_cmd = f"enroot import --output {sqsh_path} docker://{container_image}"
+    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
+
+    # Run enroot import via salloc (this can take a while)
+    console.print(
+        "[bold blue]Allocating compute node and importing container "
+        "(this may take several minutes)...[/bold blue]"
+    )
+    console.print(f"[dim]$ {cmd}[/dim]")
+    console.print()
+    result = tunnel.run(cmd, hide=False, warn=True)
 
     if not result.ok:
         raise RuntimeError(
