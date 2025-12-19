@@ -34,6 +34,8 @@ class GlobalContext:
         run: Env profile name for attached execution (-r/--run)
         batch: Env profile name for detached execution (-b/--batch)
         dry_run: If True, print config and exit (-d/--dry-run)
+        stage: If True, stage files to remote without execution (--stage)
+        force_squash: If True, re-squash container even if exists (--force-squash)
         dotlist: Hydra-style dotlist overrides (key.sub=value)
         passthrough: Other args to pass to script (--mock, etc.)
     """
@@ -43,6 +45,7 @@ class GlobalContext:
     batch: str | None = None
     dry_run: bool = False
     stage: bool = False
+    force_squash: bool = False
     dotlist: list[str] = field(default_factory=list)
     passthrough: list[str] = field(default_factory=list)
 
@@ -97,6 +100,7 @@ def split_unknown_args(
         "-d": "dry_run",
         "--dry-run": "dry_run",
         "--stage": "stage",
+        "--force-squash": "force_squash",
     }
 
     i = 0
@@ -106,7 +110,7 @@ def split_unknown_args(
         # Check if it's a global option
         if arg in global_opts:
             attr = global_opts[arg]
-            if attr in ("dry_run", "stage"):
+            if attr in ("dry_run", "stage", "force_squash"):
                 # Boolean flag
                 setattr(global_ctx, attr, True)
                 i += 1
@@ -160,6 +164,11 @@ def global_callback(
         "--stage",
         help="Stage script + config to remote cluster for interactive debugging",
     ),
+    force_squash: bool = typer.Option(
+        False,
+        "--force-squash",
+        help="Force re-squash container image even if it already exists",
+    ),
 ) -> None:
     """Global callback that captures options available to all commands.
 
@@ -179,6 +188,7 @@ def global_callback(
     ctx.obj.batch = batch
     ctx.obj.dry_run = dry_run
     ctx.obj.stage = stage
+    ctx.obj.force_squash = force_squash
 
     # Unknown args will be populated by the leaf command
     # since they need allow_extra_args=True on the command itself

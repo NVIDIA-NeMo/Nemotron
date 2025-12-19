@@ -47,6 +47,11 @@ def squash(
         "--dry-run",
         help="Show what would be done without executing",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Force re-squash even if squash file already exists",
+    ),
 ) -> None:
     """Convert Docker images to squash files on remote cluster.
 
@@ -127,10 +132,10 @@ def squash(
     console.print("[green]Connected![/green]")
     console.print()
 
-    # Check if already exists
-    if check_sqsh_exists(tunnel, remote_path):
+    # Check if already exists (unless force is set)
+    if not force and check_sqsh_exists(tunnel, remote_path):
         console.print(f"[yellow]Squash file already exists:[/yellow] {remote_path}")
-        console.print("[dim]Skipping import.[/dim]")
+        console.print("[dim]Skipping import. Use --force to re-squash.[/dim]")
         tunnel.cleanup()
         return
 
@@ -138,15 +143,42 @@ def squash(
     with console.status("[bold blue]Creating remote directory..."):
         tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
 
-    # Run enroot import
-    console.print("[bold]Importing container...[/bold]")
+    # Remove existing file if force is set
+    if force:
+        console.print("[yellow]Removing existing squash file...[/yellow]")
+        tunnel.run(f"rm -f {remote_path}", hide=True)
+
+    # Build salloc command to run enroot import on a compute node
+    # (login nodes don't have enough memory for enroot import)
+    account = env_config.get("account")
+    partition = env_config.get("run_partition") or env_config.get("partition")
+    time_limit = env_config.get("time", "04:00:00")
+    gpus_per_node = env_config.get("gpus_per_node")
+
+    salloc_args = []
+    if account:
+        salloc_args.append(f"--account={account}")
+    if partition:
+        salloc_args.append(f"--partition={partition}")
+    salloc_args.append("--nodes=1")
+    salloc_args.append("--ntasks-per-node=1")
+    if gpus_per_node:
+        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
+    salloc_args.append(f"--time={time_limit}")
+
+    enroot_cmd = f"enroot import --output {remote_path} docker://{container}"
+    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
+
+    # Run enroot import via salloc
+    console.print("[bold]Allocating compute node and importing container...[/bold]")
     console.print(f"  {container}")
     console.print(f"  -> {remote_path}")
+    console.print()
+    console.print(f"[dim]$ {cmd}[/dim]")
     console.print()
     console.print("[dim]This may take several minutes...[/dim]")
     console.print()
 
-    cmd = f"enroot import --output {remote_path} docker://{container}"
     result = tunnel.run(cmd, hide=False, warn=True)
 
     tunnel.cleanup()
