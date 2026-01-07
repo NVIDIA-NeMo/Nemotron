@@ -47,8 +47,25 @@ cd Nemotron/use-case-examples/nemotron-voice-rag-agent-example
 
 ### 2. Set Up Environment
 
+**Option A: Standard CUDA (RTX, A100, etc.):**
 ```bash
-# Install dependencies (uv will automatically create and manage the virtual environment)
+uv sync --extra cuda --index-url https://download.pytorch.org/whl/cu124
+```
+
+**Option B: DGX Spark (GB10):**
+```bash
+uv sync --extra cuda --index-url https://download.pytorch.org/whl/cu130
+```
+
+**Note:** Since `nemo_toolkit[asr]` may have specific PyTorch requirements, if you encounter dependency conflicts, install PyTorch first:
+
+```bash
+# For Spark/GB10 systems
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+uv sync
+
+# For standard CUDA systems
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 uv sync
 ```
 
