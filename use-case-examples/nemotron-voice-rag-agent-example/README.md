@@ -86,7 +86,7 @@ jupyter notebook voice_rag_agent_tutorial.ipynb
 ## 📁 Project Structure
 
 ```
-Nemotron_MultiModalRAGAgent/
+nemotron-voice-rag-agent-example/
 ├── voice_rag_agent_tutorial.ipynb  # Main tutorial notebook
 ├── README.md                        # This file
 ├── requirements.txt                 # Python dependencies
