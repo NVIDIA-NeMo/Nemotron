@@ -1,0 +1,1688 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Data Preparation Module &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs";mermaid.registerLayoutLoaders(elkLayouts);mermaid.initialize({startOnLoad:false});</script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'train/data-prep';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="../_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="CLI Framework" href="cli.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="nano3/README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="artifacts.html">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="nano3/pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/rl.html">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Framework</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Data Preparation Module</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Data Preparation Module</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="data-preparation-module">
+<h1>Data Preparation Module<a class="headerlink" href="#data-preparation-module" title="Link to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">nemotron.data_prep</span></code> module focuses on <strong>last-mile data processing</strong>—transforming curated datasets into training-ready formats. It bridges the gap between data curation (handled by <a class="reference external" href="https://github.com/NVIDIA-NeMo/Curator">NeMo Curator</a>) and model training, producing outputs compatible with the NVIDIA AI training stack.</p>
+<blockquote>
+<div><p><strong>Coming Soon</strong>: Native integration with <a class="reference external" href="https://github.com/NVIDIA-NeMo/Curator">NeMo Curator</a> for data curation and <a class="reference external" href="https://github.com/NVIDIA-NeMo/DataDesigner">NeMo Data Designer</a> for synthetic data generation. These integrations will enable end-to-end data pipelines from raw sources to training-ready formats.</p>
+</div></blockquote>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
+<p>Built on top of <a class="reference external" href="https://ray.io/">Ray</a>, the data preparation module provides:</p>
+<ul class="simple">
+<li><p><strong>Last-mile processing</strong> — Convert curated datasets to training-ready formats (tokenization, packing, chat templating)</p></li>
+<li><p><strong>Distributed processing</strong> — Scale from a single machine to a cluster of workers using Ray actors</p></li>
+<li><p><strong>Cloud-native I/O</strong> — Read from HuggingFace Hub (<code class="docutils literal notranslate"><span class="pre">hf://</span></code>), S3 (<code class="docutils literal notranslate"><span class="pre">s3://</span></code>), GCS (<code class="docutils literal notranslate"><span class="pre">gs://</span></code>), or local paths via fsspec</p></li>
+<li><p><strong>Deterministic output</strong> — Frozen shard plans ensure reproducible results across runs</p></li>
+<li><p><strong>Resumable pipelines</strong> — Skip completed shards on restart; verify output integrity with checksums</p></li>
+</ul>
+<section id="data-pipeline-curator-data-prep-training">
+<h3>Data Pipeline: Curator → Data Prep → Training<a class="headerlink" href="#data-pipeline-curator-data-prep-training" title="Link to this heading">#</a></h3>
+<p>This module is designed to work alongside <a class="reference external" href="https://github.com/NVIDIA-NeMo/Curator">NeMo Curator</a> in a two-stage data pipeline:</p>
+<pre  class="mermaid">
+        %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
+flowchart LR
+    subgraph sources[&quot;📁 Raw Data&quot;]
+        CC[&quot;CommonCrawl&quot;]
+        HF[&quot;HuggingFace&quot;]
+        Custom[&quot;Custom Sources&quot;]
+    end
+
+    subgraph curator[&quot;🔧 NeMo Curator&quot;]
+        C1[&quot;Deduplication&quot;]
+        C2[&quot;Quality Filtering&quot;]
+        C3[&quot;Language ID&quot;]
+        C4[&quot;PII Removal&quot;]
+        C1 --- C2 --- C3 --- C4
+    end
+
+    subgraph dataprep[&quot;⚡ Data Prep&quot;]
+        D1[&quot;Tokenization&quot;]
+        D2[&quot;Chat Templating&quot;]
+        D3[&quot;Sequence Packing&quot;]
+        D4[&quot;Loss Mask Creation&quot;]
+        D1 --- D2 --- D3 --- D4
+    end
+
+    subgraph training[&quot;🚀 Training&quot;]
+        T1[&quot;Megatron-Bridge&quot;]
+        T2[&quot;NeMo-RL&quot;]
+    end
+
+    sources --&gt; curator
+    curator --&gt;|&quot;Curated Data&quot;| dataprep
+    dataprep --&gt;|&quot;bin/idx, .npy, JSONL&quot;| training
+    </pre><p><strong>Typical workflow:</strong></p>
+<ol class="arabic simple">
+<li><p>Use <strong><a class="reference external" href="https://github.com/NVIDIA-NeMo/Curator">NeMo Curator</a></strong> to curate raw data at scale—deduplication, quality filtering, language identification, PII removal</p></li>
+<li><p>Use <strong>Data Prep</strong> to transform curated data into training-ready formats—tokenization, chat templating, sequence packing, loss mask generation</p></li>
+</ol>
+<p>This separation allows you to curate once and prepare data multiple times for different training configurations (different tokenizers, sequence lengths, or output formats).</p>
+</section>
+<section id="recipe-integration">
+<h3>Recipe Integration<a class="headerlink" href="#recipe-integration" title="Link to this heading">#</a></h3>
+<p>Each training stage in a recipe includes a dedicated data preparation step that transforms source data into the format required by that stage’s training framework:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Stage</p></th>
+<th class="head"><p>Data Prep Output</p></th>
+<th class="head"><p>Training Framework</p></th>
+<th class="head"><p>Guide</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Stage 0: Pretrain</p></td>
+<td><p>bin/idx indexed datasets</p></td>
+<td><p><a class="reference internal" href="nvidia-stack.html#megatron-bridge"><span class="std std-ref">Megatron-Bridge</span></a></p></td>
+<td><p><a class="reference internal" href="nano3/pretrain.html#data-preparation"><span class="std std-ref">pretrain.md</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Stage 1: SFT</p></td>
+<td><p>Packed .npy with loss masks</p></td>
+<td><p><a class="reference internal" href="nvidia-stack.html#megatron-bridge"><span class="std std-ref">Megatron-Bridge</span></a></p></td>
+<td><p><a class="reference internal" href="nano3/sft.html#data-preparation"><span class="std std-ref">sft.md</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Stage 2: RL</p></td>
+<td><p>JSONL with OpenAI chat format</p></td>
+<td><p><a class="reference internal" href="nvidia-stack.html#nemo-rl"><span class="std std-ref">NeMo-RL</span></a></p></td>
+<td><p><a class="reference internal" href="nano3/rl.html#data-preparation"><span class="std std-ref">rl.md</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Run data preparation for any stage using the <a class="reference internal" href="cli.html"><span class="std std-doc">CLI</span></a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>pretrain<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w">   </span><span class="c1"># Stage 0</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>sft<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w">        </span><span class="c1"># Stage 1</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>rl<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w">         </span><span class="c1"># Stage 2</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><strong>Note</strong>: The <code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">YOUR-CLUSTER</span></code> flag submits jobs via <a class="reference internal" href="nemo-run.html"><span class="std std-doc">NeMo-Run</span></a>. See <a class="reference internal" href="nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for setup.</p>
+</div></blockquote>
+</section>
+<section id="nemo-run-integration">
+<h3>NeMo-Run Integration<a class="headerlink" href="#nemo-run-integration" title="Link to this heading">#</a></h3>
+<p>The module integrates natively with <a class="reference internal" href="nemo-run.html"><span class="std std-doc">NeMo-Run</span></a> for job orchestration. Submit data preparation jobs to various executors (Slurm, local, Docker, cloud) directly from your local machine:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Submit to Slurm cluster</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>pretrain<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER
+
+<span class="c1"># Run locally with Ray</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>pretrain<span class="w"> </span>--run<span class="w"> </span><span class="nb">local</span>
+
+<span class="c1"># Preview without executing</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>pretrain<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>--dry-run
+</pre></div>
+</div>
+<p>Configure execution profiles in <code class="docutils literal notranslate"><span class="pre">env.toml</span></code>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[YOUR-CLUSTER]</span>
+<span class="n">executor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;slurm&quot;</span>
+<span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR-ACCOUNT&quot;</span>
+<span class="n">partition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;batch&quot;</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for complete configuration options.</p>
+</section>
+</section>
+<section id="choosing-an-api">
+<h2>Choosing an API<a class="headerlink" href="#choosing-an-api" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>API</p></th>
+<th class="head"><p>Use When</p></th>
+<th class="head"><p>Output Format</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">run_data_prep()</span></code></p></td>
+<td><p>Simple tokenization pipelines</p></td>
+<td><p>bin/idx</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">last_mile_process()</span></code></p></td>
+<td><p>Custom formats, transforms, chat SFT</p></td>
+<td><p>Any</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Use high-level API (<code class="docutils literal notranslate"><span class="pre">run_data_prep</span></code>)</strong> for:</p>
+<ul class="simple">
+<li><p>Standard pretraining data tokenization</p></li>
+<li><p>Per-split output (train/valid/test) with <code class="docutils literal notranslate"><span class="pre">PerSplitConfig</span></code></p></li>
+<li><p>When you want automatic Ray initialization and artifact tracking</p></li>
+</ul>
+<p><strong>Use low-level API (<code class="docutils literal notranslate"><span class="pre">last_mile_process</span></code>)</strong> for:</p>
+<ul class="simple">
+<li><p>JSONL output with custom transforms</p></li>
+<li><p>Chat SFT with loss masking (<code class="docutils literal notranslate"><span class="pre">ChatSftOutputConfig</span></code>)</p></li>
+<li><p>Packed sequences without chat templates</p></li>
+<li><p>Custom pipeline orchestration</p></li>
+</ul>
+</section>
+<section id="supported-output-formats">
+<h2>Supported Output Formats<a class="headerlink" href="#supported-output-formats" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Format</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Use Case</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">binidx</span></code></p></td>
+<td><p>Tokenized <code class="docutils literal notranslate"><span class="pre">.bin/.idx</span></code> indexed datasets</p></td>
+<td><p>Pretraining (default)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jsonl</span></code></p></td>
+<td><p>JSONL files with optional transforms</p></td>
+<td><p>SFT/RL training</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">packed</span></code></p></td>
+<td><p>Packed sequences in <code class="docutils literal notranslate"><span class="pre">.npy</span></code> format</p></td>
+<td><p>Efficient SFT training</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<section id="high-level-api-dataprepconfig">
+<h3>High-Level API (DataPrepConfig)<a class="headerlink" href="#high-level-api-dataprepconfig" title="Link to this heading">#</a></h3>
+<p>For simple tokenization to binidx format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataPrepConfig</span><span class="p">,</span> <span class="n">run_data_prep</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">DataPrepConfig</span><span class="p">(</span>
+    <span class="n">blend_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;data_blend.json&quot;</span><span class="p">),</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./output&quot;</span><span class="p">),</span>
+    <span class="n">tokenizer_model</span><span class="o">=</span><span class="s2">&quot;meta-llama/Llama-3.2-1B&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">artifact</span> <span class="o">=</span> <span class="n">run_data_prep</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Blend path: </span><span class="si">{</span><span class="n">artifact</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="low-level-api-last-mile-process">
+<h3>Low-Level API (last_mile_process)<a class="headerlink" href="#low-level-api-last-mile-process" title="Link to this heading">#</a></h3>
+<p>For more control over output format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep</span><span class="w"> </span><span class="kn">import</span> <span class="n">last_mile_process</span><span class="p">,</span> <span class="n">DataBlend</span><span class="p">,</span> <span class="n">PipelineConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputConfig</span><span class="p">,</span> <span class="n">JsonlOutputConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.formats.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">sft</span>
+
+<span class="n">blend</span> <span class="o">=</span> <span class="n">DataBlend</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;data_blend.json&quot;</span><span class="p">)</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./sft_data&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span>
+            <span class="n">transform</span><span class="o">=</span><span class="n">sft</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s2">&quot;instruction&quot;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">&quot;response&quot;</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">last_mile_process</span><span class="p">(</span><span class="n">blend</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="output-formats">
+<h2>Output Formats<a class="headerlink" href="#output-formats" title="Link to this heading">#</a></h2>
+<section id="binidx-default">
+<h3>BinIdx (Default)<a class="headerlink" href="#binidx-default" title="Link to this heading">#</a></h3>
+<p>Tokenized binary format for Megatron pretraining:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">BinIdxOutputConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">tokenizer</span><span class="o">=</span><span class="n">TokenizerConfig</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/Llama-3.2-1B&quot;</span><span class="p">),</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./tokenized&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">BinIdxOutputConfig</span><span class="p">(</span>
+            <span class="n">shard_size</span><span class="o">=</span><span class="s2">&quot;256MB&quot;</span><span class="p">,</span>  <span class="c1"># Or num_shards=128</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int32&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="jsonl">
+<h3>JSONL<a class="headerlink" href="#jsonl" title="Link to this heading">#</a></h3>
+<p>Structured JSONL for SFT/RL training (no tokenization):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">JsonlOutputConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.formats.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">sft</span><span class="p">,</span> <span class="n">openai_chat</span>
+
+<span class="c1"># SFT format: {&quot;input&quot;: &quot;...&quot;, &quot;output&quot;: &quot;...&quot;}</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./sft_data&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span>
+            <span class="n">transform</span><span class="o">=</span><span class="n">sft</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s2">&quot;instruction&quot;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">&quot;response&quot;</span><span class="p">),</span>
+            <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;zstd&quot;</span><span class="p">,</span>  <span class="c1"># Optional compression</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># OpenAI chat format: {&quot;messages&quot;: [...]}</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./rl_data&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span>
+            <span class="n">transform</span><span class="o">=</span><span class="n">openai_chat</span><span class="p">(),</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="packed">
+<h3>Packed<a class="headerlink" href="#packed" title="Link to this heading">#</a></h3>
+<p>Packed sequences for efficient SFT training:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PackedOutputConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">tokenizer</span><span class="o">=</span><span class="n">TokenizerConfig</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/Llama-3.2-1B&quot;</span><span class="p">),</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./packed_data&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">PackedOutputConfig</span><span class="p">(</span>
+            <span class="n">pack_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span>
+            <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;first_fit_shuffle&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="chat-sft-packed-with-loss-masking">
+<h3>Chat SFT (Packed with Loss Masking)<a class="headerlink" href="#chat-sft-packed-with-loss-masking" title="Link to this heading">#</a></h3>
+<p>Chat-templated SFT with role-based loss masking. This format applies chat templates to OpenAI-format messages, tokenizes them, and produces packed sequences with a loss mask that zeros out system/user tokens:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep</span><span class="w"> </span><span class="kn">import</span> <span class="n">last_mile_process</span><span class="p">,</span> <span class="n">DataBlend</span><span class="p">,</span> <span class="n">PipelineConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputConfig</span><span class="p">,</span> <span class="n">ChatSftOutputConfig</span><span class="p">,</span> <span class="n">TokenizerConfig</span>
+
+<span class="n">blend</span> <span class="o">=</span> <span class="n">DataBlend</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;chat_data.json&quot;</span><span class="p">)</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">tokenizer</span><span class="o">=</span><span class="n">TokenizerConfig</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;nvidia/NVIDIA-Nemotron-Nano-9B-v2&quot;</span><span class="p">),</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./chat_sft&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">ChatSftOutputConfig</span><span class="p">(</span>
+            <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;nano3&quot;</span><span class="p">,</span>       <span class="c1"># Built-in template or path to .jinja file</span>
+            <span class="n">messages_field</span><span class="o">=</span><span class="s2">&quot;messages&quot;</span><span class="p">,</span>   <span class="c1"># Field containing OpenAI-format messages</span>
+            <span class="n">pack_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span>              <span class="c1"># Maximum tokens per packed sequence</span>
+            <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;first_fit_shuffle&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">last_mile_process</span><span class="p">(</span><span class="n">blend</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Input format</strong> (OpenAI chat messages):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;system&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;You are a helpful assistant.&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hello!&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;assistant&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hi there!&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Output</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.npy</span></code> files with packed <code class="docutils literal notranslate"><span class="pre">input_ids</span></code> and <code class="docutils literal notranslate"><span class="pre">loss_mask</span></code> arrays</p></li>
+<li><p>Loss mask: <code class="docutils literal notranslate"><span class="pre">0</span></code> for system/user tokens, <code class="docutils literal notranslate"><span class="pre">1</span></code> for assistant tokens</p></li>
+<li><p>Metadata files for Megatron-Bridge compatibility</p></li>
+</ul>
+</section>
+</section>
+<section id="transforms">
+<h2>Transforms<a class="headerlink" href="#transforms" title="Link to this heading">#</a></h2>
+<p>Transforms convert input records to the desired output format. They are callables that take a dict and return a dict (or <code class="docutils literal notranslate"><span class="pre">None</span></code> to skip the record).</p>
+<section id="built-in-transform-factories">
+<h3>Built-in Transform Factories<a class="headerlink" href="#built-in-transform-factories" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.formats.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">sft</span><span class="p">,</span>           <span class="c1"># SFT format: {input, output}</span>
+    <span class="n">openai_chat</span><span class="p">,</span>   <span class="c1"># OpenAI format: {messages: [...]}</span>
+    <span class="n">sharegpt</span><span class="p">,</span>      <span class="c1"># ShareGPT format: {conversations: [...]}</span>
+    <span class="n">nemotron_rl</span><span class="p">,</span>   <span class="c1"># Nemotron RL format: {messages, tools}</span>
+    <span class="n">passthrough</span><span class="p">,</span>   <span class="c1"># Pass records unchanged</span>
+    <span class="n">select</span><span class="p">,</span>        <span class="c1"># Select specific fields</span>
+    <span class="n">rename</span><span class="p">,</span>        <span class="c1"># Rename fields</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="sft">
+<h3>sft()<a class="headerlink" href="#sft" title="Link to this heading">#</a></h3>
+<p>Creates SFT format output:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">sft</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;instruction&quot;</span><span class="p">,</span>   <span class="c1"># Source field for input</span>
+    <span class="n">output</span><span class="o">=</span><span class="s2">&quot;response&quot;</span><span class="p">,</span>     <span class="c1"># Source field for output</span>
+    <span class="n">system</span><span class="o">=</span><span class="s2">&quot;system_prompt&quot;</span> <span class="c1"># Optional system prompt field</span>
+<span class="p">)</span>
+
+<span class="c1"># Input:  {&quot;instruction&quot;: &quot;Hello&quot;, &quot;response&quot;: &quot;Hi!&quot;, &quot;system_prompt&quot;: &quot;Be helpful&quot;}</span>
+<span class="c1"># Output: {&quot;input&quot;: &quot;Hello&quot;, &quot;output&quot;: &quot;Hi!&quot;, &quot;system&quot;: &quot;Be helpful&quot;}</span>
+</pre></div>
+</div>
+</section>
+<section id="openai-chat">
+<h3>openai_chat()<a class="headerlink" href="#openai-chat" title="Link to this heading">#</a></h3>
+<p>Creates OpenAI chat format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">openai_chat</span><span class="p">(</span><span class="n">messages</span><span class="o">=</span><span class="s2">&quot;conversation&quot;</span><span class="p">)</span>
+
+<span class="c1"># Input:  {&quot;conversation&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hi&quot;}]}</span>
+<span class="c1"># Output: {&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hi&quot;}]}</span>
+</pre></div>
+</div>
+</section>
+<section id="sharegpt">
+<h3>sharegpt()<a class="headerlink" href="#sharegpt" title="Link to this heading">#</a></h3>
+<p>Creates ShareGPT format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">sharegpt</span><span class="p">(</span><span class="n">conversations</span><span class="o">=</span><span class="s2">&quot;turns&quot;</span><span class="p">)</span>
+
+<span class="c1"># Input:  {&quot;turns&quot;: [{&quot;from&quot;: &quot;human&quot;, &quot;value&quot;: &quot;Hi&quot;}]}</span>
+<span class="c1"># Output: {&quot;conversations&quot;: [{&quot;from&quot;: &quot;human&quot;, &quot;value&quot;: &quot;Hi&quot;}]}</span>
+</pre></div>
+</div>
+</section>
+<section id="nemotron-rl">
+<h3>nemotron_rl()<a class="headerlink" href="#nemotron-rl" title="Link to this heading">#</a></h3>
+<p>Extracts messages and tools from Nemotron RL dataset format:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">nemotron_rl</span><span class="p">()</span>
+
+<span class="c1"># Input:  {</span>
+<span class="c1">#   &quot;responses_create_params&quot;: {</span>
+<span class="c1">#     &quot;input&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hi&quot;}],</span>
+<span class="c1">#     &quot;tools&quot;: [{&quot;name&quot;: &quot;search&quot;, ...}]</span>
+<span class="c1">#   }</span>
+<span class="c1"># }</span>
+<span class="c1"># Output: {&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hi&quot;}], &quot;tools&quot;: [...]}</span>
+</pre></div>
+</div>
+<p>Records without valid <code class="docutils literal notranslate"><span class="pre">responses_create_params.input</span></code> are skipped.</p>
+</section>
+<section id="passthrough">
+<h3>passthrough()<a class="headerlink" href="#passthrough" title="Link to this heading">#</a></h3>
+<p>Passes records unchanged:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">passthrough</span><span class="p">()</span>
+
+<span class="c1"># Input:  {&quot;any&quot;: &quot;data&quot;}</span>
+<span class="c1"># Output: {&quot;any&quot;: &quot;data&quot;}</span>
+</pre></div>
+</div>
+</section>
+<section id="select">
+<h3>select()<a class="headerlink" href="#select" title="Link to this heading">#</a></h3>
+<p>Selects specific fields:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">)</span>
+
+<span class="c1"># Input:  {&quot;id&quot;: 1, &quot;text&quot;: &quot;hello&quot;, &quot;extra&quot;: &quot;ignored&quot;}</span>
+<span class="c1"># Output: {&quot;id&quot;: 1, &quot;text&quot;: &quot;hello&quot;}</span>
+</pre></div>
+</div>
+</section>
+<section id="rename">
+<h3>rename()<a class="headerlink" href="#rename" title="Link to this heading">#</a></h3>
+<p>Renames fields:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">transform</span> <span class="o">=</span> <span class="n">rename</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="s2">&quot;question&quot;</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">&quot;answer&quot;</span><span class="p">)</span>
+
+<span class="c1"># Input:  {&quot;question&quot;: &quot;What?&quot;, &quot;answer&quot;: &quot;This.&quot;}</span>
+<span class="c1"># Output: {&quot;input&quot;: &quot;What?&quot;, &quot;output&quot;: &quot;This.&quot;}</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-transforms">
+<h3>Custom Transforms<a class="headerlink" href="#custom-transforms" title="Link to this heading">#</a></h3>
+<p>You can use any callable:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Lambda</span>
+<span class="n">transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">],</span> <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">]}</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+<span class="c1"># Function</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_transform</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Skip short records</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;question&quot;</span><span class="p">],</span> <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;answer&quot;</span><span class="p">]}</span>
+</pre></div>
+</div>
+</section>
+<section id="filtering-records">
+<h3>Filtering Records<a class="headerlink" href="#filtering-records" title="Link to this heading">#</a></h3>
+<p>Return <code class="docutils literal notranslate"><span class="pre">None</span></code> from a transform to skip records. This is useful for filtering out low-quality or malformed data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">filter_by_length</span><span class="p">(</span><span class="n">min_chars</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Transform</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Skip records with text shorter than min_chars.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">min_chars</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Record will be skipped</span>
+        <span class="k">return</span> <span class="n">record</span>
+    <span class="k">return</span> <span class="n">transform</span>
+
+<span class="c1"># Usage</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+    <span class="n">output</span><span class="o">=</span><span class="n">OutputConfig</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./filtered&quot;</span><span class="p">),</span>
+        <span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span><span class="n">transform</span><span class="o">=</span><span class="n">filter_by_length</span><span class="p">(</span><span class="n">min_chars</span><span class="o">=</span><span class="mi">200</span><span class="p">)),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Built-in transforms also filter: for example, <code class="docutils literal notranslate"><span class="pre">nemotron_rl()</span></code> skips records missing required fields.</p>
+</section>
+</section>
+<section id="sharding-configuration">
+<h2>Sharding Configuration<a class="headerlink" href="#sharding-configuration" title="Link to this heading">#</a></h2>
+<p>Both <code class="docutils literal notranslate"><span class="pre">shard_size</span></code> and <code class="docutils literal notranslate"><span class="pre">num_shards</span></code> are supported (mutually exclusive):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Target shard size (default)</span>
+<span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span><span class="n">shard_size</span><span class="o">=</span><span class="s2">&quot;256MB&quot;</span><span class="p">)</span>
+
+<span class="c1"># Explicit shard count</span>
+<span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span><span class="n">num_shards</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Supported size formats: <code class="docutils literal notranslate"><span class="pre">&quot;256MB&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;1G&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;500MiB&quot;</span></code>, etc.</p>
+</section>
+<section id="per-dataset-shard-allocation">
+<h2>Per-Dataset Shard Allocation<a class="headerlink" href="#per-dataset-shard-allocation" title="Link to this heading">#</a></h2>
+<p>When a blend includes multiple datasets, shard counts are now allocated per dataset
+instead of using a single global count. The total shard budget comes from
+<code class="docutils literal notranslate"><span class="pre">num_shards</span></code> or <code class="docutils literal notranslate"><span class="pre">shard_size</span></code>, and is distributed proportionally by dataset weight
+and estimated size, with at least one shard per dataset and a cap based on the
+number of input files (to avoid empty shards). Dataset weights still control
+training mixture ratios; shard allocation is only a sizing heuristic.</p>
+<blockquote>
+<div><p><strong>Note: Weight vs Shard Counts</strong></p>
+<ul class="simple">
+<li><p><strong>Dataset.weight</strong> (e.g., 0.7, 0.3): Controls <em>training-time sampling</em> in
+Megatron-Bridge. A blend with weights [0.7, 0.3] means 70% of training
+samples come from dataset 1 during training.</p></li>
+<li><p><strong>Shard counts</strong>: Controlled by <code class="docutils literal notranslate"><span class="pre">shard_size</span></code> (recommended) or explicit
+<code class="docutils literal notranslate"><span class="pre">num_shards</span></code>. These determine how many physical output files are created
+during data preparation, independent of weights.</p></li>
+</ul>
+<p>For blends with datasets of different sizes, use <code class="docutils literal notranslate"><span class="pre">shard_size=&quot;256MB&quot;</span></code> instead
+of explicit <code class="docutils literal notranslate"><span class="pre">num_shards</span></code> to let each dataset get an appropriate shard count
+based on its size.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">blend.json</span></code> now includes a <code class="docutils literal notranslate"><span class="pre">num_shards</span></code> map with the effective per-dataset counts:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;data_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/ds1/shard&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;0.3&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/ds2/shard&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;num_shards&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;ds1&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">120</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ds2&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;split&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;99990,8,2&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="per-split-output">
+<h2>Per-Split Output<a class="headerlink" href="#per-split-output" title="Link to this heading">#</a></h2>
+<p>Generate separate train/valid/test outputs using <code class="docutils literal notranslate"><span class="pre">PerSplitConfig</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataPrepConfig</span><span class="p">,</span> <span class="n">PerSplitConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">DataPrepConfig</span><span class="p">(</span>
+    <span class="n">blend_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;blend.json&quot;</span><span class="p">),</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./output&quot;</span><span class="p">),</span>
+    <span class="n">tokenizer_model</span><span class="o">=</span><span class="s2">&quot;nvidia/NVIDIA-Nemotron-Nano-9B-v2&quot;</span><span class="p">,</span>
+    <span class="n">per_split</span><span class="o">=</span><span class="n">PerSplitConfig</span><span class="p">(</span>
+        <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">valid_shards</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>   <span class="c1"># Number of validation shards</span>
+        <span class="n">test_shards</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>    <span class="c1"># Number of test shards</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Output structure:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>output/
+├── train/
+│   ├── shard_000000.bin
+│   ├── shard_000000.idx
+│   └── ...
+├── valid/
+│   └── shard_000000.bin/.idx
+├── test/
+│   └── shard_000000.bin/.idx
+└── blend.json
+</pre></div>
+</div>
+<p><strong>blend.json format</strong> (per-split mode):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;train&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/train/shard_000000&quot;</span><span class="p">],</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/train/shard_000001&quot;</span><span class="p">]],</span>
+<span class="w">  </span><span class="nt">&quot;valid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/valid/shard_000000&quot;</span><span class="p">]],</span>
+<span class="w">  </span><span class="nt">&quot;test&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/test/shard_000000&quot;</span><span class="p">]],</span>
+<span class="w">  </span><span class="nt">&quot;num_shards&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;train&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;train_ds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;valid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;valid_ds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;test&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;test_ds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This format is directly compatible with Megatron-Bridge’s per-split data loading.</p>
+</section>
+<section id="type-definitions">
+<h2>Type Definitions<a class="headerlink" href="#type-definitions" title="Link to this heading">#</a></h2>
+<p>TypedDicts are provided for type safety:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.formats.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SftRecord</span><span class="p">,</span>         <span class="c1"># {&quot;input&quot;: str, &quot;output&quot;: str}</span>
+    <span class="n">OpenAIChatRecord</span><span class="p">,</span>  <span class="c1"># {&quot;messages&quot;: list[Message]}</span>
+    <span class="n">ShareGPTRecord</span><span class="p">,</span>    <span class="c1"># {&quot;conversations&quot;: list[Conversation]}</span>
+    <span class="n">Message</span><span class="p">,</span>           <span class="c1"># {&quot;role&quot;: str, &quot;content&quot;: str}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h2>
+<section id="main-functions">
+<h3>Main Functions<a class="headerlink" href="#main-functions" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Function</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">run_data_prep(config)</span></code></p></td>
+<td><p>High-level entry point for tokenization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">last_mile_process(blend,</span> <span class="pre">config)</span></code></p></td>
+<td><p>Low-level entry point with format dispatch</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tokenize(blend,</span> <span class="pre">config)</span></code></p></td>
+<td><p>Deprecated alias for <code class="docutils literal notranslate"><span class="pre">last_mile_process</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="configuration-classes">
+<h3>Configuration Classes<a class="headerlink" href="#configuration-classes" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataPrepConfig</span></code></p></td>
+<td><p>High-level configuration for <code class="docutils literal notranslate"><span class="pre">run_data_prep</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PipelineConfig</span></code></p></td>
+<td><p>Low-level pipeline configuration</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TokenizerConfig</span></code></p></td>
+<td><p>Tokenizer settings (model, add_bos, add_eos)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OutputConfig</span></code></p></td>
+<td><p>Output directory and format</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BinIdxOutputConfig</span></code></p></td>
+<td><p>Tokenized binary format options</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">JsonlOutputConfig</span></code></p></td>
+<td><p>JSONL format options</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PackedOutputConfig</span></code></p></td>
+<td><p>Packed sequence format options</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="result-classes">
+<h3>Result Classes<a class="headerlink" href="#result-classes" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PipelineResult</span></code></p></td>
+<td><p>Complete pipeline result with all splits</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SplitResult</span></code></p></td>
+<td><p>Result for a single split (train/valid/test)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataBlendsArtifact</span></code></p></td>
+<td><p>Artifact with blend.json path and metrics</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="compression">
+<h2>Compression<a class="headerlink" href="#compression" title="Link to this heading">#</a></h2>
+<p>JSONL output supports optional zstd compression:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">format</span><span class="o">=</span><span class="n">JsonlOutputConfig</span><span class="p">(</span>
+    <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;zstd&quot;</span><span class="p">,</span>  <span class="c1"># Output .jsonl.zst files</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Requires the <code class="docutils literal notranslate"><span class="pre">zstandard</span></code> package: <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">zstandard</span></code></p>
+</section>
+<section id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
+<p>Core dependencies:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ray</span></code> - Parallel processing</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pyarrow</span></code> - Parquet file reading</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xxhash</span></code> - Fast checksums</p></li>
+</ul>
+<p>Optional dependencies:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">orjson</span></code> - Fast JSON serialization (falls back to stdlib json)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">zstandard</span></code> - Zstd compression for JSONL output</p></li>
+</ul>
+</section>
+<section id="further-reading">
+<h2>Further Reading<a class="headerlink" href="#further-reading" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/NVIDIA-NeMo/Curator">NeMo Curator</a> — Data curation at scale (coming soon)</p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA-NeMo/DataDesigner">NeMo Data Designer</a> — Synthetic data generation (coming soon)</p></li>
+<li><p><a class="reference internal" href="nvidia-stack.html"><span class="std std-doc">NVIDIA AI Stack</span></a> — Megatron-Core, Megatron-Bridge, NeMo-RL documentation</p></li>
+<li><p><a class="reference internal" href="nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> — Job orchestration and execution profiles</p></li>
+<li><p><a class="reference internal" href="cli.html"><span class="std std-doc">CLI Framework</span></a> — CLI building and recipe decorators</p></li>
+<li><p><a class="reference internal" href="artifacts.html"><span class="std std-doc">Artifact Lineage</span></a> — W&amp;B artifact system and lineage tracking</p></li>
+<li><p><a class="reference internal" href="nano3/README.html"><span class="std std-doc">Nano3 Recipe</span></a> — Complete training recipe example</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="cli.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">CLI Framework</p>
+      </div>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-pipeline-curator-data-prep-training">Data Pipeline: Curator → Data Prep → Training</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#recipe-integration">Recipe Integration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nemo-run-integration">NeMo-Run Integration</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-an-api">Choosing an API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#supported-output-formats">Supported Output Formats</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#high-level-api-dataprepconfig">High-Level API (DataPrepConfig)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#low-level-api-last-mile-process">Low-Level API (last_mile_process)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-formats">Output Formats</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#binidx-default">BinIdx (Default)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#jsonl">JSONL</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#packed">Packed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#chat-sft-packed-with-loss-masking">Chat SFT (Packed with Loss Masking)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#transforms">Transforms</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-transform-factories">Built-in Transform Factories</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sft">sft()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#openai-chat">openai_chat()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sharegpt">sharegpt()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nemotron-rl">nemotron_rl()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#passthrough">passthrough()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#select">select()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rename">rename()</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-transforms">Custom Transforms</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#filtering-records">Filtering Records</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sharding-configuration">Sharding Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-dataset-shard-allocation">Per-Dataset Shard Allocation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-split-output">Per-Split Output</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#type-definitions">Type Definitions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api-reference">API Reference</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#main-functions">Main Functions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-classes">Configuration Classes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#result-classes">Result Classes</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compression">Compression</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependencies">Dependencies</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#further-reading">Further Reading</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
