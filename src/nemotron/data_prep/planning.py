@@ -208,6 +208,20 @@ def create_shard_plan(
     if not files:
         raise ValueError(f"No input files found for {dataset_config.name}")
 
+    # Clamp requested shards to avoid empty assignments
+    # (each shard should have at least one file assigned)
+    requested_shards = output_config.num_shards
+    effective_shards = max(1, min(requested_shards, len(files)))
+
+    if effective_shards < requested_shards:
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Dataset '{dataset_config.name}' has {len(files)} files but "
+            f"{requested_shards} shards requested. Using {effective_shards} shards "
+            f"to avoid empty outputs. Consider using 'shard_size' instead of "
+            f"explicit 'num_shards' for blends with varied dataset sizes."
+        )
+
     # Resolve tokenizer to immutable revision
     resolved_tokenizer = resolve_tokenizer(tokenizer_config)
 
@@ -215,7 +229,7 @@ def create_shard_plan(
     source_fingerprint = compute_source_fingerprint(files, dataset_config)
 
     # Create size-balanced assignments
-    assignments = create_size_balanced_assignments(files, output_config.num_shards)
+    assignments = create_size_balanced_assignments(files, effective_shards)
 
     # Determinism constraints
     determinism_constraints = {
@@ -230,7 +244,7 @@ def create_shard_plan(
     plan_content = json.dumps(
         {
             "dataset_name": dataset_config.name,
-            "num_shards": output_config.num_shards,
+            "num_shards": effective_shards,
             "source_fingerprint": source_fingerprint,
             "resolved_tokenizer": resolved_tokenizer,
             "determinism_constraints": determinism_constraints,
@@ -246,7 +260,7 @@ def create_shard_plan(
         created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         plan_hash=plan_hash,
         dataset_name=dataset_config.name,
-        num_shards=output_config.num_shards,
+        num_shards=effective_shards,
         source_fingerprint=source_fingerprint,
         config_hash=config_hash,
         determinism_constraints=determinism_constraints,

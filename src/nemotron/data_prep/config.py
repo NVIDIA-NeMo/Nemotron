@@ -67,8 +67,13 @@ class BinIdxOutputConfig:
 
     Attributes:
         format: Format identifier (always "binidx")
-        shard_size: Target size per shard (e.g., "256MB"). Mutually exclusive with num_shards.
-        num_shards: Exact number of output shards. Mutually exclusive with shard_size.
+        shard_size: Target size per shard (e.g., "256MB"). When set, shard count
+            is computed per-dataset based on individual dataset sizes. This is
+            recommended for blends with datasets of varying sizes, as it prevents
+            empty shard files for small datasets. Mutually exclusive with num_shards.
+        num_shards: Exact number of output shards applied to ALL datasets.
+            Use shard_size instead when datasets have very different sizes to
+            avoid empty shards. Mutually exclusive with shard_size.
         dtype: Token dtype (int32, int64, uint16)
     """
 

@@ -28,7 +28,11 @@ class Dataset(BaseModel):
     Attributes:
         name: Unique identifier for this dataset
         path: Data location (hf://repo/name, s3://bucket/prefix, /local/path)
-        weight: Relative weight in the blend (default: 1.0)
+        weight: Training-time sampling weight (default: 1.0). Controls how
+            Megatron-Bridge samples from datasets during training, NOT how
+            many shards are created during data prep. For example, weights
+            [0.7, 0.3] mean 70% of training samples come from dataset 1.
+            Shard counts are determined by dataset size and shard_size config.
         split: HuggingFace split name (required for hf:// paths)
         subset: HuggingFace config/subset name
         text_field: Field containing text to tokenize (default: "text")

@@ -52,6 +52,12 @@ class DataBlendsArtifact(Artifact):
         int | None, Field(default=None, ge=0, description="Tokens in test split")
     ]
 
+    # Per-dataset shard counts (optional, populated when available)
+    dataset_shards: Annotated[
+        dict[str, int] | None,
+        Field(default=None, description="Per-dataset shard counts"),
+    ]
+
     # Source datasets for lineage tracking
     # Accepts InputDatasetInfo (with metadata) or str (URI only, for backwards compat)
     source_datasets: Annotated[
