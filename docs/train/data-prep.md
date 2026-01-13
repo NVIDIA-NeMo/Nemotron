@@ -446,6 +446,39 @@ format=JsonlOutputConfig(num_shards=64)
 
 Supported size formats: `"256MB"`, `"1G"`, `"500MiB"`, etc.
 
+## Per-Dataset Shard Allocation
+
+When a blend includes multiple datasets, shard counts are now allocated per dataset
+instead of using a single global count. The total shard budget comes from
+`num_shards` or `shard_size`, and is distributed proportionally by dataset weight
+and estimated size, with at least one shard per dataset and a cap based on the
+number of input files (to avoid empty shards). Dataset weights still control
+training mixture ratios; shard allocation is only a sizing heuristic.
+
+> **Note: Weight vs Shard Counts**
+>
+> - **Dataset.weight** (e.g., 0.7, 0.3): Controls *training-time sampling* in
+>   Megatron-Bridge. A blend with weights [0.7, 0.3] means 70% of training
+>   samples come from dataset 1 during training.
+>
+> - **Shard counts**: Controlled by `shard_size` (recommended) or explicit
+>   `num_shards`. These determine how many physical output files are created
+>   during data preparation, independent of weights.
+>
+> For blends with datasets of different sizes, use `shard_size="256MB"` instead
+> of explicit `num_shards` to let each dataset get an appropriate shard count
+> based on its size.
+
+`blend.json` now includes a `num_shards` map with the effective per-dataset counts:
+
+```json
+{
+  "data_paths": ["1.0", "/path/to/ds1/shard", "0.3", "/path/to/ds2/shard"],
+  "num_shards": {"ds1": 120, "ds2": 8},
+  "split": "99990,8,2"
+}
+```
+
 ## Per-Split Output
 
 Generate separate train/valid/test outputs using `PerSplitConfig`:
@@ -485,7 +518,12 @@ output/
 {
   "train": [["1.0", "/path/to/train/shard_000000"], ["1.0", "/path/to/train/shard_000001"]],
   "valid": [["1.0", "/path/to/valid/shard_000000"]],
-  "test": [["1.0", "/path/to/test/shard_000000"]]
+  "test": [["1.0", "/path/to/test/shard_000000"]],
+  "num_shards": {
+    "train": {"train_ds": 128},
+    "valid": {"valid_ds": 2},
+    "test": {"test_ds": 2}
+  }
 }
 ```
 

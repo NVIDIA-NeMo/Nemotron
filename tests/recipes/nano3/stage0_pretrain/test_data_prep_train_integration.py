@@ -43,11 +43,14 @@ class TestNano3DataPrepTrainIntegration:
 
     def test_distribute_shards_produces_valid_per_split_format(self):
         """Test _distribute_shards_to_splits produces correct format."""
-        data_paths = ["1.0", "/path/to/shard", "0.5", "/path/to/other"]
+        data_paths = [
+            "1.0", "/path/to/datasets/ds1/plan/shard",
+            "0.5", "/path/to/datasets/ds2/plan/shard",
+        ]
 
         result = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=4,
+            dataset_shards={"ds1": 2, "ds2": 2},  # 4 total shards
             valid_shards=1,
             test_shards=1,
         )
@@ -67,11 +70,12 @@ class TestNano3DataPrepTrainIntegration:
 
     def test_distribute_shards_respects_shard_counts(self):
         """Test that valid_shards and test_shards control split sizes."""
-        data_paths = ["1.0", "/path/to/shard"]
+        # Path must contain /datasets/{name}/ for dataset name extraction
+        data_paths = ["1.0", "/path/to/datasets/my_dataset/plan123/shard"]
 
         result = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=10,
+            dataset_shards={"my_dataset": 10},
             valid_shards=2,
             test_shards=3,
         )
@@ -82,6 +86,35 @@ class TestNano3DataPrepTrainIntegration:
         assert len(result["test"]) == 6
         # train should have remaining 5 shards (10 elements)
         assert len(result["train"]) == 10
+
+    def test_distribute_shards_multi_dataset(self):
+        """Test shard distribution with multiple datasets of different sizes."""
+        # Two datasets with different shard counts
+        data_paths = [
+            "0.7", "/path/to/datasets/general/plan123/shard",
+            "0.3", "/path/to/datasets/domain/plan456/shard",
+        ]
+
+        result = _distribute_shards_to_splits(
+            data_paths=data_paths,
+            dataset_shards={"general": 10, "domain": 3},  # 13 total shards
+            valid_shards=2,
+            test_shards=2,
+        )
+
+        # Total shards: 13 (10 + 3)
+        # valid: 2 shards = 4 elements
+        assert len(result["valid"]) == 4
+        # test: 2 shards = 4 elements
+        assert len(result["test"]) == 4
+        # train: remaining 9 shards = 18 elements
+        assert len(result["train"]) == 18
+
+        # Verify shard indices are correct (should have _XXXXXX suffix)
+        for split_data in result.values():
+            for i in range(1, len(split_data), 2):
+                path = split_data[i]
+                assert "_" in path, f"Path {path} should have shard suffix"
 
     def test_blend_json_format_matches_train_expectation(self):
         """Test blend.json format is compatible with train.py config."""
@@ -172,11 +205,11 @@ class TestNano3DataPrepTrainIntegration:
 
     def test_shard_path_naming_convention(self):
         """Test that shard paths follow the expected naming convention."""
-        data_paths = ["1.0", "/output/shard"]
+        data_paths = ["1.0", "/output/datasets/my_ds/plan/shard"]
 
         result = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=10,
+            dataset_shards={"my_ds": 10},
             valid_shards=1,
             test_shards=1,
         )
@@ -192,11 +225,11 @@ class TestNano3DataPrepTrainIntegration:
 
     def test_distribute_shards_deterministic_with_seed(self):
         """Test that shard distribution is deterministic with same seed."""
-        data_paths = ["1.0", "/path/to/shard"]
+        data_paths = ["1.0", "/path/to/datasets/ds/plan/shard"]
 
         result1 = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=10,
+            dataset_shards={"ds": 10},
             valid_shards=2,
             test_shards=2,
             seed=42,
@@ -204,7 +237,7 @@ class TestNano3DataPrepTrainIntegration:
 
         result2 = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=10,
+            dataset_shards={"ds": 10},
             valid_shards=2,
             test_shards=2,
             seed=42,
@@ -214,11 +247,11 @@ class TestNano3DataPrepTrainIntegration:
 
     def test_distribute_shards_different_with_different_seed(self):
         """Test that different seeds produce different distributions."""
-        data_paths = ["1.0", "/path/to/shard"]
+        data_paths = ["1.0", "/path/to/datasets/ds/plan/shard"]
 
         result1 = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=10,
+            dataset_shards={"ds": 10},
             valid_shards=2,
             test_shards=2,
             seed=42,
@@ -226,7 +259,7 @@ class TestNano3DataPrepTrainIntegration:
 
         result2 = _distribute_shards_to_splits(
             data_paths=data_paths,
-            num_shards=10,
+            dataset_shards={"ds": 10},
             valid_shards=2,
             test_shards=2,
             seed=123,

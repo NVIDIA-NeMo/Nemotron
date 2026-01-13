@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -61,12 +62,21 @@ def pretrain(
     # Initialize W&B
     init_wandb_if_configured(wandb_config, job_type="data-import", tags=["pretrain", "import"])
 
+    dataset_shards = None
+    try:
+        with open(data_path) as f:
+            blend_data = json.load(f)
+        dataset_shards = blend_data.get("num_shards")
+    except Exception:
+        dataset_shards = None
+
     # Create artifact with minimal required fields
     artifact_name = name or "nano3/pretrain/data"
     artifact = DataBlendsArtifact(
         path=data_path,
         total_tokens=0,
         total_sequences=0,
+        dataset_shards=dataset_shards,
         name=artifact_name,
     )
 

@@ -364,17 +364,25 @@ def run_data_prep(
 
     # Build output artifact - path points to output directory, blend_path to blend.json
     blend_json_path = result.output_dir / "blend.json"
-    artifact = artifact_class(
-        path=result.output_dir,
-        blend_path=str(blend_json_path),
-        total_tokens=result.total_tokens,
-        total_sequences=result.total_sequences,
-        elapsed_sec=result.elapsed_sec,
-        num_shards=num_shards,
-        source_datasets=source_datasets,
-        tokenizer_uri=tok_uri,
-        name=config.artifact_name,  # Semantic name for W&B artifact naming
-    )
+    artifact_kwargs = {
+        "path": result.output_dir,
+        "blend_path": str(blend_json_path),
+        "total_tokens": result.total_tokens,
+        "total_sequences": result.total_sequences,
+        "elapsed_sec": result.elapsed_sec,
+        "num_shards": num_shards,
+        "source_datasets": source_datasets,
+        "tokenizer_uri": tok_uri,
+        "name": config.artifact_name,  # Semantic name for W&B artifact naming
+    }
+    # Optionally include per-dataset shard counts if supported by the artifact schema
+    if hasattr(artifact_class, "model_fields") and "dataset_shards" in artifact_class.model_fields:
+        all_split = result.splits.get("all") if result.splits else None
+        artifact_kwargs["dataset_shards"] = (
+            all_split.dataset_shards if all_split is not None else None
+        )
+
+    artifact = artifact_class(**artifact_kwargs)
     artifact.save()
 
     # Mark wandb run as successful (before Ray shutdown to avoid socket noise)
