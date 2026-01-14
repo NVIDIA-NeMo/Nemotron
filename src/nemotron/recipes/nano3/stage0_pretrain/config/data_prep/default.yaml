@@ -47,8 +47,14 @@ max_doc_tokens: null
 # Limit rows per dataset for quick tests (null = no limit)
 sample: null
 
-# Ray actors for parallel processing (null = auto)
-num_actors: null
+# Ray Data executor settings (limit actors to avoid OOM on high-CPU nodes)
+ray_data_max_actors: 32
+
+# Console output mode: 'simple' for periodic text updates, 'rich' for animated progress
+console_mode: simple
+
+# Interval in seconds for simple mode status updates (default: 30)
+simple_log_interval_sec: 30
 
 # Force new run, ignoring cache
 force: false

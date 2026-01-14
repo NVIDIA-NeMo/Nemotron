@@ -288,6 +288,8 @@ class PipelineConfig:
         per_split: Per-split output configuration for Megatron-Bridge per_split_data_args_path
         ray_data: Ray Data execution configuration. When enabled and ray_data.enabled=True,
             uses Ray Data's ActorPoolStrategy for shard processing instead of manual actors.
+        console_mode: Console output mode ('rich' or 'simple')
+        simple_log_interval_sec: Interval in seconds for simple mode status updates
     """
 
     output: OutputConfig
@@ -298,6 +300,8 @@ class PipelineConfig:
     split: str | None = None  # Deprecated - use per_split instead
     per_split: PerSplitConfig | None = None
     ray_data: RayDataConfig | None = None
+    console_mode: str = "simple"
+    simple_log_interval_sec: int = 30
 
 
 # ============================================================================

@@ -679,6 +679,8 @@ def _process_split(
                 for ep in execution_plans
             ],
             run_hash=run_hash,
+            console_mode=config.console_mode,
+            simple_log_interval_sec=config.simple_log_interval_sec,
         )
         live_status.start()
 
@@ -2161,6 +2163,8 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                 (dataset.name, num_shards) for dataset, _, _, files in dataset_plans if files
             ],
             run_hash=run_hash,
+            console_mode=config.console_mode,
+            simple_log_interval_sec=config.simple_log_interval_sec,
         )
         live_status.start()
 

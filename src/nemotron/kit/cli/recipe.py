@@ -485,6 +485,11 @@ def _execute_nemo_run(
             runtime_env_yaml=runtime_env_yaml,
         )
 
+        # Copy config.yaml to remote code directory since it's excluded by .gitignore
+        # This ensures the config file with rewritten paths is available remotely
+        remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
+        executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
+
         # Workaround for nemo-run bug: when reusing an existing cluster,
         # SlurmRayCluster.create() returns None instead of the job_id.
         if ray_job.backend.job_id is None:

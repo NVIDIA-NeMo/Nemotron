@@ -63,6 +63,7 @@ Output Format:
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from nemotron.data_prep.blend import DataBlend, Dataset
 from nemotron.data_prep.config import (
@@ -181,6 +182,12 @@ class DataPrepConfig:
 
     ray_data_max_tasks_in_flight: int = 2
     """Max tasks in flight per actor (pipelining depth)"""
+
+    console_mode: Literal["rich", "simple"] = "simple"
+    """Console output mode: 'rich' for animated progress bars, 'simple' for periodic text updates"""
+
+    simple_log_interval_sec: int = 30
+    """Interval in seconds between status updates in simple console mode (default: 30)"""
 
 
 def run_data_prep(
@@ -321,6 +328,8 @@ def run_data_prep(
         split=config.split,
         per_split=config.per_split,
         ray_data=ray_data_config,
+        console_mode=config.console_mode,
+        simple_log_interval_sec=config.simple_log_interval_sec,
     )
 
     # Run processing pipeline

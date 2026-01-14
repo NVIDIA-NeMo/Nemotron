@@ -178,9 +178,10 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
         min_doc_chars=cfg.min_doc_chars,
         max_doc_tokens=cfg.max_doc_tokens,
         sample=cfg.sample,
-        num_actors=cfg.num_actors,
         force=cfg.force,
         artifact_name=artifact_name,
+        console_mode=getattr(cfg, "console_mode", "simple"),
+        simple_log_interval_sec=getattr(cfg, "simple_log_interval_sec", 30),
     )
     artifact = run_data_prep(data_prep_config)
     print_step_complete(data_prep=artifact)
