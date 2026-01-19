@@ -1,0 +1,967 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Nemotron Data Prep Xenna Port &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'design/nemotron-prep-port';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="../_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../train/nano3/README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/artifacts.html">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../train/nano3/pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/nano3/sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/nano3/rl.html">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/nano3/import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../train/kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/cli.html">CLI Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../train/data-prep.html">Data Preparation Module</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Nemotron Data Prep Xenna Port</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="nemotron-data-prep-xenna-port">
+<h1>Nemotron Data Prep Xenna Port<a class="headerlink" href="#nemotron-data-prep-xenna-port" title="Link to this heading">#</a></h1>
+<p>Status: Draft
+Owner: Nemotron team
+Last updated: TBD</p>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">#</a></h2>
+<p>Port the Stage 0 (pretrain) data preparation execution engine from the current
+Ray actor pool to Cosmos-Xenna pipelines. Keep the existing data prep planning,
+shard formats, and output artifacts, while introducing a thin Xenna-based
+execution layer that accepts a dict dataset spec (local paths or hf:// sources),
+performs optimized HuggingFace pre-downloads, and emits Megatron-compatible
+.bin/.idx shards plus blend.json.</p>
+</section>
+<section id="goals">
+<h2>Goals<a class="headerlink" href="#goals" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Use Cosmos-Xenna pipeline execution for shard processing with minimal new
+abstraction.</p></li>
+<li><p>Introduce a dict-based dataset input for the pretrain entrypoint.</p></li>
+<li><p>Keep HuggingFace Hub as a first-class source with parallel pre-downloads.</p></li>
+<li><p>Preserve current outputs (bin/idx + blend.json) and receipts for resuming.</p></li>
+<li><p>Keep the existing planning model (ShardPlan, determinism, caching).</p></li>
+</ul>
+</section>
+<section id="non-goals">
+<h2>Non-Goals<a class="headerlink" href="#non-goals" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Rework SFT/RL data prep formats (JSONL, packed, chat SFT) in this effort.</p></li>
+<li><p>Change the on-disk artifact layout or receipt schema.</p></li>
+<li><p>Replace fsspec or the current discovery/planning logic.</p></li>
+<li><p>Add new distributed download backends beyond HuggingFace and existing fsspec.</p></li>
+</ul>
+</section>
+<section id="current-state-stage-0">
+<h2>Current State (Stage 0)<a class="headerlink" href="#current-state-stage-0" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">run_data_prep(DataPrepConfig)</span></code> loads a blend.json, builds a <code class="docutils literal notranslate"><span class="pre">PipelineConfig</span></code>,
+then calls <code class="docutils literal notranslate"><span class="pre">last_mile_process()</span></code> in <code class="docutils literal notranslate"><span class="pre">data_prep/pipeline.py</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_process_split()</span></code> creates a ShardPlan per dataset, applies caching, and
+runs pending shards through a Ray actor pool.</p></li>
+<li><p>Shard execution uses <code class="docutils literal notranslate"><span class="pre">process_binidx_shard_core()</span></code> in
+<code class="docutils literal notranslate"><span class="pre">data_prep/shard_processor.py</span></code>, writing .bin/.idx plus receipt JSON.</p></li>
+<li><p>HuggingFace datasets use discovery + optional parallel predownload
+(<code class="docutils literal notranslate"><span class="pre">downloader.parallel_predownload()</span></code>).</p></li>
+</ul>
+</section>
+<section id="proposed-design">
+<h2>Proposed Design<a class="headerlink" href="#proposed-design" title="Link to this heading">#</a></h2>
+<section id="dict-dataset-input">
+<h3>1) Dict Dataset Input<a class="headerlink" href="#dict-dataset-input" title="Link to this heading">#</a></h3>
+<p>Add a new entrypoint that accepts a dict structure describing datasets and
+converts it to <code class="docutils literal notranslate"><span class="pre">DataBlend</span></code> in-memory (no required JSON file).</p>
+<p>Proposed schema (aligned with <code class="docutils literal notranslate"><span class="pre">DataBlend</span></code>/<code class="docutils literal notranslate"><span class="pre">Dataset</span></code>):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;datasets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pile&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hf://EleutherAI/pile&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;split&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;train&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;subset&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;text_field&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;text&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Per-split mode remains supported:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;train&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;valid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;test&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> supports local paths/globs, <code class="docutils literal notranslate"><span class="pre">s3://</span></code>, <code class="docutils literal notranslate"><span class="pre">gs://</span></code>, and <code class="docutils literal notranslate"><span class="pre">hf://</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">split</span></code> is required for <code class="docutils literal notranslate"><span class="pre">hf://</span></code> paths and optional otherwise.</p></li>
+<li><p>Missing fields use current defaults (weight=1.0, text_field=”text”).</p></li>
+</ul>
+<p>This entrypoint will live alongside <code class="docutils literal notranslate"><span class="pre">run_data_prep()</span></code> to preserve backward
+compatibility. Stage 0 pretrain will switch to the dict-based entrypoint.</p>
+</section>
+<section id="xenna-execution-layer-thin-wrapper">
+<h3>2) Xenna Execution Layer (Thin Wrapper)<a class="headerlink" href="#xenna-execution-layer-thin-wrapper" title="Link to this heading">#</a></h3>
+<p>Introduce a new Xenna-based shard runner that reuses the existing planning and
+processing logic:</p>
+<ul class="simple">
+<li><p>Planning: keep <code class="docutils literal notranslate"><span class="pre">create_shard_plan()</span></code> and <code class="docutils literal notranslate"><span class="pre">get_pending_shards()</span></code>.</p></li>
+<li><p>Execution: replace the manual Ray actor pool with a Xenna <code class="docutils literal notranslate"><span class="pre">Stage</span></code> that calls
+<code class="docutils literal notranslate"><span class="pre">process_binidx_shard_core()</span></code>.</p></li>
+</ul>
+<p>New flow (per split):</p>
+<ol class="arabic simple">
+<li><p>Convert dict input -&gt; <code class="docutils literal notranslate"><span class="pre">DataBlend</span></code></p></li>
+<li><p>Create/validate shard plans (existing logic)</p></li>
+<li><p>Build a list of <code class="docutils literal notranslate"><span class="pre">ShardTask</span></code> items (one per shard index)</p></li>
+<li><p>Optionally predownload HF files (see below)</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">cosmos_xenna.pipelines.run_pipeline()</span></code> with one Stage</p></li>
+<li><p>Aggregate receipts -&gt; stats -&gt; blend.json (existing logic)</p></li>
+</ol>
+</section>
+<section id="xenna-stage-definition-nemotron-data-prep-xenna">
+<h3>3) Xenna Stage Definition (nemotron.data_prep.xenna)<a class="headerlink" href="#xenna-stage-definition-nemotron-data-prep-xenna" title="Link to this heading">#</a></h3>
+<p>All Xenna-facing wrappers live under <code class="docutils literal notranslate"><span class="pre">nemotron.data_prep.xenna</span></code> to keep the
+integration boundary clean. This includes stage classes, work item types, and
+the pipeline runner.</p>
+<p>Define a single stage class (CPU only):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">required_resources</span></code>: <code class="docutils literal notranslate"><span class="pre">Resources(cpus=1.0,</span> <span class="pre">gpus=0.0)</span></code> (configurable).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">setup()</span></code>: initialize tokenizer using <code class="docutils literal notranslate"><span class="pre">create_tokenizer()</span></code> and store
+resolved config; set output fs once (fsspec <code class="docutils literal notranslate"><span class="pre">url_to_fs</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_data()</span></code>: accept one <code class="docutils literal notranslate"><span class="pre">ShardTask</span></code> dict, invoke
+<code class="docutils literal notranslate"><span class="pre">process_binidx_shard_core()</span></code> with the cached tokenizer and output fs.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">ShardTask</span></code> fields (minimal):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;dataset_name&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="s2">&quot;shard_index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+  <span class="s2">&quot;assignment_json&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="s2">&quot;plan_hash&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="s2">&quot;output_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="s2">&quot;receipts_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="s2">&quot;text_field&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="s2">&quot;dtype&quot;</span><span class="p">:</span> <span class="s2">&quot;int32|int64|uint16&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;min_doc_chars&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="n">null</span><span class="p">,</span>
+  <span class="s2">&quot;max_doc_tokens&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="n">null</span><span class="p">,</span>
+  <span class="s2">&quot;max_rows&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="n">null</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The stage is intentionally thin: no new shard logic or I/O semantics, just a
+bridge from Xenna tasks to existing core processing.</p>
+</section>
+<section id="proposed-xenna-stages-nemotron-data-prep">
+<h3>3.1) Proposed Xenna Stages (Nemotron Data Prep)<a class="headerlink" href="#proposed-xenna-stages-nemotron-data-prep" title="Link to this heading">#</a></h3>
+<p>This effort defines a minimal set of Xenna stages. Stage 0 (pretrain) is the
+first target; the other formats remain future work.</p>
+<section id="stage-pretrainshardstage-bin-idx">
+<h4>Stage: PretrainShardStage (bin/idx)<a class="headerlink" href="#stage-pretrainshardstage-bin-idx" title="Link to this heading">#</a></h4>
+<p>Responsibilities:</p>
+<ul class="simple">
+<li><p>Process a <code class="docutils literal notranslate"><span class="pre">ShardTask</span></code> (one shard) using <code class="docutils literal notranslate"><span class="pre">process_binidx_shard_core()</span></code></p></li>
+<li><p>Write <code class="docutils literal notranslate"><span class="pre">.bin/.idx</span></code> and receipt JSON</p></li>
+</ul>
+<p>Sketch:</p>
+<div class="highlight-py notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cosmos_xenna.pipelines.v1</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pipelines_v1</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.shard_processor</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_binidx_shard_core</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.providers</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_tokenizer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.data_prep.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_filesystem</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PretrainShardStage</span><span class="p">(</span><span class="n">pipelines_v1</span><span class="o">.</span><span class="n">Stage</span><span class="p">):</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stage_batch_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>  <span class="c1"># one shard per task</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">required_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pipelines_v1</span><span class="o">.</span><span class="n">Resources</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pipelines_v1</span><span class="o">.</span><span class="n">Resources</span><span class="p">(</span><span class="n">gpus</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">cpus</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_metadata</span><span class="p">:</span> <span class="n">pipelines_v1</span><span class="o">.</span><span class="n">WorkerMetadata</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tokenize</span> <span class="o">=</span> <span class="n">create_tokenizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resolved_tokenizer</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_fs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_filesystem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_dir</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="n">process_binidx_shard_core</span><span class="p">(</span>
+                <span class="n">tokenize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_tokenize</span><span class="p">,</span>
+                <span class="n">text_field</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;text_field&quot;</span><span class="p">],</span>
+                <span class="n">min_doc_chars</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;min_doc_chars&quot;</span><span class="p">],</span>
+                <span class="n">max_doc_tokens</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;max_doc_tokens&quot;</span><span class="p">],</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;dtype&quot;</span><span class="p">],</span>
+                <span class="n">max_rows</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;max_rows&quot;</span><span class="p">],</span>
+                <span class="n">shard_index</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;shard_index&quot;</span><span class="p">],</span>
+                <span class="n">assignment</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;assignment&quot;</span><span class="p">],</span>
+                <span class="n">plan_hash</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;plan_hash&quot;</span><span class="p">],</span>
+                <span class="n">output_dir</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;output_dir&quot;</span><span class="p">],</span>
+                <span class="n">receipts_dir</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;receipts_dir&quot;</span><span class="p">],</span>
+                <span class="n">output_fs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_fs</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span>
+</pre></div>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><p>All Xenna scaffolding (stage class, work item types, runner) is located in
+<code class="docutils literal notranslate"><span class="pre">nemotron.data_prep.xenna</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">xenna/stages.py</span></code>, <code class="docutils literal notranslate"><span class="pre">xenna/work_items.py</span></code>,
+<code class="docutils literal notranslate"><span class="pre">xenna/runner.py</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">assignment</span></code> is parsed from <code class="docutils literal notranslate"><span class="pre">assignment_json</span></code> before pipeline submission.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_resolved_tokenizer</span></code> and <code class="docutils literal notranslate"><span class="pre">_output_dir</span></code> are injected at stage construction time.</p></li>
+<li><p>The stage is intentionally thin and delegates all shard semantics to existing code.</p></li>
+</ul>
+</section>
+<section id="stage-future-jsonlstage">
+<h4>Stage (future): JsonlStage<a class="headerlink" href="#stage-future-jsonlstage" title="Link to this heading">#</a></h4>
+<p>Not part of this effort. Placeholder if JSONL output migrates later:</p>
+<ul class="simple">
+<li><p>Wrap <code class="docutils literal notranslate"><span class="pre">jsonl_processor</span></code> logic into a Xenna stage.</p></li>
+<li><p>Preserve existing transform semantics.</p></li>
+</ul>
+</section>
+<section id="stage-future-packedstage-chatsftstage">
+<h4>Stage (future): PackedStage / ChatSftStage<a class="headerlink" href="#stage-future-packedstage-chatsftstage" title="Link to this heading">#</a></h4>
+<p>Not part of this effort. Placeholders for packed SFT and chat SFT formats.</p>
+</section>
+</section>
+<section id="huggingface-optimized-downloading">
+<h3>4) HuggingFace Optimized Downloading<a class="headerlink" href="#huggingface-optimized-downloading" title="Link to this heading">#</a></h3>
+<p>Continue using the existing HF downloader, but move it earlier in the flow:</p>
+<ul class="simple">
+<li><p>Collect all HF files from shard assignments.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">parallel_predownload()</span></code> with <code class="docutils literal notranslate"><span class="pre">max_concurrent_downloads</span></code>.</p></li>
+<li><p>Store in HF cache (HF_HOME/hub).</p></li>
+<li><p>Shard processing uses <code class="docutils literal notranslate"><span class="pre">hf_hub_download(...,</span> <span class="pre">local_files_only=True)</span></code> to
+avoid network I/O and ensure determinism.</p></li>
+</ul>
+<p>This keeps HF as a first-class source while minimizing new download machinery.
+Cosmos-Xenna distributed download is not used for HF (it targets object stores).</p>
+</section>
+<section id="output-and-artifacts">
+<h3>5) Output and Artifacts<a class="headerlink" href="#output-and-artifacts" title="Link to this heading">#</a></h3>
+<p>Outputs remain unchanged:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.bin</span></code>/<code class="docutils literal notranslate"><span class="pre">.idx</span></code> shards under <code class="docutils literal notranslate"><span class="pre">runs/&lt;hash&gt;/datasets/&lt;name&gt;/&lt;plan_hash&gt;/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">blend.json</span></code> with <code class="docutils literal notranslate"><span class="pre">train</span></code>/<code class="docutils literal notranslate"><span class="pre">valid</span></code>/<code class="docutils literal notranslate"><span class="pre">test</span></code> or <code class="docutils literal notranslate"><span class="pre">data_paths</span></code> + split</p></li>
+<li><p>Receipts per shard for resuming and cache hits</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">PretrainBlendsArtifact</span></code> creation stays in <code class="docutils literal notranslate"><span class="pre">run_data_prep()</span></code> (or new entrypoint).</p>
+</section>
+</section>
+<section id="api-and-configuration-changes">
+<h2>API and Configuration Changes<a class="headerlink" href="#api-and-configuration-changes" title="Link to this heading">#</a></h2>
+<section id="new-entrypoint">
+<h3>New entrypoint<a class="headerlink" href="#new-entrypoint" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">run_data_prep_from_dict</span><span class="p">(</span>
+    <span class="n">datasets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">tokenizer_model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">...</span>  <span class="c1"># existing DataPrepConfig fields</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="execution-engine-flag">
+<h3>Execution engine flag<a class="headerlink" href="#execution-engine-flag" title="Link to this heading">#</a></h3>
+<p>Add a config flag (default to Xenna for stage0):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">execution_engine</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;ray&quot;</span><span class="p">,</span> <span class="s2">&quot;xenna&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;xenna&quot;</span>
+</pre></div>
+</div>
+<p>This allows phased rollout and easy fallback.</p>
+</section>
+</section>
+<section id="integration-points">
+<h2>Integration Points<a class="headerlink" href="#integration-points" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">nemotron/data_prep/pipeline.py</span></code>:</p>
+<ul>
+<li><p>add a Xenna execution path (replacing <code class="docutils literal notranslate"><span class="pre">_process_all_shards_parallel</span></code>)</p></li>
+<li><p>keep planning, receipts, and manifest generation.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nemotron/data_prep/xenna/</span></code>:</p>
+<ul>
+<li><p>new Xenna integration module (stages, work items, runner).</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nemotron/data_prep/shard_processor.py</span></code>:</p>
+<ul>
+<li><p>reuse <code class="docutils literal notranslate"><span class="pre">process_binidx_shard_core()</span></code> as-is.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nemotron/data_prep/downloader.py</span></code>:</p>
+<ul>
+<li><p>reuse <code class="docutils literal notranslate"><span class="pre">parallel_predownload()</span></code> before Xenna execution.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recipes/nano3/stage0_pretrain/data_prep.py</span></code>:</p>
+<ul>
+<li><p>accept dict dataset spec and call new entrypoint.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recipes/nano3/stage0_pretrain/prep_xenna.py</span></code>:</p>
+<ul>
+<li><p>new Xenna-specific entrypoint for staged validation.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cli/nano3/data/prep/pretrain_xenna.py</span></code>:</p>
+<ul>
+<li><p>new recipe command module (mirrors <code class="docutils literal notranslate"><span class="pre">pretrain.py</span></code> style).</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cli/nano3/data/prep/app.py</span></code>:</p>
+<ul>
+<li><p>register a new <code class="docutils literal notranslate"><span class="pre">prep</span> <span class="pre">xenna</span></code> or <code class="docutils literal notranslate"><span class="pre">prep</span> <span class="pre">pretrain-xenna</span></code> command via <code class="docutils literal notranslate"><span class="pre">make_recipe_command</span></code>.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="rollout-plan">
+<h2>Rollout Plan<a class="headerlink" href="#rollout-plan" title="Link to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">prep_xenna.py</span></code> for pretrain and wire it into the CLI as an opt-in path
+using the existing recipe command pattern.</p></li>
+<li><p>Land the Xenna execution path behind <code class="docutils literal notranslate"><span class="pre">execution_engine</span></code> flag (default stays Ray).</p></li>
+<li><p>Validate Xenna path in recipes and tests.</p></li>
+<li><p>Switch Stage 0 pretrain to Xenna by default once stable.</p></li>
+<li><p>Keep legacy Ray path for regression fallback until removed.</p></li>
+<li><p>Add docs update describing dict input and Xenna engine selection.</p></li>
+</ol>
+</section>
+<section id="testing-strategy">
+<h2>Testing Strategy<a class="headerlink" href="#testing-strategy" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Unit tests:</p>
+<ul>
+<li><p>dict schema -&gt; DataBlend conversion</p></li>
+<li><p>ShardTask mapping (assignment_json, plan_hash, output dirs)</p></li>
+</ul>
+</li>
+<li><p>Integration tests (existing):</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">tests/recipes/nano3/stage0_pretrain/test_data_prep_train_integration.py</span></code>
+should pass for both engines.</p></li>
+</ul>
+</li>
+<li><p>HF download tests:</p>
+<ul>
+<li><p>Mock HF cache predownload; verify local_files_only path works.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="risks-and-mitigations">
+<h2>Risks and Mitigations<a class="headerlink" href="#risks-and-mitigations" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Xenna pipeline expectations</strong>: Stage <code class="docutils literal notranslate"><span class="pre">process_data()</span></code> must be pure and
+pickle-friendly. Mitigate by keeping ShardTask data primitive types only.</p></li>
+<li><p><strong>HF cache not warmed</strong>: Ensure predownload step runs before Xenna pipeline,
+or fallback to allowing direct download if cache misses occur.</p></li>
+<li><p><strong>Resource sizing</strong>: Xenna defaults may oversubscribe CPUs. Provide explicit
+config mapping to <code class="docutils literal notranslate"><span class="pre">PipelineConfig</span></code> and <code class="docutils literal notranslate"><span class="pre">Resources</span></code>.</p></li>
+<li><p><strong>Behavioral drift</strong>: Keep shard planning + core processor unchanged and
+preserve receipts to avoid output changes.</p></li>
+</ul>
+</section>
+<section id="open-questions">
+<h2>Open Questions<a class="headerlink" href="#open-questions" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Should dict input be accepted by <code class="docutils literal notranslate"><span class="pre">run_data_prep()</span></code> directly (optional), or
+only by a new explicit entrypoint?</p></li>
+<li><p>Should Xenna execution be enabled for non-pretrain formats later, or keep
+scope limited to bin/idx until validated?</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#summary">Summary</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#goals">Goals</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#non-goals">Non-Goals</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#current-state-stage-0">Current State (Stage 0)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#proposed-design">Proposed Design</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dict-dataset-input">1) Dict Dataset Input</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#xenna-execution-layer-thin-wrapper">2) Xenna Execution Layer (Thin Wrapper)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#xenna-stage-definition-nemotron-data-prep-xenna">3) Xenna Stage Definition (nemotron.data_prep.xenna)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#proposed-xenna-stages-nemotron-data-prep">3.1) Proposed Xenna Stages (Nemotron Data Prep)</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stage-pretrainshardstage-bin-idx">Stage: PretrainShardStage (bin/idx)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stage-future-jsonlstage">Stage (future): JsonlStage</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stage-future-packedstage-chatsftstage">Stage (future): PackedStage / ChatSftStage</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#huggingface-optimized-downloading">4) HuggingFace Optimized Downloading</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#output-and-artifacts">5) Output and Artifacts</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api-and-configuration-changes">API and Configuration Changes</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#new-entrypoint">New entrypoint</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#execution-engine-flag">Execution engine flag</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integration-points">Integration Points</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rollout-plan">Rollout Plan</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-strategy">Testing Strategy</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#risks-and-mitigations">Risks and Mitigations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-questions">Open Questions</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
