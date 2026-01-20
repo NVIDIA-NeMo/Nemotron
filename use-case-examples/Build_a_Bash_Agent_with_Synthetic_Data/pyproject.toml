@@ -8,7 +8,6 @@ dependencies = [
     # Data generation
     "data-designer>=0.2.1",
     "jupyter>=1.1.1",
-    "nemo-microservices[data-designer]>=1.4.0",
     "scikit-learn>=1.8.0",
     # NeMo Gym resource server
     "fastapi>=0.100.0",
