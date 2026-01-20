@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     # Data generation
-    "data-designer>=0.2.1",
+    "data-designer==0.3.7",
     "jupyter>=1.1.1",
     "scikit-learn>=1.8.0",
     # NeMo Gym resource server
@@ -36,6 +36,9 @@ dependencies = [
     "pytest-asyncio>=0.23.0",
     "flash-attn<=2.7.3",
 ]
+
+[tool.uv]
+override-dependencies = ["huggingface-hub>=0.34,<1.0"]
 
 [dependency-groups]
 dev = [
