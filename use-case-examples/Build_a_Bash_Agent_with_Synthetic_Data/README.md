@@ -616,7 +616,3 @@ This pattern lets you turn any capable LLM into a **domain-specific, verifiably 
 - [GRPO Paper](https://arxiv.org/abs/2402.03300)
 
 ---
-
-## License
-
-This project is provided for educational and research purposes.
