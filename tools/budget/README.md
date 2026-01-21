@@ -4,7 +4,7 @@ A vLLM V1 custom logit processor for runtime thinking budget control on reasonin
 
 ## Overview
 
-This tool provides `ThinkingBudgetLogitsProcessor` - a logit processor that allows dynamic control over the "thinking" phase of reasoning models. When a model is in thinking mode (indicated by `<think>` tags), this processor can:
+This package provides `ThinkingBudgetLogitsProcessor` - a logit processor that allows dynamic control over the "thinking" phase of reasoning models. When a model is in thinking mode (indicated by `<think>` tags), this processor can:
 
 - Enforce a maximum token budget for the thinking phase
 - Gracefully truncate thinking with customizable end tokens
@@ -47,9 +47,28 @@ vllm serve nvidia/NVIDIA-Nemotron-Nano-31B-A3-v3 \
 | `prompt_think_ids` | Token sequence indicating the model is in thinking mode (e.g., `\n<think>\n`). | `[]` |
 | `end_think_ids` | Token sequences that indicate thinking has ended naturally. | `[]` |
 
+### Recommended Values for Nemotron-Nano-v3
+
+For `nvidia/NVIDIA-Nemotron-Nano-31B-A3-v3`, we recommend the following token ID configurations:
+
+```json
+{
+  "end_token_ids": [2259, 74045, 1062],
+  "prompt_think_ids": [198, 27, 27963, 397],
+  "end_think_ids": [[524, 27963, 397]]
+}
+```
+
+These correspond to:
+- `end_token_ids`: `</think>` (injected when truncating)
+- `prompt_think_ids`: `\n<think>\n` (detects thinking mode)
+- `end_think_ids`: `</think>\n` (natural thinking termination)
+
 ## Client Usage
 
 ### Default Behavior (Server-Side Budget)
+
+When no per-request overrides are provided, the server uses the parameters configured in the `THINKING_BUDGET_LOGITS_PROCESSOR_ARGS` environment variable at startup.
 
 ```python
 from openai import OpenAI
