@@ -64,6 +64,7 @@ class PreTrainDataPrepConfig:
     sample: int | None = None
     num_actors: int | None = None
     ray_data_max_actors: int | None = None
+    xenna_max_shard_workers: int | None = None
     force: bool = False
     config_name: str = "default"
 
@@ -117,6 +118,7 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
         console_mode=getattr(cfg, "console_mode", "simple"),
         simple_log_interval_sec=getattr(cfg, "simple_log_interval_sec", 30),
         ray_data_max_actors=cfg.ray_data_max_actors,
+        xenna_max_shard_workers=cfg.xenna_max_shard_workers,
         execution_engine="xenna",
     )
     artifact = run_data_prep(data_prep_config)

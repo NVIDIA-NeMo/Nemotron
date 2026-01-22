@@ -195,6 +195,33 @@ OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | PackedOutputConfig | Cha
 
 
 @dataclass(frozen=True)
+class XennaConfig:
+    """Configuration for Xenna pipeline execution.
+
+    Attributes:
+        max_concurrent_downloads: Maximum parallel HuggingFace file downloads
+        max_shard_workers: Maximum workers for shard processing stage.
+            Each worker uses ~4GB memory. Set based on node memory.
+            None means auto-scale (cosmos-xenna default).
+        wandb_log_downloads: Log download progress to wandb
+        wandb_log_pipeline_stats: Log pipeline stats (actors, queues, progress) to wandb
+        wandb_download_log_interval_sec: Interval for download progress logging
+        hf_download_timeout_sec: Timeout for HuggingFace downloads
+        hf_download_max_retries: Max retries for HuggingFace downloads
+        pipeline_logging_interval_s: Interval for pipeline stats logging
+    """
+
+    max_concurrent_downloads: int = 64
+    max_shard_workers: int | None = None
+    wandb_log_downloads: bool = False
+    wandb_log_pipeline_stats: bool = False
+    wandb_download_log_interval_sec: int = 30
+    hf_download_timeout_sec: int = 300
+    hf_download_max_retries: int = 3
+    pipeline_logging_interval_s: int = 30
+
+
+@dataclass(frozen=True)
 class RayDataConfig:
     """Configuration for Ray Data shard-task execution.
 
@@ -314,12 +341,30 @@ class PipelineConfig:
     console_mode: str = "simple"
     simple_log_interval_sec: int = 30
     execution_engine: Literal["ray", "xenna"] = "ray"
+    xenna: XennaConfig | None = None
+    # Legacy fields for backward compatibility (prefer xenna.* instead)
     max_concurrent_downloads: int = 64
     wandb_log_downloads: bool = False
     wandb_download_log_interval_sec: int = 30
     hf_download_timeout_sec: int = 300
     hf_download_max_retries: int = 3
     num_actors: int | None = None
+    xenna_max_shard_workers: int | None = None  # Max workers for xenna shard processing
+
+    def effective_xenna(self) -> XennaConfig:
+        """Get effective XennaConfig, merging legacy fields if xenna is not set."""
+        if self.xenna is not None:
+            return self.xenna
+        return XennaConfig(
+            max_concurrent_downloads=self.max_concurrent_downloads,
+            max_shard_workers=self.xenna_max_shard_workers,
+            wandb_log_downloads=self.wandb_log_downloads,
+            wandb_log_pipeline_stats=False,  # New field, no legacy equivalent
+            wandb_download_log_interval_sec=self.wandb_download_log_interval_sec,
+            hf_download_timeout_sec=self.hf_download_timeout_sec,
+            hf_download_max_retries=self.hf_download_max_retries,
+            pipeline_logging_interval_s=30,  # New field, default
+        )
 
 
 # ============================================================================

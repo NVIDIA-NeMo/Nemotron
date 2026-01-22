@@ -28,7 +28,7 @@ dependencies = [
     "omegaconf>=2.3.0",
     "rich>=13.0.0",
     "textual>=0.70.0",
-    "ray==2.49.2",
+    "ray[default]==2.49.2",
     "fsspec>=2024.0.0",
     "numpy>=1.24.0",
     "pyarrow>=14.0.0",

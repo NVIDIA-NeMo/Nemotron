@@ -540,6 +540,15 @@ def build_executor(config: RunConfig, env_vars: dict[str, str] | None = None) ->
             tunnel = _build_tunnel(config)
             packager = _build_packager()
 
+            # Build container mounts, adding /lustre and Ray temp directory
+            mounts = list(config.mounts)
+            # Mount /lustre for access to shared storage (HF cache, data, etc.)
+            mounts.append("/lustre:/lustre")
+            if config.remote_job_dir:
+                # Ray temp directory mount (avoids filling container storage with Ray logs)
+                ray_temp_path = f"{config.remote_job_dir}/ray_temp"
+                mounts.append(f"{ray_temp_path}:/ray-cluster")
+
             return run.SlurmExecutor(
                 account=config.account,
                 partition=config.partition,
@@ -560,7 +569,7 @@ def build_executor(config: RunConfig, env_vars: dict[str, str] | None = None) ->
                 gres=config.gres,
                 array=config.array,
                 container_image=config.container_image,
-                container_mounts=config.mounts,
+                container_mounts=mounts,
                 tunnel=tunnel,
                 packager=packager,
                 env_vars=merged_env,

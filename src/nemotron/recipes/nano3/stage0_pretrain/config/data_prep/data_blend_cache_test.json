@@ -1,0 +1,11 @@
+{
+  "datasets": [
+    {
+      "name": "nemotron-math-3",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "3",
+      "text_field": "text",
+      "weight": 1.0
+    }
+  ]
+}

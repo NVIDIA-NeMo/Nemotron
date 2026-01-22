@@ -212,6 +212,31 @@ class DataPrepConfig:
     """Max retries for HF downloads before giving up (Xenna path only)."""
 
 
+def _ensure_driver_hf_home() -> None:
+    """Ensure HF_HOME is set for the driver process.
+
+    In nemo-run Ray job mode, runtime_env_yaml env_vars apply to Ray workers,
+    but not to the driver script. This function derives HF_HOME from NEMO_RUN_DIR
+    (which IS set for the driver) so that:
+    1. The driver's HF cache goes to shared storage (e.g., Lustre)
+    2. The value propagates to Ray workers via ray.init(runtime_env=...)
+    3. Xenna stages get it via _get_hf_runtime_env() -> env_info -> actor_pool
+
+    This prevents "No space left on device" errors from HF downloads filling
+    local node storage instead of shared Lustre.
+    """
+    if os.environ.get("HF_HOME"):
+        return  # Already set, respect user's explicit setting
+
+    nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
+    if not nemo_run_dir:
+        return  # Not running via nemo-run, fall back to HF defaults
+
+    # Use same convention as nemo-run's worker-side: <job_dir>/hf
+    hf_home = str(Path(nemo_run_dir) / "hf")
+    os.environ["HF_HOME"] = hf_home
+
+
 def run_data_prep(
     config: DataPrepConfig, *, artifact_class: type = PretrainBlendsArtifact
 ) -> DataBlendsArtifact | PretrainBlendsArtifact:
@@ -236,6 +261,12 @@ def run_data_prep(
         >>> artifact = run_data_prep(config)
         >>> print(f"Blend path: {artifact.path}")
     """
+    # Ensure HF_HOME is set for the driver process early.
+    # In nemo-run Ray job mode, runtime_env_yaml env_vars apply to Ray workers only,
+    # not the driver. We derive HF_HOME from NEMO_RUN_DIR (which IS set for the driver)
+    # so that all downstream code sees a consistent cache directory on shared storage.
+    _ensure_driver_hf_home()
+
     # Load data blend specification
     blend = DataBlend.load(config.blend_path)
 
@@ -264,6 +295,9 @@ def run_data_prep(
 
     # Initialize Ray for download tasks (Xenna and Ray executors both use Ray)
     if config.execution_engine in ("ray", "xenna"):
+        # Enable uv integration for Ray workers (Ray 2.43+)
+        # Must be set BEFORE importing ray
+        os.environ.setdefault("RAY_RUNTIME_ENV_HOOK", "ray._private.runtime_env.uv_runtime_env_hook.hook")
         import ray
 
         if not ray.is_initialized():
@@ -291,7 +325,27 @@ def run_data_prep(
             if os.environ.get("HF_TOKEN"):
                 runtime_env["env_vars"]["HF_TOKEN"] = os.environ["HF_TOKEN"]
 
-            ray.init(address="auto", ignore_reinit_error=True, runtime_env=runtime_env)
+            # Set environment variables required by cosmos-xenna monitoring
+            # These must be set BEFORE ray.init()
+            os.environ.setdefault("RAY_MAX_LIMIT_FROM_API_SERVER", "40000")
+            os.environ.setdefault("RAY_MAX_LIMIT_FROM_DATA_SOURCE", "40000")
+
+            # Try connecting to existing cluster, fall back to local mode
+            # include_dashboard=True is required for cosmos-xenna's State API monitoring
+            try:
+                ray.init(
+                    address="auto",
+                    ignore_reinit_error=True,
+                    runtime_env=runtime_env,
+                    include_dashboard=True,
+                )
+            except ConnectionError:
+                # No cluster found - start Ray locally
+                ray.init(
+                    ignore_reinit_error=True,
+                    runtime_env=runtime_env,
+                    include_dashboard=True,
+                )
 
     # Build Ray Data config if enabled, auto-detecting cluster resources
     ray_data_config = None

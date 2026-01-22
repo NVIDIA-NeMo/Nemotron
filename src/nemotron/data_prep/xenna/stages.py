@@ -504,8 +504,10 @@ class HfPredownloadStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
         last_report = start_time
         self._write_progress(completed, total_files, start_time)
 
+        failed_downloads: list[tuple[dict[str, str], Exception]] = []
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
+            futures_to_files = {
                 executor.submit(
                     _download_hf_file,
                     file_info["repo_id"],
@@ -514,15 +516,16 @@ class HfPredownloadStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
                     cache_dir,
                     self._download_timeout_sec,
                     self._max_retries,
-                )
+                ): file_info
                 for file_info in unique_files
-            ]
+            }
 
-            for future in as_completed(futures):
+            for future in as_completed(futures_to_files):
+                file_info = futures_to_files[future]
                 try:
                     future.result()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    failed_downloads.append((file_info, exc))
                 completed += 1
                 now = time.perf_counter()
                 if now - last_report >= 5.0 or completed == total_files:
@@ -530,6 +533,18 @@ class HfPredownloadStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
                     print(f"[Pre-download] {completed}/{total_files} files ({rate:.1f}/s)")
                     last_report = now
                     self._write_progress(completed, total_files, start_time)
+
+        # Report and fail on download errors - don't let PretrainShardStage run on missing files
+        if failed_downloads:
+            print(f"[Pre-download] ERROR: {len(failed_downloads)} downloads failed:")
+            for file_info, exc in failed_downloads[:10]:
+                print(f"  - {file_info['repo_id']}/{file_info['filename']}: {type(exc).__name__}: {exc}")
+            if len(failed_downloads) > 10:
+                print(f"  ... and {len(failed_downloads) - 10} more")
+            raise RuntimeError(
+                f"Pre-download failed: {len(failed_downloads)} files could not be downloaded. "
+                "Cannot proceed with tokenization - files would be missing from cache."
+            )
 
         self._write_progress(completed, total_files, start_time)
 

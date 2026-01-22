@@ -20,6 +20,7 @@ for recipe commands.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -229,6 +230,8 @@ def recipe(
 
             # Execute based on mode
             if global_ctx.mode == "local":
+                # Set env vars so subprocess inherits them (wandb, HF tokens, etc.)
+                os.environ.update(env_vars)
                 _execute_local(script_path, train_path, passthrough, torchrun=torchrun)
             else:
                 _execute_nemo_run(
@@ -637,6 +640,16 @@ def _build_executor(
         else:
             partition = env_config.get("batch_partition") or env_config.get("partition")
 
+        # Build container mounts, adding /lustre and Ray temp directory
+        mounts = list(env_config.get("mounts") or [])
+        # Mount /lustre for access to shared storage (HF cache, data, etc.)
+        mounts.append("/lustre:/lustre")
+        remote_job_dir = env_config.get("remote_job_dir")
+        if remote_job_dir:
+            # Ray temp directory mount (avoids filling container storage with Ray logs)
+            ray_temp_path = f"{remote_job_dir}/ray_temp"
+            mounts.append(f"{ray_temp_path}:/ray-cluster")
+
         # Build executor kwargs, only including exclusive if True
         executor_kwargs: dict[str, Any] = {
             "account": env_config.get("account"),
@@ -647,7 +660,7 @@ def _build_executor(
             "cpus_per_task": env_config.get("cpus_per_task"),
             "time": env_config.get("time", "04:00:00"),
             "container_image": container_image,
-            "container_mounts": env_config.get("mounts") or [],
+            "container_mounts": mounts,
             "tunnel": tunnel,
             "packager": packager,
             "mem": env_config.get("mem"),
@@ -692,11 +705,9 @@ def _build_env_vars(job_config: Any, env_config: dict | None = None) -> dict:
 
     # Set NEMO_RUN_DIR to actual lustre path for output paths
     # This ensures artifacts store the real path, not /nemo_run container mount
+    # Only set for remote execution - local execution uses default paths
     if env_config and env_config.get("remote_job_dir"):
         env_vars["NEMO_RUN_DIR"] = env_config["remote_job_dir"]
-    else:
-        # Fallback to container mount if remote_job_dir not configured
-        env_vars["NEMO_RUN_DIR"] = "/nemo_run"
 
     # Set HF_HOME to remote_job_dir/hf if not explicitly set by user
     # This ensures HuggingFace downloads go to Lustre storage with sufficient space

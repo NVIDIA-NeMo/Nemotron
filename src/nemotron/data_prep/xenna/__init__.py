@@ -12,15 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Xenna integration for Nemotron data prep."""
+"""Xenna integration for Nemotron data prep.
 
-from nemotron.data_prep.xenna.runner import run_xenna_pipeline
-from nemotron.data_prep.xenna.stages import HfPredownloadStage, PretrainShardStage
-from nemotron.data_prep.xenna.work_items import ShardWorkItem
+Architecture:
+- executor.py: run_xenna() - format-agnostic pipeline executor
+- pipeline_specs.py: build_*_pipeline_spec() - PipelineSpec factories
+- observability.py: wandb callback and polling helpers
+- stages.py: Xenna Stage implementations
+- work_items.py: Work item dataclasses
+"""
+
+from nemotron.data_prep.xenna.executor import run_xenna
+from nemotron.data_prep.xenna.observability import (
+    start_download_poller,
+    start_receipt_poller,
+)
+from nemotron.data_prep.xenna.pipeline_specs import (
+    build_chat_sft_pipeline_spec,
+    build_jsonl_pipeline_spec,
+    build_pretrain_pipeline_spec,
+)
+
+# Stage and work item exports
+from nemotron.data_prep.xenna.stages import (
+    ChatSftCentralPackStage,
+    ChatSftSpoolStage,
+    HfPredownloadStage,
+    JsonlShardStage,
+    PretrainShardStage,
+)
+from nemotron.data_prep.xenna.work_items import (
+    ChatSftShardWorkItem,
+    ChatSftSpoolWorkItem,
+    JsonlShardWorkItem,
+    ShardWorkItem,
+)
 
 __all__ = [
+    # Core
+    "run_xenna",
+    "build_pretrain_pipeline_spec",
+    "build_jsonl_pipeline_spec",
+    "build_chat_sft_pipeline_spec",
+    "start_receipt_poller",
+    "start_download_poller",
+    # Stages
     "HfPredownloadStage",
     "PretrainShardStage",
+    "JsonlShardStage",
+    "ChatSftSpoolStage",
+    "ChatSftCentralPackStage",
+    # Work items
     "ShardWorkItem",
-    "run_xenna_pipeline",
+    "JsonlShardWorkItem",
+    "ChatSftShardWorkItem",
+    "ChatSftSpoolWorkItem",
 ]

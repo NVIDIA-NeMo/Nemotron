@@ -14,8 +14,10 @@ run:
 # Path to data blend JSON file
 blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw.json
 
-# Output directory for tokenized data (outputs to job directory for persistence)
-output_dir: ${oc.env:PWD}/../output/stage0_pretrain
+# Output directory for tokenized data
+# Using fixed path to enable caching across job submissions
+# (previously used ${oc.env:PWD}/../output which created new dir per job)
+output_dir: /lustre/fsw/portfolios/coreai/users/mromeijn/output/nano3/stage0_pretrain
 
 # Number of output shards for parallel loading
 num_shards: 128
@@ -48,8 +50,13 @@ max_doc_tokens: null
 sample: null
 
 # Ray Data executor settings
-# Set to 48 as balance between parallelism and memory on 172GB nodes
-ray_data_max_actors: 48
+# Reduced from 48 to 32 to avoid OOM (each worker ~3.7GB)
+ray_data_max_actors: 32
+
+# Xenna pipeline settings
+# Maximum workers for shard processing (each worker ~4GB memory)
+# Set based on node memory. null = auto-scale (cosmos-xenna default)
+xenna_max_shard_workers: 24
 
 # Console output mode: 'simple' for periodic text updates, 'rich' for animated progress
 console_mode: simple

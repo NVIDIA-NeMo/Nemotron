@@ -717,8 +717,19 @@ class LiveExecutionStatus:
             console.print("\n[bold]Starting data preparation...[/bold]")
             self._print_simple_status()
 
-    def stop(self) -> None:
-        """Stop the live display."""
+    def stop(self, success: bool | None = None) -> None:
+        """Stop the live display.
+
+        Args:
+            success: Whether the pipeline completed successfully. If None (default),
+                     auto-detects based on whether all datasets are complete/cached.
+        """
+        # Auto-detect completion if not explicitly provided
+        if success is None:
+            done, cached, pending, processing = self._get_summary_counts()
+            total = len(self.datasets)
+            success = (done + cached) == total and total > 0
+
         if self.console_mode == "rich":
             if self._live:
                 self._live.stop()
@@ -728,7 +739,20 @@ class LiveExecutionStatus:
         else:
             # Simple mode: Print final status
             self._print_simple_status()
+
+        # Print completion message based on actual status
+        if success:
             console.print("[bold green]✓ Data preparation complete[/bold green]\n")
+        else:
+            total_completed, total_shards = self._get_total_shards_progress()
+            if total_shards > 0:
+                pct = total_completed / total_shards * 100
+                console.print(
+                    f"[bold yellow]⚠ Data preparation interrupted "
+                    f"({total_completed}/{total_shards} shards, {pct:.1f}%)[/bold yellow]\n"
+                )
+            else:
+                console.print("[bold yellow]⚠ Data preparation interrupted[/bold yellow]\n")
 
     def refresh(self) -> None:
         """Refresh the live display and cycle pages."""

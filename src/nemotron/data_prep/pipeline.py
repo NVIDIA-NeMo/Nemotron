@@ -861,21 +861,89 @@ def _process_all_shards_parallel(
 
     # Dispatch to Xenna executor if requested
     if execution_engine == "xenna":
-        from nemotron.data_prep.xenna.runner import run_xenna_pipeline
+        from dataclasses import asdict
 
-        run_xenna_pipeline(
-            execution_plans=execution_plans,
-            output_config=output_config,
-            output_root=output_root,
-            fs=fs,
-            live_status=live_status,
-            results=results,
+        from nemotron.data_prep.config import XennaConfig
+        from nemotron.data_prep.xenna.executor import run_xenna
+        from nemotron.data_prep.xenna.pipeline_specs import build_pretrain_pipeline_spec
+        from nemotron.data_prep.xenna.work_items import ShardWorkItem
+
+        # Build XennaConfig from individual parameters (legacy compatibility)
+        xenna_cfg = XennaConfig(
             max_concurrent_downloads=max_concurrent_downloads,
             wandb_log_downloads=wandb_log_downloads,
+            wandb_log_pipeline_stats=True,  # Enable pipeline stats logging
             wandb_download_log_interval_sec=wandb_download_log_interval_sec,
             hf_download_timeout_sec=hf_download_timeout_sec,
             hf_download_max_retries=hf_download_max_retries,
         )
+
+        # Get resolved tokenizer from first plan (should be uniform)
+        resolved_tokenizer = execution_plans[0].plan.resolved_tokenizer
+
+        # Build work items
+        tasks: list[ShardWorkItem] = []
+        dataset_receipt_dirs: dict[str, str] = {}
+
+        for ep in execution_plans:
+            live_status.start_dataset(ep.name)
+            live_status.report_phase(ep.name, "processing", "xenna")
+            dataset_receipt_dirs[ep.name] = ep.receipts_dir
+
+            assignment_dicts = {}
+            for a in ep.plan.file_assignments:
+                assignment_dicts[a.shard_index] = {
+                    "shard_index": a.shard_index,
+                    "files": [asdict(f) for f in a.files],
+                    "total_bytes": a.total_bytes,
+                }
+
+            for shard_idx in ep.pending_indices:
+                tasks.append(
+                    ShardWorkItem(
+                        dataset_name=ep.name,
+                        plan_hash=ep.plan.plan_hash,
+                        shard_index=shard_idx,
+                        assignment=assignment_dicts[shard_idx],
+                        output_dir=ep.dataset_dir,
+                        receipts_dir=ep.receipts_dir,
+                        text_field=ep.config.text_field,
+                        dtype=output_config.dtype,
+                        min_doc_chars=output_config.min_doc_chars,
+                        max_doc_tokens=output_config.max_doc_tokens,
+                        max_rows=output_config.max_rows,
+                    )
+                )
+
+        if tasks:
+            # Build pipeline spec
+            pipeline_spec = build_pretrain_pipeline_spec(
+                tasks=tasks,
+                resolved_tokenizer=resolved_tokenizer,
+                output_root=output_root,
+                xenna_cfg=xenna_cfg,
+            )
+
+            # Run pipeline
+            run_xenna(
+                pipeline_spec=pipeline_spec,
+                dataset_receipt_dirs=dataset_receipt_dirs,
+                output_root=output_root,
+                fs=fs,
+                live_status=live_status,
+                xenna_cfg=xenna_cfg,
+            )
+
+        # Aggregate results
+        for ep in execution_plans:
+            results[ep.name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+            live_status.report_metrics(
+                ep.name,
+                rows=results[ep.name].get("total_sequences", 0),
+                tokens=results[ep.name].get("total_tokens", 0),
+            )
+            live_status.complete_dataset(ep.name)
+
         return
 
     # Dispatch to Ray Data executor if enabled
@@ -1587,10 +1655,14 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
     if has_work and config.execution_engine == "xenna":
         from dataclasses import asdict
 
-        from nemotron.data_prep.xenna.runner import run_xenna_jsonl_pipeline
+        from nemotron.data_prep.xenna.executor import run_xenna
+        from nemotron.data_prep.xenna.pipeline_specs import build_jsonl_pipeline_spec
         from nemotron.data_prep.xenna.work_items import JsonlShardWorkItem
 
+        xenna_cfg = config.effective_xenna()
+
         tasks: list[JsonlShardWorkItem] = []
+        dataset_receipt_dirs: dict[str, str] = {}
         dataset_infos: list[dict] = []
 
         live_status = con.create_live_status(
@@ -1628,6 +1700,7 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
                             )
                         )
 
+                dataset_receipt_dirs[dataset.name] = receipts_dir
                 dataset_infos.append(
                     {
                         "name": dataset.name,
@@ -1641,29 +1714,38 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
                 live_status.start_dataset(info["name"])
 
             if tasks:
-                run_xenna_jsonl_pipeline(
+                # Build pipeline spec
+                pipeline_spec = build_jsonl_pipeline_spec(
                     tasks=tasks,
-                    dataset_infos=dataset_infos,
                     output_root=str(config.output.dir),
-                    fs=fs,
-                    live_status=live_status,
-                    results=results,
                     text_field=dataset_plans[0][0].text_field if dataset_plans else "text",
                     transform=format_config.transform,
                     compression=format_config.compression,
                     max_rows=config.output.max_rows,
                     resolve_hf_placeholders=format_config.resolve_hf_placeholders,
-                    max_concurrent_downloads=config.max_concurrent_downloads,
-                    wandb_log_downloads=config.wandb_log_downloads,
-                    wandb_download_log_interval_sec=config.wandb_download_log_interval_sec,
-                    hf_download_timeout_sec=config.hf_download_timeout_sec,
-                    hf_download_max_retries=config.hf_download_max_retries,
+                    xenna_cfg=xenna_cfg,
                 )
-            else:
-                for info in dataset_infos:
-                    stats = _aggregate_jsonl_stats(info["dataset_dir"], num_shards, fs)
-                    results[info["name"]] = stats
-                    live_status.complete_dataset(info["name"])
+
+                # Run pipeline
+                run_xenna(
+                    pipeline_spec=pipeline_spec,
+                    dataset_receipt_dirs=dataset_receipt_dirs,
+                    output_root=str(config.output.dir),
+                    fs=fs,
+                    live_status=live_status,
+                    xenna_cfg=xenna_cfg,
+                )
+
+            # Aggregate results
+            for info in dataset_infos:
+                stats = _aggregate_jsonl_stats(info["dataset_dir"], num_shards, fs)
+                results[info["name"]] = stats
+                live_status.report_metrics(
+                    info["name"],
+                    rows=stats.get("num_records", 0),
+                    tokens=0,
+                )
+                live_status.complete_dataset(info["name"])
 
             for dataset, dataset_dir, _, _, _, _ in dataset_plans:
                 weight = dataset.weight
@@ -2369,10 +2451,14 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
         if config.execution_engine == "xenna":
             from dataclasses import asdict
 
-            from nemotron.data_prep.xenna.runner import run_xenna_chat_sft_pipeline
+            from nemotron.data_prep.xenna.executor import run_xenna
+            from nemotron.data_prep.xenna.pipeline_specs import build_chat_sft_pipeline_spec
             from nemotron.data_prep.xenna.work_items import ChatSftShardWorkItem
 
+            xenna_cfg = config.effective_xenna()
+
             tasks: list[ChatSftShardWorkItem] = []
+            dataset_receipt_dirs: dict[str, str] = {}
             dataset_infos: list[dict] = []
 
             live_status = con.create_live_status(
@@ -2407,6 +2493,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                                 )
                             )
 
+                    dataset_receipt_dirs[dataset.name] = receipts_dir
                     dataset_infos.append(
                         {
                             "name": dataset.name,
@@ -2419,13 +2506,10 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                     live_status.start_dataset(info["name"])
 
                 if tasks:
-                    run_xenna_chat_sft_pipeline(
+                    # Build pipeline spec
+                    pipeline_spec = build_chat_sft_pipeline_spec(
                         tasks=tasks,
-                        dataset_infos=dataset_infos,
                         output_root=str(config.output.dir),
-                        fs=fs,
-                        live_status=live_status,
-                        results=results,
                         resolved_tokenizer=resolved_tokenizer,
                         messages_field=format_config.messages_field,
                         tools_field=format_config.tools_field,
@@ -2438,19 +2522,31 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                         seed=42,
                         used_in_filter=format_config.used_in_filter,
                         used_in_field=format_config.used_in_field,
-                        max_concurrent_downloads=config.max_concurrent_downloads,
-                        wandb_log_downloads=config.wandb_log_downloads,
-                        wandb_download_log_interval_sec=config.wandb_download_log_interval_sec,
-                        hf_download_timeout_sec=config.hf_download_timeout_sec,
-                        hf_download_max_retries=config.hf_download_max_retries,
+                        xenna_cfg=xenna_cfg,
                     )
-                else:
-                    for info in dataset_infos:
-                        stats = _aggregate_packed_stats(
-                            info["dataset_dir"], info["receipts_dir"], fs
-                        )
-                        results[info["name"]] = stats
-                        live_status.complete_dataset(info["name"])
+
+                    # Run pipeline
+                    run_xenna(
+                        pipeline_spec=pipeline_spec,
+                        dataset_receipt_dirs=dataset_receipt_dirs,
+                        output_root=str(config.output.dir),
+                        fs=fs,
+                        live_status=live_status,
+                        xenna_cfg=xenna_cfg,
+                    )
+
+                # Aggregate results
+                for info in dataset_infos:
+                    stats = _aggregate_packed_stats(
+                        info["dataset_dir"], info["receipts_dir"], fs
+                    )
+                    results[info["name"]] = stats
+                    live_status.report_metrics(
+                        info["name"],
+                        rows=stats.get("num_sequences", 0),
+                        tokens=stats.get("total_tokens", 0),
+                    )
+                    live_status.complete_dataset(info["name"])
 
                 for dataset, dataset_dir, _, _, _ in dataset_plans:
                     weight = dataset.weight
