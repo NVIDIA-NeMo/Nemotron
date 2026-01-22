@@ -1,0 +1,1202 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>RFC: Scalable Packed SFT Data Format &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'packed-sft-format-design';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="train/nano3/README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/artifacts.html">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="train/nano3/pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/nano3/sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/nano3/rl.html">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/nano3/import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="train/kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/cli.html">CLI Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="train/data-prep.html">Data Preparation Module</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">RFC: Scalable Packed SFT Data Format</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="rfc-scalable-packed-sft-data-format">
+<h1>RFC: Scalable Packed SFT Data Format<a class="headerlink" href="#rfc-scalable-packed-sft-data-format" title="Link to this heading">#</a></h1>
+<p><strong>Status:</strong> Proposed
+<strong>Authors:</strong> Data Infrastructure Team
+<strong>Created:</strong> 2025-01-20
+<strong>Target:</strong> Megatron-Bridge + Nemotron Data Prep</p>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">#</a></h2>
+<p>This RFC proposes adding new memory-efficient formats for packed SFT data in the Megatron-Bridge training pipeline.</p>
+<p><strong>The problem:</strong> The current pickle-based <code class="docutils literal notranslate"><span class="pre">.npy</span></code> format requires loading the entire dataset into memory—both when writing (Nemotron data_prep) and when reading (Megatron-Bridge training). For a typical 50,000-sample packed dataset, this consumes ~4 GB of RAM. This limits the size of datasets we can process and creates memory pressure during multi-node training where every node loads the full dataset.</p>
+<p><strong>Modern scale requirements:</strong> State-of-the-art SFT pipelines operate at significantly larger scale. For example, <a class="reference external" href="https://huggingface.co/blog/nvidia/nemotron-3-nano-efficient-open-intelligent-models">Nemotron-3 Nano</a> uses a 13-million-sample post-training corpus spanning code, math, multi-turn conversations, and tool use. At this scale, the current format would require <strong>~1 TB of RAM</strong> just to load the dataset—clearly infeasible.</p>
+<p><strong>The proposal:</strong> Add new format options (Parquet, Memmap) that support streaming writes and lazy reads, reducing memory usage by 200-500x for large datasets. The current <code class="docutils literal notranslate"><span class="pre">.npy</span></code> format will remain supported and continue to be the default, ensuring full backward compatibility. Users can opt into new formats when working with larger datasets or cloud storage.</p>
+</section>
+<hr class="docutils" />
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Link to this heading">#</a></h2>
+<section id="current-packed-sequence-format">
+<h3>Current Packed Sequence Format<a class="headerlink" href="#current-packed-sequence-format" title="Link to this heading">#</a></h3>
+<p>Megatron-Bridge’s <code class="docutils literal notranslate"><span class="pre">GPTSFTPackedDataset</span></code> reads packed SFT data from <code class="docutils literal notranslate"><span class="pre">.npy</span></code> files produced by Nemotron’s data preparation pipeline. The format stores a Python list of dictionaries:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Current format: list of dicts with Python lists</span>
+<span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;input_ids&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">101</span><span class="p">,</span> <span class="mi">2054</span><span class="p">,</span> <span class="mi">2003</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>      <span class="c1"># Variable-length token ids</span>
+        <span class="s2">&quot;loss_mask&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>           <span class="c1"># Variable-length loss mask</span>
+        <span class="s2">&quot;seq_start_id&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>         <span class="c1"># Sequence boundaries within the pack</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;input_ids&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>
+        <span class="s2">&quot;loss_mask&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>
+        <span class="s2">&quot;seq_start_id&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+    <span class="p">},</span>
+    <span class="c1"># ... thousands more packed samples</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>This is serialized using <code class="docutils literal notranslate"><span class="pre">np.save(...,</span> <span class="pre">allow_pickle=True)</span></code>.</p>
+<p>This format works well for small to medium datasets and will remain supported. However, it has scalability limitations for larger workloads:</p>
+</section>
+<section id="scalability-limitations">
+<h3>Scalability Limitations<a class="headerlink" href="#scalability-limitations" title="Link to this heading">#</a></h3>
+<section id="problem-1-write-side-memory-explosion">
+<h4>Problem 1: Write-Side Memory Explosion<a class="headerlink" href="#problem-1-write-side-memory-explosion" title="Link to this heading">#</a></h4>
+<p>In Nemotron’s <code class="docutils literal notranslate"><span class="pre">process_chat_sft_pack_from_spool_core()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">packed_data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">materialize_packed_samples</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+    <span class="n">packed_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>  <span class="c1"># Accumulates ALL samples in memory</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">packed_data</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The Python object overhead is severe:</p>
+<ul class="simple">
+<li><p>Each token (4-byte int32) becomes a ~28-byte Python int object</p></li>
+<li><p>Each list adds 8 bytes per element for pointers + 56 bytes header</p></li>
+<li><p><strong>Result:</strong> 50,000 packed samples with pack_size=2048 → <strong>~4 GB peak memory</strong></p></li>
+</ul>
+</section>
+<section id="problem-2-read-side-full-load">
+<h4>Problem 2: Read-Side Full Load<a class="headerlink" href="#problem-2-read-side-full-load" title="Link to this heading">#</a></h4>
+<p>In Megatron-Bridge’s <code class="docutils literal notranslate"><span class="pre">GPTSFTPackedDataset._load_dataset()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">indexed_dataset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This deserializes the entire pickle into RAM before any training iteration. There is no lazy loading or memory mapping—the “random access” only works because everything is already in memory.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Dataset Size</p></th>
+<th class="head"><p>Memory Required</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>10k samples</p></td>
+<td><p>~800 MB</p></td>
+</tr>
+<tr class="row-odd"><td><p>50k samples</p></td>
+<td><p>~4 GB</p></td>
+</tr>
+<tr class="row-even"><td><p>200k samples</p></td>
+<td><p>~16 GB</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>This becomes prohibitive for multi-node training where each node loads the full dataset.</p>
+<p>For reference, modern SFT pipelines like <a class="reference external" href="https://developer.nvidia.com/blog/inside-nvidia-nemotron-3-techniques-tools-and-data-that-make-it-efficient-and-accurate/">Nemotron-3 Nano’s post-training</a> use <strong>13+ million samples</strong> across diverse domains (code, math, multi-turn conversations, tool use). At this scale, the current format is not viable.</p>
+</section>
+<section id="problem-3-no-cloud-storage-support">
+<h4>Problem 3: No Cloud Storage Support<a class="headerlink" href="#problem-3-no-cloud-storage-support" title="Link to this heading">#</a></h4>
+<p>The pickle-based format cannot be streamed from cloud storage (S3, GCS). The entire file must be downloaded and deserialized, adding startup latency to training jobs.</p>
+</section>
+</section>
+<section id="contrast-megatron-pretrain-format">
+<h3>Contrast: Megatron Pretrain Format<a class="headerlink" href="#contrast-megatron-pretrain-format" title="Link to this heading">#</a></h3>
+<p>The Megatron pretrain format (<code class="docutils literal notranslate"><span class="pre">.bin</span></code> + <code class="docutils literal notranslate"><span class="pre">.idx</span></code>) demonstrates the right approach:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Data: memory-mapped binary file</span>
+<span class="n">mdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">memmap</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
+
+<span class="c1"># Index: offsets for O(1) random access</span>
+<span class="n">midx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">idx_path</span><span class="p">,</span> <span class="n">mmap_mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
+
+<span class="c1"># Access: read only what you need</span>
+<span class="n">sample</span> <span class="o">=</span> <span class="n">mdata</span><span class="p">[</span><span class="n">midx</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span><span class="n">midx</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p><strong>Properties:</strong></p>
+<ul class="simple">
+<li><p>O(1) memory at load time (just mmap headers)</p></li>
+<li><p>O(sample_size) memory per access</p></li>
+<li><p>True random access without loading everything</p></li>
+</ul>
+<p>We need similar properties for packed SFT data.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="goals">
+<h2>Goals<a class="headerlink" href="#goals" title="Link to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Streaming writes:</strong> New formats should support writing without accumulating in memory</p></li>
+<li><p><strong>Lazy reads:</strong> New formats should load only the samples needed, not the entire dataset</p></li>
+<li><p><strong>Cloud-native:</strong> New formats should support direct read/write to S3, GCS, Azure</p></li>
+<li><p><strong>Backward compatible:</strong> Existing <code class="docutils literal notranslate"><span class="pre">.npy</span></code> files must continue to work unchanged</p></li>
+<li><p><strong>Opt-in:</strong> New formats are opt-in via configuration; existing pipelines unaffected</p></li>
+<li><p><strong>Minimal training code changes:</strong> Same <code class="docutils literal notranslate"><span class="pre">__getitem__</span></code> interface regardless of format</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="new-format-options">
+<h2>New Format Options<a class="headerlink" href="#new-format-options" title="Link to this heading">#</a></h2>
+<p>The following formats are proposed as additional options alongside the existing legacy format.</p>
+<p><strong>Which option is closest to the current format?</strong> Parquet (Option B) is the most similar to the current pickle-based format:</p>
+<ul class="simple">
+<li><p>Both store variable-length lists without padding</p></li>
+<li><p>Both use a single file per shard</p></li>
+<li><p>Both preserve the same data model (<code class="docutils literal notranslate"><span class="pre">input_ids</span></code>, <code class="docutils literal notranslate"><span class="pre">loss_mask</span></code>, <code class="docutils literal notranslate"><span class="pre">seq_start_id</span></code> as lists)</p></li>
+</ul>
+<p>The main difference is the serialization format (Parquet columnar vs Python pickle) and that Parquet adds compression. Migration from legacy to Parquet requires no changes to the logical data structure.</p>
+<p>Memmap (Option A) is a larger departure: it pads sequences to fixed length and splits data across multiple files. This trades some disk space (~10%) for true O(1) random access without row group boundaries.</p>
+<hr class="docutils" />
+<section id="option-a-padded-fixed-shape-memmap-arrays">
+<h3>Option A: Padded Fixed-Shape Memmap Arrays<a class="headerlink" href="#option-a-padded-fixed-shape-memmap-arrays" title="Link to this heading">#</a></h3>
+<p>Use <code class="docutils literal notranslate"><span class="pre">np.lib.format.open_memmap()</span></code> to write fixed-shape numpy arrays that can be memory-mapped for reading.</p>
+<p><strong>Format:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>shard_000000/
+├── input_ids.npy      # int32[num_bins, pack_size]  - padded
+├── loss_mask.npy      # uint8[num_bins, pack_size]  - padded
+├── packed_len.npy     # uint32[num_bins]            - actual lengths
+├── seq_offsets.npy    # uint32[num_bins + 1]        - CSR pointers
+├── seq_starts.npy     # uint32[total_seq_starts]    - boundary values
+└── manifest.json
+</pre></div>
+</div>
+<p><strong>Pros:</strong></p>
+<ul class="simple">
+<li><p>True O(1) random access via memmap</p></li>
+<li><p>Simplest implementation (direct numpy)</p></li>
+<li><p>Zero external dependencies</p></li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul class="simple">
+<li><p>~10% padding waste</p></li>
+<li><p>Multiple files per shard</p></li>
+<li><p>Local filesystem required for writes (cloud needs temp + upload)</p></li>
+</ul>
+<p><strong>Implementation:</strong> <a class="reference internal" href="packed-sft-impl-memmap.html"><span class="std std-doc">packed-sft-impl-memmap.md</span></a></p>
+</section>
+<hr class="docutils" />
+<section id="option-b-parquet-recommended">
+<h3>Option B: Parquet (Recommended)<a class="headerlink" href="#option-b-parquet-recommended" title="Link to this heading">#</a></h3>
+<p>Use Apache Parquet with PyArrow for columnar storage with native variable-length support.</p>
+<p><strong>Format:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">shard_000000</span><span class="o">.</span><span class="n">parquet</span>
+  <span class="n">Schema</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">input_ids</span><span class="p">:</span> <span class="nb">list</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span>
+    <span class="o">-</span> <span class="n">loss_mask</span><span class="p">:</span> <span class="nb">list</span><span class="o">&lt;</span><span class="n">uint8</span><span class="o">&gt;</span>
+    <span class="o">-</span> <span class="n">seq_start_id</span><span class="p">:</span> <span class="nb">list</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span>
+  <span class="n">Compression</span><span class="p">:</span> <span class="n">zstd</span>
+  <span class="n">Row</span> <span class="n">groups</span><span class="p">:</span> <span class="o">~</span><span class="mi">1000</span> <span class="n">rows</span>
+</pre></div>
+</div>
+<p><strong>Pros:</strong></p>
+<ul class="simple">
+<li><p>Industry standard with excellent tooling</p></li>
+<li><p>Default format for Hugging Face datasets</p></li>
+<li><p>Native variable-length lists (no padding)</p></li>
+<li><p>2-3x compression with zstd</p></li>
+<li><p>Direct cloud storage support (S3, GCS, Azure)</p></li>
+<li><p>Single file per shard</p></li>
+<li><p>Queryable with DuckDB, Polars, pandas</p></li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul class="simple">
+<li><p>Adds PyArrow dependency (already used in pipeline)</p></li>
+<li><p>Row-group granularity for access (configurable, typically fine)</p></li>
+</ul>
+<p><strong>Implementation:</strong></p>
+<ul class="simple">
+<li><p>Writer (Nemotron): <a class="reference internal" href="packed-sft-impl-parquet-nemotron.html"><span class="std std-doc">packed-sft-impl-parquet-nemotron.md</span></a></p></li>
+<li><p>Reader (Megatron-Bridge): <a class="reference internal" href="packed-sft-impl-parquet-megatron-bridge.html"><span class="std std-doc">packed-sft-impl-parquet-megatron-bridge.md</span></a></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="option-c-megatron-bin-idx-style">
+<h3>Option C: Megatron bin/idx Style<a class="headerlink" href="#option-c-megatron-bin-idx-style" title="Link to this heading">#</a></h3>
+<p>Mimic the proven Megatron pretrain format with a flat binary data file and separate index.</p>
+<p><strong>Current Megatron pretrain format:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span><span class="o">.</span><span class="n">bin</span>    <span class="c1"># Concatenated tokens as raw bytes (uint16/uint32)</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">idx</span>    <span class="c1"># Header + document offsets + sequence lengths</span>
+</pre></div>
+</div>
+<p>The pretrain format stores only <code class="docutils literal notranslate"><span class="pre">input_ids</span></code> with document boundaries. For packed SFT, we would need to extend this to also store <code class="docutils literal notranslate"><span class="pre">loss_mask</span></code> and <code class="docutils literal notranslate"><span class="pre">seq_start_id</span></code>.</p>
+<p><strong>Proposed extended format:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">shard_000000</span><span class="o">.</span><span class="n">bin</span>         <span class="c1"># Concatenated input_ids (int32)</span>
+<span class="n">shard_000000</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">bin</span>    <span class="c1"># Concatenated loss_mask (uint8)  [NEW]</span>
+<span class="n">shard_000000</span><span class="o">.</span><span class="n">idx</span>         <span class="c1"># Bin offsets + lengths</span>
+<span class="n">shard_000000</span><span class="o">.</span><span class="n">seq</span><span class="o">.</span><span class="n">idx</span>     <span class="c1"># Sequence boundary offsets (CSR)  [NEW]</span>
+<span class="n">shard_000000</span><span class="o">.</span><span class="n">seq</span><span class="o">.</span><span class="n">bin</span>     <span class="c1"># Sequence start positions  [NEW]</span>
+</pre></div>
+</div>
+<p><strong>What needs to be built:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Extended index format</strong> — Add fields for <code class="docutils literal notranslate"><span class="pre">loss_mask</span></code> offsets and <code class="docutils literal notranslate"><span class="pre">seq_start_id</span></code> CSR pointers</p></li>
+<li><p><strong>Loss mask storage</strong> — Separate <code class="docutils literal notranslate"><span class="pre">.loss.bin</span></code> file or interleaved with tokens</p></li>
+<li><p><strong>Sequence boundary storage</strong> — CSR-style index similar to Option A’s <code class="docutils literal notranslate"><span class="pre">seq_offsets.npy</span></code> + <code class="docutils literal notranslate"><span class="pre">seq_starts.npy</span></code></p></li>
+<li><p><strong>Writer changes</strong> — Extend <code class="docutils literal notranslate"><span class="pre">IndexedDatasetBuilder</span></code> to write additional arrays</p></li>
+<li><p><strong>Reader changes</strong> — Extend <code class="docutils literal notranslate"><span class="pre">MMapIndexedDataset</span></code> to read loss mask and boundaries</p></li>
+</ol>
+<p><strong>Pros:</strong></p>
+<ul class="simple">
+<li><p>Proven memory-mapping approach in Megatron ecosystem</p></li>
+<li><p>Consistent with existing pretrain data loading patterns</p></li>
+<li><p>True O(1) random access</p></li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul class="simple">
+<li><p>Requires extending Megatron’s indexed dataset format (non-trivial)</p></li>
+<li><p>5 files per shard (more than Parquet’s 1, similar to Option A’s 6)</p></li>
+<li><p>No compression (larger on disk than Parquet)</p></li>
+<li><p>Less ecosystem tooling compared to Parquet</p></li>
+</ul>
+<p><strong>Recommendation:</strong> Consider this option if strict consistency with Megatron pretrain tooling is required. Otherwise, Parquet (Option B) provides similar benefits with less implementation effort and better compression.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="comparison">
+<h2>Comparison<a class="headerlink" href="#comparison" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Aspect</p></th>
+<th class="head"><p>Legacy (.npy pickle)</p></th>
+<th class="head"><p>Memmap (Option A)</p></th>
+<th class="head"><p>Parquet (Option B)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Write memory (Python heap)</p></td>
+<td><p>O(dataset)</p></td>
+<td><p>O(pack_size)†</p></td>
+<td><p>O(row_group)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Read memory at load</p></td>
+<td><p>O(dataset)</p></td>
+<td><p>O(metadata)</p></td>
+<td><p>O(metadata)</p></td>
+</tr>
+<tr class="row-even"><td><p>Read memory per sample</p></td>
+<td><p>O(1)*</p></td>
+<td><p>O(pack_size)</p></td>
+<td><p>O(row_group)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Random access</p></td>
+<td><p>O(1)*</p></td>
+<td><p>O(1) true</p></td>
+<td><p>O(row_group)</p></td>
+</tr>
+<tr class="row-even"><td><p>Disk size</p></td>
+<td><p>1x</p></td>
+<td><p>1.1x (padding)</p></td>
+<td><p>0.4x (compressed)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Files per shard</p></td>
+<td><p>1</p></td>
+<td><p>6</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-even"><td><p>Cloud support</p></td>
+<td><p>None</p></td>
+<td><p>Local only</p></td>
+<td><p>Native (local) / Ranged reads (cloud)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Variable-length</p></td>
+<td><p>Via pickle</p></td>
+<td><p>Padding</p></td>
+<td><p>Native</p></td>
+</tr>
+<tr class="row-even"><td><p>Tooling</p></td>
+<td><p>None</p></td>
+<td><p>numpy</p></td>
+<td><p>DuckDB, Polars</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Supported (default)</p></td>
+<td><p>New option</p></td>
+<td><p>New option</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>*After full dataset load
+†OS page cache may grow with output size during writes; Python heap stays small</p>
+</section>
+<hr class="docutils" />
+<section id="when-to-use-each-format">
+<h2>When to Use Each Format<a class="headerlink" href="#when-to-use-each-format" title="Link to this heading">#</a></h2>
+<section id="legacy-npy-pickle-keep-using-when">
+<h3>Legacy (.npy pickle) — Keep using when:<a class="headerlink" href="#legacy-npy-pickle-keep-using-when" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Existing pipelines that work well at current scale</p></li>
+<li><p>Small to medium datasets (&lt; 50k packed samples, ~4 GB memory budget)</p></li>
+<li><p>No need to change what already works</p></li>
+</ul>
+</section>
+<section id="parquet-option-b-use-when">
+<h3>Parquet (Option B) — Use when:<a class="headerlink" href="#parquet-option-b-use-when" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Large datasets where memory is a constraint (100k+ samples, millions for production SFT)</p></li>
+<li><p>Cloud storage (S3, GCS, Azure) is involved</p></li>
+<li><p>You want compression to reduce disk/network I/O</p></li>
+<li><p>You need to inspect data with standard tools (DuckDB, pandas)</p></li>
+</ul>
+<p><strong>Parquet is the recommended new format</strong> because:</p>
+<ol class="arabic simple">
+<li><p><strong>Already a dependency</strong> — PyArrow is used for reading input data</p></li>
+<li><p><strong>Ecosystem standard</strong> — Default format for Hugging Face datasets; widely adopted for ML data</p></li>
+<li><p><strong>Single file</strong> — Simpler than multi-file memmap directory</p></li>
+<li><p><strong>Compression</strong> — 2-3x smaller on disk reduces I/O</p></li>
+<li><p><strong>Cloud-native</strong> — Direct S3/GCS support without temp files</p></li>
+<li><p><strong>No padding waste</strong> — Native variable-length arrays</p></li>
+</ol>
+</section>
+<section id="memmap-option-a-use-when">
+<h3>Memmap (Option A) — Use when:<a class="headerlink" href="#memmap-option-a-use-when" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Maximum raw access speed is critical</p></li>
+<li><p>You want zero dependencies beyond numpy</p></li>
+<li><p>All storage is local POSIX filesystem</p></li>
+<li><p>You need true O(1) random access without row group boundaries</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="megatron-bridge-changes-required">
+<h2>Megatron-Bridge Changes Required<a class="headerlink" href="#megatron-bridge-changes-required" title="Link to this heading">#</a></h2>
+<section id="new-dataset-classes">
+<h3>New Dataset Classes<a class="headerlink" href="#new-dataset-classes" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For Parquet format</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GPTSFTPackedParquetDataset</span><span class="p">(</span><span class="n">GPTSFTDataset</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pf</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">memory_map</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># No data loaded yet</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="c1"># Read only the row group containing idx</span>
+        <span class="n">rg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pf</span><span class="o">.</span><span class="n">read_row_group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_rg</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">rg</span><span class="p">[</span><span class="n">idx</span> <span class="o">%</span> <span class="n">rg_size</span><span class="p">]</span>
+
+<span class="c1"># For Memmap format</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GPTSFTPackedMemmapDataset</span><span class="p">(</span><span class="n">GPTSFTDataset</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">mmap_mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+        <span class="c1"># No data loaded yet</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">packed_len</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_ids</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:</span><span class="n">L</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="factory-function-update">
+<h3>Factory Function Update<a class="headerlink" href="#factory-function-update" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_sft_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">tokenizer</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GPTSFTDataset</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.npy&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">GPTSFTPackedDataset</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>        <span class="c1"># Legacy</span>
+    <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.parquet&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">GPTSFTPackedParquetDataset</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># New</span>
+    <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;manifest.json&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">GPTSFTPackedMemmapDataset</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>   <span class="c1"># New</span>
+</pre></div>
+</div>
+</section>
+<section id="backward-compatibility">
+<h3>Backward Compatibility<a class="headerlink" href="#backward-compatibility" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Existing <code class="docutils literal notranslate"><span class="pre">.npy</span></code> files continue to work unchanged</p></li>
+<li><p>Format detected automatically by file extension/structure</p></li>
+<li><p>Training code uses same <code class="docutils literal notranslate"><span class="pre">__getitem__</span></code> interface</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="format-invariants">
+<h2>Format Invariants<a class="headerlink" href="#format-invariants" title="Link to this heading">#</a></h2>
+<p>All formats must maintain these invariants for each packed sample. Implementations should assert these during writes and verify during tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For each packed bin:</span>
+<span class="k">assert</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">packed_len</span> <span class="o">&lt;=</span> <span class="n">pack_size</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">input_ids</span><span class="p">)</span> <span class="o">==</span> <span class="n">packed_len</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">loss_mask</span><span class="p">)</span> <span class="o">==</span> <span class="n">packed_len</span>
+
+<span class="c1"># seq_start_id contains START positions of each sequence in the pack</span>
+<span class="c1"># First sequence always starts at 0</span>
+<span class="k">assert</span> <span class="n">seq_start_id</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">seq_start_id</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">seq_start_id</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seq_start_id</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">assert</span> <span class="n">seq_start_id</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">packed_len</span>  <span class="c1"># Last start is before end</span>
+
+<span class="c1"># To reconstruct sequence boundaries for attention masking:</span>
+<span class="c1"># boundaries = list(seq_start_id) + [packed_len]</span>
+<span class="c1"># seq_i spans input_ids[boundaries[i]:boundaries[i+1]]</span>
+</pre></div>
+</div>
+<p><strong>Key invariant:</strong> <code class="docutils literal notranslate"><span class="pre">seq_start_id</span></code> stores <strong>start positions</strong> <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">start_1,</span> <span class="pre">start_2,</span> <span class="pre">...]</span></code>, not end positions. The final boundary (<code class="docutils literal notranslate"><span class="pre">packed_len</span></code>) is reconstructed at read time.</p>
+</section>
+<hr class="docutils" />
+<section id="dataloader-multi-worker-considerations">
+<h2>DataLoader Multi-Worker Considerations<a class="headerlink" href="#dataloader-multi-worker-considerations" title="Link to this heading">#</a></h2>
+<p>PyTorch DataLoader with <code class="docutils literal notranslate"><span class="pre">num_workers</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> spawns worker processes. File handles and memory-mapped arrays do not survive pickling across process boundaries.</p>
+<p><strong>Requirements for new dataset classes:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Lazy open pattern:</strong> Store paths in <code class="docutils literal notranslate"><span class="pre">__init__</span></code>, open files in a separate <code class="docutils literal notranslate"><span class="pre">_load_dataset()</span></code> method</p></li>
+<li><p><strong>Per-worker initialization:</strong> Call <code class="docutils literal notranslate"><span class="pre">_load_dataset()</span></code> inside each worker, not in the main process</p></li>
+<li><p><strong>Use <code class="docutils literal notranslate"><span class="pre">worker_init_fn</span></code>:</strong> Reopen mmaps/parquet files per worker</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">GPTSFTPackedParquetDataset</span><span class="p">(</span><span class="n">GPTSFTDataset</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pf</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Opened lazily</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_loaded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pf</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">memory_map</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_loaded</span><span class="p">()</span>  <span class="c1"># Opens on first access in each worker</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p><strong>Testing requirement:</strong> Verify dataset works with <code class="docutils literal notranslate"><span class="pre">num_workers=4</span></code> and <code class="docutils literal notranslate"><span class="pre">persistent_workers=True</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="cloud-storage-behavior">
+<h2>Cloud Storage Behavior<a class="headerlink" href="#cloud-storage-behavior" title="Link to this heading">#</a></h2>
+<p>The new formats behave differently for local vs cloud storage:</p>
+<section id="parquet">
+<h3>Parquet<a class="headerlink" href="#parquet" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Local:</strong> Uses true memory-mapped reads via <code class="docutils literal notranslate"><span class="pre">memory_map=True</span></code></p></li>
+<li><p><strong>Cloud (S3/GCS):</strong> Uses ranged HTTP reads; <code class="docutils literal notranslate"><span class="pre">memory_map=True</span></code> is ignored. PyArrow’s filesystem layer handles buffering. Row group size affects read efficiency—smaller groups = more requests but finer granularity.</p></li>
+</ul>
+</section>
+<section id="memmap">
+<h3>Memmap<a class="headerlink" href="#memmap" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Local:</strong> True O(1) random access via OS virtual memory</p></li>
+<li><p><strong>Cloud:</strong> Not directly supported. Requires download-to-local or write-local-then-upload pattern. For cloud outputs, write to local temp directory, then upload atomically.</p></li>
+</ul>
+<p><strong>Recommendation:</strong> Use Parquet for cloud workloads; use Memmap only for local high-performance scenarios.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="migration-path">
+<h2>Migration Path<a class="headerlink" href="#migration-path" title="Link to this heading">#</a></h2>
+<section id="phase-1-add-new-formats">
+<h3>Phase 1: Add New Formats<a class="headerlink" href="#phase-1-add-new-formats" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Implement Parquet writer in Nemotron data_prep</p></li>
+<li><p>Implement Parquet reader in Megatron-Bridge</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">packed_storage</span></code> config option (default: <code class="docutils literal notranslate"><span class="pre">legacy_npy_pickle</span></code>)</p></li>
+<li><p>Existing pipelines continue to work without changes</p></li>
+</ol>
+</section>
+<section id="phase-2-validation">
+<h3>Phase 2: Validation<a class="headerlink" href="#phase-2-validation" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Run training with new format, verify identical loss curves</p></li>
+<li><p>Benchmark memory usage and throughput</p></li>
+<li><p>Test cloud storage integration</p></li>
+</ol>
+</section>
+<section id="phase-3-adoption">
+<h3>Phase 3: Adoption<a class="headerlink" href="#phase-3-adoption" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Document when to use new formats vs legacy</p></li>
+<li><p>Provide conversion tool for users who want to migrate existing datasets</p></li>
+<li><p>Legacy format remains fully supported for backward compatibility</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="memory-impact-new-formats">
+<h2>Memory Impact (New Formats)<a class="headerlink" href="#memory-impact-new-formats" title="Link to this heading">#</a></h2>
+<p>For workloads that benefit from the new formats:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Metric</p></th>
+<th class="head"><p>Legacy</p></th>
+<th class="head"><p>Parquet</p></th>
+<th class="head"><p>Memmap</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Write peak (Python heap, 50k bins)</p></td>
+<td><p>~4 GB</p></td>
+<td><p>~20 MB</p></td>
+<td><p>~16 KB†</p></td>
+</tr>
+<tr class="row-odd"><td><p>Read at load (RSS)</p></td>
+<td><p>~4 GB</p></td>
+<td><p>~few MB (metadata)</p></td>
+<td><p>~few KB (metadata)</p></td>
+</tr>
+<tr class="row-even"><td><p>Read per batch (bs=8)</p></td>
+<td><p>~4 GB*</p></td>
+<td><p>~8 MB (row group)</p></td>
+<td><p>~128 KB</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>*Already loaded
+†OS page cache grows with output size but Python heap stays minimal</p>
+<p><strong>Note on memory estimates:</strong> These are back-of-envelope calculations based on Python object overhead (~28 bytes per int vs 4 bytes in numpy). Actual memory depends on CPython version, allocator behavior, and workload. The relative improvements (200-500x) are consistent across configurations.</p>
+<p><strong>New formats provide ~200x reduction in write memory and ~500x reduction in read memory at load</strong>, enabling larger datasets and more efficient multi-node training.</p>
+</section>
+<hr class="docutils" />
+<section id="open-questions">
+<h2>Open Questions<a class="headerlink" href="#open-questions" title="Link to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Row group size tuning:</strong> What’s the optimal row group size for training access patterns? (Proposed: 1000 rows, ~2-10 MB per group)</p></li>
+<li><p><strong>Multi-shard handling:</strong> Should we use a single Parquet dataset with partitions or multiple files with a wrapper dataset?</p></li>
+<li><p><strong>Conversion tooling:</strong> Should we provide a conversion tool for users who want to migrate existing datasets to new formats?</p></li>
+<li><p><strong>Default format:</strong> Should the default remain <code class="docutils literal notranslate"><span class="pre">legacy_npy_pickle</span></code> indefinitely, or switch to Parquet after validation?</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<section id="implementation-plans">
+<h3>Implementation Plans<a class="headerlink" href="#implementation-plans" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="packed-sft-impl-parquet-nemotron.html"><span class="std std-doc">Parquet Writer (Nemotron)</span></a></p></li>
+<li><p><a class="reference internal" href="packed-sft-impl-parquet-megatron-bridge.html"><span class="std std-doc">Parquet Reader (Megatron-Bridge)</span></a></p></li>
+<li><p><a class="reference internal" href="packed-sft-impl-memmap.html"><span class="std std-doc">Memmap Format</span></a></p></li>
+</ul>
+</section>
+<section id="existing-code">
+<h3>Existing Code<a class="headerlink" href="#existing-code" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="#../../../Megatron-Bridge/src/megatron/bridge/data/datasets/sft.py"><span class="xref myst">Megatron-Bridge GPTSFTPackedDataset</span></a></p></li>
+<li><p><a class="reference download internal" download="" href="_downloads/96122c631a87959ab12a3b605dbb2da3/chat_sft_shard_core.py"><span class="xref download myst">Nemotron chat_sft_shard_core.py</span></a></p></li>
+</ul>
+</section>
+<section id="external-documentation">
+<h3>External Documentation<a class="headerlink" href="#external-documentation" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://parquet.apache.org/docs/file-format/">Apache Parquet Format</a></p></li>
+<li><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.memmap.html">NumPy Memory-Mapped Files</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/docs/datasets/about_arrow">Hugging Face Datasets (Parquet backend)</a></p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#summary">Summary</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#background">Background</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#current-packed-sequence-format">Current Packed Sequence Format</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#scalability-limitations">Scalability Limitations</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-1-write-side-memory-explosion">Problem 1: Write-Side Memory Explosion</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-2-read-side-full-load">Problem 2: Read-Side Full Load</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-3-no-cloud-storage-support">Problem 3: No Cloud Storage Support</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#contrast-megatron-pretrain-format">Contrast: Megatron Pretrain Format</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#goals">Goals</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#new-format-options">New Format Options</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#option-a-padded-fixed-shape-memmap-arrays">Option A: Padded Fixed-Shape Memmap Arrays</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#option-b-parquet-recommended">Option B: Parquet (Recommended)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#option-c-megatron-bin-idx-style">Option C: Megatron bin/idx Style</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#comparison">Comparison</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-each-format">When to Use Each Format</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#legacy-npy-pickle-keep-using-when">Legacy (.npy pickle) — Keep using when:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parquet-option-b-use-when">Parquet (Option B) — Use when:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#memmap-option-a-use-when">Memmap (Option A) — Use when:</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#megatron-bridge-changes-required">Megatron-Bridge Changes Required</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#new-dataset-classes">New Dataset Classes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#factory-function-update">Factory Function Update</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backward-compatibility">Backward Compatibility</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#format-invariants">Format Invariants</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dataloader-multi-worker-considerations">DataLoader Multi-Worker Considerations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cloud-storage-behavior">Cloud Storage Behavior</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parquet">Parquet</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#memmap">Memmap</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-path">Migration Path</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-1-add-new-formats">Phase 1: Add New Formats</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-2-validation">Phase 2: Validation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-3-adoption">Phase 3: Adoption</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#memory-impact-new-formats">Memory Impact (New Formats)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-questions">Open Questions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#implementation-plans">Implementation Plans</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#existing-code">Existing Code</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#external-documentation">External Documentation</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
