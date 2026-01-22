@@ -102,6 +102,7 @@ class JsonlOutputConfig:
     num_shards: int | None = None
     transform: Transform | None = None
     compression: Literal["none", "zstd"] = "none"
+    resolve_hf_placeholders: bool = False
 
     def __post_init__(self) -> None:
         if self.shard_size is not None and self.num_shards is not None:
@@ -194,6 +195,33 @@ OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | PackedOutputConfig | Cha
 
 
 @dataclass(frozen=True)
+class XennaConfig:
+    """Configuration for Xenna pipeline execution.
+
+    Attributes:
+        max_concurrent_downloads: Maximum parallel HuggingFace file downloads
+        max_shard_workers: Maximum workers for shard processing stage.
+            Each worker uses ~4GB memory. Set based on node memory.
+            None means auto-scale (cosmos-xenna default).
+        wandb_log_downloads: Log download progress to wandb
+        wandb_log_pipeline_stats: Log pipeline stats (actors, queues, progress) to wandb
+        wandb_download_log_interval_sec: Interval for download progress logging
+        hf_download_timeout_sec: Timeout for HuggingFace downloads
+        hf_download_max_retries: Max retries for HuggingFace downloads
+        pipeline_logging_interval_s: Interval for pipeline stats logging
+    """
+
+    max_concurrent_downloads: int = 64
+    max_shard_workers: int | None = None
+    wandb_log_downloads: bool = False
+    wandb_log_pipeline_stats: bool = False
+    wandb_download_log_interval_sec: int = 30
+    hf_download_timeout_sec: int = 300
+    hf_download_max_retries: int = 3
+    pipeline_logging_interval_s: int = 30
+
+
+@dataclass(frozen=True)
 class RayDataConfig:
     """Configuration for Ray Data shard-task execution.
 
@@ -215,6 +243,12 @@ class RayDataConfig:
             bubbles and keep actors fed. Note: does not by itself parallelize
             a single actor; true I/O latency hiding requires either more actors
             (with fractional num_cpus) or async internal concurrency.
+        max_concurrent_downloads: Maximum parallel HuggingFace file downloads
+            during the pre-download phase. Higher values increase throughput
+            but may overwhelm HF servers or local network. Default: 64.
+        cleanup_hf_cache: If True, delete the HuggingFace cache directory
+            after processing completes. Useful for one-off jobs where cache
+            isn't needed. Default: False.
     """
 
     enabled: bool = False
@@ -222,6 +256,8 @@ class RayDataConfig:
     max_actors: int | None = None  # None = use all available CPUs
     cpus_per_actor: float = 1.0
     max_tasks_in_flight_per_actor: int = 2
+    max_concurrent_downloads: int = 64
+    cleanup_hf_cache: bool = False
 
 
 @dataclass(frozen=True)
@@ -288,6 +324,10 @@ class PipelineConfig:
         per_split: Per-split output configuration for Megatron-Bridge per_split_data_args_path
         ray_data: Ray Data execution configuration. When enabled and ray_data.enabled=True,
             uses Ray Data's ActorPoolStrategy for shard processing instead of manual actors.
+        console_mode: Console output mode ('rich' or 'simple')
+        simple_log_interval_sec: Interval in seconds for simple mode status updates
+        execution_engine: Execution backend ("ray" or "xenna")
+        max_concurrent_downloads: Max parallel HF downloads (used by Xenna path)
     """
 
     output: OutputConfig
@@ -298,6 +338,33 @@ class PipelineConfig:
     split: str | None = None  # Deprecated - use per_split instead
     per_split: PerSplitConfig | None = None
     ray_data: RayDataConfig | None = None
+    console_mode: str = "simple"
+    simple_log_interval_sec: int = 30
+    execution_engine: Literal["ray", "xenna"] = "ray"
+    xenna: XennaConfig | None = None
+    # Legacy fields for backward compatibility (prefer xenna.* instead)
+    max_concurrent_downloads: int = 64
+    wandb_log_downloads: bool = False
+    wandb_download_log_interval_sec: int = 30
+    hf_download_timeout_sec: int = 300
+    hf_download_max_retries: int = 3
+    num_actors: int | None = None
+    xenna_max_shard_workers: int | None = None  # Max workers for xenna shard processing
+
+    def effective_xenna(self) -> XennaConfig:
+        """Get effective XennaConfig, merging legacy fields if xenna is not set."""
+        if self.xenna is not None:
+            return self.xenna
+        return XennaConfig(
+            max_concurrent_downloads=self.max_concurrent_downloads,
+            max_shard_workers=self.xenna_max_shard_workers,
+            wandb_log_downloads=self.wandb_log_downloads,
+            wandb_log_pipeline_stats=False,  # New field, no legacy equivalent
+            wandb_download_log_interval_sec=self.wandb_download_log_interval_sec,
+            hf_download_timeout_sec=self.hf_download_timeout_sec,
+            hf_download_max_retries=self.hf_download_max_retries,
+            pipeline_logging_interval_s=30,  # New field, default
+        )
 
 
 # ============================================================================

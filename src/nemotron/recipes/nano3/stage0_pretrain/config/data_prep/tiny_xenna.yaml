@@ -2,19 +2,16 @@ run:
   env:
     container: anyscale/ray:2.49.2-py312
 
-# Tiny config for pretrain data preparation (fast iteration/testing)
+# Tiny config for pretrain data preparation with Xenna execution engine
 #
 # Usage:
-#   nemotron nano3 data prep pretrain --config tiny
-#   nemotron nano3 data prep pretrain --config tiny --run prep
-#
-# This config uses sampling for quick testing.
+#   python data_prep.py --config tiny_xenna
 
 # Path to data blend JSON file
 blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw_small.json
 
-# Output directory for tokenized data (outputs to job directory for persistence)
-output_dir: ${oc.env:PWD}/../output/stage0_pretrain_tiny
+# Output directory for tokenized data
+output_dir: ${oc.env:PWD}/../output/stage0_pretrain_tiny_xenna
 
 # Number of output shards - smaller for tiny config
 num_shards: 4
@@ -44,16 +41,26 @@ min_doc_chars: null
 max_doc_tokens: null
 
 # Limit rows per dataset for quick tests - small sample for tiny
-sample: 1000
+sample: 100
 
-# Console output mode: 'simple' for periodic text updates, 'rich' for animated progress
+# Console output mode
 console_mode: simple
 
-# Interval in seconds for simple mode status updates (default: 30)
-simple_log_interval_sec: 30
+# Interval in seconds for simple mode status updates
+simple_log_interval_sec: 5
 
 # Force new run, ignoring cache
-force: false
+force: true
 
-# Config name for artifact naming (produces PretrainBlendsArtifact-tiny)
-config_name: tiny
+# Config name for artifact naming
+config_name: tiny_xenna
+
+# Use Xenna execution engine for pipeline processing
+execution_engine: xenna
+
+# Xenna-specific configuration
+xenna:
+  wandb_log_pipeline_stats: true
+  wandb_log_downloads: true
+  wandb_download_log_interval_sec: 5
+  max_concurrent_downloads: 8

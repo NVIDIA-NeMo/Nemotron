@@ -370,8 +370,12 @@ def _process_file_core(
 
 
 def _resolve_file_path_core(file_info: FileInfo) -> str:
-    """Resolve file to a local path, downloading from HF if needed."""
-    # HF files need deferred download
+    """Resolve file to a local path, using HF cache (no download).
+
+    Files should be pre-downloaded by parallel_predownload() before processing.
+    This function only looks up cached files to avoid network I/O during processing.
+    """
+    # HF files - use cache only (should be pre-downloaded)
     if file_info.hf_repo_id is not None:
         from huggingface_hub import hf_hub_download
 
@@ -380,7 +384,7 @@ def _resolve_file_path_core(file_info: FileInfo) -> str:
             filename=file_info.hf_filename,
             revision=file_info.hf_revision,
             repo_type="dataset",
-            local_files_only=False,
+            local_files_only=True,  # Only use cached files
         )
         return local_path
 
@@ -934,13 +938,12 @@ class ShardProcessor:
         return rows_processed
 
     def _resolve_file_path(self, file_info: FileInfo) -> str:
-        """
-        Resolve file to a local path, downloading from HF if needed.
+        """Resolve file to a local path, using HF cache (no download).
 
-        For HF files, downloads to local cache (node-local).
-        For other files, returns local_path or path.
+        Files should be pre-downloaded by parallel_predownload() before processing.
+        This method only looks up cached files to avoid network I/O during processing.
         """
-        # HF files need deferred download
+        # HF files - use cache only (should be pre-downloaded)
         if file_info.hf_repo_id is not None:
             from huggingface_hub import hf_hub_download
 
@@ -949,7 +952,7 @@ class ShardProcessor:
                 filename=file_info.hf_filename,
                 revision=file_info.hf_revision,
                 repo_type="dataset",
-                local_files_only=False,
+                local_files_only=True,  # Only use cached files
             )
             return local_path
 

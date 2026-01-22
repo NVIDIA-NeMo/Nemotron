@@ -1,6 +1,6 @@
 run:
   env:
-    container: anyscale/ray:2.49.2-py311
+    container: anyscale/ray:2.49.2-py312
 
 # Config for RL data preparation with HuggingFace placeholder resolution
 #

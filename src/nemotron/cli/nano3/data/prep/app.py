@@ -19,8 +19,11 @@ from __future__ import annotations
 import typer
 
 from nemotron.cli.nano3.data.prep.pretrain import pretrain
+from nemotron.cli.nano3.data.prep.pretrain_xenna import pretrain_xenna
 from nemotron.cli.nano3.data.prep.rl import rl
+from nemotron.cli.nano3.data.prep.rl_xenna import rl_xenna
 from nemotron.cli.nano3.data.prep.sft import sft
+from nemotron.cli.nano3.data.prep.sft_xenna import sft_xenna
 from nemotron.cli.nano3.help import make_recipe_command
 
 # Create prep app
@@ -44,6 +47,17 @@ prep_app.command(
 )(pretrain)
 
 prep_app.command(
+    name="pretrain-xenna",
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+    cls=make_recipe_command(
+        config_dir="src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep",
+    ),
+)(pretrain_xenna)
+
+prep_app.command(
     name="sft",
     context_settings={
         "allow_extra_args": True,
@@ -55,6 +69,17 @@ prep_app.command(
 )(sft)
 
 prep_app.command(
+    name="sft-xenna",
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+    cls=make_recipe_command(
+        config_dir="src/nemotron/recipes/nano3/stage1_sft/config/data_prep",
+    ),
+)(sft_xenna)
+
+prep_app.command(
     name="rl",
     context_settings={
         "allow_extra_args": True,
@@ -64,3 +89,14 @@ prep_app.command(
         config_dir="src/nemotron/recipes/nano3/stage2_rl/config/data_prep",
     ),
 )(rl)
+
+prep_app.command(
+    name="rl-xenna",
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+    cls=make_recipe_command(
+        config_dir="src/nemotron/recipes/nano3/stage2_rl/config/data_prep",
+    ),
+)(rl_xenna)

@@ -679,6 +679,8 @@ def _process_split(
                 for ep in execution_plans
             ],
             run_hash=run_hash,
+            console_mode=config.console_mode,
+            simple_log_interval_sec=config.simple_log_interval_sec,
         )
         live_status.start()
 
@@ -694,10 +696,17 @@ def _process_split(
             _process_all_shards_parallel(
                 execution_plans=[ep for ep in execution_plans if ep.pending_indices],
                 output_config=output_config,
+                output_root=str(config.output.dir),
                 fs=fs,
                 live_status=live_status,
                 results=results,
                 ray_data_config=config.ray_data,
+                execution_engine=config.execution_engine,
+                max_concurrent_downloads=config.max_concurrent_downloads,
+                wandb_log_downloads=config.wandb_log_downloads,
+                wandb_download_log_interval_sec=config.wandb_download_log_interval_sec,
+                hf_download_timeout_sec=config.hf_download_timeout_sec,
+                hf_download_max_retries=config.hf_download_max_retries,
             )
         finally:
             live_status.stop()
@@ -827,10 +836,17 @@ def _load_or_create_plan(
 def _process_all_shards_parallel(
     execution_plans: list[_DatasetExecutionPlan],
     output_config: InternalOutputConfig,
+    output_root: str,
     fs,
     live_status,
     results: dict,
     ray_data_config: RayDataConfig | None = None,
+    execution_engine: str = "ray",
+    max_concurrent_downloads: int = 64,
+    wandb_log_downloads: bool = False,
+    wandb_download_log_interval_sec: int = 30,
+    hf_download_timeout_sec: int = 300,
+    hf_download_max_retries: int = 3,
 ) -> None:
     """Process ALL pending shards from ALL datasets in parallel.
 
@@ -841,6 +857,93 @@ def _process_all_shards_parallel(
     for actor lifecycle management. Otherwise, uses legacy manual actor management.
     """
     if not execution_plans:
+        return
+
+    # Dispatch to Xenna executor if requested
+    if execution_engine == "xenna":
+        from dataclasses import asdict
+
+        from nemotron.data_prep.config import XennaConfig
+        from nemotron.data_prep.xenna.executor import run_xenna
+        from nemotron.data_prep.xenna.pipeline_specs import build_pretrain_pipeline_spec
+        from nemotron.data_prep.xenna.work_items import ShardWorkItem
+
+        # Build XennaConfig from individual parameters (legacy compatibility)
+        xenna_cfg = XennaConfig(
+            max_concurrent_downloads=max_concurrent_downloads,
+            wandb_log_downloads=wandb_log_downloads,
+            wandb_log_pipeline_stats=True,  # Enable pipeline stats logging
+            wandb_download_log_interval_sec=wandb_download_log_interval_sec,
+            hf_download_timeout_sec=hf_download_timeout_sec,
+            hf_download_max_retries=hf_download_max_retries,
+        )
+
+        # Get resolved tokenizer from first plan (should be uniform)
+        resolved_tokenizer = execution_plans[0].plan.resolved_tokenizer
+
+        # Build work items
+        tasks: list[ShardWorkItem] = []
+        dataset_receipt_dirs: dict[str, str] = {}
+
+        for ep in execution_plans:
+            live_status.start_dataset(ep.name)
+            live_status.report_phase(ep.name, "processing", "xenna")
+            dataset_receipt_dirs[ep.name] = ep.receipts_dir
+
+            assignment_dicts = {}
+            for a in ep.plan.file_assignments:
+                assignment_dicts[a.shard_index] = {
+                    "shard_index": a.shard_index,
+                    "files": [asdict(f) for f in a.files],
+                    "total_bytes": a.total_bytes,
+                }
+
+            for shard_idx in ep.pending_indices:
+                tasks.append(
+                    ShardWorkItem(
+                        dataset_name=ep.name,
+                        plan_hash=ep.plan.plan_hash,
+                        shard_index=shard_idx,
+                        assignment=assignment_dicts[shard_idx],
+                        output_dir=ep.dataset_dir,
+                        receipts_dir=ep.receipts_dir,
+                        text_field=ep.config.text_field,
+                        dtype=output_config.dtype,
+                        min_doc_chars=output_config.min_doc_chars,
+                        max_doc_tokens=output_config.max_doc_tokens,
+                        max_rows=output_config.max_rows,
+                    )
+                )
+
+        if tasks:
+            # Build pipeline spec
+            pipeline_spec = build_pretrain_pipeline_spec(
+                tasks=tasks,
+                resolved_tokenizer=resolved_tokenizer,
+                output_root=output_root,
+                xenna_cfg=xenna_cfg,
+            )
+
+            # Run pipeline
+            run_xenna(
+                pipeline_spec=pipeline_spec,
+                dataset_receipt_dirs=dataset_receipt_dirs,
+                output_root=output_root,
+                fs=fs,
+                live_status=live_status,
+                xenna_cfg=xenna_cfg,
+            )
+
+        # Aggregate results
+        for ep in execution_plans:
+            results[ep.name] = _aggregate_stats_from_receipts(ep.receipts_dir, ep.plan, fs)
+            live_status.report_metrics(
+                ep.name,
+                rows=results[ep.name].get("total_sequences", 0),
+                tokens=results[ep.name].get("total_tokens", 0),
+            )
+            live_status.complete_dataset(ep.name)
+
         return
 
     # Dispatch to Ray Data executor if enabled
@@ -1148,7 +1251,28 @@ def _process_shards_ray_data(
             if dataset_completed_counts.get(ds_name, 0) < dataset_pending_counts.get(ds_name, 0):
                 live_status.report_phase(ds_name, phase, detail)
 
-    # Execute tasks via Ray Data
+    # Pre-download all HF files before processing starts
+    # This ensures processing actors only use cached files (no on-demand downloads)
+    from nemotron.data_prep.downloader import parallel_predownload
+
+    def download_progress(p: dict) -> None:
+        """Progress callback for downloads."""
+        phase = p.get("phase", "downloading")
+        detail = p.get("detail", "")
+        print(f"[Pre-download] {detail}")
+
+    print("[Pre-download] Starting parallel download of HuggingFace files...")
+    download_stats = parallel_predownload(
+        tasks,
+        max_concurrent=ray_data_config.max_concurrent_downloads,
+        on_progress=download_progress,
+    )
+    print(
+        f"[Pre-download] Complete: {download_stats.downloaded_files} downloaded, "
+        f"{download_stats.cached_files} cached, {download_stats.failed_files} failed"
+    )
+
+    # Now process shards - all files should be cached
     execute_shard_tasks(
         tasks,
         udf_cls=BinIdxShardTaskUDF,
@@ -1459,7 +1583,7 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
     # Planning phase: discover files and check cache for all datasets
     from nemotron.data_prep.discovery import discover_input_files, get_dataset_metadata
 
-    dataset_plans: list[tuple] = []  # (dataset, dataset_dir, files, cached_stats)
+    dataset_plans: list[tuple] = []  # (dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices, cached_stats)
     plan_infos = []
 
     for dataset in blend.datasets:
@@ -1468,6 +1592,8 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
         # Create dataset directory
         dataset_dir = f"{run_dir}/datasets/{name}"
         ensure_dir(fs, dataset_dir)
+        receipts_dir = f"{dataset_dir}/receipts"
+        ensure_dir(fs, receipts_dir)
 
         # Get files for this dataset
         dataset_config = DatasetConfig(
@@ -1478,11 +1604,20 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
             text_field=dataset.text_field,
         )
         files = discover_input_files(dataset_config, fs)
+        files = sorted(files, key=lambda f: f.path)
+
+        if files:
+            shard_assignments = _assign_files_round_robin(files, num_shards)
+            completed_indices = _get_completed_jsonl_shards(dataset_dir, receipts_dir, fs)
+            pending_indices = [i for i in range(num_shards) if i not in completed_indices]
+        else:
+            shard_assignments = {i: [] for i in range(num_shards)}
+            pending_indices = []
 
         # Check cached stats
         cached_stats = _aggregate_jsonl_stats(dataset_dir, num_shards, fs)
         cached_shards = cached_stats.get("num_shards_completed", 0)
-        pending_shards = num_shards - cached_shards
+        pending_shards = len(pending_indices)
 
         # Fetch HuggingFace metadata (non-blocking, best-effort)
         hf_metadata = get_dataset_metadata(dataset_config)
@@ -1504,46 +1639,148 @@ def _process_jsonl_blend(blend: DataBlend, config: PipelineConfig) -> PipelineRe
             )
         )
 
-        dataset_plans.append((dataset, dataset_dir, files, cached_stats))
+        dataset_plans.append(
+            (dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices, cached_stats)
+        )
 
     # Show plan summary (auto-detect workers from cluster)
     con.plan_summary(plan_infos, run_hash)
 
     # Execution phase
-    has_work = any(
-        num_shards - cached_stats.get("num_shards_completed", 0) > 0
-        for _, _, _, cached_stats in dataset_plans
-    )
+    has_work = any(pending_indices for _, _, _, _, pending_indices, _ in dataset_plans)
 
     if has_work:
         con.execution_header()
 
-    for dataset, dataset_dir, files, cached_stats in dataset_plans:
-        name = dataset.name
+    if has_work and config.execution_engine == "xenna":
+        from dataclasses import asdict
 
-        # Process with actors
-        if files:
-            _process_jsonl_shards_with_actors(
-                files=files,
-                num_shards=num_shards,
-                dataset_dir=dataset_dir,
-                text_field=dataset.text_field,
-                transform=format_config.transform,
-                compression=format_config.compression,
-                max_rows=config.output.max_rows,
-                fs=fs,
-            )
+        from nemotron.data_prep.xenna.executor import run_xenna
+        from nemotron.data_prep.xenna.pipeline_specs import build_jsonl_pipeline_spec
+        from nemotron.data_prep.xenna.work_items import JsonlShardWorkItem
 
-        # Aggregate stats
-        stats = _aggregate_jsonl_stats(dataset_dir, num_shards, fs)
-        results[name] = stats
+        xenna_cfg = config.effective_xenna()
 
-        # Build data_paths
-        weight = dataset.weight
-        if weight > 0:
-            prefix = f"{dataset_dir}/shard"
-            data_paths.append(str(weight))
-            data_paths.append(prefix)
+        tasks: list[JsonlShardWorkItem] = []
+        dataset_receipt_dirs: dict[str, str] = {}
+        dataset_infos: list[dict] = []
+
+        live_status = con.create_live_status(
+            datasets=[(dataset.name, num_shards) for dataset, *_ in dataset_plans],
+            run_hash=run_hash,
+            console_mode=config.console_mode,
+            simple_log_interval_sec=config.simple_log_interval_sec,
+        )
+        live_status.start()
+
+        try:
+            for dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices, _ in dataset_plans:
+                assignment_dicts = {
+                    shard_idx: {
+                        "shard_index": shard_idx,
+                        "files": [asdict(f) for f in shard_assignments[shard_idx]],
+                        "total_bytes": sum(f.size for f in shard_assignments[shard_idx]),
+                    }
+                    for shard_idx in range(num_shards)
+                }
+
+                if pending_indices:
+                    for shard_idx in pending_indices:
+                        tasks.append(
+                            JsonlShardWorkItem(
+                                dataset_name=dataset.name,
+                                shard_index=shard_idx,
+                                assignment=assignment_dicts[shard_idx],
+                                output_dir=dataset_dir,
+                                receipts_dir=receipts_dir,
+                                text_field=dataset.text_field,
+                                compression=format_config.compression,
+                                max_rows=config.output.max_rows,
+                                resolve_hf_placeholders=format_config.resolve_hf_placeholders,
+                            )
+                        )
+
+                dataset_receipt_dirs[dataset.name] = receipts_dir
+                dataset_infos.append(
+                    {
+                        "name": dataset.name,
+                        "dataset_dir": dataset_dir,
+                        "receipts_dir": receipts_dir,
+                        "num_shards": num_shards,
+                    }
+                )
+
+            for info in dataset_infos:
+                live_status.start_dataset(info["name"])
+
+            if tasks:
+                # Build pipeline spec
+                pipeline_spec = build_jsonl_pipeline_spec(
+                    tasks=tasks,
+                    output_root=str(config.output.dir),
+                    text_field=dataset_plans[0][0].text_field if dataset_plans else "text",
+                    transform=format_config.transform,
+                    compression=format_config.compression,
+                    max_rows=config.output.max_rows,
+                    resolve_hf_placeholders=format_config.resolve_hf_placeholders,
+                    xenna_cfg=xenna_cfg,
+                )
+
+                # Run pipeline
+                run_xenna(
+                    pipeline_spec=pipeline_spec,
+                    dataset_receipt_dirs=dataset_receipt_dirs,
+                    output_root=str(config.output.dir),
+                    fs=fs,
+                    live_status=live_status,
+                    xenna_cfg=xenna_cfg,
+                )
+
+            # Aggregate results
+            for info in dataset_infos:
+                stats = _aggregate_jsonl_stats(info["dataset_dir"], num_shards, fs)
+                results[info["name"]] = stats
+                live_status.report_metrics(
+                    info["name"],
+                    rows=stats.get("num_records", 0),
+                    tokens=0,
+                )
+                live_status.complete_dataset(info["name"])
+
+            for dataset, dataset_dir, _, _, _, _ in dataset_plans:
+                weight = dataset.weight
+                if weight > 0:
+                    prefix = f"{dataset_dir}/shard"
+                    data_paths.append(str(weight))
+                    data_paths.append(prefix)
+        finally:
+            live_status.stop()
+    else:
+        for dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices, _ in dataset_plans:
+            name = dataset.name
+
+            if pending_indices:
+                _process_jsonl_shards_with_actors(
+                    shard_assignments=shard_assignments,
+                    pending_indices=pending_indices,
+                    dataset_dir=dataset_dir,
+                    receipts_dir=receipts_dir,
+                    text_field=dataset.text_field,
+                    transform=format_config.transform,
+                    compression=format_config.compression,
+                    max_rows=config.output.max_rows,
+                    fs=fs,
+                    num_actors=config.num_actors,
+                )
+
+            stats = _aggregate_jsonl_stats(dataset_dir, num_shards, fs)
+            results[name] = stats
+
+            weight = dataset.weight
+            if weight > 0:
+                prefix = f"{dataset_dir}/shard"
+                data_paths.append(str(weight))
+                data_paths.append(prefix)
 
     # Generate blend.json
     blend_data: dict = {"data_paths": data_paths}
@@ -1611,15 +1848,70 @@ def _estimate_blend_bytes(blend: DataBlend, fs) -> int:
     return total or 1  # Avoid division by zero
 
 
+def _assign_files_round_robin(files: list, num_shards: int) -> dict[int, list]:
+    shard_assignments: dict[int, list] = {i: [] for i in range(num_shards)}
+    for i, file_info in enumerate(files):
+        shard_idx = i % num_shards
+        shard_assignments[shard_idx].append(file_info)
+    return shard_assignments
+
+
+def _get_completed_jsonl_shards(dataset_dir: str, receipts_dir: str, fs) -> set[int]:
+    completed: set[int] = set()
+    patterns = [
+        f"{receipts_dir}/shard_*.json",
+        f"{dataset_dir}/shard_*.receipt.json",
+    ]
+    for pattern in patterns:
+        try:
+            receipt_files = fs.glob(pattern)
+        except Exception:
+            continue
+        for receipt_file in receipt_files:
+            filename = str(receipt_file).split("/")[-1]
+            if filename.startswith("shard_"):
+                if filename.endswith(".receipt.json"):
+                    suffix = ".receipt.json"
+                else:
+                    suffix = ".json"
+                try:
+                    shard_str = filename[len("shard_") : -len(suffix)]
+                    completed.add(int(shard_str))
+                except ValueError:
+                    continue
+    return completed
+
+
+def _get_completed_packed_shards(receipts_dir: str, fs) -> set[int]:
+    completed: set[int] = set()
+    try:
+        receipt_files = fs.glob(f"{receipts_dir}/shard_*.json")
+    except Exception:
+        return completed
+
+    for receipt_file in receipt_files:
+        filename = str(receipt_file).split("/")[-1]
+        if not filename.startswith("shard_") or not filename.endswith(".json"):
+            continue
+        try:
+            shard_str = filename[len("shard_") : -len(".json")]
+            completed.add(int(shard_str))
+        except ValueError:
+            continue
+    return completed
+
+
 def _process_jsonl_shards_with_actors(
-    files: list,
-    num_shards: int,
+    shard_assignments: dict[int, list],
+    pending_indices: list[int],
     dataset_dir: str,
+    receipts_dir: str,
     text_field: str,
     transform,
     compression: str,
     max_rows: int | None,
     fs,
+    num_actors: int | None,
 ) -> None:
     """Process files to JSONL shards using Ray actors."""
     from nemotron.data_prep.jsonl_processor import JsonlShardProcessor
@@ -1631,7 +1923,7 @@ def _process_jsonl_shards_with_actors(
     fs_protocol = protocol if protocol != "file" else "file"
 
     # Auto-detect num_actors from cluster
-    num_actors = get_num_actors_from_cluster()
+    num_actors = num_actors or get_num_actors_from_cluster()
 
     # Create actor pool
     actors = [
@@ -1644,16 +1936,15 @@ def _process_jsonl_shards_with_actors(
         for _ in range(num_actors)
     ]
 
-    # Distribute files across shards (round-robin for now)
-    # TODO: Could use smarter distribution based on file sizes
-    shard_assignments: dict[int, list] = {i: [] for i in range(num_shards)}
-    for i, file_info in enumerate(files):
-        shard_idx = i % num_shards
-        shard_assignments[shard_idx].append(file_info)
+    serialized_assignments: dict[int, list] = {}
+    for shard_idx, files in shard_assignments.items():
+        serialized_assignments[shard_idx] = [
+            asdict(f) if hasattr(f, "__dict__") else f for f in files
+        ]
 
     # Submit tasks with backpressure
     max_in_flight = num_actors * 2
-    shard_queue = list(range(num_shards))
+    shard_queue = list(pending_indices)
     actor_idx = 0
     pending_list: list = []
     future_to_shard: dict = {}
@@ -1669,6 +1960,7 @@ def _process_jsonl_shards_with_actors(
             ],
             output_dir=dataset_dir,
             fs_protocol=fs_protocol,
+            receipts_dir=receipts_dir,
         )
         pending_list.append(future)
         future_to_shard[future] = shard_index
@@ -1698,21 +1990,40 @@ def _aggregate_jsonl_stats(dataset_dir: str, num_shards: int, fs) -> dict:
         "num_records": 0,
         "num_skipped": 0,
         "total_bytes": 0,
+        "total_tokens": 0,
     }
 
+    receipt_files: list[str] = []
     try:
-        receipt_files = fs.glob(f"{dataset_dir}/shard_*.receipt.json")
+        receipt_files.extend(fs.glob(f"{dataset_dir}/receipts/shard_*.json"))
     except Exception:
-        return stats
+        pass
+    try:
+        receipt_files.extend(fs.glob(f"{dataset_dir}/shard_*.receipt.json"))
+    except Exception:
+        pass
 
+    seen_indices: set[int] = set()
     for receipt_file in receipt_files:
         try:
+            filename = str(receipt_file).split("/")[-1]
+            if filename.startswith("shard_"):
+                suffix = ".receipt.json" if filename.endswith(".receipt.json") else ".json"
+                shard_str = filename[len("shard_") : -len(suffix)]
+                shard_index = int(shard_str)
+                if shard_index in seen_indices:
+                    continue
+                seen_indices.add(shard_index)
+
             receipt = read_json(fs, receipt_file)
-            if receipt.get("status") == "completed":
-                stats["num_shards_completed"] += 1
-                stats["num_records"] += receipt.get("num_records", 0)
-                stats["num_skipped"] += receipt.get("num_skipped", 0)
-                stats["total_bytes"] += receipt.get("total_bytes", 0)
+            if receipt.get("status") != "completed":
+                continue
+            stats["num_shards_completed"] += 1
+            receipt_stats = receipt.get("stats", receipt)
+            stats["num_records"] += receipt_stats.get("num_records", 0)
+            stats["num_skipped"] += receipt_stats.get("num_skipped", 0)
+            stats["total_bytes"] += receipt_stats.get("total_bytes", 0)
+            stats["total_tokens"] += receipt_stats.get("total_tokens", 0)
         except Exception:
             pass
 
@@ -1938,7 +2249,7 @@ def _process_packed_shards_with_actors(
         actor_idx += 1
         future = actor.process_shard.remote(
             shard_index=shard_index,
-            files=shard_assignments[shard_index],
+            files=serialized_assignments[shard_index],
             output_dir=dataset_dir,
             receipts_dir=receipts_dir,
             fs_protocol=fs_protocol,
@@ -2072,7 +2383,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
     con.planning_header()
 
     # Discover files for all datasets
-    dataset_plans: list[tuple] = []  # (dataset, dataset_dir, receipts_dir, files)
+    dataset_plans: list[tuple] = []  # (dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices)
     for dataset in blend.datasets:
         name = dataset.name
 
@@ -2091,15 +2402,23 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
             text_field=dataset.text_field,
         )
         files = discover_input_files(dataset_config, fs)
+        files = sorted(files, key=lambda f: f.path)
 
-        # Display discovered info
+        if files:
+            shard_assignments = _assign_files_round_robin(files, num_shards)
+            completed_indices = _get_completed_packed_shards(receipts_dir, fs)
+            pending_indices = [i for i in range(num_shards) if i not in completed_indices]
+        else:
+            shard_assignments = {i: [] for i in range(num_shards)}
+            pending_indices = []
+
         logger.info(f"Discovered dataset '{name}' with {len(files)} files")
 
-        dataset_plans.append((dataset, dataset_dir, receipts_dir, files))
+        dataset_plans.append((dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices))
 
     # Build plan info for display
     plan_infos = []
-    for dataset, dataset_dir, receipts_dir, files in dataset_plans:
+    for dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices in dataset_plans:
         # Check cached stats
         cached_stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
         cached_shards = cached_stats.get("num_shards_completed", 0)
@@ -2110,7 +2429,7 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
                 plan_hash=run_hash[:8],
                 num_shards=num_shards,
                 num_files=len(files),
-                pending=num_shards - cached_shards if files else 0,
+                pending=len(pending_indices) if shard_assignments else 0,
                 cached=cached_shards,
                 cached_tokens=cached_stats.get("total_tokens", 0),
                 cached_sequences=cached_stats.get("num_sequences", 0),
@@ -2124,140 +2443,187 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
     con.plan_summary(plan_infos, run_hash)
 
     # Execution phase
-    has_work = any(len(files) > 0 for _, _, _, files in dataset_plans)
+    has_work = any(pending_indices for _, _, _, _, pending_indices in dataset_plans)
 
     if has_work:
         con.execution_header()
 
-        # Create actor pool ONCE and reuse across all datasets
-        from dataclasses import asdict
+        if config.execution_engine == "xenna":
+            from dataclasses import asdict
 
-        from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
+            from nemotron.data_prep.xenna.executor import run_xenna
+            from nemotron.data_prep.xenna.pipeline_specs import build_chat_sft_pipeline_spec
+            from nemotron.data_prep.xenna.work_items import ChatSftShardWorkItem
 
-        # Auto-detect num_actors from cluster
-        num_actors = get_num_actors_from_cluster()
+            xenna_cfg = config.effective_xenna()
 
-        actors = [
-            ChatSftShardProcessor.remote(
-                resolved_tokenizer=resolved_tokenizer,
-                messages_field=format_config.messages_field,
-                tools_field=format_config.tools_field,
-                pack_size=format_config.pack_size,
-                algorithm=format_config.algorithm,
-                dtype=format_config.dtype,
-                chat_template=format_config.chat_template,
-                max_doc_tokens=config.output.max_doc_tokens,
-                max_rows=config.output.max_rows,
-                seed=42,
-                used_in_filter=format_config.used_in_filter,
-                used_in_field=format_config.used_in_field,
+            tasks: list[ChatSftShardWorkItem] = []
+            dataset_receipt_dirs: dict[str, str] = {}
+            dataset_infos: list[dict] = []
+
+            live_status = con.create_live_status(
+                datasets=[(dataset.name, num_shards) for dataset, *_ in dataset_plans],
+                run_hash=run_hash,
+                console_mode=config.console_mode,
+                simple_log_interval_sec=config.simple_log_interval_sec,
             )
-            for _ in range(num_actors)
-        ]
+            live_status.start()
 
-        # Create live status panel with all datasets
-        live_status = con.create_live_status(
-            datasets=[
-                (dataset.name, num_shards) for dataset, _, _, files in dataset_plans if files
-            ],
-            run_hash=run_hash,
-        )
-        live_status.start()
+            try:
+                for dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices in dataset_plans:
+                    assignment_dicts = {
+                        shard_idx: {
+                            "shard_index": shard_idx,
+                            "files": [asdict(f) for f in shard_assignments[shard_idx]],
+                            "total_bytes": sum(f.size for f in shard_assignments[shard_idx]),
+                        }
+                        for shard_idx in range(num_shards)
+                    }
 
-        try:
-            # Determine filesystem protocol
-            protocol = fs.protocol
-            if isinstance(protocol, tuple):
-                protocol = protocol[0]
-            fs_protocol = protocol if protocol != "file" else "file"
+                    if pending_indices:
+                        for shard_idx in pending_indices:
+                            tasks.append(
+                                ChatSftShardWorkItem(
+                                    dataset_name=dataset.name,
+                                    shard_index=shard_idx,
+                                    assignment=assignment_dicts[shard_idx],
+                                    output_dir=dataset_dir,
+                                    receipts_dir=receipts_dir,
+                                    max_rows=config.output.max_rows,
+                                )
+                            )
 
-            # Build all tasks upfront - process ALL datasets in parallel
-            all_tasks: list[
-                tuple[str, str, str, int, list]
-            ] = []  # (name, dataset_dir, receipts_dir, shard_idx, files)
-            for dataset, dataset_dir, receipts_dir, files in dataset_plans:
-                if not files:
-                    continue
-                # Each dataset gets 1 shard (since num_shards is computed per-dataset with 1 file)
-                # Convert files to dicts for Ray serialization
-                files_as_dicts = [asdict(f) if hasattr(f, "__dict__") else f for f in files]
-                all_tasks.append((dataset.name, dataset_dir, receipts_dir, 0, files_as_dicts))
-                live_status.start_dataset(dataset.name)
+                    dataset_receipt_dirs[dataset.name] = receipts_dir
+                    dataset_infos.append(
+                        {
+                            "name": dataset.name,
+                            "dataset_dir": dataset_dir,
+                            "receipts_dir": receipts_dir,
+                        }
+                    )
 
-            # Submit all tasks with backpressure
-            num_actors = len(actors)
-            max_in_flight = num_actors * 2
-            task_queue = list(all_tasks)
-            actor_idx = 0
-            pending_list: list = []
-            future_to_task: dict = {}
+                for info in dataset_infos:
+                    live_status.start_dataset(info["name"])
 
-            def submit_task(task: tuple) -> None:
-                nonlocal actor_idx
-                name, dataset_dir, receipts_dir, shard_idx, files_dicts = task
-                actor = actors[actor_idx % num_actors]
-                actor_idx += 1
-                future = actor.process_shard.remote(
-                    shard_index=shard_idx,
-                    files=files_dicts,
-                    output_dir=dataset_dir,
-                    receipts_dir=receipts_dir,
-                    fs_protocol=fs_protocol,
-                )
-                pending_list.append(future)
-                future_to_task[future] = task
+                if tasks:
+                    # Build pipeline spec
+                    pipeline_spec = build_chat_sft_pipeline_spec(
+                        tasks=tasks,
+                        output_root=str(config.output.dir),
+                        resolved_tokenizer=resolved_tokenizer,
+                        messages_field=format_config.messages_field,
+                        tools_field=format_config.tools_field,
+                        pack_size=format_config.pack_size,
+                        algorithm=format_config.algorithm,
+                        dtype=format_config.dtype,
+                        chat_template=format_config.chat_template,
+                        max_doc_tokens=config.output.max_doc_tokens,
+                        max_rows=config.output.max_rows,
+                        seed=42,
+                        used_in_filter=format_config.used_in_filter,
+                        used_in_field=format_config.used_in_field,
+                        xenna_cfg=xenna_cfg,
+                    )
 
-            # Initial submission
-            while task_queue and len(pending_list) < max_in_flight:
-                submit_task(task_queue.pop(0))
+                    # Run pipeline
+                    run_xenna(
+                        pipeline_spec=pipeline_spec,
+                        dataset_receipt_dirs=dataset_receipt_dirs,
+                        output_root=str(config.output.dir),
+                        fs=fs,
+                        live_status=live_status,
+                        xenna_cfg=xenna_cfg,
+                    )
 
-            # Process with backpressure
-            while pending_list:
-                done, pending_list = ray.wait(pending_list, num_returns=1, timeout=60)
-                for future in done:
-                    task = future_to_task.pop(future)
-                    name = task[0]
-                    dataset_dir = task[1]
-                    receipts_dir = task[2]
-                    try:
-                        ray.get(future)
-                    except Exception as e:
-                        logger.error(f"Chat SFT shard for {name} failed: {e}")
-
-                    # Update progress
-                    live_status.advance_dataset(name)
-
-                    # Aggregate stats for this dataset
-                    stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
-                    results[name] = stats
+                # Aggregate results
+                for info in dataset_infos:
+                    stats = _aggregate_packed_stats(
+                        info["dataset_dir"], info["receipts_dir"], fs
+                    )
+                    results[info["name"]] = stats
                     live_status.report_metrics(
-                        name,
+                        info["name"],
                         rows=stats.get("num_sequences", 0),
                         tokens=stats.get("total_tokens", 0),
                     )
-                    live_status.complete_dataset(name)
+                    live_status.complete_dataset(info["name"])
 
-                    # Submit next task if available
-                    if task_queue:
-                        submit_task(task_queue.pop(0))
+                for dataset, dataset_dir, _, _, _ in dataset_plans:
+                    weight = dataset.weight
+                    if weight > 0:
+                        prefix = f"{dataset_dir}/shard"
+                        data_paths.append(str(weight))
+                        data_paths.append(prefix)
+            finally:
+                live_status.stop()
+        else:
+            from nemotron.data_prep.chat_sft_processor import ChatSftShardProcessor
 
-            # Build data_paths for all completed datasets
-            for dataset, dataset_dir, receipts_dir, files in dataset_plans:
-                if not files:
-                    continue
-                weight = dataset.weight
-                if weight > 0:
-                    prefix = f"{dataset_dir}/shard"
-                    data_paths.append(str(weight))
-                    data_paths.append(prefix)
-        finally:
-            live_status.stop()
-            # Clean up actors
-            for actor in actors:
-                ray.kill(actor)
+            num_actors = config.num_actors or get_num_actors_from_cluster()
+
+            actors = [
+                ChatSftShardProcessor.remote(
+                    resolved_tokenizer=resolved_tokenizer,
+                    messages_field=format_config.messages_field,
+                    tools_field=format_config.tools_field,
+                    pack_size=format_config.pack_size,
+                    algorithm=format_config.algorithm,
+                    dtype=format_config.dtype,
+                    chat_template=format_config.chat_template,
+                    max_doc_tokens=config.output.max_doc_tokens,
+                    max_rows=config.output.max_rows,
+                    seed=42,
+                    used_in_filter=format_config.used_in_filter,
+                    used_in_field=format_config.used_in_field,
+                )
+                for _ in range(num_actors)
+            ]
+
+            live_status = con.create_live_status(
+                datasets=[(dataset.name, num_shards) for dataset, *_ in dataset_plans],
+                run_hash=run_hash,
+                console_mode=config.console_mode,
+                simple_log_interval_sec=config.simple_log_interval_sec,
+            )
+            live_status.start()
+
+            try:
+                for dataset, dataset_dir, receipts_dir, shard_assignments, pending_indices in dataset_plans:
+                    live_status.start_dataset(dataset.name)
+                    if pending_indices:
+                        _process_chat_sft_shards_with_actors_pool(
+                            actors=actors,
+                            shard_assignments=shard_assignments,
+                            pending_indices=pending_indices,
+                            dataset_dir=dataset_dir,
+                            receipts_dir=receipts_dir,
+                            max_rows=config.output.max_rows,
+                            fs=fs,
+                            on_progress=lambda name=dataset.name: live_status.advance_dataset(name),
+                        )
+
+                    stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
+                    results[dataset.name] = stats
+                    live_status.report_metrics(
+                        dataset.name,
+                        rows=stats.get("num_sequences", 0),
+                        tokens=stats.get("total_tokens", 0),
+                    )
+                    live_status.complete_dataset(dataset.name)
+
+                for dataset, dataset_dir, receipts_dir, _, _ in dataset_plans:
+                    weight = dataset.weight
+                    if weight > 0:
+                        prefix = f"{dataset_dir}/shard"
+                        data_paths.append(str(weight))
+                        data_paths.append(prefix)
+            finally:
+                live_status.stop()
+                for actor in actors:
+                    ray.kill(actor)
     else:
         # No work to do - all datasets empty or cached
-        for dataset, dataset_dir, receipts_dir, files in dataset_plans:
+        for dataset, dataset_dir, receipts_dir, _, _ in dataset_plans:
             stats = _aggregate_packed_stats(dataset_dir, receipts_dir, fs)
             results[dataset.name] = stats
             weight = dataset.weight
@@ -2309,8 +2675,8 @@ def _process_chat_sft_blend(blend: DataBlend, config: PipelineConfig) -> Pipelin
 
 def _process_chat_sft_shards_with_actors_pool(
     actors: list,
-    files: list,
-    num_shards: int,
+    shard_assignments: dict[int, list],
+    pending_indices: list[int],
     dataset_dir: str,
     receipts_dir: str,
     max_rows: int | None,
@@ -2321,8 +2687,6 @@ def _process_chat_sft_shards_with_actors_pool(
 
     This version takes a pre-created actor pool to allow reuse across datasets.
     """
-    from dataclasses import asdict
-
     # Determine filesystem protocol
     protocol = fs.protocol
     if isinstance(protocol, tuple):
@@ -2331,19 +2695,15 @@ def _process_chat_sft_shards_with_actors_pool(
 
     num_actors = len(actors)
 
-    # Distribute files across shards (round-robin)
-    shard_assignments: dict[int, list] = {i: [] for i in range(num_shards)}
-    for i, file_info in enumerate(files):
-        shard_idx = i % num_shards
-        # Convert FileInfo to dict for Ray serialization
-        if hasattr(file_info, "__dict__"):
-            shard_assignments[shard_idx].append(asdict(file_info))
-        else:
-            shard_assignments[shard_idx].append(file_info)
+    serialized_assignments: dict[int, list] = {}
+    for shard_idx, files in shard_assignments.items():
+        serialized_assignments[shard_idx] = [
+            f.__dict__ if hasattr(f, "__dict__") else f for f in files
+        ]
 
     # Submit tasks with backpressure
     max_in_flight = num_actors * 2
-    shard_queue = list(range(num_shards))
+    shard_queue = list(pending_indices)
     actor_idx = 0
     pending_list: list = []
     future_to_shard: dict = {}
@@ -2354,7 +2714,7 @@ def _process_chat_sft_shards_with_actors_pool(
         actor_idx += 1
         future = actor.process_shard.remote(
             shard_index=shard_index,
-            files=shard_assignments[shard_index],
+            files=serialized_assignments[shard_index],
             output_dir=dataset_dir,
             receipts_dir=receipts_dir,
             fs_protocol=fs_protocol,
@@ -2427,10 +2787,12 @@ def _process_chat_sft_shards_with_actors(
     ]
 
     try:
+        shard_assignments = _assign_files_round_robin(files, num_shards)
+        pending_indices = [i for i in range(num_shards)]
         _process_chat_sft_shards_with_actors_pool(
             actors=actors,
-            files=files,
-            num_shards=num_shards,
+            shard_assignments=shard_assignments,
+            pending_indices=pending_indices,
             dataset_dir=dataset_dir,
             receipts_dir=receipts_dir,
             max_rows=max_rows,

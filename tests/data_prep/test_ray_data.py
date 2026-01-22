@@ -292,7 +292,7 @@ class TestRayDataExecConfig:
         assert cfg.min_actors == 2
         assert cfg.max_actors == 32
         assert cfg.cpus_per_actor == 1.0
-        assert cfg.max_tasks_in_flight_per_actor == 2
+        assert cfg.max_tasks_in_flight_per_actor == 4  # Increased for better CPU utilization
 
     def test_custom_config(self):
         """Test custom config values."""
@@ -447,8 +447,8 @@ class TestDataPrepConfigRayData:
         cfg = DataPrepConfig()
 
         assert cfg.ray_data_enabled is True  # Enabled by default
-        assert cfg.ray_data_min_actors == 16  # Start with good parallelism
-        assert cfg.ray_data_max_actors == 64  # Allow scaling on large nodes
+        assert cfg.ray_data_min_actors == 2  # Start with minimal warm pool
+        assert cfg.ray_data_max_actors is None  # Auto-detect based on CPU and memory
         assert cfg.ray_data_cpus_per_actor == 1.0
         assert cfg.ray_data_max_tasks_in_flight == 2
 
@@ -1065,7 +1065,7 @@ class TestRayDataConfigIntegration:
         assert pipeline_cfg.ray_data is not None
         assert pipeline_cfg.ray_data.enabled is False
         assert pipeline_cfg.ray_data.min_actors == 2
-        assert pipeline_cfg.ray_data.max_actors == 32
+        assert pipeline_cfg.ray_data.max_actors is None  # Auto-detect based on CPU and memory
 
     def test_ray_data_config_enabled(self):
         """Test enabling RayDataConfig."""

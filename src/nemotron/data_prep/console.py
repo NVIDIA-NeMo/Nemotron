@@ -347,6 +347,8 @@ class LiveExecutionStatus:
 
     datasets: list[DatasetStatus] = field(default_factory=list)
     run_hash: str = ""
+    console_mode: str = "simple"  # "rich" or "simple" (default: simple)
+    simple_log_interval_sec: int = 30  # Configurable interval for simple mode
     _live: Live | None = field(default=None, repr=False)
     _progress: Progress | None = field(default=None, repr=False)
     _overall_task_id: int | None = field(default=None, repr=False)
@@ -355,6 +357,7 @@ class LiveExecutionStatus:
     _wandb_step: int = field(default=0, repr=False)
     _last_wandb_log_time: float = field(default=0.0, repr=False)
     _wandb_log_interval: float = field(default=10.0, repr=False)  # Log every 10 seconds
+    _last_simple_log_time: float = field(default=0.0, repr=False)  # For simple mode throttling
     _start_time: float = field(default=0.0, repr=False)  # Pipeline start time
     _total_tokens: int = field(default=0, repr=False)  # Cumulative tokens processed
     _max_display: int = field(default=3, repr=False)  # Max datasets to show per page
@@ -474,6 +477,34 @@ class LiveExecutionStatus:
             pass
         except Exception as e:
             logger.warning(f"[W&B] Failed to log metrics: {e}")
+
+    def _print_simple_status(self) -> None:
+        """Print simple text status update (for simple console mode)."""
+        import time as time_module
+
+        done, cached, pending, processing = self._get_summary_counts()
+        total_completed, total_shards = self._get_total_shards_progress()
+
+        elapsed = time_module.time() - self._start_time if self._start_time > 0 else 0
+        elapsed_str = f"{int(elapsed // 60)}m {int(elapsed % 60)}s"
+
+        pct = (total_completed / total_shards * 100) if total_shards > 0 else 0
+
+        # Single line status update
+        console.print(
+            f"[{elapsed_str}] Progress: {total_completed}/{total_shards} shards ({pct:.1f}%) | "
+            f"Datasets: {done + cached}/{len(self.datasets)} complete "
+            f"({processing} active, {pending} pending) | "
+            f"Tokens: {self._total_tokens:,}"
+        )
+
+        # Show active datasets
+        active = [ds for ds in self.datasets if ds.status == "processing"]
+        if active:
+            active_names = ", ".join(ds.name[:30] for ds in active[:5])  # Show first 5
+            if len(active) > 5:
+                active_names += f", +{len(active) - 5} more"
+            console.print(f"  Active: {active_names}")
 
     def _build_summary_line(self) -> Text:
         """Build a compact summary line."""
@@ -656,41 +687,77 @@ class LiveExecutionStatus:
 
         self._start_time = time_module.time()
 
-        # Calculate total shards across all datasets
-        total_shards = sum(ds.total_shards for ds in self.datasets)
+        if self.console_mode == "rich":
+            # Rich mode: Create animated progress bars
+            # Calculate total shards across all datasets
+            total_shards = sum(ds.total_shards for ds in self.datasets)
 
-        # Create overall progress bar
-        self._progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]Overall[/bold blue]"),
-            BarColumn(bar_width=40),
-            MofNCompleteColumn(),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            console=console,
-            transient=True,
-        )
-        self._overall_task_id = self._progress.add_task("Processing", total=total_shards)
+            # Create overall progress bar
+            self._progress = Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]Overall[/bold blue]"),
+                BarColumn(bar_width=40),
+                MofNCompleteColumn(),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=True,
+            )
+            self._overall_task_id = self._progress.add_task("Processing", total=total_shards)
 
-        self._live = Live(
-            self._build_display(),
-            console=console,
-            refresh_per_second=4,
-            transient=False,
-        )
-        self._live.start()
+            self._live = Live(
+                self._build_display(),
+                console=console,
+                refresh_per_second=4,
+                transient=False,
+            )
+            self._live.start()
+        else:
+            # Simple mode: Print initial status
+            console.print("\n[bold]Starting data preparation...[/bold]")
+            self._print_simple_status()
 
-    def stop(self) -> None:
-        """Stop the live display."""
-        if self._live:
-            self._live.stop()
-            self._live = None
-        self._progress = None
-        self._overall_task_id = None
+    def stop(self, success: bool | None = None) -> None:
+        """Stop the live display.
+
+        Args:
+            success: Whether the pipeline completed successfully. If None (default),
+                     auto-detects based on whether all datasets are complete/cached.
+        """
+        # Auto-detect completion if not explicitly provided
+        if success is None:
+            done, cached, pending, processing = self._get_summary_counts()
+            total = len(self.datasets)
+            success = (done + cached) == total and total > 0
+
+        if self.console_mode == "rich":
+            if self._live:
+                self._live.stop()
+                self._live = None
+            self._progress = None
+            self._overall_task_id = None
+        else:
+            # Simple mode: Print final status
+            self._print_simple_status()
+
+        # Print completion message based on actual status
+        if success:
+            console.print("[bold green]✓ Data preparation complete[/bold green]\n")
+        else:
+            total_completed, total_shards = self._get_total_shards_progress()
+            if total_shards > 0:
+                pct = total_completed / total_shards * 100
+                console.print(
+                    f"[bold yellow]⚠ Data preparation interrupted "
+                    f"({total_completed}/{total_shards} shards, {pct:.1f}%)[/bold yellow]\n"
+                )
+            else:
+                console.print("[bold yellow]⚠ Data preparation interrupted[/bold yellow]\n")
 
     def refresh(self) -> None:
         """Refresh the live display and cycle pages."""
-        if self._live:
+        if self.console_mode == "rich" and self._live:
+            # Rich mode: Update animated display with page cycling
             # Auto-cycle pages every ~2 seconds (8 refresh calls at 4 fps)
             self._page_cycle_counter += 1
             if self._page_cycle_counter >= 8:
@@ -701,6 +768,17 @@ class LiveExecutionStatus:
                     self._current_page = (self._current_page + 1) % total_pages
 
             self._live.update(self._build_display())
+            self._log_progress_to_wandb()
+        elif self.console_mode == "simple":
+            # Simple mode: Periodic text updates with configurable interval
+            import time as time_module
+
+            current_time = time_module.time()
+            if (current_time - self._last_simple_log_time) >= self.simple_log_interval_sec:
+                self._last_simple_log_time = current_time
+                self._print_simple_status()
+            # Still log to W&B for dashboards (has built-in throttling)
+            self._log_progress_to_wandb()
 
     def start_dataset(self, name: str) -> None:
         """Mark a dataset as processing (for parallel execution)."""
@@ -823,14 +901,23 @@ class LiveExecutionStatus:
         self.refresh()
 
 
-def create_live_status(datasets: list[tuple[str, int]], run_hash: str) -> LiveExecutionStatus:
+def create_live_status(
+    datasets: list[tuple[str, int]],
+    run_hash: str,
+    console_mode: str = "simple",
+    simple_log_interval_sec: int = 30,
+) -> LiveExecutionStatus:
     """Create a live execution status tracker.
 
     Args:
         datasets: List of (name, total_shards) tuples
         run_hash: The run hash to display
+        console_mode: Console output mode ('rich' or 'simple')
+        simple_log_interval_sec: Interval in seconds for simple mode updates
     """
     return LiveExecutionStatus(
         datasets=[DatasetStatus(name=name, total_shards=total) for name, total in datasets],
         run_hash=run_hash,
+        console_mode=console_mode,
+        simple_log_interval_sec=simple_log_interval_sec,
     )

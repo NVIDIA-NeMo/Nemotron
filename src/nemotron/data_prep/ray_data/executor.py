@@ -123,7 +123,7 @@ class RayDataExecConfig:
     min_actors: int = 2
     max_actors: int = 32
     cpus_per_actor: float = 1.0
-    max_tasks_in_flight_per_actor: int = 2
+    max_tasks_in_flight_per_actor: int = 4  # Increased from 2 for better CPU utilization
 
 
 def execute_shard_tasks(
@@ -190,6 +190,20 @@ def execute_shard_tasks(
         max_tasks_in_flight_per_actor=exec_cfg.max_tasks_in_flight_per_actor,
     )
 
+    # Build runtime_env with HF cache settings for actors
+    # This ensures HuggingFace downloads go to persistent Lustre storage
+    import os
+    actor_env_vars = {}
+    hf_home = os.environ.get("HF_HOME")
+    hf_token = os.environ.get("HF_TOKEN")
+
+    if hf_home:
+        actor_env_vars["HF_HOME"] = hf_home
+    if hf_token:
+        actor_env_vars["HF_TOKEN"] = hf_token
+
+    actor_runtime_env = {"env_vars": actor_env_vars} if actor_env_vars else None
+
     # Execute with explicit CPU allocation
     # batch_size=1 means one shard task per UDF call
     # Default batch_format is dict-of-numpy-arrays (NumPy is DEFAULT_BATCH_FORMAT)
@@ -198,13 +212,17 @@ def execute_shard_tasks(
     # FAULT TOLERANCE: We rely on idempotent atomic commit in the UDF rather than
     # disabling retries. Ray Data defaults to max_restarts=-1, max_task_retries=-1.
     # The atomic write protocol (temp -> rename -> receipt) makes retries safe.
-    stats_ds = ds.map_batches(
-        udf_cls,
-        fn_constructor_kwargs=udf_constructor_kwargs,
-        batch_size=1,
-        compute=compute,
-        num_cpus=exec_cfg.cpus_per_actor,
-    )
+    map_batches_kwargs = {
+        "fn_constructor_kwargs": udf_constructor_kwargs,
+        "batch_size": 1,
+        "compute": compute,
+        "num_cpus": exec_cfg.cpus_per_actor,
+    }
+    if actor_runtime_env:
+        map_batches_kwargs["runtime_env"] = actor_runtime_env
+        logger.info(f"Ray actors will use HF_HOME: {actor_env_vars.get('HF_HOME', 'not set')}")
+
+    stats_ds = ds.map_batches(udf_cls, **map_batches_kwargs)
 
     # Stream results to handle callback and collect stats
     all_stats: list[dict[str, Any]] = []

@@ -319,7 +319,7 @@ class PackedShardProcessor:
         return rows_processed
 
     def _resolve_file_path(self, file_info: FileInfo) -> str:
-        """Resolve file to a local path, downloading from HF if needed."""
+        """Resolve file to a local path, using HF cache (no download)."""
         if file_info.hf_repo_id is not None:
             from huggingface_hub import hf_hub_download
 
@@ -328,7 +328,7 @@ class PackedShardProcessor:
                 filename=file_info.hf_filename,
                 revision=file_info.hf_revision,
                 repo_type="dataset",
-                local_files_only=False,
+                local_files_only=True,  # Only use cached files
             )
             return local_path
 

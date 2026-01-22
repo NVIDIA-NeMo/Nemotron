@@ -16,6 +16,10 @@ set -eoux pipefail
 export PYTHONUNBUFFERED=1
 export SLURM_UNBUFFEREDIO=1
 
+# cosmos_xenna recommended env vars for Ray state API (monitoring)
+export RAY_MAX_LIMIT_FROM_API_SERVER=40000
+export RAY_MAX_LIMIT_FROM_DATA_SOURCE=40000
+
 {%- for env_var in env_vars %}
 {{env_var}}
 {%- endfor %}
@@ -195,6 +199,7 @@ ray start --head \
     --port=${PORT} \
     --ray-client-server-port=${RAY_CLIENT_SERVER_PORT} \
     --dashboard-port=${DASHBOARD_PORT} \
+    --dashboard-host=0.0.0.0 \
     \
     --node-manager-port=${NODE_MANAGER_PORT} \
     --object-manager-port=${OBJECT_MANAGER_PORT} \
@@ -383,6 +388,20 @@ COMMAND="${COMMAND:-{{ command | default('', true) }}}"
 COMMAND_WORKDIR={{ command_workdir | default('$CONTAINER_CWD') }}
 
 if [[ -n "$COMMAND" ]]; then
+  export RAY_ADDRESS="${head_node_ip}:${PORT}"
+  # Wait for Ray dashboard to be ready (needed by cosmos_xenna state API)
+  echo "[INFO] Waiting for Ray dashboard to be ready at http://${head_node_ip}:${DASHBOARD_PORT}..."
+  dashboard_timeout=60
+  dashboard_elapsed=0
+  while ! srun --overlap --container-name=ray-head --nodes=1 --ntasks=1 -w "$head_node" curl -sf "http://127.0.0.1:${DASHBOARD_PORT}/api/version" > /dev/null 2>&1; do
+    if [[ $dashboard_elapsed -ge $dashboard_timeout ]]; then
+      echo "[WARN] Dashboard not ready after ${dashboard_timeout}s, proceeding anyway..."
+      break
+    fi
+    sleep 2
+    dashboard_elapsed=$((dashboard_elapsed + 2))
+  done
+  echo "[INFO] Ray dashboard ready, starting job..."
   srun --no-container-mount-home --gpus=0 --overlap --container-name=ray-head --container-workdir=$COMMAND_WORKDIR --nodes=1 --ntasks=1 -w "$head_node" -o $LOG_DIR/{{ ray_log_prefix }}job.log bash -c "$COMMAND"
 else
   echo "[INFO]: Ray Cluster is idled, run this on the slurm head node to get a shell to the head node:"
