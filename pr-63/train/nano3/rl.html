@@ -1,0 +1,1882 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Stage 2: Reinforcement Learning (RL) &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs";mermaid.registerLayoutLoaders(elkLayouts);mermaid.initialize({startOnLoad:false});</script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'train/nano3/rl';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../../_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="../../_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Stage 3: Evaluation" href="eval.html" />
+    <link rel="prev" title="Stage 1: Supervised Fine-Tuning (SFT)" href="sft.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../artifacts.html">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="eval.html">Stage 3: Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data-prep.html">Data Preparation Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluator.html">Evaluation Framework</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Stage 2: Reinforcement Learning (RL)</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="stage-2-reinforcement-learning-rl">
+<h1>Stage 2: Reinforcement Learning (RL)<a class="headerlink" href="#stage-2-reinforcement-learning-rl" title="Link to this heading">#</a></h1>
+<p>This stage aligns the instruction-tuned model using GRPO (Group Relative Policy Optimization) with <a class="reference internal" href="../nvidia-stack.html#nemo-rl"><span class="std std-ref">NeMo-RL</span></a>.</p>
+<blockquote>
+<div><p><strong>Open-Source Data Only</strong>: This recipe uses exclusively open-sourced RL data from the <a class="reference external" href="https://huggingface.co/collections/nvidia/nemotron-post-training-v3">Nemotron Post-training Datasets</a> collection, which is a subset of the full data used to train the released model. The recipe uses the <a class="reference external" href="https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend">Nemotron-3-Nano-RL-Training-Blend</a> dataset. Results will differ from the benchmarks in the <a class="reference external" href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf">tech report</a>. Use this recipe as a reference implementation to apply the methodology with your own data.</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="training-methodology">
+<h2>Training Methodology<a class="headerlink" href="#training-methodology" title="Link to this heading">#</a></h2>
+<blockquote>
+<div><p><strong>Training Framework</strong>: RL alignment is implemented using <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/">NeMo-RL</a> with Ray for distributed actor coordination and vLLM for fast rollout generation. The Megatron backend handles distributed policy training with tensor, pipeline, context, and expert parallelism. See <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/">NeMo-RL Documentation</a> for implementation details.</p>
+<p>For complete methodology, see <a class="reference external" href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf">Tech Report Section 3.2</a>.</p>
+</div></blockquote>
+<section id="rl-pipeline-overview">
+<h3>RL Pipeline Overview<a class="headerlink" href="#rl-pipeline-overview" title="Link to this heading">#</a></h3>
+<p>The RL pipeline consists of three components:</p>
+<ol class="arabic simple">
+<li><p><strong>RLVR</strong> — Multi-environment training with verifiable rewards</p></li>
+<li><p><strong>RLHF with GenRM</strong> — Generative reward model-based alignment</p></li>
+<li><p><strong>DPO</strong> — Preference learning to reduce tool hallucination</p></li>
+</ol>
+</section>
+<section id="data-preparation-pipeline">
+<h3>Data Preparation Pipeline<a class="headerlink" href="#data-preparation-pipeline" title="Link to this heading">#</a></h3>
+<p>Before training, the RL dataset is transformed into JSONL format compatible with NeMo-Gym:</p>
+<pre  class="mermaid">
+        %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333'}}}%%
+flowchart LR
+    subgraph prep[&quot;Data Preparation&quot;]
+        direction LR
+        hf[&quot;HuggingFace&lt;br/&gt;Dataset&quot;] --&gt; resolve[&quot;Placeholder&lt;br/&gt;Resolution&quot;]
+        resolve --&gt; jsonl[&quot;JSONL&lt;br/&gt;Format&quot;]
+        jsonl --&gt; split[&quot;Train/Val/Test&lt;br/&gt;Split&quot;]
+    end
+    split --&gt; gym[&quot;NeMo-Gym&lt;br/&gt;Environment&quot;]
+    gym --&gt; reward[&quot;Reward&lt;br/&gt;Computation&quot;]
+
+    style hf fill:#e1f5fe,stroke:#2196f3
+    style resolve fill:#e1f5fe,stroke:#2196f3
+    style jsonl fill:#f3e5f5,stroke:#9c27b0
+    style split fill:#f3e5f5,stroke:#9c27b0
+    style gym fill:#e8f5e9,stroke:#4caf50
+    style reward fill:#e8f5e9,stroke:#4caf50
+    </pre><div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Stage</p></th>
+<th class="head"><p>What Happens</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>HuggingFace Dataset</strong></p></td>
+<td><p>Load <a class="reference external" href="https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend">Nemotron-3-Nano-RL-Training-Blend</a> from HuggingFace Hub</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Placeholder Resolution</strong></p></td>
+<td><p>Resolve <code class="docutils literal notranslate"><span class="pre">_hf_placeholder</span></code> records by fetching from external datasets (DAPO, Skywork) and applying template restoration</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>JSONL Format</strong></p></td>
+<td><p>Convert to JSONL with <code class="docutils literal notranslate"><span class="pre">question</span></code>, <code class="docutils literal notranslate"><span class="pre">expected_answer</span></code>, and <code class="docutils literal notranslate"><span class="pre">responses_create_params</span></code> fields</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Train/Val/Test Split</strong></p></td>
+<td><p>Split into training (98%), validation (1%), and test (1%) sets</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>NeMo-Gym Environment</strong></p></td>
+<td><p>Route samples to appropriate reward environments based on task type</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Reward Computation</strong></p></td>
+<td><p>Compute verifiable rewards (math correctness, code execution, schema adherence)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Placeholder Resolution:</strong></p>
+<p>The <a class="reference external" href="https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend">Nemotron-3-Nano-RL-Training-Blend</a> dataset contains placeholder records that reference external HuggingFace datasets. The <code class="docutils literal notranslate"><span class="pre">data_prep.py</span></code> script resolves these by:</p>
+<ol class="arabic simple">
+<li><p>Detecting placeholder records by the presence of <code class="docutils literal notranslate"><span class="pre">_hf_placeholder</span></code> field</p></li>
+<li><p>Fetching actual data from external HF datasets:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://huggingface.co/datasets/ByteDance-Seed/DAPO-Math-17k">ByteDance-Seed/DAPO-Math-17k</a> — Math reasoning problems</p></li>
+<li><p><a class="reference external" href="https://huggingface.co/datasets/Skywork/Skywork-OR1-RL-Data">Skywork/Skywork-OR1-RL-Data</a> — Open reasoning data</p></li>
+</ul>
+</li>
+<li><p>Applying template restoration (DAPO prefix/suffix, Skywork <code class="docutils literal notranslate"><span class="pre">{question}</span></code> replacement)</p></li>
+</ol>
+<blockquote>
+<div><p>For data preparation implementation, see <strong>Recipe Source</strong>: <code class="docutils literal notranslate"><span class="pre">src/nemotron/recipes/nano3/stage2_rl/data_prep.py</span></code></p>
+</div></blockquote>
+</section>
+<section id="grpo-algorithm">
+<h3>GRPO Algorithm<a class="headerlink" href="#grpo-algorithm" title="Link to this heading">#</a></h3>
+<p>GRPO (Group Relative Policy Optimization) optimizes the policy using group-relative advantages:</p>
+<ol class="arabic simple">
+<li><p><strong>Generate responses</strong> from the current policy using vLLM</p></li>
+<li><p><strong>Evaluate</strong> responses using NeMo-Gym reward environments</p></li>
+<li><p><strong>Compute group-relative advantages</strong> across response groups per prompt</p></li>
+<li><p><strong>Update the policy</strong> to favor higher-reward responses with clipped gradients</p></li>
+</ol>
+<p><strong>Loss Function:</strong></p>
+<p>The GRPO loss uses clipped policy gradients with KL regularization:</p>
+<div class="math notranslate nohighlight">
+\[
+L(\theta) = E_{x \sim \pi_{\theta_{\text{old}}}} \Big[ \min \Big(\frac{\pi_\theta(x)}{\pi_{\theta_{\text{old}}}(x)}A_t, \text{clip} \big( \frac{\pi_\theta(x)}{\pi_{\theta_{\text{old}}}(x)}, 1 - \varepsilon, 1 + \varepsilon \big) A_t \Big) \Big] - \beta D_{\text{KL}} (\pi_\theta \| \pi_\text{ref})
+\]</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\pi_\theta\)</span> is the policy being optimized</p></li>
+<li><p><span class="math notranslate nohighlight">\(\pi_{\theta_{\text{old}}}\)</span> is the policy from the beginning of this step</p></li>
+<li><p><span class="math notranslate nohighlight">\(A_t\)</span> is the advantage estimate (group-relative)</p></li>
+<li><p><span class="math notranslate nohighlight">\(\varepsilon\)</span> is the clipping hyperparameter (0.2–0.28)</p></li>
+<li><p><span class="math notranslate nohighlight">\(\beta\)</span> is the KL penalty coefficient</p></li>
+<li><p><span class="math notranslate nohighlight">\(\pi_{\text{ref}}\)</span> is the reference policy (frozen SFT checkpoint)</p></li>
+</ul>
+<p><strong>Stability Improvements:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Improvement</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>On-Policy KL Approximation</strong></p></td>
+<td><p>Uses importance weights to correct for off-policy samples, providing an unbiased and guaranteed-positive KL estimator</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Importance Sampling Correction</strong></p></td>
+<td><p>Corrects for discrepancies between inference (vLLM) and training (Megatron) token probabilities</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Overlong Filtering</strong></p></td>
+<td><p>Excludes sequences that hit max length without EOS from loss computation, reducing noise from truncated generations</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Asymmetric Clipping</strong></p></td>
+<td><p>Uses <code class="docutils literal notranslate"><span class="pre">ratio_clip_min=0.2</span></code> and <code class="docutils literal notranslate"><span class="pre">ratio_clip_max=0.28</span></code> for asymmetric policy update bounds</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<div><p>For detailed loss function derivations, see the <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/guides/grpo.html#loss">NeMo-RL GRPO Guide</a>.</p>
+</div></blockquote>
+</section>
+<section id="multi-environment-rlvr">
+<h3>Multi-Environment RLVR<a class="headerlink" href="#multi-environment-rlvr" title="Link to this heading">#</a></h3>
+<p>Training uses 6 reward environments through NeMo-Gym:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Environment</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Reward Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>math_with_judge</strong></p></td>
+<td><p>Mathematical reasoning (DAPO, Skywork math)</p></td>
+<td><p>Answer correctness verification</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>code_gen</strong></p></td>
+<td><p>Code correctness with test case execution</p></td>
+<td><p>Unit test pass rate</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>mcqa</strong></p></td>
+<td><p>STEM multiple choice questions</p></td>
+<td><p>Answer matching</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>instruction_following</strong></p></td>
+<td><p>IFEval, Multi-Challenge compliance</p></td>
+<td><p>Constraint satisfaction</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>workplace_assistant</strong></p></td>
+<td><p>Agentic tool use, multi-turn interactions</p></td>
+<td><p>Task completion</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>structured_outputs_json</strong></p></td>
+<td><p>JSON schema adherence</p></td>
+<td><p>Schema validation</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Training on all environments simultaneously provides stable gains without co-reward degradation.</p>
+<blockquote>
+<div><p>For environment implementation details, see <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/guides/environments.html">NeMo-RL Environments Guide</a>.</p>
+</div></blockquote>
+</section>
+<section id="genrm-rlhf">
+<h3>GenRM (RLHF)<a class="headerlink" href="#genrm-rlhf" title="Link to this heading">#</a></h3>
+<p>Generative reward models use circular comparison strategy (N comparisons instead of O(N²)) with length-normalized reward adjustment:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Prompts per batch</strong></p></td>
+<td><p>128</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Responses per prompt</strong></p></td>
+<td><p>16</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Comparison strategy</strong></p></td>
+<td><p>Circular</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Length bonus α</strong></p></td>
+<td><p>0.5</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<div><p>For GenRM training details, see <a class="reference external" href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf">Tech Report Section 3.2</a>.</p>
+</div></blockquote>
+</section>
+<section id="dpo-for-tool-hallucination">
+<h3>DPO for Tool Hallucination<a class="headerlink" href="#dpo-for-tool-hallucination" title="Link to this heading">#</a></h3>
+<p>DPO reduces hallucinated tool usage with minimal computational overhead:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Metric</p></th>
+<th class="head"><p>Before DPO</p></th>
+<th class="head"><p>After DPO</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>AIME25 Accuracy</strong></p></td>
+<td><p>80.88%</p></td>
+<td><p>84.58%</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Hallucination Rate</strong></p></td>
+<td><p>8.33%</p></td>
+<td><p>0.7%</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<div><p>For DPO methodology, see <a class="reference external" href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf">Tech Report Appendix C</a> and <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/guides/dpo.html">NeMo-RL DPO Guide</a>.</p>
+</div></blockquote>
+</section>
+<section id="reasoning-control">
+<h3>Reasoning Control<a class="headerlink" href="#reasoning-control" title="Link to this heading">#</a></h3>
+<p>The model supports:</p>
+<ul class="simple">
+<li><p><strong>Reasoning on/off control</strong> — Strip reasoning from 10% of samples</p></li>
+<li><p><strong>Token budget control</strong> — Truncate 3% of reasoning traces to different budgets</p></li>
+</ul>
+</section>
+<section id="hyperparameters">
+<h3>Hyperparameters<a class="headerlink" href="#hyperparameters" title="Link to this heading">#</a></h3>
+<p><strong>GRPO Settings:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">num_prompts_per_step</span></code></p></td>
+<td><p>128</p></td>
+<td><p>Prompts sampled per training step</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">num_generations_per_prompt</span></code></p></td>
+<td><p>16</p></td>
+<td><p>Rollouts generated per prompt</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_total_sequence_length</span></code></p></td>
+<td><p>49152</p></td>
+<td><p>Maximum sequence length (~49K tokens)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">normalize_rewards</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Normalize rewards across batch</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">use_leave_one_out_baseline</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Variance reduction for advantage estimation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">val_period</span></code></p></td>
+<td><p>5</p></td>
+<td><p>Validation every N steps</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_num_epochs</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Single epoch over data</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p>42</p></td>
+<td><p>Random seed for reproducibility</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Loss Function:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ratio_clip_min</span></code></p></td>
+<td><p>0.2</p></td>
+<td><p>Lower bound for importance ratio clipping</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ratio_clip_max</span></code></p></td>
+<td><p>0.28</p></td>
+<td><p>Upper bound for importance ratio clipping</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">use_on_policy_kl_approximation</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Use unbiased on-policy KL estimator</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">use_importance_sampling_correction</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Correct for inference/training mismatch</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">token_level_loss</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Per-token loss normalization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reference_policy_kl_penalty</span></code></p></td>
+<td><p>0</p></td>
+<td><p>KL regularization weight (disabled)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Optimizer:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">optimizer</span></code></p></td>
+<td><p>AdamW</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lr</span></code></p></td>
+<td><p>3e-6</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">min_lr</span></code></p></td>
+<td><p>3e-6</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">weight_decay</span></code></p></td>
+<td><p>0.0</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adam_beta1</span></code></p></td>
+<td><p>0.9</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">adam_beta2</span></code></p></td>
+<td><p>0.999</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adam_eps</span></code></p></td>
+<td><p>1e-8</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">clip_grad</span></code></p></td>
+<td><p>1.0</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Sequence Packing:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p>true</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">algorithm</span></code></p></td>
+<td><p>modified_first_fit_decreasing</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sequence_length_round</span></code></p></td>
+<td><p>64</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="recipe-execution">
+<h2>Recipe Execution<a class="headerlink" href="#recipe-execution" title="Link to this heading">#</a></h2>
+<section id="quick-start">
+<h3>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h3>
+<div class="termy">
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">// 1. Prepare data (convert to JSONL format)</span>
+<span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>rl<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER
+
+<span class="go">// 2. Run RL training</span>
+<span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER
+</pre></div>
+</div>
+</div>
+<blockquote>
+<div><p><strong>Note</strong>: The <code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">YOUR-CLUSTER</span></code> flag submits jobs via <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">NeMo-Run</span></a>. See <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for setup.</p>
+</div></blockquote>
+</section>
+<section id="running-in-nemo-rl-repository">
+<h3>Running in NeMo-RL Repository<a class="headerlink" href="#running-in-nemo-rl-repository" title="Link to this heading">#</a></h3>
+<p>For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html">NeMo-RL Nemotron 3 Nano Guide</a>:</p>
+<p><strong>1. Download and prepare the dataset:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the RL blend dataset</span>
+huggingface-cli<span class="w"> </span>download<span class="w"> </span>nvidia/Nemotron-3-Nano-RL-Training-Blend<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo-type<span class="w"> </span>dataset<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--local-dir<span class="w"> </span>/path/to/rl-blend
+
+<span class="c1"># Fill in placeholder entries (resolves DAPO, Skywork references)</span>
+python<span class="w"> </span>/path/to/rl-blend/create_nanov3_jsonl.py<span class="w"> </span>/path/to/rl-blend/data/train.jsonl
+
+<span class="c1"># Split into train/validation</span>
+head<span class="w"> </span>-n<span class="w"> </span>-1000<span class="w"> </span>/path/to/rl-blend/data/train.jsonl<span class="w"> </span>&gt;<span class="w"> </span>/path/to/train.jsonl
+tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1000</span><span class="w"> </span>/path/to/rl-blend/data/train.jsonl<span class="w"> </span>&gt;<span class="w"> </span>/path/to/validation.jsonl
+</pre></div>
+</div>
+<p><strong>2. Run GRPO training:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># From NeMo-RL repository root</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>examples/nemo_gym/run_grpo_nemo_gym.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>examples/nemo_gym/grpo_nanov3.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>data.train_jsonl_fpath<span class="o">=</span>/path/to/train.jsonl<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>data.validation_jsonl_fpath<span class="o">=</span>/path/to/validation.jsonl<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>policy.model_name<span class="o">=</span>/path/to/sft/checkpoint<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>logger.wandb_enabled<span class="o">=</span>True
+</pre></div>
+</div>
+<blockquote>
+<div><p><strong>Note</strong>: The default recipe requires 32 nodes with 8 GPUs each. See the <a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/cluster.html">NeMo-RL cluster documentation</a> for Slurm configuration.</p>
+</div></blockquote>
+</section>
+<section id="configuration">
+<h3>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>File</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">config/default.yaml</span></code></p></td>
+<td><p>Production GRPO configuration</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">config/data_prep/default.yaml</span></code></p></td>
+<td><p>Data preparation settings</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">config/data_prep/data_blend_raw.json</span></code></p></td>
+<td><p>RL dataset blend</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="data-preparation">
+<h3>Data Preparation<a class="headerlink" href="#data-preparation" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">data_prep.py</span></code> script converts datasets to JSONL format compatible with <a class="reference internal" href="../nvidia-stack.html#nemo-rl"><span class="std std-ref">NeMo-RL</span></a>’s NeMo-Gym interface. See <a class="reference internal" href="../data-prep.html"><span class="std std-doc">Data Preparation Module</span></a> for detailed documentation.</p>
+<section id="cli-command">
+<h4>CLI Command<a class="headerlink" href="#cli-command" title="Link to this heading">#</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>prep<span class="w"> </span>rl<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">&lt;profile&gt;</span></code></p></td>
+<td><p>Execute on Slurm via <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">NeMo-Run</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--sample</span> <span class="pre">N</span></code></p></td>
+<td><p>Limit rows per dataset (for testing)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--force</span></code></p></td>
+<td><p>Force re-run, ignoring cache</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="output">
+<h4>Output<a class="headerlink" href="#output" title="Link to this heading">#</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>output/nano3/stage2_rl/
+├── train/
+│   └── data.jsonl
+├── val/
+│   └── data.jsonl
+├── test/
+│   └── data.jsonl
+└── manifest.json
+</pre></div>
+</div>
+<p>The output is registered as a <a class="reference internal" href="../artifacts.html"><span class="std std-doc">W&amp;B Artifact</span></a> (<code class="docutils literal notranslate"><span class="pre">DataBlendsArtifact-rl</span></code>) for lineage tracking.</p>
+</section>
+</section>
+<section id="training">
+<h3>Training<a class="headerlink" href="#training" title="Link to this heading">#</a></h3>
+<section id="id1">
+<h4>CLI Command<a class="headerlink" href="#id1" title="Link to this heading">#</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span><span class="o">[</span>options<span class="o">]</span><span class="w"> </span><span class="o">[</span>overrides...<span class="o">]</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">&lt;profile&gt;</span></code></p></td>
+<td><p>Attached—submits and waits, streaming logs (<a class="reference internal" href="../nemo-run.html"><span class="std std-doc">NeMo-Run</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--batch</span> <span class="pre">&lt;profile&gt;</span></code></p></td>
+<td><p>Detached—submits and exits immediately (<a class="reference internal" href="../nemo-run.html"><span class="std std-doc">NeMo-Run</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code></p></td>
+<td><p>Preview execution plan</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">key=value</span></code></p></td>
+<td><p>Override config values (<a class="reference internal" href="../cli.html#dotlist-overrides"><span class="std std-ref">CLI Framework</span></a>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="override-examples">
+<h4>Override Examples<a class="headerlink" href="#override-examples" title="Link to this heading">#</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># More training steps</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>grpo.max_num_steps<span class="o">=</span><span class="m">200000</span>
+
+<span class="c1"># Different temperature for generation</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>policy.generation.temperature<span class="o">=</span><span class="m">0</span>.8
+
+<span class="c1"># Different learning rate</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>policy.megatron_cfg.optimizer.lr<span class="o">=</span>5e-7
+
+<span class="c1"># Disable sequence packing</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>policy.sequence_packing.enabled<span class="o">=</span><span class="nb">false</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="running-with-nemo-run">
+<h3>Running with NeMo-Run<a class="headerlink" href="#running-with-nemo-run" title="Link to this heading">#</a></h3>
+<p>Configure execution profiles in <code class="docutils literal notranslate"><span class="pre">env.toml</span></code>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[wandb]</span>
+<span class="n">project</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nemotron&quot;</span>
+<span class="n">entity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR-TEAM&quot;</span>
+
+<span class="k">[YOUR-CLUSTER]</span>
+<span class="n">executor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;slurm&quot;</span>
+<span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR-ACCOUNT&quot;</span>
+<span class="n">partition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;batch&quot;</span>
+<span class="n">nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span>
+<span class="n">ntasks_per_node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span>
+<span class="n">gpus_per_node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span>
+<span class="n">mem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0&quot;</span>
+<span class="n">exclusive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">mounts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/lustre:/lustre&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for complete configuration options.</p>
+</section>
+<section id="checkpoint-resume">
+<h3>Checkpoint &amp; Resume<a class="headerlink" href="#checkpoint-resume" title="Link to this heading">#</a></h3>
+<p>Training automatically saves checkpoints based on validation reward. To resume from a checkpoint:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Resume from a specific checkpoint</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>policy.model_name<span class="o">=</span>/path/to/checkpoint
+
+<span class="c1"># Resume from latest checkpoint in results directory</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>rl<span class="w"> </span>checkpointing.checkpoint_dir<span class="o">=</span>/path/to/results
+</pre></div>
+</div>
+<p><strong>Checkpoint Configuration:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">save_period</span></code></p></td>
+<td><p>10</p></td>
+<td><p>Steps between checkpoint saves</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">metric_name</span></code></p></td>
+<td><p>val:total_reward/mean</p></td>
+<td><p>Metric for best checkpoint selection</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">higher_is_better</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Higher reward = better checkpoint</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">keep_top_k</span></code></p></td>
+<td><p>1000000</p></td>
+<td><p>Number of checkpoints to retain</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="troubleshooting">
+<h3>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h3>
+<p>Common errors and solutions:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Error</p></th>
+<th class="head"><p>Cause</p></th>
+<th class="head"><p>Solution</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>High <code class="docutils literal notranslate"><span class="pre">token_mult_prob_error</span></code></p></td>
+<td><p>Mismatch between vLLM and Megatron probabilities</p></td>
+<td><p>Check weight refitting; ensure vLLM compilation settings match</p></td>
+</tr>
+<tr class="row-odd"><td><p>KL divergence spikes</p></td>
+<td><p>Single token probability errors in MoE</p></td>
+<td><p>Monitor <code class="docutils literal notranslate"><span class="pre">gen_kl_error</span></code> metric; values above 1e-3 indicate issues</p></td>
+</tr>
+<tr class="row-even"><td><p>OOM during generation</p></td>
+<td><p>vLLM memory allocation too high</p></td>
+<td><p>Reduce <code class="docutils literal notranslate"><span class="pre">gpu_memory_utilization</span></code> (default 0.5)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Slow convergence</p></td>
+<td><p>Learning rate too low or high</p></td>
+<td><p>Adjust <code class="docutils literal notranslate"><span class="pre">policy.megatron_cfg.optimizer.lr</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Debugging tips:</strong></p>
+<ul class="simple">
+<li><p>Monitor <code class="docutils literal notranslate"><span class="pre">token_mult_prob_error</span></code> for inference/training consistency (should stay below ~2%)</p></li>
+<li><p>Watch <code class="docutils literal notranslate"><span class="pre">sampling_importance_ratio</span></code> (should hover around 1.0)</p></li>
+<li><p>Check <code class="docutils literal notranslate"><span class="pre">approx_entropy</span></code> for entropy collapse during training</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">--sample</span> <span class="pre">N</span></code> in data prep for quick iteration</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="artifact-lineage">
+<h2>Artifact Lineage<a class="headerlink" href="#artifact-lineage" title="Link to this heading">#</a></h2>
+<pre  class="mermaid">
+        %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333'}}}%%
+flowchart TB
+    prev[&quot;ModelArtifact-sft&lt;br/&gt;(from Stage 1)&quot;] --&gt; train
+    rl[&quot;RL Datasets&lt;br/&gt;(HuggingFace)&quot;] --&gt; dp[&quot;data_prep.py&quot;]
+    dp --&gt; data[&quot;DataBlendsArtifact-rl&lt;br/&gt;(JSONL files)&quot;]
+    data --&gt; train[&quot;train.py&lt;br/&gt;(GRPO with NeMo-RL)&quot;]
+    train --&gt; model[&quot;ModelArtifact-rl&lt;br/&gt;(final aligned model)&quot;]
+
+    style prev fill:#f3e5f5,stroke:#9c27b0
+    style rl fill:#e8f5e9,stroke:#4caf50
+    style dp fill:#e8f5e9,stroke:#4caf50
+    style data fill:#e8f5e9,stroke:#4caf50
+    style train fill:#e8f5e9,stroke:#4caf50
+    style model fill:#e8f5e9,stroke:#4caf50
+    </pre></section>
+<hr class="docutils" />
+<section id="infrastructure">
+<h2>Infrastructure<a class="headerlink" href="#infrastructure" title="Link to this heading">#</a></h2>
+<p>This stage uses the following components from the <a class="reference internal" href="../nvidia-stack.html"><span class="std std-doc">NVIDIA AI Stack</span></a>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Component</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Documentation</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../nvidia-stack.html#nemo-rl"><span class="std std-ref">NeMo-RL</span></a></p></td>
+<td><p>GRPO algorithm, policy training, reward computation</p></td>
+<td><p><a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/">Docs</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../nvidia-stack.html#megatron-core"><span class="std std-ref">Megatron-Core</span></a></p></td>
+<td><p>Distributed training primitives (TP, PP, CP, EP)</p></td>
+<td><p><a class="reference external" href="https://github.com/NVIDIA/Megatron-LM">GitHub</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="https://ray.io/">Ray</a></p></td>
+<td><p>Distributed actor coordination</p></td>
+<td><p><a class="reference external" href="https://docs.ray.io/">Docs</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>vLLM</p></td>
+<td><p>Fast rollout generation</p></td>
+<td><p><a class="reference external" href="https://github.com/vllm-project/vllm">GitHub</a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="parallelism-configuration">
+<h3>Parallelism Configuration<a class="headerlink" href="#parallelism-configuration" title="Link to this heading">#</a></h3>
+<p>Training uses multiple parallelism strategies for efficient scaling:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parallelism</p></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>Config Key</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Tensor (TP)</p></td>
+<td><p>2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">policy.megatron_cfg.tensor_model_parallel_size</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Pipeline (PP)</p></td>
+<td><p>2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">policy.megatron_cfg.pipeline_model_parallel_size</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Context (CP)</p></td>
+<td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">policy.megatron_cfg.context_parallel_size</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Expert (EP)</p></td>
+<td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">policy.megatron_cfg.expert_model_parallel_size</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Sequence (SP)</p></td>
+<td><p>Yes</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">policy.megatron_cfg.sequence_parallel</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Generation (vLLM):</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tensor_parallel_size</span></code></p></td>
+<td><p>4</p></td>
+<td><p>TP for vLLM generation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gpu_memory_utilization</span></code></p></td>
+<td><p>0.5</p></td>
+<td><p>GPU memory fraction for KV cache</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">colocated</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Share GPUs with training</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enforce_eager</span></code></p></td>
+<td><p>false</p></td>
+<td><p>Use torch.compile</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Cluster:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">num_nodes</span></code></p></td>
+<td><p>32</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gpus_per_node</span></code></p></td>
+<td><p>8</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="key-features-used">
+<h3>Key Features Used<a class="headerlink" href="#key-features-used" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Feature</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>GRPO algorithm</p></td>
+<td><p>Group Relative Policy Optimization with clipped gradients</p></td>
+</tr>
+<tr class="row-odd"><td><p>Megatron backend</p></td>
+<td><p>Distributed training with TP/PP/CP/EP parallelism</p></td>
+</tr>
+<tr class="row-even"><td><p>Sequence Packing</p></td>
+<td><p>Efficient batch utilization for variable-length generations</p></td>
+</tr>
+<tr class="row-odd"><td><p>vLLM Generation</p></td>
+<td><p>Fast rollout with tensor parallelism</p></td>
+</tr>
+<tr class="row-even"><td><p>MoE Router Bias</p></td>
+<td><p>Aux-loss-free load balancing (<code class="docutils literal notranslate"><span class="pre">freeze_moe_router=true</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Per-token Loss</p></td>
+<td><p>Consistent gradient signal (<code class="docutils literal notranslate"><span class="pre">calculate_per_token_loss=true</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="nemo-gym-environments">
+<h3>NeMo-Gym Environments<a class="headerlink" href="#nemo-gym-environments" title="Link to this heading">#</a></h3>
+<p>The training configuration includes these reward environment configs:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">nemo_gym</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">config_paths</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">responses_api_models/vllm_model/configs/vllm_model_for_training.yaml</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resources_servers/math_with_judge/configs/math_with_judge.yaml</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resources_servers/code_gen/configs/code_gen.yaml</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resources_servers/workplace_assistant/configs/workplace_assistant.yaml</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resources_servers/mcqa/configs/mcqa.yaml</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resources_servers/instruction_following/configs/instruction_following.yaml</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resources_servers/structured_outputs/configs/structured_outputs_json.yaml</span>
+</pre></div>
+</div>
+</section>
+<section id="architecture">
+<h3>Architecture<a class="headerlink" href="#architecture" title="Link to this heading">#</a></h3>
+<p>NeMo-RL uses a Ray-based actor model:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Actor</p></th>
+<th class="head"><p>Function</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Policy Model</strong></p></td>
+<td><p>Trainable policy weights (Megatron backend)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Generator</strong></p></td>
+<td><p>vLLM-backed rollout generation (colocated)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Reward Environments</strong></p></td>
+<td><p>NeMo-Gym environments for reward computation</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Reference Model</strong></p></td>
+<td><p>Frozen SFT checkpoint for KL divergence</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="container">
+<h3>Container<a class="headerlink" href="#container" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nvcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">nvidia</span><span class="o">/</span><span class="n">nemo</span><span class="o">-</span><span class="n">rl</span><span class="p">:</span><span class="n">v0</span><span class="mf">.4.0</span><span class="o">.</span><span class="n">nemotron_3_nano</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<p>After RL completes, the final aligned model (<code class="docutils literal notranslate"><span class="pre">ModelArtifact-rl</span></code>) is ready for evaluation and deployment.</p>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf">Tech Report Section 3.2</a> — RL methodology</p></li>
+<li><p><a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/">NeMo-RL Documentation</a> — GRPO, DPO, environments</p></li>
+<li><p><a class="reference external" href="https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html">NeMo-RL Nemotron 3 Nano Guide</a> — Upstream training guide</p></li>
+<li><p><a class="reference internal" href="../nvidia-stack.html"><span class="std std-doc">NVIDIA AI Stack</span></a> — NeMo-RL, Megatron-Core documentation</p></li>
+<li><p><a class="reference internal" href="../artifacts.html"><span class="std std-doc">Artifact Lineage</span></a> — W&amp;B artifact system</p></li>
+<li><p><a class="reference internal" href="pretrain.html"><span class="std std-doc">Stage 0: Pretraining</span></a> — Pretrain the base model</p></li>
+<li><p><a class="reference internal" href="sft.html"><span class="std std-doc">Stage 1: SFT</span></a> — Instruction tuning</p></li>
+<li><p><strong>Recipe Source</strong>: <code class="docutils literal notranslate"><span class="pre">src/nemotron/recipes/nano3/stage2_rl/</span></code> — Implementation details</p></li>
+<li><p><a class="reference internal" href="README.html"><span class="std std-doc">Back to Overview</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="sft.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Stage 1: Supervised Fine-Tuning (SFT)</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="eval.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Stage 3: Evaluation</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#training-methodology">Training Methodology</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rl-pipeline-overview">RL Pipeline Overview</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-preparation-pipeline">Data Preparation Pipeline</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#grpo-algorithm">GRPO Algorithm</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#multi-environment-rlvr">Multi-Environment RLVR</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#genrm-rlhf">GenRM (RLHF)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dpo-for-tool-hallucination">DPO for Tool Hallucination</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reasoning-control">Reasoning Control</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hyperparameters">Hyperparameters</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#recipe-execution">Recipe Execution</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-in-nemo-rl-repository">Running in NeMo-RL Repository</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-preparation">Data Preparation</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#cli-command">CLI Command</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#output">Output</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#training">Training</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">CLI Command</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#override-examples">Override Examples</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-with-nemo-run">Running with NeMo-Run</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#checkpoint-resume">Checkpoint &amp; Resume</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#artifact-lineage">Artifact Lineage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#infrastructure">Infrastructure</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parallelism-configuration">Parallelism Configuration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#key-features-used">Key Features Used</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nemo-gym-environments">NeMo-Gym Environments</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#architecture">Architecture</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#container">Container</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference">Reference</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

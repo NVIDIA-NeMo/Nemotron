@@ -1,0 +1,1317 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Stage 3: Evaluation &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs";mermaid.registerLayoutLoaders(elkLayouts);mermaid.initialize({startOnLoad:false});</script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'train/nano3/eval';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../../_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="../../_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Importing Models and Data" href="import.html" />
+    <link rel="prev" title="Stage 2: Reinforcement Learning (RL)" href="rl.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../artifacts.html">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rl.html">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Stage 3: Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data-prep.html">Data Preparation Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluator.html">Evaluation Framework</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Stage 3: Evaluation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="stage-3-evaluation">
+<h1>Stage 3: Evaluation<a class="headerlink" href="#stage-3-evaluation" title="Link to this heading">#</a></h1>
+<p>This stage evaluates trained models using <a class="reference external" href="https://github.com/NVIDIA/nemo-evaluator-launcher">NeMo Evaluator</a>, running standard NLP benchmarks to measure model capabilities.</p>
+<hr class="docutils" />
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<div class="termy">
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">// Run evaluation on the RL model (default)</span>
+<span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER
+
+<span class="go">// Evaluate a specific model stage</span>
+<span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>run.model<span class="o">=</span>sft:latest
+
+<span class="go">// Run specific benchmarks only</span>
+<span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>-t<span class="w"> </span>adlr_mmlu<span class="w"> </span>-t<span class="w"> </span>hellaswag
+
+<span class="go">// Preview config without executing</span>
+<span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--dry-run
+</pre></div>
+</div>
+</div>
+<blockquote>
+<div><p><strong>Note</strong>: The <code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">YOUR-CLUSTER</span></code> flag submits jobs via <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">NeMo-Run</span></a>. See <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for setup.</p>
+</div></blockquote>
+</section>
+<hr class="docutils" />
+<section id="cli-command">
+<h2>CLI Command<a class="headerlink" href="#cli-command" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="o">[</span>options<span class="o">]</span><span class="w"> </span><span class="o">[</span>overrides...<span class="o">]</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Short</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">&lt;profile&gt;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-r</span></code></p></td>
+<td><p>Submit to cluster (attached—waits, streams logs)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--batch</span> <span class="pre">&lt;profile&gt;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-b</span></code></p></td>
+<td><p>Submit to cluster (detached—submits and exits)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
+<td><p>Preview config without executing</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">&lt;name&gt;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-t</span></code></p></td>
+<td><p>Filter to specific task(s), can be repeated</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--force-squash</span></code></p></td>
+<td><p></p></td>
+<td><p>Force re-squash of container image</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">key=value</span></code></p></td>
+<td><p></p></td>
+<td><p>Override config values</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="task-filtering">
+<h3>Task Filtering<a class="headerlink" href="#task-filtering" title="Link to this heading">#</a></h3>
+<p>Run specific benchmarks using the <code class="docutils literal notranslate"><span class="pre">-t</span></code> flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Single task</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>-t<span class="w"> </span>adlr_mmlu
+
+<span class="c1"># Multiple tasks</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>-t<span class="w"> </span>adlr_mmlu<span class="w"> </span>-t<span class="w"> </span>hellaswag<span class="w"> </span>-t<span class="w"> </span>arc_challenge
+</pre></div>
+</div>
+</section>
+<section id="model-selection">
+<h3>Model Selection<a class="headerlink" href="#model-selection" title="Link to this heading">#</a></h3>
+<p>By default, evaluation runs on the RL stage output (<code class="docutils literal notranslate"><span class="pre">run.model=rl:latest</span></code>). Override to evaluate other stages:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Evaluate SFT model</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>run.model<span class="o">=</span>sft:latest
+
+<span class="c1"># Evaluate pretrained model</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>run.model<span class="o">=</span>pretrain:latest
+
+<span class="c1"># Evaluate specific version</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>run.model<span class="o">=</span>rl:v2
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="available-benchmarks">
+<h2>Available Benchmarks<a class="headerlink" href="#available-benchmarks" title="Link to this heading">#</a></h2>
+<p>The default configuration includes these tasks:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Task</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adlr_mmlu</span></code></p></td>
+<td><p>Massive Multitask Language Understanding</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hellaswag</span></code></p></td>
+<td><p>Commonsense reasoning</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">arc_challenge</span></code></p></td>
+<td><p>AI2 Reasoning Challenge</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Additional tasks available in NeMo Evaluator:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Task</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adlr_arc_challenge_llama_25_shot</span></code></p></td>
+<td><p>ARC Challenge (25-shot)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">adlr_winogrande_5_shot</span></code></p></td>
+<td><p>Winograd Schema Challenge</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">openbookqa</span></code></p></td>
+<td><p>Open-domain question answering</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">truthfulqa</span></code></p></td>
+<td><p>Truthfulness evaluation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gsm8k</span></code></p></td>
+<td><p>Grade school math</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>See <a class="reference external" href="https://github.com/NVIDIA/nemo-evaluator-launcher">NeMo Evaluator</a> for the full list of available tasks.</p>
+</section>
+<hr class="docutils" />
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">#</a></h2>
+<p>Evaluation configs define how to deploy your model and which benchmarks to run.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>File</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">config/default.yaml</span></code></p></td>
+<td><p>Production configuration with vLLM deployment</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="key-configuration-sections">
+<h3>Key Configuration Sections<a class="headerlink" href="#key-configuration-sections" title="Link to this heading">#</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Model to evaluate (W&amp;B artifact reference)</span>
+<span class="nt">run</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rl:latest</span><span class="w">  </span><span class="c1"># Options: pretrain, sft, rl</span>
+
+<span class="c1"># Deployment (model serving)</span>
+<span class="nt">deployment</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
+<span class="w">  </span><span class="nt">tensor_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="w">  </span><span class="nt">data_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">extra_args</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;--max-model-len</span><span class="nv"> </span><span class="s">32768&quot;</span>
+
+<span class="c1"># Tasks to run</span>
+<span class="nt">evaluation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adlr_mmlu</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hellaswag</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">arc_challenge</span>
+
+<span class="c1"># W&amp;B export for results</span>
+<span class="nt">export</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">wandb</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.wandb.entity}</span>
+<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.wandb.project}</span>
+</pre></div>
+</div>
+</section>
+<section id="override-examples">
+<h3>Override Examples<a class="headerlink" href="#override-examples" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Different tensor parallelism</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span>deployment.tensor_parallel_size<span class="o">=</span><span class="m">8</span>
+
+<span class="c1"># Limit samples for quick testing</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>evaluation.nemo_evaluator_config.config.params.limit_samples<span class="o">=</span><span class="m">10</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="running-with-nemo-run">
+<h2>Running with NeMo-Run<a class="headerlink" href="#running-with-nemo-run" title="Link to this heading">#</a></h2>
+<p>The evaluator uses the same <code class="docutils literal notranslate"><span class="pre">env.toml</span></code> profiles as training stages, providing a unified experience across the pipeline.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[wandb]</span>
+<span class="n">project</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nemotron&quot;</span>
+<span class="n">entity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR-TEAM&quot;</span>
+
+<span class="k">[YOUR-CLUSTER]</span>
+<span class="n">executor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;slurm&quot;</span>
+<span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR-ACCOUNT&quot;</span>
+<span class="n">partition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;batch&quot;</span>
+<span class="n">tunnel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ssh&quot;</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cluster.example.com&quot;</span>
+<span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myuser&quot;</span>
+<span class="n">remote_job_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/lustre/fsw/users/myuser/.nemotron&quot;</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="../nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for complete configuration options.</p>
+<section id="w-b-integration">
+<h3>W&amp;B Integration<a class="headerlink" href="#w-b-integration" title="Link to this heading">#</a></h3>
+<p>Results are automatically exported to Weights &amp; Biases when:</p>
+<ol class="arabic simple">
+<li><p>You’re logged in locally (<code class="docutils literal notranslate"><span class="pre">wandb</span> <span class="pre">login</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[wandb]</span></code> section is configured in <code class="docutils literal notranslate"><span class="pre">env.toml</span></code></p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Verify W&amp;B login</span>
+wandb<span class="w"> </span>login
+
+<span class="c1"># Run evaluation—results auto-export to W&amp;B</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER
+<span class="c1"># [info] Detected W&amp;B login, setting WANDB_API_KEY</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="artifact-lineage">
+<h2>Artifact Lineage<a class="headerlink" href="#artifact-lineage" title="Link to this heading">#</a></h2>
+<p>Evaluation connects to the training pipeline through <a class="reference internal" href="../artifacts.html"><span class="std std-doc">W&amp;B Artifacts</span></a>:</p>
+<pre  class="mermaid">
+        %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333'}}}%%
+flowchart LR
+    model0[&quot;ModelArtifact-pretrain&quot;] --&gt; eval0[&quot;eval&quot;]
+    model1[&quot;ModelArtifact-sft&quot;] --&gt; eval1[&quot;eval&quot;]
+    model2[&quot;ModelArtifact-rl&quot;] --&gt; eval2[&quot;eval&quot;]
+
+    eval0 --&gt; results0[&quot;Benchmark Results&quot;]
+    eval1 --&gt; results1[&quot;Benchmark Results&quot;]
+    eval2 --&gt; results2[&quot;Benchmark Results&quot;]
+
+    results0 --&gt; wandb[&quot;W&amp;B Dashboard&quot;]
+    results1 --&gt; wandb
+    results2 --&gt; wandb
+
+    style model0 fill:#e1f5fe,stroke:#2196f3
+    style model1 fill:#f3e5f5,stroke:#9c27b0
+    style model2 fill:#e8f5e9,stroke:#4caf50
+    style wandb fill:#fff3e0,stroke:#ff9800
+    </pre></section>
+<hr class="docutils" />
+<section id="monitoring-jobs">
+<h2>Monitoring Jobs<a class="headerlink" href="#monitoring-jobs" title="Link to this heading">#</a></h2>
+<section id="check-status">
+<h3>Check Status<a class="headerlink" href="#check-status" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Using nemo-evaluator-launcher</span>
+nemo-evaluator-launcher<span class="w"> </span>status<span class="w"> </span>INVOCATION_ID
+
+<span class="c1"># Check Slurm queue</span>
+ssh<span class="w"> </span>cluster<span class="w"> </span>squeue<span class="w"> </span>-u<span class="w"> </span><span class="nv">$USER</span>
+</pre></div>
+</div>
+</section>
+<section id="stream-logs">
+<h3>Stream Logs<a class="headerlink" href="#stream-logs" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nemo-evaluator-launcher<span class="w"> </span>logs<span class="w"> </span>INVOCATION_ID
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
+<section id="w-b-credentials-not-detected">
+<h3>W&amp;B Credentials Not Detected<a class="headerlink" href="#w-b-credentials-not-detected" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Verify you’re logged in: <code class="docutils literal notranslate"><span class="pre">wandb</span> <span class="pre">login</span></code></p></li>
+<li><p>Check env.toml has <code class="docutils literal notranslate"><span class="pre">[wandb]</span></code> section</p></li>
+<li><p>Look for <code class="docutils literal notranslate"><span class="pre">[info]</span> <span class="pre">Detected</span> <span class="pre">W&amp;B</span> <span class="pre">login</span></code> message</p></li>
+</ol>
+</section>
+<section id="model-artifact-not-found">
+<h3>Model Artifact Not Found<a class="headerlink" href="#model-artifact-not-found" title="Link to this heading">#</a></h3>
+<p>Verify the artifact exists in W&amp;B:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check available artifacts</span>
+wandb<span class="w"> </span>artifact<span class="w"> </span>ls<span class="w"> </span>YOUR-ENTITY/YOUR-PROJECT
+</pre></div>
+</div>
+</section>
+<section id="evaluation-times-out">
+<h3>Evaluation Times Out<a class="headerlink" href="#evaluation-times-out" title="Link to this heading">#</a></h3>
+<p>Increase the timeout in your config:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run<span class="w"> </span>YOUR-CLUSTER<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>evaluation.nemo_evaluator_config.config.params.request_timeout<span class="o">=</span><span class="m">7200</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../evaluator.html"><span class="std std-doc">Evaluation Framework</span></a> — Full evaluator documentation</p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA/nemo-evaluator-launcher">NeMo Evaluator Documentation</a> — Launcher reference</p></li>
+<li><p><a class="reference internal" href="../artifacts.html"><span class="std std-doc">Artifact Lineage</span></a> — W&amp;B artifact system</p></li>
+<li><p><a class="reference internal" href="../nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> — Execution profiles</p></li>
+<li><p><a class="reference internal" href="../wandb.html"><span class="std std-doc">W&amp;B Integration</span></a> — Credentials and configuration</p></li>
+<li><p><strong>Recipe Source</strong>: <code class="docutils literal notranslate"><span class="pre">src/nemotron/recipes/nano3/stage3_eval/</span></code> — Implementation details</p></li>
+<li><p><a class="reference internal" href="README.html"><span class="std std-doc">Back to Overview</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="rl.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Stage 2: Reinforcement Learning (RL)</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="import.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Importing Models and Data</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cli-command">CLI Command</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#task-filtering">Task Filtering</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#model-selection">Model Selection</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-benchmarks">Available Benchmarks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#key-configuration-sections">Key Configuration Sections</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#override-examples">Override Examples</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-with-nemo-run">Running with NeMo-Run</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#w-b-integration">W&amp;B Integration</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#artifact-lineage">Artifact Lineage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#monitoring-jobs">Monitoring Jobs</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#check-status">Check Status</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-logs">Stream Logs</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#w-b-credentials-not-detected">W&amp;B Credentials Not Detected</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#model-artifact-not-found">Model Artifact Not Found</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#evaluation-times-out">Evaluation Times Out</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference">Reference</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

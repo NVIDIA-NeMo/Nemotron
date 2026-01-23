@@ -1,0 +1,1145 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Evaluation Framework &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'train/evaluator';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="../_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Data Preparation Module" href="data-prep.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="nano3/README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="artifacts.html">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="nano3/pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/rl.html">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/eval.html">Stage 3: Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data-prep.html">Data Preparation Module</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Evaluation Framework</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Evaluation Framework</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="evaluation-framework">
+<h1>Evaluation Framework<a class="headerlink" href="#evaluation-framework" title="Link to this heading">#</a></h1>
+<p>The Nemotron evaluation framework provides model evaluation capabilities using <a class="reference external" href="https://github.com/NVIDIA/nemo-evaluator-launcher">NeMo Evaluator</a>, enabling benchmark testing of trained models on standard NLP tasks.</p>
+<div class="termy">
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>nemotron-3-nano-nemo-ray<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER
+<span class="go">Compiled Configuration</span>
+<span class="go">╭──────────────────────────────────── run ─────────────────────────────────────╮</span>
+<span class="go">│ wandb:                                                                       │</span>
+<span class="go">│   project: nemotron                                                          │</span>
+<span class="go">│   entity: my-team                                                            │</span>
+<span class="go">╰──────────────────────────────────────────────────────────────────────────────╯</span>
+
+<span class="go">[info] Detected W&amp;B login, setting WANDB_API_KEY</span>
+
+<span class="go">Starting evaluation...</span>
+<span class="go">✓ Evaluation submitted: 480d3c89bfe4a55c</span>
+<span class="go">Check status: nemo-evaluator-launcher status 480d3c89bfe4a55c</span>
+</pre></div>
+</div>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
+<p>The evaluation framework enables:</p>
+<ul class="simple">
+<li><p><strong>Benchmark Testing</strong> — Run standard benchmarks (MMLU, ARC, HellaSwag, etc.) on your models</p></li>
+<li><p><strong>W&amp;B Integration</strong> — Auto-export results to Weights &amp; Biases for tracking</p></li>
+<li><p><strong>Slurm Execution</strong> — Submit evaluation jobs to HPC clusters</p></li>
+<li><p><strong>Auto-Squash</strong> — Automatically converts Docker images to squashfs for Slurm clusters</p></li>
+<li><p><strong>Credential Auto-Propagation</strong> — Automatically passes W&amp;B tokens to remote jobs</p></li>
+</ul>
+<p>The evaluator uses the same <code class="docutils literal notranslate"><span class="pre">env.toml</span></code> execution profiles as training recipes, providing a unified experience across all stages.</p>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run evaluation on a cluster</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>nemotron-3-nano-nemo-ray<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER
+
+<span class="c1"># Preview config without executing</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>nemotron-3-nano-nemo-ray<span class="w"> </span>--dry-run
+
+<span class="c1"># Filter to specific tasks</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>nemotron-3-nano-nemo-ray<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER<span class="w"> </span>-t<span class="w"> </span>adlr_mmlu
+
+<span class="c1"># Override checkpoint path</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>nemotron-3-nano-nemo-ray<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>deployment.checkpoint_path<span class="o">=</span>/path/to/your/checkpoint
+</pre></div>
+</div>
+</section>
+<section id="cli-options">
+<h2>CLI Options<a class="headerlink" href="#cli-options" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Short</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--config</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-c</span></code></p></td>
+<td><p>Config name or path</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--run</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-r</span></code></p></td>
+<td><p>Submit to cluster (attached, streams logs)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--batch</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-b</span></code></p></td>
+<td><p>Submit to cluster (detached, exits immediately)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
+<td><p>Preview config without executing</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--task</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-t</span></code></p></td>
+<td><p>Filter to specific task(s), can be repeated</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--force-squash</span></code></p></td>
+<td><p></p></td>
+<td><p>Force re-squash even if cached</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="task-filtering">
+<h3>Task Filtering<a class="headerlink" href="#task-filtering" title="Link to this heading">#</a></h3>
+<p>Run specific benchmarks using the <code class="docutils literal notranslate"><span class="pre">-t</span></code> flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Single task</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>config<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER<span class="w"> </span>-t<span class="w"> </span>adlr_mmlu
+
+<span class="c1"># Multiple tasks</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>config<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER<span class="w"> </span>-t<span class="w"> </span>adlr_mmlu<span class="w"> </span>-t<span class="w"> </span>hellaswag
+</pre></div>
+</div>
+</section>
+<section id="available-tasks">
+<h3>Available Tasks<a class="headerlink" href="#available-tasks" title="Link to this heading">#</a></h3>
+<p>Common evaluation tasks include:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Task</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adlr_mmlu</span></code></p></td>
+<td><p>Massive Multitask Language Understanding</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">adlr_arc_challenge_llama_25_shot</span></code></p></td>
+<td><p>AI2 Reasoning Challenge</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adlr_winogrande_5_shot</span></code></p></td>
+<td><p>Winograd Schema Challenge</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hellaswag</span></code></p></td>
+<td><p>Commonsense reasoning</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">openbookqa</span></code></p></td>
+<td><p>Open-domain question answering</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="execution-profiles">
+<h2>Execution Profiles<a class="headerlink" href="#execution-profiles" title="Link to this heading">#</a></h2>
+<p>The evaluator uses the same <code class="docutils literal notranslate"><span class="pre">env.toml</span></code> profiles as training recipes. See <a class="reference internal" href="nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> for full documentation.</p>
+<section id="basic-profile">
+<h3>Basic Profile<a class="headerlink" href="#basic-profile" title="Link to this heading">#</a></h3>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># env.toml</span>
+
+<span class="k">[wandb]</span>
+<span class="n">project</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nemotron&quot;</span>
+<span class="n">entity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-team&quot;</span>
+
+<span class="k">[MY-CLUSTER]</span>
+<span class="n">executor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;slurm&quot;</span>
+<span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-account&quot;</span>
+<span class="n">partition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;batch&quot;</span>
+<span class="n">tunnel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ssh&quot;</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cluster.example.com&quot;</span>
+<span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myuser&quot;</span>
+<span class="n">remote_job_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/lustre/fsw/users/myuser/.nemotron&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="profile-with-auto-squash">
+<h3>Profile with Auto-Squash<a class="headerlink" href="#profile-with-auto-squash" title="Link to this heading">#</a></h3>
+<p>Slurm clusters use <a class="reference external" href="https://github.com/NVIDIA/pyxis">Pyxis</a> with enroot for container execution. While you can use Docker references directly, pre-squashed <code class="docutils literal notranslate"><span class="pre">.sqsh</span></code> files significantly speed up job startup by avoiding container pulls on each run.</p>
+<p>With SSH tunnel settings, the CLI can automatically create squash files from Docker references:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[MY-CLUSTER]</span>
+<span class="n">executor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;slurm&quot;</span>
+<span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-account&quot;</span>
+<span class="n">partition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;batch&quot;</span>
+
+<span class="c1"># SSH settings (enables auto-squash)</span>
+<span class="n">tunnel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ssh&quot;</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cluster.example.com&quot;</span>
+<span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myuser&quot;</span>
+<span class="n">remote_job_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/lustre/fsw/users/myuser/.nemotron&quot;</span>
+
+<span class="c1"># Container settings - use Docker ref, auto-squashed on first run</span>
+<span class="n">container_image</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nvcr.io/nvidia/nemo:25.01&quot;</span>
+</pre></div>
+</div>
+<p>When you run with <code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">MY-CLUSTER</span></code>, the CLI will:</p>
+<ol class="arabic simple">
+<li><p>Detect that <code class="docutils literal notranslate"><span class="pre">deployment.image</span></code> is a Docker reference (not a <code class="docutils literal notranslate"><span class="pre">.sqsh</span></code> path)</p></li>
+<li><p>SSH to the cluster and run <code class="docutils literal notranslate"><span class="pre">enroot</span> <span class="pre">import</span></code> on a compute node</p></li>
+<li><p>Cache the <code class="docutils literal notranslate"><span class="pre">.sqsh</span></code> file in <code class="docutils literal notranslate"><span class="pre">${remote_job_dir}/containers/</span></code> for reuse</p></li>
+<li><p>Update the config to use the squashed path</p></li>
+</ol>
+<p>Subsequent runs reuse the cached squash file, eliminating container pull overhead.</p>
+</section>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">#</a></h2>
+<p>Evaluation configs define how to deploy your model and which benchmarks to run.</p>
+<section id="example-config">
+<h3>Example Config<a class="headerlink" href="#example-config" title="Link to this heading">#</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execution (Slurm settings)</span>
+<span class="nt">execution</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm</span>
+<span class="w">  </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.host}</span>
+<span class="w">  </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.account}</span>
+<span class="w">  </span><span class="nt">partition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.partition}</span>
+<span class="w">  </span><span class="nt">num_nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">gres</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu:8</span>
+
+<span class="w">  </span><span class="c1"># Auto-export to W&amp;B after evaluation</span>
+<span class="w">  </span><span class="nt">auto_export</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">destinations</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wandb</span>
+
+<span class="c1"># Deployment (Model serving)</span>
+<span class="nt">deployment</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generic</span>
+<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.container}</span><span class="w">  </span><span class="c1"># Docker image or .sqsh path</span>
+<span class="w">  </span><span class="nt">checkpoint_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/checkpoint</span>
+<span class="w">  </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
+<span class="w">    </span><span class="no">python deploy_ray_inframework.py</span>
+<span class="w">    </span><span class="no">--megatron_checkpoint /checkpoint/</span>
+<span class="w">    </span><span class="no">--num_gpus 8</span>
+
+<span class="c1"># Evaluation (Tasks to run)</span>
+<span class="nt">evaluation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adlr_mmlu</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hellaswag</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openbookqa</span>
+
+<span class="c1"># Export (W&amp;B settings)</span>
+<span class="nt">export</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">wandb</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.wandb.entity}</span>
+<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.wandb.project}</span>
+</pre></div>
+</div>
+</section>
+<section id="key-sections">
+<h3>Key Sections<a class="headerlink" href="#key-sections" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Section</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">run.env</span></code></p></td>
+<td><p>Environment settings from env.toml (cluster, container)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">run.wandb</span></code></p></td>
+<td><p>W&amp;B settings from env.toml <code class="docutils literal notranslate"><span class="pre">[wandb]</span></code> section</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">execution</span></code></p></td>
+<td><p>Slurm executor configuration (nodes, GPUs, account)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">deployment</span></code></p></td>
+<td><p>Model deployment (container, checkpoint, command)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">evaluation</span></code></p></td>
+<td><p>Tasks and evaluation parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">export</span></code></p></td>
+<td><p>Result export destinations (W&amp;B)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="auto-squash">
+<h2>Auto-Squash<a class="headerlink" href="#auto-squash" title="Link to this heading">#</a></h2>
+<p>For Slurm clusters that require squashfs containers, the evaluator automatically converts Docker images to <code class="docutils literal notranslate"><span class="pre">.sqsh</span></code> files—the same behavior as training recipes.</p>
+<section id="how-it-works">
+<h3>How It Works<a class="headerlink" href="#how-it-works" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Detection</strong> — CLI checks if <code class="docutils literal notranslate"><span class="pre">deployment.image</span></code> is a Docker reference (not already <code class="docutils literal notranslate"><span class="pre">.sqsh</span></code>)</p></li>
+<li><p><strong>SSH Connection</strong> — Connects to cluster via SSH tunnel (using <code class="docutils literal notranslate"><span class="pre">host</span></code> and <code class="docutils literal notranslate"><span class="pre">user</span></code> from env.toml)</p></li>
+<li><p><strong>Squash</strong> — Runs <code class="docutils literal notranslate"><span class="pre">enroot</span> <span class="pre">import</span></code> on a compute node to create the <code class="docutils literal notranslate"><span class="pre">.sqsh</span></code> file</p></li>
+<li><p><strong>Cache</strong> — Stores the squash file in <code class="docutils literal notranslate"><span class="pre">${remote_job_dir}/containers/</span></code> for reuse</p></li>
+<li><p><strong>Config Update</strong> — Rewrites <code class="docutils literal notranslate"><span class="pre">deployment.image</span></code> to use the squashed path</p></li>
+</ol>
+</section>
+<section id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Auto-squash happens automatically for Docker refs</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>config<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER
+
+<span class="c1"># Force re-squash (ignores cache)</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>config<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER<span class="w"> </span>--force-squash
+
+<span class="c1"># Already-squashed paths skip the step</span>
+<span class="c1"># (if deployment.image ends in .sqsh, no squashing needed)</span>
+</pre></div>
+</div>
+</section>
+<section id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h3>
+<p>Auto-squash requires these settings in your <code class="docutils literal notranslate"><span class="pre">env.toml</span></code> profile:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Required</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">executor</span></code></p></td>
+<td><p>Yes</p></td>
+<td><p>Must be <code class="docutils literal notranslate"><span class="pre">&quot;slurm&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tunnel</span></code></p></td>
+<td><p>Yes</p></td>
+<td><p>Must be <code class="docutils literal notranslate"><span class="pre">&quot;ssh&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">host</span></code></p></td>
+<td><p>Yes</p></td>
+<td><p>SSH hostname (e.g., <code class="docutils literal notranslate"><span class="pre">cluster.example.com</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">user</span></code></p></td>
+<td><p>No</p></td>
+<td><p>SSH username (defaults to current user)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">remote_job_dir</span></code></p></td>
+<td><p>Yes</p></td>
+<td><p>Remote directory for job files and squash cache</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="w-b-integration">
+<h2>W&amp;B Integration<a class="headerlink" href="#w-b-integration" title="Link to this heading">#</a></h2>
+<p>The evaluator automatically propagates W&amp;B credentials when you’re logged in locally—the same behavior as training recipes.</p>
+<section id="setup">
+<h3>Setup<a class="headerlink" href="#setup" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p><strong>Login to W&amp;B locally:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wandb<span class="w"> </span>login
+</pre></div>
+</div>
+</li>
+<li><p><strong>Configure env.toml</strong> (same <code class="docutils literal notranslate"><span class="pre">[wandb]</span></code> section used by all recipes):</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[wandb]</span>
+<span class="n">project</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nemotron&quot;</span>
+<span class="n">entity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-team&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Run evaluation</strong> — credentials are automatically passed:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>config<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER
+<span class="c1"># [info] Detected W&amp;B login, setting WANDB_API_KEY</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="what-gets-propagated">
+<h3>What Gets Propagated<a class="headerlink" href="#what-gets-propagated" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable</p></th>
+<th class="head"><p>Source</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WANDB_API_KEY</span></code></p></td>
+<td><p>Local wandb login</p></td>
+<td><p>Auto-detected via <code class="docutils literal notranslate"><span class="pre">wandb.api.api_key</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">WANDB_PROJECT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">env.toml</span> <span class="pre">[wandb]</span></code></p></td>
+<td><p>Project name for result tracking</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WANDB_ENTITY</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">env.toml</span> <span class="pre">[wandb]</span></code></p></td>
+<td><p>Team/user entity</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="monitoring-jobs">
+<h2>Monitoring Jobs<a class="headerlink" href="#monitoring-jobs" title="Link to this heading">#</a></h2>
+<section id="check-status">
+<h3>Check Status<a class="headerlink" href="#check-status" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Using nemo-evaluator-launcher directly</span>
+nemo-evaluator-launcher<span class="w"> </span>status<span class="w"> </span>INVOCATION_ID
+
+<span class="c1"># Check Slurm queue</span>
+ssh<span class="w"> </span>cluster<span class="w"> </span>squeue<span class="w"> </span>-u<span class="w"> </span><span class="nv">$USER</span>
+</pre></div>
+</div>
+</section>
+<section id="stream-logs">
+<h3>Stream Logs<a class="headerlink" href="#stream-logs" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nemo-evaluator-launcher<span class="w"> </span>logs<span class="w"> </span>INVOCATION_ID
+</pre></div>
+</div>
+</section>
+<section id="cancel-jobs">
+<h3>Cancel Jobs<a class="headerlink" href="#cancel-jobs" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cancel via Slurm</span>
+ssh<span class="w"> </span>cluster<span class="w"> </span>scancel<span class="w"> </span>JOB_ID
+
+<span class="c1"># Or multiple jobs</span>
+ssh<span class="w"> </span>cluster<span class="w"> </span><span class="s2">&quot;scancel JOB_ID1 JOB_ID2 JOB_ID3&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="creating-custom-configs">
+<h2>Creating Custom Configs<a class="headerlink" href="#creating-custom-configs" title="Link to this heading">#</a></h2>
+<section id="step-1-create-config-file">
+<h3>Step 1: Create Config File<a class="headerlink" href="#step-1-create-config-file" title="Link to this heading">#</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># src/nemotron/recipes/evaluator/config/my-model.yaml</span>
+
+<span class="nt">defaults</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm/default</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">deployment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generic</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">_self_</span>
+
+<span class="nt">run</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvcr.io/nvidia/nemo:25.01</span><span class="w">  </span><span class="c1"># Docker ref (auto-squashed)</span>
+<span class="w">    </span><span class="c1"># OR: container: /path/to/container.sqsh  # Pre-squashed</span>
+<span class="w">  </span><span class="nt">wandb</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">  </span><span class="c1"># Populated from env.toml</span>
+<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+
+<span class="nt">execution</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm</span>
+<span class="w">  </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.host}</span>
+<span class="w">  </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.account}</span>
+<span class="w">  </span><span class="nt">num_nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">gres</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu:8</span>
+
+<span class="w">  </span><span class="nt">auto_export</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">destinations</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wandb</span>
+
+<span class="nt">deployment</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generic</span>
+<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.env.container}</span>
+<span class="w">  </span><span class="nt">checkpoint_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/your/model/checkpoint</span>
+<span class="w">  </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
+<span class="w">    </span><span class="no">python deploy_script.py --checkpoint /checkpoint/</span>
+
+<span class="nt">evaluation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adlr_mmlu</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hellaswag</span>
+
+<span class="nt">export</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">wandb</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.wandb.entity}</span>
+<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${run.wandb.project}</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-run-evaluation">
+<h3>Step 2: Run Evaluation<a class="headerlink" href="#step-2-run-evaluation" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>my-model<span class="w"> </span>--run<span class="w"> </span>MY-CLUSTER
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
+<section id="missing-key-type-error">
+<h3>“Missing key type” Error<a class="headerlink" href="#missing-key-type-error" title="Link to this heading">#</a></h3>
+<p>Ensure your config has all required Slurm fields:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm</span><span class="w">  </span><span class="c1"># Required</span>
+<span class="w">  </span><span class="nt">ntasks_per_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w">  </span><span class="c1"># Required</span>
+<span class="w">  </span><span class="nt">gres</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu:8</span><span class="w">  </span><span class="c1"># Required</span>
+</pre></div>
+</div>
+</section>
+<section id="w-b-credentials-not-detected">
+<h3>W&amp;B Credentials Not Detected<a class="headerlink" href="#w-b-credentials-not-detected" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Verify you’re logged in: <code class="docutils literal notranslate"><span class="pre">wandb</span> <span class="pre">login</span></code></p></li>
+<li><p>Check env.toml has <code class="docutils literal notranslate"><span class="pre">[wandb]</span></code> section</p></li>
+<li><p>Look for <code class="docutils literal notranslate"><span class="pre">[info]</span> <span class="pre">Detected</span> <span class="pre">W&amp;B</span> <span class="pre">login</span></code> message</p></li>
+</ol>
+</section>
+<section id="auto-squash-not-working">
+<h3>Auto-Squash Not Working<a class="headerlink" href="#auto-squash-not-working" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Verify <code class="docutils literal notranslate"><span class="pre">tunnel</span> <span class="pre">=</span> <span class="pre">&quot;ssh&quot;</span></code> in your env.toml profile</p></li>
+<li><p>Check <code class="docutils literal notranslate"><span class="pre">host</span></code> and <code class="docutils literal notranslate"><span class="pre">remote_job_dir</span></code> are set</p></li>
+<li><p>Ensure <code class="docutils literal notranslate"><span class="pre">nemo-run</span></code> is installed: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">nemo-run</span></code></p></li>
+</ol>
+</section>
+<section id="jobs-stuck-in-pending">
+<h3>Jobs Stuck in PENDING<a class="headerlink" href="#jobs-stuck-in-pending" title="Link to this heading">#</a></h3>
+<p>Check queue status:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>cluster<span class="w"> </span><span class="s2">&quot;squeue -p batch | head&quot;</span>
+</pre></div>
+</div>
+<p>Common reasons:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">(Priority)</span></code> — Waiting for resources</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">(Resources)</span></code> — Insufficient available nodes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">(QOSMaxJobsPerUserLimit)</span></code> — User job limit reached</p></li>
+</ul>
+</section>
+</section>
+<section id="further-reading">
+<h2>Further Reading<a class="headerlink" href="#further-reading" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="nemo-run.html"><span class="std std-doc">Execution through NeMo-Run</span></a> — Execution profiles and env.toml</p></li>
+<li><p><a class="reference internal" href="wandb.html"><span class="std std-doc">W&amp;B Integration</span></a> — Credentials and artifact tracking</p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA/nemo-evaluator-launcher">NeMo Evaluator Documentation</a> — Launcher reference</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="data-prep.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Data Preparation Module</p>
+      </div>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cli-options">CLI Options</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#task-filtering">Task Filtering</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#available-tasks">Available Tasks</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#execution-profiles">Execution Profiles</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-profile">Basic Profile</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#profile-with-auto-squash">Profile with Auto-Squash</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-config">Example Config</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#key-sections">Key Sections</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-squash">Auto-Squash</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-it-works">How It Works</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#w-b-integration">W&amp;B Integration</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setup">Setup</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-gets-propagated">What Gets Propagated</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#monitoring-jobs">Monitoring Jobs</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#check-status">Check Status</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-logs">Stream Logs</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cancel-jobs">Cancel Jobs</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-custom-configs">Creating Custom Configs</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-1-create-config-file">Step 1: Create Config File</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2-run-evaluation">Step 2: Run Evaluation</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-key-type-error">“Missing key type” Error</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#w-b-credentials-not-detected">W&amp;B Credentials Not Detected</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-squash-not-working">Auto-Squash Not Working</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#jobs-stuck-in-pending">Jobs Stuck in PENDING</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#further-reading">Further Reading</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

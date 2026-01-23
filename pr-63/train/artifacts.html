@@ -1,0 +1,1338 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Artifact Lineage &amp; W&amp;B Integration &#8212; Nemotron</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/termynal.css?v=6e6caa80" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=3ce10a4d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs";mermaid.registerLayoutLoaders(elkLayouts);mermaid.initialize({startOnLoad:false});</script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'train/artifacts';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia-nemo.github.io/Nemotron/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../_static/js/termynal.js?v=05ab89e6"></script>
+    <script src="../_static/js/termynal-init.js?v=7fa8cdf6"></script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Stage 0: Pretraining" href="nano3/pretrain.html" />
+    <link rel="prev" title="Nemotron 3 Nano Training Recipe" href="nano3/README.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" ></script>
+    
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Nemotron - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Nemotron - Home"/>
+  
+  
+    <p class="title logo__title">Nemotron</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/nemotron" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Usage Cookbook</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/README.html">Usage Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Nano2-VL/README.html">Nemotron-Nano2-VL Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage-cookbook/Nemotron-Parse-v1.1/README.html">Nemotron-Parse-v1.1 Notebooks</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Use Case Examples</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/README.html">Nemotron Use Case Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example/README.html">NVIDIA Nemotron 3 Nano - Simple Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/Data%20Science%20ML%20Agent/README.html">Data Science ML Agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models/README.html">RAG Agent with Nemotron RAG Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Training Recipes</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="nano3/README.html">Nemotron 3 Nano Training Recipe</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Artifact Lineage &amp; W&amp;B Integration</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nano3 Stages</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="nano3/pretrain.html">Stage 0: Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/sft.html">Stage 1: Supervised Fine-Tuning (SFT)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/rl.html">Stage 2: Reinforcement Learning (RL)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/eval.html">Stage 3: Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nano3/import.html">Importing Models and Data</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Nemotron Kit</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="kit.html">Nemotron Kit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nvidia-stack.html">NVIDIA AI Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nemo-run.html">Execution through NeMo-Run</a></li>
+<li class="toctree-l1"><a class="reference internal" href="omegaconf.html">OmegaConf Configuration System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="wandb.html">Weights &amp; Biases Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data-prep.html">Data Preparation Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluator.html">Evaluation Framework</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Artifact Lineage &amp; W&amp;B Integration</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="artifact-lineage-w-b-integration">
+<h1>Artifact Lineage &amp; W&amp;B Integration<a class="headerlink" href="#artifact-lineage-w-b-integration" title="Link to this heading">#</a></h1>
+<p>The Nemotron training pipeline provides complete lineage tracking from raw data to final model through <a class="reference internal" href="wandb.html"><span class="std std-doc">Weights &amp; Biases</span></a> artifacts. Every data transformation and model checkpoint is versioned and linked, enabling full reproducibility and traceability.</p>
+<blockquote>
+<div><p><strong>Note</strong>: The artifact system currently requires <a class="reference internal" href="wandb.html"><span class="std std-doc">W&amp;B</span></a>. Backend-agnostic artifact tracking is in development.</p>
+</div></blockquote>
+<section id="why-lineage-matters">
+<h2>Why Lineage Matters<a class="headerlink" href="#why-lineage-matters" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Reproducibility</strong>: Trace any model back to its exact training data and configuration</p></li>
+<li><p><strong>Debugging</strong>: Identify which data or training stage caused a regression</p></li>
+<li><p><strong>Compliance</strong>: Audit trail for model provenance and data usage</p></li>
+<li><p><strong>Collaboration</strong>: Share artifacts across teams with version control</p></li>
+</ul>
+</section>
+<section id="end-to-end-lineage">
+<h2>End-to-End Lineage<a class="headerlink" href="#end-to-end-lineage" title="Link to this heading">#</a></h2>
+<p>The training pipeline produces six artifact types across three stages:</p>
+<pre  class="mermaid">
+        %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
+flowchart TB
+    subgraph stage0[&quot;Stage 0: Pretraining&quot;]
+        raw0[&quot;Raw Text Data&quot;] --&gt; dp0[&quot;data_prep.py&quot;]
+        dp0 --&gt; data0[&quot;DataBlendsArtifact-pretrain&lt;br/&gt;(bin/idx)&quot;]
+        data0 --&gt; train0[&quot;train.py&quot;]
+        train0 --&gt; model0[&quot;ModelArtifact-pretrain&quot;]
+    end
+
+    subgraph stage1[&quot;Stage 1: SFT&quot;]
+        raw1[&quot;Instruction Data&quot;] --&gt; dp1[&quot;data_prep.py&quot;]
+        dp1 --&gt; data1[&quot;DataBlendsArtifact-sft&lt;br/&gt;(.npy)&quot;]
+        model0 --&gt; train1[&quot;train.py&quot;]
+        data1 --&gt; train1
+        train1 --&gt; model1[&quot;ModelArtifact-sft&quot;]
+    end
+
+    subgraph stage2[&quot;Stage 2: RL&quot;]
+        raw2[&quot;RL Prompts&quot;] --&gt; dp2[&quot;data_prep.py&quot;]
+        dp2 --&gt; data2[&quot;DataBlendsArtifact-rl&lt;br/&gt;(JSONL)&quot;]
+        model1 --&gt; train2[&quot;train.py&quot;]
+        data2 --&gt; train2
+        train2 --&gt; model2[&quot;ModelArtifact-rl&lt;br/&gt;(Final Model)&quot;]
+    end
+
+    style stage0 fill:#e1f5fe,stroke:#2196f3
+    style stage1 fill:#f3e5f5,stroke:#9c27b0
+    style stage2 fill:#e8f5e9,stroke:#4caf50
+    </pre></section>
+<section id="artifact-types">
+<h2>Artifact Types<a class="headerlink" href="#artifact-types" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Artifact</p></th>
+<th class="head"><p>Stage</p></th>
+<th class="head"><p>Format</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataBlendsArtifact-pretrain</span></code></p></td>
+<td><p><a class="reference internal" href="nano3/pretrain.html"><span class="std std-doc">0</span></a></p></td>
+<td><p>bin/idx</p></td>
+<td><p>Tokenized pretraining data in Megatron format</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModelArtifact-pretrain</span></code></p></td>
+<td><p><a class="reference internal" href="nano3/pretrain.html"><span class="std std-doc">0</span></a></p></td>
+<td><p>checkpoint</p></td>
+<td><p>Base model after pretraining</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataBlendsArtifact-sft</span></code></p></td>
+<td><p><a class="reference internal" href="nano3/sft.html"><span class="std std-doc">1</span></a></p></td>
+<td><p>.npy</p></td>
+<td><p>Packed SFT sequences with loss masks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModelArtifact-sft</span></code></p></td>
+<td><p><a class="reference internal" href="nano3/sft.html"><span class="std std-doc">1</span></a></p></td>
+<td><p>checkpoint</p></td>
+<td><p>Instruction-tuned model</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataBlendsArtifact-rl</span></code></p></td>
+<td><p><a class="reference internal" href="nano3/rl.html"><span class="std std-doc">2</span></a></p></td>
+<td><p>JSONL</p></td>
+<td><p>RL prompts for <a class="reference internal" href="nvidia-stack.html#nemo-rl"><span class="std std-ref">NeMo-RL</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModelArtifact-rl</span></code></p></td>
+<td><p><a class="reference internal" href="nano3/rl.html"><span class="std std-doc">2</span></a></p></td>
+<td><p>checkpoint</p></td>
+<td><p>Final aligned model</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="w-b-configuration">
+<h2>W&amp;B Configuration<a class="headerlink" href="#w-b-configuration" title="Link to this heading">#</a></h2>
+<p>Configure W&amp;B in your <code class="docutils literal notranslate"><span class="pre">env.toml</span></code>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[wandb]</span>
+<span class="n">project</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nemotron&quot;</span>
+<span class="n">entity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR-TEAM&quot;</span>
+</pre></div>
+</div>
+<p>Authenticate before running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wandb<span class="w"> </span>login
+</pre></div>
+</div>
+</section>
+<section id="using-artifacts">
+<h2>Using Artifacts<a class="headerlink" href="#using-artifacts" title="Link to this heading">#</a></h2>
+<section id="semantic-uris">
+<h3>Semantic URIs<a class="headerlink" href="#semantic-uris" title="Link to this heading">#</a></h3>
+<p>Reference artifacts by semantic URI in configs and CLI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">art</span><span class="p">:</span><span class="o">//</span><span class="n">DataBlendsArtifact</span><span class="o">-</span><span class="n">pretrain</span><span class="p">:</span><span class="n">latest</span>    <span class="c1"># Latest version</span>
+<span class="n">art</span><span class="p">:</span><span class="o">//</span><span class="n">ModelArtifact</span><span class="o">-</span><span class="n">sft</span><span class="p">:</span><span class="n">v3</span>                   <span class="c1"># Specific version</span>
+<span class="n">art</span><span class="p">:</span><span class="o">//</span><span class="n">ModelArtifact</span><span class="o">-</span><span class="n">rl</span><span class="p">:</span><span class="n">production</span>            <span class="c1"># Alias</span>
+</pre></div>
+</div>
+</section>
+<section id="cli-options">
+<h3>CLI Options<a class="headerlink" href="#cli-options" title="Link to this heading">#</a></h3>
+<p>Override artifact inputs via <a class="reference internal" href="cli.html#artifact-inputs"><span class="std std-ref">CLI</span></a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use specific data artifact</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>pretrain<span class="w"> </span>--art.data<span class="w"> </span>DataBlendsArtifact-pretrain:v2
+
+<span class="c1"># Use imported model</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>sft<span class="w"> </span>--art.model<span class="w"> </span>my-custom-pretrain:latest
+</pre></div>
+</div>
+</section>
+<section id="config-resolvers">
+<h3>Config Resolvers<a class="headerlink" href="#config-resolvers" title="Link to this heading">#</a></h3>
+<p>Reference artifact paths in YAML configs:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">run</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DataBlendsArtifact-pretrain:latest</span>
+
+<span class="nt">recipe</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">per_split_data_args_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${art:data,path}/blend.json</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">${art:data,path}</span></code> resolver extracts the filesystem path from the artifact.</p>
+</section>
+</section>
+<section id="viewing-lineage-in-w-b">
+<h2>Viewing Lineage in W&amp;B<a class="headerlink" href="#viewing-lineage-in-w-b" title="Link to this heading">#</a></h2>
+<p>After running the pipeline, view lineage in the W&amp;B UI:</p>
+<ol class="arabic simple">
+<li><p>Navigate to your project’s <strong>Artifacts</strong> tab</p></li>
+<li><p>Select any artifact (e.g., <code class="docutils literal notranslate"><span class="pre">ModelArtifact-rl</span></code>)</p></li>
+<li><p>Click the <strong>Graph</strong> view to see upstream dependencies</p></li>
+<li><p>Trace back through each stage to the original data sources</p></li>
+</ol>
+<p>The lineage graph shows:</p>
+<ul class="simple">
+<li><p>Which data artifacts were used to train each model</p></li>
+<li><p>Which model checkpoints were inputs to each stage</p></li>
+<li><p>Version history and metadata for each artifact</p></li>
+</ul>
+</section>
+<section id="importing-external-assets">
+<h2>Importing External Assets<a class="headerlink" href="#importing-external-assets" title="Link to this heading">#</a></h2>
+<p>Import existing models or data into the artifact system:</p>
+<section id="model-import">
+<h3>Model Import<a class="headerlink" href="#model-import" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import pretrain checkpoint</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>model<span class="w"> </span>import<span class="w"> </span>pretrain<span class="w"> </span>/path/to/checkpoint<span class="w"> </span>--step<span class="w"> </span><span class="m">50000</span>
+
+<span class="c1"># Import SFT checkpoint</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>model<span class="w"> </span>import<span class="w"> </span>sft<span class="w"> </span>/path/to/sft_model<span class="w"> </span>--step<span class="w"> </span><span class="m">10000</span>
+
+<span class="c1"># Import RL checkpoint</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>model<span class="w"> </span>import<span class="w"> </span>rl<span class="w"> </span>/path/to/rl_model<span class="w"> </span>--step<span class="w"> </span><span class="m">5000</span>
+</pre></div>
+</div>
+</section>
+<section id="data-import">
+<h3>Data Import<a class="headerlink" href="#data-import" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import pretrain data (path to blend.json)</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>import<span class="w"> </span>pretrain<span class="w"> </span>/path/to/blend.json
+
+<span class="c1"># Import SFT data (directory with blend.json)</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>import<span class="w"> </span>sft<span class="w"> </span>/path/to/sft_data/
+
+<span class="c1"># Import RL data (directory with manifest.json)</span>
+uv<span class="w"> </span>run<span class="w"> </span>nemotron<span class="w"> </span>nano3<span class="w"> </span>data<span class="w"> </span>import<span class="w"> </span>rl<span class="w"> </span>/path/to/rl_data/
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="nano3/import.html"><span class="std std-doc">Importing Models &amp; Data</span></a> for detailed directory structures.</p>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
+<section id="artifact-not-found">
+<h3>“Artifact not found”<a class="headerlink" href="#artifact-not-found" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Verify <code class="docutils literal notranslate"><span class="pre">project</span></code> and <code class="docutils literal notranslate"><span class="pre">entity</span></code> in <code class="docutils literal notranslate"><span class="pre">env.toml</span></code> match where artifacts were created</p></li>
+<li><p>Check artifact name spelling and version tag</p></li>
+<li><p>Ensure you’re authenticated: <code class="docutils literal notranslate"><span class="pre">wandb</span> <span class="pre">login</span></code></p></li>
+</ul>
+</section>
+<section id="version-resolution-issues">
+<h3>Version Resolution Issues<a class="headerlink" href="#version-resolution-issues" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Use explicit versions (<code class="docutils literal notranslate"><span class="pre">artifact:v3</span></code>) instead of <code class="docutils literal notranslate"><span class="pre">:latest</span></code> for reproducibility</p></li>
+<li><p>Check artifact aliases in W&amp;B UI</p></li>
+</ul>
+</section>
+<section id="missing-lineage-links">
+<h3>Missing Lineage Links<a class="headerlink" href="#missing-lineage-links" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Artifacts must be created by the pipeline to have automatic lineage</p></li>
+<li><p>Imported artifacts start a new lineage chain</p></li>
+<li><p>Manual uploads via W&amp;B UI don’t create lineage links</p></li>
+</ul>
+</section>
+</section>
+<section id="programmatic-access">
+<h2>Programmatic Access<a class="headerlink" href="#programmatic-access" title="Link to this heading">#</a></h2>
+<p>Access artifacts programmatically via the kit module:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.kit</span><span class="w"> </span><span class="kn">import</span> <span class="n">PretrainBlendsArtifact</span><span class="p">,</span> <span class="n">ModelArtifact</span>
+
+<span class="c1"># Load from semantic URI</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">PretrainBlendsArtifact</span><span class="o">.</span><span class="n">from_uri</span><span class="p">(</span><span class="s2">&quot;art://DataBlendsArtifact-pretrain:latest&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data path: </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total tokens: </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">total_tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Load model artifact</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">ModelArtifact</span><span class="o">.</span><span class="n">from_uri</span><span class="p">(</span><span class="s2">&quot;art://ModelArtifact-sft:latest&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training step: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">step</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loss: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">loss</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For framework details, see <a class="reference internal" href="kit.html"><span class="std std-doc">Nemotron Kit</span></a>.</p>
+</section>
+<section id="creating-custom-artifacts">
+<h2>Creating Custom Artifacts<a class="headerlink" href="#creating-custom-artifacts" title="Link to this heading">#</a></h2>
+<p>Create custom artifact types by subclassing <code class="docutils literal notranslate"><span class="pre">Artifact</span></code>. Typed fields are automatically synced to <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code> and available via the <code class="docutils literal notranslate"><span class="pre">${art:NAME,FIELD}</span></code> resolver in configs.</p>
+<section id="basic-pattern">
+<h3>Basic Pattern<a class="headerlink" href="#basic-pattern" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemotron.kit.artifacts.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Artifact</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyDataArtifact</span><span class="p">(</span><span class="n">Artifact</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom data artifact with typed metadata.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Typed fields become metadata - accessible via ${art:data,num_samples}</span>
+    <span class="n">num_samples</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">ge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of samples&quot;</span><span class="p">)]</span>
+    <span class="n">source_url</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Data source&quot;</span><span class="p">)]</span>
+    <span class="n">compression</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Compression type&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+</section>
+<section id="saving-artifacts">
+<h3>Saving Artifacts<a class="headerlink" href="#saving-artifacts" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create artifact pointing to output directory</span>
+<span class="n">artifact</span> <span class="o">=</span> <span class="n">MyDataArtifact</span><span class="p">(</span>
+    <span class="n">path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/output/my_data&quot;</span><span class="p">),</span>
+    <span class="n">num_samples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+    <span class="n">source_url</span><span class="o">=</span><span class="s2">&quot;https://example.com/data.tar.gz&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Save metadata.json and publish to W&amp;B (if configured)</span>
+<span class="n">artifact</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;MyDataArtifact-custom&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="loading-artifacts">
+<h3>Loading Artifacts<a class="headerlink" href="#loading-artifacts" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load from semantic URI</span>
+<span class="n">artifact</span> <span class="o">=</span> <span class="n">MyDataArtifact</span><span class="o">.</span><span class="n">from_uri</span><span class="p">(</span><span class="s2">&quot;art://MyDataArtifact-custom:latest&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Path: </span><span class="si">{</span><span class="n">artifact</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Samples: </span><span class="si">{</span><span class="n">artifact</span><span class="o">.</span><span class="n">num_samples</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># IDE autocomplete works</span>
+
+<span class="c1"># Load from local path</span>
+<span class="n">artifact</span> <span class="o">=</span> <span class="n">MyDataArtifact</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/output/my_data&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="using-in-configs">
+<h3>Using in Configs<a class="headerlink" href="#using-in-configs" title="Link to this heading">#</a></h3>
+<p>Once saved, custom artifacts work with the resolver system:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">run</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MyDataArtifact-custom:latest</span>
+
+<span class="nt">recipe</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${art:data,path}</span>
+<span class="w">  </span><span class="nt">num_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${art:data,num_samples}</span><span class="w">  </span><span class="c1"># Resolves to 10000</span>
+</pre></div>
+</div>
+</section>
+<section id="customizing-w-b-uploads">
+<h3>Customizing W&amp;B Uploads<a class="headerlink" href="#customizing-w-b-uploads" title="Link to this heading">#</a></h3>
+<p>Override methods to control what gets uploaded to W&amp;B:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyModelArtifact</span><span class="p">(</span><span class="n">Artifact</span><span class="p">):</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_wandb_files</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Files to upload to W&amp;B storage (small files only).&quot;&quot;&quot;</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_wandb_files</span><span class="p">()</span>  <span class="c1"># Includes metadata.json</span>
+        <span class="c1"># Add config files</span>
+        <span class="n">config_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;config.yaml&quot;</span>
+        <span class="k">if</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="n">config_path</span><span class="p">),</span> <span class="s2">&quot;config.yaml&quot;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">files</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_wandb_references</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;References to shared storage (large files - not uploaded).&quot;&quot;&quot;</span>
+        <span class="c1"># Reference checkpoint directory without uploading</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="sa">f</span><span class="s2">&quot;file://</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;checkpoint&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+</section>
+<section id="input-lineage">
+<h3>Input Lineage<a class="headerlink" href="#input-lineage" title="Link to this heading">#</a></h3>
+<p>Track input dependencies by overriding <code class="docutils literal notranslate"><span class="pre">get_input_uris()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProcessedDataArtifact</span><span class="p">(</span><span class="n">Artifact</span><span class="p">):</span>
+    <span class="n">source_artifact</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g., &quot;art://RawDataArtifact:v1&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_input_uris</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Input artifacts for lineage graph.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">source_artifact</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="further-reading">
+<h2>Further Reading<a class="headerlink" href="#further-reading" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="kit.html"><span class="std std-doc">Nemotron Kit</span></a> — Artifact system internals</p></li>
+<li><p><a class="reference internal" href="omegaconf.html"><span class="std std-doc">OmegaConf Configuration</span></a> — <code class="docutils literal notranslate"><span class="pre">${art:...}</span></code> interpolations and lineage</p></li>
+<li><p><a class="reference internal" href="wandb.html"><span class="std std-doc">W&amp;B Integration</span></a> — Credentials and configuration</p></li>
+<li><p><a class="reference internal" href="nano3/import.html"><span class="std std-doc">Importing Models &amp; Data</span></a> — Import commands and directory structures</p></li>
+<li><p><a class="reference internal" href="cli.html"><span class="std std-doc">CLI Framework</span></a> — CLI building and artifact inputs</p></li>
+<li><p><a class="reference internal" href="data-prep.html"><span class="std std-doc">Data Preparation</span></a> — Data preparation module</p></li>
+<li><p><a class="reference internal" href="nano3/README.html"><span class="std std-doc">Nano3 Recipe</span></a> — Complete training pipeline</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="nano3/README.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Nemotron 3 Nano Training Recipe</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="nano3/pretrain.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Stage 0: Pretraining</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-lineage-matters">Why Lineage Matters</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#end-to-end-lineage">End-to-End Lineage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#artifact-types">Artifact Types</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#w-b-configuration">W&amp;B Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-artifacts">Using Artifacts</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#semantic-uris">Semantic URIs</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cli-options">CLI Options</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#config-resolvers">Config Resolvers</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#viewing-lineage-in-w-b">Viewing Lineage in W&amp;B</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#importing-external-assets">Importing External Assets</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#model-import">Model Import</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-import">Data Import</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#artifact-not-found">“Artifact not found”</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#version-resolution-issues">Version Resolution Issues</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#missing-lineage-links">Missing Lineage Links</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#programmatic-access">Programmatic Access</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-custom-artifacts">Creating Custom Artifacts</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-pattern">Basic Pattern</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#saving-artifacts">Saving Artifacts</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-artifacts">Loading Artifacts</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#using-in-configs">Using in Configs</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#customizing-w-b-uploads">Customizing W&amp;B Uploads</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#input-lineage">Input Lineage</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#further-reading">Further Reading</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2025, NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+<div class="extra_footer">
+  
+  
+    <script type="text/javascript">if (typeof _satellite !== "undefined") {_satellite.pageBottom();}</script>
+    
+  
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
