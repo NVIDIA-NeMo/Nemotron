@@ -55,6 +55,9 @@ $ uv run nemotron nano3 sft --run YOUR-CLUSTER
 // Stage 2: Reinforcement Learning
 $ uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
 $ uv run nemotron nano3 rl --run YOUR-CLUSTER
+
+// Stage 3: Evaluation
+$ uv run nemotron nano3 eval --run YOUR-CLUSTER
 ```
 
 </div>
@@ -78,6 +81,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 | 0 | [Pretraining](./pretrain.md) | Base model on 25T tokens with curriculum learning | [pretrain.md](./pretrain.md) |
 | 1 | [SFT](./sft.md) | Multi-domain instruction tuning with 12+ data sources | [sft.md](./sft.md) |
 | 2 | [RL](./rl.md) | GRPO alignment with multi-environment rewards | [rl.md](./rl.md) |
+| 3 | [Evaluation](./eval.md) | Benchmark testing with NeMo Evaluator | [eval.md](./eval.md) |
 
 ## Model Specifications
 
@@ -110,6 +114,12 @@ Multi-domain instruction tuning covering 12+ data domains including competition 
 Multi-environment RLVR training across 7 reward environments using GRPO, plus GenRM-based RLHF and DPO for reducing tool hallucination.
 
 → [RL Guide](./rl.md)
+
+### Stage 3: Evaluation
+
+Benchmark testing on standard NLP tasks (MMLU, HellaSwag, ARC) using NeMo Evaluator, with automatic result export to W&B.
+
+→ [Evaluation Guide](./eval.md)
 
 ## Execution Options
 
@@ -148,9 +158,15 @@ flowchart TB
         cmd2 --> model2["ModelArtifact-rl<br/>(Final Model)"]
     end
 
+    subgraph eval["Stage 3: Evaluation"]
+        model2 --> cmd3["uv run nemotron nano3 eval"]
+        cmd3 --> results["Benchmark Results<br/>(W&B)"]
+    end
+
     style pretrain fill:#e1f5fe,stroke:#2196f3
     style sft fill:#f3e5f5,stroke:#9c27b0
     style rl fill:#e8f5e9,stroke:#4caf50
+    style eval fill:#fff3e0,stroke:#ff9800
 ```
 
 → [Artifact Lineage & W&B Integration](../artifacts.md)
@@ -168,9 +184,8 @@ Native integrations with NVIDIA's NeMo ecosystem:
 | [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) | Scalable data curation—deduplication, quality filtering, PII removal | Planned |
 | [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) | Synthetic data generation for instruction tuning and alignment | Planned |
 | [NeMo Export-Deploy](https://github.com/NVIDIA-NeMo/Export-Deploy) | Model export to TensorRT-LLM and deployment | Planned |
-| [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) | Comprehensive model evaluation and benchmarking | Planned |
 
-These integrations will enable end-to-end pipelines from data curation to model evaluation.
+These integrations will enable end-to-end pipelines from data curation to deployment.
 
 ## CLI Reference
 
@@ -191,6 +206,7 @@ Usage: nemotron nano3 [OPTIONS] COMMAND [ARGS]...
 │ pretrain   Run pretraining with Megatron-Bridge (stage0).                │
 │ sft        Run supervised fine-tuning with Megatron-Bridge (stage1).     │
 │ rl         Run reinforcement learning with NeMo-RL GRPO (stage2).        │
+│ eval       Run evaluation with NeMo-Evaluator (stage3).                  │
 ╰──────────────────────────────────────────────────────────────────────────╯
 
 // View training command help (SFT example with artifact overrides)
@@ -255,6 +271,7 @@ wandb login
 - [Stage 0: Pretraining](./pretrain.md)
 - [Stage 1: SFT](./sft.md)
 - [Stage 2: RL](./rl.md)
+- [Stage 3: Evaluation](./eval.md)
 - [Importing Models & Data](./import.md)
 - [Artifact Lineage](../artifacts.md)
 - [Execution through NeMo-Run](../nemo-run.md)

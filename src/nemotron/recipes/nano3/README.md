@@ -71,6 +71,7 @@ flowchart TB
 | [Stage 0: Pretrain](./stage0_pretrain/) | Train on large text corpus | Megatron-Bridge | Base model checkpoint |
 | [Stage 1: SFT](./stage1_sft/) | Instruction tuning | Megatron-Bridge | Instruction-following model |
 | [Stage 2: RL](./stage2_rl/) | Alignment with GRPO | NeMo-RL | Final aligned model |
+| [Stage 3: Eval](./stage3_eval/) | Model evaluation | NeMo-Evaluator | Benchmark results |
 
 ## Prerequisites
 
@@ -121,6 +122,9 @@ uv run nemotron nano3 sft --run YOUR-CLUSTER
 # Stage 2: Data prep + RL
 uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
 uv run nemotron nano3 rl --run YOUR-CLUSTER
+
+# Stage 3: Evaluation
+uv run nemotron nano3 eval --run YOUR-CLUSTER
 ```
 
 ### Testing with Tiny Config
@@ -162,6 +166,24 @@ uv run nemotron nano3 sft [--run <profile>] [-c <config>] [overrides...]
 # Reinforcement Learning
 uv run nemotron nano3 rl [--run <profile>] [-c <config>] [overrides...]
 ```
+
+### Evaluation
+
+```bash
+# Evaluate the trained model (defaults to RL output: run.model=rl:latest)
+uv run nemotron nano3 eval [--run <profile>] [-c <config>] [-t <task>...] [overrides...]
+
+# Evaluate a specific model artifact
+uv run nemotron nano3 eval --run YOUR-CLUSTER run.model=sft:v2
+
+# Filter specific tasks
+uv run nemotron nano3 eval --run YOUR-CLUSTER -t adlr_mmlu -t hellaswag
+
+# Dry run (preview resolved config)
+uv run nemotron nano3 eval --run YOUR-CLUSTER --dry-run
+```
+
+> **Note**: Evaluation requires the `nemo-evaluator-launcher` package. Install with: `pip install "nemotron[evaluator]"`
 
 ### Execution Options
 
@@ -261,6 +283,7 @@ torchrun --nproc_per_node=8 train.py --config config/tiny.yaml
 - [Stage 0: Pretraining](./stage0_pretrain/README.md) - Pretrain on large text corpus
 - [Stage 1: SFT](./stage1_sft/README.md) - Supervised fine-tuning for instruction following
 - [Stage 2: RL](./stage2_rl/README.md) - Reinforcement learning for alignment
+- [Stage 3: Eval](./stage3_eval/README.md) - Model evaluation with NeMo-Evaluator
 
 ## Further Reading
 

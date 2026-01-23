@@ -87,8 +87,23 @@ def _register_groups() -> None:
     app.add_typer(kit_app, name="kit")
 
 
-# Register groups on import
+def _register_commands() -> None:
+    """Register top-level commands with the main app."""
+    from nemotron.cli.evaluate import evaluate
+
+    # Register evaluate command with same context settings as recipe commands
+    app.command(
+        name="evaluate",
+        context_settings={
+            "allow_extra_args": True,
+            "ignore_unknown_options": True,
+        },
+    )(evaluate)
+
+
+# Register groups and commands on import
 _register_groups()
+_register_commands()
 
 
 def main() -> None:

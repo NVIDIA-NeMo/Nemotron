@@ -49,6 +49,7 @@ wandb = ["wandb>=0.15.0"]
 s3 = ["s3fs>=2024.0.0"]
 gcs = ["gcsfs>=2024.0.0"]
 sentencepiece = ["sentencepiece>=0.2.0"]
+evaluator = ["nemo-evaluator-launcher>=0.1.0"]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -60,6 +61,7 @@ all = [
     "s3fs>=2024.0.0",
     "gcsfs>=2024.0.0",
     "sentencepiece>=0.2.0",
+    "nemo-evaluator-launcher>=0.1.0",
 ]
 
 # Note: megatron-bridge is required for training but not listed as a dependency
