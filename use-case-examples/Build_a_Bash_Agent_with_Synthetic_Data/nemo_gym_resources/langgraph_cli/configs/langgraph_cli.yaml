@@ -1,0 +1,52 @@
+# NeMo Gym Configuration for LangGraph CLI Resource Server
+# Domain: agent (tool-calling/agentic task)
+
+domain: agent
+name: langgraph_cli
+description: |
+  Resource server for training AI agents to translate natural language
+  instructions into correct LangGraph CLI commands. Implements RLVR
+  verification for structured JSON tool-call generation.
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+
+verification:
+  # Reward scaling
+  exact_match_reward: 1.0
+  partial_match_min_reward: -1.0
+  invalid_json_penalty: -1.0
+
+  # Valid CLI commands
+  valid_commands:
+    - new
+    - dev
+    - up
+    - build
+    - dockerfile
+
+  # Flag definitions per command
+  command_flags:
+    new:
+      - template
+      - path
+    dev:
+      - port
+      - no_browser
+    up:
+      - port
+      - watch
+    build:
+      - tag
+    dockerfile:
+      - output_path
+
+# Dataset configuration for training
+dataset:
+  train_file: "data/train.jsonl"
+  val_file: "data/val.jsonl"
+  # Each record should have:
+  # - input: str (natural language request)
+  # - output: dict (expected CLIToolCall structure)
