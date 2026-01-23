@@ -487,4 +487,5 @@ uv run nemotron myrecipe train -c tiny --run MY-CLUSTER
 - [Data Preparation](./data-prep.md) — Data preparation module
 - [Artifact Lineage](./artifacts.md) — W&B artifact system and lineage tracking
 - [W&B Integration](./wandb.md) — Credentials and configuration
+- [Evaluation Framework](./evaluator.md) — Model evaluation with NeMo Evaluator
 - [Nano3 Recipe](./nano3/README.md) — Complete training recipe example

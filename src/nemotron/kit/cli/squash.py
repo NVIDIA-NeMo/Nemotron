@@ -21,7 +21,12 @@ using enroot. Uses deterministic naming to avoid re-squashing existing images.
 from __future__ import annotations
 
 import re
+import shlex
 from typing import Any
+
+from rich.console import Console
+
+console = Console()
 
 
 def container_to_sqsh_name(container: str) -> str:
@@ -50,6 +55,32 @@ def container_to_sqsh_name(container: str) -> str:
     return f"{safe_name}.sqsh"
 
 
+def is_sqsh_image(image: str) -> bool:
+    """Check if image is already a .sqsh file.
+
+    Args:
+        image: Container image reference or path
+
+    Returns:
+        True if image is already a squash file
+    """
+    return image.endswith(".sqsh") or (image.startswith("/") and ".sqsh" in image)
+
+
+def get_sqsh_path(container: str, remote_job_dir: str) -> str:
+    """Compute deterministic .sqsh path for a container.
+
+    Args:
+        container: Docker container image (e.g., "nvcr.io/nvidian/nemo:25.11")
+        remote_job_dir: Remote directory for job files
+
+    Returns:
+        Full path to squashed image file under containers/
+    """
+    sqsh_name = container_to_sqsh_name(container)
+    return f"{remote_job_dir}/containers/{sqsh_name}"
+
+
 def check_sqsh_exists(tunnel: Any, remote_path: str) -> bool:
     """Check if a squash file exists on the remote cluster.
 
@@ -62,3 +93,99 @@ def check_sqsh_exists(tunnel: Any, remote_path: str) -> bool:
     """
     result = tunnel.run(f"test -f {remote_path} && echo exists", hide=True, warn=True)
     return result.ok and "exists" in result.stdout
+
+
+def ensure_squashed_image(
+    *,
+    tunnel: Any,
+    container_image: str,
+    remote_job_dir: str,
+    env_config: dict[str, Any],
+    force: bool = False,
+) -> str:
+    """Ensure container is squashed on remote cluster, return .sqsh path.
+
+    Checks if a squashed version exists, and if not, creates it using enroot
+    on a compute node via salloc.
+
+    Args:
+        tunnel: SSHTunnel instance (will be connected if not already)
+        container_image: Docker container image to squash
+        remote_job_dir: Remote directory for squashed images
+        env_config: Environment config with slurm settings (account, partition, time)
+        force: If True, re-squash even if file already exists
+
+    Returns:
+        Path to the squashed image file
+
+    Raises:
+        RuntimeError: If squashing fails
+    """
+    sqsh_path = get_sqsh_path(container_image, remote_job_dir)
+
+    # Ensure remote directory exists
+    tunnel.run(f"mkdir -p {shlex.quote(remote_job_dir)}/containers", hide=True)
+
+    # Check if squashed image already exists (unless force is set)
+    if not force:
+        with console.status("[bold blue]Checking for squashed image..."):
+            if check_sqsh_exists(tunnel, sqsh_path):
+                console.print(
+                    f"[green]✓[/green] Using existing squashed image: [cyan]{sqsh_path}[/cyan]"
+                )
+                return sqsh_path
+
+    # Need to create the squashed image
+    if force:
+        console.print("[yellow]![/yellow] Force re-squash requested, removing existing file...")
+        tunnel.run(f"rm -f {shlex.quote(sqsh_path)}", hide=True)
+    else:
+        console.print("[yellow]![/yellow] Squashed image not found, creating...")
+
+    console.print(f"  [dim]Image:[/dim] {container_image}")
+    console.print(f"  [dim]Output:[/dim] {sqsh_path}")
+    console.print()
+
+    # Build salloc command to run enroot import on a compute node
+    # (login nodes don't have enough memory for enroot import)
+    account = env_config.get("account")
+    partition = (
+        env_config.get("run_partition")
+        or env_config.get("batch_partition")
+        or env_config.get("partition")
+    )
+    time_limit = env_config.get("time", "04:00:00")
+    gpus_per_node = env_config.get("gpus_per_node")
+
+    salloc_args = []
+    if account:
+        salloc_args.append(f"--account={shlex.quote(account)}")
+    if partition:
+        salloc_args.append(f"--partition={shlex.quote(partition)}")
+    salloc_args.append("--nodes=1")
+    salloc_args.append("--ntasks-per-node=1")
+    if gpus_per_node:
+        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
+    salloc_args.append(f"--time={time_limit}")
+
+    enroot_cmd = f"enroot import --output {shlex.quote(sqsh_path)} docker://{container_image}"
+    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
+
+    # Run enroot import via salloc (this can take a while)
+    console.print(
+        "[bold blue]Allocating compute node and importing container "
+        "(this may take several minutes)...[/bold blue]"
+    )
+    console.print(f"[dim]$ {cmd}[/dim]")
+    console.print()
+    result = tunnel.run(cmd, hide=False, warn=True)
+
+    if not result.ok:
+        raise RuntimeError(
+            f"Failed to squash container image.\n"
+            f"Command: {cmd}\n"
+            f"Error: {result.stderr or 'Unknown error'}"
+        )
+
+    console.print(f"[green]✓[/green] Created squashed image: [cyan]{sqsh_path}[/cyan]")
+    return sqsh_path

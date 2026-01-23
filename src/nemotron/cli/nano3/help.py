@@ -84,10 +84,12 @@ class RecipeCommand(TyperCommand):
         artifact_overrides: Dict mapping artifact names to descriptions.
             Example: {"data": "Data artifact", "model": "Model checkpoint"}
         config_dir: Path to config directory (relative to repo root).
+        supports_stage: Whether this command supports --stage option.
     """
 
     artifact_overrides: ClassVar[dict[str, str]] = {}
     config_dir: ClassVar[str | None] = None
+    supports_stage: ClassVar[bool] = True
 
     def format_help(self, ctx, formatter):
         """Format help with custom recipe options section."""
@@ -115,7 +117,8 @@ class RecipeCommand(TyperCommand):
         options_table.add_row("-r, --run PROFILE", "Submit to cluster (attached)")
         options_table.add_row("-b, --batch PROFILE", "Submit to cluster (detached)")
         options_table.add_row("-d, --dry-run", "Preview config without execution")
-        options_table.add_row("--stage", "Stage files for interactive debugging")
+        if self.supports_stage:
+            options_table.add_row("--stage", "Stage files for interactive debugging")
 
         console.print(
             Panel(
@@ -227,6 +230,7 @@ class RecipeCommand(TyperCommand):
 def make_recipe_command(
     artifact_overrides: dict[str, str] | None = None,
     config_dir: str | None = None,
+    supports_stage: bool = True,
 ):
     """Factory function to create a RecipeCommand subclass with custom options.
 
@@ -234,6 +238,7 @@ def make_recipe_command(
         artifact_overrides: Dict mapping artifact names to descriptions.
             Example: {"data": "Data artifact", "model": "Model checkpoint"}
         config_dir: Path to config directory (relative to repo root).
+        supports_stage: Whether this command supports --stage option.
 
     Returns:
         A RecipeCommand subclass with the specified options.
@@ -244,4 +249,5 @@ def make_recipe_command(
 
     CustomRecipeCommand.artifact_overrides = artifact_overrides or {}
     CustomRecipeCommand.config_dir = config_dir
+    CustomRecipeCommand.supports_stage = supports_stage
     return CustomRecipeCommand

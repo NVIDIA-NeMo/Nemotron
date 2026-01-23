@@ -1,0 +1,197 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Nemotron-3-Nano-30B Evaluation with NeMo Framework Ray Deployment
+#
+# This config evaluates the NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 model
+# using NeMo Framework's Ray-based in-framework deployment.
+#
+# Usage:
+#   nemotron evaluate -c nemotron-3-nano-nemo-ray --run MY-CLUSTER
+#
+# Override checkpoint:
+#   nemotron evaluate -c nemotron-3-nano-nemo-ray --run MY-CLUSTER \
+#       deployment.checkpoint_path=/path/to/checkpoint
+#
+# Filter tasks:
+#   nemotron evaluate -c nemotron-3-nano-nemo-ray --run MY-CLUSTER -t adlr_mmlu
+
+# =============================================================================
+# Defaults - Use slurm executor and generic deployment
+# =============================================================================
+defaults:
+  - execution: slurm/default
+  - deployment: generic
+  - _self_
+
+# =============================================================================
+# Nemotron run section (env.toml injection)
+# This section is used for interpolation and stripped before calling the launcher
+# =============================================================================
+run:
+  # Environment config - populated from env.toml profile via --run
+  env:
+    # Default container for NeMo Framework Ray deployment (squash file for Slurm)
+    container: /lustre/fsw/portfolios/coreai/users/athittenaman/nvidia+nemo+25.11.nemotron_3_nano.sqsh
+    executor: slurm
+    host: ${oc.env:HOSTNAME,localhost}
+    user: ${oc.env:USER}
+    account: null
+    partition: batch
+    remote_job_dir: ${oc.env:PWD}/.nemotron
+    time: "04:00:00"
+
+  # W&B config - populated from env.toml [wandb] section
+  wandb:
+    entity: null
+    project: null
+
+# =============================================================================
+# Execution Configuration
+# =============================================================================
+execution:
+  type: slurm
+  hostname: ${run.env.host}
+  username: ${run.env.user}
+  account: ${run.env.account}
+  output_dir: ${run.env.remote_job_dir}/evaluations
+  walltime: ${run.env.time}
+  partition: ${run.env.partition}
+
+  # Slurm resource configuration
+  num_nodes: 1
+  ntasks_per_node: 1
+  gres: gpu:8
+  subproject: nemo-evaluator-launcher
+  sbatch_comment: null
+
+  deployment:
+    n_tasks: ${execution.num_nodes}
+
+  # HAProxy for load balancing across Ray workers
+  proxy:
+    type: haproxy
+    image: gitlab-master.nvidia.com/dl/joc/competitive_evaluation/nvidia-core-evals/haproxy-container/haproxy:2025-10-03T17-19-2679aefe0800
+    config:
+      haproxy_port: 5009
+      health_check_path: /v1/health
+      health_check_status: 200
+
+  # Auto-export results after evaluation completes
+  auto_export:
+    enabled: true
+    destinations:
+      - wandb
+
+  # Environment variables for deployment and evaluation containers
+  # NOTE: HF_TOKEN must be set in your environment if using HuggingFace gated models
+  # NOTE: WANDB_API_KEY is auto-detected from local wandb login (like nemo-run)
+  env_vars:
+    deployment:
+      HF_HOME: /cache/huggingface
+      NIM_CACHE_PATH: /cache/nim
+      VLLM_CACHE_ROOT: /cache/vllm
+    evaluation:
+      HF_HOME: /cache/huggingface
+    # W&B export env vars (auto-injected by CLI if logged in locally)
+    # These map host env var names -> container env var names
+    export:
+      WANDB_API_KEY: WANDB_API_KEY
+      WANDB_PROJECT: WANDB_PROJECT
+      WANDB_ENTITY: WANDB_ENTITY
+
+  # Mounts for deployment and evaluation containers
+  mounts:
+    deployment:
+      /lustre: /lustre
+      /lustre/fsw/portfolios/coreai/users/athittenaman/Export-Deploy: /opt/Export-Deploy
+    evaluation:
+      /lustre: /lustre
+    mount_home: false
+
+# =============================================================================
+# Deployment Configuration - NeMo Framework Ray
+# =============================================================================
+deployment:
+  type: generic
+  multiple_instances: true
+  image: ${run.env.container}
+  health_check_path: /v1/health
+  port: 1235  # Port used by Ray deployment
+  served_model_name: nemo-model
+  # Hardcoded checkpoint path - override via CLI: deployment.checkpoint_path=/your/path
+  checkpoint_path: /lustre/fsw/portfolios/coreai/users/athittenaman/checkpoints/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16/iter_0000000
+
+  # NeMo Framework Ray deployment command
+  # Parallelism settings for Nano3 (30B MoE model): TP=2, EP=8
+  command: >-
+    bash -c 'export TRITON_CACHE_DIR=/tmp/triton_cache_$$SLURM_NODEID;
+    python /opt/Export-Deploy/scripts/deploy/nlp/deploy_ray_inframework.py
+    --megatron_checkpoint /checkpoint/
+    --num_gpus 8
+    --tensor_model_parallel_size 2
+    --expert_model_parallel_size 8
+    --port 1235
+    --num_replicas 1'
+
+  # Health check endpoints
+  endpoints:
+    chat: /v1/chat/completions/
+    completions: /v1/completions/
+    health: /v1/health
+
+# =============================================================================
+# Evaluation Configuration
+# =============================================================================
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        max_retries: 5
+        parallelism: 4
+        request_timeout: 6000
+        extra:
+          tokenizer: ${deployment.checkpoint_path}/tokenizer
+          tokenizer_backend: huggingface
+    target:
+      api_endpoint:
+        adapter_config:
+          output_dir: /results
+          use_progress_tracking: false
+          use_caching: true
+          caching_dir: /results/cache
+          use_response_logging: true
+          max_logged_responses: 10
+          use_request_logging: true
+          max_logged_requests: 10
+
+  # Tasks to run (can be filtered with -t flag)
+  tasks:
+    - name: adlr_mmlu
+      nemo_evaluator_config:
+        config:
+          params:
+            top_p: 0.0
+    - name: adlr_arc_challenge_llama_25_shot
+    - name: adlr_winogrande_5_shot
+    - name: hellaswag
+    - name: openbookqa
+
+# =============================================================================
+# Export Configuration - W&B
+# =============================================================================
+export:
+  wandb:
+    entity: ${run.wandb.entity}
+    project: ${run.wandb.project}

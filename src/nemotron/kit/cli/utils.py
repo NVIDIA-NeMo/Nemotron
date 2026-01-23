@@ -6,9 +6,35 @@ import re
 from pathlib import Path
 from typing import Any
 
+# Pattern to match ${run.*} tokens (for embedded interpolations)
+RUN_TOKEN_RE = re.compile(r"\$\{run\.([^}]+)\}")
+
+
+def _lookup_run_path(run_data: dict, dotted_path: str) -> tuple[bool, Any]:
+    """Look up a dotted path in run_data.
+
+    Args:
+        run_data: The run section dictionary
+        dotted_path: Path like "env.remote_job_dir" or "wandb.project"
+
+    Returns:
+        Tuple of (found, value). If found is False, value is None.
+    """
+    keys = dotted_path.split(".")
+    current = run_data
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return (False, None)
+        current = current[key]
+    return (True, current)
+
 
 def resolve_run_interpolations(obj: Any, run_data: dict) -> Any:
     """Recursively resolve ${run.*} interpolations in a dict/list.
+
+    Handles both:
+    - Exact matches: "${run.foo}" -> preserves type of resolved value
+    - Embedded: "${run.foo}/bar" -> string substitution via regex
 
     Only resolves ${run.X.Y} style interpolations, preserves other
     interpolations like ${art:data,path}.
@@ -24,18 +50,29 @@ def resolve_run_interpolations(obj: Any, run_data: dict) -> Any:
         return {k: resolve_run_interpolations(v, run_data) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [resolve_run_interpolations(item, run_data) for item in obj]
-    elif isinstance(obj, str) and obj.startswith("${run.") and obj.endswith("}"):
-        # Extract the path: ${run.wandb.project} -> wandb.project
-        path = obj[6:-1]  # Remove "${run." and "}"
-        # Navigate run_data to get the value
-        parts = path.split(".")
-        value = run_data
-        for part in parts:
-            if isinstance(value, dict) and part in value:
-                value = value[part]
-            else:
-                return obj  # Can't resolve, keep original
-        return value
+    elif isinstance(obj, str):
+        # Check for exact match first (preserves type)
+        if obj.startswith("${run.") and obj.endswith("}") and obj.count("${") == 1:
+            # Extract the path: ${run.wandb.project} -> wandb.project
+            path = obj[6:-1]  # Remove "${run." and "}"
+            found, value = _lookup_run_path(run_data, path)
+            if found:
+                return value
+            return obj  # Can't resolve, keep original
+
+        # Check for embedded interpolations (string substitution)
+        if "${run." in obj:
+
+            def replace_token(match: re.Match) -> str:
+                dotted_path = match.group(1)
+                found, value = _lookup_run_path(run_data, dotted_path)
+                if found:
+                    return str(value)
+                return match.group(0)  # Keep original if not found
+
+            return RUN_TOKEN_RE.sub(replace_token, obj)
+
+        return obj
     else:
         return obj
 

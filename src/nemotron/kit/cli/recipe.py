@@ -35,6 +35,7 @@ from rich.console import Console
 from nemotron.kit.cli.config import ConfigBuilder
 from nemotron.kit.cli.display import display_job_config, display_job_submission
 from nemotron.kit.cli.globals import GlobalContext, split_unknown_args
+from nemotron.kit.cli.squash import ensure_squashed_image, get_sqsh_path, is_sqsh_image
 
 console = Console()
 
@@ -622,8 +623,12 @@ def _build_executor(
         if container_image and tunnel and remote_job_dir:
             # Connect tunnel to check/create squashed image
             tunnel.connect()
-            container_image = _ensure_squashed_image(
-                tunnel, container_image, remote_job_dir, env_config, force=force_squash
+            container_image = ensure_squashed_image(
+                tunnel=tunnel,
+                container_image=container_image,
+                remote_job_dir=remote_job_dir,
+                env_config=env_config,
+                force=force_squash,
             )
 
         # Select partition based on mode (--run uses run_partition, --batch uses batch_partition)
@@ -785,118 +790,6 @@ def _build_packager(
         include_pattern=[main_path, config_path],
         relative_path=[str(code_dir), str(code_dir)],
     )
-
-
-def _get_squash_path(container_image: str, remote_job_dir: str) -> str:
-    """Get the path to the squashed container image.
-
-    Creates a deterministic filename based on the container image name.
-    For example: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 -> nemo-25.11-nano-v3.rc2.sqsh
-
-    Args:
-        container_image: Docker container image (e.g., nvcr.io/nvidian/nemo:25.11-nano-v3.rc2)
-        remote_job_dir: Remote directory for squashed images
-
-    Returns:
-        Full path to squashed image file
-    """
-    # Extract image name and tag for readable filename
-    # nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 -> nemo:25.11-nano-v3.rc2
-    image_name = container_image.split("/")[-1]
-    # nemo:25.11-nano-v3.rc2 -> nemo-25.11-nano-v3.rc2.sqsh
-    sqsh_name = image_name.replace(":", "-") + ".sqsh"
-
-    return f"{remote_job_dir}/{sqsh_name}"
-
-
-def _ensure_squashed_image(
-    tunnel: Any,
-    container_image: str,
-    remote_job_dir: str,
-    env_config: dict,
-    *,
-    force: bool = False,
-) -> str:
-    """Ensure the container image is squashed on the remote cluster.
-
-    Checks if a squashed version exists, and if not, creates it using enroot
-    on a compute node via salloc.
-
-    Args:
-        tunnel: SSHTunnel instance (already connected)
-        container_image: Docker container image to squash
-        remote_job_dir: Remote directory for squashed images
-        env_config: Environment config with slurm settings (account, partition, time)
-        force: If True, re-squash even if file already exists
-
-    Returns:
-        Path to the squashed image file
-    """
-    sqsh_path = _get_squash_path(container_image, remote_job_dir)
-
-    # Check if squashed image already exists (unless force is set)
-    if not force:
-        with console.status("[bold blue]Checking for squashed image..."):
-            result = tunnel.run(f"test -f {sqsh_path} && echo exists", hide=True, warn=True)
-
-        if result.ok and "exists" in result.stdout:
-            console.print(
-                f"[green]✓[/green] Using existing squashed image: [cyan]{sqsh_path}[/cyan]"
-            )
-            return sqsh_path
-
-    # Need to create the squashed image
-    if force:
-        console.print("[yellow]![/yellow] Force re-squash requested, removing existing file...")
-        tunnel.run(f"rm -f {sqsh_path}", hide=True)
-    else:
-        console.print("[yellow]![/yellow] Squashed image not found, creating...")
-    console.print(f"  [dim]Image:[/dim] {container_image}")
-    console.print(f"  [dim]Output:[/dim] {sqsh_path}")
-    console.print()
-
-    # Ensure directory exists
-    tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
-
-    # Build salloc command to run enroot import on a compute node
-    # (login nodes don't have enough memory for enroot import)
-    account = env_config.get("account")
-    partition = env_config.get("run_partition") or env_config.get("partition")
-    time_limit = env_config.get("time", "04:00:00")
-    gpus_per_node = env_config.get("gpus_per_node")
-
-    salloc_args = []
-    if account:
-        salloc_args.append(f"--account={account}")
-    if partition:
-        salloc_args.append(f"--partition={partition}")
-    salloc_args.append("--nodes=1")
-    salloc_args.append("--ntasks-per-node=1")
-    if gpus_per_node:
-        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
-    salloc_args.append(f"--time={time_limit}")
-
-    enroot_cmd = f"enroot import --output {sqsh_path} docker://{container_image}"
-    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
-
-    # Run enroot import via salloc (this can take a while)
-    console.print(
-        "[bold blue]Allocating compute node and importing container "
-        "(this may take several minutes)...[/bold blue]"
-    )
-    console.print(f"[dim]$ {cmd}[/dim]")
-    console.print()
-    result = tunnel.run(cmd, hide=False, warn=True)
-
-    if not result.ok:
-        raise RuntimeError(
-            f"Failed to squash container image.\n"
-            f"Command: {cmd}\n"
-            f"Error: {result.stderr or 'Unknown error'}"
-        )
-
-    console.print(f"[green]✓[/green] Created squashed image: [cyan]{sqsh_path}[/cyan]")
-    return sqsh_path
 
 
 def _execute_stage_only(
@@ -1068,7 +961,10 @@ def _print_stage_commands(
     # Get squashed container path
     sqsh_path = None
     if container and remote_job_dir:
-        sqsh_path = _get_squash_path(container, remote_job_dir)
+        if is_sqsh_image(container):
+            sqsh_path = container
+        else:
+            sqsh_path = get_sqsh_path(container, remote_job_dir)
 
     # Mount to /workspace for simpler commands inside container
     container_mount_path = "/workspace"

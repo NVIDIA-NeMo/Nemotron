@@ -22,12 +22,12 @@ from __future__ import annotations
 import typer
 
 from nemotron.cli.nano3.data import data_app
-from nemotron.cli.nano3.help import RecipeCommand, make_recipe_command
+from nemotron.cli.nano3.eval import eval as eval_cmd
+from nemotron.cli.nano3.help import make_recipe_command
 from nemotron.cli.nano3.model import model_app
 from nemotron.cli.nano3.pretrain import pretrain
 from nemotron.cli.nano3.rl import rl
 from nemotron.cli.nano3.sft import sft
-
 
 # Create nano3 app
 nano3_app = typer.Typer(
@@ -91,3 +91,21 @@ nano3_app.command(
         config_dir="src/nemotron/recipes/nano3/stage2_rl/config",
     ),
 )(rl)
+
+# Eval has model artifact override (evaluates trained model)
+# Note: supports_stage=False because evaluator doesn't use nemo-run staging
+nano3_app.command(
+    name="eval",
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+    rich_help_panel="Training Stages",
+    cls=make_recipe_command(
+        artifact_overrides={
+            "model": "Model checkpoint artifact to evaluate",
+        },
+        config_dir="src/nemotron/recipes/nano3/stage3_eval/config",
+        supports_stage=False,
+    ),
+)(eval_cmd)

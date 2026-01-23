@@ -67,13 +67,14 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 
 ## Training Pipeline
 
-The Nemotron training pipeline follows a three-stage approach with full artifact lineage tracking:
+The Nemotron training pipeline follows a four-stage approach with full artifact lineage tracking:
 
 | Stage | Name | Description |
 |-------|------|-------------|
 | 0 | [Pretraining](train/nano3/pretrain.md) | Base model training on large text corpus |
 | 1 | [SFT](train/nano3/sft.md) | Supervised fine-tuning for instruction following |
 | 2 | [RL](train/nano3/rl.md) | Reinforcement learning for alignment |
+| 3 | [Evaluation](train/nano3/eval.md) | Benchmark testing with NeMo Evaluator |
 
 ## Why Nemotron?
 
@@ -133,6 +134,7 @@ train/artifacts.md
 train/nano3/pretrain.md
 train/nano3/sft.md
 train/nano3/rl.md
+train/nano3/eval.md
 train/nano3/import.md
 ```
 
@@ -147,4 +149,5 @@ train/omegaconf.md
 train/wandb.md
 train/cli.md
 train/data-prep.md
+train/evaluator.md
 ```
