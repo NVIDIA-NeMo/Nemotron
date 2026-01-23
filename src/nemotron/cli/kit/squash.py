@@ -167,7 +167,7 @@ def squash(
     salloc_args.append(f"--time={time_limit}")
 
     enroot_cmd = f"enroot import --output {remote_path} docker://{container}"
-    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
+    cmd = f"salloc {' '.join(salloc_args)} srun --export=ALL {enroot_cmd}"
 
     # Run enroot import via salloc
     console.print("[bold]Allocating compute node and importing container...[/bold]")

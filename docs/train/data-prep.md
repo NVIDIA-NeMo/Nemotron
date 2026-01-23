@@ -109,69 +109,92 @@ See [Execution through NeMo-Run](./nemo-run.md) for complete configuration optio
 
 | API | Use When | Output Format |
 |-----|----------|---------------|
-| `run_data_prep()` | Simple tokenization pipelines | bin/idx |
-| `last_mile_process()` | Custom formats, transforms, chat SFT | Any |
+| `run_pretrain_pipeline()` | Pretraining tokenization | bin/idx |
+| `run_sft_pipeline()` | Chat SFT with loss masking | Packed Parquet |
+| `run_data_prep()` | Format-based dispatch (compatibility) | bin/idx or Parquet |
 
-**Use high-level API (`run_data_prep`)** for:
-- Standard pretraining data tokenization
-- Per-split output (train/valid/test) with `PerSplitConfig`
-- When you want automatic Ray initialization and artifact tracking
+**Use recipe entry points** (recommended):
+- `run_pretrain_pipeline()` — Standard pretraining tokenization to bin/idx format
+- `run_sft_pipeline()` — Chat SFT with role-based loss masking to packed Parquet
 
-**Use low-level API (`last_mile_process`)** for:
-- JSONL output with custom transforms
-- Chat SFT with loss masking (`ChatSftOutputConfig`)
-- Packed sequences without chat templates
-- Custom pipeline orchestration
+**Use `run_data_prep()` (compatibility)** for:
+- Backward compatibility with existing code
+- Config-based format dispatch (reads `config.output.format` type)
+
+**For JSONL output** (RL training):
+- Use the stage-specific scripts in `nemotron/recipes/nano3/stage2_rl/data_prep.py`
+- Or call `process_jsonl_shard_core()` directly from `nemotron.data_prep.core`
 
 ## Supported Output Formats
 
-| Format | Description | Use Case |
-|--------|-------------|----------|
-| `binidx` | Tokenized `.bin/.idx` indexed datasets | Pretraining (default) |
-| `jsonl` | JSONL files with optional transforms | SFT/RL training |
-| `packed` | Packed sequences in `.npy` format | Efficient SFT training |
+| Format | Recipe | Output | Use Case |
+|--------|--------|--------|----------|
+| `binidx` | `run_pretrain_pipeline()` | `.bin/.idx` pairs | Pretraining |
+| `packed_parquet` | `run_sft_pipeline()` | `.parquet` files | Chat SFT |
+| `jsonl` | Stage scripts | `.jsonl` files | RL training |
 
 ## Quick Start
 
-### High-Level API (DataPrepConfig)
+### Pretrain Pipeline (bin/idx)
 
-For simple tokenization to binidx format:
+Tokenize text data to Megatron bin/idx format:
 
 ```python
-from nemotron.data_prep import DataPrepConfig, run_data_prep
-from pathlib import Path
+from nemotron.data_prep import DataBlend, run_pretrain_pipeline
 
-config = DataPrepConfig(
-    blend_path=Path("data_blend.json"),
-    output_dir=Path("./output"),
-    tokenizer_model="meta-llama/Llama-3.2-1B",
+blend = DataBlend.load("pretrain_blend.json")
+result = run_pretrain_pipeline(
+    blend=blend,
+    output_dir="./output",
+    tokenizer="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+    num_shards=128,
 )
 
-artifact = run_data_prep(config)
-print(f"Blend path: {artifact.path}")
+print(f"Run hash: {result.run_hash}")
+print(f"Total tokens: {result.total_tokens:,}")
+print(f"Data paths: {result.data_paths}")
 ```
 
-### Low-Level API (last_mile_process)
+### SFT Pipeline (Packed Parquet)
 
-For more control over output format:
+Chat SFT with role-based loss masking to packed Parquet:
 
 ```python
-from nemotron.data_prep import last_mile_process, DataBlend, PipelineConfig
-from nemotron.data_prep.config import OutputConfig, JsonlOutputConfig
-from nemotron.data_prep.formats.transforms import sft
+from nemotron.data_prep import DataBlend, run_sft_pipeline
 
-blend = DataBlend.load("data_blend.json")
+blend = DataBlend.load("sft_blend.json")
+result = run_sft_pipeline(
+    blend=blend,
+    output_dir="./output",
+    tokenizer="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+    num_shards=64,
+    chat_template="nano3",
+    pack_size=4096,
+)
 
+print(f"Run hash: {result.run_hash}")
+print(f"Total sequences: {result.total_sequences:,}")
+```
+
+### Config-Based Dispatch (Compatibility)
+
+For backward compatibility with config-based format dispatch:
+
+```python
+from nemotron.data_prep import DataBlend, PipelineConfig, run_data_prep
+from nemotron.data_prep.config import BinIdxOutputConfig, OutputConfig, TokenizerConfig
+from pathlib import Path
+
+blend = DataBlend.load("blend.json")
 config = PipelineConfig(
+    tokenizer=TokenizerConfig(model="nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
     output=OutputConfig(
-        dir=Path("./sft_data"),
-        format=JsonlOutputConfig(
-            transform=sft(input="instruction", output="response"),
-        ),
+        dir=Path("./output"),
+        format=BinIdxOutputConfig(num_shards=64),
     ),
 )
 
-result = last_mile_process(blend, config)
+result = run_data_prep(config, blend=blend)
 ```
 
 ## Output Formats
@@ -506,32 +529,40 @@ from nemotron.data_prep.formats.transforms import (
 
 ## API Reference
 
-### Main Functions
+### Recipe Entry Points
 
 | Function | Description |
 |----------|-------------|
-| `run_data_prep(config)` | High-level entry point for tokenization |
-| `last_mile_process(blend, config)` | Low-level entry point with format dispatch |
-| `tokenize(blend, config)` | Deprecated alias for `last_mile_process` |
+| `run_pretrain_pipeline(blend, output_dir, tokenizer, num_shards, ...)` | Tokenize to Megatron bin/idx format |
+| `run_sft_pipeline(blend, output_dir, tokenizer, num_shards, ...)` | Chat SFT to packed Parquet format |
+| `run_data_prep(config, blend=...)` | Format-based dispatch (compatibility shim) |
+
+### Core Processing Functions
+
+| Function | Description |
+|----------|-------------|
+| `process_binidx_shard_core(...)` | Tokenize shard to bin/idx (alias: `process_binidx_shard_files_core`) |
+| `process_jsonl_shard_core(...)` | Transform and write JSONL records |
+| `process_chat_sft_spool_core(...)` | Tokenize chat messages to spool intermediate |
+| `process_chat_sft_parquet_core(...)` | Pack spool to Parquet output |
 
 ### Configuration Classes
 
 | Class | Description |
 |-------|-------------|
-| `DataPrepConfig` | High-level configuration for `run_data_prep` |
-| `PipelineConfig` | Low-level pipeline configuration |
-| `TokenizerConfig` | Tokenizer settings (model, add_bos, add_eos) |
+| `PipelineConfig` | Pipeline configuration (alias: `DataPrepConfig`) |
+| `TokenizerConfig` | Tokenizer settings (model, type, add_bos, add_eos) |
 | `OutputConfig` | Output directory and format |
 | `BinIdxOutputConfig` | Tokenized binary format options |
 | `JsonlOutputConfig` | JSONL format options |
-| `PackedOutputConfig` | Packed sequence format options |
+| `ChatSftOutputConfig` | Chat SFT with loss masking options |
+| `ObservabilityConfig` | W&B and pipeline logging settings |
 
 ### Result Classes
 
 | Class | Description |
 |-------|-------------|
-| `PipelineResult` | Complete pipeline result with all splits |
-| `SplitResult` | Result for a single split (train/valid/test) |
+| `FormatResult` | Pipeline result with run metadata, data paths, and statistics |
 | `DataBlendsArtifact` | Artifact with blend.json path and metrics |
 
 ## Compression
@@ -565,4 +596,5 @@ Optional dependencies:
 - [Execution through NeMo-Run](./nemo-run.md) — Job orchestration and execution profiles
 - [CLI Framework](./cli.md) — CLI building and recipe decorators
 - [Artifact Lineage](./artifacts.md) — W&B artifact system and lineage tracking
+- [Xenna Observability](./xenna-observability.md) — Real-time W&B logging for xenna pipelines
 - [Nano3 Recipe](./nano3/README.md) — Complete training recipe example

@@ -14,6 +14,8 @@
 
 """Pipeline configuration models."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,6 +43,9 @@ class TokenizerConfig:
         model: HuggingFace model name/path, SentencePiece model path,
                or tiktoken encoding name
         type: Tokenizer backend (huggingface, sentencepiece, tiktoken)
+        revision: Git revision/SHA for HuggingFace models. If not specified,
+                  the latest revision is resolved and used. Specifying a revision
+                  ensures deterministic caching across runs.
         add_bos: Prepend BOS token to each document
         add_eos: Append EOS token to each document
         trust_remote_code: Allow custom code in HF tokenizers
@@ -48,6 +53,7 @@ class TokenizerConfig:
 
     model: str
     type: Literal["huggingface", "sentencepiece", "tiktoken"] = "huggingface"
+    revision: str | None = None
     add_bos: bool = False
     add_eos: bool = True
     trust_remote_code: bool = False
@@ -183,11 +189,19 @@ class ChatSftOutputConfig:
     used_in_filter: str | None = None
     used_in_field: str = "used_in"
 
+    packed_storage: Literal["legacy_npy_pickle", "parquet"] = "legacy_npy_pickle"
+    parquet_row_group_size: int = 1000
+    parquet_compression: Literal["zstd", "snappy", "gzip", "none"] = "zstd"
+
     def __post_init__(self) -> None:
         if self.shard_size is not None and self.num_shards is not None:
             raise ValueError("Specify either shard_size or num_shards, not both")
         if self.pack_size <= 0:
             raise ValueError(f"pack_size must be positive, got {self.pack_size}")
+        if self.parquet_row_group_size <= 0:
+            raise ValueError(
+                f"parquet_row_group_size must be positive, got {self.parquet_row_group_size}"
+            )
 
 
 # Union type for all output formats
@@ -195,69 +209,50 @@ OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | PackedOutputConfig | Cha
 
 
 @dataclass(frozen=True)
-class XennaConfig:
-    """Configuration for Xenna pipeline execution.
+class HfDownloadConfig:
+    """HuggingFace download stage settings.
 
     Attributes:
-        max_concurrent_downloads: Maximum parallel HuggingFace file downloads
-        max_shard_workers: Maximum workers for shard processing stage.
-            Each worker uses ~4GB memory. Set based on node memory.
-            None means auto-scale (cosmos-xenna default).
-        wandb_log_downloads: Log download progress to wandb
-        wandb_log_pipeline_stats: Log pipeline stats (actors, queues, progress) to wandb
-        wandb_download_log_interval_sec: Interval for download progress logging
-        hf_download_timeout_sec: Timeout for HuggingFace downloads
-        hf_download_max_retries: Max retries for HuggingFace downloads
-        pipeline_logging_interval_s: Interval for pipeline stats logging
+        max_concurrent: Maximum parallel HuggingFace file downloads
+        timeout_sec: Timeout for HuggingFace downloads
+        max_retries: Max retries for HuggingFace downloads
     """
 
-    max_concurrent_downloads: int = 64
-    max_shard_workers: int | None = None
-    wandb_log_downloads: bool = False
-    wandb_log_pipeline_stats: bool = False
-    wandb_download_log_interval_sec: int = 30
-    hf_download_timeout_sec: int = 300
-    hf_download_max_retries: int = 3
-    pipeline_logging_interval_s: int = 30
+    max_concurrent: int = 64
+    timeout_sec: int = 300
+    max_retries: int = 3
 
 
 @dataclass(frozen=True)
-class RayDataConfig:
-    """Configuration for Ray Data shard-task execution.
-
-    These settings map directly to Ray Data's ActorPoolStrategy and
-    map_batches parameters, providing explicit control over resource usage.
-
-    When enabled, uses Ray Data's streaming executor for shard processing
-    instead of manual actor pool management. Benefits include:
-    - Automatic actor lifecycle management (no leaked actors)
-    - Integrated backpressure with Ray's resource manager
-    - Explicit CPU accounting per actor
+class ObservabilityConfig:
+    """Pipeline observability settings.
 
     Attributes:
-        enabled: Enable Ray Data execution (vs legacy manual actors)
-        min_actors: Minimum actors to keep alive (warm pool)
-        max_actors: Maximum actors. None means use all available CPUs.
-        cpus_per_actor: CPUs allocated per actor (explicit accounting)
-        max_tasks_in_flight_per_actor: Pipelining depth to reduce scheduling
-            bubbles and keep actors fed. Note: does not by itself parallelize
-            a single actor; true I/O latency hiding requires either more actors
-            (with fractional num_cpus) or async internal concurrency.
-        max_concurrent_downloads: Maximum parallel HuggingFace file downloads
-            during the pre-download phase. Higher values increase throughput
-            but may overwhelm HF servers or local network. Default: 64.
-        cleanup_hf_cache: If True, delete the HuggingFace cache directory
-            after processing completes. Useful for one-off jobs where cache
-            isn't needed. Default: False.
+        wandb_log_downloads: Log download progress to wandb
+        wandb_log_pipeline_stats: Log pipeline stats (actors, queues, progress) to wandb
+        wandb_log_plan_table: Log plan table to wandb showing datasets and processing status
+        wandb_log_progress_table: Log per-dataset progress table to wandb periodically
+        wandb_progress_table_interval_s: Interval for progress table updates (default 5 min)
+        wandb_download_log_interval_sec: Interval for download progress logging
+        pipeline_logging_interval_s: Interval for pipeline stats logging
+        pipeline_stats_jsonl_path: Optional path to write pipeline stats as JSONL.
+            If set, appends one JSON object per stats callback invocation.
+            Should be a local filesystem path (append semantics may not work on cloud storage).
+        wandb_consolidated_charts_only: When True (default), skip logging per-stage scalar
+            metrics to WandB (e.g., pipeline/stage/{stage}/...). Stage-level visualization
+            should come from consolidated line_series charts in WandbStatsHook instead.
+            Set to False to restore per-stage scalar metric logging.
     """
 
-    enabled: bool = False
-    min_actors: int = 2
-    max_actors: int | None = None  # None = use all available CPUs
-    cpus_per_actor: float = 1.0
-    max_tasks_in_flight_per_actor: int = 2
-    max_concurrent_downloads: int = 64
-    cleanup_hf_cache: bool = False
+    wandb_log_downloads: bool = False
+    wandb_log_pipeline_stats: bool = True
+    wandb_log_plan_table: bool = True
+    wandb_log_progress_table: bool = True
+    wandb_progress_table_interval_s: int = 300
+    wandb_download_log_interval_sec: int = 30
+    pipeline_logging_interval_s: int = 30
+    pipeline_stats_jsonl_path: str | None = None
+    wandb_consolidated_charts_only: bool = True
 
 
 @dataclass(frozen=True)
@@ -314,20 +309,22 @@ class PerSplitConfig:
 class PipelineConfig:
     """Complete pipeline configuration.
 
+    All pipelines execute via cosmos-xenna. Format-specific pipeline configs
+    are derived from this config using the from_pipeline_config() class methods.
+
     Attributes:
         output: Output settings
-        tokenizer: Tokenizer settings (required for binidx/packed formats, optional for jsonl)
+        tokenizer: Tokenizer settings (required for binidx/chat_sft formats, optional for jsonl)
         sample: Shard sampling spec ("10%", "5", or None for all)
         sample_seed: Random seed for sampling
         force: Force new run (ignore cached results)
         split: Split ratio for single-blend mode (e.g., "99990,8,2"). Deprecated.
         per_split: Per-split output configuration for Megatron-Bridge per_split_data_args_path
-        ray_data: Ray Data execution configuration. When enabled and ray_data.enabled=True,
-            uses Ray Data's ActorPoolStrategy for shard processing instead of manual actors.
         console_mode: Console output mode ('rich' or 'simple')
         simple_log_interval_sec: Interval in seconds for simple mode status updates
-        execution_engine: Execution backend ("ray" or "xenna")
-        max_concurrent_downloads: Max parallel HF downloads (used by Xenna path)
+        download: HuggingFace download settings
+        observability: Xenna observability settings
+        max_workers: Maximum workers for shard processing. None means auto-scale.
     """
 
     output: OutputConfig
@@ -337,34 +334,54 @@ class PipelineConfig:
     force: bool = False
     split: str | None = None  # Deprecated - use per_split instead
     per_split: PerSplitConfig | None = None
-    ray_data: RayDataConfig | None = None
     console_mode: str = "simple"
     simple_log_interval_sec: int = 30
-    execution_engine: Literal["ray", "xenna"] = "ray"
-    xenna: XennaConfig | None = None
-    # Legacy fields for backward compatibility (prefer xenna.* instead)
-    max_concurrent_downloads: int = 64
-    wandb_log_downloads: bool = False
-    wandb_download_log_interval_sec: int = 30
-    hf_download_timeout_sec: int = 300
-    hf_download_max_retries: int = 3
-    num_actors: int | None = None
-    xenna_max_shard_workers: int | None = None  # Max workers for xenna shard processing
+    download: HfDownloadConfig = field(default_factory=HfDownloadConfig)
+    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
+    max_workers: int | None = None
 
-    def effective_xenna(self) -> XennaConfig:
-        """Get effective XennaConfig, merging legacy fields if xenna is not set."""
-        if self.xenna is not None:
-            return self.xenna
-        return XennaConfig(
-            max_concurrent_downloads=self.max_concurrent_downloads,
-            max_shard_workers=self.xenna_max_shard_workers,
-            wandb_log_downloads=self.wandb_log_downloads,
-            wandb_log_pipeline_stats=False,  # New field, no legacy equivalent
-            wandb_download_log_interval_sec=self.wandb_download_log_interval_sec,
-            hf_download_timeout_sec=self.hf_download_timeout_sec,
-            hf_download_max_retries=self.hf_download_max_retries,
-            pipeline_logging_interval_s=30,  # New field, default
-        )
+
+# Alias for clarity - DataPrepConfig is the preferred name in user-facing code
+DataPrepConfig = PipelineConfig
+
+
+# ============================================================================
+# Format Result (returned by per-format run() methods)
+# ============================================================================
+
+
+@dataclass
+class FormatResult:
+    """Result from running a format-specific pipeline.
+
+    This is the internal result type returned by *PipelineConfig.run().
+    The public API uses PipelineResult which is built from FormatResult(s).
+
+    Attributes:
+        run_hash: Deterministic hash identifying this run configuration
+        run_dir: Path to the runs/{run_hash} directory
+        output_dir: User-facing output root directory
+        num_shards: Number of shards produced
+        data_paths: Megatron-Bridge format ["weight", "prefix", ...]
+        dataset_stats: Per-dataset statistics {name: {tokens, sequences, ...}}
+        from_cache: True if all results were served from cache
+        total_tokens: Total tokens across all datasets (0 for non-tokenized formats)
+        total_sequences: Total sequences/records across all datasets
+    """
+
+    run_hash: str
+    run_dir: str
+    output_dir: Path
+    num_shards: int
+    data_paths: list[str]
+    dataset_stats: dict[str, dict]
+    from_cache: bool
+    total_tokens: int = 0
+    total_sequences: int = 0
+
+
+# NOTE: PretrainPipelineConfig, JsonlPipelineConfig, and ChatSftPipelineConfig have been
+# removed as part of xenna-native migration. Use recipes/pretrain.py and recipes/sft.py instead.
 
 
 # ============================================================================

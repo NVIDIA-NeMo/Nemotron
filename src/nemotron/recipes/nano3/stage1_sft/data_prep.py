@@ -17,24 +17,24 @@
 """Data preparation for Nano3 SFT stage.
 
 Applies chat templates to OpenAI-format messages, tokenizes with role-based
-loss masking, and outputs packed .npy files compatible with GPTSFTPackedDataset.
+loss masking, packs sequences, and outputs packed Parquet shards using the
+3-stage pipeline: SftPlanStage → DownloadStage → PackedSftParquetStage.
 
 Output structure (Megatron-Bridge compatible):
     output_dir/
-        training_{pack_size}.npy    # All training data concatenated
-        validation_{pack_size}.npy  # All validation data concatenated
-        test_{pack_size}.npy        # All test data concatenated
-        {pack_size}_metadata.jsonl  # Megatron-Bridge compatible packing metadata
-        metadata.json               # Nemotron metadata with split info
+        blend.json                  # Per-split blend {"train": [...], "valid": [...], "test": [...]}
+        runs/{run_hash}/            # Run directory
+            datasets/{name}/{hash}/ # Per-dataset outputs
+                shard_000000.parquet
+                ...
 
-Compatible with Megatron-Bridge's FinetuningDatasetConfig with PackedSequenceSpecs.
+Compatible with Megatron-Bridge's FinetuningDatasetConfig with packed Parquet shards.
 
 Pipeline:
 1. Apply nano3 chat template → role-labeled chunks
-2. Tokenize chunks → input_ids
-3. Build loss_mask (0=system/user, 1=assistant)
-4. Pack sequences → sharded .npy files
-5. Concatenate shards and split by ratio → single .npy per split
+2. Tokenize chunks → input_ids + loss_mask
+3. Pack sequences → Parquet shards with seq_start_id
+4. Distribute shards to train/valid/test splits
 
 Usage:
     # With default config
@@ -52,28 +52,24 @@ Usage:
 
 from __future__ import annotations
 
-import glob
 import json
 import logging
 import os
 import sys
-from dataclasses import dataclass, field
+import time
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-import numpy as np
-
-from nemotron.data_prep import (
-    ChatSftOutputConfig,
-    DataBlend,
-    OutputConfig,
-    PipelineConfig,
-    TokenizerConfig,
-    last_mile_process,
+from nemotron.data_prep.blend import DataBlend
+from nemotron.data_prep.config import ObservabilityConfig, TokenizerConfig
+from nemotron.data_prep.utils.splits import distribute_shards_to_splits
+from nemotron.data_prep.recipes import run_sft_pipeline
+from nemotron.data_prep.stages import (
+    DownloadStageConfig,
+    PackedSftParquetStageConfig,
+    SftPlanStageConfig,
 )
-from nemotron.data_prep.config import DatasetConfig
-from nemotron.data_prep.discovery import get_dataset_metadata
 from nemotron.kit import SFTDataArtifact, print_step_complete
-from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
     init_wandb_from_env,
@@ -88,7 +84,7 @@ logger = logging.getLogger(__name__)
 STAGE_PATH = Path(__file__).parent
 
 # Default config path relative to this file
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep" / "default.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run (avoids writing to code dir)
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
@@ -102,26 +98,54 @@ class SFTDataPrepConfig:
     """SFT data preparation config using chat template.
 
     Applies chat templates to OpenAI-format messages, tokenizes with role-based
-    loss masking, and outputs single packed .npy files per split (training.npy,
-    validation.npy, test.npy) compatible with Megatron-Bridge's FinetuningDatasetConfig.
+    loss masking, and outputs packed Parquet shards with per-split blend.json
+    compatible with Megatron-Bridge's FinetuningDatasetConfig.
+
+    Structure:
+        - Data: blend_path, output_dir, num_shards
+        - Tokenizer: nested TokenizerConfig
+        - Packing: pack_size, algorithm, seed, parquet_*
+        - Split ratios: train_ratio, valid_ratio, test_ratio
+        - Chat: chat_template, messages_field, tools_field, used_in_*
+        - Processing: max_doc_tokens
+        - Stage configs: plan, download, tokenization
+        - Pipeline config: observability
+        - Run control: sample, sample_seed, force, config_name
     """
 
-    blend_path: Path = field(default_factory=lambda: STAGE_PATH / "config/data_blend_raw.json")
+    # Data paths
+    blend_path: Path = field(default_factory=lambda: STAGE_PATH / "config/data_prep/data_blend_raw.json")
     """Path to data blend JSON file"""
 
     output_dir: Path = field(default_factory=lambda: _OUTPUT_BASE / "stage1_sft")
-    """Output directory for packed .npy data"""
+    """Output directory for packed Parquet data"""
 
-    # Tokenizer
-    tokenizer_model: str = "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
-    """HuggingFace tokenizer model name"""
+    # Sharding
+    num_shards: int = 128
+    """Number of output shards for parallel loading"""
+
+    # Tokenizer config (nested)
+    tokenizer: TokenizerConfig = field(default_factory=lambda: TokenizerConfig(
+        model="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+    ))
+    """Tokenizer configuration"""
 
     # Packing
     pack_size: int = 4096
     """Maximum tokens per packed sequence"""
 
-    shard_size: str = "256MB"
-    """Target size per shard (e.g., '256MB', '1GB')"""
+    algorithm: str = "first_fit_shuffle"
+    """Packing algorithm: 'first_fit_decreasing', 'first_fit_shuffle', 'concatenative'"""
+
+    seed: int | None = None
+    """Packing seed (defaults to sample_seed when None)"""
+
+    # Parquet output options
+    parquet_row_group_size: int = 1000
+    """Parquet row group size (bins per group)"""
+
+    parquet_compression: str = "zstd"
+    """Parquet compression codec: 'zstd', 'snappy', 'gzip', 'none'"""
 
     # Split ratios (must sum to 1.0)
     train_ratio: float = 0.98
@@ -153,14 +177,32 @@ class SFTDataPrepConfig:
     max_doc_tokens: int | None = None
     """Truncate sequences longer than this"""
 
+    # Run control
     sample: int | None = None
     """Limit rows per dataset (for quick tests)"""
 
-    num_actors: int | None = None
-    """Ray actors for parallel processing (None = auto)"""
+    sample_seed: int = 42
+    """Random seed for sampling"""
 
     force: bool = False
     """Force new run, ignoring cache"""
+
+    config_name: str = "default"
+    """Config name used for artifact naming"""
+
+    # Stage configs (nested)
+    plan: SftPlanStageConfig = field(default_factory=SftPlanStageConfig)
+    """Configuration for planning stage"""
+
+    download: DownloadStageConfig = field(default_factory=DownloadStageConfig)
+    """Configuration for download stage"""
+
+    tokenization: PackedSftParquetStageConfig = field(default_factory=PackedSftParquetStageConfig)
+    """Configuration for tokenization stage"""
+
+    # Pipeline-level config
+    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
+    """Pipeline observability settings"""
 
     def __post_init__(self) -> None:
         # Ensure paths are Path objects
@@ -182,335 +224,125 @@ class SFTDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def _concatenate_and_split_npy(
-    shards_dir: Path,
-    output_dir: Path,
-    train_ratio: float,
-    valid_ratio: float,
-    test_ratio: float,
-    pack_size: int,
-    seed: int = 42,
-    data_paths: list[str] | None = None,
-) -> dict:
-    """Load all shards, concatenate, split by ratio, and save single files per split.
-
-    Args:
-        shards_dir: Directory containing shard_*.npy files from pipeline.
-        output_dir: Directory to write training.npy, validation.npy, test.npy.
-        train_ratio: Fraction of data for training.
-        valid_ratio: Fraction of data for validation.
-        test_ratio: Fraction of data for test.
-        pack_size: Pack size (for metadata).
-        seed: Random seed for shuffling before split.
-        data_paths: Optional list of weight/path pairs from PipelineResult.
-            Format: ["weight", "path_prefix", ...] where path_prefix is the
-            shard path prefix (without the _XXXXXX.npy suffix).
-
-    Returns:
-        Dict with split statistics: {
-            "train": {"sequences": N, "path": "..."},
-            "valid": {"sequences": N, "path": "..."},
-            "test": {"sequences": N, "path": "..."},
-            "total_sequences": N,
-        }
-    """
-    # Find all shard files
-    shard_files: list[str] = []
-
-    if data_paths:
-        # Extract shard prefixes from data_paths (format: ["weight", "path", ...])
-        # and find all matching shard files
-        for i in range(1, len(data_paths), 2):
-            prefix = data_paths[i]
-            # Find all shard files matching this prefix
-            pattern = f"{prefix}_*.npy"
-            matching = sorted(glob.glob(pattern))
-            shard_files.extend(matching)
-
-    if not shard_files:
-        # Fallback: try recursive search under shards_dir
-        shard_pattern = str(shards_dir / "**" / "shard_*.npy")
-        shard_files = sorted(glob.glob(shard_pattern, recursive=True))
-
-    if not shard_files:
-        raise ValueError(f"No shard files found matching {shard_pattern}")
-
-    logger.info(f"Loading {len(shard_files)} shard files from {shards_dir}")
-
-    # Load and concatenate all shards
-    all_sequences = []
-    for shard_file in shard_files:
-        shard_data = np.load(shard_file, allow_pickle=True)
-        all_sequences.extend(shard_data)
-        logger.debug(f"Loaded {len(shard_data)} sequences from {shard_file}")
-
-    total_sequences = len(all_sequences)
-    logger.info(f"Total sequences loaded: {total_sequences}")
-
-    # Shuffle before splitting (for reproducibility)
-    rng = np.random.default_rng(seed)
-    indices = np.arange(total_sequences)
-    rng.shuffle(indices)
-
-    # Calculate split boundaries
-    train_end = int(total_sequences * train_ratio)
-    valid_end = train_end + int(total_sequences * valid_ratio)
-
-    # Split indices
-    train_indices = indices[:train_end]
-    valid_indices = indices[train_end:valid_end]
-    test_indices = indices[valid_end:]
-
-    # Extract sequences for each split
-    train_sequences = [all_sequences[i] for i in train_indices]
-    valid_sequences = [all_sequences[i] for i in valid_indices]
-    test_sequences = [all_sequences[i] for i in test_indices]
-
-    # Ensure output directory exists and resolve to absolute path
-    # This is critical for W&B artifacts - paths must be absolute for remote access
-    output_dir = output_dir.resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save each split as a single .npy file with pack_size in filename
-    # Format: {split}_{pack_size}.npy (Megatron-Bridge compatible)
-    train_path = output_dir / f"training_{pack_size}.npy"
-    valid_path = output_dir / f"validation_{pack_size}.npy"
-    test_path = output_dir / f"test_{pack_size}.npy"
-
-    np.save(train_path, train_sequences, allow_pickle=True)
-    logger.info(f"Saved {len(train_sequences)} training sequences to {train_path}")
-
-    np.save(valid_path, valid_sequences, allow_pickle=True)
-    logger.info(f"Saved {len(valid_sequences)} validation sequences to {valid_path}")
-
-    np.save(test_path, test_sequences, allow_pickle=True)
-    logger.info(f"Saved {len(test_sequences)} test sequences to {test_path}")
-
-    # Compute packing statistics for Megatron-Bridge compatible metadata
-    def compute_packing_stats(sequences: list) -> dict:
-        """Compute packing statistics for a list of sequences."""
-        if not sequences:
-            return {
-                "max_samples_per_bin": 0,
-                "dataset_max_seqlen": 0,
-                "packing_factor": 0.0,
-                "packing_efficiency": 0.0,
-                "pack_size": pack_size,
-                "min_packed_seqlen": 0,
-            }
-        # Count samples per bin and sequence lengths
-        samples_per_bin = []
-        packed_seqlens = []
-        max_seqlen = 0
-        for seq in sequences:
-            num_samples = len(seq.get("seq_start_id", [1]))  # Default to 1 if no boundaries
-            samples_per_bin.append(num_samples)
-            seq_len = len(seq.get("input_ids", []))
-            packed_seqlens.append(seq_len)
-            # Track max sequence length across all sub-sequences
-            for i, start in enumerate(seq.get("seq_start_id", [0])):
-                if i + 1 < len(seq.get("seq_start_id", [])):
-                    end = seq["seq_start_id"][i + 1]
-                else:
-                    end = len(seq.get("input_ids", []))
-                max_seqlen = max(max_seqlen, end - start)
-
-        total_tokens = sum(packed_seqlens)
-
-        packing_factor = round(sum(samples_per_bin) / len(sequences), 2) if sequences else 0.0
-        packing_efficiency = (
-            round(total_tokens / (len(sequences) * pack_size) * 100, 2) if sequences else 0.0
-        )
-        return {
-            "max_samples_per_bin": max(samples_per_bin) if samples_per_bin else 0,
-            "dataset_max_seqlen": max_seqlen,
-            "packing_factor": packing_factor,
-            "packing_efficiency": packing_efficiency,
-            "pack_size": pack_size,
-            "min_packed_seqlen": min(packed_seqlens) if packed_seqlens else 0,
-        }
-
-    # Compute stats for each split
-    train_stats = compute_packing_stats(train_sequences)
-    valid_stats = compute_packing_stats(valid_sequences)
-    test_stats = compute_packing_stats(test_sequences)
-
-    # Write Megatron-Bridge compatible metadata.jsonl
-    # Format: JSON list with one entry per dataset (train, valid, test)
-    mb_metadata_path = output_dir / f"{pack_size}_metadata.jsonl"
-    mb_metadata = [train_stats, valid_stats, test_stats]
-    with open(mb_metadata_path, "w") as f:
-        json.dump(mb_metadata, f, indent=2)
-    logger.info(f"Saved Megatron-Bridge compatible metadata to {mb_metadata_path}")
-
-    # Write nemotron metadata.json (backward compatible)
-    metadata = {
-        "pack_size": pack_size,
-        "seed": seed,
-        "splits": {
-            "train": {"sequences": len(train_sequences), "path": str(train_path), **train_stats},
-            "valid": {"sequences": len(valid_sequences), "path": str(valid_path), **valid_stats},
-            "test": {"sequences": len(test_sequences), "path": str(test_path), **test_stats},
-        },
-        "total_sequences": total_sequences,
-        "train_ratio": train_ratio,
-        "valid_ratio": valid_ratio,
-        "test_ratio": test_ratio,
-    }
-
-    metadata_path = output_dir / "metadata.json"
-    with open(metadata_path, "w") as f:
-        json.dump(metadata, f, indent=2)
-    logger.info(f"Saved metadata to {metadata_path}")
-
-    return {
-        "train": {"sequences": len(train_sequences), "path": str(train_path)},
-        "valid": {"sequences": len(valid_sequences), "path": str(valid_path)},
-        "test": {"sequences": len(test_sequences), "path": str(test_path)},
-        "total_sequences": total_sequences,
-        "training_path": str(train_path),
-        "validation_path": str(valid_path),
-        "test_path": str(test_path),
-        "metadata_path": str(mb_metadata_path),
-    }
-
-
 def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
-    """Run SFT data preparation with chat template.
-
-    Processes data through pipeline to generate shards, then concatenates
-    and splits into single .npy files per split (training.npy, validation.npy, test.npy).
+    """Run SFT data preparation pipeline.
 
     Args:
         cfg: SFT data prep configuration.
 
     Returns:
-        SFTDataArtifact with paths to packed data.
+        SFTDataArtifact with paths to packed Parquet data.
     """
-    import shutil
-    import time
-
     start_time = time.time()
 
     # Add stage-specific tags to wandb run
     add_wandb_tags(["data-prep", "sft"])
 
-    # Load data blend
+    # Log config to W&B
+    try:
+        import wandb
+
+        if wandb.run is not None:
+            config_dict = asdict(cfg)
+            for key, value in config_dict.items():
+                if isinstance(value, Path):
+                    config_dict[key] = str(value)
+            wandb.config.update(config_dict)
+    except ImportError:
+        pass
+
+    # Load blend and validate
     blend = DataBlend.load(cfg.blend_path)
+    if blend.datasets is None:
+        raise ValueError(
+            f"Nano3 SFT expects single-blend format (datasets list), "
+            f"but got per-split blend from {cfg.blend_path}"
+        )
 
-    # Auto-detect num_actors from CPU count
-    num_actors = cfg.num_actors
-    if num_actors is None:
-        cpu_count = os.cpu_count() or 4
-        num_actors = max(2, min(32, cpu_count * 3 // 4))
+    # Sampling mode: use single shard for exact sample count
+    num_shards_effective = 1 if cfg.sample is not None else cfg.num_shards
 
-    # Use a temporary shards directory for pipeline output
-    shards_dir = cfg.output_dir / "_shards"
+    # Determine packing seed (defaults to sample_seed)
+    packing_seed = cfg.seed if cfg.seed is not None else cfg.sample_seed
 
-    # Build pipeline config with ChatSftOutputConfig (no per-split config)
-    format_config = ChatSftOutputConfig(
-        shard_size=cfg.shard_size,
-        pack_size=cfg.pack_size,
+    # Run SFT pipeline
+    logger.info("Running SFT pipeline...")
+    format_result = run_sft_pipeline(
+        blend=blend,
+        output_dir=cfg.output_dir,
+        tokenizer=cfg.tokenizer,
+        num_shards=num_shards_effective,
+        messages_field_default=cfg.messages_field,
+        tools_field_default=cfg.tools_field,
         chat_template=cfg.chat_template,
-        messages_field=cfg.messages_field,
-        tools_field=cfg.tools_field,
         used_in_filter=cfg.used_in_filter,
         used_in_field=cfg.used_in_field,
-    )
-
-    pipeline_config = PipelineConfig(
-        output=OutputConfig(
-            dir=shards_dir,
-            format=format_config,
-            max_doc_tokens=cfg.max_doc_tokens,
-            max_rows=cfg.sample,
-        ),
-        tokenizer=TokenizerConfig(model=cfg.tokenizer_model),
-        num_actors=num_actors,
-        force=cfg.force,
-        # No per_split config - we handle splitting ourselves
-    )
-
-    # Run processing pipeline to generate shards
-    logger.info("Running pipeline to generate shards...")
-    result = last_mile_process(blend, pipeline_config)
-
-    # Concatenate shards and split by ratio
-    # Extract data_paths from pipeline result to locate actual shard files
-    data_paths = result.splits["all"].data_paths if "all" in result.splits else None
-    logger.info("Concatenating shards and splitting by ratio...")
-    split_stats = _concatenate_and_split_npy(
-        shards_dir=shards_dir,
-        output_dir=cfg.output_dir,
-        train_ratio=cfg.train_ratio,
-        valid_ratio=cfg.valid_ratio,
-        test_ratio=cfg.test_ratio,
         pack_size=cfg.pack_size,
-        data_paths=data_paths,
+        algorithm=cfg.algorithm,
+        seed=packing_seed,
+        parquet_row_group_size=cfg.parquet_row_group_size,
+        parquet_compression=cfg.parquet_compression,
+        max_doc_tokens=cfg.max_doc_tokens,
+        max_rows=cfg.sample,
+        sample_seed=cfg.sample_seed,
+        force=cfg.force,
+        # Stage configs
+        plan_stage=cfg.plan,
+        download_stage=cfg.download,
+        tokenization_stage=cfg.tokenization,
+        # Pipeline config
+        observability=cfg.observability,
     )
 
-    # Clean up intermediate shards directory
-    if shards_dir.exists():
-        logger.info(f"Cleaning up intermediate shards directory: {shards_dir}")
-        shutil.rmtree(shards_dir)
+    # Convert ratios to shard counts for per-split distribution
+    total_shards = format_result.num_shards
+    test_shards = max(1, int(round(total_shards * cfg.test_ratio)))
+    valid_shards = max(1, int(round(total_shards * cfg.valid_ratio)))
+
+    # Ensure we don't exceed total shards
+    if test_shards + valid_shards >= total_shards:
+        test_shards = max(1, total_shards // 10)
+        valid_shards = max(1, total_shards // 10)
+
+    # Generate per-split blend.json
+    blend_data = distribute_shards_to_splits(
+        data_paths=format_result.data_paths,
+        num_shards=format_result.num_shards,
+        valid_shards=valid_shards,
+        test_shards=test_shards,
+        seed=packing_seed,
+    )
+
+    # Ensure output directory exists
+    cfg.output_dir.mkdir(parents=True, exist_ok=True)
+    blend_json_path = cfg.output_dir / "blend.json"
+    with open(blend_json_path, "w") as f:
+        json.dump(blend_data, f, indent=2)
+
+    logger.info(f"Wrote per-split blend.json to {blend_json_path}")
 
     elapsed_sec = time.time() - start_time
 
-    # Collect source datasets with metadata for lineage tracking
-    source_datasets: list[InputDatasetInfo] = []
-    seen_keys: set[str] = set()
-    for split_datasets in blend.splits.values():
-        for dataset in split_datasets:
-            # Use path+subset as key since same path can have different subsets
-            key = f"{dataset.path}|{dataset.subset or ''}"
-            if key not in seen_keys:
-                seen_keys.add(key)
-                ds_config = DatasetConfig(
-                    name=dataset.name,
-                    path=dataset.path,
-                    split=dataset.split,
-                    subset=dataset.subset,
-                    text_field=dataset.text_field,
-                )
-                hf_metadata = get_dataset_metadata(ds_config)
-                source_datasets.append(
-                    InputDatasetInfo(
-                        uri=dataset.path,
-                        name=dataset.name,
-                        weight=dataset.weight,
-                        split=dataset.split,
-                        subset=dataset.subset,
-                        text_field=dataset.text_field,
-                        num_rows=hf_metadata.num_rows,
-                        size_bytes=hf_metadata.size_bytes,
-                    )
-                )
+    # Build artifact using classmethod
+    sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""
+    artifact_name = f"nano3/sft/data{sample_suffix}"
 
-    # Create tokenizer URI for lineage tracking
-    tok_uri = tokenizer_to_uri(cfg.tokenizer_model)
-
-    # Build output artifact - path points to output_dir (contains training_{pack_size}.npy, etc.)
-    # Use resolved absolute path for W&B artifact storage
-    artifact = SFTDataArtifact(
-        path=cfg.output_dir.resolve(),
-        total_tokens=result.total_tokens,
-        total_sequences=split_stats["total_sequences"],
-        elapsed_sec=elapsed_sec,
+    artifact = SFTDataArtifact.from_result(
+        format_result=format_result,
+        blend=blend,
+        tokenizer_model=cfg.tokenizer.model,
+        blend_json_path=blend_json_path,
         pack_size=cfg.pack_size,
-        source_datasets=source_datasets,
-        tokenizer_uri=tok_uri,
-        training_path=split_stats["training_path"],
-        validation_path=split_stats["validation_path"],
-        test_path=split_stats["test_path"],
-        metadata_path=split_stats["metadata_path"],
+        messages_field_default=cfg.messages_field,
+        elapsed_sec=elapsed_sec,
+        name=artifact_name,
     )
-    artifact.name = f"nano3/sft/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     artifact.save()
 
-    # Mark wandb run as successful
+    # Finish W&B and print completion
     finish_wandb(exit_code=0)
-
     print_step_complete(data_prep=artifact)
+
     return artifact
 
 
@@ -521,7 +353,7 @@ def main(cfg: SFTDataPrepConfig | None = None) -> SFTDataArtifact:
         cfg: Config from CLI framework, or None when run directly as script.
 
     Returns:
-        SFTDataArtifact with paths to packed data.
+        SFTDataArtifact with paths to packed Parquet data.
     """
     if cfg is None:
         # Called directly as script - parse config ourselves

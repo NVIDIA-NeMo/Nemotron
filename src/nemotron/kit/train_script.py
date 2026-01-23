@@ -221,8 +221,16 @@ def _dict_to_dataclass(data: dict[str, Any], cls: type[T]) -> T:
     Returns:
         Dataclass instance.
     """
+    import typing
+
     if not is_dataclass(cls):
         return data  # type: ignore
+
+    # Use get_type_hints to resolve forward references and string annotations
+    try:
+        type_hints = typing.get_type_hints(cls)
+    except Exception:
+        type_hints = {}
 
     kwargs = {}
     for f in fields(cls):
@@ -231,16 +239,19 @@ def _dict_to_dataclass(data: dict[str, Any], cls: type[T]) -> T:
 
         value = data[f.name]
 
+        # Get resolved type (prefer type_hints, fallback to f.type)
+        field_type = type_hints.get(f.name, f.type)
+
         # Handle nested dataclasses
-        if is_dataclass(f.type) and isinstance(value, dict):
-            value = _dict_to_dataclass(value, f.type)
+        if is_dataclass(field_type) and isinstance(value, dict):
+            value = _dict_to_dataclass(value, field_type)
         # Handle Path fields
-        elif f.type == Path and isinstance(value, str):
+        elif field_type == Path and isinstance(value, str):
             value = Path(value)
         # Handle Optional[Path]
-        elif hasattr(f.type, "__origin__"):
+        elif hasattr(field_type, "__origin__"):
             # Check for Optional[Path] = Union[Path, None]
-            args = getattr(f.type, "__args__", ())
+            args = getattr(field_type, "__args__", ())
             if Path in args and isinstance(value, str):
                 value = Path(value)
 

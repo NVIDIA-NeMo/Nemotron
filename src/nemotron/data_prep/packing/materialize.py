@@ -95,4 +95,80 @@ def materialize_packed_samples(
         }
 
 
-__all__ = ["materialize_packed_samples"]
+def materialize_bin_arrays(
+    *,
+    spool_reader: SequenceSpoolReader,
+    assignment: BinAssignment,
+    bin_id: int,
+    pack_size: int,
+    scratch_input_ids: np.ndarray,
+    scratch_loss_mask: np.ndarray,
+) -> tuple[int, np.ndarray]:
+    """Materialize a single bin directly to numpy arrays.
+
+    Avoids Python list conversions by writing into preallocated buffers.
+
+    Args:
+        spool_reader: Reader for tokenized sequence spool.
+        assignment: Bin assignment from packing algorithm.
+        bin_id: Which bin to materialize.
+        pack_size: Maximum packed sequence length.
+        scratch_input_ids: Preallocated buffer of shape (pack_size,).
+        scratch_loss_mask: Preallocated buffer of shape (pack_size,).
+
+    Returns:
+        packed_len: Actual length of packed tokens (excluding padding).
+        seq_start_id: Array of sequence START positions within the bin (int32).
+                      Invariant: seq_start_id[0] == 0 when non-empty, strictly increasing,
+                      and seq_start_id[-1] < packed_len.
+                      To get boundaries: list(seq_start_id) + [packed_len]
+    """
+    if pack_size <= 0:
+        raise ValueError(f"pack_size must be positive, got {pack_size}")
+    if scratch_input_ids.shape[0] < pack_size:
+        raise ValueError(
+            f"scratch_input_ids must have length >= pack_size, got {scratch_input_ids.shape[0]} < {pack_size}"
+        )
+    if scratch_loss_mask.shape[0] < pack_size:
+        raise ValueError(
+            f"scratch_loss_mask must have length >= pack_size, got {scratch_loss_mask.shape[0]} < {pack_size}"
+        )
+
+    seq_indices = assignment.bin_indices(int(bin_id))
+
+    # Zero scratch buffers (padding)
+    scratch_input_ids[:pack_size] = 0
+    scratch_loss_mask[:pack_size] = 0
+
+    pos = 0
+    seq_start_ids: list[int] = []
+
+    for seq_index in seq_indices:
+        input_ids_arr, loss_mask_arr = spool_reader.read_sequence(int(seq_index))
+
+        # Clamp per-seq length to pack_size first
+        seq_len = int(min(int(input_ids_arr.shape[0]), pack_size))
+        if pos + seq_len > pack_size:
+            seq_len = pack_size - pos
+
+        if seq_len <= 0:
+            break
+
+        seq_start_ids.append(pos)
+
+        scratch_input_ids[pos : pos + seq_len] = input_ids_arr[:seq_len]
+        scratch_loss_mask[pos : pos + seq_len] = loss_mask_arr[:seq_len]
+        pos += seq_len
+
+        if pos >= pack_size:
+            break
+
+    # Roll loss_mask by 1 for label alignment (same as materialize_packed_samples / builder)
+    if pos > 0:
+        scratch_loss_mask[1:pos] = scratch_loss_mask[: pos - 1].copy()
+        scratch_loss_mask[0] = 0
+
+    return pos, np.asarray(seq_start_ids, dtype=np.int32)
+
+
+__all__ = ["materialize_packed_samples", "materialize_bin_arrays"]

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 
 @dataclass
@@ -150,40 +150,10 @@ class SftShardWorkItem:
 
 
 @dataclass
-class JsonlDatasetWorkItem:
-    """
-    Input to JsonlPlanStage - one per dataset/split in a JSONL pipeline.
-
-    This work item carries all information needed for JsonlPlanStage to:
-    - Discover input files
-    - Create JSONL shard plan (without tokenizer resolution)
-    - Fan out to JsonlShardWorkItems
-    """
-
-    dataset_name: str
-    path: str
-    weight: float
-    split: str | None
-    subset: str | None
-    text_field: str
-
-    # Run context (set by driver)
-    run_hash: str
-    run_dir: str
-    config_hash: str
-
-    num_shards: int
-    compression: Literal["none", "zstd"] = "none"
-    max_rows: int | None = None
-    resolve_hf_placeholders: bool = False
-
-
-@dataclass
 class JsonlShardWorkItem:
     """Payload for JSONL shard processing."""
 
     dataset_name: str
-    plan_hash: str
     shard_index: int
     assignment: dict[str, Any]
     output_dir: str
@@ -194,11 +164,37 @@ class JsonlShardWorkItem:
     resolve_hf_placeholders: bool = False
 
 
+@dataclass
+class ChatSftShardWorkItem:
+    """Payload for ChatSFT shard processing."""
+
+    dataset_name: str
+    shard_index: int
+    assignment: dict[str, Any]
+    output_dir: str
+    receipts_dir: str
+    max_rows: int | None
+
+
+@dataclass
+class ChatSftSpoolWorkItem:
+    """Payload for ChatSFT SequenceSpool generation (tokenize-only)."""
+
+    dataset_name: str
+    shard_index: int
+    assignment: dict[str, Any]
+    output_dir: str
+    receipts_dir: str
+    spool_dir: str
+    max_rows: int | None
+
+
 __all__ = [
     "DatasetWorkItem",
     "ShardWorkItem",
     "SftDatasetWorkItem",
     "SftShardWorkItem",
-    "JsonlDatasetWorkItem",
     "JsonlShardWorkItem",
+    "ChatSftShardWorkItem",
+    "ChatSftSpoolWorkItem",
 ]

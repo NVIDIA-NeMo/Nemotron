@@ -29,7 +29,9 @@ from nemotron.kit.cli.recipe import recipe
     torchrun=False,
     ray=True,
     packager="code",
+    # Use --extra xenna so Ray's uv hook propagates cosmos-xenna to workers
+    run_command="uv run --extra xenna python {script} --config {config}",
 )
 def sft(ctx: typer.Context) -> None:
-    """Prepare data for SFT (packed .npy format)."""
+    """Prepare data for SFT (packed Parquet format)."""
     ...

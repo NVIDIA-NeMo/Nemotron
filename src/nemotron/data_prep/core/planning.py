@@ -18,10 +18,8 @@ import hashlib
 import heapq
 import json
 import logging
-import math
 import random
-from collections.abc import Callable
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,18 +38,6 @@ from nemotron.data_prep.utils.discovery import discover_input_files
 from nemotron.data_prep.utils.filesystem import read_json
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class PlanRequest:
-    """Inputs required to create a shard plan."""
-
-    dataset_config: DatasetConfig
-    num_shards: int
-    config_hash: str
-    tokenizer_config: InternalTokenizerConfig | None = None
-    output_config: InternalOutputConfig | None = None
-    transform_fingerprint: str | None = None
 
 
 def create_size_balanced_assignments(
@@ -94,73 +80,10 @@ def create_size_balanced_assignments(
         for i, file_info in enumerate(sorted_files):
             shard_idx = i % num_shards
             assignments[shard_idx].files.append(file_info)
-            # Still accumulate total_bytes even if sizes are 0 (for consistency)
-            assignments[shard_idx].total_bytes += file_info.size
-
-    # If more shards than files, redistribute with row-level splitting
-    if len(files) < num_shards and has_sizes:
-        assignments = _redistribute_with_row_splitting(sorted_files, num_shards)
 
     # Sort files within each shard by path for deterministic processing order
     for assignment in assignments:
         assignment.files.sort(key=lambda f: f.path)
-
-    return assignments
-
-
-def _redistribute_with_row_splitting(
-    sorted_files: list[FileInfo],
-    num_shards: int,
-) -> list[ShardAssignment]:
-    """Distribute files across shards using row-level modular splitting.
-
-    When there are fewer files than shards, each file is assigned to multiple
-    shards with row_modulus/row_remainder so each shard processes a disjoint
-    subset of rows.
-    """
-    total_bytes = sum(f.size for f in sorted_files)
-    assignments = [
-        ShardAssignment(shard_index=i, files=[], total_bytes=0) for i in range(num_shards)
-    ]
-
-    # Compute proportional shard count per file, ensuring at least 1 shard each
-    # and the total equals num_shards
-    raw_shares = []
-    for f in sorted_files:
-        share = f.size / total_bytes * num_shards if total_bytes > 0 else num_shards / len(sorted_files)
-        raw_shares.append(share)
-
-    # Allocate shards: floor first, then distribute remainders by largest fractional part
-    floor_shares = [max(1, int(math.floor(s))) for s in raw_shares]
-    remaining = num_shards - sum(floor_shares)
-
-    if remaining > 0:
-        # Distribute extra shards to files with largest fractional remainders
-        fractional_parts = [(raw_shares[i] - floor_shares[i], i) for i in range(len(sorted_files))]
-        fractional_parts.sort(key=lambda x: (-x[0], x[1]))
-        for j in range(remaining):
-            floor_shares[fractional_parts[j][1]] += 1
-    elif remaining < 0:
-        # Over-allocated due to max(1,...) floors — trim from smallest files
-        fractional_parts = [(raw_shares[i] - floor_shares[i], i) for i in range(len(sorted_files))]
-        fractional_parts.sort(key=lambda x: (x[0], x[1]))
-        for j in range(-remaining):
-            idx = fractional_parts[j][1]
-            if floor_shares[idx] > 1:
-                floor_shares[idx] -= 1
-
-    shard_cursor = 0
-    for file_idx, f in enumerate(sorted_files):
-        n_shards_for_file = floor_shares[file_idx]
-        approx_bytes = f.size // n_shards_for_file if n_shards_for_file > 0 else 0
-
-        for remainder in range(n_shards_for_file):
-            shard_idx = shard_cursor + remainder
-            split_file = replace(f, row_modulus=n_shards_for_file, row_remainder=remainder)
-            assignments[shard_idx].files.append(split_file)
-            assignments[shard_idx].total_bytes = approx_bytes
-
-        shard_cursor += n_shards_for_file
 
     return assignments
 
@@ -268,33 +191,51 @@ def compute_source_fingerprint(files: list[FileInfo], dataset_config: DatasetCon
     return f"sha256:{hashlib.sha256(content.encode()).hexdigest()}"
 
 
-def create_plan(request: PlanRequest, fs: AbstractFileSystem) -> ShardPlan:
-    """Create deterministic shard plan for tokenizer and non-tokenizer pipelines."""
-    files = discover_input_files(request.dataset_config, fs)
+def create_shard_plan(
+    dataset_config: DatasetConfig,
+    output_config: InternalOutputConfig,
+    tokenizer_config: InternalTokenizerConfig,
+    config_hash: str,
+    fs: AbstractFileSystem,
+) -> ShardPlan:
+    """Create deterministic shard plan."""
+    import tokenizers
+    import transformers
+
+    # Discover input files
+    files = discover_input_files(dataset_config, fs)
+
     if not files:
-        raise ValueError(f"No input files found for {request.dataset_config.name}")
+        raise ValueError(f"No input files found for {dataset_config.name}")
 
-    resolved_tokenizer = (
-        resolve_tokenizer(request.tokenizer_config)
-        if request.tokenizer_config is not None
-        else {"type": "none"}
-    )
-    source_fingerprint = compute_source_fingerprint(files, request.dataset_config)
-    assignments = create_size_balanced_assignments(files, request.num_shards)
-    determinism_constraints = _build_determinism_constraints(
-        has_tokenizer=request.tokenizer_config is not None,
-        transform_fingerprint=request.transform_fingerprint,
-    )
+    # Resolve tokenizer to immutable revision
+    resolved_tokenizer = resolve_tokenizer(tokenizer_config)
 
+    # Compute fingerprints (includes dataset identity for HF sources)
+    source_fingerprint = compute_source_fingerprint(files, dataset_config)
+
+    # Create size-balanced assignments
+    assignments = create_size_balanced_assignments(files, output_config.num_shards)
+
+    # Determinism constraints
+    determinism_constraints = {
+        "ray_version": ray.__version__,
+        "transformers_version": transformers.__version__,
+        "tokenizers_version": tokenizers.__version__,
+        "input_file_order": "size_desc_path_asc",
+        "processing_order": "sequential_within_shard",
+    }
+
+    # Compute plan hash
     plan_content = json.dumps(
         {
-            "dataset_name": request.dataset_config.name,
-            "num_shards": request.num_shards,
+            "dataset_name": dataset_config.name,
+            "num_shards": output_config.num_shards,
             "source_fingerprint": source_fingerprint,
             "resolved_tokenizer": resolved_tokenizer,
             "determinism_constraints": determinism_constraints,
-            "config_hash": request.config_hash,
-            "file_paths": sorted(f.path for f in files),
+            "config_hash": config_hash,
+            "file_paths": sorted([f.path for f in files]),
         },
         sort_keys=True,
     )
@@ -304,94 +245,13 @@ def create_plan(request: PlanRequest, fs: AbstractFileSystem) -> ShardPlan:
         version="1.0",
         created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         plan_hash=plan_hash,
-        dataset_name=request.dataset_config.name,
-        num_shards=request.num_shards,
+        dataset_name=dataset_config.name,
+        num_shards=output_config.num_shards,
         source_fingerprint=source_fingerprint,
-        config_hash=request.config_hash,
+        config_hash=config_hash,
         determinism_constraints=determinism_constraints,
         resolved_tokenizer=resolved_tokenizer,
         file_assignments=assignments,
-    )
-
-
-def _build_determinism_constraints(
-    *,
-    has_tokenizer: bool,
-    transform_fingerprint: str | None,
-) -> dict[str, str]:
-    if has_tokenizer:
-        import tokenizers
-        import transformers
-
-        return {
-            "ray_version": ray.__version__,
-            "transformers_version": transformers.__version__,
-            "tokenizers_version": tokenizers.__version__,
-            "input_file_order": "size_desc_path_asc",
-            "processing_order": "sequential_within_shard",
-        }
-
-    import pyarrow
-
-    constraints: dict[str, str] = {
-        "ray_version": ray.__version__,
-        "pyarrow_version": pyarrow.__version__,
-        "processing_order": "sequential_within_shard",
-    }
-    if transform_fingerprint is not None:
-        constraints["transform_fingerprint"] = transform_fingerprint
-    return constraints
-
-
-def verify_binidx_output(receipt: dict, shard_dir: str, fs: AbstractFileSystem) -> bool:
-    """Pretrain: bin/idx files exist for non-empty shards."""
-    if int(receipt.get("stats", {}).get("num_sequences", 0) or 0) == 0:
-        return True
-    files = receipt.get("files", {}) or {}
-    bin_path = ((files.get("bin") or {}).get("path")) or ""
-    idx_path = ((files.get("idx") or {}).get("path")) or ""
-    if not bin_path or not idx_path:
-        return False
-    return fs.exists(f"{shard_dir}/{bin_path}") and fs.exists(f"{shard_dir}/{idx_path}")
-
-
-def verify_jsonl_output(receipt: dict, shard_dir: str, fs: AbstractFileSystem) -> bool:
-    """JSONL: output file exists for non-empty shards."""
-    if int(receipt.get("stats", {}).get("num_records", 0) or 0) == 0:
-        return True
-    output_file = receipt.get("output_file")
-    if not output_file:
-        return False
-    return fs.exists(f"{shard_dir}/{output_file}")
-
-
-def verify_parquet_output(receipt: dict, shard_dir: str, fs: AbstractFileSystem) -> bool:
-    """SFT: parquet file exists for non-empty shards."""
-    if int(receipt.get("stats", {}).get("num_sequences", 0) or 0) == 0:
-        return True
-    parquet_path = ((receipt.get("files", {}).get("parquet") or {}).get("path")) or ""
-    if not parquet_path:
-        return False
-    return fs.exists(f"{shard_dir}/{parquet_path}")
-
-
-def create_shard_plan(
-    dataset_config: DatasetConfig,
-    output_config: InternalOutputConfig,
-    tokenizer_config: InternalTokenizerConfig,
-    config_hash: str,
-    fs: AbstractFileSystem,
-) -> ShardPlan:
-    """Backward-compatible wrapper for tokenizer-based plan creation."""
-    return create_plan(
-        PlanRequest(
-            dataset_config=dataset_config,
-            num_shards=output_config.num_shards,
-            config_hash=config_hash,
-            tokenizer_config=tokenizer_config,
-            output_config=output_config,
-        ),
-        fs,
     )
 
 
@@ -399,28 +259,41 @@ def get_pending_shards(
     plan: ShardPlan,
     receipts_dir: str,
     fs: AbstractFileSystem,
-    verify_output: Callable[[dict, str, AbstractFileSystem], bool] | None = None,
 ) -> list[int]:
     """Determine which shard indices still need processing."""
     completed_indices: set[int] = set()
-    shard_dir = str(Path(receipts_dir).parent)
-    verifier = verify_output or verify_binidx_output
 
     try:
         receipt_files = fs.glob(f"{receipts_dir}/shard_*.json")
+    except FileNotFoundError:
+        receipt_files = []
     except Exception:
         receipt_files = []
 
     for receipt_path in receipt_files:
         try:
             receipt = read_json(fs, receipt_path)
+
+            # Verify receipt belongs to current plan
             if receipt.get("plan_hash") != plan.plan_hash:
                 continue
+
             if receipt.get("status") != "completed":
                 continue
-            if verifier and not verifier(receipt, shard_dir, fs):
-                continue
-            completed_indices.add(int(receipt["shard_index"]))
+
+            shard_index = receipt["shard_index"]
+
+            # For non-empty shards, verify files exist
+            if receipt["stats"]["num_sequences"] > 0:
+                shard_dir = str(Path(receipts_dir).parent)
+                bin_path = f"{shard_dir}/{receipt['files']['bin']['path']}"
+                idx_path = f"{shard_dir}/{receipt['files']['idx']['path']}"
+
+                if not (fs.exists(bin_path) and fs.exists(idx_path)):
+                    continue
+
+            completed_indices.add(shard_index)
+
         except Exception as e:
             logger.warning(f"Failed to parse receipt {receipt_path}: {e}")
 
@@ -478,36 +351,6 @@ def apply_shard_sampling(
     )
 
     return [i for i in pending_indices if i in sampled]
-
-
-def create_jsonl_shard_plan(
-    *,
-    dataset_config: DatasetConfig,
-    num_shards: int,
-    config_hash: str,
-    fs: AbstractFileSystem,
-    transform_fingerprint: str,
-) -> ShardPlan:
-    """Backward-compatible wrapper for non-tokenizer JSONL plan creation."""
-    return create_plan(
-        PlanRequest(
-            dataset_config=dataset_config,
-            num_shards=num_shards,
-            config_hash=config_hash,
-            tokenizer_config=None,
-            transform_fingerprint=transform_fingerprint,
-        ),
-        fs,
-    )
-
-
-def get_pending_jsonl_shards(
-    plan: ShardPlan,
-    receipts_dir: str,
-    fs: AbstractFileSystem,
-) -> list[int]:
-    """Backward-compatible wrapper for JSONL pending scan."""
-    return get_pending_shards(plan, receipts_dir, fs, verify_output=verify_jsonl_output)
 
 
 def serialize_shard_plan(plan: ShardPlan) -> dict:

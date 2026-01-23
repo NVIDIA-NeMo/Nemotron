@@ -12,23 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities for distributing shards into train/valid/test splits.
-
-Provides:
-- distribute_shards_to_splits: Partition shards into train/valid/test
-- realize_packed_shards_into_split_dirs: Create canonical split directories with symlinks
-"""
+"""Utilities for distributing shards into train/valid/test splits."""
 
 from __future__ import annotations
 
-import logging
-import os
 import random
-from pathlib import Path
-
-from nemotron.data_prep.utils.filesystem import get_filesystem
-
-logger = logging.getLogger(__name__)
 
 
 def distribute_shards_to_splits(
@@ -44,25 +32,14 @@ def distribute_shards_to_splits(
     Collects all shards from all datasets into a pool, then randomly selects
     shards for test and valid splits. The remaining shards go to train.
 
-    The data_paths format is: ["weight", "prefix", "weight", "prefix", ...]
-    where each prefix is a shard base path WITHOUT the index suffix.
-    Example: "/path/to/runs/abc/datasets/mydata/hash/shard"
-
-    This function appends "_{shard_idx:06d}" to each prefix to create per-shard
-    paths. For example, with num_shards=3:
-        Input prefix: "/path/shard"
-        Output paths: "/path/shard_000000", "/path/shard_000001", "/path/shard_000002"
-
-    Note: The actual files have a .parquet extension (e.g., shard_000000.parquet).
-    The output paths here are base names; realize_packed_shards_into_split_dirs()
-    appends ".parquet" when creating symlinks.
+    The data_paths format is: ["weight", "path", "weight", "path", ...]
+    where paths are shard prefixes (e.g., /path/to/shard).
 
     Output format compatible with Megatron-Bridge's per_split_data_args_path:
-    {"train": ["weight", "path_000000", ...], "valid": [...], "test": [...]}
+    {"train": ["weight", "path_0000", ...], "valid": [...], "test": [...]}
 
     Args:
-        data_paths: Megatron-Bridge format path list ["weight", "prefix", ...]
-            where prefix is the shard base path (see FormatResult.data_paths)
+        data_paths: Megatron-Bridge format path list ["weight", "path", ...]
         num_shards: Total number of shards per dataset
         valid_shards: Number of shards for validation (total, not per-dataset)
         test_shards: Number of shards for test (total, not per-dataset)
@@ -118,87 +95,3 @@ def distribute_shards_to_splits(
         "valid": flatten(valid_selection),
         "test": flatten(test_selection),
     }
-
-
-def realize_packed_shards_into_split_dirs(
-    *,
-    output_dir: Path,
-    split_to_paths: dict[str, list[str]],
-) -> dict[str, Path]:
-    """Create canonical split directories with symlinks to packed shard files.
-
-    Ensures packed shard files are accessible under:
-        output_dir/splits/<split>/<basename>
-
-    This enables training to consume split dirs/globs directly without
-    parsing blend.json.
-
-    Args:
-        output_dir: Base output directory for the data prep run.
-        split_to_paths: Dict from distribute_shards_to_splits() with format
-            {"train": ["weight", "path", ...], "valid": [...], "test": [...]}
-
-    Returns:
-        Dict mapping split name to canonical split directory Path.
-        {"train": output_dir/splits/train, "valid": ..., "test": ...}
-
-    Raises:
-        FileNotFoundError: If train split has no valid shard files.
-    """
-    splits_base = output_dir / "splits"
-    result: dict[str, Path] = {}
-
-    # Use filesystem abstraction for checking file existence on remote filesystems
-    fs, _ = get_filesystem(str(output_dir))
-
-    for split_name, path_list in split_to_paths.items():
-        split_dir = splits_base / split_name
-        split_dir.mkdir(parents=True, exist_ok=True)
-        result[split_name] = split_dir
-
-        # path_list format: ["weight", "path", "weight", "path", ...]
-        # Extract just the paths (odd indices)
-        shard_paths = [path_list[i] for i in range(1, len(path_list), 2)]
-
-        created_count = 0
-        missing_paths = []
-
-        for shard_path in shard_paths:
-            # Shard path is a prefix like /path/to/shard_000000
-            # Actual file is shard_000000.parquet
-            parquet_path_str = f"{shard_path}.parquet"
-            parquet_path = Path(parquet_path_str)
-
-            # Use filesystem abstraction for existence check (works on Lustre, S3, etc.)
-            if not fs.exists(parquet_path_str):
-                missing_paths.append(parquet_path_str)
-                logger.warning(f"Shard file not found: {parquet_path_str}")
-                continue
-
-            # Create symlink in split dir
-            link_path = split_dir / parquet_path.name
-
-            if link_path.exists() or link_path.is_symlink():
-                # Remove existing link/file to update
-                link_path.unlink()
-
-            try:
-                # Use relative symlink if possible for portability
-                rel_target = os.path.relpath(parquet_path, split_dir)
-                link_path.symlink_to(rel_target)
-                created_count += 1
-            except OSError:
-                # Fall back to absolute symlink if relative fails
-                link_path.symlink_to(parquet_path.resolve())
-                created_count += 1
-
-        logger.info(f"Created split dir '{split_name}' with {created_count}/{len(shard_paths)} shards: {split_dir}")
-
-        # Fail loudly if train split has no files - this is a critical error
-        if split_name == "train" and created_count == 0 and len(shard_paths) > 0:
-            raise FileNotFoundError(
-                f"No parquet files found for train split. Expected {len(shard_paths)} shards. "
-                f"Missing files: {missing_paths[:5]}{'...' if len(missing_paths) > 5 else ''}"
-            )
-
-    return result

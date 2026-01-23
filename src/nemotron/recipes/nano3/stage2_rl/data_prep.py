@@ -45,23 +45,20 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from nemotron.data_prep import (
-    DataBlend,
-    Dataset,
-    OutputConfig,
-    PipelineConfig,
-    last_mile_process,
-)
-from nemotron.data_prep.config import DatasetConfig, JsonlOutputConfig
-from nemotron.data_prep.discovery import get_dataset_metadata
+from nemotron.data_prep.blend import DataBlend, Dataset
+from nemotron.data_prep.config import DatasetConfig, FileInfo
+from nemotron.data_prep.utils.discovery import discover_input_files, get_dataset_metadata
+from nemotron.data_prep.utils.filesystem import get_filesystem
 from nemotron.data_prep.formats.transforms import resolve_hf_placeholders
-from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver
+from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
+from nemotron.data_prep.core.jsonl_shard_core import process_jsonl_shard_core
 from nemotron.kit import SplitJsonlDataArtifact, print_step_complete
 from nemotron.kit.trackers import InputDatasetInfo
 from nemotron.kit.train_script import (
@@ -73,6 +70,8 @@ from nemotron.kit.train_script import (
 )
 from nemotron.kit.wandb import add_wandb_tags, finish_wandb
 
+logger = logging.getLogger(__name__)
+
 STAGE_PATH = Path(__file__).parent
 
 # Default config path relative to this file
@@ -82,7 +81,7 @@ DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep" / "default.yaml"
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 # Module-level flag for Ray execution (used by nemotron CLI)
-RAY = True
+RAY = False  # No longer uses Ray - direct processing
 
 
 @dataclass
@@ -108,14 +107,8 @@ class RLDataPrepConfig:
     output_dir: Path = field(default_factory=lambda: _OUTPUT_BASE / "output/nano3/stage2_rl_resolved")
     """Output directory for resolved JSONL data"""
 
-    shard_size: str = "256MB"
-    """Target size per shard (e.g., '256MB', '1GB')"""
-
     sample: int | None = None
     """Limit rows per dataset (for quick tests)"""
-
-    num_actors: int | None = None
-    """Ray actors for parallel processing (None = auto)"""
 
     force: bool = False
     """Force new run, ignoring cache"""
@@ -132,10 +125,92 @@ class RLDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
+def _write_resolved_split_jsonl(
+    *,
+    dataset: Dataset,
+    hf_split: str,
+    output_dir: Path,
+    resolver: HFPlaceholderResolver,
+    max_rows: int | None,
+    force: bool,
+) -> tuple[Path | None, int]:
+    """Write resolved JSONL for a single split.
+
+    Returns:
+        Tuple of (jsonl_path, num_records). jsonl_path may be None if no records.
+    """
+    # Create output directory structure
+    output_dir.mkdir(parents=True, exist_ok=True)
+    receipts_dir = output_dir / "receipts"
+    receipts_dir.mkdir(parents=True, exist_ok=True)
+
+    # Get filesystem for output
+    output_fs, _ = get_filesystem(str(output_dir))
+
+    # Build dataset config for file discovery
+    ds_config = DatasetConfig(
+        name=dataset.name,
+        path=dataset.path,
+        split=hf_split,
+        subset=dataset.subset,
+        text_field=dataset.text_field,
+    )
+
+    # Discover input files
+    files = discover_input_files(ds_config, output_fs)
+    files = sorted(files, key=lambda f: f.path)
+
+    if not files:
+        logger.warning(f"No files found for {dataset.name} split {hf_split}")
+        return None, 0
+
+    # Convert FileInfo objects to dicts for process_jsonl_shard_core
+    file_dicts = [
+        {
+            "path": f.path,
+            "size": f.size,
+            "hf_repo_id": f.hf_repo_id,
+            "hf_filename": f.hf_filename,
+            "hf_revision": f.hf_revision,
+            "local_path": f.local_path,
+        }
+        for f in files
+    ]
+
+    # Create the resolve transform
+    transform = resolve_hf_placeholders(resolver=resolver)
+
+    # Process all files into a single shard (shard_index=0)
+    # Using local_files_only=False to allow downloading HF files
+    stats = process_jsonl_shard_core(
+        shard_index=0,
+        files=file_dicts,
+        output_dir=str(output_dir),
+        receipts_dir=str(receipts_dir),
+        output_fs=output_fs,
+        text_field=dataset.text_field or "text",
+        transform=transform,
+        compression="none",
+        max_rows=max_rows,
+        local_files_only=False,  # Allow downloading from HF
+    )
+
+    num_records = stats.get("num_records", 0)
+
+    if num_records == 0:
+        return None, 0
+
+    # Return the path to the generated JSONL file
+    jsonl_path = output_dir / "shard_000000.jsonl"
+    if jsonl_path.exists():
+        return jsonl_path, num_records
+
+    return None, 0
+
+
 def _run_resolve(
     blend: DataBlend,
     cfg: RLDataPrepConfig,
-    num_actors: int,
     source_datasets: list[InputDatasetInfo],
     resolver: HFPlaceholderResolver,
 ) -> SplitJsonlDataArtifact:
@@ -148,7 +223,7 @@ def _run_resolve(
 
     start_time = time.time()
     total_sequences = 0
-    split_paths: dict[str, Path] = {}
+    split_paths: dict[str, str] = {}
 
     # Get the dataset from blend (expects single dataset in blend)
     if len(blend.datasets) != 1:
@@ -174,73 +249,49 @@ def _run_resolve(
         "test": "test",
     }
 
-    # Create the resolve transform with pre-loaded resolver
-    transform = resolve_hf_placeholders(resolver=resolver)
-
     # Process each split
     for hf_split in available_splits:
         output_split_name = split_name_mapping.get(hf_split, hf_split)
         split_output_dir = cfg.output_dir / output_split_name
 
-        # Create a single-dataset blend for this split
-        split_blend = DataBlend(
-            datasets=[
-                Dataset(
-                    name=dataset.name,
-                    path=dataset.path,
-                    split=hf_split,  # Use the HF split name
-                    subset=dataset.subset,
-                    weight=1.0,
-                    text_field=dataset.text_field,
-                )
-            ]
+        logger.info(f"Processing split: {hf_split} -> {output_split_name}")
+
+        # Create dataset with correct split
+        split_dataset = Dataset(
+            name=dataset.name,
+            path=dataset.path,
+            split=hf_split,
+            subset=dataset.subset,
+            weight=1.0,
+            text_field=dataset.text_field,
         )
 
-        # Build pipeline config with resolve transform
-        format_config = JsonlOutputConfig(
-            shard_size=cfg.shard_size,
-            transform=transform,
-        )
-
-        pipeline_config = PipelineConfig(
-            output=OutputConfig(
-                dir=split_output_dir,
-                format=format_config,
-                max_rows=cfg.sample,
-            ),
-            tokenizer=None,
-            num_actors=num_actors,
+        # Write resolved JSONL for this split
+        jsonl_path, num_records = _write_resolved_split_jsonl(
+            dataset=split_dataset,
+            hf_split=hf_split,
+            output_dir=split_output_dir,
+            resolver=resolver,
+            max_rows=cfg.sample,
             force=cfg.force,
         )
 
-        # Run processing for this split
-        result = last_mile_process(split_blend, pipeline_config)
-        total_sequences += result.total_sequences
-
-        # Extract actual JSONL shard path from result
-        # data_paths format: ["weight", "shard_prefix", ...]
-        shard_prefix = result.splits["all"].data_paths[1]
-        # Find the actual JSONL file by globbing (shard naming uses variable digit padding)
-        shard_files = sorted(Path(shard_prefix).parent.glob("shard_*.jsonl"))
-        if shard_files:
-            jsonl_path = shard_files[0]
+        if jsonl_path is not None:
+            split_paths[output_split_name] = str(jsonl_path.resolve())
+            total_sequences += num_records
+            logger.info(f"  Written {num_records} records to {jsonl_path}")
         else:
-            raise FileNotFoundError(f"No JSONL shard files found at {shard_prefix}")
-
-        split_paths[output_split_name] = str(jsonl_path.resolve())
+            logger.warning(f"  No records written for split {hf_split}")
 
     # Resolve output_dir to absolute path for W&B artifact storage
     output_dir = cfg.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Resolve split paths to absolute paths
-    resolved_split_paths = {k: str(Path(v).resolve()) for k, v in split_paths.items() if v}
-
     # Create a combined manifest with absolute paths
     manifest = {
-        "train": resolved_split_paths.get("train", ""),
-        "val": resolved_split_paths.get("val", ""),
-        "test": resolved_split_paths.get("test", ""),
+        "train": split_paths.get("train", ""),
+        "val": split_paths.get("val", ""),
+        "test": split_paths.get("test", ""),
         "mode": "resolve",
         "source_splits": available_splits,
     }
@@ -257,9 +308,9 @@ def _run_resolve(
         total_sequences=total_sequences,
         elapsed_sec=elapsed,
         source_datasets=source_datasets,
-        train=resolved_split_paths.get("train"),
-        val=resolved_split_paths.get("val"),
-        test=resolved_split_paths.get("test"),
+        train=split_paths.get("train"),
+        val=split_paths.get("val"),
+        test=split_paths.get("test"),
     )
 
     return artifact
@@ -279,12 +330,6 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
 
     # Load data blend
     blend = DataBlend.load(cfg.blend_path)
-
-    # Auto-detect num_actors from CPU count
-    num_actors = cfg.num_actors
-    if num_actors is None:
-        cpu_count = os.cpu_count() or 4
-        num_actors = max(2, min(32, cpu_count * 3 // 4))
 
     # Pre-load the HF placeholder resolver (loads DAPO and Skywork datasets)
     print("Loading external HuggingFace datasets for placeholder resolution...")
@@ -331,7 +376,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
         )
 
     # Run resolve processing
-    artifact = _run_resolve(blend, cfg, num_actors, source_datasets, resolver)
+    artifact = _run_resolve(blend, cfg, source_datasets, resolver)
 
     artifact.name = f"nano3/rl/data-resolved{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     artifact.save()

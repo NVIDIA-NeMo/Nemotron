@@ -27,9 +27,9 @@ from nemotron.kit.cli.recipe import recipe
     config_dir="src/nemotron/recipes/nano3/stage2_rl/config/data_prep",
     default_config="default",
     torchrun=False,
-    ray=True,
+    ray=False,  # RL uses direct processing, not Ray
     packager="code",
 )
 def rl(ctx: typer.Context) -> None:
-    """Prepare data for RL (JSONL chat format)."""
+    """Prepare data for RL (JSONL chat format with HF placeholder resolution)."""
     ...

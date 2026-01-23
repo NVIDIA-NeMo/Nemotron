@@ -496,7 +496,16 @@ def _execute_nemo_run(
         # Workaround for nemo-run bug: when reusing an existing cluster,
         # SlurmRayCluster.create() returns None instead of the job_id.
         if ray_job.backend.job_id is None:
-            status = ray_job.backend.status(display=False)
+            try:
+                status = ray_job.backend.status(display=False)
+            except Exception as e:
+                # Slurm controller may be temporarily unavailable (e.g., backup controller
+                # in standby mode). Continue without recovered job_id rather than failing.
+                typer.echo(
+                    f"[warning] Slurm status check failed; continuing without recovered job_id: {e}"
+                )
+                status = None
+
             if status and status.get("job_id"):
                 ray_job.backend.job_id = status["job_id"]
                 typer.echo(f"[info] Recovered job_id {status['job_id']} from cluster status")
@@ -892,8 +901,16 @@ def _ensure_squashed_image(
         salloc_args.append(f"--gpus-per-node={gpus_per_node}")
     salloc_args.append(f"--time={time_limit}")
 
-    enroot_cmd = f"enroot import --output {sqsh_path} docker://{container_image}"
-    cmd = f"salloc {' '.join(salloc_args)} srun {enroot_cmd}"
+    # Set up writable enroot paths (default /raid/enroot may not be user-writable)
+    enroot_runtime = f"{remote_job_dir}/.enroot"
+    enroot_env = (
+        f"export ENROOT_RUNTIME_PATH={enroot_runtime} "
+        f"ENROOT_CACHE_PATH={enroot_runtime}/cache "
+        f"ENROOT_DATA_PATH={enroot_runtime}/data && "
+        f"mkdir -p {enroot_runtime}/cache {enroot_runtime}/data && "
+    )
+    enroot_cmd = f"{enroot_env}enroot import --output {sqsh_path} docker://{container_image}"
+    cmd = f"salloc {' '.join(salloc_args)} srun --export=ALL bash -c '{enroot_cmd}'"
 
     # Run enroot import via salloc (this can take a while)
     console.print(

@@ -71,10 +71,15 @@ def main_callback(
         "--stage",
         help="Stage script + config to remote cluster for interactive debugging",
     ),
+    force_squash: bool = typer.Option(
+        False,
+        "--force-squash",
+        help="Force re-squash container image even if it already exists",
+    ),
 ) -> None:
     """Nemotron CLI - Reproducible training recipes."""
     # Delegate to global_callback
-    global_callback(ctx, config, run, batch, dry_run, stage)
+    global_callback(ctx, config, run, batch, dry_run, stage, force_squash)
 
 
 # Import and register recipe groups

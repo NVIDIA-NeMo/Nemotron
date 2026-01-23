@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import logging
 import time
-import uuid
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -133,17 +132,12 @@ def process_binidx_shard_files_core(
         return empty_stats, empty_files
 
     # ATOMIC COMMIT PROTOCOL for retry safety:
-    # 1. Write to temp paths (.tmp.{uuid} suffix for uniqueness)
+    # 1. Write to temp paths (.tmp suffix)
     # 2. Rename temp -> final (atomic on most filesystems)
     # This ensures partial writes from retries don't corrupt output.
-    #
-    # UUID suffix is critical for multi-node safety: prevents race condition
-    # where two workers processing the same shard would overwrite each other's
-    # temp files on shared filesystems like Lustre.
 
-    attempt_id = uuid.uuid4().hex[:8]
-    bin_tmp = f"{bin_path}.tmp.{attempt_id}"
-    idx_tmp = f"{idx_path}.tmp.{attempt_id}"
+    bin_tmp = f"{bin_path}.tmp"
+    idx_tmp = f"{idx_path}.tmp"
 
     # Track download time separately
     download_start = time.perf_counter()

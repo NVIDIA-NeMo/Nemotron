@@ -16,7 +16,8 @@
 
 """Data preparation for Nano3 pretraining stage.
 
-Tokenizes raw text data into Megatron bin/idx format.
+Tokenizes raw text data into Megatron bin/idx format using the
+3-stage pipeline: PlanStage → DownloadStage → BinIdxTokenizationStage.
 
 Outputs blend.json with {"train": [...], "valid": [...], "test": [...]} format
 compatible with Megatron-Bridge's per_split_data_args_path parameter.
@@ -37,12 +38,22 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
-from dataclasses import dataclass, field
+import time
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from nemotron.data_prep import DataPrepConfig, PerSplitConfig, run_data_prep
+from nemotron.data_prep.blend import DataBlend
+from nemotron.data_prep.config import ObservabilityConfig, TokenizerConfig
+from nemotron.data_prep.utils.splits import distribute_shards_to_splits
+from nemotron.data_prep.recipes import run_pretrain_pipeline
+from nemotron.data_prep.stages import (
+    BinIdxTokenizationStageConfig,
+    DownloadStageConfig,
+    PlanStageConfig,
+)
 from nemotron.kit import PretrainBlendsArtifact, print_step_complete
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
@@ -51,12 +62,12 @@ from nemotron.kit.train_script import (
     omegaconf_to_dataclass,
     parse_config_and_overrides,
 )
-from nemotron.kit.wandb import add_wandb_tags
+from nemotron.kit.wandb import add_wandb_tags, finish_wandb
 
 STAGE_PATH = Path(__file__).parent
 
 # Default config path relative to this file
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep" / "default.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run (avoids writing to code dir)
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
@@ -71,14 +82,24 @@ class PreTrainDataPrepConfig:
 
     Tokenizes text into Megatron bin/idx format for pretraining.
     Outputs {"train": [...], "valid": [...], "test": [...]} JSON format.
+
+    Structure:
+        - Data: blend_path, output_dir, num_shards, valid_shards, test_shards
+        - Tokenizer: nested TokenizerConfig
+        - Document processing: text_field, min_doc_chars, max_doc_tokens
+        - Stage configs: plan, download, tokenization
+        - Pipeline config: observability
+        - Run control: sample, force, config_name
     """
 
-    blend_path: Path = field(default_factory=lambda: STAGE_PATH / "config/data_blend_raw.json")
+    # Data paths
+    blend_path: Path = field(default_factory=lambda: STAGE_PATH / "config/data_prep/data_blend_raw.json")
     """Path to data blend JSON file"""
 
     output_dir: Path = field(default_factory=lambda: _OUTPUT_BASE / "output/nano3/stage0_pretrain")
     """Output directory for tokenized data"""
 
+    # Output sharding
     num_shards: int = 128
     """Number of output shards for parallel loading"""
 
@@ -88,15 +109,15 @@ class PreTrainDataPrepConfig:
     test_shards: int = 1
     """Number of shards for test split"""
 
-    tokenizer_model: str = "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
-    """HuggingFace tokenizer model name"""
+    # Tokenizer config (nested)
+    tokenizer: TokenizerConfig = field(default_factory=lambda: TokenizerConfig(
+        model="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+        add_bos=False,
+        add_eos=True,
+    ))
+    """Tokenizer configuration"""
 
-    add_bos: bool = False
-    """Prepend BOS token to documents"""
-
-    add_eos: bool = True
-    """Append EOS token to documents"""
-
+    # Document processing
     text_field: str = "text"
     """Default text field name in datasets"""
 
@@ -106,20 +127,29 @@ class PreTrainDataPrepConfig:
     max_doc_tokens: int | None = None
     """Truncate documents longer than this"""
 
+    # Run control
     sample: int | None = None
     """Limit rows per dataset (for quick tests)"""
-
-    num_actors: int | None = None
-    """Ray actors for parallel processing (None = auto)"""
-
-    ray_data_max_actors: int | None = None
-    """Maximum Ray Data actors (None = auto-detect based on memory)"""
 
     force: bool = False
     """Force new run, ignoring cache"""
 
     config_name: str = "default"
-    """Config name used for artifact naming (e.g., 'default', 'tiny', 'test')"""
+    """Config name used for artifact naming"""
+
+    # Stage configs (nested)
+    plan: PlanStageConfig = field(default_factory=PlanStageConfig)
+    """Configuration for planning stage"""
+
+    download: DownloadStageConfig = field(default_factory=DownloadStageConfig)
+    """Configuration for download stage"""
+
+    tokenization: BinIdxTokenizationStageConfig = field(default_factory=BinIdxTokenizationStageConfig)
+    """Configuration for tokenization stage"""
+
+    # Pipeline-level config
+    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
+    """Pipeline observability settings"""
 
     def __post_init__(self) -> None:
         # Ensure paths are Path objects
@@ -134,7 +164,7 @@ class PreTrainDataPrepConfig:
 
 
 def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
-    """Run pretrain data preparation.
+    """Run pretrain data preparation pipeline.
 
     Args:
         cfg: Data prep configuration.
@@ -142,16 +172,16 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     Returns:
         PretrainBlendsArtifact with paths to tokenized data.
     """
+    start_time = time.time()
+
     # Add stage-specific tags to wandb run
     add_wandb_tags(["data-prep", "pretrain", cfg.config_name])
 
     # Log config to W&B
     try:
         import wandb
-        from dataclasses import asdict
 
         if wandb.run is not None:
-            # Convert config to dict, handling Path objects
             config_dict = asdict(cfg)
             for key, value in config_dict.items():
                 if isinstance(value, Path):
@@ -160,35 +190,76 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     except ImportError:
         pass
 
-    # Build artifact name using config_name.
-    # Example: "nano3/default/data" or "nano3/tiny/data?sample=100".
+    # Load blend and validate
+    blend = DataBlend.load(cfg.blend_path)
+    if blend.datasets is None:
+        raise ValueError(
+            f"Nano3 pretrain expects single-blend format (datasets list), "
+            f"but got per-split blend from {cfg.blend_path}"
+        )
+
+    # Override text_field if needed (preserves legacy behavior)
+    if cfg.text_field != "text":
+        for d in blend.datasets:
+            if d.text_field == "text" or d.text_field is None:
+                object.__setattr__(d, "text_field", cfg.text_field)
+
+    # Sampling mode: use single shard for exact sample count
+    num_shards_effective = 1 if cfg.sample is not None else cfg.num_shards
+
+    # Run pipeline with structured configs
+    format_result = run_pretrain_pipeline(
+        blend=blend,
+        output_dir=cfg.output_dir,
+        tokenizer=cfg.tokenizer,
+        num_shards=num_shards_effective,
+        text_field_default=cfg.text_field,
+        min_doc_chars=cfg.min_doc_chars,
+        max_doc_tokens=cfg.max_doc_tokens,
+        max_rows=cfg.sample,  # sample acts as max_rows
+        force=cfg.force,
+        # Stage configs
+        plan_stage=cfg.plan,
+        download_stage=cfg.download,
+        tokenization_stage=cfg.tokenization,
+        # Pipeline config
+        observability=cfg.observability,
+    )
+
+    # Generate per-split blend.json
+    blend_data = distribute_shards_to_splits(
+        data_paths=format_result.data_paths,
+        num_shards=format_result.num_shards,
+        valid_shards=cfg.valid_shards,
+        test_shards=cfg.test_shards,
+    )
+
+    # Ensure output directory exists
+    cfg.output_dir.mkdir(parents=True, exist_ok=True)
+    blend_json_path = cfg.output_dir / "blend.json"
+    with open(blend_json_path, "w") as f:
+        json.dump(blend_data, f, indent=2)
+
+    # Build artifact using classmethod
+    elapsed_sec = time.time() - start_time
     sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""
     artifact_name = f"nano3/{cfg.config_name}/data{sample_suffix}"
 
-    data_prep_config = DataPrepConfig(
-        blend_path=cfg.blend_path,
-        output_dir=cfg.output_dir,
-        num_shards=cfg.num_shards,
-        per_split=PerSplitConfig(
-            enabled=True,
-            valid_shards=cfg.valid_shards,
-            test_shards=cfg.test_shards,
-        ),
-        tokenizer_model=cfg.tokenizer_model,
-        add_bos=cfg.add_bos,
-        add_eos=cfg.add_eos,
-        text_field=cfg.text_field,
-        min_doc_chars=cfg.min_doc_chars,
-        max_doc_tokens=cfg.max_doc_tokens,
-        sample=cfg.sample,
-        force=cfg.force,
-        artifact_name=artifact_name,
-        console_mode=getattr(cfg, "console_mode", "simple"),
-        simple_log_interval_sec=getattr(cfg, "simple_log_interval_sec", 30),
-        ray_data_max_actors=cfg.ray_data_max_actors,
+    artifact = PretrainBlendsArtifact.from_result(
+        format_result=format_result,
+        blend=blend,
+        tokenizer_model=cfg.tokenizer.model,
+        blend_json_path=blend_json_path,
+        text_field_default=cfg.text_field,
+        elapsed_sec=elapsed_sec,
+        name=artifact_name,
     )
-    artifact = run_data_prep(data_prep_config)
+    artifact.save()
+
+    # Finish W&B and print completion
+    finish_wandb(exit_code=0)
     print_step_complete(data_prep=artifact)
+
     return artifact
 
 

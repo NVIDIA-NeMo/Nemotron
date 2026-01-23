@@ -16,7 +16,6 @@ blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data
 
 # Output directory for tokenized data
 # Using fixed path to enable caching across job submissions
-# (previously used ${oc.env:PWD}/../output which created new dir per job)
 output_dir: /lustre/fsw/portfolios/coreai/users/mromeijn/output/nano3/stage0_pretrain
 
 # Number of output shards for parallel loading
@@ -28,14 +27,11 @@ valid_shards: 1
 # Number of shards for test split
 test_shards: 1
 
-# HuggingFace tokenizer model name
-tokenizer_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
-
-# Prepend BOS token to documents
-add_bos: false
-
-# Append EOS token to documents
-add_eos: true
+# Tokenizer configuration (nested)
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
 
 # Default text field name in datasets
 text_field: text
@@ -49,23 +45,38 @@ max_doc_tokens: null
 # Limit rows per dataset for quick tests (null = no limit)
 sample: null
 
-# Ray Data executor settings
-# Reduced from 48 to 32 to avoid OOM (each worker ~3.7GB)
-ray_data_max_actors: 32
-
-# Xenna pipeline settings
-# Maximum workers for shard processing (each worker ~4GB memory)
-# Set based on node memory. null = auto-scale (cosmos-xenna default)
-xenna_max_shard_workers: 24
-
-# Console output mode: 'simple' for periodic text updates, 'rich' for animated progress
-console_mode: simple
-
-# Interval in seconds for simple mode status updates (default: 30)
-simple_log_interval_sec: 30
-
 # Force new run, ignoring cache
 force: false
 
 # Config name for artifact naming (produces PretrainBlendsArtifact-default)
 config_name: default
+
+# =============================================================================
+# Stage Configs
+# =============================================================================
+
+# Planning stage config
+plan:
+  planner_cpus: 0.5
+
+# Download stage config
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+
+# Tokenization stage config
+tokenization:
+  cpus_per_worker: 4
+
+# =============================================================================
+# Pipeline Config
+# =============================================================================
+
+# Pipeline observability settings
+observability:
+  pipeline_logging_interval_s: 30
+  wandb_log_pipeline_stats: true

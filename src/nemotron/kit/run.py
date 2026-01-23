@@ -296,7 +296,16 @@ def patch_nemo_run_ray_template_for_cpu() -> None:
 
         slurm_mod.logger.info(f"Creating Ray cluster '{name}'")
         # Check if a cluster with this name already exists
-        status = self.status()
+        try:
+            status = self.status()
+        except Exception as e:
+            # Slurm controller may be temporarily unavailable (e.g., backup controller
+            # in standby mode). Proceed with safe defaults rather than failing.
+            slurm_mod.logger.warning(
+                f"Ray cluster '{name}': failed to query Slurm status; "
+                f"proceeding with safe defaults: {e}"
+            )
+            status = {"job_id": None, "state": "UNKNOWN"}
 
         if status["job_id"] is not None:
             job_state = status["state"]
@@ -1050,7 +1059,16 @@ def run_with_nemo_run(
         # SlurmRayCluster.create() returns None instead of the job_id.
         # Fix by querying the backend status which has the actual job_id.
         if ray_job.backend.job_id is None:
-            status = ray_job.backend.status(display=False)
+            try:
+                status = ray_job.backend.status(display=False)
+            except Exception as e:
+                # Slurm controller may be temporarily unavailable (e.g., backup controller
+                # in standby mode). Continue without recovered job_id rather than failing.
+                sys.stderr.write(
+                    f"[warning] Slurm status check failed; continuing without recovered job_id: {e}\n"
+                )
+                status = None
+
             if status and status.get("job_id"):
                 ray_job.backend.job_id = status["job_id"]
                 sys.stderr.write(

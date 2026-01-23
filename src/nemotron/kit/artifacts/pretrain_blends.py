@@ -17,12 +17,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field
 
 from nemotron.kit.artifacts.base import Artifact
-from nemotron.kit.trackers import InputDatasetInfo
+from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
+
+if TYPE_CHECKING:
+    from nemotron.data_prep.blend import DataBlend
+    from nemotron.data_prep.config import FormatResult
 
 
 class PretrainBlendsArtifact(Artifact):
@@ -96,3 +100,58 @@ class PretrainBlendsArtifact(Artifact):
         if self.tokenizer_uri:
             uris.append(self.tokenizer_uri)
         return uris
+
+    @classmethod
+    def from_result(
+        cls,
+        format_result: "FormatResult",
+        blend: "DataBlend",
+        tokenizer_model: str,
+        blend_json_path: str | Path,
+        *,
+        text_field_default: str = "text",
+        elapsed_sec: float = 0.0,
+        name: str | None = None,
+    ) -> "PretrainBlendsArtifact":
+        """Create artifact from pipeline format result.
+
+        This is a convenience constructor that builds the source_datasets
+        and tokenizer_uri from the blend and tokenizer model.
+
+        Args:
+            format_result: Result from run_pretrain_pipeline
+            blend: Input data blend
+            tokenizer_model: HuggingFace model name (e.g., "nvidia/...")
+            blend_json_path: Path to the blend.json file
+            text_field_default: Default text field name for lineage
+            elapsed_sec: Processing time in seconds
+            name: Optional artifact name
+
+        Returns:
+            PretrainBlendsArtifact ready to save
+        """
+        source_datasets = [
+            InputDatasetInfo(
+                uri=d.path,
+                name=d.name,
+                weight=d.weight,
+                split=d.split,
+                subset=d.subset,
+                text_field=d.text_field or text_field_default,
+            )
+            for d in blend.datasets
+        ]
+
+        artifact = cls(
+            path=format_result.output_dir.resolve(),
+            blend_path=str(blend_json_path),
+            total_tokens=format_result.total_tokens,
+            total_sequences=format_result.total_sequences,
+            elapsed_sec=elapsed_sec,
+            num_shards=format_result.num_shards,
+            source_datasets=source_datasets,
+            tokenizer_uri=tokenizer_to_uri(tokenizer_model),
+        )
+        if name:
+            artifact.name = name
+        return artifact

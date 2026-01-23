@@ -39,7 +39,7 @@ from typing import Any
 import numpy as np
 from fsspec import AbstractFileSystem
 
-from nemotron.data_prep.filesystem import ensure_dir, read_json
+from nemotron.data_prep.utils.filesystem import ensure_dir, read_json
 
 
 def _join_path(root_dir: str, filename: str) -> str:

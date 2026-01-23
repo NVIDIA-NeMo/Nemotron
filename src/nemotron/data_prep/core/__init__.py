@@ -66,21 +66,12 @@ from nemotron.data_prep.core.chat_sft_shard_core import (
 
 # Planning utilities
 from nemotron.data_prep.core.planning import (
-    PlanRequest,
     apply_shard_sampling,
-    create_plan,
-    create_jsonl_shard_plan,
     create_shard_plan,
-    get_pending_jsonl_shards,
     get_pending_shards,
     resolve_tokenizer,
     serialize_shard_plan,
-    verify_binidx_output,
-    verify_jsonl_output,
-    verify_parquet_output,
 )
-from nemotron.data_prep.core.receipt import ReceiptManager
-from nemotron.data_prep.core.finalize import DatasetReceipts, scan_dataset_receipts
 
 # Tokenizer providers
 from nemotron.data_prep.core.providers import (
@@ -90,8 +81,6 @@ from nemotron.data_prep.core.providers import (
 # Work item dataclasses
 from nemotron.data_prep.core.work_items import (
     DatasetWorkItem,
-    JsonlDatasetWorkItem,
-    JsonlShardWorkItem,
     ShardWorkItem,
     SftDatasetWorkItem,
     SftShardWorkItem,
@@ -113,21 +102,11 @@ __all__ = [
     "process_chat_sft_parquet_from_spool_core",  # Original name
     "process_chat_sft_parquet_core",  # Standardized alias
     # Planning
-    "PlanRequest",
-    "create_plan",
     "create_shard_plan",
-    "create_jsonl_shard_plan",
     "get_pending_shards",
-    "get_pending_jsonl_shards",
-    "verify_binidx_output",
-    "verify_jsonl_output",
-    "verify_parquet_output",
     "apply_shard_sampling",
     "serialize_shard_plan",
     "resolve_tokenizer",
-    "ReceiptManager",
-    "DatasetReceipts",
-    "scan_dataset_receipts",
     # Tokenizer providers
     "create_tokenizer",
     # Work items
@@ -135,6 +114,4 @@ __all__ = [
     "ShardWorkItem",
     "SftDatasetWorkItem",
     "SftShardWorkItem",
-    "JsonlDatasetWorkItem",
-    "JsonlShardWorkItem",
 ]

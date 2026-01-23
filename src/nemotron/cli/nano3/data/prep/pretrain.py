@@ -29,6 +29,8 @@ from nemotron.kit.cli.recipe import recipe
     torchrun=False,
     ray=True,
     packager="code",
+    # Use --extra xenna so Ray's uv hook propagates cosmos-xenna to workers
+    run_command="uv run --extra xenna python {script} --config {config}",
 )
 def pretrain(ctx: typer.Context) -> None:
     """Tokenize data for pretraining (bin/idx format)."""

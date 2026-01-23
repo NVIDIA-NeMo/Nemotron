@@ -2,18 +2,15 @@ run:
   env:
     container: anyscale/ray:2.49.2-py312
 
-# Tiny config for pretrain data preparation (fast iteration/testing)
+# Tiny config for pretrain data preparation
 #
 # Usage:
 #   nemotron nano3 data prep pretrain --config tiny
-#   nemotron nano3 data prep pretrain --config tiny --run prep
-#
-# This config uses sampling for quick testing.
 
 # Path to data blend JSON file
 blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage0_pretrain/config/data_prep/data_blend_raw_small.json
 
-# Output directory for tokenized data (outputs to job directory for persistence)
+# Output directory for tokenized data
 output_dir: ${oc.env:PWD}/../output/stage0_pretrain_tiny
 
 # Number of output shards - smaller for tiny config
@@ -25,14 +22,11 @@ valid_shards: 1
 # Number of shards for test split
 test_shards: 1
 
-# HuggingFace tokenizer model name
-tokenizer_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
-
-# Prepend BOS token to documents
-add_bos: false
-
-# Append EOS token to documents
-add_eos: true
+# Tokenizer configuration (nested)
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
 
 # Default text field name in datasets
 text_field: text
@@ -44,16 +38,41 @@ min_doc_chars: null
 max_doc_tokens: null
 
 # Limit rows per dataset for quick tests - small sample for tiny
-sample: 1000
-
-# Console output mode: 'simple' for periodic text updates, 'rich' for animated progress
-console_mode: simple
-
-# Interval in seconds for simple mode status updates (default: 30)
-simple_log_interval_sec: 30
+sample: 100
 
 # Force new run, ignoring cache
-force: false
+force: true
 
-# Config name for artifact naming (produces PretrainBlendsArtifact-tiny)
+# Config name for artifact naming
 config_name: tiny
+
+# =============================================================================
+# Stage Configs
+# =============================================================================
+
+# Planning stage config
+plan:
+  planner_cpus: 0.5
+
+# Download stage config
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+  max_concurrent_downloads: 8
+
+# Tokenization stage config
+tokenization:
+  cpus_per_worker: 4
+
+# =============================================================================
+# Pipeline Config
+# =============================================================================
+
+# Pipeline observability settings
+observability:
+  pipeline_logging_interval_s: 5
+  wandb_log_pipeline_stats: true

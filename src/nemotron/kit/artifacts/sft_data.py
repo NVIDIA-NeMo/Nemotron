@@ -16,12 +16,17 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from pathlib import Path
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field
 
 from nemotron.kit.artifacts.base import Artifact
-from nemotron.kit.trackers import InputDatasetInfo
+from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
+
+if TYPE_CHECKING:
+    from nemotron.data_prep.blend import DataBlend
+    from nemotron.data_prep.config import FormatResult
 
 
 class SFTDataArtifact(Artifact):
@@ -53,16 +58,27 @@ class SFTDataArtifact(Artifact):
 
     # Explicit paths to split files (Megatron-Bridge compatible naming)
     training_path: Annotated[
-        str | None, Field(default=None, description="Path to training_{pack_size}.npy")
+        str | None, Field(default=None, description="Path to training_{pack_size}.npy (legacy)")
     ]
     validation_path: Annotated[
-        str | None, Field(default=None, description="Path to validation_{pack_size}.npy")
+        str | None, Field(default=None, description="Path to validation_{pack_size}.npy (legacy)")
     ]
     test_path: Annotated[
-        str | None, Field(default=None, description="Path to test_{pack_size}.npy")
+        str | None, Field(default=None, description="Path to test_{pack_size}.npy (legacy)")
     ]
     metadata_path: Annotated[
-        str | None, Field(default=None, description="Path to {pack_size}_metadata.jsonl")
+        str | None, Field(default=None, description="Path to {pack_size}_metadata.jsonl (legacy)")
+    ]
+
+    # Xenna-native output (packed Parquet shards + blend.json)
+    blend_path: Annotated[
+        str | None, Field(default=None, description="Path to blend.json (xenna-native output)")
+    ]
+    num_shards: Annotated[
+        int | None, Field(default=None, description="Number of output shards (xenna-native)")
+    ]
+    data_format: Annotated[
+        str, Field(default="legacy_npy_pickle", description="Output format: 'legacy_npy_pickle' or 'packed_sft_parquet'")
     ]
 
     # Source datasets for lineage tracking
@@ -73,11 +89,17 @@ class SFTDataArtifact(Artifact):
     tokenizer_uri: Annotated[str | None, Field(default=None, description="URI of tokenizer model")]
 
     def get_wandb_files(self) -> list[tuple[str, str]]:
-        """Return metadata.json for upload (small file with artifact info)."""
+        """Return metadata files for upload (small files with artifact info)."""
         files = []
         metadata_path = self.path / "metadata.json"
         if metadata_path.exists():
             files.append((str(metadata_path), "metadata.json"))
+        # Include blend.json for xenna-native output
+        if self.blend_path:
+            from pathlib import Path
+            blend_file = Path(self.blend_path)
+            if blend_file.exists():
+                files.append((str(blend_file), "blend.json"))
         return files
 
     def get_wandb_references(self) -> list[tuple[str, str]]:
@@ -102,3 +124,68 @@ class SFTDataArtifact(Artifact):
         if self.tokenizer_uri:
             uris.append(self.tokenizer_uri)
         return uris
+
+    @classmethod
+    def from_result(
+        cls,
+        format_result: "FormatResult",
+        blend: "DataBlend",
+        tokenizer_model: str,
+        blend_json_path: str | Path,
+        pack_size: int,
+        *,
+        messages_field_default: str = "messages",
+        elapsed_sec: float = 0.0,
+        name: str | None = None,
+    ) -> "SFTDataArtifact":
+        """Create artifact from xenna-native pipeline format result.
+
+        This is a convenience constructor that builds the source_datasets
+        and tokenizer_uri from the blend and tokenizer model.
+
+        Args:
+            format_result: Result from run_sft_pipeline
+            blend: Input data blend
+            tokenizer_model: HuggingFace model name (e.g., "nvidia/...")
+            blend_json_path: Path to the blend.json file
+            pack_size: Maximum tokens per packed sequence
+            messages_field_default: Default messages field name for lineage
+            elapsed_sec: Processing time in seconds
+            name: Optional artifact name
+
+        Returns:
+            SFTDataArtifact ready to save
+        """
+        source_datasets = [
+            InputDatasetInfo(
+                uri=d.path,
+                name=d.name,
+                weight=d.weight,
+                split=d.split,
+                subset=d.subset,
+                text_field=d.text_field or messages_field_default,
+            )
+            for d in blend.datasets
+        ]
+
+        artifact = cls(
+            path=format_result.output_dir.resolve(),
+            total_tokens=format_result.total_tokens,
+            total_sequences=format_result.total_sequences,
+            elapsed_sec=elapsed_sec,
+            pack_size=pack_size,
+            source_datasets=source_datasets,
+            tokenizer_uri=tokenizer_to_uri(tokenizer_model),
+            # Xenna-native output fields
+            blend_path=str(blend_json_path),
+            num_shards=format_result.num_shards,
+            data_format="packed_sft_parquet",
+            # Legacy fields set to None (not used in xenna mode)
+            training_path=None,
+            validation_path=None,
+            test_path=None,
+            metadata_path=None,
+        )
+        if name:
+            artifact.name = name
+        return artifact

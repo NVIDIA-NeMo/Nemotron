@@ -275,7 +275,7 @@ def resolve_hf_placeholders(
         Transform function that resolves placeholders or extracts RL format.
 
     Example:
-        >>> from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver
+        >>> from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
         >>> resolver = HFPlaceholderResolver.create()
         >>> transform = resolve_hf_placeholders(resolver)
         >>> # For placeholder record:
@@ -285,7 +285,7 @@ def resolve_hf_placeholders(
         >>> transform({"responses_create_params": {"input": [...]}})
         {'messages': [...]}
     """
-    from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver
+    from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
 
     # Mutable container for lazy initialization
     _resolver_holder: list[HFPlaceholderResolver | None] = [resolver]

@@ -13,11 +13,9 @@ run:
 # 2. Fetching the actual data from the external HF dataset
 # 3. Applying template restoration (DAPO prefix/suffix, Skywork {question} replacement)
 #
-# For simple copy/passthrough (no placeholder resolution), use data_prep_copy.py instead.
-#
 # Usage:
-#   python data_prep.py
-#   python data_prep.py sample=100 force=true
+#   nemotron nano3 data prep rl
+#   nemotron nano3 data prep rl sample=100 force=true
 #
 # Environment variables:
 #   PWD: Current working directory (for path resolution)
@@ -28,14 +26,8 @@ blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_prep/
 # Output directory for resolved JSONL data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage2_rl_resolved
 
-# Target size per shard (e.g., '256MB', '1GB')
-shard_size: 256MB
-
 # Limit rows per dataset for quick tests (null = no limit)
 sample: null
-
-# Ray actors for parallel processing (null = auto)
-num_actors: null
 
 # Force new run, ignoring cache
 force: false
