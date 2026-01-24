@@ -226,7 +226,8 @@ def discover_hf_files(config: DatasetConfig) -> list[FileInfo]:
     api = HfApi(token=token)
 
     # Resolve revision to SHA for determinism
-    dataset_info = api.dataset_info(hf_path, revision=config.revision)
+    # files_metadata=True ensures sibling.size is populated (required for LFS files)
+    dataset_info = api.dataset_info(hf_path, revision=config.revision, files_metadata=True)
     resolved_revision = dataset_info.sha
 
     # Find parquet files for the split

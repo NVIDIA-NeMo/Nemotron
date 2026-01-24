@@ -80,6 +80,8 @@ def create_size_balanced_assignments(
         for i, file_info in enumerate(sorted_files):
             shard_idx = i % num_shards
             assignments[shard_idx].files.append(file_info)
+            # Still accumulate total_bytes even if sizes are 0 (for consistency)
+            assignments[shard_idx].total_bytes += file_info.size
 
     # Sort files within each shard by path for deterministic processing order
     for assignment in assignments:

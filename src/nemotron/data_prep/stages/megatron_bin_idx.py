@@ -157,13 +157,28 @@ class BinIdxTokenizationStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
         This check must match get_pending_shards() in planning.py to avoid
         skipping shards that were correctly identified as pending due to
         missing output files.
+
+        Also checks for "started" status to prevent race conditions in multi-node
+        setups where the same shard might be sent to multiple workers.
         """
         if not self._fs.exists(receipt_path):
             return False
 
         try:
             r = read_json(self._fs, receipt_path)
-            if r.get("status") != "completed" or r.get("plan_hash") != plan_hash:
+            status = r.get("status")
+            receipt_plan_hash = r.get("plan_hash")
+
+            # Skip if another worker already started (race condition prevention)
+            # Timeout after 30 minutes to handle crashed workers
+            if status == "started" and receipt_plan_hash == plan_hash:
+                started_at = r.get("started_at", 0)
+                elapsed_minutes = (time.time() - started_at) / 60
+                if elapsed_minutes < 30:
+                    # Another worker is processing this shard, skip
+                    return True
+
+            if status != "completed" or receipt_plan_hash != plan_hash:
                 return False
 
             # Verify output files exist for non-empty shards

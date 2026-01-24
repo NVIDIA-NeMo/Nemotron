@@ -139,9 +139,10 @@ def _extract_wandb_metrics(
     # Per-stage metrics from actor_pools
     # Only include these when include_stage_metrics is True; otherwise WandbStatsHook
     # provides consolidated line_series charts that avoid per-stage chart proliferation
+    # Note: actor_pools is a list of ActorPoolStats objects (not a dict)
     if include_stage_metrics and hasattr(stats, "actor_pools") and stats.actor_pools:
-        for stage_name, pool_stats in stats.actor_pools.items():
-            stage_key = _sanitize_metric_name(stage_name)
+        for pool_stats in stats.actor_pools:
+            stage_key = _sanitize_metric_name(pool_stats.name)
             prefix = f"pipeline/stage/{stage_key}"
 
             # Actor stats
@@ -277,10 +278,11 @@ def _extract_jsonl_record(
         record["cluster"] = cluster
 
     # Per-stage stats
+    # Note: actor_pools is a list of ActorPoolStats objects (not a dict)
     stages: list[dict[str, Any]] = []
     if hasattr(stats, "actor_pools") and stats.actor_pools:
-        for stage_name, pool_stats in stats.actor_pools.items():
-            stage_record: dict[str, Any] = {"name": stage_name}
+        for pool_stats in stats.actor_pools:
+            stage_record: dict[str, Any] = {"name": pool_stats.name}
 
             if hasattr(pool_stats, "actor_stats") and pool_stats.actor_stats is not None:
                 ast = pool_stats.actor_stats
@@ -414,7 +416,12 @@ def make_pipeline_stats_callback(
                     import wandb
 
                     if wandb.run is not None:
-                        metrics = _extract_wandb_metrics(stats, start_time)
+                        # Skip per-stage metrics when consolidated charts are enabled
+                        # (WandbStatsHook provides line_series charts for stage metrics)
+                        include_stage = not observability.wandb_consolidated_charts_only
+                        metrics = _extract_wandb_metrics(
+                            stats, start_time, include_stage_metrics=include_stage
+                        )
                         wandb.log(metrics, commit=False)
                 except ImportError:
                     pass  # wandb not installed

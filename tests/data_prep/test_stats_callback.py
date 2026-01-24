@@ -30,7 +30,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from nemotron.data_prep.config import ObservabilityConfig
-from nemotron.data_prep.stats_callback import (
+from nemotron.data_prep.observability.stats_callback import (
     _extract_jsonl_record,
     _extract_wandb_metrics,
     _sanitize_metric_name,
@@ -90,7 +90,8 @@ class MockTaskStats:
 class MockActorPoolStats:
     """Mock actor pool stats for a stage."""
 
-    def __init__(self):
+    def __init__(self, name: str = "UnnamedStage"):
+        self.name = name
         self.actor_stats = MockActorStats()
         self.task_stats = MockTaskStats()
         self.slot_stats = MockSlotStats()
@@ -125,7 +126,11 @@ class MockResourceUsage:
 
 
 class MockPipelineStats:
-    """Mock PipelineStats object."""
+    """Mock PipelineStats object.
+
+    Note: actor_pools is a list (not a dict) to match the real PipelineStats
+    from cosmos-xenna. Each ActorPoolStats has a .name attribute.
+    """
 
     def __init__(self):
         self.inputs_processed_per_second = 10.5
@@ -135,11 +140,12 @@ class MockPipelineStats:
         self.num_outputs = 500
         self.main_loop_rate_hz = 100.0
         self.cluster_info = MockClusterInfo()
-        self.actor_pools = {
-            "Stage 00 - PlanStage": MockActorPoolStats(),
-            "Stage 01 - DownloadStage": MockActorPoolStats(),
-            "Stage 02 - BinIdxTokenizationStage": MockActorPoolStats(),
-        }
+        # actor_pools is a list of ActorPoolStats, each with a .name attribute
+        self.actor_pools = [
+            MockActorPoolStats(name="Stage 00 - PlanStage"),
+            MockActorPoolStats(name="Stage 01 - DownloadStage"),
+            MockActorPoolStats(name="Stage 02 - BinIdxTokenizationStage"),
+        ]
         self.resource_usage_per_stage = {
             "Stage 02 - BinIdxTokenizationStage": MockResourceUsage(),
         }
@@ -179,13 +185,13 @@ class TestSanitizeMetricName:
 
     def test_removes_stage_prefix(self):
         """Test that 'Stage XX - ' prefix is removed."""
-        assert _sanitize_metric_name("Stage 02 - BinIdxTokenizationStage") == "binidxtokenization"
+        assert _sanitize_metric_name("Stage 02 - BinIdxTokenizationStage") == "bin_idx_tokenization"
         assert _sanitize_metric_name("Stage 00 - PlanStage") == "plan"
 
     def test_removes_stage_suffix(self):
         """Test that 'Stage' suffix is removed."""
         assert _sanitize_metric_name("DownloadStage") == "download"
-        assert _sanitize_metric_name("PackedSftParquetStage") == "packedsftparquet"
+        assert _sanitize_metric_name("PackedSftParquetStage") == "packed_sft_parquet"
 
     def test_handles_simple_names(self):
         """Test simple names without Stage prefix/suffix."""
@@ -286,15 +292,91 @@ class TestWandbLogging:
         assert metrics["pipeline/cluster/avail_gpus"] == 4
 
         # Stage metrics (tokenization stage)
-        assert metrics["pipeline/stage/binidxtokenization/actors/running"] == 8
-        assert metrics["pipeline/stage/binidxtokenization/tasks/completed"] == 100
-        assert metrics["pipeline/stage/binidxtokenization/queue/input_size"] == 50
-        assert metrics["pipeline/stage/binidxtokenization/slots/used"] == 5
-        assert metrics["pipeline/stage/binidxtokenization/speed/tasks_per_s"] == 2.5
+        assert metrics["pipeline/stage/bin_idx_tokenization/actors/running"] == 8
+        assert metrics["pipeline/stage/bin_idx_tokenization/tasks/completed"] == 100
+        assert metrics["pipeline/stage/bin_idx_tokenization/queue/input_size"] == 50
+        assert metrics["pipeline/stage/bin_idx_tokenization/slots/used"] == 5
+        assert metrics["pipeline/stage/bin_idx_tokenization/speed/tasks_per_s"] == 2.5
 
         # Resource usage
-        assert metrics["pipeline/stage/binidxtokenization/cpu_util_pct"] == 75.5
-        assert metrics["pipeline/stage/binidxtokenization/mem_gb"] == 8.0
+        assert metrics["pipeline/stage/bin_idx_tokenization/cpu_util_pct"] == 75.5
+        assert metrics["pipeline/stage/bin_idx_tokenization/mem_gb"] == 8.0
+
+    def test_extract_wandb_metrics_excludes_stage_metrics_when_disabled(
+        self, mock_stats: MockPipelineStats
+    ):
+        """Test that stage metrics are excluded when include_stage_metrics=False."""
+        import time
+
+        start_time = time.time() - 100
+        metrics = _extract_wandb_metrics(mock_stats, start_time, include_stage_metrics=False)
+
+        # Pipeline-level metrics should still be present
+        assert "pipeline/pipeline_duration_s" in metrics
+        assert "pipeline/inputs_processed_per_s" in metrics
+        assert "pipeline/cluster/total_cpus" in metrics
+
+        # Stage metrics should NOT be present
+        assert "pipeline/stage/bin_idx_tokenization/actors/running" not in metrics
+        assert "pipeline/stage/bin_idx_tokenization/tasks/completed" not in metrics
+        assert "pipeline/stage/bin_idx_tokenization/cpu_util_pct" not in metrics
+        assert "pipeline/stage/plan/actors/running" not in metrics
+
+    def test_consolidated_charts_only_skips_stage_metrics(self, mock_stats: MockPipelineStats):
+        """Test that wandb_consolidated_charts_only=True skips per-stage metrics."""
+        observability = ObservabilityConfig(
+            wandb_log_pipeline_stats=True,
+            pipeline_stats_jsonl_path=None,
+            wandb_consolidated_charts_only=True,  # Default, but explicit for clarity
+        )
+
+        mock_wandb = MagicMock()
+        mock_wandb.run = MagicMock()
+        mock_wandb.log = MagicMock()
+
+        with patch.dict(sys.modules, {"wandb": mock_wandb}):
+            callback = make_pipeline_stats_callback(
+                observability=observability,
+                pipeline_kind="pretrain",
+            )
+            callback(mock_stats)
+
+            # Verify wandb.log was called
+            mock_wandb.log.assert_called_once()
+            logged_metrics = mock_wandb.log.call_args[0][0]
+
+            # Pipeline-level metrics should be present
+            assert "pipeline/pipeline_duration_s" in logged_metrics
+
+            # Stage metrics should NOT be present (consolidated charts only)
+            stage_keys = [k for k in logged_metrics if "/stage/" in k]
+            assert len(stage_keys) == 0, f"Found stage keys when consolidated_charts_only=True: {stage_keys}"
+
+    def test_consolidated_charts_disabled_includes_stage_metrics(self, mock_stats: MockPipelineStats):
+        """Test that wandb_consolidated_charts_only=False includes per-stage metrics."""
+        observability = ObservabilityConfig(
+            wandb_log_pipeline_stats=True,
+            pipeline_stats_jsonl_path=None,
+            wandb_consolidated_charts_only=False,  # Explicitly disable
+        )
+
+        mock_wandb = MagicMock()
+        mock_wandb.run = MagicMock()
+        mock_wandb.log = MagicMock()
+
+        with patch.dict(sys.modules, {"wandb": mock_wandb}):
+            callback = make_pipeline_stats_callback(
+                observability=observability,
+                pipeline_kind="pretrain",
+            )
+            callback(mock_stats)
+
+            mock_wandb.log.assert_called_once()
+            logged_metrics = mock_wandb.log.call_args[0][0]
+
+            # Stage metrics SHOULD be present
+            stage_keys = [k for k in logged_metrics if "/stage/" in k]
+            assert len(stage_keys) > 0, "Expected stage keys when consolidated_charts_only=False"
 
     def test_wandb_log_called_when_enabled(self, mock_stats: MockPipelineStats):
         """Test that wandb.log is called when W&B logging is enabled and run exists."""

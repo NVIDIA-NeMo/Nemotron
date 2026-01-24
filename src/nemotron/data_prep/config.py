@@ -232,7 +232,9 @@ class ObservabilityConfig:
         wandb_log_pipeline_stats: Log pipeline stats (actors, queues, progress) to wandb
         wandb_log_plan_table: Log plan table to wandb showing datasets and processing status
         wandb_log_progress_table: Log per-dataset progress table to wandb periodically
+        wandb_log_stage_table: Log stage overview table to wandb showing per-stage metrics
         wandb_progress_table_interval_s: Interval for progress table updates (default 5 min)
+        wandb_stage_table_interval_s: Interval for stage table updates (default 30s)
         wandb_download_log_interval_sec: Interval for download progress logging
         pipeline_logging_interval_s: Interval for pipeline stats logging
         pipeline_stats_jsonl_path: Optional path to write pipeline stats as JSONL.
@@ -248,7 +250,9 @@ class ObservabilityConfig:
     wandb_log_pipeline_stats: bool = True
     wandb_log_plan_table: bool = True
     wandb_log_progress_table: bool = True
+    wandb_log_stage_table: bool = True
     wandb_progress_table_interval_s: int = 300
+    wandb_stage_table_interval_s: int = 30
     wandb_download_log_interval_sec: int = 30
     pipeline_logging_interval_s: int = 30
     pipeline_stats_jsonl_path: str | None = None

@@ -368,19 +368,17 @@ class WandbStatsHook:
 
         # Progress table tracking
         self._last_progress_table_time: float = 0.0
+        self._last_stage_table_time: float = 0.0
         self._fs: Any = None  # Lazy-loaded filesystem
         self._dataset_input_bytes: dict[str, int] = {}  # Cache for dataset sizes from plan.json
 
-        # Consolidated chart state for line_series
-        # Ordered list of stage IDs discovered from first stats
-        self._stage_ids: list[str] | None = None
-        # Step counter for time series
+        # Step counter for W&B logging
         self._step: int = 0
-        # History for building line_series charts: metric -> stage -> [values]
+
+        # Accumulated history for final consolidated line_series charts
+        # These are logged once at the end of the pipeline run
         self._metric_history: dict[str, dict[str, list[float]]] = {}
         self._step_history: list[int] = []
-        # How often to update consolidated charts (every N steps)
-        self._chart_update_interval: int = 5
 
     def _get_monitor_class(self) -> type:
         """Get the PipelineMonitor class to patch."""
@@ -415,17 +413,8 @@ class WandbStatsHook:
         """Called when new PipelineStats are available."""
         self._log_count += 1
 
-        # Log to W&B
-        if self._observability.wandb_log_pipeline_stats:
-            try:
-                import wandb
-
-                if wandb.run is not None:
-                    self._log_consolidated_charts(stats, wandb)
-            except ImportError:
-                pass
-            except Exception as e:
-                logger.debug(f"W&B logging error: {e}")
+        # Accumulate stage metrics for final consolidated charts
+        self._accumulate_stage_metrics(stats)
 
         # Log to JSONL
         if self._jsonl_path is not None:
@@ -452,87 +441,29 @@ class WandbStatsHook:
                 self._update_progress_table()
                 self._last_progress_table_time = now
 
-    def _log_consolidated_charts(self, stats: Any, wandb: Any) -> None:
-        """Log metrics with consolidated multi-line charts.
+        # Update stage overview table periodically
+        if self._observability.wandb_log_stage_table:
+            now = time.time()
+            interval = self._observability.wandb_stage_table_interval_s
+            if now - self._last_stage_table_time >= interval:
+                self._update_stage_overview_table(stats)
+                self._last_stage_table_time = now
 
-        This method:
-        1. Logs pipeline-level scalar metrics (one chart per metric)
-        2. Accumulates history for each metric/stage combination
-        3. Creates line_series charts showing all stages on one chart per metric
-           (This avoids creating separate charts per stage)
+    def _accumulate_stage_metrics(self, stats: Any) -> None:
+        """Accumulate stage metrics for final consolidated charts.
 
-        IMPORTANT: We do NOT log individual per-stage scalar metrics because:
-        - Each unique metric key creates a separate chart in WandB
-        - logging stages/{metric}/{stage_id} creates N charts (one per stage)
-        - Instead, we use line_series to get ONE chart with N colored lines
+        This method collects per-stage metrics during pipeline execution.
+        The accumulated history is used to create line_series charts at the
+        end of the pipeline run (in _log_final_consolidated_charts).
 
-        This gives us the "system metrics" look where each stage appears as a
-        colored line in the legend on a single chart.
+        No metrics are logged to W&B during execution - only the progress table
+        and stage overview table provide real-time visibility. The consolidated
+        charts are logged once at the end for historical analysis.
         """
-        ns = self._wandb_namespace
-
         # Extract stage metrics organized by metric name
         stage_metrics = _extract_stage_metrics(stats)
 
-        # Discover stage IDs on first call (preserves order for consistent legend)
-        if self._stage_ids is None and hasattr(stats, "actor_pools") and stats.actor_pools:
-            self._stage_ids = [canonical_stage_id(pool.name) for pool in stats.actor_pools]
-
-        # Build all scalar metrics to log
-        # NOTE: Only pipeline-level metrics here, NOT per-stage metrics
-        all_metrics: dict[str, Any] = {}
-
-        # Pipeline-level metrics (these are scalars, one value total)
-        if hasattr(stats, "pipeline_duration_s"):
-            all_metrics[f"{ns}/pipeline_duration_s"] = stats.pipeline_duration_s
-        if hasattr(stats, "main_loop_rate_hz"):
-            all_metrics[f"{ns}/main_loop_rate_hz"] = stats.main_loop_rate_hz
-        if hasattr(stats, "num_input_tasks_remaining"):
-            all_metrics[f"{ns}/num_input_remaining"] = stats.num_input_tasks_remaining
-        if hasattr(stats, "num_initial_input_tasks"):
-            all_metrics[f"{ns}/num_initial_inputs"] = stats.num_initial_input_tasks
-        if hasattr(stats, "num_outputs"):
-            all_metrics[f"{ns}/num_outputs"] = stats.num_outputs
-
-        # Computed rates
-        if hasattr(stats, "inputs_processed_per_second"):
-            all_metrics[f"{ns}/inputs_processed_per_s"] = stats.inputs_processed_per_second
-        if hasattr(stats, "outputs_per_second"):
-            all_metrics[f"{ns}/outputs_per_s"] = stats.outputs_per_second
-
-        # Progress
-        if hasattr(stats, "num_initial_input_tasks") and hasattr(stats, "num_input_tasks_remaining"):
-            initial = stats.num_initial_input_tasks
-            remaining = stats.num_input_tasks_remaining
-            if initial > 0:
-                all_metrics[f"{ns}/progress"] = (initial - remaining) / initial * 100.0
-
-        # Cluster resources (single values, not per-stage)
-        if hasattr(stats, "cluster") and stats.cluster is not None:
-            cluster = stats.cluster
-            if hasattr(cluster, "total") and cluster.total is not None:
-                total = cluster.total
-                if hasattr(total, "num_cpus"):
-                    all_metrics[f"{ns}/cluster/total_cpus"] = total.num_cpus
-                if hasattr(total, "num_gpus"):
-                    all_metrics[f"{ns}/cluster/total_gpus"] = total.num_gpus
-                if hasattr(total, "memory"):
-                    all_metrics[f"{ns}/cluster/total_mem_gb"] = total.memory / 1e9
-                if hasattr(total, "object_store_memory"):
-                    all_metrics[f"{ns}/cluster/total_obj_store_gb"] = total.object_store_memory / 1e9
-
-            if hasattr(cluster, "available") and cluster.available is not None:
-                avail = cluster.available
-                if hasattr(avail, "num_cpus"):
-                    all_metrics[f"{ns}/cluster/avail_cpus"] = avail.num_cpus
-                if hasattr(avail, "num_gpus"):
-                    all_metrics[f"{ns}/cluster/avail_gpus"] = avail.num_gpus
-                if hasattr(avail, "memory"):
-                    all_metrics[f"{ns}/cluster/avail_mem_gb"] = avail.memory / 1e9
-                if hasattr(avail, "object_store_memory"):
-                    all_metrics[f"{ns}/cluster/avail_obj_store_gb"] = avail.object_store_memory / 1e9
-
-        # Accumulate history for line_series charts
+        # Accumulate per-stage metrics for final line_series charts
         self._step_history.append(self._step)
         for metric_name, stage_values in stage_metrics.items():
             if metric_name not in self._metric_history:
@@ -542,64 +473,8 @@ class WandbStatsHook:
                     self._metric_history[metric_name][stage_id] = []
                 self._metric_history[metric_name][stage_id].append(float(value))
 
-        # Create consolidated line_series charts EVERY step
-        # Each chart shows all stages on one chart per metric
-        # This produces one chart per metric (e.g., "tasks_completed") with
-        # colored lines for each stage (Plan, Download, Tokenize)
-        self._create_line_series_charts(wandb, all_metrics, ns)
-
         # Increment step
         self._step += 1
-
-        # Log all metrics in one call
-        wandb.log(all_metrics, commit=True)
-
-    def _create_line_series_charts(self, wandb: Any, all_metrics: dict, ns: str) -> None:
-        """Create wandb.plot.line_series charts for consolidated stage metrics.
-
-        Each chart shows one metric with multiple lines (one per stage).
-        """
-        stage_ids = self._stage_ids or []
-        if not stage_ids or not self._metric_history:
-            return
-
-        # Create a chart for each metric
-        for metric_name, stage_data in self._metric_history.items():
-            # Get display names for stages
-            stages_with_data = [s for s in stage_ids if s in stage_data]
-            if not stages_with_data:
-                continue
-
-            # Build xs and ys for line_series
-            # xs: list of x-values for each line (same step values for all)
-            # ys: list of y-values for each line
-            xs = []
-            ys = []
-            keys = []
-
-            for stage_id in stages_with_data:
-                values = stage_data[stage_id]
-                # Ensure we have matching lengths
-                steps = self._step_history[: len(values)]
-                if steps and values:
-                    xs.append(steps)
-                    ys.append(values)
-                    keys.append(get_stage_display_name(stage_id))
-
-            if xs and ys:
-                try:
-                    # Create human-readable title
-                    title = f"{self._pipeline_kind}: {metric_name.replace('_', ' ').title()}"
-                    chart = wandb.plot.line_series(
-                        xs=xs,
-                        ys=ys,
-                        keys=keys,
-                        title=title,
-                        xname="Step",
-                    )
-                    all_metrics[f"{ns}/charts/{metric_name}"] = chart
-                except Exception as e:
-                    logger.debug(f"Failed to create line_series chart for {metric_name}: {e}")
 
     def _get_filesystem(self) -> Any:
         """Get filesystem handle (lazy-loaded)."""
@@ -759,6 +634,63 @@ class WandbStatsHook:
         except Exception as e:
             logger.debug(f"Progress table update error: {e}")
 
+    def _update_stage_overview_table(self, stats: Any) -> None:
+        """Log stage overview table to W&B showing current stage metrics.
+
+        The table provides a real-time view of stage-level metrics:
+        - stage: Human-readable stage name
+        - tasks: Total completed tasks
+        - queue_in: Input queue size
+        - queue_out: Output queue size
+        - actors: Running actors
+        - speed: Tasks per second
+        - cpu_pct: CPU utilization percentage
+        - mem_gb: Memory usage in GB
+        """
+        try:
+            import wandb
+
+            if wandb.run is None:
+                return
+
+            stage_metrics = _extract_stage_metrics(stats)
+            if not stage_metrics:
+                return
+
+            # Get all stage IDs from the metrics
+            stage_ids: set[str] = set()
+            for metric_data in stage_metrics.values():
+                stage_ids.update(metric_data.keys())
+
+            if not stage_ids:
+                return
+
+            columns = ["stage", "tasks", "queue_in", "queue_out", "actors", "speed", "cpu_pct", "mem_gb"]
+            data = []
+
+            for stage_id in sorted(stage_ids):
+                row = [
+                    get_stage_display_name(stage_id),
+                    stage_metrics.get("tasks_completed", {}).get(stage_id, 0),
+                    stage_metrics.get("queue_in", {}).get(stage_id, 0),
+                    stage_metrics.get("queue_out", {}).get(stage_id, 0),
+                    stage_metrics.get("actors_running", {}).get(stage_id, 0),
+                    round(stage_metrics.get("speed_tasks_per_s", {}).get(stage_id, 0.0), 2),
+                    round(stage_metrics.get("resource_cpu_util_pct", {}).get(stage_id, 0.0), 1),
+                    round(stage_metrics.get("resource_mem_gb", {}).get(stage_id, 0.0), 2),
+                ]
+                data.append(row)
+
+            table = wandb.Table(columns=columns, data=data)
+            # Use commit=True to flush all pending logs (including progress_table)
+            wandb.log({f"{self._wandb_namespace}/stage_table": table}, commit=True)
+            logger.debug(f"Updated stage table with {len(data)} stages")
+
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Stage table update error: {e}")
+
     def __enter__(self) -> "WandbStatsHook":
         """Install the monkey-patch."""
         global _patch_depth, _original_make_stats, _active_hooks
@@ -778,8 +710,11 @@ class WandbStatsHook:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Remove the monkey-patch."""
+        """Remove the monkey-patch and log final consolidated charts."""
         global _patch_depth, _original_make_stats, _active_hooks
+
+        # Log final consolidated line_series charts before cleanup
+        self._log_final_consolidated_charts()
 
         with _patch_lock:
             _active_hooks.remove(self)
@@ -801,6 +736,70 @@ class WandbStatsHook:
             self._jsonl_file = None
 
         logger.debug(f"W&B hook logged {self._log_count} stats updates")
+
+    def _log_final_consolidated_charts(self) -> None:
+        """Log consolidated line_series charts at the end of the pipeline run.
+
+        This creates ONE chart per metric with multiple lines (one per stage).
+        The charts are logged only once at the end to avoid chart proliferation
+        that occurs when logging line_series on every step.
+        """
+        if not self._metric_history or not self._step_history:
+            return
+
+        try:
+            import wandb
+
+            if wandb.run is None:
+                return
+
+            ns = self._wandb_namespace
+            charts: dict[str, Any] = {}
+
+            for metric_name, stage_data in self._metric_history.items():
+                # Get all stages that have data for this metric
+                stages_with_data = list(stage_data.keys())
+                if not stages_with_data:
+                    continue
+
+                # Build xs and ys for line_series
+                xs = []
+                ys = []
+                keys = []
+
+                for stage_id in stages_with_data:
+                    values = stage_data[stage_id]
+                    # Use only the steps that have corresponding values
+                    steps = self._step_history[: len(values)]
+                    if steps and values:
+                        xs.append(steps)
+                        ys.append(values)
+                        keys.append(get_stage_display_name(stage_id))
+
+                if xs and ys:
+                    try:
+                        # Create human-readable title
+                        title = f"{self._pipeline_kind}: {metric_name.replace('_', ' ').title()}"
+                        chart = wandb.plot.line_series(
+                            xs=xs,
+                            ys=ys,
+                            keys=keys,
+                            title=title,
+                            xname="Step",
+                        )
+                        charts[f"{ns}/stages/{metric_name}"] = chart
+                    except Exception as e:
+                        logger.debug(f"Failed to create line_series chart for {metric_name}: {e}")
+
+            # Log all consolidated charts in one call
+            if charts:
+                wandb.log(charts, commit=False)
+                logger.debug(f"Logged {len(charts)} consolidated stage charts to W&B")
+
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Error logging final consolidated charts: {e}")
 
 
 def make_wandb_stats_hook(
