@@ -51,7 +51,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from nemotron.data_prep.config import DatasetConfig, ObservabilityConfig
 from nemotron.data_prep.observability.stage_keys import canonical_stage_id, get_stage_display_name
 from nemotron.data_prep.utils.discovery import get_dataset_metadata
-from nemotron.data_prep.utils.size import format_byte_size
+from nemotron.data_prep.utils.size import format_byte_size, format_count
 
 if TYPE_CHECKING:
     pass
@@ -619,8 +619,8 @@ class WandbStatsHook:
                     total_shards,
                     downloaded_str,
                     processed_str,
-                    total_tokens,
-                    total_sequences,
+                    format_count(total_tokens),
+                    format_count(total_sequences),
                     status,
                 ])
 

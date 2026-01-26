@@ -107,6 +107,44 @@ def format_byte_size(size: int) -> str:
     return f"{size:.1f}EB"
 
 
+def format_count(count: int) -> str:
+    """Format large counts as human-readable string with K/M/B/T suffixes.
+
+    Uses decimal prefixes (1K = 1,000, 1M = 1,000,000, etc.) since these
+    are counts rather than byte sizes.
+
+    Args:
+        count: Count value to format.
+
+    Returns:
+        Human-readable count string (e.g., "1.5M", "2.3B", "500K").
+
+    Examples:
+        >>> format_count(500)
+        '500'
+        >>> format_count(1500)
+        '1.5K'
+        >>> format_count(1500000)
+        '1.5M'
+        >>> format_count(2300000000)
+        '2.3B'
+        >>> format_count(5600000000000)
+        '5.6T'
+    """
+    if count < 0:
+        return f"-{format_count(-count)}"
+
+    # Use decimal prefixes for counts (not binary)
+    for unit, threshold in [("", 1000), ("K", 1000), ("M", 1000), ("B", 1000), ("T", 1000)]:
+        if abs(count) < threshold:
+            if count == int(count):
+                return f"{int(count)}{unit}"
+            return f"{count:.1f}{unit}"
+        count = count / 1000
+
+    return f"{count:.1f}T"
+
+
 def compute_num_shards(total_bytes: int, shard_size: str | int) -> int:
     """Compute number of shards from target shard size.
 

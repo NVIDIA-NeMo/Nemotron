@@ -156,6 +156,7 @@ monitor-sidecar() {
 monitor-sidecar &
 
 # Background process to sync ray logs every $RAY_LOG_SYNC_FREQUENCY seconds
+# Note: Each node uses ${RAY_TEMP_DIR}/<hostname>/ to avoid shared filesystem socket issues (Ray bug #44431)
 log-sync-sidecar() {
   set +x
   if [[ -z "$RAY_LOG_SYNC_FREQUENCY" ]]; then
@@ -165,15 +166,18 @@ log-sync-sidecar() {
   mkdir -p $LOG_DIR/ray
   while true; do
     sleep $RAY_LOG_SYNC_FREQUENCY
-    if ls ${RAY_TEMP_DIR}/session_[0-9]* > /dev/null 2>&1; then
-      for session_dir in ${RAY_TEMP_DIR}/session_[0-9]*/; do
+    # Look for sessions in node-specific subdirectories: ${RAY_TEMP_DIR}/<hostname>/session_*/
+    if ls ${RAY_TEMP_DIR}/*/session_[0-9]* > /dev/null 2>&1; then
+      for session_dir in ${RAY_TEMP_DIR}/*/session_[0-9]*/; do
         if [[ -d "\$session_dir/logs" ]]; then
+          # Include node name in the destination to keep logs separate per node
+          node_name=\$(basename \$(dirname "\$session_dir"))
           session_name=\$(basename "\$session_dir")
-          mkdir -p "$LOG_DIR/ray/\$session_name"
+          mkdir -p "$LOG_DIR/ray/\$node_name/\$session_name"
           if command -v rsync > /dev/null 2>&1; then
-            rsync -ahP "\$session_dir/logs/" "$LOG_DIR/ray/\$session_name/logs/" 2>/dev/null || true
+            rsync -ahP "\$session_dir/logs/" "$LOG_DIR/ray/\$node_name/\$session_name/logs/" 2>/dev/null || true
           else
-            cp -r "\$session_dir/logs" "$LOG_DIR/ray/\$session_name/"
+            cp -r "\$session_dir/logs" "$LOG_DIR/ray/\$node_name/\$session_name/"
           fi
         fi
       done
@@ -189,10 +193,14 @@ log-sync-sidecar &
 # Patch nsight.py before starting Ray head
 sed -i 's/context\.py_executable = " "\.join(self\.nsight_cmd) + " python"/context.py_executable = " ".join(self.nsight_cmd) + f" {context.py_executable}"/g' /opt/nemo_rl_venv/lib64/python*/site-packages/ray/_private/runtime_env/nsight.py
 
+# Create node-specific temp directory to avoid shared filesystem socket issues (Ray bug #44431)
+NODE_RAY_TEMP_DIR=${RAY_TEMP_DIR}/\$(hostname)
+mkdir -p \$NODE_RAY_TEMP_DIR
+
 cat <<EOFINNER | tee /launch-head.sh
 ray start --head \
     --disable-usage-stats \
-    --temp-dir=${RAY_TEMP_DIR} \
+    --temp-dir=\$NODE_RAY_TEMP_DIR \
     --num-cpus=$cpus_per_node \
     --resources="{\"worker_units\": $worker_units_per_node, \"slurm_managed_ray_cluster\": 1}" \
     --node-ip-address="$head_node_ip" \
@@ -278,10 +286,15 @@ monitor-sidecar &
 # Patch nsight.py before starting Ray worker
 sed -i 's/context\.py_executable = " "\.join(self\.nsight_cmd) + " python"/context.py_executable = " ".join(self.nsight_cmd) + f" {context.py_executable}"/g' /opt/nemo_rl_venv/lib64/python*/site-packages/ray/_private/runtime_env/nsight.py
 
+# Create node-specific temp directory to avoid shared filesystem socket issues (Ray bug #44431)
+NODE_RAY_TEMP_DIR=${RAY_TEMP_DIR}/\$(hostname)
+mkdir -p \$NODE_RAY_TEMP_DIR
+
 cat <<EOFINNER | tee /launch-worker.sh
 sleep 5
 ray start --address "$ip_head" \
           --disable-usage-stats \
+          --temp-dir=\$NODE_RAY_TEMP_DIR \
           --num-cpus=$cpus_per_node \
           --resources="{\"worker_units\": $worker_units_per_node, \"slurm_managed_ray_cluster\": 1}" \
           --min-worker-port=${MIN_WORKER_PORT} \
