@@ -106,197 +106,261 @@ More than just weights, recipes, and libraries: Nemotron is commited to opening 
 <details>
 <summary><strong>Nemotron Data Catalogue</strong></summary>
 
+*A comprehensive collection of NVIDIA Nemotron datasets spanning pre-training, post-training, reinforcement learning, multimodal, safety, and domain-specific applications. These openly available datasets power the Nemotron family of models for agentic AI development.*
+
+---
+
 <details>
-<summary><strong>Nemotron 3 Family (Nano, Super, Ultra)</strong></summary>
+<summary><strong>Code</strong></summary>
 
-*Hybrid Mamba-Transformer MoE architecture for agentic AI*
+*Datasets for training code generation, competitive programming, and software engineering capabilities across multiple programming languages.*
 
-### Pre-training Data
-
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-CC-v2.1](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2.1) | Pre-training | NVIDIA Data Agreement | 2.5T tokens English web data with synthetic rephrases and translations |
-| [Nemotron-CC-v2](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2) | Pre-training | NVIDIA Data Agreement | 6.6T tokens quality-filtered Common Crawl with multilingual Q&A |
-| [Nemotron-CC-Code-v1](https://huggingface.co/datasets/nvidia/Nemotron-CC-Code-v1) | Pre-training | NVIDIA Data Agreement | 427.9B tokens from Common Crawl code pages using Lynx + LLM pipeline |
-| [Nemotron-CC-Math-v1](https://huggingface.co/datasets/nvidia/Nemotron-CC-Math-v1) | Pre-training | NVIDIA Data Agreement | 133B-token math dataset from Common Crawl using Lynx + LLM pipeline |
-| [Nemotron-Pretraining-Code-v2](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Code-v2) | Pre-training | NVIDIA Data Agreement | Updated GitHub code + synthetic QA with STEM reasoning for Nemotron 3 |
-| [Nemotron-Pretraining-Dataset-sample](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Dataset-sample) | Pre-training (Sample) | NVIDIA Data Agreement | Sample subset of Nemotron pre-training corpus for experimentation |
-
-### Post-training Data (SFT)
-
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-Math-Proofs-v1](https://huggingface.co/datasets/nvidia/Nemotron-Math-Proofs-v1) | SFT | CC-BY-4.0 | Mathematical proofs dataset for Nemotron 3 post-training |
-| [Nemotron-Science-v1](https://huggingface.co/datasets/nvidia/Nemotron-Science-v1) | SFT | CC-BY-4.0 | Synthetic science reasoning (MCQA + chemistry RQA) for Nemotron 3 Nano |
-| [Nemotron-Instruction-Following-Chat-v1](https://huggingface.co/datasets/nvidia/Nemotron-Instruction-Following-Chat-v1) | SFT | CC-BY-4.0 | Multi-turn chat and structured output generation for Nemotron 3 Nano |
-| [Nemotron-Agentic-v1](https://huggingface.co/datasets/nvidia/Nemotron-Agentic-v1) | SFT | CC-BY-4.0 | Multi-turn trajectories for conversational tool use and agentic workflows |
-
-### Reinforcement Learning Data
-
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-3-Nano-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend) | RL Training | CC-BY-4.0 | Curated multi-domain blend for Nemotron-3-Nano-30B-A3B |
-| [Nemotron-CrossThink](https://huggingface.co/datasets/nvidia/Nemotron-CrossThink) | RL Training | CC-BY-4.0 | Multi-domain QA with MCQ and open-ended formats for verifiable rewards |
-| [Nemotron-Cascade-RL-SWE](https://huggingface.co/datasets/nvidia/Nemotron-Cascade-RL-SWE) | RL Training | CC-BY-4.0 | SWE code repair from SWE-Bench, SWE-Smith, R2E-Gym |
-| [Nemotron-Cascade-RL-Instruction-Following](https://huggingface.co/datasets/nvidia/Nemotron-Cascade-RL-Instruction-Following) | RL Training | ODC-BY-1.0 | 108K samples for instruction-following RL |
-| [Nemotron-RL-instruction_following](https://huggingface.co/datasets/nvidia/Nemotron-RL-instruction_following) | RL Training | ODC-BY-1.0 | Verifiable instruction adherence from WildChat-1M + Open-Instruct |
-| [Nemotron-RL-instruction_following-structured_outputs](https://huggingface.co/datasets/nvidia/Nemotron-RL-instruction_following-structured_outputs) | RL Training | ODC-BY-1.0 | JSON schema-constrained output formatting tests |
-| [Nemotron-RL-agent-workplace_assistant](https://huggingface.co/datasets/nvidia/Nemotron-RL-agent-workplace_assistant) | RL Training | ODC-BY-1.0 | Workplace assistant agent tasks for NeMo Gym |
-| [Nemotron-RL-knowledge-web_search-mcqa](https://huggingface.co/datasets/nvidia/Nemotron-RL-knowledge-web_search-mcqa) | RL Training | ODC-BY-1.0 | Web search and multiple-choice QA tasks for NeMo Gym |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-CC-Code-v1](https://huggingface.co/datasets/nvidia/Nemotron-CC-Code-v1) | Pre-training | NVIDIA Data Agreement | Nemotron 3 Nano | 427.9B tokens from Common Crawl code pages using Lynx + LLM pipeline |
+| [Nemotron-Pretraining-Code-v1](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Code-v1) | Pre-training | NVIDIA Data Agreement | Nemotron Nano 2 | GitHub-sourced code corpus for Nemotron Nano 2 |
+| [Nemotron-Pretraining-Code-v2](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Code-v2) | Pre-training | NVIDIA Data Agreement | Nemotron 3 Nano | Updated GitHub code + synthetic QA with STEM reasoning |
+| [Nemotron-Cascade-RL-SWE](https://huggingface.co/datasets/nvidia/Nemotron-Cascade-RL-SWE) | RL Training | CC-BY-4.0 | Nemotron 3 | SWE code repair from SWE-Bench, SWE-Smith, R2E-Gym |
+| [Nemotron-Competitive-Programming-v1](https://huggingface.co/datasets/nvidia/Nemotron-Competitive-Programming-v1) | SFT | CC-BY-4.0 | Nemotron 3 | 2M+ Python and 1M+ C++ samples across 34K competitive programming questions |
+| [OpenCodeReasoning](https://huggingface.co/datasets/nvidia/OpenCodeReasoning) | SFT | CC-BY-4.0 | OpenCode-Nemotron | 735K Python samples across 28K competitive programming questions |
+| [OpenCodeReasoning-2](https://huggingface.co/datasets/nvidia/OpenCodeReasoning-2) | SFT | CC-BY-4.0 | OpenCode-Nemotron | 2.5M samples (1.4M Python, 1.1M C++) with code completion and critique |
+| [Scoring-Verifiers](https://huggingface.co/datasets/nvidia/Scoring-Verifiers) | Evaluation | CC-BY-4.0 | — | Benchmark for test case generation and code reward models |
 
 </details>
 
+---
+
 <details>
-<summary><strong>Llama-Nemotron Family (Nano 8B, Super 49B, Ultra 253B)</strong></summary>
+<summary><strong>Math</strong></summary>
 
-*Post-trained derivatives of Meta Llama models*
+*Mathematical reasoning datasets ranging from pre-training corpora to advanced problem-solving with chain-of-thought and tool-integrated reasoning. Includes the AIMO-2 competition winning dataset.*
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Llama-Nemotron-Post-Training-Dataset](https://huggingface.co/datasets/nvidia/Llama-Nemotron-Post-Training-Dataset) | SFT + RL | CC-BY-4.0 | Math, code, reasoning data for Llama-Nemotron (2.2M math, 500K code) |
-| [Nemotron-Post-Training-Dataset-v1](https://huggingface.co/datasets/nvidia/Nemotron-Post-Training-Dataset-v1) | SFT | CC-BY-4.0 | Math, code, STEM, tool calling for Llama-3.3-Nemotron-Super-49B-v1.5 |
-| [Nemotron-Post-Training-Dataset-v2](https://huggingface.co/datasets/nvidia/Nemotron-Post-Training-Dataset-v2) | SFT + RL | CC-BY-4.0 | Multilingual extension (Spanish, French, German, Italian, Japanese) |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-CC-Math-v1](https://huggingface.co/datasets/nvidia/Nemotron-CC-Math-v1) | Pre-training | NVIDIA Data Agreement | Nemotron Nano 2, Nemotron 3 Nano | 133B-token math dataset from Common Crawl using Lynx + LLM pipeline |
+| [Nemotron-Math-Proofs-v1](https://huggingface.co/datasets/nvidia/Nemotron-Math-Proofs-v1) | SFT | CC-BY-4.0 | Nemotron 3 Nano | Mathematical proofs dataset for Nemotron 3 post-training |
+| [Nemotron-Math-v2](https://huggingface.co/datasets/nvidia/Nemotron-Math-v2) | SFT | CC-BY-4.0 | Nemotron 3 | 347K samples and 7M reasoning trajectories for Deeper Math Reasoning |
+| [Nemotron-CrossThink](https://huggingface.co/datasets/nvidia/Nemotron-CrossThink) | RL Training | CC-BY-4.0 | Nemotron 3 | Multi-domain QA with MCQ and open-ended formats for verifiable rewards |
+| [OpenMathReasoning](https://huggingface.co/datasets/nvidia/OpenMathReasoning) | SFT | CC-BY-4.0 | OpenMath-Nemotron | 5.68M samples, 306K problems from AoPS with CoT/TIR (AIMO-2 winner) |
 
 </details>
 
+---
+
 <details>
-<summary><strong>OpenMath-Nemotron / OpenReasoning</strong></summary>
+<summary><strong>Science / STEM</strong></summary>
 
-*Math and code reasoning datasets (AIMO-2 winning solution)*
+*Scientific reasoning datasets covering chemistry, physics, and general STEM domains for training models on scientific question answering and reasoning.*
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [OpenMathReasoning](https://huggingface.co/datasets/nvidia/OpenMathReasoning) | SFT | CC-BY-4.0 | 5.68M samples, 306K problems from AoPS with CoT/TIR (AIMO-2 winner) |
-| [Nemotron-Math-v2](https://huggingface.co/datasets/nvidia/Nemotron-Math-v2) | SFT | CC-BY-4.0 | 347K samples and 7M reasoning trajectories for Deeper Math Reasoning Supervision |
-| [OpenCodeReasoning](https://huggingface.co/datasets/nvidia/OpenCodeReasoning) | SFT | CC-BY-4.0 | 735K Python samples across 28K competitive programming questions |
-| [OpenCodeReasoning-2](https://huggingface.co/datasets/nvidia/OpenCodeReasoning-2) | SFT | CC-BY-4.0 | 2.5M samples (1.4M Python, 1.1M C++) with code completion and critique |
-| [Nemotron-Competitive-Programming-v1](https://huggingface.co/datasets/nvidia/Nemotron-Competitive-Programming-v1) | SFT | CC-BY-4.0 | 2M+ Python and 1M+ C++ samples across 34K competitive programming questions |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-Science-v1](https://huggingface.co/datasets/nvidia/Nemotron-Science-v1) | SFT | CC-BY-4.0 | Nemotron 3 Nano | Synthetic science reasoning (MCQA + chemistry RQA) |
 
 </details>
 
+---
+
 <details>
-<summary><strong>Cosmos-Reason1 (Physical AI / Robotics)</strong></summary>
+<summary><strong>General / Web</strong></summary>
 
-*Vision language model for embodied reasoning*
+*Large-scale web-crawled and curated datasets for pre-training and post-training, including multilingual data and general instruction-following capabilities.*
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Cosmos-Reason1-SFT-Dataset](https://huggingface.co/datasets/nvidia/Cosmos-Reason1-SFT-Dataset) | SFT | CC-BY-4.0 | Video-text pairs for robotics, ego-centric demos, AV reasoning |
-| [Cosmos-Reason1-RL-Dataset](https://huggingface.co/datasets/nvidia/Cosmos-Reason1-RL-Dataset) | RL Training | CC-BY-4.0 | RL data for physical common sense and embodied reasoning |
-| [Cosmos-Reason1-Benchmark](https://huggingface.co/datasets/nvidia/Cosmos-Reason1-Benchmark) | Evaluation | CC-BY-4.0 | Benchmark for embodied reasoning (robotics, HoloAssist, AV) |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-CC-v2.1](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2.1) | Pre-training | NVIDIA Data Agreement | Nemotron 3 Nano | 2.5T tokens English web data with synthetic rephrases and translations |
+| [Nemotron-CC-v2](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2) | Pre-training | NVIDIA Data Agreement | Nemotron Nano 2 | 6.6T tokens quality-filtered Common Crawl with multilingual Q&A |
+| [Nemotron-Pretraining-Dataset-sample](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Dataset-sample) | Pre-training (Sample) | NVIDIA Data Agreement | — | Sample subset of Nemotron pre-training corpus for experimentation |
+| [Llama-Nemotron-Post-Training-Dataset](https://huggingface.co/datasets/nvidia/Llama-Nemotron-Post-Training-Dataset) | SFT + RL | CC-BY-4.0 | Llama-Nemotron Ultra/Super/Nano | Math, code, reasoning data (2.2M math, 500K code) |
+| [Nemotron-Post-Training-Dataset-v1](https://huggingface.co/datasets/nvidia/Nemotron-Post-Training-Dataset-v1) | SFT | CC-BY-4.0 | Llama-3.3-Nemotron-Super-49B-v1.5 | Math, code, STEM, tool calling |
+| [Nemotron-Post-Training-Dataset-v2](https://huggingface.co/datasets/nvidia/Nemotron-Post-Training-Dataset-v2) | SFT + RL | CC-BY-4.0 | Llama-Nemotron | Multilingual extension (Spanish, French, German, Italian, Japanese) |
+| [Nemotron-3-Nano-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend) | RL Training | CC-BY-4.0 | Nemotron-3-Nano-30B-A3B | Curated multi-domain blend for Nemotron 3 Nano |
+| [Nemotron-RL-knowledge-web_search-mcqa](https://huggingface.co/datasets/nvidia/Nemotron-RL-knowledge-web_search-mcqa) | RL Training | ODC-BY-1.0 | Nemotron 3 | Web search and multiple-choice QA tasks for NeMo Gym |
 
 </details>
 
+---
+
 <details>
-<summary><strong>Llama-Nemotron VLM (Vision-Language)</strong></summary>
+<summary><strong>Chat / Instruction Following</strong></summary>
 
-*Visual question answering and document intelligence*
+*Datasets for training conversational AI with strong instruction-following capabilities, structured output generation, and multi-turn dialogue.*
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-VLM-Dataset-v2](https://huggingface.co/datasets/nvidia/Nemotron-VLM-Dataset-v2) | VLM Training | CC-BY-4.0 (some CC-BY-SA-4.0) | 8M samples for OCR, image reasoning, video QA with chain-of-thought |
-| [Llama-Nemotron-VLM-Dataset-v1](https://huggingface.co/datasets/nvidia/Llama-Nemotron-VLM-Dataset-v1) | VLM Training | CC-BY-4.0 (some CC-BY-SA-4.0) | 3M samples for visual question answering and captioning |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-Instruction-Following-Chat-v1](https://huggingface.co/datasets/nvidia/Nemotron-Instruction-Following-Chat-v1) | SFT | CC-BY-4.0 | Nemotron 3 Nano | Multi-turn chat and structured output generation |
+| [Nemotron-RL-instruction_following](https://huggingface.co/datasets/nvidia/Nemotron-RL-instruction_following) | RL Training | ODC-BY-1.0 | Nemotron 3 | Verifiable instruction adherence from WildChat-1M + Open-Instruct |
+| [Nemotron-RL-instruction_following-structured_outputs](https://huggingface.co/datasets/nvidia/Nemotron-RL-instruction_following-structured_outputs) | RL Training | ODC-BY-1.0 | Nemotron 3 | JSON schema-constrained output formatting tests |
+| [Nemotron-Cascade-RL-Instruction-Following](https://huggingface.co/datasets/nvidia/Nemotron-Cascade-RL-Instruction-Following) | RL Training | ODC-BY-1.0 | Nemotron 3 | 108K samples for instruction-following RL |
 
 </details>
 
+---
+
 <details>
-<summary><strong>HelpSteer / Reward Modeling</strong></summary>
+<summary><strong>Agentic / Tool Use</strong></summary>
 
-*Alignment and RLHF data for Nemotron reward models*
+*Datasets for training AI agents with tool calling, multi-step workflows, and agentic reasoning capabilities.*
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [HelpSteer3](https://huggingface.co/datasets/nvidia/HelpSteer3) | Reward Modeling | CC-BY-4.0 | 40K+ samples; top on RM-Bench/JudgeBench with preference, feedback, edit-quality |
-| [HelpSteer2](https://huggingface.co/datasets/nvidia/HelpSteer2) | Reward Modeling | CC-BY-4.0 | 21K samples with 5 attributes for Llama-3.1-Nemotron-70B-Reward |
-| [HelpSteer](https://huggingface.co/datasets/nvidia/HelpSteer) | SteerLM Training | CC-BY-4.0 | 37K samples (helpfulness, correctness, coherence, complexity, verbosity) |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-Agentic-v1](https://huggingface.co/datasets/nvidia/Nemotron-Agentic-v1) | SFT | CC-BY-4.0 | Nemotron 3 Nano | Multi-turn trajectories for conversational tool use and agentic workflows |
+| [Nemotron-RL-agent-workplace_assistant](https://huggingface.co/datasets/nvidia/Nemotron-RL-agent-workplace_assistant) | RL Training | ODC-BY-1.0 | Nemotron 3 | Workplace assistant agent tasks for NeMo Gym |
 
 </details>
 
+---
+
 <details>
-<summary><strong>NemoGuard / Safety</strong></summary>
+<summary><strong>Alignment / Reward Modeling</strong></summary>
 
-*Content safety and guardrail training*
+*Human preference and reward modeling datasets for RLHF, SteerLM training, and model alignment. Powers top-performing reward models on RM-Bench and JudgeBench.*
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Aegis-AI-Content-Safety-Dataset-2.0](https://huggingface.co/datasets/nvidia/Aegis-AI-Content-Safety-Dataset-2.0) | Content Moderation | CC-BY-4.0 | Extended safety dataset with 23 violation categories |
-| [Aegis-AI-Content-Safety-Dataset-1.0](https://huggingface.co/datasets/nvidia/Aegis-AI-Content-Safety-Dataset-1.0) | Content Moderation | CC-BY-4.0 | 11K annotated interactions covering 13 risk categories |
-| [Nemotron-Content-Safety-Audio-Dataset](https://huggingface.co/datasets/nvidia/Nemotron-Content-Safety-Audio-Dataset) | Audio Safety | CC-BY-4.0 | 1.9K audio files from Aegis 2.0 with accent diversity |
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [HelpSteer3](https://huggingface.co/datasets/nvidia/HelpSteer3) | Reward Modeling | CC-BY-4.0 | Nemotron 3 Nano, Llama-Nemotron Super 49B | 40K+ samples; top on RM-Bench/JudgeBench with preference, feedback, edit-quality |
+| [HelpSteer2](https://huggingface.co/datasets/nvidia/HelpSteer2) | Reward Modeling | CC-BY-4.0 | Nemotron-4-340B-Reward, Llama-3.1-Nemotron-70B-Reward | 21K samples with 5 attributes |
+| [HelpSteer](https://huggingface.co/datasets/nvidia/HelpSteer) | SteerLM Training | CC-BY-4.0 | Nemotron-4 SteerLM | 37K samples (helpfulness, correctness, coherence, complexity, verbosity) |
+| [Daring-Anteater](https://huggingface.co/datasets/nvidia/Daring-Anteater) | SFT/RLHF | CC-BY-4.0 | Nemotron-4-340B-Instruct | Instruction tuning dataset; synthetic subsets + FinQA, wikitablequestions |
+| [sft_datablend_v1](https://huggingface.co/datasets/nvidia/sft_datablend_v1) | SFT | CC-BY-4.0 | — | SFT data blend for RLHF pipeline |
 
 </details>
 
-<details>
-<summary><strong>Synthetic Personas / Data Generation</strong></summary>
+---
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA) | SDG | CC-BY-4.0 | 1M US personas grounded in Census demographics |
-| [Nemotron-Personas-Japan](https://huggingface.co/datasets/nvidia/Nemotron-Personas-Japan) | SDG | CC-BY-4.0 | 1M Japanese personas aligned with regional statistics |
-| [Nemotron-Personas-India](https://huggingface.co/datasets/nvidia/Nemotron-Personas-India) | SDG | CC-BY-4.0 | 3M Indian personas for sovereign AI development |
-| [Nemotron-Personas](https://huggingface.co/datasets/nvidia/Nemotron-Personas) | SDG | CC-BY-4.0 | 100K US personas with 22 fields aligned to Census data |
+<details>
+<summary><strong>Vision-Language / Multimodal</strong></summary>
+
+*High-quality VLM training data for document intelligence, OCR, image reasoning, video QA, and chain-of-thought visual understanding.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-VLM-Dataset-v2](https://huggingface.co/datasets/nvidia/Nemotron-VLM-Dataset-v2) | VLM Training | CC-BY-4.0 (some CC-BY-SA-4.0) | Nemotron VLM | 8M samples for OCR, image reasoning, video QA with chain-of-thought |
+| [Llama-Nemotron-VLM-Dataset-v1](https://huggingface.co/datasets/nvidia/Llama-Nemotron-VLM-Dataset-v1) | VLM Training | CC-BY-4.0 (some CC-BY-SA-4.0) | Llama-3.1-Nemotron-Nano-VL-8B | 3M samples for visual question answering and captioning |
 
 </details>
 
-<details>
-<summary><strong>Privacy / PII Detection</strong></summary>
+---
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-PII](https://huggingface.co/datasets/nvidia/Nemotron-PII) | NER Training | CC-BY-4.0 | 100K synthetic records with 55+ PII/PHI entity types |
+<details>
+<summary><strong>Physical AI / Robotics</strong></summary>
+
+*Datasets for embodied reasoning, physical common sense, and robotic manipulation. Powers Cosmos-Reason1 for physical AI applications.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Cosmos-Reason1-SFT-Dataset](https://huggingface.co/datasets/nvidia/Cosmos-Reason1-SFT-Dataset) | SFT | CC-BY-4.0 | Cosmos-Reason1-7B | Video-text pairs for robotics, ego-centric demos, AV reasoning |
+| [Cosmos-Reason1-RL-Dataset](https://huggingface.co/datasets/nvidia/Cosmos-Reason1-RL-Dataset) | RL Training | CC-BY-4.0 | Cosmos-Reason1-7B | RL data for physical common sense and embodied reasoning |
+| [Cosmos-Reason1-Benchmark](https://huggingface.co/datasets/nvidia/Cosmos-Reason1-Benchmark) | Evaluation | CC-BY-4.0 | — | Benchmark for embodied reasoning (robotics, HoloAssist, AV) |
+| [PhysicalAI-Robotics-Manipulation-Augmented](https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-Manipulation-Augmented) | Training | CC-BY-4.0 | — | 1K Franka Panda demos with Cosmos Transfer1 domain augmentation |
 
 </details>
+
+---
 
 <details>
 <summary><strong>Autonomous Vehicles</strong></summary>
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [PhysicalAI-Autonomous-Vehicles](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicles) | Training | NVIDIA AV Dataset License | 1,700 hours multi-sensor data from 25 countries, 306K clips |
-| [PhysicalAI-Autonomous-Vehicle-Cosmos-Drive-Dreams](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicle-Cosmos-Drive-Dreams) | SDG | CC-BY-4.0 | 81K synthetic videos with LiDAR and HD-map annotations |
-| [PhysicalAI-Autonomous-Vehicle-Cosmos-Synthetic](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicle-Cosmos-Synthetic) | SDG | CC-BY-4.0 | Cosmos-generated synthetic driving scenarios |
-| [PhysicalAI-Autonomous-Vehicles-NuRec](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicles-NuRec) | Reconstruction | NVIDIA AV Dataset License | NuScenes-based reconstruction data |
+*Multi-sensor driving data and synthetic scenarios for training and validating autonomous vehicle systems.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [PhysicalAI-Autonomous-Vehicles](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicles) | Training | NVIDIA AV Dataset License | — | 1,700 hours multi-sensor data from 25 countries, 306K clips |
+| [PhysicalAI-Autonomous-Vehicle-Cosmos-Drive-Dreams](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicle-Cosmos-Drive-Dreams) | SDG | CC-BY-4.0 | Cosmos | 81K synthetic videos with LiDAR and HD-map annotations |
+| [PhysicalAI-Autonomous-Vehicle-Cosmos-Synthetic](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicle-Cosmos-Synthetic) | SDG | CC-BY-4.0 | Cosmos | Cosmos-generated synthetic driving scenarios |
+| [PhysicalAI-Autonomous-Vehicles-NuRec](https://huggingface.co/datasets/nvidia/PhysicalAI-Autonomous-Vehicles-NuRec) | Reconstruction | NVIDIA AV Dataset License | — | NuScenes-based reconstruction data |
 
 </details>
+
+---
 
 <details>
-<summary><strong>Robotics</strong></summary>
+<summary><strong>Synthetic Personas / Data Generation</strong></summary>
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [PhysicalAI-Robotics-Manipulation-Augmented](https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-Manipulation-Augmented) | Training | CC-BY-4.0 | 1K Franka Panda demos with Cosmos Transfer1 domain augmentation |
+*Privacy-safe synthetic personas grounded in real-world demographics for sovereign AI development and synthetic data generation pipelines.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA) | SDG | CC-BY-4.0 | NeMo Data Designer | 1M US personas grounded in Census demographics |
+| [Nemotron-Personas-Japan](https://huggingface.co/datasets/nvidia/Nemotron-Personas-Japan) | SDG | CC-BY-4.0 | NeMo Data Designer | 1M Japanese personas aligned with regional statistics |
+| [Nemotron-Personas-India](https://huggingface.co/datasets/nvidia/Nemotron-Personas-India) | SDG | CC-BY-4.0 | NeMo Data Designer | 3M Indian personas for sovereign AI development |
+| [Nemotron-Personas](https://huggingface.co/datasets/nvidia/Nemotron-Personas) | SDG | CC-BY-4.0 | NeMo Data Designer | 100K US personas with 22 fields aligned to Census data |
 
 </details>
+
+---
 
 <details>
-<summary><strong>Evaluation / Benchmarks</strong></summary>
+<summary><strong>Privacy / PII Detection</strong></summary>
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Scoring-Verifiers](https://huggingface.co/datasets/nvidia/Scoring-Verifiers) | Evaluation | CC-BY-4.0 | Benchmark for test case generation and code reward models |
+*Synthetic datasets for training named entity recognition models to detect and redact personally identifiable information.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Nemotron-PII](https://huggingface.co/datasets/nvidia/Nemotron-PII) | NER Training | CC-BY-4.0 | GLiNER-PII | 100K synthetic records with 55+ PII/PHI entity types |
 
 </details>
+
+---
 
 <details>
-<summary><strong>Legacy / Nemotron 2</strong></summary>
+<summary><strong>Safety / Content Moderation</strong></summary>
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Nemotron-Pretraining-Code-v1](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Code-v1) | Pre-training | NVIDIA Data Agreement | GitHub-sourced code corpus for Nemotron Nano 2 |
+*Content safety datasets for training guardrail models covering comprehensive risk taxonomies. Powers NemoGuard content safety models.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Aegis-AI-Content-Safety-Dataset-1.0](https://huggingface.co/datasets/nvidia/Aegis-AI-Content-Safety-Dataset-1.0) | Content Moderation | CC-BY-4.0 | NemoGuard Permissive/Defensive | 11K annotated interactions covering 13 risk categories |
+| [Aegis-AI-Content-Safety-Dataset-2.0](https://huggingface.co/datasets/nvidia/Aegis-AI-Content-Safety-Dataset-2.0) | Content Moderation | CC-BY-4.0 | Llama-3.1-NemoGuard-8B-ContentSafety | Extended safety dataset with 23 violation categories |
+| [Nemotron-Content-Safety-Audio-Dataset](https://huggingface.co/datasets/nvidia/Nemotron-Content-Safety-Audio-Dataset) | Audio Safety | CC-BY-4.0 | — | 1.9K audio files from Aegis 2.0 with accent diversity |
 
 </details>
+
+---
 
 <details>
-<summary><strong>General SFT / RLHF</strong></summary>
+<summary><strong>RAG / Conversational QA</strong></summary>
 
-| Dataset | Usage | License | Description |
-|---------|-------|---------|-------------|
-| [Daring-Anteater](https://huggingface.co/datasets/nvidia/Daring-Anteater) | SFT/RLHF | CC-BY-4.0 | Instruction tuning dataset; synthetic subsets + FinQA, wikitablequestions |
-| [sft_datablend_v1](https://huggingface.co/datasets/nvidia/sft_datablend_v1) | SFT | CC-BY-4.0 | SFT data blend for RLHF pipeline |
+*Training and evaluation data for retrieval-augmented generation and conversational question answering. Powers ChatQA models.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [ChatRAG-Bench](https://huggingface.co/datasets/nvidia/ChatRAG-Bench) | Evaluation | Other (derived) | — | Benchmark across 10 datasets for document QA and unanswerable detection |
+| [ChatQA-Training-Data](https://huggingface.co/datasets/nvidia/ChatQA-Training-Data) | SFT | Other (derived) | ChatQA-1.5 | Training data for ChatQA models from multiple sources |
+| [ChatQA2-Long-SFT-data](https://huggingface.co/datasets/nvidia/ChatQA2-Long-SFT-data) | SFT | Other (derived) | ChatQA-2 | 128K long-context training data for ChatQA-2 |
+
+</details>
+
+---
+
+<details>
+<summary><strong>Biology / Drug Discovery</strong></summary>
+
+*Protein sequence data for training biological foundation models.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [esm2_uniref_pretraining_data](https://huggingface.co/datasets/nvidia/esm2_uniref_pretraining_data) | Pre-training | CC-BY-4.0 | ESM2-nv | 188M protein sequences for ESM2 |
+
+</details>
+
+---
+
+<details>
+<summary><strong>3D / Spatial Intelligence</strong></summary>
+
+*Testing and synthetic data for 3D reconstruction, video generation, and spatial understanding models.*
+
+| Dataset | Usage | License | Model(s) | Description |
+|---------|-------|---------|----------|-------------|
+| [Lyra-Testing-Example](https://huggingface.co/datasets/nvidia/Lyra-Testing-Example) | Evaluation | CC-BY-4.0 | Lyra | Testing examples for Lyra generative 3D reconstruction |
+| [PhysicalAI-SpatialIntelligence-Lyra-SDG](https://huggingface.co/datasets/nvidia/PhysicalAI-SpatialIntelligence-Lyra-SDG) | SDG | CC-BY-4.0 | Lyra | Synthetic data for spatial intelligence models |
+| [GEN3C-Testing-Example](https://huggingface.co/datasets/nvidia/GEN3C-Testing-Example) | Evaluation | CC-BY-4.0 | GEN3C | Testing examples for GEN3C video generation |
+| [ChronoEdit-Example-Dataset](https://huggingface.co/datasets/nvidia/ChronoEdit-Example-Dataset) | Evaluation | CC-BY-4.0 | ChronoEdit | Temporal reasoning examples for image editing |
 
 </details>
 
 </details>
-
+ 
 ## Contributing
 
 We welcome contributions! Whether it's examples, recipes, or other tools you'd find useful.
