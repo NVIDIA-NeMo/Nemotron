@@ -143,7 +143,10 @@ class DownloadStage(pipelines_v1.Stage[T, T]):
             if assignment is None:
                 continue
 
-            for file_info in assignment.get("files", []):
+            # Select which HF files to download (may be limited by max_rows)
+            selected_files = self._select_files_for_task(task, assignment)
+
+            for file_info in selected_files:
                 # Prefer explicit HF metadata over path heuristics
                 if file_info.get("hf_repo_id"):
                     hf_files.append({
@@ -167,6 +170,84 @@ class DownloadStage(pipelines_v1.Stage[T, T]):
 
         # Pass through all tasks unchanged
         return tasks
+
+    def _select_files_for_task(self, task: T, assignment: dict) -> list[dict]:
+        """Select which files to download for a task.
+
+        When max_rows is set, estimates how many files are needed to cover
+        the requested row count and only returns those files. This avoids
+        downloading entire datasets when only a small sample is needed.
+
+        Falls back to all files if row estimation is not possible.
+        """
+        files = assignment.get("files", [])
+        if not files:
+            return files
+
+        max_rows = getattr(task, "max_rows", None)
+        if max_rows is None or max_rows <= 0:
+            return files
+
+        # Only apply limiting for HF files where we can estimate rows
+        hf_files = [f for f in files if f.get("hf_repo_id")]
+        non_hf_files = [f for f in files if not f.get("hf_repo_id")]
+
+        if not hf_files:
+            return files
+
+        # Estimate bytes-per-row from HF dataset metadata
+        avg_bpr = self._estimate_bytes_per_row(hf_files, assignment)
+        if avg_bpr is None:
+            return files  # Can't estimate, download all for correctness
+
+        import logging
+        _logger = logging.getLogger(__name__)
+
+        # Select files in assignment order until we cover max_rows
+        # Use 2x safety margin to avoid under-downloading
+        target_rows = max_rows * 2
+        selected_hf: list[dict] = []
+        est_rows = 0
+
+        for f in hf_files:
+            size_bytes = int(f.get("size", 0) or 0)
+            file_est_rows = max(1, int(size_bytes / avg_bpr)) if size_bytes > 0 else 1
+
+            selected_hf.append(f)
+            est_rows += file_est_rows
+
+            if est_rows >= target_rows:
+                break
+
+        _logger.info(
+            f"DownloadStage: max_rows={max_rows}, selected {len(selected_hf)}/{len(hf_files)} "
+            f"HF files (est ~{est_rows} rows, avg {avg_bpr:.0f} bytes/row)"
+        )
+
+        return selected_hf + non_hf_files
+
+    def _estimate_bytes_per_row(self, hf_files: list[dict], assignment: dict) -> float | None:
+        """Estimate average bytes-per-row using HF dataset metadata API.
+
+        Uses the first file's repo_id and assignment-level subset/split
+        to query dataset metadata. Returns None if metadata is unavailable.
+        """
+        from nemotron.data_prep.utils.discovery import fetch_hf_dataset_metadata
+
+        first = hf_files[0]
+        repo_id = first.get("hf_repo_id")
+        if not repo_id:
+            return None
+
+        # Use subset/split from assignment (set by PlanStage)
+        subset = assignment.get("hf_subset")
+        split = assignment.get("hf_split")
+
+        meta = fetch_hf_dataset_metadata(repo_id, subset=subset, split=split)
+        if meta.num_rows and meta.size_bytes and meta.num_rows > 0 and meta.size_bytes > 0:
+            return meta.size_bytes / meta.num_rows
+
+        return None
 
     def _is_cloud_path(self, path: str) -> bool:
         """Check if path is cloud storage."""

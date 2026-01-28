@@ -1,6 +1,6 @@
 run:
   env:
-    container: anyscale/ray:2.49.2-py311
+    container: anyscale/ray:2.49.2-py312
 
 # Tiny config for SFT data preparation (fast iteration/testing)
 #
@@ -16,14 +16,17 @@ blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage1_sft/config/data_prep
 # Output directory for packed .npy data (outputs to job directory for persistence)
 output_dir: ${oc.env:PWD}/../output/stage1_sft_tiny
 
-# HuggingFace tokenizer model name
-tokenizer_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+# Tokenizer configuration (nested)
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
 
 # Maximum tokens per packed sequence
 pack_size: 4096
 
-# Target size per shard - smaller for tiny config
-shard_size: 64MB
+# Number of output shards - smaller for tiny config
+num_shards: 4
 
 # Split ratios (must sum to 1.0)
 train_ratio: 0.98
@@ -51,8 +54,41 @@ max_doc_tokens: null
 # Limit rows per dataset for quick tests - small sample for tiny
 sample: 1000
 
-# Ray actors for parallel processing (null = auto)
-num_actors: null
+# Random seed for sampling
+sample_seed: 42
 
 # Force new run, ignoring cache
 force: false
+
+# Config name for artifact naming
+config_name: tiny
+
+# =============================================================================
+# Stage Configs
+# =============================================================================
+
+# Planning stage config
+plan:
+  planner_cpus: 0.5
+
+# Download stage config
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+
+# Tokenization stage config
+tokenization:
+  cpus_per_worker: 1
+
+# =============================================================================
+# Pipeline Config
+# =============================================================================
+
+# Pipeline observability settings
+observability:
+  pipeline_logging_interval_s: 5
+  wandb_log_pipeline_stats: true

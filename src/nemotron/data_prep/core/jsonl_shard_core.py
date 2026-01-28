@@ -43,6 +43,8 @@ def process_jsonl_shard_core(
     compression: Literal["none", "zstd"],
     max_rows: int | None,
     local_files_only: bool = True,
+    plan_hash: str | None = None,
+    dataset_name: str | None = None,
 ) -> dict[str, Any]:
     """Process a JSONL shard with retry-safe atomic commits."""
     shard_id = f"shard_{shard_index:06d}"
@@ -72,6 +74,8 @@ def process_jsonl_shard_core(
             input_files=input_file_paths,
             receipt_path=receipt_path,
             output_fs=output_fs,
+            plan_hash=plan_hash,
+            dataset_name=dataset_name,
         )
 
     rows_processed = 0
@@ -108,11 +112,13 @@ def process_jsonl_shard_core(
             input_files=input_file_paths,
             receipt_path=receipt_path,
             output_fs=output_fs,
+            plan_hash=plan_hash,
+            dataset_name=dataset_name,
         )
 
     output_fs.rename(jsonl_tmp, jsonl_path)
 
-    receipt = {
+    receipt: dict[str, Any] = {
         "shard_id": shard_id,
         "shard_index": shard_index,
         "status": "completed",
@@ -128,6 +134,11 @@ def process_jsonl_shard_core(
             "total_bytes": stats.get("total_bytes", 0),
         },
     }
+
+    if plan_hash is not None:
+        receipt["plan_hash"] = plan_hash
+    if dataset_name is not None:
+        receipt["dataset_name"] = dataset_name
 
     write_json(output_fs, receipt_path, receipt)
     return receipt["stats"]
@@ -204,8 +215,10 @@ def _write_empty_receipt(
     input_files: list[str],
     receipt_path: str,
     output_fs: AbstractFileSystem,
+    plan_hash: str | None = None,
+    dataset_name: str | None = None,
 ) -> dict[str, Any]:
-    receipt = {
+    receipt: dict[str, Any] = {
         "shard_id": shard_id,
         "shard_index": shard_index,
         "status": "completed",
@@ -221,6 +234,11 @@ def _write_empty_receipt(
             "total_bytes": 0,
         },
     }
+
+    if plan_hash is not None:
+        receipt["plan_hash"] = plan_hash
+    if dataset_name is not None:
+        receipt["dataset_name"] = dataset_name
 
     write_json(output_fs, receipt_path, receipt)
     return receipt["stats"]

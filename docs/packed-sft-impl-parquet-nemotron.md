@@ -23,6 +23,41 @@ shard_000000.parquet
 - 2-3x compression with zstd
 - Direct cloud storage support (S3, GCS, Azure)
 
+## Output Structure
+
+Nano3 SFT data-prep produces a canonical output structure:
+
+```
+output_dir/
+├── blend.json                  # Per-split blend for provenance
+├── splits/                     # Canonical split directories
+│   ├── train/                  # Symlinks to training shards
+│   │   ├── shard_000000.parquet -> ../runs/.../shard_000000.parquet
+│   │   └── ...
+│   ├── valid/                  # Symlinks to validation shards
+│   │   └── ...
+│   └── test/                   # Symlinks to test shards
+│       └── ...
+└── runs/{run_hash}/            # Run directory with actual shard files
+    └── datasets/{name}/{hash}/
+        ├── shard_000000.parquet
+        └── ...
+```
+
+**Training inputs:** Use split directories or globs:
+- Directory: `packed_train_data_path: /path/to/output_dir/splits/train/`
+- Glob: `packed_train_data_path: /path/to/output_dir/splits/train/*.parquet`
+
+**Seamless config:** Use `nano3_packed_sft_dir` to auto-resolve split paths:
+```yaml
+dataset:
+  nano3_packed_sft_dir: /path/to/output_dir
+  packed_sequence_specs:
+    packed_sequence_size: 4096
+    # packed_train_data_path auto-resolves to /path/to/output_dir/splits/train/
+    # packed_val_data_path auto-resolves to /path/to/output_dir/splits/valid/
+```
+
 ---
 
 ## Files to Modify

@@ -172,6 +172,8 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
                 "shard_index": a.shard_index,
                 "files": [asdict(f) for f in a.files],
                 "total_bytes": a.total_bytes,
+                "hf_subset": item.subset,
+                "hf_split": item.split,
             }
             for a in plan.file_assignments
         }

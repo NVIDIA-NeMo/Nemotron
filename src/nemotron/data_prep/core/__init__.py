@@ -67,7 +67,9 @@ from nemotron.data_prep.core.chat_sft_shard_core import (
 # Planning utilities
 from nemotron.data_prep.core.planning import (
     apply_shard_sampling,
+    create_jsonl_shard_plan,
     create_shard_plan,
+    get_pending_jsonl_shards,
     get_pending_shards,
     resolve_tokenizer,
     serialize_shard_plan,
@@ -81,6 +83,8 @@ from nemotron.data_prep.core.providers import (
 # Work item dataclasses
 from nemotron.data_prep.core.work_items import (
     DatasetWorkItem,
+    JsonlDatasetWorkItem,
+    JsonlShardWorkItem,
     ShardWorkItem,
     SftDatasetWorkItem,
     SftShardWorkItem,
@@ -103,7 +107,9 @@ __all__ = [
     "process_chat_sft_parquet_core",  # Standardized alias
     # Planning
     "create_shard_plan",
+    "create_jsonl_shard_plan",
     "get_pending_shards",
+    "get_pending_jsonl_shards",
     "apply_shard_sampling",
     "serialize_shard_plan",
     "resolve_tokenizer",
@@ -114,4 +120,6 @@ __all__ = [
     "ShardWorkItem",
     "SftDatasetWorkItem",
     "SftShardWorkItem",
+    "JsonlDatasetWorkItem",
+    "JsonlShardWorkItem",
 ]

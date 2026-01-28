@@ -18,7 +18,6 @@ flowchart TB
     subgraph api["Public API"]
         pretrain["run_pretrain_pipeline()<br/>Tokenize to bin/idx"]
         sft["run_sft_pipeline()<br/>Chat SFT to Parquet"]
-        compat["run_data_prep()<br/>Format-based dispatch"]
     end
 
     subgraph recipes["Pipeline Recipes"]
@@ -41,8 +40,6 @@ flowchart TB
 
     pretrain --> pretrain_recipe
     sft --> sft_recipe
-    compat --> pretrain_recipe
-    compat --> sft_recipe
 
     pretrain_recipe --> plan --> download --> binidx
     sft_recipe --> plan --> download --> packed_sft
@@ -56,7 +53,7 @@ flowchart TB
 ```
 src/nemotron/data_prep/
 ├── __init__.py              # Public API exports
-├── api.py                   # Public facade (run_data_prep, recipe re-exports)
+├── api.py                   # Public facade (recipe re-exports)
 ├── blend.py                 # DataBlend specification
 ├── config.py                # Configuration dataclasses
 │
@@ -77,11 +74,9 @@ src/nemotron/data_prep/
 │   └── transforms.py        # Transform factories
 │
 ├── observability/           # Observability utilities
-│   ├── __init__.py          # W&B, Prometheus, stats callbacks
-│   ├── prometheus_metrics.py # Prometheus metrics scraping
+│   ├── __init__.py          # W&B and stage naming exports
 │   ├── stage_keys.py        # Stage naming conventions
-│   ├── stats_callback.py    # Pipeline stats callbacks
-│   └── wandb_hook.py        # W&B real-time logging (plan/progress tables)
+│   └── wandb_hook.py        # W&B real-time logging (plan/progress/stage tables)
 │
 ├── packing/                 # Sequence packing
 │   ├── __init__.py
@@ -155,35 +150,6 @@ result = run_sft_pipeline(
 
 print(f"Run hash: {result.run_hash}")
 print(f"Total sequences: {result.total_sequences:,}")
-```
-
-### Format-Based Dispatch (Compatibility)
-
-For backward compatibility with documentation examples:
-
-```python
-from nemotron.data_prep import (
-    DataBlend,
-    PipelineConfig,
-    run_data_prep,
-)
-from nemotron.data_prep.config import (
-    BinIdxOutputConfig,
-    OutputConfig,
-    TokenizerConfig,
-)
-from pathlib import Path
-
-blend = DataBlend.load("blend.json")
-config = PipelineConfig(
-    tokenizer=TokenizerConfig(model="nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
-    output=OutputConfig(
-        dir=Path("./output"),
-        format=BinIdxOutputConfig(num_shards=64),
-    ),
-)
-
-result = run_data_prep(config, blend=blend)
 ```
 
 ## Output Formats

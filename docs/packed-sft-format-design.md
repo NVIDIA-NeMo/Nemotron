@@ -183,6 +183,19 @@ shard_000000.parquet
   Row groups: ~1000 rows
 ```
 
+**Output structure (Nano3 data-prep):**
+```
+output_dir/
+├── blend.json                  # Per-split blend for provenance
+├── splits/                     # Canonical split directories
+│   ├── train/                  # Symlinks to training shards
+│   ├── valid/                  # Symlinks to validation shards
+│   └── test/                   # Symlinks to test shards
+└── runs/{run_hash}/datasets/   # Actual shard files
+```
+
+Training can use split directories (`/path/splits/train/`) or globs (`/path/splits/train/*.parquet`).
+
 **Pros:**
 - Industry standard with excellent tooling
 - Default format for Hugging Face datasets

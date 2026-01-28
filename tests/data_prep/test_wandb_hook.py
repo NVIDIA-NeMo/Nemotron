@@ -25,12 +25,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from nemotron.data_prep.config import ObservabilityConfig
-from nemotron.data_prep.stage_keys import canonical_stage_id
-from nemotron.data_prep.wandb_hook import (
+from nemotron.data_prep.observability.stage_keys import canonical_stage_id
+from nemotron.data_prep.observability.wandb_hook import (
     WandbStatsHook,
     _extract_stage_metrics,
     _flatten_pipeline_stats,
-    _sanitize_stage_key,
     make_wandb_stats_hook,
 )
 
@@ -201,50 +200,6 @@ class MockPipelineMonitor:
         self._make_stats_called = True
         self._make_stats_call_count += 1
         return MockPipelineStats()
-
-
-# =============================================================================
-# Test _sanitize_stage_key
-# =============================================================================
-
-
-class TestSanitizeStageKey:
-    """Tests for stage name sanitization (now uses canonical_stage_id)."""
-
-    def test_simple_name(self) -> None:
-        """Simple name without special chars."""
-        assert _sanitize_stage_key("Download") == "download"
-
-    def test_camel_case(self) -> None:
-        """CamelCase is converted to snake_case."""
-        assert _sanitize_stage_key("BinIdxTokenization") == "bin_idx_tokenization"
-
-    def test_with_spaces(self) -> None:
-        """Spaces become underscores. 'Stage' only stripped if it's a suffix."""
-        assert _sanitize_stage_key("My Stage Name") == "my_stage_name"  # Middle "Stage" not stripped
-
-    def test_with_special_chars(self) -> None:
-        """Special characters are replaced."""
-        result = _sanitize_stage_key("Stage@01#Test")
-        assert "@" not in result
-        assert "#" not in result
-        assert "test" in result
-
-    def test_stage_suffix_removed(self) -> None:
-        """Stage suffix is removed for cleaner keys."""
-        result = _sanitize_stage_key("PlanStage")
-        assert result == "plan"
-        assert "stage" not in result
-
-    def test_prefixed_stage_name(self) -> None:
-        """Stage prefix like 'Stage 02 - ' is stripped."""
-        result = _sanitize_stage_key("Stage 02 - BinIdxTokenizationStage")
-        assert result == "bin_idx_tokenization"
-
-    def test_empty_string(self) -> None:
-        """Empty string returns 'unknown'."""
-        result = _sanitize_stage_key("")
-        assert result == "unknown"
 
 
 class TestCanonicalStageId:
@@ -639,6 +594,7 @@ class TestMakeWandbStatsHook:
             run_hash="hash123",
             run_dir="/output/run",
             dataset_names=["dataset1", "dataset2"],
+            dataset_input_bytes={"dataset1": 1_500_000_000, "dataset2": 500_000_000},
         )
 
         assert hook is not None
@@ -646,6 +602,7 @@ class TestMakeWandbStatsHook:
         assert hook._run_hash == "hash123"
         assert hook._run_dir == "/output/run"
         assert hook._dataset_names == ["dataset1", "dataset2"]
+        assert hook._dataset_input_bytes == {"dataset1": 1_500_000_000, "dataset2": 500_000_000}
 
 
 # =============================================================================

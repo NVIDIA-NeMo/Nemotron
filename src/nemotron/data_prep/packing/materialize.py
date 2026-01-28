@@ -23,7 +23,13 @@ format used by GPTSFTPackedDataset.
 Truncation semantics match PackedSequenceBuilder._build_packed_sequence:
 - If a sequence is longer than pack_size, it is truncated to pack_size.
 - If adding a sequence would exceed pack_size, it is truncated to the remaining space.
-- The loss_mask is rolled by 1: [0] + mask[:-1]
+
+Loss mask alignment (per-subsequence, for Megatron-Bridge collate_fn):
+- For each subsequence of length L, the loss_mask is aligned so that:
+  - aligned[0:L-1] = original_mask[1:L] (shift left within subsequence)
+  - aligned[L-1] = 0 (last token has no label to predict)
+- This ensures loss_mask[j] indicates whether label input_ids[j+1] should contribute to loss.
+- No cross-subsequence bleed at boundaries.
 """
 
 from __future__ import annotations
@@ -34,6 +40,33 @@ import numpy as np
 
 from nemotron.data_prep.packing.bin_assignment import BinAssignment
 from nemotron.data_prep.packing.spool import SequenceSpoolReader
+
+
+def _align_loss_mask_for_labels(mask: list[int], seq_len: int) -> list[int]:
+    """Align loss_mask for Megatron-Bridge label semantics (per-subsequence).
+
+    In Megatron-Bridge's GPTSFTPackedDataset.collate_fn:
+    - tokens = input_ids[start : end-1]
+    - labels = input_ids[start+1 : end]
+    - loss_mask = loss_mask[start : end-1]
+
+    So loss_mask[j] must indicate whether label input_ids[j+1] should contribute to loss.
+    Given a mask where mask[k] indicates "assistantness" of token input_ids[k],
+    we need aligned[j] = mask[j+1] for j < L-1, and aligned[L-1] = 0 (no label for last token).
+
+    Args:
+        mask: Original loss mask for this subsequence (same length as input_ids).
+        seq_len: Length of the subsequence (may be truncated from original mask).
+
+    Returns:
+        Aligned loss mask of length seq_len.
+    """
+    if seq_len <= 0:
+        return []
+    if seq_len == 1:
+        return [0]  # Single token has no label to predict
+    # aligned[j] = mask[j+1] for j in [0, L-2], aligned[L-1] = 0
+    return [int(mask[j + 1]) for j in range(seq_len - 1)] + [0]
 
 
 def materialize_packed_samples(
@@ -82,15 +115,18 @@ def materialize_packed_samples(
             if input_ids_arr.shape[0] == 0:
                 continue
 
+            seq_len = int(input_ids_arr.shape[0])
             all_input_ids.extend([int(x) for x in input_ids_arr.tolist()])
-            all_loss_mask.extend([int(x) for x in loss_mask_arr.tolist()])
+            # Align loss_mask per-subsequence for Megatron-Bridge label semantics
+            aligned_mask = _align_loss_mask_for_labels(
+                [int(x) for x in loss_mask_arr.tolist()], seq_len
+            )
+            all_loss_mask.extend(aligned_mask)
             seq_start_ids.append(len(all_input_ids))
-
-        rolled_loss_mask = [0] + all_loss_mask[:-1] if all_loss_mask else []
 
         yield {
             "input_ids": all_input_ids,
-            "loss_mask": rolled_loss_mask,
+            "loss_mask": all_loss_mask,
             "seq_start_id": seq_start_ids[:-1],
         }
 
@@ -156,17 +192,22 @@ def materialize_bin_arrays(
 
         seq_start_ids.append(pos)
 
+        # Write input_ids
         scratch_input_ids[pos : pos + seq_len] = input_ids_arr[:seq_len]
-        scratch_loss_mask[pos : pos + seq_len] = loss_mask_arr[:seq_len]
+
+        # Align loss_mask per-subsequence for Megatron-Bridge label semantics:
+        # aligned[j] = mask[j+1] for j in [0, L-2], aligned[L-1] = 0
+        if seq_len == 1:
+            scratch_loss_mask[pos] = 0
+        else:
+            # Shift left: aligned[0:L-1] = original[1:L], aligned[L-1] = 0
+            scratch_loss_mask[pos : pos + seq_len - 1] = loss_mask_arr[1:seq_len]
+            scratch_loss_mask[pos + seq_len - 1] = 0
+
         pos += seq_len
 
         if pos >= pack_size:
             break
-
-    # Roll loss_mask by 1 for label alignment (same as materialize_packed_samples / builder)
-    if pos > 0:
-        scratch_loss_mask[1:pos] = scratch_loss_mask[: pos - 1].copy()
-        scratch_loss_mask[0] = 0
 
     return pos, np.asarray(seq_start_ids, dtype=np.int32)
 

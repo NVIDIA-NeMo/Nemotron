@@ -2,7 +2,7 @@
 
 Real-time observability for cosmos-xenna data preparation pipelines, including W&B metrics logging and pipeline statistics tracking.
 
-> **Temporary Implementation**: This module uses a monkey-patching approach to intercept pipeline statistics. This is a temporary solution until [cosmos-xenna](https://github.com/NVIDIA/cosmos-xenna) adds native support for stats callbacks. Once the upstream PR is merged, this implementation will be replaced with the native `stats_callback` API.
+> **Implementation Note**: This module uses a monkey-patching approach to intercept pipeline statistics, since cosmos-xenna does not currently expose a native stats callback API.
 
 ## Overview
 
@@ -22,10 +22,10 @@ Enable W&B logging via the `observability` section in your data prep config:
 observability:
   # Enable real-time W&B logging of pipeline stats
   wandb_log_pipeline_stats: true
-  
+
   # How often to log (seconds) - matches cosmos-xenna's internal logging rate
   pipeline_logging_interval_s: 30
-  
+
   # Optional: Also write stats to JSONL file for offline analysis
   pipeline_stats_jsonl_path: /path/to/stats.jsonl
 ```
@@ -43,7 +43,7 @@ cosmos-xenna's `PipelineMonitor` class builds a `PipelineStats` object every `lo
 │  PipelineMonitor.update()                                       │
 │       │                                                          │
 │       ▼                                                          │
-│  _make_stats() ◄──── Monkey-patched by XennaWandbStatsHook     │
+│  _make_stats() ◄──── Monkey-patched by WandbStatsHook          │
 │       │                                                          │
 │       ├──► Original _make_stats() returns PipelineStats         │
 │       │                                                          │
@@ -71,58 +71,50 @@ The hook uses reference counting for safe nested contexts:
 
 | Metric | Description |
 |--------|-------------|
-| `xenna/pipeline_duration_s` | Total elapsed time since pipeline start |
-| `xenna/main_loop_rate_hz` | Pipeline main loop frequency |
-| `xenna/progress` | Percentage of inputs processed (0-100) |
-| `xenna/num_input_remaining` | Inputs still waiting to be processed |
-| `xenna/num_outputs` | Total outputs generated |
-| `xenna/inputs_processed_per_s` | Input processing rate |
-| `xenna/outputs_per_s` | Output generation rate |
+| `{kind}/pipeline_duration_s` | Total elapsed time since pipeline start |
+| `{kind}/main_loop_rate_hz` | Pipeline main loop frequency |
+| `{kind}/progress` | Percentage of inputs processed (0-100) |
+| `{kind}/num_input_remaining` | Inputs still waiting to be processed |
+| `{kind}/num_outputs` | Total outputs generated |
+| `{kind}/inputs_processed_per_s` | Input processing rate |
+| `{kind}/outputs_per_s` | Output generation rate |
 
 ### Cluster Resource Metrics
 
 | Metric | Description |
 |--------|-------------|
-| `xenna/cluster/total_cpus` | Total CPUs in Ray cluster |
-| `xenna/cluster/avail_cpus` | Available (unused) CPUs |
-| `xenna/cluster/total_gpus` | Total GPUs in cluster |
-| `xenna/cluster/avail_gpus` | Available GPUs |
-| `xenna/cluster/total_mem_gb` | Total cluster memory (GB) |
-| `xenna/cluster/avail_mem_gb` | Available memory (GB) |
+| `{kind}/cluster/total_cpus` | Total CPUs in Ray cluster |
+| `{kind}/cluster/avail_cpus` | Available (unused) CPUs |
+| `{kind}/cluster/total_gpus` | Total GPUs in cluster |
+| `{kind}/cluster/avail_gpus` | Available GPUs |
+| `{kind}/cluster/total_mem_gb` | Total cluster memory (GB) |
+| `{kind}/cluster/avail_mem_gb` | Available memory (GB) |
 
-### Per-Stage Metrics
+### Per-Stage Metrics (Consolidated Charts)
 
-For each pipeline stage (e.g., `plan_stage`, `download_stage`, `bin_idx_tokenization_stage`):
-
-| Metric | Description |
-|--------|-------------|
-| `xenna/stage/{name}/actors_target` | Target number of actors |
-| `xenna/stage/{name}/actors_ready` | Actors ready to process |
-| `xenna/stage/{name}/actors_running` | Actors currently processing |
-| `xenna/stage/{name}/actors_idle` | Idle actors |
-| `xenna/stage/{name}/tasks_completed` | Total completed tasks |
-| `xenna/stage/{name}/queue_in` | Input queue depth |
-| `xenna/stage/{name}/queue_out` | Output queue depth |
-| `xenna/stage/{name}/slots_used` | Used processing slots |
-| `xenna/stage/{name}/speed_tasks_per_s` | Processing speed |
-
-### Per-Stage Resource Usage
+Stage metrics are logged as consolidated `line_series` charts (one chart per metric, one line per stage):
 
 | Metric | Description |
 |--------|-------------|
-| `xenna/stage/{name}/resource/cpu_util_pct` | CPU utilization percentage |
-| `xenna/stage/{name}/resource/mem_gb` | Memory usage (GB) |
-| `xenna/stage/{name}/resource/actor_count` | Number of actors |
+| `stages/actors_target` | Target number of actors per stage |
+| `stages/actors_ready` | Actors ready to process per stage |
+| `stages/actors_running` | Actors currently processing per stage |
+| `stages/tasks_completed` | Total completed tasks per stage |
+| `stages/queue_in` | Input queue depth per stage |
+| `stages/queue_out` | Output queue depth per stage |
+| `stages/speed_tasks_per_s` | Processing speed per stage |
+| `stages/resource_cpu_util_pct` | CPU utilization per stage |
+| `stages/resource_mem_gb` | Memory usage (GB) per stage |
 
 ## Usage in Recipes
 
 The pretrain and SFT recipes automatically use the W&B hook when `wandb_log_pipeline_stats: true`:
 
 ```python
-from nemotron.data_prep.xenna_wandb_hook import make_xenna_wandb_stats_hook
+from nemotron.data_prep.observability import make_wandb_stats_hook
 
 # Create hook if enabled
-wandb_hook = make_xenna_wandb_stats_hook(
+wandb_hook = make_wandb_stats_hook(
     observability=observability_cfg,
     pipeline_kind="pretrain",  # or "sft"
     run_hash=context.run_hash,
@@ -159,88 +151,30 @@ Each line contains a JSON record:
     "pipeline_duration_s": 120.5,
     "progress": 50.0,
     "cluster/total_cpus": 64.0,
-    "stage/download_stage/tasks_completed": 100
+    "stages/tasks_completed/download": 100
   },
   "stages": ["PlanStage", "DownloadStage", "BinIdxTokenizationStage"]
 }
 ```
 
-## Viewing in W&B
-
-Once enabled, metrics appear in your W&B run dashboard:
-
-1. Navigate to your run in the W&B UI
-2. Go to the **Charts** tab
-3. Metrics are organized under the `xenna/` namespace:
-   - `xenna/progress` — Overall pipeline progress
-   - `xenna/cluster/*` — Cluster resource utilization
-   - `xenna/stage/*` — Per-stage metrics
-
-### Recommended Charts
-
-Create custom charts for common monitoring scenarios:
-
-**Pipeline Progress**
-```
-xenna/progress, xenna/inputs_processed_per_s, xenna/outputs_per_s
-```
-
-**Cluster Utilization**
-```
-xenna/cluster/avail_cpus, xenna/cluster/avail_mem_gb
-```
-
-**Stage Throughput**
-```
-xenna/stage/*/speed_tasks_per_s
-```
-
-**Queue Depths (Bottleneck Detection)**
-```
-xenna/stage/*/queue_in, xenna/stage/*/queue_out
-```
-
-## Future: Native cosmos-xenna Support
-
-This monkey-patching implementation is temporary. The planned approach is:
-
-1. **PR to cosmos-xenna**: Add a `stats_callback` parameter to `PipelineConfig`
-2. **Native integration**: cosmos-xenna calls the callback with `PipelineStats` directly
-3. **Migration**: Replace monkey-patch with native callback once merged
-
-The callback API will look like:
-
-```python
-# Future native API (not yet available)
-def my_stats_callback(stats: PipelineStats) -> None:
-    metrics = flatten_stats(stats)
-    wandb.log(metrics)
-
-pipeline_spec = pipelines_v1.PipelineSpec(
-    ...,
-    config=pipelines_v1.PipelineConfig(
-        stats_callback=my_stats_callback,  # Native callback
-        logging_interval_s=30,
-    ),
-)
-```
-
-Until then, the `XennaWandbStatsHook` provides equivalent functionality without requiring cosmos-xenna changes.
-
 ## API Reference
 
-### xenna_wandb_hook.py
+### wandb_hook.py
 
 | Export | Description |
 |--------|-------------|
-| `XennaWandbStatsHook` | Context manager that patches `PipelineMonitor._make_stats` |
-| `make_xenna_wandb_stats_hook()` | Factory function for recipes |
+| `WandbStatsHook` | Context manager that patches `PipelineMonitor._make_stats` |
+| `make_wandb_stats_hook()` | Factory function for recipes |
+| `log_plan_table_to_wandb()` | Log plan table showing datasets and processing config |
 
-### XennaObservabilityConfig
+### ObservabilityConfig
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `wandb_log_pipeline_stats` | `bool` | `True` | Enable W&B logging |
+| `wandb_log_plan_table` | `bool` | `True` | Log plan table to W&B |
+| `wandb_log_progress_table` | `bool` | `True` | Log per-dataset progress table |
+| `wandb_log_stage_table` | `bool` | `True` | Log stage overview table |
 | `pipeline_logging_interval_s` | `int` | `30` | Logging interval in seconds |
 | `pipeline_stats_jsonl_path` | `str \| None` | `None` | Path for JSONL output |
 

@@ -116,38 +116,6 @@ class JsonlOutputConfig:
 
 
 @dataclass(frozen=True)
-class PackedOutputConfig:
-    """Configuration for packed sequence output.
-
-    Tokenizes and packs sequences into efficient batches compatible with
-    GPTSFTPackedDataset. Output is .npy files with packed sequences.
-
-    Attributes:
-        format: Format identifier (always "packed")
-        shard_size: Target size per shard (e.g., "256MB"). Mutually exclusive with num_shards.
-        num_shards: Exact number of output shards. Mutually exclusive with shard_size.
-        dtype: Token dtype (int32, int64, uint16)
-        pack_size: Maximum tokens per packed sequence
-        algorithm: Packing algorithm ("first_fit_decreasing", "first_fit_shuffle", "concatenative")
-    """
-
-    format: Literal["packed"] = "packed"
-    shard_size: str | int | None = "256MB"
-    num_shards: int | None = None
-    dtype: Literal["int32", "int64", "uint16"] = "int32"
-    pack_size: int = 2048
-    algorithm: Literal["first_fit_decreasing", "first_fit_shuffle", "concatenative"] = (
-        "first_fit_shuffle"
-    )
-
-    def __post_init__(self) -> None:
-        if self.shard_size is not None and self.num_shards is not None:
-            raise ValueError("Specify either shard_size or num_shards, not both")
-        if self.pack_size <= 0:
-            raise ValueError(f"pack_size must be positive, got {self.pack_size}")
-
-
-@dataclass(frozen=True)
 class ChatSftOutputConfig:
     """Configuration for chat-templated SFT output with loss masking.
 
@@ -189,7 +157,6 @@ class ChatSftOutputConfig:
     used_in_filter: str | None = None
     used_in_field: str = "used_in"
 
-    packed_storage: Literal["legacy_npy_pickle", "parquet"] = "legacy_npy_pickle"
     parquet_row_group_size: int = 1000
     parquet_compression: Literal["zstd", "snappy", "gzip", "none"] = "zstd"
 
@@ -205,7 +172,7 @@ class ChatSftOutputConfig:
 
 
 # Union type for all output formats
-OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | PackedOutputConfig | ChatSftOutputConfig
+OutputFormat = BinIdxOutputConfig | JsonlOutputConfig | ChatSftOutputConfig
 
 
 @dataclass(frozen=True)
@@ -240,10 +207,6 @@ class ObservabilityConfig:
         pipeline_stats_jsonl_path: Optional path to write pipeline stats as JSONL.
             If set, appends one JSON object per stats callback invocation.
             Should be a local filesystem path (append semantics may not work on cloud storage).
-        wandb_consolidated_charts_only: When True (default), skip logging per-stage scalar
-            metrics to WandB (e.g., pipeline/stage/{stage}/...). Stage-level visualization
-            should come from consolidated line_series charts in WandbStatsHook instead.
-            Set to False to restore per-stage scalar metric logging.
     """
 
     wandb_log_downloads: bool = False
@@ -256,7 +219,6 @@ class ObservabilityConfig:
     wandb_download_log_interval_sec: int = 30
     pipeline_logging_interval_s: int = 30
     pipeline_stats_jsonl_path: str | None = None
-    wandb_consolidated_charts_only: bool = True
 
 
 @dataclass(frozen=True)
@@ -269,10 +231,6 @@ class OutputConfig:
         min_doc_chars: Skip documents shorter than this (for tokenized formats)
         max_doc_tokens: Truncate documents longer than this (for tokenized formats)
         max_rows: Limit rows processed per shard (useful for quick tests)
-
-    Deprecated attributes (for backward compatibility):
-        num_shards: Use format.num_shards instead
-        dtype: Use format.dtype instead
     """
 
     dir: Path
@@ -280,15 +238,6 @@ class OutputConfig:
     min_doc_chars: int | None = None
     max_doc_tokens: int | None = None
     max_rows: int | None = None
-    # Deprecated - for backward compatibility
-    num_shards: int | None = None
-    dtype: Literal["int32", "int64", "uint16"] | None = None
-
-    def __post_init__(self) -> None:
-        # Handle backward compatibility: if old-style num_shards/dtype provided,
-        # we need to handle them. But since this is frozen, we can't modify.
-        # The pipeline should check for these and warn.
-        pass
 
 
 @dataclass(frozen=True)
@@ -322,10 +271,7 @@ class PipelineConfig:
         sample: Shard sampling spec ("10%", "5", or None for all)
         sample_seed: Random seed for sampling
         force: Force new run (ignore cached results)
-        split: Split ratio for single-blend mode (e.g., "99990,8,2"). Deprecated.
         per_split: Per-split output configuration for Megatron-Bridge per_split_data_args_path
-        console_mode: Console output mode ('rich' or 'simple')
-        simple_log_interval_sec: Interval in seconds for simple mode status updates
         download: HuggingFace download settings
         observability: Xenna observability settings
         max_workers: Maximum workers for shard processing. None means auto-scale.
@@ -336,17 +282,10 @@ class PipelineConfig:
     sample: str | int | None = None
     sample_seed: int = 42
     force: bool = False
-    split: str | None = None  # Deprecated - use per_split instead
     per_split: PerSplitConfig | None = None
-    console_mode: str = "simple"
-    simple_log_interval_sec: int = 30
     download: HfDownloadConfig = field(default_factory=HfDownloadConfig)
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
     max_workers: int | None = None
-
-
-# Alias for clarity - DataPrepConfig is the preferred name in user-facing code
-DataPrepConfig = PipelineConfig
 
 
 # ============================================================================
@@ -366,7 +305,11 @@ class FormatResult:
         run_dir: Path to the runs/{run_hash} directory
         output_dir: User-facing output root directory
         num_shards: Number of shards produced
-        data_paths: Megatron-Bridge format ["weight", "prefix", ...]
+        data_paths: Megatron-Bridge format ["weight", "prefix", ...] where each prefix
+            is a shard base path WITHOUT the shard index suffix. For example:
+            [".../runs/abc123/datasets/mydata/hash/shard", ...]
+            The actual shard files are named: shard_000000.parquet, shard_000001.parquet, etc.
+            Consumers like distribute_shards_to_splits() append _{shard_idx:06d} to each prefix.
         dataset_stats: Per-dataset statistics {name: {tokens, sequences, ...}}
         from_cache: True if all results were served from cache
         total_tokens: Total tokens across all datasets (0 for non-tokenized formats)
@@ -394,7 +337,7 @@ class FormatResult:
 
 
 @dataclass
-class InternalDatasetConfig:
+class DatasetConfig:
     """Configuration for a single dataset source (internal use)."""
 
     name: str  # Unique identifier
@@ -518,14 +461,3 @@ class SourceChangedError(Exception):
     pass
 
 
-# ============================================================================
-# Aliases for backward compatibility with existing internal code
-# ============================================================================
-
-# These aliases allow existing internal modules (planning.py, discovery.py, etc.)
-# to continue using the old names without modification
-DatasetConfig = InternalDatasetConfig
-# Note: TokenizerConfig is now the public frozen dataclass
-# Internal code should use InternalTokenizerConfig
-# OutputConfig is now the public frozen dataclass
-# Internal code should use InternalOutputConfig

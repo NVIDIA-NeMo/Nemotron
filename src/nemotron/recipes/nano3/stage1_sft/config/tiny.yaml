@@ -9,16 +9,18 @@ recipe:
   packed_sequence: true
   peft: null  # Disable LoRA, do full SFT
 
-# Dataset config for pre-packed .npy files from data_prep
+# Dataset config for packed Parquet shards from data_prep
 # train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download
+# Uses nano3_packed_sft_dir for seamless config - auto-resolves to splits/train/ and splits/valid/
 dataset:
-  dataset_root: ${art:data,path}
+  nano3_packed_sft_dir: ${art:data,path}
   seq_length: ${art:data,pack_size}
   packed_sequence_specs:
     packed_sequence_size: ${art:data,pack_size}
-    packed_train_data_path: ${art:data,training_path}
-    packed_val_data_path: ${art:data,validation_path}
-    packed_metadata_path: ${art:data,metadata_path}
+    # packed_train_data_path and packed_val_data_path auto-resolve from nano3_packed_sft_dir
+    # Explicit paths can still be set to override:
+    # packed_train_data_path: /path/to/splits/train/
+    # packed_val_data_path: /path/to/splits/valid/
 
 train:
   train_iters: 1700

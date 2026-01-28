@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -58,7 +59,11 @@ from nemotron.data_prep.config import (
     ObservabilityConfig,
     TokenizerConfig,
 )
-from nemotron.data_prep.observability.wandb_hook import log_plan_table_to_wandb, make_wandb_stats_hook
+from nemotron.data_prep.observability.wandb_hook import (
+    compute_dataset_input_bytes,
+    log_plan_table_to_wandb,
+    make_wandb_stats_hook,
+)
 from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, read_json, write_json
 from nemotron.data_prep.core.planning import resolve_tokenizer
 from nemotron.data_prep.stages import (
@@ -72,9 +77,12 @@ from nemotron.data_prep.stages import (
 )
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
 from nemotron.data_prep.core.work_items import SftDatasetWorkItem
+from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, decide_execution_mode_for_stages
 
 if TYPE_CHECKING:
     from nemotron.data_prep.blend import DataBlend
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -376,7 +384,7 @@ def run_sft_pipeline(
     sample: str | int | None = None,
     sample_seed: int = 42,
     force: bool = False,
-    execution_mode: pipelines_v1.ExecutionMode = pipelines_v1.ExecutionMode.STREAMING,
+    execution_mode: ExecutionModeRequest = "auto",
     # Stage configs (optional, uses defaults if not provided)
     plan_stage: SftPlanStageConfig | None = None,
     download_stage: DownloadStageConfig | None = None,
@@ -413,7 +421,8 @@ def run_sft_pipeline(
         sample: Sampling specification
         sample_seed: Random seed for sampling (and default for packing when seed=None)
         force: Create new run namespace even if config matches
-        execution_mode: Execution mode (STREAMING or BATCH)
+        execution_mode: Execution mode ('auto', 'streaming', 'batch', or pipelines_v1.ExecutionMode).
+            'auto' (default) uses STREAMING if cluster CPUs suffice, BATCH otherwise.
         plan_stage: Config for planning stage (defaults to SftPlanStageConfig())
         download_stage: Config for download stage (defaults to DownloadStageConfig())
         tokenization_stage: Config for tokenization stage (defaults to PackedSftParquetStageConfig())
@@ -476,6 +485,9 @@ def run_sft_pipeline(
         # Build dataset_num_shards mapping for progress tracking
         dataset_num_shards = {item.dataset_name: item.num_shards for item in dataset_items}
 
+        # Pre-compute dataset sizes from HF metadata (available before plan.json exists)
+        dataset_input_bytes = compute_dataset_input_bytes(dataset_items)
+
         # Setup W&B stats hook for real-time logging
         # This patches PipelineMonitor._make_stats to intercept stats
         wandb_hook = make_wandb_stats_hook(
@@ -485,29 +497,39 @@ def run_sft_pipeline(
             run_dir=context.run_dir,
             dataset_names=context.dataset_names,
             dataset_num_shards=dataset_num_shards,
+            dataset_input_bytes=dataset_input_bytes,
+        )
+
+        stage_specs = [
+            # Stage 1: Plan (fan-out datasets to shards)
+            pipelines_v1.StageSpec(
+                SftPlanStage(plan_stage_cfg, pipeline_ctx),
+                num_workers=1,
+            ),
+            # Stage 2: Download files (HF, S3, GCS, etc.)
+            pipelines_v1.StageSpec(
+                DownloadStage(download_stage_cfg, pipeline_ctx),
+                num_workers_per_node=1,
+            ),
+            # Stage 3: Spool + Pack to Parquet + Receipts
+            pipelines_v1.StageSpec(
+                PackedSftParquetStage(tokenization_stage_cfg, pipeline_ctx),
+                slots_per_actor=1,
+            ),
+        ]
+
+        decision = decide_execution_mode_for_stages(
+            requested=execution_mode,
+            stage_specs=stage_specs,
+            pipeline_name="sft",
+            logger=logger,
         )
 
         pipeline_spec = pipelines_v1.PipelineSpec(
             input_data=dataset_items,
-            stages=[
-                # Stage 1: Plan (fan-out datasets to shards)
-                pipelines_v1.StageSpec(
-                    SftPlanStage(plan_stage_cfg, pipeline_ctx),
-                    num_workers=1,
-                ),
-                # Stage 2: Download files (HF, S3, GCS, etc.)
-                pipelines_v1.StageSpec(
-                    DownloadStage(download_stage_cfg, pipeline_ctx),
-                    num_workers_per_node=1,
-                ),
-                # Stage 3: Spool + Pack to Parquet + Receipts
-                pipelines_v1.StageSpec(
-                    PackedSftParquetStage(tokenization_stage_cfg, pipeline_ctx),
-                    slots_per_actor=1,
-                ),
-            ],
+            stages=stage_specs,
             config=pipelines_v1.PipelineConfig(
-                execution_mode=execution_mode,
+                execution_mode=decision.resolved,
                 return_last_stage_outputs=False,
                 logging_interval_s=observability_cfg.pipeline_logging_interval_s,
             ),

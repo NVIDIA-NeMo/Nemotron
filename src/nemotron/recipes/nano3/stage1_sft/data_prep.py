@@ -23,10 +23,23 @@ loss masking, packs sequences, and outputs packed Parquet shards using the
 Output structure (Megatron-Bridge compatible):
     output_dir/
         blend.json                  # Per-split blend {"train": [...], "valid": [...], "test": [...]}
+        splits/                     # Canonical split directories for training
+            train/                  # Symlinks to training shards
+                shard_000000.parquet -> ../runs/.../shard_000000.parquet
+                ...
+            valid/                  # Symlinks to validation shards
+                ...
+            test/                   # Symlinks to test shards
+                ...
         runs/{run_hash}/            # Run directory
             datasets/{name}/{hash}/ # Per-dataset outputs
                 shard_000000.parquet
                 ...
+
+Training can use either:
+- Split directories: packed_train_data_path=/path/to/output_dir/splits/train/
+- Globs: packed_train_data_path=/path/to/output_dir/splits/train/*.parquet
+- blend.json for provenance and exact shard paths
 
 Compatible with Megatron-Bridge's FinetuningDatasetConfig with packed Parquet shards.
 
@@ -62,7 +75,7 @@ from pathlib import Path
 
 from nemotron.data_prep.blend import DataBlend
 from nemotron.data_prep.config import ObservabilityConfig, TokenizerConfig
-from nemotron.data_prep.utils.splits import distribute_shards_to_splits
+from nemotron.data_prep.utils.splits import distribute_shards_to_splits, realize_packed_shards_into_split_dirs
 from nemotron.data_prep.recipes import run_sft_pipeline
 from nemotron.data_prep.stages import (
     DownloadStageConfig,
@@ -187,6 +200,10 @@ class SFTDataPrepConfig:
     force: bool = False
     """Force new run, ignoring cache"""
 
+    execution_mode: str = "auto"
+    """Execution mode: 'auto' (default), 'streaming', or 'batch'.
+    'auto' uses STREAMING if cluster CPUs suffice, BATCH otherwise."""
+
     config_name: str = "default"
     """Config name used for artifact naming"""
 
@@ -286,6 +303,7 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
         max_rows=cfg.sample,
         sample_seed=cfg.sample_seed,
         force=cfg.force,
+        execution_mode=cfg.execution_mode,
         # Stage configs
         plan_stage=cfg.plan,
         download_stage=cfg.download,
@@ -295,14 +313,37 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
     )
 
     # Convert ratios to shard counts for per-split distribution
+    # Must guarantee at least 1 train shard, so valid+test <= total-1
     total_shards = format_result.num_shards
-    test_shards = max(1, int(round(total_shards * cfg.test_ratio)))
-    valid_shards = max(1, int(round(total_shards * cfg.valid_ratio)))
 
-    # Ensure we don't exceed total shards
-    if test_shards + valid_shards >= total_shards:
-        test_shards = max(1, total_shards // 10)
-        valid_shards = max(1, total_shards // 10)
+    def _ratio_to_shards(ratio: float, total: int) -> int:
+        """Convert ratio to shard count, respecting ratio=0 as 0 shards."""
+        if ratio <= 0.0:
+            return 0
+        return max(1, int(round(total * ratio)))
+
+    if total_shards <= 2:
+        # With very few shards, put everything in train (no valid/test)
+        test_shards = 0
+        valid_shards = 0
+        logger.warning(
+            f"Only {total_shards} shard(s) available; skipping valid/test splits. "
+            "Increase num_shards or disable sampling for proper split distribution."
+        )
+    else:
+        test_shards = _ratio_to_shards(cfg.test_ratio, total_shards)
+        valid_shards = _ratio_to_shards(cfg.valid_ratio, total_shards)
+
+        # Ensure train gets at least 1 shard
+        max_non_train = total_shards - 1
+        if test_shards + valid_shards > max_non_train:
+            # Scale down proportionally, maintaining at least 1 for train
+            scale = max_non_train / (test_shards + valid_shards)
+            test_shards = max(0, int(test_shards * scale))
+            valid_shards = max(0, int(valid_shards * scale))
+            # If still over, prefer valid over test
+            if test_shards + valid_shards > max_non_train:
+                test_shards = max(0, max_non_train - valid_shards)
 
     # Generate per-split blend.json
     blend_data = distribute_shards_to_splits(
@@ -320,6 +361,13 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
         json.dump(blend_data, f, indent=2)
 
     logger.info(f"Wrote per-split blend.json to {blend_json_path}")
+
+    # Create canonical split directories with symlinks
+    split_dirs = realize_packed_shards_into_split_dirs(
+        output_dir=cfg.output_dir,
+        split_to_paths=blend_data,
+    )
+    logger.info(f"Created split directories: {list(split_dirs.keys())}")
 
     elapsed_sec = time.time() - start_time
 

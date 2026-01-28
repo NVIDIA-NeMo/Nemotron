@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import threading
 import time
 from pathlib import Path
@@ -121,18 +120,70 @@ def _get_dataset_size_str(item: Any) -> str:
     return "-"
 
 
-def _sanitize_stage_key(name: str) -> str:
-    """Convert stage name to valid metric key.
+def compute_dataset_input_bytes(dataset_items: list[Any]) -> dict[str, int]:
+    """Pre-compute total input bytes per dataset from file discovery.
 
-    Deprecated: Use canonical_stage_id() from stage_keys module instead.
-    Kept for backward compatibility.
+    Uses discover_input_files (HF Hub API / fsspec) to get actual file sizes.
+    This gives accurate per-file sizes from sibling.size (HF) or fs.info (local/S3).
 
-    Examples:
-        "PlanStage" -> "plan"
-        "Stage 00 - PlanStage" -> "plan"
-        "BinIdxTokenizationStage" -> "bin_idx_tokenization"
+    When max_rows is set on a dataset item, estimates effective bytes using
+    HF dataset metadata (bytes-per-row) to show realistic sizes instead of
+    full dataset sizes.
+
+    Used to seed the progress table's size column before plan.json exists.
+    Once the plan stage writes plan.json, the progress table reads the exact
+    file-level sizes from there instead.
+
+    Args:
+        dataset_items: List of DatasetWorkItem or SftDatasetWorkItem objects.
+
+    Returns:
+        Dict mapping dataset_name to total input bytes from discovered files.
     """
-    return canonical_stage_id(name)
+    from nemotron.data_prep.utils.discovery import discover_input_files
+
+    result: dict[str, int] = {}
+    for item in dataset_items:
+        path = getattr(item, "path", "") or ""
+        try:
+            cfg = DatasetConfig(
+                name=getattr(item, "dataset_name", "unknown"),
+                path=path,
+                weight=getattr(item, "weight", 0.0),
+                text_field=getattr(item, "text_field", "text"),
+                split=getattr(item, "split", None),
+                subset=getattr(item, "subset", None),
+            )
+
+            # For HF datasets, discover_input_files calls discover_hf_files
+            # which uses api.dataset_info(files_metadata=True) → sibling.size.
+            # For local/S3/GCS, it uses fsspec info() for real file sizes.
+            if path.startswith("hf://"):
+                files = discover_input_files(cfg, fs=None)  # type: ignore[arg-type]  # HF path doesn't use fs
+            else:
+                from nemotron.data_prep.utils.filesystem import get_filesystem
+                fs, _ = get_filesystem(path)
+                files = discover_input_files(cfg, fs)
+
+            total_bytes = sum(f.size for f in files)
+
+            # When max_rows is set, estimate effective bytes from HF metadata
+            max_rows = getattr(item, "max_rows", None)
+            if max_rows and max_rows > 0 and total_bytes > 0 and path.startswith("hf://"):
+                try:
+                    md = get_dataset_metadata(cfg)
+                    if md.num_rows and md.size_bytes and md.num_rows > 0 and md.size_bytes > 0:
+                        avg_bpr = md.size_bytes / md.num_rows
+                        effective = int(max_rows * avg_bpr)
+                        total_bytes = min(effective, total_bytes)
+                except Exception:
+                    pass
+
+            if total_bytes > 0:
+                result[item.dataset_name] = total_bytes
+        except Exception:
+            pass
+    return result
 
 
 def _extract_stage_metrics(stats: Any) -> dict[str, dict[str, float | int]]:
@@ -344,6 +395,8 @@ class WandbStatsHook:
         run_dir: str | None = None,
         dataset_names: list[str] | None = None,
         dataset_num_shards: dict[str, int] | None = None,
+        dataset_input_bytes: dict[str, int] | None = None,
+        dataset_max_rows: dict[str, int] | None = None,
         wandb_namespace: str | None = None,
         monitor_cls: type | None = None,
     ) -> None:
@@ -356,6 +409,8 @@ class WandbStatsHook:
         # Use pipeline_kind as namespace by default (e.g., "pretrain", "sft")
         self._wandb_namespace = wandb_namespace if wandb_namespace is not None else pipeline_kind
         self._monitor_cls = monitor_cls
+        # Per-dataset max_rows for effective size estimation
+        self._dataset_max_rows = dataset_max_rows or {}
 
         # JSONL file handle (lazy opened)
         self._jsonl_file: Any = None
@@ -370,7 +425,8 @@ class WandbStatsHook:
         self._last_progress_table_time: float = 0.0
         self._last_stage_table_time: float = 0.0
         self._fs: Any = None  # Lazy-loaded filesystem
-        self._dataset_input_bytes: dict[str, int] = {}  # Cache for dataset sizes from plan.json
+        # Cache for dataset sizes: pre-seeded from discovery, updated from plan.json
+        self._dataset_input_bytes: dict[str, int] = dict(dataset_input_bytes) if dataset_input_bytes else {}
 
         # Step counter for W&B logging
         self._step: int = 0
@@ -484,6 +540,60 @@ class WandbStatsHook:
             self._fs, _ = get_filesystem(self._run_dir)
         return self._fs
 
+    def _estimate_effective_bytes(
+        self, dataset_name: str, total_bytes: int, max_rows: int
+    ) -> int:
+        """Estimate effective bytes when max_rows limits processing.
+
+        Uses HF dataset metadata to compute bytes-per-row and estimates
+        how many bytes max_rows would cover. Falls back to total_bytes
+        if metadata is unavailable.
+        """
+        try:
+            # Find the dataset item's HF metadata for row count estimation
+            from nemotron.data_prep.utils.discovery import fetch_hf_dataset_metadata
+
+            # Try to get dataset metadata from plan.json assignments
+            fs = self._get_filesystem()
+            dataset_base = f"{self._run_dir}/datasets/{dataset_name}"
+            subdirs = [p for p in fs.ls(dataset_base) if fs.isdir(p)]
+            for subdir in subdirs:
+                plan_path = f"{subdir}/plan.json"
+                if not fs.exists(plan_path):
+                    continue
+
+                from nemotron.data_prep.utils.filesystem import read_json
+                plan_data = read_json(fs, plan_path)
+                file_assignments = plan_data.get("file_assignments") or []
+                if not file_assignments:
+                    break
+
+                # Get hf_subset/hf_split from the first assignment (added by PlanStage)
+                first_assignment = file_assignments[0]
+                first_files = first_assignment.get("files", [])
+                if not first_files:
+                    break
+
+                first_file = first_files[0]
+                repo_id = first_file.get("hf_repo_id")
+                if not repo_id:
+                    break
+
+                hf_subset = first_assignment.get("hf_subset")
+                hf_split = first_assignment.get("hf_split")
+
+                meta = fetch_hf_dataset_metadata(repo_id, subset=hf_subset, split=hf_split)
+                if meta.num_rows and meta.size_bytes and meta.num_rows > 0 and meta.size_bytes > 0:
+                    avg_bpr = meta.size_bytes / meta.num_rows
+                    effective = int(max_rows * avg_bpr)
+                    return min(effective, total_bytes)
+
+                break
+        except Exception:
+            pass
+
+        return total_bytes
+
     def _update_progress_table(self) -> None:
         """Scan receipts and log per-dataset progress table to W&B.
 
@@ -538,26 +648,39 @@ class WandbStatsHook:
                 except Exception:
                     pass
 
-                # Get dataset size from plan.json (cached)
+                # Get dataset size: prefer plan.json (exact file-level sizes),
+                # fall back to pre-seeded HF metadata (available before plan exists).
+                # When max_rows is set, estimate effective size from row limit.
                 dataset_size_str = "-"
                 if plan_hash:
-                    dataset_bytes = self._dataset_input_bytes.get(dataset_name)
-                    if dataset_bytes is None:
-                        plan_path = f"{dataset_base}/{plan_hash}/plan.json"
+                    # Plan exists — read exact total_bytes from file assignments
+                    plan_path = f"{dataset_base}/{plan_hash}/plan.json"
+                    if dataset_name not in self._dataset_input_bytes or self._dataset_input_bytes[dataset_name] == 0:
                         try:
                             from nemotron.data_prep.utils.filesystem import read_json
 
-                            plan = read_json(fs, plan_path)
-                            file_assignments = plan.get("file_assignments") or []
-                            dataset_bytes = sum(
+                            plan_data = read_json(fs, plan_path)
+                            file_assignments = plan_data.get("file_assignments") or []
+                            plan_bytes = sum(
                                 int(fa.get("total_bytes") or 0) for fa in file_assignments
                             )
-                            self._dataset_input_bytes[dataset_name] = dataset_bytes
+                            if plan_bytes > 0:
+                                self._dataset_input_bytes[dataset_name] = plan_bytes
                         except Exception:
-                            dataset_bytes = None
+                            pass
 
-                    if dataset_bytes is not None and dataset_bytes > 0:
-                        dataset_size_str = format_byte_size(dataset_bytes)
+                # Use cached/pre-seeded bytes (from plan.json or HF metadata)
+                dataset_bytes = self._dataset_input_bytes.get(dataset_name, 0)
+
+                # When max_rows is set, estimate effective size instead of full dataset size
+                max_rows = self._dataset_max_rows.get(dataset_name)
+                if max_rows and max_rows > 0 and dataset_bytes > 0:
+                    dataset_bytes = self._estimate_effective_bytes(
+                        dataset_name, dataset_bytes, max_rows
+                    )
+
+                if dataset_bytes > 0:
+                    dataset_size_str = format_byte_size(dataset_bytes)
 
                 # Count receipts by status
                 # "downloaded" = any receipt exists (started, completed, or failed)
@@ -810,6 +933,8 @@ def make_wandb_stats_hook(
     run_dir: str | None = None,
     dataset_names: list[str] | None = None,
     dataset_num_shards: dict[str, int] | None = None,
+    dataset_input_bytes: dict[str, int] | None = None,
+    dataset_max_rows: dict[str, int] | None = None,
 ) -> WandbStatsHook | None:
     """Factory function to create a W&B stats hook if logging is enabled.
 
@@ -820,6 +945,8 @@ def make_wandb_stats_hook(
         run_dir: Directory for JSONL output
         dataset_names: Names of datasets being processed
         dataset_num_shards: Dict mapping dataset name to expected number of shards
+        dataset_input_bytes: Pre-computed total input bytes per dataset (from file discovery)
+        dataset_max_rows: Per-dataset max_rows for effective size estimation
 
     Returns:
         WandbStatsHook if logging is enabled, None otherwise
@@ -840,6 +967,8 @@ def make_wandb_stats_hook(
         run_dir=run_dir,
         dataset_names=dataset_names,
         dataset_num_shards=dataset_num_shards,
+        dataset_input_bytes=dataset_input_bytes,
+        dataset_max_rows=dataset_max_rows,
     )
 
 

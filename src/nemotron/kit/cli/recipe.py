@@ -40,6 +40,66 @@ from nemotron.kit.cli.globals import GlobalContext, split_unknown_args
 console = Console()
 
 
+def _get_startup_commands(env_config: dict | None) -> list[str]:
+    """Extract and validate startup_commands from env config.
+
+    Args:
+        env_config: Environment configuration dict from run.env
+
+    Returns:
+        List of shell commands to run before training, or empty list
+    """
+    if not env_config:
+        return []
+    commands = env_config.get("startup_commands")
+    if not commands:
+        return []
+    if not isinstance(commands, list):
+        raise typer.Exit(1)
+    for cmd in commands:
+        if not isinstance(cmd, str):
+            typer.echo(
+                f"Error: startup_commands must be a list of strings, got {type(cmd).__name__}",
+                err=True,
+            )
+            raise typer.Exit(1)
+    return commands
+
+
+def _prepend_startup_to_cmd(startup_commands: list[str], cmd: str) -> str:
+    """Prepend startup commands to a shell command string.
+
+    Args:
+        startup_commands: List of shell commands to run first
+        cmd: The main command to run after startup
+
+    Returns:
+        Combined command string with startup commands prepended
+    """
+    if not startup_commands:
+        return cmd
+    # Join with && for fail-fast behavior
+    startup_block = " && ".join(startup_commands)
+    return f"{{ {startup_block}; }} && {cmd}"
+
+
+def _run_startup_commands_local(startup_commands: list[str]) -> None:
+    """Run startup commands locally before training.
+
+    Args:
+        startup_commands: List of shell commands to run
+
+    Raises:
+        typer.Exit: If any command fails
+    """
+    for cmd in startup_commands:
+        typer.echo(f"[startup] {cmd}")
+        result = subprocess.run(cmd, shell=True, executable="/bin/bash")
+        if result.returncode != 0:
+            typer.echo(f"Error: startup command failed with code {result.returncode}", err=True)
+            raise typer.Exit(result.returncode)
+
+
 @dataclass
 class RecipeMetadata:
     """Metadata attached to a recipe command function.
@@ -116,6 +176,15 @@ def recipe(
             {config} - the config path (e.g., "config.yaml")
             Example: "python {script} --config {config}"
             Can be overridden via YAML config at `run.env.run_command`.
+
+    YAML config options (under `run.env`):
+        startup_commands: List of shell commands to run immediately before training.
+            Commands run after infrastructure is ready (container started, Ray cluster up)
+            but before the training script executes. Useful for:
+            - Cloning a git branch: "git clone --branch feature https://... /workspace/custom"
+            - Installing packages: "pip install /workspace/custom"
+            - Creating directories: "mkdir -p /nemo_run/outputs"
+            Commands execute with fail-fast behavior (stops on first error).
 
     Example:
         @recipe(
@@ -228,10 +297,16 @@ def recipe(
             # Display job submission summary
             display_job_submission(job_path, train_path, env_vars, global_ctx.mode)
 
+            # Get startup commands from env config
+            startup_commands = _get_startup_commands(env_config)
+
             # Execute based on mode
             if global_ctx.mode == "local":
                 # Set env vars so subprocess inherits them (wandb, HF tokens, etc.)
                 os.environ.update(env_vars)
+                # Run startup commands before training
+                if startup_commands:
+                    _run_startup_commands_local(startup_commands)
                 _execute_local(script_path, train_path, passthrough, torchrun=torchrun)
             else:
                 _execute_nemo_run(
@@ -249,6 +324,7 @@ def recipe(
                     pre_ray_start_commands=pre_ray_start_commands,
                     run_command=run_command,
                     force_squash=global_ctx.force_squash,
+                    startup_commands=startup_commands,
                 )
 
         # Attach metadata to function for introspection
@@ -328,6 +404,7 @@ def _execute_nemo_run(
     pre_ray_start_commands: list[str] | None = None,
     run_command: str | None = None,
     force_squash: bool = False,
+    startup_commands: list[str] | None = None,
 ) -> None:
     """Execute script via nemo-run.
 
@@ -346,6 +423,7 @@ def _execute_nemo_run(
         pre_ray_start_commands: Shell commands to run before Ray starts
         run_command: Custom command template (supports {script} and {config} placeholders)
         force_squash: Whether to force re-squash container image
+        startup_commands: Shell commands to run immediately before training starts
     """
     import time
 
@@ -464,6 +542,10 @@ def _execute_nemo_run(
         if passthrough:
             cmd += " " + " ".join(passthrough)
 
+        # Prepend startup commands to run immediately before training
+        if startup_commands:
+            cmd = _prepend_startup_to_cmd(startup_commands, cmd)
+
         # Build runtime_env with environment variables for Ray workers
         runtime_env: dict = {"env_vars": dict(env_vars)}
 
@@ -545,15 +627,27 @@ def _execute_nemo_run(
                     raise typer.Exit(0)
     else:
         # Standard execution via nemo-run Script
-        entrypoint = "python"
+        if startup_commands:
+            # When startup commands are specified, wrap the training command in bash
+            # This runs startup commands immediately before training
+            import shlex
+
+            train_cmd = shlex.join(["python", "main.py", *script_args])
+            full_cmd = _prepend_startup_to_cmd(startup_commands, train_cmd)
+            script_task = run.Script(
+                path="bash",
+                args=["-lc", full_cmd],
+            )
+        else:
+            script_task = run.Script(
+                path="main.py",  # Flat name on remote
+                args=script_args,
+                entrypoint="python",
+            )
 
         with run.Experiment(recipe_name) as exp:
             exp.add(
-                run.Script(
-                    path="main.py",  # Flat name on remote
-                    args=script_args,
-                    entrypoint=entrypoint,
-                ),
+                script_task,
                 executor=executor,
                 name=recipe_name,
             )
@@ -658,6 +752,9 @@ def _build_executor(
             # Ray temp directory mount (avoids filling container storage with Ray logs)
             ray_temp_path = f"{remote_job_dir}/ray_temp"
             mounts.append(f"{ray_temp_path}:/ray-cluster")
+            # Ensure the ray_temp directory exists on the remote filesystem
+            if tunnel:
+                tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
         # Build executor kwargs, only including exclusive if True
         executor_kwargs: dict[str, Any] = {
@@ -1045,6 +1142,16 @@ def _execute_stage_only(
         escaped_value = value.replace("'", "'\"'\"'")
         run_script_lines.append(f"export {key}='{escaped_value}'")
     run_script_lines.append("")
+
+    # Add startup commands if configured
+    startup_commands = _get_startup_commands(env_config)
+    if startup_commands:
+        run_script_lines.append("# Startup commands (run before training)")
+        run_script_lines.append("set -e  # Exit on error")
+        for cmd in startup_commands:
+            run_script_lines.append(cmd)
+        run_script_lines.append("")
+
     run_script_lines.append("# Run training")
     if torchrun:
         run_script_lines.append(

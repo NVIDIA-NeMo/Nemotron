@@ -35,9 +35,11 @@ Usage:
 """
 
 from nemotron.data_prep.recipes.pretrain import run_pretrain_pipeline
+from nemotron.data_prep.recipes.rl import run_rl_resolve_pipeline
 from nemotron.data_prep.recipes.sft import run_sft_pipeline
 
 __all__ = [
     "run_pretrain_pipeline",
+    "run_rl_resolve_pipeline",
     "run_sft_pipeline",
 ]
