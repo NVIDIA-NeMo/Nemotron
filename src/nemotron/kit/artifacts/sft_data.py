@@ -78,7 +78,7 @@ class SFTDataArtifact(Artifact):
         int | None, Field(default=None, description="Number of output shards (xenna-native)")
     ]
     data_format: Annotated[
-        str, Field(default="legacy_npy_pickle", description="Output format: 'legacy_npy_pickle' or 'packed_sft_parquet'")
+        str, Field(default="packed_sft_parquet", description="Output format: 'packed_sft_parquet'")
     ]
 
     # Source datasets for lineage tracking

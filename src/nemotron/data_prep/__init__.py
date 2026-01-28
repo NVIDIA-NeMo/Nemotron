@@ -21,7 +21,6 @@ Public API:
     The primary entry points are the pipeline recipes:
     - run_pretrain_pipeline: Tokenize to Megatron bin/idx format
     - run_sft_pipeline: Chat SFT to packed Parquet format
-    - run_data_prep: Compatibility shim that dispatches by format config
 
 Pipeline recipes are available in:
     - recipes/pretrain.py for pretrain (binidx) data prep
@@ -34,7 +33,7 @@ For stage-specific data preparation, see:
 
 Subpackages:
     - core: Low-level shard processing functions
-    - observability: W&B, Prometheus, and stats logging utilities
+    - observability: W&B and stats logging utilities
     - recipes: Pipeline orchestration (pretrain, sft)
     - stages: Xenna pipeline stages
     - formats: Output format builders
@@ -67,10 +66,7 @@ from nemotron.data_prep.config import (
     HfDownloadConfig,
     JsonlOutputConfig,
     ObservabilityConfig,
-    OutputConfig,
-    PackedOutputConfig,
     PerSplitConfig,
-    PipelineConfig,
     TokenizerConfig,
     Transform,
 )
@@ -93,7 +89,6 @@ from nemotron.kit.wandb import finish_wandb
 
 # Public API - Recipe entry points
 from nemotron.data_prep.api import (
-    run_data_prep,
     run_pretrain_pipeline,
     run_sft_pipeline,
 )
@@ -108,17 +103,14 @@ __all__ = [
     # Public API - Recipe entry points
     "run_pretrain_pipeline",
     "run_sft_pipeline",
-    "run_data_prep",
     # Input specification
     "DataBlend",
     "Dataset",
     "DataBlendsArtifact",
     "PretrainBlendsArtifact",
     # Configuration
-    "PipelineConfig",
     "PerSplitConfig",
     "TokenizerConfig",
-    "OutputConfig",
     "DatasetConfig",
     "FileInfo",
     "FormatResult",
@@ -127,7 +119,6 @@ __all__ = [
     # Output format configs
     "BinIdxOutputConfig",
     "JsonlOutputConfig",
-    "PackedOutputConfig",
     "ChatSftOutputConfig",
     "Transform",
     # Transform factories

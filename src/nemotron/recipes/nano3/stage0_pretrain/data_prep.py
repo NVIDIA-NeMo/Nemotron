@@ -134,6 +134,10 @@ class PreTrainDataPrepConfig:
     force: bool = False
     """Force new run, ignoring cache"""
 
+    execution_mode: str = "auto"
+    """Execution mode: 'auto' (default), 'streaming', or 'batch'.
+    'auto' uses STREAMING if cluster CPUs suffice, BATCH otherwise."""
+
     config_name: str = "default"
     """Config name used for artifact naming"""
 
@@ -218,6 +222,7 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
         max_doc_tokens=cfg.max_doc_tokens,
         max_rows=cfg.sample,  # sample acts as max_rows
         force=cfg.force,
+        execution_mode=cfg.execution_mode,
         # Stage configs
         plan_stage=cfg.plan,
         download_stage=cfg.download,

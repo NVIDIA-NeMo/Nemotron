@@ -111,15 +111,9 @@ See [Execution through NeMo-Run](./nemo-run.md) for complete configuration optio
 |-----|----------|---------------|
 | `run_pretrain_pipeline()` | Pretraining tokenization | bin/idx |
 | `run_sft_pipeline()` | Chat SFT with loss masking | Packed Parquet |
-| `run_data_prep()` | Format-based dispatch (compatibility) | bin/idx or Parquet |
 
-**Use recipe entry points** (recommended):
 - `run_pretrain_pipeline()` — Standard pretraining tokenization to bin/idx format
 - `run_sft_pipeline()` — Chat SFT with role-based loss masking to packed Parquet
-
-**Use `run_data_prep()` (compatibility)** for:
-- Backward compatibility with existing code
-- Config-based format dispatch (reads `config.output.format` type)
 
 **For JSONL output** (RL training):
 - Use the stage-specific scripts in `nemotron/recipes/nano3/stage2_rl/data_prep.py`
@@ -176,26 +170,6 @@ print(f"Run hash: {result.run_hash}")
 print(f"Total sequences: {result.total_sequences:,}")
 ```
 
-### Config-Based Dispatch (Compatibility)
-
-For backward compatibility with config-based format dispatch:
-
-```python
-from nemotron.data_prep import DataBlend, PipelineConfig, run_data_prep
-from nemotron.data_prep.config import BinIdxOutputConfig, OutputConfig, TokenizerConfig
-from pathlib import Path
-
-blend = DataBlend.load("blend.json")
-config = PipelineConfig(
-    tokenizer=TokenizerConfig(model="nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
-    output=OutputConfig(
-        dir=Path("./output"),
-        format=BinIdxOutputConfig(num_shards=64),
-    ),
-)
-
-result = run_data_prep(config, blend=blend)
-```
 
 ## Output Formats
 
@@ -248,49 +222,24 @@ config = PipelineConfig(
 )
 ```
 
-### Packed
-
-Packed sequences for efficient SFT training:
-
-```python
-from nemotron.data_prep.config import PackedOutputConfig
-
-config = PipelineConfig(
-    tokenizer=TokenizerConfig(model="meta-llama/Llama-3.2-1B"),
-    output=OutputConfig(
-        dir=Path("./packed_data"),
-        format=PackedOutputConfig(
-            pack_size=4096,
-            algorithm="first_fit_shuffle",
-        ),
-    ),
-)
-```
-
 ### Chat SFT (Packed with Loss Masking)
 
-Chat-templated SFT with role-based loss masking. This format applies chat templates to OpenAI-format messages, tokenizes them, and produces packed sequences with a loss mask that zeros out system/user tokens:
+Chat-templated SFT with role-based loss masking. This format applies chat templates to OpenAI-format messages, tokenizes them, and produces packed Parquet sequences with a loss mask that zeros out system/user tokens:
 
 ```python
-from nemotron.data_prep import last_mile_process, DataBlend, PipelineConfig
-from nemotron.data_prep.config import OutputConfig, ChatSftOutputConfig, TokenizerConfig
+from nemotron.data_prep import DataBlend, run_sft_pipeline
 
 blend = DataBlend.load("chat_data.json")
 
-config = PipelineConfig(
-    tokenizer=TokenizerConfig(model="nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
-    output=OutputConfig(
-        dir=Path("./chat_sft"),
-        format=ChatSftOutputConfig(
-            chat_template="nano3",       # Built-in template or path to .jinja file
-            messages_field="messages",   # Field containing OpenAI-format messages
-            pack_size=4096,              # Maximum tokens per packed sequence
-            algorithm="first_fit_shuffle",
-        ),
-    ),
+result = run_sft_pipeline(
+    blend=blend,
+    output_dir="./chat_sft",
+    tokenizer="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+    num_shards=64,
+    chat_template="nano3",       # Built-in template or path to .jinja file
+    pack_size=4096,              # Maximum tokens per packed sequence
+    algorithm="first_fit_shuffle",
 )
-
-result = last_mile_process(blend, config)
 ```
 
 **Input format** (OpenAI chat messages):
@@ -474,13 +423,16 @@ Supported size formats: `"256MB"`, `"1G"`, `"500MiB"`, etc.
 Generate separate train/valid/test outputs using `PerSplitConfig`:
 
 ```python
-from nemotron.data_prep import DataPrepConfig, PerSplitConfig
+from nemotron.data_prep import PerSplitConfig
+from nemotron.data_prep.config import PipelineConfig, OutputConfig, BinIdxOutputConfig, TokenizerConfig
 from pathlib import Path
 
-config = DataPrepConfig(
-    blend_path=Path("blend.json"),
-    output_dir=Path("./output"),
-    tokenizer_model="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+config = PipelineConfig(
+    tokenizer=TokenizerConfig(model="nvidia/NVIDIA-Nemotron-Nano-9B-v2"),
+    output=OutputConfig(
+        dir=Path("./output"),
+        format=BinIdxOutputConfig(num_shards=64),
+    ),
     per_split=PerSplitConfig(
         enabled=True,
         valid_shards=1,   # Number of validation shards
@@ -535,7 +487,6 @@ from nemotron.data_prep.formats.transforms import (
 |----------|-------------|
 | `run_pretrain_pipeline(blend, output_dir, tokenizer, num_shards, ...)` | Tokenize to Megatron bin/idx format |
 | `run_sft_pipeline(blend, output_dir, tokenizer, num_shards, ...)` | Chat SFT to packed Parquet format |
-| `run_data_prep(config, blend=...)` | Format-based dispatch (compatibility shim) |
 
 ### Core Processing Functions
 
@@ -550,7 +501,7 @@ from nemotron.data_prep.formats.transforms import (
 
 | Class | Description |
 |-------|-------------|
-| `PipelineConfig` | Pipeline configuration (alias: `DataPrepConfig`) |
+| `PipelineConfig` | Pipeline configuration |
 | `TokenizerConfig` | Tokenizer settings (model, type, add_bos, add_eos) |
 | `OutputConfig` | Output directory and format |
 | `BinIdxOutputConfig` | Tokenized binary format options |

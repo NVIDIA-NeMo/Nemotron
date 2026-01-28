@@ -16,13 +16,9 @@
 
 This package provides consolidated access to observability features:
 - W&B integration for real-time pipeline metrics
-- Prometheus metrics scraping
-- Pipeline stats callbacks
 - Stage naming conventions
 
-All implementations now live in this package for cleaner organization.
-
-W&B Integration (Primary):
+W&B Integration:
     The WandbStatsHook is the primary observability mechanism used by recipes.
     It patches PipelineMonitor to intercept stats and log to W&B in real-time.
 
@@ -30,24 +26,6 @@ W&B Integration (Primary):
     >>> hook = make_wandb_stats_hook(observability=cfg, pipeline_kind="pretrain")
     >>> with hook:
     ...     pipelines_v1.run_pipeline(spec)
-
-Prometheus Metrics (Alternative):
-    For environments where W&B is not available, Prometheus metrics can be
-    scraped from Ray's metrics endpoint.
-
-    >>> from nemotron.data_prep.observability import (
-    ...     PrometheusMetricsLogger,
-    ...     enable_ray_metrics_export,
-    ... )
-    >>> enable_ray_metrics_export(port=8080)
-    >>> with PrometheusMetricsLogger(port=8080):
-    ...     pipelines_v1.run_pipeline(spec)
-
-Stats Callback (Legacy):
-    For custom stats handling, use the callback factory:
-
-    >>> from nemotron.data_prep.observability import make_pipeline_stats_callback
-    >>> callback = make_pipeline_stats_callback(observability=cfg, pipeline_kind="pretrain")
 """
 
 # W&B integration (primary observability mechanism)
@@ -56,16 +34,6 @@ from nemotron.data_prep.observability.wandb_hook import (
     log_plan_table_to_wandb,
     make_wandb_stats_hook,
 )
-
-# Prometheus metrics (alternative)
-from nemotron.data_prep.observability.prometheus_metrics import (
-    PrometheusConfig,
-    PrometheusMetricsLogger,
-    enable_ray_metrics_export,
-)
-
-# Stats callback (for custom handling)
-from nemotron.data_prep.observability.stats_callback import make_pipeline_stats_callback
 
 # Stage naming utilities
 from nemotron.data_prep.observability.stage_keys import (
@@ -78,12 +46,6 @@ __all__ = [
     "WandbStatsHook",
     "make_wandb_stats_hook",
     "log_plan_table_to_wandb",
-    # Prometheus metrics
-    "PrometheusConfig",
-    "PrometheusMetricsLogger",
-    "enable_ray_metrics_export",
-    # Stats callback
-    "make_pipeline_stats_callback",
     # Stage naming
     "canonical_stage_id",
     "get_stage_display_name",

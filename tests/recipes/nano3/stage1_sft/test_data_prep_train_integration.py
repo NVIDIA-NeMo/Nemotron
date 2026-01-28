@@ -84,31 +84,43 @@ class TestSFTDataPrepOutputFormat:
             assert "loss_mask" in sample, "Missing loss_mask key"
             assert "seq_start_id" in sample, "Missing seq_start_id key"
 
-    def test_loss_mask_rolled_by_one_for_label_alignment(self, tmp_path):
-        """Test loss_mask is shifted for next-token prediction.
+    def test_loss_mask_per_subsequence_alignment(self, tmp_path):
+        """Test loss_mask is aligned per-subsequence for Megatron-Bridge label semantics.
 
-        The loss_mask should be rolled by 1 so that it aligns with labels
-        (next token prediction). First position should be 0 (no loss on
-        predicting first token from nothing).
+        In Megatron-Bridge's GPTSFTPackedDataset.collate_fn:
+        - tokens = input_ids[start : end-1]
+        - labels = input_ids[start+1 : end]
+        - loss_mask = loss_mask[start : end-1]
+
+        So loss_mask[j] must indicate whether label input_ids[j+1] should contribute to loss.
+        For each subsequence, loss_mask[end-1] = 0 (no label for last token).
         """
         pack_size = 4096
         npy_path = tmp_path / f"training_{pack_size}.npy"
 
-        # Create sample where loss_mask starts with 0 (rolled)
+        # Two subsequences:
+        # Seq1: tokens [1,2,3], original mask [1,1,1] -> aligned [1,1,0]
+        # Seq2: tokens [4,5], original mask [0,1] -> aligned [1,0]
         sample_data = [
             {
                 "input_ids": [1, 2, 3, 4, 5],
-                # Original mask might be [0, 1, 1, 1, 1], rolled becomes [0, 0, 1, 1, 1]
-                "loss_mask": [0, 0, 1, 1, 1],
-                "seq_start_id": [0],
+                "loss_mask": [1, 1, 0, 1, 0],  # Per-subsequence aligned
+                "seq_start_id": [0, 3],
             },
         ]
         np.save(npy_path, sample_data, allow_pickle=True)
 
         loaded = np.load(npy_path, allow_pickle=True)
-        for sample in loaded:
-            # First position should be 0 (no loss on predicting from nothing)
-            assert sample["loss_mask"][0] == 0, "First loss_mask position should be 0 (rolled)"
+        sample = loaded[0]
+
+        # Verify loss_mask[end-1] == 0 for each subsequence
+        seq_boundaries = sample["seq_start_id"] + [len(sample["input_ids"])]
+        for i in range(len(seq_boundaries) - 1):
+            end = seq_boundaries[i + 1]
+            assert sample["loss_mask"][end - 1] == 0, (
+                f"Subsequence {i} should have loss_mask[end-1]=0, "
+                f"but got loss_mask[{end-1}]={sample['loss_mask'][end - 1]}"
+            )
 
     def test_seq_start_id_excludes_final_boundary(self, tmp_path):
         """Test seq_start_id format matches GPTSFTPackedDataset expectation.
@@ -120,10 +132,12 @@ class TestSFTDataPrepOutputFormat:
         npy_path = tmp_path / f"training_{pack_size}.npy"
 
         # Two sequences of length 3 and 4 packed together
+        # Seq1: length 3, Seq2: length 4
+        # Per-subsequence aligned loss_mask: each subsequence ends with 0
         sample_data = [
             {
                 "input_ids": [1, 2, 3, 4, 5, 6, 7],  # 7 tokens total
-                "loss_mask": [0, 1, 1, 0, 1, 1, 1],
+                "loss_mask": [1, 1, 0, 1, 1, 1, 0],  # Per-subseq: [1,1,0] + [1,1,1,0]
                 "seq_start_id": [0, 3],  # Starts at 0 and 3, NOT including 7
             },
         ]

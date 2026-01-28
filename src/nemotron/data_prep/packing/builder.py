@@ -120,9 +120,15 @@ class PackedSequenceBuilder:
         Output format per packed item:
             {
                 "input_ids": [tok1, tok2, ...],
-                "loss_mask": [0, 1, 1, ...],  # Rolled by 1 for label alignment
+                "loss_mask": [...],  # Per-subsequence aligned for MB label semantics
                 "seq_start_id": [0, len1, len1+len2, ...]
             }
+
+        Loss mask alignment (per-subsequence, for Megatron-Bridge collate_fn):
+        - For each subsequence of length L, the loss_mask is aligned so that:
+          - aligned[0:L-1] = original_mask[1:L] (shift left within subsequence)
+          - aligned[L-1] = 0 (last token has no label to predict)
+        - This ensures loss_mask[j] indicates whether label input_ids[j+1] should contribute to loss.
         """
         if not self._sequences:
             return [], {
@@ -196,18 +202,22 @@ class PackedSequenceBuilder:
             # Default loss mask to all 1s if not provided
             if mask is None:
                 mask = [1] * len(seq)
-            all_loss_mask.extend(mask)
+
+            # Align loss_mask per-subsequence for Megatron-Bridge label semantics:
+            # aligned[j] = mask[j+1] for j in [0, L-2], aligned[L-1] = 0
+            seq_len = len(seq)
+            if seq_len == 1:
+                aligned_mask = [0]
+            else:
+                aligned_mask = mask[1:] + [0]
+            all_loss_mask.extend(aligned_mask)
 
             # Track sequence boundary
             seq_start_ids.append(len(all_input_ids))
 
-        # Roll loss_mask by 1 for label alignment (standard in Megatron)
-        # This shifts the mask so it aligns with labels (next-token prediction)
-        rolled_loss_mask = [0] + all_loss_mask[:-1] if all_loss_mask else []
-
         return {
             "input_ids": all_input_ids,
-            "loss_mask": rolled_loss_mask,
+            "loss_mask": all_loss_mask,
             "seq_start_id": seq_start_ids[:-1],  # Exclude final boundary
         }
 

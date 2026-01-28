@@ -23,6 +23,8 @@ num_shards: 128
 # Tokenizer configuration (nested)
 tokenizer:
   model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
 
 # Maximum tokens per packed sequence
 pack_size: 4096

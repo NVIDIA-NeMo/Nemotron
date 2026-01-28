@@ -557,6 +557,10 @@ def build_executor(config: RunConfig, env_vars: dict[str, str] | None = None) ->
                 # Ray temp directory mount (avoids filling container storage with Ray logs)
                 ray_temp_path = f"{config.remote_job_dir}/ray_temp"
                 mounts.append(f"{ray_temp_path}:/ray-cluster")
+                # Ensure the ray_temp directory exists on the remote filesystem
+                if tunnel:
+                    tunnel.connect()
+                    tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
             return run.SlurmExecutor(
                 account=config.account,

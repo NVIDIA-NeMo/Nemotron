@@ -163,46 +163,6 @@ class ParquetShardWriter:
         }
 
 
-class LegacyPickleWriter:
-    """Backward-compatible writer using pickle-of-dicts stored in a .npy file."""
-
-    def __init__(self, output_path: str) -> None:
-        self.output_path = output_path
-        self.packed_data: list[dict[str, Any]] = []
-        self._closed = False
-
-    def write_bin(
-        self,
-        bin_id: int,
-        input_ids: np.ndarray,
-        loss_mask: np.ndarray,
-        seq_start_id: np.ndarray,
-    ) -> None:
-        if self._closed:
-            raise RuntimeError("LegacyPickleWriter is closed")
-
-        self.packed_data.append(
-            {
-                "input_ids": np.asarray(input_ids, dtype=np.int32).tolist(),
-                "loss_mask": np.asarray(loss_mask, dtype=np.uint8).tolist(),
-                "seq_start_id": np.asarray(seq_start_id, dtype=np.int32).tolist(),
-            }
-        )
-
-    def finalize(self) -> dict[str, Any]:
-        if self._closed:
-            raise RuntimeError("LegacyPickleWriter is already finalized/closed")
-        self._closed = True
-
-        tmp_path = self.output_path + ".tmp"
-        with open(tmp_path, "wb") as f:
-            np.save(f, self.packed_data, allow_pickle=True)
-        os.replace(tmp_path, self.output_path)
-
-        return {"format": "legacy_pickle", "num_bins": len(self.packed_data)}
-
-
 __all__ = [
     "ParquetShardWriter",
-    "LegacyPickleWriter",
 ]

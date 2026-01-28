@@ -2,6 +2,9 @@ run:
   data: PretrainBlendsArtifact-tiny:latest
   env:
     container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    # startup_commands:  # Commands to run before training starts
+    #   - "echo 'Setting up training environment...'"
+    #   - "mkdir -p /nemo_run/pretrain"
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_pretrain_config

@@ -27,8 +27,10 @@ from nemotron.kit.cli.recipe import recipe
     config_dir="src/nemotron/recipes/nano3/stage2_rl/config/data_prep",
     default_config="default",
     torchrun=False,
-    ray=False,  # RL uses direct processing, not Ray
+    ray=True,
     packager="code",
+    # Use --extra xenna so Ray's uv hook propagates cosmos-xenna to workers
+    run_command="uv run --extra xenna python {script} --config {config}",
 )
 def rl(ctx: typer.Context) -> None:
     """Prepare data for RL (JSONL chat format with HF placeholder resolution)."""

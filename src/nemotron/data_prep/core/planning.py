@@ -355,6 +355,144 @@ def apply_shard_sampling(
     return [i for i in pending_indices if i in sampled]
 
 
+def create_jsonl_shard_plan(
+    *,
+    dataset_config: DatasetConfig,
+    num_shards: int,
+    config_hash: str,
+    fs: AbstractFileSystem,
+    transform_fingerprint: str,
+) -> ShardPlan:
+    """Create deterministic shard plan for JSONL processing (no tokenizer).
+
+    Unlike create_shard_plan(), this does not resolve a tokenizer - JSONL
+    pipelines don't need tokenization. The plan_hash includes a
+    transform_fingerprint so that toggling placeholder resolution
+    invalidates cached results.
+
+    Args:
+        dataset_config: Dataset source configuration.
+        num_shards: Number of output shards.
+        config_hash: Hash of the pipeline configuration.
+        fs: Filesystem for file discovery.
+        transform_fingerprint: Hash identifying the transform applied
+            (e.g. hash of TARGET_DATASETS + transform name). Changing this
+            invalidates cached shards.
+
+    Returns:
+        ShardPlan with file assignments and plan_hash.
+    """
+    import pyarrow
+
+    # Discover input files
+    files = discover_input_files(dataset_config, fs)
+
+    if not files:
+        raise ValueError(f"No input files found for {dataset_config.name}")
+
+    # Compute fingerprints
+    source_fingerprint = compute_source_fingerprint(files, dataset_config)
+
+    # Create size-balanced assignments
+    assignments = create_size_balanced_assignments(files, num_shards)
+
+    # Determinism constraints (no tokenizer versions needed)
+    determinism_constraints = {
+        "ray_version": ray.__version__,
+        "pyarrow_version": pyarrow.__version__,
+        "processing_order": "sequential_within_shard",
+        "transform_fingerprint": transform_fingerprint,
+    }
+
+    # Compute plan hash
+    plan_content = json.dumps(
+        {
+            "dataset_name": dataset_config.name,
+            "num_shards": num_shards,
+            "source_fingerprint": source_fingerprint,
+            "resolved_tokenizer": {"type": "none"},
+            "determinism_constraints": determinism_constraints,
+            "config_hash": config_hash,
+            "file_paths": sorted([f.path for f in files]),
+        },
+        sort_keys=True,
+    )
+    plan_hash = hashlib.sha256(plan_content.encode()).hexdigest()[:16]
+
+    return ShardPlan(
+        version="1.0",
+        created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        plan_hash=plan_hash,
+        dataset_name=dataset_config.name,
+        num_shards=num_shards,
+        source_fingerprint=source_fingerprint,
+        config_hash=config_hash,
+        determinism_constraints=determinism_constraints,
+        resolved_tokenizer={"type": "none"},
+        file_assignments=assignments,
+    )
+
+
+def get_pending_jsonl_shards(
+    plan: ShardPlan,
+    receipts_dir: str,
+    fs: AbstractFileSystem,
+) -> list[int]:
+    """Determine which JSONL shard indices still need processing.
+
+    Similar to get_pending_shards() but validates JSONL-specific receipt
+    fields (num_records instead of num_sequences, output_file instead of
+    bin/idx paths).
+
+    Args:
+        plan: The shard plan to check against.
+        receipts_dir: Directory containing receipt JSON files.
+        fs: Filesystem for reading receipts.
+
+    Returns:
+        Sorted list of shard indices that still need processing.
+    """
+    completed_indices: set[int] = set()
+
+    try:
+        receipt_files = fs.glob(f"{receipts_dir}/shard_*.json")
+    except FileNotFoundError:
+        receipt_files = []
+    except Exception:
+        receipt_files = []
+
+    for receipt_path in receipt_files:
+        try:
+            receipt = read_json(fs, receipt_path)
+
+            # Verify receipt belongs to current plan
+            if receipt.get("plan_hash") != plan.plan_hash:
+                continue
+
+            if receipt.get("status") != "completed":
+                continue
+
+            shard_index = receipt["shard_index"]
+
+            # For non-empty shards, verify the output file exists
+            num_records = receipt.get("stats", {}).get("num_records", 0)
+            if num_records > 0:
+                output_file = receipt.get("output_file")
+                if output_file:
+                    shard_dir = str(Path(receipts_dir).parent)
+                    output_path = f"{shard_dir}/{output_file}"
+                    if not fs.exists(output_path):
+                        continue
+
+            completed_indices.add(shard_index)
+
+        except Exception as e:
+            logger.warning(f"Failed to parse JSONL receipt {receipt_path}: {e}")
+
+    all_indices = set(range(plan.num_shards))
+    return sorted(all_indices - completed_indices)
+
+
 def serialize_shard_plan(plan: ShardPlan) -> dict:
     """Serialize ShardPlan to JSON-serializable dict."""
     result = asdict(plan)

@@ -26,6 +26,9 @@ question templates. This script:
 3. Applies template restoration (DAPO prefix/suffix, Skywork {question} replacement)
 4. Outputs resolved JSONL with train/val/test splits
 
+Uses the cosmos-xenna multi-stage pipeline pattern:
+    JsonlPlanStage → DownloadStage → JsonlShardStage
+
 For simple copy/passthrough (no placeholder resolution), use data_prep_copy.py instead.
 
 Usage:
@@ -44,7 +47,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import sys
@@ -52,13 +54,11 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from nemotron.data_prep.blend import DataBlend, Dataset
-from nemotron.data_prep.config import DatasetConfig, FileInfo
-from nemotron.data_prep.utils.discovery import discover_input_files, get_dataset_metadata
-from nemotron.data_prep.utils.filesystem import get_filesystem
-from nemotron.data_prep.formats.transforms import resolve_hf_placeholders
+from nemotron.data_prep.blend import DataBlend
+from nemotron.data_prep.config import DatasetConfig
+from nemotron.data_prep.utils.discovery import get_dataset_metadata
 from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
-from nemotron.data_prep.core.jsonl_shard_core import process_jsonl_shard_core
+from nemotron.data_prep.recipes.rl import run_rl_resolve_pipeline
 from nemotron.kit import SplitJsonlDataArtifact, print_step_complete
 from nemotron.kit.trackers import InputDatasetInfo
 from nemotron.kit.train_script import (
@@ -81,7 +81,7 @@ DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "data_prep" / "default.yaml"
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 # Module-level flag for Ray execution (used by nemotron CLI)
-RAY = False  # No longer uses Ray - direct processing
+RAY = True  # Uses cosmos-xenna pipeline (requires Ray runtime)
 
 
 @dataclass
@@ -113,6 +113,10 @@ class RLDataPrepConfig:
     force: bool = False
     """Force new run, ignoring cache"""
 
+    execution_mode: str = "auto"
+    """Execution mode: 'auto' (default), 'streaming', or 'batch'.
+    'auto' uses STREAMING if cluster CPUs suffice, BATCH otherwise."""
+
     def __post_init__(self) -> None:
         # Ensure paths are Path objects
         if isinstance(self.blend_path, str):
@@ -125,199 +129,11 @@ class RLDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def _write_resolved_split_jsonl(
-    *,
-    dataset: Dataset,
-    hf_split: str,
-    output_dir: Path,
-    resolver: HFPlaceholderResolver,
-    max_rows: int | None,
-    force: bool,
-) -> tuple[Path | None, int]:
-    """Write resolved JSONL for a single split.
-
-    Returns:
-        Tuple of (jsonl_path, num_records). jsonl_path may be None if no records.
-    """
-    # Create output directory structure
-    output_dir.mkdir(parents=True, exist_ok=True)
-    receipts_dir = output_dir / "receipts"
-    receipts_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get filesystem for output
-    output_fs, _ = get_filesystem(str(output_dir))
-
-    # Build dataset config for file discovery
-    ds_config = DatasetConfig(
-        name=dataset.name,
-        path=dataset.path,
-        split=hf_split,
-        subset=dataset.subset,
-        text_field=dataset.text_field,
-    )
-
-    # Discover input files
-    files = discover_input_files(ds_config, output_fs)
-    files = sorted(files, key=lambda f: f.path)
-
-    if not files:
-        logger.warning(f"No files found for {dataset.name} split {hf_split}")
-        return None, 0
-
-    # Convert FileInfo objects to dicts for process_jsonl_shard_core
-    file_dicts = [
-        {
-            "path": f.path,
-            "size": f.size,
-            "hf_repo_id": f.hf_repo_id,
-            "hf_filename": f.hf_filename,
-            "hf_revision": f.hf_revision,
-            "local_path": f.local_path,
-        }
-        for f in files
-    ]
-
-    # Create the resolve transform
-    transform = resolve_hf_placeholders(resolver=resolver)
-
-    # Process all files into a single shard (shard_index=0)
-    # Using local_files_only=False to allow downloading HF files
-    stats = process_jsonl_shard_core(
-        shard_index=0,
-        files=file_dicts,
-        output_dir=str(output_dir),
-        receipts_dir=str(receipts_dir),
-        output_fs=output_fs,
-        text_field=dataset.text_field or "text",
-        transform=transform,
-        compression="none",
-        max_rows=max_rows,
-        local_files_only=False,  # Allow downloading from HF
-    )
-
-    num_records = stats.get("num_records", 0)
-
-    if num_records == 0:
-        return None, 0
-
-    # Return the path to the generated JSONL file
-    jsonl_path = output_dir / "shard_000000.jsonl"
-    if jsonl_path.exists():
-        return jsonl_path, num_records
-
-    return None, 0
-
-
-def _run_resolve(
-    blend: DataBlend,
-    cfg: RLDataPrepConfig,
-    source_datasets: list[InputDatasetInfo],
-    resolver: HFPlaceholderResolver,
-) -> SplitJsonlDataArtifact:
-    """Process blend with HuggingFace placeholder resolution.
-
-    Downloads the HF dataset and outputs JSONL files for each split found
-    in the dataset (train, validation, test), resolving any placeholder records.
-    """
-    from datasets import get_dataset_split_names
-
-    start_time = time.time()
-    total_sequences = 0
-    split_paths: dict[str, str] = {}
-
-    # Get the dataset from blend (expects single dataset in blend)
-    if len(blend.datasets) != 1:
-        raise ValueError(
-            f"Resolve mode expects exactly one dataset in blend, got {len(blend.datasets)}."
-        )
-
-    dataset = blend.datasets[0]
-
-    # Handle hf:// prefix if present
-    dataset_path = dataset.path
-    if dataset_path.startswith("hf://"):
-        dataset_path = dataset_path[5:]
-
-    # Discover available splits from HF
-    available_splits = get_dataset_split_names(dataset_path)
-
-    # Normalize split names for output directories
-    # HF uses "validation" but we output as "val" for consistency
-    split_name_mapping = {
-        "train": "train",
-        "validation": "val",
-        "test": "test",
-    }
-
-    # Process each split
-    for hf_split in available_splits:
-        output_split_name = split_name_mapping.get(hf_split, hf_split)
-        split_output_dir = cfg.output_dir / output_split_name
-
-        logger.info(f"Processing split: {hf_split} -> {output_split_name}")
-
-        # Create dataset with correct split
-        split_dataset = Dataset(
-            name=dataset.name,
-            path=dataset.path,
-            split=hf_split,
-            subset=dataset.subset,
-            weight=1.0,
-            text_field=dataset.text_field,
-        )
-
-        # Write resolved JSONL for this split
-        jsonl_path, num_records = _write_resolved_split_jsonl(
-            dataset=split_dataset,
-            hf_split=hf_split,
-            output_dir=split_output_dir,
-            resolver=resolver,
-            max_rows=cfg.sample,
-            force=cfg.force,
-        )
-
-        if jsonl_path is not None:
-            split_paths[output_split_name] = str(jsonl_path.resolve())
-            total_sequences += num_records
-            logger.info(f"  Written {num_records} records to {jsonl_path}")
-        else:
-            logger.warning(f"  No records written for split {hf_split}")
-
-    # Resolve output_dir to absolute path for W&B artifact storage
-    output_dir = cfg.output_dir.resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create a combined manifest with absolute paths
-    manifest = {
-        "train": split_paths.get("train", ""),
-        "val": split_paths.get("val", ""),
-        "test": split_paths.get("test", ""),
-        "mode": "resolve",
-        "source_splits": available_splits,
-    }
-
-    manifest_path = output_dir / "manifest.json"
-    with open(manifest_path, "w") as f:
-        json.dump(manifest, f, indent=2)
-
-    elapsed = time.time() - start_time
-
-    # Build artifact with split paths as typed fields
-    artifact = SplitJsonlDataArtifact(
-        path=manifest_path,
-        total_sequences=total_sequences,
-        elapsed_sec=elapsed,
-        source_datasets=source_datasets,
-        train=split_paths.get("train"),
-        val=split_paths.get("val"),
-        test=split_paths.get("test"),
-    )
-
-    return artifact
-
-
 def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
     """Run RL data preparation with placeholder resolution.
+
+    Uses the cosmos-xenna multi-stage pipeline:
+        JsonlPlanStage → DownloadStage → JsonlShardStage
 
     Args:
         cfg: Resolve data prep configuration.
@@ -325,21 +141,18 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
     Returns:
         SplitJsonlDataArtifact with paths to resolved JSONL data.
     """
+    start_time = time.time()
+
     # Add stage-specific tags to wandb run
     add_wandb_tags(["data-prep", "rl"])
 
     # Load data blend
     blend = DataBlend.load(cfg.blend_path)
 
-    # Pre-load the HF placeholder resolver (loads DAPO and Skywork datasets)
-    print("Loading external HuggingFace datasets for placeholder resolution...")
-    resolver = HFPlaceholderResolver.create()
-
     # Collect source datasets with metadata for lineage tracking
     source_datasets: list[InputDatasetInfo] = []
     seen_keys: set[str] = set()
     for dataset in blend.datasets:
-        # Use path+subset as key since same path can have different subsets
         key = f"{dataset.path}|{dataset.subset or ''}"
         if key not in seen_keys:
             seen_keys.add(key)
@@ -364,7 +177,22 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
                 )
             )
 
+    # Run the xenna-native RL resolve pipeline
+    result = run_rl_resolve_pipeline(
+        blend=blend,
+        output_dir=cfg.output_dir,
+        sample=cfg.sample,
+        force=cfg.force,
+        resolve_hf_placeholders=True,
+        execution_mode=cfg.execution_mode,
+    )
+
     # Add external placeholder datasets (DAPO, Skywork) for lineage tracking
+    # The resolver is loaded on pipeline workers, but we need metadata on the driver
+    # for W&B artifact lineage. This is a separate load (unavoidable since the
+    # resolver's PyArrow tables are not picklable).
+    print("Loading external HuggingFace dataset metadata for lineage tracking...")
+    resolver = HFPlaceholderResolver.create()
     for ext_ds_info in resolver.get_loaded_datasets_info():
         source_datasets.append(
             InputDatasetInfo(
@@ -375,8 +203,18 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
             )
         )
 
-    # Run resolve processing
-    artifact = _run_resolve(blend, cfg, source_datasets, resolver)
+    elapsed = time.time() - start_time
+
+    # Build artifact with split paths
+    artifact = SplitJsonlDataArtifact(
+        path=Path(result.manifest_path),
+        total_sequences=result.total_records,
+        elapsed_sec=elapsed,
+        source_datasets=source_datasets,
+        train=result.split_paths.get("train"),
+        val=result.split_paths.get("val"),
+        test=result.split_paths.get("test"),
+    )
 
     artifact.name = f"nano3/rl/data-resolved{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     artifact.save()

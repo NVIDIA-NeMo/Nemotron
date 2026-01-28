@@ -67,6 +67,8 @@ Usage:
 
 from nemotron.data_prep.stages.context import PipelineContext
 from nemotron.data_prep.stages.download import DownloadStage, DownloadStageConfig
+from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStage, JsonlPlanStageConfig
+from nemotron.data_prep.stages.jsonl_write import JsonlShardStage, JsonlShardStageConfig
 from nemotron.data_prep.stages.megatron_bin_idx import BinIdxTokenizationStage, BinIdxTokenizationStageConfig
 from nemotron.data_prep.stages.packed_sft_parquet import PackedSftParquetStage, PackedSftParquetStageConfig
 from nemotron.data_prep.stages.plan import PlanStage, PlanStageConfig
@@ -78,6 +80,8 @@ __all__ = [
     # Stage configs
     "PlanStageConfig",
     "SftPlanStageConfig",
+    "JsonlPlanStageConfig",
+    "JsonlShardStageConfig",
     "DownloadStageConfig",
     "BinIdxTokenizationStageConfig",
     "PackedSftParquetStageConfig",
@@ -85,6 +89,8 @@ __all__ = [
     "DownloadStage",
     "PlanStage",
     "SftPlanStage",
+    "JsonlPlanStage",
+    "JsonlShardStage",
     "BinIdxTokenizationStage",
     "PackedSftParquetStage",
 ]

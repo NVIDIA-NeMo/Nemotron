@@ -62,11 +62,10 @@ download:
   hf_xet_concurrent_range_gets: 32
   max_retries: 3
   timeout_sec: 300
-  max_concurrent_downloads: 8
 
 # Tokenization stage config
 tokenization:
-  cpus_per_worker: 4
+  cpus_per_worker: 1
 
 # =============================================================================
 # Pipeline Config

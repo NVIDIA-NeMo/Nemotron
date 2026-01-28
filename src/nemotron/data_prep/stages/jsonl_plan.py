@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """
-Plan Stage - Discovers files, creates shard plans, fans out to work items.
+JSONL Plan Stage - Discovers files, creates shard plans, fans out to JSONL work items.
 
-This stage takes dataset-level work items (DatasetWorkItem) and produces
-shard-level work items (ShardWorkItem), implementing a fan-out pattern.
+This stage takes dataset-level JSONL work items (JsonlDatasetWorkItem) and produces
+shard-level work items (JsonlShardWorkItem), implementing a fan-out pattern.
 
-In STREAMING mode, downstream stages start processing shards immediately
-as this stage emits them - no barrier needed.
+Unlike PlanStage, this does not resolve tokenizers - JSONL pipelines don't
+need tokenization.
 """
 
 from __future__ import annotations
@@ -29,24 +29,20 @@ from typing import Any
 
 import cosmos_xenna.pipelines.v1 as pipelines_v1
 
-from nemotron.data_prep.config import DatasetConfig, InternalOutputConfig, InternalTokenizerConfig
+from nemotron.data_prep.config import DatasetConfig
 from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
 from nemotron.data_prep.core.planning import (
-    apply_shard_sampling,
-    create_shard_plan,
-    get_pending_shards,
+    create_jsonl_shard_plan,
+    get_pending_jsonl_shards,
     serialize_shard_plan,
 )
 from nemotron.data_prep.stages.context import PipelineContext
-from nemotron.data_prep.core.work_items import DatasetWorkItem, ShardWorkItem
+from nemotron.data_prep.core.work_items import JsonlDatasetWorkItem, JsonlShardWorkItem
 
 
 @dataclass(frozen=True)
-class PlanStageConfig:
-    """Configuration for PlanStage.
-
-    PlanStage is I/O-bound (file discovery, plan creation) and requires
-    minimal resources.
+class JsonlPlanStageConfig:
+    """Configuration for JsonlPlanStage.
 
     Attributes:
         planner_cpus: CPU request for the planner worker. Default 0.5 since
@@ -60,32 +56,25 @@ class PlanStageConfig:
             raise ValueError(f"planner_cpus must be positive, got {self.planner_cpus}")
 
 
-class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
+class JsonlPlanStage(pipelines_v1.Stage[JsonlDatasetWorkItem, JsonlShardWorkItem]):
     """
-    Planning stage: discovers files, creates shard plans, emits ShardWorkItems.
+    JSONL planning stage: discovers files, creates shard plans, emits JsonlShardWorkItems.
 
-    This stage runs with a single worker and fans out each DatasetWorkItem
-    into multiple ShardWorkItems (one per pending shard).
+    This stage runs with a single worker and fans out each JsonlDatasetWorkItem
+    into multiple JsonlShardWorkItems (one per pending shard).
 
-    Responsibilities:
-    - Discover input files for each dataset
-    - Create shard plan (file → shard assignments)
-    - Write plan.json for reproducibility
-    - Check existing receipts for idempotency
-    - Apply sampling if configured
-    - Emit ShardWorkItem for each pending shard
-
-    In STREAMING mode, downstream stages start processing shards immediately
-    as this stage emits them.
+    Unlike PlanStage, this does not resolve tokenizers. The plan uses a
+    transform_fingerprint to ensure that changes to transforms (e.g. toggling
+    placeholder resolution) invalidate cached results.
 
     Args:
-        stage_config: Stage-specific configuration (PlanStageConfig)
+        stage_config: Stage-specific configuration (JsonlPlanStageConfig)
         pipeline_context: Shared runtime context (PipelineContext)
     """
 
     def __init__(
         self,
-        stage_config: PlanStageConfig,
+        stage_config: JsonlPlanStageConfig,
         pipeline_context: PipelineContext,
     ) -> None:
         self._cfg = stage_config
@@ -111,9 +100,9 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
         """Initialize filesystem on worker."""
         self._fs, _ = get_filesystem(self._ctx.output_root)
 
-    def process_data(self, items: list[DatasetWorkItem]) -> list[ShardWorkItem]:
-        """Plan datasets and emit ShardWorkItems for pending shards."""
-        output: list[ShardWorkItem] = []
+    def process_data(self, items: list[JsonlDatasetWorkItem]) -> list[JsonlShardWorkItem]:
+        """Plan datasets and emit JsonlShardWorkItems for pending shards."""
+        output: list[JsonlShardWorkItem] = []
 
         for item in items:
             shard_items = self._plan_dataset(item)
@@ -121,9 +110,9 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
 
         return output
 
-    def _plan_dataset(self, item: DatasetWorkItem) -> list[ShardWorkItem]:
-        """Plan a single dataset and return ShardWorkItems."""
-        # Build internal configs from work item
+    def _plan_dataset(self, item: JsonlDatasetWorkItem) -> list[JsonlShardWorkItem]:
+        """Plan a single dataset and return JsonlShardWorkItems."""
+        # Build dataset config from work item
         dataset_cfg = DatasetConfig(
             name=item.dataset_name,
             path=item.path,
@@ -133,26 +122,28 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
             text_field=item.text_field,
         )
 
-        tokenizer_cfg = InternalTokenizerConfig(**item.tokenizer_config)
+        # Build transform fingerprint from resolve_hf_placeholders flag
+        # This ensures toggling placeholder resolution invalidates the cache
+        import hashlib
+        import json
 
-        output_cfg = InternalOutputConfig(
-            num_shards=item.num_shards,
-            dtype=item.dtype,
-            min_doc_chars=item.min_doc_chars,
-            max_doc_tokens=item.max_doc_tokens,
-            max_rows=item.max_rows,
+        fingerprint_content = json.dumps(
+            {"resolve_hf_placeholders": item.resolve_hf_placeholders},
+            sort_keys=True,
         )
+        transform_fingerprint = hashlib.sha256(fingerprint_content.encode()).hexdigest()[:16]
 
-        # Create shard plan (discovers files, computes assignments)
-        plan = create_shard_plan(
+        # Create shard plan (discovers files, computes assignments, no tokenizer)
+        plan = create_jsonl_shard_plan(
             dataset_config=dataset_cfg,
-            output_config=output_cfg,
-            tokenizer_config=tokenizer_cfg,
+            num_shards=item.num_shards,
             config_hash=item.config_hash,
             fs=self._fs,
+            transform_fingerprint=transform_fingerprint,
         )
 
         # Create dataset directories
+        # Mirror pretrain layout: {run_dir}/datasets/{dataset_name}/{plan_hash}/
         dataset_dir = f"{item.run_dir}/datasets/{item.dataset_name}/{plan.plan_hash}"
         receipts_dir = f"{dataset_dir}/receipts"
         ensure_dir(self._fs, dataset_dir)
@@ -162,9 +153,7 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
         write_json(self._fs, f"{dataset_dir}/plan.json", serialize_shard_plan(plan))
 
         # Find pending shards (those without completed receipts)
-        pending = get_pending_shards(plan, receipts_dir, self._fs)
-        if item.sample is not None:
-            pending = apply_shard_sampling(pending, plan, item.sample, item.sample_seed)
+        pending = get_pending_jsonl_shards(plan, receipts_dir, self._fs)
 
         # Build assignment dicts for work items
         assignment_dicts: dict[int, dict[str, Any]] = {
@@ -172,17 +161,15 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
                 "shard_index": a.shard_index,
                 "files": [asdict(f) for f in a.files],
                 "total_bytes": a.total_bytes,
-                "hf_subset": item.subset,
-                "hf_split": item.split,
             }
             for a in plan.file_assignments
         }
 
-        # Emit ShardWorkItem for each pending shard
-        shard_items: list[ShardWorkItem] = []
+        # Emit JsonlShardWorkItem for each pending shard
+        shard_items: list[JsonlShardWorkItem] = []
         for shard_idx in pending:
             shard_items.append(
-                ShardWorkItem(
+                JsonlShardWorkItem(
                     dataset_name=item.dataset_name,
                     plan_hash=plan.plan_hash,
                     shard_index=int(shard_idx),
@@ -190,10 +177,9 @@ class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
                     output_dir=dataset_dir,
                     receipts_dir=receipts_dir,
                     text_field=item.text_field,
-                    dtype=item.dtype,
-                    min_doc_chars=item.min_doc_chars,
-                    max_doc_tokens=item.max_doc_tokens,
+                    compression=item.compression,
                     max_rows=item.max_rows,
+                    resolve_hf_placeholders=item.resolve_hf_placeholders,
                 )
             )
 
