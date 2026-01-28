@@ -43,11 +43,7 @@ They are optimized for deployment across a spectrum of compute tiers (edge, sing
 
 ## 💡 Feature Requests & Ideas
 
-Have an idea for improving Nemotron models? Visit the **[Nemotron Ideas Portal](https://nemotron.ideas.nvidia.com/)** to:
-
-- 🗳️ **Vote** on existing feature requests
-- 💭 **Submit** your own ideas and suggestions
-- 📊 **See** what the community is requesting
+Have an idea for improving Nemotron models? Create an issue and tag it `idea`!
 
 Your feedback helps shape the future of Nemotron models!
 
