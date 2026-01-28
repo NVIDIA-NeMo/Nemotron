@@ -1,0 +1,62 @@
+[project]
+name = "retriever-sdg"
+version = "0.1.0"
+description = "Synthetic Data Generation (SDG) Pipeline for Retrieval using NeMo Data Designer"
+requires-python = ">=3.12"
+license = {text = "Apache-2.0"}
+keywords = ["retriever", "synthetic data", "data generation", "LLM", "information retrieval"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # Local and git dependencies for data-designer ecosystem
+    "pydantic>=2.0.0",
+    "tyro>=0.7.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "nltk>=3.9.2",
+    "data-designer>=0.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+retriever-sdg = "retriever_sdg.pipeline:entrypoint"
+
+[project.entry-points."data_designer.plugins"]
+data-designer-retrieval-dedup = "retriever_sdg.deduplication:dd_retrieval_dedup_plugin"
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true

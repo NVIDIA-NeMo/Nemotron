@@ -1,0 +1,53 @@
+# Stage 1: Data Preparation Configuration
+#
+# Prepares training data from SDG output:
+# 1. Convert to BEIR format (train/val/test split)
+# 2. Mine hard negatives using base embedding model
+# 3. Unroll multi-hop positives
+#
+# Usage:
+#   nemotron embed prep -c default
+#   nemotron embed prep -c default sdg_output_dir=/path/to/sdg
+#
+# Remote execution (Slurm):
+#   nemotron embed prep -c default --run my-cluster
+#   nemotron embed prep -c default --batch my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    # Container image for remote execution (Docker/Slurm)
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Corpus identifier
+corpus_id: nv_pp_random
+
+# Path to SDG output directory
+sdg_output_dir: ./output/embed/stage0_sdg
+
+# Output directory for prepared training data
+output_dir: ./output/embed/stage1_data_prep
+
+# Base embedding model for hard negative mining
+base_model: nvidia/llama-nemotron-embed-1b-v2
+
+# Quality filtering threshold (0-10 scale)
+quality_threshold: 7.0
+
+# Train/val/test split ratios
+# Larger test set ensures enough eval queries for statistical significance
+train_ratio: 0.8
+val_ratio: 0
+test_ratio: 0.2
+
+# Hard negative mining settings
+attn_implementation: sdpa  # Attention: sdpa, flash_attention_2, eager
+hard_negatives_to_mine: 5
+hard_neg_margin: 0.95
+mining_batch_size: 128
+
+# Tokenization settings
+query_max_length: 512
+passage_max_length: 512
+query_prefix: "query:"
+passage_prefix: "passage:"

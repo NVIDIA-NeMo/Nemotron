@@ -1,0 +1,63 @@
+
+Telecommunications Developer Resources
+A hub of news, SDKs, technical resources, and more for developers working in telecommunications.
+App Frameworks and SDKs
+5G/6G RAN
+NVIDIA Aerial CUDA -Accelerated RAN is an application framework for building commercial-grade, software-defined, GPU-accelerated, cloud-native 5G and 6G networks. The Aerial CUDA-Accelerated RAN platform is the key building block for the accelerated 5G virtualized distributed unit (vDU) and has been deployed in commercial and research networks.
+Learn More
+AI Frameworks (RAN)
+NVIDIA Aerial AI Radio Frameworks provide a package of AI enhancements that enable training and inference in the RAN. The framework tools pyAerial, NVIDIA Aerial Data Lake, and NVIDIA Sionna span the research space from AI and machine learning algorithm exploration, training, and inference to simulation and real-time implementation in a GPU-accelerated, over-the-air network testbed.
+Learn More
+Network Digital Twin
+
+The NVIDIA Aerial Omniverse Digital Twin is a next-generation, system-level simulation platform for performing cutting-edge research and development on 5G and 6G wireless systems and optimizing network planning and operations. It s the unique tool for benchmarking system performance and exploring machine learning-based wireless communication algorithms under real-world conditions.
+Learn More
+Network Planning
+Telecom network engineers and developers can automate network configuration, optimize performance, and reduce unplanned downtime with a pre-built blueprint using an agentic LLM-driven framework built with NVIDIA NIM microservices.
+Learn More
+Generative AI
+NVIDIA NeMo is an end-to-end platform for developing custom generative AI including large language models (LLMs), multimodal, vision, and speech AI anywhere. Deliver enterprise-ready models with precise data curation, cutting-edge customization, retrieval-augmented generation (RAG), and accelerated performance.
+Learn More
+DOCA
+
+The NVIDIA DOCA SDK enables developers to rapidly create applications and services on top of NVIDIA BlueField data processing units (DPUs), leveraging industry-standard APIs.
+Learn More
+Cybersecurity
+NVIDIA Morpheus is an open application framework that lets cybersecurity developers create optimized AI pipelines for filtering, processing, and classifying large volumes of real-time data. Morpheus can send and receive telemetry data directly from the BlueField DPU, allowing continuous, real-time, and variable feedback that can affect policies, rewrite rules, adjust sensing, and more.
+Learn More
+Computer Vision
+NVIDIA Metropolis is an application framework that simplifies the development, deployment, and scaling of AI-enabled video analytics applications from edge to cloud. It includes production-ready, pretrained models and transfer learning toolkits for training and optimizing models, the NVIDIA DeepStream SDK for streaming analytics, other deployment SDKs, CUDA-X libraries, and the NVIDIA EGX platform.
+Explore Tools
+Data Science and Analytics
+
+The NVIDIA RAPIDS suite of open-source software libraries, built on CUDA-X AI, gives developers the ability to execute end-to-end data science and analytics pipelines entirely on GPUs.
+Get Started With Rapids
+Conversational AI
+NVIDIA Riva is an SDK for building and deploying AI applications that fuse vision, speech, and other sensors. It offers a complete workflow to build, train, and deploy GPU-accelerated AI systems that can use visual cues such as gestures and gaze along with speech in context.
+Learn More
+Video Conferencing
+NVIDIA Maxine is a GPU-accelerated SDK with state-of-the-art AI features for developers to build virtual collaboration and content creation applications such as video conferencing and live streaming.
+
+Learn More
+Browse by Resource Type
+News
+
+On-Demand Talks
+
+Programs for You
+6G Developer Program
+
+The NVIDIA 6G Developer Program provides access to platforms, documentation, and software releases to advance cutting-edge 6G research. It also offers a forum where developers can connect with NVIDIA experts and peers. Join the program to drive rapid innovation for the 6G era.
+
+Join Today
+Developer Resources
+The NVIDIA Developer Program provides the advanced tools and training needed to successfully build applications on all NVIDIA technology platforms. This includes access to hundreds of SDKs, a network of like-minded developers through our community forums, and more.
+Join Today
+Technical Training
+NVIDIA Deep Learning Institute (DLI) offers hands-on- training in AI, accelerated computing, and accelerated data science to solve real-world problems. Powered by GPUs in the cloud, training is available as self-paced, online courses or live, instructor-led workshops.
+View Courses
+Accelerate Your Startup
+NVIDIA Inception an acceleration platform for AI, data science, and HPC startups supports over 22,000 startups worldwide with go-to-market support, expertise, and technology. Startups get access to training through the DLI, preferred pricing on hardware, and invitations to exclusive networking events.
+Learn More
+Sign up for the latest developer news from NVIDIA
+Subscribe

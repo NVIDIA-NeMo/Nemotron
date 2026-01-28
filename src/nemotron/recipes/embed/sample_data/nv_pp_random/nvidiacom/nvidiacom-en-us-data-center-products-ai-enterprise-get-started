@@ -1,0 +1,181 @@
+
+
+Ways to Get Started With NVIDIA AI Enterprise
+
+
+Try for free through a web browser or via NVIDIA-hosted AI APIs. Download and prototype on your own infrastructure for free before deploying into production.
+Try
+
+Get started for free with NVIDIA-hosted NIM microservices for accelerated AI models and NVIDIA Blueprints for sample AI applications.
+Go to Free APIs
+
+
+Build
+
+Download AI and data science microservices, libraries, runtimes, and frameworks for free from NGC to develop and prototype applications on your own infrastructure.
+Explore Catalog
+
+
+Deploy
+
+When you re ready to run in production, get a license for NVIDIA AI Enterprise to run anywhere. The first 90 days are free.
+Request a Free 90-Day License
+
+
+<p class="level_1">Features</p>
+
+Try
+<p class="level_1">NVIDIA APIs</p>
+<div class="nv-button button nv-button-text nv-button-small nv-button-caret nv-button-standard button-center button-lap-center button-tab-center button-mob-center">
+<a class="btn-content" target="_blank" href="https://build.nvidia.com/explore/discover"> <span class="btn-text">Try Now</span> </a>
+</div>
+
+Build
+<p class="level_1">Download Software</p>
+<div class="nv-button button nv-button-text nv-button-small nv-button-caret nv-button-standard button-center button-lap-center button-tab-center button-mob-center">
+<a class="btn-content" target="_blank" href="https://catalog.ngc.nvidia.com/search?filters=productNames%7CNVIDIA+AI+Enterprise+Supported%7Cnvaie_supported&orderBy=weightPopularDESC"> <span class="btn-text">Explore Catalog </span> </a>
+</div>
+
+Deploy
+<p class="level_1">NVIDIA AI Enterprise</p>
+<div class="nv-button button nv-button-text nv-button-small nv-button-caret nv-button-standard button-center button-lap-center button-tab-center button-mob-center">
+<a class="btn-content" target="_blank" href="https://enterpriseproductregistration.nvidia.com/?LicType=EVAL&ProductFamily=NVAIEnterprise"> <span class="btn-text">Request Free 90-Day License</span> </a>
+</div>
+
+NVIDIA <a href="https://build.nvidia.com/explore/discover" target="_blank">NIM API endpoints</a>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<a href="https://www.nvidia.com/en-us/ai-data-science/products/nemo/">NVIDIA NeMo,</a> <a href="https://developer.nvidia.com/deepstream-sdk" target="_blank">DeepStream,</a> <a href="https://www.nvidia.com/en-us/ai-data-science/products/riva/">NVIDIA Riva,</a> and other <a href="https://catalog.ngc.nvidia.com/?filters=nvaie%7CNVIDIA+AI+Enterprise+Supported%7Cnvaie_supported&orderBy=scoreDESC&query=&page=&pageSize=" target="_blank"> SDKs and libraries</a>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+NVIDIA tools for <a href="https://developer.nvidia.com/cloud-native" target="_blank">Kubernetes</a> and <a href="https://www.nvidia.com/en-us/data-center/virtual-solutions/">virtualization </a>support
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<a href="https://build.nvidia.com/models?filters=nimType%3Anim_type_run_anywhere" target="_blank">Downloadable NIM containers</a> to self-host LLMs and multimodal AI models on preferred infrastructure
+
+<span class="fa-sharp fa-regular fa-check"></span>*
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+Production-grade software with <a href="https://docs.nvidia.com/ai-enterprise/lifecycle/latest/lifecycle-policy.html#production-branch-pb" target="_blank">API stability,</a> <a href="https://docs.nvidia.com/ai-enterprise/planning-resource/ai-enterprise-security-white-paper/latest/vulnerability-response.html#vulnerability-patching" target="_blank">regular security patching,</a> and <a href="https://docs.nvidia.com/ai-enterprise/planning-resource/ai-enterprise-security-white-paper/latest/security-lifecycle.html#software-bill-of-materials-sbom" target="_blank">supply chain transparency</a>
+
+<span class="fa-sharp fa-regular fa-check"></span>
+
+<div class="nv-button button nv-button-text nv-button-small nv-button-caret nv-button-standard button-center button-lap-center button-tab-center button-mob-center">
+<a class="btn-content" target="_blank" href="https://build.nvidia.com/explore/discover"> <span class="btn-text">Try Now</span> </a>
+</div>
+
+<div class="nv-button button nv-button-text nv-button-small nv-button-caret nv-button-standard button-center button-lap-center button-tab-center button-mob-center">
+<a class="btn-content" target="_blank" href="https://catalog.ngc.nvidia.com/search?filters=productNames%7CNVIDIA+AI+Enterprise+Supported%7Cnvaie_supported&orderBy=weightPopularDESC"> <span class="btn-text">Explore Catalog</span> </a>
+</div>
+
+<div class="nv-button button nv-button-text nv-button-small nv-button-caret nv-button-standard button-center button-lap-center button-tab-center button-mob-center"> <a class="btn-content" target="_blank" href="https://enterpriseproductregistration.nvidia.com/?LicType=EVAL&ProductFamily=NVAIEnterprise"> <span class="btn-text">Request Free 90-Day License</span> </a> </div>
+
+
+
+*requires free membership in NVIDIA Developer Program
+
+Resources
+
+
+
+For Enterprise AI Developers
+
+Explore, prototype, and test NVIDIA s latest accelerated AI APIs free. Build.nvidia.com gives developers hands-on access to serverless endpoints, blueprints, and GPUs with zero setup.
+Visit the API Catalog
+
+For IT and DevOps
+
+See all the supported infrastructure software designed to optimize the utilization of GPUs, and integrate with industry-leading management frameworks. Find a collection of reference architectures, deployment guides, whitepapers, and other informational resources in the NVIDIA AI Enterprise Documentation Hub.
+Explore Docs
+
+
+FAQs
+
+
+How can a developer get started quickly with NIM microservices?
+Members of the NVIDIA Developer Program have access to self-hosting NVIDIA NIM for research, application development, and experimentation on up to 16 GPUs on any infrastructure cloud, data center, or personal workstation. Access to NIM microservices is available throughout the duration of program membership. For more information, see this FAQ.
+What s the difference between open-source software and NVIDIA AI Enterprise?
+NVIDIA AI Enterprise consists of open-source software that s curated, optimized, and supported by NVIDIA, as well as exclusive software that isn t open source, such as NVIDIA NIM, NVIDIA Base Command Manager, and NVIDIA vGPU. It provides the benefits of transparency and top-of-tree innovation, as well as security and stability for ever-growing software dependencies. With enterprise support that provides service-level agreements, NVIDIA AI Enterprise is an enterprise-grade, secure, and reliable platform to accelerate your AI journey.
+How can I purchase NVIDIA AI Enterprise?
+You can purchase NVIDIA AI Enterprise through the NVIDIA Partner Network and the cloud marketplaces of AWS, Azure, Google Cloud, and Oracle Cloud. Contact NVIDIA with your purchasing questions.
+How does NVIDIA AI Enterprise deliver security and stability?
+NVIDIA AI Enterprise offers different software branches to maintain security and stability for desired software lifecycles, including:
+Feature branches: Every AI and data science package is updated monthly with the latest features and security fixes. It s meant for developers who want to deploy into production with the newest capabilities and are willing to update their applications if APIs change.
+Production branches: A nine-month lifecycle with monthly security patches and API stability. This is ideal for deploying AI in production when API stability is required.
+Long-term support branches: A three-year lifecycle with quarterly security patches and API stability. This is ideal for industries that prioritize long-term software lifetimes.
+NVIDIA AI Enterprise customers also receive security advisories and exploitability information from NVIDIA, as well as software bill of materials (SBOM) for software supply chain transparency, and vulnerability remediation guidance with context.
+Learn More
+
+What does Enterprise Support offer?
+Each NVIDIA AI Enterprise license includes Business Standard Support that offers service-level agreements, live NVIDIA agent access, 24/7 case filing, software branches, updates and releases, knowledge base resources, and more. Optional support upgrades, including Business Critical Support and Technical Account Manager, are available.
+Learn More
+What type of software is included with NVIDIA AI Enterprise?
+NVIDIA AI Enterprise includes NVIDIA NIM microservices, AI frameworks and runtimes, SDKs, libraries, infrastructure management, and more. View the full list here.
+How can a developer get started quickly with NIM microservices?
+Members of the NVIDIA Developer Program have access to self-hosting NVIDIA NIM for research, application development, and experimentation on up to 16 GPUs on any infrastructure cloud, data center, or personal workstation. Access to NIM microservices is available throughout the duration of program membership. For more information, see this FAQ.
+Products
+Data Center GPUs
+NVIDIA DGX Platform
+NVIDIA HGX Platform
+Networking Products
+Virtual GPUs
+Technologies
+NVIDIA Blackwell Architecture
+NVIDIA Hopper Architecture
+MGX
+Confidential Computing
+Multi-Instance GPU
+NVLink-C2C
+NVLink/NVSwitch
+Tensor Cores
+Resources
+Accelerated Apps Catalog
+Blackwell Resources Center
+Data Center GPUs
+Data Center GPU Line Card
+Data Center GPUs Resource Center
+Data Center Product Performance
+Deep Learning Institute
+Energy Efficiency Calculator
+GPU Cloud Computing
+MLPerf Benchmarks
+NGC Catalog
+NVIDIA-Certified Systems
+NVIDIA Data Center Corporate Blogs
+NVIDIA Data Center Technical Blogs
+Qualified System Catalog
+Where to Buy
+Company Info
+About Us
+Company Overview
+Investors
+Venture Capital (NVentures)
+NVIDIA Foundation
+Research
+Social Responsibility
+Technologies
+Careers
+Follow Data Center
+NVIDIA
+United States
+
+Privacy Policy
+Your Privacy Choices
+Terms of Service
+Accessibility
+Corporate Policies
+Product Security
+Contact
+Copyright 2025 NVIDIA Corporation

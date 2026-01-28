@@ -1,0 +1,97 @@
+
+
+NVIDIA System Tools with ESA Support 6.05
+Version:
+
+6.05
+
+Release Date:
+
+2009.11.19
+
+Operating System:
+
+Windows XP 64-bit, Windows 7 64-bit, Windows 7 32-bit, Windows XP, Windows Vista 64-bit, Windows Vista
+
+Language:
+
+English (U.S.)
+
+File Size:
+
+90.88 MB
+
+
+
+Download Now
+
+
+Release Highlights
+The NVIDIA System Tools installation package includes:
+
+1. NVIDIA Performance Group (v6.05.23.05) add-on to the NVIDIA Control Panel
+nForce MCPs
+Enables system tuning and profiles for clocks, voltages, timings, and fans
+
+Includes support for Enthusiast System Architecture (ESA) components
+
+Displays detailed system information
+
+GeForce GPUs
+Enables GPU overclocking
+
+2. NVIDIA System Monitor (v6.05.22.05) standalone application
+
+nForce MCPs
+Enables system monitoring for clocks, voltages, timings, and fans
+
+Includes support for Enthusiast System Architecture (ESA) components
+
+GeForce GPUs
+Enables GPU temperature monitoring
+
+3. NVIDIA System Update (v3.00.17.00) add-on to the NVIDIA Control Panel
+
+Automatically checks for nForce and GeForce driver updates
+Adds ability to update your system bios
+Includes support to update firmware of Enthusiast System Architecture (ESA) components
+Installation Notes
+
+Windows XP users must install Service Pack 1, at a minimum, prior to attempting to install this package. Failure to do so will result in the inability to support USB 2.0.
+Installation of DirectX 9.0 or higher is required in order to use NVIDIA System Monitor.
+Supported products
+GeForce 200 series:
+GTX 295, GTX 285, GTX 280, GTX 275, GTX 260, GTS 250, GT 220, G210
+
+GeForce 9 series:
+9800 GX2, 9800 GTX/GTX+, 9800 GT, 9600 GT, 9600 GSO 512, 9600 GSO, 9600 GS, 9500 GT, 9500 GS, 9400 GT, 9400, 9300 SE, 9300 GS, 9300 GE, 9300, 9200, 9100
+
+GeForce 8 series:
+8800 Ultra, 8800 GTX, 8800 GTS 512, 8800 GTS, 8800 GT, 8800 GS, 8600 GTS, 8600 GT, 8600 GS, 8500 GT, 8400 SE, 8400 GS, 8400, 8300 GS, 8300, 8200 / nForce 730a, 8200, 8100 / nForce 720a
+
+GeForce 7 series:
+7950 GX2, 7950 GT, 7900 GTX, 7900 GT/GTO, 7900 GS, 7800 SLI, 7800 GTX, 7800 GS, 7650 GS, 7600 LE, 7600 GT, 7600 GS, 7550 LE, 7500 LE, 7350 LE, 7300 SE / 7200 GS, 7300 LE, 7300 GT, 7300 GS, 7150 / NVIDIA nForce 630i, 7100 GS, 7100 / NVIDIA nForce 630i, 7100 / NVIDIA nForce 620i, 7050 PV / NVIDIA nForce 630a, 7050 / NVIDIA nForce 630i, 7050 / NVIDIA nForce 610i, 7025 / NVIDIA nForce 630a
+
+GeForce 6 series:
+6800 XT, 6800 XE, 6800 Ultra, 6800 LE, 6800 GT, 6800 GS/XT, 6800 GS, 6800, 6700 XL, 6610 XL, 6600 VE, 6600 LE, 6600 GT, 6600, 6500, 6250, 6200 TurboCache, 6200SE TurboCache, 6200 LE, 6200 A-LE, 6200, 6150SE nForce 430, 6150LE / Quadro NVS 210S, 6150 LE, 6150, 6100 nForce 420, 6100 nForce 405, 6100 nForce 400, 6100
+
+GeForce 5 FX series:
+PCX 5900, PCX 5750, PCX 5300, FX 5950 Ultra, FX 5900ZT, FX 5900XT, FX 5900 Ultra, FX 5900, FX 5800 Ultra, FX 5800, FX 5700VE, FX 5700 Ultra, FX 5700LE, FX 5700, FX 5600XT, FX 5600 Ultra, FX 5600, FX 5500, FX 5200 Ultra, FX 5200LE, FX 5200, FX 5100
+
+nForce 7 series:
+790i Ultra SLI, 790i SLI, 780i SLI, 780a SLI
+
+nForce 6 series:
+680i SLI, 680i LT SLI
+
+Quadro NVS series:
+NVS 450, NVS 440, NVS 420, NVS 295, NVS 290, NVS 285
+
+Quadro NVS Notebook series:
+NVS 120M
+
+ION series:
+ION LE, ION
+
+Additional information
+NVIDIA Control Panel and System Monitor

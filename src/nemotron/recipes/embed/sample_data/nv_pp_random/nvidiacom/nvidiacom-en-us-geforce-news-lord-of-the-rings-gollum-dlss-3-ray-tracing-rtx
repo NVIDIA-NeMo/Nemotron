@@ -1,0 +1,43 @@
+
+The Lord of the Rings: Gollum Launches This Week With DLSS 3
+
+
+By Andrew Burnes on May 23, 2023
+
+|
+
+Featured Stories
+GeForce RTX GPUs
+NVIDIA DLSS
+NVIDIA Reflex
+NVIDIA RTX
+Each week, we re bringing you news about the latest DLSS and ray tracing integrations in games and apps. Last week, D5 Render got a DLSS 3-powered upgrade, DLSS 2 boarded Bus Simulator 21, and The Outlast Trials launched into Early Access with day-1 DLSS 2 support.
+This week, The Lord of the Rings: Gollum launches with support for DLSS 3 and many other NVIDIA technologies, and two new DLSS 2 titles are available now - Firmament and Togges.
+For all the details, read on.
+NVIDIA DLSS 3 Multiplies Frame Rates
+Powered by new hardware capabilities of the NVIDIA Ada Lovelace architecture, DLSS 3 generates entirely new high quality frames, rather than just pixels.
+Through a process detailed in full in our NVIDIA DLSS 3 article, DLSS 3 combines DLSS Super Resolution technology and DLSS Frame Generation to reconstruct 7 out of every 8 of the displayed pixels, multiplying performance.
+
+In GPU-limited games, DLSS 2 Super Resolution technology can increase your frame rates by up to 2X. With DLSS 3, we can increase performance even further with new frames - in the technology preview of Cyberpunk 2077 s Ray Tracing: Overdrive Mode, 4K performance on a GeForce RTX 4090 is boosted by 4.6X.
+Other games make extensive use of the CPU, which can limit performance. DLSS 3 operates on the GPU, bypassing CPU bottlenecks and boosting frame rates. In Microsoft Flight Simulator, for example, DLSS 3 boosts frame rates by up to 2X.
+DLSS 3 games are backwards compatible with DLSS 2 technology - developers simply integrate DLSS 3, and DLSS 2, also known as DLSS Super Resolution, is supported by default. Additionally, integrations of DLSS 3 also include NVIDIA Reflex, reducing system latency for all GeForce RTX users, making games more responsive.
+The Lord of the Rings: GollumTM Launches May 25th With DLSS 3, Ray Tracing & More
+Based on the books by J. R. R. Tolkien, The Lord of the Rings: Gollum is a story-driven stealth adventure game from Daedalic Entertainment, creators of Deponia and many other highly regarded titles. Take on a perilous journey as the deformed and twisted Gollum, chasing the only thing that s precious to him: the One Ring. Available May 25th, The Lord of the Rings: Gollum launches with support for DLSS 3, NVIDIA DLAA, NVIDIA Reflex, and ray-traced shadows and reflections.
+
+In The Lord of the Rings: Gollum, GeForce RTX 40 Series gamers can multiply performance with DLSS 3. At 4K, performance on the GeForce RTX 4090 increases by 3.5X, enabling 169 frames per second with every setting maxed out, and all ray tracing options enabled. The GeForce RTX 4080 can hit 123 FPS, a 3.8X increase; the GeForce RTX 4070 Ti sees a 3.9X speedup, for 100 FPS gameplay; the GeForce RTX 4070 receives a 3.8X boost, giving it a 79 FPS result in our benchmark.
+On GeForce RTX 40 Series laptops, DLSS 3 improves performance by an average of 2.5X at 2560x1440 with max settings and ray tracing enabled. At 1080p, DLSS 3 helps all RTX 40 Series laptop GPUs to run at over 90 FPS, with the flagship GeForce RTX 4090 Laptop GPU topping 200 FPS!
+With such fast frame rates on many GPUs, you may want to enhance image quality with NVIDIA DLAA, an AI-based anti-aliasing mode that utilizes the same technology developed for DLSS. DLAA uses a native resolution image to maximize image quality, and in The Lord of the Rings: Gollum DLAA can be combined with DLSS Frame Generation for great image quality and excellent performance.
+To make gameplay even more responsive, gamers with GeForce RTX or GeForce GTX 900 Series and newer GPUs can enable NVIDIA Reflex. This reduces system latency so your actions occur quicker, making single-player titles more responsive and enjoyable, and increasing your competitiveness in multiplayer matches. In The Lord of the Rings: Gollum, with Reflex activated, system latency is reduced by up to 56%.
+
+If you want to experience The Lord of the Rings: Gollum with all the bells and whistles, or just want to know how it ll perform on your system, here are the official PC system requirements, featuring resolution, preset and frame rate info:
+The Lord of the Rings: Gollum launches May 25th. Head on over to Steam to Wishlist or pre-order.
+Firmament: Now Available With DLSS 2
+Firmament is a newly released puzzle-adventure game by Cyan Worlds, the legendary game studio behind the best-selling games Myst and Riven. Featuring deep storytelling and world-building, discover the story of this seemingly abandoned world as you explore and unlock the mysteries of 3 unique Realms... and beyond! Featuring a unique steampunk aesthetic, Firmament invites you to explore the legendary deep world-building Cyan Worlds is known for.
+
+Available to play in 2D or VR, Firmament is experienced at its best on GeForce RTX graphics cards, which have leading performance in both modes. And with day-one support for NVIDIA DLSS 2, performance is further accelerated.
+Togges: DLSS 2-Enhanced Indie Game Available Now
+DLSS 2 can be added to many games with just a few clicks thanks to engine plugins, giving GeForce RTX gamers faster performance and an even better experience. On Steam, there are dozens of indie games leveraging DLSS 2 and its plugins, including Togges.
+This charming and colorful 3D puzzle-platformer is out now, and GeForce RTX gamers can enable DLSS 2 to increase performance for an improved experience.
+
+Check Back Next Week For More
+As you can see, there are even more DLSS integrations dropping into the newest blockbusters and latest indie games. Check back next week for a rundown of the next DLSS games, and head here to see the complete list of over 300 DLSS-enhanced games and apps.

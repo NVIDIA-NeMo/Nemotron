@@ -1,0 +1,30 @@
+[project]
+name = "recipe-runner-deploy"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    # Needed by Nemotron library (added via --with flag)
+    "omegaconf>=2.3.0",
+    "pydantic-settings>=2.0.0",
+]
+
+# Note: exclude-dependencies injected dynamically by run_uv.py
+
+[tool.nemotron]
+entry-point = "deploy.py"
+container-exclude-dependencies = [
+    "torch",
+    "torchvision",
+    "flash-attn",
+    "triton",
+    "pyarrow",
+    "scipy",
+    "opencv-python-headless",
+    "tensorrt",
+    "tensorrt-cu12",
+    "tensorrt-cu12-bindings",
+    "tensorrt-cu12-libs",
+    "tensorrt-llm",
+    "nvidia-modelopt",
+    "megatron-core",
+]

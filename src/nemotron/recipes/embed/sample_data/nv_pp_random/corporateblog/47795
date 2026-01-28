@@ -1,0 +1,28 @@
+In the past 18 months, researchers have witnessed a whopping 25.5x performance boost for Arm-based platforms in high performance computing, thanks to the combined efforts of the Arm and NVIDIA ecosystems.
+Many engineers deserve a round of applause for the gains.
+The Arm Neoverse N1 core gave systems-on-a-chip like Ampere Computing s Altra an estimated 2.3x improvement over last year s designs.
+NVIDIA s A100 Tensor Core GPUs delivered its largest ever gains in a single generation.
+The latest platforms upshifted to more and faster cores, input/output lanes and memory.
+And application developers tuned their software with many new optimizations.
+As a result, NVIDIA s Arm-based reference design for HPC, with two Ampere Altra SoCs and two A100 GPUs, just delivered 25.5x the muscle of the dual-SoC servers researchers were using in June 2019. Our GPU-accelerated, Arm-based reference platform alone saw a 2.5x performance gain in 12 months.
+The results span applications including GROMACS, LAMMPS, MILC, NAMD and Quantum Espresso that are key to work like drug discovery, a top priority during the pandemic. These and many other applications ready to run on Arm-based systems are available in containers on NGC, our hub for GPU-accelerated software.
+Companies and researchers pushing the limits in areas such as molecular dynamics and quantum chemistry can harness these apps to drive advances not only in basic science but in fields such as healthcare.
+Under the Hood with Arm and HPC
+The latest reference architecture marries the energy-efficient throughput of Ampere Computing s Mt. Jade, a 2U-sized server platform, with NVIDIA s HGX A100 that s already accelerating several supercomputers around the world. It s the successor to a design that debuted last year based on the Marvell ThunderX2 and NVIDIA V100 GPUs.
+Mt. Jade consists of two Ampere Altra SoCs packing 80 cores each based on the Arm Neoverse N1 core, all running at up to 3 GHz. They provide a whopping 192 PCI Express Gen4 lanes and up to 8TB of memory to feed two A100 GPUs.
+Ampere Computing Mt. Jade reference design
+The Mt. Jade server platform supports 192 PCIe Gen4 lanes.
+The combination creates a compelling node for next-generation supercomputers. Ampere Computing has already attracted support from nine original equipment and design manufacturers and systems integrators, including Gigabyte, Lenovo and Wiwynn.
+A Rising Arm HPC Ecosystem
+In another sign of an expanding ecosystem, the Arm HPC User Group hosted a virtual event ahead of SC20 with more than three dozen talks from organizations including AWS, Hewlett Packard Enterprise, the Juelich Supercomputing Center, RIKEN in Japan, and Oak Ridge and Sandia National Labs in the U.S. Most of the talks are available on its YouTube channel.
+In June, Arm made its biggest splash in supercomputing to date. That s when the Fugaku system in Japan debuted at No. 1 on the TOP500 list of the world s fastest supercomputers with a stunning 415.5 petaflops using the Arm-based A64FX CPU from Fujitsu.
+At the time it was one of four Arm-powered supercomputers on the list, and the first using Arm s Scalable Vector Extensions, technology embedded in Arm s next-generation Neoverse designs that NVIDIA will support in its software.
+Meanwhile, AWS is already running in the cloud HPC jobs like genomics, financial risk modeling and computational fluid dynamics on its Arm-based Graviton2 processors.
+NVIDIA Accelerates Arm in HPC
+Arm s growing HPC presence is part of a broad ecosystem of 13 million developers in areas that span smartphones to supercomputers. It s a community NVIDIA aims to expand with our deal to acquire Arm to create the world s premier company for the age of AI.
+We re extending the ecosystem with Arm support built into our NVIDIA AI, HPC, networking and graphics software. At last year s supercomputing event, NVIDIA CEO Jensen Huang announced our work accelerating Arm in HPC in addition to our ongoing support for IBM POWER and x86 architectures.
+Nvidia support for Arm ecosystem
+Nvidia has expanded its support for the Arm ecosystem.
+Since then, we ve announced our BlueField-2 DPUs that use Arm IP to accelerate and secure networking and storage jobs for cloud, embedded and enterprise applications. And for more than a decade, we ve been an avid user of Arm designs inside products such as our Jetson Nano modules for robotics and other embedded systems.
+We re excited to be part of dramatic performance gains for Arm in HPC. It s the latest page in the story of an open, thriving Arm ecosystem that keeps getting better.
+Learn more in the NVIDIA SC20 Special Address.

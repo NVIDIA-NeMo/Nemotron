@@ -25,6 +25,8 @@ Usage:
 
 from __future__ import annotations
 
+from importlib import metadata
+
 import typer
 
 from nemotron.kit.cli.globals import global_callback
@@ -71,24 +73,93 @@ def main_callback(
         "--stage",
         help="Stage script + config to remote cluster for interactive debugging",
     ),
+    force_squash: bool = typer.Option(
+        False,
+        "--force-squash",
+        help="Force re-squash container image even if it already exists",
+    ),
 ) -> None:
     """Nemotron CLI - Reproducible training recipes."""
     # Delegate to global_callback
-    global_callback(ctx, config, run, batch, dry_run, stage)
+    global_callback(ctx, config, run, batch, dry_run, stage, force_squash)
 
 
 # Import and register recipe groups
 def _register_groups() -> None:
     """Register all recipe groups with the main app."""
+    from nemotron.cli.embed import embed_app
     from nemotron.cli.kit import kit_app
     from nemotron.cli.nano3 import nano3_app
 
     app.add_typer(nano3_app, name="nano3")
     app.add_typer(kit_app, name="kit")
+    app.add_typer(embed_app, name="embed")
+
+
+def _register_plugins() -> None:
+    """Register external CLI plugins declared via entry points.
+
+    Plugins should be registered under the `nemotron.cli.plugins` entry-point group,
+    where each entry point provides either:
+    - a `typer.Typer` instance, or
+    - a zero-arg callable that returns a `typer.Typer` instance.
+
+    Example (pyproject.toml):
+        [project.entry-points."nemotron.cli.plugins"]
+        embed = "nemotron_embed.cli:embed_app"
+    """
+
+    group = "nemotron.cli.plugins"
+
+    try:
+        eps = metadata.entry_points()
+    except Exception:
+        return
+
+    # Python 3.10+: EntryPoints has .select(); older: dict-like mapping
+    if hasattr(eps, "select"):
+        plugins = list(eps.select(group=group))
+    else:
+        plugins = list(eps.get(group, []))  # type: ignore[call-arg]
+
+    for ep in plugins:
+        name = getattr(ep, "name", None)
+        if not name:
+            continue
+
+        # Avoid collisions with built-in groups
+        if name in {"nano3", "kit", "embed"}:
+            continue
+
+        try:
+            loaded = ep.load()
+        except Exception:
+            # Best-effort: a bad plugin shouldn't break the CLI.
+            continue
+
+        plugin_app: typer.Typer | None = None
+        if isinstance(loaded, typer.Typer):
+            plugin_app = loaded
+        elif callable(loaded):
+            try:
+                maybe_app = loaded()
+            except Exception:
+                continue
+            if isinstance(maybe_app, typer.Typer):
+                plugin_app = maybe_app
+
+        if plugin_app is None:
+            continue
+
+        try:
+            app.add_typer(plugin_app, name=name)
+        except Exception:
+            continue
 
 
 # Register groups on import
 _register_groups()
+_register_plugins()
 
 
 def main() -> None:

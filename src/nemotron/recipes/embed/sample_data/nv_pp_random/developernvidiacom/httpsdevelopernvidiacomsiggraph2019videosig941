@@ -1,0 +1,7 @@
+
+SIGGRAPH 2019: Learning from the past so you do repeat it: Introducing the Example-Based Workflow - Video
+Eric Risser,Artomatix
+SIGGRAPH 2019
+We describe a fast, scalable technique for ray tracing photorealistic global illumination. It upgrades standard static light probes to both fix light leaks and accelerate them for dynamic run-time ray tracing on any recent GPU. This streamlines art workflow, increases visual fidelity, and lifts lighting restrictions on gameplay.
+We describe this probe technique along with new implementation details that give a 2x performance increase and heightened image quality over previous versions. We also show how to accelerate ray traced reflections and full GPU path tracing using the same probe data structure, and discuss the road map for this technology."
+View More SIGGRAPH 2019 Talks and Sessions

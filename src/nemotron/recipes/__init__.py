@@ -20,6 +20,7 @@ including data curation, training, and evaluation stages.
 
 Available Recipes:
 - nano3: Nemotron Nano 3 (2B parameters)
+- embed: Embedding model fine-tuning (domain-adapted retrieval)
 - chipnemo: ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation)
 
 Usage:

@@ -1,0 +1,36 @@
+Automatic Speech Recognition
+ASR, or Automatic Speech Recognition, refers to the problem of getting a program to automatically transcribe spoken language (speech-to-text). Our goal is usually to have a model that minimizes the Word Error Rate (WER) metric when transcribing speech input. In other words, given some audio file (e.g. a WAV file) containing speech.
+The best place to get started with TAO Toolkit - ASR would be the TAO - ASR jupyter notebooks sample enclosed in this sample.
+This resource has two notebooks included.
+Training: Sample workflow for training an ASR - Citrinet model and export the model to a ``` .riva``` file
+Deployment: Sample workflow to consume the ``` .riva``` file and deploy it to Riva.
+If you are a seasoned Conversation AI developer we recommend installing TAO and referring to the TAO documentation for detailed information.
+Pre-Requisites
+Please make sure to install the following before proceeding further:
+python 3.6.9
+docker-ce > 19.03.5
+docker-API 1.40
+nvidia-container-toolkit > 1.3.0-1
+nvidia-container-runtime > 3.4.0-1
+nvidia-docker2 > 2.5.0-1
+nvidia-driver >= 455.23
+Note: A compatible NVIDIA GPU would be required.
+Installation
+We recommend that you install TAO Toolkit inside a virtual environment. The steps to do the same are as follows
+``````virtualenv -p python3 <name of venv>
+source <name of venv>/bin/activate
+pip install jupyter notebook # If you need to run the notebooks
+``````
+TAO Toolkit is a python package that is hosted in nvidia python package index. You may install by using python s package manager, pip.
+``````pip install nvidia-pyindex
+pip install nvidia-tao
+``````
+To download the jupyter notebook please:
+Download the samples using the ngc cli with the following command
+``````ngc registry resource download-version "nvidia/tao/speechtotext_citrinet_notebook:v1.0"
+``````
+Instantiate the jupyter notebook server
+``````jupyter notebook --ip 0.0.0.0 --allow-root --port 8888
+``````
+License
+By downloading and using the models and resources packaged with TAO Toolkit Conversational AI, you would be accepting the terms of the Riva license

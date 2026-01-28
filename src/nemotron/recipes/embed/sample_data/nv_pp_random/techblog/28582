@@ -1,0 +1,10 @@
+PGI Compilers & Tools are used by scientists and engineers developing applications for high-performance computing (HPC). PGI products deliver world-class multicore CPU performance, an easy on-ramp to GPU computing with OpenACC directives, and performance portability across all major HPC platforms. Version 17.10 is available now for users with current PGI Professional support. The free PGI Community Edition has been updated to version 17.10 as well.
+New Features in PGI 17.10
+Tesla V100 GPU support
+OpenACC for CUDA Unified Memory
+OpenMP 4.5 for multicore CPUs
+C++14 lambdas with capture in OpenACC regions
+OpenACC PGI Unified Binary for Multicore and Tesla
+C++ performance optimizations
+OpenACC Fortran deep copy
+Read more >

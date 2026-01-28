@@ -1,0 +1,16 @@
+
+Building AI Models from scratch is incredibly difficult, requiring mountains of data and an army of data scientists. With the NVIDIA TAO Toolkit, you can use the power of transfer learning to fine-tune NVIDIA pretrained models with your own data and optimize for inference without AI expertise or large training datasets.
+You can now experience the TAO Toolkit through NVIDIA LaunchPad, a free program that provides short-term access to a large catalog of hands-on labs.
+LaunchPad helps developers, designers, and IT professionals speed up the creation and deployment of modern, data-intensive applications. LaunchPad is the best way to enjoy and experience the transformative power of the NVIDIA hardware and software stack working in unison to power your AI applications.
+TAO Toolkit on LaunchPad
+The TAO Toolkit lab on LaunchPad has everything you need to experience the end-to-end process of fine-tuning and deploying an object detection application.
+Object detection is a popular computer vision task that involves classifying and putting bounding boxes around images or frames of videos. It can be used for real-world applications in retail (self check-out, for example), transportation, manufacturing, and more.
+With the TAO Toolkit, you can also:
+Achieve up to 4x in inference speed-up with built-in model optimization
+Generalize your model with offline and online data augmentation
+Scale up and out with multi-GPU and multi-node to speed-up your model training
+Visualize and understand model training performance in TensorBoard
+The TAO Toolkit lab is preconfigured with the datasets, GPU-optimized pretrained models, Jupyter notebooks, and the necessary SDKs for you to seamlessly accomplish your task.
+Ready to get started? Apply now to access the free lab.
+Learn more about the TAO Toolkit.
+Experience TAO Toolkit with NVIDIA pretrained AI models.

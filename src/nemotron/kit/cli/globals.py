@@ -122,8 +122,12 @@ def split_unknown_args(
                 else:
                     i += 1
         elif "=" in arg and not arg.startswith("-"):
-            # Dotlist override
+            # Dotlist override (Hydra-style: key=value)
             dotlist.append(arg)
+            i += 1
+        elif arg.startswith("--") and "=" in arg and arg not in global_opts:
+            # Argparse-style override with value: --key=value → key=value
+            dotlist.append(arg[2:])
             i += 1
         else:
             # Passthrough arg

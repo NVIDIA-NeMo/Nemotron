@@ -1,0 +1,92 @@
+NVIDIA Holoscan SDK
+NVIDIA Holoscan is a domain-agnostic, multimodal AI sensor processing platform that provides the accelerated, full-stack infrastructure needed for real-time processing of streaming data at the edge or in the cloud.
+Download Now Documentation Forum
+Download the NVIDIA Holoscan SDK
+To compile the open-source Holoscan SDK yourself, download it from GitHub.
+GitHub SDK Documentation Release Notes
+PyPi
+Pip Install NVIDIA Holoscan SDK
+Ubuntu Package
+Download and install the Debian Package
+NGC Container
+Run within the Holoscan Container
+Conda
+Now available on Conda
+How Holoscan SDK Works
+Accelerate sensor data processing with the Holoscan SDK.
+NVIDIA Holoscan includes optimized libraries for network connectivity, data processing, and AI. It provides examples for creating and running low-latency, data-streaming applications across industries using C++, Python, or Graph Composer. Using the SDK, developers can build pipelines for sensor data processing that meet latency requirements and scale from the cloud to the data center to the edge.
+Holoscan Reference Applications diagram explaining all relevant application components
+Getting-Started Guide
+Install, setup, and start learning how to use the Holoscan SDK with guided examples.
+Read Guide
+Holoscan GitHub
+Learn more about the Holoscan AI sensor processing platform, or compile the open-source Holoscan SDK yourself.
+Go to GitHub
+Holoscan Reference Applications
+Check out and share reference applications, operators, tutorials, and benchmarks on the HoloHub.
+Explore HoloHub
+Learn About the Latest Release
+Jump into the latest features and improvements for the Holoscan SDK.
+View Release Notes
+Get Started With Holoscan
+Pick Your Platform
+1. Pick Your Platform
+Optimize experiences for edge workloads by running Holoscan on industrial-grade hardware like NVIDIA IGX. The SDK is also compatible with multiple hardware platforms, including aarch64 and x86.
+Learn More
+Install the SDK
+2. Install the SDK
+Get the specifications you need to run Holoscan locally. Understand the prerequisites and more with this install guide.
+Get the Installation Guide
+Explore Examples
+3. Explore Examples
+Learn how to use the Holoscan SDK to build applications through a series of core examples.
+Start Learning
+Holoscan Sensor Bridge processes low-latency sensor data from diverse sensors over Ethernet
+Process Low-Latency Sensor Data Over Ethernet With Holoscan Sensor Bridge
+Holoscan Sensor Bridge seamlessly handles high-bandwidth data from diverse sensors over Ethernet, enabling real-time, high-performance AI processing. It serves as a flexible field-programmable gate array (FPGA) interface with a standard API and open software.
+Learn More About Holoscan Sensor Bridge
+Holoscan Reference Applications
+Once you ve set up Holoscan and learned the basics, check out prebuilt examples of end-to-end applications and guidance on how to use, customize, and scale them.
+Body Pose Estimation
+This computer vision task recognizes specific points on the human body in images or videos.
+View Reference Application: Body Pose Estimation
+Go to GitHub Repo
+Run Instructions
+Speech-to-Text and Large Language Models
+This application shows how to transcribe audio files with a speech-to-text model (STT) and how to use a large language model (LLM) to summarize and generate new, relevant information.
+View Reference Application: STT and LLMs
+Go to GitHub Repo
+Run Instructions
+SAM2: Segment Anything in Images and Videos
+This application demonstrates how to run SAM2 models on a live video feed with the possibility of changing query points in real time.
+View Reference Application: SAM
+Read Setup Instructions
+Sensor IO: GPUDirect Data Ingestion
+Reference applications for sensor input and output (IO) with Holoscan demonstrate the advanced data-ingestion capabilities of NVIDIA GPUDirect. Partners like Yuan and Deltacast provide state-of-the-art IO capture cards that integrate seamlessly with Holoscan, enabling rapid data transfer directly to GPU memory.
+View Reference Application: High-Speed Endoscopy (C++)
+View Reference Application: High-Speed Endoscopy (Python)
+DDS-Based Interoperability
+The Data Distribution Service (DDS) video application demonstrates how video frames can be written to or read from a DDS databus to provide flexible integration between Holoscan applications and other applications (using Holoscan or not).
+View Reference Application: Video Streaming
+Read Quick-Start Guide
+Go to GitHub Repo
+Multi-AI AR-Assisted Surgery
+This application shows how to enhance robotic surgery by combining 3D anatomical models with real-time AI segmentation to get improved depth perception, better navigation, and enhanced patient safety.
+View Reference Application: Tool Segmentation With AI Overlay
+Go to GitHub Repo
+Holoscan Developer Blogs
+More Resources
+NVIDIA Developer Forums
+Explore Developer Forums
+
+NVIDIA Inception for Startups
+Accelerate Your Startup
+
+NVIDIA Developer Program
+Join the NVIDIA Developer Program
+
+Ethical AI
+NVIDIA believes Trustworthy AI is a shared responsibility, and we have established policies and practices to enable development for a wide array of AI applications. When downloading or using a model in accordance with our terms of service, developers should work with their supporting model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.
+Please report security vulnerabilities or NVIDIA AI concerns here.
+Get started with Holoscan today.
+Visit HoloHub

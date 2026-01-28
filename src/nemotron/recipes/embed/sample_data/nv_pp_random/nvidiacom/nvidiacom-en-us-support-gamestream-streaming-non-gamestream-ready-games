@@ -1,0 +1,49 @@
+
+GameStream User Guide
+NVIDIA GameStream Overview
+How Gamestream Works
+Gamestream Requirements
+Overview
+
+
+Basic
+
+4K
+
+HDR
+
+Surround Audio
+
+Recommended SHIELD TV Setup
+Gamestream PC Setup
+Pairing SHIELD TV to PC
+Steam Big Picture
+Streaming Non-Gamestream Ready Games
+Advanced Settings
+Overview
+
+
+Set Gamestream Resolution
+
+Disable Game Optimizations
+
+On-Screen Controls
+
+Resume Gamestream
+
+Quit Gamestream
+
+Access Game Overlay
+
+Troubleshooting Tips
+Streaming Non Gamestream Ready Games
+GameStream officially supports over 300 games, but GeForce Experience allows users to manually add and stream nearly any game.
+Open GeForce Experience and navigate to the Settings > SHIELD settings.
+
+Under the Game and Apps window, click "ADD" and browse to the location of your game's launcher.
+
+Add Games
+(Optional) If you would like to edit the display and add custom box art to your manually added game, click "EDIT." Here you can set the display name by selecting the icon to edit the name and box art of the applications in your list.
+
+Once you have added applications into the list, they will appear on your SHIELD and can be launched. Note that GameStream does not configure optimal settings for manually added games, so you may need to adjust in-game settings for the best experience.
+

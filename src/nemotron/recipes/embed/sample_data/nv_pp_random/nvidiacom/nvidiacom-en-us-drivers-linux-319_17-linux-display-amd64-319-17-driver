@@ -1,0 +1,188 @@
+
+
+Linux x64 (AMD64/EM64T) Display Driver 319.17
+Version:
+
+319.17 Certified
+
+Release Date:
+
+2013.05.02
+
+Operating System:
+
+Linux 64-bit
+
+Language:
+
+English (U.S.)
+
+File Size:
+
+46.3 MB
+
+
+
+Download Now
+
+
+Release Highlights
+Added support for the following GPUs:
+GeForce GTX 650 Ti BOOST
+GeForce GT 720M
+GeForce GT 735M
+GeForce GT 740M
+GeForce GT 745M
+GeForce GT 750M
+Fixed a regression that caused multiple BUG messages to be printed in the kernel log on SMP systems.
+Fixed a bug that could cause the X server to crash when repeatedly enabling and disabling displays.
+Updated nvidia-settings to preserve the relative positioning of displays when changing from a layout where multiple displays are on the same X screen to one where the same displays span multiple X screens.
+Fixed nvidia-settings to dlopen(3) "libvdpau.so.1", rather than "libvdpau.so".
+Added nvidia-persistenced, a daemon utility, to the driver package. nvidia-persistenced can be installed to run on system startup or manually run to allow the NVIDIA kernel module to keep persistent driver state allocated when no other user-space NVIDIA driver components are running.This can improve startup time for other user-space NVIDIA driver components.
+Fixed CVE-2013-0131: NVIDIA UNIX GPU Driver ARGB Cursor Buffer Overflow in "NoScanout" Mode. This buffer overflow, which occurred when an X client installed a large ARGB cursor on an X server running in NoScanout mode, could cause a denial of service (e.g., an X server segmentation fault), or could be exploited to achieve arbitrary code execution.
+For more details, see: //nvidia.custhelp.com/app/answers/detail/a_id/3290
+Added initial support for restoration of efifb consoles on UEFI systems where the primary display is driven over VGA or TMDS (e.g. DVI, HDMI, or LVDS).
+Added support for the xorg.conf Monitor section options "Ignore", "Enable", "Primary", and "Rotate".For example, to rotate a monitor identified by a specific EDID hash, one could add the following to /etc/X11/xorg.conf or a file in /etc/X11/xorg.conf.d:
+Section "Monitor"
+Identifier "DPY-EDID-ee6cecc0-fa46-0c33-94e0-274313f9e7eb"
+Option "Rotate" "left"
+EndSection
+See the README and the xorg.conf(5) man page for more information.
+Added an Underscan feature in the nvidia-settings X Server Display Configuration page which allows the configuration of an underscan border around the ViewPortOut.This feature was formerly known as Overscan Compensation.
+Added support for application profiles to the NVIDIA client-side GLX implementation. See the "Application Profiles" chapter of the README for more information.
+Added support to nvidia-installer for crytographically signing the NVIDIA kernel module. See the "Installing the NVIDIA Driver" chapter of the README for more information.
+Added the "PanningTrackingArea" and "PanningBorder" MetaMode attributes.
+Added support for RandR 1.3 panning.
+Improved performance when the Accel option is disabled.
+Added initial support for RandR 1.4 Provider objects with the Source Output capability, which can be used to render the desktop on an NVIDIA GPU and display it on an output connected to a provider with the Sink Output capability, such as an Intel integrated graphics device or a DisplayLink USB-to-VGA adapter.See the README for details.
+Added nvidia-modprobe, a setuid root utility, to the driver package. nvidia-modprobe can be used by user-space NVIDIA driver components to make sure the NVIDIA kernel module is loaded and that the NVIDIA character device files are present.When possible, it is recommended to use Linux distribution native mechanisms for managing kernel module loading and device file creation. This utility is provided as a fallback to work out-of-the-box in a distribution-independent way.
+Updated the nvidia-settings command line interface to accept display device names, as well as optional target qualifiers, e.g.
+nvidia-settings -q [DVI-I-0]/RefreshRate
+nvidia-settings -q [GPU-1.DVI_I-1]/RefreshRate
+Updated the nvidia-settings command line interface to no longer assume the "X screen 0" target, when no target is specified in query and assign operations.Instead, all valid targets of the attribute are processed.
+Fixed a memory leak that occurred when destroying a GLX window but not its associated X window.
+Fixed a bug that could cause nvidia-installer to fail to delete directories created as part of a previous installation.
+Updated nvidia-installer to report failures to remove installed files or restore backed up files with a single warning message, instead of a separate message for each individual failure.
+Improved the performance of modesets in cases where the mode timings remained the same, but other parameters of the mode configuration, such as the ViewPort or panning domain, changed.
+Fixed an issue with RENDER convolution filters.The driver will no longer normalize filter kernels before accelerating them.
+Improved debuggability of the NVIDIA OpenGL libraries by including proper stack unwinding information on all supported architectures.
+Updated the dkms.conf file and the makefile for the NVIDIA Linux kernel module to allow DKMS installations on systems with separate source and output directories.
+Fixed a bug that caused RENDER Pictures to be sampled incorrectly when using nearest filtering in some cases.
+Added support for the RandR "Border" and "BorderDimensions" Output properties, which can be used to configure the ViewPortOut of an RandR output.This is functionally equivalent to the "ViewPortOut" MetaMode token.
+Fixed a bug where RRGetCrtcInfo could report incorrect size information when an RandR output has a custom ViewPortIn.
+Further improve performance of some versions of HyperMesh with Quadro GPUs.
+Added a VDPAU page to the nvidia-settings control panel, to display information about the decoding capabilities of VDPAU-capable GPUs.
+Added support for dynamic mode management through RandR, e.g. via the --newmode, --rmmode, and --delmode options in xrandr(1).
+Increased the number of pages that are shareable across multiple processes in the x86 build of libnvidia-glcore.so, by reducing its R_386_PC32 relocation count.
+Fixed a bug that caused XVideo applications to receive BadAlloc errors after VT switches and mode switches that occurred while a composite manager was running.
+Removed the X driver's support for "CursorShadow".
+Updated nvidia-installer to attempt unprelinking files whose checksums do not match the checksums recorded at installation time.
+Switched.run package compression from gzip to xz.This provides a higher level of compression.
+Supported products
+GeForce 700M series:
+GT 750M, GT 745M, GT 740M, GT 735M, GT 730M, GT 720M, 710M
+
+GeForce 600 series:
+GTX 690, GTX 680, GTX 670, GTX 660 Ti, GTX 660, GTX 650 Ti BOOST, GTX 650 Ti, GTX 650, GT 645, GT 640, GT 630, GT 620, GT 610, 605
+
+GeForce 600M series:
+GTX 680MX, GTX 680M, GTX 675MX, GTX 675M, GTX 670MX, GTX 670M, GTX 660M, GT 650M, GT 645M, GT 640M LE, GT 640M, GT 635M, GT 630M, GT 625M, GT 620M, G610M
+
+GeForce 500 series:
+GTX 590, GTX 580, GTX 570, GTX 560 Ti, GTX 560 SE, GTX 560, GTX 555, GTX 550 Ti, GT 545, GT 530, GT 520, 510
+
+GeForce 500M series:
+GTX 580M, GTX 570M, GTX 560M, GT 555M, GT 550M, GT 540M, GT 525M, GT 520MX, GT 520M
+
+GeForce 400 series:
+GTX 480, GTX 470, GTX 465, GTX 460 v2, GTX 460 SE v2, GTX 460 SE, GTX 460, GTS 450, GT 440, GT 430, GT 420, GT 415, 405
+
+GeForce 400M series:
+GTX 485M, GTX 480M, GTX 470M, GTX 460M, GT 445M, GT 435M, GT 425M, GT 420M, GT 415M, 410M
+
+GeForce 300 series:
+GT 340, GT 330, GT 320, 315, 310
+
+GeForce 300M series:
+GTS 360M, GTS 350M, GT 335M, GT 330M, GT 325M, GT 320M, 320M, 315M, 310M, 305M
+
+GeForce 200 series:
+GTX 295, GTX 285, GTX 280, GTX 275, GTX 260, GTS 250, GTS 240, GT 240, GT 230, GT 220, G210, 210, 205
+
+GeForce 200M series:
+GTX 285M, GTX 280M, GTX 260M, GTS 260M, GTS 250M, GT 240M LE, GT 240M, GT 230M, GT 220M, G210M
+
+GeForce 100 series:
+GT 140, GT 130, GT 120, G 100
+
+GeForce 100M series:
+GTS 160M, GTS 150M, GT 130M, GT 120M, G 110M, G 105M, G 103M, G 102M
+
+GeForce 9 series:
+9800 GX2, 9800 GTX+, 9800 GTX/GTX+, 9800 GT, 9600 GT, 9600 GSO 512, 9600 GSO, 9600 GS, 9500 GT, 9500 GS, 9400 GT, 9400, 9300 SE, 9300 GS, 9300 GE, 9300 / nForce 730i, 9300, 9200, 9100
+
+GeForce 9M series:
+9800M GTX, 9800M GTS, 9800M GT, 9800M GS, 9700M GTS, 9700M GT, 9650M GT, 9650M GS, 9600M GT, 9600M GS, 9500M GS, 9500M G, 9400M G, 9400M, 9300M GS, 9300M G, 9200M GS, 9100M G
+
+GeForce 8 series:
+8800 Ultra, 8800 GTX, 8800 GTS 512, 8800 GTS, 8800 GT, 8800 GS, 8600 GTS, 8600 GT, 8600 GS, 8500 GT, 8400 SE, 8400 GS, 8400, 8300 GS, 8300, 8200, 8100 / nForce 720a
+
+GeForce 8M series:
+8800M GTX, 8800M GTS, 8700M GT, 8600M GT, 8600M GS, 8400M GT, 8400M GS, 8400M G, 8200M G, 8200M
+
+NVS Series:
+NVS 510, NVS 310, NVS 300
+
+Quadro series:
+K5000, 7000, 6000, 600, 5000, 410, 4000, 400, 2000D, 2000
+
+Quadro FX series:
+FX 5800, FX 580, FX 570, FX 5600, FX 4800, FX 4700 X2, FX 4600, FX 380 LP, FX 3800, FX 380, FX 370 Low Profile, FX 3700, FX 370, FX 3400/4400, FX 1800, FX 1700, CX
+
+Quadro Notebook series:
+K5000M, K4000M, K3000M, K2000M, K1000M, 5010M, 5000M, 4000M, 3000M, 2000M, 1000M
+
+Quadro FX Notebook series:
+FX 880M, FX 770M, FX 570M, FX 380M, FX 3800M, FX 370M, FX 3700M, FX 360M, FX 3600M, FX 2800M, FX 2700M, FX 1800M, FX 1700M, FX 1600M
+
+Quadro NVS series:
+NVS 450, NVS 420, NVS 295, NVS 290
+
+Quadro NVS Notebook series:
+NVS 5400M, NVS 5200M, NVS 4200M, NVS 320M, NVS 160M, NVS 150M, NVS 140M, NVS 135M, NVS 130M
+
+Quadro Plex series:
+Model IV, Model II, D Series, 7000
+
+Quadro Sync series:
+Sync, G-Sync II
+
+Quadro SDI series:
+Quadro SDI
+
+ION series:
+ION LE, ION
+
+C-Class Processors:
+Tesla C870, Tesla C2075, Tesla C2070, Tesla C2050, Tesla C1060, T10 Processor
+
+M-Class Processors:
+Tesla M2090, Tesla M2075, Tesla M2070-Q, Tesla M2070, Tesla M2050, Tesla M1060
+
+X-Class Processors:
+Tesla X2090
+
+S-Class Systems:
+Tesla S2050
+
+K-Series Processors:
+Tesla K20Xm, Tesla K20m, Tesla K20c, Tesla K10
+
+Additional information
+Note that many Linux distributions provide their own packages of the NVIDIA Linux Graphics Driver in the distribution's native package management format. This may interact better with the rest of your distribution's framework, and you may want to use this rather than NVIDIA's official package.
+Also note that SuSE users should read the SuSE NVIDIA Installer HOWTO before downloading the driver.
+Installation instructions: Once you have downloaded the driver, change to the directory containing the driver package and install the driver by running, as root, sh./NVIDIA-Linux-x86_64-319.17.run
+One of the last installation steps will offer to update your X configuration file. Either accept that offer, edit your X configuration file manually so that the NVIDIA X driver will be used, or run nvidia-xconfig
+Note that the list of supported GPU products is provided to indicate which GPUs are supported by a particular driver version. Some designs incorporating supported GPUs may not be compatible with the NVIDIA Linux driver: in particular, notebook and all-in-one desktop designs with switchable (hybrid) or Optimus graphics will not work if means to disable the integrated graphics in hardware are not available. Hardware designs will vary from manufacturer to manufacturer, so please consult with a system's manufacturer to determine whether that particular system is compatible.
+See the README for more detailed instructions.
+For further information please visit our forum, https://devtalk.nvidia.com/default/board/98/linux/.

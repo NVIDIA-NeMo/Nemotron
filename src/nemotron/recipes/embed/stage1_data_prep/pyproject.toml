@@ -1,0 +1,31 @@
+[project]
+name = "recipe-runner-data-prep"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    # Core dependencies
+    "nemo-automodel @ git+https://github.com/NVIDIA-NeMo/Automodel.git@ecd7cb4297ae06990c94b7581f34c03ce8ed5488",
+    # Needed by Nemotron library (added via --with flag)
+    "omegaconf>=2.3.0",
+    "pydantic-settings>=2.0.0",
+    # Pin transformers <5.2 — nemo-automodel's check_model_inputs decorator
+    # is a ContextDecorator in 5.2.0 which breaks biencoder forward()
+    "transformers>=5.0,<5.2",
+    # Hard negative mining
+    "sentence-transformers>=3.0.0",
+    "faiss-cpu>=1.7.4",
+    # Convert script dependencies
+    "pandas>=2.0.0",
+]
+
+[tool.nemotron]
+entry-point = "data_prep.py"
+container-exclude-dependencies = [
+    "torch",
+    "torchvision",
+    "flash-attn",
+    "triton",
+    "pyarrow",
+    "scipy",
+    "opencv-python-headless",
+]

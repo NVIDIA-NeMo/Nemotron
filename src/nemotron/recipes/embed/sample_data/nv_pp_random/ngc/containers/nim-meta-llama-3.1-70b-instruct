@@ -1,0 +1,41 @@
+Llama-3.1-70B-Instruct Overview
+Description:
+This container houses the Llama-3.1-70B-Instruct, which is a multilingual large language model from the Meta Llama 3.1 collection of pretrained and instruction-tuned generative models. This model is optimized for multilingual dialogue use cases and outperforms many available open-source and closed-source chat models on common industry benchmarks. Llama 3.1 is an auto-regressive language model that uses an optimized transformer architecture; the tuned versions use supervised fine-tuning (SFT) and reinforcement learning with human feedback (RLHF) to align with human preferences for helpfulness and safety.
+The container components are ready for commercial/non-commercial use.
+Third-Party Community Consideration
+This model is not owned or developed by NVIDIA. This model has been developed and built to a third-party's requirements for this application and use case; see [meta-llama/Llama-3.1-70B-Instruct]
+(https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct ).
+License/Terms of Use:
+GOVERNING TERMS: The NIM container is governed by the NVIDIA Software License Agreement and the Product-Specific Terms for NVIDIA AI Products; and the use of the model is governed by the NVIDIA Community Model License Agreement.
+ADDITIONAL INFORMATION: Llama 3.1 Community License Agreement. Built with Llama.
+You are responsible for ensuring that your use of NVIDIA provided models complies with all applicable laws.
+Deployment Geography:
+Global
+Release Date:
+Build.Nvidia.com 07/23/2024 via
+llama-3.1-70b-instruct Model by Meta | NVIDIA NIM
+Github 07/23/2024 via
+https://github.com/meta-llama/llama-models/blob/main/models/llama3_1/LICENSE
+Huggingface 07/23/2024 via
+https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct
+Llama-3.1-70B-Instruct
+Llama-3.1-70B-Instruct Container includes the following model:
+Model Name & Link
+Use Case
+How to Pull the Model
+Llama-3.1-70B-Instruct
+A multilingual generative AI model optimized for dialogue, reasoning, and instruction-following tasks like chatbot creation, content generation, and question-answering.
+Automatic
+Deployment Details:
+Visit the NIM Container LLM page for release documentation, deployment guides, and more.
+Our AI models are designed and/or optimized to run on NVIDIA GPU-accelerated systems. By leveraging NVIDIA s hardware (e.g. GPU cores) and software frameworks (e.g., CUDA libraries), the model achieves faster training and inference times compared to CPU-only solutions.
+Container Version(s):
+Llama-3.1-70B-Instruct-1.13.0
+Enterprise Support
+Get access to knowledge base articles and support cases or submit a ticket.
+NVIDIA NIM Documentation
+Visit the NIM Container LLM page for release documentation, deployment guides and more.
+Ethical Considerations:
+NVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications. When downloaded or used in accordance with our terms of service, developers should work with their internal developer team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.
+Please report security vulnerabilities or NVIDIA AI Concerns here.
+You are responsible for ensuring that your use of NVIDIA provided Models complies with all applicable laws.

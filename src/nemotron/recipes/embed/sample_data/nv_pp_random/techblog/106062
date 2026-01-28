@@ -1,0 +1,82 @@
+
+Generative AI is opening new possibilities for analyzing existing video streams. Video analytics are evolving from counting objects to turning raw video content footage into real-time understanding. This enables more actionable insights.
+The NVIDIA AI Blueprint for video search and summarization (VSS) brings together vision language models (VLMs), large language models (LLMs), and retrieval-augmented generation (RAG) with optimized ingestion, retrieval, and storage pipelines. Part of NVIDIA Metropolis, it supports both stored and real-time video understanding.
+In previous releases, the VSS Blueprint introduced capabilities such as efficient video ingestion, context-aware RAG, computer vision (CV) pipeline, and audio transcription. To learn more about these foundational features, see Advance Video Analytics AI Agents Using the NVIDIA AI Blueprint for Video Search and Summarization and Build a Video Search and Summarization Agent with NVIDIA AI Blueprint.
+This post explains new features in the latest VSS Blueprint 2.4 release, which delivers four major upgrades that enable developers to:
+Improve physical world understanding: VSS is now integrated with NVIDIA Cosmos Reason, a state-of-the-art reasoning VLM that delivers advanced physical AI reasoning and scene understanding for richer video analytics and insights.
+Enhance Q&A: New knowledge graph features and cross-camera support include multi-stream Q&A, improved knowledge graph generation, agentic-based graph traversal, Neo4J and ArangoDB with cuGraph acceleration.
+Unlock generative AI at the edge with event reviewer: Review events of interest found by CV pipelines and provide contextual insights with generative AI. New endpoints enable VSS to be configured as an intelligent add-on to CV pipelines. This is ideal for low-latency edge deployments.
+Deploy with expanded hardware support: VSS is now available on multiple platforms built with NVIDIA Blackwell, including NVIDIA Jetson Thor, NVIDIA DGX Spark, and NVIDIA RTX Pro 6000 workstation and server editions.
+Improve physical world understanding with Cosmos Reason
+Cosmos Reason is an open, customizable, 7-billion-parameter state-of-the-art reasoning VLM for physical AI. It allows vision AI agents to reason like humans using prior knowledge, physics understanding, and common sense to understand and act in the real world. Cosmos Reason enables developers to build AI agents that can see, analyze, and act in the physical world by analyzing petabytes of recorded videos or millions of live streams. The Cosmos Reason NIM is also now available, delivering a production-ready VLM endpoint for building intelligent visual AI agents with fast, scalable reasoning.
+Video 1. Learn about four use cases for a visual AI agent powered by a reasoning VLM
+Video analytics AI agents built with the VSS Blueprint 2.4 can use Cosmos Reason to extract accurate and rich dense captions, enumerate objects of interest with set of mark prompting, provide valuable insights and perform root-cause analysis on footage from multiple industries including manufacturing lines, logistic warehouses, retail stores, and transportation networks.
+VSS 2.4 supports native integration with Cosmos Reason. This support tightly couples the video ingestion process with the VLM to allow for efficient batching and speed ups not possible with REST API-based VLM interfaces. Cosmos Reason s small 7B parameter footprint, makes it easy to use for edge deployments as well as in the cloud. Cosmos Reason is fully customizable and able to be fine-tuned with proprietary data.
+Enhance Q&A with knowledge graph and cross-camera support
+Ingesting large amounts of video is challenging because the data is unstructured, continuous, and extremely high-volume, which makes it difficult to search, index, or summarize efficiently. A single video can span hours of footage, include multiple events happening at once, and require heavy compute just to decode and analyze. Standard computer vision pipelines often can t keep up at scale, producing isolated detections without the broader context needed to understand what s actually happening.
+VSS solves this problem by using a GPU-accelerated video ingestion pipeline. As a video file or live stream comes in, it is broken into smaller chunks and Cosmos Reason VLM generates a rich description or caption of each chunk. An LLM then extracts the necessary information from the VLM generated captions to construct a knowledge graph that captures the important details of the video. Once the knowledge graph is built a large language model traverses the graph to answer user s questions on the videos.
+Architecture diagram showing the main components and data flow of VSS.
+Figure 1. The building blocks of VSS include the ingestion and retrieval pipelines as main components
+VSS 2.4 enhances Q&A accuracy and cross camera understanding with:
+Entity deduplication in the knowledge graph
+Agent-based graph traversal
+CUDA-accelerated graph database
+In previous releases of the VSS Blueprint, constructing the knowledge graph could result in duplicate nodes and edges. In VSS Blueprint 2.4, a knowledge graph post-processing has been added to remove any duplicate entries and merge nodes and edges that are common across videos. This means that common entities such as the same car moving across multiple cameras are now merged into a single entity which improves the ability of VSS to understand unique objects as they move throughout a video and across cameras.
+Once the knowledge graph has been generated and post processed, an LLM is used to traverse the graph and gather the necessary information to answer the user s question about the videos.
+In VSS 2.4, agentic based-reasoning has been introduced for advanced knowledge graph retrieval. If enabled, an LLM based agent will intelligently decompose the question and then use a set of tools to search the graph, find relevant metadata, reinspect sampled frames from the video and iterate if necessary to accurately answer the user s question.
+An image showing two knowledge graphs side by side. The left knowledge graph has many duplicate nodes and edges. The right side is a slimmed down version of the graph after the deduplication process.
+Figure 2. VSS knowledge graph deduplication eliminates redundant data in the graph and improves Q&A accuracy
+Benchmark
+VSS 2.3.1 accuracy
+VSS 2.4 accuracy
+VSS accuracy change
+LongVideoBench
+48.16
+64.32
++16.16%
+MLVU
+61.24
+71.44
++10.20 %
+Table 1. Accuracy improvements for the VSS Blueprint from version 2.3.1 to version 2.4
+It is now possible to answer questions across multiple camera streams using the knowledge graph postprocessing to merge entities and relationships and the advanced agentic-based retrieval.
+Screenshot showing an example of a VSS Blueprint multi-stream Q&A.
+Figure 3. VSS Blueprint answers questions that correlate information across multiple input camera streams
+To provide developers with the latest tools, the supported Graph database backends have been expanded to include ArangoDB. Users now have the ability to configure VSS to use either the Neo4J or ArangoDB graph database backend. ArangoDB brings a suite of enhancements, including CUDA-accelerated graph functions to accelerate knowledge graph generation.
+These new features to enable knowledge graph generation and agentic Q&A are best suited for multi-GPU deployments that can handle large LLMs and multiple concurrent VLM requests.
+Augment CV pipelines with VSS Event Reviewer
+For smaller-scale and edge deployments, the new VSS Event Reviewer feature introduces API endpoints that make it easy to integrate VSS into existing computer vision pipelines for low-latency alerts and direct VLM Q&A on video segments.
+Instead of running VSS continuously on all files or streams, Event Reviewer allows VSS to act as an intelligent add-on that delivers VLM insights only for key moments. This approach greatly reduces compute costs, making VSS well-suited for lightweight deployments and edge platforms.
+While standard CV pipelines excel at detecting objects and people or applying analytics to identify events, such as possible vehicle collisions, they often generate false positives and lack deeper scene understanding.
+VSS can be used to enhance these CV pipelines by analyzing short video clips flagged by the CV system, reviewing the detected events, and uncovering additional insights that traditional methods may miss.
+Figure 4 shows how VSS can augment an existing pipeline. The computer vision pipeline represents any proprietary system that is capable of taking in video files or streams and outputting short clips of interest. The Event Reviewer endpoints can then be called to pass these short video clips to VSS to generate alerts and follow up Q&A questions with a VLM.
+Architecture diagram starting with camera stream input to the Computer Vision pipeline that filters events and sends them to VSS. VSS Event Reviewer feature then provides further analysis for that event clip.
+Figure 4. High-level architecture of the VSS Event Reviewer reference workflow, showing how VSS perception pipeline can augment an existing computer vision pipeline
+To demonstrate this feature, a sample DeepStream detection pipeline is provided in the VSS GitHub repository using GroundingDINO. This example pipeline ingests a video, runs detection and then outputs clips when the number of detected objects is greater than a set threshold. The purpose of this pipeline is to find the most important events from the video that need to be inspected by VSS with a VLM.
+VSS will then process each small clip using the VLM by answering a set of yes/no questions defined by the user. These responses are converted to true/false states for each question and can be used to generate low latency alerts to a user. Once the short clip has been processed by VSS, you can ask more detailed follow questions.
+Video 2. Watch a demo of a reference workflow based on the VSS Event Reviewer
+This approach selectively uses the VLM only on clips of interest as determined by a lightweight detection pipeline. It can drastically reduce compute cost by reducing VLM calls and freeing up the GPU for other workloads.
+Deploy flexibly with expanded hardware support
+VSS Blueprint 2.4 fully supports several NVIDIA Blackwell platforms, including NVIDIA RTX Pro 6000 server and workstation editions and NVIDIA Jetson Thor for edge deployments. Support for NVIDIA DGX Spark is coming soon.
+1 NVIDIA Jetson Thor
+1-2 NVIDIA RTX PRO 6000 Blackwell WS/SE
+4-8 NVIDIA RTX PRO 6000 Blackwell WS/SE
+LLM
+N/A
+Llama 3.1 8B
+Llama 3.1 70B
+VLM
+Cosmos Reason 1
+Cosmos Reason 1
+Cosmos Reason 1
+Recommended usage
+Event Review
+Event Review Video Summarization Video Q&A (Vector RAG)
+Event Review File Summarization Video Q&A (Graph RAG)
+Table 2. VSS Blueprint 2.4 support for NVIDIA Blackwell platforms and NVIDIA Jetson Thor for edge deployment
+For a full list of supported platforms, see the Supported Platforms section of the VSS documentation.
+Get started with visual agentic AI
+The new VSS Blueprint 2.4 release brings new visual agentic AI capabilities to the edge, improvements to boost Q&A accuracy, cross-camera understanding, and expansion in platform support. The enhancements to knowledge graph creation and traversal improves Q&A accuracy and enables cross camera queries.
+For edge deployments and alerting use cases, the Event Reviewer feature is a way to use VSS as an intelligent add-on to cv pipelines for low latency alerts. Extended platform support to include NVIDIA RTX Pro and NVIDIA Thor.
+To quickly get started with the VSS Blueprint, use an NVIDIA Brev Launchable. The launchable provides fast one-click deployment and Jupyter notebooks to walk through how to launch VSS, access the Web UI, and use the VSS REST APIs. Visit the NVIDIA-AI-Blueprints/video-search-and-summarization GitHub repo for more technical resources such as training notebooks and reference code. For more technical questions, visit NVIDIA Developer Forum.
+For details about production deployments and CSPs, see the Cloud section of the VSS documentation.

@@ -1,0 +1,29 @@
+What Is NVIDIA NIM?
+NVIDIA NIM, part of NVIDIA AI Enterprise, is a set of easy-to-use microservices designed to speed up generative AI deployment in enterprises. Supporting a wide range of AI models, including NVIDIA AI foundation and custom models, it ensures seamless, scalable AI inferencing, on-premises or in the cloud, leveraging industry standard APIs.
+The Llama 3.1 8B-Instruct NIM simplifies the deployment of the Llama 3.1 8B instruction tuned model which is optimized for language understanding, reasoning, and text generation use cases, and outperforms many of the available open source chat models on common industry benchmarks.
+NVIDIA NIM offers prebuilt containers for large language models (LLMs) that can be used to develop chatbots, content analyzers or any application that needs to understand and generate human language. Each NIM consists of a container and a model and uses a CUDA-accelerated runtime for all NVIDIA GPUs, with special optimizations available for many configurations. Whether on-premises or in the cloud, NIM is the fastest way to achieve accelerated generative AI inference at scale.
+High Performance Features
+NVIDIA NIM for LLMs abstracts away model inference internals such as execution engine and runtime operations. NVIDIA NIM for LLMs provides the most performant option available whether it be with TRT-LLM, vLLM or others.
+Scalable Deployment: NVIDIA NIM for LLMs is performant and can easily and seamlessly scale from a few users to millions.
+Advanced Language Models: Built on cutting-edge LLM architectures, NVIDIA NIM for LLMs provides optimized and pre-generated engines for a variety of popular models.
+Flexible Integration: Easily incorporate the microservice into existing workflows and applications. NVIDIA NIM for LLMs provides an OpenAI API compatible programming model and custom NVIDIA extensions for additional functionality.
+Enterprise-Grade Security: Data privacy is paramount. NVIDIA NIM for LLMs emphasizes security by using safetensors, constantly monitoring and patching CVEs in our stack and conducting internal penetration tests.
+Applications
+Chatbots & Virtual Assistants: Empower bots with human-like language understanding and responsiveness.
+Content Generation & Summarization: Generate high-quality content or distill lengthy articles into concise summaries with ease.
+Sentiment Analysis: Understand user sentiments in real-time, driving better business decisions.
+Language Translation: Break language barriers with efficient and accurate translation services.
+And many more The potential applications of NVIDIA NIM for LLMs are vast, spanning across various industries and use-cases.
+Getting started with NVIDIA NIM
+Deploying and integrating NVIDIA NIM is straightforward thanks to our industry standard APIs. Visit the NIM Container LLM page for release documentation, deployment guides and more.
+Security Vulnerabilities in Open Source Packages
+Please review the Security Scanning (LINK) tab to view the latest security scan results.
+For certain open-source vulnerabilities listed in the scan results, NVIDIA provides a response in the form of a Vulnerability Exploitability eXchange (VEX) document. The VEX information can be reviewed and downloaded from the Security Scanning (LINK) tab.
+Get Help
+Enterprise Support
+Get access to knowledge base articles and support cases or submit a ticket.
+NVIDIA NIM Documentation
+Visit the NIM Container LLM page for release documentation, deployment guides and more.
+Governing Terms
+The NIM container is governed by the NVIDIA Software License Agreement; and the Product Specific Terms for AI Products; and the use of this model is governed by the NVIDIA AI Foundation Models Community License Agreement. ADDITIONAL INFORMATION: Llama 3.1 Community License Agreement, Built with Llama.
+You are responsible for ensuring that your use of NVIDIA AI Foundation Models complies with all applicable laws.

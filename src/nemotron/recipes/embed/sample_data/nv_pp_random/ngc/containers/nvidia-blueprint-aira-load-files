@@ -1,0 +1,30 @@
+Overview
+This blueprint shows how an AI research agent, informed by many data sources, can synthesize hours of research in minutes. The AI-Q NVIDIA Blueprint enables developers to build AI agents that use reasoning and connect to many data sources and tools to distill in-depth source materials with efficiency and precision. Using AI-Q, agents summarize large data sets, generating tokens 5x faster and ingesting petabyte scale data 15x faster with better semantic accuracy. The blueprint uses the open-source NVIDIA Agent Intelligence toolkit for evaluation and profiling of the agent workflow, enabling easier optimization and interoperability of agents, tools, and data sources.
+Architecture Diagram
+AIRA archiutecture diagram
+Key Features
+Flexibly choose, and connect agents and tools best suited for each task
+Evaluate, audit and debug agentic workflow to identify opportunities for optimization
+Multimodal PDF data extraction and retrieval with NVIDIA NeMo Retriever
+Llama Nemotron reasoning capabilities delivering the highest accuracy and lowest latency for analyzing datasets, identifying patterns, and proposing solutions
+Software used in this blueprint
+NVIDIA Technology
+llama-3.3-nemotron-super-49b-instruct
+llama-3.2-nv-embedqa-1b-v2
+llama-3.2-nv-rerankqa-1b-v2
+nemoretriever-graphic-elements-v1
+nemoretriever-table-structure-v1
+nemoretriever-page-elements-v2
+nemoretriever-parse
+paddleocr
+llama-3.4-nemotron-70b-instruct
+Agent Intelligence open-source toolkit
+3rd Party Software
+Tavily (Optional)
+LangChain
+Milvus database (accelerated with NVIDIA cuVS)
+Ethical Considerations
+NVIDIA believes Trustworthy AI is a shared responsibility, and we have established policies and practices to enable development for a wide array of AI applications. When downloaded or used in accordance with our terms of service, developers should work with their supporting model team to ensure the models meet requirements for the relevant industry and use case and address unforeseen product misuse. For more detailed information on ethical considerations for the models, please see the Model Card++ Explainability, Bias, Safety & Security, and Privacy Subcards. Please report security vulnerabilities or NVIDIA AI concerns here.
+License
+GOVERNING TERMS: The software and materials are governed by NVIDIA Software License Agreement and Product Specific Terms for AI Product; except as follows: (a) the models, other than the Llama-3.3-Nemotron-Super-49B-v1 model, are governed by the NVIDIA Community Model License; (b) the Llama-3.3-Nemotron-Super-49B-v1 model is governed by the NVIDIA Open Model License Agreement, and (c) the NeMo Retriever extraction is released under the Apache-2.0 license.
+ADDITIONAL INFORMATION: For NVIDIA Retrieval QA Llama 3.2 1B Reranking v2 model, NeMo Retriever Graphic Elements v1 model, and NVIDIA Retrieval QA Llama 3.2 1B Embedding v2: Llama 3.2 Community License Agreement, Built with Llama. For Llama-3.3-70b-Instruct model, Llama 3.3 Community License Agreement, Built with Llama.

@@ -1,0 +1,41 @@
+[project]
+name = "recipe-runner-export"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "onnx>=1.16.0",
+    "onnxruntime>=1.18.0",
+    "optimum>=1.20.0",
+    "nemo-export-deploy>=0.3.1",
+    "onnxscript>=0.5.0",
+    # Needed by Nemotron library (added via --with flag)
+    "omegaconf>=2.3.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[project.optional-dependencies]
+# TensorRT only needed when export_to_trt=true; CLI adds --with conditionally
+tensorrt = [
+    "tensorrt>=10.13,<10.15",
+]
+
+# In Docker/Slurm mode, TensorRT is pre-installed in the container
+# Note: exclude-dependencies injected dynamically by run_uv.py
+
+[tool.uv]
+override-dependencies = ["transformers>=5,<6"]
+exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
+
+[tool.nemotron]
+entry-point = "export.py"
+container-exclude-dependencies = [
+    "torch",
+    "torchvision",
+    "flash-attn",
+    "triton",
+    "pyarrow",
+    "scipy",
+    "opencv-python-headless",
+    "tensorrt",
+    "transformer-engine",
+]

@@ -1,0 +1,53 @@
+# Stage 2: Fine-tuning Configuration
+#
+# Fine-tunes an embedding model using contrastive learning.
+#
+# Usage:
+#   nemotron embed finetune -c default
+#   nemotron embed finetune -c default base_model=nvidia/llama-nemotron-embed-1b-v2
+#
+# Remote execution (Slurm):
+#   nemotron embed finetune -c default --run my-cluster
+#   nemotron embed finetune -c default --batch my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    # Container image for remote execution (Docker/Slurm)
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Base embedding model to fine-tune
+base_model: nvidia/llama-nemotron-embed-1b-v2
+
+# Path to training data (output from stage1_data_prep)
+train_data_path: ./output/embed/stage1_data_prep/train_mined.automodel_unrolled.json
+
+# Directory for saving checkpoints
+checkpoint_dir: ./output/embed/stage2_finetune/checkpoints
+
+# Training hyperparameters
+num_epochs: 3
+global_batch_size: 128
+local_batch_size: 4
+learning_rate: 1.0e-5
+lr_warmup_steps: 1
+lr_decay_style: cosine  # cosine maintains higher LR longer than linear
+weight_decay: 0.01
+
+# Model architecture
+# attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa
+train_n_passages: 5  # 1 positive + 4 negatives
+pooling: avg
+l2_normalize: true
+temperature: 0.02
+
+# Tokenization
+query_max_length: 512
+passage_max_length: 512
+query_prefix: "query:"
+passage_prefix: "passage:"
+
+# Checkpointing — lower defaults so small datasets get checkpoints
+# Auto-scaled further in train.py if total steps are low
+checkpoint_every_steps: 100
+val_every_steps: 100

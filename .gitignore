@@ -30,6 +30,9 @@ env.bak/
 venv.bak/
 .venv/
 
+# UV lock files in recipes (generated during stage testing)
+src/nemotron/recipes/**/uv.lock
+
 # IDEs
 .vscode/
 .idea/
@@ -64,12 +67,14 @@ env.toml
 conductor.json
 
 # Project specific
+/artifacts/
 output/
 outputs/
 logs/
 checkpoints/
 data/
 !src/nemotron/cli/nano3/data/
+!src/nemotron/cli/embed/data/
 workspace/
 wandb/
 .nemotron/
@@ -83,4 +88,4 @@ CLAUDE.md
 config.yaml
 
 # Documentation build
-docs/_build/
+docs/_build/# Exclude stage-specific uv.lock files

@@ -1,0 +1,145 @@
+# Stage 0: Synthetic Data Generation Configuration
+#
+# Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+# Uses NVIDIA's LLM APIs (requires NVIDIA_API_KEY environment variable).
+#
+# Usage:
+#   nemotron embed sdg -c default
+#   nemotron embed sdg -c default corpus_dir=/path/to/docs
+#
+# Remote execution (Slurm):
+#   nemotron embed sdg -c default --run my-cluster
+#   nemotron embed sdg -c default --batch my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    # Container image for remote execution (Docker/Slurm)
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# ==============================================================================
+# Core paths
+# ==============================================================================
+
+# Corpus identifier (used for output naming)
+corpus_id: nv_pp_random
+
+# Path to directory containing document files
+# Default points to bundled sample corpus; override with your own data
+corpus_dir: src/nemotron/recipes/embed/sample_data/nv_pp_random
+
+
+# Output directory for generated synthetic data
+output_dir: ./output/embed/stage0_sdg
+
+# File extensions to process (comma-separated) (optional, default: .txt, .md, .text, and no extension)
+# file_extensions: ".txt,"
+
+# NVIDIA API key (optional, defaults to NVIDIA_API_KEY env var)
+# nvidia_api_key: null
+
+# ==============================================================================
+# Document processing
+# ==============================================================================
+
+# Minimum text length (characters) for documents to include
+min_text_length: 50
+
+# Number of sentences per chunk for text splitting
+sentences_per_chunk: 5
+
+# Number of sections to divide chunks into
+num_sections: 1
+
+# Maximum number of files to process (null = process all)
+# num_files: null
+
+# ==============================================================================
+# Generation parameters
+# ==============================================================================
+
+# Maximum number of artifacts to extract per type
+max_artifacts_per_type: 2
+
+# Number of question-answer pairs to generate per document
+# Higher values produce more training/eval data per document
+num_pairs: 10
+
+# Minimum number of hops for multi-hop questions
+# Lower values are more reliable for LLM generation; increase for harder training data
+min_hops: 1
+
+# Maximum number of hops for multi-hop questions
+max_hops: 3
+
+# Minimum complexity level for questions (1-5)
+# Higher values produce harder questions but increase LLM failure rate
+min_complexity: 2
+
+# ==============================================================================
+# Batch processing
+# ==============================================================================
+
+# Number of records to process per batch
+batch_size: 200
+
+# Batch index to start from (for resuming failed runs)
+start_batch_index: 0
+
+# Batch index to end at (exclusive, -1 = all batches)
+end_batch_index: -1
+
+# ==============================================================================
+# Multi-document bundling
+# ==============================================================================
+
+# Enable multi-document bundling mode
+multi_doc: false
+
+# Number of documents per bundle in multi-doc mode
+bundle_size: 2
+
+# Segment splitting strategy: sequential, doc_balanced, or interleaved
+bundle_strategy: sequential
+
+# Maximum documents allowed per bundle
+max_docs_per_bundle: 3
+
+# Path to manifest file defining explicit bundles (JSON/YAML)
+# multi_doc_manifest: null
+
+# ==============================================================================
+# Model configuration
+# ==============================================================================
+
+# Artifact extraction
+artifact_extraction_model: nvidia/nemotron-3-nano-30b-a3b
+artifact_extraction_provider: nvidia
+
+# QA generation
+qa_generation_model: nvidia/nemotron-3-nano-30b-a3b
+qa_generation_provider: nvidia
+
+# Quality judge
+quality_judge_model: nvidia/nemotron-3-nano-30b-a3b
+quality_judge_provider: nvidia
+
+# Embedding
+embed_model: nvidia/llama-3.2-nv-embedqa-1b-v2
+embed_provider: nvidia
+
+# Maximum parallel requests for generation models (null = library default)
+# max_parallel_requests_for_gen: null
+
+# ==============================================================================
+# Runtime options
+# ==============================================================================
+
+# Path to store Data Designer intermediate artifacts
+artifact_path: ./output/embed/stage0_sdg/artifacts
+
+# Preview the generation without actually running
+preview: false
+
+# Logging level: DEBUG, INFO, WARNING, or ERROR
+log_level: INFO

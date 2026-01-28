@@ -1,0 +1,34 @@
+[project]
+name = "recipe-runner-sdg"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    # Vendored retriever-sdg (installed via path source below)
+    "retriever-sdg",
+    # Needed by Nemotron library (added via --with flag)
+    "omegaconf>=2.3.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[tool.uv.sources]
+# Point to vendored retriever-sdg package
+retriever-sdg = { path = "vendor/retriever-sdg" }
+
+[tool.uv.extra-build-dependencies]
+# Build dependencies for vendored packages
+retriever-sdg = ["hatchling"]
+
+# Note: exclude-dependencies are injected dynamically by run_uv.py for Docker/Slurm
+# This base config works for local mode where all packages need to be installed
+
+[tool.nemotron]
+entry-point = "data_prep.py"
+container-exclude-dependencies = [
+    "torch",
+    "torchvision",
+    "flash-attn",
+    "triton",
+    "pyarrow",
+    "scipy",
+    "opencv-python-headless",
+]

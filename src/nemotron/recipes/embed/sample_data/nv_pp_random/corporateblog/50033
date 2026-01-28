@@ -1,0 +1,25 @@
+Applying for a home mortgage can resemble a part-time job. But whether consumers are seeking out a home loan, car loan or credit card, there s an incredible amount of work going on behind the scenes in a bank s decision especially if it has to say no.
+To comply with an alphabet soup of financial regulations, banks and mortgage lenders have to keep pace with explaining the reasons for rejections to both applicants and regulators.
+Busy in this domain, Wells Fargo will present at NVIDIA GTC21 this week some of its latest development work behind this complex decision-making using AI models accelerated by GPUs.
+To inform their decisions, lenders have historically applied linear and non-linear regression models for financial forecasting and logistic and survivability models for default risk. These simple, decades-old methods are easy to explain to customers.
+But machine learning and deep learning models are reinventing risk forecasting and in the process requiring explainable AI, or XAI, to allow for customer and regulatory disclosures.
+Machine learning and deep learning techniques are more accurate but also more complex, which means banks need to spend extra effort to be able to explain decisions to customers and regulators.
+These more powerful models allow banks to do a better job understanding the riskiness of loans, and may allow them to say yes to applicants that would have been rejected by a simpler model.
+At the same time, these powerful models require more processing, so financial services firms like Wells Fargo are moving to GPU-accelerated models to improve processing, accuracy and explainability, and to provide faster results to consumers and regulators.
+What Is Explainable AI?
+Explainable AI is a set of tools and techniques that help understand the math inside an AI model.
+XAI maps out the data inputs with the data outputs of models in a way that people can understand.
+ReLU Neural Networks can be decomposed and represented exactly into linear sub-models, and you can see which factor is the most significant you can see it very clearly, just like traditional statistical models, said Agus Sudjianto, executive vice president and head of Corporate Model Risk at Wells Fargo, explaining his team s recent work on local linear model decomposition of Deep ReLU Networks, which leads to Linear Iterative Feature Embedding (LIFE) in a research paper.
+Wells Fargo XAI Development
+The LIFE algorithm was developed to handle high prediction accuracy, ease of interpretation and efficient computation.
+LIFE outperforms directly trained single-layer networks, according to Wells Fargo, as well as many other benchmark models in experiments.
+The research paper titled Linear Iterative Feature Embedding: An Ensemble Framework for Interpretable Model authors include Sudjianto, Jinwen Qiu, Miaoqi Li and Jie Chen.
+Default or No Default
+Using LIFE, the bank can generate codes that correlate to model interpretability, offering the right explanations to which variables weighed heaviest in the decision. For example, codes might be generated for high debt-to-income ratio or a FICO score that fell below a set minimum for a particular loan product.
+There can be anywhere from 40 to 80 different variables taken into consideration for explaining rejections.
+We assess whether the customer is able to repay the loan. And then if we decline the loan, we can give a reason from a recent code as to why it was declined, said Sudjianto.
+Future Work at Wells Fargo
+Wells Fargo is also working on Deep ReLU networks to further its efforts in model explainability. Two of the team s developers will be discussing research from their paper, Unwrapping The Black Box of Deep ReLU Networks: Interpretability, Diagnostics, and Simplification, at GTC.
+Learn more about the LIFE model work by attending the GTC talk by Jie Chen, managing director for Corporate Model Risk at Wells Fargo. Learn about model work on Deep ReLU Networks by attending the talk by Aijun Zhang, a quantitative analytics specialist at Wells Fargo, and Zebin Yang, a Ph.D. student at Hong Kong University.
+Registration for GTC is free.
+Image courtesy of jo o vincient lewis on Unsplash
