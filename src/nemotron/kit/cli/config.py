@@ -69,12 +69,20 @@ def find_config_file(config_name: str, config_dir: Path) -> Path:
 def load_config(config_path: Path) -> DictConfig:
     """Load a YAML config file.
 
+    Registers custom OmegaConf resolvers before loading to support:
+    - ${auto_mount:git+url@ref} for git repo mounts
+
     Args:
         config_path: Path to the YAML config file
 
     Returns:
         OmegaConf DictConfig with the loaded configuration
     """
+    from nemotron.kit.resolvers import register_auto_mount_resolver
+
+    # Register resolvers before loading config (safe to call multiple times)
+    register_auto_mount_resolver()
+
     return OmegaConf.load(config_path)
 
 
@@ -147,7 +155,14 @@ def build_job_config(
         env_config = load_env_profile(ctx.profile)
         profile_env = OmegaConf.to_container(env_config, resolve=True)
         # Config YAML is base, env.toml profile overlays it
-        run_updates["env"] = {**existing_env, **profile_env}
+        # Special handling for 'mounts': concatenate lists instead of overwriting
+        merged_env = {**existing_env, **profile_env}
+        if "mounts" in existing_env and "mounts" in profile_env:
+            # Combine mounts from both sources (YAML first, then profile)
+            merged_env["mounts"] = existing_env["mounts"] + profile_env["mounts"]
+        elif "mounts" in existing_env:
+            merged_env["mounts"] = existing_env["mounts"]
+        run_updates["env"] = merged_env
     elif existing_env:
         # No profile, but config has run.env - preserve it
         run_updates["env"] = existing_env

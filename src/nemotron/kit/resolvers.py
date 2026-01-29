@@ -772,3 +772,119 @@ def clear_artifact_cache() -> None:
     """
     _ARTIFACT_REGISTRY.clear()
     _ARTIFACT_CACHE.clear()
+
+
+# ============================================================================
+# Auto-mount resolver for git repositories
+# ============================================================================
+
+# Registry for git repos to clone during packaging
+# Format: {repo_name: {"url": str, "ref": str}}
+_GIT_MOUNT_REGISTRY: dict[str, dict[str, str]] = {}
+
+
+def _parse_git_mount_spec(spec: str) -> tuple[str, str, str]:
+    """Parse a git mount spec like 'git+https://github.com/org/repo.git@branch'.
+
+    Args:
+        spec: Git mount specification in format git+<url>@<ref>
+
+    Returns:
+        Tuple of (repo_url, ref, repo_name)
+
+    Raises:
+        ValueError: If spec is not in expected format
+    """
+    if not spec.startswith("git+"):
+        raise ValueError(f"Invalid git mount spec: must start with 'git+', got: {spec}")
+
+    # Remove 'git+' prefix
+    url_and_ref = spec[4:]
+
+    # Split on @ to get URL and ref
+    if "@" not in url_and_ref:
+        raise ValueError(f"Invalid git mount spec: missing @ref, got: {spec}")
+
+    # Handle URLs that may contain @ (like user@host), find the last @
+    last_at = url_and_ref.rfind("@")
+    url = url_and_ref[:last_at]
+    ref = url_and_ref[last_at + 1:]
+
+    if not url or not ref:
+        raise ValueError(f"Invalid git mount spec: empty URL or ref, got: {spec}")
+
+    # Extract repo name from URL (e.g., Megatron-Bridge from ...Megatron-Bridge.git)
+    repo_name = url.rstrip("/").split("/")[-1]
+    if repo_name.endswith(".git"):
+        repo_name = repo_name[:-4]
+
+    return url, ref, repo_name
+
+
+def _auto_mount_resolver(spec: str, target: str = "") -> str:
+    """OmegaConf resolver for ${auto_mount:git+url@ref,target} syntax.
+
+    This resolver:
+    1. Parses the git spec to extract URL, ref, and repo name
+    2. Registers the repo in _GIT_MOUNT_REGISTRY with optional target path
+    3. Returns a placeholder that gets filtered out from container_mounts
+
+    The actual cloning happens in _build_packager, and a startup command is
+    generated to symlink the staged repo to the target path at runtime.
+
+    NOTE: Container mounts cannot be used for this because they are set up
+    by Slurm/pyxis BEFORE the packager tarball is extracted. Instead, we use
+    a startup command to create a symlink after the container starts.
+
+    Args:
+        spec: Git mount specification (e.g., git+https://github.com/NVIDIA/Megatron-Bridge.git@branch)
+        target: Optional target path in container (e.g., /opt/Megatron-Bridge)
+
+    Returns:
+        A special marker string that indicates this is an auto_mount entry.
+        The marker is filtered out from container_mounts in _build_executor.
+
+    Example YAML:
+        mounts:
+          - ${auto_mount:git+https://github.com/NVIDIA/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
+
+        This registers the repo for cloning and generates a startup command to symlink it.
+    """
+    url, ref, repo_name = _parse_git_mount_spec(spec)
+
+    # Register for cloning during packaging, with optional target path
+    _GIT_MOUNT_REGISTRY[repo_name] = {"url": url, "ref": ref, "target": target}
+
+    # Return a marker that will be filtered out of container_mounts
+    # Format: __auto_mount__:<repo_name>
+    return f"__auto_mount__:{repo_name}"
+
+
+def get_git_mounts() -> dict[str, dict[str, str]]:
+    """Get registered git mounts for cloning during packaging.
+
+    Returns:
+        Dict mapping repo_name to {"url": str, "ref": str}
+    """
+    return dict(_GIT_MOUNT_REGISTRY)
+
+
+def clear_git_mounts() -> None:
+    """Clear the git mount registry."""
+    _GIT_MOUNT_REGISTRY.clear()
+
+
+def register_auto_mount_resolver(*, replace: bool = True) -> None:
+    """Register the auto_mount OmegaConf resolver.
+
+    This should be called before loading any configs that use ${auto_mount:...}
+    interpolations. It's safe to call multiple times.
+
+    Args:
+        replace: Whether to replace existing resolver (default True)
+    """
+    OmegaConf.register_new_resolver(
+        "auto_mount",
+        _auto_mount_resolver,
+        replace=replace,
+    )

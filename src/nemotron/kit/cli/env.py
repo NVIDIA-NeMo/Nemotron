@@ -165,3 +165,57 @@ def get_cli_config(config_path: Path | None = None) -> DictConfig | None:
         return OmegaConf.create(all_profiles["cli"])
 
     return None
+
+
+def get_cache_config(config_path: Path | None = None) -> DictConfig | None:
+    """Get cache configuration from env.toml if present.
+
+    The [cache] section can contain:
+    - git_dir: Directory for caching git repos (default: ~/.nemotron/git-cache)
+
+    Example env.toml:
+        [cache]
+        git_dir = "/path/to/git-cache"
+
+    Args:
+        config_path: Optional path to env.toml
+
+    Returns:
+        Cache config as DictConfig, or None if not present
+    """
+    all_profiles = load_env_file(config_path)
+
+    if "cache" in all_profiles:
+        return OmegaConf.create(all_profiles["cache"])
+
+    return None
+
+
+def get_git_cache_dir(config_path: Path | None = None) -> Path:
+    """Get the git cache directory from env.toml or use default.
+
+    Looks for [cache] git_dir in env.toml. Falls back to ~/.nemotron/git-cache
+    if the configured path is not accessible (e.g., remote cluster path on local machine).
+
+    Args:
+        config_path: Optional path to env.toml
+
+    Returns:
+        Path to git cache directory (created if it doesn't exist)
+    """
+    cache_config = get_cache_config(config_path)
+    default_cache_dir = Path.home() / ".nemotron" / "git-cache"
+
+    if cache_config and cache_config.get("git_dir"):
+        cache_dir = Path(cache_config.git_dir).expanduser()
+        # Try to create/access the configured directory
+        try:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            return cache_dir
+        except OSError:
+            # Fall back to default if the configured path is not accessible
+            # (e.g., remote cluster path like /lustre/... on local machine)
+            pass
+
+    default_cache_dir.mkdir(parents=True, exist_ok=True)
+    return default_cache_dir

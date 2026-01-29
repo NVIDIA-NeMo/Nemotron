@@ -100,6 +100,103 @@ def _run_startup_commands_local(startup_commands: list[str]) -> None:
             raise typer.Exit(result.returncode)
 
 
+def _clone_git_repos_via_tunnel(tunnel: Any, remote_job_dir: str) -> list[str]:
+    """Clone git repos on the remote side via SSH tunnel.
+
+    This runs during executor setup, before job submission. The cloned repos
+    are then mounted into the container.
+
+    Args:
+        tunnel: Connected SSH tunnel
+        remote_job_dir: Remote directory for git cache
+
+    Returns:
+        List of container mount strings (e.g., "/path/to/repo:/opt/Target")
+    """
+    from nemotron.kit.resolvers import get_git_mounts
+
+    git_mounts = get_git_mounts()
+    if not git_mounts:
+        return []
+
+    cache_dir = f"{remote_job_dir}/git-cache"
+    mounts = []
+
+    # Ensure cache directory exists
+    tunnel.run(f"mkdir -p {cache_dir}", hide=True)
+
+    for repo_name, repo_info in git_mounts.items():
+        url = repo_info["url"]
+        ref = repo_info["ref"]
+        target = repo_info.get("target", "")
+
+        repo_cache = f"{cache_dir}/{repo_name}"
+
+        # Clone or update the repo
+        typer.echo(f"[auto_mount] Syncing {repo_name}@{ref}...")
+
+        # Check if repo already exists
+        result = tunnel.run(f"test -d {repo_cache}/.git && echo exists", hide=True, warn=True)
+
+        # Check if ref is a full commit SHA (40 hex chars) - these are immutable
+        is_commit_sha = len(ref) == 40 and all(c in "0123456789abcdef" for c in ref.lower())
+
+        if result.ok and "exists" in result.stdout:
+            # Repo exists in cache
+            if is_commit_sha:
+                # For exact commits, check if we already have it
+                have_commit = tunnel.run(
+                    f"git -C {repo_cache} cat-file -t {ref} 2>/dev/null", hide=True, warn=True
+                )
+                if have_commit.ok:
+                    typer.echo(f"[auto_mount] Using cached {repo_name}@{ref[:8]}...")
+                else:
+                    # Need to fetch to get this commit
+                    typer.echo(f"[auto_mount] Fetching {repo_name} to get commit {ref[:8]}...")
+                    tunnel.run(f"git -C {repo_cache} fetch origin", hide=True, warn=True)
+            else:
+                # For branches/tags, always fetch to get latest
+                typer.echo(f"[auto_mount] Updating {repo_name}@{ref}...")
+                fetch_result = tunnel.run(f"git -C {repo_cache} fetch origin", hide=True, warn=True)
+                if not fetch_result.ok:
+                    typer.echo(f"[auto_mount] Warning: fetch failed, will re-clone")
+                    tunnel.run(f"rm -rf {repo_cache}", hide=True)
+                    # Fall through to clone
+
+        # Check again if we need to clone (either didn't exist or was removed)
+        result = tunnel.run(f"test -d {repo_cache}/.git && echo exists", hide=True, warn=True)
+        if not (result.ok and "exists" in result.stdout):
+            # Fresh clone
+            typer.echo(f"[auto_mount] Cloning {repo_name}...")
+            clone_result = tunnel.run(f"git clone {url} {repo_cache}", hide=False, warn=True)
+            if not clone_result.ok:
+                typer.echo(f"Error: git clone failed for {repo_name}", err=True)
+                raise typer.Exit(1)
+
+        # Checkout the specific ref
+        # For branches, use origin/{ref} to get latest remote version
+        # For tags/commits, fall back to just {ref}
+        checkout_result = tunnel.run(
+            f"git -C {repo_cache} checkout origin/{ref} 2>/dev/null || git -C {repo_cache} checkout {ref}",
+            hide=True,
+            warn=True,
+        )
+        if not checkout_result.ok:
+            typer.echo(f"Error: git checkout {ref} failed for {repo_name}", err=True)
+            raise typer.Exit(1)
+
+        # Reset to ensure clean state (discard any local changes)
+        tunnel.run(f"git -C {repo_cache} reset --hard HEAD", hide=True, warn=True)
+
+        typer.echo(f"[auto_mount] {repo_name} ready at {repo_cache}")
+
+        # Add container mount if target specified
+        if target:
+            mounts.append(f"{repo_cache}:{target}")
+
+    return mounts
+
+
 @dataclass
 class RecipeMetadata:
     """Metadata attached to a recipe command function.
@@ -298,6 +395,7 @@ def recipe(
             display_job_submission(job_path, train_path, env_vars, global_ctx.mode)
 
             # Get startup commands from env config
+            # Note: auto_mount git repos are cloned via SSH tunnel and mounted as container mounts
             startup_commands = _get_startup_commands(env_config)
 
             # Execute based on mode
@@ -719,11 +817,13 @@ def _build_executor(
             )
 
         # Build packager with flat file layout (main.py, config.yaml)
+        # Pass env_config for optional Megatron-Bridge bundling
         packager = _build_packager(
             script_path,
             train_path,
             job_dir,
             packager=packager,
+            env_config=env_config,
         )
 
         # Container image can be specified as "container" or "container_image"
@@ -737,14 +837,26 @@ def _build_executor(
                 tunnel, container_image, remote_job_dir, env_config, force=force_squash
             )
 
+        # Clone git repos via tunnel and get container mounts
+        git_mounts = []
+        if tunnel and remote_job_dir:
+            # tunnel.connect() is idempotent - safe to call if already connected
+            tunnel.connect()
+            git_mounts = _clone_git_repos_via_tunnel(tunnel, remote_job_dir)
+
         # Select partition based on mode (--run uses run_partition, --batch uses batch_partition)
         if attached:
             partition = env_config.get("run_partition") or env_config.get("partition")
         else:
             partition = env_config.get("batch_partition") or env_config.get("partition")
 
-        # Build container mounts, adding /lustre and Ray temp directory
-        mounts = list(env_config.get("mounts") or [])
+        # Build container mounts, filtering out __auto_mount__ markers
+        raw_mounts = list(env_config.get("mounts") or [])
+        mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
+
+        # Add git repo mounts
+        mounts.extend(git_mounts)
+
         # Mount /lustre for access to shared storage (HF cache, data, etc.)
         mounts.append("/lustre:/lustre")
         remote_job_dir = env_config.get("remote_job_dir")
@@ -863,6 +975,7 @@ def _build_packager(
     job_dir: Path,
     *,
     packager: str = "pattern",
+    env_config: dict | None = None,
 ) -> Any:
     """Build a packager for file syncing.
 
@@ -870,6 +983,9 @@ def _build_packager(
     - "pattern": Minimal sync of `main.py` + `config.yaml` only (default)
     - "code": Full codebase sync with exclusions (for Ray jobs needing local imports)
     - "self_contained": Inlines `nemotron.*` imports into a single script
+
+    Note: Git repos registered via ${auto_mount:...} are cloned via SSH tunnel
+    and mounted as container mounts, not bundled in the package.
     """
     import shutil
 
@@ -901,11 +1017,12 @@ def _build_packager(
     shutil.copy2(script_path, code_dir / "main.py")
     shutil.copy2(train_path, code_dir / "config.yaml")
 
-    main_path = str(code_dir / "main.py")
-    config_path = str(code_dir / "config.yaml")
+    include_patterns = [str(code_dir / "main.py"), str(code_dir / "config.yaml")]
+    relative_paths = [str(code_dir), str(code_dir)]
+
     return PatternPackager(
-        include_pattern=[main_path, config_path],
-        relative_path=[str(code_dir), str(code_dir)],
+        include_pattern=include_patterns,
+        relative_path=relative_paths,
     )
 
 

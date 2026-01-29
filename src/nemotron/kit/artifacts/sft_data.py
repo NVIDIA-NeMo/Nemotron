@@ -168,8 +168,11 @@ class SFTDataArtifact(Artifact):
             for d in blend.datasets
         ]
 
+        # Point artifact path to splits directory for cleaner consumer config
+        # (consumers can use ${art:data,path}/train/ directly)
+        splits_dir = format_result.output_dir / "splits"
         artifact = cls(
-            path=format_result.output_dir.resolve(),
+            path=splits_dir.resolve(),
             total_tokens=format_result.total_tokens,
             total_sequences=format_result.total_sequences,
             elapsed_sec=elapsed_sec,

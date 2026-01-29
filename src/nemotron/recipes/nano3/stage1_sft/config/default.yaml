@@ -3,8 +3,11 @@ run:
   model: pretrain:latest
   env:
     container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
-    startup_commands:
-      - (cd opt/Megatron-Bridge && git fetch & git checkout romeyn/parquet-sequence-pack)
+    # Mount custom Megatron-LM and Megatron-Bridge versions
+    # Syntax: ${auto_mount:git+URL@ref,target_path}
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bbbedbb9f53343762e4dc70abc771b813a83d817,/opt/megatron-lm}
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config

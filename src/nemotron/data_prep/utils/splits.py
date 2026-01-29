@@ -26,6 +26,8 @@ import os
 import random
 from pathlib import Path
 
+from nemotron.data_prep.utils.filesystem import get_filesystem
+
 logger = logging.getLogger(__name__)
 
 
@@ -139,9 +141,15 @@ def realize_packed_shards_into_split_dirs(
     Returns:
         Dict mapping split name to canonical split directory Path.
         {"train": output_dir/splits/train, "valid": ..., "test": ...}
+
+    Raises:
+        FileNotFoundError: If train split has no valid shard files.
     """
     splits_base = output_dir / "splits"
     result: dict[str, Path] = {}
+
+    # Use filesystem abstraction for checking file existence on remote filesystems
+    fs, _ = get_filesystem(str(output_dir))
 
     for split_name, path_list in split_to_paths.items():
         split_dir = splits_base / split_name
@@ -152,13 +160,19 @@ def realize_packed_shards_into_split_dirs(
         # Extract just the paths (odd indices)
         shard_paths = [path_list[i] for i in range(1, len(path_list), 2)]
 
+        created_count = 0
+        missing_paths = []
+
         for shard_path in shard_paths:
             # Shard path is a prefix like /path/to/shard_000000
             # Actual file is shard_000000.parquet
-            parquet_path = Path(f"{shard_path}.parquet")
+            parquet_path_str = f"{shard_path}.parquet"
+            parquet_path = Path(parquet_path_str)
 
-            if not parquet_path.exists():
-                logger.warning(f"Shard file not found: {parquet_path}")
+            # Use filesystem abstraction for existence check (works on Lustre, S3, etc.)
+            if not fs.exists(parquet_path_str):
+                missing_paths.append(parquet_path_str)
+                logger.warning(f"Shard file not found: {parquet_path_str}")
                 continue
 
             # Create symlink in split dir
@@ -172,10 +186,19 @@ def realize_packed_shards_into_split_dirs(
                 # Use relative symlink if possible for portability
                 rel_target = os.path.relpath(parquet_path, split_dir)
                 link_path.symlink_to(rel_target)
+                created_count += 1
             except OSError:
                 # Fall back to absolute symlink if relative fails
                 link_path.symlink_to(parquet_path.resolve())
+                created_count += 1
 
-        logger.info(f"Created split dir with {len(shard_paths)} shards: {split_dir}")
+        logger.info(f"Created split dir '{split_name}' with {created_count}/{len(shard_paths)} shards: {split_dir}")
+
+        # Fail loudly if train split has no files - this is a critical error
+        if split_name == "train" and created_count == 0 and len(shard_paths) > 0:
+            raise FileNotFoundError(
+                f"No parquet files found for train split. Expected {len(shard_paths)} shards. "
+                f"Missing files: {missing_paths[:5]}{'...' if len(missing_paths) > 5 else ''}"
+            )
 
     return result

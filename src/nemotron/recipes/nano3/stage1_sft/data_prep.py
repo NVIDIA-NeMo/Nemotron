@@ -345,6 +345,19 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
             if test_shards + valid_shards > max_non_train:
                 test_shards = max(0, max_non_train - valid_shards)
 
+    # Validate data_paths before split distribution
+    if not format_result.data_paths:
+        raise ValueError(
+            f"Pipeline produced no data_paths. This usually means no shards were completed. "
+            f"Check logs for pipeline errors. run_dir={format_result.run_dir}"
+        )
+
+    logger.info(
+        f"Distributing {format_result.num_shards} shards across splits "
+        f"(train: {format_result.num_shards - valid_shards - test_shards}, "
+        f"valid: {valid_shards}, test: {test_shards})"
+    )
+
     # Generate per-split blend.json
     blend_data = distribute_shards_to_splits(
         data_paths=format_result.data_paths,
@@ -352,6 +365,20 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
         valid_shards=valid_shards,
         test_shards=test_shards,
         seed=packing_seed,
+    )
+
+    # Validate train split has shards
+    train_shard_count = len(blend_data.get("train", [])) // 2  # path_list is [weight, path, ...]
+    if train_shard_count == 0:
+        raise ValueError(
+            f"Train split has no shards after distribution. "
+            f"data_paths={format_result.data_paths}, num_shards={format_result.num_shards}"
+        )
+
+    logger.info(
+        f"Split distribution: train={train_shard_count}, "
+        f"valid={len(blend_data.get('valid', [])) // 2}, "
+        f"test={len(blend_data.get('test', [])) // 2}"
     )
 
     # Ensure output directory exists
