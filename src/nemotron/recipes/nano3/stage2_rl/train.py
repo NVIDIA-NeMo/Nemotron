@@ -62,6 +62,64 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
     return args, overrides
 
 
+def convert_megatron_to_hf(
+    megatron_checkpoint_path: str,
+    hf_model_id: str,
+    output_dir: str | None = None,
+) -> str:
+    """Convert a Megatron checkpoint to HuggingFace format using Megatron-Bridge.
+
+    This allows using a Megatron SFT checkpoint directly with vLLM (which requires HF format).
+    The converted checkpoint can be used as both the vLLM model and the training base model.
+
+    Args:
+        megatron_checkpoint_path: Path to the Megatron checkpoint (e.g., from SFT).
+        hf_model_id: HuggingFace model ID to use as the architecture reference.
+        output_dir: Optional output directory for the converted checkpoint.
+                   If None, creates a directory next to the Megatron checkpoint.
+
+    Returns:
+        Path to the converted HuggingFace checkpoint.
+    """
+    from pathlib import Path
+
+    megatron_path = Path(megatron_checkpoint_path)
+
+    # Find the actual checkpoint directory (handle iter_XXXXXX subdirs)
+    if megatron_path.is_dir():
+        iter_dirs = [d for d in megatron_path.iterdir() if d.is_dir() and d.name.startswith("iter_")]
+        if iter_dirs:
+            iter_dirs.sort(key=lambda x: int(x.name.split("_")[1]))
+            megatron_path = iter_dirs[-1]
+            print(f"Using checkpoint iteration: {megatron_path.name}")
+
+    # Determine output directory
+    if output_dir is None:
+        output_dir = megatron_path.parent / f"{megatron_path.name}_hf"
+    output_path = Path(output_dir)
+
+    # Check if already converted
+    if (output_path / "config.json").exists():
+        print(f"HF checkpoint already exists at {output_path}, skipping conversion")
+        return str(output_path)
+
+    print(f"Converting Megatron checkpoint to HuggingFace format...")
+    print(f"  Source: {megatron_path}")
+    print(f"  HF model ID: {hf_model_id}")
+    print(f"  Output: {output_path}")
+
+    from megatron.bridge import AutoBridge
+
+    bridge = AutoBridge.from_hf_pretrained(hf_model_id, trust_remote_code=True)
+    bridge.export_ckpt(
+        megatron_path=str(megatron_path),
+        hf_path=str(output_path),
+    )
+
+    print(f"Conversion complete: {output_path}")
+    return str(output_path)
+
+
 def setup_initial_checkpoint(initial_checkpoint_path: str, checkpoint_dir: str) -> None:
     """Set up a checkpoint structure from an initial Megatron checkpoint for finetuning.
 
@@ -95,26 +153,44 @@ def setup_initial_checkpoint(initial_checkpoint_path: str, checkpoint_dir: str) 
 
     # The initial checkpoint should contain Megatron distributed checkpoint files
     # Symlink or copy the contents to the weights directory
-    if initial_path.is_dir():
-        # Find the iteration directory (e.g., iter_XXXXXX)
-        iter_dirs = [d for d in initial_path.iterdir() if d.is_dir() and d.name.startswith("iter_")]
-        if iter_dirs:
-            # Use the latest iteration
-            iter_dirs.sort(key=lambda x: int(x.name.split("_")[1]))
-            source_dir = iter_dirs[-1]
-            print(f"Using checkpoint iteration: {source_dir.name}")
+    if not initial_path.exists():
+        # Path doesn't exist - provide helpful debugging info
+        print(f"ERROR: Initial checkpoint path does not exist: {initial_path}")
+        print(f"  Checking parent directory...")
+        parent = initial_path.parent
+        if parent.exists():
+            print(f"  Parent exists: {parent}")
+            print(f"  Contents: {list(parent.iterdir())[:10]}")  # Show first 10 items
         else:
-            # Assume the directory itself contains the checkpoint files
-            source_dir = initial_path
+            print(f"  Parent also does not exist: {parent}")
+        raise ValueError(
+            f"Initial checkpoint path does not exist: {initial_path}. "
+            f"Ensure the checkpoint is accessible from the compute node."
+        )
 
-        # Symlink the checkpoint contents
-        for item in source_dir.iterdir():
-            target = weights_dir / item.name
-            if not target.exists():
-                target.symlink_to(item)
-                print(f"Linked {item.name} -> {target}")
+    if not initial_path.is_dir():
+        raise ValueError(
+            f"Initial checkpoint path is not a directory: {initial_path} "
+            f"(is_file={initial_path.is_file()}, is_symlink={initial_path.is_symlink()})"
+        )
+
+    # Find the iteration directory (e.g., iter_XXXXXX)
+    iter_dirs = [d for d in initial_path.iterdir() if d.is_dir() and d.name.startswith("iter_")]
+    if iter_dirs:
+        # Use the latest iteration
+        iter_dirs.sort(key=lambda x: int(x.name.split("_")[1]))
+        source_dir = iter_dirs[-1]
+        print(f"Using checkpoint iteration: {source_dir.name}")
     else:
-        raise ValueError(f"Initial checkpoint path is not a directory: {initial_path}")
+        # Assume the directory itself contains the checkpoint files
+        source_dir = initial_path
+
+    # Symlink the checkpoint contents
+    for item in source_dir.iterdir():
+        target = weights_dir / item.name
+        if not target.exists():
+            target.symlink_to(item)
+            print(f"Linked {item.name} -> {target}")
 
     # Create a minimal training_info.json so checkpointer recognizes this as valid
     training_info = {
@@ -248,10 +324,26 @@ def main() -> None:
     config: MasterConfig = OmegaConf.to_container(config, resolve=True)
     print("Applied CLI overrides")
 
-    # Set up initial checkpoint for finetuning if specified
+    # Handle initial checkpoint for finetuning if specified
     initial_checkpoint = config.get("initial_checkpoint")
-    if initial_checkpoint and config["checkpointing"]["enabled"]:
-        setup_initial_checkpoint(initial_checkpoint, config["checkpointing"]["checkpoint_dir"])
+    if initial_checkpoint:
+        # Option 1: Convert Megatron checkpoint to HF format
+        # This allows vLLM to use the finetuned weights directly
+        if config.get("convert_initial_checkpoint_to_hf", False):
+            hf_checkpoint_path = convert_megatron_to_hf(
+                megatron_checkpoint_path=initial_checkpoint,
+                hf_model_id=config["policy"]["model_name"],
+                output_dir=config.get("converted_checkpoint_dir"),
+            )
+            # Update model_name to use the converted checkpoint
+            config["policy"]["model_name"] = hf_checkpoint_path
+            config["policy"]["tokenizer"]["name"] = hf_checkpoint_path
+            print(f"Updated model_name to converted checkpoint: {hf_checkpoint_path}")
+
+        # Option 2: Set up fake step_0 checkpoint for nemo-rl to resume from
+        # This keeps vLLM using the base HF model, but Megatron training loads finetuned weights
+        elif config["checkpointing"]["enabled"]:
+            setup_initial_checkpoint(initial_checkpoint, config["checkpointing"]["checkpoint_dir"])
 
     # Get the next experiment directory with incremented ID
     config["logger"]["log_dir"] = get_next_experiment_dir(config["logger"]["log_dir"])
