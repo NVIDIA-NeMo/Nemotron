@@ -47,14 +47,28 @@ mounts = ["/lustre:/lustre"]
 // Stage 0: Pretraining
 $ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 $ uv run nemotron nano3 pretrain --run YOUR-CLUSTER
+$ uv run nemotron pipe nano3 data prep pretrain --run YOUR-CLUSTER, \
+  nano3 pretrain --run YOUR-CLUSTER
 
 // Stage 1: Supervised Fine-Tuning
 $ uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
 $ uv run nemotron nano3 sft --run YOUR-CLUSTER
+$ uv run nemotron pipe nano3 data prep sft --run YOUR-CLUSTER, \
+  nano3 sft --run YOUR-CLUSTER
 
 // Stage 2: Reinforcement Learning
 $ uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
 $ uv run nemotron nano3 rl --run YOUR-CLUSTER
+$ uv run nemotron pipe nano3 data prep rl --run YOUR-CLUSTER, \
+  nano3 rl --run YOUR-CLUSTER
+
+// Run E2E
+$ uv run nemotron pipe nano3 data prep pretrain --run YOUR-CLUSTER, \
+  nano3 pretrain --run YOUR-CLUSTER, \
+  nano3 data prep sft --run YOUR-CLUSTER, \
+  nano3 sft --run YOUR-CLUSTER, \
+  nano3 data prep rl --run YOUR-CLUSTER, \
+  nano3 rl --run YOUR-CLUSTER
 ```
 
 </div>
