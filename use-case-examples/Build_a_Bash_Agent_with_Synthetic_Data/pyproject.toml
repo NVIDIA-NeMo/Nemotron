@@ -1,0 +1,54 @@
+[project]
+name = "build-a-computer-use-agent-with-synthetic-data"
+version = "0.2.0"
+description = "Train CLI agents using NeMo Gym + Unsloth GRPO with synthetic data"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    # Data generation
+    "data-designer==0.3.7",
+    "jupyter>=1.1.1",
+    "scikit-learn>=1.8.0",
+    # NeMo Gym resource server
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.24.0",
+    # PyTorch + CUDA (assumes GPU)
+    "torch==2.7.1",
+    "torchvision",
+    "triton>=3.3.0",
+    # Unsloth + GRPO training
+    "transformers==4.56.2",
+    "tokenizers",
+    "trl==0.22.2",
+    "datasets>=2.18.0",
+    "peft>=0.10.0",
+    "accelerate>=0.28.0",
+    "bitsandbytes>=0.43.0",
+    "unsloth @ git+https://github.com/unslothai/unsloth.git",
+    "unsloth_zoo @ git+https://github.com/unslothai/unsloth-zoo.git",
+    "vllm>=0.10.0,<0.11.0",  # v0.10.x is compatible with torch 2.7.1
+    # Note: Mamba kernels (mamba_ssm, causal_conv1d) must be installed separately
+    # with --no-build-isolation flag. See README for instructions.
+    # Testing
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "flash-attn<=2.7.3",
+]
+
+[tool.uv]
+override-dependencies = ["huggingface-hub>=0.34,<1.0"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["nemo_gym_resources/langgraph_cli/tests"]
+asyncio_mode = "auto"
