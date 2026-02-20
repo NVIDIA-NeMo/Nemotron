@@ -14,6 +14,6 @@
 
 """Model command group for nano3."""
 
-from nemotron.cli.nano3.model.app import model_app
+from nemotron.cli.commands.nano3.model._typer_group import model_app
 
 __all__ = ["model_app"]

@@ -25,6 +25,8 @@ from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
+from nemotron.kit.cli.globals import GlobalContext
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -72,6 +74,29 @@ def load_env_file(config_path: Path | None = None) -> dict[str, Any]:
 
     with open(config_path, "rb") as f:
         return tomllib.load(f)
+
+
+def parse_env(ctx: GlobalContext, *, config_path: Path | None = None) -> DictConfig | None:
+    """Parse environment profile from env.toml based on CLI context.
+
+    This is the main entry point for loading env configs. It:
+    1. Checks if --run or --batch was specified (ctx.profile)
+    2. Loads and resolves the profile from env.toml
+    3. Returns OmegaConf DictConfig for attribute access
+
+    Args:
+        ctx: Global CLI context with profile name from --run/--batch
+        config_path: Optional explicit path to env.toml
+
+    Returns:
+        OmegaConf DictConfig with resolved profile, or None if no profile specified
+    """
+    if not ctx.profile:
+        return None
+
+    profile = load_env_profile(ctx.profile, config_path=config_path)
+    # Return resolved config for clean attribute access
+    return OmegaConf.create(OmegaConf.to_container(profile, resolve=True))
 
 
 def load_env_profile(name: str, config_path: Path | None = None) -> DictConfig:

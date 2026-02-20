@@ -28,10 +28,37 @@ from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-from nemotron.kit.cli.env import get_wandb_config, load_env_profile
+from nemotron.kit.cli.env import get_wandb_config
 from nemotron.kit.cli.globals import GlobalContext
 from nemotron.kit.cli.utils import rewrite_paths_for_remote, resolve_run_interpolations
 from nemotron.kit.resolvers import _is_artifact_reference
+
+
+def parse_config(ctx: GlobalContext, config_dir: Path, default_config: str) -> DictConfig:
+    """Parse recipe configuration from YAML file with CLI overrides.
+
+    This is the main entry point for loading recipe configs. It:
+    1. Finds the config file (from --config or default)
+    2. Loads the YAML
+    3. Applies dotlist overrides from CLI
+
+    Args:
+        ctx: Global CLI context with config name and dotlist overrides
+        config_dir: Directory containing recipe configs
+        default_config: Default config name if --config not specified
+
+    Returns:
+        OmegaConf DictConfig with the merged configuration
+    """
+    # Find config file
+    config_name = ctx.config if ctx.config else default_config
+    config_path = find_config_file(config_name, config_dir)
+
+    # Load and apply overrides
+    config = load_config(config_path)
+    config = apply_dotlist_overrides(config, ctx.dotlist)
+
+    return config
 
 
 def find_config_file(config_name: str, config_dir: Path) -> Path:
@@ -109,6 +136,8 @@ def build_job_config(
     recipe_name: str,
     script_path: str,
     argv: list[str],
+    *,
+    env_profile: DictConfig | None = None,
 ) -> DictConfig:
     """Build the full job config with provenance information.
 
@@ -121,6 +150,7 @@ def build_job_config(
         recipe_name: Name of the recipe (e.g., "nano3/pretrain")
         script_path: Path to the training script
         argv: Original command line arguments
+        env_profile: Environment profile from parse_env() (or None for local)
 
     Returns:
         Full job config with run section for execution/provenance
@@ -150,10 +180,9 @@ def build_job_config(
     if "run" in job_config and "env" in job_config.run:
         existing_env = OmegaConf.to_container(job_config.run.env, resolve=False)
 
-    # Merge env profile if we have one (overlays config YAML's run.env)
-    if ctx.profile:
-        env_config = load_env_profile(ctx.profile)
-        profile_env = OmegaConf.to_container(env_config, resolve=True)
+    # Merge env profile if provided (overlays config YAML's run.env)
+    if env_profile is not None:
+        profile_env = OmegaConf.to_container(env_profile, resolve=True)
         # Config YAML is base, env.toml profile overlays it
         # Special handling for 'mounts': concatenate lists instead of overwriting
         merged_env = {**existing_env, **profile_env}
@@ -298,131 +327,3 @@ def save_configs(
     return job_path, train_path
 
 
-class ConfigBuilder:
-    """Helper class to build and manage job configuration.
-
-    Encapsulates the full config pipeline from loading to saving.
-    """
-
-    def __init__(
-        self,
-        recipe_name: str,
-        script_path: str,
-        config_dir: Path,
-        default_config: str,
-        ctx: GlobalContext,
-        argv: list[str],
-    ):
-        """Initialize the config builder.
-
-        Args:
-            recipe_name: Name of the recipe (e.g., "nano3/pretrain")
-            script_path: Path to the training script
-            config_dir: Directory containing recipe configs
-            ctx: Global CLI context
-            argv: Original command line arguments
-        """
-        self.recipe_name = recipe_name
-        self.script_path = script_path
-        self.config_dir = Path(config_dir)
-        self.default_config = default_config
-        self.ctx = ctx
-        self.argv = argv
-
-        self._train_config: DictConfig | None = None
-        self._job_config: DictConfig | None = None
-        self._job_dir: Path | None = None
-
-    def load_and_merge(self) -> DictConfig:
-        """Load config and apply all merges.
-
-        Returns:
-            The merged train_config
-        """
-        # Load config (from --config or default)
-        if self.ctx.config:
-            config_path = find_config_file(self.ctx.config, self.config_dir)
-        else:
-            config_path = find_config_file(self.default_config, self.config_dir)
-
-        self._train_config = load_config(config_path)
-
-        # Apply dotlist overrides
-        self._train_config = apply_dotlist_overrides(self._train_config, self.ctx.dotlist)
-
-        return self._train_config
-
-    def build_job_config(self) -> DictConfig:
-        """Build the full job config with provenance.
-
-        Must call load_and_merge() first.
-
-        Returns:
-            Full job configuration
-        """
-        if self._train_config is None:
-            self.load_and_merge()
-
-        self._job_config = build_job_config(
-            train_config=self._train_config,
-            ctx=self.ctx,
-            recipe_name=self.recipe_name,
-            script_path=self.script_path,
-            argv=self.argv,
-        )
-
-        return self._job_config
-
-    def save(
-        self, *, rewrite_paths: bool | None = None, packager: str = "pattern"
-    ) -> tuple[Path, Path]:
-        """Save configs to disk.
-
-        Must call build_job_config() first.
-
-        Args:
-            rewrite_paths: If True, rewrite paths for /nemo_run/code. If False, keep
-                original paths/interpolations. If None (default), auto-detect based
-                on execution mode AND packager type.
-            packager: Packager type. When "code", paths are NOT rewritten since
-                the code is rsynced and runs from the rsynced location where
-                ${oc.env:PWD} resolves correctly at runtime.
-
-        Returns:
-            Tuple of (job_yaml_path, train_yaml_path)
-        """
-        if self._job_config is None:
-            self.build_job_config()
-
-        self._job_dir = generate_job_dir(self.recipe_name)
-
-        # Determine whether to rewrite paths for remote execution
-        if rewrite_paths is None:
-            # Default: rewrite for --run/--batch mode, but NOT for "code" packager
-            # Code packager rsyncs the repo and runs from there, so paths resolve at runtime
-            for_remote = self.ctx.mode in ("run", "batch") and packager != "code"
-        else:
-            for_remote = rewrite_paths
-
-        train_config = extract_train_config(self._job_config, for_remote=for_remote)
-
-        return save_configs(self._job_config, train_config, self._job_dir)
-
-    @property
-    def job_config(self) -> DictConfig:
-        """Get the job config (builds if needed)."""
-        if self._job_config is None:
-            self.build_job_config()
-        return self._job_config
-
-    @property
-    def train_config(self) -> DictConfig:
-        """Get the train config."""
-        if self._train_config is None:
-            self.load_and_merge()
-        return self._train_config
-
-    @property
-    def job_dir(self) -> Path | None:
-        """Get the job directory (after save)."""
-        return self._job_dir

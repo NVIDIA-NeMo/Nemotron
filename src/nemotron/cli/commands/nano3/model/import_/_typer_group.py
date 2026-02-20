@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import typer
 
-from nemotron.cli.nano3.model.import_.pretrain import pretrain
-from nemotron.cli.nano3.model.import_.rl import rl
-from nemotron.cli.nano3.model.import_.sft import sft
+from nemotron.cli.commands.nano3.model.import_.pretrain import pretrain
+from nemotron.cli.commands.nano3.model.import_.rl import rl
+from nemotron.cli.commands.nano3.model.import_.sft import sft
 
 # Create import app
 import_app = typer.Typer(

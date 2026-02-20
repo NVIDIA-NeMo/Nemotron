@@ -17,6 +17,6 @@
 Exports the nano3_app typer group.
 """
 
-from nemotron.cli.nano3.app import nano3_app
+from nemotron.cli.commands.nano3._typer_group import nano3_app
 
 __all__ = ["nano3_app"]

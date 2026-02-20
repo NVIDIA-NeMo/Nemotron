@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import typer
 
-from nemotron.cli.nano3.data.import_ import import_app
-from nemotron.cli.nano3.data.prep import prep_app
+from nemotron.cli.commands.nano3.data.import_ import import_app
+from nemotron.cli.commands.nano3.data.prep import prep_app
 
 # Create data app
 data_app = typer.Typer(
