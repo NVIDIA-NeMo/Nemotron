@@ -15,22 +15,23 @@
 """Nano3 Typer group.
 
 Contains the nano3 command group with subcommands for training stages.
+
+Design: LLM-Native Recipe Architecture
+- Uses RecipeTyper for standardized command registration
+- Each command module has visible execution logic
 """
 
 from __future__ import annotations
 
-import typer
+from nemotron.cli.commands.nano3.data import data_app
+from nemotron.cli.commands.nano3.model import model_app
+from nemotron.cli.commands.nano3.pretrain import META as PRETRAIN_META, pretrain
+from nemotron.cli.commands.nano3.rl import META as RL_META, rl
+from nemotron.cli.commands.nano3.sft import META as SFT_META, sft
+from nemotron.kit.cli.recipe_typer import RecipeTyper
 
-from nemotron.cli.nano3.data import data_app
-from nemotron.cli.nano3.help import RecipeCommand, make_recipe_command
-from nemotron.cli.nano3.model import model_app
-from nemotron.cli.nano3.pretrain import pretrain
-from nemotron.cli.nano3.rl import rl
-from nemotron.cli.nano3.sft import sft
-
-
-# Create nano3 app
-nano3_app = typer.Typer(
+# Create nano3 app using RecipeTyper
+nano3_app = RecipeTyper(
     name="nano3",
     help="Nano3 training recipe",
     no_args_is_help=True,
@@ -43,51 +44,13 @@ nano3_app.add_typer(data_app, name="data")
 # Register model subgroup
 nano3_app.add_typer(model_app, name="model")
 
-# Register commands with custom command class for enhanced help
-# Pretrain has data artifact override
-nano3_app.command(
-    name="pretrain",
-    context_settings={
-        "allow_extra_args": True,
-        "ignore_unknown_options": True,
-    },
-    rich_help_panel="Training Stages",
-    cls=make_recipe_command(
-        artifact_overrides={"data": "Pretrain data artifact (bin/idx blends)"},
-        config_dir="src/nemotron/recipes/nano3/stage0_pretrain/config",
-    ),
-)(pretrain)
+# =============================================================================
+# Register Training Commands
+#
+# Each command exports a META object with config_dir, input/output_artifacts.
+# Execution logic stays visible in each command module.
+# =============================================================================
 
-# SFT has data and model artifact overrides
-nano3_app.command(
-    name="sft",
-    context_settings={
-        "allow_extra_args": True,
-        "ignore_unknown_options": True,
-    },
-    rich_help_panel="Training Stages",
-    cls=make_recipe_command(
-        artifact_overrides={
-            "model": "Base model checkpoint artifact",
-            "data": "SFT data artifact (packed .npy)",
-        },
-        config_dir="src/nemotron/recipes/nano3/stage1_sft/config",
-    ),
-)(sft)
-
-# RL has data and model artifact overrides
-nano3_app.command(
-    name="rl",
-    context_settings={
-        "allow_extra_args": True,
-        "ignore_unknown_options": True,
-    },
-    rich_help_panel="Training Stages",
-    cls=make_recipe_command(
-        artifact_overrides={
-            "model": "SFT model checkpoint artifact",
-            "data": "RL data artifact (JSONL prompts)",
-        },
-        config_dir="src/nemotron/recipes/nano3/stage2_rl/config",
-    ),
-)(rl)
+nano3_app.add_recipe_command(pretrain, meta=PRETRAIN_META, rich_help_panel="Training Stages")
+nano3_app.add_recipe_command(sft, meta=SFT_META, rich_help_panel="Training Stages")
+nano3_app.add_recipe_command(rl, meta=RL_META, rich_help_panel="Training Stages")

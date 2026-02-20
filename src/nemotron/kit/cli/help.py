@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Custom help formatting for nano3 CLI commands.
+"""Custom help formatting for recipe CLI commands.
 
 Provides RecipeCommand class that extends TyperCommand with custom help panels
 for global options, run overrides, artifact overrides, and examples.
+
+This module lives in kit/cli to avoid layering problems - RecipeTyper
+can import from here without depending on a specific model family.
 """
 
 from __future__ import annotations

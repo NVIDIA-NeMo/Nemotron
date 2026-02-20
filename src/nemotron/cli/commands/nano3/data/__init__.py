@@ -14,6 +14,6 @@
 
 """Data command group for nano3."""
 
-from nemotron.cli.nano3.data.app import data_app
+from nemotron.cli.commands.nano3.data._typer_group import data_app
 
 __all__ = ["data_app"]
