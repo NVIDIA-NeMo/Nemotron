@@ -58,7 +58,7 @@ The [Nemotron-3-Nano-RL-Training-Blend](https://huggingface.co/datasets/nvidia/N
 
 1. Detecting placeholder records by the presence of `_hf_placeholder` field
 2. Fetching actual data from external HF datasets:
-   - [ByteDance-Seed/DAPO-Math-17k](https://huggingface.co/datasets/ByteDance-Seed/DAPO-Math-17k) — Math reasoning problems
+   - [BytedTsinghua-SIA/DAPO-Math-17k](https://huggingface.co/datasets/BytedTsinghua-SIA/DAPO-Math-17k) — Math reasoning problems
    - [Skywork/Skywork-OR1-RL-Data](https://huggingface.co/datasets/Skywork/Skywork-OR1-RL-Data) — Open reasoning data
 3. Applying template restoration (DAPO prefix/suffix, Skywork `{question}` replacement)
 
