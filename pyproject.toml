@@ -96,7 +96,7 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 
 [tool.ruff]
-line-length = 100
+line-length = 119
 target-version = "py310"
 exclude = [
     "usage-cookbook",

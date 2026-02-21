@@ -1,13 +1,6 @@
 [
     {
-        "name": "dev",
-        "version": "dev",
-        "url": "https://nvidia-nemo.github.io/Nemotron/dev/"
-    },
-    {
-        "name": "stable (main)",
-        "version": "stable",
-        "url": "https://nvidia-nemo.github.io/Nemotron/stable/",
-        "preferred": true
+        "version": "nightly",
+        "url": "https://docs.nvidia.com/nemotron/nightly/"
     }
 ]

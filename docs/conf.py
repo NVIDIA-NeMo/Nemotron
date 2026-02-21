@@ -23,12 +23,12 @@
 import os
 
 project = "Nemotron"
-copyright = "2025, NVIDIA Corporation"
+copyright = "2026, NVIDIA Corporation"
 author = "NVIDIA Corporation"
 
 # Version is set by CI via DOCS_VERSION env var (dev or stable)
 # Defaults to "dev" for local builds
-release = os.environ.get("DOCS_VERSION", "dev")
+release = os.environ.get("DOCS_VERSION", "nightly")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
