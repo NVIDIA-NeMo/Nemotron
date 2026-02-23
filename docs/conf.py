@@ -81,13 +81,13 @@ html_js_files = [
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
     "switcher": {
-        "json_url": "https://nvidia-nemo.github.io/Nemotron/versions.json",
+        "json_url": "../versions1.json",
         "version_match": release,
     },
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/NVIDIA/nemotron",
+            "url": "https://github.com/NVIDIA-NeMo/Nemotron",
             "icon": "fa-brands fa-github",
         }
     ],
@@ -102,7 +102,7 @@ html_theme_options = {
     """
     },
 }
-html_extra_path = ["project.json", "versions.json"]
+html_extra_path = ["project.json", "versions1.json"]
 
 # Github links are now getting rate limited from the Github Actions
 linkcheck_ignore = [
