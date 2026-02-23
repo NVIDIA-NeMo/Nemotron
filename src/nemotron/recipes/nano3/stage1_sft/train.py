@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
+# name = "nano3/sft"
+# image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+# setup = "NeMo and all training dependencies are pre-installed in the image."
+#
+# [tool.runspec.run]
+# launch = "torchrun"
+#
+# [tool.runspec.config]
+# dir = "./config"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 8
+# ///
 
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -19,16 +39,15 @@
 Uses Megatron-Bridge's ConfigContainer for full training configuration.
 Dynamically loads the recipe function specified in the YAML config.
 
-Usage:
-    # With YAML config file (required)
+CLI:
+    nemotron nano3 sft              # local execution
+    nemotron nano3 sft --run dgx    # submit to cluster
+
+Execution logic: src/nemotron/cli/commands/nano3/sft.py
+
+Direct usage:
     python /path/to/train.py --config /path/to/sft.yaml
-
-    # With CLI overrides (Hydra syntax)
     python /path/to/train.py --config /path/to/sft.yaml train.train_iters=5000
-
-    # As module (requires nemotron package installed)
-    torchrun --nproc_per_node=8 -m nemotron.recipes.nano3.stage1_sft.train \
-        --config /path/to/sft.yaml
 """
 
 from __future__ import annotations
@@ -51,7 +70,7 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 from omegaconf import DictConfig, OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
-from nemotron.kit.resolvers import clear_artifact_cache, register_resolvers_from_config
+from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb import (
     patch_wandb_checkpoint_logging,

@@ -75,7 +75,7 @@ Because these are complete systems, practitioners can extract specific technique
 
 | Model | Description | Stages | Guide |
 |-------|-------------|--------|-------|
-| **[Nemotron 3 Nano](docs/train/nano3/README.md)** | 3.6B active / 31.6B total MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/train/nano3/README.md) |
+| **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 3.6B active / 31.6B total MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
 
 ### Nemotron 3 Nano
 
@@ -100,7 +100,7 @@ A complete training recipe for the open, efficient Mixture-of-Experts hybrid Mam
 - DPO for tool hallucination reduction
 
 **Resources**:
-- [Training Guide](docs/train/nano3/README.md)
+- [Training Guide](docs/nemotron/nano3/README.md)
 - [Tech Report](https://arxiv.org/abs/2506.XXXXX)
 - [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16)
 - [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
@@ -152,9 +152,9 @@ Have an idea for improving Nemotron models? Visit the **[Nemotron Ideas Portal](
 
 ## Documentation
 
-- [Nemotron 3 Nano Training Guide](docs/train/nano3/README.md) — Complete training recipe
-- [NeMo-Run Configuration](docs/train/nemo-run.md) — Execution profiles and job orchestration
-- [Data Preparation](docs/train/data-prep.md) — Data preparation module documentation
+- [Nemotron 3 Nano Training Guide](docs/nemotron/nano3/README.md) — Complete training recipe
+- [NeMo-Run Configuration](docs/nemo_runspec/nemo-run.md) — Execution profiles and job orchestration
+- [Data Preparation](docs/nemotron/data-prep.md) — Data preparation module documentation
 - [Contributing Guidelines](CONTRIBUTING.md) — How to contribute
 - [Changelog](CHANGELOG.md) — Version history
 

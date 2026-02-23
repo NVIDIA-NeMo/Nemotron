@@ -265,29 +265,41 @@ class Artifact(BaseModel):
         temp_path.rename(metadata_file_path)
 
         # Now log to tracker (after metadata.json exists on disk)
+        tracker_published = False
         if tracker and tracker.is_active():
             artifact_name = self._derive_artifact_name(name)
             tracking_metadata = tracker.log_artifact(self, artifact_name, self._used_artifacts)
             self.tracking = TrackingInfo(**tracking_metadata)
 
-        # Publish to registry if initialized (skip for wandb backend - tracker handles it)
-        self._publish_to_registry(name, output_dir)
+            # Extract name/version from tracker result so artifact.uri works
+            artifact_id = tracking_metadata.get("artifact_id")
+            if artifact_id and ":" in artifact_id:
+                id_name, id_ver = artifact_id.rsplit(":", 1)
+                self._name = id_name
+                if id_ver.startswith("v") and id_ver[1:].isdigit():
+                    self._version = int(id_ver[1:])
+                elif id_ver.isdigit():
+                    self._version = int(id_ver)
+                tracker_published = True
+
+        # Publish to registry if initialized (skip when tracker already published)
+        if not tracker_published:
+            self._publish_to_registry(name, output_dir)
 
     def _publish_to_registry(self, name: str | None, output_dir: Path) -> None:
         """Publish artifact to registry if initialized."""
         try:
-            from nemotron.kit import get_config, is_initialized
-            from nemotron.kit.registry import get_registry
+            from nemo_runspec.artifact_registry import _registry, get_artifact_registry
 
-            if is_initialized():
-                config = get_config()
-                # Skip registry publish for wandb backend - WandbTracker already logged it
-                if config and config.backend != "wandb":
-                    registry = get_registry()
-                    artifact_name = name or self.type
-                    version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
-                    self._name = artifact_name
-                    self._version = version.version
+            if _registry is None:
+                return
+            # Skip registry publish for wandb backend - WandbTracker already logged it
+            if _registry.backend != "wandb":
+                registry = get_artifact_registry()
+                artifact_name = name or self.type
+                version = registry.publish(artifact_name, output_dir, metadata=self.metadata)
+                self._name = artifact_name
+                self._version = version.version
         except ImportError:
             # Registry not available, skip
             pass
@@ -366,9 +378,9 @@ class Artifact(BaseModel):
         Returns:
             Loaded artifact instance
         """
-        from nemotron.kit.registry import get_registry
+        from nemo_runspec.artifact_registry import get_artifact_registry
 
-        registry = get_registry()
+        registry = get_artifact_registry()
 
         # Parse URI: art://name:version or art://name
         if not uri.startswith("art://"):

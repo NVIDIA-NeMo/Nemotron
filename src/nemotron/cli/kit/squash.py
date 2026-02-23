@@ -26,8 +26,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from nemotron.kit.cli.env import load_env_profile
-from nemotron.kit.cli.squash import check_sqsh_exists, container_to_sqsh_name
+from nemo_runspec.env import load_env_profile
+from nemo_runspec.squash import check_sqsh_exists, container_to_sqsh_name
 
 console = Console()
 

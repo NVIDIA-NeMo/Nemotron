@@ -30,43 +30,46 @@ from pathlib import Path
 
 import typer
 
-from nemotron.kit.cli.config import (
+from nemo_runspec import parse as parse_runspec
+from nemo_runspec.config import (
     build_job_config,
     extract_train_config,
     generate_job_dir,
     parse_config,
     save_configs,
 )
-from nemotron.kit.cli.display import display_job_config, display_job_submission
-from nemotron.kit.cli.env import parse_env
-from nemotron.kit.cli.nemo_run_support import (
+from nemo_runspec.display import display_job_config, display_job_submission
+from nemo_runspec.env import parse_env
+from nemo_runspec.execution import (
     build_env_vars,
     clone_git_repos_via_tunnel,
-    ensure_squashed_image,
     execute_local,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
-from nemotron.kit.cli.recipe_config import RecipeConfig, parse_recipe_config
-from nemotron.kit.cli.recipe_typer import RecipeMeta
+from nemo_runspec.squash import ensure_squashed_image
+from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
+from nemo_runspec.recipe_typer import RecipeMeta
 
 # =============================================================================
-# Recipe Constants
+# Recipe Metadata (read from [tool.runspec] in script)
 # =============================================================================
 
-RECIPE_NAME = "nano3/data/prep/rl"
 SCRIPT_PATH = "src/nemotron/recipes/nano3/stage2_rl/data_prep.py"
-CONFIG_DIR = Path("src/nemotron/recipes/nano3/stage2_rl/config/data_prep")
-DEFAULT_CONFIG = "default"
+SPEC = parse_runspec(SCRIPT_PATH)
 
-RUN_COMMAND = "uv run --extra xenna python {script} --config {config}"
+# Implementation details — setup commands stay here
+SETUP_COMMANDS = [
+    "find . -type d -name __pycache__ -delete 2>/dev/null || true",
+    "uv sync --reinstall-package nemotron",
+]
 
 # For help panels
 META = RecipeMeta(
-    name=RECIPE_NAME,
+    name=SPEC.name,
     script_path=SCRIPT_PATH,
-    config_dir=str(CONFIG_DIR),
-    default_config=DEFAULT_CONFIG,
+    config_dir=str(SPEC.config_dir),
+    default_config=SPEC.config.default,
     input_artifacts={"data": "Prompt data (JSONL/HuggingFace dataset)"},
     output_artifacts={"data": "RL prompts (JSONL chat format)"},
 )
@@ -82,14 +85,14 @@ def _execute_data_prep_rl(cfg: RecipeConfig):
     # =========================================================================
     # 1. Parse configuration
     # =========================================================================
-    train_config = parse_config(cfg.ctx, CONFIG_DIR, DEFAULT_CONFIG)
+    train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
     # Build full job config with provenance
     job_config = build_job_config(
         train_config,
         cfg.ctx,
-        RECIPE_NAME,
+        SPEC.name,
         SCRIPT_PATH,
         cfg.argv,
         env_profile=env,
@@ -105,7 +108,7 @@ def _execute_data_prep_rl(cfg: RecipeConfig):
     # =========================================================================
     # 2. Save configs and prepare execution
     # =========================================================================
-    job_dir = generate_job_dir(RECIPE_NAME)
+    job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=False)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
@@ -162,7 +165,7 @@ def _execute_ray_code_packager(
         typer.echo("Install with: pip install nemo-run", err=True)
         raise typer.Exit(1)
 
-    from nemotron.kit.packaging import CodePackager
+    from nemo_runspec.packaging import CodePackager
     from nemotron.kit.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,
@@ -193,7 +196,7 @@ def _execute_ray_code_packager(
         exclude_dirs=("usage-cookbook", "use-case-examples"),
     )
 
-    container_image = _get("container_image") or _get("container")
+    container_image = _get("container_image") or _get("container") or SPEC.image
 
     if container_image and tunnel and remote_job_dir:
         tunnel.connect()
@@ -239,20 +242,17 @@ def _execute_ray_code_packager(
         launcher=None,
     )
 
-    recipe_name = job_config.run.recipe.name.replace("/", "-")
+    recipe_name = SPEC.name.replace("/", "-")
     job_name = f"{recipe_name}_{int(time.time())}"
     ray_job = RayJob(name=job_name, executor=executor)
 
     repo_config = Path.cwd() / "config.yaml"
     shutil.copy2(train_path, repo_config)
 
-    setup_commands = [
-        "find . -type d -name __pycache__ -delete 2>/dev/null || true",
-        "uv sync --reinstall-package nemotron",
-    ]
+    setup_commands = list(SETUP_COMMANDS)
 
     remote_script = SCRIPT_PATH
-    effective_run_command = _get("run_command", RUN_COMMAND)
+    effective_run_command = _get("run_command", SPEC.run.cmd)
 
     cmd = effective_run_command.format(script=remote_script, config="config.yaml")
     if passthrough:

@@ -38,49 +38,48 @@ from pathlib import Path
 
 import typer
 
-from nemotron.kit.cli.config import (
+from nemo_runspec import parse as parse_runspec
+from nemo_runspec.config import (
     build_job_config,
     extract_train_config,
     generate_job_dir,
     parse_config,
     save_configs,
 )
-from nemotron.kit.cli.display import display_job_config, display_job_submission
-from nemotron.kit.cli.env import parse_env
-from nemotron.kit.cli.nemo_run_support import (
+from nemo_runspec.display import display_job_config, display_job_submission
+from nemo_runspec.env import parse_env
+from nemo_runspec.execution import (
     build_env_vars,
     clone_git_repos_via_tunnel,
-    ensure_squashed_image,
     execute_local,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
-from nemotron.kit.cli.recipe_config import RecipeConfig, parse_recipe_config
-from nemotron.kit.cli.recipe_typer import RecipeMeta
+from nemo_runspec.packaging import REMOTE_CONFIG, REMOTE_SCRIPT
+from nemo_runspec.squash import ensure_squashed_image
+from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
+from nemo_runspec.recipe_typer import RecipeMeta
 
 # =============================================================================
-# Recipe Constants
+# Recipe Metadata (read from [tool.runspec] in script)
 # =============================================================================
 
-RECIPE_NAME = "nano3/rl"
 SCRIPT_PATH = "src/nemotron/recipes/nano3/stage2_rl/train.py"
-CONFIG_DIR = Path("src/nemotron/recipes/nano3/stage2_rl/config")
-DEFAULT_CONFIG = "tiny"
+SPEC = parse_runspec(SCRIPT_PATH)
 
-# Ray-specific execution settings (visible, not hidden in decorator)
-WORKDIR = "/opt/nemo-rl"
+# Ray-specific execution settings
+# workdir comes from SPEC, but these commands are implementation details
 PRE_RAY_START_COMMANDS = [
-    "cp main.py /opt/nemo-rl/",
-    "cp config.yaml /opt/nemo-rl/",
+    f"cp {REMOTE_SCRIPT} {SPEC.run.workdir}/",
+    f"cp {REMOTE_CONFIG} {SPEC.run.workdir}/",
 ]
-RUN_COMMAND = "uv run python {script} --config {config}"
 
 # For help panels
 META = RecipeMeta(
-    name=RECIPE_NAME,
+    name=SPEC.name,
     script_path=SCRIPT_PATH,
-    config_dir=str(CONFIG_DIR),
-    default_config=DEFAULT_CONFIG,
+    config_dir=str(SPEC.config_dir),
+    default_config=SPEC.config.default,
     input_artifacts={
         "model": "SFT model checkpoint (from sft stage)",
         "data": "RL data artifact (JSONL prompts)",
@@ -90,11 +89,11 @@ META = RecipeMeta(
 
 
 # =============================================================================
-# Execution Logic - VISIBLE, not hidden in decorator
+# Execution Logic
 # =============================================================================
 
 
-def _execute_rl(cfg: RecipeConfig, *, experiment=None):
+def _execute_rl(cfg: RecipeConfig):
     """Execute RL with Ray via nemo-run.
 
     This function contains the VISIBLE execution logic. RL uses Ray
@@ -102,24 +101,18 @@ def _execute_rl(cfg: RecipeConfig, *, experiment=None):
 
     Args:
         cfg: Parsed recipe configuration
-        experiment: Optional nemo-run Experiment for pipeline composition.
-                   If provided, adds task and returns. If None, creates
-                   experiment and runs immediately.
-
-    Returns:
-        For pipeline composition, returns the added task.
     """
     # =========================================================================
     # 1. Parse configuration
     # =========================================================================
-    train_config = parse_config(cfg.ctx, CONFIG_DIR, DEFAULT_CONFIG)
+    train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
     # Build full job config with provenance
     job_config = build_job_config(
         train_config,
         cfg.ctx,
-        RECIPE_NAME,
+        SPEC.name,
         SCRIPT_PATH,
         cfg.argv,
         env_profile=env,
@@ -136,7 +129,7 @@ def _execute_rl(cfg: RecipeConfig, *, experiment=None):
     # =========================================================================
     # 2. Save configs and prepare execution
     # =========================================================================
-    job_dir = generate_job_dir(RECIPE_NAME)
+    job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=for_remote)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
@@ -167,8 +160,6 @@ def _execute_rl(cfg: RecipeConfig, *, experiment=None):
         # Remote execution via Ray
         _execute_ray(
             train_path=train_path,
-            job_dir=job_dir,
-            job_config=job_config,
             env=env_for_executor,
             passthrough=cfg.passthrough,
             attached=cfg.attached,
@@ -180,8 +171,6 @@ def _execute_rl(cfg: RecipeConfig, *, experiment=None):
 
 def _execute_ray(
     train_path: Path,
-    job_dir: Path,
-    job_config,
     env,
     passthrough: list[str],
     attached: bool,
@@ -206,8 +195,8 @@ def _execute_ray(
         typer.echo("Install with: pip install nemo-run", err=True)
         raise typer.Exit(1)
 
-    from nemotron.kit.packaging import SelfContainedPackager
-    from nemotron.kit.run import (
+    from nemo_runspec.packaging import SelfContainedPackager
+    from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,
     )
@@ -238,7 +227,7 @@ def _execute_ray(
         train_path=str(train_path),
     )
 
-    container_image = _get("container_image") or _get("container")
+    container_image = _get("container_image") or _get("container") or SPEC.image
 
     if container_image and tunnel and remote_job_dir:
         tunnel.connect()
@@ -285,28 +274,28 @@ def _execute_ray(
     )
 
     # Ray-specific setup
-    recipe_name = job_config.run.recipe.name.replace("/", "-")
+    recipe_name = SPEC.name.replace("/", "-")
     job_name = f"{recipe_name}_{int(time.time())}"
     ray_job = RayJob(name=job_name, executor=executor)
 
     # Copy train.yaml to repo root so it gets rsynced
-    repo_config = Path.cwd() / "config.yaml"
+    repo_config = Path.cwd() / REMOTE_CONFIG
     shutil.copy2(train_path, repo_config)
 
     # For self_contained packager, create inlined main.py at repo root
-    from nemotron.kit.packaging.self_contained_packager import inline_imports
+    from nemo_runspec.packaging.self_contained_packager import inline_imports
 
     script_file = Path(SCRIPT_PATH)
     if not script_file.is_absolute():
         script_file = Path.cwd() / SCRIPT_PATH
     inlined = inline_imports(script_file, repo_root=Path.cwd(), package_prefix="nemotron")
-    repo_main = Path.cwd() / "main.py"
+    repo_main = Path.cwd() / REMOTE_SCRIPT
     repo_main.write_text(inlined, encoding="utf-8")
 
     # Check for YAML overrides for workdir, pre_ray_start_commands, run_command
-    effective_workdir = _get("workdir", WORKDIR)
+    effective_workdir = _get("workdir", SPEC.run.workdir)
     effective_pre_ray_start_commands = _get("pre_ray_start_commands", PRE_RAY_START_COMMANDS)
-    effective_run_command = _get("run_command", RUN_COMMAND)
+    effective_run_command = _get("run_command", SPEC.run.cmd)
 
     # Build setup commands
     if effective_pre_ray_start_commands is not None:
@@ -318,22 +307,20 @@ def _execute_ray(
         if effective_workdir:
             setup_commands.extend(
                 [
-                    f"cp main.py {effective_workdir}/",
-                    f"cp config.yaml {effective_workdir}/",
+                    f"cp {REMOTE_SCRIPT} {effective_workdir}/",
+                    f"cp {REMOTE_CONFIG} {effective_workdir}/",
                 ]
             )
 
     # Build the command to run
-    remote_script = "main.py"
-    config_file = "config.yaml"
     if effective_run_command:
-        cmd = effective_run_command.format(script=remote_script, config=config_file)
+        cmd = effective_run_command.format(script=REMOTE_SCRIPT, config=REMOTE_CONFIG)
         if effective_workdir:
             cmd = f"cd {effective_workdir} && {cmd}"
     elif effective_workdir:
-        cmd = f"cd {effective_workdir} && python {remote_script} --config {config_file}"
+        cmd = f"cd {effective_workdir} && python {REMOTE_SCRIPT} --config {REMOTE_CONFIG}"
     else:
-        cmd = f"uv run python {remote_script} --config {config_file}"
+        cmd = f"uv run python {REMOTE_SCRIPT} --config {REMOTE_CONFIG}"
 
     if passthrough:
         cmd += " " + " ".join(passthrough)
@@ -361,9 +348,9 @@ def _execute_ray(
         runtime_env_yaml=runtime_env_yaml,
     )
 
-    # Copy config.yaml to remote code directory
+    # Copy config to remote code directory
     remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
-    executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
+    executor.tunnel.put(str(repo_config), f"{remote_code_dir}/{REMOTE_CONFIG}")
 
     # Recover job_id if not set (nemo-run bug workaround)
     if ray_job.backend.job_id is None:

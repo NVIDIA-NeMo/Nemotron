@@ -81,6 +81,7 @@ CLAUDE.md
 
 # Compiled config
 config.yaml
+main.py
 
 # Documentation build
 docs/_build/

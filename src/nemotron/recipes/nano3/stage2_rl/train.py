@@ -1,4 +1,29 @@
 #!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
+# name = "nano3/rl"
+# image = "nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano"
+# setup = """
+# nemo-rl is pre-installed in the image at /opt/nemo-rl.
+# The training script and config.yaml must be placed in /opt/nemo-rl/ before execution.
+# """
+#
+# [tool.runspec.run]
+# launch = "ray"
+# cmd = "uv run python {script} --config {config}"
+# workdir = "/opt/nemo-rl"
+#
+# [tool.runspec.config]
+# dir = "./config"
+# default = "tiny"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 8
+# ///
 
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -19,14 +44,16 @@
 Uses NeMo-RL's GRPO algorithm for reinforcement learning training.
 This script is designed to run inside a container with NeMo-RL installed.
 
-Usage:
-    # Direct execution inside container (nemo-run with Ray)
-    python /path/to/train.py --config /path/to/grpo_config.yaml
+CLI:
+    nemotron nano3 rl              # local execution
+    nemotron nano3 rl --run dgx    # submit to cluster
 
-    # With CLI overrides (Hydra syntax)
+Execution logic: src/nemotron/cli/commands/nano3/rl.py
+
+Direct usage:
+    python /path/to/train.py --config /path/to/grpo_config.yaml
     python /path/to/train.py --config /path/to/grpo_config.yaml \
-        grpo.num_iterations=100 \
-        policy.generation.temperature=0.7
+        grpo.num_iterations=100 policy.generation.temperature=0.7
 """
 
 from __future__ import annotations
@@ -311,7 +338,7 @@ def main() -> None:
 
     # Register nemotron artifact resolver for ${art:...} interpolations
     # This must happen before OmegaConf.to_container() resolves the config
-    from nemotron.kit.resolvers import clear_artifact_cache, register_resolvers_from_config
+    from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
 
     clear_artifact_cache()
     register_resolvers_from_config(

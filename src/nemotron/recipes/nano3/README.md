@@ -103,7 +103,7 @@ mounts = ["/lustre:/lustre"]
 
 > **Note**: Container images are specified in the recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
 
-See [docs/train/nemo-run.md](../../../docs/train/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## Quick Start
 
@@ -264,5 +264,5 @@ torchrun --nproc_per_node=8 train.py --config config/tiny.yaml
 
 ## Further Reading
 
-- [NeMo-Run Configuration](../../../docs/train/nemo-run.md) - Complete guide to env.toml and execution profiles
+- [NeMo-Run Configuration](../../../docs/nemo_runspec/nemo-run.md) - Complete guide to env.toml and execution profiles
 - [Recipes Overview](../README.md) - General information about Nemotron recipes

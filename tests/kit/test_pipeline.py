@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nemotron.kit.pipeline (PipelineConfig, run_pipeline)."""
+"""Tests for nemo_runspec.pipeline (PipelineConfig, run_pipeline)."""
 
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
-from nemotron.kit import PipelineConfig, Step, run_pipeline
-from nemotron.kit.pipeline import (
+from nemo_runspec.pipeline import (
+    PipelineConfig,
     generate_pipeline_commands,
     generate_sbatch_script,
     run_local,
+    run_pipeline,
 )
+from nemo_runspec.step import Step
 
 
 def create_mock_module(name: str, file_path: str | None = None) -> ModuleType:

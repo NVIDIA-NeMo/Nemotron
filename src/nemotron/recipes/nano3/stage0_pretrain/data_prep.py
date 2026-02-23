@@ -1,4 +1,28 @@
 #!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
+# name = "nano3/data/prep/pretrain"
+# image = "anyscale/ray:2.49.2-py312"
+# setup = """
+# Requires the full nemotron repository synced to the worker.
+# Install the nemotron package with xenna extras: uv sync --reinstall-package nemotron.
+# """
+#
+# [tool.runspec.run]
+# launch = "ray"
+# cmd = "uv run --extra xenna python {script} --config {config}"
+#
+# [tool.runspec.config]
+# dir = "./config/data_prep"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 0
+# ///
 
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -22,18 +46,16 @@ Tokenizes raw text data into Megatron bin/idx format using the
 Outputs blend.json with {"train": [...], "valid": [...], "test": [...]} format
 compatible with Megatron-Bridge's per_split_data_args_path parameter.
 
-Usage:
-    # With default config
+CLI:
+    nemotron nano3 data prep pretrain                       # local execution
+    nemotron nano3 data prep pretrain --run ray --sample 10000  # submit to cluster
+
+Execution logic: src/nemotron/cli/commands/nano3/data/prep/pretrain.py
+
+Direct usage:
     uv run python data_prep.py
-
-    # With custom config file
     uv run python data_prep.py --config /path/to/config.yaml
-
-    # With CLI overrides (Hydra-style)
     uv run python data_prep.py sample=100 force=true
-
-    # Via nemotron CLI with nemo-run
-    nemotron nano3 data prep pretrain --run prep --sample 10000
 """
 
 from __future__ import annotations

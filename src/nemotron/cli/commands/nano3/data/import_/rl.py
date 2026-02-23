@@ -21,7 +21,7 @@ from pathlib import Path
 import typer
 
 from nemotron.kit.artifact import SplitJsonlDataArtifact
-from nemotron.kit.cli.env import get_wandb_config
+from nemo_runspec.env import get_wandb_config
 from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured
 
 

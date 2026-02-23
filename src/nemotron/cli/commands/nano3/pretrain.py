@@ -15,8 +15,7 @@
 """Pretrain command implementation.
 
 This module defines the `pretrain` command for the nano3 recipe with
-**visible execution logic**. All nemo-run setup is explicit here, not
-hidden in a decorator.
+**visible execution logic**. All nemo-run setup is explicit in this file.
 
 To change the execution backend (e.g., swap nemo-run for SkyPilot),
 modify _execute_pretrain() in this file. The runtime script (train.py)
@@ -33,47 +32,47 @@ from pathlib import Path
 
 import typer
 
-from nemotron.kit.cli.config import (
+from nemo_runspec import parse as parse_runspec
+from nemo_runspec.config import (
     build_job_config,
     extract_train_config,
     generate_job_dir,
     parse_config,
     save_configs,
 )
-from nemotron.kit.cli.display import display_job_config, display_job_submission
-from nemotron.kit.cli.env import parse_env
-from nemotron.kit.cli.nemo_run_support import (
+from nemo_runspec.display import display_job_config, display_job_submission
+from nemo_runspec.env import parse_env
+from nemo_runspec.execution import (
     build_env_vars,
     create_executor,
     execute_local,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
-from nemotron.kit.cli.recipe_config import RecipeConfig, parse_recipe_config
-from nemotron.kit.cli.recipe_typer import RecipeMeta
+from nemo_runspec.packaging import REMOTE_CONFIG, REMOTE_SCRIPT
+from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
+from nemo_runspec.recipe_typer import RecipeMeta
 
 # =============================================================================
-# Recipe Constants
+# Recipe Metadata (read from [tool.runspec] in script)
 # =============================================================================
 
-RECIPE_NAME = "nano3/pretrain"
 SCRIPT_PATH = "src/nemotron/recipes/nano3/stage0_pretrain/train.py"
-CONFIG_DIR = Path("src/nemotron/recipes/nano3/stage0_pretrain/config")
-DEFAULT_CONFIG = "default"
+SPEC = parse_runspec(SCRIPT_PATH)
 
 # For help panels
 META = RecipeMeta(
-    name=RECIPE_NAME,
+    name=SPEC.name,
     script_path=SCRIPT_PATH,
-    config_dir=str(CONFIG_DIR),
-    default_config=DEFAULT_CONFIG,
+    config_dir=str(SPEC.config_dir),
+    default_config=SPEC.config.default,
     input_artifacts={"data": "Pretrain data artifact (bin/idx blends)"},
     output_artifacts={"model": "Pretrained model checkpoint"},
 )
 
 
 # =============================================================================
-# Execution Logic - VISIBLE, not hidden in decorator
+# Execution Logic
 # =============================================================================
 
 
@@ -95,14 +94,14 @@ def _execute_pretrain(cfg: RecipeConfig, *, experiment=None):
     # =========================================================================
     # 1. Parse configuration
     # =========================================================================
-    train_config = parse_config(cfg.ctx, CONFIG_DIR, DEFAULT_CONFIG)
+    train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
     # Build full job config with provenance
     job_config = build_job_config(
         train_config,
         cfg.ctx,
-        RECIPE_NAME,
+        SPEC.name,
         SCRIPT_PATH,
         cfg.argv,
         env_profile=env,
@@ -119,7 +118,7 @@ def _execute_pretrain(cfg: RecipeConfig, *, experiment=None):
     # =========================================================================
     # 2. Save configs and prepare execution
     # =========================================================================
-    job_dir = generate_job_dir(RECIPE_NAME)
+    job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=for_remote)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
@@ -142,16 +141,14 @@ def _execute_pretrain(cfg: RecipeConfig, *, experiment=None):
             SCRIPT_PATH,
             train_path,
             cfg.passthrough,
-            torchrun=True,
+            torchrun=(SPEC.run.launch == "torchrun"),
             env_vars=env_vars,
             startup_commands=startup_commands,
         )
     else:
         # Remote execution via nemo-run
-        _execute_nemo_run_slurm(
+        _execute_remote(
             train_path=train_path,
-            job_dir=job_dir,
-            job_config=job_config,
             env=env_for_executor,
             passthrough=cfg.passthrough,
             attached=cfg.attached,
@@ -162,10 +159,8 @@ def _execute_pretrain(cfg: RecipeConfig, *, experiment=None):
         )
 
 
-def _execute_nemo_run_slurm(
+def _execute_remote(
     train_path: Path,
-    job_dir: Path,
-    job_config,
     env,
     passthrough: list[str],
     attached: bool,
@@ -188,8 +183,8 @@ def _execute_nemo_run_slurm(
         typer.echo("Install with: pip install nemo-run", err=True)
         raise typer.Exit(1)
 
-    from nemotron.kit.packaging import SelfContainedPackager
-    from nemotron.kit.run import (
+    from nemo_runspec.packaging import SelfContainedPackager
+    from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,
     )
@@ -211,19 +206,20 @@ def _execute_nemo_run_slurm(
         packager=packager,
         attached=attached,
         force_squash=force_squash,
+        default_image=SPEC.image,
     )
 
     # =========================================================================
     # Build Script and Run
     # =========================================================================
 
-    recipe_name = job_config.run.recipe.name.replace("/", "-")
-    script_args = ["--config", "config.yaml", *passthrough]
+    recipe_name = SPEC.name.replace("/", "-")
+    script_args = ["--config", REMOTE_CONFIG, *passthrough]
 
     if startup_commands:
         import shlex
 
-        train_cmd = shlex.join(["python", "main.py", *script_args])
+        train_cmd = shlex.join(["python", REMOTE_SCRIPT, *script_args])
         full_cmd = prepend_startup_to_cmd(startup_commands, train_cmd)
         script_task = run.Script(
             path="bash",
@@ -231,7 +227,7 @@ def _execute_nemo_run_slurm(
         )
     else:
         script_task = run.Script(
-            path="main.py",
+            path=REMOTE_SCRIPT,
             args=script_args,
             entrypoint="python",
         )

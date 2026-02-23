@@ -24,7 +24,7 @@ from __future__ import annotations
 from nemotron.cli.commands.nano3.data.prep.pretrain import META as PRETRAIN_META, pretrain
 from nemotron.cli.commands.nano3.data.prep.rl import META as RL_META, rl
 from nemotron.cli.commands.nano3.data.prep.sft import META as SFT_META, sft
-from nemotron.kit.cli.recipe_typer import RecipeTyper
+from nemo_runspec.recipe_typer import RecipeTyper
 
 # Create prep app using RecipeTyper
 prep_app = RecipeTyper(

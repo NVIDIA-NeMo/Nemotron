@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nemotron.kit.step (Step class)."""
+"""Tests for nemo_runspec.step (Step class)."""
 
 import sys
 from types import ModuleType
 
-from nemotron.kit import Step
+from nemo_runspec.step import Step
 
 
 def create_mock_module(name: str, file_path: str | None = None) -> ModuleType:

@@ -1,4 +1,28 @@
 #!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
+# name = "nano3/data/prep/rl"
+# image = "anyscale/ray:2.49.2-py312"
+# setup = """
+# Requires the full nemotron repository synced to the worker.
+# Install the nemotron package with xenna extras: uv sync --reinstall-package nemotron.
+# """
+#
+# [tool.runspec.run]
+# launch = "ray"
+# cmd = "uv run --extra xenna python {script} --config {config}"
+#
+# [tool.runspec.config]
+# dir = "./config/data_prep"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 0
+# ///
 
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -31,18 +55,16 @@ Uses the cosmos-xenna multi-stage pipeline pattern:
 
 For simple copy/passthrough (no placeholder resolution), use data_prep_copy.py instead.
 
-Usage:
-    # With default config
+CLI:
+    nemotron nano3 data prep rl                       # local execution
+    nemotron nano3 data prep rl --run ray --sample 10000  # submit to cluster
+
+Execution logic: src/nemotron/cli/commands/nano3/data/prep/rl.py
+
+Direct usage:
     python data_prep.py
-
-    # With custom config file
     python data_prep.py --config /path/to/config.yaml
-
-    # With CLI overrides (Hydra-style)
     python data_prep.py sample=100 force=true
-
-    # Via nemotron CLI with nemo-run
-    nemotron nano3 data prep rl --sample 10000
 """
 
 from __future__ import annotations

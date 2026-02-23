@@ -24,11 +24,14 @@ Design: LLM-Native Recipe Architecture
 from __future__ import annotations
 
 from nemotron.cli.commands.nano3.data import data_app
+from nemotron.cli.commands.nano3.eval import META as EVAL_META
+from nemotron.cli.commands.nano3.eval import eval as eval_cmd
 from nemotron.cli.commands.nano3.model import model_app
+from nemotron.cli.commands.nano3.pipe import META as PIPE_META, pipe
 from nemotron.cli.commands.nano3.pretrain import META as PRETRAIN_META, pretrain
 from nemotron.cli.commands.nano3.rl import META as RL_META, rl
 from nemotron.cli.commands.nano3.sft import META as SFT_META, sft
-from nemotron.kit.cli.recipe_typer import RecipeTyper
+from nemo_runspec.recipe_typer import RecipeTyper
 
 # Create nano3 app using RecipeTyper
 nano3_app = RecipeTyper(
@@ -54,3 +57,5 @@ nano3_app.add_typer(model_app, name="model")
 nano3_app.add_recipe_command(pretrain, meta=PRETRAIN_META, rich_help_panel="Training Stages")
 nano3_app.add_recipe_command(sft, meta=SFT_META, rich_help_panel="Training Stages")
 nano3_app.add_recipe_command(rl, meta=RL_META, rich_help_panel="Training Stages")
+nano3_app.add_recipe_command(eval_cmd, meta=EVAL_META, rich_help_panel="Evaluation")
+nano3_app.add_recipe_command(pipe, meta=PIPE_META, rich_help_panel="Pipeline")

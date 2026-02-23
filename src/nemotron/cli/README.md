@@ -4,7 +4,9 @@ Entry point for the `nemotron` command-line interface.
 
 ## Overview
 
-This package provides the CLI commands for Nemotron training recipes. The CLI is built on [Typer](https://typer.tiangolo.com/) and integrates with `nemotron.kit` for configuration, artifact resolution, and NeMo-Run execution.
+This package provides the CLI commands for Nemotron training recipes. The CLI is built on [Typer](https://typer.tiangolo.com/) and uses [`nemo_runspec`](../../nemo_runspec/README.md) for config loading, execution helpers, and command registration. Domain-specific artifacts and tracking come from [`nemotron.kit`](../kit/README.md).
+
+Each command file contains **visible execution logic** -- you can read one file to understand exactly how a job is submitted. See [Design Philosophy](../../../docs/architecture/design-philosophy.md) for why.
 
 ## Entry Point
 
@@ -52,24 +54,25 @@ src/nemotron/cli/
 ├── kit/
 │   ├── app.py               # Kit utility commands
 │   └── squash.py            # Container squashing
-└── nano3/                   # Nano3 recipe CLI
-    ├── app.py               # Root nano3 group
-    ├── pretrain.py          # Pretrain command
-    ├── sft.py               # SFT command
-    ├── rl.py                # RL command
-    ├── data/
-    │   ├── app.py           # Data group
-    │   ├── prep/            # Data prep commands
-    │   └── import_/         # Data import commands
-    └── model/
-        ├── app.py           # Model group
-        ├── eval.py          # Model evaluation
-        └── import_/         # Model import commands
+└── commands/
+    └── nano3/               # Nano3 recipe CLI
+        ├── _typer_group.py  # Command registration (RecipeTyper)
+        ├── pretrain.py      # Pretrain command + execution logic
+        ├── sft.py           # SFT command + execution logic
+        ├── rl.py            # RL command + execution logic (Ray)
+        ├── data/
+        │   ├── _typer_group.py  # Data group
+        │   ├── prep/            # Data prep commands
+        │   └── import_/         # Data import commands
+        └── model/
+            ├── _typer_group.py  # Model group
+            ├── eval.py          # Model evaluation
+            └── import_/         # Model import commands
 ```
 
 ## Global Options
 
-All commands support these global options:
+All commands support these global options (managed by `nemo_runspec.cli_context.GlobalContext`):
 
 | Option | Short | Description |
 |--------|-------|-------------|
@@ -78,6 +81,7 @@ All commands support these global options:
 | `--batch` | `-b` | Detached execution via NeMo-Run |
 | `--dry-run` | `-d` | Preview config without execution |
 | `--stage` | | Stage script to remote for debugging |
+| `key=value` | | Dotlist overrides (any position) |
 
 ## Usage Examples
 
@@ -105,40 +109,22 @@ uv run nemotron nano3 data prep rl --run MY-CLUSTER
 
 ## Adding New Commands
 
-To add a new command:
+To add a new recipe command:
 
-1. Create command module in appropriate directory
-2. Define config dataclass and handler function
-3. Register with parent app using `add_typer()` or command decorator
+1. Create the training script with a `[tool.runspec]` block (see [nemo_runspec](../../nemo_runspec/README.md))
+2. Create a command module with visible execution logic
+3. Register with `RecipeTyper.add_recipe_command()`
 
-Example:
-
-```python
-# mycommand.py
-import typer
-from dataclasses import dataclass
-
-@dataclass
-class MyConfig:
-    param: str = "default"
-
-def my_handler(cfg: MyConfig):
-    print(f"Running with {cfg.param}")
-
-app = typer.Typer()
-
-@app.command()
-def run(param: str = "default"):
-    my_handler(MyConfig(param=param))
-```
+See [docs/nemo_runspec/cli.md](../../../docs/nemo_runspec/cli.md) for a step-by-step tutorial.
 
 ## Full Documentation
 
-See [docs/train/cli.md](../../../docs/train/cli.md) for complete CLI framework documentation including:
+See [docs/nemo_runspec/cli.md](../../../docs/nemo_runspec/cli.md) for complete CLI framework documentation including:
 
-- Building CLIs with App
-- Artifact inputs and resolution
+- Command pattern with visible execution
+- Configuration pipeline
 - Execution modes
-- Recipe tutorial
+- Recipe building tutorial
 
-See [docs/train/nemo-run.md](../../../docs/train/nemo-run.md) for execution profile configuration.
+See [docs/nemo_runspec/nemo-run.md](../../../docs/nemo_runspec/nemo-run.md) for execution profile configuration.
+See [src/nemo_runspec/README.md](../../nemo_runspec/README.md) for the CLI toolkit.

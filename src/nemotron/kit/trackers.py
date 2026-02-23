@@ -26,6 +26,7 @@ from urllib.parse import quote
 
 if TYPE_CHECKING:
     from nemotron.kit.artifact import Artifact
+    from nemo_runspec.artifact_registry import ArtifactRegistry
 
 
 @dataclass
@@ -557,6 +558,61 @@ class WandbTracker:
     def get_run_id(self) -> str | None:
         """Get current W&B run ID."""
         return self.wandb.run.id if self.wandb.run else None
+
+
+class FileTracker:
+    """File-based lineage tracker using the local artifact registry.
+
+    Stores the same metadata as WandbTracker but in local filesystem:
+      {root}/{artifact-name}/v{N}/metadata.json
+
+    Requires kit.init(backend="fsspec", root="/path/to/artifacts").
+    """
+
+    def __init__(self, registry: "ArtifactRegistry") -> None:
+        self._registry = registry
+
+    def is_active(self) -> bool:
+        return True
+
+    def use_artifact(self, ref: str, artifact_type: str) -> Path:
+        """Resolve artifact from local registry."""
+        name, version = _parse_ref(ref)
+        return self._registry.resolve(name, version)
+
+    def log_artifact(self, artifact: "Artifact", name: str, used_refs: list[str]) -> dict[str, Any]:
+        """Publish artifact to local registry with metadata."""
+        version = self._registry.publish(
+            name, artifact._get_output_dir(), metadata=artifact.metadata
+        )
+        return {
+            "artifact_id": f"{name}:v{version.version}",
+            "artifact_type": artifact.type,
+            "run_id": None,
+            "url": None,
+            "used_artifacts": used_refs,
+        }
+
+    def get_run_id(self) -> str | None:
+        return os.environ.get("NEMO_EXPERIMENT_ID", "local")
+
+
+def _parse_ref(ref: str) -> tuple[str, int | str | None]:
+    """Parse an artifact reference like 'Name:v5' or 'Name:latest'.
+
+    Returns:
+        Tuple of (name, version) where version is int, 'latest', or None.
+    """
+    if ":" not in ref:
+        return ref, None
+    name, version_str = ref.rsplit(":", 1)
+    if version_str == "latest":
+        return name, "latest"
+    if version_str.startswith("v") and version_str[1:].isdigit():
+        return name, int(version_str[1:])
+    if version_str.isdigit():
+        return name, int(version_str)
+    return name, version_str
 
 
 class NoOpTracker:

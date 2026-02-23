@@ -51,7 +51,7 @@ mounts = ["/lustre:/lustre"]
 
 > **Note**: Container images are specified in the recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
 
-See [docs/train/nemo-run.md](../../docs/train/nemo-run.md) for complete profile configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../docs/nemo_runspec/nemo-run.md) for complete profile configuration options.
 
 ### 2. Run a Recipe
 
@@ -140,5 +140,5 @@ Each stage can reference artifacts from previous stages, ensuring reproducibilit
 
 ## Further Reading
 
-- [NeMo-Run Configuration](../../docs/train/nemo-run.md) - Detailed guide on execution profiles and env.toml setup
+- [NeMo-Run Configuration](../../docs/nemo_runspec/nemo-run.md) - Detailed guide on execution profiles and env.toml setup
 - [Nano3 Recipe](./nano3/) - Complete documentation for the Nemotron Nano 3 training pipeline

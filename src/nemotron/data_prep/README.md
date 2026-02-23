@@ -177,7 +177,7 @@ from nemotron.data_prep.formats.transforms import (
 
 ## Full Documentation
 
-See [docs/train/data-prep.md](../../../docs/train/data-prep.md) for complete API reference.
+See [docs/nemotron/data-prep.md](../../../docs/nemotron/data-prep.md) for complete API reference.
 
 ## Key Design Principles
 
