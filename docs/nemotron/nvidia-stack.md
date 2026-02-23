@@ -209,5 +209,5 @@ Nemotron recipes are tested with specific versions of the NVIDIA AI stack. Check
 ## Further Reading
 
 - [Nemotron Kit](./kit.md) — Artifact system and lineage tracking
-- [Execution through NeMo-Run](./nemo-run.md) — Execution profiles and packagers
+- [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) — Execution profiles and packagers
 - [Nano3 Recipe](./nano3/README.md) — Complete training pipeline

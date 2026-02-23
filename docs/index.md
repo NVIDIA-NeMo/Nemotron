@@ -26,7 +26,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 </div>
 
-> **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](train/nemo-run.md). See [Execution through NeMo-Run](train/nemo-run.md) for setup instructions.
+> **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](nemo_runspec/nemo-run.md) for setup instructions.
 
 ## Usage Cookbook & Examples
 
@@ -55,7 +55,7 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 :gutter: 3
 
 :::{grid-item-card} Nemotron 3 Nano
-:link: train/nano3/README
+:link: nemotron/nano3/README
 :link-type: doc
 
 31.6B total / 3.6B active parameters, 25T tokens, up to 1M context. Hybrid Mamba-Transformer with sparse MoE.
@@ -71,9 +71,9 @@ The Nemotron training pipeline follows a three-stage approach with full artifact
 
 | Stage | Name | Description |
 |-------|------|-------------|
-| 0 | [Pretraining](train/nano3/pretrain.md) | Base model training on large text corpus |
-| 1 | [SFT](train/nano3/sft.md) | Supervised fine-tuning for instruction following |
-| 2 | [RL](train/nano3/rl.md) | Reinforcement learning for alignment |
+| 0 | [Pretraining](nemotron/nano3/pretrain.md) | Base model training on large text corpus |
+| 1 | [SFT](nemotron/nano3/sft.md) | Supervised fine-tuning for instruction following |
+| 2 | [RL](nemotron/nano3/rl.md) | Reinforcement learning for alignment |
 
 ## Why Nemotron?
 
@@ -87,8 +87,8 @@ The Nemotron training pipeline follows a three-stage approach with full artifact
 ## Key Features
 
 - **Complete Pipelines** — From raw data to deployment-ready models
-- **[Artifact Lineage](train/artifacts.md)** — Full traceability via [W&B](train/wandb.md) from data to model
-- **Production-Grade** — Built on [NVIDIA's NeMo stack](train/nvidia-stack.md) (Megatron-Bridge, NeMo-RL)
+- **[Artifact Lineage](nemo_runspec/artifacts.md)** — Full traceability via [W&B](nemotron/wandb.md) from data to model
+- **Production-Grade** — Built on [NVIDIA's NeMo stack](nemotron/nvidia-stack.md) (Megatron-Bridge, NeMo-RL)
 - **Reproducible** — Versioned configs, data blends, and checkpoints
 
 ## Resources
@@ -97,7 +97,7 @@ The Nemotron training pipeline follows a three-stage approach with full artifact
 - [Model Weights](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) — Pre-trained checkpoints on HuggingFace
 - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) — Open pre-training data
 - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) — SFT and RL data
-- [Artifact Lineage](train/artifacts.md) — W&B integration guide
+- [Artifact Lineage](nemo_runspec/artifacts.md) — W&B integration guide
 
 ```{toctree}
 :caption: Usage Cookbook
@@ -122,29 +122,29 @@ use-case-examples/RAG Agent with Nemotron RAG Models/README.md
 :caption: Training Recipes
 :hidden:
 
-train/nano3/README.md
-train/artifacts.md
+nemotron/nano3/README.md
+nemo_runspec/artifacts.md
 ```
 
 ```{toctree}
 :caption: Nano3 Stages
 :hidden:
 
-train/nano3/pretrain.md
-train/nano3/sft.md
-train/nano3/rl.md
-train/nano3/import.md
+nemotron/nano3/pretrain.md
+nemotron/nano3/sft.md
+nemotron/nano3/rl.md
+nemotron/nano3/import.md
 ```
 
 ```{toctree}
 :caption: Nemotron Kit
 :hidden:
 
-train/kit.md
-train/nvidia-stack.md
-train/nemo-run.md
-train/omegaconf.md
-train/wandb.md
-train/cli.md
-train/data-prep.md
+nemotron/kit.md
+nemotron/nvidia-stack.md
+nemo_runspec/nemo-run.md
+nemo_runspec/omegaconf.md
+nemotron/wandb.md
+nemo_runspec/cli.md
+nemotron/data-prep.md
 ```

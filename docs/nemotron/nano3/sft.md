@@ -28,7 +28,7 @@ flowchart LR
         mask --> pack["Packing"]
         pack --> roll["Mask Rolling"]
     end
-    roll --> npy[".npy Output"]
+    roll --> npy["Parquet Output"]
 
     style chat fill:#e3f2fd,stroke:#2196f3
     style template fill:#e3f2fd,stroke:#2196f3
@@ -205,7 +205,7 @@ Per-token normalization is preferred for SFT because it ensures consistent learn
 <div class="termy">
 
 ```console
-// 1. Prepare data (apply chat templates, tokenize to .npy)
+// 1. Prepare data (apply chat templates, tokenize to Packed Parquet)
 $ uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
 
 // 2. Run SFT
@@ -214,7 +214,7 @@ $ uv run nemotron nano3 sft --run YOUR-CLUSTER
 
 </div>
 
-> **Note**: The `--run YOUR-CLUSTER` flag submits jobs via [NeMo-Run](../nemo-run.md). See [Execution through NeMo-Run](../nemo-run.md) for setup.
+> **Note**: The `--run YOUR-CLUSTER` flag submits jobs via [NeMo-Run](../../nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for setup.
 
 #### Direct Script Execution (Megatron-Bridge)
 
@@ -260,7 +260,7 @@ uv run nemotron nano3 data prep sft [options]
 
 | Option | Description |
 |--------|-------------|
-| `--run <profile>` | Execute on Slurm via [NeMo-Run](../nemo-run.md) |
+| `--run <profile>` | Execute on Slurm via [NeMo-Run](../../nemo_runspec/nemo-run.md) |
 | `--sample N` | Limit rows per dataset (for testing) |
 | `--force` | Force re-run, ignoring cache |
 
@@ -268,9 +268,9 @@ uv run nemotron nano3 data prep sft [options]
 
 ```
 output/stage1_sft/
-├── training.npy
-├── validation.npy
-├── test.npy
+├── training.parquet
+├── validation.parquet
+├── test.parquet
 └── metadata.json
 ```
 
@@ -286,10 +286,10 @@ uv run nemotron nano3 sft [options] [overrides...]
 
 | Option | Description |
 |--------|-------------|
-| `--run <profile>` | Attached—submits and waits, streaming logs ([NeMo-Run](../nemo-run.md)) |
-| `--batch <profile>` | Detached—submits and exits immediately ([NeMo-Run](../nemo-run.md)) |
+| `--run <profile>` | Attached—submits and waits, streaming logs ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
+| `--batch <profile>` | Detached—submits and exits immediately ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--dry-run` | Preview execution plan |
-| `key=value` | Override config values ([CLI Framework](../cli.md#dotlist-overrides)) |
+| `key=value` | Override config values ([CLI Framework](../../nemo_runspec/cli.md#dotlist-overrides)) |
 
 #### Override Examples
 
@@ -323,7 +323,7 @@ gpus_per_node = 8
 mounts = ["/lustre:/lustre"]
 ```
 
-See [Execution through NeMo-Run](../nemo-run.md) for complete configuration options.
+See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for complete configuration options.
 
 ### Artifact Lineage
 
@@ -332,7 +332,7 @@ See [Execution through NeMo-Run](../nemo-run.md) for complete configuration opti
 flowchart TB
     prev["ModelArtifact-pretrain<br/>(from Stage 0)"] --> train
     inst["Instruction Datasets<br/>(OpenAI chat format)"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-sft<br/>(packed .npy files)"]
+    dp --> data["DataBlendsArtifact-sft<br/>(Packed Parquet)"]
     data --> train["train.py"]
     train --> model["ModelArtifact-sft<br/>(fine-tuned checkpoint)"]
     model --> next["Stage 2: RL"]

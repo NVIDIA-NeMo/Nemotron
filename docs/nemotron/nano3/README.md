@@ -6,7 +6,7 @@ A complete, reproducible training pipeline for Nemotron 3 Nano—an open, effici
 
 ### Prerequisites
 
-- **Slurm cluster** with GPU nodes (H100 recommended) — see [Execution through NeMo-Run](../nemo-run.md)
+- **Slurm cluster** with GPU nodes (H100 recommended) — see [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../../nemo_runspec/artifacts.md)
 - **Container images**:
   - Training: `nvcr.io/nvidia/nemo:25.11.nemotron_3_nano`
@@ -22,7 +22,7 @@ uv sync
 
 ### Configuration
 
-Create an `env.toml` file (see [Execution through NeMo-Run](../nemo-run.md) for details):
+Create an `env.toml` file (see [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for details):
 
 ```toml
 [wandb]
@@ -127,7 +127,7 @@ Multi-environment RLVR training across 7 reward environments using GRPO, plus Ge
 
 ## Execution Options
 
-All commands support [NeMo-Run](../nemo-run.md) execution modes:
+All commands support [NeMo-Run](../../nemo_runspec/nemo-run.md) execution modes:
 
 | Option | Behavior | Use Case |
 |--------|----------|----------|
@@ -135,7 +135,7 @@ All commands support [NeMo-Run](../nemo-run.md) execution modes:
 | `--batch <profile>` | Detached—submits and exits immediately | Long-running jobs |
 | `--dry-run` | Preview execution plan | Validation |
 
-See [Execution through NeMo-Run](../nemo-run.md) for profile configuration and advanced options.
+See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for profile configuration and advanced options.
 
 ## Artifact Lineage
 
@@ -151,7 +151,7 @@ flowchart TB
     end
 
     subgraph sft["Stage 1: SFT"]
-        data1["DataBlendsArtifact-sft<br/>(.npy)"] --> cmd1["uv run nemotron nano3 sft"]
+        data1["DataBlendsArtifact-sft<br/>(Parquet)"] --> cmd1["uv run nemotron nano3 sft"]
         model0 --> cmd1
         cmd1 --> model1["ModelArtifact-sft"]
     end
@@ -229,7 +229,7 @@ Usage: nemotron nano3 sft [OPTIONS]
 ╰──────────────────────────────────────────────────────────────────────────╯
 ╭─ Artifact Overrides (W&B artifact references) ───────────────────────────╮
 │  run.model     Base model checkpoint artifact                            │
-│  run.data      SFT data artifact (packed .npy)                           │
+│  run.data      SFT data artifact (Packed Parquet)                        │
 ╰──────────────────────────────────────────────────────────────────────────╯
 ╭─ Run Overrides (override env.toml settings) ─────────────────────────────╮
 │  run.env.nodes               Number of nodes                             │
@@ -262,7 +262,7 @@ wandb login
 
 **Container not found**: Verify image path in config files.
 
-**Job submission fails**: Check Slurm account and partition in `env.toml`. See [Execution through NeMo-Run](../nemo-run.md).
+**Job submission fails**: Check Slurm account and partition in `env.toml`. See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md).
 
 ## Further Reading
 
@@ -271,8 +271,8 @@ wandb login
 - [Stage 2: RL](./rl.md)
 - [Importing Models & Data](./import.md)
 - [Artifact Lineage](../../nemo_runspec/artifacts.md)
-- [Execution through NeMo-Run](../nemo-run.md)
+- [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - [W&B Integration](../wandb.md)
 - [NVIDIA AI Stack](../nvidia-stack.md)
-- [CLI Framework](../cli.md)
+- [CLI Framework](../../nemo_runspec/cli.md)
 - [Data Preparation Module](../data-prep.md)

@@ -27,7 +27,7 @@ flowchart TB
 
     subgraph stage1["Stage 1: SFT"]
         raw1["Instruction Data"] --> dp1["data_prep.py"]
-        dp1 --> data1["DataBlendsArtifact-sft<br/>(.npy)"]
+        dp1 --> data1["DataBlendsArtifact-sft<br/>(Packed Parquet)"]
         model0 --> train1["train.py"]
         data1 --> train1
         train1 --> model1["ModelArtifact-sft"]
@@ -50,10 +50,10 @@ flowchart TB
 
 | Artifact | Stage | Format | Description |
 |----------|-------|--------|-------------|
-| `DataBlendsArtifact-pretrain` | [0](./nano3/pretrain.md) | bin/idx | Tokenized pretraining data in Megatron format |
-| `ModelArtifact-pretrain` | [0](./nano3/pretrain.md) | checkpoint | Base model after pretraining |
-| `DataBlendsArtifact-sft` | [1](./nano3/sft.md) | .npy | Packed SFT sequences with loss masks |
-| `ModelArtifact-sft` | [1](./nano3/sft.md) | checkpoint | Instruction-tuned model |
+| `DataBlendsArtifact-pretrain` | [0](../nemotron/nano3/pretrain.md) | bin/idx | Tokenized pretraining data in Megatron format |
+| `ModelArtifact-pretrain` | [0](../nemotron/nano3/pretrain.md) | checkpoint | Base model after pretraining |
+| `DataBlendsArtifact-sft` | [1](../nemotron/nano3/sft.md) | Packed Parquet | Packed SFT sequences with loss masks |
+| `ModelArtifact-sft` | [1](../nemotron/nano3/sft.md) | checkpoint | Instruction-tuned model |
 | `DataBlendsArtifact-rl` | [2](../nemotron/nano3/rl.md) | JSONL | RL prompts for [NeMo-RL](../nemotron/nvidia-stack.md#nemo-rl) |
 | `ModelArtifact-rl` | [2](../nemotron/nano3/rl.md) | checkpoint | Final aligned model |
 
@@ -155,7 +155,7 @@ uv run nemotron nano3 data import sft /path/to/sft_data/
 uv run nemotron nano3 data import rl /path/to/rl_data/
 ```
 
-See [Importing Models & Data](./nano3/import.md) for detailed directory structures.
+See [Importing Models & Data](../nemotron/nano3/import.md) for detailed directory structures.
 
 ## Troubleshooting
 
@@ -298,7 +298,7 @@ class ProcessedDataArtifact(Artifact):
 - [Nemotron Kit](../nemotron/kit.md) — Artifact system internals
 - [OmegaConf Configuration](./omegaconf.md) — `${art:...}` interpolations and lineage
 - [W&B Integration](../nemotron/wandb.md) — Credentials and configuration
-- [Importing Models & Data](./nano3/import.md) — Import commands and directory structures
+- [Importing Models & Data](../nemotron/nano3/import.md) — Import commands and directory structures
 - [CLI Framework](./cli.md) — CLI building and artifact inputs
 - [Data Preparation](../nemotron/data-prep.md) — Data preparation module
-- [Nano3 Recipe](./nano3/README.md) — Complete training pipeline
+- [Nano3 Recipe](../nemotron/nano3/README.md) — Complete training pipeline

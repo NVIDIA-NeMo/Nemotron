@@ -65,7 +65,7 @@ checkpoint_step: ${art:model,iteration}          # 10000
 
 # Metadata field resolution (from metadata.json)
 pack_size: ${art:data,pack_size}                 # 4096
-training_path: ${art:data,training_path}         # /path/to/training_4096.npy
+training_path: ${art:data,training_path}         # /path/to/training_4096.parquet
 ```
 
 ### Supported Fields

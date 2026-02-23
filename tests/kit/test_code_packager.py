@@ -23,7 +23,7 @@ import pytest
 def test_code_packager_excludes_usage_cookbook_and_use_case_examples(tmp_path):
     pytest.importorskip("nemo_run")
 
-    from nemotron.kit.packaging.code_packager import CodePackager
+    from nemo_runspec.packaging.code_packager import CodePackager
 
     repo_root = tmp_path / "repo"
     (repo_root / "src" / "nemotron").mkdir(parents=True)

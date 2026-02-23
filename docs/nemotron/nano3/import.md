@@ -80,8 +80,8 @@ uv run nemotron nano3 data import rl /path/to/rl_data_dir
 ```
 /path/to/sft_data_dir/
 ├── blend.json
-├── train.npy
-├── valid.npy
+├── train.parquet
+├── valid.parquet
 └── ...
 ```
 

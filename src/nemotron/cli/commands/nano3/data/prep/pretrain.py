@@ -188,7 +188,7 @@ def _execute_ray_code_packager(
         raise typer.Exit(1)
 
     from nemo_runspec.packaging import CodePackager
-    from nemotron.kit.run import (
+    from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,
     )

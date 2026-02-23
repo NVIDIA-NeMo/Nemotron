@@ -47,8 +47,9 @@ from nemo_run.core.packaging import Packager
 
 @dataclass(kw_only=True)
 class SelfContainedPackager(Packager):
-    """Packager that produces a self-contained `main.py` by inlining `nemotron.*` imports.
+    """Packager that produces a self-contained ``main.py`` by inlining local package imports.
 
+    By default inlines both ``nemotron.*`` and ``nemo_runspec.*`` imports.
     Expects config.yaml to already have paths rewritten to /nemo_run/code/... by
     ConfigBuilder.save(). Scans for those paths and includes the corresponding
     local files in the tarball.
@@ -56,7 +57,7 @@ class SelfContainedPackager(Packager):
 
     script_path: str
     train_path: str
-    inline_package: str = "nemotron"
+    inline_packages: tuple[str, ...] = ("nemotron", "nemo_runspec")
     remote_code_dir: str = "/nemo_run/code"
 
     def package(self, path: Path, job_dir: str, name: str) -> str:
@@ -92,11 +93,11 @@ class SelfContainedPackager(Packager):
         if not script_file.is_absolute():
             script_file = repo_root / self.script_path
 
-        # Inline nemotron imports into main.py
+        # Inline nemotron/nemo_runspec imports into main.py
         inlined = inline_imports(
             script_file,
             repo_root=repo_root,
-            package_prefix=self.inline_package,
+            package_prefixes=self.inline_packages,
         )
 
         # Load config (already has paths rewritten to /nemo_run/code)
@@ -222,21 +223,24 @@ def _node_source(lines: list[str], node: ast.AST) -> str:
     return "".join(lines[start:end])
 
 
-def _is_nemotron_import(node: ast.AST, *, package_prefix: str) -> bool:
-    """Return True if the node is an import from `package_prefix` (import/from-import)."""
+def _matches_any_prefix(name: str, prefixes: tuple[str, ...]) -> bool:
+    """Return True if *name* matches any of the given package prefixes."""
+    return any(name == p or name.startswith(p + ".") for p in prefixes)
+
+
+def _is_nemotron_import(node: ast.AST, *, package_prefixes: tuple[str, ...]) -> bool:
+    """Return True if the node is an import from any of the *package_prefixes*."""
     if isinstance(node, ast.ImportFrom):
         if node.module is None:
             return False
-        return node.module == package_prefix or node.module.startswith(package_prefix + ".")
+        return _matches_any_prefix(node.module, package_prefixes)
     if isinstance(node, ast.Import):
-        return any(
-            a.name == package_prefix or a.name.startswith(package_prefix + ".") for a in node.names
-        )
+        return any(_matches_any_prefix(a.name, package_prefixes) for a in node.names)
     return False
 
 
 def _collect_all_nemotron_imports(
-    mod_ast: ast.Module, *, package_prefix: str
+    mod_ast: ast.Module, *, package_prefixes: tuple[str, ...]
 ) -> list[ast.Import | ast.ImportFrom]:
     """Collect all nemotron imports from the entire AST tree, including nested scopes.
 
@@ -245,7 +249,7 @@ def _collect_all_nemotron_imports(
     imports: list[ast.Import | ast.ImportFrom] = []
     for node in ast.walk(mod_ast):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
-            if _is_nemotron_import(node, package_prefix=package_prefix):
+            if _is_nemotron_import(node, package_prefixes=package_prefixes):
                 imports.append(node)
     return imports
 
@@ -257,17 +261,17 @@ class _NemotronImportRemover(ast.NodeTransformer):
     Import statements are replaced with `pass` to avoid empty blocks.
     """
 
-    def __init__(self, package_prefix: str):
-        self.package_prefix = package_prefix
+    def __init__(self, package_prefixes: tuple[str, ...]):
+        self.package_prefixes = package_prefixes
 
     def visit_Import(self, node: ast.Import) -> ast.AST | None:
-        if _is_nemotron_import(node, package_prefix=self.package_prefix):
+        if _is_nemotron_import(node, package_prefixes=self.package_prefixes):
             # Replace with pass to avoid empty function bodies
             return ast.Pass()
         return node
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.AST | None:
-        if _is_nemotron_import(node, package_prefix=self.package_prefix):
+        if _is_nemotron_import(node, package_prefixes=self.package_prefixes):
             # Replace with pass to avoid empty function bodies
             return ast.Pass()
         return node
@@ -326,7 +330,7 @@ def _parse_module_for_inlining(
     module: str,
     *,
     repo_root: Path,
-    package_prefix: str,
+    package_prefixes: tuple[str, ...],
 ) -> tuple[_ModuleInline, list[str]]:
     """Parse a module and split it into (inline block, dependency modules).
 
@@ -343,7 +347,7 @@ def _parse_module_for_inlining(
     dependencies: list[str] = []
 
     # Collect dependencies from ALL nemotron imports (including nested ones)
-    all_nemotron_imports = _collect_all_nemotron_imports(mod_ast, package_prefix=package_prefix)
+    all_nemotron_imports = _collect_all_nemotron_imports(mod_ast, package_prefixes=package_prefixes)
     for imp_node in all_nemotron_imports:
         if isinstance(imp_node, ast.ImportFrom) and imp_node.module:
             if imp_node.module not in dependencies:
@@ -358,13 +362,15 @@ def _parse_module_for_inlining(
                 if alias.name not in dependencies:
                     dependencies.append(alias.name)
 
+    remover = _NemotronImportRemover(package_prefixes)
+
     for node in mod_ast.body:
         # Never inline/emit __future__ imports from library modules.
         if isinstance(node, ast.ImportFrom) and node.module == "__future__":
             continue
 
         if isinstance(node, (ast.Import, ast.ImportFrom)):
-            if _is_nemotron_import(node, package_prefix=package_prefix):
+            if _is_nemotron_import(node, package_prefixes=package_prefixes):
                 # Track alias assignments for top-level imports only
                 if isinstance(node, ast.ImportFrom) and node.module:
                     for alias in node.names:
@@ -382,7 +388,10 @@ def _parse_module_for_inlining(
             external_imports.append(_node_source(lines, node))
             continue
 
-        body_parts.append(_node_source(lines, node))
+        # Remove nested imports (inside functions, classes) from library modules too
+        transformed_node = remover.visit(node)
+        ast.fix_missing_locations(transformed_node)
+        body_parts.append(ast.unparse(transformed_node) + "\n")
 
     exports = _module_exports(mod_ast)
     return (
@@ -401,25 +410,27 @@ def inline_imports(
     entry_path: Path,
     *,
     repo_root: Path,
-    package_prefix: str = "nemotron",
+    package_prefixes: tuple[str, ...] = ("nemotron", "nemo_runspec"),
+    package_prefix: str | None = None,
 ) -> str:
-    """Inline `package_prefix` imports into a single self-contained script.
+    """Inline imports from *package_prefixes* into a single self-contained script.
 
     The resulting script:
-    - removes `import {package_prefix}...` and `from {package_prefix}...` statements
-      (both top-level and nested inside functions/classes)
-    - appends source for referenced modules (under `repo_root/src/`)
-    - synthesizes `types.SimpleNamespace` objects for `import nemotron.x as x` patterns
-      so that attribute access continues to work.
+    - removes matching import statements (both top-level and nested)
+    - appends source for referenced modules (under ``repo_root/src/``)
+    - synthesizes ``types.SimpleNamespace`` objects for ``import pkg.x as x`` patterns
 
     Args:
-        entry_path: The script whose `package_prefix` imports should be inlined.
-        repo_root: Repo root containing `src/`.
-        package_prefix: Package prefix to inline (default: `nemotron`).
+        entry_path: The script whose matching imports should be inlined.
+        repo_root: Repo root containing ``src/``.
+        package_prefixes: Package prefixes to inline.
+        package_prefix: Deprecated single prefix (converted to tuple).
 
     Returns:
-        A Python source string suitable for writing to `main.py`.
+        A Python source string suitable for writing to ``main.py``.
     """
+    if package_prefix is not None:
+        package_prefixes = (package_prefix,)
 
     entry_text = _read_text(entry_path)
     entry_lines = entry_text.splitlines(keepends=True)
@@ -447,7 +458,7 @@ def inline_imports(
     entry_dependencies: list[str] = []
 
     # Collect dependencies from ALL nemotron imports (including nested ones in functions)
-    all_nemotron_imports = _collect_all_nemotron_imports(entry_ast, package_prefix=package_prefix)
+    all_nemotron_imports = _collect_all_nemotron_imports(entry_ast, package_prefixes=package_prefixes)
     for imp_node in all_nemotron_imports:
         if isinstance(imp_node, ast.ImportFrom) and imp_node.module:
             if imp_node.module not in entry_dependencies:
@@ -472,7 +483,7 @@ def inline_imports(
             continue
 
         if isinstance(node, (ast.Import, ast.ImportFrom)):
-            if _is_nemotron_import(node, package_prefix=package_prefix):
+            if _is_nemotron_import(node, package_prefixes=package_prefixes):
                 # Track alias assignments for top-level imports
                 if isinstance(node, ast.ImportFrom) and node.module:
                     for alias in node.names:
@@ -489,7 +500,7 @@ def inline_imports(
 
         # For non-import statements, use AST transformation to remove nested imports
         # then unparse back to source. This handles imports inside functions/classes.
-        remover = _NemotronImportRemover(package_prefix)
+        remover = _NemotronImportRemover(package_prefixes)
         transformed_node = remover.visit(node)
         ast.fix_missing_locations(transformed_node)
         entry_body_parts.append(ast.unparse(transformed_node) + "\n")
@@ -507,17 +518,17 @@ def inline_imports(
         mod_inline, deps = _parse_module_for_inlining(
             module,
             repo_root=repo_root,
-            package_prefix=package_prefix,
+            package_prefixes=package_prefixes,
         )
         for dep in deps:
-            if dep == package_prefix or dep.startswith(package_prefix + "."):
+            if _matches_any_prefix(dep, package_prefixes):
                 visit(dep, stack=stack)
         module_blocks[module] = mod_inline
         ordered_modules.append(module)
         stack.remove(module)
 
     for dep in entry_dependencies:
-        if dep == package_prefix or dep.startswith(package_prefix + "."):
+        if _matches_any_prefix(dep, package_prefixes):
             visit(dep, stack=set())
 
     need_namespace = bool(ordered_modules)

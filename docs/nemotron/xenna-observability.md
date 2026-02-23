@@ -211,4 +211,4 @@ These are expected behaviors and the hook gracefully handles missing data.
 
 - [Weights & Biases Integration](./wandb.md) — W&B configuration and authentication
 - [Data Preparation](./data-prep.md) — Data prep module overview
-- [Artifact Lineage](./artifacts.md) — Tracking data lineage in W&B
+- [Artifact Lineage](../nemo_runspec/artifacts.md) — Tracking data lineage in W&B

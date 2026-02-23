@@ -188,9 +188,9 @@ src/nemotron/kit/
 
 - [`nemo_runspec` Package](../../src/nemo_runspec/README.md) -- CLI toolkit, config loading, execution, packaging
 - [NVIDIA AI Stack](./nvidia-stack.md) -- Megatron-Core, Megatron-Bridge, NeMo-RL
-- [OmegaConf Configuration](./omegaconf.md) -- Artifact interpolations and unified W&B logging
+- [OmegaConf Configuration](../nemo_runspec/omegaconf.md) -- Artifact interpolations and unified W&B logging
 - [Artifact Lineage](../nemo_runspec/artifacts.md) -- Artifact versioning and W&B lineage
 - [W&B Integration](./wandb.md) -- Automatic credential handling
-- [Execution through NeMo-Run](./nemo-run.md) -- Execution profiles and packagers
-- [CLI Framework](./cli.md) -- Building recipe CLIs
+- [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) -- Execution profiles and packagers
+- [CLI Framework](../nemo_runspec/cli.md) -- Building recipe CLIs
 - [Data Preparation](./data-prep.md) -- Data prep module

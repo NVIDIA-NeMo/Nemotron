@@ -24,7 +24,7 @@ import pytest
 def test_self_contained_packager_produces_flat_tar(tmp_path):
     pytest.importorskip("nemo_run")
 
-    from nemotron.kit.packaging.self_contained_packager import SelfContainedPackager
+    from nemo_runspec.packaging.self_contained_packager import SelfContainedPackager
 
     repo_root = tmp_path / "repo"
     (repo_root / "src" / "nemotron").mkdir(parents=True)
@@ -76,7 +76,7 @@ def test_self_contained_packager_inlines_nested_imports(tmp_path):
     """Verify that imports inside functions are also inlined."""
     pytest.importorskip("nemo_run")
 
-    from nemotron.kit.packaging.self_contained_packager import SelfContainedPackager
+    from nemo_runspec.packaging.self_contained_packager import SelfContainedPackager
 
     repo_root = tmp_path / "repo"
     (repo_root / "src" / "nemotron").mkdir(parents=True)
@@ -153,7 +153,7 @@ def test_self_contained_packager_ignores_importlib_imports(tmp_path):
     """
     pytest.importorskip("nemo_run")
 
-    from nemotron.kit.packaging.self_contained_packager import SelfContainedPackager
+    from nemo_runspec.packaging.self_contained_packager import SelfContainedPackager
 
     repo_root = tmp_path / "repo"
     (repo_root / "src" / "nemotron" / "kit").mkdir(parents=True)

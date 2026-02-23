@@ -34,7 +34,7 @@ into the script itself:
 
 Because this metadata is declarative and machine-readable, any tool can consume
 it — a CLI, a CI pipeline, a notebook, or an agent building a completely
-different execution backend. See the [Design Philosophy](../../docs/architecture/design-philosophy.md)
+different execution backend. See the [Design Philosophy](../../architecture/design-philosophy.md)
 for the broader principles behind this approach.
 
 ## Format

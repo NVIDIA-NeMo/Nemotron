@@ -26,7 +26,7 @@ Usage: nemotron nano3 sft [OPTIONS]
 ╰──────────────────────────────────────────────────────────────────────────╯
 ╭─ Artifact Overrides (W&B artifact references) ───────────────────────────╮
 │  run.model     Base model checkpoint artifact                            │
-│  run.data      SFT data artifact (packed .npy)                           │
+│  run.data      SFT data artifact (Packed Parquet)                           │
 ╰──────────────────────────────────────────────────────────────────────────╯
 ╭─ Run Overrides (override env.toml settings) ─────────────────────────────╮
 │  run.env.nodes               Number of nodes                             │
@@ -485,4 +485,4 @@ uv run nemotron myrecipe train -c tiny --run MY-CLUSTER
 - [Data Preparation](../nemotron/data-prep.md) -- Data preparation module
 - [Artifact Lineage](./artifacts.md) -- W&B artifact system and lineage tracking
 - [W&B Integration](../nemotron/wandb.md) -- Credentials and configuration
-- [Nano3 Recipe](./nano3/README.md) -- Complete training recipe example
+- [Nano3 Recipe](../nemotron/nano3/README.md) -- Complete training recipe example
