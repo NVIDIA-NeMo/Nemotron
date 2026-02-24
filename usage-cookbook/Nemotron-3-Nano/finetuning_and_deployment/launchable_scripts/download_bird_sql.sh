@@ -6,8 +6,8 @@
 
 set -e
 
-REPO="haydeniw/Nemotron"
-BRANCH="hwolff/megatron-bridge-launchable"
+REPO="NVIDIA-NeMo/Nemotron"
+BRANCH="main"
 REMOTE_PATH="usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment/bird_sql"
 API_URL="https://api.github.com/repos/${REPO}/contents/${REMOTE_PATH}?ref=${BRANCH}"
 
