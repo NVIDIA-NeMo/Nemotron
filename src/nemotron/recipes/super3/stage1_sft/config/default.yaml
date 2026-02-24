@@ -1,0 +1,46 @@
+run:
+  data: SFTDataArtifact-sft:latest
+  model: pretrain:latest
+  env:
+    # TODO(super3): Replace with actual container image
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_super
+
+recipe:
+  # TODO(super3): Replace with actual Super3 finetune recipe target
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_finetune_config
+  packed_sequence: true
+  peft: null
+
+dataset:
+  super3_packed_sft_dir: ${art:data,path}
+  seq_length: ${art:data,pack_size}
+  packed_sequence_specs:
+    packed_sequence_size: ${art:data,pack_size}
+
+train:
+  train_iters: 1700
+  global_batch_size: 4
+
+model:
+  seq_length: ${art:data,pack_size}
+  # TODO(super3): Set parallelism for Super3 model size
+  pipeline_model_parallel_size: 1
+  tensor_model_parallel_size: 4
+  context_parallel_size: 2
+  hidden_size: 1344
+  calculate_per_token_loss: True
+
+scheduler:
+  lr_warmup_iters: 4
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+  wandb_exp_name: super3-sft
+
+checkpoint:
+  save: /nemo_run/sft
+  save_interval: 20
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true

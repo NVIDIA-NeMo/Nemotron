@@ -1,0 +1,22 @@
+run:
+  data: DataBlendsArtifact-rl:latest
+  model: sft:latest
+  env:
+    # TODO(super3): Replace with actual container image
+    container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_super
+
+grpo:
+  num_prompts_per_step: 8
+  num_generations_per_prompt: 4
+  max_num_steps: 10
+  seed: 42
+
+policy:
+  # TODO(super3): Replace with actual Super3 HF model name
+  model_name: "/path/to/hf_checkpoint"
+  tokenizer:
+    name: nvidia/NVIDIA-Nemotron-3-Super-XXB-Base-BF16
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 1

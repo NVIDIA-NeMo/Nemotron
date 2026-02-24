@@ -1,0 +1,35 @@
+run:
+  data: SFTDataArtifact-sft:latest
+  model: pretrain:latest
+  env:
+    # TODO(super3): Replace with actual container image
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_super
+
+recipe:
+  _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_pretrain_config
+  packed_sequence: true
+  peft: null
+
+dataset:
+  super3_packed_sft_dir: ${art:data,path}
+  seq_length: ${art:data,pack_size}
+  packed_sequence_specs:
+    packed_sequence_size: ${art:data,pack_size}
+
+train:
+  train_iters: 100
+  global_batch_size: 4
+
+scheduler:
+  lr_warmup_iters: 4
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/sft
+  save_interval: 20
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true

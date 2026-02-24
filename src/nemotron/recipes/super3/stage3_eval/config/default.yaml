@@ -1,0 +1,120 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Stage 3: Evaluation Configuration for Nemotron Super3
+#
+# This config integrates with nemo-evaluator-launcher. The 'run' section is
+# used for Nemotron's artifact resolution and env.toml profile injection,
+# then stripped before passing to the evaluator launcher.
+#
+# Usage:
+#   nemotron super3 eval --run MY-CLUSTER
+#   nemotron super3 eval --run MY-CLUSTER run.model=sft:v2
+#   nemotron super3 eval --run MY-CLUSTER -t adlr_mmlu -t hellaswag
+#   nemotron super3 eval --dry-run
+
+# =============================================================================
+# Defaults - Use local executor and vLLM deployment
+# For slurm, override with: execution.type=slurm
+# =============================================================================
+defaults:
+  - execution: local
+  - deployment: vllm
+  - _self_
+
+# =============================================================================
+# Nemotron run section (artifact resolution + env.toml injection)
+# This section is used for interpolation and stripped before calling the launcher
+# =============================================================================
+run:
+  # Model artifact to evaluate (default: RL stage output)
+  model: rl:latest
+
+  # Environment config - populated from env.toml profile via --run
+  # These defaults allow local execution without env.toml
+  env:
+    executor: local
+    container: nvcr.io/nvidia/nemo-evaluator:latest
+    host: ${oc.env:HOSTNAME,localhost}
+    user: ${oc.env:USER}
+    account: null
+    partition: null
+    remote_job_dir: ${oc.env:PWD}/.nemotron
+    time: "04:00:00"
+
+  # W&B config - populated from env.toml [wandb] section
+  wandb:
+    entity: null
+    project: null
+
+# =============================================================================
+# NeMo-Evaluator Launcher Configuration
+# Everything below is passed directly to nemo-evaluator-launcher
+# =============================================================================
+
+# Execution configuration
+# Maps env.toml profile fields to evaluator's execution section
+execution:
+  type: ${run.env.executor}
+  hostname: ${run.env.host}
+  username: ${run.env.user}
+  account: ${run.env.account}
+  partition: ${run.env.partition}
+  output_dir: ${run.env.remote_job_dir}/evaluations
+  walltime: ${run.env.time}
+  # Auto-export results to W&B after evaluation completes
+  auto_export:
+    enabled: true
+    destinations:
+      - wandb
+
+# Deployment configuration
+# Specifies how to serve the model for evaluation
+deployment:
+  type: vllm
+  image: ${run.env.container}
+  checkpoint_path: ${art:model,path}
+  # TODO(super3): Set parallelism for Super3 model size
+  tensor_parallel_size: 4
+  data_parallel_size: 1
+  extra_args: "--max-model-len 32768"
+
+# Evaluation configuration
+# Defines tasks and evaluation parameters
+evaluation:
+  # Environment variables for evaluation tasks
+  env_vars:
+    HF_TOKEN: HF_TOKEN
+
+  # Global config settings that apply to all tasks
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600
+        parallelism: 8
+        # Uncomment for quick testing:
+        # limit_samples: 10
+
+  # Tasks to run (can be filtered with -t flag)
+  tasks:
+    - name: adlr_mmlu
+    - name: hellaswag
+    - name: arc_challenge
+
+# Export configuration
+# W&B export for results logging - populated from env.toml [wandb] section
+export:
+  wandb:
+    entity: ${run.wandb.entity}
+    project: ${run.wandb.project}

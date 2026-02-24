@@ -1,0 +1,26 @@
+run:
+  data: PretrainBlendsArtifact-tiny:latest
+  env:
+    # TODO(super3): Replace with actual container image
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_super
+
+recipe:
+  # TODO(super3): Replace with actual Super3 pretrain recipe target (tiny variant)
+  _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_pretrain_config
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 1700
+  global_batch_size: 32
+
+scheduler:
+  lr_warmup_iters: 32
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/pretrain
+  save_interval: 20

@@ -1,0 +1,83 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# Default config for pretrain data preparation
+#
+# Usage:
+#   nemotron super3 data prep pretrain
+#   nemotron super3 data prep pretrain sample=100 force=true
+#
+# Environment variables:
+#   PWD: Current working directory (for path resolution)
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/super3/stage0_pretrain/config/data_prep/data_blend_raw.json
+
+# Output directory for tokenized data
+# Using fixed path to enable caching across job submissions
+output_dir: /lustre/fsw/portfolios/coreai/users/mromeijn/output/super3/stage0_pretrain
+
+# Number of output shards for parallel loading
+num_shards: 128
+
+# Number of shards for validation split
+valid_shards: 1
+
+# Number of shards for test split
+test_shards: 1
+
+# Tokenizer configuration (nested)
+tokenizer:
+  # TODO(super3): Replace with actual Super3 tokenizer model
+  model: nvidia/NVIDIA-Nemotron-3-Super-XXB-Base-BF16
+  add_bos: false
+  add_eos: true
+
+# Default text field name in datasets
+text_field: text
+
+# Skip documents shorter than this (null = no limit)
+min_doc_chars: null
+
+# Truncate documents longer than this (null = no limit)
+max_doc_tokens: null
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Force new run, ignoring cache
+force: false
+
+# Config name for artifact naming (produces PretrainBlendsArtifact-default)
+config_name: default
+
+# =============================================================================
+# Stage Configs
+# =============================================================================
+
+# Planning stage config
+plan:
+  planner_cpus: 0.5
+
+# Download stage config
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+
+# Tokenization stage config
+tokenization:
+  cpus_per_worker: 4
+
+# =============================================================================
+# Pipeline Config
+# =============================================================================
+
+# Pipeline observability settings
+observability:
+  pipeline_logging_interval_s: 30
+  wandb_log_pipeline_stats: true
