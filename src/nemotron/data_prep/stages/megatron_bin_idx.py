@@ -27,14 +27,13 @@ checkpoint/resume semantics.
 
 from __future__ import annotations
 
-import json
-import time
 from dataclasses import dataclass
 from typing import Any
 
 import cosmos_xenna.pipelines.v1 as pipelines_v1
 
-from nemotron.data_prep.utils.filesystem import get_filesystem, read_json
+from nemotron.data_prep.utils.filesystem import get_filesystem
+from nemotron.data_prep.core.receipt import ReceiptManager
 from nemotron.data_prep.stages.context import PipelineContext
 from nemotron.data_prep.core.work_items import ShardWorkItem
 
@@ -94,6 +93,7 @@ class BinIdxTokenizationStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
         self._ctx = pipeline_context
         self._tokenize = None
         self._fs = None
+        self._receipts: ReceiptManager | None = None
 
     @property
     def stage_batch_size(self) -> int:
@@ -116,6 +116,7 @@ class BinIdxTokenizationStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
 
         self._tokenize = create_tokenizer(self._ctx.resolved_tokenizer)
         self._fs, _ = get_filesystem(self._ctx.output_root)
+        self._receipts = ReceiptManager(self._fs, self._ctx.run_hash)
 
     def process_data(self, tasks: list[ShardWorkItem]) -> list[None]:
         """Process shards: check cache, tokenize, write receipts.
@@ -129,144 +130,56 @@ class BinIdxTokenizationStage(pipelines_v1.Stage[ShardWorkItem, ShardWorkItem]):
 
     def _process_shard(self, task: ShardWorkItem) -> None:
         """Process a single shard with idempotency and receipt handling."""
-        receipt_path = f"{task.receipts_dir.rstrip('/')}/shard_{task.shard_index:06d}.json"
-        shard_dir = task.output_dir
+        receipts = self._get_receipts()
+        rpath = receipts.receipt_path(task.receipts_dir, task.shard_index)
 
-        # Check if already completed (idempotency)
-        if self._is_completed(receipt_path, task.plan_hash, shard_dir):
+        if receipts.is_completed(
+            rpath, task.plan_hash,
+            verify_outputs=lambda: self._outputs_exist(task),
+        ):
             return
 
-        # Write "started" receipt
-        self._write_started_receipt(receipt_path, task)
+        meta = dict(
+            plan_hash=task.plan_hash,
+            shard_index=task.shard_index,
+            dataset_name=task.dataset_name,
+        )
+        receipts.write_started(rpath, **meta)
 
         try:
-            # Process the shard
             stats, files = self._tokenize_shard(task)
-
-            # Write "completed" receipt
-            self._write_completed_receipt(receipt_path, task, stats, files)
-
+            receipts.write_completed(rpath, stats=stats, files=files, **meta)
         except Exception as e:
-            # Write "failed" receipt and re-raise
-            self._write_failed_receipt(receipt_path, task, e)
+            receipts.write_failed(rpath, error=e, **meta)
             raise
 
-    def _is_completed(self, receipt_path: str, plan_hash: str, shard_dir: str) -> bool:
-        """Check if shard is already completed with valid outputs.
-
-        This check must match get_pending_shards() in planning.py to avoid
-        skipping shards that were correctly identified as pending due to
-        missing output files.
-
-        Also checks for "started" status to prevent race conditions in multi-node
-        setups where the same shard might be sent to multiple workers.
-        """
-        if not self._fs.exists(receipt_path):
+    def _outputs_exist(self, task: ShardWorkItem) -> bool:
+        """Verify output files exist for a completed receipt."""
+        rpath = self._get_receipts().receipt_path(task.receipts_dir, task.shard_index)
+        from nemotron.data_prep.utils.filesystem import read_json
+        try:
+            r = read_json(self._fs, rpath)
+            stats = r.get("stats", {}) or {}
+            if int(stats.get("num_sequences", 0) or 0) == 0:
+                return True
+            files = r.get("files", {}) or {}
+            bin_info = files.get("bin", {}) or {}
+            idx_info = files.get("idx", {}) or {}
+            bin_path = bin_info.get("path", "")
+            idx_path = idx_info.get("path", "")
+            if not bin_path or not idx_path:
+                return False
+            return (
+                self._fs.exists(f"{task.output_dir}/{bin_path}")
+                and self._fs.exists(f"{task.output_dir}/{idx_path}")
+            )
+        except Exception:
             return False
 
-        try:
-            r = read_json(self._fs, receipt_path)
-            status = r.get("status")
-            receipt_plan_hash = r.get("plan_hash")
-
-            # Skip if another worker already started (race condition prevention)
-            # Timeout after 30 minutes to handle crashed workers
-            if status == "started" and receipt_plan_hash == plan_hash:
-                started_at = r.get("started_at", 0)
-                elapsed_minutes = (time.time() - started_at) / 60
-                if elapsed_minutes < 30:
-                    # Another worker is processing this shard, skip
-                    return True
-
-            if status != "completed" or receipt_plan_hash != plan_hash:
-                return False
-
-            # Verify output files exist for non-empty shards
-            # This matches the check in get_pending_shards()
-            stats = r.get("stats", {}) or {}
-            if int(stats.get("num_sequences", 0) or 0) > 0:
-                files = r.get("files", {}) or {}
-                bin_info = files.get("bin", {}) or {}
-                idx_info = files.get("idx", {}) or {}
-                bin_path = bin_info.get("path", "")
-                idx_path = idx_info.get("path", "")
-
-                if not bin_path or not idx_path:
-                    return False
-
-                full_bin = f"{shard_dir}/{bin_path}"
-                full_idx = f"{shard_dir}/{idx_path}"
-                if not (self._fs.exists(full_bin) and self._fs.exists(full_idx)):
-                    return False
-
-            return True
-        except Exception:
-            return False  # Corrupted receipt, reprocess
-
-    def _write_started_receipt(self, receipt_path: str, task: ShardWorkItem) -> None:
-        """Write receipt indicating shard processing has started."""
-        receipt = {
-            "status": "started",
-            "run_hash": self._ctx.run_hash,
-            "dataset_name": task.dataset_name,
-            "plan_hash": task.plan_hash,
-            "shard_index": task.shard_index,
-            "started_at": time.time(),
-        }
-        self._write_json_atomic(receipt_path, receipt)
-
-    def _write_completed_receipt(
-        self,
-        receipt_path: str,
-        task: ShardWorkItem,
-        stats: dict[str, Any],
-        files: dict[str, Any],
-    ) -> None:
-        """Write receipt indicating successful completion."""
-        receipt = {
-            "status": "completed",
-            "run_hash": self._ctx.run_hash,
-            "dataset_name": task.dataset_name,
-            "plan_hash": task.plan_hash,
-            "shard_index": task.shard_index,
-            "stats": stats,
-            "files": files,
-            "completed_at": time.time(),
-        }
-        self._write_json_atomic(receipt_path, receipt)
-
-    def _write_failed_receipt(
-        self,
-        receipt_path: str,
-        task: ShardWorkItem,
-        error: Exception,
-    ) -> None:
-        """Write receipt indicating failure."""
-        import traceback
-
-        receipt = {
-            "status": "failed",
-            "run_hash": self._ctx.run_hash,
-            "dataset_name": task.dataset_name,
-            "plan_hash": task.plan_hash,
-            "shard_index": task.shard_index,
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "traceback": traceback.format_exc(),
-            "failed_at": time.time(),
-        }
-        self._write_json_atomic(receipt_path, receipt)
-
-    def _write_json_atomic(self, path: str, payload: dict[str, Any]) -> None:
-        """Write JSON atomically using tmp + rename pattern."""
-        tmp = f"{path}.tmp"
-        with self._fs.open(tmp, "w") as f:
-            json.dump(payload, f)
-        try:
-            self._fs.rm(path)
-        except Exception:
-            pass
-        self._fs.mv(tmp, path)
+    def _get_receipts(self) -> ReceiptManager:
+        if self._receipts is None:
+            self._receipts = ReceiptManager(self._fs, self._ctx.run_hash)
+        return self._receipts
 
     def _tokenize_shard(self, task: ShardWorkItem) -> tuple[dict[str, Any], dict[str, Any]]:
         """

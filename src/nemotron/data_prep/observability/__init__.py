@@ -33,6 +33,7 @@ from nemotron.data_prep.observability.wandb_hook import (
     WandbStatsHook,
     log_plan_table_to_wandb,
     make_wandb_stats_hook,
+    pipeline_wandb_hook,
 )
 
 # Stage naming utilities
@@ -46,6 +47,7 @@ __all__ = [
     "WandbStatsHook",
     "make_wandb_stats_hook",
     "log_plan_table_to_wandb",
+    "pipeline_wandb_hook",
     # Stage naming
     "canonical_stage_id",
     "get_stage_display_name",

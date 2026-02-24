@@ -201,7 +201,7 @@ Until native support is available, the kit uses targeted monkey patches to unify
 
 ```python
 # In train.py (pretraining/SFT)
-from nemotron.kit.wandb import (
+from nemotron.kit.wandb_kit import (
     patch_wandb_checkpoint_logging,
     patch_wandb_init_for_lineage,
 )
@@ -218,7 +218,7 @@ patch_wandb_checkpoint_logging()
 
 ```python
 # In train.py (RL)
-from nemotron.kit.wandb import patch_nemo_rl_checkpoint_logging
+from nemotron.kit.wandb_kit import patch_nemo_rl_checkpoint_logging
 
 # Patch NeMo-RL checkpoint manager
 patch_nemo_rl_checkpoint_logging()
@@ -263,7 +263,7 @@ Resolution uses:
 
 ```python
 from nemo_runspec.config.resolvers import register_resolvers_from_config
-from nemotron.kit.wandb import (
+from nemotron.kit.wandb_kit import (
     patch_wandb_checkpoint_logging,
     patch_wandb_init_for_lineage,
 )
@@ -290,7 +290,7 @@ def main():
 
 ```python
 from nemo_runspec.config.resolvers import register_resolvers_from_config
-from nemotron.kit.wandb import patch_nemo_rl_checkpoint_logging
+from nemotron.kit.wandb_kit import patch_nemo_rl_checkpoint_logging
 
 def main():
     config = load_config("grpo_config.yaml")

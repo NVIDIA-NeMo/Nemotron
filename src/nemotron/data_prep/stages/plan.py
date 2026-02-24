@@ -12,46 +12,68 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Plan Stage - Discovers files, creates shard plans, fans out to work items.
-
-This stage takes dataset-level work items (DatasetWorkItem) and produces
-shard-level work items (ShardWorkItem), implementing a fan-out pattern.
-
-In STREAMING mode, downstream stages start processing shards immediately
-as this stage emits them - no barrier needed.
-"""
+"""Unified planning stage with pipeline-specific adapters."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Protocol
 
 import cosmos_xenna.pipelines.v1 as pipelines_v1
+from fsspec import AbstractFileSystem
 
-from nemotron.data_prep.config import DatasetConfig, InternalOutputConfig, InternalTokenizerConfig
-from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
 from nemotron.data_prep.core.planning import (
+    PlanRequest,
     apply_shard_sampling,
-    create_shard_plan,
+    create_plan,
     get_pending_shards,
     serialize_shard_plan,
 )
 from nemotron.data_prep.stages.context import PipelineContext
-from nemotron.data_prep.core.work_items import DatasetWorkItem, ShardWorkItem
+from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
+
+
+class PlanAdapter(Protocol):
+    """Pipeline-specific adapter for PlanStage.
+
+    Each pipeline (pretrain, SFT, RL) provides an adapter that tells PlanStage
+    how to create plan requests from dataset items, build shard work items from
+    plan assignments, and verify output files for idempotent resume.
+
+    See recipe implementations for concrete examples:
+        - PretrainPlanAdapter in recipes/pretrain.py
+        - SftPlanAdapter in recipes/sft.py
+        - JsonlPlanAdapter in recipes/rl.py
+    """
+
+    def to_plan_request(self, item: Any) -> PlanRequest:
+        """Convert a dataset work item into a PlanRequest for file discovery."""
+        ...
+
+    def to_shard_item(
+        self,
+        item: Any,
+        *,
+        plan_hash: str,
+        shard_index: int,
+        assignment: dict[str, Any],
+        output_dir: str,
+        receipts_dir: str,
+    ) -> Any:
+        """Create a pipeline-specific shard work item from plan assignment."""
+        ...
+
+    def get_output_verifier(
+        self, fs: AbstractFileSystem
+    ) -> Callable[[dict, str, AbstractFileSystem], bool] | None:
+        """Return a function to verify outputs exist on resume, or None."""
+        ...
 
 
 @dataclass(frozen=True)
 class PlanStageConfig:
-    """Configuration for PlanStage.
-
-    PlanStage is I/O-bound (file discovery, plan creation) and requires
-    minimal resources.
-
-    Attributes:
-        planner_cpus: CPU request for the planner worker. Default 0.5 since
-            this stage is I/O-bound, not CPU-bound.
-    """
+    """Configuration for PlanStage."""
 
     planner_cpus: float = 0.5
 
@@ -60,141 +82,82 @@ class PlanStageConfig:
             raise ValueError(f"planner_cpus must be positive, got {self.planner_cpus}")
 
 
-class PlanStage(pipelines_v1.Stage[DatasetWorkItem, ShardWorkItem]):
-    """
-    Planning stage: discovers files, creates shard plans, emits ShardWorkItems.
-
-    This stage runs with a single worker and fans out each DatasetWorkItem
-    into multiple ShardWorkItems (one per pending shard).
-
-    Responsibilities:
-    - Discover input files for each dataset
-    - Create shard plan (file → shard assignments)
-    - Write plan.json for reproducibility
-    - Check existing receipts for idempotency
-    - Apply sampling if configured
-    - Emit ShardWorkItem for each pending shard
-
-    In STREAMING mode, downstream stages start processing shards immediately
-    as this stage emits them.
-
-    Args:
-        stage_config: Stage-specific configuration (PlanStageConfig)
-        pipeline_context: Shared runtime context (PipelineContext)
-    """
+class PlanStage(pipelines_v1.Stage[Any, Any]):
+    """Planning stage using an adapter to emit pipeline-specific shard work items."""
 
     def __init__(
         self,
         stage_config: PlanStageConfig,
         pipeline_context: PipelineContext,
+        adapter: PlanAdapter,
     ) -> None:
         self._cfg = stage_config
         self._ctx = pipeline_context
-        self._fs = None
+        self._adapter = adapter
+        self._fs: AbstractFileSystem | None = None
 
     @property
     def stage_batch_size(self) -> int:
-        """Process one dataset at a time."""
         return 1
 
     @property
     def required_resources(self) -> pipelines_v1.Resources:
-        """Minimal CPU, I/O bound stage."""
         return pipelines_v1.Resources(cpus=self._cfg.planner_cpus, gpus=0)
 
     @property
     def env_info(self) -> pipelines_v1.RuntimeEnv:
-        """Runtime environment with HF credentials for file discovery."""
         return self._ctx.hf_runtime_env()
 
     def setup(self, worker_metadata: pipelines_v1.WorkerMetadata) -> None:
-        """Initialize filesystem on worker."""
         self._fs, _ = get_filesystem(self._ctx.output_root)
 
-    def process_data(self, items: list[DatasetWorkItem]) -> list[ShardWorkItem]:
-        """Plan datasets and emit ShardWorkItems for pending shards."""
-        output: list[ShardWorkItem] = []
-
+    def process_data(self, items: list[Any]) -> list[Any]:
+        output: list[Any] = []
         for item in items:
-            shard_items = self._plan_dataset(item)
-            output.extend(shard_items)
-
+            output.extend(self._plan_dataset(item))
         return output
 
-    def _plan_dataset(self, item: DatasetWorkItem) -> list[ShardWorkItem]:
-        """Plan a single dataset and return ShardWorkItems."""
-        # Build internal configs from work item
-        dataset_cfg = DatasetConfig(
-            name=item.dataset_name,
-            path=item.path,
-            weight=item.weight,
-            split=item.split,
-            subset=item.subset,
-            text_field=item.text_field,
-        )
+    def _plan_dataset(self, item: Any) -> list[Any]:
+        request = self._adapter.to_plan_request(item)
+        plan = create_plan(request, self._fs)
 
-        tokenizer_cfg = InternalTokenizerConfig(**item.tokenizer_config)
-
-        output_cfg = InternalOutputConfig(
-            num_shards=item.num_shards,
-            dtype=item.dtype,
-            min_doc_chars=item.min_doc_chars,
-            max_doc_tokens=item.max_doc_tokens,
-            max_rows=item.max_rows,
-        )
-
-        # Create shard plan (discovers files, computes assignments)
-        plan = create_shard_plan(
-            dataset_config=dataset_cfg,
-            output_config=output_cfg,
-            tokenizer_config=tokenizer_cfg,
-            config_hash=item.config_hash,
-            fs=self._fs,
-        )
-
-        # Create dataset directories
         dataset_dir = f"{item.run_dir}/datasets/{item.dataset_name}/{plan.plan_hash}"
         receipts_dir = f"{dataset_dir}/receipts"
         ensure_dir(self._fs, dataset_dir)
         ensure_dir(self._fs, receipts_dir)
-
-        # Write plan.json for reproducibility
         write_json(self._fs, f"{dataset_dir}/plan.json", serialize_shard_plan(plan))
 
-        # Find pending shards (those without completed receipts)
-        pending = get_pending_shards(plan, receipts_dir, self._fs)
-        if item.sample is not None:
-            pending = apply_shard_sampling(pending, plan, item.sample, item.sample_seed)
-
-        # Build assignment dicts for work items
-        assignment_dicts: dict[int, dict[str, Any]] = {
-            a.shard_index: {
-                "shard_index": a.shard_index,
-                "files": [asdict(f) for f in a.files],
-                "total_bytes": a.total_bytes,
-                "hf_subset": item.subset,
-                "hf_split": item.split,
-            }
-            for a in plan.file_assignments
-        }
-
-        # Emit ShardWorkItem for each pending shard
-        shard_items: list[ShardWorkItem] = []
-        for shard_idx in pending:
-            shard_items.append(
-                ShardWorkItem(
-                    dataset_name=item.dataset_name,
-                    plan_hash=plan.plan_hash,
-                    shard_index=int(shard_idx),
-                    assignment=assignment_dicts[int(shard_idx)],
-                    output_dir=dataset_dir,
-                    receipts_dir=receipts_dir,
-                    text_field=item.text_field,
-                    dtype=item.dtype,
-                    min_doc_chars=item.min_doc_chars,
-                    max_doc_tokens=item.max_doc_tokens,
-                    max_rows=item.max_rows,
-                )
+        verifier = self._adapter.get_output_verifier(self._fs)
+        pending = get_pending_shards(plan, receipts_dir, self._fs, verify_output=verifier)
+        sample_spec = getattr(item, "sample", None)
+        if sample_spec is not None:
+            pending = apply_shard_sampling(
+                pending,
+                plan,
+                sample_spec,
+                int(getattr(item, "sample_seed", 42)),
             )
 
-        return shard_items
+        assignment_dicts = {
+            assignment.shard_index: {
+                "shard_index": assignment.shard_index,
+                "files": [asdict(file_info) for file_info in assignment.files],
+                "total_bytes": assignment.total_bytes,
+            }
+            for assignment in plan.file_assignments
+        }
+
+        return [
+            self._adapter.to_shard_item(
+                item,
+                plan_hash=plan.plan_hash,
+                shard_index=int(shard_index),
+                assignment=assignment_dicts[int(shard_index)],
+                output_dir=dataset_dir,
+                receipts_dir=receipts_dir,
+            )
+            for shard_index in pending
+        ]
+
+
+__all__ = ["PlanAdapter", "PlanStage", "PlanStageConfig"]

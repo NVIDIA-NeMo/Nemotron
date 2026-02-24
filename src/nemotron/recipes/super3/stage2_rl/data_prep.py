@@ -76,11 +76,28 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import cosmos_xenna.pipelines.v1 as pipelines_v1
+
 from nemotron.data_prep.blend import DataBlend
-from nemotron.data_prep.config import DatasetConfig
+from nemotron.data_prep.config import DatasetConfig, ObservabilityConfig
 from nemotron.data_prep.utils.discovery import get_dataset_metadata
+from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
 from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
-from nemotron.data_prep.recipes.rl import run_rl_resolve_pipeline
+from nemotron.data_prep.observability import pipeline_wandb_hook
+from nemotron.data_prep.recipes.execution_mode import resolve_execution_mode
+from nemotron.data_prep.recipes.rl import (
+    JsonlPlanAdapter,
+    finalize_rl_run,
+    setup_rl_run,
+)
+from nemotron.data_prep.stages import (
+    DownloadStage,
+    DownloadStageConfig,
+    PipelineContext,
+    PlanStage,
+)
+from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStageConfig
+from nemotron.data_prep.stages.jsonl_write import JsonlShardStage, JsonlShardStageConfig
 from nemotron.kit import SplitJsonlDataArtifact, print_step_complete
 from nemotron.kit.trackers import InputDatasetInfo
 from nemotron.kit.train_script import (
@@ -90,7 +107,7 @@ from nemotron.kit.train_script import (
     omegaconf_to_dataclass,
     parse_config_and_overrides,
 )
-from nemotron.kit.wandb import add_wandb_tags, finish_wandb
+from nemotron.kit import wandb_kit
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +183,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
     start_time = time.time()
 
     # Add stage-specific tags to wandb run
-    add_wandb_tags(["data-prep", "rl"])
+    wandb_kit.add_run_tags(["data-prep", "rl"])
 
     # Load data blend
     blend = DataBlend.load(cfg.blend_path)
@@ -199,15 +216,56 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
                 )
             )
 
-    # Run the xenna-native RL resolve pipeline
-    result = run_rl_resolve_pipeline(
+    # Phase 1: Setup — discover splits, compute run hash, create work items
+    dataset_items, run_hash, run_dir, config_hash, available_splits = setup_rl_run(
         blend=blend,
         output_dir=cfg.output_dir,
         sample=cfg.sample,
         force=cfg.force,
+        compression="none",
+        num_shards_per_split=1,
         resolve_hf_placeholders=True,
-        execution_mode=cfg.execution_mode,
     )
+
+    # Phase 2: 3-stage pipeline
+    #   JsonlDatasetWorkItem → [Plan] → JsonlShardWorkItem → [Download] → [JsonlShard] → receipts
+    if dataset_items:
+        pipeline_ctx = PipelineContext(
+            output_root=str(cfg.output_dir),
+            run_hash=run_hash,
+            run_dir=run_dir,
+            config_hash=config_hash,
+            resolved_tokenizer=None,
+            observability=ObservabilityConfig(),
+            hf_env=detect_hf_env_vars(),
+        )
+        stage_specs = [
+            pipelines_v1.StageSpec(
+                PlanStage(JsonlPlanStageConfig(), pipeline_ctx, JsonlPlanAdapter()),
+                num_workers=1,
+            ),
+            pipelines_v1.StageSpec(
+                DownloadStage(DownloadStageConfig(), pipeline_ctx),
+                num_workers_per_node=1,
+            ),
+            pipelines_v1.StageSpec(
+                JsonlShardStage(JsonlShardStageConfig(), pipeline_ctx),
+                slots_per_actor=1,
+            ),
+        ]
+        spec = pipelines_v1.PipelineSpec(
+            input_data=dataset_items,
+            stages=stage_specs,
+            config=pipelines_v1.PipelineConfig(
+                execution_mode=resolve_execution_mode(stage_specs, cfg.execution_mode),
+            ),
+        )
+        with pipeline_wandb_hook(dataset_items, pipeline_ctx, "rl"):
+            pipelines_v1.run_pipeline(spec)
+
+    # Phase 3: Finalize — scan receipts, write manifest.json
+    dataset_name_base = blend.datasets[0].name
+    result = finalize_rl_run(run_dir, cfg.output_dir, available_splits, dataset_name_base)
 
     # Add external placeholder datasets (DAPO, Skywork) for lineage tracking
     # The resolver is loaded on pipeline workers, but we need metadata on the driver
@@ -242,7 +300,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
     artifact.save()
 
     # Mark wandb run as successful
-    finish_wandb(exit_code=0)
+    wandb_kit.finish_run(exit_code=0)
 
     print_step_complete(data_prep=artifact)
     return artifact

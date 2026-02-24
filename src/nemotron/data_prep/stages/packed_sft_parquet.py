@@ -25,8 +25,6 @@ The stage owns all receipt writing (single source of truth).
 
 from __future__ import annotations
 
-import json
-import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,7 +35,8 @@ from nemotron.data_prep.core.chat_sft_shard_core import (
     process_chat_sft_parquet_from_spool_core,
     process_chat_sft_spool_core,
 )
-from nemotron.data_prep.utils.filesystem import get_filesystem, read_json
+from nemotron.data_prep.utils.filesystem import get_filesystem
+from nemotron.data_prep.core.receipt import ReceiptManager
 from nemotron.data_prep.stages.context import PipelineContext
 from nemotron.data_prep.core.work_items import SftShardWorkItem
 
@@ -86,6 +85,7 @@ class PackedSftParquetStage(pipelines_v1.Stage[SftShardWorkItem, SftShardWorkIte
         self._ctx = pipeline_context
         self._tokenizer = None
         self._fs = None
+        self._receipts: ReceiptManager | None = None
 
     @property
     def stage_batch_size(self) -> int:
@@ -109,6 +109,7 @@ class PackedSftParquetStage(pipelines_v1.Stage[SftShardWorkItem, SftShardWorkIte
             local_files_only=True,
         )
         self._fs, _ = get_filesystem(self._ctx.output_root)
+        self._receipts = ReceiptManager(self._fs, self._ctx.run_hash)
 
     def process_data(self, tasks: list[SftShardWorkItem]) -> list[None]:
         """Process shards: tokenize, mask, spool, pack to Parquet.
@@ -121,41 +122,48 @@ class PackedSftParquetStage(pipelines_v1.Stage[SftShardWorkItem, SftShardWorkIte
         return []  # Terminal stage - no output, but must return list for xenna
 
     def _process_shard(self, task: SftShardWorkItem) -> None:
-        receipt_path = f"{task.receipts_dir.rstrip('/')}/shard_{task.shard_index:06d}.json"
+        receipts = self._get_receipts()
+        rpath = receipts.receipt_path(task.receipts_dir, task.shard_index)
 
-        if self._is_completed(receipt_path, task.plan_hash):
+        if receipts.is_completed(
+            rpath,
+            task.plan_hash,
+            verify_outputs=lambda: self._outputs_exist(task),
+        ):
             return
 
-        self._write_started_receipt(receipt_path, task)
+        meta = dict(
+            plan_hash=task.plan_hash,
+            shard_index=task.shard_index,
+            dataset_name=task.dataset_name,
+        )
+        receipts.write_started(rpath, **meta)
 
         try:
             self._run_spool_and_pack(task)
-            self._write_completed_receipt(receipt_path, task)
+            stats, files = self._build_completed_payload(task)
+            receipts.write_completed(rpath, stats=stats, files=files, **meta)
         except Exception as e:
-            self._write_failed_receipt(receipt_path, task, e)
+            receipts.write_failed(rpath, error=e, **meta)
             raise
 
-    def _is_completed(self, receipt_path: str, plan_hash: str) -> bool:
-        if not self._fs.exists(receipt_path):
-            return False
+    def _outputs_exist(self, task: SftShardWorkItem) -> bool:
+        from nemotron.data_prep.utils.filesystem import read_json
+
+        rpath = self._get_receipts().receipt_path(task.receipts_dir, task.shard_index)
         try:
-            r = read_json(self._fs, receipt_path)
-            return r.get("status") == "completed" and r.get("plan_hash") == plan_hash
+            receipt = read_json(self._fs, rpath)
+            stats = receipt.get("stats", {}) or {}
+            if int(stats.get("num_sequences", 0) or 0) == 0:
+                return True
+            parquet_rel = ((receipt.get("files", {}).get("parquet") or {}).get("path")) or ""
+            if not parquet_rel:
+                return False
+            return self._fs.exists(f"{task.output_dir.rstrip('/')}/{parquet_rel}")
         except Exception:
             return False
 
-    def _write_started_receipt(self, receipt_path: str, task: SftShardWorkItem) -> None:
-        payload = {
-            "status": "started",
-            "run_hash": self._ctx.run_hash,
-            "dataset_name": task.dataset_name,
-            "plan_hash": task.plan_hash,
-            "shard_index": task.shard_index,
-            "started_at": time.time(),
-        }
-        self._write_json_atomic(receipt_path, payload)
-
-    def _write_completed_receipt(self, receipt_path: str, task: SftShardWorkItem) -> None:
+    def _build_completed_payload(self, task: SftShardWorkItem) -> tuple[dict[str, Any], dict[str, Any]]:
         shard_id = f"shard_{task.shard_index:06d}"
         parquet_rel = f"{shard_id}.parquet"
         parquet_path = f"{task.output_dir.rstrip('/')}/{parquet_rel}"
@@ -191,43 +199,7 @@ class PackedSftParquetStage(pipelines_v1.Stage[SftShardWorkItem, SftShardWorkIte
             except Exception:
                 files["parquet"] = {"path": parquet_rel, "bytes": parquet_bytes, "checksum": "xxh64:unknown"}
 
-        payload = {
-            "status": "completed",
-            "run_hash": self._ctx.run_hash,
-            "dataset_name": task.dataset_name,
-            "plan_hash": task.plan_hash,
-            "shard_index": task.shard_index,
-            "stats": stats,
-            "files": files,
-            "completed_at": time.time(),
-        }
-        self._write_json_atomic(receipt_path, payload)
-
-    def _write_failed_receipt(self, receipt_path: str, task: SftShardWorkItem, error: Exception) -> None:
-        import traceback
-
-        payload = {
-            "status": "failed",
-            "run_hash": self._ctx.run_hash,
-            "dataset_name": task.dataset_name,
-            "plan_hash": task.plan_hash,
-            "shard_index": task.shard_index,
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "traceback": traceback.format_exc(),
-            "failed_at": time.time(),
-        }
-        self._write_json_atomic(receipt_path, payload)
-
-    def _write_json_atomic(self, path: str, payload: dict[str, Any]) -> None:
-        tmp = f"{path}.tmp"
-        with self._fs.open(tmp, "w") as f:
-            json.dump(payload, f)
-        try:
-            self._fs.rm(path)
-        except Exception:
-            pass
-        self._fs.mv(tmp, path)
+        return stats, files
 
     def _resolve_spool_dir(self, task: SftShardWorkItem) -> str:
         if task.spool_dir:
@@ -259,7 +231,12 @@ class PackedSftParquetStage(pipelines_v1.Stage[SftShardWorkItem, SftShardWorkIte
             used_in_field=task.used_in_field,
         )
 
-        # Packing to Parquet is executed during _write_completed_receipt() to ensure stats/files are captured there.
+        # Packing to Parquet is executed during _build_completed_payload() to ensure stats/files are captured there.
+
+    def _get_receipts(self) -> ReceiptManager:
+        if self._receipts is None:
+            self._receipts = ReceiptManager(self._fs, self._ctx.run_hash)
+        return self._receipts
 
 
 __all__ = ["PackedSftParquetStage"]

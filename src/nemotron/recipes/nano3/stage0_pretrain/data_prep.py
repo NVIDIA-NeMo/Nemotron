@@ -64,18 +64,31 @@ import json
 import os
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
+
+import cosmos_xenna.pipelines.v1 as pipelines_v1
 
 from nemotron.data_prep.blend import DataBlend
 from nemotron.data_prep.config import ObservabilityConfig, TokenizerConfig
 from nemotron.data_prep.utils.splits import distribute_shards_to_splits
-from nemotron.data_prep.recipes import run_pretrain_pipeline
+from nemotron.data_prep.observability import pipeline_wandb_hook
+from nemotron.data_prep.recipes.execution_mode import resolve_execution_mode
+from nemotron.data_prep.recipes.pretrain import (
+    PretrainPlanAdapter,
+    finalize_pretrain_run,
+    setup_pretrain_run,
+)
 from nemotron.data_prep.stages import (
+    BinIdxTokenizationStage,
     BinIdxTokenizationStageConfig,
+    DownloadStage,
     DownloadStageConfig,
+    PipelineContext,
+    PlanStage,
     PlanStageConfig,
 )
+from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
 from nemotron.kit import PretrainBlendsArtifact, print_step_complete
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
@@ -84,7 +97,7 @@ from nemotron.kit.train_script import (
     omegaconf_to_dataclass,
     parse_config_and_overrides,
 )
-from nemotron.kit.wandb import add_wandb_tags, finish_wandb
+from nemotron.kit import wandb_kit
 
 STAGE_PATH = Path(__file__).parent
 
@@ -201,20 +214,9 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     start_time = time.time()
 
     # Add stage-specific tags to wandb run
-    add_wandb_tags(["data-prep", "pretrain", cfg.config_name])
+    wandb_kit.add_run_tags(["data-prep", "pretrain", cfg.config_name])
 
-    # Log config to W&B
-    try:
-        import wandb
-
-        if wandb.run is not None:
-            config_dict = asdict(cfg)
-            for key, value in config_dict.items():
-                if isinstance(value, Path):
-                    config_dict[key] = str(value)
-            wandb.config.update(config_dict)
-    except ImportError:
-        pass
+    wandb_kit.log_wandb_config(cfg)
 
     # Load blend and validate
     blend = DataBlend.load(cfg.blend_path)
@@ -233,8 +235,8 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     # Sampling mode: use single shard for exact sample count
     num_shards_effective = 1 if cfg.sample is not None else cfg.num_shards
 
-    # Run pipeline with structured configs
-    format_result = run_pretrain_pipeline(
+    # Phase 1: Setup — deterministic hashing, work item creation
+    dataset_items, context, resolved_tokenizer = setup_pretrain_run(
         blend=blend,
         output_dir=cfg.output_dir,
         tokenizer=cfg.tokenizer,
@@ -244,14 +246,37 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
         max_doc_tokens=cfg.max_doc_tokens,
         max_rows=cfg.sample,  # sample acts as max_rows
         force=cfg.force,
-        execution_mode=cfg.execution_mode,
-        # Stage configs
-        plan_stage=cfg.plan,
-        download_stage=cfg.download,
-        tokenization_stage=cfg.tokenization,
-        # Pipeline config
-        observability=cfg.observability,
     )
+
+    # Phase 2: 3-stage pipeline
+    #   DatasetWorkItem → [Plan] → ShardWorkItem → [Download] → [Tokenize] → receipts
+    if dataset_items:
+        pipeline_ctx = PipelineContext(
+            output_root=str(cfg.output_dir),
+            run_hash=context.run_hash,
+            run_dir=context.run_dir,
+            config_hash=None,
+            resolved_tokenizer=resolved_tokenizer,
+            observability=cfg.observability,
+            hf_env=detect_hf_env_vars(),
+        )
+        stage_specs = [
+            pipelines_v1.StageSpec(PlanStage(cfg.plan, pipeline_ctx, PretrainPlanAdapter()), num_workers=1),
+            pipelines_v1.StageSpec(DownloadStage(cfg.download, pipeline_ctx), num_workers_per_node=1),
+            pipelines_v1.StageSpec(BinIdxTokenizationStage(cfg.tokenization, pipeline_ctx), slots_per_actor=1),
+        ]
+        spec = pipelines_v1.PipelineSpec(
+            input_data=dataset_items,
+            stages=stage_specs,
+            config=pipelines_v1.PipelineConfig(
+                execution_mode=resolve_execution_mode(stage_specs, cfg.execution_mode),
+            ),
+        )
+        with pipeline_wandb_hook(dataset_items, pipeline_ctx, "pretrain"):
+            pipelines_v1.run_pipeline(spec)
+
+    # Phase 3: Finalize — scan receipts, aggregate stats
+    format_result = finalize_pretrain_run(context, blend, cfg.output_dir)
 
     # Generate per-split blend.json
     blend_data = distribute_shards_to_splits(
@@ -284,7 +309,7 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     artifact.save()
 
     # Finish W&B and print completion
-    finish_wandb(exit_code=0)
+    wandb_kit.finish_run(exit_code=0)
     print_step_complete(data_prep=artifact)
 
     return artifact

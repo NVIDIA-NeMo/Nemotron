@@ -231,8 +231,34 @@ def decide_execution_mode_for_stages(
     )
 
 
+def resolve_execution_mode(
+    stage_specs: list[pipelines_v1.StageSpec],
+    requested: ExecutionModeRequest = "auto",
+) -> pipelines_v1.ExecutionMode:
+    """Resolve 'auto' to a concrete ExecutionMode based on cluster resources.
+
+    Convenience wrapper around decide_execution_mode_for_stages that returns
+    just the resolved mode, suitable for passing directly to PipelineConfig.
+
+    Args:
+        stage_specs: The StageSpec list for CPU estimation.
+        requested: "auto", "streaming", "batch", or a pipelines_v1.ExecutionMode.
+
+    Returns:
+        Concrete pipelines_v1.ExecutionMode (STREAMING or BATCH).
+    """
+    decision = decide_execution_mode_for_stages(
+        requested=requested,
+        stage_specs=stage_specs,
+        pipeline_name="data_prep",
+        logger=logging.getLogger(__name__),
+    )
+    return decision.resolved
+
+
 __all__ = [
     "ExecutionModeRequest",
     "ExecutionModeDecision",
     "decide_execution_mode_for_stages",
+    "resolve_execution_mode",
 ]

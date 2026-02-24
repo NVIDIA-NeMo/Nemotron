@@ -84,7 +84,7 @@ from nemotron.kit.trackers import (
 )
 
 # Wandb configuration
-from nemotron.kit.wandb import WandbConfig, add_wandb_tags, init_wandb_if_configured
+from nemotron.kit.wandb_kit import WandbConfig, add_run_tags, init_wandb_if_configured
 
 __all__ = [
     # Artifacts
@@ -113,7 +113,7 @@ __all__ = [
     # Wandb configuration
     "WandbConfig",
     "init_wandb_if_configured",
-    "add_wandb_tags",
+    "add_run_tags",
 ]
 
 

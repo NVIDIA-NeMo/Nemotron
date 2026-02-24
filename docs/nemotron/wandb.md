@@ -1,6 +1,6 @@
 # Weights & Biases Integration
 
-Nemotron provides automatic W&B configuration that seamlessly passes credentials and settings to containers running via nemo-run. `nemotron.kit.wandb` handles W&B initialization and `nemo_runspec.execution` handles credential injection into executors. This eliminates manual credential management across local, Docker, Slurm, and cloud executors.
+Nemotron provides automatic W&B configuration that seamlessly passes credentials and settings to containers running via nemo-run. `nemotron.kit.wandb_kit` handles W&B initialization and `nemo_runspec.execution` handles credential injection into executors. This eliminates manual credential management across local, Docker, Slurm, and cloud executors.
 
 > **Note**: The artifact system currently requires W&B. Backend-agnostic artifact tracking is in development.
 
@@ -89,7 +89,7 @@ For scripts that support optional W&B tracking:
 
 ```python
 from nemotron.kit import init_wandb_if_configured
-from nemotron.kit.wandb import WandbConfig
+from nemotron.kit.wandb_kit import WandbConfig
 
 # Initialize only if WandbConfig is provided and has a project set
 wandb_config = WandbConfig(project="nemotron", entity="my-team")
@@ -101,7 +101,7 @@ init_wandb_if_configured(wandb_config, job_type="training")
 The `WandbConfig` dataclass provides typed configuration:
 
 ```python
-from nemotron.kit.wandb import WandbConfig
+from nemotron.kit.wandb_kit import WandbConfig
 
 config = WandbConfig(
     project="nemotron",           # Required to enable tracking
@@ -131,7 +131,7 @@ W&B artifacts provide full lineage tracking. See [Artifact Lineage](../nemo_runs
 The kit automatically patches checkpoint saving to log artifacts to W&B:
 
 ```python
-from nemotron.kit.wandb import patch_wandb_checkpoint_logging
+from nemotron.kit.wandb_kit import patch_wandb_checkpoint_logging
 
 # Patch Megatron-Bridge checkpoint saving
 patch_wandb_checkpoint_logging()
@@ -147,7 +147,7 @@ This enables:
 For reinforcement learning with NeMo-RL:
 
 ```python
-from nemotron.kit.wandb import patch_nemo_rl_checkpoint_logging
+from nemotron.kit.wandb_kit import patch_nemo_rl_checkpoint_logging
 
 # Patch NeMo-RL checkpoint saving
 patch_nemo_rl_checkpoint_logging()
@@ -158,7 +158,7 @@ patch_nemo_rl_checkpoint_logging()
 When using seeded random states (common in RL), W&B's default run ID generation can fail. The kit provides a patch:
 
 ```python
-from nemotron.kit.wandb import patch_wandb_runid_for_seeded_random
+from nemotron.kit.wandb_kit import patch_wandb_runid_for_seeded_random
 
 # Fix "Invalid Client ID digest" errors
 patch_wandb_runid_for_seeded_random()

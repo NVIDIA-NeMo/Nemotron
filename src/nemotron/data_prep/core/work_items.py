@@ -194,31 +194,6 @@ class JsonlShardWorkItem:
     resolve_hf_placeholders: bool = False
 
 
-@dataclass
-class ChatSftShardWorkItem:
-    """Payload for ChatSFT shard processing."""
-
-    dataset_name: str
-    shard_index: int
-    assignment: dict[str, Any]
-    output_dir: str
-    receipts_dir: str
-    max_rows: int | None
-
-
-@dataclass
-class ChatSftSpoolWorkItem:
-    """Payload for ChatSFT SequenceSpool generation (tokenize-only)."""
-
-    dataset_name: str
-    shard_index: int
-    assignment: dict[str, Any]
-    output_dir: str
-    receipts_dir: str
-    spool_dir: str
-    max_rows: int | None
-
-
 __all__ = [
     "DatasetWorkItem",
     "ShardWorkItem",
@@ -226,6 +201,4 @@ __all__ = [
     "SftShardWorkItem",
     "JsonlDatasetWorkItem",
     "JsonlShardWorkItem",
-    "ChatSftShardWorkItem",
-    "ChatSftSpoolWorkItem",
 ]
