@@ -16,6 +16,7 @@ Recipes are complete training pipelines that take you from raw data to a fully t
 | Recipe | Description | Status |
 |--------|-------------|--------|
 | [nano3](./nano3/) | Nemotron Nano 3 (31.6B total / 3.6B active params) - 3-stage training pipeline | Available |
+| [super3](./super3/) | Nemotron Super 3 (Hybrid Mamba-Transformer-MoE with MTP and DeepEP) - 4-stage training pipeline | Available |
 | chipnemo | ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation) | Planned |
 
 ## Prerequisites (v0)
@@ -142,3 +143,4 @@ Each stage can reference artifacts from previous stages, ensuring reproducibilit
 
 - [NeMo-Run Configuration](../../docs/nemo_runspec/nemo-run.md) - Detailed guide on execution profiles and env.toml setup
 - [Nano3 Recipe](./nano3/) - Complete documentation for the Nemotron Nano 3 training pipeline
+- [Super3 Recipe](./super3/) - Complete documentation for the Nemotron Super 3 training pipeline
