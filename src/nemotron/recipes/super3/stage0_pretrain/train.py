@@ -4,7 +4,7 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "super3/pretrain"
-# image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_super"
+# image = "gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568"
 # setup = "NeMo and all training dependencies are pre-installed in the image."
 #
 # [tool.runspec.run]
@@ -16,7 +16,7 @@
 # format = "omegaconf"
 #
 # [tool.runspec.resources]
-# nodes = 1
+# nodes = 4
 # gpus_per_node = 8
 # ///
 
@@ -84,7 +84,6 @@ logger: logging.Logger = logging.getLogger(__name__)
 # Default config path relative to this file
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config" / "default.yaml"
 
-# TODO(super3): Replace with actual Super3 recipe target
 DEFAULT_RECIPE_TARGET = (
     "megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config"
 )

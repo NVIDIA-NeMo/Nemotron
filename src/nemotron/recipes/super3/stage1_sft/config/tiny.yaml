@@ -2,11 +2,10 @@ run:
   data: SFTDataArtifact-sft:latest
   model: pretrain:latest
   env:
-    # TODO(super3): Replace with actual container image
-    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_super
+    container: gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568
 
 recipe:
-  _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_pretrain_config
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_finetune_config
   packed_sequence: true
   peft: null
 

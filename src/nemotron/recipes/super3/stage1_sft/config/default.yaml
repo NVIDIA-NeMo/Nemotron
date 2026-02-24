@@ -2,15 +2,16 @@ run:
   data: SFTDataArtifact-sft:latest
   model: pretrain:latest
   env:
-    # TODO(super3): Replace with actual container image
-    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_super
+    container: gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568
 
 recipe:
-  # TODO(super3): Replace with actual Super3 finetune recipe target
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_finetune_config
   packed_sequence: true
-  peft: null
+  peft: null  # Disable LoRA, do full SFT
 
+# Dataset config for packed Parquet shards from data_prep
+# train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download
+# Uses super3_packed_sft_dir for seamless config - auto-resolves to splits/train/ and splits/valid/
 dataset:
   super3_packed_sft_dir: ${art:data,path}
   seq_length: ${art:data,pack_size}
@@ -21,14 +22,9 @@ train:
   train_iters: 1700
   global_batch_size: 4
 
+# Model parallelism overrides only — architecture params come from the recipe
 model:
   seq_length: ${art:data,pack_size}
-  # TODO(super3): Set parallelism for Super3 model size
-  pipeline_model_parallel_size: 1
-  tensor_model_parallel_size: 4
-  context_parallel_size: 2
-  hidden_size: 1344
-  calculate_per_token_loss: True
 
 scheduler:
   lr_warmup_iters: 4

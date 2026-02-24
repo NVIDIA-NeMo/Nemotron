@@ -29,8 +29,7 @@ test_shards: 1
 
 # Tokenizer configuration (nested)
 tokenizer:
-  # TODO(super3): Replace with actual Super3 tokenizer model
-  model: nvidia/NVIDIA-Nemotron-3-Super-XXB-Base-BF16
+  model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
   add_bos: false
   add_eos: true
 

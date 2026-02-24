@@ -16,7 +16,7 @@
 # format = "omegaconf"
 #
 # [tool.runspec.resources]
-# nodes = 1
+# nodes = 2
 # gpus_per_node = 8
 # ///
 

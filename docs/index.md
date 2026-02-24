@@ -63,6 +63,15 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 **Stages:** Pretraining → SFT → RL
 :::
 
+:::{grid-item-card} Nemotron 3 Super
+:link: nemotron/super3/README
+:link-type: doc
+
+High-capacity hybrid Mamba-Transformer-MoE with multi-token prediction and DeepEP.
+
+**Stages:** Pretraining → SFT
+:::
+
 ::::
 
 ## Training Pipeline
@@ -123,6 +132,7 @@ use-case-examples/RAG Agent with Nemotron RAG Models/README.md
 :hidden:
 
 nemotron/nano3/README.md
+nemotron/super3/README.md
 nemo_runspec/artifacts.md
 ```
 
@@ -134,6 +144,14 @@ nemotron/nano3/pretrain.md
 nemotron/nano3/sft.md
 nemotron/nano3/rl.md
 nemotron/nano3/import.md
+```
+
+```{toctree}
+:caption: Super3 Stages
+:hidden:
+
+nemotron/super3/pretrain.md
+nemotron/super3/sft.md
 ```
 
 ```{toctree}
