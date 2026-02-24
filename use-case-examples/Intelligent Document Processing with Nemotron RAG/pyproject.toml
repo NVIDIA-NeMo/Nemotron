@@ -1,0 +1,27 @@
+
+[project]
+name = "idp-pipeline"
+version = "0.1.0"
+description = "IDP Nemotron RAG Pipeline Demo"
+requires-python = "==3.12"
+dependencies = [
+    "ninja",
+    "packaging",
+    "wheel",
+    "markitdown",
+    "nv-ingest==26.1.1",
+    "nv-ingest-api==26.1.1",
+    "nv-ingest-client==26.1.1",
+    "milvus-lite==2.4.12",
+    "openai>=1.51.0",
+    "requests",
+    "python-dotenv",
+    "ipywidgets",
+    "transformers",
+    "accelerate",
+    "pillow",
+    "torch",
+    "torchvision",
+    "timm",
+    "pymilvus"
+]

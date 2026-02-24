@@ -15,7 +15,7 @@ The pipeline handles:
 
 | Component | Model | Function | Deployment |
 |-----------|-------|----------|------------|
-| **Extraction** | `NeMo Retriever (nv-ingest)` | Optical Character Recognition (OCR), Table & Chart Extraction | Self-hosted (Library Mode) |
+| **Extraction** | `NeMo Retriever Library (nv-ingest)` | A library for advanced document parsing | Self-hosted (Library Mode) |
 | **Embedding** | `nvidia/llama-nemotron-embed-vl-1b-v2` | Multimodal Embedding (Text + Images) | Local Inference (Hugging Face) |
 | **Reranking** | `nvidia/llama-nemotron-rerank-vl-1b-v2` | Visual Cross-Encoder Reranking | Local Inference (Hugging Face) |
 | **Reasoning** | `nvidia/llama-3.3-nemotron-super-49b` | Citation-Backed Answer Generation | NVIDIA NIM / API |
@@ -48,8 +48,7 @@ The pipeline handles:
 Install the required libraries. Note that `nv-ingest` is used in **Library Mode** for this example, which runs locally without requiring a complex Docker setup.
 
 ```bash
-pip install ninja packaging wheel
-pip install nv-ingest nv-ingest-api nv-ingest-client milvus-lite pymilvus transformers accelerate pillow
+uv pip install -r pyproject.toml
 ```
 ### 2. Configure API Key
 Export your NVIDIA API key to access the cloud-hosted generation models.
