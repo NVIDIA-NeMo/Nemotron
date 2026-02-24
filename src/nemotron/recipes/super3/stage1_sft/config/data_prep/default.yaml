@@ -1,0 +1,108 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# Default config for SFT data preparation
+#
+# Usage:
+#   nemotron super3 data prep sft
+#   nemotron super3 data prep sft sample=100 force=true
+#
+# Environment variables:
+#   PWD: Current working directory (for path resolution)
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/super3/stage1_sft/config/data_prep/data_blend_raw.json
+
+# Output directory for packed Parquet data
+output_dir: ${oc.env:PWD}/../output/stage1_sft
+
+# Number of output shards for parallel loading
+num_shards: 128
+
+# Tokenizer configuration (nested)
+tokenizer:
+  # TODO(super3): Replace with actual Super3 tokenizer model
+  model: nvidia/NVIDIA-Nemotron-3-Super-XXB-Base-BF16
+  add_bos: false
+  add_eos: true
+
+# Maximum tokens per packed sequence
+pack_size: 4096
+
+# Packing algorithm: 'first_fit_decreasing', 'first_fit_shuffle', 'concatenative'
+algorithm: first_fit_shuffle
+
+# Packing seed (null = use sample_seed)
+seed: null
+
+# Parquet row group size (bins per group)
+parquet_row_group_size: 1000
+
+# Parquet compression codec: 'zstd', 'snappy', 'gzip', 'none'
+parquet_compression: zstd
+
+# Split ratios (must sum to 1.0)
+train_ratio: 0.98
+valid_ratio: 0.01
+test_ratio: 0.01
+
+# Chat template: 'super3', path to .jinja file, or inline template
+chat_template: super3
+
+# Field name for OpenAI-format messages in input records
+messages_field: messages
+
+# Field name for tools definition in input records
+tools_field: tools
+
+# Filter to only include records where used_in contains this value
+used_in_filter: super_v3
+
+# Field name for used_in filtering
+used_in_field: used_in
+
+# Truncate sequences longer than this (null = no limit)
+max_doc_tokens: null
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Random seed for sampling
+sample_seed: 42
+
+# Force new run, ignoring cache
+force: false
+
+# Config name for artifact naming
+config_name: default
+
+# =============================================================================
+# Stage Configs
+# =============================================================================
+
+# Planning stage config
+plan:
+  planner_cpus: 0.5
+
+# Download stage config
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+
+# Tokenization stage config
+tokenization:
+  cpus_per_worker: 4
+
+# =============================================================================
+# Pipeline Config
+# =============================================================================
+
+# Pipeline observability settings
+observability:
+  pipeline_logging_interval_s: 30
+  wandb_log_pipeline_stats: true
