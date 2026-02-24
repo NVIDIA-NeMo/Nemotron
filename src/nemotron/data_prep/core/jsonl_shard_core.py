@@ -45,19 +45,39 @@ def process_jsonl_shard_core(
     local_files_only: bool = True,
     plan_hash: str | None = None,
     dataset_name: str | None = None,
+    skip_receipt: bool = False,
 ) -> dict[str, Any]:
-    """Process a JSONL shard with retry-safe atomic commits."""
+    """Process a JSONL shard with retry-safe atomic commits.
+
+    Args:
+        skip_receipt: If True, skip receipt reading/writing. The caller
+            (e.g. JsonlShardStage) owns the receipt lifecycle. Defaults
+            to False for backward compatibility.
+
+    Returns:
+        If ``skip_receipt`` is False (default), returns the stats dict for
+        backward compatibility.
+        If ``skip_receipt`` is True, returns a result dict with keys:
+        ``stats``, ``output_file``, ``checksum``, ``total_bytes``.
+    """
     shard_id = f"shard_{shard_index:06d}"
     ext = ".jsonl.zst" if compression == "zstd" else ".jsonl"
     jsonl_path = f"{output_dir}/{shard_id}{ext}"
     jsonl_tmp = f"{jsonl_path}.tmp"
     receipt_path = f"{receipts_dir}/{shard_id}.json"
 
-    if output_fs.exists(receipt_path):
+    # When not skipping receipts, check for existing completed receipt
+    if not skip_receipt and output_fs.exists(receipt_path):
         try:
             receipt = read_json(output_fs, receipt_path)
             if receipt.get("status") == "completed":
-                return receipt.get("stats", {})
+                result = {
+                    "stats": receipt.get("stats", {}),
+                    "output_file": receipt.get("output_file"),
+                    "checksum": receipt.get("checksum"),
+                    "total_bytes": receipt.get("total_bytes", 0),
+                }
+                return result if skip_receipt else result["stats"]
         except Exception:
             pass
 
@@ -68,15 +88,19 @@ def process_jsonl_shard_core(
     input_file_paths = [f.path for f in file_infos]
 
     if not file_infos:
-        return _write_empty_receipt(
-            shard_id=shard_id,
-            shard_index=shard_index,
-            input_files=input_file_paths,
-            receipt_path=receipt_path,
-            output_fs=output_fs,
-            plan_hash=plan_hash,
-            dataset_name=dataset_name,
-        )
+        result = _build_empty_result()
+        if not skip_receipt:
+            _write_receipt(
+                output_fs=output_fs,
+                receipt_path=receipt_path,
+                shard_id=shard_id,
+                shard_index=shard_index,
+                input_files=input_file_paths,
+                result=result,
+                plan_hash=plan_hash,
+                dataset_name=dataset_name,
+            )
+        return result if skip_receipt else result["stats"]
 
     rows_processed = 0
     with output_fs.open(jsonl_tmp, "wb") as f:
@@ -106,42 +130,90 @@ def process_jsonl_shard_core(
             output_fs.rm(jsonl_tmp)
         except Exception:
             pass
-        return _write_empty_receipt(
-            shard_id=shard_id,
-            shard_index=shard_index,
-            input_files=input_file_paths,
-            receipt_path=receipt_path,
-            output_fs=output_fs,
-            plan_hash=plan_hash,
-            dataset_name=dataset_name,
-        )
+        result = _build_empty_result()
+        if not skip_receipt:
+            _write_receipt(
+                output_fs=output_fs,
+                receipt_path=receipt_path,
+                shard_id=shard_id,
+                shard_index=shard_index,
+                input_files=input_file_paths,
+                result=result,
+                plan_hash=plan_hash,
+                dataset_name=dataset_name,
+            )
+        return result if skip_receipt else result["stats"]
 
     output_fs.rename(jsonl_tmp, jsonl_path)
 
-    receipt: dict[str, Any] = {
-        "shard_id": shard_id,
-        "shard_index": shard_index,
-        "status": "completed",
-        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "input_files": input_file_paths,
-        "output_file": f"{shard_id}{ext}",
-        "total_bytes": total_bytes,
-        "checksum": checksum,
+    result: dict[str, Any] = {
         "stats": {
             "total_tokens": 0,
             "num_records": stats.get("num_records", 0),
             "num_skipped": stats.get("num_skipped", 0),
             "total_bytes": stats.get("total_bytes", 0),
         },
+        "output_file": f"{shard_id}{ext}",
+        "total_bytes": total_bytes,
+        "checksum": checksum,
     }
 
+    if not skip_receipt:
+        _write_receipt(
+            output_fs=output_fs,
+            receipt_path=receipt_path,
+            shard_id=shard_id,
+            shard_index=shard_index,
+            input_files=input_file_paths,
+            result=result,
+            plan_hash=plan_hash,
+            dataset_name=dataset_name,
+        )
+
+    return result if skip_receipt else result["stats"]
+
+
+def _build_empty_result() -> dict[str, Any]:
+    return {
+        "stats": {
+            "total_tokens": 0,
+            "num_records": 0,
+            "num_skipped": 0,
+            "total_bytes": 0,
+        },
+        "output_file": None,
+        "total_bytes": 0,
+        "checksum": "xxh64:empty",
+    }
+
+
+def _write_receipt(
+    *,
+    output_fs: AbstractFileSystem,
+    receipt_path: str,
+    shard_id: str,
+    shard_index: int,
+    input_files: list[str],
+    result: dict[str, Any],
+    plan_hash: str | None,
+    dataset_name: str | None,
+) -> None:
+    receipt: dict[str, Any] = {
+        "shard_id": shard_id,
+        "shard_index": shard_index,
+        "status": "completed",
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "input_files": input_files,
+        "output_file": result.get("output_file"),
+        "total_bytes": result.get("total_bytes", 0),
+        "checksum": result.get("checksum"),
+        "stats": result["stats"],
+    }
     if plan_hash is not None:
         receipt["plan_hash"] = plan_hash
     if dataset_name is not None:
         receipt["dataset_name"] = dataset_name
-
     write_json(output_fs, receipt_path, receipt)
-    return receipt["stats"]
 
 
 def _process_file(
@@ -206,40 +278,3 @@ def _iter_jsonl_records(path: str, fs: AbstractFileSystem) -> Iterator[dict]:
         for line in f:
             if line.strip():
                 yield json.loads(line)
-
-
-def _write_empty_receipt(
-    *,
-    shard_id: str,
-    shard_index: int,
-    input_files: list[str],
-    receipt_path: str,
-    output_fs: AbstractFileSystem,
-    plan_hash: str | None = None,
-    dataset_name: str | None = None,
-) -> dict[str, Any]:
-    receipt: dict[str, Any] = {
-        "shard_id": shard_id,
-        "shard_index": shard_index,
-        "status": "completed",
-        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "input_files": input_files,
-        "output_file": None,
-        "total_bytes": 0,
-        "checksum": "xxh64:empty",
-        "stats": {
-            "total_tokens": 0,
-            "num_records": 0,
-            "num_skipped": 0,
-            "total_bytes": 0,
-        },
-    }
-
-    if plan_hash is not None:
-        receipt["plan_hash"] = plan_hash
-    if dataset_name is not None:
-        receipt["dataset_name"] = dataset_name
-
-    write_json(output_fs, receipt_path, receipt)
-    return receipt["stats"]
-

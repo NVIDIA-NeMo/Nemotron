@@ -20,7 +20,7 @@ src/nemotron/kit/
 ├── artifact.py          # Artifact base class and typed artifact definitions
 ├── artifacts/           # Artifact type definitions
 ├── trackers.py          # LineageTracker, WandbTracker, FileTracker, NoOpTracker
-├── wandb.py             # WandbConfig, init_wandb_if_configured, add_wandb_tags
+├── wandb_kit.py         # WandbConfig, init_wandb_if_configured, add_run_tags
 ├── train_script.py      # Training script utilities (parse_config_and_overrides)
 ├── recipe_loader.py     # Recipe loading utilities
 └── megatron_stub.py     # Megatron stub for testing
@@ -80,7 +80,7 @@ kit.init(backend="wandb", wandb_project="my-project")
 ### W&B
 - `WandbConfig` -- W&B configuration dataclass
 - `init_wandb_if_configured()` -- Conditional W&B init
-- `add_wandb_tags()` -- Add tags to runs
+- `add_run_tags()` -- Add tags to runs
 
 ### Kit Initialization
 - `init()` -- Initialize kit with storage backend

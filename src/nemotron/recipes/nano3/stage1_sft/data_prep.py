@@ -92,18 +92,31 @@ import logging
 import os
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
+
+import cosmos_xenna.pipelines.v1 as pipelines_v1
 
 from nemotron.data_prep.blend import DataBlend
 from nemotron.data_prep.config import ObservabilityConfig, TokenizerConfig
 from nemotron.data_prep.utils.splits import distribute_shards_to_splits, realize_packed_shards_into_split_dirs
-from nemotron.data_prep.recipes import run_sft_pipeline
+from nemotron.data_prep.observability import pipeline_wandb_hook
+from nemotron.data_prep.recipes.execution_mode import resolve_execution_mode
+from nemotron.data_prep.recipes.sft import (
+    SftPlanAdapter,
+    finalize_sft_run,
+    setup_sft_run,
+)
 from nemotron.data_prep.stages import (
+    DownloadStage,
     DownloadStageConfig,
+    PackedSftParquetStage,
     PackedSftParquetStageConfig,
+    PipelineContext,
+    PlanStage,
     SftPlanStageConfig,
 )
+from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
 from nemotron.kit import SFTDataArtifact, print_step_complete
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
@@ -112,7 +125,7 @@ from nemotron.kit.train_script import (
     omegaconf_to_dataclass,
     parse_config_and_overrides,
 )
-from nemotron.kit.wandb import add_wandb_tags, finish_wandb
+from nemotron.kit import wandb_kit
 
 logger = logging.getLogger(__name__)
 
@@ -275,20 +288,9 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
     start_time = time.time()
 
     # Add stage-specific tags to wandb run
-    add_wandb_tags(["data-prep", "sft"])
+    wandb_kit.add_run_tags(["data-prep", "sft"])
 
-    # Log config to W&B
-    try:
-        import wandb
-
-        if wandb.run is not None:
-            config_dict = asdict(cfg)
-            for key, value in config_dict.items():
-                if isinstance(value, Path):
-                    config_dict[key] = str(value)
-            wandb.config.update(config_dict)
-    except ImportError:
-        pass
+    wandb_kit.log_wandb_config(cfg)
 
     # Load blend and validate
     blend = DataBlend.load(cfg.blend_path)
@@ -304,9 +306,9 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
     # Determine packing seed (defaults to sample_seed)
     packing_seed = cfg.seed if cfg.seed is not None else cfg.sample_seed
 
-    # Run SFT pipeline
+    # Phase 1: Setup — deterministic hashing, work item creation
     logger.info("Running SFT pipeline...")
-    format_result = run_sft_pipeline(
+    dataset_items, context, resolved_tokenizer = setup_sft_run(
         blend=blend,
         output_dir=cfg.output_dir,
         tokenizer=cfg.tokenizer,
@@ -325,14 +327,37 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
         max_rows=cfg.sample,
         sample_seed=cfg.sample_seed,
         force=cfg.force,
-        execution_mode=cfg.execution_mode,
-        # Stage configs
-        plan_stage=cfg.plan,
-        download_stage=cfg.download,
-        tokenization_stage=cfg.tokenization,
-        # Pipeline config
-        observability=cfg.observability,
     )
+
+    # Phase 2: 3-stage pipeline
+    #   SftDatasetWorkItem → [Plan] → SftShardWorkItem → [Download] → [Pack+Parquet] → receipts
+    if dataset_items:
+        pipeline_ctx = PipelineContext(
+            output_root=str(cfg.output_dir),
+            run_hash=context.run_hash,
+            run_dir=context.run_dir,
+            config_hash=None,
+            resolved_tokenizer=resolved_tokenizer,
+            observability=cfg.observability,
+            hf_env=detect_hf_env_vars(),
+        )
+        stage_specs = [
+            pipelines_v1.StageSpec(PlanStage(cfg.plan, pipeline_ctx, SftPlanAdapter()), num_workers=1),
+            pipelines_v1.StageSpec(DownloadStage(cfg.download, pipeline_ctx), num_workers_per_node=1),
+            pipelines_v1.StageSpec(PackedSftParquetStage(cfg.tokenization, pipeline_ctx), slots_per_actor=1),
+        ]
+        spec = pipelines_v1.PipelineSpec(
+            input_data=dataset_items,
+            stages=stage_specs,
+            config=pipelines_v1.PipelineConfig(
+                execution_mode=resolve_execution_mode(stage_specs, cfg.execution_mode),
+            ),
+        )
+        with pipeline_wandb_hook(dataset_items, pipeline_ctx, "sft"):
+            pipelines_v1.run_pipeline(spec)
+
+    # Phase 3: Finalize — scan receipts, aggregate stats
+    format_result = finalize_sft_run(context, blend, cfg.output_dir)
 
     # Convert ratios to shard counts for per-split distribution
     # Must guarantee at least 1 train shard, so valid+test <= total-1
@@ -437,7 +462,7 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
     artifact.save()
 
     # Finish W&B and print completion
-    finish_wandb(exit_code=0)
+    wandb_kit.finish_run(exit_code=0)
     print_step_complete(data_prep=artifact)
 
     return artifact

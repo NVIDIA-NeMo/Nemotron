@@ -433,7 +433,7 @@ class TestWandbArtifactIntegration:
 
     def test_wandb_lineage_registration(self, monkeypatch):
         """Test that train.py pattern correctly registers lineage."""
-        import nemotron.kit.wandb as wb
+        import nemotron.kit.wandb_kit as wb
 
         wb = importlib.reload(wb)
 

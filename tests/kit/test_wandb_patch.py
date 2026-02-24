@@ -18,7 +18,7 @@ import types
 
 
 def test_patch_wandb_init_for_lineage_registers_artifacts_and_tags(monkeypatch):
-    import nemotron.kit.wandb as wb
+    import nemotron.kit.wandb_kit as wb
 
     wb = importlib.reload(wb)
 

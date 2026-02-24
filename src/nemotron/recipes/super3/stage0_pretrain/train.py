@@ -70,7 +70,7 @@ from omegaconf import OmegaConf
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
 from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
-from nemotron.kit.wandb import (
+from nemotron.kit.wandb_kit import (
     patch_wandb_checkpoint_logging,
     patch_wandb_http_handler_skip_digest_verification,
     patch_wandb_init_for_lineage,
@@ -102,7 +102,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # WANDB MONKEY-PATCHES
     # These patches work around bugs in wandb and Megatron-Bridge.
-    # See nemotron/kit/wandb.py for detailed "Why" / "Remove when" documentation.
+    # See nemotron/kit/wandb_kit.py for detailed "Why" / "Remove when" documentation.
     # -------------------------------------------------------------------------
     patch_wandb_http_handler_skip_digest_verification()
     patch_wandb_local_file_handler_skip_digest_verification()

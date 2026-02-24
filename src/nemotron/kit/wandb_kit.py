@@ -36,7 +36,7 @@ Patches should be removed once upstream fixes are available and we bump our
 minimum version requirements. Check the docstrings for specific removal criteria.
 
 Example:
-    >>> from nemotron.kit.wandb import WandbConfig, init_wandb_if_configured
+    >>> from nemotron.kit.wandb_kit import WandbConfig, init_wandb_if_configured
     >>>
     >>> # In your config dataclass
     >>> @dataclass
@@ -151,7 +151,7 @@ def init_wandb_if_configured(
         )
 
 
-def add_wandb_tags(tags: list[str]) -> None:
+def add_run_tags(tags: list[str]) -> None:
     """Add tags to the active wandb run if one exists.
 
     This can be called after wandb is initialized to add stage-specific tags.
@@ -161,7 +161,7 @@ def add_wandb_tags(tags: list[str]) -> None:
         tags: List of tags to add to the run
 
     Example:
-        >>> add_wandb_tags(["data-prep", "pretrain"])
+        >>> add_run_tags(["data-prep", "pretrain"])
     """
     try:
         import wandb
@@ -177,7 +177,37 @@ def add_wandb_tags(tags: list[str]) -> None:
         pass  # Don't fail if tags can't be added
 
 
-def finish_wandb(exit_code: int = 0) -> None:
+def log_wandb_config(cfg: object) -> None:
+    """Log a dataclass config to the active wandb run.
+
+    Converts a dataclass to a dict and updates wandb.config.
+    Path values are converted to strings for serialization.
+
+    Args:
+        cfg: A dataclass instance to log as config.
+
+    Example:
+        >>> log_wandb_config(my_dataclass_config)
+    """
+    try:
+        import wandb
+
+        if wandb.run is not None:
+            from dataclasses import asdict
+            from pathlib import Path
+
+            config_dict = asdict(cfg)
+            for key, value in config_dict.items():
+                if isinstance(value, Path):
+                    config_dict[key] = str(value)
+            wandb.config.update(config_dict)
+    except ImportError:
+        pass
+    except Exception:
+        pass  # Don't fail if config can't be logged
+
+
+def finish_run(exit_code: int = 0) -> None:
     """Finish the active wandb run if one exists.
 
     This should be called at the end of a successful run to properly close
@@ -191,9 +221,9 @@ def finish_wandb(exit_code: int = 0) -> None:
         >>> try:
         ...     # Do work
         ...     artifact.save()
-        ...     finish_wandb(exit_code=0)
+        ...     finish_run(exit_code=0)
         ... except Exception:
-        ...     finish_wandb(exit_code=1)
+        ...     finish_run(exit_code=1)
         ...     raise
     """
     try:
@@ -379,7 +409,7 @@ def _register_lineage_if_possible() -> None:
         return
 
     if _PENDING_TAGS:
-        add_wandb_tags(sorted(_PENDING_TAGS))
+        add_run_tags(sorted(_PENDING_TAGS))
 
     for qname in sorted(_PENDING_ARTIFACT_QUALIFIED_NAMES):
         try:

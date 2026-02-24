@@ -238,7 +238,7 @@ def setup_single_nemo_gym_dataset(jsonl_fpath: str, tokenizer, num_repeats: int 
 
 def main() -> None:
     """Main entry point for GRPO training."""
-    from nemotron.kit.wandb import (
+    from nemotron.kit.wandb_kit import (
         patch_nemo_rl_checkpoint_logging,
         patch_wandb_http_handler_skip_digest_verification,
         patch_wandb_local_file_handler_skip_digest_verification,

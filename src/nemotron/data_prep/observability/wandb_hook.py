@@ -40,10 +40,12 @@ Why monkey-patching?
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import threading
 import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -1099,3 +1101,64 @@ def log_plan_table_to_wandb(
         logger.debug("wandb not installed, skipping plan table logging")
     except Exception as e:
         logger.warning(f"Failed to log plan table to W&B: {e}")
+
+
+@contextlib.contextmanager
+def pipeline_wandb_hook(
+    items: list[Any],
+    pipeline_ctx: Any,
+    pipeline_kind: str,
+) -> Generator[None, None, None]:
+    """W&B observability wrapper for pipeline execution.
+
+    Logs a plan table before the pipeline runs and streams real-time
+    stats to W&B during execution. Safe to use when W&B is not configured
+    (degrades to a no-op).
+
+    Usage in cookbook scripts::
+
+        with pipeline_wandb_hook(dataset_items, pipeline_ctx, "pretrain"):
+            pipelines_v1.run_pipeline(spec)
+
+    Args:
+        items: Work items (DatasetWorkItem, SftDatasetWorkItem, or JsonlDatasetWorkItem).
+        pipeline_ctx: PipelineContext with observability config, run_hash, run_dir.
+        pipeline_kind: Pipeline type for W&B namespacing ("pretrain", "sft", "rl").
+    """
+    observability_cfg = pipeline_ctx.observability
+
+    # Log plan table before pipeline runs
+    log_plan_table_to_wandb(
+        observability=observability_cfg,
+        pipeline_kind=pipeline_kind,
+        dataset_items=items,
+        run_hash=pipeline_ctx.run_hash,
+    )
+
+    # Build dataset mappings for progress tracking
+    dataset_num_shards = {item.dataset_name: item.num_shards for item in items}
+    dataset_input_bytes = compute_dataset_input_bytes(items)
+
+    # Collect max_rows generically (works for all work item types)
+    dataset_max_rows: dict[str, int] = {}
+    for item in items:
+        max_rows = getattr(item, "max_rows", None)
+        if max_rows is not None and max_rows > 0:
+            dataset_max_rows[item.dataset_name] = max_rows
+
+    hook = make_wandb_stats_hook(
+        observability=observability_cfg,
+        pipeline_kind=pipeline_kind,
+        run_hash=pipeline_ctx.run_hash,
+        run_dir=pipeline_ctx.run_dir,
+        dataset_names=[item.dataset_name for item in items],
+        dataset_num_shards=dataset_num_shards,
+        dataset_input_bytes=dataset_input_bytes,
+        dataset_max_rows=dataset_max_rows or None,
+    )
+
+    if hook:
+        with hook:
+            yield
+    else:
+        yield

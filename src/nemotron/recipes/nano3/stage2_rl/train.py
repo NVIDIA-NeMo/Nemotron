@@ -277,10 +277,10 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # WANDB MONKEY-PATCHES
     # These patches work around bugs in wandb and NeMo-RL.
-    # See nemotron/kit/wandb.py for detailed "Why" / "Remove when" documentation.
+    # See nemotron/kit/wandb_kit.py for detailed "Why" / "Remove when" documentation.
     # Applied early, before any wandb imports/init.
     # -------------------------------------------------------------------------
-    from nemotron.kit.wandb import (
+    from nemotron.kit.wandb_kit import (
         patch_nemo_rl_checkpoint_logging,
         patch_wandb_http_handler_skip_digest_verification,
         patch_wandb_local_file_handler_skip_digest_verification,

@@ -114,14 +114,14 @@ set_lineage_tracker(WandbTracker())
 ### W&B Integration
 
 ```python
-from nemotron.kit import WandbConfig, init_wandb_if_configured, add_wandb_tags
+from nemotron.kit import WandbConfig, init_wandb_if_configured, add_run_tags
 
 # Initialize W&B from config
 wandb_cfg = WandbConfig(entity="nvidia", project="nemotron")
 init_wandb_if_configured(wandb_cfg)
 
 # Add tags to the run
-add_wandb_tags(["pretrain", "nano3"])
+add_run_tags(["pretrain", "nano3"])
 ```
 
 ## Module Structure
@@ -132,7 +132,7 @@ src/nemotron/kit/
 ├── artifact.py          # Artifact base class and all artifact types
 ├── artifacts/           # Artifact type definitions
 ├── trackers.py          # LineageTracker, WandbTracker, FileTracker, NoOpTracker
-├── wandb.py             # WandbConfig, init_wandb_if_configured, add_wandb_tags
+├── wandb_kit.py         # WandbConfig, init_wandb_if_configured, add_run_tags
 ├── track.py             # TrackConfig for artifact resolution
 ├── train_script.py      # Training script utilities (parse_config_and_overrides)
 ├── filesystem.py        # fsspec helpers for art:// URIs
@@ -174,7 +174,7 @@ src/nemotron/kit/
 |--------|-------------|
 | `WandbConfig` | W&B configuration dataclass |
 | `init_wandb_if_configured()` | Conditional W&B initialization |
-| `add_wandb_tags()` | Add tags to W&B runs |
+| `add_run_tags()` | Add tags to W&B runs |
 
 ### Kit Initialization
 

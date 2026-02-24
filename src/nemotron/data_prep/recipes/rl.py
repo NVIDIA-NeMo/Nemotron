@@ -18,8 +18,8 @@ RL Resolve Pipeline Recipe - JSONL processing with HF placeholder resolution.
 This recipe composes reusable stages into a complete JSONL data pipeline
 for RL training data:
 
-    [JsonlDatasetWorkItem] → JsonlPlanStage → DownloadStage → JsonlShardStage
-                              (fan-out)        (HF/S3/GCS)    (transform + write)
+    [JsonlDatasetWorkItem] → PlanStage(JsonlPlanAdapter) → DownloadStage → JsonlShardStage
+                              (fan-out)                      (HF/S3/GCS)    (transform + write)
 
     + Driver-side finalize (scan receipts, write manifest.json)
 
@@ -39,27 +39,28 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Literal
 
 import cosmos_xenna.pipelines.v1 as pipelines_v1
+from fsspec import AbstractFileSystem
 
-from nemotron.data_prep.config import ObservabilityConfig
-from nemotron.data_prep.observability.wandb_hook import (
-    compute_dataset_input_bytes,
-    log_plan_table_to_wandb,
-    make_wandb_stats_hook,
-)
-from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, read_json, write_json
+from nemotron.data_prep.config import DatasetConfig, ObservabilityConfig
+from nemotron.data_prep.core.planning import PlanRequest, verify_jsonl_output
+from nemotron.data_prep.observability import pipeline_wandb_hook
+from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
+from nemotron.data_prep.core.finalize import scan_dataset_receipts
 from nemotron.data_prep.stages import (
     DownloadStage,
     DownloadStageConfig,
+    PlanStage,
     PipelineContext,
 )
-from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStage, JsonlPlanStageConfig
+from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStageConfig
 from nemotron.data_prep.stages.jsonl_write import JsonlShardStage, JsonlShardStageConfig
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
-from nemotron.data_prep.core.work_items import JsonlDatasetWorkItem
-from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, decide_execution_mode_for_stages
+from nemotron.data_prep.core.work_items import JsonlDatasetWorkItem, JsonlShardWorkItem
+from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, resolve_execution_mode
 
 if TYPE_CHECKING:
     from nemotron.data_prep.blend import DataBlend
@@ -92,11 +93,74 @@ class RlResolveResult:
 
 
 # =============================================================================
+# Adapter: JSONL planning
+# =============================================================================
+
+
+class JsonlPlanAdapter:
+    """Adapter for JSONL dataset and shard work items.
+
+    PlanStage calls these methods to:
+    1. to_plan_request — build a PlanRequest from dataset config (with transform fingerprint)
+    2. to_shard_item — create JsonlShardWorkItems for each pending shard
+    3. get_output_verifier — check JSONL output files exist on resume
+    """
+
+    def to_plan_request(self, item: JsonlDatasetWorkItem) -> PlanRequest:
+        transform_fingerprint = hashlib.sha256(
+            json.dumps({"resolve_hf_placeholders": item.resolve_hf_placeholders}, sort_keys=True).encode()
+        ).hexdigest()[:16]
+
+        return PlanRequest(
+            dataset_config=DatasetConfig(
+                name=item.dataset_name,
+                path=item.path,
+                weight=item.weight,
+                split=item.split,
+                subset=item.subset,
+                text_field=item.text_field,
+            ),
+            num_shards=item.num_shards,
+            config_hash=item.config_hash,
+            tokenizer_config=None,
+            transform_fingerprint=transform_fingerprint,
+        )
+
+    def to_shard_item(
+        self,
+        item: JsonlDatasetWorkItem,
+        *,
+        plan_hash: str,
+        shard_index: int,
+        assignment: dict[str, Any],
+        output_dir: str,
+        receipts_dir: str,
+    ) -> JsonlShardWorkItem:
+        return JsonlShardWorkItem(
+            dataset_name=item.dataset_name,
+            plan_hash=plan_hash,
+            shard_index=shard_index,
+            assignment=assignment,
+            output_dir=output_dir,
+            receipts_dir=receipts_dir,
+            text_field=item.text_field,
+            compression=item.compression,
+            max_rows=item.max_rows,
+            resolve_hf_placeholders=item.resolve_hf_placeholders,
+        )
+
+    def get_output_verifier(
+        self, fs: AbstractFileSystem
+    ) -> Callable[[dict, str, AbstractFileSystem], bool] | None:
+        return verify_jsonl_output
+
+
+# =============================================================================
 # Driver: Setup + Finalize
 # =============================================================================
 
 
-def _setup_run(
+def setup_rl_run(
     blend: "DataBlend",
     output_dir: str | Path,
     *,
@@ -203,7 +267,7 @@ def _setup_run(
     return dataset_items, run_hash, run_dir, config_hash, available_splits
 
 
-def _finalize_run(
+def finalize_rl_run(
     run_dir: str,
     output_dir: str | Path,
     available_splits: list[str],
@@ -222,6 +286,8 @@ def _finalize_run(
         "validation": "val",
         "test": "test",
     }
+    split_dataset_names = [f"{dataset_name_base}__{split_name_mapping.get(split, split)}" for split in available_splits]
+    by_dataset = scan_dataset_receipts(run_dir, split_dataset_names, fs)
 
     split_paths: dict[str, str] = {}
     total_records = 0
@@ -230,51 +296,23 @@ def _finalize_run(
     for hf_split in available_splits:
         output_split_name = split_name_mapping.get(hf_split, hf_split)
         split_dataset_name = f"{dataset_name_base}__{output_split_name}"
-
-        # Find plan_hash directory
-        dataset_base = f"{run_dir}/datasets/{split_dataset_name}"
-        plan_hash = None
-        try:
-            subdirs = [p for p in fs.ls(dataset_base) if fs.isdir(p)]
-            for subdir in subdirs:
-                plan_path = f"{subdir}/plan.json"
-                if fs.exists(plan_path):
-                    plan_hash = subdir.split("/")[-1]
-                    break
-        except Exception:
-            logger.warning(f"Could not find plan directory for {split_dataset_name}")
+        dataset_receipts = by_dataset.get(split_dataset_name)
+        if not dataset_receipts:
+            logger.warning(f"Could not find receipts for {split_dataset_name}")
             continue
 
-        if not plan_hash:
-            continue
-
-        # Read receipts to get total records and find shard paths
-        receipts_dir = f"{dataset_base}/{plan_hash}/receipts"
         split_records = 0
         shard_paths: list[str] = []
-
-        try:
-            receipt_files = fs.glob(f"{receipts_dir}/shard_*.json")
-        except Exception:
-            receipt_files = []
-
-        for receipt_path in receipt_files:
-            try:
-                receipt = read_json(fs, receipt_path)
-                if receipt.get("status") != "completed":
-                    continue
-                if receipt.get("plan_hash") != plan_hash:
-                    continue
-
-                num_records = receipt.get("stats", {}).get("num_records", 0)
-                split_records += num_records
-
-                output_file = receipt.get("output_file")
-                if output_file and num_records > 0:
-                    shard_path = f"{dataset_base}/{plan_hash}/{output_file}"
-                    shard_paths.append(shard_path)
-            except Exception as e:
-                logger.warning(f"Failed to parse receipt {receipt_path}: {e}")
+        for receipt in sorted(
+            dataset_receipts.completed,
+            key=lambda r: int(r.get("shard_index", 0)),
+        ):
+            num_records = int(receipt.get("stats", {}).get("num_records", 0) or 0)
+            split_records += num_records
+            output_file = receipt.get("output_file")
+            if output_file and num_records > 0:
+                dataset_prefix = dataset_receipts.prefix.rsplit("/", 1)[0]
+                shard_paths.append(f"{dataset_prefix}/{output_file}")
 
         total_records += split_records
 
@@ -309,7 +347,7 @@ def _finalize_run(
 
 
 # =============================================================================
-# Main Entry Point
+# Convenience Entry Point
 # =============================================================================
 
 
@@ -328,42 +366,18 @@ def run_rl_resolve_pipeline(
     jsonl_stage: JsonlShardStageConfig | None = None,
     observability: ObservabilityConfig | None = None,
 ) -> RlResolveResult:
-    """
-    RL resolve pipeline (3-stage design).
+    """Convenience wrapper: setup → execute → finalize in one call.
 
-    Architecture:
-        [JsonlDatasetWorkItem] → JsonlPlanStage → DownloadStage → JsonlShardStage
-                                  (fan-out)                        (transform + write)
-        + Driver-side finalize (scan receipts, write manifest)
-
-    This pipeline processes a single HF dataset across all available splits
-    (train/validation/test), optionally resolving HF placeholder records.
-
-    Args:
-        blend: DataBlend with exactly one dataset to process.
-        output_dir: Root output directory.
-        sample: Limit rows per split (for quick tests).
-        force: Create new run namespace even if config matches.
-        compression: Output compression ("none" or "zstd").
-        num_shards_per_split: Number of output shards per split.
-        resolve_hf_placeholders: Whether to resolve HF placeholder records.
-        execution_mode: Execution mode ('auto', 'streaming', 'batch', or pipelines_v1.ExecutionMode).
-            'auto' (default) uses STREAMING if cluster CPUs suffice, BATCH otherwise.
-        plan_stage: Config for JSONL planning stage.
-        download_stage: Config for download stage.
-        jsonl_stage: Config for JSONL shard writing stage.
-        observability: Pipeline observability config.
-
-    Returns:
-        RlResolveResult with run metadata, split paths, and manifest path.
+    For full control over the pipeline stages, use setup_rl_run
+    and finalize_rl_run with explicit PipelineSpec construction.
     """
     plan_stage_cfg = plan_stage or JsonlPlanStageConfig()
     download_stage_cfg = download_stage or DownloadStageConfig()
     jsonl_stage_cfg = jsonl_stage or JsonlShardStageConfig()
     observability_cfg = observability or ObservabilityConfig()
 
-    # Phase 1: Setup (driver-side)
-    dataset_items, run_hash, run_dir, config_hash, available_splits = _setup_run(
+    # Phase 1: Setup
+    dataset_items, run_hash, run_dir, config_hash, available_splits = setup_rl_run(
         blend=blend,
         output_dir=output_dir,
         sample=sample,
@@ -373,85 +387,52 @@ def run_rl_resolve_pipeline(
         resolve_hf_placeholders=resolve_hf_placeholders,
     )
 
-    # Phase 2: Execute 3-stage pipeline via xenna
+    # Phase 2: Execute 3-stage pipeline
     if dataset_items:
         pipeline_ctx = PipelineContext(
             output_root=str(output_dir),
             run_hash=run_hash,
             run_dir=run_dir,
             config_hash=config_hash,
-            resolved_tokenizer=None,  # No tokenizer for JSONL
+            resolved_tokenizer=None,
             observability=observability_cfg,
             hf_env=detect_hf_env_vars(),
         )
-
-        # Log plan table to W&B before pipeline runs
-        log_plan_table_to_wandb(
-            observability=observability_cfg,
-            pipeline_kind="rl",
-            dataset_items=dataset_items,
-            run_hash=run_hash,
-        )
-
-        # Build dataset_num_shards mapping for progress tracking
-        dataset_num_shards = {item.dataset_name: item.num_shards for item in dataset_items}
-
-        # Pre-compute dataset sizes from HF metadata (available before plan.json exists)
-        dataset_input_bytes = compute_dataset_input_bytes(dataset_items)
-
-        # Setup W&B stats hook
-        wandb_hook = make_wandb_stats_hook(
-            observability=observability_cfg,
-            pipeline_kind="rl",
-            run_hash=run_hash,
-            run_dir=run_dir,
-            dataset_names=[item.dataset_name for item in dataset_items],
-            dataset_num_shards=dataset_num_shards,
-            dataset_input_bytes=dataset_input_bytes,
-        )
-
         stage_specs = [
-            # Stage 1: Plan (fan-out datasets/splits to shards)
             pipelines_v1.StageSpec(
-                JsonlPlanStage(plan_stage_cfg, pipeline_ctx),
-                num_workers=1,  # Single planner
+                PlanStage(plan_stage_cfg, pipeline_ctx, JsonlPlanAdapter()),
+                num_workers=1,
             ),
-            # Stage 2: Download files (HF, S3, GCS, etc.)
             pipelines_v1.StageSpec(
                 DownloadStage(download_stage_cfg, pipeline_ctx),
-                num_workers_per_node=1,  # One downloader per node
+                num_workers_per_node=1,
             ),
-            # Stage 3: Write JSONL shards
             pipelines_v1.StageSpec(
                 JsonlShardStage(jsonl_stage_cfg, pipeline_ctx),
-                slots_per_actor=1,  # Prevents 2x memory from concurrent tasks
+                slots_per_actor=1,
             ),
         ]
-
-        decision = decide_execution_mode_for_stages(
-            requested=execution_mode,
-            stage_specs=stage_specs,
-            pipeline_name="rl",
-            logger=logger,
-        )
-
-        pipeline_spec = pipelines_v1.PipelineSpec(
+        spec = pipelines_v1.PipelineSpec(
             input_data=dataset_items,
             stages=stage_specs,
             config=pipelines_v1.PipelineConfig(
-                execution_mode=decision.resolved,
+                execution_mode=resolve_execution_mode(stage_specs, execution_mode),
                 return_last_stage_outputs=False,
                 logging_interval_s=observability_cfg.pipeline_logging_interval_s,
             ),
         )
+        with pipeline_wandb_hook(dataset_items, pipeline_ctx, "rl"):
+            pipelines_v1.run_pipeline(spec)
 
-        # Run pipeline with optional W&B stats logging
-        if wandb_hook:
-            with wandb_hook:
-                pipelines_v1.run_pipeline(pipeline_spec)
-        else:
-            pipelines_v1.run_pipeline(pipeline_spec)
-
-    # Phase 3: Finalize (driver-side)
+    # Phase 3: Finalize
     dataset_name_base = blend.datasets[0].name
-    return _finalize_run(run_dir, output_dir, available_splits, dataset_name_base)
+    return finalize_rl_run(run_dir, output_dir, available_splits, dataset_name_base)
+
+
+__all__ = [
+    "JsonlPlanAdapter",
+    "RlResolveResult",
+    "finalize_rl_run",
+    "run_rl_resolve_pipeline",
+    "setup_rl_run",
+]

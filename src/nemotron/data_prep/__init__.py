@@ -85,7 +85,7 @@ from nemotron.data_prep.formats.transforms import (
 )
 from nemotron.kit.artifact import DataBlendsArtifact, PretrainBlendsArtifact
 from nemotron.kit.trackers import InputDatasetInfo, tokenizer_to_uri
-from nemotron.kit.wandb import finish_wandb
+from nemotron.kit.wandb_kit import finish_run
 
 # Public API - Recipe entry points
 from nemotron.data_prep.api import (
@@ -136,7 +136,7 @@ __all__ = [
     "InputDatasetInfo",
     "tokenizer_to_uri",
     "get_dataset_metadata",
-    "finish_wandb",
+    "finish_run",
     # Observability utilities
     "make_wandb_stats_hook",
     "log_plan_table_to_wandb",

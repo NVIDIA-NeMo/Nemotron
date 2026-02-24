@@ -46,7 +46,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -54,19 +53,21 @@ from typing import TYPE_CHECKING, Any, Mapping
 
 import cosmos_xenna.pipelines.v1 as pipelines_v1
 
+from collections.abc import Callable
+from fsspec import AbstractFileSystem
+
 from nemotron.data_prep.config import (
+    DatasetConfig,
     FormatResult,
+    InternalOutputConfig,
     InternalTokenizerConfig,
     ObservabilityConfig,
     TokenizerConfig,
 )
-from nemotron.data_prep.observability.wandb_hook import (
-    compute_dataset_input_bytes,
-    log_plan_table_to_wandb,
-    make_wandb_stats_hook,
-)
-from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, read_json, write_json
-from nemotron.data_prep.core.planning import resolve_tokenizer
+from nemotron.data_prep.observability import pipeline_wandb_hook
+from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
+from nemotron.data_prep.core.finalize import scan_dataset_receipts
+from nemotron.data_prep.core.planning import PlanRequest, resolve_tokenizer, verify_binidx_output
 from nemotron.data_prep.stages import (
     BinIdxTokenizationStage,
     BinIdxTokenizationStageConfig,
@@ -77,13 +78,11 @@ from nemotron.data_prep.stages import (
     PlanStageConfig,
 )
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
-from nemotron.data_prep.core.work_items import DatasetWorkItem
-from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, decide_execution_mode_for_stages
+from nemotron.data_prep.core.work_items import DatasetWorkItem, ShardWorkItem
+from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, resolve_execution_mode
 
 if TYPE_CHECKING:
     from nemotron.data_prep.blend import DataBlend
-
-logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -102,6 +101,74 @@ class PretrainRunContext:
 
 
 # =============================================================================
+# Adapter: Pretrain planning
+# =============================================================================
+
+
+class PretrainPlanAdapter:
+    """Adapter for pretrain dataset and shard work items.
+
+    PlanStage calls these methods to:
+    1. to_plan_request — build a PlanRequest from dataset config
+    2. to_shard_item — create ShardWorkItems for each pending shard
+    3. get_output_verifier — check bin/idx files exist on resume
+    """
+
+    def to_plan_request(self, item: DatasetWorkItem) -> PlanRequest:
+        return PlanRequest(
+            dataset_config=DatasetConfig(
+                name=item.dataset_name,
+                path=item.path,
+                weight=item.weight,
+                split=item.split,
+                subset=item.subset,
+                text_field=item.text_field,
+            ),
+            num_shards=item.num_shards,
+            config_hash=item.config_hash,
+            tokenizer_config=InternalTokenizerConfig(**item.tokenizer_config),
+            output_config=InternalOutputConfig(
+                num_shards=item.num_shards,
+                dtype=item.dtype,
+                min_doc_chars=item.min_doc_chars,
+                max_doc_tokens=item.max_doc_tokens,
+                max_rows=item.max_rows,
+            ),
+        )
+
+    def to_shard_item(
+        self,
+        item: DatasetWorkItem,
+        *,
+        plan_hash: str,
+        shard_index: int,
+        assignment: dict[str, Any],
+        output_dir: str,
+        receipts_dir: str,
+    ) -> ShardWorkItem:
+        assignment["hf_subset"] = item.subset
+        assignment["hf_split"] = item.split
+        return ShardWorkItem(
+            dataset_name=item.dataset_name,
+            plan_hash=plan_hash,
+            shard_index=shard_index,
+            assignment=assignment,
+            output_dir=output_dir,
+            receipts_dir=receipts_dir,
+            text_field=item.text_field,
+            dtype=item.dtype,
+            min_doc_chars=item.min_doc_chars,
+            max_doc_tokens=item.max_doc_tokens,
+            max_rows=item.max_rows,
+        )
+
+    def get_output_verifier(
+        self, fs: AbstractFileSystem
+    ) -> Callable[[dict, str, AbstractFileSystem], bool] | None:
+        return verify_binidx_output
+
+
+# =============================================================================
 # Driver: Setup + Finalize
 # =============================================================================
 
@@ -115,7 +182,7 @@ def _normalize_tokenizer(tokenizer: TokenizerConfig | Mapping[str, Any] | str) -
     return TokenizerConfig(**dict(tokenizer))
 
 
-def _setup_run(
+def setup_pretrain_run(
     blend: "DataBlend",
     output_dir: str | Path,
     tokenizer: TokenizerConfig | Mapping[str, Any] | str,
@@ -228,7 +295,7 @@ def _setup_run(
     return dataset_items, context, resolved_tokenizer
 
 
-def _finalize_run(
+def finalize_pretrain_run(
     context: PretrainRunContext,
     blend: "DataBlend",
     output_dir: str | Path,
@@ -240,74 +307,36 @@ def _finalize_run(
     final statistics and build the Megatron-compatible data_paths list.
     """
     fs, _ = get_filesystem(str(output_dir))
+    by_dataset = scan_dataset_receipts(context.run_dir, context.dataset_names, fs)
 
-    def _find_plan_hash(dataset_name: str) -> str | None:
-        """Find the plan_hash for a dataset by scanning its directory."""
-        dataset_base = f"{context.run_dir}/datasets/{dataset_name}"
-        try:
-            subdirs = [p for p in fs.ls(dataset_base) if fs.isdir(p)]
-            for subdir in subdirs:
-                plan_path = f"{subdir}/plan.json"
-                if fs.exists(plan_path):
-                    return subdir.split("/")[-1]
-        except Exception:
-            pass
-        return None
+    # Aggregate stats and build data_paths
+    dataset_stats: dict[str, dict[str, Any]] = {}
+    data_paths: list[str] = []
 
-    def _aggregate_dataset(dataset_name: str, plan_hash: str) -> dict[str, Any]:
-        """Aggregate statistics from all completed receipts for one dataset."""
-        receipts_dir = f"{context.run_dir}/datasets/{dataset_name}/{plan_hash}/receipts"
-        out = {
+    for d in blend.datasets:
+        dataset_receipts = by_dataset.get(d.name)
+        if not dataset_receipts:
+            continue
+
+        stats: dict[str, Any] = {
             "num_shards_completed": 0,
             "total_sequences": 0,
             "total_tokens": 0,
             "total_bin_bytes": 0,
             "total_idx_bytes": 0,
         }
-        try:
-            receipt_files = fs.glob(f"{receipts_dir}/shard_*.json")
-        except Exception:
-            return out
-
-        seen: set[int] = set()
-        for p in receipt_files:
-            try:
-                r = read_json(fs, p)
-                if r.get("status") != "completed" or r.get("plan_hash") != plan_hash:
-                    continue
-                shard_index = int(r.get("shard_index", -1))
-                if shard_index in seen:
-                    continue
-                seen.add(shard_index)
-
-                st = r.get("stats", {}) or {}
-                out["num_shards_completed"] += 1
-                out["total_sequences"] += int(st.get("num_sequences", 0) or 0)
-                out["total_tokens"] += int(st.get("total_tokens", 0) or 0)
-
-                files = r.get("files", {}) or {}
-                out["total_bin_bytes"] += int(((files.get("bin") or {}).get("bytes", 0)) or 0)
-                out["total_idx_bytes"] += int(((files.get("idx") or {}).get("bytes", 0)) or 0)
-            except Exception:
-                continue
-        return out
-
-    # Aggregate stats and build data_paths
-    dataset_stats: dict[str, dict[str, Any]] = {}
-    dataset_plan_hashes: dict[str, str] = {}
-    data_paths: list[str] = []
-
-    for d in blend.datasets:
-        plan_hash = _find_plan_hash(d.name)
-        if not plan_hash:
-            continue
-
-        dataset_plan_hashes[d.name] = plan_hash
-        dataset_stats[d.name] = _aggregate_dataset(d.name, plan_hash)
+        for receipt in dataset_receipts.completed:
+            st = receipt.get("stats", {}) or {}
+            stats["num_shards_completed"] += 1
+            stats["total_sequences"] += int(st.get("num_sequences", 0) or 0)
+            stats["total_tokens"] += int(st.get("total_tokens", 0) or 0)
+            files = receipt.get("files", {}) or {}
+            stats["total_bin_bytes"] += int(((files.get("bin") or {}).get("bytes", 0)) or 0)
+            stats["total_idx_bytes"] += int(((files.get("idx") or {}).get("bytes", 0)) or 0)
+        dataset_stats[d.name] = stats
 
         if d.weight > 0:
-            prefix = f"{context.run_dir}/datasets/{d.name}/{plan_hash}/shard"
-            data_paths.extend([str(d.weight), prefix])
+            data_paths.extend([str(d.weight), dataset_receipts.prefix])
 
     total_tokens = sum(int(s.get("total_tokens", 0)) for s in dataset_stats.values())
     total_sequences = sum(int(s.get("total_sequences", 0)) for s in dataset_stats.values())
@@ -326,7 +355,7 @@ def _finalize_run(
 
 
 # =============================================================================
-# Main Entry Point
+# Convenience Entry Point
 # =============================================================================
 
 
@@ -345,57 +374,23 @@ def run_pretrain_pipeline(
     sample_seed: int = 42,
     force: bool = False,
     execution_mode: ExecutionModeRequest = "auto",
-    # Stage configs (optional, uses defaults if not provided)
     plan_stage: PlanStageConfig | None = None,
     download_stage: DownloadStageConfig | None = None,
     tokenization_stage: BinIdxTokenizationStageConfig | None = None,
-    # Pipeline config (optional, uses defaults if not provided)
     observability: ObservabilityConfig | None = None,
 ) -> FormatResult:
+    """Convenience wrapper: setup → execute → finalize in one call.
+
+    For full control over the pipeline stages, use setup_pretrain_run
+    and finalize_pretrain_run with explicit PipelineSpec construction.
     """
-    Pretrain pipeline (3-stage design).
-
-    Architecture:
-        [DatasetWorkItem] → PlanStage → DownloadStage → BinIdxTokenizationStage
-                           (fan-out)                    (receipts)
-        + Driver-side finalize (scan receipts)
-
-    Memory Management:
-        - No hardcoded max_workers - uses CPU proxy for autoscaling
-        - slots_per_actor=1 prevents concurrent tasks (2x memory)
-        - Resources(cpus=K) limits workers per node automatically
-
-    Args:
-        blend: DataBlend with datasets to process
-        output_dir: Root output directory
-        tokenizer: Tokenizer specification
-        num_shards: Number of output shards per dataset
-        dtype: Token dtype (int32, int64, uint16)
-        text_field_default: Default text field name
-        min_doc_chars: Skip documents shorter than this
-        max_doc_tokens: Truncate documents longer than this
-        max_rows: Maximum rows per shard
-        sample: Sampling specification
-        sample_seed: Random seed for sampling
-        force: Create new run namespace even if config matches
-        execution_mode: Execution mode ('auto', 'streaming', 'batch', or pipelines_v1.ExecutionMode).
-            'auto' (default) uses STREAMING if cluster CPUs suffice, BATCH otherwise.
-        plan_stage: Config for planning stage (defaults to PlanStageConfig())
-        download_stage: Config for download stage (defaults to DownloadStageConfig())
-        tokenization_stage: Config for tokenization stage (defaults to BinIdxTokenizationStageConfig())
-        observability: Pipeline observability config (defaults to ObservabilityConfig())
-
-    Returns:
-        FormatResult with run metadata, data paths, and statistics
-    """
-    # Use provided configs or defaults
     plan_stage_cfg = plan_stage or PlanStageConfig()
     download_stage_cfg = download_stage or DownloadStageConfig()
     tokenization_stage_cfg = tokenization_stage or BinIdxTokenizationStageConfig()
     observability_cfg = observability or ObservabilityConfig()
 
-    # Phase 1: Setup (driver-side)
-    dataset_items, context, resolved_tokenizer = _setup_run(
+    # Phase 1: Setup
+    dataset_items, context, resolved_tokenizer = setup_pretrain_run(
         blend=blend,
         output_dir=output_dir,
         tokenizer=tokenizer,
@@ -410,94 +405,51 @@ def run_pretrain_pipeline(
         force=force,
     )
 
-    # Phase 2: Execute 3-stage pipeline via xenna
+    # Phase 2: Execute 3-stage pipeline
     if dataset_items:
-        # Build shared pipeline context
         pipeline_ctx = PipelineContext(
             output_root=str(output_dir),
             run_hash=context.run_hash,
             run_dir=context.run_dir,
-            config_hash=None,  # Not needed for these stages
+            config_hash=None,
             resolved_tokenizer=resolved_tokenizer,
             observability=observability_cfg,
             hf_env=detect_hf_env_vars(),
         )
-
-        # Log plan table to W&B before pipeline runs
-        log_plan_table_to_wandb(
-            observability=observability_cfg,
-            pipeline_kind="pretrain",
-            dataset_items=dataset_items,
-            run_hash=context.run_hash,
-        )
-
-        # Build dataset_num_shards mapping for progress tracking
-        dataset_num_shards = {item.dataset_name: item.num_shards for item in dataset_items}
-
-        # Build dataset_max_rows mapping for effective size estimation
-        dataset_max_rows: dict[str, int] = {}
-        for item in dataset_items:
-            if item.max_rows is not None and item.max_rows > 0:
-                dataset_max_rows[item.dataset_name] = item.max_rows
-
-        # Pre-compute dataset sizes from HF metadata (available before plan.json exists)
-        dataset_input_bytes = compute_dataset_input_bytes(dataset_items)
-
-        # Setup W&B stats hook for real-time logging
-        # This patches PipelineMonitor._make_stats to intercept stats
-        wandb_hook = make_wandb_stats_hook(
-            observability=observability_cfg,
-            pipeline_kind="pretrain",
-            run_hash=context.run_hash,
-            run_dir=context.run_dir,
-            dataset_names=context.dataset_names,
-            dataset_num_shards=dataset_num_shards,
-            dataset_input_bytes=dataset_input_bytes,
-            dataset_max_rows=dataset_max_rows,
-        )
-
         stage_specs = [
-            # Stage 1: Plan (fan-out datasets to shards)
             pipelines_v1.StageSpec(
-                PlanStage(plan_stage_cfg, pipeline_ctx),
-                num_workers=1,  # Single planner
+                PlanStage(plan_stage_cfg, pipeline_ctx, PretrainPlanAdapter()),
+                num_workers=1,
             ),
-            # Stage 2: Download files (HF, S3, GCS, etc.)
             pipelines_v1.StageSpec(
                 DownloadStage(download_stage_cfg, pipeline_ctx),
-                num_workers_per_node=1,  # One downloader per node
+                num_workers_per_node=1,
             ),
-            # Stage 3: Tokenize shards
             pipelines_v1.StageSpec(
                 BinIdxTokenizationStage(tokenization_stage_cfg, pipeline_ctx),
-                slots_per_actor=1,  # CRITICAL: prevents 2x memory from concurrent tasks
-                # No num_workers - autoscale based on Resources(cpus=K)
+                slots_per_actor=1,
             ),
         ]
-
-        decision = decide_execution_mode_for_stages(
-            requested=execution_mode,
-            stage_specs=stage_specs,
-            pipeline_name="pretrain",
-            logger=logger,
-        )
-
-        pipeline_spec = pipelines_v1.PipelineSpec(
+        spec = pipelines_v1.PipelineSpec(
             input_data=dataset_items,
             stages=stage_specs,
             config=pipelines_v1.PipelineConfig(
-                execution_mode=decision.resolved,
+                execution_mode=resolve_execution_mode(stage_specs, execution_mode),
                 return_last_stage_outputs=False,
                 logging_interval_s=observability_cfg.pipeline_logging_interval_s,
             ),
         )
+        with pipeline_wandb_hook(dataset_items, pipeline_ctx, "pretrain"):
+            pipelines_v1.run_pipeline(spec)
 
-        # Run pipeline with optional W&B stats logging
-        if wandb_hook:
-            with wandb_hook:
-                pipelines_v1.run_pipeline(pipeline_spec)
-        else:
-            pipelines_v1.run_pipeline(pipeline_spec)
+    # Phase 3: Finalize
+    return finalize_pretrain_run(context, blend, output_dir)
 
-    # Phase 3: Finalize (driver-side)
-    return _finalize_run(context, blend, output_dir)
+
+__all__ = [
+    "PretrainPlanAdapter",
+    "PretrainRunContext",
+    "finalize_pretrain_run",
+    "run_pretrain_pipeline",
+    "setup_pretrain_run",
+]
