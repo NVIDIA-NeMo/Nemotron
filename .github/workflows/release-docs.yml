@@ -108,7 +108,7 @@ jobs:
           docs-version-override: ${{ inputs.docs-version-override }}
           update-version-picker: ${{ inputs.update-version-picker }}
           run-on-version-tag-only: ${{ github.ref_name != 'main' }}
-          request-name: export-deploy-publish-docs-${{ github.run_id }}
+          request-name: nemotron-publish-docs-${{ github.run_id }}
           aws-region: ${{ vars.DOCS_AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
