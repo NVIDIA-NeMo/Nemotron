@@ -58,7 +58,7 @@ The [Nemotron-3-Nano-RL-Training-Blend](https://huggingface.co/datasets/nvidia/N
 
 1. Detecting placeholder records by the presence of `_hf_placeholder` field
 2. Fetching actual data from external HF datasets:
-   - [ByteDance-Seed/DAPO-Math-17k](https://huggingface.co/datasets/ByteDance-Seed/DAPO-Math-17k) — Math reasoning problems
+   - [BytedTsinghua-SIA/DAPO-Math-17k](https://huggingface.co/datasets/BytedTsinghua-SIA/DAPO-Math-17k) — Math reasoning problems
    - [Skywork/Skywork-OR1-RL-Data](https://huggingface.co/datasets/Skywork/Skywork-OR1-RL-Data) — Open reasoning data
 3. Applying template restoration (DAPO prefix/suffix, Skywork `{question}` replacement)
 
@@ -216,7 +216,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 ### Running in NeMo-RL Repository
 
-For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html):
+For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/nightly/guides/nemotron-3-nano.html):
 
 **1. Download and prepare the dataset:**
 
@@ -497,7 +497,7 @@ After RL completes, the final aligned model (`ModelArtifact-rl`) is ready for ev
 
 - [Tech Report Section 3.2](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf) — RL methodology
 - [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) — GRPO, DPO, environments
-- [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html) — Upstream training guide
+- [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/nightly/guides/nemotron-3-nano.html) — Upstream training guide
 - [NVIDIA AI Stack](../nvidia-stack.md) — NeMo-RL, Megatron-Core documentation
 - [Artifact Lineage](../artifacts.md) — W&B artifact system
 - [Stage 0: Pretraining](./pretrain.md) — Pretrain the base model

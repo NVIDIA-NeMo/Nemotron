@@ -23,12 +23,12 @@
 import os
 
 project = "Nemotron"
-copyright = "2025, NVIDIA Corporation"
+copyright = "2026, NVIDIA Corporation"
 author = "NVIDIA Corporation"
 
 # Version is set by CI via DOCS_VERSION env var (dev or stable)
 # Defaults to "dev" for local builds
-release = os.environ.get("DOCS_VERSION", "dev")
+release = os.environ.get("DOCS_VERSION", "nightly")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -81,13 +81,13 @@ html_js_files = [
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
     "switcher": {
-        "json_url": "https://nvidia-nemo.github.io/Nemotron/versions.json",
+        "json_url": "../versions1.json",
         "version_match": release,
     },
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/NVIDIA/nemotron",
+            "url": "https://github.com/NVIDIA-NeMo/Nemotron",
             "icon": "fa-brands fa-github",
         }
     ],
@@ -102,7 +102,7 @@ html_theme_options = {
     """
     },
 }
-html_extra_path = ["project.json", "versions.json"]
+html_extra_path = ["project.json", "versions1.json"]
 
 # Github links are now getting rate limited from the Github Actions
 linkcheck_ignore = [
