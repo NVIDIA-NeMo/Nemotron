@@ -124,11 +124,32 @@ def main(stage_dir: Path) -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = "/nemo_run/code/src:" + env.get("PYTHONPATH", "")
 
-    # 4. Find UV
+    # 4. Find UV — bootstrap via pip if not already installed
     uv_cmd = shutil.which("uv")
     if not uv_cmd:
-        print("[run_uv.py] ERROR: UV not found")
-        sys.exit(1)
+        print("[run_uv.py] UV not found, installing via pip...")
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "uv"],
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            print("[run_uv.py] ERROR: Failed to install uv via pip")
+            print(result.stderr.decode() if result.stderr else "")
+            sys.exit(1)
+        uv_cmd = shutil.which("uv")
+        if not uv_cmd:
+            # pip may install to a location not yet on PATH; check common spots
+            for candidate in [
+                Path(sys.prefix) / "bin" / "uv",
+                Path.home() / ".local" / "bin" / "uv",
+            ]:
+                if candidate.exists():
+                    uv_cmd = str(candidate)
+                    break
+        if not uv_cmd:
+            print("[run_uv.py] ERROR: UV not found after installation")
+            sys.exit(1)
+        print(f"[run_uv.py] UV installed at {uv_cmd}")
 
     # 5. Create venv with system-site-packages (always recreate for correctness)
     venv_path = Path("/opt/venv")

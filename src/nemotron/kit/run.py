@@ -43,6 +43,7 @@ Wandb configuration can also be stored in env.toml:
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -484,6 +485,13 @@ def build_executor(config: RunConfig, env_vars: dict[str, str] | None = None) ->
                 )
         except Exception:
             pass  # huggingface_hub not installed or no token
+
+    # Auto-detect NVIDIA API key if not already set
+    if "NVIDIA_API_KEY" not in merged_env:
+        nvidia_api_key = os.environ.get("NVIDIA_API_KEY")
+        if nvidia_api_key:
+            merged_env["NVIDIA_API_KEY"] = nvidia_api_key
+            sys.stderr.write("[info] Detected NVIDIA_API_KEY, adding to environment\n")
 
     # Auto-detect Weights & Biases API key if not already set
     if "WANDB_API_KEY" not in merged_env:
@@ -981,6 +989,11 @@ def run_with_nemo_run(
                 runtime_env["env_vars"]["HF_TOKEN"] = hf_token
         except Exception:
             pass
+
+        # Auto-detect NVIDIA API key for Ray workers
+        nvidia_api_key = os.environ.get("NVIDIA_API_KEY")
+        if nvidia_api_key:
+            runtime_env["env_vars"]["NVIDIA_API_KEY"] = nvidia_api_key
 
         # Auto-detect Weights & Biases API key for Ray workers
         try:

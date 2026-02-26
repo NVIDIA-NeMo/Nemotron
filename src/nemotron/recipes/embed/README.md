@@ -86,6 +86,8 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 
 ### 1. Install UV Package Manager
 
+This project **requires [UV](https://docs.astral.sh/uv/)** as its package manager. UV automatically creates and manages a virtual environment under the repository root, and each pipeline stage uses its own isolated environment as well. **Do not use `pip install`** — the project relies on UV workspaces and per-stage dependency isolation.
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
@@ -97,7 +99,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/NVIDIA/Nemotron.git
 cd Nemotron
 
-# Install with all dependencies for the embed recipe
+# UV creates a virtual environment at .venv/ and installs all dependencies
 uv sync --all-extras
 ```
 
@@ -486,7 +488,7 @@ nemotron embed info
 nemotron embed sdg -c default corpus_dir=/path/to/docs
 
 # Prepare training data (convert, mine, unroll)
-nemotron embed prep -c default sdg_output_dir=/path/to/sdg
+nemotron embed prep -c default sdg_input_path=/path/to/sdg
 ```
 
 ### Training

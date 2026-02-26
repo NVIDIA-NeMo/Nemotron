@@ -48,6 +48,8 @@ CONFIG_DIR = _NEMOTRON_ROOT / "src/nemotron/recipes/embed/stage2_finetune/config
 # Config model for help display
 from nemotron.recipes.embed.stage2_finetune.train import FinetuneConfig
 CONFIG_MODEL = FinetuneConfig
+
+
 # Dependencies managed differently per mode:
 # - Local: PEP 723 in train.py (UV handles everything)
 # - Remote: pyproject.toml in stage2_finetune (exclude-dependencies for container packages)
@@ -159,6 +161,7 @@ def _finetune_nemo_run(options: RecipeConfig, experiment=None):
     if options.mode == "local":
         import subprocess
         import shutil
+        import os
         from pathlib import Path
 
         # Use uv run to execute the script in an isolated environment
@@ -178,7 +181,14 @@ def _finetune_nemo_run(options: RecipeConfig, experiment=None):
             str(_NEMOTRON_ROOT),  # Add Nemotron library (has pyproject.toml)
             "--project",
             str(stage_dir),  # Use pyproject.toml from stage2_finetune/
-            "python",
+        ]
+
+        cmd += [
+            "python", "-m", "torch.distributed.run",
+            "--nproc_per_node", "gpu",
+        ]
+
+        cmd += [
             str(SCRIPT_LOCAL),  # train.py
             "--config",
             str(train_path),
@@ -186,7 +196,6 @@ def _finetune_nemo_run(options: RecipeConfig, experiment=None):
         ]
 
         # Unset VIRTUAL_ENV to avoid conflicts with UV's project environment
-        import os
         env = os.environ.copy()
         env.pop("VIRTUAL_ENV", None)
 

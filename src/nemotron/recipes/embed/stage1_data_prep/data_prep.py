@@ -29,7 +29,7 @@ Usage:
     nemotron embed prep -c /path/to/config.yaml
 
     # With CLI overrides
-    nemotron embed prep -c default sdg_output_dir=/path/to/sdg
+    nemotron embed prep -c default sdg_input_path=/path/to/sdg
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -63,7 +63,8 @@ class DataPrepConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     corpus_id: str = Field(default="my_corpus", description="Corpus identifier (used for output naming).")
-    sdg_output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage0_sdg", description="Path to SDG output directory.")
+    sdg_input_path: Optional[Path] = Field(default=None, description="Path to SDG output directory (runs conversion to training format).")
+    train_input_file: Optional[Path] = Field(default=None, description="Path to pre-converted training file (skips SDG conversion).")
     output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep", description="Output directory for prepared training data.")
 
     # Model for hard negative mining
@@ -94,6 +95,16 @@ class DataPrepConfig(RecipeSettings):
     query_prefix: str = Field(default="query:", description="Prefix for query inputs during mining.")
     passage_prefix: str = Field(default="passage:", description="Prefix for passage inputs during mining.")
 
+    @model_validator(mode="after")
+    def _check_input_source(self):
+        if self.sdg_input_path and self.train_input_file:
+            raise ValueError("sdg_input_path and train_input_file are mutually exclusive. "
+                             "Set sdg_input_path to convert from SDG output, or "
+                             "train_input_file to use a pre-converted training file.")
+        if not self.sdg_input_path and not self.train_input_file:
+            raise ValueError("One of sdg_input_path or train_input_file must be set.")
+        return self
+
 
 def run_convert(cfg: DataPrepConfig) -> Path:
     """Convert SDG output to training format.
@@ -106,7 +117,7 @@ def run_convert(cfg: DataPrepConfig) -> Path:
     cmd = [
         sys.executable,
         str(convert_script),
-        str(cfg.sdg_output_dir),
+        str(cfg.sdg_input_path),
         "--corpus-id",
         cfg.corpus_id,
         "--output-dir",
@@ -120,10 +131,8 @@ def run_convert(cfg: DataPrepConfig) -> Path:
     ]
 
     print("🔄 Converting SDG output to training format...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, stdout=None, stderr=subprocess.PIPE, text=True)
 
-    if result.stdout:
-        print(result.stdout)
     if result.returncode != 0:
         print(f"Error: convert script failed with return code {result.returncode}")
         if result.stderr:
@@ -133,7 +142,7 @@ def run_convert(cfg: DataPrepConfig) -> Path:
     return cfg.output_dir
 
 
-def run_mining(cfg: DataPrepConfig) -> Path:
+def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
     """Mine hard negatives using base embedding model.
 
     Returns:
@@ -141,13 +150,12 @@ def run_mining(cfg: DataPrepConfig) -> Path:
     """
     mining_script = STAGE_PATH / "scripts" / "mine_hard_negatives.py"
     mining_config = STAGE_PATH / "scripts" / "mining_config.yaml"
-
-    train_file = cfg.output_dir / "train.json"
     output_file = cfg.output_dir / "train_mined.automodel.json"
     cache_dir = cfg.output_dir / "cache_embeddings"
 
     cmd = [
-        sys.executable,
+        sys.executable, "-m", "torch.distributed.run",
+        "--nproc_per_node", "gpu",
         str(mining_script),
         "--config",
         str(mining_config),
@@ -180,10 +188,8 @@ def run_mining(cfg: DataPrepConfig) -> Path:
     print(f"\n⛏️  Mining hard negatives...")
     print(f"   Using model: {cfg.base_model}")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, stdout=None, stderr=subprocess.PIPE, text=True)
 
-    if result.stdout:
-        print(result.stdout)
     if result.returncode != 0:
         print(f"Error: mining script failed with return code {result.returncode}")
         if result.stderr:
@@ -211,10 +217,8 @@ def run_unroll(cfg: DataPrepConfig) -> Path:
 
     print("\n🔄 Unrolling multi-positive training examples...")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, stdout=None, stderr=subprocess.PIPE, text=True)
 
-    if result.stdout:
-        print(result.stdout)
     if result.returncode != 0:
         print(f"Error: unroll script failed with return code {result.returncode}")
         if result.stderr:
@@ -236,23 +240,32 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     print(f"📋 Data Preparation Pipeline")
     print(f"=" * 60)
     print(f"Corpus ID:      {cfg.corpus_id}")
-    print(f"SDG Output:     {cfg.sdg_output_dir}")
+    if cfg.sdg_input_path:
+        print(f"SDG Input:      {cfg.sdg_input_path}")
+    else:
+        print(f"Train Input:    {cfg.train_input_file}")
     print(f"Output Dir:     {cfg.output_dir}")
     print(f"Base Model:     {cfg.base_model}")
     print(f"=" * 60)
     print()
 
-    # Validate inputs
-    if not cfg.sdg_output_dir.exists():
-        print(f"Error: SDG output directory not found: {cfg.sdg_output_dir}", file=sys.stderr)
-        print("       Please run stage0_sdg first.", file=sys.stderr)
-        sys.exit(1)
-
-    # Step 1: Convert
-    run_convert(cfg)
+    # Step 1: Convert SDG output, or use pre-converted training file
+    if cfg.train_input_file:
+        if not cfg.train_input_file.exists():
+            print(f"Error: train_input_file not found: {cfg.train_input_file}", file=sys.stderr)
+            sys.exit(1)
+        train_file = cfg.train_input_file
+        print(f"⏭️  Skipping conversion (using train_input_file: {train_file})")
+    else:
+        if not cfg.sdg_input_path.exists():
+            print(f"Error: SDG input directory not found: {cfg.sdg_input_path}", file=sys.stderr)
+            print("       Please run stage0_sdg first, or provide train_input_file.", file=sys.stderr)
+            sys.exit(1)
+        run_convert(cfg)
+        train_file = cfg.output_dir / "train.json"
 
     # Step 2: Mine hard negatives
-    run_mining(cfg)
+    run_mining(cfg, train_file)
 
     # Step 3: Unroll
     final_file = run_unroll(cfg)

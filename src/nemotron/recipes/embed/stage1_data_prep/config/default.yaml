@@ -7,7 +7,7 @@
 #
 # Usage:
 #   nemotron embed prep -c default
-#   nemotron embed prep -c default sdg_output_dir=/path/to/sdg
+#   nemotron embed prep -c default sdg_input_path=/path/to/sdg
 #
 # Remote execution (Slurm):
 #   nemotron embed prep -c default --run my-cluster
@@ -22,8 +22,8 @@ run:
 # Corpus identifier
 corpus_id: nv_pp_random
 
-# Path to SDG output directory
-sdg_output_dir: ./output/embed/stage0_sdg
+# Path to SDG output directory (mutually exclusive with train_input_file)
+sdg_input_path: ./output/embed/stage0_sdg
 
 # Output directory for prepared training data
 output_dir: ./output/embed/stage1_data_prep

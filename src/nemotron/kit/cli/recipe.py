@@ -742,6 +742,7 @@ def _build_env_vars(job_config: Any, env_config: dict | None = None) -> dict:
     - NEMO_RUN_DIR for output paths
     - HF_HOME for HuggingFace cache (defaults to remote_job_dir/hf)
     - HF_TOKEN if logged in to HuggingFace
+    - NVIDIA_API_KEY if set (for NVIDIA API access)
     - WANDB_API_KEY, WANDB_ENTITY, WANDB_PROJECT if logged in to W&B
 
     Args:
@@ -782,6 +783,11 @@ def _build_env_vars(job_config: Any, env_config: dict | None = None) -> dict:
             env_vars["HF_TOKEN"] = token
     except Exception:
         pass
+
+    # Auto-detect NVIDIA API key (used by embed and other recipes that call NVIDIA APIs)
+    nvidia_api_key = os.environ.get("NVIDIA_API_KEY")
+    if nvidia_api_key:
+        env_vars["NVIDIA_API_KEY"] = nvidia_api_key
 
     # Auto-detect Weights & Biases API key
     try:
