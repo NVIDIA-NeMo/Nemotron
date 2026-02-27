@@ -72,3 +72,4 @@ workspace/
 
 # Claude Code
 CLAUDE.md
+usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment/dataset/bird_mini_dev_data/*

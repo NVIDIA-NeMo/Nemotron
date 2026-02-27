@@ -8,7 +8,7 @@ Notes from getting the cookbook running in the **nvcr.io/nvidia/nemo-automodel:2
 
 **Issue:** On the host, `uv pip install nemo_automodel mamba-ssm` can lead to `ImportError: ... undefined symbol: c10_cuda_check_implementation` when loading the model. The `mamba-ssm` CUDA extension was built against a different PyTorch than the one you run with.
 
-**Fix:** Use the **NeMo AutoModel container** so PyTorch and Mamba are built together. Do not rely on a host venv for this cookbook. See `MAMBA_SSM_VERSION_NOTES.md` for details.
+**Fix:** Use the **NeMo AutoModel container** so PyTorch and Mamba are built together. Do not rely on a host venv for this cookbook. See `MAMBA_SSM_VERSION_NOTES.md` for details. For the exact container image and dependency versions that worked, see **`WORKING_SETUP_VERSIONS.md`**.
 
 ---
 
@@ -243,7 +243,7 @@ Use `--gpus all` (not `--gpus '"device=0"'`) so both GPUs are visible. **No trai
 
 **Issue:** NIM starts but then fails with `AttributeError: To support LoRA for MoE model, 'get_expert_mapping' must be implemented`. This happens when NIM has LoRA enabled (e.g. default `peft_source=/loras`) and discovers a LoRA adapter; the Nemotron-3-Nano MoE model does not support LoRA in this NIM/vLLM build.
 
-**Fix:** Deploy the **merged** model only: do not set `NIM_PEFT_SOURCE`, do not mount a LoRA directory into the container, and use the merged model directory (from Step 6) as the only model source at `/opt/nim/workspace`. If you previously had a LoRA mount, remove it and restart with only the merged model mount.
+**Fix:** Deploy the **merged** model only: do not set `NIM_PEFT_SOURCE`, do not mount a LoRA directory into the container, and use the merged model directory (from Step 6) as the only model source at `/opt/nim/workspace`. If you previously had a LoRA mount, remove it and restart with only the merged model mount. For a clean two-container setup (notebook + NIM/vLLM) and networking advice, see **TWO_CONTAINER_NOTEBOOK_AND_INFERENCE.md**.
 
 ---
 
@@ -303,6 +303,37 @@ Then re-run the Step 8 eval cell. The notebook now **auto-resolves** the NIM URL
 **Where we got stuck**
 
 - **Container-to-host connectivity:** With NIM confirmed running on the host (logs show “Application is ready to receive API requests”), the Step 8 probe from inside the AutoModel container sometimes still failed on all candidates (localhost, gateway, 172.17.0.1, host.docker.internal). So either: (a) the gateway discovery or a different candidate works after the latest notebook change and we just need to re-run Step 8 with NIM up, or (b) the environment (e.g. Brev / cloud networking or firewall) blocks container→host access to port 8000. If it’s (b), next steps could be: run both containers on the same Docker network and use the NIM container’s name as hostname, or run the notebook on the host (not in a container) so localhost:8000 works.
+
+---
+
+## SGLang in the same container (without changing PyTorch/CUDA)
+
+**Goal:** Run SGLang for faster inference or serving in the same NeMo AutoModel container, without upgrading or replacing the existing PyTorch/CUDA (to avoid breaking mamba-ssm or training).
+
+**Steps (inside the container):**
+
+```bash
+source /opt/venv/bin/activate
+cd /workspace/usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment
+bash install_sglang_keep_torch.sh
+```
+
+The script:
+
+1. Detects the current `torch` and `torchaudio` versions.
+2. Installs SGLang with a **constraint file** so pip does not upgrade PyTorch or torchaudio.
+3. On **CUDA 13** (e.g. nemo-automodel:25.11): installs the `sgl_kernel` wheel from the SGLang cu130 index (PyPI does not ship cu130 wheels).
+4. On CUDA 12.x: keeps the `sgl-kernel` that SGLang pulled from PyPI.
+
+**If you see resolver errors:** SGLang’s dependencies pin specific versions (e.g. `torch==2.9.1`). The script constrains `torch` to your current version (e.g. `2.9.0a0`). If pip reports a conflict, try installing with a slightly relaxed constraint (e.g. `torch>=2.9.0,<2.10`) by editing the generated constraint line in the script, or install SGLang in a separate venv and use that only for serving.
+
+**Run the server (example):**
+
+```bash
+python -m sglang.launch_server --model-path /path/to/merged_model --host 0.0.0.0 --port 30000
+```
+
+**Note:** Nemotron-3-Nano may or may not be officially supported by SGLang’s model list; you may need to try with a compatible chat template or open an issue on the SGLang repo for Mamba/Nemotron support.
 
 ---
 
