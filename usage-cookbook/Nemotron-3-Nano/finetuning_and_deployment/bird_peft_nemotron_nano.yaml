@@ -1,0 +1,73 @@
+# PEFT (LoRA) fine-tuning: Nemotron-3-Nano on BIRD SQL (2 GPUs)
+# Run from this directory inside the container: torchrun --nproc-per-node=2 finetune.py
+
+step_scheduler:
+  # Tuned for 2x H200 (141 GiB each). Use local 12 / global 24; if OOM try 8/16. global = 2 * local for 2 GPUs.
+  global_batch_size: 24
+  local_batch_size: 12
+  # Full BIRD train (6601 samples) / 24 ≈ 275 steps per epoch. To time the run: time torchrun --nproc-per-node=2 finetune.py
+  ckpt_every_steps: 100
+  val_every_steps: 50
+  num_epochs: 1
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 60
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+  torch_dtype: bf16
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: checkpoints/
+  model_save_format: safetensors
+  save_consolidated: false
+
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  match_all_linear: true
+  dim: 8
+  alpha: 32
+  use_triton: true
+
+distributed:
+  _target_: nemo_automodel.components.distributed.fsdp2.FSDP2Manager
+  dp_size: null
+  tp_size: 1
+  cp_size: 1
+  sequence_parallel: false
+  backend: nccl
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.column_mapped_text_instruction_dataset.ColumnMappedTextInstructionDataset
+  path_or_dataset_id: dataset/training.jsonl
+  split: train
+  column_mapping:
+    question: input
+    answer: output
+  answer_only_loss_mask: true
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: false
+
+optimizer:
+  _target_: torch.optim.Adam
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-5
+  weight_decay: 0

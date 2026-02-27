@@ -64,6 +64,9 @@ dmypy.json
 outputs/
 logs/
 checkpoints/
+checkpoints_*/
+merged_model/
+peft_for_nim/
 data/
 workspace/
 
