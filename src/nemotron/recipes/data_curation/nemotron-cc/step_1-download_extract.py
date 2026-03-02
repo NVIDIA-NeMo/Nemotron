@@ -30,18 +30,18 @@ from fsspec.core import url_to_fs
 from loguru import logger
 
 from nemo_curator.backends.experimental.ray_data import RayDataExecutor
-from nemo_curator.backends.xenna import XennaExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.pipeline import Pipeline
 from nemo_curator.stages.base import ProcessingStage
 from nemo_curator.stages.text.download import CommonCrawlDownloadExtractStage
-from nemo_curator.stages.text.filters import FastTextLangId
-from nemo_curator.stages.text.modifiers import UnicodeReformatter
-from nemo_curator.stages.text.modules import Modify, ScoreFilter
-from nemo_curator.tasks import DocumentBatch, FileGroupTask
+from nemo_curator.stages.text.filters import ScoreFilter
+from nemo_curator.stages.text.filters.fasttext import FastTextLangId
+from nemo_curator.stages.text.modifiers.unicode import UnicodeReformatter
+from nemo_curator.stages.text.modifiers import Modify
+from nemo_curator.tasks import DocumentBatch
 from nemo_curator.tasks.utils import TaskPerfUtils
 from nemo_curator.utils.client_utils import is_remote_url
-from nemo_curator.stages.resources import Resources
+from nemo_curator.stages.text.io.writer import ParquetWriter
 
 FASTTEXT_MODEL_URL = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
 FASTTEXT_MODEL_FILENAME = "lid.176.bin"
@@ -72,47 +72,6 @@ class LanguageFilter(ProcessingStage[DocumentBatch, DocumentBatch]):
         return task
 
 
-class LanguagePartitionWriter(ProcessingStage[DocumentBatch, FileGroupTask]):
-    """Write documents to language-partitioned subdirectories.
-
-    Groups by (language, file_name) to preserve WARC provenance in output filenames.
-    Supports both local and cloud paths (s3://, gs://, etc.) via fsspec.
-
-    Output structure:
-        output_dir/EN/crawl-data-CC-MAIN-2024-51-...-00002.warc.jsonl
-        output_dir/DE/crawl-data-CC-MAIN-2024-51-...-00002.warc.jsonl
-        ...
-    """
-
-    def __init__(self, output_dir: str, storage_options: dict | None = None) -> None:
-        self.output_dir = output_dir
-        self.storage_options = storage_options or {}
-        self.fs, self._fs_path = url_to_fs(self.output_dir, **self.storage_options)
-        self._is_remote = is_remote_url(self.output_dir)
-        self.name = "language_partition_writer"
-
-    def process(self, task: DocumentBatch) -> FileGroupTask:
-        df = task.to_pandas()
-        files = []
-        for (language, file_name), group in df.groupby(["language", "file_name"]):
-            lang_dir = self.fs.sep.join([self._fs_path, language])
-            self.fs.mkdirs(lang_dir, exist_ok=True)
-            stem, _ = os.path.splitext(file_name)
-            file_path = self.fs.sep.join([lang_dir, f"{stem}.jsonl"])
-
-            file_path_with_protocol = self.fs.unstrip_protocol(file_path) if self._is_remote else file_path
-            group.to_json(file_path_with_protocol, lines=True, orient="records", storage_options=self.storage_options, force_ascii=False)
-            files.append(file_path_with_protocol)
-
-        return FileGroupTask(
-            task_id=task.task_id,
-            dataset_name=task.dataset_name,
-            data=files,
-            _metadata={**task._metadata, "format": "jsonl"},
-            _stage_perf=task._stage_perf,
-        )
-
-
 def download_fasttext_model(model_dir: str) -> str:
     """Download the FastText language identification model if not already present.
 
@@ -140,12 +99,14 @@ def create_pipeline(args: argparse.Namespace) -> Pipeline:
     output_dir = args.output_dir
     download_dir = str(Path(args.download_dir).resolve())
 
+    # Ensure FastText model is available locally (downloads if missing)
     fasttext_model_path = download_fasttext_model(args.lang_id_model_path)
 
     storage_options = json.loads(args.storage_options) if args.storage_options else {}
 
     stages = [
-        # JusText is the Nemotron-CC choice for html extraction
+        # 1. Download and extract Common Crawl data using JusText.
+        #    The JusText extractor was chosen for the Nemotron-CC pipeline.
         CommonCrawlDownloadExtractStage(
             start_snapshot=args.start_snapshot,
             end_snapshot=args.end_snapshot,
@@ -154,7 +115,7 @@ def create_pipeline(args: argparse.Namespace) -> Pipeline:
             html_extraction="justext",
             url_limit=args.url_limit,
             record_limit=args.record_limit,
-        ).with_({"iterate_extract_commoncrawlwarciterator_commoncrawlhtmlextractor":{"resources":Resources(cpus=2.0)}}),
+        ),
         # 2. Language identification using FastText lid.176.bin (threshold 0.3 per paper).
         ScoreFilter(
             FastTextLangId(
@@ -170,8 +131,8 @@ def create_pipeline(args: argparse.Namespace) -> Pipeline:
         ),
         # 4. Fix unicode issues on all documents.
         Modify(UnicodeReformatter()),
-        # 5. Write output partitioned by language (e.g., output_dir/EN/, output_dir/DE/).
-        LanguagePartitionWriter(output_dir, storage_options=storage_options),
+        # 5. Write output
+        ParquetWriter(output_dir, write_kwargs={"storage_options": storage_options}),
     ]
 
     return Pipeline(
@@ -203,8 +164,7 @@ def main(args: argparse.Namespace) -> None:
     pipeline = create_pipeline(args)
     logger.info(f"\n{pipeline.describe()}")
 
-    executor = RayDataExecutor() if args.executor == "ray-data" else XennaExecutor()
-    logger.info(f"Using executor: {args.executor}")
+    executor = RayDataExecutor()
 
     start_time = time.perf_counter()
     results = pipeline.run(executor=executor)
@@ -303,16 +263,7 @@ def attach_args() -> argparse.ArgumentParser:
         help='JSON string of fsspec storage options for cloud output paths (e.g., \'{"key": "...", "secret": "..."}\').',
     )
 
-    # Executor
-    parser.add_argument(
-        "--executor",
-        type=str,
-        choices=["xenna", "ray-data"],
-        default="ray-data",
-        help="Pipeline executor backend.",
-    )
-
-    # Local Ray cluster
+    # Ray cluster
     parser.add_argument(
         "--num-cpus",
         type=int,
