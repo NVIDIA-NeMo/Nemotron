@@ -16,6 +16,6 @@ The Nemotron-cc pipeline can be roughly split up into the following stages:
   b. Fuzzy Deduplication
   c. Substring Deduplication
 
-3. Annotation and Quality Filtering
+3. Annotation and Filtering
 
 4. Synthetic Data generation
