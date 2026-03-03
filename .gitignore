@@ -66,10 +66,16 @@ logs/
 checkpoints/
 checkpoints_*/
 merged_model/
+merged_model_OLD/
+non_kev_checkpoints/
 peft_for_nim/
 data/
 workspace/
 
+usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment/dataset/bird_mini_dev_data/*
+usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment/dataset/training.jsonl
+usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment/PR_PREP_CHECKLIST.md
+
 # Claude Code
 CLAUDE.md
-usage-cookbook/Nemotron-3-Nano/finetuning_and_deployment/dataset/bird_mini_dev_data/*
+
