@@ -12,44 +12,41 @@
 
 ## Quick Sizing Rules
 
-### Heuristic
+### Heuristic for rough estimation
 
-A few rules of thumb cover most estimates about minimum training configurations -
+`NOTE`: Numbers below use H100 80 GiB as a reference. GPU counts for MoE models are **not**
+simply total bytes ÷ device memory — parallel topology (EP, TP, DP divisibility) and
+recipe defaults set the floor. See the [Memory Floor](#memory-floor-analytical-estimates)
+table for minimums.
 
-`NOTE`: Numbers below use H100 80 GiB as a reference — the per-parameter math applies
-to any GPU; just divide by your device's memory capacity to get GPU counts.
+- **Full SFT** — **~16 bytes/param** static memory (2B BF16 weights + 2B BF16 gradients + 12B Adam FP32),
+  plus activation memory that scales with sequence length and micro-batch size.
 
-- **Full SFT** needs **~16 bytes per parameter** in static memory (weights + gradients + Adam
-  optimizer states), plus activation memory that depends on sequence length and micro-batch size.
-  For 31.6B total params in Nemotron 3 Nano → **~471 GiB** static, plus activations. For this MoE model the per-GPU
-  memory is dominated by how the experts are distributed (Expert Parallelism). With FSDP2
-  (Automodel), Full SFT fits on **1 node (8 GPUs)** at EP=8 (~65 GiB/GPU). Without FSDP2
-  (Megatron-Bridge), you need DP≥2 to shard optimizer states, so the floor is **16 GPUs**
-  (EP=8, DP=2). Recommended recipes ship with 16 GPUs (2 nodes) for headroom
-  (ex: [Megatron-Bridge Nemotron 3 Nano SFT recipe](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html)).
+  For 31.6B params in Nemotron 3 Nano → **~471 GiB** static, plus activations. Per-GPU memory is dominated
+  by how [EP](https://docs.nvidia.com/megatron-core/developer-guide/latest/api-reference/distributed_checkpointing.html#expert-parallelism)
+  (Expert Parallelism) distributes the 128 routed experts across GPUs:
+  - With FSDP2 (Automodel): fits on **1 node (8 GPUs)** at EP=8
+  - Without FSDP2 (Megatron-Bridge): needs DP≥2 to shard optimizer states → **16 GPUs** (EP=8, DP=2)
+  - Recommended recipes ship with [16 GPUs (2 nodes)](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html) for headroom
 
-- **LoRA** memory is dominated by **frozen model weights** (~59 GiB in BF16 for 31.6B params).
-  Training overhead (adapter, optimizer, gradients, activations) adds ~15–20% on top,
-  bringing the single-GPU total to **~68 GiB** at LoRA rank 8 — much less than full SFT because
-  only the small adapter is trained. Fits on 1 H100 80 GiB at
-  [EP](https://docs.nvidia.com/megatron-core/developer-guide/latest/api-reference/distributed_checkpointing.html#expert-parallelism)=1
-  (tight), comfortably on 2 GPUs at EP=2, and with ample headroom on 4 or 8 GPU nodes with larger EP settings.
+- **LoRA** — **~2.3 bytes/param** (2B frozen BF16 weights + ~15–20% training overhead from
+  adapter, optimizer, gradients, activations).
 
-- **GRPO / RL**: the training side follows the SFT or LoRA rule above, **plus** additional
+  For 31.6B params → **~68 GiB** total. Fits on 1 GPU at EP=1 (tight), 2 GPUs at EP=2
+  (comfortable), 4–8 GPUs with larger EP for headroom.
+
+- **GRPO / RL** — training side follows the Full SFT or LoRA rule above, **plus** additional
   GPUs for inference/generation if training and generation are not colocated.
 
 > These are **memory-floor estimates** at seq_len=2048 and BF16 precision. Longer
 > sequences, larger micro-batch sizes, higher LoRA ranks, or mixed-precision
 > choices will shift the numbers — see [Activation Memory & Sequence Length](./training-memory-details.md#activation-memory--sequence-length) for details.
-> [EP](https://docs.nvidia.com/megatron-core/developer-guide/latest/api-reference/distributed_checkpointing.html#expert-parallelism) (Expert Parallelism) distributes the model's 128 routed experts across
-> GPUs.
 
-### Memory Floor
+### Memory Floor (Analytical Lower Bound)
 
-Minimum GPUs where the model fits in memory. Lower EP values are achievable by
-overriding the recipe's default EP via config/CLI but may be untested.
+Minimum number of GPUs where the model training fits in memory.
 
-> Reference GPU: **H100 80 GiB**. Scale GPU counts proportionally for other devices.
+> Reference GPU: **H100 80 GiB**. Scale GPU counts proportionally for other devices and their memory capacity.
 
 | Framework | Training Mode | GPUs | EP | TP | PP | DP | Seq Len |
 |-----------|---------------|:----:|:--:|:--:|:--:|:--:|--------:|
@@ -85,10 +82,6 @@ Shipped tested recipe defaults with headroom.
 
 ### Notes
 
-1. **Mamba-2 LoRA constraint:** Do NOT apply LoRA to `out_proj` or `conv1d` in
-   Mamba-2 layers. Fused CUDA kernels bypass `forward()`, causing zero gradients
-   and `merge_and_unload()` failures. See [Mamba-2 details](./training-memory-details.md#mamba-2-specifics).
-
-2. **Target hardware:** The data above assumes **H100 80 GiB SXM** with **BF16 precision**.
+- **Target hardware:** The data above assumes **H100 80 GiB SXM** with **BF16 precision**.
    A B200 (192 GiB) could hold the full model at EP=1; an A100 40 GiB would need
    more GPUs. All memory figures use binary GiB (1 GiB = 2^30), matching `nvidia-smi`.
