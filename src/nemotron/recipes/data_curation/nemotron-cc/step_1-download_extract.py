@@ -40,7 +40,6 @@ from nemo_curator.stages.text.modifiers.unicode import UnicodeReformatter
 from nemo_curator.stages.text.modifiers import Modify
 from nemo_curator.tasks import DocumentBatch
 from nemo_curator.tasks.utils import TaskPerfUtils
-from nemo_curator.utils.client_utils import is_remote_url
 from nemo_curator.stages.text.io.writer import ParquetWriter
 
 FASTTEXT_MODEL_URL = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
@@ -97,10 +96,12 @@ def download_fasttext_model(model_dir: str) -> str:
 def create_pipeline(args: argparse.Namespace) -> Pipeline:
     """Build the download-extract-preprocess pipeline."""
     output_dir = args.output_dir
-    download_dir = str(Path(args.download_dir).resolve())
+    cache_dir = str(Path(args.cache_dir).resolve())
+    download_dir = os.path.join(cache_dir, "cc_downloads")
+    model_dir = os.path.join(cache_dir, "model")
 
     # Ensure FastText model is available locally (downloads if missing)
-    fasttext_model_path = download_fasttext_model(args.lang_id_model_path)
+    fasttext_model_path = download_fasttext_model(model_dir)
 
     storage_options = json.loads(args.storage_options) if args.storage_options else {}
 
@@ -146,7 +147,8 @@ def main(args: argparse.Namespace) -> None:
     storage_options = json.loads(args.storage_options) if args.storage_options else {}
     fs, fs_path = url_to_fs(args.output_dir, **storage_options)
     fs.mkdirs(fs_path, exist_ok=True)
-    os.makedirs(args.download_dir, exist_ok=True)
+    cache_dir = str(Path(args.cache_dir).resolve())
+    os.makedirs(cache_dir, exist_ok=True)
 
     ray_client = RayClient(num_cpus=args.num_cpus)
     ray_client.start()
@@ -154,7 +156,7 @@ def main(args: argparse.Namespace) -> None:
     logger.info("Starting Nemotron-CC download and preprocessing pipeline")
     logger.info(f"  Snapshots: {args.start_snapshot} to {args.end_snapshot}")
     logger.info(f"  Languages: {args.languages or 'all'}")
-    logger.info(f"  Download dir: {args.download_dir}")
+    logger.info(f"  Cache dir: {cache_dir}")
     logger.info(f"  Output dir: {args.output_dir}")
     if args.url_limit is not None:
         logger.info(f"  URL limit: {args.url_limit}")
@@ -175,19 +177,17 @@ def main(args: argparse.Namespace) -> None:
     logger.info(f"Total output files: {total_documents}")
 
     # Dump result tasks (with _stage_perf timing stats) for later analysis
-    results_file = fs.sep.join([fs_path, "results.pkl"])
-    with fs.open(results_file, "wb") as f:
+    results_file = os.path.join(cache_dir, "results.pkl")
+    with open(results_file, "wb") as f:
         pickle.dump(results, f)
-    results_file_display = fs.unstrip_protocol(results_file) if is_remote_url(args.output_dir) else results_file
-    logger.info(f"Task results saved to {results_file_display}")
+    logger.info(f"Task results saved to {results_file}")
 
     # Aggregate and save per-stage metrics (mean/std/sum for each metric)
     metrics = TaskPerfUtils.aggregate_task_metrics(results)
-    metrics_file = fs.sep.join([fs_path, "metrics.json"])
-    with fs.open(metrics_file, "w") as f:
+    metrics_file = os.path.join(cache_dir, "metrics.json")
+    with open(metrics_file, "w") as f:
         json.dump(metrics, f, indent=2)
-    metrics_file_display = fs.unstrip_protocol(metrics_file) if is_remote_url(args.output_dir) else metrics_file
-    logger.info(f"Aggregated metrics saved to {metrics_file_display}")
+    logger.info(f"Aggregated metrics saved to {metrics_file}")
 
     ray_client.stop()
 
@@ -216,14 +216,14 @@ def attach_args() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="./data/preprocessed",
-        help="Directory to write the preprocessed output, partitioned by language.",
+        default="./data/cleaned_extracted",
+        help="Directory to write the preprocessed extracted content.",
     )
     parser.add_argument(
-        "--download-dir",
+        "--cache-dir",
         type=str,
-        default="./data/cc_downloads",
-        help="Directory for intermediate Common Crawl WARC downloads.",
+        default="./data/cache",
+        help="Cache directory for intermediate files. Layout: cache_dir/cc_downloads (WARC files), cache_dir/model (FastText model), plus results.pkl and metrics.json.",
     )
 
     # Common Crawl options
@@ -248,13 +248,6 @@ def attach_args() -> argparse.ArgumentParser:
         default=None,
         help="Language codes to keep (e.g., EN DE FR). If omitted, all languages are written.",
     )
-    parser.add_argument(
-        "--lang-id-model-path",
-        type=str,
-        required=True,
-        help="Directory for the FastText lid.176.bin model. Downloads automatically if not present in the directory.",
-    )
-
     # Cloud storage
     parser.add_argument(
         "--storage-options",
