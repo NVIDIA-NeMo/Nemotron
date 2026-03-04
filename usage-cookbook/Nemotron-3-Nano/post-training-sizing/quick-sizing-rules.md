@@ -27,13 +27,13 @@ table for minimums.
   (Expert Parallelism) distributes the 128 routed experts across GPUs:
   - With FSDP2 (Automodel): fits on **1 node (8 GPUs)** at EP=8
   - Without FSDP2 (Megatron-Bridge): needs DP≥2 to shard optimizer states → **16 GPUs** (EP=8, DP=2)
-  - Recommended recipes ship with [16 GPUs (2 nodes)](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html) for headroom
+. Recommended recipes ship with [16 GPUs (2 nodes)](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html) for headroom
 
-- **LoRA** — **~2.3 bytes/param** (2B frozen BF16 weights + ~15–20% training overhead from
-  adapter, optimizer, gradients, activations).
+- **LoRA** — **~2 bytes/param** static memory (frozen BF16 weights; adapter and optimizer
+  overhead is negligible at low ranks), plus activations.
 
-  For 31.6B params → **~68 GiB** total. Fits on 1 GPU at EP=1 (tight), 2 GPUs at EP=2
-  (comfortable), 4–8 GPUs with larger EP for headroom.
+  For 31.6B params → **~59 GiB** static + activations. Fits on 1 GPU at EP=1 (tight),
+  2 GPUs at EP=2 (comfortable), 4–8 GPUs with larger EP for headroom.
 
 - **GRPO / RL** — training side follows the Full SFT or LoRA rule above, **plus** additional
   GPUs for inference/generation if training and generation are not colocated.
