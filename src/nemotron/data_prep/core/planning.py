@@ -18,9 +18,10 @@ import hashlib
 import heapq
 import json
 import logging
+import math
 import random
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -96,9 +97,70 @@ def create_size_balanced_assignments(
             # Still accumulate total_bytes even if sizes are 0 (for consistency)
             assignments[shard_idx].total_bytes += file_info.size
 
+    # If more shards than files, redistribute with row-level splitting
+    if len(files) < num_shards and has_sizes:
+        assignments = _redistribute_with_row_splitting(sorted_files, num_shards)
+
     # Sort files within each shard by path for deterministic processing order
     for assignment in assignments:
         assignment.files.sort(key=lambda f: f.path)
+
+    return assignments
+
+
+def _redistribute_with_row_splitting(
+    sorted_files: list[FileInfo],
+    num_shards: int,
+) -> list[ShardAssignment]:
+    """Distribute files across shards using row-level modular splitting.
+
+    When there are fewer files than shards, each file is assigned to multiple
+    shards with row_modulus/row_remainder so each shard processes a disjoint
+    subset of rows.
+    """
+    total_bytes = sum(f.size for f in sorted_files)
+    assignments = [
+        ShardAssignment(shard_index=i, files=[], total_bytes=0) for i in range(num_shards)
+    ]
+
+    # Compute proportional shard count per file, ensuring at least 1 shard each
+    # and the total equals num_shards
+    raw_shares = []
+    for f in sorted_files:
+        share = f.size / total_bytes * num_shards if total_bytes > 0 else num_shards / len(sorted_files)
+        raw_shares.append(share)
+
+    # Allocate shards: floor first, then distribute remainders by largest fractional part
+    floor_shares = [max(1, int(math.floor(s))) for s in raw_shares]
+    remaining = num_shards - sum(floor_shares)
+
+    if remaining > 0:
+        # Distribute extra shards to files with largest fractional remainders
+        fractional_parts = [(raw_shares[i] - floor_shares[i], i) for i in range(len(sorted_files))]
+        fractional_parts.sort(key=lambda x: (-x[0], x[1]))
+        for j in range(remaining):
+            floor_shares[fractional_parts[j][1]] += 1
+    elif remaining < 0:
+        # Over-allocated due to max(1,...) floors — trim from smallest files
+        fractional_parts = [(raw_shares[i] - floor_shares[i], i) for i in range(len(sorted_files))]
+        fractional_parts.sort(key=lambda x: (x[0], x[1]))
+        for j in range(-remaining):
+            idx = fractional_parts[j][1]
+            if floor_shares[idx] > 1:
+                floor_shares[idx] -= 1
+
+    shard_cursor = 0
+    for file_idx, f in enumerate(sorted_files):
+        n_shards_for_file = floor_shares[file_idx]
+        approx_bytes = f.size // n_shards_for_file if n_shards_for_file > 0 else 0
+
+        for remainder in range(n_shards_for_file):
+            shard_idx = shard_cursor + remainder
+            split_file = replace(f, row_modulus=n_shards_for_file, row_remainder=remainder)
+            assignments[shard_idx].files.append(split_file)
+            assignments[shard_idx].total_bytes = approx_bytes
+
+        shard_cursor += n_shards_for_file
 
     return assignments
 

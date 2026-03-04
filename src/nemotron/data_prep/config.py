@@ -402,6 +402,9 @@ class FileInfo:
     hf_repo_id: str | None = None  # e.g., "allenai/c4"
     hf_filename: str | None = None  # e.g., "en/c4-train.00000-of-01024.json.gz"
     hf_revision: str | None = None  # Resolved SHA for determinism
+    # Row-level splitting: when set, only process rows where row_idx % modulus == remainder
+    row_modulus: int | None = None
+    row_remainder: int | None = None
 
 
 @dataclass

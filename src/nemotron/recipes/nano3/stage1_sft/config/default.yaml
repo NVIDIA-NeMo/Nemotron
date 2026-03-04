@@ -2,7 +2,7 @@ run:
   data: SFTDataArtifact-sft:latest
   model: pretrain:latest
   env:
-    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    container: nvcr.io/nvidian/nemo:26.02.super.rc1
     # Mount custom Megatron-LM and Megatron-Bridge versions
     # Syntax: ${auto_mount:git+URL@ref,target_path}
     mounts:

@@ -239,6 +239,9 @@ def _process_file(
     else:
         record_iter = _iter_jsonl_records(normalized, input_fs)
 
+    if file_info.row_modulus is not None and file_info.row_remainder is not None:
+        record_iter = _apply_row_filter(record_iter, file_info.row_modulus, file_info.row_remainder)
+
     for record in record_iter:
         if max_rows and rows_processed >= max_rows:
             break
@@ -278,3 +281,12 @@ def _iter_jsonl_records(path: str, fs: AbstractFileSystem) -> Iterator[dict]:
         for line in f:
             if line.strip():
                 yield json.loads(line)
+
+
+def _apply_row_filter(
+    records: Iterator[dict], modulus: int, remainder: int
+) -> Iterator[dict]:
+    """Yield only rows where row_index % modulus == remainder."""
+    for idx, record in enumerate(records):
+        if idx % modulus == remainder:
+            yield record

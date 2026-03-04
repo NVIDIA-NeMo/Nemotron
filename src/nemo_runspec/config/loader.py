@@ -209,6 +209,9 @@ def build_job_config(
     else:
         job_config.run = OmegaConf.create(run_updates)
 
+    # Re-apply dotlist overrides last so CLI always wins over env profile
+    job_config = apply_dotlist_overrides(job_config, ctx.dotlist)
+
     return job_config
 
 

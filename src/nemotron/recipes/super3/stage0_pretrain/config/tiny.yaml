@@ -1,7 +1,7 @@
 run:
   data: PretrainBlendsArtifact-tiny:latest
   env:
-    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_super
+    container: nvcr.io/nvidian/nemo:26.02.super.rc1
 
 recipe:
   _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_pretrain_config

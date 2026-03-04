@@ -1,7 +1,7 @@
 run:
   data: PretrainBlendsArtifact-default:latest
   env:
-    container: gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568
+    container: nvcr.io/nvidian/nemo:26.02.super.rc1
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config

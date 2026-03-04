@@ -111,6 +111,15 @@ def _iter_jsonl_records(path: str, fs: AbstractFileSystem) -> Iterator[dict]:
                 yield json.loads(line)
 
 
+def _apply_row_filter(
+    records: Iterator[dict], modulus: int, remainder: int
+) -> Iterator[dict]:
+    """Yield only rows where row_index % modulus == remainder."""
+    for idx, record in enumerate(records):
+        if idx % modulus == remainder:
+            yield record
+
+
 def _matches_used_in_filter(used_in: str | list | None, used_in_filter: str) -> bool:
     if used_in is None:
         return False
@@ -263,6 +272,9 @@ def process_chat_sft_spool_core(
         )
 
         record_iter = _iter_parquet_records(normalized, input_fs) if is_parquet else _iter_jsonl_records(normalized, input_fs)
+
+        if file_info.row_modulus is not None and file_info.row_remainder is not None:
+            record_iter = _apply_row_filter(record_iter, file_info.row_modulus, file_info.row_remainder)
 
         for record in record_iter:
             if max_rows and rows_processed >= max_rows:
