@@ -101,7 +101,7 @@ A complete training recipe for the open, efficient Mixture-of-Experts hybrid Mam
 
 **Resources**:
 - [Training Guide](docs/nemotron/nano3/README.md)
-- [Tech Report](https://arxiv.org/abs/2506.XXXXX)
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf)
 - [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16)
 - [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
 - [Model Weights (FP8)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8)
@@ -146,7 +146,7 @@ End-to-end examples demonstrating practical applications in the [`use-case-examp
 
 ## Nemotron Open Datasets
 
-More than just weights, recipes, and libraries: Nemotron is commited to opening data across many domains, training phases, and use cases.
+More than just weights, recipes, and libraries: Nemotron is committed to opening data across many domains, training phases, and use cases.
 
 <details>
 <summary><strong>Nemotron Data Catalogue</strong></summary>

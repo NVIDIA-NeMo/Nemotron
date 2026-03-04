@@ -115,10 +115,10 @@ uv run nemotron nano3 data import rl /path/to/rl_data --project alignment-projec
 ## Model Evaluation
 
 ```bash
-uv run nemotron nano3 model eval
+uv run nemotron nano3 eval -c default --run YOUR-CLUSTER
 ```
 
-> **Note**: Model evaluation is coming soon.
+Runs model evaluation using [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator). See `src/nemotron/cli/commands/nano3/eval.py` for execution details and `src/nemotron/recipes/nano3/stage3_eval/config/` for available configurations.
 
 ## Using Imported Artifacts
 

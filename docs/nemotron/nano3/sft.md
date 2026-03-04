@@ -92,7 +92,7 @@ The pipeline rolls the loss mask by 1 position so it correctly masks the *predic
 - **Default (null)**: No truncation—full sequences are preserved
 - **When set**: Sequences exceeding the limit are truncated from the end, with the loss mask adjusted accordingly
 
-> For implementation details, see `src/nemotron/data_prep/chat_sft_processor.py`
+> For implementation details, see `src/nemotron/data_prep/core/chat_sft_shard_core.py`
 
 ### Packed Sequences
 

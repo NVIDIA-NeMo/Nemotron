@@ -23,7 +23,7 @@
 import os
 
 project = "Nemotron"
-copyright = "2025, NVIDIA Corporation"
+copyright = "2025-2026, NVIDIA Corporation"
 author = "NVIDIA Corporation"
 
 # Version is set by CI via DOCS_VERSION env var (dev or stable)

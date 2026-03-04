@@ -128,7 +128,7 @@ The runtime layer is typically a **thin script** that delegates to NVIDIA AI sta
 | Pretrain | `train.py` | Megatron-Bridge |
 | SFT | `train.py` | Megatron-Bridge |
 | RL | `train.py` | NeMo-RL |
-| Data prep | `data_prep.py` | Nemotron + Cosmos-Xenna |
+| Data prep | `data_prep.py` | Nemotron data_prep + Ray |
 
 **Key insight**: Execution is one forkable unit. Want SkyPilot + MLflow? Fork the CLI and rewrite it. Runtime scripts stay unchanged — they're just thin wrappers around library calls.
 

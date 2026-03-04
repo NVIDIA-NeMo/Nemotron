@@ -129,13 +129,11 @@ add_run_tags(["pretrain", "nano3"])
 ```
 src/nemotron/kit/
 ├── __init__.py          # Public API exports + kit.init()
-├── artifact.py          # Artifact base class and all artifact types
-├── artifacts/           # Artifact type definitions
+├── artifact.py          # Artifact base class, ArtifactInput, display helpers
+├── artifacts/           # Artifact type definitions (base, model, data blends, etc.)
 ├── trackers.py          # LineageTracker, WandbTracker, FileTracker, NoOpTracker
-├── wandb_kit.py         # WandbConfig, init_wandb_if_configured, add_run_tags
-├── track.py             # TrackConfig for artifact resolution
-├── train_script.py      # Training script utilities (parse_config_and_overrides)
-├── filesystem.py        # fsspec helpers for art:// URIs
+├── wandb_kit.py         # WandbConfig, init_wandb_if_configured, add_run_tags, monkey patches
+├── train_script.py      # Training script utilities (init_wandb_from_env, config parsing)
 ├── recipe_loader.py     # Recipe loading utilities
 └── megatron_stub.py     # Megatron stub for testing
 ```
@@ -181,7 +179,6 @@ src/nemotron/kit/
 | Export | Description |
 |--------|-------------|
 | `init()` | Initialize kit with storage backend (fsspec or wandb) |
-| `get_config()` | Get current kit configuration |
 | `is_initialized()` | Check if kit has been initialized |
 
 ## Further Reading

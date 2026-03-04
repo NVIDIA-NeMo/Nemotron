@@ -15,7 +15,7 @@
 $ git clone https://github.com/NVIDIA/nemotron
 $ cd nemotron && uv sync
 
-// Run the full Nano3 pipeline
+// Run the Nano3 pipeline stage by stage
 $ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 $ uv run nemotron nano3 pretrain --run YOUR-CLUSTER
 $ uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
@@ -147,4 +147,15 @@ nemo_runspec/omegaconf.md
 nemotron/wandb.md
 nemo_runspec/cli.md
 nemotron/data-prep.md
+nemotron/xenna-observability.md
+```
+
+```{toctree}
+:caption: Architecture
+:hidden:
+
+architecture/README.md
+architecture/design-philosophy.md
+architecture/cli-architecture.md
+runspec/v1/spec.md
 ```

@@ -280,7 +280,7 @@ Override config values using Hydra-style syntax:
 uv run nemotron nano3 pretrain --run YOUR-CLUSTER train.train_iters=5000
 
 # Override nodes
-uv run nemotron nano3 pretrain --run YOUR-CLUSTER run.nodes=8
+uv run nemotron nano3 pretrain --run YOUR-CLUSTER run.env.nodes=8
 ```
 
 ## env.toml Reference

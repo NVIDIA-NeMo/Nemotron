@@ -2,7 +2,7 @@
 
 The Nemotron training pipeline provides complete lineage tracking from raw data to final model through [Weights & Biases](../nemotron/wandb.md) artifacts. Every data transformation and model checkpoint is versioned and linked, enabling full reproducibility and traceability.
 
-> **Note**: The artifact system currently requires [W&B](../nemotron/wandb.md). Backend-agnostic artifact tracking is in development.
+> **Note**: For full lineage tracking and team sharing, the artifact system uses [W&B](../nemotron/wandb.md). A file-based backend is also available for local development—set `[artifacts] backend = "file"` in your `env.toml`. See [env.toml Reference](./nemo-run.md#envtoml-reference) for details.
 
 ## Why Lineage Matters
 
@@ -45,6 +45,20 @@ flowchart TB
     style stage1 fill:#f3e5f5,stroke:#9c27b0
     style stage2 fill:#e8f5e9,stroke:#4caf50
 ```
+
+## Artifact Naming
+
+The artifact system uses three related concepts:
+
+| Concept | Example | Where Used |
+|---------|---------|------------|
+| **Python class** | `PretrainBlendsArtifact` | Code imports (`from nemotron.kit import ...`) |
+| **Registered name** | `DataBlendsArtifact-pretrain` | W&B artifact names, `metadata.json` |
+| **Config reference** | `DataBlendsArtifact-pretrain:latest` | YAML configs (`run.data`), CLI overrides, `art://` URIs |
+
+**How names are formed**: When the pipeline saves an artifact, it combines the artifact class with a stage suffix (e.g., `DataBlendsArtifact` + `-pretrain`). The `:latest` or `:v3` suffix is a W&B version tag.
+
+**Stage aliases**: Shorthand aliases like `pretrain:latest`, `sft:latest` reference `ModelArtifact-<stage>:latest` in configs. Full names always work too.
 
 ## Artifact Types
 

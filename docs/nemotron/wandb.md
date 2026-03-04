@@ -2,7 +2,7 @@
 
 Nemotron provides automatic W&B configuration that seamlessly passes credentials and settings to containers running via nemo-run. `nemotron.kit.wandb_kit` handles W&B initialization and `nemo_runspec.execution` handles credential injection into executors. This eliminates manual credential management across local, Docker, Slurm, and cloud executors.
 
-> **Note**: The artifact system currently requires W&B. Backend-agnostic artifact tracking is in development.
+> **Note**: W&B is recommended for full lineage tracking and team collaboration. A file-based backend is also available for local development—set `[artifacts] backend = "file"` in your `env.toml`.
 
 ## Configuration
 
@@ -62,7 +62,7 @@ if "WANDB_API_KEY" not in merged_env:
         merged_env["WANDB_API_KEY"] = api_key
 
 # Load project/entity from env.toml [wandb] section
-wandb_config = load_wandb_config()
+wandb_config = get_wandb_config()
 if wandb_config is not None:
     if wandb_config.project:
         merged_env["WANDB_PROJECT"] = wandb_config.project
@@ -208,7 +208,7 @@ For Ray data prep jobs, credentials are passed via `runtime_env.env_vars`. Ensur
 
 | Export | Module | Description |
 |--------|--------|-------------|
-| `load_wandb_config()` | `nemo_runspec.env` | Load `WandbConfig` from env.toml |
+| `get_wandb_config()` | `nemo_runspec.env` | Load W&B config from env.toml |
 | `build_env_vars()` | `nemo_runspec.execution` | Build env vars with auto W&B detection |
 
 ## Further Reading

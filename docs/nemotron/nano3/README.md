@@ -47,31 +47,22 @@ mounts = ["/lustre:/lustre"]
 // Stage 0: Pretraining
 $ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 $ uv run nemotron nano3 pretrain --run YOUR-CLUSTER
-$ uv run nemotron pipe nano3 data prep pretrain --run YOUR-CLUSTER, \
-  nano3 pretrain --run YOUR-CLUSTER
 
 // Stage 1: Supervised Fine-Tuning
 $ uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
 $ uv run nemotron nano3 sft --run YOUR-CLUSTER
-$ uv run nemotron pipe nano3 data prep sft --run YOUR-CLUSTER, \
-  nano3 sft --run YOUR-CLUSTER
 
 // Stage 2: Reinforcement Learning
 $ uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
 $ uv run nemotron nano3 rl --run YOUR-CLUSTER
-$ uv run nemotron pipe nano3 data prep rl --run YOUR-CLUSTER, \
-  nano3 rl --run YOUR-CLUSTER
 
-// Run E2E
-$ uv run nemotron pipe nano3 data prep pretrain --run YOUR-CLUSTER, \
-  nano3 pretrain --run YOUR-CLUSTER, \
-  nano3 data prep sft --run YOUR-CLUSTER, \
-  nano3 sft --run YOUR-CLUSTER, \
-  nano3 data prep rl --run YOUR-CLUSTER, \
-  nano3 rl --run YOUR-CLUSTER
+// Compose pretrain + SFT as a single nemo-run Experiment
+$ uv run nemotron nano3 pipe --run YOUR-CLUSTER
 ```
 
 </div>
+
+> **Note**: The `pipe` command composes pretrain → SFT into a single nemo-run Experiment for coordinated remote execution. RL uses Ray and must be run separately.
 
 ## Resources
 
@@ -205,6 +196,12 @@ Usage: nemotron nano3 [OPTIONS] COMMAND [ARGS]...
 │ pretrain   Run pretraining with Megatron-Bridge (stage0).                │
 │ sft        Run supervised fine-tuning with Megatron-Bridge (stage1).     │
 │ rl         Run reinforcement learning with NeMo-RL GRPO (stage2).        │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Evaluation ─────────────────────────────────────────────────────────────╮
+│ eval       Run model evaluation with NeMo Evaluator.                     │
+╰──────────────────────────────────────────────────────────────────────────╯
+╭─ Pipeline ───────────────────────────────────────────────────────────────╮
+│ pipe       Compose pretrain → SFT into a single nemo-run Experiment.     │
 ╰──────────────────────────────────────────────────────────────────────────╯
 
 // View training command help (SFT example with artifact overrides)
