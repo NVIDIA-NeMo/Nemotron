@@ -174,7 +174,7 @@ Common data preparation errors and solutions:
 
 **Debugging tips:**
 
-- Use `--sample 100` to test data preparation on a small subset
+- Use `sample=100` to test data preparation on a small subset
 - Check `metadata.json` output for statistics on filtered/truncated sequences
 - Review W&B artifacts for lineage tracking and validation metrics
 
@@ -245,8 +245,8 @@ See the [Megatron-Bridge Nemotron 3 documentation](https://docs.nvidia.com/nemo/
 | File | Purpose |
 |------|---------|
 | `config/default.yaml` | Production configuration |
-| `config/data_prep.yaml` | Data preparation settings |
-| `config/data_blend_raw.json` | Dataset blend definition |
+| `config/data_prep/default.yaml` | Data preparation settings |
+| `config/data_prep/data_blend_raw.json` | Dataset blend definition |
 
 ### Data Preparation
 
@@ -261,20 +261,26 @@ uv run nemotron nano3 data prep sft [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via [NeMo-Run](../../nemo_runspec/nemo-run.md) |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 #### Output
 
 ```
 output/stage1_sft/
-├── training.parquet
-├── validation.parquet
-├── test.parquet
-└── metadata.json
+├── blend.json                          # Per-split blend {"train": [...], "valid": [...], "test": [...]}
+├── splits/
+│   ├── train/
+│   │   ├── shard_000000.parquet
+│   │   └── ...
+│   ├── valid/
+│   │   └── shard_000000.parquet
+│   └── test/
+│       └── shard_000000.parquet
+└── runs/<run_hash>/                    # Raw shard outputs (splits/ symlinks here)
 ```
 
-The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`DataBlendsArtifact-sft`) for lineage tracking.
+The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`SFTDataArtifact-<config_name>`) for lineage tracking.
 
 ### Training
 
@@ -332,7 +338,7 @@ See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for complete co
 flowchart TB
     prev["ModelArtifact-pretrain<br/>(from Stage 0)"] --> train
     inst["Instruction Datasets<br/>(OpenAI chat format)"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-sft<br/>(Packed Parquet)"]
+    data1["SFTDataArtifact<br/>(Parquet)"]
     data --> train["train.py"]
     train --> model["ModelArtifact-sft<br/>(fine-tuned checkpoint)"]
     model --> next["Stage 2: RL"]

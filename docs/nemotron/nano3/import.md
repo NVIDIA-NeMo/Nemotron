@@ -76,12 +76,17 @@ uv run nemotron nano3 data import rl /path/to/rl_data_dir
 /path/to/blend.json
 ```
 
-**SFT**: Directory containing `blend.json`
+**SFT**: Directory containing `blend.json` and split subdirectories
 ```
 /path/to/sft_data_dir/
 ├── blend.json
-├── train.parquet
-├── valid.parquet
+├── splits/
+│   ├── train/
+│   │   └── *.parquet
+│   ├── valid/
+│   │   └── *.parquet
+│   └── test/
+│       └── *.parquet
 └── ...
 ```
 
@@ -89,7 +94,7 @@ uv run nemotron nano3 data import rl /path/to/rl_data_dir
 ```
 /path/to/rl_data_dir/
 ├── manifest.json
-├── train.jsonl
+├── train.jsonl       # or path referenced in manifest.json
 ├── val.jsonl
 └── test.jsonl
 ```

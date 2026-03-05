@@ -202,8 +202,8 @@ See the [Megatron-Bridge Nemotron 3 documentation](https://docs.nvidia.com/nemo/
 | File | Purpose |
 |------|---------|
 | `config/default.yaml` | Production configuration |
-| `config/data_prep.yaml` | Data preparation settings |
-| `config/data_blend_raw.json` | Dataset blend definition |
+| `config/data_prep/default.yaml` | Data preparation settings |
+| `config/data_prep/data_blend_raw.json` | Dataset blend definition |
 
 **Blend Configuration**
 
@@ -233,23 +233,26 @@ uv run nemotron nano3 data prep pretrain [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via [NeMo-Run](../../nemo_runspec/nemo-run.md) |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 #### Output
 
 ```
 output/nano3/stage0_pretrain/
-├── train/
-│   ├── data_00000.bin
-│   ├── data_00000.idx
-│   └── ...
-├── valid/
-├── test/
-└── blend.json
+├── blend.json                          # Per-split blend {"train": [...], "valid": [...], "test": [...]}
+├── splits/
+│   ├── train/
+│   │   ├── shard_000000.bin/.idx
+│   │   └── ...
+│   ├── valid/
+│   │   └── shard_000000.bin/.idx
+│   └── test/
+│       └── shard_000000.bin/.idx
+└── runs/<run_hash>/                    # Raw shard outputs (splits/ symlinks here)
 ```
 
-The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`DataBlendsArtifact-pretrain`) for lineage tracking.
+The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`PretrainBlendsArtifact-<config_name>`) for lineage tracking.
 
 ### Training
 
@@ -330,7 +333,7 @@ Checkpoints use Megatron's distributed format, which handles model parallelism a
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333'}}}%%
 flowchart TB
     raw["Raw Text Data"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-pretrain<br/>(bin/idx files + blend.json)"]
+    data["PretrainBlendsArtifact<br/>(bin/idx files + blend.json)"]
     data --> train["train.py"]
     train --> model["ModelArtifact-pretrain<br/>(checkpoint)"]
     model --> next["Stage 1: SFT"]

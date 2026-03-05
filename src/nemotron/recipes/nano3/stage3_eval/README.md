@@ -4,11 +4,11 @@ Evaluate trained Nemotron Nano 3 models using [NeMo Evaluator](https://github.co
 
 ## Overview
 
-This stage evaluates a trained model checkpoint against standard benchmarks. Unlike training stages, there is no recipe script—the CLI compiles the YAML config and passes it directly to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). The config supports `${art:model,path}` to automatically resolve model artifacts from W&B lineage.
+This stage evaluates a trained model checkpoint against standard benchmarks using NeMo Framework's Ray-based in-framework deployment. Unlike training stages, there is no recipe script—the CLI compiles the YAML config and passes it directly to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). The config supports `${art:model,path}` to automatically resolve model artifacts from W&B lineage.
 
 | Component | Description |
 |-----------|-------------|
-| `config/default.yaml` | Evaluation configuration with vLLM deployment and benchmark tasks |
+| `config/default.yaml` | Evaluation configuration with NeMo Ray deployment and benchmark tasks |
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ flowchart LR
     yaml["default.yaml"] --> merge["Merge env.toml<br/>+ CLI overrides"]
     merge --> strip["Strip 'run' section<br/>Resolve interpolations"]
     strip --> launcher["nemo-evaluator-launcher<br/>run_eval()"]
-    launcher --> deploy["Deploy model<br/>(vLLM)"]
+    launcher --> deploy["Deploy model<br/>(NeMo Ray)"]
     deploy --> eval["Run benchmarks"]
     eval --> export["Export to W&B"]
 
@@ -56,19 +56,19 @@ flowchart LR
 3. **Strip `run` section** — The `run` section (env.toml injection, artifact refs) is removed; `${run.*}` interpolations are resolved into the remaining config
 4. **Resolve artifacts** — `${art:model,path}` resolves the model checkpoint path via W&B Artifacts
 5. **Call launcher** — The cleaned config is passed to `nemo-evaluator-launcher`'s `run_eval()`
-6. **Deploy + Evaluate** — The launcher deploys the model (vLLM by default), runs benchmarks, and exports results
+6. **Deploy + Evaluate** — The launcher deploys the model (NeMo Framework Ray), runs benchmarks, and exports results
 
 ## Configuration
 
 ### Default Config (`config/default.yaml`)
 
-The default config uses vLLM deployment with local execution:
+The default config uses NeMo Framework Ray deployment with Slurm execution:
 
 | Section | Key Settings |
 |---------|--------------|
-| **Execution** | `type: local` (override with `execution.type=slurm`) |
-| **Deployment** | vLLM with TP=4, max-model-len 32768 |
-| **Evaluation** | MMLU, HellaSwag, ARC Challenge |
+| **Execution** | Slurm with 1 node, 8 GPUs, HAProxy load balancing |
+| **Deployment** | NeMo Framework Ray with TP=2, EP=8 |
+| **Evaluation** | MMLU, ARC Challenge (25-shot), Winogrande (5-shot), HellaSwag, OpenBookQA |
 | **Export** | W&B (entity/project from env.toml) |
 
 ### Artifact Resolution
@@ -105,25 +105,19 @@ Use `-t`/`--task` flags to run a subset of benchmarks:
 uv run nemotron nano3 eval --run YOUR-CLUSTER -t adlr_mmlu
 
 # Multiple tasks
-uv run nemotron nano3 eval --run YOUR-CLUSTER -t adlr_mmlu -t hellaswag -t arc_challenge
+uv run nemotron nano3 eval --run YOUR-CLUSTER -t adlr_mmlu -t hellaswag -t openbookqa
 ```
 
-Available tasks in the default config: `adlr_mmlu`, `hellaswag`, `arc_challenge`.
+Available tasks in the default config: `adlr_mmlu`, `adlr_arc_challenge_llama_25_shot`, `adlr_winogrande_5_shot`, `hellaswag`, `openbookqa`.
 
 ### Overrides
 
 ```bash
-# Change deployment type
-uv run nemotron nano3 eval --run YOUR-CLUSTER execution.type=slurm
-
 # Increase parallelism
 uv run nemotron nano3 eval evaluation.nemo_evaluator_config.config.params.parallelism=16
 
-# Limit samples for quick testing
-uv run nemotron nano3 eval evaluation.nemo_evaluator_config.config.params.limit_samples=10
-
-# Change tensor parallelism
-uv run nemotron nano3 eval deployment.tensor_parallel_size=8
+# Change walltime
+uv run nemotron nano3 eval --run YOUR-CLUSTER run.env.time=08:00:00
 ```
 
 ## Execution Options
@@ -170,4 +164,3 @@ flowchart TB
 
 - [Evaluation Guide](../../../../docs/nemotron/evaluation.md) — Full documentation
 - [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) — Upstream project
-- [Generic Evaluator Recipes](../../evaluator/) — Standalone evaluation configs

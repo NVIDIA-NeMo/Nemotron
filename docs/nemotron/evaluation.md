@@ -6,28 +6,22 @@ Evaluate Nemotron models against standard benchmarks using [NeMo Evaluator](http
 
 The Nemotron CLI integrates with [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator) to provide a streamlined evaluation workflow: deploy a model, run benchmarks, and export results to W&B—all from a single command.
 
-There are two evaluation commands:
+```bash
+nemotron nano3 eval --run YOUR-CLUSTER
+```
 
-| Command | Use Case |
-|---------|----------|
-| `nemotron evaluate -c <config>` | **Generic**—standalone configs for any model, explicit checkpoint paths |
-| `nemotron nano3 eval` | **Recipe-specific**—resolves model artifacts from W&B lineage, has defaults |
-
-Both commands use the same underlying pipeline. The generic command is model-agnostic and requires an explicit config; the recipe-specific command integrates with the training pipeline's artifact lineage.
+The eval command resolves model artifacts from W&B lineage and uses NeMo Framework's Ray-based in-framework deployment. It defaults to evaluating the latest RL stage output.
 
 ## Quick Start
 
 <div class="termy">
 
 ```console
-// Recipe-specific: evaluate the latest RL model from the Nano3 pipeline
+// Evaluate the latest RL model from the Nano3 pipeline
 $ uv run nemotron nano3 eval --run YOUR-CLUSTER
 
-// Recipe-specific: evaluate a specific model artifact
+// Evaluate a specific model artifact
 $ uv run nemotron nano3 eval --run YOUR-CLUSTER run.model=sft:v2
-
-// Generic: evaluate with a pre-built config
-$ uv run nemotron evaluate -c nemotron-3-nano-nemo-ray --run YOUR-CLUSTER
 
 // Filter to specific benchmarks
 $ uv run nemotron nano3 eval --run YOUR-CLUSTER -t adlr_mmlu -t hellaswag
@@ -45,7 +39,7 @@ $ uv run nemotron nano3 eval --dry-run
 - **[NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)**: Install with `pip install "nemotron[evaluator]"` or ensure `nemo-evaluator-launcher` is available
 - **Container image**: `nvcr.io/nvidia/nemo-evaluator:latest` (or custom image specified in config)
 - **[Weights & Biases](./wandb.md)**: For result export (optional but recommended)
-- **Slurm cluster**: For remote execution (local execution also supported)
+- **Slurm cluster**: For remote execution
 
 ## How Evaluation Works
 
@@ -97,7 +91,7 @@ run:
   model: rl:latest                    # W&B artifact reference
   env:                                 # Populated from env.toml profile
     container: nvcr.io/nvidia/nemo-evaluator:latest
-    executor: local
+    executor: slurm
     host: ${oc.env:HOSTNAME,localhost}
     ...
   wandb:
@@ -106,26 +100,36 @@ run:
 
 # Passed directly to nemo-evaluator-launcher
 execution:
-  type: ${run.env.executor}           # local or slurm
+  type: slurm
+  num_nodes: 1
+  gres: gpu:8
   auto_export:
     enabled: true
     destinations: [wandb]
 
 deployment:
-  type: vllm                           # vllm, generic, etc.
+  type: generic                        # NeMo Framework Ray
   checkpoint_path: ${art:model,path}   # Resolved from W&B artifact
-  tensor_parallel_size: 4
+  command: >-
+    bash -c 'python deploy_ray_inframework.py
+    --megatron_checkpoint /checkpoint/
+    --num_gpus 8
+    --tensor_model_parallel_size 2
+    --expert_model_parallel_size 8
+    --port 1235'
 
 evaluation:
   nemo_evaluator_config:
     config:
       params:
-        parallelism: 8
-        request_timeout: 3600
+        parallelism: 4
+        request_timeout: 6000
   tasks:
     - name: adlr_mmlu
+    - name: adlr_arc_challenge_llama_25_shot
+    - name: adlr_winogrande_5_shot
     - name: hellaswag
-    - name: arc_challenge
+    - name: openbookqa
 
 export:
   wandb:
@@ -141,38 +145,17 @@ export:
 | `evaluation` | Tasks and evaluation parameters | Yes |
 | `export` | Result destinations (W&B) | Yes |
 
-## Deployment Types
+## Deployment
 
-The `deployment.type` field determines how the model is served for evaluation:
-
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `vllm` | Deploy with [vLLM](https://github.com/vllm-project/vllm) | Default for most models |
-| `generic` | Custom deployment command | NeMo Framework Ray, custom serving |
-
-### vLLM Deployment (Default)
-
-Used by `nemotron nano3 eval`. The launcher manages the vLLM server lifecycle:
-
-```yaml
-deployment:
-  type: vllm
-  image: nvcr.io/nvidia/nemo-evaluator:latest
-  checkpoint_path: /path/to/model
-  tensor_parallel_size: 4
-  data_parallel_size: 1
-  extra_args: "--max-model-len 32768"
-```
-
-### Generic Deployment (Custom)
-
-Used by `nemotron evaluate -c nemotron-3-nano-nemo-ray`. Provides a custom command for serving:
+The default config uses NeMo Framework's Ray-based in-framework deployment (`type: generic`) with a custom command for serving:
 
 ```yaml
 deployment:
   type: generic
+  multiple_instances: true
   image: nvcr.io/nvidia/nemo-evaluator:latest
-  checkpoint_path: /path/to/model
+  checkpoint_path: ${art:model,path}
+  port: 1235
   command: >-
     bash -c 'python deploy_ray_inframework.py
     --megatron_checkpoint /checkpoint/
@@ -194,8 +177,10 @@ evaluation:
         config:
           params:
             top_p: 0.0
+    - name: adlr_arc_challenge_llama_25_shot
+    - name: adlr_winogrande_5_shot
     - name: hellaswag
-    - name: arc_challenge
+    - name: openbookqa
 ```
 
 ### Task Filtering
@@ -224,20 +209,23 @@ Common benchmarks include:
 |------|------|-------------|
 | `adlr_mmlu` | Text Generation | Massive Multitask Language Understanding |
 | `hellaswag` | Log Probability | Commonsense sentence completion |
-| `arc_challenge` | Log Probability | Science question answering |
 | `adlr_arc_challenge_llama_25_shot` | Log Probability | ARC Challenge with 25-shot prompting |
 | `adlr_winogrande_5_shot` | Log Probability | Winogrande commonsense reasoning |
 | `openbookqa` | Log Probability | Open-domain science questions |
 
-## Recipe-Specific Evaluation (`nemotron nano3 eval`)
+## Artifact Resolution
 
-The nano3 eval command extends the generic evaluation with:
+The default config uses `${art:model,path}` for the model checkpoint:
 
-- **Artifact resolution**: `${art:model,path}` resolves the model checkpoint from W&B artifact lineage
-- **Default config**: Uses `src/nemotron/recipes/nano3/stage3_eval/config/default.yaml`
-- **Pipeline integration**: Defaults to evaluating `rl:latest` (the latest RL stage output)
+```yaml
+run:
+  model: rl:latest  # Resolve latest RL artifact
 
-### Artifact Overrides
+deployment:
+  checkpoint_path: ${art:model,path}  # Resolved at runtime
+```
+
+Override the model artifact on the command line:
 
 ```bash
 # Evaluate the RL model (default)
@@ -274,30 +262,6 @@ flowchart TB
 
 → [Artifact Lineage & W&B Integration](../nemo_runspec/artifacts.md)
 
-## Generic Evaluation (`nemotron evaluate`)
-
-The generic command requires an explicit config and is not tied to any recipe's artifact lineage.
-
-### Available Configs
-
-| Config | Model | Deployment |
-|--------|-------|------------|
-| `nemotron-3-nano-nemo-ray` | Nemotron-3-Nano-30B | NeMo Framework Ray (TP=2, EP=8) |
-
-### Usage
-
-```bash
-# Evaluate with pre-built config
-uv run nemotron evaluate -c nemotron-3-nano-nemo-ray --run YOUR-CLUSTER
-
-# Custom config file
-uv run nemotron evaluate -c /path/to/my-eval.yaml --run YOUR-CLUSTER
-
-# Override checkpoint
-uv run nemotron evaluate -c nemotron-3-nano-nemo-ray --run YOUR-CLUSTER \
-    deployment.checkpoint_path=/path/to/checkpoint
-```
-
 ## W&B Integration
 
 Evaluation results are automatically exported to W&B when configured:
@@ -332,21 +296,6 @@ See [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) for profile config
 <div class="termy">
 
 ```console
-// Generic evaluation
-$ uv run nemotron evaluate --help
-Usage: nemotron evaluate [OPTIONS]
-
- Run model evaluation with nemo-evaluator.
-
-╭─ Options ────────────────────────────────────────────────────────────────╮
-│  -c, --config NAME       Config name or path (required)                  │
-│  -r, --run PROFILE       Submit to cluster (attached)                    │
-│  -b, --batch PROFILE     Submit to cluster (detached)                    │
-│  -d, --dry-run           Preview config without execution                │
-│  -t, --task NAME         Filter to specific task (repeatable)            │
-╰──────────────────────────────────────────────────────────────────────────╯
-
-// Recipe-specific evaluation
 $ uv run nemotron nano3 eval --help
 Usage: nemotron nano3 eval [OPTIONS]
 
@@ -372,7 +321,7 @@ Usage: nemotron nano3 eval [OPTIONS]
 
 **W&B authentication**: Ensure you're logged in (`wandb login`). See [W&B Integration](./wandb.md).
 
-**Model deployment fails**: Check that the container image has the required serving framework (vLLM, Ray, etc.) and that parallelism settings match your GPU configuration.
+**Model deployment fails**: Check that the container image has the required serving framework and that parallelism settings match your GPU configuration.
 
 **Artifact resolution fails**: Verify the artifact exists in W&B (`run.model=sft:latest`). Use `deployment.checkpoint_path=/explicit/path` to bypass artifact resolution.
 
@@ -385,4 +334,4 @@ Usage: nemotron nano3 eval [OPTIONS]
 - [Artifact Lineage](../nemo_runspec/artifacts.md) — W&B artifact system
 - [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) — Cluster configuration
 - [W&B Integration](./wandb.md) — Credentials and export setup
-- **Recipe Source:** `src/nemotron/recipes/evaluator/` (generic configs), `src/nemotron/recipes/nano3/stage3_eval/` (nano3-specific)
+- **Recipe Source:** `src/nemotron/recipes/nano3/stage3_eval/`

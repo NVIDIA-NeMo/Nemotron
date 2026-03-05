@@ -20,14 +20,14 @@ The training pipeline produces six artifact types across three stages:
 flowchart TB
     subgraph stage0["Stage 0: Pretraining"]
         raw0["Raw Text Data"] --> dp0["data_prep.py"]
-        dp0 --> data0["DataBlendsArtifact-pretrain<br/>(bin/idx)"]
+        dp0 --> data0["PretrainBlendsArtifact<br/>(bin/idx)"]
         data0 --> train0["train.py"]
         train0 --> model0["ModelArtifact-pretrain"]
     end
 
     subgraph stage1["Stage 1: SFT"]
         raw1["Instruction Data"] --> dp1["data_prep.py"]
-        dp1 --> data1["DataBlendsArtifact-sft<br/>(Packed Parquet)"]
+        dp1 --> data1["SFTDataArtifact<br/>(Packed Parquet)"]
         model0 --> train1["train.py"]
         data1 --> train1
         train1 --> model1["ModelArtifact-sft"]
@@ -35,7 +35,7 @@ flowchart TB
 
     subgraph stage2["Stage 2: RL"]
         raw2["RL Prompts"] --> dp2["data_prep.py"]
-        dp2 --> data2["DataBlendsArtifact-rl<br/>(JSONL)"]
+        dp2 --> data2["SplitJsonlDataArtifact<br/>(JSONL)"]
         model1 --> train2["train.py"]
         data2 --> train2
         train2 --> model2["ModelArtifact-rl<br/>(Final Model)"]
@@ -53,10 +53,10 @@ The artifact system uses three related concepts:
 | Concept | Example | Where Used |
 |---------|---------|------------|
 | **Python class** | `PretrainBlendsArtifact` | Code imports (`from nemotron.kit import ...`) |
-| **Registered name** | `DataBlendsArtifact-pretrain` | W&B artifact names, `metadata.json` |
-| **Config reference** | `DataBlendsArtifact-pretrain:latest` | YAML configs (`run.data`), CLI overrides, `art://` URIs |
+| **Registered name** | `PretrainBlendsArtifact-tiny` | W&B artifact names, `metadata.json` |
+| **Config reference** | `PretrainBlendsArtifact-tiny:latest` | YAML configs (`run.data`), CLI overrides, `art://` URIs |
 
-**How names are formed**: When the pipeline saves an artifact, it combines the artifact class with a stage suffix (e.g., `DataBlendsArtifact` + `-pretrain`). The `:latest` or `:v3` suffix is a W&B version tag.
+**How names are formed**: When the pipeline saves an artifact, it derives a name from the class name and the stage extracted from the semantic path (e.g., `PretrainBlendsArtifact` + `-tiny` from `nano3/tiny/data`). The `:latest` or `:v3` suffix is a W&B version tag.
 
 **Stage aliases**: Shorthand aliases like `pretrain:latest`, `sft:latest` reference `ModelArtifact-<stage>:latest` in configs. Full names always work too.
 
@@ -64,11 +64,11 @@ The artifact system uses three related concepts:
 
 | Artifact | Stage | Format | Description |
 |----------|-------|--------|-------------|
-| `DataBlendsArtifact-pretrain` | [0](../nemotron/nano3/pretrain.md) | bin/idx | Tokenized pretraining data in Megatron format |
+| `PretrainBlendsArtifact-<config>` | [0](../nemotron/nano3/pretrain.md) | bin/idx | Tokenized pretraining data in Megatron format |
 | `ModelArtifact-pretrain` | [0](../nemotron/nano3/pretrain.md) | checkpoint | Base model after pretraining |
-| `DataBlendsArtifact-sft` | [1](../nemotron/nano3/sft.md) | Packed Parquet | Packed SFT sequences with loss masks |
+| `SFTDataArtifact-sft` | [1](../nemotron/nano3/sft.md) | Packed Parquet | Packed SFT sequences with loss masks |
 | `ModelArtifact-sft` | [1](../nemotron/nano3/sft.md) | checkpoint | Instruction-tuned model |
-| `DataBlendsArtifact-rl` | [2](../nemotron/nano3/rl.md) | JSONL | RL prompts for [NeMo-RL](../nemotron/nvidia-stack.md#nemo-rl) |
+| `SplitJsonlDataArtifact-rl` | [2](../nemotron/nano3/rl.md) | JSONL | RL prompts for [NeMo-RL](../nemotron/nvidia-stack.md#nemo-rl) |
 | `ModelArtifact-rl` | [2](../nemotron/nano3/rl.md) | checkpoint | Final aligned model |
 
 ## W&B Configuration
@@ -94,7 +94,7 @@ wandb login
 Reference artifacts by semantic URI in configs and CLI:
 
 ```
-art://DataBlendsArtifact-pretrain:latest    # Latest version
+art://PretrainBlendsArtifact-tiny:latest    # Latest version
 art://ModelArtifact-sft:v3                   # Specific version
 art://ModelArtifact-rl:production            # Alias
 ```
@@ -105,7 +105,7 @@ Override artifact inputs via [CLI](./cli.md#artifact-resolution) dotlist overrid
 
 ```bash
 # Use specific data artifact
-uv run nemotron nano3 pretrain run.data=DataBlendsArtifact-pretrain:v2
+uv run nemotron nano3 pretrain run.data=PretrainBlendsArtifact-tiny:v2
 
 # Use imported model
 uv run nemotron nano3 sft run.model=my-custom-pretrain:latest
@@ -117,7 +117,7 @@ Reference artifact paths in YAML configs:
 
 ```yaml
 run:
-  data: DataBlendsArtifact-pretrain:latest
+  data: PretrainBlendsArtifact-tiny:latest
 
 recipe:
   per_split_data_args_path: ${art:data,path}/blend.json
@@ -198,7 +198,7 @@ Access artifacts programmatically via the kit module:
 from nemotron.kit import PretrainBlendsArtifact, ModelArtifact
 
 # Load from semantic URI
-data = PretrainBlendsArtifact.from_uri("art://DataBlendsArtifact-pretrain:latest")
+data = PretrainBlendsArtifact.from_uri("art://PretrainBlendsArtifact-tiny:latest")
 print(f"Data path: {data.path}")
 print(f"Total tokens: {data.total_tokens}")
 

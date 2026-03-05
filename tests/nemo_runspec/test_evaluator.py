@@ -42,7 +42,6 @@ from nemo_runspec.utils import resolve_run_interpolations
 # Paths to config files
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EVALUATOR_CONFIG = REPO_ROOT / "src/nemotron/recipes/evaluator/config/nemotron-3-nano-nemo-ray.yaml"
 NANO3_EVAL_CONFIG = REPO_ROOT / "src/nemotron/recipes/nano3/stage3_eval/config/default.yaml"
 
 
@@ -83,46 +82,21 @@ def _compile_eval_config(config_path: Path, dotlist: list[str] | None = None) ->
 class TestEvaluatorConfigCompile:
     """Test the evaluator config compile pipeline."""
 
-    def test_evaluator_config_loads_without_errors(self):
-        """The working evaluator config loads via OmegaConf."""
-        cfg = load_config(EVALUATOR_CONFIG)
-        assert isinstance(cfg, DictConfig)
-
     def test_nano3_eval_config_loads_without_errors(self):
         """The nano3 stage3_eval config loads via OmegaConf."""
         cfg = load_config(NANO3_EVAL_CONFIG)
         assert isinstance(cfg, DictConfig)
-
-    def test_evaluator_config_compiles_run_stripped(self):
-        """After compile, the 'run' section is stripped from evaluator config."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        assert "run" not in result
 
     def test_nano3_config_compiles_run_stripped(self):
         """After compile, the 'run' section is stripped from nano3 config."""
         result = _compile_eval_config(NANO3_EVAL_CONFIG)
         assert "run" not in result
 
-    def test_evaluator_config_has_required_top_level_keys(self):
-        """Compiled evaluator config has execution, deployment, evaluation, export."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        for key in ("execution", "deployment", "evaluation", "export"):
-            assert key in result, f"Missing required key: {key}"
-
     def test_nano3_config_has_required_top_level_keys(self):
         """Compiled nano3 config has execution, deployment, evaluation, export."""
         result = _compile_eval_config(NANO3_EVAL_CONFIG)
         for key in ("execution", "deployment", "evaluation", "export"):
             assert key in result, f"Missing required key: {key}"
-
-    def test_evaluator_run_interpolations_resolved(self):
-        """All ${run.*} interpolations in evaluator config are resolved."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        yaml_str = OmegaConf.to_yaml(OmegaConf.create(result))
-        assert "${run." not in yaml_str, (
-            f"Unresolved ${{run.*}} interpolations in evaluator config:\n"
-            f"{[line for line in yaml_str.splitlines() if '${run.' in line]}"
-        )
 
     def test_nano3_run_interpolations_resolved(self):
         """All ${run.*} interpolations in nano3 config are resolved."""
@@ -133,29 +107,10 @@ class TestEvaluatorConfigCompile:
             f"{[line for line in yaml_str.splitlines() if '${run.' in line]}"
         )
 
-    def test_evaluator_config_no_missing_values(self):
-        """Compiled evaluator config has no OmegaConf MISSING values."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        cfg = OmegaConf.create(result)
-        # Iterate all leaf values to check for MISSING
-        for key in OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False):
-            pass  # Would raise on structural issues
-
     def test_nano3_execution_type_resolves(self):
-        """nano3 execution.type resolves to the value from run.env.executor."""
+        """nano3 execution.type is slurm."""
         result = _compile_eval_config(NANO3_EVAL_CONFIG)
-        assert result["execution"]["type"] == "local"
-
-    def test_evaluator_execution_type_is_slurm(self):
-        """Working evaluator config has execution.type=slurm."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
         assert result["execution"]["type"] == "slurm"
-
-    def test_evaluator_config_tasks_not_empty(self):
-        """Compiled evaluator config has at least one task."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        tasks = result["evaluation"]["tasks"]
-        assert len(tasks) > 0
 
     def test_nano3_config_tasks_not_empty(self):
         """Compiled nano3 config has at least one task."""
@@ -163,24 +118,11 @@ class TestEvaluatorConfigCompile:
         tasks = result["evaluation"]["tasks"]
         assert len(tasks) > 0
 
-    def test_evaluator_tasks_have_names(self):
-        """Every task in evaluator config has a 'name' field."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        for task in result["evaluation"]["tasks"]:
-            assert "name" in task, f"Task missing 'name': {task}"
-
     def test_nano3_tasks_have_names(self):
         """Every task in nano3 config has a 'name' field."""
         result = _compile_eval_config(NANO3_EVAL_CONFIG)
         for task in result["evaluation"]["tasks"]:
             assert "name" in task, f"Task missing 'name': {task}"
-
-    def test_evaluator_export_wandb_resolved(self):
-        """export.wandb.entity/project resolve (to null is fine, but not ${run.*})."""
-        result = _compile_eval_config(EVALUATOR_CONFIG)
-        wandb = result["export"]["wandb"]
-        assert isinstance(wandb.get("entity"), (str, type(None)))
-        assert isinstance(wandb.get("project"), (str, type(None)))
 
     def test_nano3_export_wandb_resolved(self):
         """export.wandb.entity/project resolve (to null is fine)."""
@@ -212,44 +154,16 @@ class TestEvaluatorConfigCompile:
         cp = config_dict["deployment"]["checkpoint_path"]
         assert "${art:" in cp or isinstance(cp, str)
 
+    def test_nano3_has_auto_export_wandb(self):
+        """nano3 config exports results to W&B."""
+        result = _compile_eval_config(NANO3_EVAL_CONFIG)
+        destinations = result["execution"]["auto_export"]["destinations"]
+        assert "wandb" in destinations
 
-# ===========================================================================
-# Evaluator Config Alignment Tests
-# ===========================================================================
-
-class TestConfigAlignment:
-    """Verify nano3/stage3_eval config is aligned with the working evaluator config."""
-
-    @pytest.fixture()
-    def evaluator_compiled(self) -> dict:
-        return _compile_eval_config(EVALUATOR_CONFIG)
-
-    @pytest.fixture()
-    def nano3_compiled(self) -> dict:
-        return _compile_eval_config(NANO3_EVAL_CONFIG)
-
-    def test_both_have_auto_export_wandb(self, evaluator_compiled, nano3_compiled):
-        """Both configs export results to W&B."""
-        ev_dest = evaluator_compiled["execution"]["auto_export"]["destinations"]
-        n3_dest = nano3_compiled["execution"]["auto_export"]["destinations"]
-        assert "wandb" in ev_dest
-        assert "wandb" in n3_dest
-
-    def test_both_have_evaluation_tasks_section(self, evaluator_compiled, nano3_compiled):
-        """Both configs define evaluation.tasks as a list."""
-        assert isinstance(evaluator_compiled["evaluation"]["tasks"], list)
-        assert isinstance(nano3_compiled["evaluation"]["tasks"], list)
-
-    def test_both_have_export_wandb_section(self, evaluator_compiled, nano3_compiled):
-        """Both configs have export.wandb with entity and project."""
-        for label, cfg in [("evaluator", evaluator_compiled), ("nano3", nano3_compiled)]:
-            assert "wandb" in cfg["export"], f"{label} missing export.wandb"
-            assert "entity" in cfg["export"]["wandb"], f"{label} missing export.wandb.entity"
-            assert "project" in cfg["export"]["wandb"], f"{label} missing export.wandb.project"
-
-    def test_evaluator_tasks_superset_of_common(self, evaluator_compiled):
-        """Working evaluator config has the standard benchmark tasks."""
-        task_names = {t["name"] for t in evaluator_compiled["evaluation"]["tasks"]}
+    def test_nano3_has_standard_benchmarks(self):
+        """nano3 config has the standard benchmark tasks."""
+        result = _compile_eval_config(NANO3_EVAL_CONFIG)
+        task_names = {t["name"] for t in result["evaluation"]["tasks"]}
         expected = {"adlr_mmlu", "hellaswag"}
         assert expected.issubset(task_names), f"Missing tasks: {expected - task_names}"
 

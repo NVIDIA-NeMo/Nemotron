@@ -137,19 +137,19 @@ The pipeline tracks lineage via [W&B Artifacts](../../nemo_runspec/artifacts.md)
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
 flowchart TB
     subgraph pretrain["Stage 0: Pretraining"]
-        raw["Raw Text Data"] --> data0["DataBlendsArtifact-pretrain<br/>(bin/idx)"]
+        raw["Raw Text Data"] --> data0["PretrainBlendsArtifact<br/>(bin/idx)"]
         data0 --> cmd0["uv run nemotron nano3 pretrain"]
         cmd0 --> model0["ModelArtifact-pretrain"]
     end
 
     subgraph sft["Stage 1: SFT"]
-        data1["DataBlendsArtifact-sft<br/>(Parquet)"] --> cmd1["uv run nemotron nano3 sft"]
+        data1["SFTDataArtifact<br/>(Parquet)"] --> cmd1["uv run nemotron nano3 sft"]
         model0 --> cmd1
         cmd1 --> model1["ModelArtifact-sft"]
     end
 
     subgraph rl["Stage 2: RL"]
-        data2["DataBlendsArtifact-rl<br/>(JSONL)"] --> cmd2["uv run nemotron nano3 rl"]
+        data2["SplitJsonlDataArtifact<br/>(JSONL)"] --> cmd2["uv run nemotron nano3 rl"]
         model1 --> cmd2
         cmd2 --> model2["ModelArtifact-rl<br/>(Final Model)"]
     end

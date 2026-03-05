@@ -110,7 +110,7 @@ recipe:
 
 ```yaml
 run:
-  data: DataBlendsArtifact-rl:latest
+  data: SplitJsonlDataArtifact-rl:latest
   model: sft:latest
   env:
     container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano

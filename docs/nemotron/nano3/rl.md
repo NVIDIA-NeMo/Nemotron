@@ -269,23 +269,24 @@ uv run nemotron nano3 data prep rl [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via [NeMo-Run](../../nemo_runspec/nemo-run.md) |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 #### Output
 
 ```
 output/nano3/stage2_rl/
-├── train/
-│   └── data.jsonl
-├── val/
-│   └── data.jsonl
-├── test/
-│   └── data.jsonl
-└── manifest.json
+├── manifest.json                       # {"train": "<path>", "val": "<path>", "test": "<path>"}
+└── runs/<run_hash>/
+    ├── <dataset>__train/
+    │   └── shard_000000.jsonl
+    ├── <dataset>__val/
+    │   └── shard_000000.jsonl
+    └── <dataset>__test/
+        └── shard_000000.jsonl
 ```
 
-The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`DataBlendsArtifact-rl`) for lineage tracking.
+The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`SplitJsonlDataArtifact-<config_name>`) for lineage tracking.
 
 ### Training
 
@@ -378,7 +379,7 @@ Common errors and solutions:
 - Monitor `token_mult_prob_error` for inference/training consistency (should stay below ~2%)
 - Watch `sampling_importance_ratio` (should hover around 1.0)
 - Check `approx_entropy` for entropy collapse during training
-- Use `--sample N` in data prep for quick iteration
+- Use `sample=N` in data prep for quick iteration
 
 ---
 
@@ -389,7 +390,7 @@ Common errors and solutions:
 flowchart TB
     prev["ModelArtifact-sft<br/>(from Stage 1)"] --> train
     rl["RL Datasets<br/>(HuggingFace)"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-rl<br/>(JSONL files)"]
+    data2["SplitJsonlDataArtifact<br/>(JSONL)"]
     data --> train["train.py<br/>(GRPO with NeMo-RL)"]
     train --> model["ModelArtifact-rl<br/>(final aligned model)"]
 
