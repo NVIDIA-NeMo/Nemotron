@@ -1,0 +1,267 @@
+{
+    "buffer_size": 1000,
+    "column_statistics": [
+        {
+            "column_name": "command",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        "build",
+                        "up",
+                        "dev",
+                        "dockerfile",
+                        "new"
+                    ],
+                    "counts": [
+                        59,
+                        50,
+                        49,
+                        47,
+                        45
+                    ]
+                },
+                "least_common_value": "new",
+                "most_common_value": "build"
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 5,
+            "pyarrow_dtype": "string",
+            "sampler_type": "category",
+            "simple_dtype": "string"
+        },
+        {
+            "column_name": "template",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        "memory-agent",
+                        "basic",
+                        "react-agent",
+                        "data-enrichment",
+                        "retrieval-agent"
+                    ],
+                    "counts": [
+                        67,
+                        64,
+                        49,
+                        36,
+                        34
+                    ]
+                },
+                "least_common_value": "retrieval-agent",
+                "most_common_value": "memory-agent"
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 5,
+            "pyarrow_dtype": "string",
+            "sampler_type": "category",
+            "simple_dtype": "string"
+        },
+        {
+            "column_name": "include_path",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        0,
+                        1
+                    ],
+                    "counts": [
+                        184,
+                        66
+                    ]
+                },
+                "least_common_value": 1,
+                "most_common_value": 0
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 2,
+            "pyarrow_dtype": "int64",
+            "sampler_type": "category",
+            "simple_dtype": "int"
+        },
+        {
+            "column_name": "port",
+            "column_type": "sampler",
+            "distribution": {
+                "max": 8996,
+                "mean": 6126.24,
+                "median": 6125.0,
+                "min": 3069,
+                "stddev": 1685.84
+            },
+            "distribution_type": "numerical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 243,
+            "pyarrow_dtype": "int64",
+            "sampler_type": "uniform",
+            "simple_dtype": "int"
+        },
+        {
+            "column_name": "no_browser",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        0,
+                        1
+                    ],
+                    "counts": [
+                        199,
+                        51
+                    ]
+                },
+                "least_common_value": 1,
+                "most_common_value": 0
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 2,
+            "pyarrow_dtype": "int64",
+            "sampler_type": "category",
+            "simple_dtype": "int"
+        },
+        {
+            "column_name": "watch",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        0,
+                        1
+                    ],
+                    "counts": [
+                        178,
+                        72
+                    ]
+                },
+                "least_common_value": 1,
+                "most_common_value": 0
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 2,
+            "pyarrow_dtype": "int64",
+            "sampler_type": "category",
+            "simple_dtype": "int"
+        },
+        {
+            "column_name": "image_tag",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        "myapp:latest",
+                        "langgraph-app:v1",
+                        "latest"
+                    ],
+                    "counts": [
+                        85,
+                        85,
+                        80
+                    ]
+                },
+                "least_common_value": "latest",
+                "most_common_value": "myapp:latest"
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 3,
+            "pyarrow_dtype": "string",
+            "sampler_type": "category",
+            "simple_dtype": "string"
+        },
+        {
+            "column_name": "dockerfile_path",
+            "column_type": "sampler",
+            "distribution": {
+                "histogram": {
+                    "categories": [
+                        "Dockerfile.custom",
+                        "docker/Dockerfile",
+                        "Dockerfile"
+                    ],
+                    "counts": [
+                        88,
+                        83,
+                        79
+                    ]
+                },
+                "least_common_value": "Dockerfile",
+                "most_common_value": "Dockerfile.custom"
+            },
+            "distribution_type": "categorical",
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 3,
+            "pyarrow_dtype": "string",
+            "sampler_type": "category",
+            "simple_dtype": "string"
+        },
+        {
+            "column_name": "input",
+            "column_type": "llm-text",
+            "input_tokens_mean": 48.14,
+            "input_tokens_median": 48.0,
+            "input_tokens_stddev": 3.08,
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 238,
+            "output_tokens_mean": 15.24,
+            "output_tokens_median": 15.0,
+            "output_tokens_stddev": 4.16,
+            "pyarrow_dtype": "string",
+            "simple_dtype": "string"
+        },
+        {
+            "column_name": "output",
+            "column_type": "llm-structured",
+            "input_tokens_mean": 492.73,
+            "input_tokens_median": 492.0,
+            "input_tokens_stddev": 4.59,
+            "num_null": 0,
+            "num_records": 250,
+            "num_unique": 126,
+            "output_tokens_mean": 46.59,
+            "output_tokens_median": 47.0,
+            "output_tokens_stddev": 1.43,
+            "pyarrow_dtype": "struct<command: string, no_browser: bool, output_path: string, path: string, port: int64, tag: string, template: string, watch: bool>",
+            "simple_dtype": "dict"
+        }
+    ],
+    "dataset_name": "dataset",
+    "file_paths": {
+        "parquet-files": [
+            "parquet-files/batch_00000.parquet"
+        ]
+    },
+    "num_completed_batches": 1,
+    "schema": {
+        "command": "string",
+        "dockerfile_path": "string",
+        "image_tag": "string",
+        "include_path": "int64",
+        "input": "string",
+        "input__reasoning_trace": "string",
+        "no_browser": "int64",
+        "output": "struct<command: string, no_browser: bool, output_path: string, path: string, port: int64, tag: string, template: string, watch: bool>",
+        "output__reasoning_trace": "string",
+        "port": "int64",
+        "template": "string",
+        "watch": "int64"
+    },
+    "target_num_records": 250,
+    "total_num_batches": 1
+}

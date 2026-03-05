@@ -58,7 +58,7 @@ Nemotron models excel at coding, math, scientific reasoning, tool calling, instr
 
 ## Training Recipes
 
-The Nemotron Training Cookbook provides reproducible training pipelines from raw data to deployment-ready models. These implementations reflect how large language models are actually trained: careful experimentation, validation gates, and systematic optimization.
+The Nemotron respository provides reproducible training pipelines from raw data to deployment-ready models. These implementations reflect how large language models are actually trained: careful experimentation, validation gates, and systematic optimization.
 
 ### Why Complete Pipelines?
 
@@ -70,6 +70,18 @@ Training a production model involves interconnected components. Isolated example
 - **How to balance competing objectives** across stages
 
 Because these are complete systems, you can extract specific techniques with confidence. Each component has been proven to work in context.
+
+### Each Recipe Includes
+
+- 🎨 **Synthetic Data Generation** - Scripts to generate synthetic datasets using [NVIDIA-NeMo/DataDesigner](https://github.com/NVIDIA-NeMo/DataDesigner)
+- 🗂️ **Data Curation** - Scripts to prepare training data using [NVIDIA NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) for scalable data processing, filtering, and quality enhancement
+- 🔁 **Training** - Complete training loops with hyperparameters using:
+  - [NVIDIA-NeMo/Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main) for Megatron models
+  - [NVIDIA-NeMo/Automodel](https://github.com/NVIDIA-NeMo/Automodel) for HuggingFace models
+  - [NVIDIA-NeMo/NeMo-RL](https://github.com/NVIDIA-NeMo/RL/tree/main) when RL is needed
+  - Includes GPU-accelerated last-mile data processing (tokenization + optional sequence packing) for optimal training efficiency
+- 📊 **Evaluation** - Benchmark evaluation on standard suites using [NVIDIA NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)
+- 📖 **Documentation** - Detailed explanations of each stage
 
 ### Available Recipes
 
@@ -130,17 +142,6 @@ End-to-end examples demonstrating practical applications in the [`use-case-examp
 - **RAG Systems** — Pipelines combining retrieval with Nemotron models for grounded outputs
 - **Tool Integration** — Structured tool calling, function execution, and data enrichment
 - **Production Patterns** — Scalability, monitoring, and deployment architectures
-
-### Each Recipe Includes
-- 🎨 **Synthetic Data Generation** - Scripts to generate synthetic datasets using [NVIDIA-NeMo/DataDesigner](https://github.com/NVIDIA-NeMo/DataDesigner)
-- 🗂️ **Data Curation** - Scripts to prepare training data using [NVIDIA NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) for scalable data processing, filtering, and quality enhancement
-- 🔁 **Training** - Complete training loops with hyperparameters using:
-  - [NVIDIA-NeMo/Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main) for Megatron models
-  - [NVIDIA-NeMo/Automodel](https://github.com/NVIDIA-NeMo/Automodel) for HuggingFace models
-  - [NVIDIA-NeMo/NeMo-RL](https://github.com/NVIDIA-NeMo/RL/tree/main) when RL is needed
-  - Includes GPU-accelerated last-mile data processing (tokenization + optional sequence packing) for optimal training efficiency
-- 📊 **Evaluation** - Benchmark evaluation on standard suites using [NVIDIA NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)
-- 📖 **Documentation** - Detailed explanations of each stage
 
 ---
 
@@ -408,9 +409,13 @@ More than just weights, recipes, and libraries: Nemotron is committed to opening
 
 ---
 
-## Feature Requests
+## 💡 Feature Requests & Ideas
 
-Have an idea for improving Nemotron models? Visit the **[Nemotron Ideas Portal](https://nemotron.ideas.nvidia.com/)** to vote on existing requests or submit your own.
+Have an idea for improving Nemotron models? Create a [Discussion](https://github.com/NVIDIA-NeMo/Nemotron/discussions) topic for it!
+
+If you have a feature request, feel free to open an [Issue](https://github.com/NVIDIA-NeMo/Nemotron/issues) and tag it as `enhancement`.
+
+Your feedback helps shape the future of Nemotron models!
 
 ---
 
@@ -427,6 +432,12 @@ Have an idea for improving Nemotron models? Visit the **[Nemotron Ideas Portal](
 ## Contributing
 
 We welcome contributions: examples, recipes, or other tools. Please read the [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
+
+---
+
+## Security
+
+To report any vulnerabilities, please reach out to [security@nvidia.com](mailto:security@nvidia.com)
 
 ---
 
