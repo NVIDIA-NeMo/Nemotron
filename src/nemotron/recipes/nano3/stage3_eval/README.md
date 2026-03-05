@@ -162,5 +162,4 @@ flowchart TB
 
 ## Further Reading
 
-- [Evaluation Guide](../../../../docs/nemotron/evaluation.md) — Full documentation
 - [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) — Upstream project

@@ -492,7 +492,7 @@ nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano
 
 ## Next Steps
 
-After RL completes, the final aligned model (`ModelArtifact-rl`) is ready for evaluation and deployment.
+After RL completes, proceed to [Stage 3: Evaluation](./evaluate.md) to benchmark the aligned model.
 
 ## Reference
 
