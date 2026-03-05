@@ -7,7 +7,7 @@ Reproducible training pipeline for Nemotron 3 Nano, an open Mixture-of-Experts h
 ### Prerequisites
 
 - **Slurm cluster** with GPU nodes (H100 recommended). See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
-- **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../../nemo_runspec/artifacts.md)
+- **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../artifacts.md)
 - **Container images**:
   - Training: `nvcr.io/nvidia/nemo:25.11.nemotron_3_nano`
   - RL: `nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano`
@@ -131,7 +131,7 @@ See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for profile con
 
 ## Artifact Lineage
 
-The pipeline tracks lineage via [W&B Artifacts](../../nemo_runspec/artifacts.md), so you can trace any model back to the data it was trained on.
+The pipeline tracks lineage via [W&B Artifacts](../artifacts.md), so you can trace any model back to the data it was trained on.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
@@ -159,7 +159,7 @@ flowchart TB
     style rl fill:#e8f5e9,stroke:#4caf50
 ```
 
-→ [Artifact Lineage & W&B Integration](../../nemo_runspec/artifacts.md)
+→ [Artifact Lineage & W&B Integration](../artifacts.md)
 
 ## Open-Source Data
 
@@ -269,9 +269,9 @@ wandb login
 - [Stage 2: RL](./rl.md)
 - [Stage 3: Evaluation](../evaluation.md)
 - [Importing Models & Data](./import.md)
-- [Artifact Lineage](../../nemo_runspec/artifacts.md)
+- [Artifact Lineage](../artifacts.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - [W&B Integration](../wandb.md)
 - [NVIDIA AI Stack](../nvidia-stack.md)
-- [CLI Framework](../../nemo_runspec/cli.md)
+- [CLI Framework](../cli.md)
 - [Data Preparation Module](../data-prep.md)

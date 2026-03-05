@@ -485,4 +485,4 @@ uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
 - [NeMo-Run GitHub](https://github.com/NVIDIA-NeMo/Run) – full documentation
 - [W&B Integration](../nemotron/wandb.md) – credential handling
 - [Nemotron Kit](../nemotron/kit.md) – artifact system and lineage tracking
-- [CLI Framework](./cli.md) – building recipe CLIs
+- [CLI Framework](../nemotron/cli.md) – building recipe CLIs

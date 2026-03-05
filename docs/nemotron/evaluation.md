@@ -260,7 +260,7 @@ flowchart TB
     style results fill:#e8f5e9,stroke:#4caf50
 ```
 
-→ [Artifact Lineage & W&B Integration](../nemo_runspec/artifacts.md)
+→ [Artifact Lineage & W&B Integration](./artifacts.md)
 
 ## W&B Integration
 
@@ -331,7 +331,7 @@ Usage: nemotron nano3 eval [OPTIONS]
 
 - [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) — Upstream evaluation framework
 - [Nano3 Training Recipe](./nano3/README.md) — Complete training pipeline
-- [Artifact Lineage](../nemo_runspec/artifacts.md) — W&B artifact system
+- [Artifact Lineage](./artifacts.md) — W&B artifact system
 - [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) — Cluster configuration
 - [W&B Integration](./wandb.md) — Credentials and export setup
 - **Recipe Source:** `src/nemotron/recipes/nano3/stage3_eval/`

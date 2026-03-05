@@ -69,7 +69,7 @@ Each training stage in a recipe includes a dedicated data preparation step that 
 | Stage 1: SFT | Packed Parquet with loss masks | [Megatron-Bridge](./nvidia-stack.md#megatron-bridge) | [sft.md](./nano3/sft.md#data-preparation) |
 | Stage 2: RL | JSONL with OpenAI chat format | [NeMo-RL](./nvidia-stack.md#nemo-rl) | [rl.md](./nano3/rl.md#data-preparation) |
 
-Run data preparation for any stage using the [CLI](../nemo_runspec/cli.md):
+Run data preparation for any stage using the [CLI](./cli.md):
 
 ```bash
 uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER   # Stage 0
@@ -545,7 +545,7 @@ Optional dependencies:
 - [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) – synthetic data generation (coming soon)
 - [NVIDIA AI Stack](./nvidia-stack.md) – Megatron-Core, Megatron-Bridge, NeMo-RL
 - [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) – job orchestration and execution profiles
-- [CLI Framework](../nemo_runspec/cli.md) – CLI building and recipe commands
-- [Artifact Lineage](../nemo_runspec/artifacts.md) – W&B artifact system and lineage tracking
+- [CLI Framework](./cli.md) – CLI building and recipe commands
+- [Artifact Lineage](./artifacts.md) – W&B artifact system and lineage tracking
 - [Xenna Observability](./xenna-observability.md) – real-time W&B logging for xenna pipelines
 - [Nano3 Recipe](./nano3/README.md) – training recipe example

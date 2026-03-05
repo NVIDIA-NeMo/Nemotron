@@ -95,5 +95,5 @@ See [docs/nemotron/kit.md](../../../docs/nemotron/kit.md) for complete documenta
 - W&B integration
 - API reference
 
-See [docs/nemo_runspec/cli.md](../../../docs/nemo_runspec/cli.md) for CLI framework documentation.
+See [docs/nemotron/cli.md](../../../docs/nemotron/cli.md) for CLI framework documentation.
 See [src/nemo_runspec/README.md](../../nemo_runspec/README.md) for the CLI toolkit.

@@ -67,7 +67,7 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 
 ## Training Pipeline
 
-The Nemotron training pipeline has three stages, each tracked through [artifact lineage](nemo_runspec/artifacts.md):
+The Nemotron training pipeline has three stages, each tracked through [artifact lineage](nemotron/artifacts.md):
 
 | Stage | Name | Description |
 |-------|------|-------------|
@@ -87,7 +87,7 @@ The Nemotron training pipeline has three stages, each tracked through [artifact 
 ## Features
 
 - **End-to-end pipelines** from raw data to deployment-ready models
-- **[Artifact lineage](nemo_runspec/artifacts.md)** via [W&B](nemotron/wandb.md) from data to model
+- **[Artifact lineage](nemotron/artifacts.md)** via [W&B](nemotron/wandb.md) from data to model
 - **Built on [NVIDIA's NeMo stack](nemotron/nvidia-stack.md)** (Megatron-Bridge, NeMo-RL)
 - **Reproducible** with versioned configs, data blends, and checkpoints
 
@@ -97,7 +97,7 @@ The Nemotron training pipeline has three stages, each tracked through [artifact 
 - [Model Weights](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) – pre-trained checkpoints on HuggingFace
 - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) – open pre-training data
 - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) – SFT and RL data
-- [Artifact Lineage](nemo_runspec/artifacts.md) – W&B integration guide
+- [Artifact Lineage](nemotron/artifacts.md) – W&B integration guide
 
 ```{toctree}
 :caption: Usage Cookbook
@@ -124,7 +124,7 @@ use-case-examples/RAG Agent with Nemotron RAG Models/README.md
 
 nemotron/nano3/README.md
 nemotron/evaluation.md
-nemo_runspec/artifacts.md
+nemotron/artifacts.md
 ```
 
 ```{toctree}
@@ -146,7 +146,7 @@ nemotron/nvidia-stack.md
 nemo_runspec/nemo-run.md
 nemo_runspec/omegaconf.md
 nemotron/wandb.md
-nemo_runspec/cli.md
+nemotron/cli.md
 nemotron/data-prep.md
 nemotron/xenna-observability.md
 ```

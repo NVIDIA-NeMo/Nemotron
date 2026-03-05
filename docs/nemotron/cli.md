@@ -56,11 +56,11 @@ The CLI framework supports:
 
 - **Nested commands** like `uv run nemotron nano3 data prep pretrain`
 - **Config integration** with automatic YAML loading and dotlist overrides
-- **[Artifact resolution](./artifacts.md)** mapping [W&B artifacts](../nemotron/wandb.md) to config fields via `${art:...}`
-- **[Remote execution](./nemo-run.md)** via NeMo-Run with `--run` / `--batch`
+- **[Artifact resolution](./artifacts.md)** mapping [W&B artifacts](./wandb.md) to config fields via `${art:...}`
+- **[Remote execution](../nemo_runspec/nemo-run.md)** via NeMo-Run with `--run` / `--batch`
 - **Visible execution** with all submission logic in each command file
 
-For artifacts, see [Nemotron Kit](../nemotron/kit.md). For execution profiles, see [Execution through NeMo-Run](./nemo-run.md). For the full `nemo_runspec` toolkit, see the [nemo_runspec README](../../src/nemo_runspec/README.md).
+For artifacts, see [Nemotron Kit](./kit.md). For execution profiles, see [Execution through NeMo-Run](../nemo_runspec/nemo-run.md). For the full `nemo_runspec` toolkit, see the [nemo_runspec README](../../src/nemo_runspec/README.md).
 
 ## Architecture
 
@@ -151,8 +151,8 @@ All recipe commands automatically receive these global options:
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--config` | `-c` | Config name or path (from `config_dir`) |
-| `--run` | `-r` | Attached [NeMo-Run](./nemo-run.md) execution (waits, streams logs) |
-| `--batch` | `-b` | Detached [NeMo-Run](./nemo-run.md) execution (submits, exits) |
+| `--run` | `-r` | Attached [NeMo-Run](../nemo_runspec/nemo-run.md) execution (waits, streams logs) |
+| `--batch` | `-b` | Detached [NeMo-Run](../nemo_runspec/nemo-run.md) execution (submits, exits) |
 | `--dry-run` | `-d` | Preview config without executing |
 | `--stage` | | Stage files to remote for debugging |
 | `key=value` | | Dotlist overrides (any position) |
@@ -479,10 +479,10 @@ uv run nemotron myrecipe train -c tiny --run MY-CLUSTER
 
 ## Further Reading
 
-- [Nemotron Kit](../nemotron/kit.md) – artifacts and lineage tracking
+- [Nemotron Kit](./kit.md) – artifacts and lineage tracking
 - [`nemo_runspec` Package](../../src/nemo_runspec/README.md) – toolkit documentation
-- [Execution through NeMo-Run](./nemo-run.md) – execution profiles and env.toml
-- [Data Preparation](../nemotron/data-prep.md) – data preparation module
+- [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) – execution profiles and env.toml
+- [Data Preparation](./data-prep.md) – data preparation module
 - [Artifact Lineage](./artifacts.md) – W&B artifact system and lineage tracking
-- [W&B Integration](../nemotron/wandb.md) – credentials and configuration
-- [Nano3 Recipe](../nemotron/nano3/README.md) – training recipe example
+- [W&B Integration](./wandb.md) – credentials and configuration
+- [Nano3 Recipe](./nano3/README.md) – training recipe example

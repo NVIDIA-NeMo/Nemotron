@@ -280,7 +280,7 @@ output/stage1_sft/
 └── runs/<run_hash>/                    # Raw shard outputs (splits/ symlinks here)
 ```
 
-The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`SFTDataArtifact-<config_name>`) for lineage tracking.
+The output is registered as a [W&B Artifact](../artifacts.md) (`SFTDataArtifact-<config_name>`) for lineage tracking.
 
 ### Training
 
@@ -295,7 +295,7 @@ uv run nemotron nano3 sft [options] [overrides...]
 | `--run <profile>` | Attached—submits and waits, streaming logs ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--batch <profile>` | Detached—submits and exits immediately ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--dry-run` | Preview execution plan |
-| `key=value` | Override config values ([CLI Framework](../../nemo_runspec/cli.md#dotlist-overrides)) |
+| `key=value` | Override config values ([CLI Framework](../cli.md#dotlist-overrides)) |
 
 #### Override Examples
 
@@ -388,7 +388,7 @@ After SFT completes, proceed to [Stage 2: RL](./rl.md) for alignment training.
 
 - [Tech Report Section 3.1](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf) – SFT methodology
 - [NVIDIA AI Stack](../nvidia-stack.md) – Megatron-Core, Megatron-Bridge
-- [Artifact Lineage](../../nemo_runspec/artifacts.md) – W&B artifact system
+- [Artifact Lineage](../artifacts.md) – W&B artifact system
 - [Stage 0: Pretraining](./pretrain.md) – pretrain the base model
 - **Recipe Source:** `src/nemotron/recipes/nano3/stage1_sft/`
 - [Back to Overview](./README.md)

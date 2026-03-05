@@ -10,8 +10,8 @@ Kit handles three core responsibilities:
 
 | Component | What kit owns | What nemo_runspec owns |
 |-----------|--------------|----------------------|
-| **[Artifacts](../nemo_runspec/artifacts.md)** | Type definitions (`PretrainBlendsArtifact`, `ModelArtifact`, etc.) | Registry, `art://` resolution, fsspec/wandb storage backends |
-| **[Lineage Tracking](../nemo_runspec/artifacts.md)** | Trackers (`WandbTracker`, `FileTracker`) | `${art:...}` OmegaConf resolvers, distributed coordination |
+| **[Artifacts](./artifacts.md)** | Type definitions (`PretrainBlendsArtifact`, `ModelArtifact`, etc.) | Registry, `art://` resolution, fsspec/wandb storage backends |
+| **[Lineage Tracking](./artifacts.md)** | Trackers (`WandbTracker`, `FileTracker`) | `${art:...}` OmegaConf resolvers, distributed coordination |
 | **[W&B Integration](./wandb.md)** | Init, credential handling, monkey patches, tag management | Env var injection (`build_env_vars`), `[wandb]` config loading |
 
 For CLI infrastructure, config loading, execution, and packaging, see [`nemo_runspec`](../../src/nemo_runspec/README.md).
@@ -91,7 +91,7 @@ model.save(name="ModelArtifact-pretrain")
 
 ### Artifacts
 
-Artifacts are path-centric objects with typed metadata. The core field is always `path` -- the filesystem location of the data. See [Artifact Lineage](../nemo_runspec/artifacts.md) for details.
+Artifacts are path-centric objects with typed metadata. The core field is always `path` -- the filesystem location of the data. See [Artifact Lineage](./artifacts.md) for details.
 
 ```python
 from nemotron.kit import PretrainBlendsArtifact
@@ -104,7 +104,7 @@ print(f"Tokens: {artifact.total_tokens:,}")
 
 ### Lineage Tracking
 
-Kit tracks artifact lineage through pluggable backends. The `WandbTracker` logs to W&B; the `FileTracker` writes to local filesystem. See [W&B Integration](./wandb.md) for credential handling and [Artifact Lineage](../nemo_runspec/artifacts.md) for the lineage graph.
+Kit tracks artifact lineage through pluggable backends. The `WandbTracker` logs to W&B; the `FileTracker` writes to local filesystem. See [W&B Integration](./wandb.md) for credential handling and [Artifact Lineage](./artifacts.md) for the lineage graph.
 
 ```python
 from nemotron.kit import set_lineage_tracker, WandbTracker
@@ -188,8 +188,8 @@ src/nemotron/kit/
 - [`nemo_runspec` Package](../../src/nemo_runspec/README.md) – CLI toolkit, config loading, execution, packaging
 - [NVIDIA AI Stack](./nvidia-stack.md) – Megatron-Core, Megatron-Bridge, NeMo-RL
 - [OmegaConf Configuration](../nemo_runspec/omegaconf.md) – artifact interpolations and unified W&B logging
-- [Artifact Lineage](../nemo_runspec/artifacts.md) – artifact versioning and W&B lineage
+- [Artifact Lineage](./artifacts.md) – artifact versioning and W&B lineage
 - [W&B Integration](./wandb.md) – credential handling
 - [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) – execution profiles and packagers
-- [CLI Framework](../nemo_runspec/cli.md) – building recipe CLIs
+- [CLI Framework](./cli.md) – building recipe CLIs
 - [Data Preparation](./data-prep.md) – data prep module

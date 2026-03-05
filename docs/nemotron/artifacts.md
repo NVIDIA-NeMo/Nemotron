@@ -1,8 +1,8 @@
 # Artifact Lineage & W&B Integration
 
-The Nemotron training pipeline tracks lineage from raw data to final model through [Weights & Biases](../nemotron/wandb.md) artifacts. Every data transformation and model checkpoint is versioned and linked, so you can trace any model back to its training data.
+The Nemotron training pipeline tracks lineage from raw data to final model through [Weights & Biases](./wandb.md) artifacts. Every data transformation and model checkpoint is versioned and linked, so you can trace any model back to its training data.
 
-> **Note**: For full lineage tracking and team sharing, the artifact system uses [W&B](../nemotron/wandb.md). A file-based backend is also available for local development—set `[artifacts] backend = "file"` in your `env.toml`. See [env.toml Reference](./nemo-run.md#envtoml-reference) for details.
+> **Note**: For full lineage tracking and team sharing, the artifact system uses [W&B](./wandb.md). A file-based backend is also available for local development—set `[artifacts] backend = "file"` in your `env.toml`. See [env.toml Reference](../nemo_runspec/nemo-run.md#envtoml-reference) for details.
 
 ## Why Lineage Matters
 
@@ -64,12 +64,12 @@ The artifact system uses three related concepts:
 
 | Artifact | Stage | Format | Description |
 |----------|-------|--------|-------------|
-| `PretrainBlendsArtifact-<config>` | [0](../nemotron/nano3/pretrain.md) | bin/idx | Tokenized pretraining data in Megatron format |
-| `ModelArtifact-pretrain` | [0](../nemotron/nano3/pretrain.md) | checkpoint | Base model after pretraining |
-| `SFTDataArtifact-sft` | [1](../nemotron/nano3/sft.md) | Packed Parquet | Packed SFT sequences with loss masks |
-| `ModelArtifact-sft` | [1](../nemotron/nano3/sft.md) | checkpoint | Instruction-tuned model |
-| `SplitJsonlDataArtifact-rl` | [2](../nemotron/nano3/rl.md) | JSONL | RL prompts for [NeMo-RL](../nemotron/nvidia-stack.md#nemo-rl) |
-| `ModelArtifact-rl` | [2](../nemotron/nano3/rl.md) | checkpoint | Final aligned model |
+| `PretrainBlendsArtifact-<config>` | [0](./nano3/pretrain.md) | bin/idx | Tokenized pretraining data in Megatron format |
+| `ModelArtifact-pretrain` | [0](./nano3/pretrain.md) | checkpoint | Base model after pretraining |
+| `SFTDataArtifact-sft` | [1](./nano3/sft.md) | Packed Parquet | Packed SFT sequences with loss masks |
+| `ModelArtifact-sft` | [1](./nano3/sft.md) | checkpoint | Instruction-tuned model |
+| `SplitJsonlDataArtifact-rl` | [2](./nano3/rl.md) | JSONL | RL prompts for [NeMo-RL](./nvidia-stack.md#nemo-rl) |
+| `ModelArtifact-rl` | [2](./nano3/rl.md) | checkpoint | Final aligned model |
 
 ## W&B Configuration
 
@@ -169,7 +169,7 @@ uv run nemotron nano3 data import sft /path/to/sft_data/
 uv run nemotron nano3 data import rl /path/to/rl_data/
 ```
 
-See [Importing Models & Data](../nemotron/nano3/import.md) for detailed directory structures.
+See [Importing Models & Data](./nano3/import.md) for detailed directory structures.
 
 ## Troubleshooting
 
@@ -208,7 +208,7 @@ print(f"Training step: {model.step}")
 print(f"Loss: {model.loss}")
 ```
 
-For framework details, see [Nemotron Kit](../nemotron/kit.md).
+For framework details, see [Nemotron Kit](./kit.md).
 
 ## Creating Custom Artifacts
 
@@ -309,10 +309,10 @@ class ProcessedDataArtifact(Artifact):
 
 ## Further Reading
 
-- [Nemotron Kit](../nemotron/kit.md) – artifact system internals
-- [OmegaConf Configuration](./omegaconf.md) – `${art:...}` interpolations and lineage
-- [W&B Integration](../nemotron/wandb.md) – credentials and configuration
-- [Importing Models & Data](../nemotron/nano3/import.md) – import commands and directory structures
+- [Nemotron Kit](./kit.md) – artifact system internals
+- [OmegaConf Configuration](../nemo_runspec/omegaconf.md) – `${art:...}` interpolations and lineage
+- [W&B Integration](./wandb.md) – credentials and configuration
+- [Importing Models & Data](./nano3/import.md) – import commands and directory structures
 - [CLI Framework](./cli.md) – CLI building and artifact inputs
-- [Data Preparation](../nemotron/data-prep.md) – data preparation module
-- [Nano3 Recipe](../nemotron/nano3/README.md) – training pipeline
+- [Data Preparation](./data-prep.md) – data preparation module
+- [Nano3 Recipe](./nano3/README.md) – training pipeline

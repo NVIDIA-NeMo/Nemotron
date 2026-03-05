@@ -286,7 +286,7 @@ output/nano3/stage2_rl/
         └── shard_000000.jsonl
 ```
 
-The output is registered as a [W&B Artifact](../../nemo_runspec/artifacts.md) (`SplitJsonlDataArtifact-<config_name>`) for lineage tracking.
+The output is registered as a [W&B Artifact](../artifacts.md) (`SplitJsonlDataArtifact-<config_name>`) for lineage tracking.
 
 ### Training
 
@@ -301,7 +301,7 @@ uv run nemotron nano3 rl [options] [overrides...]
 | `--run <profile>` | Attached—submits and waits, streaming logs ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--batch <profile>` | Detached—submits and exits immediately ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--dry-run` | Preview execution plan |
-| `key=value` | Override config values ([CLI Framework](../../nemo_runspec/cli.md#dotlist-overrides)) |
+| `key=value` | Override config values ([CLI Framework](../cli.md#dotlist-overrides)) |
 
 #### Override Examples
 
@@ -500,7 +500,7 @@ After RL completes, the final aligned model (`ModelArtifact-rl`) is ready for ev
 - [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) – GRPO, DPO, environments
 - [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html) – upstream training guide
 - [NVIDIA AI Stack](../nvidia-stack.md) – NeMo-RL, Megatron-Core
-- [Artifact Lineage](../../nemo_runspec/artifacts.md) – W&B artifact system
+- [Artifact Lineage](../artifacts.md) – W&B artifact system
 - [Stage 0: Pretraining](./pretrain.md) – pretrain the base model
 - [Stage 1: SFT](./sft.md) – instruction tuning
 - **Recipe Source:** `src/nemotron/recipes/nano3/stage2_rl/`

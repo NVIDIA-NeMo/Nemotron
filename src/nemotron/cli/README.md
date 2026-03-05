@@ -115,11 +115,11 @@ To add a new recipe command:
 2. Create a command module with visible execution logic
 3. Register with `RecipeTyper.add_recipe_command()`
 
-See [docs/nemo_runspec/cli.md](../../../docs/nemo_runspec/cli.md) for a step-by-step tutorial.
+See [docs/nemotron/cli.md](../../../docs/nemotron/cli.md) for a step-by-step tutorial.
 
 ## Full Documentation
 
-See [docs/nemo_runspec/cli.md](../../../docs/nemo_runspec/cli.md) for complete CLI framework documentation including:
+See [docs/nemotron/cli.md](../../../docs/nemotron/cli.md) for complete CLI framework documentation including:
 
 - Command pattern with visible execution
 - Configuration pipeline

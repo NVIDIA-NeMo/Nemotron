@@ -118,7 +118,7 @@ if config.enabled:
 
 ## Artifact Lineage
 
-W&B artifacts provide lineage tracking. See [Artifact Lineage](../nemo_runspec/artifacts.md) for details on:
+W&B artifacts provide lineage tracking. See [Artifact Lineage](./artifacts.md) for details on:
 
 - End-to-end lineage from raw data to final model
 - Semantic URIs for artifact references
@@ -214,6 +214,6 @@ For Ray data prep jobs, credentials are passed via `runtime_env.env_vars`. Ensur
 ## Further Reading
 
 - [OmegaConf Configuration](../nemo_runspec/omegaconf.md) – artifact interpolations and unified logging patches
-- [Artifact Lineage](../nemo_runspec/artifacts.md) – lineage tracking and W&B UI
+- [Artifact Lineage](./artifacts.md) – lineage tracking and W&B UI
 - [Nemotron Kit](./kit.md) – artifact system and lineage tracking
 - [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) – execution profiles and env.toml

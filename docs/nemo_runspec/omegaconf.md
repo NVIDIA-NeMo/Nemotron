@@ -323,8 +323,8 @@ train_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.train_micro
 
 ## Further Reading
 
-- [Artifact Lineage](./artifacts.md) – W&B artifact system and lineage tracking
-- [Creating Custom Artifacts](./artifacts.md#creating-custom-artifacts) – defining typed artifact classes
+- [Artifact Lineage](../nemotron/artifacts.md) – W&B artifact system and lineage tracking
+- [Creating Custom Artifacts](../nemotron/artifacts.md#creating-custom-artifacts) – defining typed artifact classes
 - [W&B Integration](../nemotron/wandb.md) – credential handling
-- [CLI Framework](./cli.md) – recipe CLIs and `--run` execution
+- [CLI Framework](../nemotron/cli.md) – recipe CLIs and `--run` execution
 - [Execution through NeMo-Run](./nemo-run.md) – `env.toml` profiles

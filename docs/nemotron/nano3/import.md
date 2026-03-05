@@ -1,10 +1,10 @@
 # Importing Models and Data
 
-This guide covers how to import existing models and data as [W&B artifacts](../../nemo_runspec/artifacts.md) using the nemotron CLI. This is useful when you want to:
+This guide covers how to import existing models and data as [W&B artifacts](../artifacts.md) using the nemotron CLI. This is useful when you want to:
 
 - Use a pre-existing checkpoint from another training run
 - Import data prepared outside of the standard pipeline
-- Connect external assets to the [W&B artifact lineage](../../nemo_runspec/artifacts.md) system
+- Connect external assets to the [W&B artifact lineage](../artifacts.md) system
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ This guide covers how to import existing models and data as [W&B artifacts](../.
 
 ## Model Import
 
-Import model checkpoints as [W&B artifacts](../../nemo_runspec/artifacts.md) for use in downstream training stages.
+Import model checkpoints as [W&B artifacts](../artifacts.md) for use in downstream training stages.
 
 ### Commands
 
@@ -54,7 +54,7 @@ uv run nemotron nano3 model import sft /path/to/sft_checkpoint --project other-p
 
 ## Data Import
 
-Import data directories as [W&B artifacts](../../nemo_runspec/artifacts.md) for use in training stages.
+Import data directories as [W&B artifacts](../artifacts.md) for use in training stages.
 
 ### Commands
 
@@ -127,7 +127,7 @@ Runs model evaluation using [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Eval
 
 ## Using Imported Artifacts
 
-After importing, [artifacts](../../nemo_runspec/artifacts.md) can be referenced in training commands via dotlist overrides (see [CLI Framework](../../nemo_runspec/cli.md#artifact-resolution)):
+After importing, [artifacts](../artifacts.md) can be referenced in training commands via dotlist overrides (see [CLI Framework](../cli.md#artifact-resolution)):
 
 ```bash
 # Use imported model in SFT training
@@ -161,7 +161,7 @@ uv run nemotron nano3 data import rl --help
 
 ## Further Reading
 
-- [Artifact Lineage](../../nemo_runspec/artifacts.md) – W&B artifact system
+- [Artifact Lineage](../artifacts.md) – W&B artifact system
 - [W&B Integration](../wandb.md) – credentials and configuration
-- [CLI Framework](../../nemo_runspec/cli.md) – CLI documentation
+- [CLI Framework](../cli.md) – CLI documentation
 - [Back to Overview](./README.md)
