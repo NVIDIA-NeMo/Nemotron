@@ -44,7 +44,9 @@ run:
   # Environment config - populated from env.toml profile via --run
   env:
     # Default container for NeMo Framework Ray deployment (squash file for Slurm)
-    container: nvcr.io/nvidia/nemo-evaluator:latest
+    # Uses the same NeMo Megatron container as training/SFT for model serving;
+    # nemo-evaluator-launcher pulls its own containers for evaluation tasks.
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
     executor: slurm
     host: ${oc.env:HOSTNAME,localhost}
     user: ${oc.env:USER}

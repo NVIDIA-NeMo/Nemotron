@@ -37,7 +37,7 @@ $ uv run nemotron nano3 eval --dry-run
 ## Prerequisites
 
 - **[NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)**: Install with `pip install "nemotron[evaluator]"` or ensure `nemo-evaluator-launcher` is available
-- **Container image**: `nvcr.io/nvidia/nemo-evaluator:latest` (or custom image specified in config)
+- **Container image**: `nvcr.io/nvidia/nemo:25.11.nemotron_3_nano` (NeMo Megatron container for model serving; nemo-evaluator-launcher pulls its own evaluation containers)
 - **[Weights & Biases](./wandb.md)**: For result export (optional but recommended)
 - **Slurm cluster**: For remote execution
 
@@ -90,7 +90,7 @@ Evaluation configs have five sections:
 run:
   model: rl:latest                    # W&B artifact reference
   env:                                 # Populated from env.toml profile
-    container: nvcr.io/nvidia/nemo-evaluator:latest
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
     executor: slurm
     host: ${oc.env:HOSTNAME,localhost}
     ...
@@ -153,7 +153,7 @@ The default config uses NeMo Framework's Ray-based in-framework deployment (`typ
 deployment:
   type: generic
   multiple_instances: true
-  image: nvcr.io/nvidia/nemo-evaluator:latest
+  image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
   checkpoint_path: ${art:model,path}
   port: 1235
   command: >-
