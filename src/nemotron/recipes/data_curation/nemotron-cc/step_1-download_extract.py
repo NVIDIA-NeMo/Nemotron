@@ -40,7 +40,7 @@ from nemo_curator.stages.text.modifiers.unicode import UnicodeReformatter
 from nemo_curator.stages.text.modifiers import Modify
 from nemo_curator.tasks import DocumentBatch
 from nemo_curator.tasks.utils import TaskPerfUtils
-from nemo_curator.stages.text.io.writer import ParquetWriter
+from nemo_curator.stages.text.io.writer import JsonlWriter
 
 FASTTEXT_MODEL_URL = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
 FASTTEXT_MODEL_FILENAME = "lid.176.bin"
@@ -54,8 +54,12 @@ class LanguageFilter(ProcessingStage[DocumentBatch, DocumentBatch]):
     If target_languages is provided, only documents matching those languages are kept.
     """
 
-    def __init__(self, target_languages: list[str] | None = None, language_field: str = "language") -> None:
-        self.target_languages = {lang.upper() for lang in target_languages} if target_languages else None
+    def __init__(
+        self, target_languages: list[str] | None = None, language_field: str = "language"
+    ) -> None:
+        self.target_languages = (
+            {lang.upper() for lang in target_languages} if target_languages else None
+        )
         self.language_field = language_field
         self.name = "language_filter"
 
@@ -133,7 +137,9 @@ def create_pipeline(args: argparse.Namespace) -> Pipeline:
         # 4. Fix unicode issues on all documents.
         Modify(UnicodeReformatter()),
         # 5. Write output
-        ParquetWriter(output_dir, write_kwargs={"storage_options": storage_options}),
+        JsonlWriter(
+            output_dir, write_kwargs={"storage_options": storage_options, "force_ascii": False}
+        ),
     ]
 
     return Pipeline(
