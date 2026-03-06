@@ -193,5 +193,4 @@ There's no `run_recipe()` function that handles all execution. We accept this be
 ## References
 
 - [The Grug Brained Developer](https://grugbrain.dev/) - Complexity bad, simple good
-- [Write Plain Python](https://www.b-list.org/weblog/2024/feb/25/write-plain-python/) - Frameworks vs libraries
 - [Locality of Behavior](https://htmx.org/essays/locality-of-behaviour/) - Keep related code together
