@@ -1,4 +1,4 @@
-# LoRA Fine-Tuning & Deployment of Nemotron 3 Nano for SQL
+# LoRA Fine-Tuning & Deployment of Nemotron 3 Nano for Text2SQL
 
 End-to-end guide for LoRA fine-tuning **NVIDIA Nemotron-3-Nano-30B** on a text-to-SQL task (BIRD SQL) and deploying with NVIDIA NIM or vLLM. Two notebook options:
 
