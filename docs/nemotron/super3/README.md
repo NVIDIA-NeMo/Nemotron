@@ -64,6 +64,7 @@ $ uv run nemotron super3 sft --run YOUR-CLUSTER
 |-------|------|---------|-------|
 | 0 | [Pretraining](./pretrain.md) | Base model training with MoE and multi-token prediction | [pretrain.md](./pretrain.md) |
 | 1 | [SFT](./sft.md) | Multi-domain instruction tuning | [sft.md](./sft.md) |
+| — | [Quantization](./quantization.md) | Post-training quantization (FP8 / NVFP4) | [quantization.md](./quantization.md) |
 
 ## Model Specifications
 
@@ -164,6 +165,7 @@ wandb login
 
 - [Stage 0: Pretraining](./pretrain.md)
 - [Stage 1: SFT](./sft.md)
+- [Quantization (PTQ)](./quantization.md)
 - [Artifact Lineage](../../nemo_runspec/artifacts.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - [W&B Integration](../wandb.md)
