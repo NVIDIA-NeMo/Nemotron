@@ -1,0 +1,16 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "custom-logit-processors" 
+version = "0.1.0"
+description = "Custom processors for vLLM"
+requires-python = ">=3.8"
+
+# setuptools will look for packages in the current directory ('.')
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["custom_logit_processors*"]
