@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unix piping support between pipeline steps
 - Atomic file writes for artifact metadata
 - WandbTracker for optional W&B integration
-- CLI generation with tyro
+- CLI generation with typer and OmegaConf
 
 #### Training Recipe Structure
 - Recipe package structure at `src/nemotron/recipes/`
@@ -41,9 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - NVIDIA AI stack integration details (Curator, Megatron-Bridge, Automodel, NeMo-RL, Evaluator)
   - Recipe overview with paper links
   - Usage examples and quick start
-- Training recipe documentation:
-  - `docs/training/run-recipe.md` - Guide for running recipes
-  - `docs/training/add-recipe.md` - Guide for contributing recipes
 - Recipe-specific READMEs with detailed TODO lists
 - Contribution guidelines inspired by NVIDIA-NeMo/Megatron-Bridge
 
@@ -56,7 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Dependencies:**
 - pydantic >= 2.0.0
-- tyro >= 0.8.0
+- typer >= 0.12.0
+- omegaconf >= 2.3.0
 - rich >= 13.0.0
 - wandb (optional)
 
