@@ -471,9 +471,10 @@ def _resolve_to_lustre_path(path: str) -> str:
     """Resolve a container path to the actual Lustre path.
 
     When running in a container, /nemo_run is a bind mount that maps to the actual
-    Lustre path. This function resolves the path using:
-    1. NEMO_RUN_DIR environment variable (if set)
-    2. Reading /proc/mounts to find bind mount source
+    Lustre path (e.g., .../run/recipe/recipe_TIMESTAMP/recipe/). This function
+    resolves the path using:
+    1. /proc/mounts to find the exact bind mount source (preferred — gives full path)
+    2. NEMO_RUN_DIR environment variable as fallback (may only be the root job dir)
 
     Args:
         path: Path string, possibly starting with /nemo_run/
@@ -490,16 +491,63 @@ def _resolve_to_lustre_path(path: str) -> str:
     if not resolved.startswith("/nemo_run"):
         return resolved
 
-    # Method 1: Use NEMO_RUN_DIR environment variable
-    nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
-    if nemo_run_dir and nemo_run_dir != "/nemo_run":
-        logger.info(f"[WANDB] Using NEMO_RUN_DIR={nemo_run_dir} for path resolution")
-        if resolved.startswith("/nemo_run/"):
-            return resolved.replace("/nemo_run/", f"{nemo_run_dir}/", 1)
-        elif resolved == "/nemo_run":
-            return nemo_run_dir
+    # Method 1: Use /proc/self/mountinfo which has bind mount details.
+    # Format: id parent major:minor root mount_point options ... - fstype source options
+    # For bind mounts, "root" (col 4) is the path within the filesystem.
+    # We find the /nemo_run entry's device ID (col 3), then find the parent
+    # mount with the same device to reconstruct the full path.
+    try:
+        mountinfo_lines = []
+        with open("/proc/self/mountinfo", "r") as f:
+            mountinfo_lines = f.readlines()
 
-    # Method 2: Try to find /nemo_run bind mount source from /proc/mounts
+        nemo_run_root = None
+        nemo_run_dev = None
+        for line in mountinfo_lines:
+            parts = line.split()
+            if len(parts) >= 5 and parts[4] == "/nemo_run":
+                nemo_run_dev = parts[2]  # major:minor device ID
+                nemo_run_root = parts[3]  # path within the filesystem
+                print(f"[WANDB] Found /nemo_run in mountinfo: dev={nemo_run_dev}, root={nemo_run_root}")
+                break
+
+        if nemo_run_root and nemo_run_root != "/" and nemo_run_root.startswith("/"):
+            # Find the parent mount with the same device that gives us the
+            # filesystem mount point (e.g., /lustre mounted at /lustre with root=/)
+            # Then the full path is: parent_mount_point + nemo_run_root
+            fs_mount_point = None
+            for line in mountinfo_lines:
+                parts = line.split()
+                if len(parts) >= 5 and parts[2] == nemo_run_dev and parts[3] == "/":
+                    fs_mount_point = parts[4]
+                    print(f"[WANDB] Found parent filesystem mount: {fs_mount_point} (dev={nemo_run_dev})")
+                    break
+
+            if fs_mount_point:
+                # Full lustre path = fs_mount_point + nemo_run_root
+                full_nemo_run_path = fs_mount_point + nemo_run_root
+                if resolved.startswith("/nemo_run/"):
+                    result = resolved.replace("/nemo_run", full_nemo_run_path, 1)
+                    print(f"[WANDB] Resolved path: {resolved} -> {result}")
+                    return result
+                elif resolved == "/nemo_run":
+                    return full_nemo_run_path
+            else:
+                # No parent mount found — use root directly as best effort
+                print(f"[WANDB] No parent mount found for dev={nemo_run_dev}, using root directly")
+                if resolved.startswith("/nemo_run/"):
+                    result = resolved.replace("/nemo_run", nemo_run_root, 1)
+                    print(f"[WANDB] Resolved path: {resolved} -> {result}")
+                    return result
+                elif resolved == "/nemo_run":
+                    return nemo_run_root
+
+        if nemo_run_root is None:
+            print("[WANDB] No /nemo_run mount found in /proc/self/mountinfo")
+    except (OSError, IOError) as e:
+        print(f"[WANDB] Could not read /proc/self/mountinfo: {e}")
+
+    # Method 2: Try /proc/mounts (less detail but wider compatibility)
     try:
         with open("/proc/mounts", "r") as f:
             for line in f:
@@ -507,15 +555,31 @@ def _resolve_to_lustre_path(path: str) -> str:
                 if len(parts) >= 2:
                     source, target = parts[0], parts[1]
                     if target == "/nemo_run" and source.startswith("/"):
-                        logger.info(f"[WANDB] Found /nemo_run bind mount: {source}")
+                        print(f"[WANDB] Found /nemo_run in /proc/mounts: {source}")
                         if resolved.startswith("/nemo_run/"):
-                            return resolved.replace("/nemo_run/", f"{source}/", 1)
+                            result = resolved.replace("/nemo_run/", f"{source}/", 1)
+                            print(f"[WANDB] Resolved path: {resolved} -> {result}")
+                            return result
                         elif resolved == "/nemo_run":
                             return source
-    except (OSError, IOError) as e:
-        logger.warning(f"[WANDB] Could not read /proc/mounts: {e}")
+    except (OSError, IOError):
+        pass
 
-    logger.warning(
+    # Method 3: Fall back to NEMO_RUN_DIR environment variable
+    # NOTE: This may be the root job dir, not the exact mount source.
+    nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
+    if nemo_run_dir and nemo_run_dir != "/nemo_run":
+        print(
+            f"[WANDB] Falling back to NEMO_RUN_DIR={nemo_run_dir} (may be incorrect)"
+        )
+        if resolved.startswith("/nemo_run/"):
+            result = resolved.replace("/nemo_run/", f"{nemo_run_dir}/", 1)
+            print(f"[WANDB] Resolved path: {resolved} -> {result}")
+            return result
+        elif resolved == "/nemo_run":
+            return nemo_run_dir
+
+    print(
         f"[WANDB] Could not resolve /nemo_run to Lustre path. "
         f"Set NEMO_RUN_DIR environment variable to the actual Lustre path."
     )
@@ -613,7 +677,7 @@ def patch_wandb_checkpoint_logging() -> None:
     logger.info("[WANDB] Patched checkpoint logging to add wait() call")
 
 
-def patch_nemo_rl_checkpoint_logging() -> None:
+def patch_nemo_rl_checkpoint_logging(artifact_name: str = "rl") -> None:
     """Patch NeMo-RL's CheckpointManager to log checkpoint artifacts to W&B.
 
     Why:
@@ -630,9 +694,12 @@ def patch_nemo_rl_checkpoint_logging() -> None:
 
     Artifact format:
         - type: "model"
-        - name: "rl" (matches pretrain/sft naming convention)
+        - name: recipe-scoped (e.g., "super3-rl-model")
         - metadata: step number, absolute_path (resolved Lustre path)
         - file reference: local path to checkpoint directory
+
+    Args:
+        artifact_name: W&B artifact name for the RL model (e.g., "super3-rl-model")
 
     Upstream:
         No issue filed yet. NeMo-RL should add native W&B artifact logging.
@@ -682,8 +749,6 @@ def patch_nemo_rl_checkpoint_logging() -> None:
             # Get the absolute shared filesystem path for cross-job access
             absolute_path = _resolve_to_lustre_path(str(final_checkpoint_path))
 
-            # Create artifact with naming convention matching pretrain/sft
-            artifact_name = "rl"
             artifact_version = f"step_{step}"
 
             # Store absolute_path in metadata for cross-job access

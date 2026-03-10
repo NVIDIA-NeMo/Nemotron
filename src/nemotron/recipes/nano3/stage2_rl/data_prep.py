@@ -82,7 +82,7 @@ from nemotron.data_prep.blend import DataBlend
 from nemotron.data_prep.config import DatasetConfig, ObservabilityConfig
 from nemotron.data_prep.utils.discovery import get_dataset_metadata
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
-from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
+from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver, NANO3_TARGET_DATASETS
 from nemotron.data_prep.observability import pipeline_wandb_hook
 from nemotron.data_prep.recipes.execution_mode import resolve_execution_mode
 from nemotron.data_prep.recipes.rl import (
@@ -238,6 +238,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
             resolved_tokenizer=None,
             observability=ObservabilityConfig(),
             hf_env=detect_hf_env_vars(),
+            hf_placeholder_targets=NANO3_TARGET_DATASETS,
         )
         stage_specs = [
             pipelines_v1.StageSpec(
@@ -296,7 +297,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
         test=result.split_paths.get("test"),
     )
 
-    artifact.name = f"nano3/rl/data-resolved{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
+    artifact.name = f"nano3/rl/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     artifact.save()
 
     # Mark wandb run as successful

@@ -351,7 +351,18 @@ def resolve_artifact_pre_init(
 
     # Create fresh API instance for each lookup
     # timeout=30 ensures reasonable API response time
-    api = wandb.Api(timeout=30)
+    try:
+        api = wandb.Api(timeout=30)
+    except Exception as e:
+        err_str = str(e)
+        err_type = type(e).__name__
+        if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
+            raise RuntimeError(
+                f"W&B authentication failed while resolving artifact '{artifact_ref}'. "
+                f"The WANDB_API_KEY environment variable is set but rejected by the server. "
+                f"Fix: run 'wandb login --relogin' on your local machine and resubmit."
+            ) from e
+        raise
 
     resolved_entity = entity or os.environ.get("WANDB_ENTITY")
     resolved_project = project or os.environ.get("WANDB_PROJECT") or "nemotron"
@@ -824,9 +835,9 @@ def _is_artifact_reference(value: Any) -> bool:
         True if value looks like an artifact reference
 
     Examples:
-        >>> _is_artifact_reference("DataBlendsArtifact-pretrain")
+        >>> _is_artifact_reference("nano3-pretrain-data:latest")
         True
-        >>> _is_artifact_reference("ModelArtifact-pretrain:v5")
+        >>> _is_artifact_reference("super3-sft-model:v5")
         True
         >>> _is_artifact_reference("nvcr.io/nvidian/nemo:25.11")
         False
@@ -841,12 +852,12 @@ def _is_artifact_reference(value: Any) -> bool:
         return False
 
     # Check for common artifact patterns
-    # Pattern 1: Contains "Artifact" (e.g., DataBlendsArtifact-pretrain)
+    # Pattern 1: Contains "Artifact" (e.g., legacy DataBlendsArtifact-pretrain)
     if "Artifact" in value:
         return True
 
     # Pattern 2: Ends with version specifier and looks like an artifact name
-    # e.g., "my-model:v5", "dataset:latest"
+    # e.g., "super3-pretrain-data:latest", "nano3-sft-model:v5"
     if ":" in value:
         name, version = value.rsplit(":", 1)
         if version.startswith("v") or version == "latest" or version.isdigit():

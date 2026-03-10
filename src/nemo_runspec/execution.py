@@ -129,9 +129,11 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
 
     env_vars: dict[str, str] = {}
 
-    # Set NEMO_RUN_DIR to actual lustre path for output paths
-    # This ensures artifacts store the real path, not /nemo_run container mount
-    # Only set for remote execution - local execution uses default paths
+    # Set NEMO_RUN_DIR to remote_job_dir for shared filesystem operations
+    # (e.g., artifact marker files for multi-node sync).
+    # NOTE: This is the root job dir, NOT the exact /nemo_run mount source.
+    # For resolving /nemo_run paths to Lustre, _resolve_to_lustre_path()
+    # prefers /proc/mounts which gives the exact bind mount source.
     if env_config and env_config.get("remote_job_dir"):
         env_vars["NEMO_RUN_DIR"] = env_config["remote_job_dir"]
 
@@ -153,15 +155,33 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
     except Exception:
         pass
 
-    # Auto-detect Weights & Biases API key
+    # Auto-detect Weights & Biases API key and validate it before forwarding.
+    # Validating early avoids wasting time on Slurm allocation + container import
+    # only to fail with a 401 inside the container.
+    api_key = None
     try:
         import wandb
 
         api_key = wandb.api.api_key
         if api_key:
+            # Quick auth check — this is what the container will do later
+            test_api = wandb.Api(timeout=10)
+            _ = test_api.viewer  # triggers the actual auth request
             env_vars["WANDB_API_KEY"] = api_key
-    except Exception:
-        pass
+    except Exception as e:
+        import sys
+
+        err_str = str(e)
+        err_type = type(e).__name__
+        if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
+            raise RuntimeError(
+                "WANDB_API_KEY is set but authentication failed (401 Unauthorized). "
+                "Artifact resolution will fail inside the container. "
+                "Fix: run 'wandb login --relogin' to refresh your credentials."
+            ) from e
+        # For non-auth errors (network timeout, etc.), still pass the key through
+        if api_key:
+            env_vars["WANDB_API_KEY"] = api_key
 
     # Extract W&B entity and project from job config
     try:

@@ -295,7 +295,8 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     # Build artifact using classmethod
     elapsed_sec = time.time() - start_time
     sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""
-    artifact_name = f"nano3/{cfg.config_name}/data{sample_suffix}"
+    config_suffix = f"-{cfg.config_name}" if cfg.config_name != "default" else ""
+    artifact_name = f"nano3/pretrain/data{config_suffix}{sample_suffix}"
 
     artifact = PretrainBlendsArtifact.from_result(
         format_result=format_result,

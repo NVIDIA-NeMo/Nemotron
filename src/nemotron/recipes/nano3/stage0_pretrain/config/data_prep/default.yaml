@@ -48,7 +48,7 @@ sample: null
 # Force new run, ignoring cache
 force: false
 
-# Config name for artifact naming (produces PretrainBlendsArtifact-default)
+# Config name for artifact naming (produces nano3-pretrain-data)
 config_name: default
 
 # =============================================================================

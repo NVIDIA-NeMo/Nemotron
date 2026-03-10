@@ -126,6 +126,7 @@ use-case-examples/sql-lora-finetuning-and-deployment/README.md
 :hidden:
 
 nemotron/nano3/README.md
+nemotron/super3/README.md
 nemotron/artifacts.md
 ```
 
@@ -138,6 +139,18 @@ nemotron/nano3/sft.md
 nemotron/nano3/rl.md
 nemotron/nano3/evaluate.md
 nemotron/nano3/import.md
+```
+
+```{toctree}
+:caption: Super3 Stages
+:hidden:
+
+nemotron/super3/README.md
+nemotron/super3/pretrain.md
+nemotron/super3/sft.md
+nemotron/super3/rl.md
+nemotron/super3/evaluate.md
+nemotron/super3/quantization.md
 ```
 
 ```{toctree}

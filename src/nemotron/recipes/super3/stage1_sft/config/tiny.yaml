@@ -1,0 +1,35 @@
+run:
+  data: super3-sft-data:latest
+  model: super3-pretrain-model-tiny:latest
+  env:
+    container: nvcr.io/nvidian/nemo:26.02.super.rc4
+
+recipe:
+  # TODO(super3): Replace with nemotron_3_super_sft_config once ready
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
+  packed_sequence: true
+  peft: null
+
+dataset:
+  super3_packed_sft_dir: ${art:data,path}
+  seq_length: ${art:data,pack_size}
+  packed_sequence_specs:
+    packed_sequence_size: ${art:data,pack_size}
+
+train:
+  train_iters: 100
+  global_batch_size: 4
+
+scheduler:
+  lr_warmup_iters: 4
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/super3-sft-model-tiny
+  save_interval: 20
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true

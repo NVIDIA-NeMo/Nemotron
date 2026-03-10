@@ -14,7 +14,8 @@
 
 """HuggingFace placeholder resolution for RL datasets.
 
-The nvidia/Nemotron-3-Nano-RL-Training-Blend dataset contains placeholder entries
+The nvidia/Nemotron-3-Nano-RL-Training-Blend and
+nvidia/Nemotron-3-Super-RL-Training-Blends datasets contain placeholder entries
 for external datasets (DAPO, Skywork). These placeholders have an `_hf_placeholder`
 field containing row indices and question templates that need to be resolved by
 fetching the actual data from HuggingFace.
@@ -27,6 +28,7 @@ This module provides:
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -36,8 +38,10 @@ logger = logging.getLogger(__name__)
 
 # Configuration for placeholder datasets that need resolution
 # Maps dataset names (as they appear in the blend) to their HF source info
+
+# Nano3 target datasets
 # Reference: https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend/blob/main/create_nanov3_jsonl.py
-TARGET_DATASETS: dict[str, dict[str, Any]] = {
+NANO3_TARGET_DATASETS: dict[str, dict[str, Any]] = {
     "nano_v3_sft_profiled_dapo17k": {
         "hf_dataset": "BytedTsinghua-SIA/DAPO-Math-17k",
         "split": "train",
@@ -53,6 +57,28 @@ TARGET_DATASETS: dict[str, dict[str, Any]] = {
         "template_type": "skywork",
     },
 }
+
+# Super3 target datasets
+# Reference: https://huggingface.co/datasets/nvidia/Nemotron-3-Super-RL-Training-Blends
+SUPER3_TARGET_DATASETS: dict[str, dict[str, Any]] = {
+    "super_v3_lcsft_step1000_dapo17k": {
+        "hf_dataset": "BytedTsinghua-SIA/DAPO-Math-17k",
+        "split": "train",
+        "question_path": ["prompt", 0, "content"],
+        "answer_path": ["reward_model", "ground_truth"],
+        "template_type": "dapo",
+    },
+    "super_v3_lcsft_step1000_skyworks": {
+        "hf_dataset": "Skywork/Skywork-OR1-RL-Data",
+        "split": "math",
+        "question_path": ["prompt", 0, "content"],
+        "answer_path": ["reward_model", "ground_truth"],
+        "template_type": "skywork",
+    },
+}
+
+# Backward compatibility alias
+TARGET_DATASETS = NANO3_TARGET_DATASETS
 
 
 @dataclass
@@ -93,16 +119,40 @@ def get_nested_value(record: dict, path: list[str | int]) -> Any:
     return value
 
 
+def strip_dapo_prompt(hf_question: str) -> str:
+    """Strip DAPO prompt wrapper from question text.
+
+    DAPO questions from HuggingFace are wrapped in a prompt template like:
+        "Solve the following math problem ... \\n\\n<question>\\n\\n..."
+    This strips the wrapper to get the raw question before applying our template.
+
+    Args:
+        hf_question: The raw question text from the HF dataset (with DAPO wrapper)
+
+    Returns:
+        Question with DAPO wrapper stripped
+    """
+    # DAPO wraps questions with a prefix ending in \n\n and suffix starting with \n\n
+    # The actual question is between these markers
+    # If no wrapper found, return as-is
+    parts = hf_question.split("\n\n")
+    if len(parts) >= 3:
+        # Return the middle parts (the actual question content)
+        return "\n\n".join(parts[1:-1])
+    return hf_question
+
+
 def restore_dapo_question(hf_question: str, template: dict) -> str:
     """Restore DAPO question using prefix/suffix from template.
+
+    Strips the DAPO prompt wrapper from the HF question first, then applies
+    our template prefix/suffix. Strips trailing newlines from the result.
 
     DAPO templates have the structure:
     {
         "prefix": "... <some wrapper text>",
         "suffix": "<end wrapper text> ..."
     }
-
-    The original question from HF is wrapped with prefix and suffix.
 
     Args:
         hf_question: The raw question text from the HF dataset
@@ -111,9 +161,13 @@ def restore_dapo_question(hf_question: str, template: dict) -> str:
     Returns:
         Full question with template applied
     """
+    # Strip DAPO wrapper before applying template
+    stripped = strip_dapo_prompt(hf_question)
     prefix = template.get("prefix", "")
     suffix = template.get("suffix", "")
-    return f"{prefix}{hf_question}{suffix}"
+    result = f"{prefix}{stripped}{suffix}"
+    # Strip trailing newlines (upstream behavior)
+    return result.rstrip("\n")
 
 
 def restore_skywork_question(hf_question: str, template: str) -> str:
@@ -133,6 +187,32 @@ def restore_skywork_question(hf_question: str, template: str) -> str:
         return template.replace("{question}", hf_question)
     # Fallback if no placeholder found
     return hf_question
+
+
+def get_answer(raw_answer: Any) -> Any:
+    """Parse answer field, handling JSON-encoded strings.
+
+    Upstream answers may be JSON strings like '"[42]"' or '"{\"key\": \"val\"}"'.
+    This parses them and extracts the first element from arrays/objects.
+
+    Args:
+        raw_answer: The raw answer value (may be a JSON string)
+
+    Returns:
+        Parsed answer value
+    """
+    if not isinstance(raw_answer, str):
+        return raw_answer
+    try:
+        parsed = json.loads(raw_answer)
+        if isinstance(parsed, list) and len(parsed) > 0:
+            return parsed[0]
+        if isinstance(parsed, dict):
+            # Return first value
+            return next(iter(parsed.values()), parsed)
+        return parsed
+    except (json.JSONDecodeError, TypeError):
+        return raw_answer
 
 
 @dataclass
@@ -321,27 +401,39 @@ class HFPlaceholderResolver:
             return None
 
         # Restore full question using template
+        raw_question = str(hf_question)
         if config.template_type == "dapo":
             if isinstance(question_template, dict):
-                full_question = restore_dapo_question(str(hf_question), question_template)
+                full_question = restore_dapo_question(raw_question, question_template)
             else:
-                full_question = str(hf_question)
+                full_question = raw_question
         elif config.template_type == "skywork":
             if isinstance(question_template, str):
-                full_question = restore_skywork_question(str(hf_question), question_template)
+                full_question = restore_skywork_question(raw_question, question_template)
             else:
-                full_question = str(hf_question)
+                full_question = raw_question
         else:
-            full_question = str(hf_question)
+            full_question = raw_question
 
-        # Build output record
-        return {
-            "question": full_question,
-            "expected_answer": answer,
-            "responses_create_params": {
-                "input": [{"role": "user", "content": full_question}]
-            },
+        # Parse answer (handles JSON-encoded strings)
+        parsed_answer = get_answer(answer)
+
+        # Build output record — preserve all original fields, remove placeholder
+        resolved = dict(record)
+        resolved.pop("_hf_placeholder", None)
+
+        # For Skywork, question field is the raw HF question (not template-applied)
+        # The template-applied version goes into responses_create_params
+        if config.template_type == "skywork":
+            resolved["question"] = raw_question
+        else:
+            resolved["question"] = full_question
+
+        resolved["expected_answer"] = parsed_answer
+        resolved["responses_create_params"] = {
+            "input": [{"role": "user", "content": full_question}]
         }
+        return resolved
 
 
 def is_placeholder_record(record: dict) -> bool:
@@ -357,11 +449,15 @@ def is_placeholder_record(record: dict) -> bool:
 
 
 __all__ = [
+    "NANO3_TARGET_DATASETS",
+    "SUPER3_TARGET_DATASETS",
     "TARGET_DATASETS",
     "PlaceholderConfig",
     "HFPlaceholderResolver",
     "get_nested_value",
+    "strip_dapo_prompt",
     "restore_dapo_question",
     "restore_skywork_question",
+    "get_answer",
     "is_placeholder_record",
 ]
