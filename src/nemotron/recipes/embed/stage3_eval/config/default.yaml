@@ -1,0 +1,63 @@
+# Stage 3: Evaluation Configuration
+#
+# Evaluates embedding models on retrieval metrics using BEIR framework.
+# Compares base model vs fine-tuned model on nDCG, Recall, and Precision.
+# Optionally evaluates a NIM API endpoint for accuracy verification.
+#
+# Usage:
+#   nemotron embed eval -c default
+#   nemotron embed eval -c default finetuned_model_path=/path/to/model
+#
+# Evaluate NIM endpoint:
+#   nemotron embed eval -c default eval_nim=true nim_url=http://localhost:8001
+#
+# Remote execution (Slurm):
+#   nemotron embed eval -c default --run my-cluster
+#   nemotron embed eval -c default --batch my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    # Container image for remote execution (Docker/Slurm)
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Base embedding model for comparison
+base_model: nvidia/llama-nemotron-embed-1b-v2
+
+# Path to fine-tuned model checkpoint
+finetuned_model_path: ./output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated
+
+# Path to BEIR-formatted evaluation data (from stage1_data_prep)
+eval_data_path: ./output/embed/stage1_data_prep/eval_beir
+
+# Output directory for evaluation results
+output_dir: ./output/embed/stage3_eval
+
+# K values for Recall@k and Precision@k metrics
+k_values:
+  - 1
+  - 5
+  - 10
+  - 100
+
+# Encoding settings
+batch_size: 128
+max_length: 512
+corpus_chunk_size: 50000
+
+# Model settings
+pooling: mean
+normalize: true
+query_prefix: "query:"
+passage_prefix: "passage:"
+
+# Evaluation mode
+eval_base: true
+eval_finetuned: true
+
+# NIM API evaluation settings
+eval_nim: false  # Set to true to evaluate NIM endpoint
+nim_url: http://localhost:8000  # NIM API base URL
+nim_model: nvidia/llama-3.2-nv-embedqa-1b-v2  # Model name for API requests
+nim_batch_size: 32  # Batch size for NIM API requests
+nim_timeout: 60  # Request timeout in seconds

@@ -1,0 +1,12 @@
+
+Robotics could make everyday life easier by taking on repetitive or time-consuming tasks. At NVIDIA GTC 2024, researchers from Stanford University unveiled BEHAVIOR-1K, a major benchmark designed to train robots to perform 1,000 real-world-inspired activities such as folding laundry, cooking breakfast, and cleaning up after a party.
+Using OmniGibson, a cutting-edge simulation environment for accelerating embodied AI research built on the NVIDIA Omniverse platform, they focus on training robots in practical skills that can be directly applied to real-world settings from assisting in homes to workplaces and beyond.
+Part of a broader initiative to make robotics practical for everyday assistance, the BEHAVIOR-1K benchmark focuses on bringing advanced robotic capabilities closer to reality and freeing up time for people to engage in activities they enjoy.
+Follow along with a PDF of the session, which provides a detailed look at how BEHAVIOR-1K leverages insights from surveys involving over 1,400 participants to define meaningful everyday activities.
+The session covers how the benchmark enables robots to learn tasks that people want help with, optimizing for performance and for practical impact on daily living. Key highlights include:
+Activity definitions and OmniGibson simulation: Insights into how BEHAVIOR-1K combines human-defined tasks with realistic simulation environments to ensure robots learn in everyday life settings.
+Scaling robotics training: Techniques for large-scale training across 50 fully interactive environments, incorporating over 1,200 object categories and 5,000+ 3D models to provide robots with diverse and realistic experiences.
+Improving realism in AI training: Incorporating various object states, complex interactions, and realistic physical properties, making sure that robots are ready for real-world applications.
+Survey insights and human-centered task design: Understanding what people want robots to help with through participant data, ensuring that BEHAVIOR-1K remains aligned with human needs.
+Watch the session Tired of Household Chores? Teach Robots to Perform 1,000 Everyday Activities With BEHAVIOR, explore more videos on NVIDIA On-Demand, and gain valuable skills and insights from industry experts by joining the NVIDIA Developer Program.
+This content was partially crafted with the assistance of generative AI and LLMs. It underwent careful review and was edited by the NVIDIA Technical Blog team to ensure precision, accuracy, and quality.

@@ -1,0 +1,24 @@
+With much of the world suddenly working from home, IT leaders need to scale resources, fast. Global cloud providers hosting Quadro Virtual Workstations can help them meet the challenge.
+Many knowledge workers can work virtually with ease. But it s more complex for people working with graphics-intensive applications across the architecture, design, manufacturing, media and entertainment, and oil and gas industries, as well as those working on scientific visualizations.
+Some IT teams can repurpose on-premises GPU resources to support remote workers through Quadro Virtual Workstation software (Quadro vWS) hosted onsite. In fact, NVIDIA recently expanded its free, 90-day virtual GPU software evaluation from 128 to 500 licenses to help those with on-prem GPUs they can put to work.
+For others, cloud providers such as Amazon Web Services and Google Cloud offer Quadro vWS instances to support remote, graphics-intensive work quickly without the need for any on-prem infrastructure. End-users only need a connected laptop or thin client.
+These virtual workstations support the same NVIDIA Quadro drivers and features as the physical Quadro GPUs that professional artists and designers run in local workstations.
+Virtual Workstations Simply, Quickly, Easily
+With Quadro vWS running in the cloud, IT departments can spin up a GPU-accelerated virtual workstation or multiple systems easily and in minutes. Cloud-based Quadro virtual workstations are simple to deploy and can be scaled up or down according to need, with IT only paying for what is used on an hourly basis.
+Drivers and upgrades are managed by the cloud service provider, so IT can just plug in and let their teams get to work. Since Quadro vWS is certified for leading graphics software, IT can rest assured that applications will run smoothly.
+Data stays secure in the cloud, while users gain advanced computer graphics features, including NVIDIA RTX for interactive, photorealistic rendering, AI-enhanced denoising, and rapid, responsive video and image processing.
+AWS
+AWS offers multiple options for customers to set up and provision virtual workstations that use the latest NVIDIA technology. These options include building a cloud-based virtual workstation from the ground up for graphics-intensive digital content creation work, such as for VFX or animation, as well as fully managed services that allow customers to instantly scale.
+For those who want to build from the ground up, Amazon Elastic Compute Cloud (EC2) G4 instances now include Quadro vWS technology at no extra cost to help support customers who need powerful performance from the cloud. These instances deliver cost-effective and versatile GPU performance for graphics-intensive applications. Available worldwide, EC2 G4 instances provide support for NVIDIA RTX-enabled applications with NVIDIA T4 Tensor Core GPUs. In addition to the G4 instances, AWS continues to support G3 instances based on NVIDIA M60 GPUs.
+For those who prefer the ease and agility of a managed service, Amazon AppStream 2.0 is a fully managed application streaming service that allows customers to deliver Windows applications running on instances in AWS to any end-user device. Amazon AppStream 2.0 provides two NVIDIA graphics instance families Graphics Pro instances based on the EC2 G3 family and Graphics G4dn instances. Amazon WorkSpaces is a fully managed desktop as a service that enables customers to easily setup and provide cloud desktops to enterprise users. WorkSpaces offer a Graphics Pro bundle that uses the EC2 G3 instances.
+Google Cloud
+Offering performance similar to a native workstation, Google Cloud offers Quadro vWS on Windows Server or Ubuntu for users running high-performance simulations as well as rendering and design workloads from the cloud. Quadro vWS on Google Cloud is available globally and can be launched in minutes.
+Now more than ever, cloud-based flexibility is a critical solution for millions of companies in every industry around the world. With Quadro virtual workstations from global cloud providers and access via PC-over-IP technology like Teradici Cloud Access Software to ensure a secure and great user experience, IT can rely on a flexible solution for meeting these unexpected demands, as well as user expectations.
+If your company already has NVIDIA vGPU-certified servers and needs to support more knowledge workers through VDI or virtual servers for compute-intensive workloads, learn more about additional options for virtualizing NVIDIA performance in our post about vGPU software.
+If your employees need access to workstations in the office, check out our post on connecting to remote workstations.
+Learn more about how you can work remotely with NVIDIA.
+Supporting links:
+NVIDIA Quadro Virtual Workstations in the Cloud
+Quick Start Guide for Quadro vWS on AWS
+Quick Start Guide for Quadro vWS on Google Cloud
+Learn more about vGPU in free, on-demand GTC Digital sessions

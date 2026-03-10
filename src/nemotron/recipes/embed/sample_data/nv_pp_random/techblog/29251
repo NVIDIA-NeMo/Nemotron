@@ -1,0 +1,21 @@
+
+Nsight Graphics 2020.3 is now available for download. We ve added a number of features that dramatically expands the functionality of our tools.
+Applications that use the provisional VK_KHR_ray_tracing extension can be captured, profiled and exported to a C++ Capture. While the extension is still evolving, the NVIDIA Vulkan Beta Driver will allow for experimentation before it is fully ratified (and is required).
+DirectX RayTracing Tier 1.1 is now supported. TraceRay calls within ExecuteIndirect can now be scrubbed in the timeline. All new DXR 1.1flags are now supported for C++ captures as well as acceleration structure viewing.
+We ve added a CLI tool for command-line driven report generation. The CLI currently supports generating GPU Trace reports or C++ captures. You can configure a delay, in seconds or frames, before the capture is triggered.
+You can now visualize Variable Rate Shading (VRS) information in the Current Target View for Vulkan and D3D12. The shading rate can be visualized as an overlay in the Current Target View if it is enabled for a draw call.
+We re also introducing the new Nsight Graphics SDK. Initially, there is an API for programmatic injection that allows you to inject your application for a particular activity and configuration. This is a preliminary release, and further application integration capabilities will be added to the Nsight Graphics SDK in the future.
+A number of enhancements have been added to this release.
+C++ capture build times for large applications have been reduced in worst-case scenarios by up to 40x!
+C++ capture replay performance was improved by up to 5%.
+We have changed the names of the Nsight Graphics executables and artifact extensions to be more consistent with Nsight Compute and Nsight Systems.
+We have improved the detection and freezing of watchdog threads to help avoid application teardown by the watchdog after resuming from capture.
+Our support for Windows was expanded to 20H1, and we added support for the following new Vulkan extensions:
+``````VK_KHR_deferred_host_operations
+VK_KHR_pipeline_library
+VK_EXT_tooling_info ``````
+We ve also added ```GL_NV_clip_space_w_scaling``` to the list of supported OpenGL extensions.  
+GPU Trace now supports NVTX. Specifically, start-end ranges can be collected and shown in GPU Trace reports.  
+External DXIL PDBs are now supported for shader viewing and editing. You can add search paths in the Nsight Graphics options to specify where these external PDBs should be discovered.
+For more information about Nsight Graphics 2020.3, check out the release notes .
+Try out the latest version of Nsight Graphics  today!

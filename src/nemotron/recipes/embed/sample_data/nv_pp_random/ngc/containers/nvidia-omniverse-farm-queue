@@ -1,0 +1,19 @@
+Omniverse Farm
+NVIDIA Omniverse Farm is a system layer that allows users to orchestrate multiple computing resources to execute batch and interactive tasks.
+It is both infrastructure agnostic - meaning it can work across typical workstations, VMs, bare-metal servers, or advanced cloud scheduling platforms such as Kubernetes - and task agnostic, able to orchestrate and distribute tasks from rendering, streaming, file conversion, synthetic data generation, to simulation.
+Users can leverage Farm in batch mode for ad hoc tasks such as batching rendering or batch file conversion by an arbitrary machine, or cluster of machines, that have been allocated for the specific use.
+Farm is designed from the ground up to embrace the microservice architecture for flexibility and scalability.
+Container information
+This container provides all the services to manage an Omniverse Farm.
+It is recommended to use the helm chart and the deployment instructions listed below
+Cloud Deployment instructions
+Omniverse Farm is offered as an NGC collection providing the helm chart, containers and job definitions to stand up an instance of Farm on top of GPU enabled Kubernetes clusters.
+For Cloud Deployment installation steps, view documentation here.
+Omniverse Farm usage guide
+For Tutorials on how to use Omniverse Farm after installation please consult the user guide available here.
+License
+Use of Omniverse Farm is covered under the NVIDIA Omniverse License Agreement.
+Suggested readings
+Release Notes
+Documentation
+NVIDIA Forums

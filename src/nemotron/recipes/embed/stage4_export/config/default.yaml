@@ -1,0 +1,64 @@
+# Stage 4: Export Configuration
+#
+# Exports fine-tuned embedding models to ONNX and optionally TensorRT
+# for optimized inference deployment.
+#
+# Usage:
+#   nemotron embed export -c default
+#   nemotron embed export -c default export_to_trt=false
+#   nemotron embed export -c default model_path=/path/to/model
+#
+# Remote execution (Slurm):
+#   nemotron embed export -c default --run my-cluster
+#   nemotron embed export -c default --batch my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    # Container image for remote execution (Docker/Slurm)
+    # Use NeMo Framework container with Export-Deploy dependencies
+    container: nvcr.io/nvidia/nemo:25.07
+
+# Path to fine-tuned HuggingFace model checkpoint
+model_path: ./output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated
+
+# Model settings
+pooling_mode: avg  # Pooling method: avg, cls, last
+normalize: true    # Whether to L2 normalize embeddings
+attn_implementation: eager  # Attention: eager, sdpa, flash_attention_2 (use eager for ONNX export)
+use_dimension_arg: true  # Whether dimension is used in model forward
+
+# Quantization settings (optional)
+quant_cfg: null  # Options: null, "fp8", "int8_sq"
+calibration_batch_size: 64
+
+# ONNX export settings
+onnx_export_path: ./output/embed/stage4_export/onnx
+opset: 17  # ONNX opset version
+export_dtype: fp32  # ONNX export precision: fp32, fp16
+
+# TensorRT export settings
+export_to_trt: false  # Whether to convert ONNX to TensorRT
+trt_model_path: ./output/embed/stage4_export/tensorrt
+
+# TensorRT precision overrides for numerical stability
+override_layernorm_precision_to_fp32: true
+override_layers_to_fp32:
+  - "/model/norm/"
+  - "/pooling_module"
+  - "/ReduceL2"
+  - "/Div"
+profiling_verbosity: layer_names_only
+
+# TensorRT optimization profiles (batch size)
+trt_min_batch: 1
+trt_opt_batch: 16
+trt_max_batch: 64
+
+# TensorRT optimization profiles (sequence length)
+trt_min_seq_len: 3
+trt_opt_seq_len: 128
+trt_max_seq_len: 256
+
+# Base output directory
+output_dir: ./output/embed/stage4_export
