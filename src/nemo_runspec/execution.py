@@ -368,6 +368,42 @@ def create_executor(
             env_vars=env_vars,
         )
 
+    if executor_type == "docker":
+        container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
+        if not container_image:
+            raise ValueError("container_image required for docker executor")
+
+        # Resolve relative paths and expand env vars in mounts
+        mounts = _get_env(env, "mounts") or []
+        resolved_mounts = []
+        for mount in mounts:
+            if ":" in mount:
+                host_path, container_path = mount.split(":", 1)
+                expanded = os.path.expandvars(host_path)
+                if "$" in expanded:
+                    typer.echo(
+                        f"[warning] Skipping mount {mount!r}: environment variable not set",
+                        err=True,
+                    )
+                    continue
+                host_path = str(Path(expanded).expanduser())
+                if not host_path.startswith("/"):
+                    host_path = str(Path.cwd() / host_path)
+                resolved_mounts.append(f"{host_path}:{container_path}")
+            else:
+                resolved_mounts.append(mount)
+
+        return run.DockerExecutor(
+            container_image=container_image,
+            num_gpus=_get_env(env, "gpus_per_node") or _get_env(env, "nproc_per_node"),
+            runtime=_get_env(env, "runtime", "nvidia"),
+            ipc_mode=_get_env(env, "ipc_mode"),
+            shm_size=_get_env(env, "shm_size"),
+            volumes=resolved_mounts,
+            env_vars=env_vars,
+            packager=packager,
+        )
+
     if executor_type != "slurm":
         raise ValueError(f"Unknown executor type: {executor_type}")
 

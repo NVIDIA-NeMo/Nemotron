@@ -1,0 +1,19 @@
+First responders don t have time on their side.
+Whether fires, search-and-rescue missions or medical emergencies, their challenges are usually dangerous and time-sensitive.
+Using autonomous technology, Zurich-based Fotokite is developing a system to help first responders save lives and increase public safety.
+Fotokite Sigma is a fully autonomous tethered drone, built with the NVIDIA Jetson platform, that drastically improves the situational awareness for first responders, who would otherwise have to rely on manned helicopters to get an aerial perspective.
+Tethered to a ground station, either in a transportable case or attached to an emergency vehicle, Fotokite Sigma requires no skilled drone pilot, taking no one away from the scene.
+Supported by the compute power of the NVIDIA Jetson platform in the grounded base, Fotokite Sigma covers the vast majority of situations where first responders need an aerial perspective during an emergency. Whether it s an aerial search for someone off the side of a road, a quick look at a rooftop for hotspots or getting eyes above an active fire to track progress and plan resources, Sigma employs computer vision to send information directly to a tablet, with photogrammetry capabilities and real-time situational awareness.
+Fotokite is a member of NVIDIA Inception, a program that offers go-to-market support, expertise and technology assistance for startups working in AI, data science and high performance computing.
+
+Fighting Fire With Data
+Firefighters depend on accurate, timely information to help them make important situational decisions.
+Fotokite Sigma s thermal camera can determine where a fire is, as well as where the safest location to enter or exit a structure would be. It can highlight hotspots that need attention and guide firefighters on whether their water is hitting the right areas, even through heavy smoke or with limited visibility at night.
+Once the fire is under control, Sigma can monitor the area for potential flare-ups, so firefighters can prioritize resources to act quickly and efficiently.
+Everything from autonomous flight and real-time data delivery to the user interface and real-time streaming is made as simple as pushing a button, which means first responders can focus on saving lives and keeping people safe, said Chris McCall, CEO of Fotokite.
+Fire departments across the U.S. and Europe are using Fotokite Sigma, in both major cities and rural areas.
+The next area of focus for us is increasing the situational awareness and decision-making power in an emergency situation, said McCall. Using NVIDIA technology, we can easily introduce new capabilities to our systems.
+In addition to rolling out availability of Sigma across more geographies, Fotokite is working with partners to deliver data in real time, something that might have previously taken several hours to accomplish.
+Providing a 3D render of an active emergency situation, tracking first responders, and supplying other intelligent data layers, for example, could be invaluable to first responders, helping them visualize a scene as it unfolds.
+Learn more about how NVIDIA partners Lockheed Martin and OroraTech are using accelerated computing technology to fight wildfires.
+Learn more about NVIDIA Inception and the NVIDIA Jetson platform. Watch public sector sessions from GTC on demand.

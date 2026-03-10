@@ -1,0 +1,123 @@
+
+Shadow of the Tomb Raider Updates Adds Ray-Traced Shadows and DLSS
+
+
+By Andrew Burnes on March 20, 2019
+
+|
+
+Featured Stories
+DLSS
+GeForce RTX GPUs
+NVIDIA RTX
+Ray Tracing
+Turing
+Out now is an update for Shadow of the Tomb Raider, adding highly-detailed ray-traced shadows, and DLSS.
+
+The addition of ray tracing enhances Shadow of the Tomb Raider s environments, improving the fidelity, detail and appearance of shadows across the entire game.
+Compared to traditional shadow mapping techniques, ray-traced shadows have realistic penumbras, translucency, self-shadowing, and other benefits, creating contact-hardened, smooth shadows that would otherwise be impossible to render in real-time.
+The result is five new types of ray-traced shadows:
+Ray-Traced Point Light Shadows
+Point Lights are used for smaller light sources, like candles and light bulbs, that illuminate their immediate surroundings. With the power and accuracy of ray tracing, we re enabling these Point Lights to cast shadows, adding extra detail and realism to scenes.
+shadow-of-the-tomb-raider-ray-traced-point-light-shadows-001-on-850px
+With Ray Tracing enabled, flames splash the wall with pole shadows, which are appropriately hard due to their close proximity. Debris is shadowed with fine detail, and long shadows crawl from Lara s feet, improving the look, feel and mood of the scene
+shadow-of-the-tomb-raider-ray-traced-point-light-shadows-002-on-850px
+shadow-of-the-tomb-raider-ray-traced-point-light-shadows-003-on-crop-850px
+Ray-Traced Point Lights also enhance the look and feel of specific scenes, and add accurate shadows. In the cemetary scene, point light candles illuminate the statue and cast its shadow with proper penumbra, the kneeling man s forward knee casts a shadow and the penumbra of his body s shadow blurs into the distance, and there s accurate shadowing around the statue s base
+Ray-Traced Rectangular Spot Light Shadows
+Whereas point lights are just single, omni-directional lights, area lights, such as the neon sign shown below, are directional spotlights emitting light across a sizeable portion of a scene. By giving them the ray-traced treatment, the quality and accuracy of shadows are increased, most noticeably in the game s earlier city-based segments.
+shadow-of-the-tomb-raider-ray-traced-rectangular-spot-light-shadows-001-on-crop-850px
+Ray-Traced Rectangular Spot Light shadows naturally soften and intersect, mirroring the appearance of shadows in the real world
+Ray-Traced Spot Light Shadows
+Spot lights are directional lights that emit light in the shape of a cone, as seen on flashlights and street lights. As with the other shadow types, upgrading them with ray tracing results in the addition of even more shadows with realistic penumbras, and improved detail that matches the shadow caster.
+shadow-of-the-tomb-raider-ray-traced-circular-spot-light-shadows-001-on-crop-850px
+Like Ray-Traced Rectangular Spot Light shadows, circular Ray-Traced Spot Light shadows mirror reality, adding a further degree of realism
+Ray-Traced Sunlight Shadows
+When Lara s taking a break from tomb raiding, she spends a considerable amount of time in sunny jungles and ancient cities, so we ensured that any shadow cast by sunlight was also enhanced.
+shadow-of-the-tomb-raider-ray-traced-sunlight-shadows-001-on-850px
+Ray-Traced Sunlight Shadows add depth to numerous scenes like this, accentuating the depth and detail of models, surfaces, and the environment in general. In this example, Lara s shadow penumbra is harder the closer it is to her body, and softer as it spreads across the wall. Fine brick detail is also shadowed, and the deep grout joints are darker than surface detail. The result is a texture that pops with true depth information
+shadow-of-the-tomb-raider-ray-traced-sunlight-shadows-002-on-crop-850px
+Ray tracing s precision enables the rendering of exquisitely-detailed shadows on even the smallest and most-detailed of objects and surfaces, as exemplified by this comparison
+Translucent Ray-Traced Shadows
+Bright light can permeate across and travel through sufficiently translucent objects, whether those be glass windows, a hand or ear, or in the case of Shadow of the Tomb Raider, the environment s foliage. By utilizing ray tracing, we can account for this, and accordingly brighten and darken shadows through up to three layers of foliage, further improving detail, fidelity, and realism.
+If a ray goes through only one layer of foliage, the shadow is lighter than if it goes through two layers. And if it goes through three layers, the shadow is rendered with the highest level of darkness. Check out the example below to see how it works.
+Shadow of the Tomb Raider Updates Adds Ray-Traced Shadows and DLSS
+Translucent Ray-Traced shadows are a subtle-but-important step towards achieving photorealistic rendering in games. In this image, note the overlapping shadows on the ground on the left of the image, and the varying darkness of shadows on the plant in the middle
+To switch-on ray tracing, select Ray Traced Shadow Quality on the Video > Graphics options screen. In the menu, you ll find three detail levels available to choose from --Medium, High, and Ultra-- with each successive option enabling more of the game-enhancing tech detailed above.
+The Ultra setting is intended for enthusiasts who wish to push systems beyond the capabilities of today s hardware, so we therefore recommend High for the best tradeoff of image quality and performance. The medium setting enables point light shadows that are noticeable in the game s earlier city-based segments. To see what s enabled at each detail level, check out the chart below:
+
+
+Medium
+
+High (Recommended)
+
+Ultra
+
+Ray Tracing Quality
+
+1 ray per pixel per light source
+
+1 ray per pixel per light source
+
+Extra rays cast adaptively where a ray detects silhouettes
+
+Point Light Shadows
+
+
+
+
+
+
+
+Rectangular Spot Light Shadows
+
+
+
+
+
+
+
+Circular Spot Light Shadows
+
+
+
+
+
+
+
+Sunlight Shadows
+
+
+
+
+
+
+
+Translucent Shadows
+
+
+
+
+
+
+
+Shadow of the Tomb Raider also adds support for NVIDIA DLSS. As with the other DLSS-enabled games, Shadow of the Tomb Raider makes use of the Tensor Cores on GeForce RTX GPUs to accelerate performance, boosting frame rates by up to 50% at 4K, up to 20% at 2560x1440, and up to 10% at 1920x1080.
+DLSS helps the most when the GPU is under maximum load and is available for the following settings:
+3840x2160: Ray Tracing On or Off: All RTX GPUs
+2560x1440: Ray Tracing On: All RTX GPUs
+2560x1440: Ray Tracing Off: RTX 2060 and 2070
+1920x1080: Ray Tracing On: RTX 2060 and 2070
+Our supercomputer never sleeps, and we continue to train and improve our deep learning neural network even after a game s launch. When we have improvements to performance or image quality ready, we provide them to you automatically via NVIDIA software updates.
+To use DLSS and ray tracing in Shadow of the Tomb Raider on GeForce RTX GPUs:
+Install our latest Game Ready Driver
+Install Windows 10 October 2018 update (version 1809, or higher)
+Head into the options, select NVIDIA RTX DLSS on the Display menu, and Ray Traced Shadow Quality on the Graphics menu
+shadow-of-the-tomb-raider-nvidia-rtx-dlss-option
+shadow-of-the-tomb-raider-nvidia-rtx-ray-tracing-option
+In our testing, the following combination settings deliver fast, smooth Shadow of the Tomb Raider gameplay:
+RTX 2060: 1920x1080, High Quality Preset with Medium Ray Tracing, DLSS On
+RTX 2070: 1920x1080, Highest Quality Preset with High Ray Tracing, DLSS On
+RTX 2080: 2560x1440, Highest Quality Preset with High Ray Tracing, DLSS On
+RTX 2080 Ti: 3840x2160, Highest Quality Preset with High Ray Tracing, DLSS On
+For more RTX announcements, check out our GDC 2019 articles, and stay tuned to GeForce.com.
+If you have any comments or questions about the addition of RTX to Shadow of the Tomb Raider, please share them here or in our forums.

@@ -1,0 +1,25 @@
+
+AI agents powered by large language models are transforming enterprise workflows, but high inference costs and latency can limit their scalability and user experience. To address this, NVIDIA recently announced the NVIDIA AI Blueprint for Building Data Flywheels. It s an enterprise-ready workflow that helps optimize AI agents by automated experimentation to find efficient models that reduce inference costs while improving latency and effectiveness.
+At the core of the blueprint is a self-improving loop that uses NVIDIA NeMo and NIM microservices to distill, fine-tune, and evaluate smaller models using real production data.
+The Data Flywheel Blueprint is designed to seamlessly integrate with your existing AI infrastructure and platforms, and supports multi-cloud, on-prem, and edge environments.
+Steps to implement the Data Flywheel Blueprint
+This hands-on demo shows how to use the Data Flywheel Blueprint to optimize models that perform function and tool-calling for a virtual customer service agent. It explains how the data flywheel can help replace a large Llama-3.3-70b model with a much smaller Llama-3.2-1b model without compromising accuracy but cutting inference cost by over 98%.
+1. Initial setup
+Use NVIDIA Launchable to quickly spin up required GPU compute
+Deploy NeMo microservices for model customization and evaluation loops
+Use NIM microservices to serve models via APIs
+Clone the Data Flywheel Blueprint GitHub repo
+2. Ingest and curate logs
+Collect production agent interactions in OpenAI-compatible format
+Store logs in Elasticsearch
+Set up the built-in flywheel orchestrator to tag, deduplicate, curate task-specific datasets, and run continuous experiments
+3. Experiment with existing and newer models
+Run evals with zero-shot, in-context learning, and fine-tuned setups
+Fine-tune smaller models using production outputs and LoRA no manual labeling
+Measure accuracy and performance by integrating with tools like MLflow
+Select models that match or outperform the original baseline
+4. Deploy and improve continuously
+View generated evaluation reports
+Deploy the surfaced efficient models in production
+Ingest new production data, retrain, and repeat the flywheel cycle to keep improving through automated experimentation
+Get started with the NVIDIA AI Blueprint for Building Data Flywheels by watching this new how-to video or downloading it from the NVIDIA API Catalog.

@@ -1,0 +1,32 @@
+NVIDIA s new Grace CPU will power the world s most powerful AI-capable supercomputer.
+The Swiss National Computing Center s (CSCS) new system will use Grace, a revolutionary Arm-based data center CPU introduced by NVIDIA today, to enable breakthrough research in a wide range of fields.
+From climate and weather to materials sciences, astrophysics, computational fluid dynamics, life sciences, molecular dynamics, quantum chemistry and particle physics, as well as domains like economics and social sciences, Alps will play a key role in advancing science throughout Europe and worldwide when it comes online in 2023.
+We are thrilled to announce the Swiss National Supercomputing Center will build a supercomputer powered by Grace and our next-generation GPU, NVIDIA CEO Jensen Huang said Monday during his keynote at NVIDIA s GPU Technology Conference.
+Alps will be built by Hewlett Packard Enterprise using the new HPE Cray EX supercomputer product line as well as the NVIDIA HGX supercomputing platform, including NVIDIA GPUs and the NVIDIA HPC SDK as well as the new Grace CPU.
+The Alps system will replace CSCS s existing Piz Daint supercomputer.
+
+AI New Kind of Supercomputing
+Alps is one of the new generation of machines that are expanding supercomputing beyond traditional modeling and simulation by taking advantage of GPU-accelerated deep learning.
+Deep learning is just an incredibly powerful set of tools that we add to the toolbox, said CSCS Director Thomas Schulthess.
+Taking advantage of the tight coupling between NVIDIA CPUs and GPUs, Alps is expected to be able to train GPT-3, the world s largest natural language processing model, in only two days 7x faster than NVIDIA s 2.8-AI exaflops Selene supercomputer, currently recognized as the world s leading supercomputer for AI by MLPerf.
+CSCS users will be able to apply this incredible AI performance to a wide range of emerging scientific research that can benefit from natural language understanding.
+This includes, for example, analyzing and understanding massive amounts of knowledge available in scientific papers and generating new molecules for drug discovery.
+Soul of the New Machine
+Based on the hyper-efficient Arm microarchitecture found in billions of smartphones and other edge computing devices, Grace will deliver 10x the performance of today s fastest servers on the most complex AI and high-performance computing workloads.
+Grace will support the next generation of NVIDIA s coherent NVLink interconnect technology, allowing data to move more quickly between system memory, CPUs and GPUs.
+And thanks to growing GPU support for data science acceleration at ever-larger scales, Alps will also be able to accelerate a bigger chunk of its users workflows, such as ingesting the vast quantities of data needed for modern supercomputing.
+The scientists will not only be able to carry out simulations, but also pre-process or post-process their data, Schulthess said. This makes the whole workflow more efficient for them.
+From Particle Physics to Weather Forecasts
+CSCS has long supported scientists who are working at the cutting edge, particularly in materials science, weather forecasting and climate modeling, and understanding data streaming in from a new generation of scientific instruments.
+CSCS designs and operates a dedicated system for numerical weather predictions (NWP) on behalf of MeteoSwiss, the Swiss meteorological service. This system has been running on GPUs since 2016.
+That long-standing experience with operational NWP on GPUs will be key to future climate simulations as well key not only to modeling long-term changes to climate, but to building models able to more accurately predict extreme weather events, saving lives.
+One of that team s goals is to run global climate models with a spatial resolution of 1 km that can map convective clouds such as thunderclouds.
+The CSCS supercomputer is also used by Swiss scientists for the analysis of data from the Large Hadron Collider (LHC) at CERN, the European Council for Nuclear Research. It is the Swiss Tier-2 system in the World LHC Computing Grid.
+Based in Geneva, the LHC at $9 billion, one of the most expensive scientific instruments ever built generates 90 petabytes of data a year.
+Alps uses a new software-defined infrastructure that can support a wide range of projects.
+As a result, in the future, different teams, such those from MeteoSwiss, will be able to use one or more partitions on a single, unified infrastructure, rather than different machines.
+These can be virtual ad-hoc clusters for individual users or predefined clusters that research teams can put together with CSCS and then operate themselves.
+
+
+
+Featured image source: Steve Evans, from Citizen of the World.

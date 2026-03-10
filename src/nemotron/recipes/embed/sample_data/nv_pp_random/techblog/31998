@@ -1,0 +1,17 @@
+
+At GTC 21, experts presented a variety of technical talks to help people new to AI, or just those looking for tools to speed-up their AI development using the various components of the NGC catalog, including:
+AI containers optimized to speed up AI/ML training and inference
+Pretrained models that provide an advanced starting point to build custom models
+Industry-specific AI SDKs that transform applications into AI-powered ones
+Helm charts to provide consistent and faster deployments
+Collections that bring together all the software needed for various use cases
+Watch these on-demand sessions to learn how to build solutions in the cloud with NVIDIA AI software from NGC.
+Building a Text-to-Speech Service that Sounds Like You
+This session shows how to build a TTS model for expressive speech using pretrained models. The model is fine-tuned with speech samples and customized for the variability in speech performing style transfer from other speakers. The provided tools let developers create a model for their voice and style and make the TTS service sound like them!
+Analyzing Traffic Video Streams at Scale
+This session demonstrates how to use the Transfer Learning Toolkit and pretrained models to build computer vision models and run inference on over 1,000 live video feeds on a single AWS instance powered by NVIDIA A100 GPUs.
+Deploy Compute and Software Resources to Run AI/ML Applications in Azure Machine Learning with Just Two Commands
+This session shows how to building a taxi fare prediction application using RAPIDS and shows how to automatically set up a DASK cluster with multiple Azure virtual machines to support large datasets, mount data into the Dask scheduler and workers, deploy GPU-optimized AI software from the NGC catalog to train models, and then make taxi fare predictions.
+Build and Deploy AI Applications Faster on Azure Machine Learning
+This session demonstrates the basics of Azure Machine Learning (AzureML) Platform, the benefits of using the NGC catalog, and how to leverage the NGC-AzureML Quick Launch Toolkit to build an end-to-end AI application in AzureML.
+If you re building an AI solution from scratch or just want to replicate the use cases shown in the above sessions, start with the NGC catalog.

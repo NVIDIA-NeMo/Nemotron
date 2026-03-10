@@ -1,0 +1,213 @@
+TAO Pretrained Mask2former
+Model Overview
+Description
+Masked-attention Mask Transformer or Mask2Former is a segmentation architecture capable of addressing panoptic, instance or semantic image segmentation tasks. The masked attention is essential in efficiently extracting localized features by constraining cross-attention within predicted mask regions.
+This model is ready for non-commercial use.
+Reference
+B. Cheng, I. Misra, A.G. Schwing, A. Kirillov, R. Girdhar: Masked-attention Mask Transformer for Universal Image Segmentation
+License
+The licenses to use this model is covered by the Model EULA. By downloading the unpruned or pruned version of the model, you accept the terms and conditions of these licenses
+Model Architecture
+Architecture Type: The model in this instance is an instance segmentor that takes color (RGB) images as inputs and generates segmentation masks and associated labels as outputs.
+Network Architecture: The backbone feature extractor of this model is Swin-T model pretrained on ImageNet dataset.
+Input
+Input Type: Image
+Input Formats: Red, Green, Blue (RGB)
+Other Properties Related to Input:** Minimum 32 x 32 Resolution required; no alpha channel or bits
+Output
+Output Type: Label, Mask and Score for each detected object in the input image.
+Output Format: Label and Score: One-Dimensional (1D), Mask: Two Dimensional (2D)
+Other Properties Related to Output**
+pred_classes: Batch size x Number of queries
+pred_masks: Batch size x Number of queries x Height x Width
+pred_scores: Batch size x Number of queries
+How to Use This Model
+This model needs to be used with NVIDIA Hardware and Software. For Hardware, the model can run on any NVIDIA GPU with sufficient memory (>12G). This model can only be used with TAO Toolkit.
+The primary use case for these models is instance segmentation.
+It is intended for training and fine-tune using Train Adapt Optimize (TAO) Toolkit and the users' dataset of object detection. High fidelity models can be trained to new use cases. A Jupyter notebook is available as a part of TAO container and can be used to re-train.
+Instructions to Use Pretrained Models with TAO
+To use these models as pretrained weights for transfer learning, use the following snippet as a template for the ``` model``` and ``` train``` components of the experiment spec file to train a Mask2former model. For more information on the experiment spec file, see the TAO Toolkit User Guide.
+``````model:
+  mode: "instance"
+  backbone:
+    type: "swin"
+    swin:
+      type: "tiny"
+      window_size: 7
+      ape: False
+      pretrain_img_size: 224
+  mask_former:
+    num_object_queries: 100
+  sem_seg_head:
+    norm: "GN"
+    num_classes: 1
+``````
+Software Integration
+Runtime Engine:
+TAO 5.5.0
+Supported Hardware Microarchitecture Compatibility:
+NVIDIA Ampere
+NVIDIA Blackwell
+NVIDIA Hopper
+NVIDIA Lovelace
+NVIDIA Pascal
+NVIDIA Turing
+NVIDIA Volta
+[Preferred/Supported] Operating System(s):
+Linux
+Model Versions
+mask2former_swint_trainable_v1.0 - Pre-trained Mask2former model for finetuning or inference.
+mask2former_swint_deployable_v1.0 - Pre-trained Mask2former model deployable to deepstream.
+Training and Evaluation Datasets
+Training Datasets
+Link: https://cocodataset.org/
+Data Collection Method by dataset: Unknown
+Labeling Method by dataset: Human
+Properties: The COCO dataset contains 118K training images and corresponding annotation files. The annotation includes bounding boxes and segmentation masks of the 80 thing categories. The categories were mapped to a single category or "object" to train the binary instance segmentation model.
+Evaluation Datasets
+Link: https://cocodataset.org/
+Data Collection Method by dataset: Unknown
+Labeling Method by dataset: Human
+Properties: The COCO dataset contains 5K validation images and corresponding annotation files. The annotation includes bounding boxes and segmentation masks of the 80 thing categories. The categories were mapped to a single category or "object" to train the binary instance segmentation model.
+Performance
+Evaluation Data
+We test the Mask2former model on the modified COCO 2017 validation dataset.
+Methodology and KPI
+The KPI for the evaluation data are reported below.
+model
+Precision
+mIoU
+Mask2former
+FP16
+0.96
+Inference
+Engine: Tensor(RT)
+Test Hardware:
+A2
+A30
+DGX H100
+DGX A100
+DGX H100
+JAO 64GB
+Jetson AGX Xavier
+L4
+L40
+NVIDIA T4
+Orin
+Orin Nano 8GB
+Orin NX
+Orin NX16GB
+T4
+Xavier NX
+The inference is run on the provided unpruned model at FP16 precision. The inference performance is run using ``` trtexec``` on Jetson AGX Xavier, Xavier NX, Orin, Orin NX and NVIDIA T4, and Ampere GPUs. The Jetson devices are running at Max-N configuration for maximum GPU frequency. The performance shown here is the inference only performance. The end-to-end performance with streaming video data might vary depending on other bottlenecks in the hardware and software.
+Platform
+BS
+FPS
+AGX Orin 64GB
+8
+17.53
+Jetson Orin 16GB
+8
+7.19
+Jetson Nano 8GB
+8
+2.13
+T4
+16
+23.54
+A30
+16
+73.94
+A2
+16
+14.43
+L4
+16
+35.27
+L40
+16
+104.42
+RTX4090
+16
+122.55
+A100
+16
+147.11
+H100
+16
+251.99
+Using TAO Pre-trained Models
+Get TAO Container
+Get other purpose-built models from the NGC model registry:
+TrafficCamNet
+PeopleNet
+PeopleNet
+PeopleNet-Transformer
+DashCamNet
+FaceDetectIR
+VehicleMakeNet
+VehicleTypeNet
+PeopleSegNet
+PeopleSemSegNet
+License Plate Detection
+License Plate Recognition
+Gaze Estimation
+Facial Landmark
+Heart Rate Estimation
+Gesture Recognition
+Emotion Recognition
+FaceDetect
+2D Body Pose Estimation
+ActionRecognitionNet
+ActionRecognitionNet
+PoseClassificationNet
+People ReIdentification
+PointPillarNet
+CitySegFormer
+Retail Object Detection
+Retail Object Embedding
+Optical Inspection
+Optical Character Detection
+Optical Character Recognition
+PCB Classification
+PeopleSemSegFormer
+LPDNet
+License Plate Recognition
+Gaze Estimation
+Facial Landmark
+Heart Rate Estimation
+Gesture Recognition
+Emotion Recognition
+FaceDetect
+2D Body Pose Estimation
+ActionRecognitionNet
+ActionRecognitionNet
+PoseClassificationNet
+People ReIdentification
+PointPillarNet
+CitySegFormer
+Retail Object Detection
+Retail Object Embedding
+Optical Inspection
+Optical Character Detection
+Optical Character Recognition
+PCB Classification
+PeopleSemSegFormer
+Technical Blogs
+Train like a pro without being an AI expert using TAO AutoML
+Create Custom AI models using NVIDIA TAO Toolkit with Azure Machine Learning
+Developing and Deploying AI-powered Robots with NVIDIA Isaac Sim and NVIDIA TAO
+Learn endless ways to adapt and supercharge your AI workflows with TAO - Whitepaper
+Customize Action Recognition with TAO and deploy with DeepStream
+Read the two-part blog on training and optimizing 2D body pose estimation model with TAO - Part 1 | Part 2
+Learn how to train a real-time License plate detection and recognition app with TAO and DeepStream.
+Model accuracy is extremely important; learn how you can achieve state of the art accuracy for classification and object detection models using TAO.
+Suggested Reading
+More information on TAO Toolkit and pre-trained models can be found at the NVIDIA Developer Zone
+Refer to the TAO documentation
+Read the TAO Toolkit Quick Start Guide and release notes.
+If you have any questions or feedback, please refer to the discussions on the TAO Toolkit Developer Forums
+Deploy your models for video analytics application using the DeepStream SDK.
+Deploy your models in Riva for ConvAI use case.
+Ethical Considerations
+NVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications. When downloaded or used in accordance with our terms of service, developers should work with their supporting model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse. For more detailed information on ethical considerations for this model, please see the Model Card++ Promise and the Explainability, Bias, Safety & Security, and Privacy Subcards. Please report security vulnerabilities or NVIDIA AI Concerns here.

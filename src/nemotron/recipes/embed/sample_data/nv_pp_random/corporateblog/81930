@@ -1,0 +1,40 @@
+NVIDIA was today named an Autonomous Grand Challenge winner at the Computer Vision and Pattern Recognition (CVPR) conference, held this week in Nashville, Tennessee. The announcement was made at the Embodied Intelligence for Autonomous Systems on the Horizon Workshop.
+This marks the second consecutive year that NVIDIA s topped the leaderboard in the End-to-End Driving at Scale category and the third year in a row winning an Autonomous Grand Challenge award at CVPR.
+The theme of this year s challenge was Towards Generalizable Embodied Systems based on NAVSIM v2, a data-driven, nonreactive autonomous vehicle (AV ) simulation framework.
+The challenge offered researchers the opportunity to explore ways to handle unexpected situations, beyond using only real-world human driving data, to accelerate the development of smarter, safer AVs.
+Generating Safe and Adaptive Driving Trajectories
+Participants of the challenge were tasked with generating driving trajectories from multi-sensor data in a semi-reactive simulation, where the ego vehicle s plan is fixed at the start, but background traffic changes dynamically.
+Submissions were evaluated using the Extended Predictive Driver Model Score, which measures safety, comfort, compliance and generalization across real-world and synthetic scenarios pushing the boundaries of robust and generalizable autonomous driving research.
+The NVIDIA AV Applied Research Team s key innovation was the Generalized Trajectory Scoring (GTRS) method, which generates a variety of trajectories and progressively filters out the best one.
+GTRS model architecture showing a unified system for generating and scoring diverse driving trajectories using diffusion- and vocabulary-based trajectories.
+GTRS introduces a combination of coarse sets of trajectories covering a wide range of situations and fine-grained trajectories for safety-critical situations, created using a diffusion policy conditioned on the environment. GTRS then uses a transformer decoder distilled from perception-dependent metrics, focusing on safety, comfort and traffic rule compliance. This decoder progressively filters out the most promising trajectory candidates by capturing subtle but critical differences between similar trajectories.
+This system has proved to generalize well to a wide range of scenarios, achieving state-of-the-art results on challenging benchmarks and enabling robust, adaptive trajectory selection in diverse and challenging driving conditions.
+NVIDIA Automotive Research at CVPR
+More than 60 NVIDIA papers were accepted for CVPR 2025, spanning automotive, healthcare, robotics and more.
+In automotive, NVIDIA researchers are advancing physical AI with innovation in perception, planning and data generation. This year, three NVIDIA papers were nominated for the Best Paper Award: FoundationStereo, Zero-Shot Monocular Scene Flow and Difix3D+.
+The NVIDIA papers listed below showcase breakthroughs in stereo depth estimation, monocular motion understanding, 3D reconstruction, closed-loop planning, vision-language modeling and generative simulation all critical to building safer, more generalizable AVs:
+Diffusion Renderer: Neural Inverse and Forward Rendering With Video Diffusion Models (Read more in this blog.)
+FoundationStereo: Zero-Shot Stereo Matching (Best Paper nominee)
+Zero-Shot Monocular Scene Flow Estimation in the Wild (Best Paper nominee)
+Difix3D+: Improving 3D Reconstructions With Single-Step Diffusion Models (Best Paper nominee)
+3DGUT: Enabling Distorted Cameras and Secondary Rays in Gaussian Splatting
+Closed-Loop Supervised Fine-Tuning of Tokenized Traffic Models
+Zero-Shot 4D Lidar Panoptic Segmentation
+NVILA: Efficient Frontier Visual Language Models
+RADIO Amplified: Improved Baselines for Agglomerative Vision Foundation Models
+OmniDrive: A Holistic Vision-Language Dataset for Autonomous Driving With Counterfactual Reasoning
+Explore automotive workshops and tutorials at CVPR, including:
+Workshop on Data-Driven Autonomous Driving Simulation, featuring Marco Pavone, senior director of AV research at NVIDIA, and Sanja Fidler, vice president of AI research at NVIDIA
+Workshop on Autonomous Driving, featuring Laura Leal-Taixe, senior research manager at NVIDIA
+Workshop on Open-World 3D Scene Understanding with Foundation Models, featuring Leal-Taixe
+Safe Artificial Intelligence for All Domains, featuring Jose Alvarez, director of AV applied research at NVIDIA
+Workshop on Foundation Models for V2X-Based Cooperative Autonomous Driving, featuring Pavone and Leal-Taixe
+Workshop on Multi-Agent Embodied Intelligent Systems Meet Generative AI Era, featuring Pavone
+LatinX in CV Workshop, featuring Leal-Taixe
+Workshop on Exploring the Next Generation of Data, featuring Alvarez
+Full-Stack, GPU-Based Acceleration of Deep Learning and Foundation Models, led by NVIDIA
+Continuous Data Cycle via Foundation Models, led by NVIDIA
+Distillation of Foundation Models for Autonomous Driving, led by NVIDIA
+Explore the NVIDIA research papers to be presented at CVPR and watch the NVIDIA GTC Paris keynote from NVIDIA founder and CEO Jensen Huang.
+Learn more about NVIDIA Research, a global team of hundreds of scientists and engineers focused on topics including AI, computer graphics, computer vision, self-driving cars and robotics.
+The featured image above shows how an autonomous vehicle adapts its trajectory to navigate an urban environment with dynamic traffic using the GTRS model.

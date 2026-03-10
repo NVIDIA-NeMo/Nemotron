@@ -1,0 +1,15 @@
+
+
+MDL SDK Architecture
+
+Architecture of MDL SDK
+Database Layer
+The API can be used to import MDL definitions from libraries, edit parameters and creating function call graphs ( the MDL equivalent of shader graphs ). After compilation of a material into an optimized DAG, the API allows inspection of the material in order for a renderer to translate it in its own format. The result of the editing can be written out as a material variant to disk.
+
+MDL Compiler
+The API allows compiling materials into an optimized DAG representation. In the process various optimization techniques are applied such as constant folding, inlining and dead code elimination in order to make it easier for the application to analyze a material efficiently. Different compiler modes ( class or instance compilation) allow the application to optimize the compile result for different use cases.
+The API also allows the compilation of expressions (subtrees of the call graph of texturing functions) into target code such as GLSL, PTX or LLVM-IR for use in the applications shading code.
+
+About MDL SDK
+The NVIDIA MDL SDK is a set of tools to integrate MDL support into rendering applications. It contains components for loading, inspecting, editing of material definitions as well as compiling MDL functions to GLSL, PTX and LLVM-IR. With the NVIDIA MDL SDK, any physically based renderer can easily add support for MDL and join the MDL eco-system.
+Learn more

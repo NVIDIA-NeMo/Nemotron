@@ -1,0 +1,27 @@
+
+
+IMSL Fortran Numerical Library
+
+The IMSL Fortran Numerical Library is a comprehensive set of mathematical and statistical functions that developers can embed into their Fortran software applications. It offloads CPU work to NVIDIA GPU hardware where the cuBLAS library is utilized. Users with supported hardware are able to link the IMSL Fortran Library with cuBLAS to gain significant performance improvements for many linear algebra functions. The calling sequences for IMSL functions are untouched, so there is no learning curve and users can be immediately productive.
+
+Key Features
+
+
+
+1000+ accurate and highly reliable algorithms
+
+Support for the optional arguments of modern Fortran syntax
+
+Intuitive naming conventions eliminate the need for developers to learn or remember special function names
+
+Evolves easily with software and hardware upgrades
+
+
+The IMSL Fortran Numerical Library provides analytical building blocks that eliminate the need to write code from scratch, and can save up to 95% of the time required to research and develop algorithms. The fully-tested and qualified algorithms free QA teams to focus on core application testing.
+For more information about IMSL and other GPU Accelerated Libraries:
+
+
+Download evaluation copy
+Rogue Wave IMSL for Fortran features
+GPU Accelerated Libraries
+
