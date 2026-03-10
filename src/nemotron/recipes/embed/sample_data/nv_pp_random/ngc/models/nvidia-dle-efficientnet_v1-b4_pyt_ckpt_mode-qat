@@ -1,0 +1,22 @@
+Model Overview
+EfficientNets are a family of image classification models, which achieve state-of-the-art accuracy, being an order-of-magnitude smaller and faster.
+Model Architecture
+EfficientNet is an image classification model family. It was first described in EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks. The scripts provided enable you to train the EfficientNet-B0, EfficientNet-B4, EfficientNet-WideSE-B0 and, EfficientNet-WideSE-B4 models.
+EfficientNet-WideSE models use Squeeze-and-Excitation layers wider than original EfficientNet models, the width of SE module is proportional to the width of Depthwise Separable Convolutions instead of block width.
+WideSE models are slightly more accurate than original models.
+This model is trained with mixed precision using Tensor Cores on Volta and the NVIDIA Ampere GPU architectures. Therefore, researchers can get results over 2x faster than training without Tensor Cores, while experiencing the benefits of mixed precision training. This model is tested against each NGC monthly container release to ensure consistent accuracy and performance over time.
+We use NHWC data layout when training using Mixed Precision.
+Training
+This model was trained using script available on NGC and in GitHub repo.
+Dataset
+The following datasets were used to train this model:
+ImageNet - Image database organized according to the WordNet hierarchy, in which each noun is depicted by hundreds and thousands of images.
+Performance
+Performance numbers for this model are available in NGC.
+References
+Original paper
+NVIDIA model implementation in NGC
+NVIDIA model implementation on GitHub
+License
+This model was trained using open-source software available in Deep Learning Examples repository.
+For terms of use, please refer to the license of the script and the datasets the model was derived from.

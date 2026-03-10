@@ -1,0 +1,51 @@
+Businesses worldwide are using artificial intelligence to solve their greatest challenges. Healthcare professionals use AI to enable more accurate, faster diagnoses in patients. Retail businesses use it to offer personalized customer shopping experiences. Automakers use it to make personal vehicles, shared mobility, and delivery services safer and more efficient. Deep learning is a powerful AI approach that uses multi-layered artificial neural networks to deliver state-of-the-art accuracy in tasks such as object detection, speech recognition, and language translation. Using deep learning, computers can learn and recognize patterns from data that are considered too complex or subtle for expert-written software.
+Learn the fundamental techniques and tools required to train a deep learning model
+Gain experience with common deep learning data types and model architectures
+Enhance datasets through data augmentation to improve model accuracy
+Leverage transfer learning between models to achieve efficient results with less data and computation
+Build confidence to take on your own project with a modern deep learning framework
+The below is a suggested timeline for the course. Please work with the instructor to find the best timeline for your session.
+Introduction (30 mins)
+
+Meet the instructor.
+Create an account at courses.nvidia.com/join
+The Mechanics of Deep Learning (3 hours)
+
+Explore the fundamental mechanics and tools involved in successfully training deep neural networks:
+Train your first computer vision model to learn the process of training.
+Introduce convolutional neural networks to improve accuracy of predictions in vision applications.
+Apply data augmentation to enhance a dataset and improve model generalization.
+Break (1 hour)
+Pre-trained Models and Large Language Models (1.5 hours)
+
+Leverage pre-trained models to solve deep learning challenges quickly. Train recurrent neural networks on sequential data:
+Integrate a pre-trained image classification model to create an automatic doggy door.
+Leverage transfer learning to create a personalized doggy door that only lets in your dog.
+Use a Large Language Model (LLM) to answer questions based on provided text.
+Break (15 mins)
+Final Project: Object Classification (1 hours)
+
+Apply computer vision to create a model that distinguishes between fresh and rotten fruit:
+Create and train a model that interprets color images.
+Build a data generator to make the most out of small datasets.
+Improve training speed by combining transfer learning and feature extraction.
+Discuss advanced neural network architectures and recent areas of research where students can further improve their skills.
+Final Review (30 minutes)
+
+Review key learnings and answer questions.
+Complete the assessment and earn a certificate.
+Complete the workshop survey.
+Learn how to set up your own AI application development environment.
+PyTorch
+Convolutional Neural Networks (CNNS)
+Data Augmentation
+Transfer Learning
+Natural Language Processing
+An understanding of fundamental programming concepts in Python 3, such as functions, loops, dictionaries, and arrays; familiarity with Pandas data structures; and an understanding of how to compute a regression line.
+Suggested materials to satisfy prerequisites: Python Beginner s Guide.
+Technologies: PyTorch, Pandas
+Assessment Type: Skills-based coding assessments evaluate students ability to train a deep learning model to high accuracy.
+Certificate: Upon successful completion of the assessment, participants will receive an NVIDIA DLI certificate to recognize their subject matter competency and support professional career growth.
+Hardware Requirements: Desktop or laptop computer capable of running the latest version of Chrome or Firefox. Each participant will be provided with dedicated access to a fully configured, GPU-accelerated server in the cloud.
+Languages: English, Simplified Chinese,
+Japanese

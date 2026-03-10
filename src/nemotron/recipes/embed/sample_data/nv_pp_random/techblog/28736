@@ -1,0 +1,10 @@
+Researchers from IBM, Thomson Reuters, The University of Melbourne, and University of Toronto trained a deep learning model called Deep-speare to capture the language, rhyme, and meter for sonnets, generating poems that resemble ones most famously written by William Shakespeare.
+With the recent surge of interest in deep learning, one question that is being asked across a number of fronts is: can deep learning techniques be harnessed for creative purposes? the researchers asked.
+The answer is yes, AI can write a sonnet that resembles the great poets.
+Using NVIDIA Tesla GPUs with the cuDNN -accelerated TensorFlow deep learning framework, the team trained their neural network on 2,700 sonnets comprised of 367,000 words.
+Our proposed stress and rhyme models work very well, generating sonnet quatrains with stress and rhyme patterns that are indistinguishable from human-written poems and rated highly by an expert, the researchers explained.
+The team even enlisted the help of Adam Hammond, an English literature expert, and professor at University of Toronto to directly rate four aspects of the poems: meter, rhyme, readability and emotion. Hammond did not know the source of the poems. The results show the AI-generated verses outperform humans in meter and rhyme, but fall short on readability and emotion.
+While the application itself may not seem directly relevant to real-world applications, the underlying machinery of our model shares the same core algorithm that drives other problems that require generation, Jey Han Lau, one of the researchers on the project, told Digital Trends. [These might include] translation, summarization, and chatbots.
+The researchers say that to achieve good poetry, they will focus future research on looking beyond forms.
+The work was recently published on ArXiv, and the code is available on GitHub.
+Read more >

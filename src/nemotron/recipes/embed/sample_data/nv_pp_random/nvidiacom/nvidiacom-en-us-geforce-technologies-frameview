@@ -1,0 +1,23 @@
+
+FrameView App
+FrameView is an application for measuring frame rates, frame times, power, and performance-per-watt on a wide range of graphics cards.
+Download Now
+Download Now
+This application is not supported on mobile.
+Close
+
+Watch Video
+
+
+Version 1.6 Release Notes
+Reliable Performance and Power Data
+Detailed metrics are presented in real-time with a configurable overlay, and reported to a log file for convenient analysis, leveraging PresentMon for analytics.
+Extensive App and API Compatibility
+Unlike other measurement options, FrameView works with a wide range of graphics cards, all major graphics APIs, and UWP (Universal Windows Platform) apps. Plus, it enables real-time power measurement through APIs, recording chip and board power* without the need for special physical equipment, while also capturing detailed performance information.
+*Chip and board power on NVIDIA GPUs. Chip power only on AMD GPUs.
+For more details, read our article and power primer, or download the user guide.
+Download FrameView
+Download FrameView
+This application is not supported on mobile.
+Close
+

@@ -1,0 +1,32 @@
+
+At ROSCon 2022, NVIDIA announced the newest Isaac ROS software release, Developer Preview (DP) 2. This release includes new cloud and edge-to-robot task management and monitoring software for autonomous mobile robot (AMR) fleets, as well as additional features for ROS 2 developers.
+NVIDIA continues to show a strong commitment to the ROS developer community with its consistent Isaac ROS releases, said Brian Gerkey, CEO of Open Robotics. With 20 Isaac ROS packages released in the past year, NVIDIA is making it easier for developers to embrace AI and improve the perception stacks in their ROS-based applications.
+NVIDIA Isaac ROS consists of individual packages (GEMs) and complete pipelines (NITROS) for hardware-accelerated performance. In addition to performance improvements, the new release adds the following functionality:
+Mission Dispatch and Client: An open-source CPU package to assign and monitor tasks from a fleet management system to the robot. Mission Dispatch is a cloud-native microservice that can be integrated as part of larger fleet management systems.
+FreeSpace Segmentation: A hardware-accelerated package for producing a vision AI based occupancy grid in the proximity of the robot to be used as an input to the navigation stack.
+H.264 Video Encode and Decode: Hardware-accelerated packages for compressed video data recording and playback. Video data collection is an important part of training AI perception models. The performance of these new GEMs on the NVIDIA Jetson AGX Orin platform measured at 2x 1080p stereo cameras at 30 fps (>120 fps total), reducing data footprint by ~10x.
+Mission Dispatch and Client
+Block diagrams for the software stacks.
+Figure 1. Architecture of Mission Dispatch and Mission Client software
+Mission Dispatch and Client provide a standard, open-source way to assign and track tasks between a fleet management system and ROS 2 robots. Dispatch and Client communicate using VDA5050, an open standard for communications designed specifically for robot fleets. Messages are transmitted wirelessly over MQTT, a lightweight messaging protocol for Internet of Things (IoT) applications.
+Mission Dispatch is a containerized micro-service available for download from NGC, or as source code on the NVIDIA Isaac GitHub repo, and can be integrated into fleet management systems. Mission Dispatch has been verified to interoperate with other open-source ROS 2 clients like the recently announced VDA5050 Connector developed by OTTO Motors and InOrbit.
+Mission Client, which is compatible with ROS 2 Humble, is available as a package in the NVIDIA Isaac ROS GitHub repo and preintegrated with the Nav2 navigation stack to assign and track navigation and other tasks on the robot.
+As mobile robot deployment in the real world accelerates, interoperability is becoming increasingly critical, said Ryan Gariepy, CTO at OTTO Motors. Bridging VDA5050 with ROS2 as an open-source community will promote innovation in fleet management solutions while allowing robot makers to focus on differentiation.
+NVIDIA Isaac ROS performance
+NVIDIA Isaac ROS continues to deliver hardware-accelerated performance for the ROS 2 developer community for AI perception, image processing, and navigation. Autonomous robots require advanced AI and computer vision capabilities. Isaac ROS represents our commitment to making it easier for the robotics community to adopt these cutting-edge technologies.
+For more information about the latest performance numbers for key Isaac ROS packages, see Isaac ROS Performance Summary.
+Image of a person pushing a cart of crates and associated DNN output images.
+Figure 2. Improved stereo depth performance of the BI3D model on flat featureless surfaces. (left) Original photo, (middle) DP1.1 release, (right) DP2 release.
+Free training for ROS 2 developers
+To provide advanced technical training and access to NVIDIA Isaac ROS experts, NVIDIA is announcing a new series of webinars focused on ROS 2 developers. These sessions are free and feature Q&A periods with the technical experts developing accelerated modules for ROS 2.
+Line drawing of TurboTurtle robot with the NVIDIA and ROS logos.
+Figure 3. TurboTurtle
+The first three webinar topics:
+November 14, 2022: Pinpoint, 250 fps, ROS 2 localization with vSLAM on Jetson, led by Dr. Raffaello Bonghi.
+December 2022: Using Isaac ROS for Stereo-Based Depth Estimation, led by Hemal Shah
+December 2022: Building an Isaac ROS accelerated module using YOLOv5, led by Asawaree Bandhi
+Register for the November 14 webinar and check back soon, as more webinars will be added to the series.
+ROSCon 2022
+If you are attending ROSCon in Kyoto, Japan, be sure to attend the technical session gz-omni: Bridging Gazebo with Isaac Sim (livestream) on October 20, 2022 at 2:10PM JST. Visit NVIDIA at booth #22 to see a live demonstration of NVIDIA Isaac ROS in action running on the NVIDIA Jetson AGX Orin Developer Kit.
+Getting started
+To get started today with NVIDIA Isaac ROS, review the examples summarized in the /NVIDIA-ISAAC-ROS GitHub repo.
