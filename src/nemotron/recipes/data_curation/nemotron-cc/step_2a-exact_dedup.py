@@ -1,3 +1,24 @@
+#!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# name = "data/curate/nemotron-cc/exact-dedup"
+# image = "nvcr.io/nvidia/nemo:25.02"
+#
+# [tool.runspec.run]
+# launch = "ray"
+# cmd = "uv run --extra curator python {script} --config {config}"
+#
+# [tool.runspec.config]
+# dir = "./config/exact_dedup"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 0
+# ///
+
 # Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,69 +38,129 @@
 This script performs exact deduplication in two phases that can be run
 together or independently:
 
-  1. Identification (--identify) — hash every document and find exact
+  1. Identification (identify=true) -- hash every document and find exact
      duplicates (GPU-accelerated). Writes duplicate IDs and an ID
-     generator mapping to --cache-dir.
+     generator mapping to cache_dir.
 
-  2. Removal (--remove) — read the duplicate IDs from --cache-dir and
+  2. Removal (remove=true) -- read the duplicate IDs from cache_dir and
      remove them from the original dataset, writing deduplicated output
-     to --output-dir.
+     to output_dir.
+
+CLI:
+    nemotron data curate nemotron-cc exact-dedup                # local execution
+    nemotron data curate nemotron-cc exact-dedup --run dlw      # submit to cluster
+
+Direct usage:
+    uv run python step_2a-exact_dedup.py
+    uv run python step_2a-exact_dedup.py --config /path/to/config.yaml
+    uv run python step_2a-exact_dedup.py identify=false remove=true
 
 See README.md in this directory for detailed usage instructions.
 """
 
-import argparse
+from __future__ import annotations
+
 import json
+import sys
 import time
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 from loguru import logger
 
-from nemo_curator.stages.file_partitioning import FilePartitioningStage
-from nemo_curator.tasks import EmptyTask
 from nemo_curator.backends.experimental.ray_data import RayDataExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.stages.deduplication.exact.workflow import ExactDeduplicationWorkflow
 from nemo_curator.stages.deduplication.id_generator import CURATOR_DEDUP_ID_STR
+from nemo_curator.stages.file_partitioning import FilePartitioningStage
 from nemo_curator.stages.text.deduplication.removal_workflow import TextDuplicatesRemovalWorkflow
+from nemo_curator.tasks import EmptyTask
 
+from nemotron.kit.train_script import (
+    apply_hydra_overrides,
+    load_omegaconf_yaml,
+    omegaconf_to_dataclass,
+    parse_config_and_overrides,
+)
+
+STAGE_PATH = Path(__file__).parent
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "exact_dedup" / "default.yaml"
 
 EXACT_DEDUP_IDS_SUBDIR = "ExactDuplicateIds"
 ID_GENERATOR_FILENAME = "exact_id_generator.json"
 
+# Module-level flag for Ray execution (used by nemotron CLI)
+RAY = True
 
-def _parse_memory_arg(value: str) -> int | Literal["auto"] | None:
-    """Parse a memory argument that can be an int, 'auto', or None."""
-    if value.lower() == "none":
+
+def _parse_memory_value(value: str | int | None) -> int | Literal["auto"] | None:
+    """Parse a memory value that can be an int, 'auto', or None."""
+    if value is None:
         return None
-    if value.lower() == "auto":
+    if isinstance(value, int):
+        return value
+    value_str = str(value).lower()
+    if value_str == "none":
+        return None
+    if value_str == "auto":
         return "auto"
-    return int(value)
+    return int(value_str)
 
 
-def run_identification(args: argparse.Namespace) -> None:
-    """Run exact duplicate identification using ExactDeduplicationWorkflow.
+@dataclass
+class ExactDedupConfig:
+    """Config for exact deduplication."""
 
-    Writes ExactDuplicateIds/ and exact_id_generator.json into --cache-dir.
-    """
-    storage_options = json.loads(args.storage_options) if args.storage_options else None
+    # Operation flags
+    identify: bool = True
+    remove: bool = True
+
+    # Paths
+    input_dir: str = "./data/cleaned_extracted"
+    cache_dir: str = "./data/exact_dedup_cache"
+    output_dir: str = "./data/exact_deduplicated"
+
+    # Input/output format
+    input_filetype: str = "jsonl"
+    text_field: str = "text"
+    output_filetype: str = "jsonl"
+
+    # Identification settings
+    input_blocksize: str = "256MiB"
+    identification_batchsize: int = 12
+    total_nparts: int | None = None
+    rmm_pool_size: str | int | None = "auto"
+    spill_memory_limit: str | int | None = "auto"
+
+    # Cloud storage
+    storage_options: str | None = None
+
+    # Ray cluster
+    num_gpus: int | None = None
+    num_cpus: int | None = None
+
+
+def run_identification(cfg: ExactDedupConfig) -> None:
+    """Run exact duplicate identification using ExactDeduplicationWorkflow."""
+    storage_options = json.loads(cfg.storage_options) if cfg.storage_options else None
 
     logger.info("Starting exact duplicate identification")
-    logger.info(f"  Input: {args.input_dir}")
-    logger.info(f"  Cache dir: {args.cache_dir}")
+    logger.info(f"  Input: {cfg.input_dir}")
+    logger.info(f"  Cache dir: {cfg.cache_dir}")
     start_time = time.perf_counter()
 
     workflow = ExactDeduplicationWorkflow(
-        input_path=args.input_dir,
-        output_path=args.cache_dir,
-        input_filetype=args.input_filetype,
-        text_field=args.text_field,
-        input_blocksize=args.input_blocksize,
-        identification_batchsize=args.identification_batchsize,
+        input_path=cfg.input_dir,
+        output_path=cfg.cache_dir,
+        input_filetype=cfg.input_filetype,
+        text_field=cfg.text_field,
+        input_blocksize=cfg.input_blocksize,
+        identification_batchsize=cfg.identification_batchsize,
         assign_id=True,
-        total_nparts=args.total_nparts,
-        rmm_pool_size=args.rmm_pool_size,
-        spill_memory_limit=args.spill_memory_limit,
+        total_nparts=cfg.total_nparts,
+        rmm_pool_size=_parse_memory_value(cfg.rmm_pool_size),
+        spill_memory_limit=_parse_memory_value(cfg.spill_memory_limit),
         read_kwargs={"storage_options": storage_options} if storage_options else None,
     )
     workflow_result = workflow.run(initial_tasks=None)
@@ -95,34 +176,30 @@ def run_identification(args: argparse.Namespace) -> None:
     logger.info(f"  Exact duplicates found: {num_duplicates}")
 
 
-def run_removal(args: argparse.Namespace) -> None:
-    """Remove identified exact duplicates using TextDuplicatesRemovalWorkflow.
-
-    Reads duplicate IDs and ID generator from --cache-dir, writes
-    deduplicated output to --output-dir.
-    """
-    storage_options = json.loads(args.storage_options) if args.storage_options else None
-    cache_base = args.cache_dir.rstrip("/")
-    output_base = args.output_dir.rstrip("/")
+def run_removal(cfg: ExactDedupConfig) -> None:
+    """Remove identified exact duplicates using TextDuplicatesRemovalWorkflow."""
+    storage_options = json.loads(cfg.storage_options) if cfg.storage_options else None
+    cache_base = cfg.cache_dir.rstrip("/")
+    output_base = cfg.output_dir.rstrip("/")
     ids_to_remove_path = f"{cache_base}/{EXACT_DEDUP_IDS_SUBDIR}"
     id_generator_path = f"{cache_base}/{ID_GENERATOR_FILENAME}"
     deduplicated_output_path = f"{output_base}/exact_deduplicated"
 
     output_kwargs = {}
-    if args.output_filetype == "jsonl":
+    if cfg.output_filetype == "jsonl":
         output_kwargs["force_ascii"] = False
     if storage_options:
         output_kwargs["storage_options"] = storage_options
 
     logger.info("Starting duplicate removal")
-    logger.info(f"  Input: {args.input_dir}")
+    logger.info(f"  Input: {cfg.input_dir}")
     logger.info(f"  Cache dir (IDs): {ids_to_remove_path}")
     logger.info(f"  Output: {deduplicated_output_path}")
     start_time = time.perf_counter()
 
     file_partitioning_stage = FilePartitioningStage(
-        file_paths=args.input_dir,
-        blocksize=args.input_blocksize,
+        file_paths=cfg.input_dir,
+        blocksize=cfg.input_blocksize,
         file_extensions=None,
         storage_options=storage_options,
     )
@@ -132,14 +209,14 @@ def run_removal(args: argparse.Namespace) -> None:
     logger.info(f"File partitioning pipeline completed with {len(initial_tasks)} initial tasks")
 
     workflow = TextDuplicatesRemovalWorkflow(
-        input_path=args.input_dir,
+        input_path=cfg.input_dir,
         ids_to_remove_path=ids_to_remove_path,
         output_path=deduplicated_output_path,
-        input_filetype=args.input_filetype,
-        input_blocksize=args.input_blocksize,
+        input_filetype=cfg.input_filetype,
+        input_blocksize=cfg.input_blocksize,
         duplicate_id_field=CURATOR_DEDUP_ID_STR,
         id_generator_path=id_generator_path,
-        output_filetype=args.output_filetype,
+        output_filetype=cfg.output_filetype,
         output_fields=["url", "warc_id", "source_id", "language", "text", "file_name"],
         input_kwargs={"storage_options": storage_options} if storage_options else None,
         output_kwargs=output_kwargs or None,
@@ -153,147 +230,47 @@ def run_removal(args: argparse.Namespace) -> None:
     logger.info(f"  Duplicates removed: {num_removed}")
 
 
-def main(args: argparse.Namespace) -> None:
-    # If neither flag is specified, default to running identification
-    if not args.identify and not args.remove:
-        raise ValueError("No operation specified. Use --identify and/or --remove flags.")
+def run_exact_dedup(cfg: ExactDedupConfig) -> None:
+    """Run exact deduplication pipeline."""
+    if not cfg.identify and not cfg.remove:
+        raise ValueError("No operation specified. Set identify=true and/or remove=true.")
 
-    ray_client = RayClient(num_gpus=args.num_gpus, num_cpus=args.num_cpus)
+    ray_client = RayClient(num_gpus=cfg.num_gpus, num_cpus=cfg.num_cpus)
     ray_client.start()
 
     logger.info("Starting Nemotron-CC exact deduplication")
 
-    if args.identify:
-        run_identification(args)
+    if cfg.identify:
+        run_identification(cfg)
 
-    if args.remove:
-        run_removal(args)
+    if cfg.remove:
+        run_removal(cfg)
 
     ray_client.stop()
 
 
-def attach_args() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Exact deduplication for Nemotron-CC: identification and removal of duplicate documents.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def main(cfg: ExactDedupConfig | None = None) -> None:
+    """Entry point for exact deduplication.
 
-    # Operation flags
-    parser.add_argument(
-        "--identify",
-        action="store_true",
-        help="Run the identification phase to find exact duplicates.",
-    )
-    parser.add_argument(
-        "--remove",
-        action="store_true",
-        help="Run the removal phase to remove identified duplicates.",
-    )
+    Args:
+        cfg: Config from CLI framework, or None when run directly as script.
+    """
+    if cfg is None:
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
-    # Paths
-    parser.add_argument(
-        "--input-dir",
-        type=str,
-        required=True,
-        help="Directory containing the input dataset (output of step 1).",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        type=str,
-        required=True,
-        help="Directory for intermediate identification artifacts (ExactDuplicateIds/, ID generator).",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="./data/exact_deduplicated",
-        help="Directory to write deduplicated output. Required when --remove is set.",
-    )
+        try:
+            config = load_omegaconf_yaml(config_path)
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    # Input format
-    parser.add_argument(
-        "--input-filetype",
-        type=str,
-        default="jsonl",
-        choices=["parquet", "jsonl"],
-        help="Format of the input files.",
-    )
-    parser.add_argument(
-        "--text-field",
-        type=str,
-        default="text",
-        help="Name of the field containing the document text.",
-    )
+        if cli_overrides:
+            config = apply_hydra_overrides(config, cli_overrides)
 
-    # Output format
-    parser.add_argument(
-        "--output-filetype",
-        type=str,
-        default="jsonl",
-        choices=["parquet", "jsonl"],
-        help="Format of the deduplicated output files.",
-    )
+        cfg = omegaconf_to_dataclass(config, ExactDedupConfig)
 
-    # Identification settings
-    parser.add_argument(
-        "--input-blocksize",
-        type=str,
-        default="256MiB",
-        help="Target partition size for input data (e.g., '256MiB', '512MiB', '2GiB').",
-    )
-    parser.add_argument(
-        "--identification-batchsize",
-        type=int,
-        default=12,
-        help="Number of partitions to process per identification batch.",
-    )
-    parser.add_argument(
-        "--total-nparts",
-        type=int,
-        default=None,
-        help="Total number of output partitions for identification. Auto-determined if not set.",
-    )
-    parser.add_argument(
-        "--rmm-pool-size",
-        type=_parse_memory_arg,
-        default="auto",
-        help="Size of the RMM GPU memory pool in bytes, 'auto' for 90%% of free GPU memory, or 'none'.",
-    )
-    parser.add_argument(
-        "--spill-memory-limit",
-        type=_parse_memory_arg,
-        default="auto",
-        help="Device memory limit in bytes for spilling to host, 'auto' for 80%% of RMM pool, or 'none'.",
-    )
-
-    # Cloud storage
-    parser.add_argument(
-        "--storage-options",
-        type=str,
-        default=None,
-        help='JSON string of fsspec storage options for cloud I/O (e.g., \'{"endpoint_url": "...", "key": "...", "secret": "..."}\').',
-    )
-
-    # Ray cluster — these only apply when starting a new local Ray cluster.
-    # When connecting to an existing cluster (e.g., via RAY_ADDRESS), they are ignored.
-    parser.add_argument(
-        "--num-gpus",
-        type=int,
-        default=None,
-        help="Number of GPUs for a local Ray cluster (default: all available). Ignored when connecting to an external cluster.",
-    )
-    parser.add_argument(
-        "--num-cpus",
-        type=int,
-        default=None,
-        help="Number of CPUs for a local Ray cluster (default: all available). Ignored when connecting to an external cluster.",
-    )
-
-    return parser
+    run_exact_dedup(cfg)
 
 
 if __name__ == "__main__":
-    args = attach_args().parse_args()
-    if args.remove and args.output_dir is None:
-        attach_args().error("--output-dir is required when --remove is set")
-    main(args)
+    main()

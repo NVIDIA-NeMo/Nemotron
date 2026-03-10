@@ -1,0 +1,16 @@
+run:
+  env:
+    container: nvcr.io/nvidia/nemo:25.02
+
+# Tiny config for quality classification
+#
+# Usage:
+#   nemotron data curate nemotron-cc quality-classify -c tiny
+
+classify: true
+ensemble: true
+input_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/fuzzy_deduplicated/fuzzy_deduplicated
+output_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/quality_labeling
+threshold_sample_frac: 1.0
+num_gpus: null
+num_cpus: null
