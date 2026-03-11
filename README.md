@@ -87,17 +87,17 @@ Because these are complete systems, you can extract specific techniques with con
 
 | Model | Description | Stages | Guide |
 |-------|-------------|--------|-------|
-| **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 253B total MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
-| **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 3.6B active / 31.6B total MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
+| **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 120.6B total / 12.7B active Hybrid Mamba Latent MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
+| **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
 
 ### Nemotron 3 Super
 
-A complete training recipe for the frontier Mixture-of-Experts Transformer model with state-of-the-art reasoning, coding, and agentic capabilities.
+A complete training recipe for the frontier Hybrid Mamba Latent Mixture-of-Experts Transformer model with state-of-the-art reasoning, coding, and agentic capabilities.
 
 > **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
 
 **Model Specifications**:
-- 253B total parameters, Mixture-of-Experts Transformer
+- 120B total / 12B active parameters
 - Multi-stage RL pipeline: 3× RLVR + 2× SWE-RL + RLHF across 21 reward environments
 - Asynchronous GRPO with decoupled training and inference
 
