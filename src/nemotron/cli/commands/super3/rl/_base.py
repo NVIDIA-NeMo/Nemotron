@@ -118,6 +118,19 @@ _CACHE_SUBDIRS = [
 ]
 
 
+# Apptainer install command for SWE stages (runs inside the container).
+# Needed because Apptainer is not pre-installed in the nemo-rl container
+# but is required for SWE-bench environment isolation on Slurm clusters.
+_APPTAINER_INSTALL_CMD = (
+    "apt-get update -qq && apt-get install -y -qq git build-essential gcc wget > /dev/null && "
+    "cd /tmp && "
+    "wget -q --no-check-certificate "
+    "https://github.com/apptainer/apptainer/releases/download/v1.3.1/apptainer_1.3.1_amd64.deb && "
+    "apt install -y ./apptainer_1.3.1_amd64.deb > /dev/null && "
+    "ln -sf /usr/bin/apptainer /usr/bin/singularity"
+)
+
+
 # =============================================================================
 # Execution Logic
 # =============================================================================
@@ -315,6 +328,18 @@ def _execute_ray(
         if tunnel:
             for subdir in _CACHE_SUBDIRS:
                 tunnel.run(f"mkdir -p {persistent_cache}/{subdir}", hide=True)
+
+    # SIF directory mount for SWE-bench Apptainer images (stage 2.2)
+    sif_dir = _get("sif_dir", "")
+    if sif_dir:
+        mounts.append(f"{sif_dir}:{sif_dir}")
+
+    # Apptainer install for SWE stages (when sif_dir or sandbox is configured)
+    apptainer = _get("apptainer", False)
+    if apptainer:
+        if startup_commands is None:
+            startup_commands = []
+        startup_commands = [_APPTAINER_INSTALL_CMD] + startup_commands
 
     executor = run.SlurmExecutor(
         account=_get("account"),

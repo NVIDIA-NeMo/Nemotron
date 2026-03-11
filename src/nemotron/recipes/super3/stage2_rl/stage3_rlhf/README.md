@@ -53,7 +53,14 @@ The RLHF stage uses GenRM comparison as the primary reward signal, along with to
 
 ## Usage
 
-> **Note**: RL sub-stages are not yet available as `nemotron` CLI commands because Megatron checkpoint consumption is not yet supported. Run directly inside the NeMo-RL repo using `super_launch.sh`.
+```bash
+nemotron super3 rl rlhf \
+    --run <profile> \
+    run.env.sandbox.container=<sandbox-image> \
+    run.env.persistent_cache=/path/to/cache
+```
+
+Or via `super_launch.sh` directly:
 
 ```bash
 EXP_NAME=stage3-rlhf \

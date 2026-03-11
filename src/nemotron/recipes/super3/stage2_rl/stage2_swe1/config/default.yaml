@@ -2,12 +2,15 @@ run:
   data: super3-rl-data:latest
   model: super3-sft-model:latest
   env:
-    container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    # SWE stages require the SWE container with pre-fetched venvs.
+    # Build it from the base container — see stage2_swe1/README.md.
+    container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super_swe
     sandbox:
       container: ""  # Set to nemo-skills-sandbox image path/URI
       port: 6000
       command: "/start-with-nginx.sh"
     persistent_cache: ""  # Set to shared cache dir (e.g. /lustre/.../cache)
+    apptainer: true  # Install apptainer inside the container at job start
     env_vars:
       NRL_WG_USE_RAY_REF: "1"
       NRL_VLLM_USE_V1: "1"

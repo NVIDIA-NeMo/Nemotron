@@ -53,10 +53,35 @@ This is distinct from Stage 2.2 (SWE-bench) which uses full Apptainer-based agen
 
 - **NeMo-RL repo**: Clone the `super-v3` branch of [NeMo-RL](https://github.com/NVIDIA-NeMo/RL)
 - **Sandbox container**: Required for code execution environments
+- **SWE container**: The base nemo-rl container does not include pre-fetched venvs for SWE stages. Build the SWE container:
+
+```bash
+docker buildx build \
+  -t your-registry/nemo-rl:v0.5.0.nemotron_3_super_swe \
+  --push \
+  -f- . <<'EOF'
+FROM nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+
+RUN <<'RUNEOF'
+set -euxo pipefail
+UV_TORCH_BACKEND=$(uv run python -c "import tomllib,pathlib; indexes=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['tool']['uv']['index']; print(next(i['name'].removeprefix('pytorch-') for i in indexes if i['name'].startswith('pytorch-')))") \
+UV_LINK_MODE=hardlink uv run python examples/nemo_gym/prefetch_venvs.py \
+    examples/configs/super/stage2_swe1.yaml \
+    examples/configs/super/stage2_swe2.yaml
+RUNEOF
+EOF
+```
 
 ## Usage
 
-> **Note**: RL sub-stages are not yet available as `nemotron` CLI commands because Megatron checkpoint consumption is not yet supported. Run directly inside the NeMo-RL repo using `super_launch.sh`.
+```bash
+nemotron super3 rl swe1 \
+    --run <profile> \
+    run.env.sandbox.container=<sandbox-image> \
+    run.env.persistent_cache=/path/to/cache
+```
+
+Or via `super_launch.sh` directly:
 
 ```bash
 EXP_NAME=stage2.1-swe1 \
@@ -64,7 +89,7 @@ CONFIG_PATH=examples/configs/super/stage2_swe1.yaml \
 MODEL_PATH=/path/to/rlvr3_checkpoint \
 TRAIN_PATH=$DATA_DIR/swe1/train-split.jsonl \
 VAL_PATH=$DATA_DIR/swe1/val-split.jsonl \
-CONTAINER=nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super \
+CONTAINER=$SWE_CONTAINER \
 SANDBOX_CONTAINER=$SANDBOX_CONTAINER \
 PERSISTENT_CACHE=$PERSISTENT_CACHE \
 EXTRA_MOUNTS=$EXTRA_MOUNTS \
@@ -73,7 +98,7 @@ SLURM_ACCOUNT=$SLURM_ACCOUNT \
 bash super_launch.sh
 ```
 
-See the [upstream training guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3/examples/nemotron_3_super/README.md) for full details on environment variables.
+See the [upstream training guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3/docs/guides/nemotron-3-super.md) for full details on environment variables.
 
 ## References
 

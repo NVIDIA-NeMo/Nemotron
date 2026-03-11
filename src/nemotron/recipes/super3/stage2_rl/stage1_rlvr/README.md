@@ -80,9 +80,16 @@ At 1K GPU scale, intermittent failures from hardware and software issues require
 
 ## Usage
 
-> **Note**: RL sub-stages are not yet available as `nemotron` CLI commands because Megatron checkpoint consumption is not yet supported. Run directly inside the NeMo-RL repo using `super_launch.sh`.
+```bash
+nemotron super3 rl rlvr \
+    --run <profile> \
+    run.env.sandbox.container=<sandbox-image> \
+    run.env.persistent_cache=/path/to/cache
+```
 
 The RLVR stage consists of 3 sub-stages with different data blends. All 3 use the same config (`stage1_rlvr.yaml`), only the data paths differ. Stage 1.1 starts from the SFT checkpoint; each subsequent stage takes the output of the previous one.
+
+Or via `super_launch.sh` directly:
 
 ```bash
 # Stage 1.1 — RLVR 1 (109 nodes)
