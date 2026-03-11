@@ -69,9 +69,11 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 from omegaconf import OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
-from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
+from nemo_runspec.artifacts import setup_artifact_tracking
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb_kit import (
+    patch_checkpoint_logging_both,
+    patch_manifest_checkpoint_logging,
     patch_wandb_checkpoint_logging,
     patch_wandb_init_for_lineage,
     patch_wandb_local_file_handler_skip_digest_verification,
@@ -125,6 +127,8 @@ def run_pretrain(
     config_path: Path,
     recipe_builder: RecipeBuilder,
     cli_overrides: list[str] | None = None,
+    *,
+    tags: list[str] | None = None,
 ) -> None:
     """Core pretrain pipeline.
 
@@ -142,39 +146,32 @@ def run_pretrain(
     config = load_omegaconf_yaml(config_path)
 
     # -------------------------------------------------------------------------
-    # WANDB MONKEY-PATCHES
-    # These patches work around bugs in wandb and Megatron-Bridge.
-    # See nemotron/kit/wandb_kit.py for detailed "Why" / "Remove when" documentation.
+    # ARTIFACT TRACKING
     #
-    # The following nano3 patches are disabled for super3 (confirmed fixed
-    # or not applicable in the 26.02.super.rc4 container):
-    #   - patch_wandb_http_handler_skip_digest_verification (HF ETag mismatch)
-    #   - patch_wandb_runid_for_seeded_random (duplicate artifact IDs)
-    #
-    # Still needed (confirmed broken in 26.02.super.rc4):
-    #   - patch_wandb_local_file_handler_skip_digest_verification (stale checksums)
+    # setup_artifact_tracking reads config.artifacts and initializes the
+    # manifest tracker + artifact resolvers.  We then apply stage-specific
+    # monkey-patches based on which backends are active.
     # -------------------------------------------------------------------------
-    # patch_wandb_http_handler_skip_digest_verification()
-    patch_wandb_local_file_handler_skip_digest_verification()
-    # patch_wandb_runid_for_seeded_random()
-    patch_wandb_checkpoint_logging()
+    tracking = setup_artifact_tracking(config, artifacts_key="run")
 
-    # Clear artifact cache to ensure fresh downloads (important for :latest resolution)
-    clear_artifact_cache()
+    # Wandb bug workarounds (specific to this container version)
+    if tracking.wandb:
+        patch_wandb_local_file_handler_skip_digest_verification()
 
-    # Resolve artifacts before wandb.init() (Megatron-Bridge initializes wandb).
-    qualified_names = register_resolvers_from_config(
-        config,
-        artifacts_key="run",
-        mode="pre_init",
-        pre_init_patch_http_digest=False,
-    )
+    # Checkpoint logging patches
+    if tracking.manifest and tracking.wandb:
+        patch_checkpoint_logging_both()
+    elif tracking.wandb:
+        patch_wandb_checkpoint_logging()
+    elif tracking.manifest:
+        patch_manifest_checkpoint_logging()
 
-    # Patch wandb.init so lineage is registered immediately once MB initializes wandb.
-    patch_wandb_init_for_lineage(
-        artifact_qualified_names=qualified_names,
-        tags=["pretrain"],
-    )
+    # Wandb lineage registration
+    if tracking.wandb:
+        patch_wandb_init_for_lineage(
+            artifact_qualified_names=tracking.qualified_names,
+            tags=["pretrain", *(tags or [])],
+        )
 
     cfg: ConfigContainer = recipe_builder(config)
 

@@ -1,0 +1,40 @@
+run:
+  train_script: src/nemotron/recipes/super3/stage2_rl/test_train.py
+  data: super3-rl-data-tiny:latest
+  model: super3-sft-model-tiny:latest
+  env:
+    container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    nodes: 1
+    gpus_per_node: 1
+    ntasks_per_node: 1
+    env_vars:
+      NRL_WG_USE_RAY_REF: "1"
+      NRL_VLLM_USE_V1: "1"
+      NRL_IGNORE_VERSION_MISMATCH: "1"
+      VLLM_ATTENTION_BACKEND: "FLASH_ATTN"
+      VLLM_DEEP_GEMM_WARMUP: "skip"
+      RAY_DEDUP_LOGS: "1"
+      OMP_NUM_THREADS: "16"
+
+# Minimal GRPO config — not actually used for training,
+# but needed so config parsing doesn't fail.
+grpo:
+  num_prompts_per_step: 4
+  num_generations_per_prompt: 2
+  max_num_steps: 1
+  seed: 42
+
+policy:
+  model_name: "${art:model,path}"
+  tokenizer:
+    name: "${art:model,path}"
+
+data:
+  train:
+    data_path: "${art:data,path}/train/train.jsonl"
+  validation:
+    data_path: "${art:data,path}/val/val.jsonl"
+
+cluster:
+  gpus_per_node: 1
+  num_nodes: 1

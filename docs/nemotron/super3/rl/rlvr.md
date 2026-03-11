@@ -58,7 +58,7 @@ Uses **asynchronous GRPO** where training and inference are decoupled across sep
 | Prompts/step | 256 |
 | Generations/prompt | 16 |
 | Batch size | 4,096 |
-| Max sequence length | 65,536 |
+| Max sequence length | 49,152 → 65,536 (increased during training) |
 | TP / CP | 4 / 8 |
 | Learning rate | 3e-6 |
 | KL penalty | 0 |

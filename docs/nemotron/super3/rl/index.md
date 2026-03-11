@@ -17,13 +17,15 @@ This stage aligns the instruction-tuned model using GRPO (Group Relative Policy 
 The RL pipeline consists of three main stages with 6 total sub-stages, each targeting a different alignment objective:
 
 1. **[Multi-Environment RLVR](rlvr.md)** (3 sub-stages) — Unified training across 21 environments with verifiable rewards
-    - Stage 1.1: RLVR 1 — Initial RL training from SFT checkpoint
-    - Stage 1.2: RLVR 2 — Continued training with second data blend
-    - Stage 1.3: RLVR 3 — Final RLVR with third data blend
+    - RL Phase 1.1: RLVR 1 — Initial RL training from SFT checkpoint
+    - RL Phase 1.2: RLVR 2 — Continued training with second data blend
+    - RL Phase 1.3: RLVR 3 — Final RLVR with third data blend
 2. **[SWE-RL](swe.md)** (2 sub-stages) — End-to-end reinforcement learning for software engineering tasks
-    - Stage 2.1: SWE 1 — SWE-pivot training
-    - Stage 2.2: SWE 2 — SWE-bench training with isolated sandbox environments
-3. **[RLHF](rlhf.md)** (1 stage) — Principle-following generative reward model-based alignment
+    - RL Phase 2.1: SWE 1 — SWE-pivot training
+    - RL Phase 2.2: SWE 2 — SWE-bench training with isolated sandbox environments
+3. **[RLHF](rlhf.md)** (1 sub-stage) — Principle-following generative reward model-based alignment
+
+> **Note on numbering**: The RL sub-stage numbering (Phases 1.1–3) is internal to Stage 2 of the overall pipeline. See the [pipeline overview](../README.md) for the top-level stage numbering.
 
 Each sub-stage uses a different data blend and takes the output checkpoint of the previous sub-stage as input. The RLVR sub-stages share the same config (`stage1_rlvr.yaml`) with different data paths.
 
@@ -158,7 +160,7 @@ See [RLVR](rlvr.md), [SWE-RL](swe.md), and [RLHF](rlhf.md) for complete launch c
 
 | File | Purpose | Details |
 |------|---------|---------|
-| `stage1_rlvr.yaml` | RLVR stages 1.1–1.3 (109 nodes, 25 NeMo-Gym environments) | [RLVR](rlvr.md) |
+| `stage1_rlvr.yaml` | RLVR stages 1.1–1.3 (109 nodes, 21 environments) | [RLVR](rlvr.md) |
 | `stage2_swe1.yaml` | SWE stage 2.1 — SWE-pivot (64 nodes) | [SWE-RL](swe.md#stage-21--swe-1-64-nodes) |
 | `stage2_swe2.yaml` | SWE stage 2.2 — SWE-bench with sandbox containers (64 nodes) | [SWE-RL](swe.md#stage-22--swe-2-64-nodes) |
 | `stage3_rlhf.yaml` | RLHF stage (72 nodes, GenRM reward) | [RLHF](rlhf.md) |

@@ -147,7 +147,7 @@ def _execute_eval(cfg: RecipeConfig):
     )
 
     # Display job submission summary
-    display_job_submission(job_path, eval_path, {}, cfg.mode)
+    display_job_submission(job_path, eval_path, {}, cfg.mode, artifacts=job_config.get("artifacts"))
 
     # =========================================================================
     # 6. Execute via evaluator launcher

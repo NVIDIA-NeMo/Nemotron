@@ -130,6 +130,8 @@ def display_job_submission(
     train_path: Path,
     env_vars: dict[str, str],
     mode: str,
+    *,
+    artifacts: DictConfig | dict | None = None,
 ) -> None:
     """Display job submission summary as a Rich tree panel.
 
@@ -138,6 +140,7 @@ def display_job_submission(
         train_path: Path to train.yaml
         env_vars: Environment variables being set
         mode: Execution mode (run/batch/local)
+        artifacts: Optional artifacts configuration (from job_config.artifacts)
     """
     # Build tree
     tree = Tree("[bold]Job Submission[/bold]")
@@ -157,6 +160,24 @@ def display_job_submission(
                 env_section.add(f"[dim]{key}:[/dim] [green]✓ detected[/green]")
             else:
                 env_section.add(f"[dim]{key}:[/dim] {interesting_vars[key]}")
+
+    # Artifacts section
+    if artifacts:
+        art_dict = (
+            OmegaConf.to_container(artifacts, resolve=True)
+            if isinstance(artifacts, DictConfig)
+            else artifacts
+        )
+        art_section = tree.add("[cyan]artifacts[/cyan]")
+        manifest_cfg = art_dict.get("manifest", {})
+        manifest_root = manifest_cfg.get("root") if manifest_cfg else None
+        use_wandb = art_dict.get("wandb", False)
+        if manifest_root:
+            art_section.add(f"[dim]manifest:[/dim] {manifest_root}")
+        if use_wandb:
+            art_section.add("[dim]wandb:[/dim]    [green]✓ enabled[/green]")
+        if not manifest_root and not use_wandb:
+            art_section.add("[dim yellow]none configured[/dim yellow]")
 
     # Mode indicator
     mode_label = {

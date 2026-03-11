@@ -194,6 +194,13 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
     except Exception:
         pass
 
+    # Merge explicit env_vars from run.env config (YAML or env.toml).
+    # These are applied last so they can override auto-detected values above.
+    if env_config:
+        extra = env_config.get("env_vars") if hasattr(env_config, "get") else getattr(env_config, "env_vars", None)
+        if extra and hasattr(extra, "items"):
+            env_vars.update({str(k): str(v) for k, v in extra.items()})
+
     return env_vars
 
 

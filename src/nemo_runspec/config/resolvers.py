@@ -270,16 +270,41 @@ def _resolve_artifact_active_run(name: str, version: str | None = None) -> dict[
 
 
 def _resolve_artifact_local(artifact_ref: str) -> dict[str, Any]:
-    """Resolve artifact from local file-based registry.
+    """Resolve artifact from local/manifest-based registry.
 
-    No W&B required — reads from {root}/{name}/v{N}/metadata.json.
+    First checks for ManifestTracker-style layout (``{root}/{name}/v{N}/manifest.json``
+    with a ``latest`` pointer file).  Falls back to the legacy ArtifactRegistry
+    index-based resolution if no manifest is found.
     """
     from nemo_runspec.artifact_registry import get_artifact_registry
 
     registry = get_artifact_registry()
     name, version = _parse_artifact_ref(artifact_ref)
+    root = registry.root
 
-    # Convert version string to int or alias for registry.resolve()
+    # ------------------------------------------------------------------
+    # Try ManifestTracker layout first
+    # ------------------------------------------------------------------
+    if root:
+        artifact_dir = root / name
+        if artifact_dir.exists():
+            version_dir = _resolve_manifest_version_dir(artifact_dir, version)
+            if version_dir is not None:
+                manifest_path = version_dir / "manifest.json"
+                if manifest_path.exists():
+                    manifest = json.loads(manifest_path.read_text())
+                    return {
+                        "path": manifest["path"],
+                        "version": _normalize_version(version),
+                        "name": name,
+                        "type": manifest.get("type"),
+                        "metadata_dir": str(version_dir),
+                        "iteration": manifest.get("metadata", {}).get("iteration"),
+                    }
+
+    # ------------------------------------------------------------------
+    # Fallback: legacy ArtifactRegistry (index-based) resolution
+    # ------------------------------------------------------------------
     resolved_version: int | str | None = None
     if version is None:
         resolved_version = None  # latest
@@ -303,6 +328,36 @@ def _resolve_artifact_local(artifact_ref: str) -> dict[str, Any]:
         "metadata_dir": str(local_path),
         "iteration": metadata.get("iteration"),
     }
+
+
+def _resolve_manifest_version_dir(
+    artifact_dir: Path, version: str | None
+) -> Path | None:
+    """Resolve a version directory inside a ManifestTracker artifact directory.
+
+    Reads the ``latest`` plain-text file or scans ``v*/`` directories.
+    Returns ``None`` if the version directory doesn't exist.
+    """
+    if version is None or version == "latest":
+        latest_file = artifact_dir / "latest"
+        if latest_file.exists():
+            version_name = latest_file.read_text().strip()
+            vdir = artifact_dir / version_name
+            return vdir if vdir.exists() else None
+        # No latest file — find highest version directory
+        versions = [
+            int(d.name[1:])
+            for d in artifact_dir.iterdir()
+            if d.is_dir() and d.name.startswith("v") and d.name[1:].isdigit()
+        ]
+        if versions:
+            return artifact_dir / f"v{max(versions)}"
+        return None
+
+    # Explicit version
+    v = _normalize_version(version)
+    vdir = artifact_dir / v
+    return vdir if vdir.exists() else None
 
 
 def resolve_artifact_pre_init(

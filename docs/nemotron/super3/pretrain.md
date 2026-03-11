@@ -72,15 +72,15 @@ Several new datasets were added for Super3, released as [Nemotron-Pretraining-Sp
 
 | Dataset | Description | Scale |
 |---------|-------------|-------|
-| **Synthetic Code Concepts** | Python problems and solutions generated using concept taxonomy from HumanEval | ~15M problems |
+| **Synthetic Code Concepts** | Python problems and solutions generated using concept taxonomy from HumanEval | ~15M problem-solution pairs |
 | **Synthetic Algorithmic** | Algorithmic Python problems with edge cases and unit tests | ~0.2B tokens |
 | **Synthetic Economics** | Economics MCQs across microeconomics, macroeconomics, econometrics | TBD |
 | **Synthetic Formal Logic** | Formal logic problems: natural language ↔ predicate logic, truth tables | TBD |
-| **Synthetic MCQ** | MMLU-style MCQs bootstrapped from MMLU auxiliary training set | ~3.5M samples (~1.6B tokens) |
+| **Synthetic MCQ** | MMLU-style MCQs bootstrapped from MMLU auxiliary training set using Qwen3-235B for question generation and DeepSeek-V3 for solution generation with majority voting | ~3.5M samples (~1.6B tokens) |
 
 #### Data Mixture and Ordering
 
-The pretraining corpus spans **16 high-level categories** including web crawl data (5 quality tiers following Nemotron-CC taxonomy), math, Wikipedia, code, Nemotron-CC-Code, academic text, Crawl++, multilingual data, finepdfs, and synthetic SFT-style datasets. Reasoning-focused datasets are incorporated into pretraining following prior findings on their effectiveness.
+The pretraining corpus spans **16 high-level categories** including web crawl data (5 quality tiers following Nemotron-CC taxonomy), math, Wikipedia, code, Nemotron-CC-Code, academic text, Crawl++ (OpenWebText, BigScience, Reddit), multilingual data, finepdfs, and synthetic SFT-style datasets. Reasoning-focused datasets are incorporated into pretraining following prior findings on their effectiveness.
 
 **Two-phase curriculum:**
 
@@ -149,6 +149,9 @@ A long-context phase (LC-Phase) at the end of pretraining extends the model to *
 | **Tensor Parallelism** | 2-way |
 | **Expert Parallelism** | 64-way |
 | **Hardware** | GB200 GPUs |
+
+> **Note**: The long-context phase uses different parallelism settings (TP=2, CP=64, EP=64) than the main pretraining phase (TP=4, EP=8).
+
 | **Phase 1** | 34B tokens on 1M context |
 | **Phase 2** | 17B tokens alternating 1M and 4K sequences (mitigates math benchmark impact) |
 
@@ -176,6 +179,29 @@ Data blend: 20% document QA data (reused from Nemotron 2 & 3 Nano), 80% downscal
 | OpenBookQA | **50.20** | 47.0 | 47.8 |
 | PIQA | **85.31** | — | 84.0 |
 | WinoGrande | 78.69 | 77.4 | **83.2** |
+
+#### Multilingual Base Model Evaluations
+
+| Task | N-Super-3 Base | Ling-flash Base-2.0 | GLM-4.5 Air-Base |
+|------|----------------|---------------------|-------------------|
+| **Global-MMLU-Lite** | | | |
+| German | **87.50** | 75.8 | 78.0 |
+| Spanish | **88.50** | 78.0 | 81.3 |
+| French | **85.75** | 76.8 | 79.3 |
+| Italian | **87.75** | 78.3 | 79.3 |
+| Japanese | **84.25** | 68.3 | 77.5 |
+| Korean | **83.00** | 66.0 | 75.8 |
+| Portuguese | **86.25** | 79.3 | 82.8 |
+| Chinese | **84.00** | 76.0 | 77.8 |
+| Average | **85.88** | 74.81 | 79.00 |
+| **Multilingual Math (MGSM)** | | | |
+| Spanish | **90.40** | — | 85.6 |
+| German | **89.60** | — | 80.8 |
+| French | **86.40** | — | 80.8 |
+| Chinese | **82.00** | — | 78.4 |
+| Japanese | **81.20** | — | 68.8 |
+| Russian | **89.60** | — | 83.6 |
+| Average | **86.53** | — | 79.67 |
 
 ---
 

@@ -586,6 +586,235 @@ def _resolve_to_lustre_path(path: str) -> str:
     return resolved
 
 
+def _get_manifest_tracker():
+    """Get the active ManifestTracker, if any.
+
+    Returns the tracker only if it is a ManifestTracker instance.
+    Used by the dual-mode monkey-patches to write manifests alongside wandb.
+    """
+    from nemotron.kit.trackers import get_lineage_tracker
+    from nemo_runspec.manifest_tracker import ManifestTracker
+
+    tracker = get_lineage_tracker()
+    if isinstance(tracker, ManifestTracker):
+        return tracker
+    return None
+
+
+def patch_manifest_checkpoint_logging() -> None:
+    """Patch MB checkpoint callback to write manifests only (no wandb).
+
+    Used when ``NEMO_ARTIFACT_ROOT`` is set but ``WANDB_PROJECT`` is not.
+    """
+    from pathlib import Path
+    from typing import Any
+
+    global _CHECKPOINT_LOGGING_PATCHED
+    if _CHECKPOINT_LOGGING_PATCHED:
+        logger.warning("[ARTIFACT] Checkpoint logging already patched, skipping manifest-only patch")
+        return
+
+    from megatron.bridge.training.utils import wandb_utils
+
+    def patched_on_save_checkpoint_success(
+        checkpoint_path: str,
+        save_dir: str,
+        iteration: int,
+        wandb_writer: Any | None,
+    ) -> None:
+        tracker = _get_manifest_tracker()
+        if tracker is None:
+            return
+        artifact_name, _ = wandb_utils._get_artifact_name_and_version(
+            Path(save_dir), Path(checkpoint_path)
+        )
+        resolved = _resolve_to_lustre_path(str(Path(save_dir).resolve()))
+        try:
+            tracker.log_model_checkpoint(
+                name=artifact_name,
+                path=resolved,
+                iteration=iteration,
+            )
+            logger.info(f"[ARTIFACT] Manifest written: {artifact_name} iteration={iteration}")
+        except Exception as e:
+            logger.warning(f"[ARTIFACT] Manifest write failed: {e}")
+
+    wandb_utils.on_save_checkpoint_success = patched_on_save_checkpoint_success
+    _CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched checkpoint logging for manifest-only mode")
+
+
+def patch_checkpoint_logging_both() -> None:
+    """Patch MB checkpoint callback to write manifest + wandb.
+
+    Manifest is written first (fast, reliable), then wandb (best-effort).
+    Used when both ``NEMO_ARTIFACT_ROOT`` and ``WANDB_PROJECT`` are set.
+    """
+    from pathlib import Path
+    from typing import Any
+
+    global _CHECKPOINT_LOGGING_PATCHED
+    if _CHECKPOINT_LOGGING_PATCHED:
+        logger.warning("[ARTIFACT] Checkpoint logging already patched, skipping manifest+wandb patch")
+        return
+
+    from megatron.bridge.training.utils import wandb_utils
+
+    def patched_on_save_checkpoint_success(
+        checkpoint_path: str,
+        save_dir: str,
+        iteration: int,
+        wandb_writer: Any | None,
+    ) -> None:
+        artifact_name, artifact_version = wandb_utils._get_artifact_name_and_version(
+            Path(save_dir), Path(checkpoint_path)
+        )
+        checkpoint_path_resolved = Path(checkpoint_path).resolve()
+        resolved_save_dir = _resolve_to_lustre_path(str(Path(save_dir).resolve()))
+
+        # Always write manifest first (fast, reliable)
+        tracker = _get_manifest_tracker()
+        if tracker is not None:
+            try:
+                tracker.log_model_checkpoint(
+                    name=artifact_name,
+                    path=resolved_save_dir,
+                    iteration=iteration,
+                )
+                logger.info(f"[ARTIFACT] Manifest written: {artifact_name} iteration={iteration}")
+            except Exception as e:
+                logger.warning(f"[ARTIFACT] Manifest write failed: {e}")
+
+        # Then log to wandb (best-effort)
+        if wandb_writer and getattr(wandb_writer, "run", None):
+            try:
+                if not checkpoint_path_resolved.exists():
+                    logger.warning(
+                        f"[WANDB] Checkpoint path does not exist, skipping: {checkpoint_path_resolved}"
+                    )
+                    return
+
+                metadata = {"iteration": iteration, "absolute_path": resolved_save_dir}
+                artifact = wandb_writer.Artifact(artifact_name, type="model", metadata=metadata)
+                artifact.add_reference(f"file://{str(checkpoint_path_resolved)}", checksum=False)
+                logged = wandb_writer.run.log_artifact(artifact, aliases=[artifact_version])
+                logged.wait()
+                logger.info(f"[WANDB] Artifact committed: {artifact_name}:{artifact_version}")
+
+                wandb_tracker_filename = wandb_utils._get_wandb_artifact_tracker_filename(save_dir)
+                wandb_tracker_filename.write_text(
+                    f"{wandb_writer.run.entity}/{wandb_writer.run.project}"
+                )
+            except Exception as e:
+                logger.error(f"[WANDB] Checkpoint artifact failed: {e}")
+
+    wandb_utils.on_save_checkpoint_success = patched_on_save_checkpoint_success
+    _CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched checkpoint logging for manifest+wandb mode")
+
+
+def patch_manifest_nemo_rl_checkpoint_logging(artifact_name: str = "rl") -> None:
+    """Patch NeMo-RL CheckpointManager to write manifests only (no wandb)."""
+    from pathlib import Path
+
+    global _NEMO_RL_CHECKPOINT_LOGGING_PATCHED
+    if _NEMO_RL_CHECKPOINT_LOGGING_PATCHED:
+        return
+
+    try:
+        from nemo_rl.utils.checkpoint import CheckpointManager
+    except ImportError:
+        logger.warning("[ARTIFACT] nemo_rl not installed, skipping manifest checkpoint patch")
+        return
+
+    original_finalize = CheckpointManager.finalize_checkpoint
+
+    def patched_finalize(self, checkpoint_path):
+        original_finalize(self, checkpoint_path)
+
+        tracker = _get_manifest_tracker()
+        if tracker is None:
+            return
+
+        checkpoint_path = Path(checkpoint_path)
+        step = int(checkpoint_path.name.split("_")[-1])
+        final_path = checkpoint_path.parent / f"step_{step}"
+        resolved = _resolve_to_lustre_path(str(final_path.resolve()))
+
+        try:
+            tracker.log_model_checkpoint(
+                name=artifact_name,
+                path=resolved,
+                iteration=step,
+            )
+            logger.info(f"[ARTIFACT] RL manifest written: {artifact_name} step={step}")
+        except Exception as e:
+            logger.warning(f"[ARTIFACT] RL manifest failed: {e}")
+
+    CheckpointManager.finalize_checkpoint = patched_finalize
+    _NEMO_RL_CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched NeMo-RL checkpoint for manifest-only mode")
+
+
+def patch_nemo_rl_checkpoint_logging_both(artifact_name: str = "rl") -> None:
+    """Patch NeMo-RL CheckpointManager to write manifest + wandb."""
+    from pathlib import Path
+
+    global _NEMO_RL_CHECKPOINT_LOGGING_PATCHED
+    if _NEMO_RL_CHECKPOINT_LOGGING_PATCHED:
+        return
+
+    try:
+        from nemo_rl.utils.checkpoint import CheckpointManager
+    except ImportError:
+        logger.warning("[ARTIFACT] nemo_rl not installed, skipping checkpoint patch")
+        return
+
+    original_finalize = CheckpointManager.finalize_checkpoint
+
+    def patched_finalize(self, checkpoint_path):
+        original_finalize(self, checkpoint_path)
+
+        checkpoint_path = Path(checkpoint_path)
+        step = int(checkpoint_path.name.split("_")[-1])
+        final_path = checkpoint_path.parent / f"step_{step}"
+        resolved = _resolve_to_lustre_path(str(final_path.resolve()))
+
+        # Manifest first
+        tracker = _get_manifest_tracker()
+        if tracker is not None:
+            try:
+                tracker.log_model_checkpoint(
+                    name=artifact_name,
+                    path=resolved,
+                    iteration=step,
+                )
+                logger.info(f"[ARTIFACT] RL manifest written: {artifact_name} step={step}")
+            except Exception as e:
+                logger.warning(f"[ARTIFACT] RL manifest failed: {e}")
+
+        # Wandb on top
+        try:
+            import wandb
+        except ImportError:
+            return
+        if wandb.run is None:
+            return
+        try:
+            metadata = {"step": step, "absolute_path": resolved}
+            artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+            artifact.add_reference(f"file://{resolved}", checksum=False)
+            logged = wandb.run.log_artifact(artifact, aliases=[f"step_{step}", "latest"])
+            logged.wait()
+            logger.info(f"[WANDB] RL artifact committed: {artifact_name}:step_{step}")
+        except Exception as e:
+            logger.error(f"[WANDB] RL checkpoint artifact failed: {e}")
+
+    CheckpointManager.finalize_checkpoint = patched_finalize
+    _NEMO_RL_CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched NeMo-RL checkpoint for manifest+wandb mode")
+
+
 def patch_wandb_checkpoint_logging() -> None:
     """Patch Megatron-Bridge's checkpoint logging to call wait() after log_artifact.
 

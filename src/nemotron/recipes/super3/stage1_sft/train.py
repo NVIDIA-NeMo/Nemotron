@@ -71,10 +71,13 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 from omegaconf import DictConfig, OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
-from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
+from nemo_runspec.artifacts import setup_artifact_tracking
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb_kit import (
+    _get_manifest_tracker,
     _resolve_to_lustre_path,
+    patch_checkpoint_logging_both,
+    patch_manifest_checkpoint_logging,
     patch_wandb_checkpoint_logging,
     patch_wandb_http_handler_skip_digest_verification,
     patch_wandb_init_for_lineage,
@@ -169,11 +172,28 @@ def log_hf_checkpoint_artifact(
         logger.info("No active wandb run, skipping HF artifact logging")
         return
 
-    try:
-        hf_path_resolved = str(Path(hf_path).resolve())
-        absolute_path = _resolve_to_lustre_path(hf_path_resolved)
+    hf_path_resolved = str(Path(hf_path).resolve())
+    absolute_path = _resolve_to_lustre_path(hf_path_resolved)
+    artifact_name = f"{artifact_base_name}-hf"
 
-        artifact_name = f"{artifact_base_name}-hf"
+    # Always write manifest if tracker is active
+    tracker = _get_manifest_tracker()
+    if tracker is not None:
+        try:
+            tracker.log_model_checkpoint(
+                name=artifact_name,
+                path=absolute_path,
+                iteration=0,
+            )
+            logger.info(f"[ARTIFACT] HF manifest written: {artifact_name}")
+        except Exception as e:
+            logger.warning(f"[ARTIFACT] HF manifest failed: {e}")
+
+    # Wandb on top (best-effort)
+    if wandb.run is None:
+        return
+
+    try:
         metadata = {"absolute_path": absolute_path, "format": "huggingface"}
         artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
         artifact.add_reference(f"file://{hf_path_resolved}", checksum=False)
@@ -269,6 +289,8 @@ def run_finetune(
     config_path: Path,
     recipe_builder: RecipeBuilder,
     cli_overrides: list[str] | None = None,
+    *,
+    tags: list[str] | None = None,
 ) -> None:
     """Core SFT pipeline.
 
@@ -285,26 +307,30 @@ def run_finetune(
     config = load_omegaconf_yaml(config_path)
 
     # -------------------------------------------------------------------------
-    # WANDB MONKEY-PATCHES
+    # ARTIFACT TRACKING
     # -------------------------------------------------------------------------
-    patch_wandb_http_handler_skip_digest_verification()
-    patch_wandb_local_file_handler_skip_digest_verification()
-    patch_wandb_runid_for_seeded_random()
-    patch_wandb_checkpoint_logging()
+    tracking = setup_artifact_tracking(config, artifacts_key="run")
 
-    clear_artifact_cache()
+    # Wandb bug workarounds (specific to this container version)
+    if tracking.wandb:
+        patch_wandb_http_handler_skip_digest_verification()
+        patch_wandb_local_file_handler_skip_digest_verification()
+        patch_wandb_runid_for_seeded_random()
 
-    qualified_names = register_resolvers_from_config(
-        config,
-        artifacts_key="run",
-        mode="pre_init",
-        pre_init_patch_http_digest=False,
-    )
+    # Checkpoint logging patches
+    if tracking.manifest and tracking.wandb:
+        patch_checkpoint_logging_both()
+    elif tracking.wandb:
+        patch_wandb_checkpoint_logging()
+    elif tracking.manifest:
+        patch_manifest_checkpoint_logging()
 
-    patch_wandb_init_for_lineage(
-        artifact_qualified_names=qualified_names,
-        tags=["sft"],
-    )
+    # Wandb lineage registration
+    if tracking.wandb:
+        patch_wandb_init_for_lineage(
+            artifact_qualified_names=tracking.qualified_names,
+            tags=["sft", *(tags or [])],
+        )
 
     cfg: ConfigContainer = recipe_builder(config)
 

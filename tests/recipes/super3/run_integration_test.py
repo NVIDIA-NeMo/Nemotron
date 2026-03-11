@@ -23,9 +23,12 @@ The pipeline chains stages via wandb artifacts:
   2. data prep sft       (--config tiny)  → super3-sft-data artifact
   3. pretrain             (--config test)  → super3-pretrain-model-tiny artifact
   4. sft                  (--config test)  → super3-sft-model-tiny artifact
+  5. rl preflight         (--config test)  → validates RL infra (Ray, env vars,
+                                             artifact resolution, GPU, imports)
 
 Data-prep stages run on CPU nodes (Ray), training stages run on GPU nodes
-(torchrun), so they require separate env.toml profiles.
+(torchrun), and RL preflight runs on a GPU node inside the nemo-rl container
+(Ray). They may require separate env.toml profiles.
 
 Usage::
 
@@ -75,6 +78,12 @@ STAGES: list[dict] = [
         "phase": "train",
         "cmd": ["nemotron", "super3", "sft", "--config", "test"],
     },
+    # Phase 3: RL infrastructure preflight (GPU / Ray)
+    {
+        "name": "rl-preflight",
+        "phase": "rl",
+        "cmd": ["nemotron", "super3", "rl", "rlvr", "--config", "test"],
+    },
 ]
 
 
@@ -102,6 +111,10 @@ def main() -> NoReturn:
         help="env.toml profile for training stages (GPU/torchrun)",
     )
     parser.add_argument(
+        "--rl-profile",
+        help="env.toml profile for RL preflight (GPU/Ray, defaults to --train-profile)",
+    )
+    parser.add_argument(
         "--skip-data-prep",
         action="store_true",
         help="Skip data preparation (use existing wandb artifacts)",
@@ -110,6 +123,11 @@ def main() -> NoReturn:
         "--skip-training",
         action="store_true",
         help="Skip training stages (only run data prep)",
+    )
+    parser.add_argument(
+        "--skip-rl",
+        action="store_true",
+        help="Skip RL preflight check",
     )
     parser.add_argument(
         "--dry-run",
@@ -123,10 +141,14 @@ def main() -> NoReturn:
         parser.error("--data-profile is required (or use --skip-data-prep)")
     if not args.skip_training and not args.train_profile:
         parser.error("--train-profile is required (or use --skip-training)")
+    rl_profile = args.rl_profile or args.train_profile
+    if not args.skip_rl and not rl_profile:
+        parser.error("--rl-profile or --train-profile is required (or use --skip-rl)")
 
     profiles = {
         "data": args.data_profile,
         "train": args.train_profile,
+        "rl": rl_profile,
     }
 
     # Filter stages
@@ -134,6 +156,7 @@ def main() -> NoReturn:
         s for s in STAGES
         if not (args.skip_data_prep and s["phase"] == "data")
         and not (args.skip_training and s["phase"] == "train")
+        and not (args.skip_rl and s["phase"] == "rl")
     ]
 
     if not stages:

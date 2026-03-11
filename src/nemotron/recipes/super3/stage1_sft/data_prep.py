@@ -118,6 +118,7 @@ from nemotron.data_prep.stages import (
 )
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
 from nemotron.kit import SFTDataArtifact, print_step_complete
+from nemo_runspec.artifacts import ArtifactTrackingResult, log_artifact, setup_artifact_tracking
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
     init_wandb_from_env,
@@ -276,7 +277,10 @@ class SFTDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
+def run_data_prep_main(
+    cfg: SFTDataPrepConfig,
+    tracking: ArtifactTrackingResult | None = None,
+) -> SFTDataArtifact:
     """Run SFT data preparation pipeline.
 
     Args:
@@ -459,7 +463,11 @@ def run_data_prep_main(cfg: SFTDataPrepConfig) -> SFTDataArtifact:
         elapsed_sec=elapsed_sec,
         name=artifact_name,
     )
-    artifact.save()
+    # Log to all active backends (manifest + wandb)
+    if tracking is not None:
+        log_artifact(artifact, tracking)
+    else:
+        artifact.save()
 
     # Finish W&B and print completion
     wandb_kit.finish_run(exit_code=0)
@@ -492,14 +500,22 @@ def main(cfg: SFTDataPrepConfig | None = None) -> SFTDataArtifact:
         if cli_overrides:
             config = apply_hydra_overrides(config, cli_overrides)
 
+        # Setup artifact tracking BEFORE dataclass conversion
+        # (artifacts: section is available in OmegaConf but not in the dataclass)
+        tracking = setup_artifact_tracking(config)
+
         # Convert to dataclass
         cfg = omegaconf_to_dataclass(config, SFTDataPrepConfig)
+    else:
+        # Called from CLI framework — no artifacts config available
+        tracking = None
 
     # Initialize wandb from environment variables (set by nemo-run)
-    init_wandb_from_env()
+    if tracking is None or tracking.wandb:
+        init_wandb_from_env()
 
     # Run data prep
-    return run_data_prep_main(cfg)
+    return run_data_prep_main(cfg, tracking=tracking)
 
 
 if __name__ == "__main__":

@@ -100,7 +100,7 @@ The evaluation covers six categories of benchmarks, matching the tech report eva
 
 ## Post-Trained Model Results
 
-Comparison against Qwen3.5-122B-A10B and GPT-OSS-120B:
+Comparison against Qwen3.5-122B-A10B and GPT-OSS-120B (officially reported numbers are used when available; otherwise scores are computed using official evaluation settings):
 
 | Benchmark | N-3-Super | Qwen3.5-122B-A10B | GPT-OSS-120B |
 |-----------|-----------|---------------------|--------------|

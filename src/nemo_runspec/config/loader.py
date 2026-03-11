@@ -28,7 +28,7 @@ from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-from nemo_runspec.env import get_wandb_config
+from nemo_runspec.env import get_artifacts_config, get_wandb_config
 from nemo_runspec.cli_context import GlobalContext
 from nemo_runspec.utils import rewrite_paths_for_remote, resolve_run_interpolations
 from nemo_runspec.config.resolvers import _is_artifact_reference
@@ -207,6 +207,19 @@ def build_job_config(
     wandb_config = get_wandb_config()
     if wandb_config:
         run_updates["wandb"] = OmegaConf.to_container(wandb_config, resolve=True)
+
+    # Merge [artifacts] from env.toml into top-level artifacts section.
+    # env.toml is base, YAML config overrides.
+    env_artifacts = get_artifacts_config()
+    if env_artifacts:
+        env_art_dict = OmegaConf.to_container(env_artifacts, resolve=True)
+        existing_artifacts = {}
+        if "artifacts" in job_config:
+            existing_artifacts = OmegaConf.to_container(
+                job_config.artifacts, resolve=False
+            )
+        merged_artifacts = {**env_art_dict, **existing_artifacts}
+        job_config.artifacts = OmegaConf.create(merged_artifacts)
 
     # Merge run updates into existing run section (or create it)
     if "run" in job_config:

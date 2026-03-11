@@ -3,6 +3,14 @@ run:
   model: super3-sft-model-tiny:latest
   env:
     container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    env_vars:
+      NRL_WG_USE_RAY_REF: "1"
+      NRL_VLLM_USE_V1: "1"
+      NRL_IGNORE_VERSION_MISMATCH: "1"
+      VLLM_ATTENTION_BACKEND: "FLASH_ATTN"
+      VLLM_DEEP_GEMM_WARMUP: "skip"
+      RAY_DEDUP_LOGS: "1"
+      OMP_NUM_THREADS: "16"
 
 grpo:
   num_prompts_per_step: 8

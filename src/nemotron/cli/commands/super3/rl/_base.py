@@ -57,8 +57,7 @@ from nemo_runspec.execution import (
 )
 from nemo_runspec.packaging import REMOTE_CONFIG, REMOTE_SCRIPT
 from nemo_runspec.squash import ensure_squashed_image
-from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
-from nemo_runspec.recipe_typer import RecipeMeta
+from nemo_runspec.recipe_config import RecipeConfig
 
 # =============================================================================
 # Recipe Metadata (read from [tool.runspec] in script)
@@ -67,25 +66,56 @@ from nemo_runspec.recipe_typer import RecipeMeta
 SCRIPT_PATH = "src/nemotron/recipes/super3/stage2_rl/train.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
-# Ray-specific execution settings
-# workdir comes from SPEC, but these commands are implementation details
-PRE_RAY_START_COMMANDS = [
-    f"cp {REMOTE_SCRIPT} {SPEC.run.workdir}/",
-    f"cp {REMOTE_CONFIG} {SPEC.run.workdir}/",
-]
 
-# For help panels
-META = RecipeMeta(
-    name=SPEC.name,
-    script_path=SCRIPT_PATH,
-    config_dir=str(SPEC.config_dir),
-    default_config=SPEC.config.default,
-    input_artifacts={
-        "model": "SFT model checkpoint (from sft stage)",
-        "data": "RL data artifact (JSONL prompts)",
-    },
-    output_artifacts={"model": "RL-trained model checkpoint"},
-)
+
+
+# =============================================================================
+# RL-specific env var helpers
+# =============================================================================
+
+
+def _sandbox_env_vars(sandbox_cfg: dict) -> dict[str, str]:
+    """Expand sandbox config into environment variables for NeMo-Gym.
+
+    Maps the structured ``run.env.sandbox`` config to the env vars that
+    NeMo-Skills sandbox containers expect.
+    """
+    container = sandbox_cfg.get("container", "")
+    if not container:
+        return {}
+    port = str(sandbox_cfg.get("port", 6000))
+    return {
+        "SANDBOX_CONTAINER": container,
+        "LISTEN_PORT": port,
+        "NGINX_PORT": port,
+        "NEMO_SKILLS_SANDBOX_PORT": port,
+        "SANDBOX_COMMAND": sandbox_cfg.get("command", "/start-with-nginx.sh"),
+        "SANDBOX_ENV_VARS": f"NEMO_SKILLS_SANDBOX_PORT={port}",
+    }
+
+
+def _cache_env_vars(persistent_cache: str) -> dict[str, str]:
+    """Derive vLLM/FlashInfer cache paths from a single root directory.
+
+    Maps ``run.env.persistent_cache`` to the env vars that vLLM and
+    FlashInfer use for compilation and workspace caches.
+    """
+    if not persistent_cache:
+        return {}
+    return {
+        "VLLM_CACHE_ROOT": f"{persistent_cache}/vllm_compile_cache",
+        "DG_JIT_CACHE_DIR": f"{persistent_cache}/vllm_compile_cache/deep_gemm",
+        "FLASHINFER_CUBIN_DIR": f"{persistent_cache}/flashinfer_cubins",
+        "FLASHINFER_WORKSPACE_BASE": f"{persistent_cache}/flashinfer_workspace",
+    }
+
+
+_CACHE_SUBDIRS = [
+    "vllm_compile_cache",
+    "vllm_compile_cache/deep_gemm",
+    "flashinfer_cubins",
+    "flashinfer_workspace",
+]
 
 
 # =============================================================================
@@ -93,7 +123,7 @@ META = RecipeMeta(
 # =============================================================================
 
 
-def _execute_rl(cfg: RecipeConfig):
+def _execute_rl(cfg: RecipeConfig, script_path: str | None = None, spec=None):
     """Execute RL with Ray via nemo-run.
 
     This function contains the VISIBLE execution logic. RL uses Ray
@@ -101,19 +131,28 @@ def _execute_rl(cfg: RecipeConfig):
 
     Args:
         cfg: Parsed recipe configuration
+        script_path: Override script path (for sub-stage commands)
+        spec: Override runspec (for sub-stage commands)
     """
+    script_path = script_path or SCRIPT_PATH
+    spec = spec or SPEC
     # =========================================================================
     # 1. Parse configuration
     # =========================================================================
-    train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
+    train_config = parse_config(cfg.ctx, spec.config_dir, spec.config.default)
     env = parse_env(cfg.ctx)
+
+    # Allow config to override the train script (e.g. test.yaml → test_train.py)
+    if "run" in train_config and "train_script" in train_config.run:
+        script_path = train_config.run.train_script
+        spec = parse_runspec(script_path)
 
     # Build full job config with provenance
     job_config = build_job_config(
         train_config,
         cfg.ctx,
-        SPEC.name,
-        SCRIPT_PATH,
+        spec.name,
+        script_path,
         cfg.argv,
         env_profile=env,
     )
@@ -129,7 +168,7 @@ def _execute_rl(cfg: RecipeConfig):
     # =========================================================================
     # 2. Save configs and prepare execution
     # =========================================================================
-    job_dir = generate_job_dir(SPEC.name)
+    job_dir = generate_job_dir(spec.name)
     train_config_for_script = extract_train_config(job_config, for_remote=for_remote)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
@@ -139,7 +178,7 @@ def _execute_rl(cfg: RecipeConfig):
     env_vars = build_env_vars(job_config, env_for_executor)
 
     # Display job submission summary
-    display_job_submission(job_path, train_path, env_vars, cfg.mode)
+    display_job_submission(job_path, train_path, env_vars, cfg.mode, artifacts=job_config.get("artifacts"))
 
     # Get startup commands from env config
     startup_commands = get_startup_commands(env_for_executor)
@@ -149,7 +188,7 @@ def _execute_rl(cfg: RecipeConfig):
     # =========================================================================
     if cfg.mode == "local":
         execute_local(
-            SCRIPT_PATH,
+            script_path,
             train_path,
             cfg.passthrough,
             torchrun=False,  # Ray handles distribution
@@ -166,6 +205,8 @@ def _execute_rl(cfg: RecipeConfig):
             env_vars=env_vars,
             startup_commands=startup_commands,
             force_squash=cfg.force_squash,
+            script_path=script_path,
+            spec=spec,
         )
 
 
@@ -177,7 +218,11 @@ def _execute_ray(
     env_vars: dict[str, str],
     startup_commands: list[str] | None,
     force_squash: bool,
+    script_path: str | None = None,
+    spec=None,
 ):
+    script_path = script_path or SCRIPT_PATH
+    spec = spec or SPEC
     """Execute via Ray (RayJob).
 
     This is the VISIBLE Ray execution logic. The key differences from Slurm:
@@ -223,11 +268,11 @@ def _execute_ray(
 
     # Build packager - explicit choice of how code is bundled
     packager = SelfContainedPackager(
-        script_path=SCRIPT_PATH,
+        script_path=script_path,
         train_path=str(train_path),
     )
 
-    container_image = _get("container_image") or _get("container") or SPEC.image
+    container_image = _get("container_image") or _get("container") or spec.image
 
     if container_image and tunnel and remote_job_dir:
         tunnel.connect()
@@ -256,6 +301,21 @@ def _execute_ray(
         if tunnel:
             tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
+    # -----------------------------------------------------------------
+    # RL-specific env vars: sandbox + persistent cache
+    # -----------------------------------------------------------------
+    sandbox_cfg = _get("sandbox")
+    if sandbox_cfg and hasattr(sandbox_cfg, "get"):
+        env_vars.update(_sandbox_env_vars(sandbox_cfg))
+
+    persistent_cache = _get("persistent_cache", "")
+    if persistent_cache:
+        env_vars.update(_cache_env_vars(persistent_cache))
+        # Create cache directories on the remote side
+        if tunnel:
+            for subdir in _CACHE_SUBDIRS:
+                tunnel.run(f"mkdir -p {persistent_cache}/{subdir}", hide=True)
+
     executor = run.SlurmExecutor(
         account=_get("account"),
         partition=partition,
@@ -274,7 +334,7 @@ def _execute_ray(
     )
 
     # Ray-specific setup
-    recipe_name = SPEC.name.replace("/", "-")
+    recipe_name = spec.name.replace("/", "-")
     job_name = f"{recipe_name}_{int(time.time())}"
     ray_job = RayJob(name=job_name, executor=executor)
 
@@ -285,17 +345,21 @@ def _execute_ray(
     # For self_contained packager, create inlined main.py at repo root
     from nemo_runspec.packaging.self_contained_packager import inline_imports
 
-    script_file = Path(SCRIPT_PATH)
+    script_file = Path(script_path)
     if not script_file.is_absolute():
-        script_file = Path.cwd() / SCRIPT_PATH
+        script_file = Path.cwd() / script_path
     inlined = inline_imports(script_file, repo_root=Path.cwd(), package_prefix="nemotron")
     repo_main = Path.cwd() / REMOTE_SCRIPT
     repo_main.write_text(inlined, encoding="utf-8")
 
     # Check for YAML overrides for workdir, pre_ray_start_commands, run_command
-    effective_workdir = _get("workdir", SPEC.run.workdir)
-    effective_pre_ray_start_commands = _get("pre_ray_start_commands", PRE_RAY_START_COMMANDS)
-    effective_run_command = _get("run_command", SPEC.run.cmd)
+    effective_workdir = _get("workdir", spec.run.workdir)
+    default_pre_ray = [
+        f"cp {REMOTE_SCRIPT} {spec.run.workdir}/",
+        f"cp {REMOTE_CONFIG} {spec.run.workdir}/",
+    ]
+    effective_pre_ray_start_commands = _get("pre_ray_start_commands", default_pre_ray)
+    effective_run_command = _get("run_command", spec.run.cmd)
 
     # Build setup commands
     if effective_pre_ray_start_commands is not None:
@@ -396,17 +460,4 @@ def _execute_ray(
                 raise typer.Exit(0)
 
 
-# =============================================================================
-# CLI Entry Point
-# =============================================================================
 
-
-def rl(ctx: typer.Context) -> None:
-    """Run reinforcement learning with NeMo-RL GRPO (stage2).
-
-    This command runs GRPO RL training using NeMo-RL. Unlike pretrain/sft,
-    this uses Ray for distributed execution. The execution logic is visible
-    in this file - see _execute_ray() for the Ray submission setup.
-    """
-    cfg = parse_recipe_config(ctx)
-    _execute_rl(cfg)

@@ -100,6 +100,7 @@ from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStageConfig
 from nemotron.data_prep.stages.jsonl_write import JsonlShardStage, JsonlShardStageConfig
 from nemotron.kit import SplitJsonlDataArtifact, print_step_complete
 from nemotron.kit.trackers import InputDatasetInfo
+from nemo_runspec.artifacts import ArtifactTrackingResult, log_artifact, setup_artifact_tracking
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
     init_wandb_from_env,
@@ -168,7 +169,10 @@ class RLDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
+def run_data_prep_main(
+    cfg: RLDataPrepConfig,
+    tracking: ArtifactTrackingResult | None = None,
+) -> SplitJsonlDataArtifact:
     """Run RL data preparation with placeholder resolution.
 
     Uses the cosmos-xenna multi-stage pipeline:
@@ -298,7 +302,11 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
     )
 
     artifact.name = f"super3/rl/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
-    artifact.save()
+    # Log to all active backends (manifest + wandb)
+    if tracking is not None:
+        log_artifact(artifact, tracking)
+    else:
+        artifact.save()
 
     # Mark wandb run as successful
     wandb_kit.finish_run(exit_code=0)
@@ -331,14 +339,22 @@ def main(cfg: RLDataPrepConfig | None = None) -> SplitJsonlDataArtifact:
         if cli_overrides:
             config = apply_hydra_overrides(config, cli_overrides)
 
+        # Setup artifact tracking BEFORE dataclass conversion
+        # (artifacts: section is available in OmegaConf but not in the dataclass)
+        tracking = setup_artifact_tracking(config)
+
         # Convert to dataclass
         cfg = omegaconf_to_dataclass(config, RLDataPrepConfig)
+    else:
+        # Called from CLI framework — no artifacts config available
+        tracking = None
 
     # Initialize wandb from environment variables (set by nemo-run)
-    init_wandb_from_env()
+    if tracking is None or tracking.wandb:
+        init_wandb_from_env()
 
     # Run data prep
-    return run_data_prep_main(cfg)
+    return run_data_prep_main(cfg, tracking=tracking)
 
 
 if __name__ == "__main__":

@@ -116,7 +116,7 @@ def main() -> None:
         logger.error(str(e))
         sys.exit(1)
 
-    run_finetune(config_path, _tiny_recipe_builder, cli_overrides)
+    run_finetune(config_path, _tiny_recipe_builder, cli_overrides, tags=["test"])
 
 
 if __name__ == "__main__":

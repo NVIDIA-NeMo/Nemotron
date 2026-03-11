@@ -56,11 +56,8 @@ super3_app.add_typer(model_app, name="model")
 super3_app.add_recipe_command(pretrain, meta=PRETRAIN_META, rich_help_panel="Training Stages")
 super3_app.add_recipe_command(sft, meta=SFT_META, rich_help_panel="Training Stages")
 
-# TODO(super3): Enable RL sub-stage commands once Megatron checkpoint consumption
-# is supported. For now, run RL directly inside the NeMo-RL container.
-# See src/nemotron/recipes/super3/stage2_rl/{stage1_rlvr,stage2_swe1,stage2_swe2,stage3_rlhf}/ for configs.
-# from nemotron.cli.commands.super3.rl import rl_app
-# super3_app.add_typer(rl_app, name="rl")
+from nemotron.cli.commands.super3.rl import rl_app
+super3_app.add_typer(rl_app, name="rl")
 
 super3_app.add_recipe_command(eval_cmd, meta=EVAL_META, rich_help_panel="Evaluation")
 super3_app.add_recipe_command(pipe, meta=PIPE_META, rich_help_panel="Pipeline")

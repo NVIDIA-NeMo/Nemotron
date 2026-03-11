@@ -80,6 +80,7 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 | 1 | [SFT](./sft.md) | Multi-domain instruction tuning with two-stage loss | [sft.md](./sft.md) |
 | 2 | [RL](./rl/index.md) | Multi-environment RLVR + SWE-RL + RLHF alignment | [rl/](./rl/index.md) |
 | 3 | [Quantization](./quantization.md) | FP8 and NVFP4 post-training quantization | [quantization.md](./quantization.md) |
+| — | Distillation | Knowledge distillation (see tech report) | Coming soon |
 | 4 | [Evaluation](./evaluate.md) | Benchmark evaluation across 20+ benchmarks | [evaluate.md](./evaluate.md) |
 
 ## Model Specifications

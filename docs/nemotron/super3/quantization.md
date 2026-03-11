@@ -66,7 +66,7 @@ QAD uses the BF16 checkpoint as teacher and the NVFP4 checkpoint as student:
 
 | Parameter | Value |
 |-----------|-------|
-| **Calibration** | 2K samples, 131K context from post-training reasoning SFT |
+| **Calibration (PTQ student)** | 2K samples, 131K context from post-training reasoning SFT |
 | **Loss Function** | Logit-based loss (best of logit, logit+LM, hidden-cosine) |
 | **Learning Rate** | 1e-5 |
 | **Data Blend** | SFT + RL on-policy rollouts (60:40 ratio) |
@@ -87,60 +87,87 @@ The Mamba SSM cache presents a unique quantization challenge: during training th
 
 ---
 
+## Quantization Configurations
+
+Nemotron 3 Super supports four quantization configurations tailored for the Mamba-MoE architecture:
+
+| Config Name | Format | Description |
+|---|---|---|
+| `mamba_moe_fp8_aggressive` | FP8 | Aggressive FP8 quantization for Mamba-MoE |
+| `mamba_moe_fp8_conservative` | FP8 | Conservative FP8 quantization for Mamba-MoE |
+| `mamba_moe_nvfp4_aggressive` | NVFP4 | Aggressive NVFP4 quantization for Mamba-MoE |
+| `mamba_moe_nvfp4_conservative` | NVFP4 | Conservative NVFP4 quantization for Mamba-MoE |
+
+Pass the desired config name via `--export-quant-cfg` to `quantize.py`.
+
+---
+
 ## Recipe Execution
 
-### Quick Start
+### Direct Script Execution (Megatron-Bridge)
 
-<div class="termy">
-
-```console
-// Quantize model to FP8
-$ uv run nemotron super3 quantize --format fp8 --run YOUR-CLUSTER
-
-// Quantize model to NVFP4
-$ uv run nemotron super3 quantize --format nvfp4 --run YOUR-CLUSTER
-```
-
-</div>
-
-### Megatron-Bridge PTQ Commands
-
-For direct execution using [Model Optimizer](https://github.com/NVIDIA/Model-Optimizer):
+For direct execution, use the scripts in the [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) repository:
 
 ```bash
-# Quantize to FP8
-python -m modelopt.torch.quantize \
-    --model-path /path/to/rl/checkpoint \
-    --output-path /path/to/fp8/checkpoint \
-    --format fp8 \
-    --calib-size 256
-
-# Quantize to NVFP4 with AutoQuantize
-python -m modelopt.torch.quantize \
-    --model-path /path/to/rl/checkpoint \
-    --output-path /path/to/nvfp4/checkpoint \
-    --format nvfp4 \
-    --autoquantize \
-    --calib-size 512
-
-# Export for TensorRT-LLM deployment
-python -m modelopt.torch.export \
-    --model-path /path/to/quantized/checkpoint \
-    --output-path /path/to/trt-llm/engine
+# Clone the repository and checkout the super-v3 branch
+git clone https://github.com/NVIDIA-NeMo/Megatron-Bridge.git
+cd Megatron-Bridge
+git checkout super-v3
 ```
 
-### Configuration
+### Quantize
 
-| File | Purpose |
-|------|---------|
-| `config/quantize/fp8.yaml` | FP8 quantization settings |
-| `config/quantize/nvfp4.yaml` | NVFP4 quantization settings |
+```bash
+export HF_MODEL=/path/to/hf/model
+export MEGATRON_SAVE_PATH=/path/to/quantized/megatron/ckpt
+
+torchrun --nproc_per_node=16 examples/quantization/quantize.py \
+    --hf-model-id $HF_MODEL \
+    --export-quant-cfg mamba_moe_nvfp4_conservative \
+    --megatron-save-path $MEGATRON_SAVE_PATH \
+    --pp 2 \
+    --tp 8 \
+    --ep 8 \
+    --trust-remote-code
+```
+
+### Resume Quantized Megatron Checkpoint and Generate
+
+```bash
+torchrun --nproc_per_node=16 examples/quantization/ptq_generate.py \
+    --hf-model-id $HF_MODEL \
+    --megatron-load-path $MEGATRON_SAVE_PATH \
+    --pp 2 \
+    --tp 8 \
+    --ep 8 \
+    --trust-remote-code
+```
+
+### Export Quantized Megatron Checkpoint to HuggingFace
+
+After quantization, export the Megatron checkpoint back to HuggingFace format:
+
+```bash
+export EXPORT_DIR=/path/to/output/hf/ckpt
+
+torchrun --nproc_per_node=16 examples/quantization/export.py \
+    --hf-model-id $HF_MODEL \
+    --megatron-load-path $MEGATRON_SAVE_PATH \
+    --export-dir $EXPORT_DIR \
+    --pp 8 \
+    --dtype bfloat16 \
+    --trust-remote-code
+```
+
+> **Note**: For multi-node setups (e.g., 2 nodes with 8× H100), increase `--pp` accordingly and use a job scheduler like SLURM to launch across nodes.
 
 ---
 
 ## Quantized Model Evaluation
 
-Comparison of BF16, FP8, and NVFP4 checkpoints:
+Comparison of BF16, FP8, and NVFP4 checkpoints.
+
+> **Note**: LiveCodeBench uses v6 here (vs v5 in the [post-trained model evaluations](./evaluate.md)), which accounts for the slightly different BF16 baselines between the two tables.
 
 | Benchmark | N-3-Super (BF16) | N-3-Super FP8 | N-3-Super NVFP4 |
 |-----------|-------------------|---------------|-----------------|
@@ -148,7 +175,7 @@ Comparison of BF16, FP8, and NVFP4 checkpoints:
 | MMLU-Pro | 83.57 | 83.78 | 83.41 |
 | **Reasoning** | | | |
 | GPQA (no tools) | 79.29 | 79.67 | 79.23 |
-| LiveCodeBench (v6) | 78.25 | 78.80 | 78.57 |
+| LiveCodeBench (v6 2024-08↔2025-05) | 78.25 | 78.80 | 78.57 |
 | SciCode (subtask) | 40.64 | 39.87 | 39.94 |
 | HLE (no tools) | 18.02 | 17.70 | 17.33 |
 | **Agentic** | | | |
@@ -169,26 +196,33 @@ Comparison of BF16, FP8, and NVFP4 checkpoints:
 
 ## Infrastructure
 
+This stage uses the following components from the [NVIDIA AI Stack](../nvidia-stack.md):
+
 | Component | Role | Documentation |
 |-----------|------|---------------|
-| [Model Optimizer](https://github.com/NVIDIA/Model-Optimizer) | PTQ, AutoQuantize, QAD | [GitHub](https://github.com/NVIDIA/Model-Optimizer) |
-| [Megatron-Bridge](../nvidia-stack.md#megatron-bridge) | Checkpoint management | [Docs](https://docs.nvidia.com/nemo/megatron-bridge/latest/) |
+| [Megatron-Core](../nvidia-stack.md#megatron-core) | Distributed training primitives (TP, PP, EP) | [GitHub](https://github.com/NVIDIA/Megatron-LM) |
+| [Megatron-Bridge](../nvidia-stack.md#megatron-bridge) | PTQ quantization, checkpoint export | [Docs](https://docs.nvidia.com/nemo/megatron-bridge/latest/) |
+| [Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer) | Quantization algorithms (FP8, NVFP4), AutoQuantize, QAD | [GitHub](https://github.com/NVIDIA/TensorRT-Model-Optimizer) |
 | [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) | NVFP4/FP8 GEMM kernels | [GitHub](https://github.com/NVIDIA/TransformerEngine) |
 
 ### Parallelism Configuration
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| Tensor (TP) | 4 | Tensor parallelism for quantization |
-| Expert (EP) | 8 | Expert parallelism for MoE layers |
+| Parallelism | Default | Flag |
+|-------------|---------|------|
+| Tensor (TP) | 8 | `--tp` |
+| Pipeline (PP) | 2 | `--pp` |
+| Expert (EP) | 8 | `--ep` |
+
+**Minimum resources:** 2 nodes with 8× H100 GPUs.
 
 ---
 
 ## Reference
 
 - [Nemotron 3 Super Tech Report](TBD) — Quantization methodology
-- [Model Optimizer](https://github.com/NVIDIA/Model-Optimizer) — PTQ and AutoQuantize
-- [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Bridge, Transformer Engine
+- [Megatron-Bridge Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md) — MB documentation and examples
+- [Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer) — PTQ and AutoQuantize
+- [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Core, Megatron-Bridge, Transformer Engine
 - [Stage 2: RL](./rl/index.md) — RL alignment (input to quantization)
 - [Stage 4: Evaluation](./evaluate.md) — Benchmark evaluation
 - **Recipe Source**: `src/nemotron/recipes/super3/` — Implementation details
