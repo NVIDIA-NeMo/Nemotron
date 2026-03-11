@@ -5,6 +5,9 @@ This directory contains the recipe for curating datasets similar to the [Nemotro
 ### Requirements
 
 - [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) > 1.1.0 (install from main)
+- GPU(s) for steps 2a, 2b, and 3 (deduplication and classification)
+- [Cargo/Rust](https://doc.rust-lang.org/cargo/getting-started/installation.html) for step 2c (building `deduplicate-text-datasets`)
+- Access to an OpenAI-compatible LLM endpoint for step 4 (NVIDIA NIM, vLLM, or cloud API)
 
 ### Pipeline Overview
 
@@ -52,9 +55,9 @@ See the [step_2c README](./step_2c-substring_dedup/README.md) for detailed instr
 Ensemble quality scoring and bucketing into 20 quality tiers:
 
 - **Phase 1 (`--classify`):** Filters to English, then runs three quality classifiers in parallel:
-  - FineWebNemotronEduClassifier
-  - FineWebMixtralEduClassifier
-  - FastText quality filter (`fasttext-oh-eli5`)
+  - [FineWebNemotronEduClassifier](https://huggingface.co/nvidia/nemocurator-fineweb-nemotron-4-edu-classifier)
+  - [FineWebMixtralEduClassifier](https://huggingface.co/nvidia/nemocurator-fineweb-mixtral-edu-classifier)
+  - [FastText quality filter (`fasttext-oh-eli5`)](https://huggingface.co/mlfoundations/fasttext-oh-eli5)
   - **Resources:** Requires GPU(s) for the neural classifiers. For a single snapshot we tested with 64 H100 GPUs. This scale is embarrassingly parallel so use fewer/more GPUs as needed with at least 80GB VRAM per GPU.
 - **Phase 2 (`--ensemble`):** Computes token-weighted percentile thresholds from sampled classification scores, maps float scores to integer bins (0-19), takes the per-document max across classifiers as the ensemble score.
   - **Resources:** CPU-only. Reads classification results and computes thresholds and bucketing. Tested with max `fraction=0.1` on a machine with 200GB ram. For OOM errors would recommend reducing the sampling fraction.
@@ -75,6 +78,6 @@ Four generation tasks:
 
 Each task runs as an independent pipeline (preprocessing, LLM generation, postprocessing, write). When `--task all` is used, the four tasks run sequentially. They can also be run as separate processes in parallel.
 
-- **Default model:** `Qwen/Qwen3-30B-A3B-Instruct-2507`
+- **Default model:** [`Qwen/Qwen3-30B-A3B-Instruct-2507`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507)
 - **Output:** `data/sdg_output/<task_name>/`.
 - **Resources:** CPU-only for the script itself. Requires access to an LLM endpoint.
