@@ -31,8 +31,17 @@ Fuzzy deduplication using MinHash + LSH:
 - **Phase 1 (`--identify`):** Identify near duplicate docs using MinHash-LSH based duplicate identification.
   - **Resources:** Requires GPU(s). For a single snapshot (~1-8TB) exact deduplicated we tested with 8 H100 GPUs.
 - **Phase 2 (`--remove`):** Removes fuzzy duplicates based on connected components.
-  - **Resources:** CPU-only. Reads duplicate IDs and filters the original dataset.
+  - **Resources:** CPU-only. Reads duplicate IDs and filters the original dataset. We recommend each worker has at-least 6GB of RAM to prevent OOM errors.
 - **Output:** `data/fuzzy_deduplicated/`.
+
+#### Step 2c: Substring Deduplication (`step_2c-substring_dedup/`)
+
+CPU-only exact substring deduplication using [Google Research's deduplicate-text-datasets](https://github.com/google-research/deduplicate-text-datasets). Removes duplicate substrings within and across documents using suffix arrays.
+
+- **Resources:** CPU-only. Requires 2-3x the input dataset size in RAM and 10-15x in disk space. We recommend splitting data into 100GB chunks.
+- **Output:** `data/substring_deduped/`.
+
+See the [step_2c README](./step_2c-substring_dedup/README.md) for detailed instructions and debugging tips.
 
 #### Step 3: Quality Classification (`step_3-quality_classification.py`)
 
