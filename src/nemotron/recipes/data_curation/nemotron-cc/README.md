@@ -78,6 +78,6 @@ Four generation tasks:
 
 Each task runs as an independent pipeline (preprocessing, LLM generation, postprocessing, write). When `--task all` is used, the four tasks run sequentially. They can also be run as separate processes in parallel.
 
-- **Default model:** [`Qwen/Qwen3-30B-A3B-Instruct-2507`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507)
+- **Default model:** [`Qwen/Qwen3-30B-A3B-Instruct-2507`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). This model is not available on [NVIDIA Build](https://build.nvidia.com/), so you'll need to provide a `--base-url` pointing to an endpoint serving it (self-hosted via vLLM/NIM, or any OpenAI-compatible cloud provider). Alternatively, you can use any model available on NVIDIA Build by setting `--model-name` and `--tokenizer` accordingly.
 - **Output:** `data/sdg_output/<task_name>/`.
 - **Resources:** CPU-only for the script itself. Requires access to an LLM endpoint.
