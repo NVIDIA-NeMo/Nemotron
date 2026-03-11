@@ -1,5 +1,5 @@
 {
-  "_comment": "Super3 pretrain Phase 2 blend (20% of training, ~5T tokens, ~198,681 iters at GBS=3072 seq_len=8192). 27 datasets, ~10.53B total rows across all subsets. Quality-focused blend coinciding with WSD minus_sqrt LR decay (from 4.5e-4 to 4.5e-6). Key changes from Phase 1: finepdfs upweighted, crawl-medium removed, syn-crawl-medium-high halved. Missing categories same as Phase 1 minus crawl++.",
+  "_comment": "Super3 pretrain Phase 2 blend. Internally this phase covered 5T tokens (20% of 25T), coinciding with WSD minus_sqrt LR decay (4.5e-4 to 4.5e-6). The open-sourced data is a subset of what was used internally — see Phase 1 comment for coverage estimate. 27 datasets, ~10.53B total rows. Key changes from Phase 1: finepdfs upweighted, crawl-medium removed, syn-crawl-medium-high halved. Missing categories same as Phase 1 minus crawl++.",
   "_missing_categories": {
     "code": {"weight": 14.0, "description": "Code data (e.g., The Stack, StarCoder data). Largest missing component."},
     "nemotron-cc-code": {"weight": 2.1, "description": "Nemotron-CC code-classified web documents."},

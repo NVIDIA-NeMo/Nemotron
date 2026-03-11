@@ -1,5 +1,5 @@
 {
-  "_comment": "Super3 pretrain Phase 1 blend (80% of training, ~20T tokens, ~794,723 iters at GBS=3072 seq_len=8192). 29 datasets, ~13.06B total rows across all subsets. Diversity-focused blend with broad coverage. Largest by rows: CC-v2 HQ-Synthetic (3.12B), CC-v2.1 MHQ-Synthetic (3.17B), CC-v2 Medium-Quality (2.47B), CC-v2 Diverse-QA (1.23B). Missing categories (code 14%, nemotron-cc-code 2.1%, crawl++ 1.8%, academic 1.7%) used internal-only data. Weights are unnormalized; the pipeline normalizes at runtime.",
+  "_comment": "Super3 pretrain Phase 1 blend. Internally this phase covered 20T tokens (80% of 25T), but the open-sourced data covers an estimated 8-10T tokens total (~40-50% of internal). Missing categories (code 14%, nemotron-cc-code 2.1%, crawl++ 1.8%, academic 1.7%) used internal-only data — add your own to close the gap. 29 datasets, ~13.06B total rows. Weights approximate internal ratios and are unnormalized; the pipeline normalizes at runtime.",
   "_missing_categories": {
     "code": {"weight": 14.0, "description": "Code data (e.g., The Stack, StarCoder data). Largest missing component."},
     "nemotron-cc-code": {"weight": 2.1, "description": "Nemotron-CC code-classified web documents."},

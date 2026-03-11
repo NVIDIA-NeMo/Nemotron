@@ -84,10 +84,15 @@ The pretraining corpus spans **16 high-level categories** including web crawl da
 
 **Two-phase curriculum:**
 
-| Phase | Tokens | Focus | Proportion |
-|-------|--------|-------|------------|
+| Phase | Internal Scale | Focus | Proportion |
+|-------|----------------|-------|------------|
 | Phase 1 | 20T (80%) | Data diversity — broad coverage and generalization | Higher weight on crawl data |
 | Phase 2 | 5T (20%) | High-quality sources — refined model performance | Higher weight on Wikipedia, curated sources |
+
+> **Open-source data coverage**: The released datasets cover an estimated 8–10T tokens
+> (~40–50% of the internal 25T blend). Missing categories include code (~14% of blend),
+> nemotron-cc-code (~2%), crawl++ (~2%), and academic text (~2%). Users should supplement
+> with their own data for these categories and adjust `train_iters` accordingly.
 
 ### Hyperparameters
 
@@ -209,17 +214,26 @@ Data blend: 20% document QA data (reused from Nemotron 2 & 3 Nano), 80% downscal
 
 ### Quick Start
 
+Pretraining follows a **4-phase curriculum**:
+
 <div class="termy">
 
 ```console
-// 1. Prepare data (tokenize to bin/idx format)
-$ uv run nemotron super3 data prep pretrain --run YOUR-CLUSTER
+// 1. Prepare data for each phase
+$ uv run nemotron super3 data prep pretrain -c phase1 --run YOUR-CLUSTER
+$ uv run nemotron super3 data prep pretrain -c phase2 --run YOUR-CLUSTER
+$ uv run nemotron super3 data prep pretrain -c long_context --run YOUR-CLUSTER
 
-// 2. Run pretraining
-$ uv run nemotron super3 pretrain --run YOUR-CLUSTER
+// 2. Run pretraining phases sequentially
+$ uv run nemotron super3 pretrain -c phase1 --run YOUR-CLUSTER        # 20T tokens, diversity blend
+$ uv run nemotron super3 pretrain -c phase2 --run YOUR-CLUSTER        # 5T tokens, quality blend
+$ uv run nemotron super3 pretrain -c long_context_1m --run YOUR-CLUSTER   # 34B tokens, 1M context
+$ uv run nemotron super3 pretrain -c long_context_mixed --run YOUR-CLUSTER # 17B tokens, 1M/4K alternating
 ```
 
 </div>
+
+Each phase resumes from the previous phase's checkpoint automatically.
 
 > **Note**: The `--run YOUR-CLUSTER` flag submits jobs via [NeMo-Run](../../nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for setup.
 
@@ -254,11 +268,24 @@ See the [Megatron-Bridge Nemotron 3 Super documentation](https://github.com/NVID
 
 ### Configuration
 
+**Training configs:**
+
+| File | Phase | Tokens | Key differences |
+|------|-------|--------|----------------|
+| `config/phase1.yaml` | Phase 1 | 20T | Diversity blend, WSD warmup + stable LR |
+| `config/phase2.yaml` | Phase 2 | 5T | Quality blend, WSD minus_sqrt decay |
+| `config/long_context_1m.yaml` | LC Stage 1 | 34B | seq_len=1M, GBS=16, CP=64, constant LR |
+| `config/long_context_mixed.yaml` | LC Stage 2 | 17B | Alternating 1M/4K sequences |
+| `config/default.yaml` | (alias) | — | Points to phase1 |
+| `config/tiny.yaml` | (test) | — | Quick testing configuration |
+
+**Data prep configs:**
+
 | File | Purpose |
 |------|---------|
-| `config/default.yaml` | Production configuration |
-| `config/tiny.yaml` | Quick testing configuration |
-| `config/data_prep/default.yaml` | Data preparation settings |
+| `config/data_prep/phase1.yaml` | Phase 1 data blend (29 datasets, ~13.06B rows) |
+| `config/data_prep/phase2.yaml` | Phase 2 data blend (27 datasets, ~10.53B rows) |
+| `config/data_prep/long_context.yaml` | LC blend (80% phase2 + 20% doc QA) |
 
 ### Training
 
@@ -293,16 +320,24 @@ uv run nemotron super3 pretrain checkpoint.save=/path/to/checkpoints
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333'}}}%%
 flowchart TB
-    raw["Raw Text Data"] --> dp["data_prep.py"]
-    dp --> data["PretrainBlendsArtifact<br/>(bin/idx files + blend.json)"]
-    data --> train["train.py"]
-    train --> model["ModelArtifact-pretrain<br/>(checkpoint)"]
+    raw["Raw Text Data"] --> dp1["data_prep phase1"]
+    raw --> dp2["data_prep phase2"]
+    raw --> dplc["data_prep long_context"]
+    dp1 --> p1["Phase 1<br/>20T tokens<br/>diversity blend"]
+    dp2 --> p2["Phase 2<br/>5T tokens<br/>quality blend"]
+    dplc --> lc1["LC Stage 1<br/>34B tokens<br/>1M context"]
+    dplc --> lc2["LC Stage 2<br/>17B tokens<br/>1M/4K alternating"]
+    p1 -->|checkpoint| p2
+    p2 -->|checkpoint| lc1
+    lc1 -->|checkpoint| lc2
+    lc2 --> model["Base Model"]
     model --> next["Stage 1: SFT"]
 
     style raw fill:#e1f5fe,stroke:#2196f3
-    style dp fill:#e1f5fe,stroke:#2196f3
-    style data fill:#e1f5fe,stroke:#2196f3
-    style train fill:#e1f5fe,stroke:#2196f3
+    style p1 fill:#e1f5fe,stroke:#2196f3
+    style p2 fill:#e1f5fe,stroke:#2196f3
+    style lc1 fill:#fff3e0,stroke:#ff9800
+    style lc2 fill:#fff3e0,stroke:#ff9800
     style model fill:#e1f5fe,stroke:#2196f3
     style next fill:#f3e5f5,stroke:#9c27b0
 ```
