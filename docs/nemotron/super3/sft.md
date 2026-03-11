@@ -305,7 +305,7 @@ uv run nemotron super3 sft [options] [overrides...]
 | `--run <profile>` | Attached—submits and waits, streaming logs ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--batch <profile>` | Detached—submits and exits immediately ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 | `--dry-run` | Preview execution plan |
-| `key=value` | Override config values ([CLI Framework](../../nemo_runspec/cli.md#dotlist-overrides)) |
+| `key=value` | Override config values ([NeMo-Run](../../nemo_runspec/nemo-run.md)) |
 
 #### Override Examples
 
@@ -420,7 +420,7 @@ After SFT completes, proceed to [Stage 2: RL](./rl/index.md) for reinforcement l
 
 ## Reference
 
-- [Nemotron 3 Super Tech Report](TBD) — SFT methodology
+- Nemotron 3 Super Tech Report (coming soon) — SFT methodology
 - [Megatron-Bridge Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md) — MB documentation and examples
 - [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Core, Megatron-Bridge documentation
 - [Artifact Lineage](../../nemo_runspec/artifacts.md) — W&B artifact system

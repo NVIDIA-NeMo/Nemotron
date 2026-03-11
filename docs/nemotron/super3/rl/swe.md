@@ -4,6 +4,38 @@ End-to-end RL for software engineering tasks. SWE-RL is handled as a separate st
 
 ---
 
+## SWE Container
+
+Both SWE stages require pre-fetched Python virtual environments that are not included in the base `nemo-rl:v0.5.0.nemotron_3_super` image. Build the SWE container once (from within the [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) repo):
+
+```text
+docker buildx build \
+  -t your-registry/nemo-rl:v0.5.0.nemotron_3_super_swe \
+  --push \
+  -f- . <<'EOF'
+FROM nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+
+RUN <<'RUNEOF'
+set -euxo pipefail
+UV_TORCH_BACKEND=$(uv run python -c "import tomllib,pathlib; \
+  indexes=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['tool']['uv']['index']; \
+  print(next(i['name'].removeprefix('pytorch-') for i in indexes if i['name'].startswith('pytorch-')))") \
+UV_LINK_MODE=hardlink uv run python examples/nemo_gym/prefetch_venvs.py \
+    examples/configs/super/stage2_swe1.yaml \
+    examples/configs/super/stage2_swe2.yaml
+RUNEOF
+EOF
+```
+
+Set the container image in your config or via override:
+
+```bash
+uv run nemotron super3 rl swe1 --run YOUR-CLUSTER \
+    run.env.container=your-registry/nemo-rl:v0.5.0.nemotron_3_super_swe
+```
+
+---
+
 ## Stage 2.1 — SWE 1 (64 nodes)
 
 SWE-pivot training using a single-step tool use comparison approach. The model receives a code problem and must produce a solution evaluated against ground truth.
@@ -36,7 +68,7 @@ uv run nemotron super3 rl swe1 --run YOUR-CLUSTER
 ```
 
 > **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
-> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+> See the [env.toml setup guide](../README.md#configuration) for details.
 >
 > SWE stages require the [SWE container](index.md#swe-container) with pre-fetched venvs.
 
@@ -132,7 +164,7 @@ uv run nemotron super3 rl swe2 \
 ```
 
 > **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
-> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+> See the [env.toml setup guide](../README.md#configuration) for details.
 >
 > SWE stages require the [SWE container](index.md#swe-container) with pre-fetched venvs.
 

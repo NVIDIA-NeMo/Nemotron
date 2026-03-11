@@ -106,6 +106,13 @@ The Nemotron training pipeline has three stages, each tracked through [artifact 
 usage-cookbook/README.md
 usage-cookbook/Nemotron-Nano2-VL/README.md
 usage-cookbook/Nemotron-Parse-v1.1/README.md
+usage-cookbook/Nemotron-3-Super/README.md
+usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
+usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md
+usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README.md
+usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README.md
+usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.md
+usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.md
 ```
 
 ```{toctree}
@@ -166,6 +173,7 @@ nemotron/nvidia-stack.md
 nemo_runspec/package-readme.md
 nemo_runspec/nemo-run.md
 nemo_runspec/omegaconf.md
+nemo_runspec/artifacts.md
 nemotron/wandb.md
 nemotron/cli.md
 nemotron/data-prep.md

@@ -72,7 +72,7 @@ uv run nemotron super3 data prep rl rlhf --run YOUR-CLUSTER
 Each sub-stage has its own data prep command because the data blends differ (RLVR uses HF placeholder resolution, while SWE/RLHF use direct JSONL splitting).
 
 > **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
-> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+> See the [env.toml setup guide](../README.md#configuration) for details.
 
 | Option | Description |
 |--------|-------------|

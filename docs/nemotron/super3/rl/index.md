@@ -1,6 +1,6 @@
 # Stage 2: Reinforcement Learning (RL)
 
-This stage aligns the instruction-tuned model using GRPO (Group Relative Policy Optimization) with [NeMo-RL](../nvidia-stack.md#nemo-rl).
+This stage aligns the instruction-tuned model using GRPO (Group Relative Policy Optimization) with [NeMo-RL](../../nvidia-stack.md#nemo-rl).
 
 > **Open-Source Data Only**: This recipe uses exclusively open-sourced RL data, which is a subset of the full data used to train the released model. Results will differ from the benchmarks in the tech report. Use this recipe as a reference implementation to apply the methodology with your own data.
 
@@ -120,7 +120,7 @@ uv run nemotron super3 rl rlvr -c test --run YOUR-CLUSTER
 
 > **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file,
 > which configures SLURM account, partition, mounts, and other cluster settings.
-> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+> See the [env.toml setup guide](../README.md#configuration) for details.
 
 ### Using super_launch.sh (Direct)
 
@@ -211,13 +211,13 @@ The `data_prep.py` script downloads `nvidia/Nemotron-3-Super-RL-Training-Blends`
 
 ## Infrastructure
 
-This stage uses the following components from the [NVIDIA AI Stack](../nvidia-stack.md):
+This stage uses the following components from the [NVIDIA AI Stack](../../nvidia-stack.md):
 
 | Component | Role | Documentation |
 |-----------|------|---------------|
-| [NeMo-RL](../nvidia-stack.md#nemo-rl) | Async GRPO algorithm, policy training, reward computation | [Docs](https://docs.nvidia.com/nemo/rl/latest/) |
+| [NeMo-RL](../../nvidia-stack.md#nemo-rl) | Async GRPO algorithm, policy training, reward computation | [Docs](https://docs.nvidia.com/nemo/rl/latest/) |
 | [NeMo-Gym](https://github.com/NVIDIA-NeMo/NeMo-Gym) | Multi-environment reward evaluation (21+ environments) | [GitHub](https://github.com/NVIDIA-NeMo/NeMo-Gym) |
-| [Megatron-Core](../nvidia-stack.md#megatron-core) | Distributed training primitives (TP, PP, CP, EP) | [GitHub](https://github.com/NVIDIA/Megatron-LM) |
+| [Megatron-Core](../../nvidia-stack.md#megatron-core) | Distributed training primitives (TP, PP, CP, EP) | [GitHub](https://github.com/NVIDIA/Megatron-LM) |
 | [Ray](https://ray.io/) | Distributed actor coordination and resource management | [Docs](https://docs.ray.io/) |
 | vLLM | Fast rollout generation | [GitHub](https://github.com/vllm-project/vllm) |
 
@@ -237,7 +237,7 @@ SWE stages (2.1, 2.2) need pre-fetched Python virtual environments that are not
 included in the base image. Build the SWE container once (from within the
 [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) repo):
 
-```bash
+```text
 docker buildx build \
   -t your-registry/nemo-rl:v0.5.0.nemotron_3_super_swe \
   --push \
@@ -268,8 +268,8 @@ After RL completes, the aligned model can be [quantized](../quantization.md) for
 
 - [Nemotron 3 Super Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf) — RL methodology
 - [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) — GRPO, DPO, environments
-- [NVIDIA AI Stack](../nvidia-stack.md) — NeMo-RL, Megatron-Core documentation
-- [Artifact Lineage](../../nemo_runspec/artifacts.md) — W&B artifact system
+- [NVIDIA AI Stack](../../nvidia-stack.md) — NeMo-RL, Megatron-Core documentation
+- [Artifact Lineage](../../../nemo_runspec/artifacts.md) — W&B artifact system
 - **Recipe Source**: `src/nemotron/recipes/super3/stage2_rl/` — Implementation details
 - [Back to Overview](../README.md)
 

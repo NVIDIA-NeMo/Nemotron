@@ -219,7 +219,7 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 
 ## Reference
 
-- [Nemotron 3 Super Tech Report](TBD) — Quantization methodology
+- Nemotron 3 Super Tech Report (coming soon) — Quantization methodology
 - [Megatron-Bridge Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md) — MB documentation and examples
 - [Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer) — PTQ and AutoQuantize
 - [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Core, Megatron-Bridge, Transformer Engine

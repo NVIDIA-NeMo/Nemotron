@@ -119,7 +119,7 @@ uv run nemotron super3 rl rlvr -c rlvr3 --run YOUR-CLUSTER
 ```
 
 > **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
-> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+> See the [env.toml setup guide](../README.md#configuration) for details.
 
 ### Using super_launch.sh
 
