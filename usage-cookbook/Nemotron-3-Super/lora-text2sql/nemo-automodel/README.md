@@ -59,7 +59,3 @@ Open `automodel_lora_cookbook.ipynb` and set in the first cell:
 1. Use the kernel that points to the AutoModel `.venv` (or install the same deps in your Jupyter env).
 2. Dataset creation (Section 2) writes `training.jsonl`, `validation.jsonl`, and optionally `test.jsonl` into `DATASET_DIR`. Adjust the config so those paths match what you set in the PEFT config.
 3. Finetuning (Section 3) runs `torchrun` with the cookbook config. Ensure `N_DEVICES` matches your GPU count.
-
-## Optional
-
-- **`.gitignore`** — Add `.ipynb_checkpoints/` (and optionally `.venv/`, `checkpoints/`) so they are not committed.
