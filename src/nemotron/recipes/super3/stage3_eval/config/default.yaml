@@ -46,7 +46,7 @@ run:
   # These defaults allow local execution without env.toml
   env:
     executor: local
-    container: nvcr.io/nvidia/nemo-evaluator:latest
+    container: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
     host: ${oc.env:HOSTNAME,localhost}
     user: ${oc.env:USER}
     account: null

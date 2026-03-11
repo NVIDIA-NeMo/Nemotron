@@ -62,14 +62,23 @@ done
 Alternatively, use the Nemotron CLI which runs the xenna pipeline with Ray for distributed processing and W&B artifact tracking:
 
 ```bash
-uv run nemotron super3 data prep rl [options]
+# Prepare data for each sub-stage
+uv run nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl swe1 --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl swe2 --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl rlhf --run YOUR-CLUSTER
 ```
+
+Each sub-stage has its own data prep command because the data blends differ (RLVR uses HF placeholder resolution, while SWE/RLHF use direct JSONL splitting).
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
 
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via [NeMo-Run](../../../nemo_runspec/nemo-run.md) |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 ---
 

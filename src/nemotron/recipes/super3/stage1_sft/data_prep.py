@@ -175,7 +175,7 @@ class SFTDataPrepConfig:
 
     # Tokenizer config (nested)
     tokenizer: TokenizerConfig = field(default_factory=lambda: TokenizerConfig(
-        model="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+        model="nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16",
     ))
     """Tokenizer configuration"""
 

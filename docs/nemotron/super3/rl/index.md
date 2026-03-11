@@ -83,13 +83,48 @@ All stages use **asynchronous GRPO** where training and inference are decoupled 
 
 ## Quick Start
 
-> **Note**: RL sub-stages are not yet available as `nemotron` CLI commands because Megatron checkpoint consumption is not yet supported. Run directly inside the NeMo-RL repo using `super_launch.sh`.
-
 ### Prerequisites
 
 - **NeMo-RL repo**: Clone the `super-v3` branch
 - **Sandbox container**: Required for code execution environments
+- **SWE container**: Required for SWE stages 2.1 and 2.2 (pre-fetched venvs) — see [SWE container build](#swe-container) below
 - **SIF images**: Required for Stage 2.2 only (SWE-bench sandbox environments (Apptainer `.sif` on SLURM, or Docker/Podman))
+
+### Using nemotron CLI (Recommended)
+
+```bash
+# 1. Prepare data for each sub-stage
+uv run nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl swe1 --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl swe2 --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl rlhf --run YOUR-CLUSTER
+
+# 2. Run RL training stages sequentially
+# Stage 1.1–1.3: RLVR (uses base container)
+uv run nemotron super3 rl rlvr -c rlvr1 --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c rlvr2 --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c rlvr3 --run YOUR-CLUSTER
+
+# Stage 2.1: SWE pivot (requires SWE container)
+uv run nemotron super3 rl swe1 --run YOUR-CLUSTER
+
+# Stage 2.2: SWE-bench (requires SWE container + Apptainer SIF images)
+uv run nemotron super3 rl swe2 --run YOUR-CLUSTER
+
+# Stage 3: RLHF (uses base container)
+uv run nemotron super3 rl rlhf --run YOUR-CLUSTER
+
+# Quick test (single GPU, validates RL infrastructure)
+uv run nemotron super3 rl rlvr -c test --run YOUR-CLUSTER
+```
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file,
+> which configures SLURM account, partition, mounts, and other cluster settings.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+
+### Using super_launch.sh (Direct)
+
+Alternatively, run directly inside the NeMo-RL repo:
 
 ```bash
 # Clone NeMo-RL
@@ -97,7 +132,7 @@ git clone --recursive -b super-v3 https://github.com/NVIDIA-NeMo/RL.git
 cd RL
 ```
 
-### Prepare Data
+#### Prepare Data
 
 ```bash
 # Download RL data blends (rlvr1, rlvr2, rlvr3, swe1, swe2, rlhf)
@@ -118,7 +153,7 @@ for f in data_filled/*.jsonl; do
 done
 ```
 
-### Run Training
+#### Run Training
 
 Set these environment variables before launching each stage:
 
@@ -188,11 +223,40 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 
 ### Container
 
+All RL stages use the base NeMo-RL container:
+
 ```
 nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
 ```
 
 To build the container yourself (e.g. for ARM), see the [upstream training guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3/examples/nemotron_3_super/README.md).
+
+#### SWE Container
+
+SWE stages (2.1, 2.2) need pre-fetched Python virtual environments that are not
+included in the base image. Build the SWE container once (from within the
+[NeMo-RL](https://github.com/NVIDIA-NeMo/RL) repo):
+
+```bash
+docker buildx build \
+  -t your-registry/nemo-rl:v0.5.0.nemotron_3_super_swe \
+  --push \
+  -f- . <<'EOF'
+FROM nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+
+RUN <<'RUNEOF'
+set -euxo pipefail
+UV_TORCH_BACKEND=$(uv run python -c "import tomllib,pathlib; \
+  indexes=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['tool']['uv']['index']; \
+  print(next(i['name'].removeprefix('pytorch-') for i in indexes if i['name'].startswith('pytorch-')))") \
+UV_LINK_MODE=hardlink uv run python examples/nemo_gym/prefetch_venvs.py \
+    examples/configs/super/stage2_swe1.yaml \
+    examples/configs/super/stage2_swe2.yaml
+RUNEOF
+EOF
+```
+
+SWE2 additionally requires Apptainer `.sif` images — see [SWE-RL Stage 2.2](swe.md#prerequisites).
 
 ---
 

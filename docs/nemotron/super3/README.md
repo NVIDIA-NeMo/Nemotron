@@ -8,7 +8,7 @@ A complete, reproducible training pipeline for Nemotron 3 Super—an open, high-
 
 - **Slurm cluster** with GPU nodes (B200 recommended for NVFP4 support) — see [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../../nemo_runspec/artifacts.md)
-- **Container image**: `gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568`
+- **Container image**: `nvcr.io/nvidian/nemo:26.02.super.rc4`
 
 ### Installation
 
@@ -82,6 +82,10 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 | 3 | [Quantization](./quantization.md) | FP8 and NVFP4 post-training quantization | [quantization.md](./quantization.md) |
 | — | Distillation | Knowledge distillation (see tech report) | Coming soon |
 | 4 | [Evaluation](./evaluate.md) | Benchmark evaluation across 20+ benchmarks | [evaluate.md](./evaluate.md) |
+
+## Architecture
+
+![Nemotron 3 Super architecture](../../assets/super3/super-pattern.png)
 
 ## Model Specifications
 

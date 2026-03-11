@@ -102,6 +102,8 @@ Megatron-Bridge uses `seq_start_id` boundaries for variable-length attention (pr
 
 ### SFT Data Domains
 
+![SFT data blend distribution](../../assets/super3/super_sft_blend.png)
+
 The SFT dataset covers 15+ domains across **7M total samples**:
 
 #### Reused from Nano3
@@ -407,7 +409,7 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 ### Container
 
 ```
-gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568
+nvcr.io/nvidian/nemo:26.02.super.rc4
 ```
 
 ---

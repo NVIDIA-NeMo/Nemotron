@@ -29,7 +29,18 @@ SWE-pivot training using a single-step tool use comparison approach. The model r
 - `stage2_swe1/config/default.yaml` — Full-scale 64-node config
 - `stage2_swe1/config/small.yaml` — Reduced 8-node variant for testing
 
-### Launch
+### Using nemotron CLI
+
+```bash
+uv run nemotron super3 rl swe1 --run YOUR-CLUSTER
+```
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+>
+> SWE stages require the [SWE container](index.md#swe-container) with pre-fetched venvs.
+
+### Using super_launch.sh
 
 ```bash
 EXP_NAME=stage2.1-swe1 \
@@ -37,7 +48,7 @@ CONFIG_PATH=examples/configs/super/stage2_swe1.yaml \
 MODEL_PATH=/path/to/rlvr3_checkpoint \
 TRAIN_PATH=$DATA_DIR/swe1/train-split.jsonl \
 VAL_PATH=$DATA_DIR/swe1/val-split.jsonl \
-CONTAINER=nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super \
+CONTAINER=$SWE_CONTAINER \
 SANDBOX_CONTAINER=$SANDBOX_CONTAINER \
 PERSISTENT_CACHE=$PERSISTENT_CACHE \
 EXTRA_MOUNTS=$EXTRA_MOUNTS \
@@ -112,7 +123,20 @@ sudo apt install -y ./apptainer_1.3.1_amd64.deb
 ./examples/nemo_gym/download_swe_images.py --sif-dir /path/to/sif --concurrency 16
 ```
 
-### Launch
+### Using nemotron CLI
+
+```bash
+uv run nemotron super3 rl swe2 \
+    --run YOUR-CLUSTER \
+    run.env.sif_dir=/path/to/sif
+```
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+>
+> SWE stages require the [SWE container](index.md#swe-container) with pre-fetched venvs.
+
+### Using super_launch.sh
 
 ```bash
 EXP_NAME=stage2.2-swe2 \
@@ -120,7 +144,7 @@ CONFIG_PATH=examples/configs/super/stage2_swe2.yaml \
 MODEL_PATH=/path/to/swe1_checkpoint \
 TRAIN_PATH=$DATA_DIR/swe2/train-split.jsonl \
 VAL_PATH=$DATA_DIR/swe2/val-split.jsonl \
-CONTAINER=nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super \
+CONTAINER=$SWE_CONTAINER \
 SANDBOX_CONTAINER=$SANDBOX_CONTAINER \
 PERSISTENT_CACHE=$PERSISTENT_CACHE \
 EXTRA_MOUNTS=$EXTRA_MOUNTS \

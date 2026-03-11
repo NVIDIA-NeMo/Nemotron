@@ -57,6 +57,17 @@ The RLHF stage uses GenRM comparison as the primary reward signal, along with to
 
 ## Usage
 
+### Using nemotron CLI
+
+```bash
+uv run nemotron super3 rl rlhf --run YOUR-CLUSTER
+```
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+
+### Using super_launch.sh
+
 ```bash
 EXP_NAME=stage3-rlhf \
 CONFIG_PATH=examples/configs/super/stage3_rlhf.yaml \

@@ -109,7 +109,21 @@ At 1K GPU scale, intermittent failures from hardware and software issues require
 
 ## Usage
 
-### Stage 1.1 — RLVR 1 (109 nodes)
+### Using nemotron CLI
+
+```bash
+# Stage 1.1–1.3: RLVR (uses base container)
+uv run nemotron super3 rl rlvr -c rlvr1 --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c rlvr2 --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c rlvr3 --run YOUR-CLUSTER
+```
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
+
+### Using super_launch.sh
+
+#### Stage 1.1 — RLVR 1 (109 nodes)
 
 ```bash
 EXP_NAME=stage1.1-rlvr1 \
@@ -126,7 +140,7 @@ SLURM_ACCOUNT=$SLURM_ACCOUNT \
 bash super_launch.sh
 ```
 
-### Stage 1.2 — RLVR 2 (109 nodes)
+#### Stage 1.2 — RLVR 2 (109 nodes)
 
 ```bash
 EXP_NAME=stage1.2-rlvr2 \
@@ -143,7 +157,7 @@ SLURM_ACCOUNT=$SLURM_ACCOUNT \
 bash super_launch.sh
 ```
 
-### Stage 1.3 — RLVR 3 (109 nodes)
+#### Stage 1.3 — RLVR 3 (109 nodes)
 
 ```bash
 EXP_NAME=stage1.3-rlvr3 \

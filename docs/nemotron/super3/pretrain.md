@@ -58,6 +58,8 @@ MTP optimizes the model to predict multiple future tokens at each position, impr
 
 #### Hybrid Interleaving Pattern
 
+![Nemotron 3 Super architecture pattern](../../assets/super3/super-pattern.png)
+
 The 88-layer stack follows a periodic interleaving pattern where MoE layers are paired with Mamba-2 blocks. A limited number of self-attention layers are strategically inserted as global "anchors" to enable full-token interaction and long-range information routing. The attention layers employ Grouped-Query Attention (GQA) with 32 query heads and 2 KV heads. Consistent with the Nemotron family, the model omits positional embeddings, dropout, and bias terms in linear layers, uses RMSNorm for normalization, and maintains un-tied embedding and output weights.
 
 This synergy enables up to **6.4x higher inference throughput** compared to similarly-sized Transformer MoEs (e.g., GPT-OSS-120B) under 8K input / 16K output workloads.
@@ -88,6 +90,20 @@ The pretraining corpus spans **16 high-level categories** including web crawl da
 |-------|----------------|-------|------------|
 | Phase 1 | 20T (80%) | Data diversity — broad coverage and generalization | Higher weight on crawl data |
 | Phase 2 | 5T (20%) | High-quality sources — refined model performance | Higher weight on Wikipedia, curated sources |
+
+<details>
+<summary>Phase 1 blend distribution (click to expand)</summary>
+
+![Phase 1 pretrain data blend](../../assets/super3/super-phase1.png)
+
+</details>
+
+<details>
+<summary>Phase 2 blend distribution (click to expand)</summary>
+
+![Phase 2 pretrain data blend](../../assets/super3/super-phase2.png)
+
+</details>
 
 > **Open-source data coverage**: The released datasets cover an estimated 8–10T tokens
 > (~40–50% of the internal 25T blend). Missing categories include code (~14% of blend),
@@ -163,6 +179,8 @@ A long-context phase (LC-Phase) at the end of pretraining extends the model to *
 Data blend: 20% document QA data (reused from Nemotron 2 & 3 Nano), 80% downscaled Phase 2 data.
 
 ### Base Model Evaluations
+
+![Average benchmark score during pretraining](../../assets/super3/avg_benchmark.png)
 
 | Task | N-Super-3 Base | Ling-flash Base-2.0 | GLM-4.5 Air-Base |
 |------|----------------|---------------------|-------------------|
@@ -371,7 +389,7 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 ### Container
 
 ```
-gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.44680568
+nvcr.io/nvidian/nemo:26.02.super.rc4
 ```
 
 ---
