@@ -126,8 +126,8 @@ Practical deployment and model usage guides for Nemotron models.
 
 | Model | Best For | Key Features | Resources |
 |-------|----------|--------------|-----------|
-| [**Llama-3.3-Nemotron-Super-49B-v1.5**](https://huggingface.co/nvidia/Llama-3_3-Nemotron-Super-49B-v1_5) | Production deployments needing strong reasoning | 128K context, single H200 GPU, RAG & tool calling | [Cookbooks](./usage-cookbook/Llama-Nemotron-Super-49B-v1.5/) |
-| [**NVIDIA-Nemotron-Nano-9B-v2**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) | Resource-constrained environments | 9B params, hybrid Mamba-2, controllable reasoning | [Cookbooks](./usage-cookbook/Nemotron-Nano-9B-v2/) |
+| [**Nemotron 3 Super 120B A12B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) | Production deployments needing strong reasoning | 1M context, in NVFP4 single B200, RAG & tool calling | [Cookbooks](./usage-cookbook/Nemotron-3-Super) |
+| [**Nemotron 3 Nano 30B A3B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | Resource-constrained environments | 1M context, sparse MoE hybrid Mamba-2, controllable reasoning | [Cookbooks](./usage-cookbook/Nemotron-3-Nano) |
 | [**NVIDIA-Nemotron-Nano-12B-v2-VL**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL) | Document intelligence and video understanding | 12B VLM, video reasoning, Efficient Video Sampling | [Cookbooks](./usage-cookbook/Nemotron-Nano2-VL/) |
 | [**Llama-3.1-Nemotron-Safety-Guard-8B-v3**](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3) | Multilingual content moderation | 9 languages, 23 safety categories | [Cookbooks](./usage-cookbook/Llama-3.1-Nemotron-Safety-Guard-V3/) |
 | **Nemotron-Parse** | Document parsing for RAG and AI agents | Table extraction, semantic segmentation | [Cookbooks](./usage-cookbook/Nemotron-Parse-v1.1/) |
