@@ -4,7 +4,7 @@ This directory contains the recipe for curating datasets similar to the [Nemotro
 
 ### Requirements
 
-- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) > 1.1.0 (install from main)
+- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) > 1.1.0 ([install from main](https://docs.nvidia.com/nemo/curator/latest/admin/installation.html))
 - GPU(s) for steps 2a, 2b, and 3 (deduplication and classification)
 - [Cargo/Rust](https://doc.rust-lang.org/cargo/getting-started/installation.html) for step 2c (building `deduplicate-text-datasets`)
 - Access to an OpenAI-compatible LLM endpoint for step 4 (NVIDIA NIM, vLLM, or cloud API)
