@@ -102,9 +102,7 @@ from nemo_curator.stages.text.modules.splitter import DocumentSplitter
 from nemo_curator.tasks import DocumentBatch
 from nemo_curator.tasks.utils import TaskPerfUtils
 
-# ---------------------------------------------------------------------------
-# Task configurations (from Nemotron-CC paper)
-# ---------------------------------------------------------------------------
+
 TASK_CONFIGS = {
     "diverse_qa": {
         "system_prompt": NEMOTRON_CC_SYSTEM_PROMPT,
@@ -148,13 +146,8 @@ GENERATION_DEFAULTS = {
     "end_strings": "['</s>']",
 }
 
-# High-quality buckets to process (from the Nemotron-CC paper)
 HIGH_QUALITY_BUCKETS = [18, 19]
 
-
-# ---------------------------------------------------------------------------
-# Preprocessing
-# ---------------------------------------------------------------------------
 
 def _get_prefix_token_count(
     tokenizer: AutoTokenizer,
@@ -186,7 +179,6 @@ def _add_preprocessing_stages(
     )
     max_segment_tokens = task_config["max_input_tokens"] - prefix_token_count - 2
 
-    # Filter out documents that are too short
     pipeline.add_stage(
         ScoreFilter(
             TokenCountFilter(
@@ -198,8 +190,6 @@ def _add_preprocessing_stages(
             score_field="document_token_count",
         ),
     )
-
-    # Split documents into segments by newline
     pipeline.add_stage(
         DocumentSplitter(
             separator="\n",
@@ -208,7 +198,6 @@ def _add_preprocessing_stages(
         ),
     )
 
-    # Filter out segments that are too long for the model
     pipeline.add_stage(
         ScoreFilter(
             TokenCountFilter(
@@ -221,7 +210,6 @@ def _add_preprocessing_stages(
         ),
     )
 
-    # Join adjacent short segments to maximize input utilization
     pipeline.add_stage(
         DocumentJoiner(
             separator="\n",
@@ -234,7 +222,6 @@ def _add_preprocessing_stages(
         ),
     )
 
-    # Filter out segments that are still too short after joining
     pipeline.add_stage(
         Filter(
             filter_fn=lambda x: x >= task_config["min_segment_tokens"],
@@ -244,10 +231,6 @@ def _add_preprocessing_stages(
 
     return pipeline
 
-
-# ---------------------------------------------------------------------------
-# Postprocessing (per-task)
-# ---------------------------------------------------------------------------
 
 def _add_diverse_qa_postprocessing(
     pipeline: Pipeline,
@@ -375,10 +358,6 @@ def _add_knowledge_list_postprocessing(
     return pipeline
 
 
-# ---------------------------------------------------------------------------
-# Pipeline builder
-# ---------------------------------------------------------------------------
-
 def build_pipeline(
     task_name: str,
     llm_client: AsyncOpenAIClient,
@@ -398,7 +377,6 @@ def build_pipeline(
         description=f"Nemotron-CC SDG: {task_name} on high-quality data",
     )
 
-    # 1. Read input parquet files from high-quality buckets
     input_paths = []
     for bucket in HIGH_QUALITY_BUCKETS:
         bucket_dir = os.path.join(input_dir, f"ensemble-max-int={bucket}")
@@ -417,8 +395,6 @@ def build_pipeline(
         )
     )
 
-    # 2. Add a stable document ID (required by DocumentSplitter/Joiner).
-    #    The bucketed parquet files from step 3 do not have an 'id' column.
     @processing_stage(name="add-document-id")
     def add_document_id(batch: DocumentBatch) -> DocumentBatch:
         df = batch.to_pandas()
@@ -429,10 +405,8 @@ def build_pipeline(
 
     pipeline.add_stage(add_document_id)
 
-    # 3. Preprocessing: filter short docs, split by newline, join segments
     pipeline = _add_preprocessing_stages(pipeline, task_config, tokenizer, hf_token)
 
-    # 4. LLM generation + task-specific postprocessing
     if task_name == "diverse_qa":
         pipeline.add_stage(
             DiverseQAStage(
@@ -481,7 +455,6 @@ def build_pipeline(
         )
         pipeline = _add_knowledge_list_postprocessing(pipeline, tokenizer, hf_token)
 
-    # 5. Write output (each task gets its own subdirectory)
     task_output_dir = os.path.join(output_dir, task_name)
     os.makedirs(task_output_dir, exist_ok=True)
     if output_format == "jsonl":
@@ -491,10 +464,6 @@ def build_pipeline(
 
     return pipeline
 
-
-# ---------------------------------------------------------------------------
-# Execution
-# ---------------------------------------------------------------------------
 
 def _save_metrics(metrics: dict, file_path: str) -> None:
     with open(file_path, "w") as f:
@@ -539,7 +508,6 @@ def run_task(
 
     logger.info(f"Task '{task_name}' completed in {elapsed:.1f}s ({elapsed / 60:.1f}m)")
 
-    # Collect output file paths
     output_files = []
     if results:
         for result in results:
@@ -560,12 +528,10 @@ def main(args: argparse.Namespace) -> None:
     ray_client = RayClient(num_cpus=args.num_cpus, include_dashboard=False)
     ray_client.start()
 
-    # Resolve tokenizer
     tokenizer_name = args.tokenizer if args.tokenizer else args.model_name
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     args.hf_token = os.environ.get("HF_TOKEN", "")
 
-    # Validate API key
     api_key = args.api_key
     if not api_key:
         msg = (
@@ -574,7 +540,6 @@ def main(args: argparse.Namespace) -> None:
         )
         raise ValueError(msg)
 
-    # Create LLM client
     llm_client = AsyncOpenAIClient(
         api_key=api_key,
         base_url=args.base_url,
@@ -584,8 +549,6 @@ def main(args: argparse.Namespace) -> None:
         timeout=args.timeout,
     )
 
-    # Create generation config (per-task max_tokens are set in TASK_CONFIGS,
-    # but can be overridden globally via --max-tokens)
     generation_config = GenerationConfig(
         temperature=args.temperature if args.temperature is not None else GENERATION_DEFAULTS["temperature"],
         top_p=args.top_p if args.top_p is not None else GENERATION_DEFAULTS["top_p"],
@@ -595,7 +558,6 @@ def main(args: argparse.Namespace) -> None:
         seed=args.seed,
     )
 
-    # Determine which tasks to run
     if args.task == "all":
         tasks = list(TASK_CONFIGS.keys())
     else:
@@ -637,10 +599,6 @@ def main(args: argparse.Namespace) -> None:
     ray_client.stop()
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
 def attach_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -651,7 +609,6 @@ def attach_args() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    # Task selection
     parser.add_argument(
         "--task",
         type=str,
@@ -660,7 +617,6 @@ def attach_args() -> argparse.ArgumentParser:
         help="SDG task to run. Use 'all' to run all four tasks sequentially.",
     )
 
-    # Paths
     parser.add_argument(
         "--input-dir",
         type=str,
@@ -681,7 +637,6 @@ def attach_args() -> argparse.ArgumentParser:
         help="Output format for generated data.",
     )
 
-    # Executor / Ray configuration
     parser.add_argument(
         "--executor",
         type=str,
@@ -696,7 +651,6 @@ def attach_args() -> argparse.ArgumentParser:
         help="Number of CPUs for the local Ray cluster (default: all available).",
     )
 
-    # API configuration
     parser.add_argument(
         "--api-key",
         type=str,
@@ -734,7 +688,6 @@ def attach_args() -> argparse.ArgumentParser:
         help="Timeout in seconds for each LLM API request.",
     )
 
-    # Model configuration
     parser.add_argument(
         "--model-name",
         type=str,
@@ -748,7 +701,6 @@ def attach_args() -> argparse.ArgumentParser:
         help="HuggingFace tokenizer name/path. Defaults to --model-name.",
     )
 
-    # Generation parameters
     parser.add_argument(
         "--temperature",
         type=float,
