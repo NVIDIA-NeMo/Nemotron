@@ -1,0 +1,131 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# Run with 8 GPUs (required for ep_size=8):
+#   torchrun --nproc-per-node=8 examples/llm_finetune/finetune.py --config examples/llm_finetune/nemotron/base-peft-config.yaml
+# Or from repo root: uv run torchrun --nproc-per-node=8 examples/llm_finetune/finetune.py --config examples/llm_finetune/nemotron/base-peft-config.yaml
+#
+# Nemotron (Mamba) requires mamba_ssm and causal-conv1d. Install both (e.g. cuda extra):
+#   uv sync --extra cuda
+# If you installed mamba-ssm by hand, also install causal-conv1d in the same env:
+#   uv pip install causal-conv1d
+# (Without causal-conv1d you get: TypeError: 'NoneType' object is not callable in mamba_ssm ssd_combined.)
+# If building mamba-ssm fails (nvcc /tmp), set TMPDIR and use --no-build-isolation (see above).
+#
+# If you see "No space left on device" for ~/.triton/cache during the first forward pass, set:
+#   export TRITON_CACHE_DIR=/ephemeral/shadeform/.triton_cache
+#   mkdir -p "$TRITON_CACHE_DIR"
+#
+# This recipe requires 8x80GB of GPU memory.
+#
+# Replace placeholders when copying: __PRETRAINED_MODEL_PATH__, __TRAIN_JSONL__, __VAL_JSONL__
+
+step_scheduler:
+  num_epochs: 1
+  global_batch_size: 8    # minimal for max memory headroom (grad_acc_steps = 8 with local_batch_size=1)
+  local_batch_size: 1     # 1 sample/GPU → 512 tokens/GPU, 4096 in MoE with ep=8 (256 seq → 2048 in MoE)
+  ckpt_every_steps: 100
+  val_every_steps: 100  # will run every x number of gradient steps
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 10
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: __PRETRAINED_MODEL_PATH__
+  trust_remote_code: true
+
+# torch.compile configuration
+compile:
+  enabled: false
+  mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
+  fullgraph: false
+  dynamic: true  # Set to false for better performance with fixed shapes
+  backend: null  # Use default backend (inductor)
+
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  exclude_modules: ["*.out_proj"]  # mamba layers use custom kernels that take in the out_proj.weight directly, thus lora doesn't work here.
+  dim: 8
+  alpha: 32
+  use_triton: True
+
+distributed:
+  strategy: fsdp2
+  dp_size: none   # inferred from world_size (use 8 GPUs)
+  tp_size: 1      # EP=8 uses all 8 GPUs for expert parallelism (tp and ep share GPUs)
+  cp_size: 1
+  ep_size: 8      # 8-way expert parallelism; with global_batch 8 + seq 512, MoE sees 4096 tokens/rank → should fit
+  activation_checkpointing: true   # reduces peak memory (avoids OOM on 80GB)
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+# Text2SQL: input/output columns. Replace __TRAIN_JSONL__ when copying.
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.text2sql.make_text2sql_dataset
+  path_or_dataset: __TRAIN_JSONL__
+  split: train
+  seq_length: 4096    # use lower seq_length for more memory headroom with ep_size=8
+  limit_dataset_samples: null
+  answer_only_loss_mask: true
+  truncation: true
+  padding: do_not_pad
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.text2sql.make_text2sql_dataset
+  path_or_dataset: __VAL_JSONL__
+  split: train
+  seq_length: 4096    # same as training
+  answer_only_loss_mask: true
+  truncation: true
+  padding: do_not_pad
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: True
+
+# Required when validation_dataset is set; recipe uses this as cfg_dl in build_dataloader.
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: False
+
+optimizer:
+  _target_: torch.optim.Adam
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-5
+  weight_decay: 0
+
+lr_scheduler:
+  lr_decay_style: cosine
+  min_lr: 1.0e-6
+
+# wandb:
+#   project: <your_wandb_project>
+#   entity: <your_wandb_entity>
+#   name: <your_wandb_exp_name>
+#   save_dir: <your_wandb_save_dir>
