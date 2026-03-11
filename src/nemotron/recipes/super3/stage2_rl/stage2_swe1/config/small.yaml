@@ -1,5 +1,5 @@
 run:
-  data: super3-rl-data:latest
+  data: super3/rl/swe1/data:latest
   model: super3-sft-model:latest
   env:
     container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super

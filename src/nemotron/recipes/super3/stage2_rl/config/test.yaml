@@ -31,9 +31,9 @@ policy:
 
 data:
   train:
-    data_path: "${art:data,path}/train/train.jsonl"
+    data_path: "${art:data,train}"
   validation:
-    data_path: "${art:data,path}/val/val.jsonl"
+    data_path: "${art:data,val}"
 
 cluster:
   gpus_per_node: 1

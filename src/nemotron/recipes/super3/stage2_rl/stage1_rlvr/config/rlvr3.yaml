@@ -1,0 +1,5 @@
+run:
+  data: super3/rl/rlvr3/data:latest
+  model: super3-rlvr2-model:latest
+
+defaults: "default.yaml"
