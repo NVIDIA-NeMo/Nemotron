@@ -2,6 +2,10 @@
 
 This directory contains the recipe for curating datasets similar to the [Nemotron-CC datasets](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2). The pipeline processes raw Common Crawl snapshots through extraction, deduplication, quality classification, and synthetic data generation.
 
+### Requirements
+
+- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) > 1.1.0 (install from main)
+
 ### Pipeline Overview
 
 #### Step 1: Download, Extract, and Clean (`step_1-download_extract.py`)

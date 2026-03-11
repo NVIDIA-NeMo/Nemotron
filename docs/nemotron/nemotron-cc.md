@@ -17,6 +17,7 @@ Common Crawl → Extract & Clean → Deduplicate → Quality Classify → Synthe
 | 1 | `step_1-download_extract.py` | Download, extract, language ID, Unicode cleanup | CPU-only |
 | 2a | `step_2a-exact_dedup.py` | GPU-accelerated exact deduplication | GPU (identify), CPU (remove) |
 | 2b | `step_2b-fuzzy_dedup.py` | MinHash + LSH fuzzy deduplication | GPU (identify), CPU (remove) |
+| 2c | `step_2c-substring_dedup/` | Exact substring deduplication using suffix arrays | CPU-only |
 | 3 | `step_3-quality_classification.py` | Ensemble quality scoring into 20 buckets | GPU (classify), CPU (ensemble) |
 | 4 | `step_4-sdg.py` | LLM-based synthetic data generation on top-quality data | CPU + LLM endpoint |
 
@@ -30,7 +31,7 @@ The recipe scripts live in:
 src/nemotron/recipes/data_curation/nemotron-cc/
 ```
 
-See the [recipe README](../../src/nemotron/recipes/data_curation/nemotron-cc/README.md) for detailed per-step documentation, resource recommendations, and usage examples.
+See the recipe README at `src/nemotron/recipes/data_curation/nemotron-cc/README.md` for detailed per-step documentation, resource recommendations, and usage examples.
 
 ## Prerequisites
 
