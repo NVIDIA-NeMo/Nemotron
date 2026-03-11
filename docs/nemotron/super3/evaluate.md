@@ -2,6 +2,8 @@
 
 Evaluate trained Nemotron 3 Super models against standard benchmarks using [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator).
 
+> **Reproducibility**: The evaluation recipe here covers a subset of the benchmarks used in the full tech report — enough to validate training quality during development. For the complete benchmark suite and reproduction instructions, see the [Nemotron 3 Super reproducibility doc](https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator-launcher/examples/nemotron/nemotron-3-super/reproducibility.md) in the NeMo Evaluator repo.
+
 > **Different execution pattern**: Unlike training stages that submit Python scripts via NeMo-Run, evaluation compiles the YAML config and passes it directly to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). There is no recipe script—the CLI handles config compilation and artifact resolution, then delegates to the launcher.
 
 ---
