@@ -43,7 +43,7 @@ Fuzzy deduplication using MinHash + LSH:
 
 #### Step 2c: Substring Deduplication (`step_2c-substring_dedup/`)
 
-CPU-only exact substring deduplication using [Google Research's deduplicate-text-datasets](https://github.com/google-research/deduplicate-text-datasets). Removes duplicate substrings within and across documents using suffix arrays.
+CPU-only exact substring deduplication using [Google Research's deduplicate-text-datasets](https://github.com/google-research/deduplicate-text-datasets) ([paper](https://arxiv.org/abs/2107.06499)). Removes duplicate substrings within and across documents using suffix arrays.
 
 - **Resources:** CPU-only. Requires 2-3x the input dataset size in RAM and 10-15x in disk space. We recommend splitting data into 100GB chunks.
 - **Output:** `data/substring_deduped/`.
