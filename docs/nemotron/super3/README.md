@@ -158,9 +158,17 @@ The pipeline tracks full lineage via [W&B Artifacts](../../nemo_runspec/artifact
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
 flowchart TB
     subgraph pretrain["Stage 0: Pretraining"]
-        raw["Raw Text Data"] --> data0["PretrainBlendsArtifact<br/>(bin/idx)"]
-        data0 --> cmd0["uv run nemotron super3 pretrain"]
-        cmd0 --> model0["ModelArtifact-pretrain"]
+        raw["Raw Text Data"] --> dp1["data_prep phase1"]
+        raw --> dp2["data_prep phase2"]
+        raw --> dplc["data_prep long_context"]
+        dp1 --> p1["Phase 1<br/>20T tokens"]
+        dp2 --> p2["Phase 2<br/>5T tokens"]
+        dplc --> lc1["LC Stage 1<br/>34B tokens, 1M ctx"]
+        dplc --> lc2["LC Stage 2<br/>17B tokens, 1M/4K"]
+        p1 -->|checkpoint| p2
+        p2 -->|checkpoint| lc1
+        lc1 -->|checkpoint| lc2
+        lc2 --> model0["ModelArtifact-pretrain"]
     end
 
     subgraph sft["Stage 1: SFT"]
