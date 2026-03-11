@@ -41,11 +41,11 @@ def test_patch_wandb_init_for_lineage_registers_artifacts_and_tags(monkeypatch):
     monkeypatch.setitem(sys.modules, "wandb", fake_wandb)
 
     wb.patch_wandb_init_for_lineage(
-        artifact_qualified_names=["ent/proj/DataBlendsArtifact-pretrain:v5"],
+        artifact_qualified_names=["ent/proj/nano3-pretrain-data:v5"],
         tags=["pretrain"],
     )
 
     fake_wandb.init()
 
-    assert used == ["ent/proj/DataBlendsArtifact-pretrain:v5"]
+    assert used == ["ent/proj/nano3-pretrain-data:v5"]
     assert "pretrain" in fake_run.tags

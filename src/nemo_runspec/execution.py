@@ -129,9 +129,11 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
 
     env_vars: dict[str, str] = {}
 
-    # Set NEMO_RUN_DIR to actual lustre path for output paths
-    # This ensures artifacts store the real path, not /nemo_run container mount
-    # Only set for remote execution - local execution uses default paths
+    # Set NEMO_RUN_DIR to remote_job_dir for shared filesystem operations
+    # (e.g., artifact marker files for multi-node sync).
+    # NOTE: This is the root job dir, NOT the exact /nemo_run mount source.
+    # For resolving /nemo_run paths to Lustre, _resolve_to_lustre_path()
+    # prefers /proc/mounts which gives the exact bind mount source.
     if env_config and env_config.get("remote_job_dir"):
         env_vars["NEMO_RUN_DIR"] = env_config["remote_job_dir"]
 
@@ -153,15 +155,33 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
     except Exception:
         pass
 
-    # Auto-detect Weights & Biases API key
+    # Auto-detect Weights & Biases API key and validate it before forwarding.
+    # Validating early avoids wasting time on Slurm allocation + container import
+    # only to fail with a 401 inside the container.
+    api_key = None
     try:
         import wandb
 
         api_key = wandb.api.api_key
         if api_key:
+            # Quick auth check — this is what the container will do later
+            test_api = wandb.Api(timeout=10)
+            _ = test_api.viewer  # triggers the actual auth request
             env_vars["WANDB_API_KEY"] = api_key
-    except Exception:
-        pass
+    except Exception as e:
+        import sys
+
+        err_str = str(e)
+        err_type = type(e).__name__
+        if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
+            raise RuntimeError(
+                "WANDB_API_KEY is set but authentication failed (401 Unauthorized). "
+                "Artifact resolution will fail inside the container. "
+                "Fix: run 'wandb login --relogin' to refresh your credentials."
+            ) from e
+        # For non-auth errors (network timeout, etc.), still pass the key through
+        if api_key:
+            env_vars["WANDB_API_KEY"] = api_key
 
     # Extract W&B entity and project from job config
     try:
@@ -173,6 +193,13 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
                 env_vars["WANDB_PROJECT"] = str(wandb_config["project"])
     except Exception:
         pass
+
+    # Merge explicit env_vars from run.env config (YAML or env.toml).
+    # These are applied last so they can override auto-detected values above.
+    if env_config:
+        extra = env_config.get("env_vars") if hasattr(env_config, "get") else getattr(env_config, "env_vars", None)
+        if extra and hasattr(extra, "items"):
+            env_vars.update({str(k): str(v) for k, v in extra.items()})
 
     return env_vars
 
@@ -309,6 +336,7 @@ def create_executor(
     attached: bool = False,
     force_squash: bool = False,
     default_image: str | None = None,
+    script_resources: Any | None = None,
 ) -> Any:
     """Create a nemo-run executor based on env config.
 
@@ -323,6 +351,8 @@ def create_executor(
         force_squash: Force re-squash of container image
         default_image: Fallback container image (e.g., from SPEC.image) if env
             config doesn't specify one
+        script_resources: RunspecResources from the script's [tool.runspec.resources].
+            Used as defaults when env config doesn't specify nodes/gpus.
 
     Returns:
         Configured executor (LocalExecutor or SlurmExecutor)
@@ -392,12 +422,15 @@ def create_executor(
             tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
     # Build executor kwargs
+    # Use script's runspec resources as defaults when env doesn't specify them
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else None
     executor_kwargs = {
         "account": _get_env(env, "account"),
         "partition": partition,
-        "nodes": _get_env(env, "nodes", 1),
-        "ntasks_per_node": _get_env(env, "ntasks_per_node", 1),
-        "gpus_per_node": _get_env(env, "gpus_per_node"),
+        "nodes": _get_env(env, "nodes", default_nodes),
+        "ntasks_per_node": _get_env(env, "ntasks_per_node", default_gpus or 1),
+        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
         "cpus_per_task": _get_env(env, "cpus_per_task"),
         "time": _get_env(env, "time", "04:00:00"),
         "container_image": container_image,

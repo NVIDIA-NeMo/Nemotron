@@ -114,7 +114,9 @@ class JsonlShardStage(pipelines_v1.Stage[JsonlShardWorkItem, JsonlShardWorkItem]
     def _get_resolver(self) -> HFPlaceholderResolver:
         """Get or create the HF placeholder resolver (lazy init per worker)."""
         if self._resolver is None:
-            self._resolver = HFPlaceholderResolver.create()
+            self._resolver = HFPlaceholderResolver.create(
+                target_datasets=self._ctx.hf_placeholder_targets,
+            )
         return self._resolver
 
     def process_data(self, tasks: list[JsonlShardWorkItem]) -> list[JsonlShardWorkItem]:

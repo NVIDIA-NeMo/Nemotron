@@ -471,9 +471,10 @@ def _resolve_to_lustre_path(path: str) -> str:
     """Resolve a container path to the actual Lustre path.
 
     When running in a container, /nemo_run is a bind mount that maps to the actual
-    Lustre path. This function resolves the path using:
-    1. NEMO_RUN_DIR environment variable (if set)
-    2. Reading /proc/mounts to find bind mount source
+    Lustre path (e.g., .../run/recipe/recipe_TIMESTAMP/recipe/). This function
+    resolves the path using:
+    1. /proc/mounts to find the exact bind mount source (preferred — gives full path)
+    2. NEMO_RUN_DIR environment variable as fallback (may only be the root job dir)
 
     Args:
         path: Path string, possibly starting with /nemo_run/
@@ -490,16 +491,63 @@ def _resolve_to_lustre_path(path: str) -> str:
     if not resolved.startswith("/nemo_run"):
         return resolved
 
-    # Method 1: Use NEMO_RUN_DIR environment variable
-    nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
-    if nemo_run_dir and nemo_run_dir != "/nemo_run":
-        logger.info(f"[WANDB] Using NEMO_RUN_DIR={nemo_run_dir} for path resolution")
-        if resolved.startswith("/nemo_run/"):
-            return resolved.replace("/nemo_run/", f"{nemo_run_dir}/", 1)
-        elif resolved == "/nemo_run":
-            return nemo_run_dir
+    # Method 1: Use /proc/self/mountinfo which has bind mount details.
+    # Format: id parent major:minor root mount_point options ... - fstype source options
+    # For bind mounts, "root" (col 4) is the path within the filesystem.
+    # We find the /nemo_run entry's device ID (col 3), then find the parent
+    # mount with the same device to reconstruct the full path.
+    try:
+        mountinfo_lines = []
+        with open("/proc/self/mountinfo", "r") as f:
+            mountinfo_lines = f.readlines()
 
-    # Method 2: Try to find /nemo_run bind mount source from /proc/mounts
+        nemo_run_root = None
+        nemo_run_dev = None
+        for line in mountinfo_lines:
+            parts = line.split()
+            if len(parts) >= 5 and parts[4] == "/nemo_run":
+                nemo_run_dev = parts[2]  # major:minor device ID
+                nemo_run_root = parts[3]  # path within the filesystem
+                print(f"[WANDB] Found /nemo_run in mountinfo: dev={nemo_run_dev}, root={nemo_run_root}")
+                break
+
+        if nemo_run_root and nemo_run_root != "/" and nemo_run_root.startswith("/"):
+            # Find the parent mount with the same device that gives us the
+            # filesystem mount point (e.g., /lustre mounted at /lustre with root=/)
+            # Then the full path is: parent_mount_point + nemo_run_root
+            fs_mount_point = None
+            for line in mountinfo_lines:
+                parts = line.split()
+                if len(parts) >= 5 and parts[2] == nemo_run_dev and parts[3] == "/":
+                    fs_mount_point = parts[4]
+                    print(f"[WANDB] Found parent filesystem mount: {fs_mount_point} (dev={nemo_run_dev})")
+                    break
+
+            if fs_mount_point:
+                # Full lustre path = fs_mount_point + nemo_run_root
+                full_nemo_run_path = fs_mount_point + nemo_run_root
+                if resolved.startswith("/nemo_run/"):
+                    result = resolved.replace("/nemo_run", full_nemo_run_path, 1)
+                    print(f"[WANDB] Resolved path: {resolved} -> {result}")
+                    return result
+                elif resolved == "/nemo_run":
+                    return full_nemo_run_path
+            else:
+                # No parent mount found — use root directly as best effort
+                print(f"[WANDB] No parent mount found for dev={nemo_run_dev}, using root directly")
+                if resolved.startswith("/nemo_run/"):
+                    result = resolved.replace("/nemo_run", nemo_run_root, 1)
+                    print(f"[WANDB] Resolved path: {resolved} -> {result}")
+                    return result
+                elif resolved == "/nemo_run":
+                    return nemo_run_root
+
+        if nemo_run_root is None:
+            print("[WANDB] No /nemo_run mount found in /proc/self/mountinfo")
+    except (OSError, IOError) as e:
+        print(f"[WANDB] Could not read /proc/self/mountinfo: {e}")
+
+    # Method 2: Try /proc/mounts (less detail but wider compatibility)
     try:
         with open("/proc/mounts", "r") as f:
             for line in f:
@@ -507,19 +555,264 @@ def _resolve_to_lustre_path(path: str) -> str:
                 if len(parts) >= 2:
                     source, target = parts[0], parts[1]
                     if target == "/nemo_run" and source.startswith("/"):
-                        logger.info(f"[WANDB] Found /nemo_run bind mount: {source}")
+                        print(f"[WANDB] Found /nemo_run in /proc/mounts: {source}")
                         if resolved.startswith("/nemo_run/"):
-                            return resolved.replace("/nemo_run/", f"{source}/", 1)
+                            result = resolved.replace("/nemo_run/", f"{source}/", 1)
+                            print(f"[WANDB] Resolved path: {resolved} -> {result}")
+                            return result
                         elif resolved == "/nemo_run":
                             return source
-    except (OSError, IOError) as e:
-        logger.warning(f"[WANDB] Could not read /proc/mounts: {e}")
+    except (OSError, IOError):
+        pass
 
-    logger.warning(
+    # Method 3: Fall back to NEMO_RUN_DIR environment variable
+    # NOTE: This may be the root job dir, not the exact mount source.
+    nemo_run_dir = os.environ.get("NEMO_RUN_DIR")
+    if nemo_run_dir and nemo_run_dir != "/nemo_run":
+        print(
+            f"[WANDB] Falling back to NEMO_RUN_DIR={nemo_run_dir} (may be incorrect)"
+        )
+        if resolved.startswith("/nemo_run/"):
+            result = resolved.replace("/nemo_run/", f"{nemo_run_dir}/", 1)
+            print(f"[WANDB] Resolved path: {resolved} -> {result}")
+            return result
+        elif resolved == "/nemo_run":
+            return nemo_run_dir
+
+    print(
         f"[WANDB] Could not resolve /nemo_run to Lustre path. "
         f"Set NEMO_RUN_DIR environment variable to the actual Lustre path."
     )
     return resolved
+
+
+def _get_manifest_tracker():
+    """Get the active ManifestTracker, if any.
+
+    Returns the tracker only if it is a ManifestTracker instance.
+    Used by the dual-mode monkey-patches to write manifests alongside wandb.
+    """
+    from nemotron.kit.trackers import get_lineage_tracker
+    from nemo_runspec.manifest_tracker import ManifestTracker
+
+    tracker = get_lineage_tracker()
+    if isinstance(tracker, ManifestTracker):
+        return tracker
+    return None
+
+
+def patch_manifest_checkpoint_logging() -> None:
+    """Patch MB checkpoint callback to write manifests only (no wandb).
+
+    Used when ``NEMO_ARTIFACT_ROOT`` is set but ``WANDB_PROJECT`` is not.
+    """
+    from pathlib import Path
+    from typing import Any
+
+    global _CHECKPOINT_LOGGING_PATCHED
+    if _CHECKPOINT_LOGGING_PATCHED:
+        logger.warning("[ARTIFACT] Checkpoint logging already patched, skipping manifest-only patch")
+        return
+
+    from megatron.bridge.training.utils import wandb_utils
+
+    def patched_on_save_checkpoint_success(
+        checkpoint_path: str,
+        save_dir: str,
+        iteration: int,
+        wandb_writer: Any | None,
+    ) -> None:
+        tracker = _get_manifest_tracker()
+        if tracker is None:
+            return
+        artifact_name, _ = wandb_utils._get_artifact_name_and_version(
+            Path(save_dir), Path(checkpoint_path)
+        )
+        resolved = _resolve_to_lustre_path(str(Path(save_dir).resolve()))
+        try:
+            tracker.log_model_checkpoint(
+                name=artifact_name,
+                path=resolved,
+                iteration=iteration,
+            )
+            logger.info(f"[ARTIFACT] Manifest written: {artifact_name} iteration={iteration}")
+        except Exception as e:
+            logger.warning(f"[ARTIFACT] Manifest write failed: {e}")
+
+    wandb_utils.on_save_checkpoint_success = patched_on_save_checkpoint_success
+    _CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched checkpoint logging for manifest-only mode")
+
+
+def patch_checkpoint_logging_both() -> None:
+    """Patch MB checkpoint callback to write manifest + wandb.
+
+    Manifest is written first (fast, reliable), then wandb (best-effort).
+    Used when both ``NEMO_ARTIFACT_ROOT`` and ``WANDB_PROJECT`` are set.
+    """
+    from pathlib import Path
+    from typing import Any
+
+    global _CHECKPOINT_LOGGING_PATCHED
+    if _CHECKPOINT_LOGGING_PATCHED:
+        logger.warning("[ARTIFACT] Checkpoint logging already patched, skipping manifest+wandb patch")
+        return
+
+    from megatron.bridge.training.utils import wandb_utils
+
+    def patched_on_save_checkpoint_success(
+        checkpoint_path: str,
+        save_dir: str,
+        iteration: int,
+        wandb_writer: Any | None,
+    ) -> None:
+        artifact_name, artifact_version = wandb_utils._get_artifact_name_and_version(
+            Path(save_dir), Path(checkpoint_path)
+        )
+        checkpoint_path_resolved = Path(checkpoint_path).resolve()
+        resolved_save_dir = _resolve_to_lustre_path(str(Path(save_dir).resolve()))
+
+        # Always write manifest first (fast, reliable)
+        tracker = _get_manifest_tracker()
+        if tracker is not None:
+            try:
+                tracker.log_model_checkpoint(
+                    name=artifact_name,
+                    path=resolved_save_dir,
+                    iteration=iteration,
+                )
+                logger.info(f"[ARTIFACT] Manifest written: {artifact_name} iteration={iteration}")
+            except Exception as e:
+                logger.warning(f"[ARTIFACT] Manifest write failed: {e}")
+
+        # Then log to wandb (best-effort)
+        if wandb_writer and getattr(wandb_writer, "run", None):
+            try:
+                if not checkpoint_path_resolved.exists():
+                    logger.warning(
+                        f"[WANDB] Checkpoint path does not exist, skipping: {checkpoint_path_resolved}"
+                    )
+                    return
+
+                metadata = {"iteration": iteration, "absolute_path": resolved_save_dir}
+                artifact = wandb_writer.Artifact(artifact_name, type="model", metadata=metadata)
+                artifact.add_reference(f"file://{str(checkpoint_path_resolved)}", checksum=False)
+                logged = wandb_writer.run.log_artifact(artifact, aliases=[artifact_version])
+                logged.wait()
+                logger.info(f"[WANDB] Artifact committed: {artifact_name}:{artifact_version}")
+
+                wandb_tracker_filename = wandb_utils._get_wandb_artifact_tracker_filename(save_dir)
+                wandb_tracker_filename.write_text(
+                    f"{wandb_writer.run.entity}/{wandb_writer.run.project}"
+                )
+            except Exception as e:
+                logger.error(f"[WANDB] Checkpoint artifact failed: {e}")
+
+    wandb_utils.on_save_checkpoint_success = patched_on_save_checkpoint_success
+    _CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched checkpoint logging for manifest+wandb mode")
+
+
+def patch_manifest_nemo_rl_checkpoint_logging(artifact_name: str = "rl") -> None:
+    """Patch NeMo-RL CheckpointManager to write manifests only (no wandb)."""
+    from pathlib import Path
+
+    global _NEMO_RL_CHECKPOINT_LOGGING_PATCHED
+    if _NEMO_RL_CHECKPOINT_LOGGING_PATCHED:
+        return
+
+    try:
+        from nemo_rl.utils.checkpoint import CheckpointManager
+    except ImportError:
+        logger.warning("[ARTIFACT] nemo_rl not installed, skipping manifest checkpoint patch")
+        return
+
+    original_finalize = CheckpointManager.finalize_checkpoint
+
+    def patched_finalize(self, checkpoint_path):
+        original_finalize(self, checkpoint_path)
+
+        tracker = _get_manifest_tracker()
+        if tracker is None:
+            return
+
+        checkpoint_path = Path(checkpoint_path)
+        step = int(checkpoint_path.name.split("_")[-1])
+        final_path = checkpoint_path.parent / f"step_{step}"
+        resolved = _resolve_to_lustre_path(str(final_path.resolve()))
+
+        try:
+            tracker.log_model_checkpoint(
+                name=artifact_name,
+                path=resolved,
+                iteration=step,
+            )
+            logger.info(f"[ARTIFACT] RL manifest written: {artifact_name} step={step}")
+        except Exception as e:
+            logger.warning(f"[ARTIFACT] RL manifest failed: {e}")
+
+    CheckpointManager.finalize_checkpoint = patched_finalize
+    _NEMO_RL_CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched NeMo-RL checkpoint for manifest-only mode")
+
+
+def patch_nemo_rl_checkpoint_logging_both(artifact_name: str = "rl") -> None:
+    """Patch NeMo-RL CheckpointManager to write manifest + wandb."""
+    from pathlib import Path
+
+    global _NEMO_RL_CHECKPOINT_LOGGING_PATCHED
+    if _NEMO_RL_CHECKPOINT_LOGGING_PATCHED:
+        return
+
+    try:
+        from nemo_rl.utils.checkpoint import CheckpointManager
+    except ImportError:
+        logger.warning("[ARTIFACT] nemo_rl not installed, skipping checkpoint patch")
+        return
+
+    original_finalize = CheckpointManager.finalize_checkpoint
+
+    def patched_finalize(self, checkpoint_path):
+        original_finalize(self, checkpoint_path)
+
+        checkpoint_path = Path(checkpoint_path)
+        step = int(checkpoint_path.name.split("_")[-1])
+        final_path = checkpoint_path.parent / f"step_{step}"
+        resolved = _resolve_to_lustre_path(str(final_path.resolve()))
+
+        # Manifest first
+        tracker = _get_manifest_tracker()
+        if tracker is not None:
+            try:
+                tracker.log_model_checkpoint(
+                    name=artifact_name,
+                    path=resolved,
+                    iteration=step,
+                )
+                logger.info(f"[ARTIFACT] RL manifest written: {artifact_name} step={step}")
+            except Exception as e:
+                logger.warning(f"[ARTIFACT] RL manifest failed: {e}")
+
+        # Wandb on top
+        try:
+            import wandb
+        except ImportError:
+            return
+        if wandb.run is None:
+            return
+        try:
+            metadata = {"step": step, "absolute_path": resolved}
+            artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+            artifact.add_reference(f"file://{resolved}", checksum=False)
+            logged = wandb.run.log_artifact(artifact, aliases=[f"step_{step}", "latest"])
+            logged.wait()
+            logger.info(f"[WANDB] RL artifact committed: {artifact_name}:step_{step}")
+        except Exception as e:
+            logger.error(f"[WANDB] RL checkpoint artifact failed: {e}")
+
+    CheckpointManager.finalize_checkpoint = patched_finalize
+    _NEMO_RL_CHECKPOINT_LOGGING_PATCHED = True
+    logger.info("[ARTIFACT] Patched NeMo-RL checkpoint for manifest+wandb mode")
 
 
 def patch_wandb_checkpoint_logging() -> None:
@@ -613,7 +906,7 @@ def patch_wandb_checkpoint_logging() -> None:
     logger.info("[WANDB] Patched checkpoint logging to add wait() call")
 
 
-def patch_nemo_rl_checkpoint_logging() -> None:
+def patch_nemo_rl_checkpoint_logging(artifact_name: str = "rl") -> None:
     """Patch NeMo-RL's CheckpointManager to log checkpoint artifacts to W&B.
 
     Why:
@@ -630,9 +923,12 @@ def patch_nemo_rl_checkpoint_logging() -> None:
 
     Artifact format:
         - type: "model"
-        - name: "rl" (matches pretrain/sft naming convention)
+        - name: recipe-scoped (e.g., "super3-rl-model")
         - metadata: step number, absolute_path (resolved Lustre path)
         - file reference: local path to checkpoint directory
+
+    Args:
+        artifact_name: W&B artifact name for the RL model (e.g., "super3-rl-model")
 
     Upstream:
         No issue filed yet. NeMo-RL should add native W&B artifact logging.
@@ -682,8 +978,6 @@ def patch_nemo_rl_checkpoint_logging() -> None:
             # Get the absolute shared filesystem path for cross-job access
             absolute_path = _resolve_to_lustre_path(str(final_checkpoint_path))
 
-            # Create artifact with naming convention matching pretrain/sft
-            artifact_name = "rl"
             artifact_version = f"step_{step}"
 
             # Store absolute_path in metadata for cross-job access

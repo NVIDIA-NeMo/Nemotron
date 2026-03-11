@@ -1,0 +1,43 @@
+# Super3 Pretrain Phase 2 — Quality-focused (20% of training, ~5T tokens)
+#
+# Resumes from Phase 1 checkpoint with a quality-focused data blend.
+# Coincides with WSD minus_sqrt LR decay from 4.5e-4 → 4.5e-6.
+#
+# Usage:
+#   nemotron super3 pretrain --config phase2
+#
+# Prerequisites:
+#   - Phase 1 checkpoint at ~iter 794,723
+#   - Phase 2 tokenized data (nemotron super3 data prep pretrain --config phase2)
+
+run:
+  data: super3-pretrain-data-phase2:latest
+  env:
+    container: nvcr.io/nvidian/nemo:26.02.super.rc4
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config
+
+data:
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+# Same full 25T schedule — scheduler resumes from phase1 checkpoint.
+train:
+  train_iters: 993404
+
+scheduler:
+  lr_decay_style: WSD
+  lr_wsd_decay_style: minus_sqrt
+  lr_warmup_iters: 7949
+  lr_decay_iters: 992411
+  lr_wsd_decay_iters: 198682
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/super3-pretrain-model-phase2
+  load: /nemo_run/super3-pretrain-model-phase1

@@ -39,7 +39,7 @@ defaults:
 # =============================================================================
 run:
   # Model artifact to evaluate (default: RL stage output)
-  model: rl:latest
+  model: nano3-rl-model:latest
 
   # Environment config - populated from env.toml profile via --run
   env:

@@ -28,7 +28,7 @@ from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-from nemo_runspec.env import get_wandb_config
+from nemo_runspec.env import get_artifacts_config, get_wandb_config
 from nemo_runspec.cli_context import GlobalContext
 from nemo_runspec.utils import rewrite_paths_for_remote, resolve_run_interpolations
 from nemo_runspec.config.resolvers import _is_artifact_reference
@@ -191,6 +191,13 @@ def build_job_config(
             merged_env["mounts"] = existing_env["mounts"] + profile_env["mounts"]
         elif "mounts" in existing_env:
             merged_env["mounts"] = existing_env["mounts"]
+        # Re-apply YAML resource keys so recipe requirements win over profile defaults.
+        # The recipe knows how many nodes/GPUs it needs; env.toml provides cluster
+        # logistics (account, partition, tunnel, mounts) the recipe doesn't know about.
+        _RESOURCE_KEYS = ("nodes", "gpus_per_node", "ntasks_per_node", "nproc_per_node")
+        for key in _RESOURCE_KEYS:
+            if key in existing_env:
+                merged_env[key] = existing_env[key]
         run_updates["env"] = merged_env
     elif existing_env:
         # No profile, but config has run.env - preserve it
@@ -200,6 +207,19 @@ def build_job_config(
     wandb_config = get_wandb_config()
     if wandb_config:
         run_updates["wandb"] = OmegaConf.to_container(wandb_config, resolve=True)
+
+    # Merge [artifacts] from env.toml into top-level artifacts section.
+    # env.toml is base, YAML config overrides.
+    env_artifacts = get_artifacts_config()
+    if env_artifacts:
+        env_art_dict = OmegaConf.to_container(env_artifacts, resolve=True)
+        existing_artifacts = {}
+        if "artifacts" in job_config:
+            existing_artifacts = OmegaConf.to_container(
+                job_config.artifacts, resolve=False
+            )
+        merged_artifacts = {**env_art_dict, **existing_artifacts}
+        job_config.artifacts = OmegaConf.create(merged_artifacts)
 
     # Merge run updates into existing run section (or create it)
     if "run" in job_config:

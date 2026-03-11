@@ -290,7 +290,7 @@ def main() -> None:
     patch_wandb_http_handler_skip_digest_verification()
     patch_wandb_local_file_handler_skip_digest_verification()
     patch_wandb_runid_for_seeded_random()
-    patch_nemo_rl_checkpoint_logging()
+    patch_nemo_rl_checkpoint_logging(artifact_name="nano3-rl-model")
 
     # Increase W&B single object size warning threshold
     import wandb.util

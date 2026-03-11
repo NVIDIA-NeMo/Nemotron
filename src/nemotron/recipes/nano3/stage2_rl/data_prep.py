@@ -82,7 +82,7 @@ from nemotron.data_prep.blend import DataBlend
 from nemotron.data_prep.config import DatasetConfig, ObservabilityConfig
 from nemotron.data_prep.utils.discovery import get_dataset_metadata
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
-from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
+from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver, NANO3_TARGET_DATASETS
 from nemotron.data_prep.observability import pipeline_wandb_hook
 from nemotron.data_prep.recipes.execution_mode import resolve_execution_mode
 from nemotron.data_prep.recipes.rl import (
@@ -100,6 +100,7 @@ from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStageConfig
 from nemotron.data_prep.stages.jsonl_write import JsonlShardStage, JsonlShardStageConfig
 from nemotron.kit import SplitJsonlDataArtifact, print_step_complete
 from nemotron.kit.trackers import InputDatasetInfo
+from nemo_runspec.artifacts import ArtifactTrackingResult, log_artifact, setup_artifact_tracking
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
     init_wandb_from_env,
@@ -168,7 +169,10 @@ class RLDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
+def run_data_prep_main(
+    cfg: RLDataPrepConfig,
+    tracking: ArtifactTrackingResult | None = None,
+) -> SplitJsonlDataArtifact:
     """Run RL data preparation with placeholder resolution.
 
     Uses the cosmos-xenna multi-stage pipeline:
@@ -238,6 +242,7 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
             resolved_tokenizer=None,
             observability=ObservabilityConfig(),
             hf_env=detect_hf_env_vars(),
+            hf_placeholder_targets=NANO3_TARGET_DATASETS,
         )
         stage_specs = [
             pipelines_v1.StageSpec(
@@ -296,8 +301,12 @@ def run_data_prep_main(cfg: RLDataPrepConfig) -> SplitJsonlDataArtifact:
         test=result.split_paths.get("test"),
     )
 
-    artifact.name = f"nano3/rl/data-resolved{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
-    artifact.save()
+    artifact.name = f"nano3/rl/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
+    # Log to all active backends (manifest + wandb)
+    if tracking is not None:
+        log_artifact(artifact, tracking)
+    else:
+        artifact.save()
 
     # Mark wandb run as successful
     wandb_kit.finish_run(exit_code=0)
@@ -330,14 +339,22 @@ def main(cfg: RLDataPrepConfig | None = None) -> SplitJsonlDataArtifact:
         if cli_overrides:
             config = apply_hydra_overrides(config, cli_overrides)
 
+        # Setup artifact tracking BEFORE dataclass conversion
+        # (artifacts: section is available in OmegaConf but not in the dataclass)
+        tracking = setup_artifact_tracking(config)
+
         # Convert to dataclass
         cfg = omegaconf_to_dataclass(config, RLDataPrepConfig)
+    else:
+        # Called from CLI framework — no artifacts config available
+        tracking = None
 
     # Initialize wandb from environment variables (set by nemo-run)
-    init_wandb_from_env()
+    if tracking is None or tracking.wandb:
+        init_wandb_from_env()
 
     # Run data prep
-    return run_data_prep_main(cfg)
+    return run_data_prep_main(cfg, tracking=tracking)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 run:
-  data: SFTDataArtifact-sft:latest
-  model: pretrain:latest
+  data: nano3-sft-data-tiny:latest
+  model: nano3-pretrain-model-tiny:latest
   env:
     container: nvcr.io/nvidian/nemo:26.02.super.rc1
     # Mount custom Megatron-LM and Megatron-Bridge versions
@@ -51,7 +51,7 @@ logger:
   wandb_exp_name: nano3-sft             # Experiment name shown in wandb UI
 
 checkpoint:
-  save: /nemo_run/sft
+  save: /nemo_run/nano3-sft-model-tiny
   save_interval: 20
   pretrained_checkpoint: ${art:model,path}
   finetune: true  # Skip loading optimizer state from pretrained checkpoint
