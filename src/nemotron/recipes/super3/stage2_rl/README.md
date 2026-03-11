@@ -20,32 +20,43 @@ Each sub-stage takes the output checkpoint of the previous one as input.
 
 ## Quick Start
 
+### Prerequisites
+
+All RL stages require the base NeMo-RL container (`nemo-rl:v0.5.0.nemotron_3_super`).
+SWE stages (2.1, 2.2) additionally require pre-fetched Python venvs — see
+[SWE container build](#swe-container) below.
+
 ### Using nemotron CLI (Recommended)
 
 ```bash
-# 1. Prepare data (downloads and resolves all 6 blends)
-uv run nemotron super3 data prep rl --run YOUR-CLUSTER
+# 1. Prepare data for each sub-stage
+uv run nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl swe1 --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl swe2 --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl rlhf --run YOUR-CLUSTER
 
 # 2. Run RL training stages sequentially
-# Stage 1.1 - RLVR 1 (from SFT checkpoint)
-uv run nemotron super3 rl -c stage1_rlvr \
-    data.train.data_path=$DATA/rlvr1/train-split.jsonl \
-    data.validation.data_path=$DATA/rlvr1/val-split.jsonl \
-    policy.model_name=/path/to/sft_checkpoint \
-    --run YOUR-CLUSTER
+# Stage 1.1–1.3: RLVR (uses base container)
+uv run nemotron super3 rl rlvr -c rlvr1 --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c rlvr2 --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c rlvr3 --run YOUR-CLUSTER
 
-# Stage 1.2 - RLVR 2 (from RLVR 1 output)
-uv run nemotron super3 rl -c stage1_rlvr \
-    data.train.data_path=$DATA/rlvr2/train-split.jsonl \
-    data.validation.data_path=$DATA/rlvr2/val-split.jsonl \
-    policy.model_name=/path/to/rlvr1_checkpoint \
-    --run YOUR-CLUSTER
+# Stage 2.1: SWE pivot (requires SWE container)
+uv run nemotron super3 rl swe1 --run YOUR-CLUSTER
 
-# Stage 1.3, 2.1, 2.2, 3 follow the same pattern with respective configs and data
+# Stage 2.2: SWE-bench (requires SWE container + Apptainer SIF images)
+uv run nemotron super3 rl swe2 --run YOUR-CLUSTER
 
-# Quick test with tiny config
-uv run nemotron super3 rl -c tiny --run YOUR-CLUSTER
+# Stage 3: RLHF (uses base container)
+uv run nemotron super3 rl rlhf --run YOUR-CLUSTER
+
+# Quick test (single GPU, validates RL infrastructure)
+uv run nemotron super3 rl rlvr -c test --run YOUR-CLUSTER
 ```
+
+> **`--run YOUR-CLUSTER`** refers to a profile defined in your `env.toml` file,
+> which configures SLURM account, partition, mounts, and other cluster settings.
+> See the [env.toml setup guide](../README.md#envtoml-setup) for details.
 
 ### Direct Script Execution
 
@@ -111,13 +122,13 @@ The output is registered as a W&B Artifact (`DataBlendsArtifact-rl`) for lineage
 
 ```bash
 # Fewer steps for testing
-uv run nemotron super3 rl -c stage1_rlvr grpo.max_num_steps=100
+uv run nemotron super3 rl rlvr grpo.max_num_steps=100
 
 # Different temperature
-uv run nemotron super3 rl -c stage1_rlvr policy.generation.temperature=0.8
+uv run nemotron super3 rl rlvr policy.generation.temperature=0.8
 
 # Reduced-scale config
-uv run nemotron super3 rl -c small_stage1_rlvr_21node --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr -c small --run YOUR-CLUSTER
 ```
 
 ## Artifact Lineage
@@ -151,7 +162,36 @@ flowchart TB
 - **NeMo-Gym**: Provides reward environments
 - **GPU nodes**: 109 nodes (RLVR), 64 nodes (SWE), 72 nodes (RLHF) — or use small configs
 - **Sandbox container**: Required for SWE stages (code execution, Lean4 verification)
+- **SWE container**: Required for SWE stages 2.1 and 2.2 (pre-fetched venvs)
 - **Apptainer SIF images**: Required for SWE stage 2.2 (SWE-bench environments)
+
+### SWE Container
+
+SWE stages (2.1, 2.2) need pre-fetched Python virtual environments that are not
+included in the base `nemo-rl:v0.5.0.nemotron_3_super` image. Build the SWE
+container once (from within the [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) repo):
+
+```bash
+docker buildx build \
+  -t your-registry/nemo-rl:v0.5.0.nemotron_3_super_swe \
+  --push \
+  -f- . <<'EOF'
+FROM nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+
+RUN <<'RUNEOF'
+set -euxo pipefail
+UV_TORCH_BACKEND=$(uv run python -c "import tomllib,pathlib; \
+  indexes=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['tool']['uv']['index']; \
+  print(next(i['name'].removeprefix('pytorch-') for i in indexes if i['name'].startswith('pytorch-')))") \
+UV_LINK_MODE=hardlink uv run python examples/nemo_gym/prefetch_venvs.py \
+    examples/configs/super/stage2_swe1.yaml \
+    examples/configs/super/stage2_swe2.yaml
+RUNEOF
+EOF
+```
+
+SWE2 additionally requires Apptainer `.sif` images — see
+[stage2_swe2/README.md](stage2_swe2/README.md#prerequisites).
 
 ## Previous Stages
 

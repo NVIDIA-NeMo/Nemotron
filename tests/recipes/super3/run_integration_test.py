@@ -21,9 +21,10 @@ by training with a tiny (~7M param) Super3-architecture model on a single GPU.
 The pipeline chains stages via wandb artifacts:
   1. data prep pretrain  (--config tiny)  → super3-pretrain-data-tiny artifact
   2. data prep sft       (--config tiny)  → super3-sft-data artifact
-  3. pretrain             (--config test)  → super3-pretrain-model-tiny artifact
-  4. sft                  (--config test)  → super3-sft-model-tiny artifact
-  5. rl preflight         (--config test)  → validates RL infra (Ray, env vars,
+  3. data prep rl rlvr                    → super3-rl-rlvr1-data artifact
+  4. pretrain             (--config test)  → super3-pretrain-model-tiny artifact
+  5. sft                  (--config test)  → super3-sft-model-tiny artifact
+  6. rl preflight         (--config test)  → validates RL infra (Ray, env vars,
                                              artifact resolution, GPU, imports)
 
 Data-prep stages run on CPU nodes (Ray), training stages run on GPU nodes
@@ -66,6 +67,11 @@ STAGES: list[dict] = [
         "name": "data-prep-sft",
         "phase": "data",
         "cmd": ["nemotron", "super3", "data", "prep", "sft", "--config", "tiny"],
+    },
+    {
+        "name": "data-prep-rl",
+        "phase": "data",
+        "cmd": ["nemotron", "super3", "data", "prep", "rl", "rlvr"],
     },
     # Phase 2: Training (GPU / torchrun)
     {

@@ -2,13 +2,12 @@ run:
   env:
     container: anyscale/ray:2.49.2-py312
 
-# Default config — points to Phase 1 (diversity-focused, 80% of training).
+# Phase 1 config for pretrain data preparation (80% of training, 20T tokens)
+# Diversity-focused blend with broad coverage across 16 categories.
 #
-# For the two-phase curriculum from the tech report:
-#   nemotron super3 data prep pretrain --config phase1   # 80% of tokens
-#   nemotron super3 data prep pretrain --config phase2   # final 20% of tokens
-#
-# Running without --config uses this file, which is identical to phase1.
+# Usage:
+#   nemotron super3 data prep pretrain --config phase1
+#   nemotron super3 data prep pretrain --config phase1 sample=100
 
 # Path to data blend JSON file
 blend_path: ${oc.env:PWD}/src/nemotron/recipes/super3/stage0_pretrain/config/data_prep/data_blend_raw_phase1.json

@@ -1,19 +1,8 @@
-run:
-  data: super3-pretrain-data:latest
-  env:
-    container: nvcr.io/nvidian/nemo:26.02.super.rc4
+# Default pretrain config — points to Phase 1.
+#
+# For the two-phase curriculum from the tech report:
+#   nemotron super3 pretrain --config phase1   # 80% of tokens (diversity-focused)
+#   nemotron super3 pretrain --config phase2   # final 20% (quality-focused, resumes from phase1 checkpoint)
 
-recipe:
-  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config
-
-data:
-  per_split_data_args_path: ${art:data,path}/blend.json
-
-logger:
-  log_interval: 10
-  wandb_project: ${run.wandb.project}
-  wandb_entity: ${run.wandb.entity}
-
-checkpoint:
-  save: /nemo_run/super3-pretrain-model
-  save_interval: 200
+defaults:
+  - phase1

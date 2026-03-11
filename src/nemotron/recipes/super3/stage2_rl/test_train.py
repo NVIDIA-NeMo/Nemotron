@@ -139,19 +139,17 @@ def check_config_parsing(config_path: str, r: PreflightResult) -> dict | None:
         return None
 
 
+def _get_data_paths(config: dict) -> tuple[str | None, str | None]:
+    """Extract train/val JSONL paths from config (supports v0.4 flat and v0.5 nested)."""
+    data_cfg = config.get("data", {})
+    if "train" in data_cfg and isinstance(data_cfg["train"], dict):
+        return data_cfg["train"].get("data_path"), data_cfg.get("validation", {}).get("data_path")
+    return data_cfg.get("train_jsonl_fpath"), data_cfg.get("validation_jsonl_fpath")
+
+
 def check_artifacts(config: dict, r: PreflightResult) -> None:
     """Verify artifact paths exist on the filesystem."""
-    run_cfg = config.get("run", {})
-
-    # Check data artifact
-    data_cfg = config.get("data", {})
-    # Support both v0.4 (flat) and v0.5 (nested) formats
-    if "train" in data_cfg and isinstance(data_cfg["train"], dict):
-        train_path = data_cfg["train"].get("data_path")
-        val_path = data_cfg.get("validation", {}).get("data_path")
-    else:
-        train_path = data_cfg.get("train_jsonl_fpath")
-        val_path = data_cfg.get("validation_jsonl_fpath")
+    train_path, val_path = _get_data_paths(config)
 
     for name, path in [("data.train", train_path), ("data.val", val_path)]:
         if path and os.path.exists(path):
@@ -174,6 +172,71 @@ def check_artifacts(config: dict, r: PreflightResult) -> None:
         r.skip("artifact:model", f"HF model ID: {model_path}")
     else:
         r.skip("artifact:model", "not configured")
+
+
+def check_data_format(config: dict, r: PreflightResult) -> None:
+    """Validate RL data JSONL files are correctly formatted for NeMo-Gym.
+
+    Checks:
+    - Files are valid JSONL (each line parses as JSON)
+    - Each record has 'messages' (list of role/content dicts)
+    - Messages have required 'role' and 'content' fields
+    - At least one record exists per split
+    - Optional 'tools' field is a list when present
+    """
+    import json
+
+    train_path, val_path = _get_data_paths(config)
+
+    for split_name, path in [("train", train_path), ("val", val_path)]:
+        if not path or not os.path.exists(path):
+            r.skip(f"data_format:{split_name}", "file not available")
+            continue
+
+        try:
+            with open(path) as f:
+                records = [json.loads(line) for line in f if line.strip()]
+        except json.JSONDecodeError as e:
+            r.fail(f"data_format:{split_name}", f"invalid JSONL: {e}")
+            continue
+
+        if not records:
+            r.fail(f"data_format:{split_name}", "file is empty")
+            continue
+
+        # Validate record structure
+        errors = []
+        for i, record in enumerate(records[:10]):  # Check first 10 records
+            if "messages" not in record:
+                errors.append(f"record {i}: missing 'messages' field")
+                continue
+
+            messages = record["messages"]
+            if not isinstance(messages, list) or len(messages) == 0:
+                errors.append(f"record {i}: 'messages' must be a non-empty list")
+                continue
+
+            for j, msg in enumerate(messages):
+                if not isinstance(msg, dict):
+                    errors.append(f"record {i}, message {j}: not a dict")
+                elif "role" not in msg:
+                    errors.append(f"record {i}, message {j}: missing 'role'")
+                elif "content" not in msg:
+                    errors.append(f"record {i}, message {j}: missing 'content'")
+
+            # Validate optional tools field
+            if "tools" in record and not isinstance(record["tools"], list):
+                errors.append(f"record {i}: 'tools' must be a list")
+
+        if errors:
+            r.fail(f"data_format:{split_name}", "; ".join(errors[:3]))
+        else:
+            # Check first record has a user message
+            first_roles = [m["role"] for m in records[0]["messages"]]
+            r.ok(
+                f"data_format:{split_name}",
+                f"{len(records)} records, first roles: {first_roles}",
+            )
 
 
 def check_ray(r: PreflightResult) -> None:
@@ -308,28 +371,34 @@ def main() -> None:
 
     r = PreflightResult()
 
-    print("\n[1/6] Config parsing & resolution")
+    print("\n[1/8] Config parsing & resolution")
     config = check_config_parsing(config_path, r)
 
-    print("\n[2/6] Artifact resolution")
+    print("\n[2/8] Artifact resolution")
     if config:
         check_artifacts(config, r)
     else:
         r.skip("artifacts", "skipped (config failed to load)")
 
-    print("\n[3/6] Ray cluster")
+    print("\n[3/8] Data format validation")
+    if config:
+        check_data_format(config, r)
+    else:
+        r.skip("data_format", "skipped (config failed to load)")
+
+    print("\n[4/8] Ray cluster")
     check_ray(r)
 
-    print("\n[4/6] GPU availability")
+    print("\n[5/8] GPU availability")
     check_gpu(r)
 
-    print("\n[5/6] Package imports")
+    print("\n[6/8] Package imports")
     check_imports(r)
 
-    print("\n[6/6] Environment variables")
+    print("\n[7/8] Environment variables")
     check_env_vars(r)
 
-    print("\n[7/7] Filesystem & tools")
+    print("\n[8/8] Filesystem & tools")
     check_filesystem(r)
 
     # Summary

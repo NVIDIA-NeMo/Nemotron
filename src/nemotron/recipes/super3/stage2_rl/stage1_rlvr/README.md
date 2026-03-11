@@ -89,6 +89,10 @@ nemotron super3 rl rlvr \
 
 The RLVR stage consists of 3 sub-stages with different data blends. All 3 use the same config (`stage1_rlvr.yaml`), only the data paths differ. Stage 1.1 starts from the SFT checkpoint; each subsequent stage takes the output of the previous one.
 
+> **`--run <profile>`** refers to a profile defined in your `env.toml` file,
+> which configures SLURM account, partition, mounts, and other cluster settings.
+> See the [env.toml setup guide](../../README.md#envtoml-setup) for details.
+
 Or via `super_launch.sh` directly:
 
 ```bash

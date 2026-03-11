@@ -75,6 +75,11 @@ execution:
   output_dir: ${run.env.remote_job_dir}/evaluations
   walltime: ${run.env.time}
   num_nodes: 1
+  # WA: RULER->=128k context lengths GPU IDLE cancellation
+  sbatch_comment: '{"OccupiedIdleGPUsJobReaper":{"exemptIdleTimeMins":"240","reason":"data_loading","description":"RULER has long CPU-only data preprocessing that gets longer with larger context lengths."}}'
+
+  deployment:
+    n_tasks: ${execution.num_nodes}
 
   # Proxy for health check routing
   proxy:
@@ -89,13 +94,13 @@ execution:
   # Environment variables for deployment and evaluation containers
   env_vars:
     deployment:
-      HF_HOME: /cache/huggingface
-      HF_TOKEN: HF_TOKEN
-      NIM_CACHE_PATH: /cache/nim
-      VLLM_CACHE_ROOT: /cache/vllm
+      HF_HOME: lit:/cache/huggingface
+      HF_TOKEN: host:HF_TOKEN
+      NIM_CACHE_PATH: lit:/cache/nim
+      VLLM_CACHE_ROOT: lit:/cache/vllm
     evaluation:
-      HF_HOME: /cache/huggingface
-      HF_TOKEN: HF_TOKEN
+      HF_HOME: lit:/cache/huggingface
+      HF_TOKEN: host:HF_TOKEN
 
   # Mount configuration
   mounts:
@@ -134,13 +139,16 @@ deployment:
     health: /v1/health
 
   env_vars:
-    HF_TOKEN: HF_TOKEN
+    HF_TOKEN: host:HF_TOKEN
+    HF_HOME: lit:/cache/huggingface
+    NIM_CACHE_PATH: lit:/cache/nim
+    VLLM_CACHE_ROOT: lit:/cache/vllm
 
 # Evaluation configuration
 # Defines tasks and evaluation parameters
 evaluation:
   env_vars:
-    HF_TOKEN: HF_TOKEN
+    HF_TOKEN: host:HF_TOKEN
 
   # Global config settings that apply to all tasks
   nemo_evaluator_config:
@@ -190,3 +198,6 @@ export:
   #   experiment_name: nemotron-3-super-nemofw-ray
   #   log_logs: true
   #   only_required: false
+  #   tags:
+  #     model: nvidia/NVIDIA-Nemotron-3-Super-120B-Base-BF16
+  #     deployment_type: nemo-framework-ray

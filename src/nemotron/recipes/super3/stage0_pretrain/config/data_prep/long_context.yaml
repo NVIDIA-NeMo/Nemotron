@@ -2,19 +2,18 @@ run:
   env:
     container: anyscale/ray:2.49.2-py312
 
-# Default config — points to Phase 1 (diversity-focused, 80% of training).
+# Long-Context Phase data preparation
+# 80% Phase 2 data + 20% long-context document QA (319K rows).
+# Used for both LC Stage 1 (1M context, 34B tokens) and Stage 2 (alternating 1M/4K, 17B tokens).
 #
-# For the two-phase curriculum from the tech report:
-#   nemotron super3 data prep pretrain --config phase1   # 80% of tokens
-#   nemotron super3 data prep pretrain --config phase2   # final 20% of tokens
-#
-# Running without --config uses this file, which is identical to phase1.
+# Usage:
+#   nemotron super3 data prep pretrain --config long_context
 
 # Path to data blend JSON file
-blend_path: ${oc.env:PWD}/src/nemotron/recipes/super3/stage0_pretrain/config/data_prep/data_blend_raw_phase1.json
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/super3/stage0_pretrain/config/data_prep/data_blend_raw_long_context.json
 
 # Output directory for tokenized data
-output_dir: /lustre/fsw/portfolios/coreai/users/mromeijn/output/super3/stage0_pretrain/phase1
+output_dir: /lustre/fsw/portfolios/coreai/users/mromeijn/output/super3/stage0_pretrain/long_context
 
 # Number of output shards for parallel loading
 num_shards: 128
@@ -48,7 +47,7 @@ sample: null
 force: false
 
 # Config name for artifact naming
-config_name: phase1
+config_name: long_context
 
 # =============================================================================
 # Stage Configs

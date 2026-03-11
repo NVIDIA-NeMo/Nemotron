@@ -245,6 +245,8 @@ uv run nemotron super3 eval --run YOUR-CLUSTER -t adlr_mmlu -t hellaswag -t arc_
 
 You can run evaluation standalone without the `nemotron` CLI by using `nemo-evaluator-launcher` directly. This is useful for custom setups or when integrating into existing pipelines.
 
+> **Upstream reproducibility guide**: For full reproduction instructions (including config files and expected scores), see the [Nemotron 3 Super reproducibility doc](https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator-launcher/examples/nemotron/nemotron-3-super/reproducibility.md) in the NeMo Evaluator repo.
+
 **1. Create a virtual environment and install:**
 
 ```bash
@@ -362,6 +364,7 @@ This stage uses the following components:
 ## Reference
 
 - [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) — Upstream evaluation framework
+- [Nemotron 3 Super Reproducibility Guide](https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator-launcher/examples/nemotron/nemotron-3-super/reproducibility.md) — Full reproduction instructions with configs and expected scores
 - [Artifact Lineage](../../nemo_runspec/artifacts.md) — W&B artifact system
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) — Cluster configuration
 - [W&B Integration](../wandb.md) — Credentials and export setup

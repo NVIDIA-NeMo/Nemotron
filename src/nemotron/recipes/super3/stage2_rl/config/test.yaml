@@ -1,6 +1,6 @@
 run:
   train_script: src/nemotron/recipes/super3/stage2_rl/test_train.py
-  data: super3-rl-data-tiny:latest
+  data: super3-rl-rlvr1-data:latest
   model: super3-sft-model-tiny:latest
   env:
     container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super

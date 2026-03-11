@@ -96,6 +96,10 @@ nemotron super3 rl swe2 \
     run.env.sif_dir=/path/to/sif
 ```
 
+> **`--run <profile>`** refers to a profile defined in your `env.toml` file,
+> which configures SLURM account, partition, mounts, and other cluster settings.
+> See the [env.toml setup guide](../../README.md#envtoml-setup) for details.
+
 Or via `super_launch.sh` directly:
 
 ```bash
