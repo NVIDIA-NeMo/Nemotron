@@ -116,7 +116,7 @@ def _execute_data_prep_sft(cfg: RecipeConfig):
     env_for_executor = job_config.run.env if hasattr(job_config.run, "env") else None
 
     env_vars = build_env_vars(job_config, env_for_executor)
-    display_job_submission(job_path, train_path, env_vars, cfg.mode)
+    display_job_submission(job_path, train_path, env_vars, cfg.mode, artifacts=job_config.get("artifacts"))
     startup_commands = get_startup_commands(env_for_executor)
 
     # =========================================================================

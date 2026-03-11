@@ -1,0 +1,30 @@
+run:
+  train_script: src/nemotron/recipes/super3/stage0_pretrain/test_train.py
+  data: super3-pretrain-data-tiny:latest
+  env:
+    container: nvcr.io/nvidian/nemo:26.02.super.rc4
+    nodes: 1
+    gpus_per_node: 1
+    ntasks_per_node: 1
+
+# The tiny Super3 model provider and recipe are defined in test_train.py.
+# run.train_script above tells the CLI to use it instead of train.py.
+
+data:
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 50
+  global_batch_size: 32
+
+scheduler:
+  lr_warmup_iters: 10
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/super3-pretrain-model-tiny
+  save_interval: 50

@@ -87,7 +87,32 @@ Because these are complete systems, you can extract specific techniques with con
 
 | Model | Description | Stages | Guide |
 |-------|-------------|--------|-------|
+| **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 253B total MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 3.6B active / 31.6B total MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
+
+### Nemotron 3 Super
+
+A complete training recipe for the frontier Mixture-of-Experts Transformer model with state-of-the-art reasoning, coding, and agentic capabilities.
+
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
+
+**Model Specifications**:
+- 253B total parameters, Mixture-of-Experts Transformer
+- Multi-stage RL pipeline: 3× RLVR + 2× SWE-RL + RLHF across 21 reward environments
+- Asynchronous GRPO with decoupled training and inference
+
+**What You Can Extract**:
+- Large-scale pretraining with data curriculum
+- Multi-domain SFT pipeline
+- Multi-environment RLVR with 21 simultaneous reward environments
+- SWE-RL with container-isolated sandbox execution
+- GenRM-based RLHF with principle-following rewards
+- Asynchronous GRPO at 1K GPU scale
+
+**Resources**:
+- [Training Guide](docs/nemotron/super3/README.md)
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf)
+- [Model Weights (Instruct)](https://huggingface.co/nvidia/Nemotron-3-Super-49B-v1)
 
 ### Nemotron 3 Nano
 
@@ -126,8 +151,8 @@ Practical deployment and model usage guides for Nemotron models.
 
 | Model | Best For | Key Features | Resources |
 |-------|----------|--------------|-----------|
-| [**Llama-3.3-Nemotron-Super-49B-v1.5**](https://huggingface.co/nvidia/Llama-3_3-Nemotron-Super-49B-v1_5) | Production deployments needing strong reasoning | 128K context, single H200 GPU, RAG & tool calling | [Cookbooks](./usage-cookbook/Llama-Nemotron-Super-49B-v1.5/) |
-| [**NVIDIA-Nemotron-Nano-9B-v2**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) | Resource-constrained environments | 9B params, hybrid Mamba-2, controllable reasoning | [Cookbooks](./usage-cookbook/Nemotron-Nano-9B-v2/) |
+| [**Nemotron 3 Super 120B A12B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) | Production deployments needing strong reasoning | 1M context, in NVFP4 single B200, RAG & tool calling | [Cookbooks](./usage-cookbook/Nemotron-3-Super) |
+| [**Nemotron 3 Nano 30B A3B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | Resource-constrained environments | 1M context, sparse MoE hybrid Mamba-2, controllable reasoning | [Cookbooks](./usage-cookbook/Nemotron-3-Nano) |
 | [**NVIDIA-Nemotron-Nano-12B-v2-VL**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL) | Document intelligence and video understanding | 12B VLM, video reasoning, Efficient Video Sampling | [Cookbooks](./usage-cookbook/Nemotron-Nano2-VL/) |
 | [**Llama-3.1-Nemotron-Safety-Guard-8B-v3**](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3) | Multilingual content moderation | 9 languages, 23 safety categories | [Cookbooks](./usage-cookbook/Llama-3.1-Nemotron-Safety-Guard-V3/) |
 | **Nemotron-Parse** | Document parsing for RAG and AI agents | Table extraction, semantic segmentation | [Cookbooks](./usage-cookbook/Nemotron-Parse-v1.1/) |
@@ -421,7 +446,8 @@ Your feedback helps shape the future of Nemotron models!
 
 ## Documentation
 
-- [Nemotron 3 Nano Training Guide](docs/nemotron/nano3/README.md) – training recipe
+- [Nemotron 3 Super Training Guide](docs/nemotron/super3/README.md) – frontier model training recipe
+- [Nemotron 3 Nano Training Guide](docs/nemotron/nano3/README.md) – efficient model training recipe
 - [NeMo-Run Configuration](docs/nemo_runspec/nemo-run.md) – execution profiles and job orchestration
 - [Data Preparation](docs/nemotron/data-prep.md) – data preparation module
 - [Contributing Guidelines](CONTRIBUTING.md) – how to contribute

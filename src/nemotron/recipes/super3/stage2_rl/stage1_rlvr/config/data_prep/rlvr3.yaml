@@ -1,0 +1,27 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# RLVR Stage 1.3 data preparation
+#
+# Resolves HF placeholders (Skywork-OR1-RL-Data) and splits into
+# train/val (last 100 rows → val).
+#
+# Usage:
+#   nemotron super3 data prep rl rlvr -c rlvr3
+
+# Path to source JSONL file
+# TODO: Update to hf:// path once nvidia/Nemotron-RL-Super-Training-Blends is published
+input_path: /lustre/fs1/portfolios/coreai/projects/coreai_dlalgo_nemorl/users/yifuw/code/nano-v3-data/super_data/release/rlvr3.jsonl
+
+# Output directory
+output_dir: ${oc.env:PWD}/../output/super3/stage2_rl/rlvr3
+
+# Number of rows to hold out for validation (from end of file)
+val_holdout: 100
+
+# Limit rows per dataset for quick tests (null = no limit)
+sample: null
+
+# Force new run, ignoring cache
+force: false

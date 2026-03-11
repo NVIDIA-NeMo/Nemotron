@@ -81,6 +81,7 @@ class PipelineContext:
     resolved_tokenizer: dict[str, Any] | None = None
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
     hf_env: dict[str, str] = field(default_factory=dict)
+    hf_placeholder_targets: dict[str, dict[str, Any]] | None = None
 
     def hf_runtime_env(self, *, extra_env_vars: dict[str, str] | None = None) -> RuntimeEnv:
         """Create RuntimeEnv with HF credentials and optional extra env vars.

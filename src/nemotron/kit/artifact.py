@@ -189,8 +189,22 @@ def print_step_complete(
             # Build content lines - URI first for easy copy/paste
             lines = Text()
             lines.append(f"{artifact.art_path}\n\n", style="bold yellow")
-            lines.append("Path:    ", style="dim")
+            lines.append("Path:     ", style="dim")
             lines.append(f"{artifact.path.resolve()}\n", style="blue")
+
+            # Show tracking links
+            manifest_path = getattr(artifact, "_manifest_path", None)
+            if manifest_path:
+                lines.append("Manifest: ", style="dim")
+                lines.append(f"{manifest_path}\n", style="blue")
+            wandb_url = (
+                artifact.tracking.url
+                if hasattr(artifact, "tracking") and artifact.tracking
+                else None
+            )
+            if wandb_url:
+                lines.append("W&B:      ", style="dim")
+                lines.append(f"{wandb_url}\n", style="blue")
 
             # Add metrics if present
             if artifact.metrics:
@@ -201,9 +215,12 @@ def print_step_complete(
                 ]
                 lines.append(", ".join(metrics_parts), style="green")
 
+            # Use artifact name (e.g. "super3-pretrain-data-tiny") if available,
+            # fall back to type
+            display_name = artifact.name or artifact.type
             panel = Panel(
                 lines,
-                title=f"[bold cyan]{name}[/bold cyan] [dim]({artifact.type})[/dim]",
+                title=f"[bold cyan]{name}[/bold cyan] [dim]({display_name})[/dim]",
                 title_align="left",
                 border_style="green",
             )
@@ -219,9 +236,20 @@ def print_step_complete(
         sys.stderr.write(f"\nComplete {title}\n")
         sys.stderr.write("=" * 70 + "\n")
         for name, artifact in artifacts.items():
-            sys.stderr.write(f"{name} ({artifact.type}):\n")
+            display_name = artifact.name or artifact.type
+            sys.stderr.write(f"{name} ({display_name}):\n")
             sys.stderr.write(f"  {artifact.art_path}\n\n")
             sys.stderr.write(f"  Path: {artifact.path.resolve()}\n")
+            manifest_path = getattr(artifact, "_manifest_path", None)
+            if manifest_path:
+                sys.stderr.write(f"  Manifest: {manifest_path}\n")
+            wandb_url = (
+                artifact.tracking.url
+                if hasattr(artifact, "tracking") and artifact.tracking
+                else None
+            )
+            if wandb_url:
+                sys.stderr.write(f"  W&B: {wandb_url}\n")
             if artifact.metrics:
                 metrics_parts = [
                     f"{k}={v:,.0f}" if v > 100 else f"{k}={v:.2f}"

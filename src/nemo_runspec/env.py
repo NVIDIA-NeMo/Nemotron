@@ -222,27 +222,24 @@ def get_cache_config(config_path: Path | None = None) -> DictConfig | None:
 def get_artifacts_config(config_path: Path | None = None) -> DictConfig | None:
     """Get artifacts configuration from env.toml if present.
 
-    The [artifacts] section configures the artifact backend:
-        [artifacts]
-        backend = "file"
-        root = "/path/to/artifacts"
+    The ``[artifacts]`` section declares active tracking strategies::
 
-    When [artifacts] is absent but [wandb] exists, defaults to wandb backend.
+        [artifacts.manifest]
+        root = "/lustre/team/artifacts"
+
+        [artifacts]
+        wandb = true     # credentials come from [wandb] section
 
     Args:
         config_path: Optional path to env.toml
 
     Returns:
-        Artifacts config as DictConfig, or None if neither section present
+        Artifacts config as DictConfig, or None if section absent
     """
     all_profiles = load_env_file(config_path)
 
     if "artifacts" in all_profiles:
         return OmegaConf.create(all_profiles["artifacts"])
-
-    # Implicit wandb if [wandb] section exists
-    if "wandb" in all_profiles:
-        return OmegaConf.create({"backend": "wandb"})
 
     return None
 

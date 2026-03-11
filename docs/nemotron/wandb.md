@@ -2,7 +2,7 @@
 
 Nemotron automatically passes W&B credentials and settings to containers running via nemo-run. `nemotron.kit.wandb_kit` handles W&B initialization; `nemo_runspec.execution` handles credential injection into executors. You don't need to manage credentials manually across local, Docker, Slurm, or cloud executors.
 
-> **Note**: W&B is recommended for full lineage tracking and team collaboration. A file-based backend is also available for local development—set `[artifacts] backend = "file"` in your `env.toml`.
+> **Note**: W&B works alongside the [manifest-based tracker](./artifacts.md) for full lineage tracking and team collaboration. Configure both in your `env.toml` under `[artifacts]`. The manifest backend provides always-reliable local tracking; W&B adds the UI, lineage graphs, and team sharing.
 
 ## Configuration
 

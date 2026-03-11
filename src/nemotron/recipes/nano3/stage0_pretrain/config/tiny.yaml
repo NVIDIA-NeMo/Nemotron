@@ -1,5 +1,5 @@
 run:
-  data: PretrainBlendsArtifact-tiny:latest
+  data: nano3-pretrain-data-tiny:latest
   env:
     container: nvcr.io/nvidian/nemo:26.02.super.rc1
 
@@ -27,5 +27,5 @@ logger:
   wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
 
 checkpoint:
-  save: /nemo_run/pretrain
+  save: /nemo_run/nano3-pretrain-model-tiny
   save_interval: 20

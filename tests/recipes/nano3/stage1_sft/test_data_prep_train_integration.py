@@ -401,7 +401,7 @@ class TestOmegaConfResolverIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "SFTDataArtifact-sft"
+                self.name = "nano3-sft-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -416,7 +416,7 @@ class TestOmegaConfResolverIntegration:
 
         cfg = OmegaConf.create(
             {
-                "run": {"data": "SFTDataArtifact-sft:latest"},
+                "run": {"data": "nano3-sft-data:latest"},
                 "dataset": {"dataset_root": "${art:data,path}"},
             }
         )
@@ -451,7 +451,7 @@ class TestOmegaConfResolverIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "SFTDataArtifact-sft"
+                self.name = "nano3-sft-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -466,7 +466,7 @@ class TestOmegaConfResolverIntegration:
 
         cfg = OmegaConf.create(
             {
-                "run": {"data": "SFTDataArtifact-sft:latest"},
+                "run": {"data": "nano3-sft-data:latest"},
                 "dataset": {"seq_length": "${art:data,pack_size}"},
             }
         )
@@ -504,7 +504,7 @@ class TestOmegaConfResolverIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "SFTDataArtifact-sft"
+                self.name = "nano3-sft-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -519,7 +519,7 @@ class TestOmegaConfResolverIntegration:
 
         cfg = OmegaConf.create(
             {
-                "run": {"data": "SFTDataArtifact-sft:latest"},
+                "run": {"data": "nano3-sft-data:latest"},
                 "dataset": {"packed_train_data_path": "${art:data,training_path}"},
             }
         )
@@ -598,7 +598,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "SFTDataArtifact-sft"
+                self.name = "nano3-sft-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -614,7 +614,7 @@ class TestWandbArtifactIntegration:
         # Config pattern matching tiny.yaml
         cfg = OmegaConf.create(
             {
-                "run": {"data": "SFTDataArtifact-sft:latest"},
+                "run": {"data": "nano3-sft-data:latest"},
                 "dataset": {
                     "dataset_root": "${art:data,path}",
                     "seq_length": "${art:data,pack_size}",
@@ -747,7 +747,7 @@ class TestSFTDataPrepTrainContract:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v1"
-                self.name = "SFTDataArtifact-sft"
+                self.name = "nano3-sft-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -763,7 +763,7 @@ class TestSFTDataPrepTrainContract:
         # Step 4: Load config (simulating train.py)
         cfg = OmegaConf.create(
             {
-                "run": {"data": "SFTDataArtifact-sft:latest"},
+                "run": {"data": "nano3-sft-data:latest"},
                 "dataset": {
                     "dataset_root": "${art:data,path}",
                     "seq_length": "${art:data,pack_size}",
