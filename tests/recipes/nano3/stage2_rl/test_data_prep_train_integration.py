@@ -655,7 +655,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "DataBlendsArtifact-rl"
+                self.name = "nano3-rl-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -672,7 +672,7 @@ class TestWandbArtifactIntegration:
         # then append the split path (as train.py would do)
         cfg = OmegaConf.create(
             {
-                "run": {"data": "DataBlendsArtifact-rl:latest"},
+                "run": {"data": "nano3-rl-data:latest"},
                 "data": {
                     "train_jsonl_fpath": "${art:data,path}/train/train.jsonl",
                     "validation_jsonl_fpath": "${art:data,path}/val/val.jsonl",
@@ -719,7 +719,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "DataBlendsArtifact-rl"
+                self.name = "nano3-rl-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -735,7 +735,7 @@ class TestWandbArtifactIntegration:
         # Config pattern matching grpo_nanov3.yaml
         cfg = OmegaConf.create(
             {
-                "run": {"data": "DataBlendsArtifact-rl:latest"},
+                "run": {"data": "nano3-rl-data:latest"},
                 "data": {"train_jsonl_fpath": "${art:data,path}/train/train.jsonl"},
             }
         )
@@ -746,7 +746,7 @@ class TestWandbArtifactIntegration:
         assert resolved["data"]["train_jsonl_fpath"] == str(
             downloaded_dir / "train" / "train.jsonl"
         )
-        assert "ent/proj/DataBlendsArtifact-rl:latest" in qualified_names[0]
+        assert "ent/proj/nano3-rl-data:latest" in qualified_names[0]
 
     def test_artifact_without_manifest_should_fail_gracefully(self, monkeypatch, tmp_path):
         """Test that missing manifest.json is detected early with clear error."""
@@ -767,7 +767,7 @@ class TestWandbArtifactIntegration:
             def __init__(self, ref):
                 self.qualified_name = ref
                 self.version = "v5"
-                self.name = "DataBlendsArtifact-rl"
+                self.name = "nano3-rl-data"
                 self.type = "dataset"
 
             def download(self, skip_cache=True):
@@ -782,7 +782,7 @@ class TestWandbArtifactIntegration:
 
         cfg = OmegaConf.create(
             {
-                "run": {"data": "DataBlendsArtifact-rl:latest"},
+                "run": {"data": "nano3-rl-data:latest"},
                 "data": {"train_jsonl_fpath": "${art:data,path}/manifest.json"},
             }
         )

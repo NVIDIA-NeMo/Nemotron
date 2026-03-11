@@ -7,8 +7,10 @@ Domain-specific toolkit for Nemotron training artifacts, lineage tracking, and W
 Kit provides Nemotron-specific building blocks:
 
 - **Artifacts** -- Path-centric data and model versioning with typed metadata
-- **Lineage Tracking** -- W&B and file-based backends for experiment provenance
+- **Lineage Tracking** -- Manifest-based (fsspec) and W&B backends for experiment provenance
 - **W&B Integration** -- Configuration, initialization, and tag management
+
+For the high-level setup/logging API used in scripts, see `nemo_runspec.artifacts` (`setup_artifact_tracking` + `log_artifact`).
 
 For CLI infrastructure, config loading, execution, packaging, and pipeline orchestration, see the [`nemo_runspec`](../../nemo_runspec/README.md) package.
 

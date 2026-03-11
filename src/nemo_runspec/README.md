@@ -63,7 +63,9 @@ full `[tool.runspec]` specification -- field reference, format, and usage guide.
 | `display` | Rich display utilities for dry-run output and job submission summaries |
 | `step` | `Step` dataclass for pipeline step definition (module, torchrun, command builders) |
 | `exceptions` | `ArtifactNotFoundError`, `ArtifactVersionNotFoundError` |
+| `artifacts` | High-level `setup_artifact_tracking()` + `log_artifact()` API for scripts |
 | `artifact_registry` | `ArtifactRegistry` with fsspec/wandb backends, global accessors, resolver mode |
+| `manifest_tracker` | `ManifestTracker` -- zero-copy manifest-based artifact tracker (fsspec) |
 | `filesystem` | `ArtifactFileSystem` -- fsspec filesystem for `art://` URIs |
 | `run` | nemo-run patches (Ray CPU template, rsync host key handling) |
 | `pipeline` | Pipeline orchestration: local subprocess piping, nemo-run, and sbatch launchers |
@@ -99,7 +101,9 @@ entity = "my-team"
 project = "nemotron"
 
 [artifacts]
-backend = "file"
+wandb = true
+
+[artifacts.manifest]
 root = "/lustre/artifacts"
 
 [cache]

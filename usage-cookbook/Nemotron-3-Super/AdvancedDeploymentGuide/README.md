@@ -124,17 +124,13 @@ Not required if baked into the checkpoint (which it is for released Nemotron 3 S
 
 ### Docker Pull
 
-```bash
-docker pull nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc5
-```
+> **Requires branch build**: These configs depend on changes not yet merged into the `1.3.0rc7` release [image](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tensorrt-llm/containers/release?version=1.3.0rc7). Build TRT-LLM from `main` [branch](https://github.com/NVIDIA/TensorRT-LLM) before using these configs.
 
 TRT-LLM requires an `extra_llm_api_options` YAML for MoE backend, KV cache, and CUDA graph settings that can't be passed as CLI flags.
 
 ### Config A — NVFP4, 2× B200 (TEP2, Latency-Optimized)
 
 Optimal for a 2-GPU B200 node running NVFP4 with MTP enabled.
-
-> **Requires branch build**: This config depends on changes not yet merged into the `1.3.0rc5` release image. Build TRT-LLM from [PR #11998](https://github.com/NVIDIA/TensorRT-LLM/pull/11998) before using this config.
 
 **`y.yaml`**
 
@@ -191,6 +187,7 @@ Optimal for a full 8-GPU B200 node (DGX B200) serving NVFP4.
 ```yaml
 kv_cache_config:
   enable_block_reuse: false
+  free_gpu_memory_fraction: 0.8
 moe_config:
    backend: TRTLLM
 cuda_graph_config:
@@ -199,7 +196,16 @@ cuda_graph_config:
 enable_attention_dp: true
 num_postprocess_workers: 4
 enable_chunked_prefill: true
-stream_interval: 1
+stream_interval: 10
+```
+
+Additionally, TRT-LLM supports using a quantized mamba cache with stochastic rounding to improve throughput. Extend the `kv_cache_config` with the following info.
+
+```
+kv_cache_config:
+  mamba_ssm_cache_dtype: float16
+  mamba_ssm_stochastic_rounding: true
+  mamba_ssm_philox_rounds: 5
 ```
 
 **Serve command**
@@ -217,6 +223,38 @@ mpirun -n 1 --allow-run-as-root --oversubscribe \
   --tool_parser qwen3_coder \
   --extra_llm_api_options y.yaml
 ```
+
+### Config C — NVFP4, DGX Spark
+
+Config to deploy the model on 1x DGX Spark.
+
+```
+kv_cache_config:
+  enable_block_reuse: false
+cuda_graph_config:
+  max_batch_size: 32
+  enable_padding: true
+moe_config:
+  backend: CUTLASS
+EOF
+```
+
+**Serve command**
+
+```bash
+trtllm-serve /data/super_fp4/ \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --max_batch_size 4 \
+  --trust_remote_code \
+  --reasoning_parser nano-v3 \
+  --tool_parser qwen3_coder \
+  --extra_llm_api_options y.yaml
+```
+
+### Updated reasoning parser
+
+To use the `force_nonempty_content` kwarg in the chat template, build TRT-LLM from `main`. Alternatively, the changes from [PR-12061](https://github.com/NVIDIA/TensorRT-LLM/pull/12061) can be manually cherry-picked into the release container to enable it.
 
 ### Contributors: 
 

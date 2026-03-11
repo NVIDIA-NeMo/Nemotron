@@ -210,23 +210,24 @@ class Artifact(BaseModel):
         return self.path
 
     def _derive_artifact_name(self, name: str | None) -> str:
-        """Derive W&B artifact name from semantic name or type.
+        """Derive W&B artifact name from semantic name.
+
+        Converts semantic slash-separated names to kebab-case W&B artifact names.
+        Example: "super3/pretrain/data" -> "super3-pretrain-data"
 
         Args:
             name: Explicit name override, or None to derive from self.name
 
         Returns:
-            Artifact name like "SFTDataArtifact-sft"
+            Kebab-case artifact name like "super3-pretrain-data"
         """
         if name is not None:
             return name
 
         if self.name:
-            # Extract stage from semantic name (e.g., "nano3/sft/data" -> "sft")
-            parts = self.name.split("/")
-            if len(parts) >= 2:
-                stage = parts[1].split("?")[0]  # Remove query params like ?sample=100
-                return f"{self.type}-{stage}"
+            # Strip query params (e.g., ?sample=100) and convert slashes to dashes
+            clean = self.name.split("?")[0]
+            return clean.replace("/", "-")
 
         return self.type
 

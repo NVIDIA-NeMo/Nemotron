@@ -455,9 +455,9 @@ def set_artifact_registry(registry: ArtifactRegistry | None) -> None:
 def get_resolver_mode() -> str:
     """Return the appropriate artifact resolver mode.
 
-    "local" if a local (fsspec) registry is initialized,
+    "local" if a local (fsspec/manifest) registry is initialized,
     "pre_init" for W&B API resolution otherwise.
     """
-    if _registry is not None and _registry.backend == "fsspec":
+    if _registry is not None and _registry.backend in ("fsspec", "manifest"):
         return "local"
     return "pre_init"

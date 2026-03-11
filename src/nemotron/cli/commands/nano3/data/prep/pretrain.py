@@ -128,7 +128,7 @@ def _execute_data_prep_pretrain(cfg: RecipeConfig):
     env_vars = build_env_vars(job_config, env_for_executor)
 
     # Display job submission summary
-    display_job_submission(job_path, train_path, env_vars, cfg.mode)
+    display_job_submission(job_path, train_path, env_vars, cfg.mode, artifacts=job_config.get("artifacts"))
 
     # Get startup commands from env config
     startup_commands = get_startup_commands(env_for_executor)

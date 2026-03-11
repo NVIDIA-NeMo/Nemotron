@@ -90,6 +90,7 @@ from nemotron.data_prep.stages import (
 )
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
 from nemotron.kit import PretrainBlendsArtifact, print_step_complete
+from nemo_runspec.artifacts import ArtifactTrackingResult, log_artifact, setup_artifact_tracking
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
     init_wandb_from_env,
@@ -202,7 +203,10 @@ class PreTrainDataPrepConfig:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
 
 
-def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
+def run_data_prep_main(
+    cfg: PreTrainDataPrepConfig,
+    tracking: ArtifactTrackingResult | None = None,
+) -> PretrainBlendsArtifact:
     """Run pretrain data preparation pipeline.
 
     Args:
@@ -295,7 +299,8 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
     # Build artifact using classmethod
     elapsed_sec = time.time() - start_time
     sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""
-    artifact_name = f"nano3/{cfg.config_name}/data{sample_suffix}"
+    config_suffix = f"-{cfg.config_name}" if cfg.config_name != "default" else ""
+    artifact_name = f"nano3/pretrain/data{config_suffix}{sample_suffix}"
 
     artifact = PretrainBlendsArtifact.from_result(
         format_result=format_result,
@@ -306,7 +311,11 @@ def run_data_prep_main(cfg: PreTrainDataPrepConfig) -> PretrainBlendsArtifact:
         elapsed_sec=elapsed_sec,
         name=artifact_name,
     )
-    artifact.save()
+    # Log to all active backends (manifest + wandb)
+    if tracking is not None:
+        log_artifact(artifact, tracking)
+    else:
+        artifact.save()
 
     # Finish W&B and print completion
     wandb_kit.finish_run(exit_code=0)
@@ -339,14 +348,22 @@ def main(cfg: PreTrainDataPrepConfig | None = None) -> PretrainBlendsArtifact:
         if cli_overrides:
             config = apply_hydra_overrides(config, cli_overrides)
 
+        # Setup artifact tracking BEFORE dataclass conversion
+        # (artifacts: section is available in OmegaConf but not in the dataclass)
+        tracking = setup_artifact_tracking(config)
+
         # Convert to dataclass
         cfg = omegaconf_to_dataclass(config, PreTrainDataPrepConfig)
+    else:
+        # Called from CLI framework — no artifacts config available
+        tracking = None
 
     # Initialize wandb from environment variables (set by nemo-run)
-    init_wandb_from_env()
+    if tracking is None or tracking.wandb:
+        init_wandb_from_env()
 
     # Run data prep
-    return run_data_prep_main(cfg)
+    return run_data_prep_main(cfg, tracking=tracking)
 
 
 if __name__ == "__main__":

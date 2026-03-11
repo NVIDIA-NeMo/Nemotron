@@ -228,6 +228,22 @@ def _matches_any_prefix(name: str, prefixes: tuple[str, ...]) -> bool:
     return any(name == p or name.startswith(p + ".") for p in prefixes)
 
 
+def _is_name_main_guard(node: ast.If) -> bool:
+    """Return True if *node* is ``if __name__ == "__main__":``."""
+    test = node.test
+    if isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.Eq):
+        left = test.left
+        right = test.comparators[0]
+        if (
+            isinstance(left, ast.Name)
+            and left.id == "__name__"
+            and isinstance(right, ast.Constant)
+            and right.value == "__main__"
+        ):
+            return True
+    return False
+
+
 def _is_nemotron_import(node: ast.AST, *, package_prefixes: tuple[str, ...]) -> bool:
     """Return True if the node is an import from any of the *package_prefixes*."""
     if isinstance(node, ast.ImportFrom):
@@ -367,6 +383,12 @@ def _parse_module_for_inlining(
     for node in mod_ast.body:
         # Never inline/emit __future__ imports from library modules.
         if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+            continue
+
+        # Skip `if __name__ == "__main__"` guards from dependency modules.
+        # These are entry-point blocks that should not execute when the module
+        # is inlined as a library dependency.
+        if isinstance(node, ast.If) and _is_name_main_guard(node):
             continue
 
         if isinstance(node, (ast.Import, ast.ImportFrom)):

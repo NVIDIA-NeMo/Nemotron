@@ -82,6 +82,7 @@ from nemotron.kit.trackers import (
     to_wandb_uri,
     tokenizer_to_uri,
 )
+from nemo_runspec.manifest_tracker import ManifestTracker
 
 # Wandb configuration
 from nemotron.kit.wandb_kit import WandbConfig, add_run_tags, init_wandb_if_configured
@@ -105,6 +106,7 @@ __all__ = [
     "LineageTracker",
     "WandbTracker",
     "FileTracker",
+    "ManifestTracker",
     "NoOpTracker",
     "set_lineage_tracker",
     "get_lineage_tracker",
@@ -148,11 +150,11 @@ def init(
         >>> kit.init(backend="wandb", wandb_project="my-project")
     """
     # Validate backend
-    if backend not in ("fsspec", "wandb"):
-        raise ValueError(f"Unknown backend: {backend}. Must be 'fsspec' or 'wandb'.")
+    if backend not in ("fsspec", "manifest", "wandb"):
+        raise ValueError(f"Unknown backend: {backend}. Must be 'fsspec', 'manifest', or 'wandb'.")
 
-    if backend == "fsspec" and root is None:
-        raise ValueError("root is required for fsspec backend")
+    if backend in ("fsspec", "manifest") and root is None:
+        raise ValueError("root is required for fsspec/manifest backend")
 
     if backend == "wandb" and wandb_project is None:
         raise ValueError("wandb_project is required for wandb backend")
@@ -160,8 +162,9 @@ def init(
     # Initialize registry
     from nemo_runspec.artifact_registry import ArtifactRegistry, set_artifact_registry
 
+    registry_backend = "fsspec" if backend == "manifest" else backend
     registry = ArtifactRegistry(
-        backend=backend,
+        backend=registry_backend,
         root=root,
         wandb_project=wandb_project,
         wandb_entity=wandb_entity,
@@ -172,10 +175,8 @@ def init(
     if backend == "wandb":
         tracker = WandbTracker()
         set_lineage_tracker(tracker)
-    elif backend == "fsspec":
-        from nemotron.kit.trackers import FileTracker
-
-        tracker = FileTracker(registry)
+    elif backend in ("fsspec", "manifest"):
+        tracker = ManifestTracker(root=str(root))
         set_lineage_tracker(tracker)
 
 

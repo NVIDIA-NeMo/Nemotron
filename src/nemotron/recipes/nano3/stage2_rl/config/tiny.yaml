@@ -1,6 +1,6 @@
 run:
-  data: SplitJsonlDataArtifact-rl:latest
-  model: sft:latest  # Megatron checkpoint to finetune from
+  data: nano3-rl-data-tiny:latest
+  model: nano3-sft-model-tiny:latest  # Megatron checkpoint to finetune from
   env:
     container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_nano
 

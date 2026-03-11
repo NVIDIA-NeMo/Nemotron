@@ -18,6 +18,7 @@ Usage::
 
 from nemo_runspec._models import Runspec, RunspecConfig, RunspecResources, RunspecRun
 from nemo_runspec._parser import parse
+from nemo_runspec.manifest_tracker import ManifestTracker
 
 __all__ = [
     "parse",
@@ -25,4 +26,5 @@ __all__ = [
     "RunspecRun",
     "RunspecConfig",
     "RunspecResources",
+    "ManifestTracker",
 ]
