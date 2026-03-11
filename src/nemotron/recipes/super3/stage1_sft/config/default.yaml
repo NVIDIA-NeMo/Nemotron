@@ -40,3 +40,10 @@ checkpoint:
   save_interval: 20
   pretrained_checkpoint: ${art:model,path}
   finetune: true
+
+# Post-training HuggingFace checkpoint conversion
+# When enabled, converts the final Megatron checkpoint to HF format and
+# publishes it as a separate W&B artifact with -hf suffix.
+convert_to_hf:
+  enabled: true
+  hf_model_id: "nvidia/Llama-3_3-Nemotron-Super-49B-v1"

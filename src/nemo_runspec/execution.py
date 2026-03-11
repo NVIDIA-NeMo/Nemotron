@@ -329,6 +329,7 @@ def create_executor(
     attached: bool = False,
     force_squash: bool = False,
     default_image: str | None = None,
+    script_resources: Any | None = None,
 ) -> Any:
     """Create a nemo-run executor based on env config.
 
@@ -343,6 +344,8 @@ def create_executor(
         force_squash: Force re-squash of container image
         default_image: Fallback container image (e.g., from SPEC.image) if env
             config doesn't specify one
+        script_resources: RunspecResources from the script's [tool.runspec.resources].
+            Used as defaults when env config doesn't specify nodes/gpus.
 
     Returns:
         Configured executor (LocalExecutor or SlurmExecutor)
@@ -412,12 +415,15 @@ def create_executor(
             tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
     # Build executor kwargs
+    # Use script's runspec resources as defaults when env doesn't specify them
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else None
     executor_kwargs = {
         "account": _get_env(env, "account"),
         "partition": partition,
-        "nodes": _get_env(env, "nodes", 1),
-        "ntasks_per_node": _get_env(env, "ntasks_per_node", 1),
-        "gpus_per_node": _get_env(env, "gpus_per_node"),
+        "nodes": _get_env(env, "nodes", default_nodes),
+        "ntasks_per_node": _get_env(env, "ntasks_per_node", default_gpus or 1),
+        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
         "cpus_per_task": _get_env(env, "cpus_per_task"),
         "time": _get_env(env, "time", "04:00:00"),
         "container_image": container_image,

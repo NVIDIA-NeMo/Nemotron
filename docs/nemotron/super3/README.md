@@ -78,7 +78,7 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 |-------|------|---------|-------|
 | 0 | [Pretraining](./pretrain.md) | Base model training on 25T tokens with LatentMoE and MTP | [pretrain.md](./pretrain.md) |
 | 1 | [SFT](./sft.md) | Multi-domain instruction tuning with two-stage loss | [sft.md](./sft.md) |
-| 2 | [RL](./rl.md) | Multi-environment RLVR + SWE-RL + RLHF alignment | [rl.md](./rl.md) |
+| 2 | [RL](./rl/index.md) | Multi-environment RLVR + SWE-RL + RLHF alignment | [rl/](./rl/index.md) |
 | 3 | [Quantization](./quantization.md) | FP8 and NVFP4 post-training quantization | [quantization.md](./quantization.md) |
 | 4 | [Evaluation](./evaluate.md) | Benchmark evaluation across 20+ benchmarks | [evaluate.md](./evaluate.md) |
 
@@ -119,7 +119,7 @@ Multi-domain instruction tuning over 7M samples covering 15+ data domains includ
 
 Three-stage RL pipeline: (1) multi-environment RLVR across 21 environments and 37 datasets covering math, code, STEM, safety, agentic tasks, and reasoning gym; (2) SWE-RL for end-to-end software engineering using OpenHands with Apptainer containers; (3) RLHF with a principle-following GenRM (Qwen3-235B initialization).
 
-> [RL Guide](./rl.md)
+> [RL Guide](./rl/index.md)
 
 ### Stage 3: Quantization
 
@@ -236,7 +236,7 @@ wandb login
 
 - [Stage 0: Pretraining](./pretrain.md)
 - [Stage 1: SFT](./sft.md)
-- [Stage 2: RL](./rl.md)
+- [Stage 2: RL](./rl/index.md)
 - [Stage 3: Quantization](./quantization.md)
 - [Stage 4: Evaluation](./evaluate.md)
 - [Artifact Lineage](../../nemo_runspec/artifacts.md)

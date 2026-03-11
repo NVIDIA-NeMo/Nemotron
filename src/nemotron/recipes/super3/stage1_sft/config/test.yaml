@@ -1,14 +1,15 @@
 run:
+  train_script: src/nemotron/recipes/super3/stage1_sft/test_train.py
   data: super3-sft-data:latest
   model: super3-pretrain-model-tiny:latest
   env:
     container: nvcr.io/nvidian/nemo:26.02.super.rc4
+    nodes: 1
+    gpus_per_node: 1
+    ntasks_per_node: 1
 
-recipe:
-  # TODO(super3): Replace with nemotron_3_super_sft_config once ready
-  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
-  packed_sequence: true
-  peft: null
+# The tiny Super3 model provider and recipe are defined in test_train.py.
+# run.train_script above tells the CLI to use it instead of train.py.
 
 dataset:
   super3_packed_sft_dir: ${art:data,path}
@@ -17,7 +18,7 @@ dataset:
     packed_sequence_size: ${art:data,pack_size}
 
 train:
-  train_iters: 100
+  train_iters: 50
   global_batch_size: 4
 
 scheduler:
@@ -30,6 +31,11 @@ logger:
 
 checkpoint:
   save: /nemo_run/super3-sft-model-tiny
-  save_interval: 20
+  save_interval: 50
   pretrained_checkpoint: ${art:model,path}
   finetune: true
+
+# Disabled for tiny/CI runs
+convert_to_hf:
+  enabled: false
+  hf_model_id: "nvidia/Llama-3_3-Nemotron-Super-49B-v1"

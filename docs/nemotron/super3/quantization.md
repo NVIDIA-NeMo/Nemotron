@@ -189,7 +189,7 @@ Comparison of BF16, FP8, and NVFP4 checkpoints:
 - [Nemotron 3 Super Tech Report](TBD) — Quantization methodology
 - [Model Optimizer](https://github.com/NVIDIA/Model-Optimizer) — PTQ and AutoQuantize
 - [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Bridge, Transformer Engine
-- [Stage 2: RL](./rl.md) — RL alignment (input to quantization)
+- [Stage 2: RL](./rl/index.md) — RL alignment (input to quantization)
 - [Stage 4: Evaluation](./evaluate.md) — Benchmark evaluation
 - **Recipe Source**: `src/nemotron/recipes/super3/` — Implementation details
 - [Back to Overview](./README.md)

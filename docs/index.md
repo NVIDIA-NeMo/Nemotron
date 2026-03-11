@@ -148,7 +148,11 @@ nemotron/nano3/import.md
 nemotron/super3/README.md
 nemotron/super3/pretrain.md
 nemotron/super3/sft.md
-nemotron/super3/rl.md
+nemotron/super3/rl/index.md
+nemotron/super3/rl/rlvr.md
+nemotron/super3/rl/swe.md
+nemotron/super3/rl/rlhf.md
+nemotron/super3/rl/data-prep.md
 nemotron/super3/evaluate.md
 nemotron/super3/quantization.md
 ```

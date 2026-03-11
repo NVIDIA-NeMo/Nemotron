@@ -410,7 +410,7 @@ gitlab-master.nvidia.com/dl/joc/nemo-ci/liding_r25.11-super-v3/train:pipe.446805
 
 ## Next Steps
 
-After SFT completes, proceed to [Stage 2: RL](./rl.md) for reinforcement learning alignment.
+After SFT completes, proceed to [Stage 2: RL](./rl/index.md) for reinforcement learning alignment.
 
 ## Reference
 
@@ -419,6 +419,6 @@ After SFT completes, proceed to [Stage 2: RL](./rl.md) for reinforcement learnin
 - [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Core, Megatron-Bridge documentation
 - [Artifact Lineage](../../nemo_runspec/artifacts.md) — W&B artifact system
 - [Stage 0: Pretraining](./pretrain.md) — Pretrain the base model
-- [Stage 2: RL](./rl.md) — Reinforcement learning alignment
+- [Stage 2: RL](./rl/index.md) — Reinforcement learning alignment
 - **Recipe Source**: `src/nemotron/recipes/super3/stage1_sft/` — Implementation details
 - [Back to Overview](./README.md)

@@ -100,12 +100,20 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
+    # Allow config to override the train script (e.g. test.yaml → test_train.py)
+    script_path = SCRIPT_PATH
+    if "run" in train_config and "train_script" in train_config.run:
+        script_path = train_config.run.train_script
+
+    # Parse runspec from the effective script for resource defaults
+    script_spec = parse_runspec(script_path) if script_path != SCRIPT_PATH else SPEC
+
     # Build full job config with provenance
     job_config = build_job_config(
         train_config,
         cfg.ctx,
         SPEC.name,
-        SCRIPT_PATH,
+        script_path,
         cfg.argv,
         env_profile=env,
     )
@@ -141,7 +149,7 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
     # =========================================================================
     if cfg.mode == "local":
         execute_local(
-            SCRIPT_PATH,
+            script_path,
             train_path,
             cfg.passthrough,
             torchrun=(SPEC.run.launch == "torchrun"),
@@ -151,6 +159,8 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
     else:
         # Remote execution via nemo-run
         _execute_remote(
+            script_path=script_path,
+            script_resources=script_spec.resources,
             train_path=train_path,
             env=env_for_executor,
             passthrough=cfg.passthrough,
@@ -163,6 +173,9 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
 
 
 def _execute_remote(
+    *,
+    script_path: str,
+    script_resources=None,
     train_path: Path,
     env,
     passthrough: list[str],
@@ -198,7 +211,7 @@ def _execute_remote(
 
     # Build packager - explicit choice of how code is bundled
     packager = SelfContainedPackager(
-        script_path=SCRIPT_PATH,
+        script_path=script_path,
         train_path=str(train_path),
     )
 
@@ -210,6 +223,7 @@ def _execute_remote(
         attached=attached,
         force_squash=force_squash,
         default_image=SPEC.image,
+        script_resources=script_resources,
     )
 
     # Build Script and Run

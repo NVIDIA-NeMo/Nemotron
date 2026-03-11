@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,7 @@ from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_func
 from nemo_runspec.config.resolvers import clear_artifact_cache, register_resolvers_from_config
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb_kit import (
+    _resolve_to_lustre_path,
     patch_wandb_checkpoint_logging,
     patch_wandb_http_handler_skip_digest_verification,
     patch_wandb_init_for_lineage,
@@ -87,6 +89,100 @@ logger: logging.Logger = logging.getLogger(__name__)
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config" / "default.yaml"
 
 DEFAULT_RECIPE_TARGET = "megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_finetune_config"
+
+
+def convert_megatron_to_hf(
+    megatron_checkpoint_path: str,
+    hf_model_id: str,
+    output_dir: str | None = None,
+) -> str:
+    """Convert a Megatron checkpoint to HuggingFace format using Megatron-Bridge.
+
+    Finds the latest iter_XXXXXX checkpoint in the save directory and converts
+    it to HuggingFace format. All ranks must call this function together since
+    export_ckpt creates its own gloo distributed context internally.
+
+    Args:
+        megatron_checkpoint_path: Directory containing Megatron checkpoints (with iter_* subdirs).
+        hf_model_id: HuggingFace model ID for the base architecture (e.g. the original
+            pretrained model). Needed to reconstruct tokenizer and config.
+        output_dir: Where to write the HF checkpoint. Defaults to ``{save_dir}-hf``.
+
+    Returns:
+        Path to the HF checkpoint directory.
+    """
+    megatron_path = Path(megatron_checkpoint_path)
+
+    if megatron_path.is_dir():
+        iter_dirs = [d for d in megatron_path.iterdir() if d.is_dir() and d.name.startswith("iter_")]
+        if iter_dirs:
+            iter_dirs.sort(key=lambda x: int(x.name.split("_")[1]))
+            megatron_path = iter_dirs[-1]
+            logger.info(f"Using checkpoint iteration: {megatron_path.name}")
+
+    if output_dir is None:
+        output_dir = str(Path(megatron_checkpoint_path).parent / f"{Path(megatron_checkpoint_path).name}-hf")
+    output_path = Path(output_dir)
+
+    if (output_path / "config.json").exists():
+        logger.info(f"HF checkpoint already exists at {output_path}, skipping conversion")
+        return str(output_path)
+
+    logger.info(f"Converting Megatron checkpoint to HuggingFace format...")
+    logger.info(f"  Source: {megatron_path}")
+    logger.info(f"  HF model ID: {hf_model_id}")
+    logger.info(f"  Output: {output_path}")
+
+    from megatron.bridge import AutoBridge
+
+    bridge = AutoBridge.from_hf_pretrained(hf_model_id, trust_remote_code=True)
+    bridge.export_ckpt(
+        megatron_path=str(megatron_path),
+        hf_path=str(output_path),
+    )
+
+    logger.info(f"Conversion complete: {output_path}")
+    return str(output_path)
+
+
+def log_hf_checkpoint_artifact(
+    hf_path: str,
+    artifact_base_name: str = "super3-sft-model",
+) -> None:
+    """Log a converted HF checkpoint as a W&B artifact with ``-hf`` suffix.
+
+    Creates a W&B reference artifact pointing to the HF checkpoint directory.
+    The artifact is named ``{artifact_base_name}-hf`` with alias ``latest``.
+    Only call this on rank 0.
+
+    Args:
+        hf_path: Local path to the HuggingFace checkpoint directory.
+        artifact_base_name: Base name for the W&B artifact (``-hf`` is appended).
+    """
+    try:
+        import wandb
+    except ImportError:
+        logger.warning("wandb not installed, skipping HF artifact logging")
+        return
+
+    if wandb.run is None:
+        logger.info("No active wandb run, skipping HF artifact logging")
+        return
+
+    try:
+        hf_path_resolved = str(Path(hf_path).resolve())
+        absolute_path = _resolve_to_lustre_path(hf_path_resolved)
+
+        artifact_name = f"{artifact_base_name}-hf"
+        metadata = {"absolute_path": absolute_path, "format": "huggingface"}
+        artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+        artifact.add_reference(f"file://{hf_path_resolved}", checksum=False)
+
+        logged = wandb.run.log_artifact(artifact, aliases=["latest"])
+        logged.wait()
+        logger.info(f"[WANDB] HF checkpoint artifact committed: {artifact_name}:latest")
+    except Exception as e:
+        logger.error(f"[WANDB] Failed to log HF checkpoint artifact: {e}")
 
 
 def _build_dataset_config(dataset_config: DictConfig, current_dataset: Any) -> FinetuningDatasetConfig:
@@ -150,14 +246,43 @@ def _build_dataset_config(dataset_config: DictConfig, current_dataset: Any) -> F
     )
 
 
-def main() -> None:
-    """Entry point for Nemotron Super3 supervised fine-tuning."""
+RecipeBuilder = Callable[["DictConfig"], ConfigContainer]
+"""Signature for a function that builds a ConfigContainer from a loaded config."""
+
+
+def _default_recipe_builder(config: "DictConfig") -> ConfigContainer:
+    """Build recipe from YAML ``recipe._target_`` (production path)."""
+    recipe_target, recipe_kwargs = extract_recipe_config(
+        config,
+        default_target=DEFAULT_RECIPE_TARGET,
+    )
     try:
-        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
-        config = load_omegaconf_yaml(config_path)
-    except FileNotFoundError as e:
+        recipe_func = import_recipe_function(recipe_target)
+    except Exception as e:
         logger.error(str(e))
         sys.exit(1)
+
+    return recipe_func(**recipe_kwargs)
+
+
+def run_finetune(
+    config_path: Path,
+    recipe_builder: RecipeBuilder,
+    cli_overrides: list[str] | None = None,
+) -> None:
+    """Core SFT pipeline.
+
+    Handles wandb patches, artifact resolution, lineage, config merging,
+    dataset construction, finetuning, and optional HF checkpoint conversion.
+    The *recipe_builder* callback is the only extension point.
+
+    Args:
+        config_path: Path to the YAML config file.
+        recipe_builder: Callable that receives the loaded DictConfig and
+            returns a fully-constructed ConfigContainer.
+        cli_overrides: Optional Hydra-style command-line overrides.
+    """
+    config = load_omegaconf_yaml(config_path)
 
     # -------------------------------------------------------------------------
     # WANDB MONKEY-PATCHES
@@ -181,17 +306,7 @@ def main() -> None:
         tags=["sft"],
     )
 
-    recipe_target, recipe_kwargs = extract_recipe_config(
-        config,
-        default_target=DEFAULT_RECIPE_TARGET,
-    )
-    try:
-        recipe_func = import_recipe_function(recipe_target)
-    except Exception as e:
-        logger.error(str(e))
-        sys.exit(1)
-
-    cfg: ConfigContainer = recipe_func(**recipe_kwargs)
+    cfg: ConfigContainer = recipe_builder(config)
 
     merged_omega_conf, excluded_fields = create_omegaconf_dict_config(cfg)
 
@@ -199,6 +314,7 @@ def main() -> None:
     config_overrides.pop("recipe", None)
     config_overrides.pop("run", None)
     config_overrides.pop("dataset", None)
+    config_overrides.pop("convert_to_hf", None)
 
     if config_overrides:
         logger.debug(f"Merging config overrides: {list(config_overrides.keys())}")
@@ -229,8 +345,42 @@ def main() -> None:
 
     finetune(config=cfg, forward_step_func=forward_step)
 
+    # -------------------------------------------------------------------------
+    # POST-TRAINING: Convert final checkpoint to HuggingFace format
+    # -------------------------------------------------------------------------
+    rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
+
     if torch.distributed.is_initialized():
         torch.distributed.destroy_process_group()
+
+    convert_to_hf_cfg = OmegaConf.to_container(config.get("convert_to_hf", OmegaConf.create()), resolve=True) or {}
+    if convert_to_hf_cfg.get("enabled", False):
+        hf_model_id = convert_to_hf_cfg["hf_model_id"]
+        hf_output_dir = convert_to_hf_cfg.get("output_dir", None)
+
+        # All ranks participate: export_ckpt creates its own gloo context
+        hf_path = convert_megatron_to_hf(
+            megatron_checkpoint_path=cfg.checkpoint.save,
+            hf_model_id=hf_model_id,
+            output_dir=hf_output_dir,
+        )
+
+        # Only rank 0 publishes the W&B artifact
+        if rank == 0:
+            # Derive artifact name from the checkpoint save dir
+            artifact_base_name = Path(cfg.checkpoint.save).name
+            log_hf_checkpoint_artifact(hf_path, artifact_base_name=artifact_base_name)
+
+
+def main() -> None:
+    """Entry point for Nemotron Super3 supervised fine-tuning."""
+    try:
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        sys.exit(1)
+
+    run_finetune(config_path, _default_recipe_builder, cli_overrides)
 
 
 if __name__ == "__main__":

@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import torch
@@ -87,14 +88,58 @@ DEFAULT_RECIPE_TARGET = (
 )
 
 
-def main() -> None:
-    """Entry point for Nemotron Super3 pretraining."""
+RecipeBuilder = Callable[["DictConfig"], ConfigContainer]
+"""Signature for a function that builds a ConfigContainer from a loaded config."""
+
+
+def _default_recipe_builder(config: "DictConfig") -> ConfigContainer:
+    """Build recipe from YAML ``recipe._target_`` (production path).
+
+    The ``data`` YAML section contains recipe-function parameters (e.g.
+    ``per_split_data_args_path``) that control dataset blend construction.
+    These are **not** fields on ``ConfigContainer`` / ``GPTDatasetConfig``,
+    so they must be forwarded as kwargs to the recipe function here — the
+    later config-merge step cannot reach them.
+    """
+    recipe_target, recipe_kwargs = extract_recipe_config(
+        config,
+        default_target=DEFAULT_RECIPE_TARGET,
+    )
+
+    # Merge data section into recipe kwargs (dataset blend parameters)
+    if "data" in config:
+        data_kwargs = OmegaConf.to_container(config.data, resolve=True)
+        if isinstance(data_kwargs, dict):
+            recipe_kwargs = {**data_kwargs, **recipe_kwargs}
+
     try:
-        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
-        config = load_omegaconf_yaml(config_path)
-    except FileNotFoundError as e:
+        recipe_func = import_recipe_function(recipe_target)
+    except Exception as e:
         logger.error(str(e))
         sys.exit(1)
+
+    return recipe_func(**recipe_kwargs)
+
+
+def run_pretrain(
+    config_path: Path,
+    recipe_builder: RecipeBuilder,
+    cli_overrides: list[str] | None = None,
+) -> None:
+    """Core pretrain pipeline.
+
+    Handles wandb patches, artifact resolution, lineage, config merging,
+    and calls ``pretrain()``.  The *recipe_builder* callback is the only
+    extension point: ``train.py`` passes the dynamic ``_target_`` loader,
+    while ``test_train.py`` can pass an inline recipe.
+
+    Args:
+        config_path: Path to the YAML config file.
+        recipe_builder: Callable that receives the loaded DictConfig and
+            returns a fully-constructed ConfigContainer.
+        cli_overrides: Optional Hydra-style command-line overrides.
+    """
+    config = load_omegaconf_yaml(config_path)
 
     # -------------------------------------------------------------------------
     # WANDB MONKEY-PATCHES
@@ -131,25 +176,15 @@ def main() -> None:
         tags=["pretrain"],
     )
 
-    recipe_target, recipe_kwargs = extract_recipe_config(
-        config,
-        default_target=DEFAULT_RECIPE_TARGET,
-    )
-
-    try:
-        recipe_func = import_recipe_function(recipe_target)
-    except Exception as e:
-        logger.error(str(e))
-        sys.exit(1)
-
-    cfg: ConfigContainer = recipe_func(**recipe_kwargs)
+    cfg: ConfigContainer = recipe_builder(config)
 
     # Convert the initial Python dataclass to an OmegaConf DictConfig for merging
     merged_omega_conf, excluded_fields = create_omegaconf_dict_config(cfg)
 
-    # Merge config overrides (excluding recipe field)
+    # Merge config overrides (excluding recipe and data — those are recipe-function kwargs)
     config_overrides = OmegaConf.to_container(config, resolve=False)
     config_overrides.pop("recipe", None)
+    config_overrides.pop("data", None)
 
     if config_overrides:
         logger.debug(f"Merging config overrides: {list(config_overrides.keys())}")
@@ -170,6 +205,17 @@ def main() -> None:
 
     if torch.distributed.is_initialized():
         torch.distributed.destroy_process_group()
+
+
+def main() -> None:
+    """Entry point for Nemotron Super3 pretraining."""
+    try:
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        sys.exit(1)
+
+    run_pretrain(config_path, _default_recipe_builder, cli_overrides)
 
 
 if __name__ == "__main__":

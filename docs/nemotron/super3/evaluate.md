@@ -356,7 +356,7 @@ This stage uses the following components:
 
 - [Stage 0: Pretraining](./pretrain.md) — Pretrain the base model
 - [Stage 1: SFT](./sft.md) — Instruction tuning
-- [Stage 2: RL](./rl.md) — Reinforcement learning alignment
+- [Stage 2: RL](./rl/index.md) — Reinforcement learning alignment
 - [Stage 3: Quantization](./quantization.md) — Post-training quantization
 
 ## Reference
