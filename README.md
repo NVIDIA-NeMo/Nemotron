@@ -40,6 +40,15 @@ nemotron/
 └── use-case-examples/       Examples of leveraging Nemotron in agentic workflows
 ```
 
+### Which section should I use?
+
+| | **Training Recipes** | **Usage Cookbooks** | **Use Case Examples** |
+|---|---|---|---|
+| **Purpose** | Reproduce full training pipelines from raw data to model | Deploy and use trained models | Build end-to-end applications |
+| **Format** | Python packages with configs, scripts, and evaluation | Jupyter notebooks with step-by-step guides | Jupyter notebooks and scripts |
+| **When to use** | You want to train, fine-tune, or understand how a model was built | You have a model and want to deploy or run inference | You want to build an application (RAG, agents, tool use) |
+| **Location** | [`src/nemotron/recipes/`](./src/nemotron/recipes/) | [`usage-cookbook/`](./usage-cookbook/) | [`use-case-examples/`](./use-case-examples/) |
+
 ---
 
 ## What is Nemotron?
