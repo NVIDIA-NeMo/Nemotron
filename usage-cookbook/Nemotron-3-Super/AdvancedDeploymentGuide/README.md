@@ -260,6 +260,7 @@ If you want to run this directly with Docker and Hugging Face model weights, use
 > TensorRT-LLM uses Git LFS. Install it before cloning.
 
 ```bash
+# Building TRT-LLM container
 sudo apt-get update && sudo apt-get -y install git git-lfs
 git lfs install
 
@@ -269,12 +270,14 @@ git checkout b79f4c7700e164045f647aaaac9c30eace3b9ab5
 git submodule update --init --recursive
 git lfs pull
 
+# Downloading the model
 hf download nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4
 ```
 
 Mount the downloaded checkpoint cache and `config/y.yaml` into the container:
 
 ```bash
+# Start serving model
 HF_MODEL_CACHE_DIR="${HF_HOME:-$HOME/.cache/huggingface}/hub/models--nvidia--NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4"
 
 docker run -ti --rm \
