@@ -103,7 +103,7 @@ Build the container.
 **On DGX Spark cluster:**
 
 Make sure you connect your Sparks together and enable passwordless SSH as described in NVidia's [Connect Two Sparks Playbook](https://build.nvidia.com/spark/connect-two-sparks/stacked-sparks). 
-You can also check out the community [Networking Guide](docs/NETWORKING.md).
+You can also check out the community [Networking Guide](https://github.com/eugr/spark-vllm-docker/blob/main/docs/NETWORKING.md).
 
 Then run the following command that will build and distribute the image across the cluster.
 
