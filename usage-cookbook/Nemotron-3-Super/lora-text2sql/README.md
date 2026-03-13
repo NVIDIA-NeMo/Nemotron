@@ -6,8 +6,8 @@ This directory demonstrates customizing Nemotron-3-Super for the Text2SQL use ca
 
 This directory contains two distinct LoRA fine-tuning tutorials for Text2SQL:
 
-- {doc}`nemo-megatron-bridge <nemo-megatron-bridge/README>` — Recipe using [NeMo Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge)
-- {doc}`nemo-automodel <nemo-automodel/README>` — Recipe using [NeMo AutoModel](https://github.com/NVIDIA-NeMo/Automodel)
+- [nemo-megatron-bridge](nemo-megatron-bridge/README.md) — Recipe using [NeMo Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge)
+- [nemo-automodel](nemo-automodel/README.md) — Recipe using [NeMo AutoModel](https://github.com/NVIDIA-NeMo/Automodel)
 
 ## Requirements
 
