@@ -16,6 +16,14 @@ This guide is intentionally **private-only**:
 
 Access is handled through **OCI Bastion** and local port forwarding.
 
+Note: the Terraform sample in this cookbook provisions the **OCI Bastion
+service** for reproducible private access. It does **not** create a public
+bastion host VM.
+
+This gives Nemotron users a reproducible OCI deployment path comparable to the
+AWS-style GPU plus Kubernetes patterns many teams already use, while keeping
+the control plane and inference path private.
+
 ## Why this configuration
 
 This setup gives Nemotron users a reproducible OCI deployment path with a small
@@ -69,6 +77,17 @@ This cookbook assumes a private OKE cluster. Keep these constraints:
 
 The known-good serving values are in
 [`vllm_oke_phoenix_private_values.yaml`](./vllm_oke_phoenix_private_values.yaml).
+
+Terraform for the private Phoenix OKE infrastructure is available in
+[`terraform/`](./terraform/).
+
+That Terraform path was validated end to end in Phoenix through:
+
+- VCN and private subnets
+- private OKE control plane
+- OCI Bastion service
+- CPU node pool
+- GPU node pool on `VM.GPU.A10.1`
 
 Important settings for this single-A10 deployment:
 
@@ -155,6 +174,74 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
 
 Expected behavior: the model returns a tool call with `finish_reason` set to
 `tool_calls`.
+
+## Query via OCI Bastion
+
+For this private deployment, query the cluster and model through the **OCI
+Bastion service** plus local forwarding.
+
+Export the Terraform outputs:
+
+```bash
+export BASTION_ID="<terraform output oci_bastion_id>"
+export PRIVATE_API_HOST="<terraform output apiserver_private_host>"
+export REGION="us-phoenix-1"
+export OCI_CLI_PROFILE="API_KEY_AUTH"
+```
+
+Create a Bastion port-forwarding session to the private OKE API:
+
+```bash
+oci bastion session create-port-forwarding \
+  --bastion-id "$BASTION_ID" \
+  --ssh-public-key-file ~/.ssh/id_ed25519.pub \
+  --key-type PUB \
+  --target-port 6443 \
+  --target-private-ip "$PRIVATE_API_HOST" \
+  --display-name nemotron-oke-api \
+  --session-ttl 10800 \
+  --region "$REGION" \
+  --profile "$OCI_CLI_PROFILE"
+```
+
+Inspect the created session and copy the SSH command OCI returns:
+
+```bash
+oci bastion session get \
+  --session-id "<session_ocid>" \
+  --region "$REGION" \
+  --profile "$OCI_CLI_PROFILE"
+```
+
+Run the returned SSH command so that the private Kubernetes API is reachable on
+local port `6443`, then query the cluster:
+
+```bash
+kubectl get nodes
+kubectl -n default get pods
+```
+
+Port-forward the Nemotron router service:
+
+```bash
+kubectl -n default port-forward svc/vllm-router-service 8080:80
+```
+
+At that point, the private model is queryable locally without exposing a public
+inference endpoint:
+
+```bash
+curl -s http://127.0.0.1:8080/v1/models
+```
+
+```bash
+curl -s http://127.0.0.1:8080/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "nvidia/Llama-3.1-Nemotron-Nano-8B-v1",
+    "messages": [{"role": "user", "content": "Reply with NEMOTRON_OK"}]
+  }'
+```
 
 ## Operational notes
 
