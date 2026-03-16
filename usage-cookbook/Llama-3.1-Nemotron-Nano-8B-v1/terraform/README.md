@@ -3,9 +3,10 @@
 This Terraform example provisions the **private-only** OCI infrastructure for
 the validated Phoenix deployment described in the parent cookbook.
 
-It is intended to give Nemotron users a reproducible OCI path comparable to the
-AWS-style GPU plus Kubernetes deployment patterns often used for NVIDIA model
-serving, while preserving a private-only topology.
+It is intended to give Nemotron users a reproducible OCI path for NVIDIA model
+serving that highlights Oracle Cloud's operational strengths: private OKE,
+managed Bastion access, and a clean infrastructure-as-code path for GPU-backed
+Nemotron deployments.
 
 It creates:
 
