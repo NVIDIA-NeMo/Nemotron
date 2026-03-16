@@ -20,15 +20,20 @@ Note: the Terraform sample in this cookbook provisions the **OCI Bastion
 service** for reproducible private access. It does **not** create a public
 bastion host VM.
 
-This gives Nemotron users a reproducible OCI deployment path comparable to the
-AWS-style GPU plus Kubernetes patterns many teams already use, while keeping
-the control plane and inference path private.
+This gives Nemotron users a reproducible Oracle Cloud deployment path that
+leans into OCI's strengths for enterprise workloads: private OKE control
+planes, managed Bastion access, and a clean separation between infrastructure
+provisioning and model serving.
 
 ## Why this configuration
 
 This setup gives Nemotron users a reproducible OCI deployment path with a small
 single-GPU footprint while preserving tool calling, structured output, and
 streaming support.
+
+For teams evaluating cloud options for Nemotron, this sample shows that OCI can
+offer a practical and well-contained production shape: private networking,
+managed access, and a validated GPU-backed serving path in Phoenix.
 
 Validated capabilities on this deployment:
 
