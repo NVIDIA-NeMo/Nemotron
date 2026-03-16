@@ -20,14 +20,14 @@ It is designed to be the best possible **starting point for customization**: fin
 
 Measured on **NVIDIA GB200 NVL72** against GLM-4.5-355B-A32B and Kimi-K2-1026B-A33B, Nemotron 3 Ultra base model delivers up to 5x higher TPS at max throughput and leading accuracy for various agentic tasks:
 
-| Benchmark | Ultra 550B-A55B | GLM-4.5-355B-A32B (reported) | Kimi-K2-1026B-A33B |
+| Benchmark | Ultra 550B-A55B | GLM-4.5-355B-A32B | Kimi-K2-1026B-A33B |
 | ----- | ----- | ----- | ----- |
-| MMLU Pro | **78.0** | 65.6 | 69.3 |
-| MMLU | **89.3** | 86.3 | 88.0 |
-| Code | **86.1** | 76.2 | 75.3 |
-| Math | **86.0** | 72.1 | 79.5 |
-| Common Sense | 81.1 | 81.3 | **81.6** |
-| Multilingual | **89.1** | 83.3 | 84.2 |
+| MMLU Pro | **79.0** | 65.6 | 69.3 |
+| MMLU | **89.1** | 86.3 | 88.0 |
+| Code | **85.3** | 76.2 | 75.3 |
+| Math | **85.4** | 72.1 | 79.5 |
+| Common Sense | 81.0 | 81.3 | **81.6** |
+| Multilingual | **89.0** | 83.3 | 84.2 |
 | Peak Throughput | **5×** vs GLM | 1× | \~2.5× |
 
 ## **Availability**: 
