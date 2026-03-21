@@ -39,6 +39,8 @@ jobs:
       )
       && !cancelled()
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - name: Result
         run: |
