@@ -1,4 +1,6 @@
-:orphan:
+---
+orphan: true
+---
 
 # **NVIDIA Nemotron 3 Ultra — Base Model**
 
