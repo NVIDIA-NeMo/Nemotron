@@ -1,3 +1,5 @@
+:orphan:
+
 # **NVIDIA Nemotron 3 Ultra — Base Model**
 
 **Announced at GTC San Jose 2026** · Best Open Base Model
@@ -6,8 +8,8 @@ Nemotron 3 Ultra is NVIDIA's largest open model: **550B total parameters with up
 
 Similar to Nemotron 3 Super, it was pre-trained using NVFP4 and shares the same core technical innovations:
 
-* **LatentMoE** — Compresses tokens into a low-rank latent space before routing, enabling 4× as many expert specialists for the same inference cost.  
-* **Multi-Token Prediction (MTP)** — Predicts multiple future tokens in a single forward pass, improving chain-of-thought coherence and enabling built-in speculative decoding at inference time.  
+* **LatentMoE** — Compresses tokens into a low-rank latent space before routing, enabling 4× as many expert specialists for the same inference cost.
+* **Multi-Token Prediction (MTP)** — Predicts multiple future tokens in a single forward pass, improving chain-of-thought coherence and enabling built-in speculative decoding at inference time.
 * **1M Token Context Length** — Mamba-2 layers provide linear-time complexity over sequence length, making 1M-token context practical for long-document and agentic workloads.
 
 Nemotron 3 Ultra is a **pre-training base checkpoint** — it has not undergone instruction tuning or post-training alignment. This means it is not meant to be used out of the box as an assistant or in a production pipeline.
@@ -30,6 +32,6 @@ Measured on **NVIDIA GB200 NVL72** against GLM-4.5-355B-A32B and Kimi-K2-1026B-A
 | Multilingual | **89.0** | 83.3 | 84.2 |
 | Peak Throughput | **5×** vs GLM | 1× | \~2.5× |
 
-## **Availability**: 
+## **Availability**:
 
 Weights will become available with the full release of Nemotron 3 Ultra, expected to release in 1H 2026\.
