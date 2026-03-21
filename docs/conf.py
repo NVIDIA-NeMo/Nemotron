@@ -67,7 +67,7 @@ author = "NVIDIA Corporation"
 
 # Version is set by CI via DOCS_VERSION env var (dev or stable)
 # Defaults to "dev" for local builds
-release = os.environ.get("DOCS_VERSION", "nightly")
+release = os.environ.get("DOCS_VERSION", "0.1.0")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
