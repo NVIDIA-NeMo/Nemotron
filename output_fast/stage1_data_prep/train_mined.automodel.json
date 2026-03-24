@@ -1,0 +1,57 @@
+{
+    "corpus": {
+        "path": "./corpus/"
+    },
+    "data": [
+        {
+            "question_id": "q0",
+            "question": "In what way does the creation of synthetic data using NeMo Curator contribute to enhancing the reliability of generative AI model outputs?",
+            "corpus_id": "nv_pp_random",
+            "pos_doc": [
+                {
+                    "id": "d_eb352dc94b52aaeb",
+                    "score": 0.603087306022644
+                },
+                {
+                    "id": "d_9db654e70e52d3bc",
+                    "score": 0.2962265610694885
+                }
+            ],
+            "neg_doc": [
+                {
+                    "id": "d_5337627cce012b49",
+                    "score": 0.1349930614233017
+                },
+                {
+                    "id": "d_21e4b5148118dd57",
+                    "score": 0.12052179872989655
+                }
+            ]
+        }
+    ],
+    "mining": {
+        "args": {
+            "train_qa_file_path": "/teamspace/studios/this_studio/new/Nemotron/output_fast/stage1_data_prep/train.json",
+            "train_file_output_path": "/teamspace/studios/this_studio/new/Nemotron/output_fast/stage1_data_prep/train_mined.automodel.json",
+            "cache_embeddings_dir": "/teamspace/studios/this_studio/new/Nemotron/output_fast/stage1_data_prep/cache_embeddings",
+            "hard_negatives_to_mine": 2,
+            "hard_neg_margin": 0.95,
+            "hard_neg_margin_type": "perc",
+            "mining_batch_size": 32,
+            "query_embedding_batch_size": 16,
+            "document_embedding_batch_size": 16,
+            "corpus_chunk_size": 50000,
+            "use_negatives_from_file": false,
+            "query_prefix": "query:",
+            "passage_prefix": "passage:",
+            "query_max_length": 512,
+            "passage_max_length": 512,
+            "add_bos_token": true,
+            "add_eos_token": false,
+            "model_name_or_path": "nvidia/llama-nemotron-embed-1b-v2",
+            "tokenizer_name_or_path": "nvidia/llama-nemotron-embed-1b-v2",
+            "pooling": "avg",
+            "l2_normalize": true
+        }
+    }
+}

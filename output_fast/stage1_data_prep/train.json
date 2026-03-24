@@ -1,0 +1,254 @@
+{
+  "corpus": {
+    "path": "./corpus/"
+  },
+  "data": [
+    {
+      "question_id": "q0",
+      "question": "How does the process of creating synthetic data to augment existing datasets support the development of scalable end\u2011to\u2011end data processing pipelines?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_eb352dc94b52aaeb"
+        },
+        {
+          "id": "d_9db654e70e52d3bc"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q1",
+      "question": "What relationship exists between the challenges of processing multimodal data and the features offered by NeMo Curator?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_a53afbfc59823f28"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q2",
+      "question": "What strategic insight from the federal government generative AI panel is illustrated by the RAG-based search tool demonstration, and how does the subsequent networking event reflect the collaborative goals of the partnership?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_1083f1003c423d46"
+        },
+        {
+          "id": "d_a06224060fb5c7b6"
+        },
+        {
+          "id": "d_a4b2ffe27c51371b"
+        },
+        {
+          "id": "d_55c0f29c643805fb"
+        },
+        {
+          "id": "d_6684bc47741744e0"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q3",
+      "question": "How does the theme of accelerating generative AI for public sector use cases connect to the range of demonstrations and sessions scheduled at booth #519 during the AWS Summit?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_74449f95f11b5b16"
+        },
+        {
+          "id": "d_791e55b75e436482"
+        },
+        {
+          "id": "d_4d3302f99339bcbd"
+        },
+        {
+          "id": "d_c2ef19f223a04b98"
+        },
+        {
+          "id": "d_a23b5727a345aff4"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q4",
+      "question": "What steps must a developer follow to transition from a free 90\u2011day trial of NVIDIA AI Enterprise to using self\u2011hosted NIM microservices in production, and what membership requirements are involved?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_76f35a74de2f27d7"
+        },
+        {
+          "id": "d_bb9ab1e1cc313c55"
+        },
+        {
+          "id": "d_7aa998eee0bd4423"
+        },
+        {
+          "id": "d_cb9bcb4033826374"
+        },
+        {
+          "id": "d_ffa337842b7e7fc7"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q5",
+      "question": "How does NVIDIA AI Enterprise differ from pure open\u2011source AI software in terms of support, security, and lifecycle management?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_1109d841b064006b"
+        },
+        {
+          "id": "d_d315c96287ee5925"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q6",
+      "question": "What end\u2011to\u2011end process enables the delivery of high\u2011fidelity Omniverse digital twins to Apple Vision Pro, and how is teleoperated data from the headset used to improve synthetic dataset generation?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_8950d716c8c2403d"
+        },
+        {
+          "id": "d_dff6cea8d3d7ee86"
+        },
+        {
+          "id": "d_148e331a1045aa58"
+        },
+        {
+          "id": "d_b8fdc049a914dbe2"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q7",
+      "question": "In what ways do NVIDIA\u2019s XR technology stack and the OpenUSD framework combine to support enterprise immersive collaboration?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_4ccf2643e5e84a20"
+        },
+        {
+          "id": "d_5a93946b54f87ee9"
+        },
+        {
+          "id": "d_82d4399b2d4dac41"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q8",
+      "question": "What methodology does FrameView employ to deliver real-time performance and power measurements, and which application programming interfaces does it utilize for these analyses?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_85c13aef58a0ceba"
+        },
+        {
+          "id": "d_cf6f9e5ae9050ffb"
+        },
+        {
+          "id": "d_075f99735954e951"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q9",
+      "question": "How does FrameView's support for a wide range of graphics APIs and UWP applications enhance its effectiveness for performance analysis across different hardware?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_d95d28f8a076cde6"
+        },
+        {
+          "id": "d_85c13aef58a0ceba"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q10",
+      "question": "What combined performance enhancements in the GPU's architecture allow it to accelerate both large AI model inference and high\u2011resolution ray\u2011traced rendering?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_d39904eadb21bdf4"
+        },
+        {
+          "id": "d_700ea36784958c62"
+        },
+        {
+          "id": "d_5bfdb861df82a762"
+        },
+        {
+          "id": "d_a2876888d76bc43d"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q11",
+      "question": "How does the GPU's memory bandwidth compare to its power consumption, and what does this ratio suggest about its energy efficiency for professional workloads?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_05668e1a03220a80"
+        },
+        {
+          "id": "d_ae2999e59a541c54"
+        },
+        {
+          "id": "d_5e42dffcf03e7b81"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q12",
+      "question": "What steps are required to add a non\u2011GameStream\u2011ready game to the SHIELD interface using GeForce Experience, and why might users need to adjust settings afterward?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_9d85f5a401d5f1dd"
+        },
+        {
+          "id": "d_c504b4a4e0fd6a84"
+        },
+        {
+          "id": "d_c380ec4a4b76bf87"
+        },
+        {
+          "id": "d_2822c86292422fad"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q13",
+      "question": "What is the difference between the number of games officially supported by GameStream and the extent of games that can be streamed through manual addition, and how does this affect the range of playable titles on SHIELD?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_9d85f5a401d5f1dd"
+        },
+        {
+          "id": "d_2822c86292422fad"
+        }
+      ],
+      "neg_doc": []
+    }
+  ]
+}
