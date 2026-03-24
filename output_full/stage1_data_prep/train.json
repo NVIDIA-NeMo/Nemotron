@@ -1,0 +1,881 @@
+{
+  "corpus": {
+    "path": "./corpus/"
+  },
+  "data": [
+    {
+      "question_id": "q0",
+      "question": "How does the use of synthetic data augmentation enhance the development of foundation models, and what role does NVIDIA NeMo Curator play in creating the necessary data processing pipelines?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_eb352dc94b52aaeb"
+        },
+        {
+          "id": "d_9db654e70e52d3bc"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q1",
+      "question": "How does the GPU\u2011accelerated Aerial RAN platform enable both real\u2011time AI\u2011driven network automation and dynamic cybersecurity enforcement?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_b187e8f8bf9b28bc"
+        },
+        {
+          "id": "d_ea2daceae2c98bb7"
+        },
+        {
+          "id": "d_02123cda8b848291"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q2",
+      "question": "What foundational capabilities of the NVIDIA Holoscan SDK enable the creation of specific reference applications like Body Pose Estimation and Speech\u2011to\u2011Text with Large Language Models?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_6dfee723aee641a2"
+        },
+        {
+          "id": "d_ee69ea0a385daba9"
+        },
+        {
+          "id": "d_7af4253b41109594"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q3",
+      "question": "What benefit does the integration of the IMSL Fortran Library with cuBLAS provide, and how does this relate to the reported reduction in algorithm development time?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_43d3593143477035"
+        },
+        {
+          "id": "d_4e87e27b48fea8d4"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q4",
+      "question": "How do the software enhancements in JetPack 4.4 enable the deployment of advanced AI applications such as video analytics and natural language processing on the Jetson Xavier NX platform?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_3606d4dc8b0e5e24"
+        },
+        {
+          "id": "d_756d631be8c2dd10"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q5",
+      "question": "What steps does the NVIDIA MDL SDK perform to transform a material definition into an optimized shading implementation, and how does this enable any physically based renderer to integrate MDL support?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_0a74918da3ab3982"
+        },
+        {
+          "id": "d_fdc83b4c70444c2c"
+        },
+        {
+          "id": "d_e2c45c66a560e371"
+        },
+        {
+          "id": "d_9a8580c5de3b723a"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q6",
+      "question": "How does the GPU\u2011direct memory access provided by DOCA GPUNetIO enable the creation of high\u2011performance packet processing pipelines, and how does this capability connect to the workflow for developers to submit applications and receive updates?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_2d0ee4577a9b1593"
+        },
+        {
+          "id": "d_cb6d3504c5bcf8bb"
+        },
+        {
+          "id": "d_e75cad1548258342"
+        },
+        {
+          "id": "d_fd32624bbc0a1e54"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q7",
+      "question": "How does the model's accuracy on the ARC benchmark compare to its accuracy on the MATH benchmark, and what does this indicate about its reasoning capabilities?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_9ea9fb66d826ad7e"
+        },
+        {
+          "id": "d_2e6383f3ed010d6c"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q8",
+      "question": "How does the characterization of forest trails as a challenging, unmarked environment support the claim that the deep learning navigation framework can be generalized to any GPS\u2011denied scenario, and what methodological components enable this adaptability?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_50bae269523ab5c7"
+        },
+        {
+          "id": "d_bd825da0fb3a2f83"
+        },
+        {
+          "id": "d_d6ac0e23feb6b2e6"
+        },
+        {
+          "id": "d_99251ef0b7a78ff4"
+        },
+        {
+          "id": "d_d6bbc54d53095e10"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q9",
+      "question": "How does the identification of everyday tasks through participant surveys influence the design of training scenarios within the OmniGibson simulation used for the BEHAVIOR-1K benchmark?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_f0b0fbbae2d1be24"
+        },
+        {
+          "id": "d_2db6aa6cac5b6dd5"
+        },
+        {
+          "id": "d_45dd370497d4fa64"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q10",
+      "question": "What are the reported gains in efficiency and accuracy achieved by the new AI system for brain mapping, and how do these gains relate to each other?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_49ee208f8b18a2c6"
+        },
+        {
+          "id": "d_b45f22543bd08094"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q11",
+      "question": "What cost efficiency can be achieved by substituting a 70\u2011billion\u2011parameter Llama model with a 1\u2011billion\u2011parameter version within the Data Flywheel Blueprint, and what implementation steps enable this substitution?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_6457ab31370a9bc1"
+        },
+        {
+          "id": "d_c9dbe049787d1dd8"
+        },
+        {
+          "id": "d_992b5093cfa3af67"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q12",
+      "question": "How do the advancements in NVIDIA's OptiX 7.3 and NanoVDB SDKs support the vision for AI-powered real-time rendering outlined by Jensen Huang and Adobe's CTO?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_2ea7432c57af5cc6"
+        },
+        {
+          "id": "d_990c95ac534a1d50"
+        },
+        {
+          "id": "d_34b95fa6f7ea59ea"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q13",
+      "question": "What capabilities does the VSS Blueprint 2.4 provide for answering questions that involve multiple camera streams, and how does it achieve higher accuracy?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_cd1b4ea4ff8741cd"
+        },
+        {
+          "id": "d_b9315ab3974358c2"
+        },
+        {
+          "id": "d_4237173fe989c46d"
+        },
+        {
+          "id": "d_783926271b8a8bb4"
+        },
+        {
+          "id": "d_ce56083a1da0b9db"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q14",
+      "question": "How does the newly introduced command-line driven report generation feature affect the efficiency of capturing large applications?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_46ea1b3a71d2968f"
+        },
+        {
+          "id": "d_de81e076716eadc7"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q15",
+      "question": "How does NVIDIA Dynamo Planner enable appropriate GPU scaling in disaggregated LLM serving given variations in input and output sequence lengths?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_10489480d9d56c5f"
+        },
+        {
+          "id": "d_022b8efc3faceb0d"
+        },
+        {
+          "id": "d_6b8d540bf685f4d1"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q16",
+      "question": "How does the NVIDIA TAO Toolkit enable practitioners to fine\u2011tune object detection models with limited data, and what performance improvements can be realized through its built\u2011in optimizations?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_c8a97f1561f86dd3"
+        },
+        {
+          "id": "d_d2497205d85fb4ff"
+        },
+        {
+          "id": "d_d755dfff59d4dd2f"
+        },
+        {
+          "id": "d_92984df7bd91c8e1"
+        },
+        {
+          "id": "d_80af9d6c9455cd60"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q17",
+      "question": "What were the key findings when an expert evaluated AI-generated sonnets for poetic qualities, and how did these findings relate to the model's training on Shakespearean sonnets?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_13a11d639540e62d"
+        },
+        {
+          "id": "d_75c08ae969eaf297"
+        },
+        {
+          "id": "d_9982b44766eab5fb"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q18",
+      "question": "What capability introduced in the latest PGI compiler version enables a single binary to run efficiently on both multicore CPUs and Tesla GPUs, and how does this advancement affect users who have ongoing Professional support?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_f8f0719280e24f20"
+        },
+        {
+          "id": "d_4ea326488b5f89e5"
+        },
+        {
+          "id": "d_8bb97ad760492fc8"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q19",
+      "question": "How does the focus on generalizable embodied systems in this year's Autonomous Grand Challenge theme influence the design and evaluation approach of NVIDIA's Generalized Trajectory Scoring method?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_017191ac4d4f3d55"
+        },
+        {
+          "id": "d_828213a9cf5a7596"
+        },
+        {
+          "id": "d_a0176a6cd4631b20"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q20",
+      "question": "How does the severe understaffing of forest law enforcement drive the development and deployment of AI-powered acoustic monitoring devices that provide real-time alerts for illegal logging activities?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_d916e997f5128fec"
+        },
+        {
+          "id": "d_1c4c43176a8a0227"
+        },
+        {
+          "id": "d_fc83b90871f07a96"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q21",
+      "question": "In what ways does the combination of thermal imaging, real-time 3D rendering, and the NVIDIA Jetson platform improve emergency response decision-making for firefighters?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_521ea0fc06a1eab8"
+        },
+        {
+          "id": "d_4a6e58eb6ad3091a"
+        },
+        {
+          "id": "d_234b5aa564532288"
+        },
+        {
+          "id": "d_8c52960383031375"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q22",
+      "question": "What is the reported speedup when the cube manipulation task is trained on a single NVIDIA A100 GPU using Isaac Gym compared to the earlier method that used a large CPU cluster, and how long does each method take?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_f11462a1c18e7092"
+        },
+        {
+          "id": "d_6212dd12d22977c2"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q23",
+      "question": "What technical advantages did Pixotope\u2019s single\u2011pass render pipeline provide for achieving real\u2011time ray traced graphics in live broadcasts, and how did this enable the integration of animated characters with presenters on stage?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_ab401ee3cc97892c"
+        },
+        {
+          "id": "d_a40038f6ee95d380"
+        },
+        {
+          "id": "d_b42c5138750dd240"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q24",
+      "question": "Which two newly added nations to Age of Empires III: Definitive Edition are highlighted in a June 14, 2023 social media post that asks players to choose a historical period for building an empire?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_7445d2dcb5a175c1"
+        },
+        {
+          "id": "d_91654322e34be188"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q25",
+      "question": "How does the application of transfer learning in a custom object\u2011detection project illustrate the efficiency advantages described in the foundational overview of deep learning, and what implications does this have for tackling similar challenges in other domains?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_76c830ce85a7eed0"
+        },
+        {
+          "id": "d_932dba5815984392"
+        },
+        {
+          "id": "d_672287be3fd7558d"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q26",
+      "question": "How does the proposed CGH framework overcome the limitations of AI-driven approaches when used with fast phase-only SLMs for holographic near-eye displays?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_d839f5035d503005"
+        },
+        {
+          "id": "d_f90c27575228ffe5"
+        },
+        {
+          "id": "d_86e97b53aa3360fe"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q27",
+      "question": "How does the described approach enable a unified, representation\u2011agnostic elastic simulation across diverse geometric formats, and what role does the implicit neural network play in encoding the deformation basis?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_f71e93031c66ee40"
+        },
+        {
+          "id": "d_d839f5035d503005"
+        },
+        {
+          "id": "d_f90c27575228ffe5"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q28",
+      "question": "What performance gains does the machine\u2011learning driven IR drop analysis flow achieve in terms of speed and error relative to traditional methods, and how does it manage to profile a large number of test vectors efficiently?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_f71e93031c66ee40"
+        },
+        {
+          "id": "d_d839f5035d503005"
+        },
+        {
+          "id": "d_f90c27575228ffe5"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q29",
+      "question": "What advantages do fifth\u2011generation Tensor Cores provide for AI workloads, and how does the 24\u202fGB GDDR7 ECC memory support those capabilities?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_700ea36784958c62"
+        },
+        {
+          "id": "d_5bfdb861df82a762"
+        },
+        {
+          "id": "d_05668e1a03220a80"
+        },
+        {
+          "id": "d_ae2999e59a541c54"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q30",
+      "question": "what is the complete workflow for a developer to obtain a free evaluation license, access NVIDIA NIM microservices, and transition to production with enterprise\u2011grade support and security?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_bb9ab1e1cc313c55"
+        },
+        {
+          "id": "d_a6a2e442dff9aca9"
+        },
+        {
+          "id": "d_7aa998eee0bd4423"
+        },
+        {
+          "id": "d_cb9bcb4033826374"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q31",
+      "question": "In what way does NVIDIA\u2019s combination of edge AI hardware, cloud supercomputing platforms, and software ecosystem enable end\u2011to\u2011end solutions for autonomous systems across different industries?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_a13c33b36d48df93"
+        },
+        {
+          "id": "d_a4d2cd7a43334403"
+        },
+        {
+          "id": "d_ff294ab7bb0c0006"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q32",
+      "question": "What is the process for adding a non\u2011standard game to the GameStream list on SHIELD, and what should the user keep in mind about game settings after adding it?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_9d85f5a401d5f1dd"
+        },
+        {
+          "id": "d_c504b4a4e0fd6a84"
+        },
+        {
+          "id": "d_c380ec4a4b76bf87"
+        },
+        {
+          "id": "d_2822c86292422fad"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q33",
+      "question": "What are the main themes of the federal government generative AI panel at the AWS Summit, and how do they connect to the demonstration of a retrieval\u2011augmented generation tool and the digital fingerprinting workflow showcased at the event?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_a4b2ffe27c51371b"
+        },
+        {
+          "id": "d_1083f1003c423d46"
+        },
+        {
+          "id": "d_791e55b75e436482"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q34",
+      "question": "Describe the end-to-end workflow for deploying GPU-accelerated AI applications in an enterprise, from initial design and provisioning through integration into containerized environments and finally scaling the infrastructure.",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_21e4b5148118dd57"
+        },
+        {
+          "id": "d_5337627cce012b49"
+        },
+        {
+          "id": "d_9063a6bd9960409c"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q35",
+      "question": "How does the adoption of XR technologies in enterprise workflows enable both remote collaboration and AI\u2011enhanced workloads, and what role does NVIDIA CloudXR play in this integration?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_4ccf2643e5e84a20"
+        },
+        {
+          "id": "d_8950d716c8c2403d"
+        },
+        {
+          "id": "d_af2967fbaee22136"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q36",
+      "question": "How does the combination of Maxwell architecture, GPU Boost 2.0, and BatteryBoost technology enable the GeForce GTX 980M to deliver high\u2011end gaming performance while maintaining extended battery life?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_9de5ebc31f102a5e"
+        },
+        {
+          "id": "d_0338e5d8aa2941be"
+        },
+        {
+          "id": "d_6d5f605a59c748ab"
+        },
+        {
+          "id": "d_f3aa405f2ce5ea19"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q37",
+      "question": "What are the reported frame rate improvements for DLSS 3 in The Lord of the Rings: Gollum across different GPU models, and how do these compare to the performance gains observed in other games like Cyberpunk 2077 and Microsoft Flight Simulator?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_5ec993c3aa8cfb42"
+        },
+        {
+          "id": "d_8721710d61c0130d"
+        },
+        {
+          "id": "d_e12497a85d1e3f85"
+        },
+        {
+          "id": "d_1d726d58c46a2a67"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q38",
+      "question": "What is the memory interface width of the GeForce 605 OEM, and how does it combine with the memory clock speed to determine the memory bandwidth?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_de299cc9fbb17288"
+        },
+        {
+          "id": "d_d9c646e67cc10066"
+        },
+        {
+          "id": "d_2d1bb1e70952314f"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q39",
+      "question": "What installation requirements must be met before using NVIDIA System Tools 6.05, and which range of GPU architectures are supported by the package?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_7035a8ca0b46cf7c"
+        },
+        {
+          "id": "d_d10a1facdc16b0a8"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q40",
+      "question": "What combination of ray tracing quality setting and DLSS resolution scaling is recommended for an RTX 2070 at 1080p to achieve optimal performance, and how does the chosen shadow quality level affect this recommendation?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_ed0913879bfba694"
+        },
+        {
+          "id": "d_41454475230e245c"
+        },
+        {
+          "id": "d_b33427066dd0226d"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q41",
+      "question": "How do AI-powered forecasting, digital twin simulations, and reinforcement learning in intralogistics collectively transform supply chain operations from demand prediction to last\u2011mile delivery?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_4c9e47da1d514fbf"
+        },
+        {
+          "id": "d_1411813e390d4706"
+        },
+        {
+          "id": "d_504c5574708901fa"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q42",
+      "question": "How does the period over which the diffusion model is trained using GEFS ensemble forecasts compare with the period used to evaluate its outputs against HRRR observations, and what conclusion can be drawn about the model's readiness for commercial deployment?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_a6102223d73eeaea"
+        },
+        {
+          "id": "d_20abe4c0c53d754c"
+        },
+        {
+          "id": "d_1527c4fdcfa01162"
+        },
+        {
+          "id": "d_0298c5c6bb2fc2c2"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q43",
+      "question": "How do the model's alignment techniques, licensing conditions, global deployment scope, and ethical AI policies together enable commercial use while ensuring responsible deployment?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_7451740728521015"
+        },
+        {
+          "id": "d_3d54b5b22d2fa867"
+        },
+        {
+          "id": "d_a57d4384703e721d"
+        },
+        {
+          "id": "d_5e63e8d918f66dc5"
+        },
+        {
+          "id": "d_6c0a338112bf93e0"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q44",
+      "question": "How does NVIDIA NIM enable the deployment of the Llama 3.1 8B-Instruct model while ensuring enterprise-grade security and scalability?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_b276f0f0c845ff92"
+        },
+        {
+          "id": "d_abdf6e7f32e27d15"
+        },
+        {
+          "id": "d_1e7950d0ef9eeff6"
+        },
+        {
+          "id": "d_6b3028dceb5434ed"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q45",
+      "question": "What steps and legal requirements are involved in deploying Omniverse Farm on a GPU-enabled Kubernetes cluster using the Helm chart?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_2513480d8a9f313a"
+        },
+        {
+          "id": "d_f05212eba3fbab3d"
+        },
+        {
+          "id": "d_0108e67c094d6331"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q46",
+      "question": "What are the prerequisite steps and subsequent actions needed to train and deploy an ASR model using the Citrinet notebook in TAO Toolkit?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_388ca310a005d174"
+        },
+        {
+          "id": "d_a74a4660cba1dbdc"
+        },
+        {
+          "id": "d_d294431364b4629a"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q47",
+      "question": "Which LoRA fine\u2011tuning configuration with FP8 precision delivers the highest tokens\u2011per\u2011second throughput, and how does its model FLOPs utilization compare to the BF16 SFT run on 32 GPUs?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_2f9bee3bec693347"
+        },
+        {
+          "id": "d_94c01374b91bb8ea"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q48",
+      "question": "What are the reported inference speeds of the Mask2Former model at FP16 precision on an H100 GPU, and how does this compare to its performance on other supported NVIDIA GPUs, and what hardware requirements must be met to run the model?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_5ba87e220104933d"
+        },
+        {
+          "id": "d_d29d17f5d061f228"
+        },
+        {
+          "id": "d_4d3115bace84707e"
+        }
+      ],
+      "neg_doc": []
+    },
+    {
+      "question_id": "q49",
+      "question": "How does the use of mixed-precision training on Tensor Cores influence both the performance speed and the validation process of the EfficientNet\u2011WideSE models within the NGC ecosystem?",
+      "corpus_id": "nv_pp_random",
+      "pos_doc": [
+        {
+          "id": "d_55b74416a5d1e9c3"
+        },
+        {
+          "id": "d_211887c5127d182d"
+        },
+        {
+          "id": "d_50b7c07520b87bc5"
+        }
+      ],
+      "neg_doc": []
+    }
+  ]
+}

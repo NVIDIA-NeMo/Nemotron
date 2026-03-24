@@ -1,0 +1,2729 @@
+[
+  {
+    "file_name":[
+      "webinars\/4727895"
+    ],
+    "text":"High-quality training data ensures that generative AI models learn accurately and generalize well, leading to more reliable outputs. In this webinar, we\u2019ll explore how NVIDIA NeMo\u2122 Curator enables developers to easily build scalable data processing pipelines to create high-quality datasets for training and customization. We\u2019ll dive deep into the complex challenges of processing multimodal data and how developers can leverage NeMo Curator modules to solve these challenges. We\u2019ll explore various features such as deduplication, classifier models, and filters. Additionally, we\u2019ll discuss how to create high-quality synthetic data to augment your existing datasets. Whether you\u2019re building a foundation model or fine-tuning an existing one, this webinar will offer you valuable insights on how to improve the quality of the training data. In this webinar, you\u2019ll: Learn how to build end-to-end data processing pipelines that can scaleExplore real-world examples and performance benchmarksLearn how to get started quickly and seamlesslyExperience a live Q&A with NVIDIA experts",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":44,
+        "sentence_count":2,
+        "start":0,
+        "text":"High-quality training data ensures that generative AI models learn accurately and generalize well, leading to more reliable outputs.. In this webinar, we\u2019ll explore how NVIDIA NeMo\u2122 Curator enables developers to easily build scalable data processing pipelines to create high-quality datasets for training and customization.",
+        "word_count":44
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":78,
+        "sentence_count":2,
+        "start":44,
+        "text":"We\u2019ll dive deep into the complex challenges of processing multimodal data and how developers can leverage NeMo Curator modules to solve these challenges.. We\u2019ll explore various features such as deduplication, classifier models, and filters.",
+        "word_count":34
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":120,
+        "sentence_count":2,
+        "start":78,
+        "text":"Additionally, we\u2019ll discuss how to create high-quality synthetic data to augment your existing datasets.. Whether you\u2019re building a foundation model or fine-tuning an existing one, this webinar will offer you valuable insights on how to improve the quality of the training data.",
+        "word_count":42
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":153,
+        "sentence_count":1,
+        "start":120,
+        "text":"In this webinar, you\u2019ll: Learn how to build end-to-end data processing pipelines that can scaleExplore real-world examples and performance benchmarksLearn how to get started quickly and seamlesslyExperience a live Q&A with NVIDIA experts.",
+        "word_count":33
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): High-quality training data ensures that generative AI models learn accurately and generalize well, leading to more reliable outputs.. In this webinar, we\u2019ll explore how NVIDIA NeMo\u2122 Curator enables developers to easily build scalable data processing pipelines to create high-quality datasets for training and customization.\nSegment 2 (00:00:00 - 00:00:00): We\u2019ll dive deep into the complex challenges of processing multimodal data and how developers can leverage NeMo Curator modules to solve these challenges.. We\u2019ll explore various features such as deduplication, classifier models, and filters.\nSegment 3 (00:00:00 - 00:00:00): Additionally, we\u2019ll discuss how to create high-quality synthetic data to augment your existing datasets.. Whether you\u2019re building a foundation model or fine-tuning an existing one, this webinar will offer you valuable insights on how to improve the quality of the training data.\nSegment 4 (00:00:00 - 00:00:00): In this webinar, you\u2019ll: Learn how to build end-to-end data processing pipelines that can scaleExplore real-world examples and performance benchmarksLearn how to get started quickly and seamlesslyExperience a live Q&A with NVIDIA experts."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "webinars\/4727895"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"The audience context of AI engineers and researchers aiming to fine\u2011tune or build large models.",
+          "importance":"Sets the scenario for questions about practical application and audience-specific benefits.",
+          "text":"webinar targeting developers of foundation models"
+        }
+      ],
+      "entities":[
+        {
+          "description":"NVIDIA's software tool designed to help developers build scalable data processing pipelines for AI training.",
+          "importance":"Central entity for questions about tools and technologies discussed in the webinar.",
+          "text":"NVIDIA NeMo Curator"
+        }
+      ],
+      "insights":[
+        {
+          "description":"The insight that generating synthetic data can expand existing datasets, improving model robustness.",
+          "importance":"Offers a key takeaway for questions on data expansion strategies.",
+          "text":"synthetic data augmentation"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"The foundation concept that high-quality training data leads to accurate model learning and better generalization.",
+          "importance":"Essential for generating reliable question-answer pairs about data quality's impact on AI performance.",
+          "text":"high-quality training data"
+        }
+      ],
+      "processes":[
+        {
+          "description":"A workflow that integrates data collection, cleaning, deduplication, and augmentation into a seamless pipeline.",
+          "importance":"Provides a concrete process for generating questions on implementation steps.",
+          "text":"building end-to-end data processing pipelines"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"A causal relationship indicating that superior training data directly produces more trustworthy AI outputs.",
+          "importance":"Highlights the critical link for Q&A about cause-effect in AI training.",
+          "text":"high-quality training data -> reliable model outputs"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"The process of removing duplicate entries from datasets to prevent bias and improve efficiency.",
+          "importance":"A specific technical operation relevant for detailed technical Q&A.",
+          "text":"deduplication"
+        }
+      ],
+      "themes":[
+        {
+          "description":"The overarching theme focusing on ensuring datasets are clean, diverse, and enriched for optimal model training.",
+          "importance":"Guides the creation of questions centered on best practices in dataset curation.",
+          "text":"data quality and preparation"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"Synthetic data augmentation expands training datasets and improves model robustness, which directly enhances the performance and generalizability of foundation models; NVIDIA NeMo Curator supports this by providing tools to build scalable, end\u2011to\u2011end data processing pipelines that clean, deduplicate, and enrich data, thereby enabling the creation of high\u2011quality training sets for such augmentation.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                1
+              ],
+              "summary":"High-quality training data ensures accurate learning and generalization, and NeMo Curator enables developers to build scalable data processing pipelines."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                3
+              ],
+              "summary":"Synthetic data augmentation expands existing datasets, improves model robustness, and is relevant for building foundation models or fine\u2011tuning."
+            }
+          ],
+          "hop_count":2,
+          "query_type":"multi_hop",
+          "question":"How does the use of synthetic data augmentation enhance the development of foundation models, and what role does NVIDIA NeMo Curator play in creating the necessary data processing pipelines?",
+          "question_complexity":4,
+          "reasoning_type":"causal",
+          "segment_ids":[
+            1,
+            3
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"Synthetic data augmentation expands training datasets and improves model robustness, which directly enhances the performance and generalizability of foundation models; NVIDIA NeMo Curator supports this by providing tools to build scalable, end\u2011to\u2011end data processing pipelines that clean, deduplicate, and enrich data, thereby enabling the creation of high\u2011quality training sets for such augmentation.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              1
+            ],
+            "summary":"High-quality training data ensures accurate learning and generalization, and NeMo Curator enables developers to build scalable data processing pipelines."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              3
+            ],
+            "summary":"Synthetic data augmentation expands existing datasets, improves model robustness, and is relevant for building foundation models or fine\u2011tuning."
+          }
+        ],
+        "hop_count":2,
+        "query_type":"multi_hop",
+        "question":"How does the use of synthetic data augmentation enhance the development of foundation models, and what role does NVIDIA NeMo Curator play in creating the necessary data processing pipelines?",
+        "question_complexity":4,
+        "reasoning_type":"causal",
+        "segment_ids":[
+          1,
+          3
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly describes how synthetic data augmentation expands datasets and improves robustness, and it accurately describes NeMo Curator's role in building pipelines that clean, deduplicate, and enrich data.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The question is clearly articulated, and the answer is concise and easy to understand without ambiguous wording.",
+            "score":10
+          },
+          "context_support":{
+            "justification":"The answer draws on information from Segment 3 (synthetic data augmentation) and Segment 1 (NeMo Curator enabling scalable pipelines), providing a solid factual basis.",
+            "score":9
+          },
+          "improvements":"Include concrete examples of synthetic data techniques (e.g., SMOTE, GAN-generated samples) and mention specific NeMo Curator modules (e.g., deduplication, classifier filters) to make the answer even more illustrative.",
+          "overall":{
+            "assessment":"The QA pair is highly relevant, accurate, well-supported by the context, and clearly presented, with only minor room for more specific examples or detail.",
+            "score":9.5
+          },
+          "relevance":{
+            "justification":"The question directly asks about synthetic data augmentation's impact on foundation models and the role of NVIDIA NeMo Curator in data pipelines, which matches the topics covered in the provided context.",
+            "score":10
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacomindustriestelecommunications"
+    ],
+    "text":"\nTelecommunications Developer Resources\nA hub of news, SDKs, technical resources, and more for developers working in telecommunications.\nApp Frameworks and SDKs\n5G\/6G RAN\nNVIDIA Aerial CUDA -Accelerated RAN is an application framework for building commercial-grade, software-defined, GPU-accelerated, cloud-native 5G and 6G networks. The Aerial CUDA-Accelerated RAN platform is the key building block for the accelerated 5G virtualized distributed unit (vDU) and has been deployed in commercial and research networks.\nLearn More\nAI Frameworks (RAN)\nNVIDIA Aerial AI Radio Frameworks provide a package of AI enhancements that enable training and inference in the RAN. The framework tools pyAerial, NVIDIA Aerial Data Lake, and NVIDIA Sionna span the research space from AI and machine learning algorithm exploration, training, and inference to simulation and real-time implementation in a GPU-accelerated, over-the-air network testbed.\nLearn More\nNetwork Digital Twin\n\nThe NVIDIA Aerial Omniverse Digital Twin is a next-generation, system-level simulation platform for performing cutting-edge research and development on 5G and 6G wireless systems and optimizing network planning and operations. It s the unique tool for benchmarking system performance and exploring machine learning-based wireless communication algorithms under real-world conditions.\nLearn More\nNetwork Planning\nTelecom network engineers and developers can automate network configuration, optimize performance, and reduce unplanned downtime with a pre-built blueprint using an agentic LLM-driven framework built with NVIDIA NIM microservices.\nLearn More\nGenerative AI\nNVIDIA NeMo is an end-to-end platform for developing custom generative AI including large language models (LLMs), multimodal, vision, and speech AI anywhere. Deliver enterprise-ready models with precise data curation, cutting-edge customization, retrieval-augmented generation (RAG), and accelerated performance.\nLearn More\nDOCA\n\nThe NVIDIA DOCA SDK enables developers to rapidly create applications and services on top of NVIDIA BlueField data processing units (DPUs), leveraging industry-standard APIs.\nLearn More\nCybersecurity\nNVIDIA Morpheus is an open application framework that lets cybersecurity developers create optimized AI pipelines for filtering, processing, and classifying large volumes of real-time data. Morpheus can send and receive telemetry data directly from the BlueField DPU, allowing continuous, real-time, and variable feedback that can affect policies, rewrite rules, adjust sensing, and more.\nLearn More\nComputer Vision\nNVIDIA Metropolis is an application framework that simplifies the development, deployment, and scaling of AI-enabled video analytics applications from edge to cloud. It includes production-ready, pretrained models and transfer learning toolkits for training and optimizing models, the NVIDIA DeepStream SDK for streaming analytics, other deployment SDKs, CUDA-X libraries, and the NVIDIA EGX platform.\nExplore Tools\nData Science and Analytics\n\nThe NVIDIA RAPIDS suite of open-source software libraries, built on CUDA-X AI, gives developers the ability to execute end-to-end data science and analytics pipelines entirely on GPUs.\nGet Started With Rapids\nConversational AI\nNVIDIA Riva is an SDK for building and deploying AI applications that fuse vision, speech, and other sensors. It offers a complete workflow to build, train, and deploy GPU-accelerated AI systems that can use visual cues such as gestures and gaze along with speech in context.\nLearn More\nVideo Conferencing\nNVIDIA Maxine is a GPU-accelerated SDK with state-of-the-art AI features for developers to build virtual collaboration and content creation applications such as video conferencing and live streaming.\n\nLearn More\nBrowse by Resource Type\nNews\n\nOn-Demand Talks\n\nPrograms for You\n6G Developer Program\n\nThe NVIDIA 6G Developer Program provides access to platforms, documentation, and software releases to advance cutting-edge 6G research. It also offers a forum where developers can connect with NVIDIA experts and peers. Join the program to drive rapid innovation for the 6G era.\n\nJoin Today\nDeveloper Resources\nThe NVIDIA Developer Program provides the advanced tools and training needed to successfully build applications on all NVIDIA technology platforms. This includes access to hundreds of SDKs, a network of like-minded developers through our community forums, and more.\nJoin Today\nTechnical Training\nNVIDIA Deep Learning Institute (DLI) offers hands-on- training in AI, accelerated computing, and accelerated data science to solve real-world problems. Powered by GPUs in the cloud, training is available as self-paced, online courses or live, instructor-led workshops.\nView Courses\nAccelerate Your Startup\nNVIDIA Inception an acceleration platform for AI, data science, and HPC startups supports over 22,000 startups worldwide with go-to-market support, expertise, and technology. Startups get access to training through the DLI, preferred pricing on hardware, and invitations to exclusive networking events.\nLearn More\nSign up for the latest developer news from NVIDIA\nSubscribe",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":42,
+        "sentence_count":2,
+        "start":0,
+        "text":"Telecommunications Developer Resources\nA hub of news, SDKs, technical resources, and more for developers working in telecommunications.. App Frameworks and SDKs\n5G\/6G RAN\nNVIDIA Aerial CUDA -Accelerated RAN is an application framework for building commercial-grade, software-defined, GPU-accelerated, cloud-native 5G and 6G networks.",
+        "word_count":42
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":93,
+        "sentence_count":2,
+        "start":42,
+        "text":"The Aerial CUDA-Accelerated RAN platform is the key building block for the accelerated 5G virtualized distributed unit (vDU) and has been deployed in commercial and research networks.. Learn More\nAI Frameworks (RAN)\nNVIDIA Aerial AI Radio Frameworks provide a package of AI enhancements that enable training and inference in the RAN.",
+        "word_count":51
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":134,
+        "sentence_count":2,
+        "start":93,
+        "text":"The framework tools pyAerial, NVIDIA Aerial Data Lake, and NVIDIA Sionna span the research space from AI and machine learning algorithm exploration, training, and inference to simulation and real-time implementation in a GPU-accelerated, over-the-air network testbed.. Learn More\nNetwork Digital Twin.",
+        "word_count":41
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":183,
+        "sentence_count":2,
+        "start":134,
+        "text":"The NVIDIA Aerial Omniverse Digital Twin is a next-generation, system-level simulation platform for performing cutting-edge research and development on 5G and 6G wireless systems and optimizing network planning and operations.. It s the unique tool for benchmarking system performance and exploring machine learning-based wireless communication algorithms under real-world conditions.",
+        "word_count":49
+      },
+      {
+        "chunk_id":5,
+        "doc_chunk_index":5,
+        "end":242,
+        "sentence_count":2,
+        "start":183,
+        "text":"Learn More\nNetwork Planning\nTelecom network engineers and developers can automate network configuration, optimize performance, and reduce unplanned downtime with a pre-built blueprint using an agentic LLM-driven framework built with NVIDIA NIM microservices.. Learn More\nGenerative AI\nNVIDIA NeMo is an end-to-end platform for developing custom generative AI including large language models (LLMs), multimodal, vision, and speech AI anywhere.",
+        "word_count":59
+      },
+      {
+        "chunk_id":6,
+        "doc_chunk_index":6,
+        "end":260,
+        "sentence_count":2,
+        "start":242,
+        "text":"Deliver enterprise-ready models with precise data curation, cutting-edge customization, retrieval-augmented generation (RAG), and accelerated performance.. Learn More\nDOCA.",
+        "word_count":18
+      },
+      {
+        "chunk_id":7,
+        "doc_chunk_index":7,
+        "end":312,
+        "sentence_count":2,
+        "start":260,
+        "text":"The NVIDIA DOCA SDK enables developers to rapidly create applications and services on top of NVIDIA BlueField data processing units (DPUs), leveraging industry-standard APIs.. Learn More\nCybersecurity\nNVIDIA Morpheus is an open application framework that lets cybersecurity developers create optimized AI pipelines for filtering, processing, and classifying large volumes of real-time data.",
+        "word_count":52
+      },
+      {
+        "chunk_id":8,
+        "doc_chunk_index":8,
+        "end":366,
+        "sentence_count":2,
+        "start":312,
+        "text":"Morpheus can send and receive telemetry data directly from the BlueField DPU, allowing continuous, real-time, and variable feedback that can affect policies, rewrite rules, adjust sensing, and more.. Learn More\nComputer Vision\nNVIDIA Metropolis is an application framework that simplifies the development, deployment, and scaling of AI-enabled video analytics applications from edge to cloud.",
+        "word_count":54
+      },
+      {
+        "chunk_id":9,
+        "doc_chunk_index":9,
+        "end":403,
+        "sentence_count":2,
+        "start":366,
+        "text":"It includes production-ready, pretrained models and transfer learning toolkits for training and optimizing models, the NVIDIA DeepStream SDK for streaming analytics, other deployment SDKs, CUDA-X libraries, and the NVIDIA EGX platform.. Explore Tools\nData Science and Analytics.",
+        "word_count":37
+      },
+      {
+        "chunk_id":10,
+        "doc_chunk_index":10,
+        "end":454,
+        "sentence_count":2,
+        "start":403,
+        "text":"The NVIDIA RAPIDS suite of open-source software libraries, built on CUDA-X AI, gives developers the ability to execute end-to-end data science and analytics pipelines entirely on GPUs.. Get Started With Rapids\nConversational AI\nNVIDIA Riva is an SDK for building and deploying AI applications that fuse vision, speech, and other sensors.",
+        "word_count":51
+      },
+      {
+        "chunk_id":11,
+        "doc_chunk_index":11,
+        "end":513,
+        "sentence_count":2,
+        "start":454,
+        "text":"It offers a complete workflow to build, train, and deploy GPU-accelerated AI systems that can use visual cues such as gestures and gaze along with speech in context.. Learn More\nVideo Conferencing\nNVIDIA Maxine is a GPU-accelerated SDK with state-of-the-art AI features for developers to build virtual collaboration and content creation applications such as video conferencing and live streaming.",
+        "word_count":59
+      },
+      {
+        "chunk_id":12,
+        "doc_chunk_index":12,
+        "end":522,
+        "sentence_count":2,
+        "start":513,
+        "text":"Learn More\nBrowse by Resource Type\nNews. On-Demand Talks.",
+        "word_count":9
+      },
+      {
+        "chunk_id":13,
+        "doc_chunk_index":13,
+        "end":546,
+        "sentence_count":2,
+        "start":522,
+        "text":"Programs for You\n6G Developer Program. The NVIDIA 6G Developer Program provides access to platforms, documentation, and software releases to advance cutting-edge 6G research.",
+        "word_count":24
+      },
+      {
+        "chunk_id":14,
+        "doc_chunk_index":14,
+        "end":571,
+        "sentence_count":2,
+        "start":546,
+        "text":"It also offers a forum where developers can connect with NVIDIA experts and peers.. Join the program to drive rapid innovation for the 6G era.",
+        "word_count":25
+      },
+      {
+        "chunk_id":15,
+        "doc_chunk_index":15,
+        "end":613,
+        "sentence_count":2,
+        "start":571,
+        "text":"Join Today\nDeveloper Resources\nThe NVIDIA Developer Program provides the advanced tools and training needed to successfully build applications on all NVIDIA technology platforms.. This includes access to hundreds of SDKs, a network of like-minded developers through our community forums, and more.",
+        "word_count":42
+      },
+      {
+        "chunk_id":16,
+        "doc_chunk_index":16,
+        "end":654,
+        "sentence_count":2,
+        "start":613,
+        "text":"Join Today\nTechnical Training\nNVIDIA Deep Learning Institute (DLI) offers hands-on- training in AI, accelerated computing, and accelerated data science to solve real-world problems.. Powered by GPUs in the cloud, training is available as self-paced, online courses or live, instructor-led workshops.",
+        "word_count":41
+      },
+      {
+        "chunk_id":17,
+        "doc_chunk_index":17,
+        "end":700,
+        "sentence_count":2,
+        "start":654,
+        "text":"View Courses\nAccelerate Your Startup\nNVIDIA Inception an acceleration platform for AI, data science, and HPC startups supports over 22,000 startups worldwide with go-to-market support, expertise, and technology.. Startups get access to training through the DLI, preferred pricing on hardware, and invitations to exclusive networking events.",
+        "word_count":46
+      },
+      {
+        "chunk_id":18,
+        "doc_chunk_index":18,
+        "end":712,
+        "sentence_count":1,
+        "start":700,
+        "text":"Learn More\nSign up for the latest developer news from NVIDIA\nSubscribe.",
+        "word_count":12
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): Telecommunications Developer Resources\nA hub of news, SDKs, technical resources, and more for developers working in telecommunications.. App Frameworks and SDKs\n5G\/6G RAN\nNVIDIA Aerial CUDA -Accelerated RAN is an application framework for building commercial-grade, software-defined, GPU-accelerated, cloud-native 5G and 6G networks.\nSegment 2 (00:00:00 - 00:00:00): The Aerial CUDA-Accelerated RAN platform is the key building block for the accelerated 5G virtualized distributed unit (vDU) and has been deployed in commercial and research networks.. Learn More\nAI Frameworks (RAN)\nNVIDIA Aerial AI Radio Frameworks provide a package of AI enhancements that enable training and inference in the RAN.\nSegment 3 (00:00:00 - 00:00:00): The framework tools pyAerial, NVIDIA Aerial Data Lake, and NVIDIA Sionna span the research space from AI and machine learning algorithm exploration, training, and inference to simulation and real-time implementation in a GPU-accelerated, over-the-air network testbed.. Learn More\nNetwork Digital Twin.\nSegment 4 (00:00:00 - 00:00:00): The NVIDIA Aerial Omniverse Digital Twin is a next-generation, system-level simulation platform for performing cutting-edge research and development on 5G and 6G wireless systems and optimizing network planning and operations.. It s the unique tool for benchmarking system performance and exploring machine learning-based wireless communication algorithms under real-world conditions.\nSegment 5 (00:00:00 - 00:00:00): Learn More\nNetwork Planning\nTelecom network engineers and developers can automate network configuration, optimize performance, and reduce unplanned downtime with a pre-built blueprint using an agentic LLM-driven framework built with NVIDIA NIM microservices.. Learn More\nGenerative AI\nNVIDIA NeMo is an end-to-end platform for developing custom generative AI including large language models (LLMs), multimodal, vision, and speech AI anywhere.\nSegment 6 (00:00:00 - 00:00:00): Deliver enterprise-ready models with precise data curation, cutting-edge customization, retrieval-augmented generation (RAG), and accelerated performance.. Learn More\nDOCA.\nSegment 7 (00:00:00 - 00:00:00): The NVIDIA DOCA SDK enables developers to rapidly create applications and services on top of NVIDIA BlueField data processing units (DPUs), leveraging industry-standard APIs.. Learn More\nCybersecurity\nNVIDIA Morpheus is an open application framework that lets cybersecurity developers create optimized AI pipelines for filtering, processing, and classifying large volumes of real-time data.\nSegment 8 (00:00:00 - 00:00:00): Morpheus can send and receive telemetry data directly from the BlueField DPU, allowing continuous, real-time, and variable feedback that can affect policies, rewrite rules, adjust sensing, and more.. Learn More\nComputer Vision\nNVIDIA Metropolis is an application framework that simplifies the development, deployment, and scaling of AI-enabled video analytics applications from edge to cloud.\nSegment 9 (00:00:00 - 00:00:00): It includes production-ready, pretrained models and transfer learning toolkits for training and optimizing models, the NVIDIA DeepStream SDK for streaming analytics, other deployment SDKs, CUDA-X libraries, and the NVIDIA EGX platform.. Explore Tools\nData Science and Analytics.\nSegment 10 (00:00:00 - 00:00:00): The NVIDIA RAPIDS suite of open-source software libraries, built on CUDA-X AI, gives developers the ability to execute end-to-end data science and analytics pipelines entirely on GPUs.. Get Started With Rapids\nConversational AI\nNVIDIA Riva is an SDK for building and deploying AI applications that fuse vision, speech, and other sensors.\nSegment 11 (00:00:00 - 00:00:00): It offers a complete workflow to build, train, and deploy GPU-accelerated AI systems that can use visual cues such as gestures and gaze along with speech in context.. Learn More\nVideo Conferencing\nNVIDIA Maxine is a GPU-accelerated SDK with state-of-the-art AI features for developers to build virtual collaboration and content creation applications such as video conferencing and live streaming.\nSegment 12 (00:00:00 - 00:00:00): Learn More\nBrowse by Resource Type\nNews. On-Demand Talks.\nSegment 13 (00:00:00 - 00:00:00): Programs for You\n6G Developer Program. The NVIDIA 6G Developer Program provides access to platforms, documentation, and software releases to advance cutting-edge 6G research.\nSegment 14 (00:00:00 - 00:00:00): It also offers a forum where developers can connect with NVIDIA experts and peers.. Join the program to drive rapid innovation for the 6G era.\nSegment 15 (00:00:00 - 00:00:00): Join Today\nDeveloper Resources\nThe NVIDIA Developer Program provides the advanced tools and training needed to successfully build applications on all NVIDIA technology platforms.. This includes access to hundreds of SDKs, a network of like-minded developers through our community forums, and more.\nSegment 16 (00:00:00 - 00:00:00): Join Today\nTechnical Training\nNVIDIA Deep Learning Institute (DLI) offers hands-on- training in AI, accelerated computing, and accelerated data science to solve real-world problems.. Powered by GPUs in the cloud, training is available as self-paced, online courses or live, instructor-led workshops.\nSegment 17 (00:00:00 - 00:00:00): View Courses\nAccelerate Your Startup\nNVIDIA Inception an acceleration platform for AI, data science, and HPC startups supports over 22,000 startups worldwide with go-to-market support, expertise, and technology.. Startups get access to training through the DLI, preferred pricing on hardware, and invitations to exclusive networking events.\nSegment 18 (00:00:00 - 00:00:00): Learn More\nSign up for the latest developer news from NVIDIA\nSubscribe."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacomindustriestelecommunications"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Context indicating that NVIDIA's telecom solutions are already used in both production environments and experimental research settings.",
+          "importance":"Shows real-world relevance and validation of the technologies across diverse use cases.",
+          "text":"Deployment in commercial and research networks"
+        }
+      ],
+      "entities":[
+        {
+          "description":"Data processing unit that provides programmable, low-latency networking and security capabilities, used by Morpheus and other NVIDIA frameworks.",
+          "importance":"Central hardware component enabling real-time telemetry and offloading, pivotal to multiple NVIDIA telecom and cybersecurity products.",
+          "text":"NVIDIA BlueField DPU"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Insight that leveraging GPUs allows simultaneous training, inference, and telemetry processing, delivering low-latency, high-throughput network functions.",
+          "importance":"Demonstrates the competitive advantage of NVIDIA's hardware-software stack in next-gen telecom.",
+          "text":"GPU acceleration enables real-time AI for 5G\/6G RAN and cybersecurity"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"Core concept of using NVIDIA GPUs to accelerate radio access network functions for 5G\/6G, enabling cloud-native, software-defined, real-time processing.",
+          "importance":"Critical for high-performance, low-latency telecom infrastructure and forms the foundation of many NVIDIA telecom solutions.",
+          "text":"GPU-accelerated 5G and 6G networks"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Process of using large language models as agents to automate network configuration, performance optimization, and downtime reduction via NVIDIA NIM microservices.",
+          "importance":"Represents a novel workflow that leverages generative AI to streamline telecom network operations.",
+          "text":"Agentic LLM-driven network automation"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"The Aerial CUDA-Accelerated RAN platform serves as the key building block for implementing vDUs, linking GPU acceleration to 5G\/6G network deployment.",
+          "importance":"Highlights the direct technical dependency that enables scalable, distributed 5G\/6G architectures.",
+          "text":"Aerial CUDA-Accelerated RAN \u2194 virtualized Distributed Unit (vDU)"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"Component of 5G\/6G architecture that runs RAN functions in software, accelerated by NVIDIA Aerial CUDA platform.",
+          "importance":"Key abstraction that illustrates the move toward virtualized, GPU-accelerated network functions.",
+          "text":"virtualized distributed unit (vDU)"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Theme describing how GPU-powered AI frameworks (Aerial, Morpheus, Metropolis, etc.) are reshaping network design, operation, and security.",
+          "importance":"Captures the overarching industry shift toward AI-driven, high-performance telecom solutions.",
+          "text":"GPU-accelerated AI transformation in telecom"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The Aerial CUDA\u2011Accelerated RAN platform provides a GPU\u2011accelerated, cloud\u2011native foundation for 5G\/6G radio functions, which can be orchestrated by an agentic large\u2011language\u2011model framework to automatically configure, optimize, and reduce downtime in the network; simultaneously, the same accelerated telemetry can be fed to Morpheus, allowing real\u2011time, policy\u2011driven security decisions and threat mitigation.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                1
+              ],
+              "summary":"Describes NVIDIA Aerial CUDA\u2011Accelerated RAN as an application framework for building cloud\u2011native, GPU\u2011accelerated 5G and 6G networks."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                5
+              ],
+              "summary":"Explains how an agentic LLM\u2011driven framework built with NVIDIA NIM microservices automates network configuration, optimizes performance, and reduces unplanned downtime."
+            },
+            {
+              "hop_number":3,
+              "segment_ids":[
+                7
+              ],
+              "summary":"Details how the NVIDIA Morpheus framework uses BlueField DPUs to process real\u2011time telemetry for cybersecurity, enabling continuous policy adjustments and threat response."
+            }
+          ],
+          "hop_count":3,
+          "query_type":"multi_hop",
+          "question":"How does the GPU\u2011accelerated Aerial RAN platform enable both real\u2011time AI\u2011driven network automation and dynamic cybersecurity enforcement?",
+          "question_complexity":5,
+          "reasoning_type":"causal",
+          "segment_ids":[
+            1,
+            5,
+            7
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The Aerial CUDA\u2011Accelerated RAN platform provides a GPU\u2011accelerated, cloud\u2011native foundation for 5G\/6G radio functions, which can be orchestrated by an agentic large\u2011language\u2011model framework to automatically configure, optimize, and reduce downtime in the network; simultaneously, the same accelerated telemetry can be fed to Morpheus, allowing real\u2011time, policy\u2011driven security decisions and threat mitigation.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              1
+            ],
+            "summary":"Describes NVIDIA Aerial CUDA\u2011Accelerated RAN as an application framework for building cloud\u2011native, GPU\u2011accelerated 5G and 6G networks."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              5
+            ],
+            "summary":"Explains how an agentic LLM\u2011driven framework built with NVIDIA NIM microservices automates network configuration, optimizes performance, and reduces unplanned downtime."
+          },
+          {
+            "hop_number":3,
+            "segment_ids":[
+              7
+            ],
+            "summary":"Details how the NVIDIA Morpheus framework uses BlueField DPUs to process real\u2011time telemetry for cybersecurity, enabling continuous policy adjustments and threat response."
+          }
+        ],
+        "hop_count":3,
+        "query_type":"multi_hop",
+        "question":"How does the GPU\u2011accelerated Aerial RAN platform enable both real\u2011time AI\u2011driven network automation and dynamic cybersecurity enforcement?",
+        "question_complexity":5,
+        "reasoning_type":"causal",
+        "segment_ids":[
+          1,
+          5,
+          7
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly states that the platform provides a GPU\u2011accelerated, cloud\u2011native 5G\/6G RAN (segment 1) and that AI automation is achieved via an agentic LLM framework (segment 5), while security enforcement is enabled through Morpheus using real\u2011time telemetry (segment 7). No factual errors are present.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The question is clear, and the answer is understandable, but it is somewhat dense and could be more concise to improve readability.",
+            "score":8
+          },
+          "context_support":{
+            "justification":"The answer references concepts that are explicitly covered in the provided context segments [1,5,7], demonstrating strong support from the source material.",
+            "score":9
+          },
+          "improvements":"Specify that the AI\u2011driven automation is orchestrated by an agentic LLM framework (as mentioned in segment 5) and that Morpheus consumes telemetry from the BlueField DPU (segment 7) to enforce security policies. Adding brief citations to the relevant segment IDs would make the answer more transparent and easier to verify.",
+          "overall":{
+            "assessment":"The QA pair is highly relevant, accurate, and well\u2011supported by the context, though a more concise wording and explicit citation of the supporting segments would enhance clarity.",
+            "score":8.5
+          },
+          "relevance":{
+            "justification":"The question directly asks about the capabilities of the GPU\u2011accelerated Aerial RAN platform for AI\u2011driven automation and cybersecurity enforcement, which aligns with the context describing the Aerial CUDA\u2011Accelerated RAN (segments 1,5) and Morpheus cybersecurity framework (segment 7).",
+            "score":9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacomholoscan-sdk"
+    ],
+    "text":"NVIDIA Holoscan SDK\nNVIDIA Holoscan is a domain-agnostic, multimodal AI sensor processing platform that provides the accelerated, full-stack infrastructure needed for real-time processing of streaming data at the edge or in the cloud.\nDownload Now Documentation Forum\nDownload the NVIDIA Holoscan SDK\nTo compile the open-source Holoscan SDK yourself, download it from GitHub.\nGitHub SDK Documentation Release Notes\nPyPi\nPip Install NVIDIA Holoscan SDK\nUbuntu Package\nDownload and install the Debian Package\nNGC Container\nRun within the Holoscan Container\nConda\nNow available on Conda\nHow Holoscan SDK Works\nAccelerate sensor data processing with the Holoscan SDK.\nNVIDIA Holoscan includes optimized libraries for network connectivity, data processing, and AI. It provides examples for creating and running low-latency, data-streaming applications across industries using C++, Python, or Graph Composer. Using the SDK, developers can build pipelines for sensor data processing that meet latency requirements and scale from the cloud to the data center to the edge.\nHoloscan Reference Applications diagram explaining all relevant application components\nGetting-Started Guide\nInstall, setup, and start learning how to use the Holoscan SDK with guided examples.\nRead Guide\nHoloscan GitHub\nLearn more about the Holoscan AI sensor processing platform, or compile the open-source Holoscan SDK yourself.\nGo to GitHub\nHoloscan Reference Applications\nCheck out and share reference applications, operators, tutorials, and benchmarks on the HoloHub.\nExplore HoloHub\nLearn About the Latest Release\nJump into the latest features and improvements for the Holoscan SDK.\nView Release Notes\nGet Started With Holoscan\nPick Your Platform\n1. Pick Your Platform\nOptimize experiences for edge workloads by running Holoscan on industrial-grade hardware like NVIDIA IGX. The SDK is also compatible with multiple hardware platforms, including aarch64 and x86.\nLearn More\nInstall the SDK\n2. Install the SDK\nGet the specifications you need to run Holoscan locally. Understand the prerequisites and more with this install guide.\nGet the Installation Guide\nExplore Examples\n3. Explore Examples\nLearn how to use the Holoscan SDK to build applications through a series of core examples.\nStart Learning\nHoloscan Sensor Bridge processes low-latency sensor data from diverse sensors over Ethernet\nProcess Low-Latency Sensor Data Over Ethernet With Holoscan Sensor Bridge\nHoloscan Sensor Bridge seamlessly handles high-bandwidth data from diverse sensors over Ethernet, enabling real-time, high-performance AI processing. It serves as a flexible field-programmable gate array (FPGA) interface with a standard API and open software.\nLearn More About Holoscan Sensor Bridge\nHoloscan Reference Applications\nOnce you ve set up Holoscan and learned the basics, check out prebuilt examples of end-to-end applications and guidance on how to use, customize, and scale them.\nBody Pose Estimation\nThis computer vision task recognizes specific points on the human body in images or videos.\nView Reference Application: Body Pose Estimation\nGo to GitHub Repo\nRun Instructions\nSpeech-to-Text and Large Language Models\nThis application shows how to transcribe audio files with a speech-to-text model (STT) and how to use a large language model (LLM) to summarize and generate new, relevant information.\nView Reference Application: STT and LLMs\nGo to GitHub Repo\nRun Instructions\nSAM2: Segment Anything in Images and Videos\nThis application demonstrates how to run SAM2 models on a live video feed with the possibility of changing query points in real time.\nView Reference Application: SAM\nRead Setup Instructions\nSensor IO: GPUDirect Data Ingestion\nReference applications for sensor input and output (IO) with Holoscan demonstrate the advanced data-ingestion capabilities of NVIDIA GPUDirect. Partners like Yuan and Deltacast provide state-of-the-art IO capture cards that integrate seamlessly with Holoscan, enabling rapid data transfer directly to GPU memory.\nView Reference Application: High-Speed Endoscopy (C++)\nView Reference Application: High-Speed Endoscopy (Python)\nDDS-Based Interoperability\nThe Data Distribution Service (DDS) video application demonstrates how video frames can be written to or read from a DDS databus to provide flexible integration between Holoscan applications and other applications (using Holoscan or not).\nView Reference Application: Video Streaming\nRead Quick-Start Guide\nGo to GitHub Repo\nMulti-AI AR-Assisted Surgery\nThis application shows how to enhance robotic surgery by combining 3D anatomical models with real-time AI segmentation to get improved depth perception, better navigation, and enhanced patient safety.\nView Reference Application: Tool Segmentation With AI Overlay\nGo to GitHub Repo\nHoloscan Developer Blogs\nMore Resources\nNVIDIA Developer Forums\nExplore Developer Forums\n\nNVIDIA Inception for Startups\nAccelerate Your Startup\n\nNVIDIA Developer Program\nJoin the NVIDIA Developer Program\n\nEthical AI\nNVIDIA believes Trustworthy AI is a shared responsibility, and we have established policies and practices to enable development for a wide array of AI applications. When downloading or using a model in accordance with our terms of service, developers should work with their supporting model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.\nPlease report security vulnerabilities or NVIDIA AI concerns here.\nGet started with Holoscan today.\nVisit HoloHub",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":53,
+        "sentence_count":2,
+        "start":0,
+        "text":"NVIDIA Holoscan SDK\nNVIDIA Holoscan is a domain-agnostic, multimodal AI sensor processing platform that provides the accelerated, full-stack infrastructure needed for real-time processing of streaming data at the edge or in the cloud.. Download Now Documentation Forum\nDownload the NVIDIA Holoscan SDK\nTo compile the open-source Holoscan SDK yourself, download it from GitHub.",
+        "word_count":53
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":108,
+        "sentence_count":2,
+        "start":53,
+        "text":"GitHub SDK Documentation Release Notes\nPyPi\nPip Install NVIDIA Holoscan SDK\nUbuntu Package\nDownload and install the Debian Package\nNGC Container\nRun within the Holoscan Container\nConda\nNow available on Conda\nHow Holoscan SDK Works\nAccelerate sensor data processing with the Holoscan SDK.. NVIDIA Holoscan includes optimized libraries for network connectivity, data processing, and AI.",
+        "word_count":55
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":153,
+        "sentence_count":2,
+        "start":108,
+        "text":"It provides examples for creating and running low-latency, data-streaming applications across industries using C++, Python, or Graph Composer.. Using the SDK, developers can build pipelines for sensor data processing that meet latency requirements and scale from the cloud to the data center to the edge.",
+        "word_count":45
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":198,
+        "sentence_count":2,
+        "start":153,
+        "text":"Holoscan Reference Applications diagram explaining all relevant application components\nGetting-Started Guide\nInstall, setup, and start learning how to use the Holoscan SDK with guided examples.. Read Guide\nHoloscan GitHub\nLearn more about the Holoscan AI sensor processing platform, or compile the open-source Holoscan SDK yourself.",
+        "word_count":45
+      },
+      {
+        "chunk_id":5,
+        "doc_chunk_index":5,
+        "end":235,
+        "sentence_count":2,
+        "start":198,
+        "text":"Go to GitHub\nHoloscan Reference Applications\nCheck out and share reference applications, operators, tutorials, and benchmarks on the HoloHub.. Explore HoloHub\nLearn About the Latest Release\nJump into the latest features and improvements for the Holoscan SDK.",
+        "word_count":37
+      },
+      {
+        "chunk_id":6,
+        "doc_chunk_index":6,
+        "end":263,
+        "sentence_count":2,
+        "start":235,
+        "text":"View Release Notes\nGet Started With Holoscan\nPick Your Platform\n1.. Pick Your Platform\nOptimize experiences for edge workloads by running Holoscan on industrial-grade hardware like NVIDIA IGX.",
+        "word_count":28
+      },
+      {
+        "chunk_id":7,
+        "doc_chunk_index":7,
+        "end":282,
+        "sentence_count":2,
+        "start":263,
+        "text":"The SDK is also compatible with multiple hardware platforms, including aarch64 and x86.. Learn More\nInstall the SDK\n2.",
+        "word_count":19
+      },
+      {
+        "chunk_id":8,
+        "doc_chunk_index":8,
+        "end":303,
+        "sentence_count":2,
+        "start":282,
+        "text":"Install the SDK\nGet the specifications you need to run Holoscan locally.. Understand the prerequisites and more with this install guide.",
+        "word_count":21
+      },
+      {
+        "chunk_id":9,
+        "doc_chunk_index":9,
+        "end":328,
+        "sentence_count":2,
+        "start":303,
+        "text":"Get the Installation Guide\nExplore Examples\n3.. Explore Examples\nLearn how to use the Holoscan SDK to build applications through a series of core examples.",
+        "word_count":25
+      },
+      {
+        "chunk_id":10,
+        "doc_chunk_index":10,
+        "end":386,
+        "sentence_count":2,
+        "start":328,
+        "text":"Start Learning\nHoloscan Sensor Bridge processes low-latency sensor data from diverse sensors over Ethernet\nProcess Low-Latency Sensor Data Over Ethernet With Holoscan Sensor Bridge\nHoloscan Sensor Bridge seamlessly handles high-bandwidth data from diverse sensors over Ethernet, enabling real-time, high-performance AI processing.. It serves as a flexible field-programmable gate array (FPGA) interface with a standard API and open software.",
+        "word_count":58
+      },
+      {
+        "chunk_id":11,
+        "doc_chunk_index":11,
+        "end":440,
+        "sentence_count":2,
+        "start":386,
+        "text":"Learn More About Holoscan Sensor Bridge\nHoloscan Reference Applications\nOnce you ve set up Holoscan and learned the basics, check out prebuilt examples of end-to-end applications and guidance on how to use, customize, and scale them.. Body Pose Estimation\nThis computer vision task recognizes specific points on the human body in images or videos.",
+        "word_count":54
+      },
+      {
+        "chunk_id":12,
+        "doc_chunk_index":12,
+        "end":528,
+        "sentence_count":2,
+        "start":440,
+        "text":"View Reference Application: Body Pose Estimation\nGo to GitHub Repo\nRun Instructions\nSpeech-to-Text and Large Language Models\nThis application shows how to transcribe audio files with a speech-to-text model (STT) and how to use a large language model (LLM) to summarize and generate new, relevant information.. View Reference Application: STT and LLMs\nGo to GitHub Repo\nRun Instructions\nSAM2: Segment Anything in Images and Videos\nThis application demonstrates how to run SAM2 models on a live video feed with the possibility of changing query points in real time.",
+        "word_count":88
+      },
+      {
+        "chunk_id":13,
+        "doc_chunk_index":13,
+        "end":581,
+        "sentence_count":2,
+        "start":528,
+        "text":"View Reference Application: SAM\nRead Setup Instructions\nSensor IO: GPUDirect Data Ingestion\nReference applications for sensor input and output (IO) with Holoscan demonstrate the advanced data-ingestion capabilities of NVIDIA GPUDirect.. Partners like Yuan and Deltacast provide state-of-the-art IO capture cards that integrate seamlessly with Holoscan, enabling rapid data transfer directly to GPU memory.",
+        "word_count":53
+      },
+      {
+        "chunk_id":14,
+        "doc_chunk_index":14,
+        "end":673,
+        "sentence_count":2,
+        "start":581,
+        "text":"View Reference Application: High-Speed Endoscopy (C++)\nView Reference Application: High-Speed Endoscopy (Python)\nDDS-Based Interoperability\nThe Data Distribution Service (DDS) video application demonstrates how video frames can be written to or read from a DDS databus to provide flexible integration between Holoscan applications and other applications (using Holoscan or not).. View Reference Application: Video Streaming\nRead Quick-Start Guide\nGo to GitHub Repo\nMulti-AI AR-Assisted Surgery\nThis application shows how to enhance robotic surgery by combining 3D anatomical models with real-time AI segmentation to get improved depth perception, better navigation, and enhanced patient safety.",
+        "word_count":92
+      },
+      {
+        "chunk_id":15,
+        "doc_chunk_index":15,
+        "end":703,
+        "sentence_count":2,
+        "start":673,
+        "text":"View Reference Application: Tool Segmentation With AI Overlay\nGo to GitHub Repo\nHoloscan Developer Blogs\nMore Resources\nNVIDIA Developer Forums\nExplore Developer Forums. NVIDIA Inception for Startups\nAccelerate Your Startup.",
+        "word_count":30
+      },
+      {
+        "chunk_id":16,
+        "doc_chunk_index":16,
+        "end":738,
+        "sentence_count":2,
+        "start":703,
+        "text":"NVIDIA Developer Program\nJoin the NVIDIA Developer Program. Ethical AI\nNVIDIA believes Trustworthy AI is a shared responsibility, and we have established policies and practices to enable development for a wide array of AI applications.",
+        "word_count":35
+      },
+      {
+        "chunk_id":17,
+        "doc_chunk_index":17,
+        "end":786,
+        "sentence_count":2,
+        "start":738,
+        "text":"When downloading or using a model in accordance with our terms of service, developers should work with their supporting model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.. Please report security vulnerabilities or NVIDIA AI concerns here.",
+        "word_count":48
+      },
+      {
+        "chunk_id":18,
+        "doc_chunk_index":18,
+        "end":793,
+        "sentence_count":2,
+        "start":786,
+        "text":"Get started with Holoscan today.. Visit HoloHub.",
+        "word_count":7
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): NVIDIA Holoscan SDK\nNVIDIA Holoscan is a domain-agnostic, multimodal AI sensor processing platform that provides the accelerated, full-stack infrastructure needed for real-time processing of streaming data at the edge or in the cloud.. Download Now Documentation Forum\nDownload the NVIDIA Holoscan SDK\nTo compile the open-source Holoscan SDK yourself, download it from GitHub.\nSegment 2 (00:00:00 - 00:00:00): GitHub SDK Documentation Release Notes\nPyPi\nPip Install NVIDIA Holoscan SDK\nUbuntu Package\nDownload and install the Debian Package\nNGC Container\nRun within the Holoscan Container\nConda\nNow available on Conda\nHow Holoscan SDK Works\nAccelerate sensor data processing with the Holoscan SDK.. NVIDIA Holoscan includes optimized libraries for network connectivity, data processing, and AI.\nSegment 3 (00:00:00 - 00:00:00): It provides examples for creating and running low-latency, data-streaming applications across industries using C++, Python, or Graph Composer.. Using the SDK, developers can build pipelines for sensor data processing that meet latency requirements and scale from the cloud to the data center to the edge.\nSegment 4 (00:00:00 - 00:00:00): Holoscan Reference Applications diagram explaining all relevant application components\nGetting-Started Guide\nInstall, setup, and start learning how to use the Holoscan SDK with guided examples.. Read Guide\nHoloscan GitHub\nLearn more about the Holoscan AI sensor processing platform, or compile the open-source Holoscan SDK yourself.\nSegment 5 (00:00:00 - 00:00:00): Go to GitHub\nHoloscan Reference Applications\nCheck out and share reference applications, operators, tutorials, and benchmarks on the HoloHub.. Explore HoloHub\nLearn About the Latest Release\nJump into the latest features and improvements for the Holoscan SDK.\nSegment 6 (00:00:00 - 00:00:00): View Release Notes\nGet Started With Holoscan\nPick Your Platform\n1.. Pick Your Platform\nOptimize experiences for edge workloads by running Holoscan on industrial-grade hardware like NVIDIA IGX.\nSegment 7 (00:00:00 - 00:00:00): The SDK is also compatible with multiple hardware platforms, including aarch64 and x86.. Learn More\nInstall the SDK\n2.\nSegment 8 (00:00:00 - 00:00:00): Install the SDK\nGet the specifications you need to run Holoscan locally.. Understand the prerequisites and more with this install guide.\nSegment 9 (00:00:00 - 00:00:00): Get the Installation Guide\nExplore Examples\n3.. Explore Examples\nLearn how to use the Holoscan SDK to build applications through a series of core examples.\nSegment 10 (00:00:00 - 00:00:00): Start Learning\nHoloscan Sensor Bridge processes low-latency sensor data from diverse sensors over Ethernet\nProcess Low-Latency Sensor Data Over Ethernet With Holoscan Sensor Bridge\nHoloscan Sensor Bridge seamlessly handles high-bandwidth data from diverse sensors over Ethernet, enabling real-time, high-performance AI processing.. It serves as a flexible field-programmable gate array (FPGA) interface with a standard API and open software.\nSegment 11 (00:00:00 - 00:00:00): Learn More About Holoscan Sensor Bridge\nHoloscan Reference Applications\nOnce you ve set up Holoscan and learned the basics, check out prebuilt examples of end-to-end applications and guidance on how to use, customize, and scale them.. Body Pose Estimation\nThis computer vision task recognizes specific points on the human body in images or videos.\nSegment 12 (00:00:00 - 00:00:00): View Reference Application: Body Pose Estimation\nGo to GitHub Repo\nRun Instructions\nSpeech-to-Text and Large Language Models\nThis application shows how to transcribe audio files with a speech-to-text model (STT) and how to use a large language model (LLM) to summarize and generate new, relevant information.. View Reference Application: STT and LLMs\nGo to GitHub Repo\nRun Instructions\nSAM2: Segment Anything in Images and Videos\nThis application demonstrates how to run SAM2 models on a live video feed with the possibility of changing query points in real time.\nSegment 13 (00:00:00 - 00:00:00): View Reference Application: SAM\nRead Setup Instructions\nSensor IO: GPUDirect Data Ingestion\nReference applications for sensor input and output (IO) with Holoscan demonstrate the advanced data-ingestion capabilities of NVIDIA GPUDirect.. Partners like Yuan and Deltacast provide state-of-the-art IO capture cards that integrate seamlessly with Holoscan, enabling rapid data transfer directly to GPU memory.\nSegment 14 (00:00:00 - 00:00:00): View Reference Application: High-Speed Endoscopy (C++)\nView Reference Application: High-Speed Endoscopy (Python)\nDDS-Based Interoperability\nThe Data Distribution Service (DDS) video application demonstrates how video frames can be written to or read from a DDS databus to provide flexible integration between Holoscan applications and other applications (using Holoscan or not).. View Reference Application: Video Streaming\nRead Quick-Start Guide\nGo to GitHub Repo\nMulti-AI AR-Assisted Surgery\nThis application shows how to enhance robotic surgery by combining 3D anatomical models with real-time AI segmentation to get improved depth perception, better navigation, and enhanced patient safety.\nSegment 15 (00:00:00 - 00:00:00): View Reference Application: Tool Segmentation With AI Overlay\nGo to GitHub Repo\nHoloscan Developer Blogs\nMore Resources\nNVIDIA Developer Forums\nExplore Developer Forums. NVIDIA Inception for Startups\nAccelerate Your Startup.\nSegment 16 (00:00:00 - 00:00:00): NVIDIA Developer Program\nJoin the NVIDIA Developer Program. Ethical AI\nNVIDIA believes Trustworthy AI is a shared responsibility, and we have established policies and practices to enable development for a wide array of AI applications.\nSegment 17 (00:00:00 - 00:00:00): When downloading or using a model in accordance with our terms of service, developers should work with their supporting model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.. Please report security vulnerabilities or NVIDIA AI concerns here.\nSegment 18 (00:00:00 - 00:00:00): Get started with Holoscan today.. Visit HoloHub."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacomholoscan-sdk"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Industrial\u2011grade hardware platform supporting Holoscan for on\u2011site processing.",
+          "importance":"Provides context for use\u2011cases requiring deterministic performance and regulatory compliance.",
+          "text":"Edge deployment on NVIDIA IGX hardware"
+        }
+      ],
+      "entities":[
+        {
+          "description":"The software development kit offered by NVIDIA for sensor\u2011driven AI pipelines.",
+          "importance":"Central entity referenced throughout.",
+          "text":"NVIDIA Holoscan SDK"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Highlights performance advantages of Holoscan\u2019s architecture.",
+          "importance":"Key takeaway for evaluating suitability for real\u2011time applications.",
+          "text":"Low\u2011latency sensor data ingestion via GPUDirect and FPGA interfaces enables real\u2011time AI pipelines"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"The core idea of NVIDIA Holoscan is a domain\u2011agnostic platform that accelerates multimodal sensor data processing with low latency, scalable from edge to cloud.",
+          "importance":"Defines the primary value proposition for Q&A about what Holoscan does.",
+          "text":"Multimodal AI sensor processing platform for real-time streaming data"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Step\u2011by\u2011step workflow to set up the environment, compile from source, and run examples.",
+          "importance":"Critical for users to get started; directly actionable.",
+          "text":"Installation and execution of Holoscan SDK via Docker, Conda, or native packages"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"The SDK provides the foundation upon which various reference applications are built, illustrating how developers can extend the platform with domain\u2011specific AI tasks.",
+          "importance":"Shows how SDK enables diverse use\u2011cases and is central to cross\u2011document connections.",
+          "text":"Holoscan SDK \u2194 Reference Applications (Body Pose Estimation, STT+LLM, SAM2)"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"Technology that allows direct memory access from network adapters to GPU memory, reducing latency.",
+          "importance":"Specific technical term central to high\u2011performance data transfer.",
+          "text":"GPUDirect RDMA"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Emphasizes low\u2011latency processing, scalability across hardware, and multimodal sensor integration.",
+          "importance":"Captures the overarching focus of the documentation.",
+          "text":"Real\u2011time, scalable AI at the edge and in the cloud"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The NVIDIA Holoscan SDK provides a domain\u2011agnostic, low\u2011latency, scalable platform for multimodal sensor data processing that can be extended to build domain\u2011specific AI pipelines. Using the SDK, developers can construct reference applications such as Body Pose Estimation, which performs computer\u2011vision analysis on human skeletal data, and Speech\u2011to\u2011Text with Large Language Models, which transcribes audio and then uses an LLM to summarize and generate information. These applications illustrate how the SDK\u2019s optimized libraries for networking, data handling, and AI can be leveraged to meet stringent latency requirements and to deploy solutions across edge, data\u2011center, and cloud environments.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                1
+              ],
+              "summary":"Segment 1 introduces NVIDIA Holoscan SDK as a domain\u2011agnostic multimodal AI sensor processing platform that accelerates real\u2011time streaming data processing at the edge or in the cloud."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                12,
+                13
+              ],
+              "summary":"Segments 12 and 13 describe reference applications including Body Pose Estimation (a computer\u2011vision task) and Speech\u2011to\u2011Text combined with Large Language Models, showing concrete examples built on the SDK."
+            }
+          ],
+          "hop_count":2,
+          "query_type":"multi_hop",
+          "question":"What foundational capabilities of the NVIDIA Holoscan SDK enable the creation of specific reference applications like Body Pose Estimation and Speech\u2011to\u2011Text with Large Language Models?",
+          "question_complexity":4,
+          "reasoning_type":"inferential",
+          "segment_ids":[
+            1,
+            12,
+            13
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The NVIDIA Holoscan SDK provides a domain\u2011agnostic, low\u2011latency, scalable platform for multimodal sensor data processing that can be extended to build domain\u2011specific AI pipelines. Using the SDK, developers can construct reference applications such as Body Pose Estimation, which performs computer\u2011vision analysis on human skeletal data, and Speech\u2011to\u2011Text with Large Language Models, which transcribes audio and then uses an LLM to summarize and generate information. These applications illustrate how the SDK\u2019s optimized libraries for networking, data handling, and AI can be leveraged to meet stringent latency requirements and to deploy solutions across edge, data\u2011center, and cloud environments.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              1
+            ],
+            "summary":"Segment 1 introduces NVIDIA Holoscan SDK as a domain\u2011agnostic multimodal AI sensor processing platform that accelerates real\u2011time streaming data processing at the edge or in the cloud."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              12,
+              13
+            ],
+            "summary":"Segments 12 and 13 describe reference applications including Body Pose Estimation (a computer\u2011vision task) and Speech\u2011to\u2011Text combined with Large Language Models, showing concrete examples built on the SDK."
+          }
+        ],
+        "hop_count":2,
+        "query_type":"multi_hop",
+        "question":"What foundational capabilities of the NVIDIA Holoscan SDK enable the creation of specific reference applications like Body Pose Estimation and Speech\u2011to\u2011Text with Large Language Models?",
+        "question_complexity":4,
+        "reasoning_type":"inferential",
+        "segment_ids":[
+          1,
+          12,
+          13
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly states that Holoscan is a domain\u2011agnostic, low\u2011latency, scalable platform with optimized libraries for networking, data handling, and AI, matching the information in segments 1, 12, and 13.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The answer is understandable and addresses the question, but it is somewhat verbose and could be more concise for better clarity.",
+            "score":8
+          },
+          "context_support":{
+            "justification":"The response is explicitly supported by segments 1 (description of Holoscan as a multimodal AI platform), 12 (mention of Body Pose Estimation and Speech\u2011to\u2011Text with LLMs), and 13 (reference to those applications).",
+            "score":9
+          },
+          "improvements":"Provide a more concise summary, explicitly list the key capabilities (e.g., low\u2011latency streaming, GPU\u2011accelerated data handling, multimodal AI libraries), and cite the specific segment numbers to strengthen the link to the context.",
+          "overall":{
+            "assessment":"The answer accurately and relevantly explains the foundational capabilities of the NVIDIA Holoscan SDK that enable the cited reference applications, with strong support from the provided context, though it could be streamlined for greater clarity.",
+            "score":8.7
+          },
+          "relevance":{
+            "justification":"The question asks about the foundational capabilities that enable reference applications such as Body Pose Estimation and Speech\u2011to\u2011Text with LLMs, and the answer directly describes those capabilities.",
+            "score":9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacomsiggraph2019videosig941"
+    ],
+    "text":"\nSIGGRAPH 2019: Learning from the past so you do repeat it: Introducing the Example-Based Workflow - Video\nEric Risser,Artomatix\nSIGGRAPH 2019\nWe describe a fast, scalable technique for ray tracing photorealistic global illumination. It upgrades standard static light probes to both fix light leaks and accelerate them for dynamic run-time ray tracing on any recent GPU. This streamlines art workflow, increases visual fidelity, and lifts lighting restrictions on gameplay.\nWe describe this probe technique along with new implementation details that give a 2x performance increase and heightened image quality over previous versions. We also show how to accelerate ray traced reflections and full GPU path tracing using the same probe data structure, and discuss the road map for this technology.\"\nView More SIGGRAPH 2019 Talks and Sessions",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":56,
+        "sentence_count":2,
+        "start":0,
+        "text":"SIGGRAPH 2019: Learning from the past so you do repeat it: Introducing the Example-Based Workflow - Video\nEric Risser,Artomatix\nSIGGRAPH 2019\nWe describe a fast, scalable technique for ray tracing photorealistic global illumination.. It upgrades standard static light probes to both fix light leaks and accelerate them for dynamic run-time ray tracing on any recent GPU.",
+        "word_count":56
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":92,
+        "sentence_count":2,
+        "start":56,
+        "text":"This streamlines art workflow, increases visual fidelity, and lifts lighting restrictions on gameplay.. We describe this probe technique along with new implementation details that give a 2x performance increase and heightened image quality over previous versions.",
+        "word_count":36
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":127,
+        "sentence_count":2,
+        "start":92,
+        "text":"We also show how to accelerate ray traced reflections and full GPU path tracing using the same probe data structure, and discuss the road map for this technology.\". View More SIGGRAPH 2019 Talks and Sessions.",
+        "word_count":35
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): SIGGRAPH 2019: Learning from the past so you do repeat it: Introducing the Example-Based Workflow - Video\nEric Risser,Artomatix\nSIGGRAPH 2019\nWe describe a fast, scalable technique for ray tracing photorealistic global illumination.. It upgrades standard static light probes to both fix light leaks and accelerate them for dynamic run-time ray tracing on any recent GPU.\nSegment 2 (00:00:00 - 00:00:00): This streamlines art workflow, increases visual fidelity, and lifts lighting restrictions on gameplay.. We describe this probe technique along with new implementation details that give a 2x performance increase and heightened image quality over previous versions.\nSegment 3 (00:00:00 - 00:00:00): We also show how to accelerate ray traced reflections and full GPU path tracing using the same probe data structure, and discuss the road map for this technology.\". View More SIGGRAPH 2019 Talks and Sessions."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacomsiggraph2019videosig941"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Background context of the conference and the problem of art pipeline limitations.",
+          "importance":"Explains why the talk was relevant and timely.",
+          "text":"Presented at SIGGRAPH 2019, focusing on art workflow optimization"
+        }
+      ],
+      "entities":[
+        {
+          "description":"Key people and event associated with the presentation.",
+          "importance":"Provides context for authorship, organization, and conference venue.",
+          "text":"Eric Risser; Artomatix; SIGGRAPH 2019"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Key findings that the new probe method doubles performance and removes traditional lighting constraints in games.",
+          "importance":"Summarizes the most compelling outcomes for stakeholders.",
+          "text":"2\u00d7 performance improvement and lifted lighting restrictions"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"Core idea of using an example\u2011based probe system to enable fast, scalable ray\u2011traced global illumination that fixes light leaks and works on any recent GPU.",
+          "importance":"Defines the primary contribution of the talk and guides Q&A focus on the workflow's purpose and benefits.",
+          "text":"Example-Based Workflow for Real-Time Ray Traced Global Illumination"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Describes the procedural steps of implementing the probe technique, achieving 2\u00d7 performance gain, and extending to ray\u2011traced reflections and full GPU path tracing.",
+          "importance":"Captures the actionable methodology that can be queried for implementation details.",
+          "text":"Fast scalable ray tracing using upgraded light probes"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"Connects the concepts of light probes, leak fixing, and performance acceleration, showing how improvements in probe handling directly boost ray\u2011traced reflections and path tracing.",
+          "importance":"Highlights the causal link that underpins the technique's efficiency and applicability.",
+          "text":"Light probes upgraded to eliminate leaks and accelerate dynamic ray tracing"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"Specialized vocabulary central to understanding the talk's content.",
+          "importance":"Essential for generating precise technical Q&A.",
+          "text":"Ray tracing; Global illumination; Light probes; GPU path tracing; Dynamic run\u2011time ray tracing"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Broad topic covering the pursuit of high\u2011fidelity lighting in interactive applications.",
+          "importance":"Frames the significance of the presented technology within the industry's goals.",
+          "text":"Real\u2011time Photorealistic Global Illumination"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The upgrade eliminates light leaks, accelerates dynamic ray tracing, and delivers roughly double the performance while removing traditional lighting constraints; the same probe data can then be used to speed up ray\u2011traced reflections and support full GPU path tracing, paving the way for broader real\u2011time illumination applications.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                1,
+                2,
+                3
+              ],
+              "summary":"Segment 1 describes the probe upgrade that fixes leaks and speeds dynamic ray tracing; Segment 2 reports a 2\u00d7 performance gain and removal of lighting restrictions; Segment 3 shows how the probe data accelerates reflections and full GPU path tracing."
+            }
+          ],
+          "hop_count":1,
+          "query_type":"multi_hop",
+          "question":"What benefit does upgrading static light probes provide for dynamic ray tracing, and how does this enable further advancements in GPU path tracing?",
+          "question_complexity":5,
+          "reasoning_type":"causal",
+          "segment_ids":[
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The upgrade eliminates light leaks, accelerates dynamic ray tracing, and delivers roughly double the performance while removing traditional lighting constraints; the same probe data can then be used to speed up ray\u2011traced reflections and support full GPU path tracing, paving the way for broader real\u2011time illumination applications.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              1,
+              2,
+              3
+            ],
+            "summary":"Segment 1 describes the probe upgrade that fixes leaks and speeds dynamic ray tracing; Segment 2 reports a 2\u00d7 performance gain and removal of lighting restrictions; Segment 3 shows how the probe data accelerates reflections and full GPU path tracing."
+          }
+        ],
+        "hop_count":1,
+        "query_type":"multi_hop",
+        "question":"What benefit does upgrading static light probes provide for dynamic ray tracing, and how does this enable further advancements in GPU path tracing?",
+        "question_complexity":5,
+        "reasoning_type":"causal",
+        "segment_ids":[
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly describes elimination of light leaks, acceleration of dynamic ray tracing, roughly double performance, removal of traditional lighting constraints, and the use of probe data to speed up ray\u2011traced reflections and support full GPU path tracing, all of which match the factual content of the context.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The answer is generally clear but is somewhat dense; breaking it into separate sentences or bullet points would improve readability.",
+            "score":8
+          },
+          "context_support":{
+            "justification":"The answer is fully supported by Segments 1\u20113, which discuss fixing light leaks, a 2\u00d7 performance increase, and enabling ray\u2011traced reflections and full GPU path tracing using the same probe data structure.",
+            "score":9
+          },
+          "improvements":"Consider splitting the answer into two distinct sentences: one focusing on the performance gain and elimination of light leaks, and another explaining how the same probe data enables ray\u2011traced reflections and full GPU path tracing. Additionally, explicitly reference the 2\u00d7 performance figure and cite the relevant segment IDs for stronger context anchoring.",
+          "overall":{
+            "assessment":"The response is factually accurate and well\u2011grounded in the provided context, but could be more concise and structured for better clarity.",
+            "score":8.5
+          },
+          "relevance":{
+            "justification":"The question asks specifically about the benefits of upgrading static light probes for dynamic ray tracing and how this enables further GPU path tracing advancements. The answer directly addresses both parts of the question.",
+            "score":9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacomimsl-fortran-numerical-library"
+    ],
+    "text":"\n\nIMSL Fortran Numerical Library\n\nThe IMSL Fortran Numerical Library is a comprehensive set of mathematical and statistical functions that developers can embed into their Fortran software applications. It offloads CPU work to NVIDIA GPU hardware where the cuBLAS library is utilized. Users with supported hardware are able to link the IMSL Fortran Library with cuBLAS to gain significant performance improvements for many linear algebra functions. The calling sequences for IMSL functions are untouched, so there is no learning curve and users can be immediately productive.\n\nKey Features\n\n\n\n1000+ accurate and highly reliable algorithms\n\nSupport for the optional arguments of modern Fortran syntax\n\nIntuitive naming conventions eliminate the need for developers to learn or remember special function names\n\nEvolves easily with software and hardware upgrades\n\n\nThe IMSL Fortran Numerical Library provides analytical building blocks that eliminate the need to write code from scratch, and can save up to 95% of the time required to research and develop algorithms. The fully-tested and qualified algorithms free QA teams to focus on core application testing.\nFor more information about IMSL and other GPU Accelerated Libraries:\n\n\nDownload evaluation copy\nRogue Wave IMSL for Fortran features\nGPU Accelerated Libraries\n\n",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":27,
+        "sentence_count":2,
+        "start":0,
+        "text":"IMSL Fortran Numerical Library. The IMSL Fortran Numerical Library is a comprehensive set of mathematical and statistical functions that developers can embed into their Fortran software applications.",
+        "word_count":27
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":65,
+        "sentence_count":2,
+        "start":27,
+        "text":"It offloads CPU work to NVIDIA GPU hardware where the cuBLAS library is utilized.. Users with supported hardware are able to link the IMSL Fortran Library with cuBLAS to gain significant performance improvements for many linear algebra functions.",
+        "word_count":38
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":87,
+        "sentence_count":2,
+        "start":65,
+        "text":"The calling sequences for IMSL functions are untouched, so there is no learning curve and users can be immediately productive.. Key Features.",
+        "word_count":22
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":102,
+        "sentence_count":2,
+        "start":87,
+        "text":"1000+ accurate and highly reliable algorithms. Support for the optional arguments of modern Fortran syntax.",
+        "word_count":15
+      },
+      {
+        "chunk_id":5,
+        "doc_chunk_index":5,
+        "end":124,
+        "sentence_count":2,
+        "start":102,
+        "text":"Intuitive naming conventions eliminate the need for developers to learn or remember special function names. Evolves easily with software and hardware upgrades.",
+        "word_count":22
+      },
+      {
+        "chunk_id":6,
+        "doc_chunk_index":6,
+        "end":171,
+        "sentence_count":2,
+        "start":124,
+        "text":"The IMSL Fortran Numerical Library provides analytical building blocks that eliminate the need to write code from scratch, and can save up to 95% of the time required to research and develop algorithms.. The fully-tested and qualified algorithms free QA teams to focus on core application testing.",
+        "word_count":47
+      },
+      {
+        "chunk_id":7,
+        "doc_chunk_index":7,
+        "end":193,
+        "sentence_count":2,
+        "start":171,
+        "text":"For more information about IMSL and other GPU Accelerated Libraries:. Download evaluation copy\nRogue Wave IMSL for Fortran features\nGPU Accelerated Libraries.",
+        "word_count":22
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): IMSL Fortran Numerical Library. The IMSL Fortran Numerical Library is a comprehensive set of mathematical and statistical functions that developers can embed into their Fortran software applications.\nSegment 2 (00:00:00 - 00:00:00): It offloads CPU work to NVIDIA GPU hardware where the cuBLAS library is utilized.. Users with supported hardware are able to link the IMSL Fortran Library with cuBLAS to gain significant performance improvements for many linear algebra functions.\nSegment 3 (00:00:00 - 00:00:00): The calling sequences for IMSL functions are untouched, so there is no learning curve and users can be immediately productive.. Key Features.\nSegment 4 (00:00:00 - 00:00:00): 1000+ accurate and highly reliable algorithms. Support for the optional arguments of modern Fortran syntax.\nSegment 5 (00:00:00 - 00:00:00): Intuitive naming conventions eliminate the need for developers to learn or remember special function names. Evolves easily with software and hardware upgrades.\nSegment 6 (00:00:00 - 00:00:00): The IMSL Fortran Numerical Library provides analytical building blocks that eliminate the need to write code from scratch, and can save up to 95% of the time required to research and develop algorithms.. The fully-tested and qualified algorithms free QA teams to focus on core application testing.\nSegment 7 (00:00:00 - 00:00:00): For more information about IMSL and other GPU Accelerated Libraries:. Download evaluation copy\nRogue Wave IMSL for Fortran features\nGPU Accelerated Libraries."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacomimsl-fortran-numerical-library"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Mention that users must have compatible NVIDIA GPU hardware to benefit from the GPU\u2011accelerated performance improvements.",
+          "importance":"Sets the practical limitation and prerequisites for adopting the accelerated features, influencing deployment decisions.",
+          "text":"Requirement for supported NVIDIA GPU hardware"
+        }
+      ],
+      "entities":[
+        {
+          "description":"The comprehensive set of mathematical and statistical functions offered by Rogue Wave for embedding in Fortran software.",
+          "importance":"Central entity whose features, capabilities, and integration details shape the entire document's content.",
+          "text":"IMSL Fortran Numerical Library"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Key finding that the library's fully\u2011tested, reliable algorithms free QA teams to focus on core application testing and significantly shorten development cycles.",
+          "importance":"Quantifies the tangible benefit of adopting the library, informing decision\u2011makers about productivity gains.",
+          "text":"Up to 95% reduction in algorithm development and testing time"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"The library offers a comprehensive set of reliable algorithms that can be linked with cuBLAS to leverage GPU performance, allowing developers to offload CPU work and achieve significant speedups.",
+          "importance":"Core idea that defines the library's value proposition, performance benefits, and development efficiency for users with supported NVIDIA hardware.",
+          "text":"IMSL Fortran Numerical Library provides GPU\u2011accelerated mathematical and statistical algorithms for Fortran applications"
+        }
+      ],
+      "processes":[
+        {
+          "description":"The workflow of integrating the IMSL library with NVIDIA's cuBLAS to offload CPU\u2011intensive linear algebra operations to the GPU.",
+          "importance":"Describes the practical procedure that enables developers to achieve performance improvements without a learning curve.",
+          "text":"Linking IMSL Library with cuBLAS to utilize GPU acceleration"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"Describes the technical linkage where the IMSL library offloads linear algebra tasks to NVIDIA GPU hardware via the cuBLAS library, enabling performance improvements.",
+          "importance":"Highlights the synergistic relationship between the IMSL library and cuBLAS that drives the performance gains and is central to understanding the workflow.",
+          "text":"Integration of IMSL Fortran Library with cuBLAS"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"Specialized terminology used throughout the document to describe the library's components, capabilities, and development interface.",
+          "importance":"Essential for precise indexing and generating accurate question\u2011answer pairs related to the library's functionality.",
+          "text":"cuBLAS, Fortran, GPU Accelerated Libraries, optional arguments, modern Fortran syntax"
+        }
+      ],
+      "themes":[
+        {
+          "description":"The overarching theme of using modern GPU hardware to accelerate numerical and statistical computations in Fortran applications.",
+          "importance":"Provides context for why the library is positioned as a high\u2011performance solution and guides expectations for its use cases.",
+          "text":"GPU\u2011accelerated scientific computing for Fortran"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The integration enables offloading linear algebra tasks to NVIDIA GPUs through cuBLAS, delivering significant performance improvements, and because the library\u2019s algorithms are fully tested and reliable, developers can save up to 95% of the time normally required for research and development, allowing QA teams to focus on core application testing.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                2
+              ],
+              "summary":"Describes linking IMSL with cuBLAS to utilize GPU acceleration for linear algebra functions."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                6
+              ],
+              "summary":"Notes that the library\u2019s fully\u2011tested algorithms can reduce algorithm development and testing time by up to 95%, freeing QA resources."
+            }
+          ],
+          "hop_count":2,
+          "query_type":"multi_hop",
+          "question":"What benefit does the integration of the IMSL Fortran Library with cuBLAS provide, and how does this relate to the reported reduction in algorithm development time?",
+          "question_complexity":4,
+          "reasoning_type":"causal",
+          "segment_ids":[
+            2,
+            6
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The integration enables offloading linear algebra tasks to NVIDIA GPUs through cuBLAS, delivering significant performance improvements, and because the library\u2019s algorithms are fully tested and reliable, developers can save up to 95% of the time normally required for research and development, allowing QA teams to focus on core application testing.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              2
+            ],
+            "summary":"Describes linking IMSL with cuBLAS to utilize GPU acceleration for linear algebra functions."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              6
+            ],
+            "summary":"Notes that the library\u2019s fully\u2011tested algorithms can reduce algorithm development and testing time by up to 95%, freeing QA resources."
+          }
+        ],
+        "hop_count":2,
+        "query_type":"multi_hop",
+        "question":"What benefit does the integration of the IMSL Fortran Library with cuBLAS provide, and how does this relate to the reported reduction in algorithm development time?",
+        "question_complexity":4,
+        "reasoning_type":"causal",
+        "segment_ids":[
+          2,
+          6
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly describes GPU offloading via cuBLAS and the 95% time saving, both supported by the provided segments.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The answer is understandable but somewhat wordy and could be more concise.",
+            "score":7
+          },
+          "context_support":{
+            "justification":"Both parts of the answer are explicitly covered by segments 2 and 6, providing strong contextual evidence.",
+            "score":9
+          },
+          "improvements":"Provide a more concise answer that directly links the cuBLAS integration to performance gains and explicitly cites the 95% development time reduction mentioned in the context, avoiding extra references to QA teams.",
+          "overall":{
+            "assessment":"The QA pair is well-aligned with the source material, though it could be streamlined for better clarity.",
+            "score":8.5
+          },
+          "relevance":{
+            "justification":"The question directly asks about the benefit of IMSL\u2011cuBLAS integration and its relation to time reduction, which matches the context.",
+            "score":9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacom6g-program"
+    ],
+    "text":"\nNVIDIA 6G Developer Program\nThe NVIDIA 6G Developer Program provides access to all the platforms, documentation and early access to software releases to facilitate cutting edge 6G research. It includes a software-defined and accelerated Radio Access Network (RAN) platform, AI and ML frameworks that are interlinked with the RAN software, and a network digital twin with deterministic ray-tracing channel model with photorealistic scene creation and rendering component based on NVIDIA Omniverse. These platforms democratize 6G research, empowering developers and researchers with the essential tools, software, and hardware to drive rapid innovation for the 6G era.\nHow to Join\nPencil icon.\nRegister for an Account\nAccess to the NVIDIA 6G Developer Program requires an NVIDIA Developer account. Register now if you are not already a member.\nUser and UI screen icon.\nApply for the 6G Program\nComplete the request form to apply for access to the 6G Developer Program. Use your organization s email address applications with personal email will not be accepted.\nCheckmark in a circle icon.\nAwait Email Confirmation\nWhen your 6G Developer Program membership is approved, you ll receive a welcome email. Please make sure nvidia.com domains are added to your safe list to avoid emails being flagged as spam.\nComputer screen with text icon.\nAccess the Member Page\nA link will be included in your welcome email. Follow this link to get to the 6G Developer Program member portal, to access software, documentation and other resources.\nJoin Now",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":71,
+        "sentence_count":2,
+        "start":0,
+        "text":"NVIDIA 6G Developer Program\nThe NVIDIA 6G Developer Program provides access to all the platforms, documentation and early access to software releases to facilitate cutting edge 6G research.. It includes a software-defined and accelerated Radio Access Network (RAN) platform, AI and ML frameworks that are interlinked with the RAN software, and a network digital twin with deterministic ray-tracing channel model with photorealistic scene creation and rendering component based on NVIDIA Omniverse.",
+        "word_count":71
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":100,
+        "sentence_count":2,
+        "start":71,
+        "text":"These platforms democratize 6G research, empowering developers and researchers with the essential tools, software, and hardware to drive rapid innovation for the 6G era.. How to Join\nPencil icon.",
+        "word_count":29
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":125,
+        "sentence_count":2,
+        "start":100,
+        "text":"Register for an Account\nAccess to the NVIDIA 6G Developer Program requires an NVIDIA Developer account.. Register now if you are not already a member.",
+        "word_count":25
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":148,
+        "sentence_count":2,
+        "start":125,
+        "text":"User and UI screen icon.. Apply for the 6G Program\nComplete the request form to apply for access to the 6G Developer Program.",
+        "word_count":23
+      },
+      {
+        "chunk_id":5,
+        "doc_chunk_index":5,
+        "end":167,
+        "sentence_count":2,
+        "start":148,
+        "text":"Use your organization s email address applications with personal email will not be accepted.. Checkmark in a circle icon.",
+        "word_count":19
+      },
+      {
+        "chunk_id":6,
+        "doc_chunk_index":6,
+        "end":202,
+        "sentence_count":2,
+        "start":167,
+        "text":"Await Email Confirmation\nWhen your 6G Developer Program membership is approved, you ll receive a welcome email.. Please make sure nvidia.com domains are added to your safe list to avoid emails being flagged as spam.",
+        "word_count":35
+      },
+      {
+        "chunk_id":7,
+        "doc_chunk_index":7,
+        "end":220,
+        "sentence_count":2,
+        "start":202,
+        "text":"Computer screen with text icon.. Access the Member Page\nA link will be included in your welcome email.",
+        "word_count":18
+      },
+      {
+        "chunk_id":8,
+        "doc_chunk_index":8,
+        "end":241,
+        "sentence_count":2,
+        "start":220,
+        "text":"Follow this link to get to the 6G Developer Program member portal, to access software, documentation and other resources.. Join Now.",
+        "word_count":21
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): NVIDIA 6G Developer Program\nThe NVIDIA 6G Developer Program provides access to all the platforms, documentation and early access to software releases to facilitate cutting edge 6G research.. It includes a software-defined and accelerated Radio Access Network (RAN) platform, AI and ML frameworks that are interlinked with the RAN software, and a network digital twin with deterministic ray-tracing channel model with photorealistic scene creation and rendering component based on NVIDIA Omniverse.\nSegment 2 (00:00:00 - 00:00:00): These platforms democratize 6G research, empowering developers and researchers with the essential tools, software, and hardware to drive rapid innovation for the 6G era.. How to Join\nPencil icon.\nSegment 3 (00:00:00 - 00:00:00): Register for an Account\nAccess to the NVIDIA 6G Developer Program requires an NVIDIA Developer account.. Register now if you are not already a member.\nSegment 4 (00:00:00 - 00:00:00): User and UI screen icon.. Apply for the 6G Program\nComplete the request form to apply for access to the 6G Developer Program.\nSegment 5 (00:00:00 - 00:00:00): Use your organization s email address applications with personal email will not be accepted.. Checkmark in a circle icon.\nSegment 6 (00:00:00 - 00:00:00): Await Email Confirmation\nWhen your 6G Developer Program membership is approved, you ll receive a welcome email.. Please make sure nvidia.com domains are added to your safe list to avoid emails being flagged as spam.\nSegment 7 (00:00:00 - 00:00:00): Computer screen with text icon.. Access the Member Page\nA link will be included in your welcome email.\nSegment 8 (00:00:00 - 00:00:00): Follow this link to get to the 6G Developer Program member portal, to access software, documentation and other resources.. Join Now."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacom6g-program"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Users must register, have an organizational email for application, and whitelist NVIDIA domains to receive program communications.",
+          "importance":"Explains prerequisites and operational constraints for participation.",
+          "text":"Requirement for NVIDIA Developer account and safe\u2011list nvidia.com emails"
+        }
+      ],
+      "entities":[
+        {
+          "description":"The initiative by NVIDIA that offers early\u2011access platforms, documentation, and resources for 6G development.",
+          "importance":"Identifies the core offering and brand associated with the content.",
+          "text":"NVIDIA 6G Developer Program"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Developers can experiment with cutting\u2011edge RAN, AI, and digital\u2011twin technologies before commercial standards are set.",
+          "importance":"Justifies the program\u2019s value proposition for rapid research cycles.",
+          "text":"Early\u2011access tools accelerate 6G innovation"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"A programmable, high\u2011performance Radio Access Network platform that can be accelerated and configured via software for 6G research.",
+          "importance":"Central to the program\u2019s offering, enabling developers to prototype and test next\u2011generation wireless solutions.",
+          "text":"Software\u2011defined Accelerated RAN Platform"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Submit a request form through the NVIDIA Developer portal; personal emails are rejected.",
+          "importance":"Defines a concrete step required for gaining program access.",
+          "text":"Apply for the 6G Program using an organizational email address"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"The RAN platform integrates AI\/ML frameworks and is linked to a network digital twin that uses deterministic ray\u2011tracing for channel modeling.",
+          "importance":"Illustrates the interconnected architecture that combines radio, AI, and simulation for holistic 6G development.",
+          "text":"RAN Platform \u2194 AI\/ML Frameworks \u2194 Network Digital Twin"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"A channel modeling technique that provides reproducible propagation predictions using ray\u2011tracing in realistic environments.",
+          "importance":"Key technical component of the network digital twin for accurate simulation.",
+          "text":"Deterministic ray\u2011tracing channel model"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Providing open access to advanced hardware, software, and simulation tools to a broad developer community.",
+          "importance":"Highlights the program\u2019s goal to lower barriers and foster rapid innovation across academia and industry.",
+          "text":"Democratization of 6G Research"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The organization must first register for an NVIDIA Developer account and then submit a request form to apply for the 6G Program; it must use an organizational email address that is whitelisted for nvidia.com domains, await a confirmation email, and click the link provided in that email to access the member portal where software, documentation, and other resources are available.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                3,
+                4
+              ],
+              "summary":"Register for an account and submit the application form to request program access."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                5,
+                6,
+                7,
+                8
+              ],
+              "summary":"Use an organizational email, whitelist nvidia.com, await approval email, and click the provided link to enter the member portal."
+            }
+          ],
+          "hop_count":2,
+          "query_type":"multi_hop",
+          "question":"What steps must an organization complete and what email requirements must it meet to gain access to the NVIDIA 6G Developer Program member portal?",
+          "question_complexity":5,
+          "reasoning_type":"inferential",
+          "segment_ids":[
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The organization must first register for an NVIDIA Developer account and then submit a request form to apply for the 6G Program; it must use an organizational email address that is whitelisted for nvidia.com domains, await a confirmation email, and click the link provided in that email to access the member portal where software, documentation, and other resources are available.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              3,
+              4
+            ],
+            "summary":"Register for an account and submit the application form to request program access."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              5,
+              6,
+              7,
+              8
+            ],
+            "summary":"Use an organizational email, whitelist nvidia.com, await approval email, and click the provided link to enter the member portal."
+          }
+        ],
+        "hop_count":2,
+        "query_type":"multi_hop",
+        "question":"What steps must an organization complete and what email requirements must it meet to gain access to the NVIDIA 6G Developer Program member portal?",
+        "question_complexity":5,
+        "reasoning_type":"inferential",
+        "segment_ids":[
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly lists registering for an NVIDIA Developer account, submitting a request form, using an organizational email whitelisted for nvidia.com, awaiting confirmation, and clicking the link\u2014all steps mentioned in the context.",
+            "score":10
+          },
+          "clarity":{
+            "justification":"The question is clear, specific, and unambiguous regarding the required steps and email criteria.",
+            "score":10
+          },
+          "context_support":{
+            "justification":"Every element of the answer is explicitly supported by segments 3\u20118 of the context, mapping each requirement to the corresponding segment.",
+            "score":10
+          },
+          "improvements":"Consider adding a brief note about ensuring the email domain is exactly @nvidia.com or a sub\u2011domain, and mention that personal email addresses are rejected, to pre\u2011empt common misunderstandings.",
+          "overall":{
+            "assessment":"The QA pair is fully relevant, accurate, well\u2011supported, and clearly formulated.",
+            "score":10.0
+          },
+          "relevance":{
+            "justification":"The question directly asks about the steps and email requirements to access the NVIDIA 6G Developer Program portal, which is exactly covered by the provided context.",
+            "score":10
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacomgtc2020videos22706-vid"
+    ],
+    "text":"\n\nAfter clicking Watch Now you will be prompted to login or join.\nWATCH NOW\n\n\nClick Watch Now to login or join the NVIDIA Developer Program.\nWATCH NOW\nJetson Xavier NX Developer Kit: The Next Leap in Edge Computing\nDustin Franklin, NVIDIA\nGTC 2020\nThis webinar will deep-dive into the new NVIDIA Jetson Xavier NX Developer Kit, the world's smallest embedded edge AI supercomputer with over 21 TeraOPS of performance. During this webinar, we'll cover: An overview on the hardware and software features of the Jetson Xavier NX Developer Kit; Tips & tricks of working with the Jetson platform; The latest features and enhancements to JetPack 4.4, including CUDA, cuDNN, TensorRT, and machine learning frameworks and containers on Jetson; How to get started deploying your own advanced AI applications to the edge for video analytics, perception, natural language processing, and more.\n\nView More GTC 2020 Content\n",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":14,
+        "sentence_count":2,
+        "start":0,
+        "text":"After clicking Watch Now you will be prompted to login or join.. WATCH NOW.",
+        "word_count":14
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":69,
+        "sentence_count":2,
+        "start":14,
+        "text":"Click Watch Now to login or join the NVIDIA Developer Program.. WATCH NOW\nJetson Xavier NX Developer Kit: The Next Leap in Edge Computing\nDustin Franklin, NVIDIA\nGTC 2020\nThis webinar will deep-dive into the new NVIDIA Jetson Xavier NX Developer Kit, the world's smallest embedded edge AI supercomputer with over 21 TeraOPS of performance.",
+        "word_count":55
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":145,
+        "sentence_count":2,
+        "start":69,
+        "text":"During this webinar, we'll cover: An overview on the hardware and software features of the Jetson Xavier NX Developer Kit; Tips & tricks of working with the Jetson platform; The latest features and enhancements to JetPack 4.4, including CUDA, cuDNN, TensorRT, and machine learning frameworks and containers on Jetson; How to get started deploying your own advanced AI applications to the edge for video analytics, perception, natural language processing, and more.. View More GTC 2020 Content.",
+        "word_count":76
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): After clicking Watch Now you will be prompted to login or join.. WATCH NOW.\nSegment 2 (00:00:00 - 00:00:00): Click Watch Now to login or join the NVIDIA Developer Program.. WATCH NOW\nJetson Xavier NX Developer Kit: The Next Leap in Edge Computing\nDustin Franklin, NVIDIA\nGTC 2020\nThis webinar will deep-dive into the new NVIDIA Jetson Xavier NX Developer Kit, the world's smallest embedded edge AI supercomputer with over 21 TeraOPS of performance.\nSegment 3 (00:00:00 - 00:00:00): During this webinar, we'll cover: An overview on the hardware and software features of the Jetson Xavier NX Developer Kit; Tips & tricks of working with the Jetson platform; The latest features and enhancements to JetPack 4.4, including CUDA, cuDNN, TensorRT, and machine learning frameworks and containers on Jetson; How to get started deploying your own advanced AI applications to the edge for video analytics, perception, natural language processing, and more.. View More GTC 2020 Content."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacomgtc2020videos22706-vid"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"The event context where the Jetson Xavier NX was presented to developers.",
+          "importance":"Sets the temporal and audience context for the announcement and its promotional nature.",
+          "text":"GTC 2020 webinar hosted by NVIDIA"
+        }
+      ],
+      "entities":[
+        {
+          "description":"The technology company that produces the Jetson Xavier NX and hosts the GTC 2020 webinar.",
+          "importance":"Key organization driving the content and branding.",
+          "text":"NVIDIA"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Quantifies the performance advantage of the device compared to other edge solutions.",
+          "importance":"Provides a concrete metric that differentiates the product in the market.",
+          "text":"Jetson Xavier NX is the smallest embedded edge AI supercomputer with >21 TeraOPS"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"The world's smallest embedded edge AI supercomputer delivering over 21 TeraOPS of performance, central to the webinar's focus.",
+          "importance":"Core product being promoted; essential for understanding the document's subject.",
+          "text":"Jetson Xavier NX Developer Kit"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Describes the end\u2011to\u2011end workflow highlighted in the webinar for real\u2011world AI use cases.",
+          "importance":"Illustrates practical applications and the value proposition for developers.",
+          "text":"Deploy advanced AI applications to the edge for video analytics, perception, and natural language processing"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"Shows how the hardware platform integrates with the software stack updates introduced in JetPack 4.4.",
+          "importance":"Highlights the synergy between hardware capabilities and software enhancements.",
+          "text":"Jetson Xavier NX Developer Kit \u2014 related to \u2014 JetPack 4.4 (includes CUDA, cuDNN, TensorRT, ML frameworks)"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"NVIDIA's high\u2011performance deep learning inference optimizer mentioned as part of JetPack 4.4.",
+          "importance":"Represents a critical software component for achieving optimal inference performance on Jetson devices.",
+          "text":"TensorRT"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Emphasizes the webinar's purpose of presenting cutting\u2011edge AI capabilities on the edge to developers.",
+          "importance":"Captures the overarching purpose and audience focus of the content.",
+          "text":"Advancing Edge AI for Developers"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The updates in JetPack 4.4, including the latest CUDA, cuDNN, TensorRT, and ML frameworks, provide optimized inference capabilities for the Jetson Xavier NX, allowing developers to efficiently deploy AI solutions for video analytics, perception, and NLP at the edge.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                2
+              ],
+              "summary":"Overview of Jetson Xavier NX hardware, software features, and JetPack 4.4 enhancements including CUDA, cuDNN, TensorRT, and ML frameworks."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                3
+              ],
+              "summary":"Description of deploying advanced AI applications to the edge for video analytics, perception, natural language processing, and invitation to view more GTC 2020 content."
+            }
+          ],
+          "hop_count":2,
+          "query_type":"multi_hop",
+          "question":"How do the software enhancements in JetPack 4.4 enable the deployment of advanced AI applications such as video analytics and natural language processing on the Jetson Xavier NX platform?",
+          "question_complexity":5,
+          "reasoning_type":"procedural",
+          "segment_ids":[
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The updates in JetPack 4.4, including the latest CUDA, cuDNN, TensorRT, and ML frameworks, provide optimized inference capabilities for the Jetson Xavier NX, allowing developers to efficiently deploy AI solutions for video analytics, perception, and NLP at the edge.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              2
+            ],
+            "summary":"Overview of Jetson Xavier NX hardware, software features, and JetPack 4.4 enhancements including CUDA, cuDNN, TensorRT, and ML frameworks."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              3
+            ],
+            "summary":"Description of deploying advanced AI applications to the edge for video analytics, perception, natural language processing, and invitation to view more GTC 2020 content."
+          }
+        ],
+        "hop_count":2,
+        "query_type":"multi_hop",
+        "question":"How do the software enhancements in JetPack 4.4 enable the deployment of advanced AI applications such as video analytics and natural language processing on the Jetson Xavier NX platform?",
+        "question_complexity":5,
+        "reasoning_type":"procedural",
+        "segment_ids":[
+          2,
+          3
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly describes the components (CUDA, cuDNN, TensorRT, ML frameworks) and their role in deploying video analytics and NLP on Jetson Xavier NX, matching the context.",
+            "score":10
+          },
+          "clarity":{
+            "justification":"The question is concise and clearly articulated, making its intent unambiguous.",
+            "score":10
+          },
+          "context_support":{
+            "justification":"The answer is well-supported by segments 2 and 3, which mention JetPack 4.4 features and deployment of advanced AI applications.",
+            "score":9
+          },
+          "improvements":"Add specific quantitative benefits (e.g., throughput, latency reductions) and mention containerized frameworks to give users clearer expectations.",
+          "overall":{
+            "assessment":"The answer is accurate, relevant, and well-supported, though could benefit from more concrete examples of performance improvements.",
+            "score":9.5
+          },
+          "relevance":{
+            "justification":"The question directly asks about JetPack 4.4 enhancements enabling AI applications, which is covered in the provided context.",
+            "score":9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacommdl-sdk-architecture"
+    ],
+    "text":"\n\nMDL SDK Architecture\n\nArchitecture of MDL SDK\nDatabase Layer\nThe API can be used to import MDL definitions from libraries, edit parameters and creating function call graphs ( the MDL equivalent of shader graphs ). After compilation of a material into an optimized DAG, the API allows inspection of the material in order for a renderer to translate it in its own format. The result of the editing can be written out as a material variant to disk.\n\nMDL Compiler\nThe API allows compiling materials into an optimized DAG representation. In the process various optimization techniques are applied such as constant folding, inlining and dead code elimination in order to make it easier for the application to analyze a material efficiently. Different compiler modes ( class or instance compilation) allow the application to optimize the compile result for different use cases.\nThe API also allows the compilation of expressions (subtrees of the call graph of texturing functions) into target code such as GLSL, PTX or LLVM-IR for use in the applications shading code.\n\nAbout MDL SDK\nThe NVIDIA MDL SDK is a set of tools to integrate MDL support into rendering applications. It contains components for loading, inspecting, editing of material definitions as well as compiling MDL functions to GLSL, PTX and LLVM-IR. With the NVIDIA MDL SDK, any physically based renderer can easily add support for MDL and join the MDL eco-system.\nLearn more\n",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":35,
+        "sentence_count":2,
+        "start":0,
+        "text":"MDL SDK Architecture. Architecture of MDL SDK\nDatabase Layer\nThe API can be used to import MDL definitions from libraries, edit parameters and creating function call graphs ( the MDL equivalent of shader graphs ).",
+        "word_count":35
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":78,
+        "sentence_count":2,
+        "start":35,
+        "text":"After compilation of a material into an optimized DAG, the API allows inspection of the material in order for a renderer to translate it in its own format.. The result of the editing can be written out as a material variant to disk.",
+        "word_count":43
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":121,
+        "sentence_count":2,
+        "start":78,
+        "text":"MDL Compiler\nThe API allows compiling materials into an optimized DAG representation.. In the process various optimization techniques are applied such as constant folding, inlining and dead code elimination in order to make it easier for the application to analyze a material efficiently.",
+        "word_count":43
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":173,
+        "sentence_count":2,
+        "start":121,
+        "text":"Different compiler modes ( class or instance compilation) allow the application to optimize the compile result for different use cases.. The API also allows the compilation of expressions (subtrees of the call graph of texturing functions) into target code such as GLSL, PTX or LLVM-IR for use in the applications shading code.",
+        "word_count":52
+      },
+      {
+        "chunk_id":5,
+        "doc_chunk_index":5,
+        "end":213,
+        "sentence_count":2,
+        "start":173,
+        "text":"About MDL SDK\nThe NVIDIA MDL SDK is a set of tools to integrate MDL support into rendering applications.. It contains components for loading, inspecting, editing of material definitions as well as compiling MDL functions to GLSL, PTX and LLVM-IR.",
+        "word_count":40
+      },
+      {
+        "chunk_id":6,
+        "doc_chunk_index":6,
+        "end":235,
+        "sentence_count":2,
+        "start":213,
+        "text":"With the NVIDIA MDL SDK, any physically based renderer can easily add support for MDL and join the MDL eco-system.. Learn more.",
+        "word_count":22
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): MDL SDK Architecture. Architecture of MDL SDK\nDatabase Layer\nThe API can be used to import MDL definitions from libraries, edit parameters and creating function call graphs ( the MDL equivalent of shader graphs ).\nSegment 2 (00:00:00 - 00:00:00): After compilation of a material into an optimized DAG, the API allows inspection of the material in order for a renderer to translate it in its own format.. The result of the editing can be written out as a material variant to disk.\nSegment 3 (00:00:00 - 00:00:00): MDL Compiler\nThe API allows compiling materials into an optimized DAG representation.. In the process various optimization techniques are applied such as constant folding, inlining and dead code elimination in order to make it easier for the application to analyze a material efficiently.\nSegment 4 (00:00:00 - 00:00:00): Different compiler modes ( class or instance compilation) allow the application to optimize the compile result for different use cases.. The API also allows the compilation of expressions (subtrees of the call graph of texturing functions) into target code such as GLSL, PTX or LLVM-IR for use in the applications shading code.\nSegment 5 (00:00:00 - 00:00:00): About MDL SDK\nThe NVIDIA MDL SDK is a set of tools to integrate MDL support into rendering applications.. It contains components for loading, inspecting, editing of material definitions as well as compiling MDL functions to GLSL, PTX and LLVM-IR.\nSegment 6 (00:00:00 - 00:00:00): With the NVIDIA MDL SDK, any physically based renderer can easily add support for MDL and join the MDL eco-system.. Learn more."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacommdl-sdk-architecture"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Context that NVIDIA provides the SDK as part of its graphics development tools to integrate MDL into rendering applications.",
+          "importance":"Provides background on the source and motivation behind the SDK.",
+          "text":"NVIDIA\u2019s Role in MDL Ecosystem"
+        }
+      ],
+      "entities":[
+        {
+          "description":"The NVIDIA MDL SDK itself, a toolset for loading, inspecting, editing, and compiling MDL materials.",
+          "importance":"Central entity whose capabilities are detailed throughout the content.",
+          "text":"NVIDIA MDL SDK"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Insight that any physically based renderer can easily add MDL support via the SDK, expanding the MDL ecosystem.",
+          "importance":"Demonstrates the strategic value of the SDK for industry adoption.",
+          "text":"Broad SDK Adoption Potential"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"Describes the overall architecture of the NVIDIA MDL SDK, covering the Database Layer, API capabilities for importing, editing, and compiling MDL definitions, and the generation of optimized DAG representations.",
+          "importance":"Core architectural overview essential for understanding the SDK's structure and functions.",
+          "text":"MDL SDK Architecture"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Process of compiling MDL materials into an optimized Directed Acyclic Graph (DAG) using techniques like constant folding, inlining, and dead\u2011code elimination, then optionally emitting GLSL, PTX, or LLVM\u2011IR.",
+          "importance":"Key workflow for developers to understand how materials are transformed for rendering.",
+          "text":"Material Compilation and DAG Optimization"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"Links compiler modes (class vs instance) to optimization goals and connects the compilation process to target code generation (GLSL, PTX, LLVM\u2011IR) and downstream renderer integration.",
+          "importance":"Highlights how different compile modes affect optimization and code output, crucial for Q&A about usage scenarios.",
+          "text":"Compiler Modes and Optimization Relationships"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"Specialized terminology representing target shading languages, intermediate representation, and optimization techniques used in the SDK.",
+          "importance":"Essential vocabulary for precise Q&A about implementation details.",
+          "text":"GLSL, PTX, LLVM\u2011IR, DAG, Constant Folding, Dead Code Elimination"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Theme of enabling physically based renderers to adopt MDL through the SDK, fostering an ecosystem for material definitions.",
+          "importance":"Sets context for why MDL support matters in rendering pipelines.",
+          "text":"Integration of Physically Based Rendering with MDL"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The SDK loads and edits MDL material definitions, compiles them into an optimized Directed Acyclic Graph using techniques such as constant folding, inlining, and dead\u2011code elimination, and then, based on the selected compiler mode, breaks down expression sub\u2011trees into target code like GLSL, PTX, or LLVM\u2011IR. These compiled artifacts can be inspected or saved as material variants, allowing a renderer to translate them into its own format. Because the SDK provides comprehensive loading, inspection, editing, and compilation tools, any physically based renderer can easily add MDL support and join the MDL ecosystem.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                3
+              ],
+              "summary":"Compilation of MDL materials into an optimized DAG using constant folding, inlining, and dead\u2011code elimination."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                4
+              ],
+              "summary":"Compiler modes (class or instance) determine optimization focus and enable expression sub\u2011trees to be emitted as GLSL, PTX, or LLVM\u2011IR."
+            },
+            {
+              "hop_number":3,
+              "segment_ids":[
+                5,
+                6
+              ],
+              "summary":"The SDK provides tools for loading, inspecting, editing, and compiling MDL, and its adoption allows any physically based renderer to integrate MDL support."
+            }
+          ],
+          "hop_count":3,
+          "query_type":"multi_hop",
+          "question":"What steps does the NVIDIA MDL SDK perform to transform a material definition into an optimized shading implementation, and how does this enable any physically based renderer to integrate MDL support?",
+          "question_complexity":5,
+          "reasoning_type":"procedural",
+          "segment_ids":[
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The SDK loads and edits MDL material definitions, compiles them into an optimized Directed Acyclic Graph using techniques such as constant folding, inlining, and dead\u2011code elimination, and then, based on the selected compiler mode, breaks down expression sub\u2011trees into target code like GLSL, PTX, or LLVM\u2011IR. These compiled artifacts can be inspected or saved as material variants, allowing a renderer to translate them into its own format. Because the SDK provides comprehensive loading, inspection, editing, and compilation tools, any physically based renderer can easily add MDL support and join the MDL ecosystem.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              3
+            ],
+            "summary":"Compilation of MDL materials into an optimized DAG using constant folding, inlining, and dead\u2011code elimination."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              4
+            ],
+            "summary":"Compiler modes (class or instance) determine optimization focus and enable expression sub\u2011trees to be emitted as GLSL, PTX, or LLVM\u2011IR."
+          },
+          {
+            "hop_number":3,
+            "segment_ids":[
+              5,
+              6
+            ],
+            "summary":"The SDK provides tools for loading, inspecting, editing, and compiling MDL, and its adoption allows any physically based renderer to integrate MDL support."
+          }
+        ],
+        "hop_count":3,
+        "query_type":"multi_hop",
+        "question":"What steps does the NVIDIA MDL SDK perform to transform a material definition into an optimized shading implementation, and how does this enable any physically based renderer to integrate MDL support?",
+        "question_complexity":5,
+        "reasoning_type":"procedural",
+        "segment_ids":[
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly describes loading, compiling, optimization techniques, target code generation, and enabling renderer integration, matching the context.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The answer is understandable but somewhat verbose; it could be more concise while retaining all necessary details.",
+            "score":8
+          },
+          "context_support":{
+            "justification":"Key points from segments 3\u20116 (DAG compilation, optimizations, target code, inspection, editing, material variants) are all referenced.",
+            "score":9
+          },
+          "improvements":"Include explicit mention of compiler modes (class\/instance) and the ability to save material variants to disk, and tighten the wording to reduce redundancy.",
+          "overall":{
+            "assessment":"The answer accurately captures the SDK's workflow and its role in enabling renderer integration, though it could be streamlined for better clarity.",
+            "score":8.5
+          },
+          "relevance":{
+            "justification":"The question directly asks about the SDK's transformation steps and integration benefits, which are exactly covered by the context.",
+            "score":10
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "developernvidiacom\/httpsdevelopernvidiacomnetworkingdocagpunetio-form"
+    ],
+    "text":"\nGet Your Questions To NVIDIA DOCA GPUNetIO Answered\nNVIDIA DOCA GPUNetIO is a DOCA Library enabling a new set of features when the NVIDIA GPU is combined with the NVIDIA ConnectX or NVIDIA BlueField DPU. This allows developers to orchestrate within DOCA network applications, giving the CPU direct access to the GPU memory to maximize performance. With DOCA GPUNetIO, you can define different types of packet processing pipelines to receive packets, perform packet analysis and filtering and return results.\nDo you have questions for our experts? Complete the online submission form below with your DOCA GPUNetIO application, library or development questions.\nFor updates on the DOCA GPUNetIO Library, please opt-in to receive Enterprise and Developer emails from NVIDIA. We can only reach you with updates if you re opted in!\nWe will review all submissions and contact you with more information.",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":56,
+        "sentence_count":2,
+        "start":0,
+        "text":"Get Your Questions To NVIDIA DOCA GPUNetIO Answered\nNVIDIA DOCA GPUNetIO is a DOCA Library enabling a new set of features when the NVIDIA GPU is combined with the NVIDIA ConnectX or NVIDIA BlueField DPU.. This allows developers to orchestrate within DOCA network applications, giving the CPU direct access to the GPU memory to maximize performance.",
+        "word_count":56
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":86,
+        "sentence_count":2,
+        "start":56,
+        "text":"With DOCA GPUNetIO, you can define different types of packet processing pipelines to receive packets, perform packet analysis and filtering and return results.. Do you have questions for our experts?.",
+        "word_count":30
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":118,
+        "sentence_count":2,
+        "start":86,
+        "text":"Complete the online submission form below with your DOCA GPUNetIO application, library or development questions.. For updates on the DOCA GPUNetIO Library, please opt-in to receive Enterprise and Developer emails from NVIDIA.",
+        "word_count":32
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":141,
+        "sentence_count":2,
+        "start":118,
+        "text":"We can only reach you with updates if you re opted in!. We will review all submissions and contact you with more information.",
+        "word_count":23
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): Get Your Questions To NVIDIA DOCA GPUNetIO Answered\nNVIDIA DOCA GPUNetIO is a DOCA Library enabling a new set of features when the NVIDIA GPU is combined with the NVIDIA ConnectX or NVIDIA BlueField DPU.. This allows developers to orchestrate within DOCA network applications, giving the CPU direct access to the GPU memory to maximize performance.\nSegment 2 (00:00:00 - 00:00:00): With DOCA GPUNetIO, you can define different types of packet processing pipelines to receive packets, perform packet analysis and filtering and return results.. Do you have questions for our experts?.\nSegment 3 (00:00:00 - 00:00:00): Complete the online submission form below with your DOCA GPUNetIO application, library or development questions.. For updates on the DOCA GPUNetIO Library, please opt-in to receive Enterprise and Developer emails from NVIDIA.\nSegment 4 (00:00:00 - 00:00:00): We can only reach you with updates if you re opted in!. We will review all submissions and contact you with more information."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "developernvidiacom\/httpsdevelopernvidiacomnetworkingdocagpunetio-form"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Mechanism for users to subscribe to receive updates and communications from NVIDIA about GPUNetIO.",
+          "importance":"Indicates the channel for ongoing engagement and informs users about how to stay informed on new features or releases.",
+          "text":"Enterprise and developer email opt\u2011in for DOCA GPUNetIO updates"
+        }
+      ],
+      "entities":[
+        {
+          "description":"The DOCA library that provides GPU\u2011direct packet I\/O capabilities for applications.",
+          "importance":"Central artifact of the document; all other concepts revolve around its use and benefits.",
+          "text":"NVIDIA DOCA GPUNetIO"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Insight that bypassing conventional memory copies and leveraging GPU\u2011direct I\/O leads to significantly higher packet throughput and lower latency.",
+          "importance":"Provides a clear takeaway for engineers evaluating whether to adopt GPUNetIO in their stacks.",
+          "text":"Direct GPU memory access maximizes performance for network workloads"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"The capability that allows the CPU to directly read from and write to GPU memory, enabling high\u2011performance packet processing without traditional data copies.",
+          "importance":"Core to the value proposition of GPUNetIO, as it unlocks unprecedented throughput and low latency for network applications.",
+          "text":"GPU direct memory access via DOCA GPUNetIO"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Describes the workflow where developers submit their applications, define packet processing pipelines, and receive, filter, and return packet results.",
+          "importance":"Outlines the practical steps developers must follow to leverage GPUNetIO, making it actionable for Q&A.",
+          "text":"Submission of DOCA GPUNetIO applications and orchestration of packet pipelines"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"Shows how the GPU, the ConnectX or BlueField DPU, and the GPUNetIO library work together to form end\u2011to\u2011end packet handling workflows.",
+          "importance":"Highlights the system\u2011level synergy that makes GPU\u2011accelerated networking possible and scalable.",
+          "text":"Integration of NVIDIA GPU, ConnectX\/BlueField DPU, and packet processing pipelines"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"Structured sequences that receive packets, perform analysis\/filtering, and return results using GPUNetIO.",
+          "importance":"Key terminology that appears throughout the document and is essential for understanding the functionality.",
+          "text":"packet processing pipelines"
+        }
+      ],
+      "themes":[
+        {
+          "description":"The overarching goal of using DOCA GPUNetIO to boost throughput and efficiency of packet\u2011centric workloads.",
+          "importance":"Encapsulates the primary benefit proposition for developers and enterprises seeking faster network processing.",
+          "text":"Accelerated network application performance"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"DOCA GPUNetIO allows applications to read from and write to GPU memory directly, eliminating costly data copies and enabling ultra\u2011low latency packet handling. This direct access is integrated with ConnectX or BlueField DPUs to form end\u2011to\u2011end packet processing pipelines that can receive, filter, analyze, and return packets at high throughput. Developers can define such pipelines, submit their applications through an online form, and must opt\u2011in to receive enterprise and developer communications for updates and support. The combination of GPU\u2011direct I\/O and the submission\/opt\u2011in workflow underpins the overall goal of accelerating network application performance.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                1
+              ],
+              "summary":"GPU direct memory access via DOCA GPUNetIO enables CPU to directly access GPU memory and integrates GPU, ConnectX\/BlueField DPU, and packet processing pipelines to maximize performance."
+            },
+            {
+              "hop_number":2,
+              "segment_ids":[
+                2,
+                3,
+                4
+              ],
+              "summary":"Developers can define packet processing pipelines, submit applications via an online form, and must opt\u2011in to receive updates, forming the workflow for application submission and follow\u2011up."
+            }
+          ],
+          "hop_count":2,
+          "query_type":"multi_hop",
+          "question":"How does the GPU\u2011direct memory access provided by DOCA GPUNetIO enable the creation of high\u2011performance packet processing pipelines, and how does this capability connect to the workflow for developers to submit applications and receive updates?",
+          "question_complexity":5,
+          "reasoning_type":"inferential",
+          "segment_ids":[
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"DOCA GPUNetIO allows applications to read from and write to GPU memory directly, eliminating costly data copies and enabling ultra\u2011low latency packet handling. This direct access is integrated with ConnectX or BlueField DPUs to form end\u2011to\u2011end packet processing pipelines that can receive, filter, analyze, and return packets at high throughput. Developers can define such pipelines, submit their applications through an online form, and must opt\u2011in to receive enterprise and developer communications for updates and support. The combination of GPU\u2011direct I\/O and the submission\/opt\u2011in workflow underpins the overall goal of accelerating network application performance.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              1
+            ],
+            "summary":"GPU direct memory access via DOCA GPUNetIO enables CPU to directly access GPU memory and integrates GPU, ConnectX\/BlueField DPU, and packet processing pipelines to maximize performance."
+          },
+          {
+            "hop_number":2,
+            "segment_ids":[
+              2,
+              3,
+              4
+            ],
+            "summary":"Developers can define packet processing pipelines, submit applications via an online form, and must opt\u2011in to receive updates, forming the workflow for application submission and follow\u2011up."
+          }
+        ],
+        "hop_count":2,
+        "query_type":"multi_hop",
+        "question":"How does the GPU\u2011direct memory access provided by DOCA GPUNetIO enable the creation of high\u2011performance packet processing pipelines, and how does this capability connect to the workflow for developers to submit applications and receive updates?",
+        "question_complexity":5,
+        "reasoning_type":"inferential",
+        "segment_ids":[
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly describes GPU\u2011direct access, pipeline creation, integration with ConnectX\/BlueField, and the submission\/opt\u2011in process without introducing factual errors.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The answer is understandable but could be more concise and structured for better readability.",
+            "score":8
+          },
+          "context_support":{
+            "justification":"All key points in the answer are explicitly present in the provided segments (1\u20114).",
+            "score":9
+          },
+          "improvements":"Consider breaking the answer into two focused sentences: one on how GPU\u2011direct memory access enables high\u2011performance pipelines, and another on the developer submission and opt\u2011in workflow. Adding a brief example of a pipeline stage would increase clarity.",
+          "overall":{
+            "assessment":"The answer accurately addresses both aspects of the question, is well\u2011supported by the context, and is clearly expressed, though it could be more concise.",
+            "score":8.5
+          },
+          "relevance":{
+            "justification":"The question directly asks about GPU\u2011direct memory access and its role in pipelines and the developer submission\/opt\u2011in workflow, which are all covered in the context.",
+            "score":9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file_name":[
+      "huggingface\/67f55eab504263bce1477c50.txt"
+    ],
+    "text":"---\nlibrary_name: transformers\nlicense: other\nlicense_name: nvidia-internal-scientific-research-and-development-model-license\nlicense_link: >-\n  https:\/\/www.nvidia.com\/en-us\/agreements\/enterprise-software\/nvidia-internal-scientific-research-and-development-model-license\/\npipeline_tag: text-generation\nlanguage:\n  - en\n  - de\n  - es\n  - fr\n  - it\n  - ko\n  - pt\n  - ru\n  - jp\n  - zh\ntags:\n  - nvidia\n  - pytorch\n  - nemotron-h\n---\n\n# Nemotron-H-56B-Base-8K\n\n## Model Overview \n\nNVIDIA Nemotron-H-56B-Base-8K is a large language model (LLM) developed by NVIDIA that is designed as a completion model for a given piece of text. It uses a hybrid model architecture that consists primarily of Mamba-2 and MLP layers combined with just ten Attention layers. The model features a context length of 8K. The supported languages include: English, German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, and Chinese. For more detailed information on the model architecture, training, and evaluation, please see the [project page](https:\/\/research.nvidia.com\/labs\/adlr\/nemotronh\/) and the [technical report](https:\/\/arxiv.org\/abs\/2504.03624).\n\nFor best performance on a given task, users are encouraged to customize the model using the [NeMo Framework](https:\/\/docs.nvidia.com\/nemo-framework\/index.html) suite of customization tools including Parameter-Efficient Fine-Tuning (P-tuning, Adapters, LoRA, and more), and Model Alignment (SFT, SteerLM, RLHF, and more) using [NeMo-Aligner](https:\/\/github.com\/NVIDIA\/NeMo-Aligner).\n\nThis model is for research and development only.\n\nThis model is part of the Nemotron-H Collection. You can find the models in this family here:\n- [Nemotron-H-56B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-56B-Base-8K)\n- [Nemotron-H-47B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-47B-Base-8K)\n- [Nemotron-H-8B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-8B-Base-8K)\n\n## License\/Terms of Use\n\nGOVERNING TERMS: Use of this model is governed by the [NVIDIA Internal Scientific Research and Development Model License](https:\/\/www.nvidia.com\/en-us\/agreements\/enterprise-software\/nvidia-internal-scientific-research-and-development-model-license\/).\n\n**Model Developer:** NVIDIA\n\n**Model Dates:**\n\nOctober 2024 - March 2025\n\n**Data Freshness:**\n\nSeptember 2024\n\nThe pretraining data has a cutoff date of September 2024. \n\n\n## Use Case:\n\nThis model is intended for developers and researchers building LLMs.\n\n## Release Date: \n\n4\/14\/2025\n\n## References\n\n- [\\[2504.03624\\] Nemotron-H: A Family of Accurate and Efficient Hybrid Mamba-Transformer Models](https:\/\/arxiv.org\/abs\/2504.03624)\n\n## Model Architecture\n- Architecture Type: Hybrid Mamba-Transformer\n- Network Architecture: Nemotron-H\n\nThis model has 56B model parameters.\n\n## Input\n- Input Type(s): Text \n- Input Format(s): String\n- Input Parameters: One-Dimensional (1D): Sequences\n- Other Properties Related to Input: Context length up to 8K. Supported languages include German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, Chinese and English.\n\n## Output\n- Output Type(s): Text \n- Output Format: String\n- Output Parameters: One-Dimensional (1D): Sequences\n\nOur AI models are designed and\/or optimized to run on NVIDIA GPU-accelerated systems. By leveraging NVIDIA\u2019s hardware (e.g. GPU cores) and software frameworks (e.g., CUDA libraries), the model achieves faster training and inference times compared to CPU-only solutions. <br> \n\n## Software Integration\n- Runtime Engine(s): NeMo 24.12\n- Supported Hardware Microarchitecture Compatibility: NVIDIA H100-80GB, NVIDIA A100\n- Operating System(s): Linux\n\n## Model Version\n- v1.0\n\n## Prompt Format\n\nAs this is a base model, no explicit prompt format is recommended or required. \n\n### Example\n\n```python\nimport torch\nfrom transformers import AutoTokenizer, AutoModelForCausalLM\n\n# Load the tokenizer and model\ntokenizer  = AutoTokenizer.from_pretrained(\"nvidia\/Nemotron-H-56B-Base-8K\", trust_remote_code=True)\nmodel = AutoModelForCausalLM.from_pretrained(\"nvidia\/Nemotron-H-56B-Base-8K\", torch_dtype=torch.bfloat16, trust_remote_code=True, device_map=\"auto\")\n\nprompt = \"When was NVIDIA founded?\"\n\noutputs = model.generate(**tokenizer(prompt, return_tensors=\"pt\", add_special_tokens=False).to(model.device))\nprint(tokenizer.decode(outputs[0]))\n```\n\n## Training, Testing, and Evaluation Datasets\n\n### Training & Testing Datasets:\n\nThe training corpus for Nemotron-H-56B-Base-8K Base consists of English and multilingual text (German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, Chinese and English), as well as code. Our sources cover a variety of document types such as: webpages, dialogue, articles, and other written materials. This model was also improved using synthetic data from Qwen (Built with Qwen). The corpus spans domains including legal, math, science, finance, and more. We also include a small portion of question-answering, and alignment style data to improve model accuracies.\n\n**Data Collection for Training & Testing Datasets:**\nHybrid: Automated, Human, Synthetic\n\n**Data Labeling for Training & Testing Datasets:**\nHybrid: Automated, Human, Synthetic\n\n### Evaluation Datasets \n\nWe used the datasets listed in the next section to evaluate Nemotron-H-56B-Base-8K Base. \n\nData Collection for Evaluation Datasets:\nHybrid: Human, Synthetic\n\nData Labeling for Evaluation Datasets:\nHybrid: Human, Synthetic, Automatic\n\n#### Commonsense Understanding Evaluations:\n\n| ARC Challenge 25-shot | Hellaswag 10-shot | Winogrande 5-shot | CommonsenseQA 7-shot |\n|-------------|--------------|-----------------|------------------|\n| 94.97 | 89.00 | 84.45 | 86.73 |\n\n- ARC (Ai2 reasoning challenge)-Challenge - The challenge set of questions from a benchmark that contains grade-school level, multiple-choice science questions to assess question answering ability of language models. [Dataset](https:\/\/huggingface.co\/datasets\/allenai\/ai2_arc)\n- Hellaswag - Tests the ability of a language model to correctly finish the provided context from a choice of possible options. [Dataset](https:\/\/huggingface.co\/datasets\/Rowan\/hellaswag )\n- Winogrande - Tests the ability to choose the right option for a given sentence which requires commonsense reasoning. [Dataset](https:\/\/huggingface.co\/datasets\/allenai\/winogrande )\n- CommonsenseQA - A multiple-choice question answering dataset that requires different types of commonsense knowledge to predict the correct answers. [Dataset](https:\/\/huggingface.co\/datasets\/tau\/commonsense_qa  )\n\n#### Coding Evaluations:\n\n| MBPP (sanitized) 3-shot | MBPP+ 0-shot | HumanEval 0-shot | HumanEval+ 0-shot |\n|-------------|--------------|-----------------|------------------|\n| 77.82 | 67.20| 60.37 | 54.27 |\n\n- MBPP (Mostly Basic Python Programming Problems) - Evaluates ability to generate solutions for Python programming tasks. [Dataset](https:\/\/github.com\/google-research\/google-research\/tree\/master\/mbpp)\n- MBPP+ - Extended version of MBPP with additional validation. [Dataset](https:\/\/huggingface.co\/datasets\/evalplus\/mbppplus)\n- HumanEval - Tests code generation and completion abilities in Python. [Dataset](https:\/\/github.com\/openai\/human-eval)\n\n#### Math Evaluations:\n\n\n| GSM8K 8-shot CoT |  MATH 4-shot CoT |  MATH-Lvl 5 4-shot CoT  | MATH-500 4-shot CoT |\n|--------------|------------|------------|------------|\n| 93.71 | 59.42 | 35.19 | 57.37 |\n\n- GSM8K (Grade School Math 8K) - Evaluates grade school level mathematical word problem solving. [Dataset](https:\/\/github.com\/openai\/grade-school-math)\n- MATH - Tests mathematical ability across multiple difficulty levels and various subjects including: Prealgebra, Algebra, Number Theory, Counting and Probability, Geometry, Intermediate Algebra, and Precalculus. [Dataset](https:\/\/github.com\/hendrycks\/math)\n- MATH Lvl 5 - Only the most difficult questions from the MATH dataset. [Dataset](https:\/\/github.com\/hendrycks\/math)\n- MATH-500 - Tests advanced mathematical problem solving across algebra, geometry, and calculus. [Dataset](https:\/\/huggingface.co\/datasets\/HuggingFaceH4\/MATH-500)\n\n\n#### General Evaluations:\n\n\n| MMLU-Pro 5-shot CoT | MMLU 5-shot|\n|-------------------|------------------|\n|60.51 |84.21 | \n\n- MMLU Pro - Evaluates language understanding models across a broad range of challenging, reasoning-focused questions across 14 diverse domains.\n[Dataset](https:\/\/huggingface.co\/datasets\/TIGER-Lab\/MMLU-Pro)\n- MMLU - Tests knowledge across 57 subjects including science, humanities, math and more. [Dataset](https:\/\/github.com\/hendrycks\/test)\n\n## Potential Known Risks for Usage\n\nThe model was trained on data that contains toxic language, unsafe content, and societal biases originally crawled from the internet. Therefore, the model may amplify those biases and return toxic responses especially when prompted with toxic prompts. The model may generate answers that may be inaccurate, omit key information, or include irrelevant or redundant text producing socially unacceptable or undesirable text, even if the prompt itself does not include anything explicitly offensive.\n\nThe model demonstrates weakness to indirect prompt injection via some encodings, including Base16, Hex\/ASCII, and Braille, though is more resilient than other similar models to injections using the more common Base64 vector.\n\n## Inference\n- Engine: NeMo\n- Test Hardware NVIDIA H100-80GB\n\n## Ethical Considerations\nNVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications. When downloaded or used in accordance with our terms of service, developers should work with their internal model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse. \n\nFor more detailed information on ethical considerations for this model, please see the Responsible Use Guide available at http:\/\/nvidia.com\/nemotron-responsible-use.\n\nPlease report security vulnerabilities or NVIDIA AI Concerns [here](https:\/\/www.nvidia.com\/en-us\/support\/submit-security-vulnerability\/).\n\n",
+    "chunks":[
+      {
+        "chunk_id":1,
+        "doc_chunk_index":1,
+        "end":43,
+        "sentence_count":2,
+        "start":0,
+        "text":"---\nlibrary_name: transformers\nlicense: other\nlicense_name: nvidia-internal-scientific-research-and-development-model-license\nlicense_link: >-\n  https:\/\/www.nvidia.com\/en-us\/agreements\/enterprise-software\/nvidia-internal-scientific-research-and-development-model-license\/\npipeline_tag: text-generation\nlanguage:\n  - en\n  - de\n  - es\n  - fr\n  - it\n  - ko\n  - pt\n  - ru\n  - jp\n  - zh\ntags:\n  - nvidia\n  - pytorch\n  - nemotron-h\n---. # Nemotron-H-56B-Base-8K.",
+        "word_count":43
+      },
+      {
+        "chunk_id":2,
+        "doc_chunk_index":2,
+        "end":70,
+        "sentence_count":2,
+        "start":43,
+        "text":"## Model Overview. NVIDIA Nemotron-H-56B-Base-8K is a large language model (LLM) developed by NVIDIA that is designed as a completion model for a given piece of text.",
+        "word_count":27
+      },
+      {
+        "chunk_id":3,
+        "doc_chunk_index":3,
+        "end":98,
+        "sentence_count":2,
+        "start":70,
+        "text":"It uses a hybrid model architecture that consists primarily of Mamba-2 and MLP layers combined with just ten Attention layers.. The model features a context length of 8K.",
+        "word_count":28
+      },
+      {
+        "chunk_id":4,
+        "doc_chunk_index":4,
+        "end":133,
+        "sentence_count":2,
+        "start":98,
+        "text":"The supported languages include: English, German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, and Chinese.. For more detailed information on the model architecture, training, and evaluation, please see the [project page](https:\/\/research.nvidia.com\/labs\/adlr\/nemotronh\/) and the [technical report](https:\/\/arxiv.org\/abs\/2504.03624).",
+        "word_count":35
+      },
+      {
+        "chunk_id":5,
+        "doc_chunk_index":5,
+        "end":181,
+        "sentence_count":2,
+        "start":133,
+        "text":"For best performance on a given task, users are encouraged to customize the model using the [NeMo Framework](https:\/\/docs.nvidia.com\/nemo-framework\/index.html) suite of customization tools including Parameter-Efficient Fine-Tuning (P-tuning, Adapters, LoRA, and more), and Model Alignment (SFT, SteerLM, RLHF, and more) using [NeMo-Aligner](https:\/\/github.com\/NVIDIA\/NeMo-Aligner).. This model is for research and development only.",
+        "word_count":48
+      },
+      {
+        "chunk_id":6,
+        "doc_chunk_index":6,
+        "end":204,
+        "sentence_count":2,
+        "start":181,
+        "text":"This model is part of the Nemotron-H Collection.. You can find the models in this family here:\n- [Nemotron-H-56B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-56B-Base-8K)\n- [Nemotron-H-47B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-47B-Base-8K)\n- [Nemotron-H-8B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-8B-Base-8K).",
+        "word_count":23
+      },
+      {
+        "chunk_id":7,
+        "doc_chunk_index":7,
+        "end":226,
+        "sentence_count":2,
+        "start":204,
+        "text":"## License\/Terms of Use. GOVERNING TERMS: Use of this model is governed by the [NVIDIA Internal Scientific Research and Development Model License](https:\/\/www.nvidia.com\/en-us\/agreements\/enterprise-software\/nvidia-internal-scientific-research-and-development-model-license\/).",
+        "word_count":22
+      },
+      {
+        "chunk_id":8,
+        "doc_chunk_index":8,
+        "end":231,
+        "sentence_count":2,
+        "start":226,
+        "text":"**Model Developer:** NVIDIA. **Model Dates:**.",
+        "word_count":5
+      },
+      {
+        "chunk_id":9,
+        "doc_chunk_index":9,
+        "end":238,
+        "sentence_count":2,
+        "start":231,
+        "text":"October 2024 - March 2025. **Data Freshness:**.",
+        "word_count":7
+      },
+      {
+        "chunk_id":10,
+        "doc_chunk_index":10,
+        "end":250,
+        "sentence_count":2,
+        "start":238,
+        "text":"September 2024. The pretraining data has a cutoff date of September 2024.",
+        "word_count":12
+      },
+      {
+        "chunk_id":11,
+        "doc_chunk_index":11,
+        "end":263,
+        "sentence_count":2,
+        "start":250,
+        "text":"## Use Case:. This model is intended for developers and researchers building LLMs.",
+        "word_count":13
+      },
+      {
+        "chunk_id":12,
+        "doc_chunk_index":12,
+        "end":267,
+        "sentence_count":2,
+        "start":263,
+        "text":"## Release Date:. 4\/14\/2025.",
+        "word_count":4
+      },
+      {
+        "chunk_id":13,
+        "doc_chunk_index":13,
+        "end":281,
+        "sentence_count":2,
+        "start":267,
+        "text":"## References. - [\\[2504.03624\\] Nemotron-H: A Family of Accurate and Efficient Hybrid Mamba-Transformer Models](https:\/\/arxiv.org\/abs\/2504.03624).",
+        "word_count":14
+      },
+      {
+        "chunk_id":14,
+        "doc_chunk_index":14,
+        "end":299,
+        "sentence_count":2,
+        "start":281,
+        "text":"## Model Architecture\n- Architecture Type: Hybrid Mamba-Transformer\n- Network Architecture: Nemotron-H. This model has 56B model parameters.",
+        "word_count":18
+      },
+      {
+        "chunk_id":15,
+        "doc_chunk_index":15,
+        "end":340,
+        "sentence_count":2,
+        "start":299,
+        "text":"## Input\n- Input Type(s): Text \n- Input Format(s): String\n- Input Parameters: One-Dimensional (1D): Sequences\n- Other Properties Related to Input: Context length up to 8K.. Supported languages include German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, Chinese and English.",
+        "word_count":41
+      },
+      {
+        "chunk_id":16,
+        "doc_chunk_index":16,
+        "end":369,
+        "sentence_count":2,
+        "start":340,
+        "text":"## Output\n- Output Type(s): Text \n- Output Format: String\n- Output Parameters: One-Dimensional (1D): Sequences. Our AI models are designed and\/or optimized to run on NVIDIA GPU-accelerated systems.",
+        "word_count":29
+      },
+      {
+        "chunk_id":17,
+        "doc_chunk_index":17,
+        "end":394,
+        "sentence_count":2,
+        "start":369,
+        "text":"By leveraging NVIDIA\u2019s hardware (e.g.. GPU cores) and software frameworks (e.g., CUDA libraries), the model achieves faster training and inference times compared to CPU-only solutions.",
+        "word_count":25
+      },
+      {
+        "chunk_id":18,
+        "doc_chunk_index":18,
+        "end":416,
+        "sentence_count":2,
+        "start":394,
+        "text":"<br>. ## Software Integration\n- Runtime Engine(s): NeMo 24.12\n- Supported Hardware Microarchitecture Compatibility: NVIDIA H100-80GB, NVIDIA A100\n- Operating System(s): Linux.",
+        "word_count":22
+      },
+      {
+        "chunk_id":19,
+        "doc_chunk_index":19,
+        "end":424,
+        "sentence_count":2,
+        "start":416,
+        "text":"## Model Version\n- v1.0. ## Prompt Format.",
+        "word_count":8
+      },
+      {
+        "chunk_id":20,
+        "doc_chunk_index":20,
+        "end":440,
+        "sentence_count":2,
+        "start":424,
+        "text":"As this is a base model, no explicit prompt format is recommended or required.. ### Example.",
+        "word_count":16
+      },
+      {
+        "chunk_id":21,
+        "doc_chunk_index":21,
+        "end":464,
+        "sentence_count":2,
+        "start":440,
+        "text":"```python\nimport torch\nfrom transformers import AutoTokenizer, AutoModelForCausalLM. # Load the tokenizer and model\ntokenizer  = AutoTokenizer.from_pretrained(\"nvidia\/Nemotron-H-56B-Base-8K\", trust_remote_code=True)\nmodel = AutoModelForCausalLM.from_pretrained(\"nvidia\/Nemotron-H-56B-Base-8K\", torch_dtype=torch.bfloat16, trust_remote_code=True, device_map=\"auto\").",
+        "word_count":24
+      },
+      {
+        "chunk_id":22,
+        "doc_chunk_index":22,
+        "end":477,
+        "sentence_count":2,
+        "start":464,
+        "text":"prompt = \"When was NVIDIA founded?\". outputs = model.generate(**tokenizer(prompt, return_tensors=\"pt\", add_special_tokens=False).to(model.device))\nprint(tokenizer.decode(outputs[0]))\n```.",
+        "word_count":13
+      },
+      {
+        "chunk_id":23,
+        "doc_chunk_index":23,
+        "end":488,
+        "sentence_count":2,
+        "start":477,
+        "text":"## Training, Testing, and Evaluation Datasets. ### Training & Testing Datasets:.",
+        "word_count":11
+      },
+      {
+        "chunk_id":24,
+        "doc_chunk_index":24,
+        "end":532,
+        "sentence_count":2,
+        "start":488,
+        "text":"The training corpus for Nemotron-H-56B-Base-8K Base consists of English and multilingual text (German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, Chinese and English), as well as code.. Our sources cover a variety of document types such as: webpages, dialogue, articles, and other written materials.",
+        "word_count":44
+      },
+      {
+        "chunk_id":25,
+        "doc_chunk_index":25,
+        "end":556,
+        "sentence_count":2,
+        "start":532,
+        "text":"This model was also improved using synthetic data from Qwen (Built with Qwen).. The corpus spans domains including legal, math, science, finance, and more.",
+        "word_count":24
+      },
+      {
+        "chunk_id":26,
+        "doc_chunk_index":26,
+        "end":583,
+        "sentence_count":2,
+        "start":556,
+        "text":"We also include a small portion of question-answering, and alignment style data to improve model accuracies.. **Data Collection for Training & Testing Datasets:**\nHybrid: Automated, Human, Synthetic.",
+        "word_count":27
+      },
+      {
+        "chunk_id":27,
+        "doc_chunk_index":27,
+        "end":597,
+        "sentence_count":2,
+        "start":583,
+        "text":"**Data Labeling for Training & Testing Datasets:**\nHybrid: Automated, Human, Synthetic. ### Evaluation Datasets.",
+        "word_count":14
+      },
+      {
+        "chunk_id":28,
+        "doc_chunk_index":28,
+        "end":618,
+        "sentence_count":2,
+        "start":597,
+        "text":"We used the datasets listed in the next section to evaluate Nemotron-H-56B-Base-8K Base.. Data Collection for Evaluation Datasets:\nHybrid: Human, Synthetic.",
+        "word_count":21
+      },
+      {
+        "chunk_id":29,
+        "doc_chunk_index":29,
+        "end":631,
+        "sentence_count":2,
+        "start":618,
+        "text":"Data Labeling for Evaluation Datasets:\nHybrid: Human, Synthetic, Automatic. #### Commonsense Understanding Evaluations:.",
+        "word_count":13
+      },
+      {
+        "chunk_id":30,
+        "doc_chunk_index":30,
+        "end":684,
+        "sentence_count":2,
+        "start":631,
+        "text":"| ARC Challenge 25-shot | Hellaswag 10-shot | Winogrande 5-shot | CommonsenseQA 7-shot |\n|-------------|--------------|-----------------|------------------|\n| 94.97 | 89.00 | 84.45 | 86.73 |. - ARC (Ai2 reasoning challenge)-Challenge - The challenge set of questions from a benchmark that contains grade-school level, multiple-choice science questions to assess question answering ability of language models.",
+        "word_count":53
+      },
+      {
+        "chunk_id":31,
+        "doc_chunk_index":31,
+        "end":728,
+        "sentence_count":2,
+        "start":684,
+        "text":"[Dataset](https:\/\/huggingface.co\/datasets\/allenai\/ai2_arc)\n- Hellaswag - Tests the ability of a language model to correctly finish the provided context from a choice of possible options.. [Dataset](https:\/\/huggingface.co\/datasets\/Rowan\/hellaswag )\n- Winogrande - Tests the ability to choose the right option for a given sentence which requires commonsense reasoning.",
+        "word_count":44
+      },
+      {
+        "chunk_id":32,
+        "doc_chunk_index":32,
+        "end":752,
+        "sentence_count":2,
+        "start":728,
+        "text":"[Dataset](https:\/\/huggingface.co\/datasets\/allenai\/winogrande )\n- CommonsenseQA - A multiple-choice question answering dataset that requires different types of commonsense knowledge to predict the correct answers.. [Dataset](https:\/\/huggingface.co\/datasets\/tau\/commonsense_qa  ).",
+        "word_count":24
+      },
+      {
+        "chunk_id":33,
+        "doc_chunk_index":33,
+        "end":778,
+        "sentence_count":2,
+        "start":752,
+        "text":"#### Coding Evaluations:. | MBPP (sanitized) 3-shot | MBPP+ 0-shot | HumanEval 0-shot | HumanEval+ 0-shot |\n|-------------|--------------|-----------------|------------------|\n| 77.82 | 67.20| 60.37 | 54.27 |.",
+        "word_count":26
+      },
+      {
+        "chunk_id":34,
+        "doc_chunk_index":34,
+        "end":806,
+        "sentence_count":2,
+        "start":778,
+        "text":"- MBPP (Mostly Basic Python Programming Problems) - Evaluates ability to generate solutions for Python programming tasks.. [Dataset](https:\/\/github.com\/google-research\/google-research\/tree\/master\/mbpp)\n- MBPP+ - Extended version of MBPP with additional validation.",
+        "word_count":28
+      },
+      {
+        "chunk_id":35,
+        "doc_chunk_index":35,
+        "end":819,
+        "sentence_count":2,
+        "start":806,
+        "text":"[Dataset](https:\/\/huggingface.co\/datasets\/evalplus\/mbppplus)\n- HumanEval - Tests code generation and completion abilities in Python.. [Dataset](https:\/\/github.com\/openai\/human-eval).",
+        "word_count":13
+      },
+      {
+        "chunk_id":36,
+        "doc_chunk_index":36,
+        "end":850,
+        "sentence_count":2,
+        "start":819,
+        "text":"#### Math Evaluations:. | GSM8K 8-shot CoT |  MATH 4-shot CoT |  MATH-Lvl 5 4-shot CoT  | MATH-500 4-shot CoT |\n|--------------|------------|------------|------------|\n| 93.71 | 59.42 | 35.19 | 57.37 |.",
+        "word_count":31
+      },
+      {
+        "chunk_id":37,
+        "doc_chunk_index":37,
+        "end":892,
+        "sentence_count":2,
+        "start":850,
+        "text":"- GSM8K (Grade School Math 8K) - Evaluates grade school level mathematical word problem solving.. [Dataset](https:\/\/github.com\/openai\/grade-school-math)\n- MATH - Tests mathematical ability across multiple difficulty levels and various subjects including: Prealgebra, Algebra, Number Theory, Counting and Probability, Geometry, Intermediate Algebra, and Precalculus.",
+        "word_count":42
+      },
+      {
+        "chunk_id":38,
+        "doc_chunk_index":38,
+        "end":921,
+        "sentence_count":2,
+        "start":892,
+        "text":"[Dataset](https:\/\/github.com\/hendrycks\/math)\n- MATH Lvl 5 - Only the most difficult questions from the MATH dataset.. [Dataset](https:\/\/github.com\/hendrycks\/math)\n- MATH-500 - Tests advanced mathematical problem solving across algebra, geometry, and calculus.",
+        "word_count":29
+      },
+      {
+        "chunk_id":39,
+        "doc_chunk_index":39,
+        "end":925,
+        "sentence_count":2,
+        "start":921,
+        "text":"[Dataset](https:\/\/huggingface.co\/datasets\/HuggingFaceH4\/MATH-500). #### General Evaluations:.",
+        "word_count":4
+      },
+      {
+        "chunk_id":40,
+        "doc_chunk_index":40,
+        "end":956,
+        "sentence_count":2,
+        "start":925,
+        "text":"| MMLU-Pro 5-shot CoT | MMLU 5-shot|\n|-------------------|------------------|\n|60.51 |84.21 |. - MMLU Pro - Evaluates language understanding models across a broad range of challenging, reasoning-focused questions across 14 diverse domains.",
+        "word_count":31
+      },
+      {
+        "chunk_id":41,
+        "doc_chunk_index":41,
+        "end":972,
+        "sentence_count":2,
+        "start":956,
+        "text":"[Dataset](https:\/\/huggingface.co\/datasets\/TIGER-Lab\/MMLU-Pro)\n- MMLU - Tests knowledge across 57 subjects including science, humanities, math and more.. [Dataset](https:\/\/github.com\/hendrycks\/test).",
+        "word_count":16
+      },
+      {
+        "chunk_id":42,
+        "doc_chunk_index":42,
+        "end":998,
+        "sentence_count":2,
+        "start":972,
+        "text":"## Potential Known Risks for Usage. The model was trained on data that contains toxic language, unsafe content, and societal biases originally crawled from the internet.",
+        "word_count":26
+      },
+      {
+        "chunk_id":43,
+        "doc_chunk_index":43,
+        "end":1050,
+        "sentence_count":2,
+        "start":998,
+        "text":"Therefore, the model may amplify those biases and return toxic responses especially when prompted with toxic prompts.. The model may generate answers that may be inaccurate, omit key information, or include irrelevant or redundant text producing socially unacceptable or undesirable text, even if the prompt itself does not include anything explicitly offensive.",
+        "word_count":52
+      },
+      {
+        "chunk_id":44,
+        "doc_chunk_index":44,
+        "end":1092,
+        "sentence_count":2,
+        "start":1050,
+        "text":"The model demonstrates weakness to indirect prompt injection via some encodings, including Base16, Hex\/ASCII, and Braille, though is more resilient than other similar models to injections using the more common Base64 vector.. ## Inference\n- Engine: NeMo\n- Test Hardware NVIDIA H100-80GB.",
+        "word_count":42
+      },
+      {
+        "chunk_id":45,
+        "doc_chunk_index":45,
+        "end":1157,
+        "sentence_count":2,
+        "start":1092,
+        "text":"## Ethical Considerations\nNVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications.. When downloaded or used in accordance with our terms of service, developers should work with their internal model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.",
+        "word_count":65
+      },
+      {
+        "chunk_id":46,
+        "doc_chunk_index":46,
+        "end":1185,
+        "sentence_count":2,
+        "start":1157,
+        "text":"For more detailed information on ethical considerations for this model, please see the Responsible Use Guide available at http:\/\/nvidia.com\/nemotron-responsible-use.. Please report security vulnerabilities or NVIDIA AI Concerns [here](https:\/\/www.nvidia.com\/en-us\/support\/submit-security-vulnerability\/).",
+        "word_count":28
+      }
+    ],
+    "sections_structured":[
+      "=== Section 1 ===\nSegment 1 (00:00:00 - 00:00:00): ---\nlibrary_name: transformers\nlicense: other\nlicense_name: nvidia-internal-scientific-research-and-development-model-license\nlicense_link: >-\n  https:\/\/www.nvidia.com\/en-us\/agreements\/enterprise-software\/nvidia-internal-scientific-research-and-development-model-license\/\npipeline_tag: text-generation\nlanguage:\n  - en\n  - de\n  - es\n  - fr\n  - it\n  - ko\n  - pt\n  - ru\n  - jp\n  - zh\ntags:\n  - nvidia\n  - pytorch\n  - nemotron-h\n---. # Nemotron-H-56B-Base-8K.\nSegment 2 (00:00:00 - 00:00:00): ## Model Overview. NVIDIA Nemotron-H-56B-Base-8K is a large language model (LLM) developed by NVIDIA that is designed as a completion model for a given piece of text.\nSegment 3 (00:00:00 - 00:00:00): It uses a hybrid model architecture that consists primarily of Mamba-2 and MLP layers combined with just ten Attention layers.. The model features a context length of 8K.\nSegment 4 (00:00:00 - 00:00:00): The supported languages include: English, German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, and Chinese.. For more detailed information on the model architecture, training, and evaluation, please see the [project page](https:\/\/research.nvidia.com\/labs\/adlr\/nemotronh\/) and the [technical report](https:\/\/arxiv.org\/abs\/2504.03624).\nSegment 5 (00:00:00 - 00:00:00): For best performance on a given task, users are encouraged to customize the model using the [NeMo Framework](https:\/\/docs.nvidia.com\/nemo-framework\/index.html) suite of customization tools including Parameter-Efficient Fine-Tuning (P-tuning, Adapters, LoRA, and more), and Model Alignment (SFT, SteerLM, RLHF, and more) using [NeMo-Aligner](https:\/\/github.com\/NVIDIA\/NeMo-Aligner).. This model is for research and development only.\nSegment 6 (00:00:00 - 00:00:00): This model is part of the Nemotron-H Collection.. You can find the models in this family here:\n- [Nemotron-H-56B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-56B-Base-8K)\n- [Nemotron-H-47B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-47B-Base-8K)\n- [Nemotron-H-8B-Base-8K](https:\/\/huggingface.co\/nvidia\/Nemotron-H-8B-Base-8K).\nSegment 7 (00:00:00 - 00:00:00): ## License\/Terms of Use. GOVERNING TERMS: Use of this model is governed by the [NVIDIA Internal Scientific Research and Development Model License](https:\/\/www.nvidia.com\/en-us\/agreements\/enterprise-software\/nvidia-internal-scientific-research-and-development-model-license\/).\nSegment 8 (00:00:00 - 00:00:00): **Model Developer:** NVIDIA. **Model Dates:**.\nSegment 9 (00:00:00 - 00:00:00): October 2024 - March 2025. **Data Freshness:**.\nSegment 10 (00:00:00 - 00:00:00): September 2024. The pretraining data has a cutoff date of September 2024.\nSegment 11 (00:00:00 - 00:00:00): ## Use Case:. This model is intended for developers and researchers building LLMs.\nSegment 12 (00:00:00 - 00:00:00): ## Release Date:. 4\/14\/2025.\nSegment 13 (00:00:00 - 00:00:00): ## References. - [\\[2504.03624\\] Nemotron-H: A Family of Accurate and Efficient Hybrid Mamba-Transformer Models](https:\/\/arxiv.org\/abs\/2504.03624).\nSegment 14 (00:00:00 - 00:00:00): ## Model Architecture\n- Architecture Type: Hybrid Mamba-Transformer\n- Network Architecture: Nemotron-H. This model has 56B model parameters.\nSegment 15 (00:00:00 - 00:00:00): ## Input\n- Input Type(s): Text \n- Input Format(s): String\n- Input Parameters: One-Dimensional (1D): Sequences\n- Other Properties Related to Input: Context length up to 8K.. Supported languages include German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, Chinese and English.\nSegment 16 (00:00:00 - 00:00:00): ## Output\n- Output Type(s): Text \n- Output Format: String\n- Output Parameters: One-Dimensional (1D): Sequences. Our AI models are designed and\/or optimized to run on NVIDIA GPU-accelerated systems.\nSegment 17 (00:00:00 - 00:00:00): By leveraging NVIDIA\u2019s hardware (e.g.. GPU cores) and software frameworks (e.g., CUDA libraries), the model achieves faster training and inference times compared to CPU-only solutions.\nSegment 18 (00:00:00 - 00:00:00): <br>. ## Software Integration\n- Runtime Engine(s): NeMo 24.12\n- Supported Hardware Microarchitecture Compatibility: NVIDIA H100-80GB, NVIDIA A100\n- Operating System(s): Linux.\nSegment 19 (00:00:00 - 00:00:00): ## Model Version\n- v1.0. ## Prompt Format.\nSegment 20 (00:00:00 - 00:00:00): As this is a base model, no explicit prompt format is recommended or required.. ### Example.\nSegment 21 (00:00:00 - 00:00:00): ```python\nimport torch\nfrom transformers import AutoTokenizer, AutoModelForCausalLM. # Load the tokenizer and model\ntokenizer  = AutoTokenizer.from_pretrained(\"nvidia\/Nemotron-H-56B-Base-8K\", trust_remote_code=True)\nmodel = AutoModelForCausalLM.from_pretrained(\"nvidia\/Nemotron-H-56B-Base-8K\", torch_dtype=torch.bfloat16, trust_remote_code=True, device_map=\"auto\").\nSegment 22 (00:00:00 - 00:00:00): prompt = \"When was NVIDIA founded?\". outputs = model.generate(**tokenizer(prompt, return_tensors=\"pt\", add_special_tokens=False).to(model.device))\nprint(tokenizer.decode(outputs[0]))\n```.\nSegment 23 (00:00:00 - 00:00:00): ## Training, Testing, and Evaluation Datasets. ### Training & Testing Datasets:.\nSegment 24 (00:00:00 - 00:00:00): The training corpus for Nemotron-H-56B-Base-8K Base consists of English and multilingual text (German, Spanish, French, Italian, Korean, Portuguese, Russian, Japanese, Chinese and English), as well as code.. Our sources cover a variety of document types such as: webpages, dialogue, articles, and other written materials.\nSegment 25 (00:00:00 - 00:00:00): This model was also improved using synthetic data from Qwen (Built with Qwen).. The corpus spans domains including legal, math, science, finance, and more.\nSegment 26 (00:00:00 - 00:00:00): We also include a small portion of question-answering, and alignment style data to improve model accuracies.. **Data Collection for Training & Testing Datasets:**\nHybrid: Automated, Human, Synthetic.\nSegment 27 (00:00:00 - 00:00:00): **Data Labeling for Training & Testing Datasets:**\nHybrid: Automated, Human, Synthetic. ### Evaluation Datasets.\nSegment 28 (00:00:00 - 00:00:00): We used the datasets listed in the next section to evaluate Nemotron-H-56B-Base-8K Base.. Data Collection for Evaluation Datasets:\nHybrid: Human, Synthetic.\nSegment 29 (00:00:00 - 00:00:00): Data Labeling for Evaluation Datasets:\nHybrid: Human, Synthetic, Automatic. #### Commonsense Understanding Evaluations:.\nSegment 30 (00:00:00 - 00:00:00): | ARC Challenge 25-shot | Hellaswag 10-shot | Winogrande 5-shot | CommonsenseQA 7-shot |\n|-------------|--------------|-----------------|------------------|\n| 94.97 | 89.00 | 84.45 | 86.73 |. - ARC (Ai2 reasoning challenge)-Challenge - The challenge set of questions from a benchmark that contains grade-school level, multiple-choice science questions to assess question answering ability of language models.\nSegment 31 (00:00:00 - 00:00:00): [Dataset](https:\/\/huggingface.co\/datasets\/allenai\/ai2_arc)\n- Hellaswag - Tests the ability of a language model to correctly finish the provided context from a choice of possible options.. [Dataset](https:\/\/huggingface.co\/datasets\/Rowan\/hellaswag )\n- Winogrande - Tests the ability to choose the right option for a given sentence which requires commonsense reasoning.\nSegment 32 (00:00:00 - 00:00:00): [Dataset](https:\/\/huggingface.co\/datasets\/allenai\/winogrande )\n- CommonsenseQA - A multiple-choice question answering dataset that requires different types of commonsense knowledge to predict the correct answers.. [Dataset](https:\/\/huggingface.co\/datasets\/tau\/commonsense_qa  ).\nSegment 33 (00:00:00 - 00:00:00): #### Coding Evaluations:. | MBPP (sanitized) 3-shot | MBPP+ 0-shot | HumanEval 0-shot | HumanEval+ 0-shot |\n|-------------|--------------|-----------------|------------------|\n| 77.82 | 67.20| 60.37 | 54.27 |.\nSegment 34 (00:00:00 - 00:00:00): - MBPP (Mostly Basic Python Programming Problems) - Evaluates ability to generate solutions for Python programming tasks.. [Dataset](https:\/\/github.com\/google-research\/google-research\/tree\/master\/mbpp)\n- MBPP+ - Extended version of MBPP with additional validation.\nSegment 35 (00:00:00 - 00:00:00): [Dataset](https:\/\/huggingface.co\/datasets\/evalplus\/mbppplus)\n- HumanEval - Tests code generation and completion abilities in Python.. [Dataset](https:\/\/github.com\/openai\/human-eval).\nSegment 36 (00:00:00 - 00:00:00): #### Math Evaluations:. | GSM8K 8-shot CoT |  MATH 4-shot CoT |  MATH-Lvl 5 4-shot CoT  | MATH-500 4-shot CoT |\n|--------------|------------|------------|------------|\n| 93.71 | 59.42 | 35.19 | 57.37 |.\nSegment 37 (00:00:00 - 00:00:00): - GSM8K (Grade School Math 8K) - Evaluates grade school level mathematical word problem solving.. [Dataset](https:\/\/github.com\/openai\/grade-school-math)\n- MATH - Tests mathematical ability across multiple difficulty levels and various subjects including: Prealgebra, Algebra, Number Theory, Counting and Probability, Geometry, Intermediate Algebra, and Precalculus.\nSegment 38 (00:00:00 - 00:00:00): [Dataset](https:\/\/github.com\/hendrycks\/math)\n- MATH Lvl 5 - Only the most difficult questions from the MATH dataset.. [Dataset](https:\/\/github.com\/hendrycks\/math)\n- MATH-500 - Tests advanced mathematical problem solving across algebra, geometry, and calculus.\nSegment 39 (00:00:00 - 00:00:00): [Dataset](https:\/\/huggingface.co\/datasets\/HuggingFaceH4\/MATH-500). #### General Evaluations:.\nSegment 40 (00:00:00 - 00:00:00): | MMLU-Pro 5-shot CoT | MMLU 5-shot|\n|-------------------|------------------|\n|60.51 |84.21 |. - MMLU Pro - Evaluates language understanding models across a broad range of challenging, reasoning-focused questions across 14 diverse domains.\nSegment 41 (00:00:00 - 00:00:00): [Dataset](https:\/\/huggingface.co\/datasets\/TIGER-Lab\/MMLU-Pro)\n- MMLU - Tests knowledge across 57 subjects including science, humanities, math and more.. [Dataset](https:\/\/github.com\/hendrycks\/test).\nSegment 42 (00:00:00 - 00:00:00): ## Potential Known Risks for Usage. The model was trained on data that contains toxic language, unsafe content, and societal biases originally crawled from the internet.\nSegment 43 (00:00:00 - 00:00:00): Therefore, the model may amplify those biases and return toxic responses especially when prompted with toxic prompts.. The model may generate answers that may be inaccurate, omit key information, or include irrelevant or redundant text producing socially unacceptable or undesirable text, even if the prompt itself does not include anything explicitly offensive.\nSegment 44 (00:00:00 - 00:00:00): The model demonstrates weakness to indirect prompt injection via some encodings, including Base16, Hex\/ASCII, and Braille, though is more resilient than other similar models to injections using the more common Base64 vector.. ## Inference\n- Engine: NeMo\n- Test Hardware NVIDIA H100-80GB.\nSegment 45 (00:00:00 - 00:00:00): ## Ethical Considerations\nNVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications.. When downloaded or used in accordance with our terms of service, developers should work with their internal model team to ensure this model meets requirements for the relevant industry and use case and addresses unforeseen product misuse.\nSegment 46 (00:00:00 - 00:00:00): For more detailed information on ethical considerations for this model, please see the Responsible Use Guide available at http:\/\/nvidia.com\/nemotron-responsible-use.. Please report security vulnerabilities or NVIDIA AI Concerns [here](https:\/\/www.nvidia.com\/en-us\/support\/submit-security-vulnerability\/)."
+    ],
+    "bundle_id":"",
+    "bundle_members":[
+      "huggingface\/67f55eab504263bce1477c50.txt"
+    ],
+    "is_multi_doc":false,
+    "document_artifacts":{
+      "contextual_factors":[
+        {
+          "description":"Training data is frozen as of September 2024; inference runs on NVIDIA H100-80GB or A100 GPUs via the NeMo engine.",
+          "importance":"Sets boundaries for the model's knowledge horizon and operational environment, critical for realistic usage scenarios.",
+          "text":"Data Cutoff September 2024 and Hardware Requirements"
+        }
+      ],
+      "entities":[
+        {
+          "description":"A family of models including Nemotron-H-56B-Base-8K, Nemotron-H-47B-Base-8K, and Nemotron-H-8B-Base-8K, hosted on Hugging Face.",
+          "importance":"Identifies the model family and related variants, essential for distinguishing between versions and related artifacts.",
+          "text":"NVIDIA Nemotron-H Collection"
+        }
+      ],
+      "insights":[
+        {
+          "description":"Achieves high scores on ARC, Hellaswag, MBPP, GSM8K, and MMLU-Pro, indicating proficiency in commonsense, coding, and mathematics.",
+          "importance":"Demonstrates the model's effectiveness, supporting claims of accuracy and justifying its use in research.",
+          "text":"Strong Performance on Benchmark Evaluations"
+        }
+      ],
+      "key_concepts":[
+        {
+          "description":"The model combines Mamba-2 and MLP layers with ten Attention layers, achieving an 8K context length.",
+          "importance":"Core architectural innovation that distinguishes the model and impacts performance and efficiency.",
+          "text":"Hybrid Mamba-Transformer Architecture"
+        }
+      ],
+      "processes":[
+        {
+          "description":"Techniques recommended for customizing the model, integrated within the NeMo Framework and NeMo-Aligner.",
+          "importance":"Provides actionable guidance for adapting the model to specific tasks, central to practical deployment.",
+          "text":"Parameter-Efficient Fine-Tuning (P-tuning, Adapters, LoRA)"
+        }
+      ],
+      "relationships":[
+        {
+          "description":"The model is governed by the NVIDIA Internal Scientific Research and Development Model License, restricting use to research and development only, linking licensing terms to permissible applications.",
+          "importance":"Defines legal and ethical boundaries for deployment, crucial for compliance and Q&A about usage rights.",
+          "text":"License Governance and Research Use"
+        }
+      ],
+      "technical_terms":[
+        {
+          "description":"A state\u2011of\u2011the\u2011art sequence model component used in the hybrid architecture, known for efficient handling of long sequences.",
+          "importance":"Represents a key technical component influencing model capabilities and performance.",
+          "text":"Mamba-2"
+        }
+      ],
+      "themes":[
+        {
+          "description":"Discussion of known risks, bias, toxicity, and the provision of a Responsible Use Guide and vulnerability reporting channel.",
+          "importance":"Highlights the model's alignment with trustworthy AI practices, informing users about safety and governance.",
+          "text":"Responsible AI and Ethical Considerations"
+        }
+      ]
+    },
+    "qa_generation":{
+      "pairs":[
+        {
+          "answer":"The model achieves a score of 94.97% on the ARC Challenge benchmark, demonstrating strong commonsense reasoning, while its performance on the MATH benchmark is 59.42% for the 4\u2011shot Chain\u2011of\u2011Thought setting, indicating more limited mathematical reasoning. This contrast highlights that the model excels in general knowledge and reasoning tasks but is less proficient in complex mathematical problem solving.",
+          "hop_contexts":[
+            {
+              "hop_number":1,
+              "segment_ids":[
+                29,
+                33
+              ],
+              "summary":"Provides the ARC benchmark scores and the MATH benchmark scores used to compare model performance."
+            }
+          ],
+          "hop_count":1,
+          "query_type":"structural",
+          "question":"How does the model's accuracy on the ARC benchmark compare to its accuracy on the MATH benchmark, and what does this indicate about its reasoning capabilities?",
+          "question_complexity":4,
+          "reasoning_type":"relational",
+          "segment_ids":[
+            29,
+            33
+          ]
+        }
+      ]
+    },
+    "deduplicated_qa_pairs":[
+      {
+        "answer":"The model achieves a score of 94.97% on the ARC Challenge benchmark, demonstrating strong commonsense reasoning, while its performance on the MATH benchmark is 59.42% for the 4\u2011shot Chain\u2011of\u2011Thought setting, indicating more limited mathematical reasoning. This contrast highlights that the model excels in general knowledge and reasoning tasks but is less proficient in complex mathematical problem solving.",
+        "hop_contexts":[
+          {
+            "hop_number":1,
+            "segment_ids":[
+              29,
+              33
+            ],
+            "summary":"Provides the ARC benchmark scores and the MATH benchmark scores used to compare model performance."
+          }
+        ],
+        "hop_count":1,
+        "query_type":"structural",
+        "question":"How does the model's accuracy on the ARC benchmark compare to its accuracy on the MATH benchmark, and what does this indicate about its reasoning capabilities?",
+        "question_complexity":4,
+        "reasoning_type":"relational",
+        "segment_ids":[
+          29,
+          33
+        ]
+      }
+    ],
+    "qa_evaluations":{
+      "evaluations":[
+        {
+          "accuracy":{
+            "justification":"The answer correctly reports the ARC benchmark score (94.97%) and the MATH benchmark score (59.42% for the 4\u2011shot Chain\u2011of\u2011Thought setting) as presented in the provided context. It also correctly interprets these numbers as indicating strong commonsense reasoning but limited mathematical reasoning.",
+            "score":9
+          },
+          "clarity":{
+            "justification":"The question is clear and unambiguous, and the answer is concise, well\u2011structured, and easy to understand.",
+            "score":9
+          },
+          "context_support":{
+            "justification":"The answer cites the exact figures from the document (ARC Challenge 25\u2011shot 94.97 and MATH 4\u2011shot CoT 59.42) and links them to the relevant benchmark descriptions, demonstrating strong grounding in the supplied context.",
+            "score":9
+          },
+          "improvements":"Consider specifying that the ARC figure refers to the \"ARC Challenge 25\u2011shot\" setting and that the MATH figure is for the \"4\u2011shot Chain\u2011of\u2011Thought\" evaluation. Adding a brief sentence about the implication for hybrid reasoning capabilities could further strengthen the answer.",
+          "overall":{
+            "assessment":"The answer accurately compares the ARC and MATH benchmark accuracies, cites the correct values from the context, and provides a sensible interpretation of the results. It is a high\u2011quality response with only minor room for more precise benchmark naming.",
+            "score":9.5
+          },
+          "relevance":{
+            "justification":"The question explicitly asks for a comparison of the model's accuracy on the ARC benchmark versus the MATH benchmark and for an interpretation of what this indicates about its reasoning capabilities. The answer directly addresses both parts of the question.",
+            "score":9
+          }
+        }
+      ]
+    }
+  }
+]

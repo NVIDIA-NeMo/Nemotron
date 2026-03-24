@@ -1,0 +1,82 @@
+{
+  "actual_num_records": 5,
+  "buffer_size": 1000,
+  "column_statistics": [
+    {
+      "column_name": "document_artifacts",
+      "column_type": "llm-structured",
+      "input_tokens_mean": 1456.2,
+      "input_tokens_median": 1545.0,
+      "input_tokens_stddev": 371.3,
+      "num_null": 0,
+      "num_records": 5,
+      "num_unique": 5,
+      "output_tokens_mean": 604.4,
+      "output_tokens_median": 591.0,
+      "output_tokens_stddev": 40.69,
+      "pyarrow_dtype": "struct<contextual_factors: list<element: struct<description: string, importance: string, text: string>>, entities: list<element: struct<description: string, importance: string, text: string>>, insights: list<element: struct<description: string, importance: string, text: string>>, key_concepts: list<element: struct<description: string, importance: string, text: string>>, processes: list<element: struct<description: string, importance: string, text: string>>, relationships: list<element: struct<description: string, importance: string, text: string>>, technical_terms: list<element: struct<description: string, importance: string, text: string>>, themes: list<element: struct<description: string, importance: string, text: string>>>",
+      "simple_dtype": "dict"
+    },
+    {
+      "column_name": "qa_generation",
+      "column_type": "llm-structured",
+      "input_tokens_mean": 3439.2,
+      "input_tokens_median": 3565.0,
+      "input_tokens_stddev": 445.66,
+      "num_null": 0,
+      "num_records": 5,
+      "num_unique": 5,
+      "output_tokens_mean": 514.2,
+      "output_tokens_median": 509.0,
+      "output_tokens_stddev": 60.84,
+      "pyarrow_dtype": "struct<pairs: list<element: struct<answer: string, hop_contexts: list<element: struct<hop_number: int64, segment_ids: list<element: int64>, summary: string>>, hop_count: int64, query_type: string, question: string, question_complexity: int64, reasoning_type: string, segment_ids: list<element: int64>>>>",
+      "simple_dtype": "dict"
+    },
+    {
+      "column_name": "deduplicated_qa_pairs",
+      "column_type": "data-designer-retrieval-dedup",
+      "num_null": 0,
+      "num_records": 5,
+      "num_unique": 5,
+      "pyarrow_dtype": "list<element: struct<answer: string, hop_contexts: list<element: struct<hop_number: int64, segment_ids: list<element: int64>, summary: string>>, hop_count: int64, query_type: string, question: string, question_complexity: int64, reasoning_type: string, segment_ids: list<element: int64>>>",
+      "simple_dtype": "list[dict]"
+    },
+    {
+      "column_name": "qa_evaluations",
+      "column_type": "llm-structured",
+      "input_tokens_mean": 1602.8,
+      "input_tokens_median": 1691.0,
+      "input_tokens_stddev": 405.42,
+      "num_null": 0,
+      "num_records": 5,
+      "num_unique": 5,
+      "output_tokens_mean": 506.4,
+      "output_tokens_median": 536.0,
+      "output_tokens_stddev": 60.33,
+      "pyarrow_dtype": "struct<evaluations: list<element: struct<accuracy: struct<justification: string, score: int64>, clarity: struct<justification: string, score: int64>, context_support: struct<justification: string, score: int64>, improvements: string, overall: struct<assessment: string, score: double>, relevance: struct<justification: string, score: int64>>>>",
+      "simple_dtype": "dict"
+    }
+  ],
+  "dataset_name": "nv_pp_random_batch2_10_14",
+  "file_paths": {
+    "parquet-files": [
+      "parquet-files/batch_00000.parquet"
+    ]
+  },
+  "num_completed_batches": 1,
+  "schema": {
+    "bundle_id": "string",
+    "bundle_members": "list<element: string>",
+    "chunks": "list<element: struct<chunk_id: int64, doc_chunk_index: int64, end: int64, sentence_count: int64, start: int64, text: string, word_count: int64>>",
+    "deduplicated_qa_pairs": "list<element: struct<answer: string, hop_contexts: list<element: struct<hop_number: int64, segment_ids: list<element: int64>, summary: string>>, hop_count: int64, query_type: string, question: string, question_complexity: int64, reasoning_type: string, segment_ids: list<element: int64>>>",
+    "document_artifacts": "struct<contextual_factors: list<element: struct<description: string, importance: string, text: string>>, entities: list<element: struct<description: string, importance: string, text: string>>, insights: list<element: struct<description: string, importance: string, text: string>>, key_concepts: list<element: struct<description: string, importance: string, text: string>>, processes: list<element: struct<description: string, importance: string, text: string>>, relationships: list<element: struct<description: string, importance: string, text: string>>, technical_terms: list<element: struct<description: string, importance: string, text: string>>, themes: list<element: struct<description: string, importance: string, text: string>>>",
+    "file_name": "list<element: string>",
+    "is_multi_doc": "bool",
+    "qa_evaluations": "struct<evaluations: list<element: struct<accuracy: struct<justification: string, score: int64>, clarity: struct<justification: string, score: int64>, context_support: struct<justification: string, score: int64>, improvements: string, overall: struct<assessment: string, score: double>, relevance: struct<justification: string, score: int64>>>>",
+    "qa_generation": "struct<pairs: list<element: struct<answer: string, hop_contexts: list<element: struct<hop_number: int64, segment_ids: list<element: int64>, summary: string>>, hop_count: int64, query_type: string, question: string, question_complexity: int64, reasoning_type: string, segment_ids: list<element: int64>>>>",
+    "sections_structured": "list<element: string>",
+    "text": "string"
+  },
+  "target_num_records": 5,
+  "total_num_batches": 1
+}

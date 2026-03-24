@@ -1,0 +1,474 @@
+{
+  "data_designer": {
+    "columns": [
+      {
+        "name": "document_artifacts",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "llm-structured",
+        "prompt": "Analyze the following content and extract semantic artifacts that would be valuable for generating high-quality question-answer pairs.\n\nNote: The content may contain multiple documents bundled together (separated by \"=== Document Boundary ===\"). \nIf multiple documents are present, identify cross-document relationships and connections.\n\nCONTENT:\n{{ text }}\n\nARTIFACT TYPES TO EXTRACT:\n- key_concepts: Core ideas and concepts discussed in the document(s)\n- relationships: Connections and relationships between different concepts (including cross-document relationships)\n- themes: Overarching themes and topics\n- entities: Specific entities, people, organizations, or items mentioned\n- processes: Processes, workflows, or procedures described\n- insights: Key insights, conclusions, or findings\n- technical_terms: Technical terminology and specialized vocabulary\n- contextual_factors: Contextual information that provides background\n\nINSTRUCTIONS:\n1. Extract up to 1 artifacts for each relevant type\n2. Focus on the most significant and informative elements\n3. Provide clear, concise descriptions for each artifact\n4. Include context about why each artifact is important\n5. Ensure artifacts are specific and actionable for Q&A generation\n6. For multi-document bundles, pay special attention to relationships and comparisons between documents\n",
+        "model_alias": "artifact_extraction",
+        "system_prompt": "You are an expert at analyzing documents and extracting semantic artifacts.",
+        "multi_modal_context": null,
+        "tool_alias": null,
+        "with_trace": "none",
+        "extract_reasoning_content": false,
+        "output_format": {
+          "$defs": {
+            "ArtifactItem": {
+              "description": "A single artifact item with text, description, and importance",
+              "properties": {
+                "text": {
+                  "description": "The artifact text or name",
+                  "title": "Text",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Detailed description of the artifact",
+                  "title": "Description",
+                  "type": "string"
+                },
+                "importance": {
+                  "description": "Why this artifact is important",
+                  "title": "Importance",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text",
+                "description",
+                "importance"
+              ],
+              "title": "ArtifactItem",
+              "type": "object"
+            }
+          },
+          "description": "Semantic artifacts extracted from the document",
+          "properties": {
+            "key_concepts": {
+              "description": "Key concepts in the document",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Key Concepts",
+              "type": "array"
+            },
+            "relationships": {
+              "description": "Relationships between concepts",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Relationships",
+              "type": "array"
+            },
+            "themes": {
+              "description": "Main themes",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Themes",
+              "type": "array"
+            },
+            "entities": {
+              "description": "Entities mentioned",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "processes": {
+              "description": "Processes described",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Processes",
+              "type": "array"
+            },
+            "insights": {
+              "description": "Key insights",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Insights",
+              "type": "array"
+            },
+            "technical_terms": {
+              "description": "Technical terms",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Technical Terms",
+              "type": "array"
+            },
+            "contextual_factors": {
+              "description": "Contextual factors",
+              "items": {
+                "$ref": "#/$defs/ArtifactItem"
+              },
+              "title": "Contextual Factors",
+              "type": "array"
+            }
+          },
+          "title": "DocumentArtifacts",
+          "type": "object"
+        }
+      },
+      {
+        "name": "qa_generation",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "llm-structured",
+        "prompt": "You are an expert at extracting question and answer pairs from provided context/transcript/segments.\n\n<document_facts_block>:\n{%- if document_artifacts.key_concepts %}\n<key_concepts>\n{%- for item in document_artifacts.key_concepts %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</key_concepts>\n{%- endif %}\n\n{%- if document_artifacts.relationships %}\n<relationships>\n{%- for item in document_artifacts.relationships %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</relationships>\n{%- endif %}\n\n{%- if document_artifacts.themes %}\n<themes>\n{%- for item in document_artifacts.themes %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</themes>\n{%- endif %}\n\n{%- if document_artifacts.entities %}\n<entities>\n{%- for item in document_artifacts.entities %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</entities>\n{%- endif %}\n\n{%- if document_artifacts.processes %}\n<processes>\n{%- for item in document_artifacts.processes %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</processes>\n{%- endif %}\n\n{%- if document_artifacts.insights %}\n<insights>\n{%- for item in document_artifacts.insights %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</insights>\n{%- endif %}\n\n{%- if document_artifacts.technical_terms %}\n<technical_terms>\n{%- for item in document_artifacts.technical_terms %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</technical_terms>\n{%- endif %}\n\n{%- if document_artifacts.contextual_factors %}\n<contextual_factors>\n{%- for item in document_artifacts.contextual_factors %}\n- {{ item.text }}: {{ item.description }}\n{%- endfor %}\n</contextual_factors>\n{%- endif %}\n</document_facts_block>\n\n<context_block>:\n{%- for section in sections_structured %}\n{{ section }}\n\n{%- endfor %}\n</context_block>\n\nGuidelines:\n1. Generate questions with varying complexity levels between 1 (simple) and 5 (complex):\n   - All questions MUST require understanding connections between different parts of the context/transcript/segments\n   - Questions should test deep understanding, not simple facts\n   - Do not mention the existence of a context/transcript in the generated question like \"in the transcript\", \"from the given context\", or \"in Segment 148\". Produce a natural, standalone question.\n   - Only use facts present in the provided context/transcript; if missing, say you cannot generate a question.\n   - Example: \"How does the speaker's initial explanation of X relate to the later implementation of Y?\"\n\n2. Question Types to Generate (for the \"query_type\" field - ONLY these 3 values allowed):\n   - \"multi_hop\" (3 questions): Connect 1-1 separated segments\n   - \"structural\" (2 questions): Focus on relationships between concepts\n   - \"contextual\" (2 questions): Require surrounding context to understand\n   - Use the cross-part context snippets to connect evidence that lives outside the current transcript section\n\n3. Reasoning Types to Include (for the \"reasoning_type\" field - ONLY these 7 values allowed):\n   - \"factual\" (1 questions): Ask for complex facts that require synthesizing multiple pieces of information (NOT simple lookups)\n   - \"relational\" (1 questions): Ask how data points compare or correlate across different segments\n   - \"inferential\" (1 questions): Ask about conclusions or implications requiring synthesis\n   - \"temporal\" (1 questions): Ask about changes or events over time across segments\n   - \"procedural\" (1 questions): Ask about complex multi-step processes or guidelines\n   - \"visual\" (1 questions): Ask about visual details requiring cross-reference\n   - \"causal\" (1 questions): Ask about cause-effect chains spanning segments\n   \n   Example COMPLEX questions by reasoning type:\n   - Factual: \"What is the total combined budget allocation across all departmental initiatives mentioned, and how does it relate to the overall fiscal year target?\"\n   - Relational: \"How does the performance metric achieved in Q2 compare to both the initial baseline and the revised targets that were set?\"\n   - Inferential: \"Based on the challenges outlined and the proposed solutions, what unstated assumptions underlie the strategic pivot?\"\n   - Temporal: \"How did the implementation timeline evolve from the initial proposal through the mid-year review to the final execution phase?\"\n   - Procedural: \"What is the complete approval workflow including standard requirements, exceptions, and escalation processes?\"\n   - Visual: \"How do the visual elements presented relate to the verbal descriptions provided, and what discrepancies exist between them?\"\n   - Causal: \"What chain of events, starting from the initial decision, led through various complications to the final outcome?\"\n\n4. IMPORTANT - Orthogonal Distributions (query_type and reasoning_type are SEPARATE fields):\n   - Each question must have BOTH a query_type (multi_hop/structural/contextual) AND a reasoning_type (factual/relational/inferential/temporal/procedural/visual/causal)\n   - These are TWO DIFFERENT fields - do NOT put reasoning types in the query_type field!\n   - For example: A question can be query_type=\"multi_hop\" with reasoning_type=\"procedural\"\n   - Ensure the final distribution matches both specified percentages\n\n5. **IMPORTANT - Segment Identification**:\n   - The content below contains segments formatted as \"Segment N (HH:MM:SS - HH:MM:SS): text\" or \"Segment N [Doc: doc_id] (HH:MM:SS - HH:MM:SS): text\" where N starts from 1\n   - The \"[Doc: doc_id]\" tag indicates which document the segment belongs to (for multi-document bundles)\n   - For each question-answer pair you generate, identify ALL segment numbers FROM which the question is derived\n   - These segments are the source material that should be retrieved when someone asks this question\n   - Record these segment numbers in the \"segment_ids\" field as a list of integers (e.g., [1, 4, 8])\n   - For multi-document bundles, prefer questions that span multiple documents to maximize cross-document reasoning\n   - For multi-hop questions:\n     * The top-level \"segment_ids\" should be the UNION of all segment IDs across all hops\n     * Each hop in \"hop_contexts\" should specify its own \"segment_ids\" list\n     * Example: If hop 1 uses [1, 3] and hop 2 uses [6, 8], then top-level segment_ids should be [1, 3, 6, 8]\n     * For multi-document bundles, try to have different hops reference different documents\n\n6. For Each Question:\n   - Must have complexity level 1 or higher\n   - Generate the question FROM the identified segments (these segments are the source material)\n   - Multi-hop questions must specify hop_count (1-1)\n   - Provide hop_contexts: a list where each hop includes \"hop_number\", \"segment_ids\" (the source segments for this hop), and \"summary\" (a concise summary describing the supporting segments).\n\n7. Generate 1 distinct question and answer pairs.\n\nThe output should be a JSON object with a \"pairs\" field containing an array of 1 objects, where each object contains:\n  - \"question\": the question, requiring understanding of the contexts/transcripts/segments without explicitly referencing the context/transcript/segments in the question\n  - \"answer\": comprehensive answer from the contexts/transcripts/segments without explicitly referencing the context/transcript/segments in the answer\n  - \"question_complexity\": numeric score 1-5\n  - \"query_type\": MUST be exactly one of these three values: \"multi_hop\", \"structural\", or \"contextual\" (NO other values allowed - do NOT use reasoning types here)\n  - \"reasoning_type\": MUST be exactly one of these seven values: \"factual\", \"relational\", \"inferential\", \"temporal\", \"procedural\", \"visual\", or \"causal\" (this is DIFFERENT from query_type)\n  - \"segment_ids\": list of segment numbers (e.g., [1, 4, 8]) that are the source material for this question (these should be retrieved when the question is asked)\n  - \"hop_count\": number of hops (1-1) for multi_hop questions, or 1 for non-multi-hop questions\n  - \"hop_contexts\": array of hop detail objects with \"hop_number\", \"segment_ids\", \"summary\"\n\nCRITICAL: \"query_type\" and \"reasoning_type\" are TWO SEPARATE FIELDS with different allowed values. Do NOT mix them up:\n  - query_type can ONLY be: \"multi_hop\", \"structural\", \"contextual\"\n  - reasoning_type can ONLY be: \"factual\", \"relational\", \"inferential\", \"temporal\", \"procedural\", \"visual\", \"causal\"\n",
+        "model_alias": "artifact_extraction",
+        "system_prompt": "You are an expert at extracting question and answer pairs from provided context/transcript/segments.",
+        "multi_modal_context": null,
+        "tool_alias": null,
+        "with_trace": "none",
+        "extract_reasoning_content": false,
+        "output_format": {
+          "$defs": {
+            "HopContext": {
+              "description": "Context for a single hop in a multi-hop question",
+              "properties": {
+                "hop_number": {
+                  "description": "The hop number (1-indexed)",
+                  "title": "Hop Number",
+                  "type": "integer"
+                },
+                "segment_ids": {
+                  "description": "Segment IDs for this hop",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "title": "Segment Ids",
+                  "type": "array"
+                },
+                "summary": {
+                  "description": "Summary of the supporting segments for this hop",
+                  "title": "Summary",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "hop_number",
+                "segment_ids",
+                "summary"
+              ],
+              "title": "HopContext",
+              "type": "object"
+            },
+            "QuestionAnswerPair": {
+              "description": "A single question-answer pair with metadata",
+              "properties": {
+                "question": {
+                  "description": "The question requiring understanding of contexts without explicitly referencing them",
+                  "title": "Question",
+                  "type": "string"
+                },
+                "answer": {
+                  "description": "Comprehensive answer from the contexts without explicitly referencing them",
+                  "title": "Answer",
+                  "type": "string"
+                },
+                "question_complexity": {
+                  "description": "Numeric score from min_complexity to 5",
+                  "title": "Question Complexity",
+                  "type": "integer"
+                },
+                "query_type": {
+                  "description": "Type of query, one of multi_hop, structural, or contextual",
+                  "enum": [
+                    "multi_hop",
+                    "structural",
+                    "contextual"
+                  ],
+                  "title": "Query Type",
+                  "type": "string"
+                },
+                "reasoning_type": {
+                  "description": "Type of reasoning required, one of factual, relational, inferential, temporal, procedural, visual, or causal",
+                  "enum": [
+                    "factual",
+                    "relational",
+                    "inferential",
+                    "temporal",
+                    "procedural",
+                    "visual",
+                    "causal"
+                  ],
+                  "title": "Reasoning Type",
+                  "type": "string"
+                },
+                "segment_ids": {
+                  "description": "List of segment IDs that are source material for this question",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "title": "Segment Ids",
+                  "type": "array"
+                },
+                "hop_count": {
+                  "description": "Number of hops (min_hops to max_hops) for multi_hop questions, or 1 for non-multi-hop",
+                  "title": "Hop Count",
+                  "type": "integer"
+                },
+                "hop_contexts": {
+                  "description": "Array of hop detail objects",
+                  "items": {
+                    "$ref": "#/$defs/HopContext"
+                  },
+                  "title": "Hop Contexts",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "question",
+                "answer",
+                "question_complexity",
+                "query_type",
+                "reasoning_type",
+                "segment_ids",
+                "hop_count",
+                "hop_contexts"
+              ],
+              "title": "QuestionAnswerPair",
+              "type": "object"
+            }
+          },
+          "description": "Collection of question-answer pairs",
+          "properties": {
+            "pairs": {
+              "description": "List of question-answer pairs",
+              "items": {
+                "$ref": "#/$defs/QuestionAnswerPair"
+              },
+              "title": "Pairs",
+              "type": "array"
+            }
+          },
+          "required": [
+            "pairs"
+          ],
+          "title": "QuestionAnswerPairs",
+          "type": "object"
+        }
+      },
+      {
+        "name": "deduplicated_qa_pairs",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "data-designer-retrieval-dedup",
+        "qa_pairs_column": "qa_generation",
+        "embedding_alias": "embed",
+        "dedupe_similarity_threshold": 0.9
+      },
+      {
+        "name": "qa_evaluations",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "llm-structured",
+        "prompt": "You are an expert evaluator of question-answer pairs.\n\nYou will evaluate multiple question-answer pairs from a document.\n\n{% for qa_pair in deduplicated_qa_pairs %}\n=== QA Pair {{ loop.index }} ===\n\nQUESTION: {{ qa_pair.question }}\n\nANSWER: {{ qa_pair.answer }}\n\nCONTEXT (Relevant Segment IDs): {{ qa_pair.segment_ids }}\n\n{% endfor %}\n\n<segments>\n{% for chunk in chunks %}\n- Segment {{ chunk.chunk_id }}: {{ chunk.text }}\n{% endfor %}\n</segments>\n\nEvaluate EACH of the {{ deduplicated_qa_pairs | length }} QA pairs above.\n",
+        "model_alias": "artifact_extraction",
+        "system_prompt": "You are an expert evaluator of question-answer pairs.",
+        "multi_modal_context": null,
+        "tool_alias": null,
+        "with_trace": "none",
+        "extract_reasoning_content": false,
+        "output_format": {
+          "$defs": {
+            "QAEvaluation": {
+              "description": "Evaluation of a single QA pair",
+              "properties": {
+                "relevance": {
+                  "$ref": "#/$defs/QAEvaluationCriterion",
+                  "description": "Relevance of question to context"
+                },
+                "accuracy": {
+                  "$ref": "#/$defs/QAEvaluationCriterion",
+                  "description": "Factual accuracy of answer"
+                },
+                "context_support": {
+                  "$ref": "#/$defs/QAEvaluationCriterion",
+                  "description": "How well answer is supported by context"
+                },
+                "clarity": {
+                  "$ref": "#/$defs/QAEvaluationCriterion",
+                  "description": "Clarity and unambiguity of question"
+                },
+                "overall": {
+                  "$ref": "#/$defs/QAOverallEvaluation",
+                  "description": "Overall evaluation"
+                },
+                "improvements": {
+                  "description": "Suggestions for improving this QA pair",
+                  "title": "Improvements",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "relevance",
+                "accuracy",
+                "context_support",
+                "clarity",
+                "overall",
+                "improvements"
+              ],
+              "title": "QAEvaluation",
+              "type": "object"
+            },
+            "QAEvaluationCriterion": {
+              "description": "Evaluation criterion with score and justification",
+              "properties": {
+                "score": {
+                  "description": "Score from 1-10",
+                  "title": "Score",
+                  "type": "integer"
+                },
+                "justification": {
+                  "description": "Brief justification for the score",
+                  "title": "Justification",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "score",
+                "justification"
+              ],
+              "title": "QAEvaluationCriterion",
+              "type": "object"
+            },
+            "QAOverallEvaluation": {
+              "description": "Overall evaluation with score and assessment",
+              "properties": {
+                "score": {
+                  "description": "Overall score from 1-10",
+                  "title": "Score",
+                  "type": "number"
+                },
+                "assessment": {
+                  "description": "Final assessment of the QA pair",
+                  "title": "Assessment",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "score",
+                "assessment"
+              ],
+              "title": "QAOverallEvaluation",
+              "type": "object"
+            }
+          },
+          "description": "Evaluations for all QA pairs in a document",
+          "properties": {
+            "evaluations": {
+              "description": "List of evaluations, one per QA pair, in the same order as the QA pairs",
+              "items": {
+                "$ref": "#/$defs/QAEvaluation"
+              },
+              "title": "Evaluations",
+              "type": "array"
+            }
+          },
+          "required": [
+            "evaluations"
+          ],
+          "title": "QAPairEvaluations",
+          "type": "object"
+        }
+      },
+      {
+        "name": "file_name",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      },
+      {
+        "name": "text",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      },
+      {
+        "name": "chunks",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      },
+      {
+        "name": "sections_structured",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      },
+      {
+        "name": "bundle_id",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      },
+      {
+        "name": "bundle_members",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      },
+      {
+        "name": "is_multi_doc",
+        "drop": false,
+        "allow_resize": false,
+        "column_type": "seed-dataset"
+      }
+    ],
+    "model_configs": [
+      {
+        "alias": "embed",
+        "model": "nvidia/llama-3.2-nv-embedqa-1b-v2",
+        "inference_parameters": {
+          "generation_type": "embedding",
+          "max_parallel_requests": 8,
+          "timeout": null,
+          "extra_body": {
+            "input_type": "query",
+            "truncate": "NONE"
+          },
+          "encoding_format": "float",
+          "dimensions": null
+        },
+        "provider": "nvidia",
+        "skip_health_check": false
+      },
+      {
+        "alias": "artifact_extraction",
+        "model": "nvidia/nemotron-3-nano-30b-a3b",
+        "inference_parameters": {
+          "generation_type": "chat-completion",
+          "max_parallel_requests": 1,
+          "timeout": 120,
+          "extra_body": null,
+          "temperature": 0.6,
+          "top_p": 0.95,
+          "max_tokens": null
+        },
+        "provider": "nvidia",
+        "skip_health_check": false
+      }
+    ],
+    "tool_configs": [],
+    "seed_config": {
+      "source": {
+        "seed_type": "df"
+      },
+      "sampling_strategy": "ordered",
+      "selection_strategy": {
+        "start": 30,
+        "end": 39
+      }
+    },
+    "constraints": null,
+    "profilers": null,
+    "processors": null
+  },
+  "library_version": "0.5.3"
+}
