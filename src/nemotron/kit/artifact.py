@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from nemotron.kit.artifacts import (
     Artifact,
     DataBlendsArtifact,
+    EmbedDataArtifact,
+    EmbedModelArtifact,
     ModelArtifact,
     PretrainBlendsArtifact,
     PretrainDataArtifact,
@@ -40,6 +42,8 @@ __all__ = [
     "Artifact",
     "TrackingInfo",
     "DataBlendsArtifact",
+    "EmbedDataArtifact",
+    "EmbedModelArtifact",
     "PretrainBlendsArtifact",
     "PretrainDataArtifact",
     "SFTDataArtifact",
