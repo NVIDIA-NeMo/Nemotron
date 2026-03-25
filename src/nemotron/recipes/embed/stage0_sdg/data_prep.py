@@ -67,6 +67,9 @@ DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
+# HuggingFace URI prefix for downloading datasets
+_HF_PREFIX = "hf://"
+
 
 class SDGConfig(RecipeSettings):
     """Synthetic Data Generation configuration.
@@ -80,7 +83,7 @@ class SDGConfig(RecipeSettings):
 
     # --- Core paths -----------------------------------------------------------
     corpus_id: str = Field(default="my_corpus", description="Identifier for your corpus (used in output naming).")
-    corpus_dir: Path = Field(default_factory=lambda: Path("./data/corpus"), description="Path to directory containing document files (.txt, .md, etc.).")
+    corpus_dir: str = Field(default="./data/corpus", description="Local path or hf:// URI to directory containing document files (.txt, .md, etc.).")
     output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage0_sdg", description="Output directory for generated synthetic data.")
     file_extensions: str | None = Field(default=None, description="Comma-separated list of file extensions to process.")
     nvidia_api_key: str | None = Field(default=None, description="NVIDIA API key for LLM access. If None, uses NVIDIA_API_KEY env var.")
@@ -131,6 +134,60 @@ class SDGConfig(RecipeSettings):
     artifact_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage0_sdg/artifacts", description="Path to store Data Designer artifacts.")
     preview: bool = Field(default=False, description="Preview the generation without actually running.")
     log_level: str = Field(default="INFO", description="Logging level: DEBUG, INFO, WARNING, or ERROR.")
+
+
+def _resolve_corpus_dir(corpus_dir: str) -> Path:
+    """Resolve corpus_dir, downloading from HuggingFace if it uses the hf:// scheme.
+
+    Supports URIs of the form::
+
+        hf://org/dataset/subdir/path
+        hf://org/dataset@revision/subdir/path
+
+    Files are cached by huggingface_hub so subsequent calls are a no-op.
+
+    Args:
+        corpus_dir: Local path or ``hf://`` URI.
+
+    Returns:
+        Resolved local Path to the corpus directory.
+    """
+    if not corpus_dir.startswith(_HF_PREFIX):
+        return Path(corpus_dir).resolve()
+
+    from huggingface_hub import snapshot_download
+
+    # Parse hf://org/dataset[@revision][/subdir/path]
+    rest = corpus_dir[len(_HF_PREFIX):]
+    parts = rest.split("/", 2)
+    if len(parts) < 2:
+        print(f"Error: Invalid hf:// URI: {corpus_dir}", file=sys.stderr)
+        print("  Expected: hf://org/dataset[@revision][/subdir/path]", file=sys.stderr)
+        sys.exit(1)
+
+    # Extract optional revision from dataset name (org/dataset@revision)
+    repo_id = f"{parts[0]}/{parts[1]}"
+    revision = None
+    if "@" in parts[1]:
+        dataset_name, revision = parts[1].rsplit("@", 1)
+        repo_id = f"{parts[0]}/{dataset_name}"
+
+    subdir = parts[2] if len(parts) > 2 else None
+
+    print(f"📥 Downloading corpus from HuggingFace ({repo_id})...")
+    kwargs = {
+        "repo_id": repo_id,
+        "repo_type": "dataset",
+    }
+    if revision:
+        kwargs["revision"] = revision
+    if subdir:
+        kwargs["allow_patterns"] = f"{subdir}/**"
+
+    local_dir = snapshot_download(**kwargs)
+    corpus_path = Path(local_dir) / subdir if subdir else Path(local_dir)
+    print(f"   Downloaded to: {corpus_path}")
+    return corpus_path
 
 
 def _validate_corpus(
@@ -281,9 +338,11 @@ def run_sdg(cfg: SDGConfig) -> Path:
     # Import from vendored retriever_sdg (installed via pyproject.toml)
     from retriever_sdg.pipeline import generate
 
-    # Resolve all Path fields to absolute so downstream libraries (data-designer)
+    # Resolve corpus_dir (handles hf:// URIs and local paths)
+    corpus_dir = _resolve_corpus_dir(cfg.corpus_dir)
+
+    # Resolve remaining Path fields to absolute so downstream libraries
     # don't depend on CWD and error messages show full paths.
-    corpus_dir = cfg.corpus_dir.resolve()
     output_dir = cfg.output_dir.resolve()
     artifact_path = cfg.artifact_path.resolve()
 
