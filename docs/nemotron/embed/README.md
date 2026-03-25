@@ -56,8 +56,11 @@ container_image = "nvcr.io/nvidia/pytorch:25.01-py3"
 $ export LD_LIBRARY_PATH=""
 $ export NVIDIA_API_KEY=nvapi-your_key_here
 
-// Stage 0: Generate synthetic Q&A pairs from your documents
-$ nemotron embed sdg -c default corpus_dir=/path/to/your/docs
+// Stage 0: Generate synthetic Q&A pairs (sample corpus auto-downloaded from HuggingFace)
+$ nemotron embed sdg -c default
+
+// Or use your own documents:
+// nemotron embed sdg -c default corpus_dir=/path/to/your/docs
 
 // Stage 1: Prepare training data (convert, mine hard negatives, unroll)
 $ nemotron embed prep -c default
@@ -207,7 +210,7 @@ nemotron embed finetune -c default num_epochs=5 learning_rate=2e-5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `corpus_dir` | `./data/corpus` | Path to your documents |
+| `corpus_dir` | `data/sample_corpus/nv_pp_random` | Path to your documents (sample auto-downloaded from HuggingFace) |
 | `file_extensions` | `.txt,.md` | File types to process |
 | `artifact_extraction_model` | `nvidia/nemotron-3-nano-30b-a3b` | LLM for document extraction |
 | `max_parallel_requests_for_gen` | `4` | Parallel API requests |
