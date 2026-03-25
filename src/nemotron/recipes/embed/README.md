@@ -97,8 +97,11 @@ export NVIDIA_API_KEY=nvapi-your_key_here
 ### 3. Run the Pipeline
 
 ```bash
-# Stage 0: Generate synthetic Q&A pairs from your documents
-nemotron embed sdg -c default corpus_dir=/path/to/your/docs
+# Stage 0: Generate synthetic Q&A pairs (sample corpus auto-downloaded from HuggingFace)
+nemotron embed sdg -c default
+
+# Or use your own documents:
+# nemotron embed sdg -c default corpus_dir=/path/to/your/docs
 
 # Stage 1: Prepare training data (convert, mine hard negatives, unroll)
 nemotron embed prep -c default
