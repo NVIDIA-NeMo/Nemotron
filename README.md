@@ -17,6 +17,12 @@
 
 ---
 
+> 🎉Nemotron 3 Ultra was announced at GTC San Jose 2026\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)\!
+
+
+---
+
+
 ## Why Nemotron?
 
 | | |
