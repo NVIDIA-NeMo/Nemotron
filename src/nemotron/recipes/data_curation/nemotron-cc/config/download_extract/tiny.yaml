@@ -1,0 +1,18 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# Tiny config for download-extract
+#
+# Usage:
+#   nemotron data curate nemotron-cc download-extract -c tiny
+
+start_snapshot: "2024-51"
+end_snapshot: "2024-51"
+output_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/cleaned_extracted
+cache_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/cache
+url_limit: 2
+record_limit: 100
+languages: null
+storage_options: null
+num_cpus: null

@@ -1,3 +1,24 @@
+#!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# name = "data/curate/nemotron-cc/quality-classify"
+# image = "nvcr.io/nvidia/nemo:25.02"
+#
+# [tool.runspec.run]
+# launch = "ray"
+# cmd = "uv run --extra curator python {script} --config {config}"
+#
+# [tool.runspec.config]
+# dir = "./config/quality_classify"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 0
+# ///
+
 # Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,25 +38,34 @@
 This script performs model-based quality labeling in two phases that can
 be run together or independently:
 
-  1. Classification (--classify) — filter to English, then run an ensemble
-     of three quality classifiers (FineWebNemotronEduClassifier,
-     FineWebMixtralEduClassifier, and fasttext-oh-eli5) on the
-     deduplicated data.  Writes classification results (with float scores)
-     to parquet.
+  1. Classification (classify=true) -- filter to English, then run an ensemble
+     of three quality classifiers on the deduplicated data.
 
-  2. Ensemble & Bucketing (--ensemble) — compute token-weighted percentile
-     thresholds from the classification scores, map float scores to integer
-     bins (0–19), take the per-document max across classifiers, and write
-     the bucketed results partitioned by ensemble-max-int.
+  2. Ensemble & Bucketing (ensemble=true) -- compute token-weighted percentile
+     thresholds, map to integer bins (0-19), take per-document max across
+     classifiers, and write bucketed results.
+
+CLI:
+    nemotron data curate nemotron-cc quality-classify                # local execution
+    nemotron data curate nemotron-cc quality-classify --run dlw      # submit to cluster
+
+Direct usage:
+    uv run python step_3-quality_classification.py
+    uv run python step_3-quality_classification.py --config /path/to/config.yaml
+    uv run python step_3-quality_classification.py classify=false ensemble=true
 
 See README.md in this directory for detailed usage instructions.
 """
 
-import argparse
+from __future__ import annotations
+
 import ctypes
 import json
 import os
+import sys
 import time
+from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -56,6 +86,19 @@ from nemo_curator.stages.text.io.reader import JsonlReader, ParquetReader
 from nemo_curator.stages.text.io.writer import ParquetWriter
 from nemo_curator.tasks import DocumentBatch
 from nemo_curator.tasks.utils import TaskPerfUtils
+
+from nemotron.kit.train_script import (
+    apply_hydra_overrides,
+    load_omegaconf_yaml,
+    omegaconf_to_dataclass,
+    parse_config_and_overrides,
+)
+
+STAGE_PATH = Path(__file__).parent
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "quality_classify" / "default.yaml"
+
+# Module-level flag for Ray execution (used by nemotron CLI)
+RAY = True
 
 # ---------------------------------------------------------------------------
 # Classifier score column names
@@ -80,6 +123,26 @@ FASTTEXT_HQ_MODEL_REPO = "mlfoundations/fasttext-oh-eli5"
 FASTTEXT_HQ_MODEL_FILENAME = "openhermes_reddit_eli5_vs_rw_v2_bigram_200k_train.bin"
 
 
+@dataclass
+class QualityClassifyConfig:
+    """Config for quality classification and bucketing."""
+
+    # Operation flags
+    classify: bool = True
+    ensemble: bool = True
+
+    # Paths
+    input_dir: str = "./data/fuzzy_deduplicated/fuzzy_deduplicated"
+    output_dir: str = "./data/quality_labeling"
+
+    # Threshold sampling
+    threshold_sample_frac: float = 0.01
+
+    # Ray cluster
+    num_gpus: int | None = None
+    num_cpus: int | None = None
+
+
 # ---------------------------------------------------------------------------
 # Threshold / binning helpers
 # ---------------------------------------------------------------------------
@@ -102,7 +165,7 @@ def weighted_percentile(data: np.ndarray, percentiles: np.ndarray, weights: np.n
 
 
 def compute_thresholds(score_ar: np.ndarray, token_ar: np.ndarray) -> dict[int, float]:
-    """Return {percentile: threshold} for 5th, 10th, …, 95th percentiles."""
+    """Return {percentile: threshold} for 5th, 10th, ..., 95th percentiles."""
     percentiles = np.arange(5, 100, 5)
     thresholds = weighted_percentile(score_ar, percentiles, weights=token_ar)
     return {int(p): float(t) for p, t in zip(percentiles, thresholds)}
@@ -113,11 +176,7 @@ def compute_thresholds_for_score_columns(
     text_col_name: str,
     score_col_names: list[str],
 ) -> dict[str, dict[int, float]]:
-    """Compute percentile-based thresholds for each score column.
-
-    ``text_col_name`` should reference a column of pre-computed integer
-    byte-lengths (e.g. ``"token_length"``).
-    """
+    """Compute percentile-based thresholds for each score column."""
     token_ar = df[text_col_name].to_numpy()
     threshold_dict = {}
     for score_col in score_col_names:
@@ -144,7 +203,7 @@ def map_score_columns(
     score_col_names: list[str],
     threshold_dict: dict[str, dict[int, float]],
 ) -> pd.DataFrame:
-    """Apply score→int mapping for every classifier."""
+    """Apply score->int mapping for every classifier."""
     for score_col_name in score_col_names:
         score_int_name = score_col_name + "-int"
         thresholds = threshold_dict.get(score_col_name)
@@ -170,17 +229,16 @@ def _save_metrics(metrics: dict, file_path: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 1 — Classify
+# Phase 1 -- Classify
 # ---------------------------------------------------------------------------
 
-def run_classification(args: argparse.Namespace) -> None:
+def run_classification(cfg: QualityClassifyConfig) -> None:
     """Filter to English, run 3 classifiers, write parquet."""
     from huggingface_hub import hf_hub_download
 
-    classification_results_dir = os.path.join(args.output_dir, "classification_results")
+    classification_results_dir = os.path.join(cfg.output_dir, "classification_results")
     os.makedirs(classification_results_dir, exist_ok=True)
 
-    # Download the fasttext quality model
     fasttext_model_path = hf_hub_download(
         repo_id=FASTTEXT_HQ_MODEL_REPO,
         filename=FASTTEXT_HQ_MODEL_FILENAME,
@@ -188,17 +246,14 @@ def run_classification(args: argparse.Namespace) -> None:
     logger.info(f"FastText quality model path: {fasttext_model_path}")
 
     logger.info("Starting quality classification pipeline")
-    logger.info(f"  Input: {args.input_dir}")
+    logger.info(f"  Input: {cfg.input_dir}")
     logger.info(f"  Output: {classification_results_dir}")
     start_time = time.perf_counter()
 
-    # --- Build the pipeline ---
     pipeline = Pipeline(name="quality-classification")
 
-    # 1. Read deduplicated JSONL
-    pipeline.add_stage(JsonlReader(args.input_dir))
+    pipeline.add_stage(JsonlReader(cfg.input_dir))
 
-    # 2. Filter to English inline
     pipeline.add_stage(
         Filter(
             filter_fn=lambda lang: lang == "EN",
@@ -206,7 +261,6 @@ def run_classification(args: argparse.Namespace) -> None:
         )
     )
 
-    # 3a. Score with FastText quality (CPU, uses Score to add column)
     pipeline.add_stage(
         Score(
             score_fn=FastTextQualityFilter(model_path=fasttext_model_path, label="__label__hq"),
@@ -215,7 +269,6 @@ def run_classification(args: argparse.Namespace) -> None:
         )
     )
 
-    # 3b. Nemotron-4 edu classifier (GPU)
     pipeline.add_stage(
         FineWebNemotronEduClassifier(
             float_score_field=CLASSIFIER_SCORES["nemotron"]["float_score"],
@@ -224,7 +277,6 @@ def run_classification(args: argparse.Namespace) -> None:
         )
     )
 
-    # 3c. Mixtral edu classifier (GPU)
     pipeline.add_stage(
         FineWebMixtralEduClassifier(
             float_score_field=CLASSIFIER_SCORES["mixtral"]["float_score"],
@@ -233,8 +285,6 @@ def run_classification(args: argparse.Namespace) -> None:
         )
     )
 
-    # 4. Drop label and original int_score columns — the ensemble step
-    #    recomputes 0–19 int bins from the float scores.
     cols_to_drop = [
         v[k]
         for v in CLASSIFIER_SCORES.values()
@@ -250,7 +300,6 @@ def run_classification(args: argparse.Namespace) -> None:
 
     pipeline.add_stage(drop_unused_cols)
 
-    # 5. Write classification results to parquet
     pipeline.add_stage(ParquetWriter(classification_results_dir, mode="overwrite"))
 
     results = pipeline.run()
@@ -261,11 +310,11 @@ def run_classification(args: argparse.Namespace) -> None:
 
     metrics = TaskPerfUtils.aggregate_task_metrics(results)
     metrics["total_elapsed_s"] = round(elapsed, 2)
-    _save_metrics(metrics, os.path.join(args.output_dir, "classification_metrics.json"))
+    _save_metrics(metrics, os.path.join(cfg.output_dir, "classification_metrics.json"))
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 — Ensemble & Bucket
+# Phase 2 -- Ensemble & Bucket
 # ---------------------------------------------------------------------------
 
 def _sample_threshold_data(
@@ -273,15 +322,7 @@ def _sample_threshold_data(
     score_col_names: list[str],
     sample_frac: float,
 ) -> pd.DataFrame:
-    """Read score columns + token byte-lengths from every classification
-    result file, sampling a fraction of rows from each.
-
-    Uses Ray to read files in parallel.  Computes byte-lengths of the
-    ``text`` column inside each Ray task so that only the scores and a
-    small integer ``token_length`` column are transferred to the driver,
-    keeping driver memory proportional to the number of score columns
-    rather than the size of the raw text.
-    """
+    """Read score columns + token byte-lengths, sampling a fraction of rows."""
     import glob
 
     import ray
@@ -300,7 +341,6 @@ def _sample_threshold_data(
         df = pd.read_parquet(path, columns=columns)
         if frac < 1.0:
             df = df.sample(frac=frac)
-        # Compute byte-length on the worker and drop text before returning
         df["token_length"] = df["text"].str.encode("utf-8").apply(len)
         df = df.drop(columns=["text"])
         return df
@@ -313,11 +353,11 @@ def _sample_threshold_data(
     return df
 
 
-def run_ensemble(args: argparse.Namespace) -> None:
+def run_ensemble(cfg: QualityClassifyConfig) -> None:
     """Compute thresholds, map to int bins, ensemble, write bucketed parquet."""
-    classification_results_dir = os.path.join(args.output_dir, "classification_results")
-    thresholds_path = os.path.join(args.output_dir, "classifier_thresholds.json")
-    bucketed_results_dir = os.path.join(args.output_dir, "bucketed_results")
+    classification_results_dir = os.path.join(cfg.output_dir, "classification_results")
+    thresholds_path = os.path.join(cfg.output_dir, "classifier_thresholds.json")
+    bucketed_results_dir = os.path.join(cfg.output_dir, "bucketed_results")
     os.makedirs(bucketed_results_dir, exist_ok=True)
 
     logger.info("Starting ensemble & bucketing pipeline")
@@ -325,17 +365,13 @@ def run_ensemble(args: argparse.Namespace) -> None:
     logger.info(f"  Output: {bucketed_results_dir}")
     start_time = time.perf_counter()
 
-    # Float score column names for all three classifiers
     score_col_names = [v["float_score"] for v in CLASSIFIER_SCORES.values()]
-
-    # Integer score column names (will be created by map_score_columns)
     int_column_names = [col + "-int" for col in score_col_names]
 
-    # --- Step 1: Compute thresholds from a sample of classification results ---
     logger.info("Computing token-weighted percentile thresholds...")
     t_sample_start = time.perf_counter()
     df_sample = _sample_threshold_data(
-        classification_results_dir, score_col_names, args.threshold_sample_frac
+        classification_results_dir, score_col_names, cfg.threshold_sample_frac
     )
     num_sampled_docs = len(df_sample)
     t_sample_elapsed = time.perf_counter() - t_sample_start
@@ -350,14 +386,11 @@ def run_ensemble(args: argparse.Namespace) -> None:
 
     save_thresholds(threshold_dict, thresholds_path)
     del df_sample
-    # glibc malloc keeps freed pages mapped; trim them back to the OS so the
-    # subsequent pipeline doesn't start from an inflated RSS baseline.
     try:
         ctypes.CDLL("libc.so.6").malloc_trim(0)
     except (OSError, AttributeError):
         pass
 
-    # --- Step 2: Map scores to ints, ensemble, write bucketed ---
     logger.info("Running ensemble & bucketing pipeline...")
     t_pipeline_start = time.perf_counter()
 
@@ -374,7 +407,6 @@ def run_ensemble(args: argparse.Namespace) -> None:
 
     pipeline.add_stage(ensemble_score)
 
-    # Write partitioned by ensemble bucket
     pipeline.add_stage(
         _PartitionedParquetWriter(
             bucketed_results_dir,
@@ -391,18 +423,17 @@ def run_ensemble(args: argparse.Namespace) -> None:
     logger.info(f"Ensemble & bucketing completed in {elapsed:.1f}s")
     logger.info(f"  Bucketed results written to: {bucketed_results_dir}")
 
-    # Print bucket distribution
     buckets = sorted(os.listdir(bucketed_results_dir))
     logger.info(f"  Buckets created: {buckets}")
 
     metrics = TaskPerfUtils.aggregate_task_metrics(results)
     metrics["threshold_sampling_elapsed_s"] = round(t_sample_elapsed, 2)
     metrics["threshold_sampling_num_docs"] = num_sampled_docs
-    metrics["threshold_sampling_frac"] = args.threshold_sample_frac
+    metrics["threshold_sampling_frac"] = cfg.threshold_sample_frac
     metrics["threshold_computation_elapsed_s"] = round(t_thresh_elapsed, 2)
     metrics["pipeline_elapsed_s"] = round(t_pipeline_elapsed, 2)
     metrics["total_elapsed_s"] = round(elapsed, 2)
-    _save_metrics(metrics, os.path.join(args.output_dir, "bucketing_metrics.json"))
+    _save_metrics(metrics, os.path.join(cfg.output_dir, "bucketing_metrics.json"))
 
 
 class _PartitionedParquetWriter(ParquetWriter):
@@ -417,90 +448,50 @@ class _PartitionedParquetWriter(ParquetWriter):
 
 
 # ---------------------------------------------------------------------------
-# Main & CLI
+# Main
 # ---------------------------------------------------------------------------
 
-def main(args: argparse.Namespace) -> None:
-    if not args.classify and not args.ensemble:
-        raise ValueError("No operation specified. Use --classify and/or --ensemble flags.")
+def run_quality_classify(cfg: QualityClassifyConfig) -> None:
+    """Run quality classification pipeline."""
+    if not cfg.classify and not cfg.ensemble:
+        raise ValueError("No operation specified. Set classify=true and/or ensemble=true.")
 
-    ray_client = RayClient(num_gpus=args.num_gpus, num_cpus=args.num_cpus)
+    ray_client = RayClient(num_gpus=cfg.num_gpus, num_cpus=cfg.num_cpus)
     ray_client.start()
 
     logger.info("Starting Nemotron-CC quality classification")
 
-    if args.classify:
-        run_classification(args)
+    if cfg.classify:
+        run_classification(cfg)
 
-    if args.ensemble:
-        run_ensemble(args)
+    if cfg.ensemble:
+        run_ensemble(cfg)
 
     ray_client.stop()
 
 
-def attach_args() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Quality classification and bucketing for Nemotron-CC: "
-            "filter to English, run an ensemble of quality classifiers, "
-            "and write bucketed output (0-19)."
-        ),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def main(cfg: QualityClassifyConfig | None = None) -> None:
+    """Entry point for quality classification.
 
-    # Operation flags
-    parser.add_argument(
-        "--classify",
-        action="store_true",
-        help="Run the classification phase: filter to English and score with 3 quality classifiers.",
-    )
-    parser.add_argument(
-        "--ensemble",
-        action="store_true",
-        help="Run the ensemble phase: compute thresholds, map to int bins, and write bucketed output.",
-    )
+    Args:
+        cfg: Config from CLI framework, or None when run directly as script.
+    """
+    if cfg is None:
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
-    # Paths
-    parser.add_argument(
-        "--input-dir",
-        type=str,
-        required=True,
-        help="Directory containing deduplicated JSONL input (e.g. output of step 2b fuzzy dedup).",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="./data/quality_labeling",
-        help="Base output directory. Sub-directories will be created for classification_results/, "
-        "classifier_thresholds.json, and bucketed_results/.",
-    )
+        try:
+            config = load_omegaconf_yaml(config_path)
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    # Threshold sampling
-    parser.add_argument(
-        "--threshold-sample-frac",
-        type=float,
-        default=0.01,
-        help="Fraction of rows to sample per file when computing percentile thresholds. "
-        "Use < 1.0 (e.g. 0.01) to reduce memory at large scale.",
-    )
+        if cli_overrides:
+            config = apply_hydra_overrides(config, cli_overrides)
 
-    # Ray cluster
-    parser.add_argument(
-        "--num-gpus",
-        type=int,
-        default=None,
-        help="Number of GPUs for a local Ray cluster (default: all available).",
-    )
-    parser.add_argument(
-        "--num-cpus",
-        type=int,
-        default=None,
-        help="Number of CPUs for a local Ray cluster (default: all available).",
-    )
+        cfg = omegaconf_to_dataclass(config, QualityClassifyConfig)
 
-    return parser
+    run_quality_classify(cfg)
 
 
 if __name__ == "__main__":
-    args = attach_args().parse_args()
-    main(args)
+    main()

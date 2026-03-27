@@ -1,0 +1,31 @@
+run:
+  env:
+    container: nvcr.io/nvidia/nemo:25.02
+
+# Operation flags
+identify: true
+remove: true
+
+# Paths
+input_dir: ${oc.env:PWD}/../output/nemotron-cc/cleaned_extracted
+cache_dir: ${oc.env:PWD}/../output/nemotron-cc/exact_dedup_cache
+output_dir: ${oc.env:PWD}/../output/nemotron-cc/exact_deduplicated
+
+# Input/output format
+input_filetype: jsonl
+text_field: text
+output_filetype: jsonl
+
+# Identification settings
+input_blocksize: "256MiB"
+identification_batchsize: 12
+total_nparts: null
+rmm_pool_size: "auto"
+spill_memory_limit: "auto"
+
+# Cloud storage
+storage_options: null
+
+# Ray cluster
+num_gpus: null
+num_cpus: null

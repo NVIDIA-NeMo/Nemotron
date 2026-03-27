@@ -1,3 +1,24 @@
+#!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# name = "data/curate/nemotron-cc/fuzzy-dedup"
+# image = "nvcr.io/nvidia/nemo:25.02"
+#
+# [tool.runspec.run]
+# launch = "ray"
+# cmd = "uv run --extra curator python {script} --config {config}"
+#
+# [tool.runspec.config]
+# dir = "./config/fuzzy_dedup"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 0
+# ///
+
 # Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,22 +38,32 @@
 This script performs fuzzy deduplication in two phases that can be run
 together or independently:
 
-  1. Identification (--identify) — compute MinHash signatures, perform
+  1. Identification (identify=true) -- compute MinHash signatures, perform
      Locality Sensitive Hashing, and find fuzzy duplicates via connected
-     components (GPU-accelerated). Writes duplicate IDs and an ID
-     generator mapping to --output-dir, with intermediate artifacts
-     stored in --cache-dir.
+     components (GPU-accelerated).
 
-  2. Removal (--remove) — read the duplicate IDs from --output-dir and
-     remove them from the original dataset, writing deduplicated output
-     to --output-dir/fuzzy_deduplicated.
+  2. Removal (remove=true) -- read the duplicate IDs and remove them from
+     the original dataset, writing deduplicated output.
+
+CLI:
+    nemotron data curate nemotron-cc fuzzy-dedup                # local execution
+    nemotron data curate nemotron-cc fuzzy-dedup --run dlw      # submit to cluster
+
+Direct usage:
+    uv run python step_2b-fuzzy_dedup.py
+    uv run python step_2b-fuzzy_dedup.py --config /path/to/config.yaml
+    uv run python step_2b-fuzzy_dedup.py identify=false remove=true
 
 See README.md in this directory for detailed usage instructions.
 """
 
-import argparse
+from __future__ import annotations
+
 import json
+import sys
 import time
+from dataclasses import dataclass
+from pathlib import Path
 
 from loguru import logger
 
@@ -44,6 +75,15 @@ from nemo_curator.stages.file_partitioning import FilePartitioningStage
 from nemo_curator.stages.text.deduplication.removal_workflow import TextDuplicatesRemovalWorkflow
 from nemo_curator.tasks import EmptyTask
 
+from nemotron.kit.train_script import (
+    apply_hydra_overrides,
+    load_omegaconf_yaml,
+    omegaconf_to_dataclass,
+    parse_config_and_overrides,
+)
+
+STAGE_PATH = Path(__file__).parent
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "fuzzy_dedup" / "default.yaml"
 
 FUZZY_DEDUP_IDS_SUBDIR = "FuzzyDuplicateIds"
 ID_GENERATOR_FILENAME = "fuzzy_id_generator.json"
@@ -53,39 +93,69 @@ DEFAULT_CHAR_NGRAMS = 24
 DEFAULT_NUM_BANDS = 20
 DEFAULT_MINHASHES_PER_BAND = 13
 
+# Module-level flag for Ray execution (used by nemotron CLI)
+RAY = True
 
-def run_identification(args: argparse.Namespace) -> None:
-    """Run fuzzy duplicate identification using FuzzyDeduplicationWorkflow.
 
-    Writes FuzzyDuplicateIds/ and fuzzy_id_generator.json into --output-dir,
-    with intermediate artifacts (minhashes, LSH buckets, etc.) in --cache-dir.
-    """
-    storage_options = json.loads(args.storage_options) if args.storage_options else None
+@dataclass
+class FuzzyDedupConfig:
+    """Config for fuzzy deduplication."""
+
+    # Operation flags
+    identify: bool = True
+    remove: bool = True
+
+    # Paths
+    input_dir: str = "./data/exact_deduplicated/exact_deduplicated"
+    cache_dir: str = "./data/fuzzy_dedup_cache"
+    output_dir: str = "./data/fuzzy_deduplicated"
+
+    # Input/output format
+    input_filetype: str = "jsonl"
+    text_field: str = "text"
+    output_filetype: str = "jsonl"
+
+    # Fuzzy dedup settings
+    input_blocksize: str = "256MiB"
+    bands_per_iteration: int = 5
+    total_nparts: int | None = None
+
+    # Cloud storage
+    storage_options: str | None = None
+
+    # Ray cluster
+    num_gpus: int | None = None
+    num_cpus: int | None = None
+
+
+def run_identification(cfg: FuzzyDedupConfig) -> None:
+    """Run fuzzy duplicate identification using FuzzyDeduplicationWorkflow."""
+    storage_options = json.loads(cfg.storage_options) if cfg.storage_options else None
     storage_kwargs = {"storage_options": storage_options} if storage_options else None
 
     logger.info("Starting fuzzy duplicate identification")
-    logger.info(f"  Input: {args.input_dir}")
-    logger.info(f"  Cache dir: {args.cache_dir}")
-    logger.info(f"  Output dir: {args.output_dir}")
+    logger.info(f"  Input: {cfg.input_dir}")
+    logger.info(f"  Cache dir: {cfg.cache_dir}")
+    logger.info(f"  Output dir: {cfg.output_dir}")
     logger.info(f"  Config: char_ngrams={DEFAULT_CHAR_NGRAMS}, num_bands={DEFAULT_NUM_BANDS}, "
-                f"minhashes_per_band={DEFAULT_MINHASHES_PER_BAND}, bands_per_iteration={args.bands_per_iteration}")
+                f"minhashes_per_band={DEFAULT_MINHASHES_PER_BAND}, bands_per_iteration={cfg.bands_per_iteration}")
     start_time = time.perf_counter()
 
     workflow = FuzzyDeduplicationWorkflow(
-        input_path=args.input_dir,
-        cache_path=args.cache_dir,
-        output_path=args.output_dir,
-        input_filetype=args.input_filetype,
-        input_blocksize=args.input_blocksize,
-        text_field=args.text_field,
+        input_path=cfg.input_dir,
+        cache_path=cfg.cache_dir,
+        output_path=cfg.output_dir,
+        input_filetype=cfg.input_filetype,
+        input_blocksize=cfg.input_blocksize,
+        text_field=cfg.text_field,
         read_kwargs=storage_kwargs,
         cache_kwargs=storage_kwargs,
         write_kwargs=storage_kwargs,
         char_ngrams=DEFAULT_CHAR_NGRAMS,
         num_bands=DEFAULT_NUM_BANDS,
         minhashes_per_band=DEFAULT_MINHASHES_PER_BAND,
-        bands_per_iteration=args.bands_per_iteration,
-        lsh_num_output_partitions=args.total_nparts,
+        bands_per_iteration=cfg.bands_per_iteration,
+        lsh_num_output_partitions=cfg.total_nparts,
     )
     workflow_result = workflow.run()
     elapsed = time.perf_counter() - start_time
@@ -102,34 +172,30 @@ def run_identification(args: argparse.Namespace) -> None:
     logger.info(f"  Fuzzy duplicates found: {num_duplicates}")
 
 
-def run_removal(args: argparse.Namespace) -> None:
-    """Remove identified fuzzy duplicates using TextDuplicatesRemovalWorkflow.
-
-    Reads duplicate IDs and ID generator from --output-dir, writes
-    deduplicated output to --output-dir/deduplicated.
-    """
-    storage_options = json.loads(args.storage_options) if args.storage_options else None
+def run_removal(cfg: FuzzyDedupConfig) -> None:
+    """Remove identified fuzzy duplicates using TextDuplicatesRemovalWorkflow."""
+    storage_options = json.loads(cfg.storage_options) if cfg.storage_options else None
     storage_kwargs = {"storage_options": storage_options} if storage_options else None
-    output_base = args.output_dir.rstrip("/")
+    output_base = cfg.output_dir.rstrip("/")
     ids_to_remove_path = f"{output_base}/{FUZZY_DEDUP_IDS_SUBDIR}"
     id_generator_path = f"{output_base}/{ID_GENERATOR_FILENAME}"
     deduplicated_output_path = f"{output_base}/fuzzy_deduplicated"
 
     output_kwargs = {}
-    if args.output_filetype == "jsonl":
+    if cfg.output_filetype == "jsonl":
         output_kwargs["force_ascii"] = False
     if storage_options:
         output_kwargs["storage_options"] = storage_options
 
     logger.info("Starting duplicate removal")
-    logger.info(f"  Input: {args.input_dir}")
+    logger.info(f"  Input: {cfg.input_dir}")
     logger.info(f"  IDs to remove: {ids_to_remove_path}")
     logger.info(f"  Output: {deduplicated_output_path}")
     start_time = time.perf_counter()
 
     file_partitioning_stage = FilePartitioningStage(
-        file_paths=args.input_dir,
-        blocksize=args.input_blocksize,
+        file_paths=cfg.input_dir,
+        blocksize=cfg.input_blocksize,
         file_extensions=None,
         storage_options=storage_options,
     )
@@ -139,14 +205,14 @@ def run_removal(args: argparse.Namespace) -> None:
     logger.info(f"File partitioning pipeline completed with {len(initial_tasks)} initial tasks")
 
     workflow = TextDuplicatesRemovalWorkflow(
-        input_path=args.input_dir,
+        input_path=cfg.input_dir,
         ids_to_remove_path=ids_to_remove_path,
         output_path=deduplicated_output_path,
-        input_filetype=args.input_filetype,
-        input_blocksize=args.input_blocksize,
+        input_filetype=cfg.input_filetype,
+        input_blocksize=cfg.input_blocksize,
         duplicate_id_field=CURATOR_DEDUP_ID_STR,
         id_generator_path=id_generator_path,
-        output_filetype=args.output_filetype,
+        output_filetype=cfg.output_filetype,
         output_fields=["url", "warc_id", "source_id", "language", "text", "file_name"],
         input_kwargs=storage_kwargs,
         output_kwargs=output_kwargs or None,
@@ -160,133 +226,47 @@ def run_removal(args: argparse.Namespace) -> None:
     logger.info(f"  Duplicates removed: {num_removed}")
 
 
-def main(args: argparse.Namespace) -> None:
-    if not args.identify and not args.remove:
-        raise ValueError("No operation specified. Use --identify and/or --remove flags.")
+def run_fuzzy_dedup(cfg: FuzzyDedupConfig) -> None:
+    """Run fuzzy deduplication pipeline."""
+    if not cfg.identify and not cfg.remove:
+        raise ValueError("No operation specified. Set identify=true and/or remove=true.")
 
-    ray_client = RayClient(num_gpus=args.num_gpus, num_cpus=args.num_cpus)
+    ray_client = RayClient(num_gpus=cfg.num_gpus, num_cpus=cfg.num_cpus)
     ray_client.start()
 
     logger.info("Starting Nemotron-CC fuzzy deduplication")
 
-    if args.identify:
-        run_identification(args)
+    if cfg.identify:
+        run_identification(cfg)
 
-    if args.remove:
-        run_removal(args)
+    if cfg.remove:
+        run_removal(cfg)
 
     ray_client.stop()
 
 
-def attach_args() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Fuzzy deduplication for Nemotron-CC: identification and removal of near-duplicate documents.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def main(cfg: FuzzyDedupConfig | None = None) -> None:
+    """Entry point for fuzzy deduplication.
 
-    # Operation flags
-    parser.add_argument(
-        "--identify",
-        action="store_true",
-        help="Run the identification phase to find fuzzy duplicates.",
-    )
-    parser.add_argument(
-        "--remove",
-        action="store_true",
-        help="Run the removal phase to remove identified duplicates.",
-    )
+    Args:
+        cfg: Config from CLI framework, or None when run directly as script.
+    """
+    if cfg is None:
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
-    # Paths
-    parser.add_argument(
-        "--input-dir",
-        type=str,
-        required=True,
-        help="Directory containing the input dataset (output of step 1).",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        type=str,
-        required=True,
-        help="Directory for intermediate artifacts (minhashes, LSH buckets, edges, connected components).",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        required=True,
-        help="Directory for duplicate IDs, ID generator, and deduplicated output.",
-    )
+        try:
+            config = load_omegaconf_yaml(config_path)
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    # Input format
-    parser.add_argument(
-        "--input-filetype",
-        type=str,
-        default="jsonl",
-        choices=["parquet", "jsonl"],
-        help="Format of the input files.",
-    )
-    parser.add_argument(
-        "--text-field",
-        type=str,
-        default="text",
-        help="Name of the field containing the document text.",
-    )
+        if cli_overrides:
+            config = apply_hydra_overrides(config, cli_overrides)
 
-    # Output format
-    parser.add_argument(
-        "--output-filetype",
-        type=str,
-        default="jsonl",
-        choices=["parquet", "jsonl"],
-        help="Format of the deduplicated output files.",
-    )
+        cfg = omegaconf_to_dataclass(config, FuzzyDedupConfig)
 
-    # Fuzzy dedup settings
-    parser.add_argument(
-        "--input-blocksize",
-        type=str,
-        default="256MiB",
-        help="Target partition size for input data (e.g., '256MiB', '512MiB', '2GiB').",
-    )
-    parser.add_argument(
-        "--bands-per-iteration",
-        type=int,
-        default=5,
-        help="Number of LSH bands to shuffle concurrently. Higher values are faster but use more memory.",
-    )
-
-    # Partitioning
-    parser.add_argument(
-        "--total-nparts",
-        type=int,
-        default=None,
-        help="Total number of output partitions for the LSH shuffle. Auto-determined if not set.",
-    )
-
-    # Cloud storage
-    parser.add_argument(
-        "--storage-options",
-        type=str,
-        default=None,
-        help='JSON string of fsspec storage options for cloud I/O (e.g., \'{"endpoint_url": "...", "key": "...", "secret": "..."}\').',
-    )
-
-    # Ray cluster
-    parser.add_argument(
-        "--num-gpus",
-        type=int,
-        default=None,
-        help="Number of GPUs for a local Ray cluster (default: all available). Ignored when connecting to an external cluster.",
-    )
-    parser.add_argument(
-        "--num-cpus",
-        type=int,
-        default=None,
-        help="Number of CPUs for a local Ray cluster (default: all available). Ignored when connecting to an external cluster.",
-    )
-
-    return parser
+    run_fuzzy_dedup(cfg)
 
 
 if __name__ == "__main__":
-    args = attach_args().parse_args()
-    main(args)
+    main()

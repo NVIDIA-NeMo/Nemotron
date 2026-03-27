@@ -50,6 +50,7 @@ s3 = ["s3fs>=2024.0.0"]
 gcs = ["gcsfs>=2024.0.0"]
 sentencepiece = ["sentencepiece>=0.2.0"]
 xenna = ["cosmos-xenna"]
+curator = ["nemo-curator[text-cpu]"]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -62,6 +63,7 @@ all = [
     "gcsfs>=2024.0.0",
     "sentencepiece>=0.2.0",
     "cosmos-xenna",
+    "nemo-curator[text-cpu]",
 ]
 
 # Note: megatron-bridge is required for training but not listed as a dependency
