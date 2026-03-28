@@ -177,6 +177,7 @@ nemo_runspec/artifacts.md
 nemotron/wandb.md
 nemotron/cli.md
 nemotron/data-prep.md
+nemotron/nemotron-cc.md
 nemotron/xenna-observability.md
 ```
 
