@@ -294,7 +294,8 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     train_count = 0
     eval_queries_path = cfg.output_dir / "eval_beir" / "queries.jsonl"
     if eval_queries_path.exists():
-        eval_query_count = sum(1 for _ in open(eval_queries_path))
+        with open(eval_queries_path) as f:
+            eval_query_count = sum(1 for _ in f)
         if eval_query_count < 50:
             print(f"\nWarning: Eval set has only {eval_query_count} queries (recommended: 50+).",
                   file=sys.stderr)
