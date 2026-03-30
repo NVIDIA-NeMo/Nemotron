@@ -119,6 +119,30 @@ nemotron embed export -c default
 nemotron embed deploy -c default
 ```
 
+### Using NVIDIA's Pre-Generated Dataset
+
+NVIDIA provides a ready-to-use synthetic retrieval dataset on HuggingFace: [Retrieval-Synthetic-NVDocs-v1](https://huggingface.co/datasets/nvidia/Retrieval-Synthetic-NVDocs-v1). This dataset was generated from NVIDIA's publicly available content using the same SDG pipeline (Stage 0) in this recipe, and contains ~15K documents with 105K+ question-answer pairs across multiple reasoning types.
+
+If you want to fine-tune on NVIDIA-related content, you can **skip Stage 0 entirely** and start directly from Stage 1:
+
+```bash
+# Download the pre-generated dataset
+python -c "
+from datasets import load_dataset
+ds = load_dataset('nvidia/Retrieval-Synthetic-NVDocs-v1', split='train')
+ds.to_json('./output/embed/stage0_sdg/nv_docs_sdg.json')
+"
+
+# Start from Stage 1 using the downloaded data
+nemotron embed prep -c default sdg_input_path=./output/embed/stage0_sdg
+
+# Continue with the rest of the pipeline
+nemotron embed finetune -c default
+nemotron embed eval -c default
+```
+
+This is useful for quickly getting started or benchmarking the pipeline without needing an NVIDIA API key.
+
 ## Prerequisites
 
 - **GPU**: NVIDIA GPU with at least 80GB VRAM (e.g., A100, H100) — Stage 0 uses NVIDIA API (no GPU required)
@@ -138,4 +162,5 @@ nemotron embed deploy -c default
 ## Further Reading
 
 - [Full Documentation](../../../docs/nemotron/embed/README.md) — Detailed configuration, troubleshooting, and best practices
+- [Retrieval-Synthetic-NVDocs-v1](https://huggingface.co/datasets/nvidia/Retrieval-Synthetic-NVDocs-v1) — Pre-generated synthetic retrieval dataset on NVIDIA content
 - [Recipes Overview](../README.md) — General information about Nemotron recipes
