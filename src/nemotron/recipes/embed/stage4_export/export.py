@@ -229,29 +229,29 @@ def export_to_onnx(
 
     # Disable dynamo export
     import torch.onnx
-    from functools import partial
 
-    # Save the original export function
+    # Save the original export function and restore it after export so the
+    # patch doesn't leak into any subsequent code in the same process.
     original_export = torch.onnx.export
 
-    # Define a wrapper that always sets dynamo=False
     def forced_legacy_export(*args, **kwargs):
         kwargs['dynamo'] = False
         return original_export(*args, **kwargs)
 
-    # Overwrite the function in the torch.onnx namespace
     torch.onnx.export = forced_legacy_export
-
-    # Export to ONNX
-    print(f"  Exporting to ONNX (opset {cfg.opset}, dtype {cfg.export_dtype})...")
-    onnx_exporter.export(
-        input_names=input_names,
-        output_names=output_names,
-        opset=cfg.opset,
-        dynamic_axes_input=dynamic_axes_input,
-        dynamic_axes_output=dynamic_axes_output,
-        export_dtype=cfg.export_dtype,
-    )
+    try:
+        # Export to ONNX
+        print(f"  Exporting to ONNX (opset {cfg.opset}, dtype {cfg.export_dtype})...")
+        onnx_exporter.export(
+            input_names=input_names,
+            output_names=output_names,
+            opset=cfg.opset,
+            dynamic_axes_input=dynamic_axes_input,
+            dynamic_axes_output=dynamic_axes_output,
+            export_dtype=cfg.export_dtype,
+        )
+    finally:
+        torch.onnx.export = original_export
 
     return onnx_exporter
 

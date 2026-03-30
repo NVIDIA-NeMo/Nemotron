@@ -215,7 +215,7 @@ nemotron embed finetune -c default num_epochs=5 learning_rate=2e-5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `corpus_dir` | `data/sample_corpus/nv_pp_random` | Path to your documents (sample auto-downloaded from HuggingFace) |
+| `corpus_dir` | `hf://nvidia/Retrieval-Synthetic-NVDocs-v1/.../nv_pp_random` | Path to your documents (sample auto-downloaded from HuggingFace) |
 | `file_extensions` | `.txt,.md` | File types to process |
 | `artifact_extraction_model` | `nvidia/nemotron-3-nano-30b-a3b` | LLM for document extraction |
 | `max_parallel_requests_for_gen` | `4` | Parallel API requests |
