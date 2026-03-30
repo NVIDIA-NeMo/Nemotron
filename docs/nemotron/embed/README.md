@@ -107,8 +107,8 @@ $ nemotron embed deploy -c default
 |----------|-------|
 | **Model** | nvidia/llama-nemotron-embed-1b-v2 |
 | **Parameters** | ~1B |
-| **Embedding Dimension** | 768 |
-| **Max Sequence Length** | 512 |
+| **Embedding Dimension** | 2048 |
+| **Max Sequence Length** | 8192 |
 | **Pooling** | Average |
 
 ## Why Fine-Tune Embedding Models?
