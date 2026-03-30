@@ -409,7 +409,7 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 ### Container
 
 ```
-nvcr.io/nvidian/nemo:26.02.super.rc4
+nvcr.io/nvidia/nemo:26.02.nemotron_3_super
 ```
 
 ---
