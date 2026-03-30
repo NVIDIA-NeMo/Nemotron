@@ -228,7 +228,9 @@ mpirun -n 1 --allow-run-as-root --oversubscribe \
 
 Config to deploy the model on 1x DGX Spark.
 
-```
+**`y.yaml`**
+
+```yaml
 kv_cache_config:
   enable_block_reuse: false
 cuda_graph_config:
@@ -236,7 +238,6 @@ cuda_graph_config:
   enable_padding: true
 moe_config:
   backend: CUTLASS
-EOF
 ```
 
 **Serve command**
@@ -251,6 +252,51 @@ trtllm-serve /data/super_fp4/ \
   --tool_parser qwen3_coder \
   --extra_llm_api_options y.yaml
 ```
+
+#### DGX Spark Docker workflow (TensorRT-LLM main)
+
+If you want to run this directly with Docker and Hugging Face model weights, use the following workflow.
+
+> TensorRT-LLM uses Git LFS. Install it before cloning.
+
+```bash
+# Building TRT-LLM container
+sudo apt-get update && sudo apt-get -y install git git-lfs
+git lfs install
+
+git clone https://github.com/NVIDIA/TensorRT-LLM.git
+cd TensorRT-LLM
+git checkout b79f4c7700e164045f647aaaac9c30eace3b9ab5
+git submodule update --init --recursive
+git lfs pull
+
+# Downloading the model
+hf download nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4
+```
+
+Mount the downloaded checkpoint cache and `config/y.yaml` into the container:
+
+```bash
+# Start serving model
+HF_MODEL_CACHE_DIR="${HF_HOME:-$HOME/.cache/huggingface}/hub/models--nvidia--NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4"
+
+docker run -ti --rm \
+  -v ${HF_MODEL_CACHE_DIR}:/hf_model \
+  -v $(pwd)/config/y.yaml:/config/y.yaml \
+  -p 8000:8000 \
+  --gpus all \
+  tensorrt_llm/release:latest trtllm-serve \
+  /hf_model/snapshots/679803c63f945b3064b10958fe98abb94c0965d8 \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --max_batch_size 4 \
+  --trust_remote_code \
+  --reasoning_parser nano-v3 \
+  --tool_parser qwen3_coder \
+  --extra_llm_api_options /config/y.yaml
+```
+
+If your Hugging Face snapshot ID differs, replace `679803c63f945b3064b10958fe98abb94c0965d8` with the snapshot present under `/hf_model/snapshots/`.
 
 ### Updated reasoning parser
 
