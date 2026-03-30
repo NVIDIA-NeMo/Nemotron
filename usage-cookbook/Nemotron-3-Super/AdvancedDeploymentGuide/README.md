@@ -20,13 +20,15 @@ Three properties of Nemotron 3 Super that directly affect inference configuratio
 
 ## vLLM
 
-### Install
+### Config A - GB200
+
+#### Install
 
 ```bash
 pip install vllm==0.17.1
 ```
 
-### Baseline Serve Command (4× GB200, 8k/64k)
+#### Baseline Serve Command (4× GB200, 8k/64k)
 
 ```bash
 VLLM_FLASHINFER_MOE_BACKEND=latency \
@@ -42,7 +44,7 @@ vllm serve $MODEL_CKPT \
   --reasoning-parser super_v3
 ```
 
-### Env Vars
+#### Env Vars
 
 | Variable | Value | Effect |
 |---|---|---|
@@ -51,7 +53,7 @@ vllm serve $MODEL_CKPT \
 | `VLLM_USE_FLASHINFER_MOE_FP8` | `1` | Enables FP8 MoE kernels. |
 | `VLLM_FLASHINFER_ALLREDUCE_BACKEND` | `trtllm` | Fixes allreduce on certain topologies. Fixed upstream in [#35793](https://github.com/vllm-project/vllm/pull/35793). |
 
-### MTP (Speculative Decoding)
+#### MTP (Speculative Decoding)
 
 Add to the base command:
 
@@ -59,7 +61,7 @@ Add to the base command:
   --speculative-config '{"method": "nemotron_h_mtp", "num_speculative_tokens": 5}'
 ```
 
-### Optional Flags Reference
+#### Optional Flags Reference
 
 ```bash
 # Triton attention backend — required on some configurations. Fixed upstream in vllm#35219.
@@ -77,6 +79,63 @@ Add to the base command:
 # Cap context length for fair benchmarking or memory control
 --max-model-len 65536
 ```
+### Config B - DGX Spark (single and dual configuration)
+
+#### Install
+
+This method uses [vLLM NVIDIA Community Docker](https://github.com/eugr/spark-vllm-docker).
+
+Check out locally. If using DGX Spark cluster, do it on the head node.
+
+```bash
+git clone https://github.com/eugr/spark-vllm-docker.git
+cd spark-vllm-docker
+```
+
+Build the container.
+
+**If you have only one DGX Spark:**
+
+```bash
+./build-and-copy.sh
+```
+
+**On DGX Spark cluster:**
+
+Make sure you connect your Sparks together and enable passwordless SSH as described in NVidia's [Connect Two Sparks Playbook](https://build.nvidia.com/spark/connect-two-sparks/stacked-sparks). 
+You can also check out the community [Networking Guide](https://github.com/eugr/spark-vllm-docker/blob/main/docs/NETWORKING.md).
+
+Then run the following command that will build and distribute the image across the cluster.
+
+```bash
+./build-and-copy.sh -c
+```
+
+An initial build speed depends on your Internet connection speed and whether the base image is already present on your machine. After base image pull, the build should take only 2-3 minutes. Prebuilt FlashInfer and vLLM wheels are downloaded automatically from GitHub releases, so compilation from source is usually not required.
+
+#### Run
+
+Launch on your Spark (or a Spark cluster head node):
+
+**On single Spark**
+
+```bash
+./run-recipe.sh nemotron-3-super-nvfp4 --solo
+```
+
+**On dual Sparks**
+
+```bash
+./run-recipe.sh nemotron-3-super-nvfp4
+```
+
+It will serve Nemotron-3-Super-NVFP4 on your head node on port 8000 by default.
+
+To change port, you can use `--port` parameter. To change context size, use `--max-model-len` parameter (by default it will use 262144 tokens).
+
+For additional parameters and other info, please check [Recipes Documentation](https://github.com/eugr/spark-vllm-docker/blob/main/recipes/README.md).
+
+You can also launch a customized vLLM command using `./launch-cluster.sh` - please refer to the [Repository Documentation](https://github.com/eugr/spark-vllm-docker) for more details.
 
 ## SGLang
 
