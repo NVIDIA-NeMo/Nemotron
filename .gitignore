@@ -30,8 +30,7 @@ env.bak/
 venv.bak/
 .venv/
 
-# UV lock files in recipes (generated during stage testing)
-src/nemotron/recipes/**/uv.lock
+# UV lock files in recipe stages are tracked for reproducible builds
 
 # IDEs
 .vscode/
