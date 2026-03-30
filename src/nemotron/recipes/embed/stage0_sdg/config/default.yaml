@@ -26,7 +26,7 @@ corpus_id: nv_pp_random
 
 # Path to directory containing document files (local path or hf:// URI)
 # Default uses sample corpus auto-downloaded from HuggingFace; override with your own data
-corpus_dir: hf://nvidia/Retrieval-Synthetic-NVDocs-v1@4d3874eb983d6c653cc478cba53f3de42a8f0d24/sample_corpus/nv_pp_random
+corpus_dir: hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random
 
 
 # Output directory for generated synthetic data

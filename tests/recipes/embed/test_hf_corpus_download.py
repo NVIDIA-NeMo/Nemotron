@@ -103,13 +103,13 @@ class TestResolveCorpusDirHF:
     def test_default_config_uri(self, mock_download, tmp_path):
         """Test the actual default config URI parses correctly."""
         mock_download.return_value = str(tmp_path)
-        uri = "hf://nvidia/Retrieval-Synthetic-NVDocs-v1@4d3874eb983d6c653cc478cba53f3de42a8f0d24/sample_corpus/nv_pp_random"
+        uri = "hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random"
         result = _resolve_corpus_dir(uri)
 
         mock_download.assert_called_once_with(
             repo_id="nvidia/Retrieval-Synthetic-NVDocs-v1",
             repo_type="dataset",
-            revision="4d3874eb983d6c653cc478cba53f3de42a8f0d24",
+            revision="1c0d1856f3fb595b2dda98d4b61061fa6d782d51",
             allow_patterns="sample_corpus/nv_pp_random/**",
         )
         assert result == tmp_path / "sample_corpus" / "nv_pp_random"
