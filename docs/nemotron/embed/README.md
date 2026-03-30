@@ -160,9 +160,14 @@ Stages run sequentially, but you can start from any stage if you have the requir
 
 ## Preparing Your Corpus
 
-### Supported Formats
+### Default Formats
 
-- Text files: `.txt`, `.md`, `.rst`
+By default, the pipeline processes `.txt`, `.md`, and files with no extension. You can configure which extensions to include via the `file_extensions` option:
+
+```bash
+nemotron embed sdg -c default file_extensions=".txt,.md,.rst,.html"
+```
+
 - Documents should be UTF-8 encoded
 - Files are processed recursively from the corpus directory
 
