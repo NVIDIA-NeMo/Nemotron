@@ -18,7 +18,7 @@ REPO_ROOT = Path(nemotron.__file__).resolve().parent.parent.parent
 STAGES = [
     {
         "name": "sdg",
-        "cli_module": "nemotron.cli.embed.sdg",
+        "cli_module": "nemotron.cli.commands.embed.sdg",
         "config_model_path": "nemotron.recipes.embed.stage0_sdg.data_prep",
         "config_model_name": "SDGConfig",
         "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage0_sdg/config/default.yaml",
@@ -26,7 +26,7 @@ STAGES = [
     },
     {
         "name": "prep",
-        "cli_module": "nemotron.cli.embed.prep",
+        "cli_module": "nemotron.cli.commands.embed.prep",
         "config_model_path": "nemotron.recipes.embed.stage1_data_prep.data_prep",
         "config_model_name": "DataPrepConfig",
         "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage1_data_prep/config/default.yaml",
@@ -34,7 +34,7 @@ STAGES = [
     },
     {
         "name": "finetune",
-        "cli_module": "nemotron.cli.embed.finetune",
+        "cli_module": "nemotron.cli.commands.embed.finetune",
         "config_model_path": "nemotron.recipes.embed.stage2_finetune.train",
         "config_model_name": "FinetuneConfig",
         "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage2_finetune/config/default.yaml",
@@ -42,7 +42,7 @@ STAGES = [
     },
     {
         "name": "eval",
-        "cli_module": "nemotron.cli.embed.eval",
+        "cli_module": "nemotron.cli.commands.embed.eval",
         "config_model_path": "nemotron.recipes.embed.stage3_eval.eval",
         "config_model_name": "EvalConfig",
         "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage3_eval/config/default.yaml",
@@ -50,7 +50,7 @@ STAGES = [
     },
     {
         "name": "export",
-        "cli_module": "nemotron.cli.embed.export",
+        "cli_module": "nemotron.cli.commands.embed.export",
         "config_model_path": "nemotron.recipes.embed.stage4_export.export",
         "config_model_name": "ExportConfig",
         "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage4_export/config/default.yaml",
@@ -58,7 +58,7 @@ STAGES = [
     },
     {
         "name": "deploy",
-        "cli_module": "nemotron.cli.embed.deploy",
+        "cli_module": "nemotron.cli.commands.embed.deploy",
         "config_model_path": "nemotron.recipes.embed.stage5_deploy.deploy",
         "config_model_name": "DeployConfig",
         "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage5_deploy/config/default.yaml",

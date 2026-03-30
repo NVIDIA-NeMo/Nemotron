@@ -38,9 +38,15 @@ class TestExtraForbid:
 # TestDefaults — all config classes constructible with no args
 # ---------------------------------------------------------------------------
 class TestDefaults:
+    # DataPrepConfig requires sdg_input_path or train_input_file
+    _REQUIRED_KWARGS = {
+        "prep": {"sdg_input_path": "/tmp/fake"},
+    }
+
     @pytest.mark.parametrize("name,cls", ALL_CONFIGS, ids=[c[0] for c in ALL_CONFIGS])
     def test_construct_with_defaults(self, name, cls):
-        instance = cls()
+        kwargs = self._REQUIRED_KWARGS.get(name, {})
+        instance = cls(**kwargs)
         assert instance is not None
 
 
@@ -84,7 +90,7 @@ class TestDataPrepConfigValidation:
             DataPrepConfig(train_ratio=0.5, val_ratio=0.1, test_ratio=0.1)
 
     def test_valid_ratios(self, DataPrepConfig):
-        cfg = DataPrepConfig(train_ratio=0.7, val_ratio=0.2, test_ratio=0.1)
+        cfg = DataPrepConfig(sdg_input_path="/tmp/fake", train_ratio=0.7, val_ratio=0.2, test_ratio=0.1)
         assert abs(cfg.train_ratio + cfg.val_ratio + cfg.test_ratio - 1.0) < 1e-6
 
     def test_quality_threshold_below_range(self, DataPrepConfig):
