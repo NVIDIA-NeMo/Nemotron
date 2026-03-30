@@ -2,7 +2,7 @@ run:
   train_script: src/nemotron/recipes/super3/stage0_pretrain/test_train.py
   data: super3-pretrain-data-tiny:latest
   env:
-    container: nvcr.io/nvidian/nemo:26.02.super.rc4
+    container: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
     nodes: 1
     gpus_per_node: 1
     ntasks_per_node: 1
