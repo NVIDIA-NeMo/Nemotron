@@ -75,7 +75,6 @@ def _execute_sdg(cfg: RecipeConfig, *, experiment=None):
         env_profile=env,
     )
 
-    for_remote = cfg.mode in ("run", "batch")
     display_job_config(job_config, for_remote=False)  # code packager: always False
 
     if cfg.dry_run:

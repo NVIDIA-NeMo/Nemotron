@@ -173,14 +173,14 @@ def _execute_remote(
 
     if experiment is not None:
         return experiment.add(
-            run.Script(path="main.py", args=script_args, entrypoint="python3"),
+            run.Script(path="main.py", args=script_args, entrypoint="python"),
             executor=executor,
             name=recipe_name,
         )
 
     with run.Experiment(recipe_name) as exp:
         exp.add(
-            run.Script(path="main.py", args=script_args, entrypoint="python3"),
+            run.Script(path="main.py", args=script_args, entrypoint="python"),
             executor=executor,
             name=recipe_name,
         )
