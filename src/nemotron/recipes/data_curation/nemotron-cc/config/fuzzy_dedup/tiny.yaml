@@ -1,0 +1,23 @@
+run:
+  env:
+    container: nvcr.io/nvidia/nemo:25.02
+
+# Tiny config for fuzzy dedup
+#
+# Usage:
+#   nemotron data curate nemotron-cc fuzzy-dedup -c tiny
+
+identify: true
+remove: true
+input_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/exact_deduplicated/exact_deduplicated
+cache_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/fuzzy_dedup_cache
+output_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/fuzzy_deduplicated
+input_filetype: jsonl
+text_field: text
+output_filetype: jsonl
+input_blocksize: "64MiB"
+bands_per_iteration: 5
+total_nparts: null
+storage_options: null
+num_gpus: null
+num_cpus: null

@@ -1,0 +1,18 @@
+run:
+  env:
+    container: nvcr.io/nvidia/nemo:25.02
+
+# Operation flags
+classify: true
+ensemble: true
+
+# Paths
+input_dir: ${oc.env:PWD}/../output/nemotron-cc/fuzzy_deduplicated/fuzzy_deduplicated
+output_dir: ${oc.env:PWD}/../output/nemotron-cc/quality_labeling
+
+# Threshold sampling
+threshold_sample_frac: 0.01
+
+# Ray cluster
+num_gpus: null
+num_cpus: null

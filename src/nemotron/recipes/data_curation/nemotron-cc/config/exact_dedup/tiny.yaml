@@ -1,0 +1,25 @@
+run:
+  env:
+    container: nvcr.io/nvidia/nemo:25.02
+
+# Tiny config for exact dedup
+#
+# Usage:
+#   nemotron data curate nemotron-cc exact-dedup -c tiny
+
+identify: true
+remove: true
+input_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/cleaned_extracted
+cache_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/exact_dedup_cache
+output_dir: ${oc.env:PWD}/../output/nemotron-cc-tiny/exact_deduplicated
+input_filetype: jsonl
+text_field: text
+output_filetype: jsonl
+input_blocksize: "64MiB"
+identification_batchsize: 4
+total_nparts: null
+rmm_pool_size: "auto"
+spill_memory_limit: "auto"
+storage_options: null
+num_gpus: null
+num_cpus: null

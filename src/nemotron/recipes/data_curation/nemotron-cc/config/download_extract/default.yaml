@@ -1,0 +1,24 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# Snapshot range
+start_snapshot: "2024-46"
+end_snapshot: "2024-51"
+
+# Paths
+output_dir: ${oc.env:PWD}/../output/nemotron-cc/cleaned_extracted
+cache_dir: ${oc.env:PWD}/../output/nemotron-cc/cache
+
+# Common Crawl options
+url_limit: null
+record_limit: null
+
+# Language filtering (null = all languages)
+languages: null
+
+# Cloud storage (JSON string of fsspec options, or null)
+storage_options: null
+
+# Ray cluster
+num_cpus: null

@@ -1,0 +1,29 @@
+run:
+  env:
+    container: nvcr.io/nvidia/nemo:25.02
+
+# Operation flags
+identify: true
+remove: true
+
+# Paths
+input_dir: ${oc.env:PWD}/../output/nemotron-cc/exact_deduplicated/exact_deduplicated
+cache_dir: ${oc.env:PWD}/../output/nemotron-cc/fuzzy_dedup_cache
+output_dir: ${oc.env:PWD}/../output/nemotron-cc/fuzzy_deduplicated
+
+# Input/output format
+input_filetype: jsonl
+text_field: text
+output_filetype: jsonl
+
+# Fuzzy dedup settings
+input_blocksize: "256MiB"
+bands_per_iteration: 5
+total_nparts: null
+
+# Cloud storage
+storage_options: null
+
+# Ray cluster
+num_gpus: null
+num_cpus: null
