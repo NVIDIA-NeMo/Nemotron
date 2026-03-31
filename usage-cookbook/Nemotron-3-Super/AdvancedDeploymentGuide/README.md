@@ -16,7 +16,7 @@ Three properties of Nemotron 3 Super that directly affect inference configuratio
 |---|---|
 | vLLM | `0.17.1` |
 | SGLang | `lmsysorg/sglang:v0.5.9` |
-| TRT-LLM | `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc5` |
+| TRT-LLM | `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc9` |
 
 ## vLLM
 
@@ -124,7 +124,9 @@ Not required if baked into the checkpoint (which it is for released Nemotron 3 S
 
 ### Docker Pull
 
-> **Requires branch build**: These configs depend on changes not yet merged into the `1.3.0rc7` release [image](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tensorrt-llm/containers/release?version=1.3.0rc7). Build TRT-LLM from `main` [branch](https://github.com/NVIDIA/TensorRT-LLM) before using these configs.
+```bash
+docker pull nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc9
+```
 
 TRT-LLM requires an `extra_llm_api_options` YAML for MoE backend, KV cache, and CUDA graph settings that can't be passed as CLI flags.
 
@@ -224,40 +226,14 @@ mpirun -n 1 --allow-run-as-root --oversubscribe \
   --extra_llm_api_options y.yaml
 ```
 
-### Config C — NVFP4, DGX Spark
+### Config C — NVFP4, 1× DGX Spark
 
-Config to deploy the model on 1x DGX Spark.
+> **See the dedicated guide:** [Nemotron 3 Super — DGX Spark Deployment Guide](../SparkDeploymentGuide/README.md)
+>
+> The Spark guide covers both vLLM (nightly) and TRT-LLM configurations for single-GPU DGX Spark deployment, including FP8 KV cache, Marlin MoE backend, and 1M context length setup.
 
-```
-kv_cache_config:
-  enable_block_reuse: false
-cuda_graph_config:
-  max_batch_size: 32
-  enable_padding: true
-moe_config:
-  backend: CUTLASS
-EOF
-```
+---
 
-**Serve command**
+## Contributors
 
-```bash
-trtllm-serve /data/super_fp4/ \
-  --host 0.0.0.0 \
-  --port 8000 \
-  --max_batch_size 4 \
-  --trust_remote_code \
-  --reasoning_parser nano-v3 \
-  --tool_parser qwen3_coder \
-  --extra_llm_api_options y.yaml
-```
-
-### Updated reasoning parser
-
-To use the `force_nonempty_content` kwarg in the chat template, build TRT-LLM from `main`. Alternatively, the changes from [PR-12061](https://github.com/NVIDIA/TensorRT-LLM/pull/12061) can be manually cherry-picked into the release container to enable it.
-
-### Contributors: 
-
-The configurations in this document were created by:
-
-Izzy Putterman, Nave Assaf, Joyjit Daw, and many other talented NVIDIA engineers.
+The configurations in this document were created by Izzy Putterman, Nave Assaf, Joyjit Daw, and many other talented NVIDIA engineers.
