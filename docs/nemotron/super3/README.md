@@ -8,7 +8,7 @@ A complete, reproducible training pipeline for Nemotron 3 Super—an open, high-
 
 - **Slurm cluster** with GPU nodes (B200 recommended for NVFP4 support) — see [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../../nemo_runspec/artifacts.md)
-- **Container image**: `nvcr.io/nvidian/nemo:26.02.super.rc4`
+- **Container image**: `nvcr.io/nvidia/nemo:26.02.nemotron_3_super`
 
 ### Installation
 
