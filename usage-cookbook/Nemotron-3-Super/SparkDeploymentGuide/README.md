@@ -60,7 +60,7 @@ vllm serve nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 \
   --mamba_ssm_cache_dtype float32 \
   --quantization fp4 \
   --speculative_config '{"method":"mtp","num_speculative_tokens":3,"moe_backend":"triton"}' \
-  --reasoning-parser super_v3 \
+  --reasoning-parser nemotron_v3 \
   --enable-auto-tool-choice \
   --tool-call-parser qwen3_coder
 ```
