@@ -37,32 +37,41 @@ MTP + NVFP4 on DGX Spark requires a vLLM nightly build (cu130). The pinned relea
 ### Serve Command
 
 ```bash
-VLLM_NVFP4_GEMM_BACKEND=marlin \
-VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 \
-VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm \
-VLLM_USE_FLASHINFER_MOE_FP4=0 \
-vllm serve nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 \
-  --served-model-name nemotron-3-super \
-  --host 0.0.0.0 \
-  --port 8000 \
-  --async-scheduling \
-  --dtype auto \
-  --kv-cache-dtype fp8 \
-  --tensor-parallel-size 1 \
-  --pipeline-parallel-size 1 \
-  --data-parallel-size 1 \
-  --trust-remote-code \
-  --gpu-memory-utilization 0.90 \
-  --enable-chunked-prefill \
-  --max-num-seqs 4 \
-  --max-model-len 1000000 \
-  --moe-backend marlin \
-  --mamba_ssm_cache_dtype float32 \
-  --quantization fp4 \
-  --speculative_config '{"method":"mtp","num_speculative_tokens":3,"moe_backend":"triton"}' \
-  --reasoning-parser nemotron_v3 \
-  --enable-auto-tool-choice \
-  --tool-call-parser qwen3_coder
+wget https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4/raw/main/super_v3_reasoning_parser.py
+
+docker run --rm -it --gpus all \
+  -e VLLM_NVFP4_GEMM_BACKEND=marlin \
+  -e VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 \
+  -e VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm \
+  -e VLLM_USE_FLASHINFER_MOE_FP4=0 \
+  -e HF_TOKEN=$HF_TOKEN \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  -v $(pwd)/super_v3_reasoning_parser.py:/app/super_v3_reasoning_parser.py \
+  -p 8000:8000 \
+  vllm/vllm-openai:cu130-nightly \
+    --model nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 \
+    --served-model-name nemotron-3-super \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --async-scheduling \
+    --dtype auto \
+    --kv-cache-dtype fp8 \
+    --tensor-parallel-size 1 \
+    --pipeline-parallel-size 1 \
+    --data-parallel-size 1 \
+    --trust-remote-code \
+    --gpu-memory-utilization 0.90 \
+    --enable-chunked-prefill \
+    --max-num-seqs 4 \
+    --max-model-len 1000000 \
+    --moe-backend marlin \
+    --mamba_ssm_cache_dtype float32 \
+    --quantization fp4 \
+    --speculative_config '{"method":"mtp","num_speculative_tokens":3,"moe_backend":"triton"}' \
+    --reasoning-parser-plugin /app/super_v3_reasoning_parser.py \
+    --reasoning-parser super_v3 \
+    --enable-auto-tool-choice \
+    --tool-call-parser qwen3_coder
 ```
 
 ### Env Vars
