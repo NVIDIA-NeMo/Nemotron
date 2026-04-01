@@ -2,7 +2,7 @@ run:
   data: super3-sft-data:latest
   model: super3-pretrain-model:latest
   env:
-    container: nvcr.io/nvidian/nemo:26.02.super.rc4
+    container: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_sft_config

@@ -21,6 +21,45 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 import os
+import shutil
+from pathlib import Path
+
+
+# -- Preprocessing: Replace symlinks with actual copies ---------------------
+def replace_symlinks_with_copies():
+    """Replace symlinked directories with actual copies at build time (CI only)."""
+    # Only run in CI environments to avoid disrupting local development
+    # GitHub Actions (and most CI systems) set CI=true
+    if not os.environ.get("CI"):
+        print("Skipping symlink replacement (not in CI environment)")
+        return
+
+    docs_dir = Path(__file__).parent
+    symlinks = ["usage-cookbook", "use-case-examples"]
+
+    for symlink_name in symlinks:
+        symlink_path = docs_dir / symlink_name
+
+        # Check if it's a symlink
+        if symlink_path.is_symlink():
+            # Resolve the target
+            target = symlink_path.resolve()
+
+            if target.exists():
+                print(f"Replacing symlink {symlink_name} with actual copy from {target}")
+                # Remove the symlink
+                symlink_path.unlink()
+                # Copy the actual directory
+                shutil.copytree(target, symlink_path)
+            else:
+                print(f"Warning: Symlink target {target} does not exist")
+
+
+# Run preprocessing
+print("Running docs preprocessing...")
+replace_symlinks_with_copies()
+print("Preprocessing complete!")
+
 
 project = "Nemotron"
 copyright = "2026, NVIDIA Corporation"
