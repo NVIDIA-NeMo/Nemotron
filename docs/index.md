@@ -120,7 +120,6 @@ usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README.md
-usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.md
 usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide/README.md
 usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.md
 ```
