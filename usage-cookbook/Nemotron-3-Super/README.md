@@ -14,6 +14,7 @@ These notebooks provide end-to-end recipes for deploying and customizing Nemotro
 - **[sglang_cookbook.ipynb](sglang_cookbook.ipynb)** — Deploy Nemotron-3-Super with SGLang.
 - **[trtllm_cookbook.ipynb](trtllm_cookbook.ipynb)** — Deploy Nemotron-3-Super with TensorRT-LLM.
 - **[AdvancedDeploymentGuide](AdvancedDeploymentGuide/README.md)** — Production deployment configurations for vLLM, SGLang, and TRT-LLM across GPU topologies (GB200, B200, DGX Spark), including MTP speculative decoding, expert parallelism, and tuning guidance.
+- **[SparkDeploymentGuide](SparkDeploymentGuide/README.md)** — DGX Spark single-GPU deployment guide for Nemotron 3 Super with vLLM (nightly) and TensorRT-LLM, including NVFP4 quantization and MTP speculative decoding.
 
 ### Fine-Tuning
 
