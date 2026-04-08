@@ -13,105 +13,62 @@
 # limitations under the License.
 
 # =============================================================================
-# SFT Training Config — Nemotron
+# SFT Training Config — Nemotron (Megatron-Bridge)
 # =============================================================================
+# Supervised fine-tuning with packed sequence training.
+# Follows the same Megatron-Bridge config pattern as nano3/super3 recipes.
 
-# Model
-model:
-  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
-  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
-  torch_dtype: bf16
-  trust_remote_code: true
+run:
+  data: sft-data:latest                    # Packed Parquet shards from data_prep
+  model: cpt-model:latest                  # CPT checkpoint from stage0 (or base model)
+  env:
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    # Mount custom Megatron-LM and Megatron-Bridge versions if needed
+    # mounts:
+    #   - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@<commit>,/opt/megatron-lm}
+    #   - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@<branch>,/opt/Megatron-Bridge}
 
-# Training schedule
-step_scheduler:
-  global_batch_size: 8
-  local_batch_size: 8
-  ckpt_every_steps: 50
-  val_every_steps: 1000
-  max_steps: 100
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
+  packed_sequence: true
+  peft: null                               # null = full SFT; "lora" for LoRA
 
-# Distributed
-dist_env:
-  backend: nccl
-  timeout_minutes: 1
-
-distributed:
-  _target_: nemo_automodel.components.distributed.fsdp2.FSDP2Manager
-  dp_size: none
-  tp_size: 1
-  cp_size: 1
-  pp_size: 8
-  sequence_parallel: false
-
-# RNG
-rng:
-  _target_: nemo_automodel.components.training.rng.StatefulRNG
-  seed: 42
-  ranked: true
-
-# Checkpoint
-checkpoint:
-  enabled: true
-  checkpoint_dir: ./output/sft_checkpoints  # REPLACE with your path
-  model_save_format: safetensors
-  save_consolidated: true
-
-# Packed sequence support
-packed_sequence:
-  packed_sequence_size: 0
-  split_across_pack: false
-
-# Loss
-loss_fn:
-  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
-
-# Dataset — chat-format SFT data
+# Dataset config for packed Parquet shards from data_prep
+# train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download
+# Uses nano3_packed_sft_dir for seamless config - auto-resolves to splits/train/ and splits/valid/
 dataset:
-  _target_: nemo_automodel.components.datasets.llm.chat_dataset.make_chat_dataset
-  dataset_name: HuggingFaceH4/ultrachat_200k
-  split: train_sft
-  seq_length: 4096
+  nano3_packed_sft_dir: ${art:data,path}
+  seq_length: ${art:data,pack_size}
+  packed_sequence_specs:
+    packed_sequence_size: ${art:data,pack_size}
+    # packed_train_data_path and packed_val_data_path auto-resolve from nano3_packed_sft_dir
+    # Explicit paths can still be set to override:
+    # packed_train_data_path: /path/to/splits/train/
+    # packed_val_data_path: /path/to/splits/valid/
 
-validation_dataset:
-  _target_: nemo_automodel.components.datasets.llm.chat_dataset.make_chat_dataset
-  dataset_name: HuggingFaceH4/ultrachat_200k
-  split: test_sft
-  seq_length: 4096
+train:
+  train_iters: 1700                        # Adjust based on dataset size (~2-3 epochs)
+  global_batch_size: 4                     # Small GBS for SFT (avoid overfitting)
 
-# Dataloaders
-dataloader:
-  _target_: torchdata.stateful_dataloader.StatefulDataLoader
-  collate_fn: nemo_automodel.components.datasets.utils.default_collater
-  shuffle: true
+model:
+  seq_length: ${art:data,pack_size}
+  pipeline_model_parallel_size: 1
+  tensor_model_parallel_size: 4
+  context_parallel_size: 2
+  calculate_per_token_loss: true
 
-validation_dataloader:
-  _target_: torchdata.stateful_dataloader.StatefulDataLoader
-  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+scheduler:
+  lr_warmup_iters: 4
 
-# Optimizer
-optimizer:
-  _target_: torch.optim.Adam
-  betas: [0.9, 0.999]
-  eps: 1e-8
-  lr: 1.0e-5
-  weight_decay: 0
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}      # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}        # Set from env.toml [wandb]
+  wandb_exp_name: nemotron-sft             # Experiment name shown in wandb UI
 
-lr_scheduler:
-  lr_decay_style: cosine
-  min_lr: 1.0e-6
-
-# Pipeline parallelism
-autopipeline:
-  _target_: nemo_automodel.components.distributed.pipelining.AutoPipeline
-  pp_schedule: 1f1b
-  pp_microbatch_size: 1
-  round_virtual_stages_to_pp_multiple: up
-  scale_grads_in_schedule: false
-  layers_per_stage: null
-
-# W&B (optional)
-wandb:
-  project: nemotron-customization
-  entity: null
-  name: nemotron-sft
+checkpoint:
+  save: /results/sft_checkpoint
+  save_interval: 100
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true                           # Skip loading optimizer state from pretrained checkpoint
+  # ckpt_step: ${art:model,iteration}      # Optional: set to load specific iteration from artifact

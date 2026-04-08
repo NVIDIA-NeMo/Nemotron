@@ -13,95 +13,50 @@
 # limitations under the License.
 
 # =============================================================================
-# CPT Training Config — Nemotron
+# CPT Training Config — Nemotron (Megatron-Bridge)
 # =============================================================================
+# Continued pretraining on domain/language-specific corpora.
+# Follows the same Megatron-Bridge config pattern as nano3/super3 recipes.
 
-# Model
+run:
+  data: cpt-data:latest                    # Data artifact (bin/idx blends from data_prep)
+  model: null                              # Base model (downloaded from HF if null)
+  env:
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_pretrain_config
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 10000                       # Adjust based on data volume (5000-50000)
+  global_batch_size: 256                   # Tokens per step = GBS * seq_length
+  micro_batch_size: 1
+
 model:
-  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
-  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
-  torch_dtype: bf16
-  trust_remote_code: true
+  seq_length: 4096
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 2
 
-# Training schedule
-step_scheduler:
-  global_batch_size: 64
-  local_batch_size: 1
-  ckpt_every_steps: 250
-  val_every_steps: 50
-  max_steps: 500
-
-# Distributed
-dist_env:
-  backend: nccl
-  timeout_minutes: 5
-
-distributed:
-  _target_: nemo_automodel.components.distributed.fsdp2.FSDP2Manager
-  dp_size: none
-  tp_size: 1
-  cp_size: 1
-  pp_size: 1
-  sequence_parallel: false
-
-# RNG
-rng:
-  _target_: nemo_automodel.components.training.rng.StatefulRNG
-  seed: 42
-  ranked: true
-
-# Checkpoint
-checkpoint:
-  enabled: true
-  checkpoint_dir: ./output/cpt_checkpoints  # REPLACE with your path
-  model_save_format: torch_save
-  save_consolidated: false
-
-# Loss
-loss_fn:
-  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
-
-# Dataset — Megatron-style tokenized data (bin/idx)
-dataset:
-  _target_: nemo_automodel.components.datasets.llm.megatron_dataset.MegatronPretraining
-  paths: ./output/cpt_data_prep/*_text_document*  # REPLACE
-  index_mapping_dir: ./output/cpt_data_prep/index_mapping  # REPLACE
-  tokenizer:
-    _target_: transformers.AutoTokenizer.from_pretrained
-    pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
-  seq_length: 8192
-  split: "0.99, 0.01, 0.00"
-  splits_to_build: train
-
-validation_dataset:
-  _target_: nemo_automodel.components.datasets.llm.megatron_dataset.MegatronPretraining
-  paths: ${dataset.paths}
-  index_mapping_dir: ${dataset.index_mapping_dir}
-  tokenizer: ${dataset.tokenizer}
-  split: "0.99, 0.01, 0.00"
-  splits_to_build: validation
-
-# Dataloaders
-dataloader:
-  _target_: torchdata.stateful_dataloader.StatefulDataLoader
-  collate_fn: torch.utils.data.default_collate
-  dataloader_type: single
-
-validation_dataloader:
-  _target_: torchdata.stateful_dataloader.StatefulDataLoader
-  collate_fn: torch.utils.data.default_collate
-  dataloader_type: single
-
-# Optimizer
 optimizer:
-  _target_: torch.optim.Adam
-  betas: [0.9, 0.999]
-  eps: 1e-8
-  lr: 1.0e-5
+  lr: 1e-5                                 # Lower than pretrain (avoid forgetting)
+  min_lr: 1e-6
   weight_decay: 0.01
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  clip_grad: 1.0
 
-# W&B (optional)
-wandb:
-  project: nemotron-customization
-  entity: null
-  name: nemotron-cpt
+scheduler:
+  lr_decay_style: cosine
+  lr_warmup_iters: 100
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}      # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}        # Set from env.toml [wandb]
+
+checkpoint:
+  save: /results/cpt_checkpoint
+  save_interval: 1000
+  load: null                               # Set to resume from a checkpoint

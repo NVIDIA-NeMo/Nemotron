@@ -503,36 +503,49 @@ generate_compose_override() {
 #   docker compose -f docker-compose.yaml -f docker-compose.airgap.yaml up -d
 # =============================================================================
 
+# Shared airgap environment variables (YAML anchor)
+x-airgap-env: &airgap-env
+  - TRANSFORMERS_OFFLINE=1
+  - HF_DATASETS_OFFLINE=1
+  - HF_HUB_OFFLINE=1
+  - HF_HOME=/workspace/models
+  - HF_DATASETS_CACHE=/workspace/datasets
+  - HUGGINGFACE_HUB_CACHE=/workspace/models/huggingface
+  - SENTENCE_TRANSFORMERS_HOME=/workspace/models/sentence-transformers
+  - NLTK_DATA=/workspace/nltk_data
+  - FASTTEXT_LID_MODEL=/workspace/models/fasttext/lid.176.bin
+  - WANDB_MODE=offline
+  - WANDB_DISABLED=true
+  - DO_NOT_TRACK=1
+  - ANONYMIZED_TELEMETRY=false
+  - TOKENIZERS_PARALLELISM=false
+
+# Shared airgap volume mounts (YAML anchor)
+x-airgap-volumes: &airgap-volumes
+  - ${AIRGAP_MODELS_DIR:-./airgap-bundle/models}:/workspace/models:ro
+  - ${AIRGAP_DATASETS_DIR:-./airgap-bundle/datasets}:/workspace/datasets:ro
+  - ${AIRGAP_NLTK_DIR:-./airgap-bundle/nltk_data}:/workspace/nltk_data:ro
+  - ${AIRGAP_CONFIGS_DIR:-./airgap-bundle/configs}:/workspace/configs:ro
+  - ${AIRGAP_BENCHMARKS_DIR:-./airgap-bundle/benchmarks}:/workspace/benchmarks:ro
+  - ${RESULTS_DIR:-./results}:/workspace/results
+  - ${DATA_DIR:-./data}:/workspace/data
+
 services:
-  nemotron-customize:
-    environment:
-      # Offline mode for all network-dependent libraries
-      - TRANSFORMERS_OFFLINE=1
-      - HF_DATASETS_OFFLINE=1
-      - HF_HUB_OFFLINE=1
-      - HF_HOME=/workspace/models
-      - HF_DATASETS_CACHE=/workspace/datasets
-      - NLTK_DATA=/workspace/nltk_data
-      - WANDB_MODE=offline
-      - WANDB_DISABLED=true
-      - DO_NOT_TRACK=1
-      - ANONYMIZED_TELEMETRY=false
-      - TOKENIZERS_PARALLELISM=false
-      # FastText language ID model
-      - FASTTEXT_LID_MODEL=/workspace/models/fasttext/lid.176.bin
-    volumes:
-      # Pre-downloaded models (HuggingFace, FastText, spaCy, sentence-transformers)
-      - ${AIRGAP_MODELS_DIR:-./airgap-bundle/models}:/workspace/models
-      # Pre-downloaded datasets
-      - ${AIRGAP_DATASETS_DIR:-./airgap-bundle/datasets}:/workspace/datasets
-      # Pre-downloaded NLTK data
-      - ${AIRGAP_NLTK_DIR:-./airgap-bundle/nltk_data}:/workspace/nltk_data
-      # Airgap configs (overrides, env.toml)
-      - ${AIRGAP_CONFIGS_DIR:-./airgap-bundle/configs}:/workspace/configs
-      # Pre-downloaded benchmarks (optional)
-      - ${AIRGAP_BENCHMARKS_DIR:-./airgap-bundle/benchmarks}:/workspace/benchmarks
-    # No network access in true airgap (uncomment to enforce)
-    # network_mode: "none"
+  nemotron-orchestrator:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  nemotron-curator:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  nemotron-trainer:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  nemotron-evaluator:
+    environment: *airgap-env
+    volumes: *airgap-volumes
 COMPOSEYAML
 
     log_ok "Generated: $override_file"

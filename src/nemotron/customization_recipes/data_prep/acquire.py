@@ -191,6 +191,45 @@ def classify_domains(
 # ---------------------------------------------------------------------------
 
 
+_LID_URL = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
+_LID_CACHE_DIR = Path.home() / ".cache" / "nemotron"
+_LID_CACHE_PATH = _LID_CACHE_DIR / "lid.176.bin"
+
+
+def _ensure_lid_model() -> str:
+    """Auto-download FastText lid.176.bin if not already cached.
+
+    Returns:
+        Path to the lid.176.bin model file.
+    """
+    if _LID_CACHE_PATH.exists():
+        log.info("Using cached FastText LID model: %s", _LID_CACHE_PATH)
+        return str(_LID_CACHE_PATH)
+
+    log.info(
+        "Downloading FastText lid.176.bin to %s (one-time download, ~130 MB)...",
+        _LID_CACHE_PATH,
+    )
+    _LID_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    import urllib.request
+
+    try:
+        urllib.request.urlretrieve(_LID_URL, str(_LID_CACHE_PATH))
+    except Exception as exc:
+        # Clean up partial download
+        if _LID_CACHE_PATH.exists():
+            _LID_CACHE_PATH.unlink()
+        raise RuntimeError(
+            f"Failed to download lid.176.bin from {_LID_URL}. "
+            "Download it manually and set lid_model_path in AcquireConfig. "
+            "URL: https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
+        ) from exc
+
+    log.info("FastText LID model downloaded successfully.")
+    return str(_LID_CACHE_PATH)
+
+
 def identify_languages(
     cfg: AcquireConfig,
     dataset=None,
@@ -199,6 +238,10 @@ def identify_languages(
     prob_column: str = "language_prob",
 ):
     """Run FastText language identification on a dataset.
+
+    If ``cfg.lid_model_path`` is *None*, the FastText ``lid.176.bin``
+    model is automatically downloaded from Facebook's CDN to
+    ``~/.cache/nemotron/lid.176.bin`` on first use.
 
     Args:
         cfg: Acquisition configuration.
@@ -223,10 +266,7 @@ def identify_languages(
 
     model_path = cfg.lid_model_path
     if model_path is None:
-        raise ValueError(
-            "lid_model_path must be set in AcquireConfig. "
-            "Download lid.176.bin from https://fasttext.cc/docs/en/language-identification.html"
-        )
+        model_path = _ensure_lid_model()
 
     lid = FastTextLangId(
         model_path=model_path,

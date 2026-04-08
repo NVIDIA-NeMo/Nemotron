@@ -24,13 +24,78 @@ which uses nemo-evaluator-launcher) delegate here.
 Design: LLM-Native Recipe Architecture
 - Execution logic visible and modifiable
 - Single place to change the submission backend
+- Training scripts reused from existing recipes (nano3/super3)
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
+
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Model Family → Training Script mapping
+#
+# Customization reuses the EXISTING Nemotron training scripts. The user
+# selects a model family (nano3, super3) and the appropriate script is used.
+# Only the config YAML differs per customization.
+# =============================================================================
+
+MODEL_FAMILY_SCRIPTS: dict[str, dict[str, str]] = {
+    "nano3": {
+        "pretrain": "src/nemotron/recipes/nano3/stage0_pretrain/train.py",
+        "sft": "src/nemotron/recipes/nano3/stage1_sft/train.py",
+        "rl": "src/nemotron/recipes/nano3/stage2_rl/train.py",
+    },
+    "super3": {
+        "pretrain": "src/nemotron/recipes/super3/stage0_pretrain/train.py",
+        "sft": "src/nemotron/recipes/super3/stage1_sft/train.py",
+        "rl": "src/nemotron/recipes/super3/stage2_rl/train.py",
+    },
+}
+
+#: Default model family if not specified by user
+DEFAULT_MODEL_FAMILY = "nano3"
+
+
+def resolve_training_script(stage: str, model_family: str | None = None) -> str:
+    """Resolve the training script path for a given stage and model family.
+
+    Args:
+        stage: Training stage (``"pretrain"``, ``"sft"``, ``"rl"``).
+        model_family: Model family (``"nano3"``, ``"super3"``).
+            If ``None``, defaults to ``nano3``.
+
+    Returns:
+        Relative path to the training script.
+
+    Raises:
+        typer.Exit: If model family or stage is not found.
+    """
+    family = (model_family or DEFAULT_MODEL_FAMILY).lower()
+    if family not in MODEL_FAMILY_SCRIPTS:
+        supported = ", ".join(sorted(MODEL_FAMILY_SCRIPTS))
+        typer.echo(
+            f"Error: Unknown model family '{family}'. "
+            f"Supported: {supported}",
+            err=True,
+        )
+        raise typer.Exit(1)
+    scripts = MODEL_FAMILY_SCRIPTS[family]
+    if stage not in scripts:
+        supported = ", ".join(sorted(scripts))
+        typer.echo(
+            f"Error: No '{stage}' script for model family '{family}'. "
+            f"Supported stages: {supported}",
+            err=True,
+        )
+        raise typer.Exit(1)
+    script_path = scripts[stage]
+    logger.info("Using %s %s script: %s", family, stage, script_path)
+    return script_path
 
 from nemo_runspec.config import (
     build_job_config,

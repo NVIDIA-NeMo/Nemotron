@@ -34,7 +34,7 @@ Before running this stage, confirm these with the user:
 | Full SFT or LoRA | No | Full SFT | Ask: "Full SFT or LoRA? (LoRA is faster but slightly lower quality)" |
 | Compute resources | Yes | 2 nodes x 8 GPUs | Ask: "How many nodes and GPUs per node?" |
 | Executor type | Yes | local | Ask: "Where will this run? (local, Slurm, Lepton, Run:AI)" |
-| Training iterations | No | 1700 | Ask: "How many training iterations? (500-5000, ~2-3 epochs typical)" |
+| Training iterations | No | 100 | Ask: "How many training iterations? (100-5000, ~2-3 epochs typical)" |
 
 If any required input is missing, ask the user before proceeding.
 
@@ -68,7 +68,7 @@ Fine-tune the model using packed sequence training with Megatron-Bridge.
 | Prerequisite | Description |
 |-------------|-------------|
 | CPT checkpoint | From stage0_cpt (or base model if skipping CPT) |
-| NVIDIA_API_KEY | Required for SDG via NIM API |
+| OPENAI_API_KEY | Required for SDG via NIM API (OpenAI-compatible endpoint) |
 | Instruction data | Real data OR SDG config for synthetic generation |
 | GPU cluster | Same as CPT (2+ nodes x 8 GPUs for Nano) |
 | Container | `nvcr.io/nvidia/nemo:25.11.nemotron_3_nano` |
@@ -177,18 +177,15 @@ The underlying `SFTConfig` dataclass (in `data_prep/tokenize_pack.py`) has match
 
 ```yaml
 run:
-  data: sft-data:latest
-  model: cpt-model:latest               # CPT checkpoint from stage0
+  data: sft-data:latest                    # Packed Parquet shards from data_prep
+  model: cpt-model:latest                  # CPT checkpoint from stage0 (or base model)
   env:
     container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
-    mounts:
-      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@<commit>,/opt/megatron-lm}
-      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@<branch>,/opt/Megatron-Bridge}
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
   packed_sequence: true
-  peft: null                             # null = full SFT; "lora" for LoRA
+  peft: null                               # null = full SFT; "lora" for LoRA
 
 dataset:
   nano3_packed_sft_dir: ${art:data,path}
@@ -197,8 +194,8 @@ dataset:
     packed_sequence_size: ${art:data,pack_size}
 
 train:
-  train_iters: 1700                      # Adjust based on dataset size
-  global_batch_size: 4                   # Small GBS for SFT (avoid overfitting)
+  train_iters: 1700                        # Adjust based on dataset size (~2-3 epochs)
+  global_batch_size: 4                     # Small GBS for SFT (avoid overfitting)
 
 model:
   seq_length: ${art:data,pack_size}
@@ -208,20 +205,19 @@ model:
   calculate_per_token_loss: true
 
 scheduler:
-  lr: 5e-6                               # Lower than CPT
   lr_warmup_iters: 4
-  lr_decay_style: cosine
 
 logger:
   log_interval: 10
   wandb_project: ${run.wandb.project}
   wandb_entity: ${run.wandb.entity}
+  wandb_exp_name: nemotron-sft
 
 checkpoint:
   save: /results/sft_checkpoint
   save_interval: 100
   pretrained_checkpoint: ${art:model,path}
-  finetune: true                         # Skip loading optimizer state
+  finetune: true                           # Skip loading optimizer state from pretrained checkpoint
 ```
 
 ### Key Parameters
@@ -230,10 +226,13 @@ checkpoint:
 |-----------|---------|-------|-------|
 | `train.train_iters` | 1700 | 500-5000 | ~2-3 epochs over dataset |
 | `train.global_batch_size` | 4 | 2-16 | Small to prevent overfitting |
-| `scheduler.lr` | 5e-6 | 1e-6 to 2e-5 | Lower than CPT LR |
-| `dataset.seq_length` | 4096 | 2048-8192 | Must match pack_size |
-| `recipe.peft` | null | null/"lora" | null = full SFT, "lora" = parameter-efficient |
-| `checkpoint.finetune` | true | true/false | true = skip optimizer state from pretrained |
+| `model.seq_length` | `${art:data,pack_size}` | 2048-8192 | Must match pack_size |
+| `model.pipeline_model_parallel_size` | 1 | 1-8 | Pipeline parallelism |
+| `model.tensor_model_parallel_size` | 4 | 1-8 | Tensor parallelism |
+| `model.context_parallel_size` | 2 | 1-4 | Context parallelism for long sequences |
+| `checkpoint.save_interval` | 100 | 50-500 | Checkpoint save frequency |
+| `checkpoint.pretrained_checkpoint` | `${art:model,path}` | Path | CPT checkpoint or base model path |
+| `recipe.peft` | null | null / "lora" | null = full SFT; "lora" for LoRA |
 
 ### LoRA vs Full SFT Decision
 
@@ -301,7 +300,7 @@ nemotron customize sft -c default --dry-run
 
 | Symptom | Diagnosis | Fix |
 |---------|-----------|-----|
-| Loss NaN after loading CPT checkpoint | Checkpoint format mismatch or corrupt | Verify `finetune: true` is set; check checkpoint integrity |
+| Loss NaN after loading CPT checkpoint | Checkpoint format mismatch or corrupt | Verify `checkpoint.finetune: true` is set; check checkpoint integrity |
 | Model responds in wrong language | Insufficient target-language data in SFT blend | Increase domain data weight to 70%, add language-specific system prompt |
 | Repetitive/generic responses | Overfitting on limited SDG data | Increase SDG diversity (more task types), reduce train_iters |
 | Chat format broken (no turn boundaries) | Wrong chat template or packing error | Verify `chat_template` matches model family, check packed Parquet samples |

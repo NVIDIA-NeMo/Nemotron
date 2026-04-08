@@ -143,6 +143,8 @@ source:
   num_records: null           # Limit for quick tests (null = all)
 
 # Language filtering via fastText lid.176.bin
+# The model is auto-downloaded to ~/.cache/nemotron/lid.176.bin if not provided.
+# To use a custom path, set lid_model_path in AcquireConfig.
 language_filter:
   enabled: true
   language_codes: []          # e.g. [EN, HI] -- empty keeps all languages
@@ -177,8 +179,8 @@ The underlying `AcquireConfig` dataclass (in `data_prep/acquire.py`) uses flat f
 
 ```yaml
 run:
-  data: cpt-data:latest                # Data artifact (bin/idx blends)
-  model: null                          # Base model (downloaded from HF if null)
+  data: cpt-data:latest                    # Data artifact (bin/idx blends from data_prep)
+  model: null                              # Base model (downloaded from HF if null)
   env:
     container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
 
@@ -187,8 +189,8 @@ recipe:
   per_split_data_args_path: ${art:data,path}/blend.json
 
 train:
-  train_iters: 10000                   # Adjust based on data volume
-  global_batch_size: 256               # Tokens per step = GBS * seq_length
+  train_iters: 10000                       # Adjust based on data volume (5000-50000)
+  global_batch_size: 256                   # Tokens per step = GBS * seq_length
   micro_batch_size: 1
 
 model:
@@ -198,7 +200,7 @@ model:
   context_parallel_size: 2
 
 optimizer:
-  lr: 1e-5                             # Lower than pretrain (avoid forgetting)
+  lr: 1e-5                                 # Lower than pretrain (avoid forgetting)
   min_lr: 1e-6
   weight_decay: 0.01
   adam_beta1: 0.9
@@ -217,7 +219,7 @@ logger:
 checkpoint:
   save: /results/cpt_checkpoint
   save_interval: 1000
-  load: null                           # Set to resume from a checkpoint
+  load: null                               # Set to resume from a checkpoint
 ```
 
 ### Key Parameters
@@ -226,12 +228,14 @@ checkpoint:
 |-----------|---------|-------|-------|
 | `train.train_iters` | 10000 | 5000-50000 | ~10B tokens with GBS=256, seq=4096 |
 | `train.global_batch_size` | 256 | 64-512 | Higher = smoother gradients, more GPU memory |
+| `train.micro_batch_size` | 1 | 1-4 | Per-GPU batch size |
 | `optimizer.lr` | 1e-5 | 5e-6 to 5e-5 | Lower for less forgetting |
-| `optimizer.min_lr` | 1e-6 | 1e-7 to 1e-5 | Cosine decay target |
 | `optimizer.weight_decay` | 0.01 | 0.0-0.1 | Regularization |
 | `model.seq_length` | 4096 | 2048-8192 | Match base model context length |
 | `model.tensor_model_parallel_size` | 4 | 1-8 | Increase for larger models |
-| `checkpoint.save_interval` | 1000 | 500-2000 | Save frequently for long runs |
+| `model.pipeline_model_parallel_size` | 1 | 1-8 | Pipeline parallelism |
+| `model.context_parallel_size` | 2 | 1-4 | Context parallelism for long sequences |
+| `checkpoint.save_interval` | 1000 | 250-2000 | Save frequently for long runs |
 
 ## Execution
 
@@ -240,7 +244,7 @@ checkpoint:
 ```bash
 nemotron customize cpt -c default
 # or directly:
-python src/nemotron/customization_recipes/nemotron/stage0_cpt/run_cpt.py \
+python src/nemotron/recipes/nano3/stage0_pretrain/train.py \
   --config src/nemotron/customization_recipes/nemotron/stage0_cpt/config/default.yaml
 ```
 
@@ -287,8 +291,8 @@ nemotron customize cpt -c default --run MY-CLUSTER \
 
 | Symptom | Diagnosis | Fix |
 |---------|-----------|-----|
-| OOM on forward pass | Model too large for GPU memory with current parallelism | Increase `tensor_model_parallel_size` or `pipeline_model_parallel_size` |
-| OOM on backward pass | Activation memory too high | Enable activation checkpointing, reduce `micro_batch_size` |
+| OOM on forward pass | Model too large for GPU memory with current parallelism | Increase `model.tensor_model_parallel_size` or `model.pipeline_model_parallel_size` |
+| OOM on backward pass | Activation memory too high | Enable activation checkpointing, reduce `train.micro_batch_size` |
 | Loss NaN/Inf | Numerical instability, bad data | Reduce LR, check data for special characters/encoding issues, enable gradient clipping |
 | Loss not decreasing | LR too low or data not informative | Increase LR to 5e-5, verify data is actually in target language |
 | Catastrophic forgetting (English performance drops >10%) | Too aggressive adaptation | Increase English data ratio to 30%, reduce LR, reduce train_iters |

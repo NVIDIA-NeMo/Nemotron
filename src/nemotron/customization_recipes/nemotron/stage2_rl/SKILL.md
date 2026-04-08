@@ -91,8 +91,9 @@ training_type: grpo
 
 # --- GRPO settings (used when training_type: grpo) ---
 grpo:
-  num_prompts_per_step: 12
-  num_generations_per_prompt: 8
+  num_prompts_per_step: 128
+  num_generations_per_prompt: 16
+  num_val_generations_per_prompt: 4
   max_rollout_turns: 1
   max_num_epochs: 1
   max_num_steps: 100
@@ -106,8 +107,9 @@ loss_fn:
   reference_policy_kl_penalty: 0.01
   reference_policy_kl_type: k3
   ratio_clip_min: 0.2
-  ratio_clip_max: 0.2
+  ratio_clip_max: 0.28
   token_level_loss: true
+  use_importance_sampling_correction: true
 
 # --- DPO settings (used when training_type: dpo) ---
 dpo:
@@ -121,50 +123,60 @@ dpo:
 
 # --- Policy (shared between DPO and GRPO) ---
 policy:
-  model_name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+  model_name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16  # REPLACE with SFT checkpoint path
   tokenizer:
-    name: ${policy.model_name}
-    chat_template_kwargs: null
-  train_global_batch_size: 96
+    name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  train_global_batch_size: 2048
   train_micro_batch_size: 1
-  max_total_sequence_length: 8192
+  generation_batch_size: 64
+  max_total_sequence_length: 49152
   precision: bfloat16
   max_grad_norm: 1.0
 
   megatron_cfg:
     enabled: true
-    tensor_model_parallel_size: 4
+    tensor_model_parallel_size: 2
     expert_tensor_parallel_size: 1
     expert_model_parallel_size: 8
-    pipeline_model_parallel_size: 1
+    pipeline_model_parallel_size: 2
+    context_parallel_size: 4
     sequence_parallel: true
 
-  optimizer:
-    name: torch.optim.AdamW
-    kwargs:
-      lr: 5.0e-6
-      weight_decay: 0.01
-      betas: [0.9, 0.999]
-      eps: 1e-8
+    optimizer:
+      optimizer: "adam"
+      lr: 3e-6
+      min_lr: 3e-6
+      weight_decay: 0.0
+      clip_grad: ${policy.max_grad_norm}
+      use_distributed_optimizer: true
+
+    scheduler:
+      lr_decay_style: "constant"
+      lr_warmup_iters: 10
 
   generation:
     backend: vllm
     max_new_tokens: ${policy.max_total_sequence_length}
     temperature: 1.0
     top_p: 1.0
+    vllm_cfg:
+      tensor_parallel_size: 4
+      pipeline_parallel_size: 1
+      gpu_memory_utilization: 0.5
+      max_model_len: ${policy.max_total_sequence_length}
 
 # --- Data ---
 data:
-  dataset_name: OpenMathInstruct-2
+  train_jsonl_fpath: ./output/rl_data/train.jsonl    # REPLACE with your prompt data
+  validation_jsonl_fpath: ./output/rl_data/val.jsonl  # REPLACE with your validation data
   shuffle: false
   num_workers: 1
-  max_input_seq_length: ${policy.max_total_sequence_length}
 
 # --- Checkpointing ---
 checkpointing:
   enabled: true
   checkpoint_dir: ./output/rl_checkpoints
-  metric_name: "val:accuracy"
+  metric_name: "val:total_reward/mean"
   higher_is_better: true
   keep_top_k: 3
   save_period: 10
@@ -179,22 +191,21 @@ cluster:
 
 | Parameter | Default | Range | Notes |
 |-----------|---------|-------|-------|
-| `grpo.num_prompts_per_step` | 12 | 32-512 | More = better gradient estimates, more compute |
-| `grpo.num_generations_per_prompt` | 8 | 4-32 | More = better advantage estimates |
+| `grpo.num_prompts_per_step` | 128 | 32-512 | More = better gradient estimates, more compute |
+| `grpo.num_generations_per_prompt` | 16 | 4-32 | More = better advantage estimates |
 | `loss_fn.reference_policy_kl_penalty` | 0.01 | 0-0.1 | Higher = more conservative (less forgetting) |
 | `loss_fn.ratio_clip_min` | 0.2 | 0.1-0.3 | PPO-style clipping |
-| `loss_fn.ratio_clip_max` | 0.2 | 0.2-0.4 | Symmetric clipping (same as clip_min) |
-| `policy.optimizer.kwargs.lr` | 5e-6 | 1e-6 to 1e-5 | RL learning rate |
+| `loss_fn.ratio_clip_max` | 0.28 | 0.2-0.4 | Asymmetric clipping |
+| `policy.megatron_cfg.optimizer.lr` | 3e-6 | 1e-6 to 1e-5 | RL learning rate |
 | `dpo.reference_policy_kl_penalty` | 0.05 | 0.01-0.5 | Higher = more conservative DPO |
 | `cluster.num_nodes` | 4 | 4-64 | GRPO is compute-intensive |
 
 ## Execution
 
-### DPO (Megatron-Bridge, Slurm)
+### DPO (Slurm)
 
 ```bash
-nemotron customize rl \
-  -c src/nemotron/customization_recipes/nemotron/stage2_rl/config/default.yaml \
+nemotron customize rl -c default \
   --run MY-CLUSTER \
   training_type=dpo \
   policy.model_name=/results/sft_checkpoint
@@ -203,8 +214,7 @@ nemotron customize rl \
 ### GRPO (Ray, Slurm)
 
 ```bash
-nemotron customize rl \
-  -c src/nemotron/customization_recipes/nemotron/stage2_rl/config/default.yaml \
+nemotron customize rl -c default \
   --run MY-CLUSTER \
   training_type=grpo \
   policy.model_name=/results/sft_checkpoint_hf
@@ -215,8 +225,7 @@ GRPO uses Ray for distributed execution. The CLI automatically selects RayJob ex
 ### Local (DPO Only, Single Node)
 
 ```bash
-nemotron customize rl \
-  -c src/nemotron/customization_recipes/nemotron/stage2_rl/config/default.yaml \
+nemotron customize rl -c default \
   training_type=dpo
 ```
 

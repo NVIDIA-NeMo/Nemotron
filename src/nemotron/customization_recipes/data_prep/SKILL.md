@@ -168,6 +168,15 @@ Blends are loaded with `DataBlend.load("blend.json")` and control the relative p
 
 ## NeMo Curator Integration
 
+### FastText Language ID Model
+
+Language filtering requires the FastText `lid.176.bin` model. When using the
+`identify_languages()` function from `data_prep/acquire.py`, the model is
+**auto-downloaded** to `~/.cache/nemotron/lid.176.bin` if `lid_model_path` is
+not set. To use a custom path, set `lid_model_path` in `AcquireConfig` or in
+the YAML config. For airgap environments, pre-download the model with the
+airgap bundle script (`scripts/airgap/download_assets.sh`).
+
 ### Language Filtering
 
 ```python
@@ -212,14 +221,15 @@ deduplicated = fuzzy_dedup(filtered_dataset)
 For translating English domain data to a target language:
 
 ```python
-# Using NIM Translation API
-import requests
+# Using NIM Translation API (OPENAI_API_KEY env var in docker-compose)
+import os, requests
 
 def translate_batch(texts, source_lang="en", target_lang="hi"):
     """Translate a batch of texts using NIM API."""
+    api_key = os.environ["OPENAI_API_KEY"]
     response = requests.post(
         "https://integrate.api.nvidia.com/v1/translate",
-        headers={"Authorization": f"Bearer {NVIDIA_API_KEY}"},
+        headers={"Authorization": f"Bearer {api_key}"},
         json={
             "texts": texts,
             "source_language": source_lang,

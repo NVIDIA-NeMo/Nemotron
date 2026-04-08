@@ -125,6 +125,12 @@ class SDGConfig:
     model_alias: Optional[str] = None
     """Alias of the model to use for the generated column."""
 
+    domain: Optional[str] = None
+    """Target domain (e.g., "medical", "legal") — injected into system prompt."""
+
+    language: Optional[str] = None
+    """Target language (e.g., "Korean", "Hindi") — injected into system prompt."""
+
     @staticmethod
     def from_omegaconf(cfg: DictConfig) -> "SDGConfig":
         from omegaconf import OmegaConf
@@ -207,10 +213,26 @@ def run_sdg_pipeline(cfg: SDGConfig) -> "pd.DataFrame":
 
     output_format = resolve_schema(cfg.output_format)
 
+    # Build system prompt, incorporating domain/language when provided
+    system_prompt = cfg.system_prompt
+    if cfg.domain or cfg.language:
+        parts = []
+        if cfg.language:
+            parts.append(cfg.language)
+        if cfg.domain:
+            parts.append(cfg.domain)
+        domain_lang_hint = (
+            f"Generate {' '.join(parts)} conversations."
+        )
+        if system_prompt:
+            system_prompt = f"{domain_lang_hint} {system_prompt}"
+        else:
+            system_prompt = domain_lang_hint
+
     builder.add_column(
         name=cfg.column_name,
         column_type=cfg.column_type,
-        system_prompt=cfg.system_prompt,
+        system_prompt=system_prompt,
         prompt=cfg.user_prompt,
         output_format=output_format,
         model_alias=cfg.model_alias,

@@ -14,54 +14,87 @@
 
 """RL (Reinforcement Learning) command implementation.
 
-Runs stage2 RL training (DPO / GRPO) using NeMo-RL + Ray.
+Runs stage2 RL training (DPO or GRPO) using the production training script
+for the user's chosen model family (nano3, super3) with customization-specific
+YAML configs.
 
-Design: LLM-Native Recipe Architecture
-- Execution logic in _execute.py (shared across all customize commands)
-- Fork _execute.py to change how jobs are submitted
+Design: Same scripts, different configs.
+- Training script: resolved dynamically based on --model-family
+- Config dir: src/nemotron/customization_recipes/nemotron/stage2_rl/config/
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from nemo_runspec import parse as parse_runspec
+from nemo_runspec._models import Runspec, RunspecConfig
 from nemo_runspec.recipe_config import parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
 
-from nemotron.cli.commands.customize._execute import execute_recipe
+from nemotron.cli.commands.customize._execute import (
+    DEFAULT_MODEL_FAMILY,
+    execute_recipe,
+    resolve_training_script,
+)
 
-# =============================================================================
-# Recipe Metadata (read from [tool.runspec] in script)
-# =============================================================================
+_CUSTOMIZE_CONFIG_DIR = str(
+    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage2_rl/config").resolve()
+)
 
-SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage2_rl/run_rl.py"
-SPEC = parse_runspec(SCRIPT_PATH)
+_DEFAULT_SCRIPT = resolve_training_script("rl", DEFAULT_MODEL_FAMILY)
+_DEFAULT_SPEC = parse_runspec(_DEFAULT_SCRIPT)
 
+SPEC = _DEFAULT_SPEC
 META = RecipeMeta(
-    name=SPEC.name,
-    script_path=SCRIPT_PATH,
-    config_dir=str(SPEC.config_dir),
-    default_config=SPEC.config.default,
+    name="customize/rl",
+    script_path=_DEFAULT_SCRIPT,
+    config_dir=_CUSTOMIZE_CONFIG_DIR,
+    default_config="default",
     input_artifacts={
         "model": "SFT model checkpoint",
-        "data": "RL preference data or reward function",
+        "data": "Prompt/preference data for RL",
     },
-    output_artifacts={"model": "RL-aligned model checkpoint"},
+    output_artifacts={"model": "RL-trained model checkpoint"},
 )
 
 
-# =============================================================================
-# CLI Entry Point
-# =============================================================================
+def rl(
+    ctx: typer.Context,
+    model_family: str = typer.Option(
+        DEFAULT_MODEL_FAMILY,
+        "--model-family",
+        "-m",
+        help="Base model family (nano3, super3). Determines which training script to use.",
+    ),
+) -> None:
+    """Run reinforcement learning (stage2).
 
-
-def rl(ctx: typer.Context) -> None:
-    """Run reinforcement learning alignment (stage2).
-
-    Trains with DPO or GRPO using NeMo-RL + Ray.
-    The execution logic is in _execute.py - see execute_recipe()
-    for nemo-run setup.
+    Runs DPO or GRPO training based on training_type config key.
+    Set training_type=dpo or training_type=grpo as CLI override.
+    The training script is selected based on --model-family.
     """
+    script_path = resolve_training_script("rl", model_family)
+    base_spec = parse_runspec(script_path)
+
+    spec = Runspec(
+        schema=base_spec.schema,
+        docs=base_spec.docs,
+        name="customize/rl",
+        image=base_spec.image,
+        setup=base_spec.setup,
+        run=base_spec.run,
+        config=RunspecConfig(
+            dir=_CUSTOMIZE_CONFIG_DIR,
+            default="default",
+            format=base_spec.config.format,
+        ),
+        resources=base_spec.resources,
+        env=base_spec.env,
+        script_path=base_spec.script_path,
+    )
+
     cfg = parse_recipe_config(ctx)
-    execute_recipe(cfg, SPEC, SCRIPT_PATH)
+    execute_recipe(cfg, spec, script_path)

@@ -68,7 +68,7 @@ MCQ Benchmark Dataset
 | Prerequisite | Description |
 |-------------|-------------|
 | Domain text corpus | JSONL or plain text files with domain content |
-| NVIDIA_API_KEY | NIM API access for MCQ generation and judging |
+| OPENAI_API_KEY | OpenAI-compatible API key for NIM endpoint (MCQ generation and judging) |
 | NeMo Curator | For deduplication and filtering steps |
 | Python 3.10+ | Runtime environment |
 
@@ -219,11 +219,10 @@ The `ByobConfig` dataclass (in `data_prep/byob.py`) maps these fields directly. 
 ```bash
 python src/nemotron/customization_recipes/nemotron/stage3_byob/run_generate.py \
   --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
-  byob.input_corpus=/data/hindi_medical_texts \
-  byob.output_dir=/data/hindi_medical_benchmark \
-  byob.language=hi \
-  byob.domain=medical \
-  byob.num_questions=5000
+  input_dir=/data/hindi_medical_texts \
+  output_dir=/data/hindi_medical_benchmark \
+  language=hi \
+  num_questions_per_query=5
 ```
 
 ### Running Sub-Tasks
@@ -387,11 +386,10 @@ nemo-evaluator-byob src/nemotron/customization_recipes/nemotron/stage4_eval/sove
 # Stage 3: Generate MCQ benchmark
 python src/nemotron/customization_recipes/nemotron/stage3_byob/run_generate.py \
   --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
-  byob.input_corpus=/data/hindi_medical_texts \
-  byob.output_dir=/data/byob_benchmark \
-  byob.language=hi \
-  byob.domain=medical \
-  byob.num_questions=5000
+  input_dir=/data/hindi_medical_texts \
+  output_dir=/data/byob_benchmark \
+  language=hi \
+  num_questions_per_query=5
 
 # Bridge: Create sovereign benchmark definition
 python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_benchmark.py \

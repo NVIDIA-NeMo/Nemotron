@@ -122,7 +122,7 @@ src/nemotron/customization_recipes/nemotron/
     __init__.py
     config/
       data_prep/                      <-- Data acquisition configs
-    run_cpt.py, run_data_prep.py      <-- Recipe scripts
+    run_data_prep.py                  <-- Data prep script (training uses nano3's train.py)
   stage1_sft/
     SKILL.md
     __init__.py
@@ -153,9 +153,9 @@ Each stage has a detailed SKILL.md. Read the relevant stage SKILL.md before exec
 
 | Stage | SKILL.md Path | Key Tools |
 |-------|---------------|-----------|
-| 0 - CPT | `stage0_cpt/SKILL.md` | NeMo Curator, nemo_automodel, Megatron-Bridge |
-| 1 - SFT | `stage1_sft/SKILL.md` | DataDesigner (SDG), nemotron.data_prep, nemo_automodel |
-| 2 - RL | `stage2_rl/SKILL.md` | NeMo-RL, nemo_automodel |
+| 0 - CPT | `stage0_cpt/SKILL.md` | NeMo Curator, Megatron-Bridge, nemotron.data_prep |
+| 1 - SFT | `stage1_sft/SKILL.md` | DataDesigner (SDG), Megatron-Bridge, nemotron.data_prep |
+| 2 - RL | `stage2_rl/SKILL.md` | NeMo-RL (GRPO/DPO), Megatron backend |
 | 3 - BYOB | `stage3_byob/SKILL.md` | NIM API, NeMo Curator |
 | 4 - Eval | `stage4_eval/SKILL.md` | NeMo Evaluator, NeMo Curator quality filters |
 | 5 - Quant | `stage5_quantization/SKILL.md` | TensorRT-LLM, TensorRT Model Optimizer |
@@ -236,7 +236,7 @@ cd deploy/nemotron/customization_recipes
 # Set environment variables
 export NGC_API_KEY=<your-key>
 export HF_TOKEN=<your-token>
-export NVIDIA_API_KEY=<your-nim-key>   # for SDG/BYOB
+export OPENAI_API_KEY=<your-nim-key>   # for SDG/BYOB (OpenAI-compatible endpoint)
 
 # Start the multi-container stack
 docker compose up -d
@@ -317,8 +317,8 @@ Goal: Inject Hindi language + medical domain knowledge into the base Nemotron Na
 
 # 1. Acquire and prepare data (routed to nemotron-curator)
 nemotron customize data-prep -c default \
-  data.sources.0.dataset=ai4bharat/sangraha \
-  data.sources.0.language=hi \
+  source.hf_dataset=ai4bharat/sangraha \
+  language_filter.language_codes=[HI] \
   output_dir=/workspace/data/cpt_prepared
 
 # 2. Run CPT training (routed to nemotron-trainer)
@@ -345,14 +345,13 @@ Goal: Fine-tune the CPT model for instruction following in Hindi medical domain.
 # 1. Generate synthetic instruction data (routed to nemotron-curator)
 nemotron customize sdg -c default \
   domain=medical \
-  language=hi \
-  num_samples=50000 \
+  language=Hindi \
+  num_records=50000 \
   output_dir=/workspace/data/sdg_output
 
 # 2. Prepare SFT data (routed to nemotron-curator)
 nemotron customize data-prep -c default \
-  --mode sft \
-  data.sources.0.path=/workspace/data/sdg_output \
+  input_path=/workspace/data/sdg_output \
   output_dir=/workspace/data/sft_prepared
 
 # 3. Run SFT training (routed to nemotron-trainer)
@@ -365,7 +364,7 @@ nemotron customize sft -c default \
 **Key decisions:**
 - SDG sample count: 50K-200K depending on domain complexity
 - Data blend: 60% synthetic domain, 30% general instruction, 10% safety
-- Pack size: 4096 tokens (match model context length)
+- Pack size: 8192 tokens (YAML default; set `pack_size: 4096` if model context is 4K)
 - Learning rate: 5e-6 (lower than CPT)
 
 **Artifacts produced:**
@@ -381,14 +380,16 @@ Goal: Align model with human preferences and improve reasoning quality.
 # All RL commands are routed to nemotron-trainer automatically.
 
 # Run DPO training (if you have preference pairs)
-nemotron customize rl -c dpo \
+nemotron customize rl -c default \
   --run MY-CLUSTER \
+  training_type=dpo \
   policy.model_name=/workspace/results/hindi_medical_sft \
   data.train_jsonl_fpath=/workspace/data/preferences_train.jsonl
 
 # OR run GRPO training (reward-model-based)
-nemotron customize rl -c grpo \
+nemotron customize rl -c default \
   --run MY-CLUSTER \
+  training_type=grpo \
   policy.model_name=/workspace/results/hindi_medical_sft \
   data.train_jsonl_fpath=/workspace/data/prompts_train.jsonl
 ```
@@ -408,11 +409,10 @@ Goal: Generate MCQ evaluation sets from Hindi medical text corpora.
 ```bash
 # Routed to nemotron-curator automatically
 nemotron customize byob -c default \
-  input_corpus=/workspace/data/hindi_medical_reference_texts \
+  input_dir=/workspace/data/hindi_medical_reference_texts \
   output_dir=/workspace/data/byob_benchmark \
   language=hi \
-  domain=medical \
-  num_questions=5000
+  num_questions_per_query=5
 ```
 
 The BYOB pipeline runs 5 sub-stages: generate → judge → expand distractors → validity check → filter. (Semantic dedup, coverage check, and outlier detection are planned but not yet wired.)
@@ -484,9 +484,9 @@ Goal: Produce deployment-ready model.
 ```bash
 # Routed to nemotron-trainer automatically (needs model loading + TensorRT)
 nemotron customize quantize -c default \
-  model_path=/workspace/results/hindi_medical_rl \
-  output_dir=/workspace/results/hindi_medical_int4 \
-  quantization=int4_awq
+  model.name_or_path=/workspace/results/hindi_medical_rl \
+  quantization.output_dir=/workspace/results/hindi_medical_int4 \
+  quantization.method=int4_awq
 ```
 
 **Artifacts produced:**
@@ -498,7 +498,7 @@ nemotron customize quantize -c default \
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `HF_TOKEN` | Yes | HuggingFace model/data downloads |
-| `NVIDIA_API_KEY` | For SDG/BYOB | NIM API access for synthetic data generation |
+| `OPENAI_API_KEY` | For SDG/BYOB | OpenAI-compatible API key for NIM endpoint (SDG, BYOB, translation) |
 | `WANDB_API_KEY` | Recommended | Experiment tracking and artifact lineage |
 | `WANDB_PROJECT` | Recommended | W&B project name |
 | `WANDB_ENTITY` | Recommended | W&B team/entity |
@@ -514,26 +514,30 @@ All configs use OmegaConf YAML with the following resolution chain:
 
 Artifact URIs (`${art:<name>,<field>}`) resolve model/data paths from the artifact registry (W&B or fsspec).
 
-Common config patterns:
+Common config patterns (Megatron-Bridge schema for CPT/SFT):
 ```yaml
-run:
-  data: <artifact-name>:latest    # Input data artifact
-  model: <artifact-name>:latest   # Input model artifact
-  env:
-    container: nvcr.io/...        # Container image
-    mounts: [...]                 # Volume mounts for Slurm
-
 recipe:
-  _target_: <module.path.function>  # Recipe callable
-  <param>: <value>                  # Recipe-specific params
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.<recipe_name>
 
 train:
-  train_iters: <int>
-  global_batch_size: <int>
+  train_iters: <int>               # Training iterations
+  global_batch_size: <int>          # Tokens per step = GBS * seq_length
+  micro_batch_size: <int>           # Per-GPU batch size
+
+model:
+  seq_length: <int>                 # Sequence length
+  tensor_model_parallel_size: <int> # Tensor parallelism
+  pipeline_model_parallel_size: <int> # Pipeline parallelism
+  context_parallel_size: <int>      # Context parallelism
+
+optimizer:
+  lr: <float>
+  min_lr: <float>
+  weight_decay: <float>
 
 checkpoint:
-  save: /path/to/output
-  pretrained_checkpoint: ${art:model,path}
+  save: /path/to/output             # Checkpoint output directory
+  save_interval: <int>              # Checkpoint save interval (iterations)
 ```
 
 ## Artifact Lineage
@@ -560,10 +564,10 @@ Each stage consumes artifacts from the previous stage and produces artifacts for
 
 | Issue | Likely Cause | Resolution |
 |-------|-------------|------------|
-| OOM during CPT | Batch size too large or model parallelism insufficient | Reduce `global_batch_size`, increase `tensor_model_parallel_size` |
+| OOM during CPT | Batch size too large or model parallelism insufficient | Reduce `train.global_batch_size`, increase `model.tensor_model_parallel_size` |
 | Loss not decreasing in CPT | Learning rate too high, data quality issues | Reduce LR to 5e-6, check data with stage4_eval data quality filters |
 | Catastrophic forgetting | Too much target-domain data, too few train iterations | Adjust data blend (add more English), reduce LR, add replay data |
-| SFT overfitting | Too many iterations on small SDG dataset | Reduce `train_iters`, increase SDG `num_samples`, add regularization |
+| SFT overfitting | Too many iterations on small SDG dataset | Reduce `train.train_iters`, increase SDG `num_records`, add regularization |
 | RL reward collapse | KL penalty too low or reward hacking | Increase `reference_policy_kl_penalty`, check reward model quality |
 | BYOB low quality MCQs | Source corpus too short or low quality | Filter input corpus for length/quality, increase judge temperature |
 | Eval scores below threshold | Insufficient CPT/SFT data or too few training steps | Increase data volume and training iterations, iterate |
