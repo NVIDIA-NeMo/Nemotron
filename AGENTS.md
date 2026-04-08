@@ -24,7 +24,7 @@ Nemotron/
           nano3/                     <-- Nano3 commands: pretrain, sft, rl, eval, pipe
           super3/                    <-- Super3 commands: pretrain, sft, rl (rlhf/rlvr/swe)
           embed/                     <-- Embedding model commands: sdg, prep, finetune, eval, export, deploy
-          customize/                 <-- Customization CLI (WIP)
+          customize/                 <-- Customization CLI: data-prep, cpt, sft, sdg, rl, byob, eval, quantize
         kit/                         <-- CLI utilities (app, squash)
       kit/                           <-- Domain toolkit: Artifact types, lineage tracking, W&B, recipe loading
       data_prep/                     <-- Distributed data prep library (bin/idx, packed parquet, JSONL)

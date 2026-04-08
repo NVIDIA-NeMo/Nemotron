@@ -411,6 +411,7 @@ The compiled benchmark is auto-discoverable by the evaluator and can be included
 
 Goal: Assess model quality on standard + sovereign benchmarks.
 
+**Model evaluation** (uses nemo-evaluator-launcher, same as nano3/super3):
 ```bash
 # Routed to nemotron-evaluator automatically
 nemotron customize eval -c default \
@@ -421,6 +422,16 @@ nemotron customize eval -c default \
   -t hellaswag \
   -t byob_hindi_medical_mcq.hindi-medical-mcq
 ```
+
+**Data quality evaluation** (uses NeMo Curator filters for quality assessment):
+```bash
+nemotron customize eval --mode data \
+  data_eval.input_file=/workspace/data/hindi_medical_sft.jsonl \
+  data_eval.output_dir=/workspace/results/data_quality \
+  data_eval.recipe=/workspace/configs/quality_recipe.yaml
+```
+
+This runs filters (language, domain, perplexity, coherence, tool-calling accuracy) on your training data and produces aggregate quality metrics. Use before training to catch data issues early.
 
 **Expected thresholds (Hindi medical):**
 - MMLU (Hindi subset): >60% accuracy
