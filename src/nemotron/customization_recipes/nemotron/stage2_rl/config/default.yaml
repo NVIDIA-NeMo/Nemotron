@@ -1,0 +1,113 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# RL Training Config — Nemotron (DPO / GRPO)
+# =============================================================================
+# Set training_type to "dpo" or "grpo".
+
+training_type: grpo
+
+# --- GRPO settings ---
+grpo:
+  num_prompts_per_step: 12
+  num_generations_per_prompt: 8
+  max_rollout_turns: 1
+  max_num_epochs: 1
+  max_num_steps: 100
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  val_period: 10
+  val_at_start: false
+  seed: 42
+
+loss_fn:
+  reference_policy_kl_penalty: 0.01
+  reference_policy_kl_type: k3
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.2
+  token_level_loss: true
+
+# --- DPO settings (used when training_type: dpo) ---
+dpo:
+  max_num_epochs: 1
+  max_num_steps: 150
+  val_period: 25
+  reference_policy_kl_penalty: 0.05
+  preference_loss_weight: 1
+  sft_loss_weight: 0
+  seed: 42
+
+# --- Policy (shared) ---
+policy:
+  model_name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+  tokenizer:
+    name: ${policy.model_name}
+    chat_template_kwargs: null
+  train_global_batch_size: 96
+  train_micro_batch_size: 1
+  max_total_sequence_length: 8192
+  precision: bfloat16
+  max_grad_norm: 1.0
+
+  megatron_cfg:
+    enabled: true
+    tensor_model_parallel_size: 4
+    expert_tensor_parallel_size: 1
+    expert_model_parallel_size: 8
+    pipeline_model_parallel_size: 1
+    sequence_parallel: true
+
+  optimizer:
+    name: torch.optim.AdamW
+    kwargs:
+      lr: 5.0e-6
+      weight_decay: 0.01
+      betas: [0.9, 0.999]
+      eps: 1e-8
+
+  generation:
+    backend: vllm
+    max_new_tokens: ${policy.max_total_sequence_length}
+    temperature: 1.0
+    top_p: 1.0
+
+# --- Data ---
+data:
+  dataset_name: OpenMathInstruct-2
+  shuffle: false
+  num_workers: 1
+  max_input_seq_length: ${policy.max_total_sequence_length}
+
+# --- Checkpointing ---
+checkpointing:
+  enabled: true
+  checkpoint_dir: ./output/rl_checkpoints  # REPLACE
+  metric_name: "val:accuracy"
+  higher_is_better: true
+  keep_top_k: 3
+  save_period: 10
+
+# --- Logging ---
+logger:
+  log_dir: logs
+  wandb_enabled: true
+  wandb:
+    project: nemotron-customization
+    name: nemotron-grpo
+
+# --- Cluster ---
+cluster:
+  gpus_per_node: 8
+  num_nodes: 4

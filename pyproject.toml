@@ -51,6 +51,22 @@ s3 = ["s3fs>=2024.0.0"]
 gcs = ["gcsfs>=2024.0.0"]
 sentencepiece = ["sentencepiece>=0.2.0"]
 xenna = ["cosmos-xenna"]
+customize = [
+    "nemo-curator[text_cuda12]>=1.0.0",
+    "google-cloud-translate>=3.0.0",
+    "boto3>=1.26.0",
+    "openai>=1.0.0",
+    "instructor>=1.0.0",
+    "sacrebleu>=2.0.0",
+    "pycountry>=22.0.0",
+    "bcp47>=0.0.4",
+    "langdetect>=1.0.9",
+    "aiohttp>=3.8.0",
+    "data-designer>=0.2.0",
+    "tiktoken>=0.5.0",
+    "leptonai>=0.20.0",
+    "json-schema-to-pydantic>=0.2.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -63,6 +79,20 @@ all = [
     "gcsfs>=2024.0.0",
     "sentencepiece>=0.2.0",
     "cosmos-xenna",
+    "nemo-curator[text_cuda12]>=1.0.0",
+    "google-cloud-translate>=3.0.0",
+    "boto3>=1.26.0",
+    "openai>=1.0.0",
+    "instructor>=1.0.0",
+    "sacrebleu>=2.0.0",
+    "pycountry>=22.0.0",
+    "bcp47>=0.0.4",
+    "langdetect>=1.0.9",
+    "aiohttp>=3.8.0",
+    "data-designer>=0.2.0",
+    "tiktoken>=0.5.0",
+    "leptonai>=0.20.0",
+    "json-schema-to-pydantic>=0.2.0",
 ]
 
 # Note: megatron-bridge is required for training but not listed as a dependency
@@ -76,6 +106,7 @@ Repository = "https://github.com/nemotron/nemotron"
 
 [project.scripts]
 nemotron = "nemotron.__main__:main"
+nemotron-customize = "nemotron.cli.bin.nemotron_customize:main"
 
 [project.entry-points."fsspec.specs"]
 art = "nemo_runspec.filesystem:ArtifactFileSystem"

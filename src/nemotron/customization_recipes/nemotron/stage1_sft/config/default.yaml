@@ -1,0 +1,117 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# SFT Training Config — Nemotron
+# =============================================================================
+
+# Model
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+  torch_dtype: bf16
+  trust_remote_code: true
+
+# Training schedule
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 8
+  ckpt_every_steps: 50
+  val_every_steps: 1000
+  max_steps: 100
+
+# Distributed
+dist_env:
+  backend: nccl
+  timeout_minutes: 1
+
+distributed:
+  _target_: nemo_automodel.components.distributed.fsdp2.FSDP2Manager
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  pp_size: 8
+  sequence_parallel: false
+
+# RNG
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 42
+  ranked: true
+
+# Checkpoint
+checkpoint:
+  enabled: true
+  checkpoint_dir: ./output/sft_checkpoints  # REPLACE with your path
+  model_save_format: safetensors
+  save_consolidated: true
+
+# Packed sequence support
+packed_sequence:
+  packed_sequence_size: 0
+  split_across_pack: false
+
+# Loss
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+# Dataset — chat-format SFT data
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.chat_dataset.make_chat_dataset
+  dataset_name: HuggingFaceH4/ultrachat_200k
+  split: train_sft
+  seq_length: 4096
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.chat_dataset.make_chat_dataset
+  dataset_name: HuggingFaceH4/ultrachat_200k
+  split: test_sft
+  seq_length: 4096
+
+# Dataloaders
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: true
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+
+# Optimizer
+optimizer:
+  _target_: torch.optim.Adam
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-5
+  weight_decay: 0
+
+lr_scheduler:
+  lr_decay_style: cosine
+  min_lr: 1.0e-6
+
+# Pipeline parallelism
+autopipeline:
+  _target_: nemo_automodel.components.distributed.pipelining.AutoPipeline
+  pp_schedule: 1f1b
+  pp_microbatch_size: 1
+  round_virtual_stages_to_pp_multiple: up
+  scale_grads_in_schedule: false
+  layers_per_stage: null
+
+# W&B (optional)
+wandb:
+  project: nemotron-customization
+  entity: null
+  name: nemotron-sft

@@ -1,0 +1,232 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# Stage 4: Evaluation Configuration for Customization Recipes
+#
+# This config evaluates a customized Nemotron model using NeMo Evaluator
+# with Ray-based in-framework deployment. The 'run' section is used for
+# artifact resolution and env.toml profile injection, then stripped before
+# passing to the evaluator launcher.
+#
+# Follows the SAME pattern as nano3/super3 stage3_eval.
+#
+# Usage:
+#   nemotron customize eval --run MY-CLUSTER
+#   nemotron customize eval --run MY-CLUSTER run.model=sft:v2
+#   nemotron customize eval --run MY-CLUSTER -t adlr_mmlu -t hellaswag
+#   nemotron customize eval --dry-run
+#   nemotron customize eval --mode data data_eval.input_file=/data/train.jsonl
+# =============================================================================
+
+# =============================================================================
+# Defaults - Use slurm executor and generic deployment
+# =============================================================================
+defaults:
+  - execution: slurm/default
+  - deployment: generic
+  - _self_
+
+# =============================================================================
+# Nemotron run section (artifact resolution + env.toml injection)
+# This section is used for interpolation and stripped before calling the launcher
+# =============================================================================
+run:
+  # Model artifact to evaluate (from any training stage: cpt, sft, rl)
+  model: customize-model:latest
+
+  # Environment config - populated from env.toml profile via --run
+  env:
+    # Default container for NeMo Framework Ray deployment (squash file for Slurm)
+    # Uses the same NeMo Megatron container as training for model serving;
+    # nemo-evaluator-launcher pulls its own containers for evaluation tasks.
+    container: nvcr.io/nvidia/nemo:25.11.nemotron
+    executor: slurm
+    host: ${oc.env:HOSTNAME,localhost}
+    user: ${oc.env:USER}
+    account: null
+    partition: batch
+    remote_job_dir: ${oc.env:PWD}/.nemotron
+    time: "04:00:00"
+
+  # W&B config - populated from env.toml [wandb] section
+  wandb:
+    entity: null
+    project: null
+
+# =============================================================================
+# Execution Configuration
+# =============================================================================
+execution:
+  type: slurm
+  hostname: ${run.env.host}
+  username: ${run.env.user}
+  account: ${run.env.account}
+  output_dir: ${run.env.remote_job_dir}/evaluations
+  walltime: ${run.env.time}
+  partition: ${run.env.partition}
+
+  # Slurm resource configuration
+  num_nodes: 1
+  ntasks_per_node: 1
+  gres: gpu:8
+  subproject: nemo-evaluator-launcher
+  sbatch_comment: null
+
+  deployment:
+    n_tasks: ${execution.num_nodes}
+
+  # HAProxy for load balancing across Ray workers
+  proxy:
+    type: haproxy
+    image: null  # Set via env.toml or CLI override
+    config:
+      haproxy_port: 5009
+      health_check_path: /v1/health
+      health_check_status: 200
+
+  # Auto-export results after evaluation completes
+  auto_export:
+    enabled: true
+    destinations:
+      - wandb
+
+  # Environment variables for deployment and evaluation containers
+  env_vars:
+    deployment:
+      HF_HOME: /cache/huggingface
+      NIM_CACHE_PATH: /cache/nim
+      VLLM_CACHE_ROOT: /cache/vllm
+    evaluation:
+      HF_HOME: /cache/huggingface
+    # W&B export env vars (auto-injected by CLI if logged in locally)
+    export:
+      WANDB_API_KEY: WANDB_API_KEY
+      WANDB_PROJECT: WANDB_PROJECT
+      WANDB_ENTITY: WANDB_ENTITY
+
+  # Mounts for deployment and evaluation containers
+  mounts:
+    deployment:
+      /lustre: /lustre
+    evaluation:
+      /lustre: /lustre
+    mount_home: false
+
+# =============================================================================
+# Deployment Configuration - NeMo Framework Ray
+# =============================================================================
+deployment:
+  type: generic
+  multiple_instances: true
+  image: ${run.env.container}
+  health_check_path: /v1/health
+  port: 1235  # Port used by Ray deployment
+  served_model_name: nemo-model
+  # Resolved from W&B artifact lineage; override via CLI: deployment.checkpoint_path=/your/path
+  checkpoint_path: ${art:model,path}
+
+  # NeMo Framework Ray deployment command
+  # Parallelism settings for Nemotron (adjust TP/EP for your model size)
+  # Nano (30B MoE): TP=2, EP=8 | Super (48B dense): TP=8
+  command: >-
+    bash -c 'export TRITON_CACHE_DIR=/tmp/triton_cache_$$SLURM_NODEID;
+    python /opt/Export-Deploy/scripts/deploy/nlp/deploy_ray_inframework.py
+    --megatron_checkpoint /checkpoint/
+    --num_gpus 8
+    --tensor_model_parallel_size 2
+    --expert_model_parallel_size 8
+    --port 1235
+    --num_replicas 1'
+
+  # Health check endpoints
+  endpoints:
+    chat: /v1/chat/completions/
+    completions: /v1/completions/
+    health: /v1/health
+
+# =============================================================================
+# Evaluation Configuration
+# =============================================================================
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        max_retries: 5
+        parallelism: 4
+        request_timeout: 6000
+        extra:
+          tokenizer: ${deployment.checkpoint_path}/tokenizer
+          tokenizer_backend: huggingface
+    target:
+      api_endpoint:
+        adapter_config:
+          output_dir: /results
+          use_progress_tracking: false
+          use_caching: true
+          caching_dir: /results/cache
+          use_response_logging: true
+          max_logged_responses: 10
+          use_request_logging: true
+          max_logged_requests: 10
+
+  # Standard benchmarks for customization validation
+  # These cover multilingual capability, reasoning, and common sense
+  tasks:
+    - name: adlr_mmlu
+      nemo_evaluator_config:
+        config:
+          params:
+            top_p: 0.0
+    - name: adlr_arc_challenge_llama_25_shot
+    - name: hellaswag
+
+  # ---------------------------------------------------------------------------
+  # Sovereign benchmarks from BYOB (stage3_byob output)
+  # ---------------------------------------------------------------------------
+  # Generated via: python create_sovereign_benchmark.py \
+  #   --byob-output /data/byob_benchmark/benchmark.jsonl \
+  #   --benchmark-name sovereign-domain-mcq --output-dir /data/eval/benchmarks/ --compile
+  #
+  # To add more sovereign benchmarks, run create_sovereign_benchmark.py for each
+  # BYOB output and add the task name here. See stage4_eval/SKILL.md for details.
+  - name: byob_sovereign_domain_mcq.sovereign-domain-mcq
+    nemo_evaluator_config:
+      config:
+        params:
+          top_p: 0.0
+
+# =============================================================================
+# Data Quality Evaluation (used with --mode data)
+# =============================================================================
+data_eval:
+  recipe: null  # Path to YAML quality assessment recipe
+  input_file: null  # Path to input JSONL/Parquet data
+  output_dir: ./output/eval_data
+  output_prefix: null
+  num_workers: -1  # -1 = auto-detect
+  fields: messages
+  lines_per_split: 1000
+  splits_per_worker: -1
+  block_size: 1kb
+  allow_llm_failures: false
+  aggregate_keys_to_ignore: reasoning,turns,speakers
+
+# =============================================================================
+# Export Configuration - W&B
+# =============================================================================
+export:
+  wandb:
+    entity: ${run.wandb.entity}
+    project: ${run.wandb.project}

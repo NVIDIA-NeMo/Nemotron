@@ -1,0 +1,55 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# Nemotron NIM Service (nemotron-nim)
+#
+# Local LLM inference via NVIDIA NIM. Used for:
+#   - Synthetic Data Generation (SDG)
+#   - BYOB MCQ question generation
+#   - LLM-as-judge evaluation
+#   - Translation (LLM backend)
+#
+# No custom Dockerfile needed — uses NIM image directly.
+# Activate with: docker compose --profile with-nim up
+# =============================================================================
+
+services:
+  nemotron-nim:
+    image: nvcr.io/nim/mistralai/mistral-7b-instruct-v0.3:1.12.0
+    profiles:
+      - with-nim
+    environment:
+      - NGC_API_KEY=${NGC_API_KEY:-}
+      - NIM_MAX_MODEL_LEN=4096
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${NIM_CACHE_DIR:-nim-cache}:/opt/nim/.cache
+    shm_size: "16g"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    networks:
+      - nemotron-net
