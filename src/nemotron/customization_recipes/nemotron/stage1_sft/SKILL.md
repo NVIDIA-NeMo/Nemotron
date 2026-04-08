@@ -148,9 +148,9 @@ thinking_start_token: "<think>"
 thinking_end_token: "</think>"
 ```
 
-The underlying `SFTConfig` dataclass (in `data_prep/tokenize_pack.py`) has matching fields. Chat template application is handled internally by Megatron-Bridge's `_chat_preprocess` function during tokenization.
+The underlying `SFTConfig` dataclass (in `data_prep/tokenize_pack.py`) has matching fields. Tokenization, chat template application, thinking-token handling, and packing are all delegated to the production `nemotron.data_prep` pipeline (`run_sft_pipeline`). When `enable_thinking` is true, the `nano3` chat template is used, which natively supports `reasoning_content` and history truncation.
 
-**Output:** Packed `.npy` files in `output_dir/` (e.g., `training_8192.npy`, `validation_8192.npy`, `test_8192.npy`).
+**Output:** Packed Parquet shards in `output_dir/runs/<hash>/` compatible with Megatron-Bridge training.
 
 ## SFT Training Config (`config/default.yaml`)
 
