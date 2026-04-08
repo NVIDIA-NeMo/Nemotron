@@ -15,6 +15,26 @@ Skip this stage if:
 - You only need instruction-following capability (go to stage1_sft)
 - The base model already performs well on your target distribution
 
+## Inputs Required
+
+Before running this stage, confirm these with the user:
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Data source path or HuggingFace dataset name | Yes | `nvidia/Nemotron-Pretraining-Dataset-sample` | Ask: "Where is your pretraining corpus? (local path or HuggingFace dataset ID)" |
+| Target language(s) for filtering | Yes | None | Ask: "What language(s) should we filter for? (e.g., hi, fr, ja)" |
+| Target domain(s) for classification | No | All domains | Ask: "Should we filter by domain? (e.g., Science, Technology, Medical)" |
+| Whether translation is needed | Yes (if target lang is not English) | false | Ask: "Do you need to translate English domain data to your target language?" |
+| Translation backend | If translating | LLM-based (`openai/gpt-oss-120b`) | Ask: "Which translation backend? (Google Cloud, AWS, LLM-based via NIM)" |
+| Base model (for tokenizer) | Yes | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16` | Ask: "Which Nemotron base model? This determines the tokenizer." |
+| Compute: number of nodes | Yes | 2 | Ask: "How many nodes available? (minimum 2 for Nano, 8+ for Super)" |
+| Compute: GPUs per node | Yes | 8 | Ask: "How many GPUs per node?" |
+| Compute: executor type | Yes | local | Ask: "Where will this run? (local, Slurm, Lepton, Run:AI)" |
+| Data blend ratios | No | 70/20/10 (target/English/code) | Ask: "Custom data blend ratios, or use the default 70% target / 20% English / 10% code?" |
+| Training iterations | No | 10000 | Ask: "How many training iterations? (5000-50000, depends on data volume)" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## Sub-Stages
 
 CPT has two sub-stages that run sequentially:

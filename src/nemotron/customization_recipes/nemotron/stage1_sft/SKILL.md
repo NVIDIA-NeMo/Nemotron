@@ -17,6 +17,27 @@ Skip SDG when:
 - You have >50K high-quality real instruction pairs
 - You have an existing SFT dataset in the target language
 
+## Inputs Required
+
+Before running this stage, confirm these with the user:
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Training data path (JSONL with messages) | Yes, unless using SDG | None | Ask: "Where is your SFT training data? (local JSONL path or HuggingFace dataset)" |
+| Whether SDG is needed | Yes | No | Ask: "Do you have instruction-following data, or should we generate synthetic data?" |
+| SDG domain | If doing SDG | None | Ask: "What domain for synthetic data? (medical, legal, finance, code, general)" |
+| SDG language | If doing SDG | en | Ask: "What language for synthetic data generation?" |
+| SDG sample count | If doing SDG | 50000 | Ask: "How many synthetic samples? (10K-200K, more = better coverage but slower)" |
+| SDG model endpoint | If doing SDG | `openai/gpt-oss-20b` via NIM | Ask: "Which LLM for generation? (local NIM, NVIDIA API, or custom endpoint)" |
+| Base/checkpoint model path | Yes | None | Ask: "Path to CPT checkpoint from stage 0? (or base model if skipping CPT)" |
+| Pack size / max sequence length | No | 8192 | Ask: "Max sequence length? (4096 or 8192, must match model context)" |
+| Full SFT or LoRA | No | Full SFT | Ask: "Full SFT or LoRA? (LoRA is faster but slightly lower quality)" |
+| Compute resources | Yes | 2 nodes x 8 GPUs | Ask: "How many nodes and GPUs per node?" |
+| Executor type | Yes | local | Ask: "Where will this run? (local, Slurm, Lepton, Run:AI)" |
+| Training iterations | No | 1700 | Ask: "How many training iterations? (500-5000, ~2-3 epochs typical)" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## Sub-Stages
 
 ### Sub-Stage 1a: Data Preparation

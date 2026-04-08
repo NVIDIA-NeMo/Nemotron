@@ -12,6 +12,25 @@ Always run this stage. Evaluation is the gate between training and deployment.
 - Run **data quality evaluation** before and during training to catch data issues early
 - Run both before stage5_quantization to establish pre-quantization baselines
 
+## Inputs Required
+
+Before running this stage, confirm these with the user:
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Model checkpoint to evaluate | Yes | None | Ask: "Which model checkpoint? (path to CPT, SFT, or RL checkpoint)" |
+| Evaluation mode | No | model (benchmark eval) | Ask: "Model benchmark evaluation, data quality evaluation, or both?" |
+| Which benchmarks (model eval) | No | MMLU + ARC + HellaSwag | Ask: "Which benchmarks? (standard only, sovereign only, or both?)" |
+| Sovereign benchmark name | If using BYOB benchmarks | None | Ask: "Name of the sovereign benchmark from stage 3? (e.g., hindi-medical-mcq)" |
+| BYOB benchmark path | If sovereign and not yet compiled | None | Ask: "Path to the BYOB benchmark.jsonl from stage 3?" |
+| Input data file (data eval) | If data quality mode | None | Ask: "Path to the training data file to assess quality? (JSONL)" |
+| Quality recipe (data eval) | If data quality mode | None | Ask: "Quality recipe YAML path, or use default filters? (language, quality, repetition, word count)" |
+| Compute: executor type | Yes | Slurm | Ask: "Where will this run? (local, Slurm, Lepton, Run:AI)" |
+| Compute: GPUs | No | 1 node x 8 GPUs | Ask: "How many GPUs for model serving during eval?" |
+| env.toml profile | If Slurm | None | Ask: "Which env.toml profile name for your cluster?" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## Architecture
 
 Model evaluation uses **nemo-evaluator-launcher** directly -- the SAME execution pattern as `nano3 eval` and `super3 eval`. There is no recipe script and no nemo-run submission. The CLI command calls `run_eval()` from `nemo_evaluator_launcher.api.functional` after building and resolving the config.

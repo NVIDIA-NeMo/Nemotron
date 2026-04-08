@@ -17,6 +17,26 @@ Skip this stage if:
 - No preference data or reward signal available
 - Rapid iteration is needed (RL is the most compute-intensive alignment stage)
 
+## Inputs Required
+
+Before running this stage, confirm these with the user:
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| DPO or GRPO | Yes | None | Ask: "Which RL method? DPO (if you have preference pairs) or GRPO (if you have a reward signal)?" |
+| Preference data path (DPO) | If DPO | None | Ask: "Where is your preference data? (JSONL with chosen/rejected pairs)" |
+| Preference data source (DPO) | If DPO and no data | None | Ask: "Do you have preference pairs, or should we generate them using an LLM judge?" |
+| Reward environment (GRPO) | If GRPO | `math_with_judge` | Ask: "What reward environment? (math_with_judge, code_gen, instruction_following, mcqa, or custom)" |
+| Prompt data path (GRPO) | If GRPO | None | Ask: "Where are the training prompts? (JSONL with messages)" |
+| SFT checkpoint path | Yes | None | Ask: "Path to SFT checkpoint from stage 1? (HuggingFace format for GRPO, Megatron for DPO)" |
+| KL penalty | No | 0.01 (GRPO) / 0.05 (DPO) | Ask: "KL penalty for divergence control? (higher = more conservative, 0.0-0.1)" |
+| Compute: number of nodes | Yes | 4 (GRPO) / 2 (DPO) | Ask: "How many nodes? (GRPO needs 4+ nodes, DPO can use 2+)" |
+| Compute: GPUs per node | Yes | 8 | Ask: "How many GPUs per node?" |
+| Executor type | Yes | Slurm | Ask: "Where will this run? (Slurm recommended; GRPO is not suited for local)" |
+| Max training steps | No | 100 (GRPO) / 150 (DPO) | Ask: "How many training steps?" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## DPO vs GRPO Decision
 
 | Criterion | DPO | GRPO |

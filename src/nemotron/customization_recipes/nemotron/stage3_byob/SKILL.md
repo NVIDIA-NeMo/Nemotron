@@ -16,6 +16,25 @@ Skip this stage if:
 - You already have a domain-specific benchmark dataset
 - You are iterating rapidly and can use perplexity as a proxy
 
+## Inputs Required
+
+Before running this stage, confirm these with the user:
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Source text corpus | Yes | None | Ask: "Where is the domain text corpus for MCQ generation? (local directory of text/JSONL or HuggingFace dataset)" |
+| Target subjects/topics | No | All subjects in corpus | Ask: "Any specific subjects or topics to focus on? (e.g., cardiology, neurology)" |
+| Source benchmark to adapt | No | `cais/mmlu` | Ask: "Adapt from an existing benchmark (e.g., MMLU), or generate from scratch using your corpus?" |
+| Language for benchmarks | Yes | `en-US` | Ask: "What language should the benchmarks be in?" |
+| Number of questions | No | 5000 | Ask: "How many MCQ questions to generate? (1000-10000)" |
+| LLM endpoint for generation/judging | No | `openai/gpt-oss-120b` via NIM | Ask: "Which LLM for question generation and judging? (NIM API, local NIM, or custom endpoint)" |
+| Whether to translate benchmarks | If source corpus is English but target language is not | false | Ask: "Should we translate the generated benchmarks to your target language?" |
+| Translation target language | If translating | None | Ask: "What target language for translation? (e.g., hi-IN, fr-FR)" |
+| Distractor expansion | No | true (expand to 10 choices) | Ask: "Expand from 4 to 10 answer choices? (harder benchmark, recommended)" |
+| Quality thresholds | No | easiness=0.8, hallucination=0.5 | Ask: "Custom quality thresholds, or use defaults? (easiness 0.8, hallucination 0.5)" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## Pipeline Architecture
 
 The BYOB pipeline runs 5 sequential sub-stages (with additional planned stages):

@@ -18,6 +18,45 @@ Do NOT use this pipeline if you are:
 - Fine-tuning an embedding model (use `src/nemotron/recipes/embed/`)
 - Curating web-scale pretraining data (use `src/nemotron/recipes/data_curation/`)
 
+## Step 0: Gather Requirements
+
+Before running any pipeline stage, collect these inputs from the user. Do NOT proceed with default values -- every customization is unique.
+
+### Required Inputs (ask all upfront)
+
+| Input | Question to Ask | Example | Used By |
+|-------|----------------|---------|---------|
+| Target language(s) | "What language(s) are you customizing for?" | Hindi, French, Japanese | Stages 0, 1, 3 |
+| Target domain(s) | "What domain(s)? (medical, legal, finance, code, general)" | Medical | Stages 0, 1, 3 |
+| Base model | "Which Nemotron model? (Nano 30B, Super 120B)" | Nemotron-3-Nano-30B | All stages |
+| Training data | "Where is your data? (local path, HuggingFace dataset, or should we acquire it?)" | /data/hindi_medical/ or "acquire from HuggingFace" | Stages 0, 1 |
+| Pipeline scope | "Which stages do you need? (full pipeline, or specific stages?)" | "Full pipeline" or "Just SFT + eval" | Determines which stages to run |
+| Compute environment | "Where will you run this? (local GPU, Slurm cluster, Lepton, Run:AI, Docker)" | Slurm | All stages |
+| GPU count | "How many GPUs available?" | 8 | Affects parallelism config |
+
+### Optional Inputs (ask if relevant)
+
+| Input | When to Ask | Question | Used By |
+|-------|------------|----------|---------|
+| Translation | If target language is not English | "Do you need to translate existing English data?" | Stage 0 |
+| Translation backend | If translating | "Which translation service? (Google Cloud, AWS, LLM-based)" | Stage 0 |
+| SDG requirements | If user lacks training data | "Should we generate synthetic training data? What type? (conversations, QA, instructions)" | Stage 1 |
+| SDG model | If doing SDG | "Which LLM for generation? (local NIM, NVIDIA API, OpenAI)" | Stage 1 |
+| RL method | If doing RL stage | "DPO (preference alignment) or GRPO (reward-based)?" | Stage 2 |
+| Preference data | If DPO | "Do you have preference pairs, or should we generate them?" | Stage 2 |
+| BYOB source | If building sovereign benchmarks | "What text corpus for MCQ generation? (existing benchmarks to adapt, or raw domain text)" | Stage 3 |
+| Eval benchmarks | If custom eval needed | "Standard benchmarks only, or also sovereign benchmarks from BYOB?" | Stage 4 |
+| Quantization method | If deploying | "FP8 (fastest), INT4-AWQ (smallest), or INT8-SQ (balanced)?" | Stage 5 |
+| Airgap | If restricted environment | "Is this an airgap (no internet) environment?" | All stages |
+| W&B tracking | Optional | "Do you want Weights & Biases experiment tracking?" | All stages |
+
+### After gathering inputs
+
+1. Construct a customization plan showing which stages will run and with what configuration
+2. Show the user the plan and get confirmation before proceeding
+3. Generate config overrides from their inputs (do not use defaults blindly)
+4. Execute stages in order, reporting results after each stage
+
 ## Pipeline Overview
 
 ```

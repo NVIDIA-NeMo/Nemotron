@@ -17,6 +17,22 @@ Skip this stage if:
 - Accuracy is the sole metric (quantization introduces small accuracy loss)
 - Deployment infrastructure has ample GPU memory
 
+## Inputs Required
+
+Before running this stage, confirm these with the user:
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Model path to quantize | Yes | None | Ask: "Path to the model checkpoint to quantize? (from RL, SFT, or CPT stage)" |
+| Quantization method | Yes | `fp8` | Ask: "Which quantization method? FP8 (<0.5% accuracy loss), INT4-AWQ (~4x smaller), or INT8-SQ (balanced)?" |
+| Calibration dataset | No | `cnn_dailymail` | Ask: "Calibration dataset? (domain-representative data recommended; provide a JSONL path or use default)" |
+| Calibration sample count | No | 512 | Ask: "How many calibration samples? (256-4096, more = better calibration)" |
+| Export format | No | `huggingface` | Ask: "Export format? (huggingface or trt_llm)" |
+| Output directory | Yes | None | Ask: "Where should the quantized model be saved?" |
+| Max accuracy drop tolerance | No | 2% | Ask: "Maximum acceptable accuracy drop from quantization? (used for validation)" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## Quantization Methods
 
 | Method | Precision | Size Reduction | Accuracy Impact | Speed | Best For |

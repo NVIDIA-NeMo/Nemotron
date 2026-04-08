@@ -18,6 +18,62 @@ Provide data acquisition, filtering, transformation, and formatting utilities sh
 | JSONL conversion (RL) | `nemotron.data_prep.recipes.rl` | Raw data | JSONL prompt files |
 | Data blending | `nemotron.data_prep.blend.DataBlend` | Multiple data sources | Weighted blend specification |
 
+## Inputs Required
+
+This module provides multiple utilities. Confirm the relevant inputs with the user based on which utility they need.
+
+### Data Acquisition (download + filter)
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Data source | Yes | None | Ask: "Where is the data? (HuggingFace dataset ID, S3 path, or local directory)" |
+| Target language(s) | No | All languages | Ask: "Filter by language? (e.g., hi, fr, ja -- or leave empty for all)" |
+| Target domain(s) | No | All domains | Ask: "Filter by domain? (e.g., Science, Technology, Medical)" |
+| Quality threshold | No | 0.5 | Ask: "Minimum quality score for filtering? (0.0-1.0, higher = stricter)" |
+| Output directory | Yes | None | Ask: "Where should filtered data be saved?" |
+
+### Translation
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Source data path | Yes | None | Ask: "Path to the data to translate?" |
+| Source language | No | `en` | Ask: "Source language code? (e.g., en, fr)" |
+| Target language | Yes | None | Ask: "Target language code? (e.g., hi, ja, ar)" |
+| Translation backend | No | LLM-based (NIM) | Ask: "Translation backend? (google, aws, or llm via NIM API)" |
+| Quality verification | No | Enabled (sacrebleu + chrf) | Ask: "Enable back-translation quality checks? (recommended)" |
+
+### Synthetic Data Generation (SDG)
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Domain | Yes | None | Ask: "What domain for synthetic data? (medical, legal, finance, code, general)" |
+| Language | Yes | `en` | Ask: "What language for generated data?" |
+| Number of samples | No | 100 | Ask: "How many samples to generate? (100 for testing, 10K-200K for training)" |
+| Generation model | No | `openai/gpt-oss-20b` | Ask: "Which LLM for generation? (NIM endpoint, local model, or API)" |
+| Output format | No | JSONL with messages | Ask: "Output format? (JSONL with OpenAI messages schema is standard)" |
+| Output directory | Yes | None | Ask: "Where should generated data be saved?" |
+
+### Data Quality Assessment
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Input data file | Yes | None | Ask: "Path to the data file to assess? (JSONL)" |
+| Quality recipe | No | Default filters (language, quality, repetition, word count) | Ask: "Custom quality recipe YAML, or use default filters?" |
+| Output directory | Yes | None | Ask: "Where should the quality report be saved?" |
+
+### Tokenization and Packing (Pretrain or SFT)
+
+| Input | Required? | Default | Notes |
+|-------|-----------|---------|-------|
+| Mode | Yes | None | Ask: "Pretrain tokenization (bin/idx) or SFT packing (Parquet)?" |
+| Input data path | Yes | None | Ask: "Path to filtered/prepared data?" |
+| Tokenizer model | Yes | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16` | Ask: "Which model's tokenizer? (must match your base model)" |
+| Pack size (SFT only) | No | 8192 | Ask: "Pack size / max sequence length? (4096 or 8192)" |
+| Number of shards | No | 128 (pretrain) / 64 (SFT) | Ask: "Number of output shards? (more = better parallelism for large datasets)" |
+| Output directory | Yes | None | Ask: "Where should tokenized data be saved?" |
+
+If any required input is missing, ask the user before proceeding.
+
 ## Core Library: nemotron.data_prep
 
 Location: `src/nemotron/data_prep/`
