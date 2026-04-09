@@ -1039,7 +1039,7 @@ In order of typical impact:
 
 A simple three-point sweep around the default is the most cost-effective approach. Start with the default 1e-5, then try 5e-6 (half) and 2e-5 (double). Compare Stage 3 eval metrics (nDCG@10) across the three runs — the winner is usually obvious. If the best result is at an endpoint (e.g., 2e-5 beats both others), extend one more step in that direction (try 4e-5) to confirm you haven't undershot. Keep epochs and all other hyperparameters fixed during the sweep so that LR is the only variable.
 
-**How many epochs typically improve accuracy before overfitting becomes a risk? Is there a rule of thumb?**
+#### How many epochs typically improve accuracy before overfitting becomes a risk? Is there a rule of thumb?
 
 The default `num_epochs: 3` exists because the example dataset shipped with this recipe is very small and training for only 1–2 epochs may not produce a measurable signal. **For your own data, start with 1–2 epochs and only increase if evaluation metrics are still improving.**
 
@@ -1049,7 +1049,7 @@ The default `num_epochs: 3` exists because the example dataset shipped with this
 | Medium (1K–10K examples) | 1–2 | 2 epochs is usually the upper bound |
 | Large (10K+ examples) | 1 | More than 1 epoch rarely helps and often hurts |
 
-**How does batch size affect training, and how should it be set?**
+#### How does batch size affect training, and how should it be set?
 
 This pipeline uses only hard negatives in the contrastive loss (no in-batch negatives), so batch size does not change the number of negatives per query. Instead, batch size primarily affects the **number of gradient update steps** the model takes: `steps_per_epoch = total_training_samples / global_batch_size`. A smaller `global_batch_size` means more steps and more frequent weight updates; a larger one means fewer steps and faster wall-clock time per epoch.
 
