@@ -63,6 +63,15 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 **Stages:** Pretraining → SFT → RL
 :::
 
+:::{grid-item-card} Embedding Fine-Tuning
+:link: nemotron/embed/README
+:link-type: doc
+
+Fine-tune Llama-Nemotron-Embed-1B-v2 on domain-specific data with synthetic data generation, evaluation, and NIM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+:::
+
 ::::
 
 ## Training Pipeline
@@ -111,7 +120,6 @@ usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README.md
-usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.md
 usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide/README.md
 usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.md
 ```
@@ -135,6 +143,7 @@ use-case-examples/sql-lora-finetuning-and-deployment/README.md
 
 nemotron/nano3/README.md
 nemotron/super3/README.md
+nemotron/embed/README.md
 nemotron/artifacts.md
 ```
 
