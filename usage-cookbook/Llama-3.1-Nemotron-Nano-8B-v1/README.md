@@ -50,7 +50,7 @@ Validated capabilities on this deployment:
 - Kubernetes: OKE private cluster
 - GPU shape: `VM.GPU.A10.1`
 - Model: `nvidia/Llama-3.1-Nemotron-Nano-8B-v1`
-- Serving stack: `vLLM`
+- Serving stack: `vLLM v0.19.0`
 - Inference API: OpenAI-compatible `/v1`
 
 ## Architecture
