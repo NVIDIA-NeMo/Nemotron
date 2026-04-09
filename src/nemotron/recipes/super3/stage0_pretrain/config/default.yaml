@@ -1,0 +1,8 @@
+# Default pretrain config — points to Phase 1.
+#
+# For the two-phase curriculum from the tech report:
+#   nemotron super3 pretrain --config phase1   # 80% of tokens (diversity-focused)
+#   nemotron super3 pretrain --config phase2   # final 20% (quality-focused, resumes from phase1 checkpoint)
+
+defaults:
+  - phase1

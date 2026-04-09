@@ -1,0 +1,23 @@
+run:
+  env:
+    container: anyscale/ray:2.49.2-py312
+
+# Tiny config for RL data preparation (fast iteration/testing)
+#
+# Usage:
+#   nemotron nano3 data prep rl --config tiny
+#   nemotron nano3 data prep rl --config tiny --run prep
+#
+# This config uses sampling for quick testing.
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/nano3/stage2_rl/config/data_prep/data_blend_raw.json
+
+# Output directory for resolved JSONL data (outputs to job directory for persistence)
+output_dir: ${oc.env:PWD}/../output/stage2_rl_tiny
+
+# Limit rows per dataset for quick tests - small sample for tiny
+sample: 1000
+
+# Force new run, ignoring cache
+force: false

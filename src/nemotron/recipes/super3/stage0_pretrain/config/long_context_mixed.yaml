@@ -1,0 +1,56 @@
+# Super3 Pretrain Long-Context Stage 2 — Alternating 1M/4K context (17B tokens)
+#
+# Alternately trains on 1M and 4K sequences to mitigate minor impact on
+# math-related benchmarks observed after LC Stage 1.
+# Resumes from LC Stage 1 checkpoint. Uses constant LR 4.5e-6.
+#
+# Usage:
+#   nemotron super3 pretrain --config long_context_mixed
+#
+# Prerequisites:
+#   - LC Stage 1 final checkpoint
+#   - Long-context tokenized data (same as LC Stage 1)
+#
+# TODO: The alternating seq_length mechanism may need custom dataloader support.
+#       Megatron-Bridge does not natively support alternating sequence lengths
+#       within a single run. This may require two interleaved configs or a
+#       custom training loop modification.
+
+run:
+  data: super3-pretrain-data-long-context:latest
+  env:
+    container: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config
+  seq_length: 1048576
+  global_batch_size: 16
+  context_parallelism: 64
+  tensor_model_parallel_size: 2
+  expert_model_parallelism: 64
+
+data:
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+# ~1,014 iters (rough estimate — depends on alternation scheme between 1M and 4K)
+train:
+  train_iters: 1014
+
+scheduler:
+  lr_decay_style: constant
+  lr_warmup_iters: 0
+  override_opt_param_scheduler: true
+
+optimizer:
+  lr: 4.5e-6
+  min_lr: 1e-6
+
+logger:
+  log_interval: 1
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/super3-pretrain-model-lc2
+  save_interval: 20
+  load: /nemo_run/super3-pretrain-model-lc1

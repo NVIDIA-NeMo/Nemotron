@@ -1,0 +1,30 @@
+run:
+  data: super3-rl-rlvr1-data:latest
+  model: super3-sft-model-tiny:latest
+  env:
+    container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    env_vars:
+      NRL_WG_USE_RAY_REF: "1"
+      NRL_VLLM_USE_V1: "1"
+      NRL_IGNORE_VERSION_MISMATCH: "1"
+      VLLM_ATTENTION_BACKEND: "FLASH_ATTN"
+      VLLM_DEEP_GEMM_WARMUP: "skip"
+      RAY_DEDUP_LOGS: "1"
+      OMP_NUM_THREADS: "16"
+
+grpo:
+  num_prompts_per_step: 8
+  num_generations_per_prompt: 4
+  max_num_steps: 10
+  seed: 42
+
+policy:
+  # TODO(super3): Replace with actual Super3 HF model name
+  model_name: "/path/to/hf_checkpoint"
+  tokenizer:
+    # TODO(super3): Replace with actual Super3 tokenizer once available on HF
+    name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 1

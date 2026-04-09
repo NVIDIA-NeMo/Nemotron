@@ -1,0 +1,39 @@
+# Super3 Pretrain Phase 1 — Diversity-focused (80% of training, ~20T tokens)
+#
+# Two-phase curriculum from the tech report:
+#   nemotron super3 pretrain --config phase1   # 80% of tokens, ~794,723 iters
+#   nemotron super3 pretrain --config phase2   # final 20%, resumes from phase1 checkpoint
+#
+# The full 25T LR schedule (warmup → stable → WSD decay) is set here so the
+# scheduler state is correct when phase2 resumes from the phase1 checkpoint.
+
+run:
+  data: super3-pretrain-data-phase1:latest
+  env:
+    container: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config
+
+data:
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+# Full 25T schedule — phase1 runs until checkpoint at ~iter 794,723.
+train:
+  train_iters: 993404
+
+scheduler:
+  lr_decay_style: WSD
+  lr_wsd_decay_style: minus_sqrt
+  lr_warmup_iters: 7949
+  lr_decay_iters: 992411
+  lr_wsd_decay_iters: 198682
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/super3-pretrain-model-phase1

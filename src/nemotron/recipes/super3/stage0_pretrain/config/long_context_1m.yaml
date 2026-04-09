@@ -1,0 +1,61 @@
+# Super3 Pretrain Long-Context Stage 1 — 1M context (34B tokens, ~2,027 iters)
+#
+# Continuous pretraining to equip the base model with long-context ability.
+# Resumes from Phase 2 checkpoint. Uses constant LR 4.5e-6.
+#
+# Usage:
+#   nemotron super3 pretrain --config long_context_1m
+#
+# Prerequisites:
+#   - Phase 2 final checkpoint
+#   - Long-context tokenized data (nemotron super3 data prep pretrain --config long_context)
+#
+# Key differences from Phase 1/2:
+#   - seq_length: 1,048,576 (1M) vs 8,192
+#   - global_batch_size: 16 vs 3,072
+#   - Constant LR (no warmup/decay)
+#   - Context parallelism: 64
+#   - Selective recompute on MoE layers (memory savings for 1M context)
+#
+# Note: Internal sbatch provisioned train_samples=190,734 (~200B tokens) but the
+# tech report states LC Stage 1 lasted 34B tokens (~2,027 iters). The job was
+# likely early-stopped. We use the 34B target from the tech report.
+
+run:
+  data: super3-pretrain-data-long-context:latest
+  env:
+    container: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_pretrain_config
+  seq_length: 1048576
+  global_batch_size: 16
+  context_parallelism: 64
+  tensor_model_parallel_size: 2
+  expert_model_parallelism: 64
+
+data:
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 2027
+
+scheduler:
+  lr_decay_style: constant
+  lr_warmup_iters: 0
+  override_opt_param_scheduler: true
+
+# Constant LR = Phase 2 decay endpoint. min_lr=1e-6 from internal sbatch.
+optimizer:
+  lr: 4.5e-6
+  min_lr: 1e-6
+
+logger:
+  log_interval: 1
+  wandb_project: ${run.wandb.project}
+  wandb_entity: ${run.wandb.entity}
+
+checkpoint:
+  save: /nemo_run/super3-pretrain-model-lc1
+  save_interval: 20
+  load: /nemo_run/super3-pretrain-model-phase2

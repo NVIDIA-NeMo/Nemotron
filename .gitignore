@@ -30,6 +30,8 @@ env.bak/
 venv.bak/
 .venv/
 
+# UV lock files in recipe stages are tracked for reproducible builds
+
 # IDEs
 .vscode/
 .idea/
@@ -59,13 +61,30 @@ dmypy.json
 # Environment
 .env
 .env.local
+env.toml
+conductor.json
 
 # Project specific
+/artifacts/
+output/
 outputs/
 logs/
 checkpoints/
 data/
+!src/nemotron/cli/nano3/data/
+!src/nemotron/cli/embed/data/
 workspace/
+wandb/
+.nemotron/
+.conductor/
 
 # Claude Code
 CLAUDE.md
+.claude/
+
+# Compiled config
+config.yaml
+main.py
+
+# Documentation build
+docs/_build/
