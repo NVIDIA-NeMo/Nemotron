@@ -6,7 +6,7 @@ servingEngineSpec:
   modelSpec:
     - name: "llama31-nemotron-nano-8b"
       repository: "vllm/vllm-openai"
-      tag: "v0.17.1"
+      tag: "v0.19.0"
       modelURL: "nvidia/Llama-3.1-Nemotron-Nano-8B-v1"
       enableTool: true
       toolCallParser: "llama3_json"
