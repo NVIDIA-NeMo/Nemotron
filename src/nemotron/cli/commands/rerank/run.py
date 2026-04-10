@@ -26,11 +26,13 @@ from nemo_runspec.cli_context import GlobalContext
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 
 # Stage order defines the DAG
-STAGE_ORDER = ["finetune", "eval", "export", "deploy"]
+STAGE_ORDER = ["sdg", "prep", "finetune", "eval", "export", "deploy"]
 DEFAULT_TO = "eval"  # export/deploy are opt-in
 
 # Map stage names to their modules (lazy import to avoid circular deps)
 STAGE_MODULES = {
+    "sdg": "nemotron.cli.commands.rerank.sdg",
+    "prep": "nemotron.cli.commands.rerank.prep",
     "finetune": "nemotron.cli.commands.rerank.finetune",
     "eval": "nemotron.cli.commands.rerank.eval",
     "export": "nemotron.cli.commands.rerank.export",
@@ -39,6 +41,8 @@ STAGE_MODULES = {
 
 # Map stage names to their execution function names
 STAGE_RUN_FNS = {
+    "sdg": "_execute_sdg",
+    "prep": "_execute_prep",
     "finetune": "_execute_finetune",
     "eval": "_execute_eval",
     "export": "_execute_export",
@@ -154,15 +158,15 @@ def _run_pipeline_remote(
 
 def run(
     ctx: typer.Context,
-    from_stage: str = typer.Option("finetune", "--from", help="Stage to start from"),
+    from_stage: str = typer.Option("sdg", "--from", help="Stage to start from"),
     to_stage: str = typer.Option(DEFAULT_TO, "--to", help="Stage to stop at (inclusive)"),
 ) -> None:
     """Run the rerank pipeline end-to-end.
 
-    Executes stages sequentially from --from to --to (default: finetune through eval).
+    Executes stages sequentially from --from to --to (default: sdg through eval).
     Supports local, Docker, and Slurm execution via --run/--batch.
 
-    Per-stage overrides use stage prefix: finetune.learning_rate=1e-5, eval.top_k=50
+    Per-stage overrides use stage prefix: sdg.num_pairs=20, finetune.learning_rate=1e-5
     """
     options = parse_recipe_config(ctx)
     stages = _resolve_stages(from_stage, to_stage)
