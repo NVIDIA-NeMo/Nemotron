@@ -1,0 +1,50 @@
+# Stage 0: Fine-tuning Configuration
+#
+# Fine-tunes a cross-encoder reranking model using classification loss.
+#
+# Usage:
+#   nemotron rerank finetune -c default
+#   nemotron rerank finetune -c default base_model=nvidia/llama-3.2-nv-rerankqa-1b-v2
+#
+# Remote execution (Slurm):
+#   nemotron rerank finetune -c default --run my-cluster
+#   nemotron rerank finetune -c default --batch my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    # Container image for remote execution (Docker/Slurm)
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Base reranking model to fine-tune
+base_model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+
+# Path to training data (output from embed stage1_data_prep)
+train_data_path: ./output/embed/stage1_data_prep/train_mined.automodel_unrolled.json
+
+# Directory for saving checkpoints
+checkpoint_dir: ./output/rerank/stage0_finetune/checkpoints
+
+# Training hyperparameters
+num_epochs: 3
+global_batch_size: 128
+local_batch_size: 4
+learning_rate: 3.0e-6
+lr_warmup_steps: 100
+lr_decay_style: cosine
+weight_decay: 0.01
+
+# Model architecture
+# attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa
+train_n_passages: 5  # 1 positive + 4 negatives
+num_labels: 1
+temperature: 1.0
+pooling: avg
+
+# Tokenization
+rerank_max_length: 512
+prompt_template: "question:{query} \n \n passage:{passage}"
+
+# Checkpointing
+checkpoint_every_steps: 100
+val_every_steps: 100

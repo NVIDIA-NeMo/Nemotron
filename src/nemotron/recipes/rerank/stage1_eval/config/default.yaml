@@ -1,0 +1,63 @@
+# Stage 1: Evaluation Configuration
+#
+# Evaluates cross-encoder reranking models by re-ranking first-stage
+# retrieval results and measuring nDCG@k improvement.
+#
+# Usage:
+#   nemotron rerank eval -c default
+#   nemotron rerank eval -c default finetuned_model_path=/path/to/model
+#
+# Remote execution (Slurm):
+#   nemotron rerank eval -c default --run my-cluster
+
+# Execution environment configuration
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Base reranking model for comparison
+base_model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+
+# Path to fine-tuned model checkpoint
+finetuned_model_path: ./output/rerank/stage0_finetune/checkpoints/LATEST/model/consolidated
+
+# First-stage retrieval model (for generating candidates)
+retrieval_model: nvidia/llama-nemotron-embed-1b-v2
+
+# Path to BEIR-formatted evaluation data (from embed stage1_data_prep)
+eval_data_path: ./output/embed/stage1_data_prep/eval_beir
+
+# Output directory for evaluation results
+output_dir: ./output/rerank/stage1_eval
+
+# K values for nDCG@k metrics
+k_values:
+  - 1
+  - 5
+  - 10
+  - 100
+
+# Number of first-stage candidates to re-rank
+top_k: 100
+
+# Encoding settings
+batch_size: 128
+max_length: 512
+corpus_chunk_size: 50000
+
+# Retrieval model settings
+retrieval_pooling: avg
+retrieval_normalize: true
+query_prefix: "query:"
+passage_prefix: "passage:"
+
+# Evaluation mode
+eval_base: true
+eval_finetuned: true
+
+# NIM API evaluation settings
+eval_nim: false
+nim_url: http://localhost:8000
+nim_model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+nim_batch_size: 32
+nim_timeout: 60

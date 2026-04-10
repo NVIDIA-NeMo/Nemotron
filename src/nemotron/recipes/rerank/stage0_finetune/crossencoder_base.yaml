@@ -1,0 +1,89 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Base configuration for cross-encoder fine-tuning using nemo-automodel
+# This file provides defaults that will be overridden by the Nemotron CLI
+# Source: https://github.com/NVIDIA-NeMo/Automodel/blob/main/examples/retrieval/cross_encoder/llama3_2_1b.yaml
+
+seed: 42
+
+step_scheduler:
+  global_batch_size: 128
+  local_batch_size: 4
+  ckpt_every_steps: 100
+  val_every_steps: 100
+  num_epochs: 1
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 1
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelCrossEncoder.from_pretrained
+  pretrained_model_name_or_path: nvidia/llama-3.2-nv-rerankqa-1b-v2
+  trust_remote_code: true
+  num_labels: 1
+  temperature: 1.0
+  pooling: avg
+  use_liger_kernel: true
+  use_sdpa_patching: true
+  torch_dtype: bfloat16
+
+tokenizer:
+  _target_: nemo_automodel.NeMoAutoTokenizer.from_pretrained
+  pretrained_model_name_or_path: nvidia/llama-3.2-nv-rerankqa-1b-v2
+  trust_remote_code: true
+  add_eos_token: false
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  dataset:
+    _target_: nemo_automodel.components.datasets.llm.make_retrieval_dataset
+    model_type: cross_encoder
+    data_dir_list:
+      - training_datasets/train.json
+    data_type: train
+    n_passages: 5
+    seed: 42
+    do_shuffle: true
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.llm.CrossEncoderCollator
+    rerank_max_length: 512
+    prompt_template: "question:{query} \n \n passage:{passage}"
+    pad_to_multiple_of: 8
+  shuffle: true
+  num_workers: 0
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 3.0e-6
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+lr_scheduler:
+  lr_warmup_steps: 100
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: ./output/rerank/stage0_finetune/checkpoints
+  model_save_format: safetensors
+  save_consolidated: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  sequence_parallel: false
