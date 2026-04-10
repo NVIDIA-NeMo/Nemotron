@@ -1,0 +1,58 @@
+# Stage 0: Synthetic Data Generation Configuration (Rerank)
+#
+# Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+# Uses the same SDG pipeline as the embed recipe but outputs to rerank directory.
+#
+# Usage:
+#   nemotron rerank sdg -c default
+#   nemotron rerank sdg -c default corpus_dir=/path/to/docs
+
+# Execution environment configuration
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Core paths
+corpus_id: nv_pp_random
+corpus_dir: hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random
+
+# Output directory for generated synthetic data
+output_dir: ./output/rerank/stage0_sdg
+
+# Document processing
+min_text_length: 50
+sentences_per_chunk: 5
+num_sections: 1
+
+# Generation parameters
+max_artifacts_per_type: 2
+num_pairs: 10
+min_hops: 1
+max_hops: 3
+min_complexity: 2
+
+# Batch processing
+batch_size: 200
+start_batch_index: 0
+end_batch_index: -1
+
+# Multi-document bundling
+multi_doc: false
+bundle_size: 2
+bundle_strategy: sequential
+max_docs_per_bundle: 3
+
+# Model configuration
+artifact_extraction_model: nvidia/nemotron-3-nano-30b-a3b
+artifact_extraction_provider: nvidia
+qa_generation_model: nvidia/nemotron-3-nano-30b-a3b
+qa_generation_provider: nvidia
+quality_judge_model: nvidia/nemotron-3-nano-30b-a3b
+quality_judge_provider: nvidia
+embed_model: nvidia/llama-3.2-nv-embedqa-1b-v2
+embed_provider: nvidia
+
+# Runtime options
+artifact_path: ./output/rerank/stage0_sdg/artifacts
+preview: false
+log_level: INFO

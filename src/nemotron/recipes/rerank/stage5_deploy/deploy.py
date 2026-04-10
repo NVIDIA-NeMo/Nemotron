@@ -31,7 +31,7 @@
 """Deploy script for NIM reranking service with custom model.
 
 Launches the NVIDIA NIM container with a custom ONNX/TensorRT model
-exported from stage2_export. The NIM provides a ranking API with
+exported from stage4_export. The NIM provides a ranking API with
 the custom fine-tuned reranking model.
 
 Usage:
@@ -77,7 +77,7 @@ class DeployConfig(RecipeSettings):
     container_name: str = Field(default="nemotron-rerank-nim", description="Name for the Docker container.")
 
     # Model settings
-    model_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export/onnx", description="Path to custom model directory (ONNX or TensorRT).")
+    model_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx", description="Path to custom model directory (ONNX or TensorRT).")
     use_onnx: bool = Field(default=True, description="Use ONNX model instead of TensorRT.")
 
     # Container paths
@@ -221,7 +221,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
 
     if not cfg.model_dir.exists():
         print(f"Error: Model directory not found: {cfg.model_dir}")
-        print("       Please run stage2_export first.")
+        print("       Please run stage4_export first.")
         sys.exit(1)
 
     model_files = list(cfg.model_dir.glob("*.onnx")) + list(cfg.model_dir.glob("*.plan"))
