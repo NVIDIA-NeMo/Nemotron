@@ -31,7 +31,7 @@ dist_env:
 
 model:
   _target_: nemo_automodel.NeMoAutoModelCrossEncoder.from_pretrained
-  pretrained_model_name_or_path: nvidia/llama-3.2-nv-rerankqa-1b-v2
+  pretrained_model_name_or_path: nvidia/llama-nemotron-rerank-1b-v2
   trust_remote_code: true
   num_labels: 1
   temperature: 1.0
@@ -42,7 +42,7 @@ model:
 
 tokenizer:
   _target_: nemo_automodel.NeMoAutoTokenizer.from_pretrained
-  pretrained_model_name_or_path: nvidia/llama-3.2-nv-rerankqa-1b-v2
+  pretrained_model_name_or_path: nvidia/llama-nemotron-rerank-1b-v2
   trust_remote_code: true
   add_eos_token: false
 

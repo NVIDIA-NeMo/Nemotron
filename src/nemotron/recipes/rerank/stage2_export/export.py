@@ -190,6 +190,7 @@ def export_to_onnx(
     )
 
     # Disable dynamo export
+    import torch
     import torch.onnx
 
     original_export = torch.onnx.export
@@ -197,6 +198,32 @@ def export_to_onnx(
     def forced_legacy_export(*args, **kwargs):
         kwargs['dynamo'] = False
         return original_export(*args, **kwargs)
+
+    # Monkeypatch create_bidirectional_mask to be ONNX-trace-friendly.
+    # The transformers masking_utils.sdpa_mask uses tensor shape indexing
+    # that fails during JIT tracing. This replacement produces the same
+    # bidirectional attention mask without the incompatible operations.
+    # The model's custom code does `from transformers.masking_utils import
+    # create_bidirectional_mask`, so we must patch it in the model's own
+    # module namespace where it holds the direct reference.
+    import sys
+
+    def _onnx_safe_bidirectional_mask(config=None, input_embeds=None, attention_mask=None, **kwargs):
+        dtype = input_embeds.dtype
+        batch_size, seq_length, _ = input_embeds.shape
+        # Bidirectional mask: all tokens attend to all non-padded tokens
+        # attention_mask shape: (batch_size, seq_length) with 1=attend, 0=pad
+        mask = attention_mask[:, None, None, :].expand(batch_size, 1, seq_length, seq_length)
+        # Convert to additive mask: 0 for attend, large negative for ignore
+        mask = (1.0 - mask.to(dtype)) * torch.finfo(dtype).min
+        return mask
+
+    # Find all loaded modules that imported create_bidirectional_mask and patch them
+    _patched_modules = {}
+    for mod_name, mod in list(sys.modules.items()):
+        if hasattr(mod, 'create_bidirectional_mask') and callable(getattr(mod, 'create_bidirectional_mask', None)):
+            _patched_modules[mod_name] = getattr(mod, 'create_bidirectional_mask')
+            setattr(mod, 'create_bidirectional_mask', _onnx_safe_bidirectional_mask)
 
     torch.onnx.export = forced_legacy_export
     try:
@@ -211,6 +238,9 @@ def export_to_onnx(
         )
     finally:
         torch.onnx.export = original_export
+        for mod_name, orig_fn in _patched_modules.items():
+            if mod_name in sys.modules:
+                setattr(sys.modules[mod_name], 'create_bidirectional_mask', orig_fn)
 
     return onnx_exporter
 

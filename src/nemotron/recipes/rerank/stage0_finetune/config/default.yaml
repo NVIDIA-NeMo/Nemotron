@@ -4,7 +4,7 @@
 #
 # Usage:
 #   nemotron rerank finetune -c default
-#   nemotron rerank finetune -c default base_model=nvidia/llama-3.2-nv-rerankqa-1b-v2
+#   nemotron rerank finetune -c default base_model=nvidia/llama-nemotron-rerank-1b-v2
 #
 # Remote execution (Slurm):
 #   nemotron rerank finetune -c default --run my-cluster
@@ -17,7 +17,7 @@ run:
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
 # Base reranking model to fine-tune
-base_model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+base_model: nvidia/llama-nemotron-rerank-1b-v2
 
 # Path to training data (output from embed stage1_data_prep)
 train_data_path: ./output/embed/stage1_data_prep/train_mined.automodel_unrolled.json

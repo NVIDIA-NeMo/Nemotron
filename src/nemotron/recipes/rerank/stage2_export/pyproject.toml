@@ -3,7 +3,7 @@ name = "recipe-runner-export"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
-    "onnx>=1.16.0",
+    "onnx>=1.16.0,<1.20",
     "onnxruntime>=1.18.0",
     "optimum>=1.20.0",
     "nemo-export-deploy>=0.3.1",
@@ -21,6 +21,7 @@ tensorrt = [
 [tool.uv]
 override-dependencies = ["transformers>=5,<6"]
 exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
+environments = ["python_version >= '3.12' and python_version < '3.14'"]
 
 [tool.nemotron]
 entry-point = "export.py"

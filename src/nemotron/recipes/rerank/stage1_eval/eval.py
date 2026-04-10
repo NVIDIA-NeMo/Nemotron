@@ -82,7 +82,7 @@ class EvalConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Model paths
-    base_model: str = Field(default="nvidia/llama-3.2-nv-rerankqa-1b-v2", description="Base reranking model for comparison.")
+    base_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model for comparison.")
     finetuned_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage0_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned model checkpoint.")
 
     # First-stage retrieval model (for generating candidates to re-rank)
@@ -114,7 +114,7 @@ class EvalConfig(RecipeSettings):
     # NIM API evaluation settings
     eval_nim: bool = Field(default=False, description="Whether to evaluate a NIM API endpoint.")
     nim_url: str = Field(default="http://localhost:8000", description="NIM API base URL.")
-    nim_model: str = Field(default="nvidia/llama-3.2-nv-rerankqa-1b-v2", description="Model name for NIM API requests.")
+    nim_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Model name for NIM API requests.")
     nim_batch_size: int = Field(default=32, gt=0, description="Batch size for NIM API requests.")
     nim_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for NIM API requests.")
 
@@ -261,6 +261,113 @@ def evaluate_reranker(
     return metrics, reranked_results
 
 
+def evaluate_nim_reranker(
+    nim_url: str,
+    nim_model: str,
+    corpus: dict,
+    queries: dict,
+    qrels: dict,
+    first_stage_results: dict,
+    top_k: int = 100,
+    batch_size: int = 32,
+    timeout: int = 60,
+    k_values: list[int] | None = None,
+) -> tuple[dict, dict]:
+    """Evaluate a NIM reranker endpoint on first-stage retrieval results.
+
+    Args:
+        nim_url: Base URL for NIM API.
+        nim_model: Model name for API requests.
+        corpus: BEIR corpus dict.
+        queries: BEIR queries dict.
+        qrels: BEIR relevance judgments.
+        first_stage_results: First-stage retrieval results to re-rank.
+        top_k: Number of candidates to re-rank per query.
+        batch_size: Batch size for API requests.
+        timeout: Request timeout in seconds.
+        k_values: K values for metrics.
+
+    Returns:
+        Tuple of (metrics dict, reranked results dict).
+    """
+    import urllib.request
+    import urllib.error
+
+    try:
+        from beir.retrieval.evaluation import EvaluateRetrieval
+    except ImportError:
+        print("Error: BEIR is required for evaluation.")
+        sys.exit(1)
+
+    if k_values is None:
+        k_values = [1, 5, 10, 100]
+
+    ranking_url = f"{nim_url.rstrip('/')}/v1/ranking"
+    reranked_results: dict[str, dict[str, float]] = {}
+
+    query_ids = list(queries.keys())
+    for i, qid in enumerate(query_ids):
+        query_text = queries[qid]
+
+        # Get top-k candidates from first-stage results
+        candidate_ids = sorted(
+            first_stage_results.get(qid, {}).items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )[:top_k]
+
+        if not candidate_ids:
+            reranked_results[qid] = {}
+            continue
+
+        # Build passages list
+        doc_ids = [did for did, _ in candidate_ids]
+        passages = []
+        for did in doc_ids:
+            doc = corpus[did]
+            title = doc.get("title", "")
+            text = doc.get("text", "")
+            passages.append({"text": f"{title} {text}".strip() if title else text})
+
+        # Score in batches
+        all_scores = []
+        for batch_start in range(0, len(passages), batch_size):
+            batch_passages = passages[batch_start:batch_start + batch_size]
+
+            payload = json.dumps({
+                "model": nim_model,
+                "query": {"text": query_text},
+                "passages": batch_passages,
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                ranking_url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                    rankings = sorted(result["rankings"], key=lambda x: x["index"])
+                    all_scores.extend([r["logit"] for r in rankings])
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode("utf-8") if e.fp else ""
+                raise RuntimeError(f"NIM API error {e.code}: {error_body}") from e
+
+        reranked_results[qid] = {did: score for did, score in zip(doc_ids, all_scores)}
+
+        if (i + 1) % 50 == 0:
+            print(f"   Re-ranked {i + 1}/{len(query_ids)} queries...")
+
+    # Evaluate re-ranked results
+    evaluator = EvaluateRetrieval(k_values=k_values)
+    metrics = evaluator.evaluate(qrels, reranked_results, k_values)
+
+    return metrics, reranked_results
+
+
 def _print_summary_metrics(metrics: tuple, k_values: list[int]) -> None:
     """Print NDCG and Recall at the highest available k value."""
     k = max(k_values)
@@ -357,6 +464,46 @@ def run_eval(cfg: EvalConfig) -> dict:
             results["finetuned"] = ft_metrics
             _print_summary_metrics(ft_metrics, cfg.k_values)
             print()
+
+    # Step 4: Evaluate NIM reranker endpoint
+    if cfg.eval_nim:
+        print(f"Evaluating NIM reranker endpoint: {cfg.nim_url}")
+
+        import urllib.request
+        import urllib.error
+
+        nim_healthy = False
+        try:
+            health_url = f"{cfg.nim_url.rstrip('/')}/v1/health/ready"
+            with urllib.request.urlopen(health_url, timeout=10) as response:
+                nim_healthy = response.status == 200
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+            pass
+
+        if not nim_healthy:
+            print(f"   Error: NIM endpoint is not reachable at {cfg.nim_url}", file=sys.stderr)
+            print(f"   Ensure the NIM service is running and healthy before evaluating.", file=sys.stderr)
+            print()
+        else:
+            try:
+                nim_metrics, _ = evaluate_nim_reranker(
+                    nim_url=cfg.nim_url,
+                    nim_model=cfg.nim_model,
+                    corpus=corpus,
+                    queries=queries,
+                    qrels=qrels,
+                    first_stage_results=first_stage_results,
+                    top_k=cfg.top_k,
+                    batch_size=cfg.nim_batch_size,
+                    timeout=cfg.nim_timeout,
+                    k_values=cfg.k_values,
+                )
+                results["nim"] = nim_metrics
+                _print_summary_metrics(nim_metrics, cfg.k_values)
+                print()
+            except Exception as e:
+                print(f"   Error evaluating NIM: {e}")
+                print()
 
     # Print comparison
     if "base" in results and "finetuned" in results:

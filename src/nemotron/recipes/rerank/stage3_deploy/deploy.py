@@ -73,7 +73,7 @@ class DeployConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Container settings
-    nim_image: str = Field(default="nvcr.io/nim/nvidia/llama-3.2-nv-rerankqa-1b-v2:latest", description="NIM container image to use.")
+    nim_image: str = Field(default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0", description="NIM container image to use.")
     container_name: str = Field(default="nemotron-rerank-nim", description="Name for the Docker container.")
 
     # Model settings
@@ -261,7 +261,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
             print(f"   Test with:")
             print(f"   curl -X POST http://localhost:{cfg.host_port}/v1/ranking \\")
             print(f"     -H 'Content-Type: application/json' \\")
-            print(f"     -d '{{\"model\": \"nvidia/llama-3.2-nv-rerankqa-1b-v2\", \"query\": {{\"text\": \"what is AI?\"}}, \"passages\": [{{\"text\": \"AI is artificial intelligence\"}}]}}'")
+            print(f"     -d '{{\"model\": \"nvidia/llama-nemotron-rerank-1b-v2\", \"query\": {{\"text\": \"what is AI?\"}}, \"passages\": [{{\"text\": \"AI is artificial intelligence\"}}]}}'")
             print()
             print(f"   Stop with: docker stop {cfg.container_name}")
         else:

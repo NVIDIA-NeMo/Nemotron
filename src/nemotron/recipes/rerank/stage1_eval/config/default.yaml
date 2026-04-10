@@ -16,7 +16,7 @@ run:
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
 # Base reranking model for comparison
-base_model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+base_model: nvidia/llama-nemotron-rerank-1b-v2
 
 # Path to fine-tuned model checkpoint
 finetuned_model_path: ./output/rerank/stage0_finetune/checkpoints/LATEST/model/consolidated
@@ -58,6 +58,6 @@ eval_finetuned: true
 # NIM API evaluation settings
 eval_nim: false
 nim_url: http://localhost:8000
-nim_model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+nim_model: nvidia/llama-nemotron-rerank-1b-v2
 nim_batch_size: 32
 nim_timeout: 60

@@ -45,7 +45,7 @@ Usage:
     nemotron rerank finetune -c /path/to/config.yaml
 
     # With CLI overrides
-    nemotron rerank finetune -c default base_model=nvidia/llama-3.2-nv-rerankqa-1b-v2
+    nemotron rerank finetune -c default base_model=nvidia/llama-nemotron-rerank-1b-v2
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ class FinetuneConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Model settings
-    base_model: str = Field(default="nvidia/llama-3.2-nv-rerankqa-1b-v2", description="Base reranking model to fine-tune.")
+    base_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model to fine-tune.")
 
     # Data paths
     train_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep/train_mined.automodel_unrolled.json", description="Path to training data file.")

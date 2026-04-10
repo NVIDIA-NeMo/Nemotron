@@ -61,7 +61,7 @@ def info() -> None:
     console.print("  - BEIR (reranking evaluation framework)")
     console.print()
     console.print("[bold]Base Model:[/bold]")
-    console.print("  - nvidia/llama-3.2-nv-rerankqa-1b-v2")
+    console.print("  - nvidia/llama-nemotron-rerank-1b-v2")
     console.print()
     console.print("[bold]Training Data:[/bold]")
     console.print("  Uses embed recipe's prepared data (nemotron embed prep output)")
