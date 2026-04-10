@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
+# name = "rerank/export"
+# image = "nvcr.io/nvidia/nemo:25.07"
+# setup = "NeMo and export dependencies are pre-installed in the image."
+#
+# [tool.runspec.run]
+# launch = "direct"
+#
+# [tool.runspec.config]
+# dir = "./config"
+# default = "default"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 1
+# ///
+
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Export script for reranking models to ONNX and TensorRT.
+
+Exports fine-tuned cross-encoder reranking models to ONNX format and
+optionally converts to TensorRT for optimized inference.
+
+Usage:
+    # With default config
+    nemotron rerank export -c default
+
+    # Export to ONNX only
+    nemotron rerank export -c default export_to_trt=false
+
+    # With custom model path
+    nemotron rerank export -c default model_path=/path/to/model
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+from typing import Any, Literal
+
+from pydantic import ConfigDict, Field, model_validator
+
+from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+
+STAGE_PATH = Path(__file__).parent
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+
+# Use NEMO_RUN_DIR for output when running via nemo-run
+_OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
+
+
+class ExportConfig(RecipeSettings):
+    """Export configuration for reranking models to ONNX/TensorRT."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Model path
+    model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage0_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned HuggingFace model checkpoint.")
+
+    # Model settings
+    attn_implementation: Literal["eager", "sdpa", "flash_attention_2"] = Field(default="eager", description="Attention implementation: 'eager', 'sdpa', or 'flash_attention_2'.")
+
+    # Quantization settings
+    quant_cfg: Literal["fp8", "int8_sq"] | None = Field(default=None, description="Quantization config: 'fp8', 'int8_sq', or None (no quantization).")
+    calibration_batch_size: int = Field(default=64, gt=0, description="Batch size for quantization calibration.")
+
+    # ONNX export settings
+    onnx_export_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export/onnx", description="Output path for ONNX model.")
+    opset: int = Field(default=17, gt=0, description="ONNX opset version.")
+    export_dtype: Literal["fp32", "fp16"] = Field(default="fp32", description="ONNX export data precision (fp32, fp16).")
+
+    # TensorRT settings
+    export_to_trt: bool = Field(default=False, description="Whether to export ONNX model to TensorRT.")
+    trt_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export/tensorrt", description="Output path for TensorRT .plan file.")
+    override_layernorm_precision_to_fp32: bool = Field(default=True, description="Whether to override LayerNorm precision to fp32 for stability.")
+    override_layers_to_fp32: list[str] = Field(default_factory=lambda: ["/model/norm/"], description="Layer patterns to override precision to fp32.")
+    profiling_verbosity: str = Field(default="layer_names_only", description="TensorRT profiling verbosity level.")
+
+    # TensorRT input profiles (min, opt, max shapes)
+    trt_min_batch: int = Field(default=1, gt=0, description="Minimum batch size for TensorRT optimization.")
+    trt_opt_batch: int = Field(default=16, gt=0, description="Optimal batch size for TensorRT optimization.")
+    trt_max_batch: int = Field(default=64, gt=0, description="Maximum batch size for TensorRT optimization.")
+    trt_min_seq_len: int = Field(default=3, gt=0, description="Minimum sequence length for TensorRT optimization.")
+    trt_opt_seq_len: int = Field(default=256, gt=0, description="Optimal sequence length for TensorRT optimization.")
+    trt_max_seq_len: int = Field(default=512, gt=0, description="Maximum sequence length for TensorRT optimization.")
+
+    @model_validator(mode="after")
+    def _check_trt_profile_order(self):
+        if self.trt_min_batch > self.trt_opt_batch:
+            raise ValueError(f"trt_min_batch ({self.trt_min_batch}) must be <= trt_opt_batch ({self.trt_opt_batch})")
+        if self.trt_opt_batch > self.trt_max_batch:
+            raise ValueError(f"trt_opt_batch ({self.trt_opt_batch}) must be <= trt_max_batch ({self.trt_max_batch})")
+        if self.trt_min_seq_len > self.trt_opt_seq_len:
+            raise ValueError(f"trt_min_seq_len ({self.trt_min_seq_len}) must be <= trt_opt_seq_len ({self.trt_opt_seq_len})")
+        if self.trt_opt_seq_len > self.trt_max_seq_len:
+            raise ValueError(f"trt_opt_seq_len ({self.trt_opt_seq_len}) must be <= trt_max_seq_len ({self.trt_max_seq_len})")
+        return self
+
+    # Output settings
+    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export", description="Base output directory for export artifacts.")
+
+
+def load_reranker_model(
+    model_path: str | Path,
+    attn_implementation: str = "eager",
+    trust_remote_code: bool = True,
+) -> tuple[Any, Any]:
+    """Load a reranker model for export.
+
+    Args:
+        model_path: Path to the HuggingFace model.
+        attn_implementation: Attention implementation to use.
+        trust_remote_code: Whether to trust remote code.
+
+    Returns:
+        Tuple of (model, tokenizer).
+    """
+    from nemo_export.model_adapters.reranker.reranker_adapter import get_llama_reranker_hf_model
+
+    model, tokenizer = get_llama_reranker_hf_model(
+        model_name_or_path=str(model_path),
+        trust_remote_code=trust_remote_code,
+        attn_implementation=attn_implementation,
+    )
+    return model, tokenizer
+
+
+def export_to_onnx(
+    model: Any,
+    tokenizer: Any,
+    cfg: ExportConfig,
+) -> Any:
+    """Export model to ONNX format.
+
+    Args:
+        model: The reranker model.
+        tokenizer: The tokenizer.
+        cfg: Export configuration.
+
+    Returns:
+        OnnxLLMExporter instance.
+    """
+    try:
+        from nemo_export.onnx_llm_exporter import OnnxLLMExporter
+    except ImportError:
+        print(
+            "Error: nemo_export is required. Please install from NeMo Export-Deploy:\n"
+            "  cd /opt/Export-Deploy && uv sync --inexact --link-mode symlink --locked --extra trt-onnx"
+        )
+        sys.exit(1)
+
+    # Reranker uses input_ids and attention_mask (no dimensions arg)
+    input_names = ["input_ids", "attention_mask"]
+    dynamic_axes_input = {
+        "input_ids": {0: "batch_size", 1: "seq_length"},
+        "attention_mask": {0: "batch_size", 1: "seq_length"},
+    }
+
+    # Check if model uses token_type_ids
+    if "token_type_ids" in tokenizer.model_input_names:
+        input_names = ["input_ids", "token_type_ids", "attention_mask"]
+        dynamic_axes_input["token_type_ids"] = {0: "batch_size", 1: "seq_length"}
+
+    output_names = ["logits"]
+    dynamic_axes_output = {"logits": {0: "batch_size", 1: "num_labels"}}
+
+    # Create exporter
+    onnx_exporter = OnnxLLMExporter(
+        onnx_model_dir=str(cfg.onnx_export_path),
+        model=model,
+        tokenizer=tokenizer,
+    )
+
+    # Disable dynamo export
+    import torch
+    import torch.onnx
+
+    original_export = torch.onnx.export
+
+    def forced_legacy_export(*args, **kwargs):
+        kwargs['dynamo'] = False
+        return original_export(*args, **kwargs)
+
+    # Monkeypatch create_bidirectional_mask to be ONNX-trace-friendly.
+    # The transformers masking_utils.sdpa_mask uses tensor shape indexing
+    # that fails during JIT tracing. This replacement produces the same
+    # bidirectional attention mask without the incompatible operations.
+    # The model's custom code does `from transformers.masking_utils import
+    # create_bidirectional_mask`, so we must patch it in the model's own
+    # module namespace where it holds the direct reference.
+    import sys
+
+    def _onnx_safe_bidirectional_mask(config=None, input_embeds=None, attention_mask=None, **kwargs):
+        dtype = input_embeds.dtype
+        batch_size, seq_length, _ = input_embeds.shape
+        # Bidirectional mask: all tokens attend to all non-padded tokens
+        # attention_mask shape: (batch_size, seq_length) with 1=attend, 0=pad
+        mask = attention_mask[:, None, None, :].expand(batch_size, 1, seq_length, seq_length)
+        # Convert to additive mask: 0 for attend, large negative for ignore
+        mask = (1.0 - mask.to(dtype)) * torch.finfo(dtype).min
+        return mask
+
+    # Find all loaded modules that imported create_bidirectional_mask and patch them
+    _patched_modules = {}
+    for mod_name, mod in list(sys.modules.items()):
+        if hasattr(mod, 'create_bidirectional_mask') and callable(getattr(mod, 'create_bidirectional_mask', None)):
+            _patched_modules[mod_name] = getattr(mod, 'create_bidirectional_mask')
+            setattr(mod, 'create_bidirectional_mask', _onnx_safe_bidirectional_mask)
+
+    torch.onnx.export = forced_legacy_export
+    try:
+        print(f"  Exporting to ONNX (opset {cfg.opset}, dtype {cfg.export_dtype})...")
+        onnx_exporter.export(
+            input_names=input_names,
+            output_names=output_names,
+            opset=cfg.opset,
+            dynamic_axes_input=dynamic_axes_input,
+            dynamic_axes_output=dynamic_axes_output,
+            export_dtype=cfg.export_dtype,
+        )
+    finally:
+        torch.onnx.export = original_export
+        for mod_name, orig_fn in _patched_modules.items():
+            if mod_name in sys.modules:
+                setattr(sys.modules[mod_name], 'create_bidirectional_mask', orig_fn)
+
+    return onnx_exporter
+
+
+def export_onnx_to_tensorrt(onnx_exporter: Any, cfg: ExportConfig) -> None:
+    """Convert ONNX model to TensorRT.
+
+    Args:
+        onnx_exporter: The ONNX exporter instance.
+        cfg: Export configuration.
+    """
+    try:
+        import tensorrt as trt
+    except ImportError:
+        print("Error: TensorRT is required for TRT export. Please install tensorrt.")
+        sys.exit(1)
+
+    input_profiles = [
+        {
+            "input_ids": [
+                [cfg.trt_min_batch, cfg.trt_min_seq_len],
+                [cfg.trt_opt_batch, cfg.trt_opt_seq_len],
+                [cfg.trt_max_batch, cfg.trt_max_seq_len],
+            ],
+            "attention_mask": [
+                [cfg.trt_min_batch, cfg.trt_min_seq_len],
+                [cfg.trt_opt_batch, cfg.trt_opt_seq_len],
+                [cfg.trt_max_batch, cfg.trt_max_seq_len],
+            ],
+        }
+    ]
+
+    print(f"  Converting to TensorRT...")
+    print(f"    Batch sizes: min={cfg.trt_min_batch}, opt={cfg.trt_opt_batch}, max={cfg.trt_max_batch}")
+    print(f"    Seq lengths: min={cfg.trt_min_seq_len}, opt={cfg.trt_opt_seq_len}, max={cfg.trt_max_seq_len}")
+
+    onnx_exporter.export_onnx_to_trt(
+        trt_model_dir=str(cfg.trt_model_path),
+        profiles=input_profiles,
+        override_layernorm_precision_to_fp32=cfg.override_layernorm_precision_to_fp32,
+        override_layers_to_fp32=cfg.override_layers_to_fp32,
+        profiling_verbosity=cfg.profiling_verbosity,
+        trt_builder_flags=[trt.BuilderFlag.VERSION_COMPATIBLE],
+    )
+
+
+def verify_onnx_export(onnx_exporter: Any) -> bool:
+    """Verify ONNX export with a simple forward pass.
+
+    Args:
+        onnx_exporter: The ONNX exporter instance.
+
+    Returns:
+        True if verification passed, False otherwise.
+    """
+    print("  Verifying ONNX export...")
+    prompt = ["query: what is AI? passage: Artificial intelligence is a field of computer science."]
+
+    try:
+        result = onnx_exporter.forward(prompt)
+        print(f"    Test logits shape: {result.shape if hasattr(result, 'shape') else 'OK'}")
+        return True
+    except Exception as e:
+        print(f"    Error: ONNX verification failed: {e}", file=sys.stderr)
+        return False
+
+
+def run_export(cfg: ExportConfig) -> dict:
+    """Run reranking model export to ONNX/TensorRT.
+
+    Args:
+        cfg: Export configuration.
+
+    Returns:
+        Dictionary with export paths.
+    """
+    print(f"Reranking Model Export to ONNX/TensorRT")
+    print(f"=" * 60)
+    print(f"Model path:      {cfg.model_path}")
+    print(f"Attention impl:  {cfg.attn_implementation}")
+    print(f"Quantization:    {cfg.quant_cfg or 'None'}")
+    print(f"ONNX output:     {cfg.onnx_export_path}")
+    print(f"Export to TRT:   {cfg.export_to_trt}")
+    if cfg.export_to_trt:
+        print(f"TRT output:      {cfg.trt_model_path}")
+    print(f"=" * 60)
+    print()
+
+    # Validate model path exists
+    if not cfg.model_path.exists():
+        print(f"Error: Model not found at {cfg.model_path}")
+        print("       Please run stage0_finetune first or specify a valid model_path.")
+        sys.exit(1)
+
+    # Create output directories
+    cfg.output_dir.mkdir(parents=True, exist_ok=True)
+    cfg.onnx_export_path.mkdir(parents=True, exist_ok=True)
+    if cfg.export_to_trt:
+        cfg.trt_model_path.mkdir(parents=True, exist_ok=True)
+
+    results = {
+        "model_path": str(cfg.model_path),
+        "onnx_path": str(cfg.onnx_export_path),
+    }
+
+    # Step 1: Load the reranker model
+    print(f"Loading reranker model from: {cfg.model_path}")
+    model, tokenizer = load_reranker_model(
+        model_path=cfg.model_path,
+        attn_implementation=cfg.attn_implementation,
+    )
+    print(f"   Model loaded successfully")
+    print()
+
+    # Step 2: Export to ONNX
+    print(f"Exporting to ONNX...")
+    onnx_exporter = export_to_onnx(model, tokenizer, cfg)
+    print(f"   ONNX model saved to: {cfg.onnx_export_path}")
+    print()
+
+    # Step 3: Verify ONNX export
+    onnx_ok = verify_onnx_export(onnx_exporter)
+    print()
+
+    # Step 4: Export to TensorRT (optional)
+    if cfg.export_to_trt and not onnx_ok:
+        print("Skipping TensorRT conversion: ONNX verification failed.", file=sys.stderr)
+        print("Fix the ONNX export before converting to TensorRT.", file=sys.stderr)
+        sys.exit(1)
+    if cfg.export_to_trt:
+        print(f"Exporting to TensorRT...")
+        export_onnx_to_tensorrt(onnx_exporter, cfg)
+        results["trt_path"] = str(cfg.trt_model_path)
+        print(f"   TensorRT engine saved to: {cfg.trt_model_path}")
+        print()
+
+    print(f"Export complete!")
+    print(f"   ONNX model:     {cfg.onnx_export_path}")
+    if cfg.export_to_trt:
+        print(f"   TensorRT model: {cfg.trt_model_path}")
+
+    return results
+
+
+def main(cfg: ExportConfig | None = None) -> dict:
+    """Entry point for export.
+
+    Args:
+        cfg: Config from CLI framework, or None when run directly as script.
+
+    Returns:
+        Dictionary with export paths.
+    """
+    if cfg is None:
+        config_path, cli_overrides = parse_config_and_overrides(
+            default_config=DEFAULT_CONFIG_PATH
+        )
+
+        try:
+            cfg = load_config(config_path, cli_overrides, ExportConfig)
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    return run_export(cfg)
+
+
+if __name__ == "__main__":
+    main()

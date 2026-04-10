@@ -1,0 +1,51 @@
+# Stage 3: Deploy Configuration
+#
+# Launches NIM reranking service with a custom fine-tuned model.
+# The NIM provides a ranking API for re-ranking query-document pairs.
+#
+# Usage:
+#   nemotron rerank deploy -c default
+#   nemotron rerank deploy -c default detach=true
+#   nemotron rerank deploy -c default model_dir=/path/to/onnx
+#
+# Test the deployed service:
+#   curl -X POST http://localhost:8000/v1/ranking \
+#     -H 'Content-Type: application/json' \
+#     -d '{"model": "nvidia/llama-nemotron-rerank-1b-v2", "query": {"text": "what is AI?"}, "passages": [{"text": "AI is artificial intelligence"}]}'
+
+# NIM container image
+nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0
+
+# Container name (for management)
+container_name: nemotron-rerank-nim
+
+# Path to custom model (ONNX or TensorRT from stage2_export)
+model_dir: ./output/rerank/stage2_export/onnx
+
+# Use ONNX instead of TensorRT
+use_onnx: true
+
+# Container internal paths
+container_model_path: /opt/nim/custom_model
+container_cache_path: /opt/nim/.cache
+
+# Network settings
+host_port: 8000
+container_port: 8000
+
+# GPU allocation
+gpus: all
+
+# Shared memory size
+shm_size: 2gb
+
+# Runtime settings
+detach: false
+remove_on_exit: true
+
+# Health check settings
+health_check_timeout: 120
+health_check_interval: 5
+
+# Environment variable for NGC API key
+ngc_api_key_env: NGC_API_KEY
