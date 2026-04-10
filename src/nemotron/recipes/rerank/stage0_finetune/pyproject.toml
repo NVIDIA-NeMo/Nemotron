@@ -3,17 +3,18 @@ name = "recipe-runner"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
-  "nemo-automodel @ git+https://github.com/NVIDIA-NeMo/Automodel.git@3a3f6858",
+  "nemo-automodel @ git+https://github.com/NVIDIA-NeMo/Automodel.git@897ebedfa6264225d2c0e1e3f7ed289da7803f1a",
   # Needed by Nemotron library (added via --with flag)
   "omegaconf>=2.3.0",
   "pydantic-settings>=2.0.0",
-  # Pin transformers <5.2 — nemo-automodel's check_model_inputs decorator
-  # is a ContextDecorator in 5.2.0 which breaks forward()
-  "transformers>=5.3.0,<5.4.0",
 ]
 
 # Note: exclude-dependencies are injected dynamically by run_uv.py for Docker/Slurm
 # This base config works for local mode where all packages need to be installed
+
+[tool.uv]
+# Override automodel's transformers pin to use 5.5.x
+override-dependencies = ["transformers>=5.5.0,<5.6.0"]
 
 [tool.nemotron]
 entry-point = "train.py"
