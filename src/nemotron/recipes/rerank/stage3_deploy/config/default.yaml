@@ -9,7 +9,7 @@
 #   nemotron rerank deploy -c default model_dir=/path/to/onnx
 #
 # Test the deployed service:
-#   curl -X POST http://localhost:8001/v1/ranking \
+#   curl -X POST http://localhost:8000/v1/ranking \
 #     -H 'Content-Type: application/json' \
 #     -d '{"model": "nvidia/llama-nemotron-rerank-1b-v2", "query": {"text": "what is AI?"}, "passages": [{"text": "AI is artificial intelligence"}]}'
 
@@ -29,8 +29,8 @@ use_onnx: true
 container_model_path: /opt/nim/custom_model
 container_cache_path: /opt/nim/.cache
 
-# Network settings (default 8001 to avoid conflict with embed NIM on 8000)
-host_port: 8001
+# Network settings
+host_port: 8000
 container_port: 8000
 
 # GPU allocation

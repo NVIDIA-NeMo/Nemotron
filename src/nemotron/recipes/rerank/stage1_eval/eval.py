@@ -50,7 +50,7 @@ Usage:
     nemotron rerank eval -c default finetuned_model_path=/path/to/model
 
     # Evaluate NIM endpoint
-    nemotron rerank eval -c default eval_nim=true nim_url=http://localhost:8001
+    nemotron rerank eval -c default eval_nim=true nim_url=http://localhost:8000
 """
 
 from __future__ import annotations

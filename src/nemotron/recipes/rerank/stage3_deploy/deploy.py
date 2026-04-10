@@ -85,7 +85,7 @@ class DeployConfig(RecipeSettings):
     container_cache_path: str = Field(default="/opt/nim/.cache", description="Path inside container for NIM cache.")
 
     # Network settings
-    host_port: int = Field(default=8001, ge=1, le=65535, description="Port to expose on host.")
+    host_port: int = Field(default=8000, ge=1, le=65535, description="Port to expose on host.")
     container_port: int = Field(default=8000, ge=1, le=65535, description="Port inside container.")
 
     # Resource settings
