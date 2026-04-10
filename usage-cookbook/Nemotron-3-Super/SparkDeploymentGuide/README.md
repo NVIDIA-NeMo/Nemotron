@@ -1,6 +1,6 @@
 # Nemotron 3 Super — DGX Spark Deployment Guide
 
-DGX Spark ships a single Grace-Blackwell GPU with 128 GB of unified memory. This guide covers serving Nemotron 3 Super on a single DGX Spark using vLLM and TensorRT-LLM.
+DGX Spark ships a single Grace-Blackwell GPU with 128 GB of unified memory. This guide covers serving Nemotron 3 Super on a single DGX Spark using vLLM (nightly) and TensorRT-LLM.
 
 ## Architecture Refresher
 
