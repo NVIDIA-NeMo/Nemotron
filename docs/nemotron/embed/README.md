@@ -133,7 +133,7 @@ See the [Execution Profiles](#execution-profiles) section below.
 
 ### Supported Formats
 
-- Text files: `.txt`, `.md`, `.rst`
+- Any text files, default: .txt, .md, .text, and files with no extension
 - Documents should be UTF-8 encoded
 - Files are processed recursively from the corpus directory
 
