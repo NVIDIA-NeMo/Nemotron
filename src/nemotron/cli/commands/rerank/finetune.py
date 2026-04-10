@@ -36,10 +36,10 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-from nemotron.recipes.rerank.stage0_finetune.train import FinetuneConfig
+from nemotron.recipes.rerank.stage2_finetune.train import FinetuneConfig
 
-SCRIPT_PATH = "src/nemotron/recipes/rerank/stage0_finetune/train.py"
-SCRIPT_REMOTE = "src/nemotron/recipes/rerank/stage0_finetune/run_uv.py"
+SCRIPT_PATH = "src/nemotron/recipes/rerank/stage2_finetune/train.py"
+SCRIPT_REMOTE = "src/nemotron/recipes/rerank/stage2_finetune/run_uv.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(
