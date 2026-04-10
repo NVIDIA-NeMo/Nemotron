@@ -1,6 +1,6 @@
 # Nemotron 3 Super — DGX Spark Deployment Guide
 
-DGX Spark ships a single Grace-Blackwell GPU with 128 GB of unified memory. This guide covers serving Nemotron 3 Super on a single DGX Spark using vLLM and TensorRT-LLM.
+DGX Spark ships a single Grace-Blackwell GPU with 128 GB of unified memory. This guide covers serving Nemotron 3 Super on a single DGX Spark using vLLM (nightly) and TensorRT-LLM.
 
 ## Architecture Refresher
 
@@ -29,7 +29,7 @@ wget https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4/raw/m
 ### Image
 
 ```
-vllm/vllm-openai:v0.18.1-cu130
+vllm/vllm-openai:cu130-nightly
 ```
 
 ### Serve Command
@@ -46,7 +46,7 @@ docker run --rm -it --gpus all \
   -v ~/.cache/huggingface:/root/.cache/huggingface \
   -v $(pwd)/super_v3_reasoning_parser.py:/app/super_v3_reasoning_parser.py \
   -p 8000:8000 \
-  vllm/vllm-openai:v0.18.1-cu130 \
+  vllm/vllm-openai:cu130-nightly \
     --model nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 \
     --served-model-name nemotron-3-super \
     --host 0.0.0.0 \
