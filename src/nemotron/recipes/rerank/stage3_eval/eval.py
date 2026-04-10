@@ -83,16 +83,16 @@ class EvalConfig(RecipeSettings):
 
     # Model paths
     base_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model for comparison.")
-    finetuned_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage0_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned model checkpoint.")
+    finetuned_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned model checkpoint.")
 
     # First-stage retrieval model (for generating candidates to re-rank)
     retrieval_model: str = Field(default="nvidia/llama-nemotron-embed-1b-v2", description="Dense retrieval model for first-stage candidate generation.")
 
     # Evaluation data
-    eval_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep/eval_beir", description="Path to BEIR-formatted evaluation data.")
+    eval_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/eval_beir", description="Path to BEIR-formatted evaluation data.")
 
     # Output settings
-    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_eval", description="Directory for saving evaluation results.")
+    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage3_eval", description="Directory for saving evaluation results.")
 
     # Evaluation settings
     k_values: list[int] = Field(default_factory=lambda: [1, 5, 10, 100], description="K values for nDCG@k metrics.")

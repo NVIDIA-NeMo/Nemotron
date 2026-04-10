@@ -36,9 +36,9 @@ from nemo_runspec.config import (
 from nemo_runspec.display import display_job_config
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-from nemotron.recipes.rerank.stage3_deploy.deploy import DeployConfig
+from nemotron.recipes.rerank.stage5_deploy.deploy import DeployConfig
 
-SCRIPT_PATH = "src/nemotron/recipes/rerank/stage3_deploy/deploy.py"
+SCRIPT_PATH = "src/nemotron/recipes/rerank/stage5_deploy/deploy.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(

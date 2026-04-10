@@ -36,10 +36,10 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-from nemotron.recipes.rerank.stage2_export.export import ExportConfig
+from nemotron.recipes.rerank.stage4_export.export import ExportConfig
 
-SCRIPT_PATH = "src/nemotron/recipes/rerank/stage2_export/export.py"
-SCRIPT_REMOTE = "src/nemotron/recipes/rerank/stage2_export/run_uv.py"
+SCRIPT_PATH = "src/nemotron/recipes/rerank/stage4_export/export.py"
+SCRIPT_REMOTE = "src/nemotron/recipes/rerank/stage4_export/run_uv.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(

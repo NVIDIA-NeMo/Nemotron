@@ -1,4 +1,4 @@
-# Stage 3: Deploy Configuration
+# Stage 5: Deploy Configuration
 #
 # Launches NIM reranking service with a custom fine-tuned model.
 # The NIM provides a ranking API for re-ranking query-document pairs.
@@ -19,8 +19,8 @@ nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0
 # Container name (for management)
 container_name: nemotron-rerank-nim
 
-# Path to custom model (ONNX or TensorRT from stage2_export)
-model_dir: ./output/rerank/stage2_export/onnx
+# Path to custom model (ONNX or TensorRT from stage4_export)
+model_dir: ./output/rerank/stage4_export/onnx
 
 # Use ONNX instead of TensorRT
 use_onnx: true

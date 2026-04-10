@@ -73,7 +73,7 @@ class ExportConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Model path
-    model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage0_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned HuggingFace model checkpoint.")
+    model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned HuggingFace model checkpoint.")
 
     # Model settings
     attn_implementation: Literal["eager", "sdpa", "flash_attention_2"] = Field(default="eager", description="Attention implementation: 'eager', 'sdpa', or 'flash_attention_2'.")
@@ -83,13 +83,13 @@ class ExportConfig(RecipeSettings):
     calibration_batch_size: int = Field(default=64, gt=0, description="Batch size for quantization calibration.")
 
     # ONNX export settings
-    onnx_export_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export/onnx", description="Output path for ONNX model.")
+    onnx_export_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx", description="Output path for ONNX model.")
     opset: int = Field(default=17, gt=0, description="ONNX opset version.")
     export_dtype: Literal["fp32", "fp16"] = Field(default="fp32", description="ONNX export data precision (fp32, fp16).")
 
     # TensorRT settings
     export_to_trt: bool = Field(default=False, description="Whether to export ONNX model to TensorRT.")
-    trt_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export/tensorrt", description="Output path for TensorRT .plan file.")
+    trt_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/tensorrt", description="Output path for TensorRT .plan file.")
     override_layernorm_precision_to_fp32: bool = Field(default=True, description="Whether to override LayerNorm precision to fp32 for stability.")
     override_layers_to_fp32: list[str] = Field(default_factory=lambda: ["/model/norm/"], description="Layer patterns to override precision to fp32.")
     profiling_verbosity: str = Field(default="layer_names_only", description="TensorRT profiling verbosity level.")
@@ -115,7 +115,7 @@ class ExportConfig(RecipeSettings):
         return self
 
     # Output settings
-    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_export", description="Base output directory for export artifacts.")
+    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export", description="Base output directory for export artifacts.")
 
 
 def load_reranker_model(
@@ -332,7 +332,7 @@ def run_export(cfg: ExportConfig) -> dict:
     # Validate model path exists
     if not cfg.model_path.exists():
         print(f"Error: Model not found at {cfg.model_path}")
-        print("       Please run stage0_finetune first or specify a valid model_path.")
+        print("       Please run stage2_finetune first or specify a valid model_path.")
         sys.exit(1)
 
     # Create output directories

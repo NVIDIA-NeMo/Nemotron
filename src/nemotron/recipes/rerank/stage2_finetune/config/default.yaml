@@ -1,4 +1,4 @@
-# Stage 0: Fine-tuning Configuration
+# Stage 2: Fine-tuning Configuration
 #
 # Fine-tunes a cross-encoder reranking model using classification loss.
 #
@@ -20,10 +20,10 @@ run:
 base_model: nvidia/llama-nemotron-rerank-1b-v2
 
 # Path to training data (output from embed stage1_data_prep)
-train_data_path: ./output/embed/stage1_data_prep/train_mined.automodel_unrolled.json
+train_data_path: ./output/rerank/stage1_prep/train_mined.automodel_unrolled.json
 
 # Directory for saving checkpoints
-checkpoint_dir: ./output/rerank/stage0_finetune/checkpoints
+checkpoint_dir: ./output/rerank/stage2_finetune/checkpoints
 
 # Training hyperparameters
 num_epochs: 3

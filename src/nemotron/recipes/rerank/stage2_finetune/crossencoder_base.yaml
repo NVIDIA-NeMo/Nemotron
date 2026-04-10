@@ -77,7 +77,7 @@ lr_scheduler:
 
 checkpoint:
   enabled: true
-  checkpoint_dir: ./output/rerank/stage0_finetune/checkpoints
+  checkpoint_dir: ./output/rerank/stage2_finetune/checkpoints
   model_save_format: safetensors
   save_consolidated: true
 

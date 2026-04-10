@@ -15,8 +15,10 @@
 """Rerank recipe for fine-tuning cross-encoder reranking models.
 
 Workflow stages:
-- stage0_finetune: Fine-tune cross-encoder reranking model
-- stage1_eval: Evaluate base vs fine-tuned reranker
-- stage2_export: Export model to ONNX/TensorRT
-- stage3_deploy: Deploy NIM reranker service
+- stage0_sdg: Generate synthetic Q&A pairs from documents
+- stage1_prep: Prepare training data (convert, mine, unroll)
+- stage2_finetune: Fine-tune cross-encoder reranking model
+- stage3_eval: Evaluate base vs fine-tuned reranker
+- stage4_export: Export model to ONNX/TensorRT
+- stage5_deploy: Deploy NIM reranker service
 """

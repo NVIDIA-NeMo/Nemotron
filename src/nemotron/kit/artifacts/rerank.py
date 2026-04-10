@@ -24,7 +24,7 @@ from nemotron.kit.artifacts.base import Artifact
 
 
 class RerankModelArtifact(Artifact):
-    """Fine-tuned cross-encoder reranking model checkpoint (output of stage0_finetune).
+    """Fine-tuned cross-encoder reranking model checkpoint (output of stage2_finetune).
 
     The path points to the final model checkpoint directory.
     """

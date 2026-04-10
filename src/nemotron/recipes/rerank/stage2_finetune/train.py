@@ -76,10 +76,10 @@ class FinetuneConfig(RecipeSettings):
     base_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model to fine-tune.")
 
     # Data paths
-    train_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep/train_mined.automodel_unrolled.json", description="Path to training data file.")
+    train_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/train_mined.automodel_unrolled.json", description="Path to training data file.")
 
     # Output settings
-    checkpoint_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage0_finetune/checkpoints", description="Directory for saving checkpoints.")
+    checkpoint_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints", description="Directory for saving checkpoints.")
 
     # Training hyperparameters
     num_epochs: int = Field(default=3, gt=0, description="Number of training epochs.")
