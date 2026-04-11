@@ -1,0 +1,30 @@
+# Validated private OCI OKE deployment values for
+# nvidia/Llama-3.1-Nemotron-Nano-8B-v1 on a single VM.GPU.A10.1 node.
+
+servingEngineSpec:
+  runtimeClassName: ""
+  modelSpec:
+    - name: "llama31-nemotron-nano-8b"
+      repository: "vllm/vllm-openai"
+      tag: "v0.19.0"
+      modelURL: "nvidia/Llama-3.1-Nemotron-Nano-8B-v1"
+      enableTool: true
+      toolCallParser: "llama3_json"
+      chatTemplate: "/vllm-workspace/examples/tool_chat_template_llama3.1_json.jinja"
+      replicaCount: 1
+      requestCPU: 4
+      requestMemory: "24Gi"
+      requestGPU: 1
+      pvcStorage: "120Gi"
+      pvcAccessMode:
+        - ReadWriteOnce
+      storageClass: "oci-block-storage-enc"
+      nodeSelector:
+        app: gpu
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      vllmConfig:
+        maxModelLen: 4096
+        gpuMemoryUtilization: 0.95
