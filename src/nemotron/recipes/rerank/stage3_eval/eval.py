@@ -524,6 +524,30 @@ def run_eval(cfg: EvalConfig) -> dict:
                 print(f"    {k}: {base_val:.5f} -> {ft_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%)")
         print()
 
+    # Print NIM vs Fine-tuned comparison (accuracy check for export)
+    if "finetuned" in results and "nim" in results:
+        print(f"Comparison (Fine-tuned -> NIM)")
+        print(f"=" * 60)
+        print(f"   This verifies the exported model matches the checkpoint accuracy.")
+        print()
+
+        metric_names = ["NDCG", "Recall"]
+        metric_indices = [0, 2]
+
+        for name, idx in zip(metric_names, metric_indices):
+            print(f"  {name}:")
+            for k in results["finetuned"][idx]:
+                ft_val = results["finetuned"][idx][k]
+                nim_val = results["nim"][idx][k]
+                diff = nim_val - ft_val
+                sign = "+" if diff > 0 else ""
+                at_k = int(k.split("@")[1]) if "@" in k else 1
+                threshold = 0.03 if at_k < 5 else 0.01
+                status = "ok" if abs(diff) < threshold else "MISMATCH"
+                pct = (diff / ft_val * 100) if ft_val != 0 else float("inf")
+                print(f"    {k}: {ft_val:.5f} -> {nim_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%) {status}")
+        print()
+
     # Save results
     results_file = cfg.output_dir / "eval_results.json"
 
