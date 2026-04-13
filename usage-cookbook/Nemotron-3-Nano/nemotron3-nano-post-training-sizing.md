@@ -23,18 +23,30 @@
 
 ### At a Glance (H100 80 GiB)
 
-| Framework | Min LoRA | Min Full SFT | Recommended LoRA | Long Context (>8K) |
-|-----------|:--------:|:------------:|:----------------:|:------------------:|
-| **Megatron-Bridge** | 8 GPUs (1 node) | 16 GPUs (2 nodes) | 16 GPUs (2 nodes) | 16–32 GPUs |
-| **Automodel** | 4 GPUs | 8 GPUs | 8 GPUs (1 node) | 8+ GPUs |
-| **NeMo RL** (SFT) | 8 GPUs (2x4) | 16 GPUs (2x8) | 16 GPUs (2x8) | — |
-| **NeMo RL** (GRPO) | 16 GPUs (2x8) | — | 16 GPUs (2x8) | — |
+| Framework | Min LoRA (tested) | Min LoRA (memory) | Min Full SFT | Recommended LoRA | Long Context (>8K) |
+|-----------|:-----------------:|:-----------------:|:------------:|:----------------:|:------------------:|
+| **Megatron-Bridge** | 8 GPUs (1 node) | 1 GPU† | 16 GPUs (2 nodes) | 16 GPUs (2 nodes) | 16–32 GPUs |
+| **Automodel** | 4 GPUs | 4 GPUs | 8 GPUs | 8 GPUs (1 node) | 8+ GPUs |
+| **NeMo RL** (SFT) | 8 GPUs (2x4) | 8 GPUs (2x4) | 16 GPUs (2x8) | 16 GPUs (2x8) | — |
+| **NeMo RL** (GRPO) | 16 GPUs (2x8) | 16 GPUs (2x8) | — | 16 GPUs (2x8) | — |
+
+> † The Megatron-Bridge recipe defaults to EP=8, but `expert_model_parallel_size`
+> is overridable via CLI (see below). With lower EP values, the model fits on
+> fewer GPUs — even 1 GPU (~65 GiB) is memory-viable. Configs below 8 GPUs
+> are untested.
 
 ### Megatron-Bridge
 
+The recipe defaults to `expert_model_parallel_size=8`, but this is overridable
+via Hydra-style CLI. Lower EP values reduce the GPU minimum — any EP where
+`128 % EP == 0` is valid (EP=1, 2, 4, 8, 16, 32, 64, 128).
+
 | Size | GPUs | Nodes | Parallelism | LoRA Rank | Seq Len | Max MBS | Status |
 |------|-----:|------:|-------------|----------:|--------:|--------:|--------|
-| **Min LoRA** | **8** | **1** | EP=8, TP=1, PP=1 | 32 | 2048 | 8 | Supported (matches Qwen3-30B-A3B recipe) |
+| Min LoRA (memory) | 1 | — | EP=1, TP=1, PP=1 | 32 | 2048 | 2 | Untested — override EP via CLI |
+| Min LoRA (memory) | 2 | — | EP=2, TP=1, PP=1 | 32 | 2048 | 8 | Untested — override EP via CLI |
+| Min LoRA (memory) | 4 | < 1 | EP=4, TP=1, PP=1 | 32 | 2048 | 8 | Untested — override EP via CLI |
+| **Min LoRA (tested)** | **8** | **1** | **EP=8, TP=1, PP=1** | **32** | **2048** | **8** | **Recipe default; matches Qwen3-30B-A3B recipe** |
 | **Min Full SFT** | **16** | **2** | EP=8, TP=1, PP=1 | — | 2048 | 4 | Official recommendation |
 | Recommended LoRA | 16 | 2 | EP=8, TP=2, PP=1 | 32 | 2048 | 16 | Tested in SLURM examples |
 | Long context LoRA | 16 | 2 | EP=8, TP=2, PP=1 | 32 | 8192 | 2 | TP=2 needed for activation headroom |
@@ -43,10 +55,19 @@
 Container: `nvcr.io/nvidia/nemo:25.11.nemotron_3_nano`
 
 ```bash
-# Minimum LoRA config (1 node, 8 GPUs, seq_len=2048)
+# Default LoRA config (1 node, 8 GPUs, EP=8)
 torchrun --nproc-per-node=8 examples/models/nemotron_3/finetune_nemotron_3_nano.py \
   --peft lora \
   train.global_batch_size=128 \
+  train.train_iters=100 \
+  scheduler.lr_warmup_iters=10 \
+  checkpoint.pretrained_checkpoint=/path/to/megatron/ckpt
+
+# Fewer GPUs via EP override (e.g. 2 GPUs, EP=2 — untested)
+torchrun --nproc-per-node=2 examples/models/nemotron_3/finetune_nemotron_3_nano.py \
+  --peft lora \
+  model.expert_model_parallel_size=2 \
+  train.global_batch_size=32 \
   train.train_iters=100 \
   scheduler.lr_warmup_iters=10 \
   checkpoint.pretrained_checkpoint=/path/to/megatron/ckpt
@@ -116,19 +137,20 @@ linearly** and becomes the dominant consumer beyond ~8K tokens.
 
 ### Activation memory vs. sequence length
 
-For 8x H100 (Megatron-Bridge, EP=8, TP=1, LoRA rank=32), static memory ~15 GiB/GPU:
+For 8x H100 (Megatron-Bridge, EP=8, TP=1, LoRA rank=32), static memory ~14 GiB/GPU
+(base weights + LoRA overhead + ~3 GiB framework):
 
 > Activation estimates below are approximate and assume selective recomputation
 > with MBS=1. Actual values vary with recomputation strategy and MoE dispatch.
 
 | Seq Length | Activation/GPU | Total/GPU | Fits 80 GiB? | Max MBS |
 |-----------:|---------------:|----------:|:------------:|--------:|
-| 1,024 | ~3 GiB | ~18 GiB | Yes | 16 |
-| 2,048 | ~6 GiB | ~21 GiB | Yes | 8 |
-| 4,096 | ~12 GiB | ~27 GiB | Yes | 4 |
-| 8,192 | ~24 GiB | ~39 GiB | Yes | 2 |
-| **16,384** | **~48 GiB** | **~63 GiB** | **Yes (tight)** | **1** |
-| 32,768 | ~96 GiB | ~111 GiB | **OOM** | — |
+| 1,024 | ~3 GiB | ~17 GiB | Yes | 16 |
+| 2,048 | ~6 GiB | ~20 GiB | Yes | 8 |
+| 4,096 | ~12 GiB | ~26 GiB | Yes | 4 |
+| 8,192 | ~24 GiB | ~38 GiB | Yes | 2 |
+| **16,384** | **~48 GiB** | **~62 GiB** | **Yes (tight)** | **1** |
+| 32,768 | ~96 GiB | ~110 GiB | **OOM** | — |
 
 > **Max MBS** = largest power-of-2 micro-batch size fitting in 80 GiB with a
 > 2 GiB safety margin. Use gradient accumulation to reach the desired global
@@ -277,21 +299,26 @@ Memory components during LoRA training:
 ### Megatron-Bridge (EP-based, no FSDP)
 
 Non-expert weights are **replicated** across data-parallel ranks. Expert weights
-are split by EP.
+are split by EP. The recipe defaults to EP=8, but `expert_model_parallel_size`
+is overridable via CLI — any value where `128 % EP == 0` works.
 
 Assumptions: LoRA rank=32, seq_len=2048, MBS=1.
 
 | Config | GPUs | EP | TP | PP | Base Wt/GPU | Total/GPU | Fits? | Notes |
 |--------|-----:|---:|---:|---:|------------:|----------:|:-----:|-------|
-| 1 GPU | 1 | 1 | 1 | 1 | 58.8 GiB | ~75 GiB | No | EP=1 unsupported; ~5 GiB headroom leaves no room for framework |
-| 4 GPU | 4 | 4 | 1 | 1 | 17.8 GiB | ~26 GiB | Memory fits | EP=4 not in current recipe (hardcodes EP=8) |
-| **8 GPU (1 node)** | **8** | **8** | **1** | **1** | **10.9 GiB** | **~18 GiB** | **Yes** | **Minimum LoRA config** |
-| 16 GPU (2 nodes) | 16 | 8 | 2 | 1 | 8.9 GiB | ~16 GiB | Yes | Recommended; tested in SLURM script |
+| 1 GPU | 1 | 1 | 1 | 1 | 58.8 GiB | ~65 GiB | Yes | Untested; ~12 GiB headroom after framework |
+| 2 GPU | 2 | 2 | 1 | 1 | 31.5 GiB | ~38 GiB | Yes | Untested; ample headroom |
+| 4 GPU | 4 | 4 | 1 | 1 | 17.8 GiB | ~24 GiB | Yes | Untested; override EP via CLI |
+| **8 GPU (1 node)** | **8** | **8** | **1** | **1** | **10.9 GiB** | **~17 GiB** | **Yes** | **Recipe default — tested** |
+| 16 GPU (2 nodes) | 16 | 8 | 2 | 1 | 8.9 GiB | ~15 GiB | Yes | Recommended; tested in SLURM script |
 
+> Configs below 8 GPUs require overriding `model.expert_model_parallel_size` on
+> the command line and have not been validated in official recipes. They are
+> memory-viable but may surface untested code paths in the MoE token dispatcher.
+>
 > **Full SFT requires 16 GPUs (2 nodes) minimum.** The official Megatron-Bridge
 > docs state: *"Running this recipe requires at least 2 H100 nodes (16 GPUs)"*
-> for full parameter fine-tuning (TP=1, EP=8). The 8-GPU minimum applies to
-> **LoRA only**, where optimizer state memory is dramatically reduced.
+> for full parameter fine-tuning (TP=1, EP=8).
 
 ### Automodel (FSDP2)
 
@@ -312,13 +339,16 @@ Assumptions: LoRA rank=8, seq_len=2048, MBS=1.
 
 For a dense 30B model, LoRA typically reduces the minimum GPU requirement
 dramatically (e.g., from 8 GPUs to 1). For MoE models like Nemotron 3 Nano,
-the story is different:
+LoRA *also* enables single-GPU training — but the dynamics are different:
 
 1. **Expert weights dominate** — 93% of the ~59 GiB is in the 128 routed experts.
    Even though they're frozen during LoRA, they still must reside in GPU memory.
-2. **EP is the binding constraint** — expert weights can only be distributed via
-   Expert Parallelism. With 128 experts and EP=8, each GPU holds 16 experts
-   (~6.8 GiB). With EP=4, each holds 32 experts (~13.7 GiB).
+   At EP=1 (1 GPU), all 128 experts fit in ~55 GiB, leaving room for LoRA
+   overhead and activations on an 80 GiB GPU.
+2. **EP trades memory for GPUs** — expert weights can be distributed via Expert
+   Parallelism. With EP=8, each GPU holds only 16 experts (~6.8 GiB), freeing
+   memory for larger batches or longer sequences. With EP=1, all experts stay
+   on one GPU but it still fits.
 3. **LoRA savings are on the optimizer side** — instead of Adam states for 31.6B
    params (full SFT), you only need them for ~219M params (rank 8). This saves
    ~230 GiB of optimizer memory across the cluster, but the base weight footprint
@@ -350,13 +380,18 @@ on Expert Parallelism.
 ### Memory distribution comparison
 
 ```
-Megatron-Bridge (EP-based, no FSDP):
+Megatron-Bridge (EP-based, no FSDP) — example with EP=8:
   GPU 0: [all non-expert weights] + [experts 0-15]
   GPU 1: [all non-expert weights] + [experts 16-31]   <-- 4.1 GiB replicated
   ...
   (8 GPUs, EP=8: each holds 4.1 GiB shared + 6.8 GiB experts = 10.9 GiB)
 
-Automodel / NeMo RL (FSDP2):
+Megatron-Bridge with EP override — example with EP=2:
+  GPU 0: [all non-expert weights] + [experts 0-63]
+  GPU 1: [all non-expert weights] + [experts 64-127]  <-- 4.1 GiB replicated
+  (2 GPUs, EP=2: each holds 4.1 GiB shared + 27.4 GiB experts = 31.5 GiB)
+
+Automodel / NeMo RL (FSDP2) — example with EP=4:
   GPU 0: [1/4 non-expert weights] + [experts 0-31]
   GPU 1: [1/4 non-expert weights] + [experts 32-63]   <-- 1.0 GiB each
   ...
