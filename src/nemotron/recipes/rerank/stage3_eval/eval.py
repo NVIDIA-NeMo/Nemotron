@@ -111,6 +111,9 @@ class EvalConfig(RecipeSettings):
     eval_base: bool = Field(default=True, description="Whether to evaluate the base reranker.")
     eval_finetuned: bool = Field(default=True, description="Whether to evaluate the fine-tuned reranker.")
 
+    # Reranker prompt template (must match training config)
+    prompt_template: str = Field(default="question:{query} \n \n passage:{passage}", description="Template for formatting query-passage pairs. Must match the template used during training.")
+
     # NIM API evaluation settings
     eval_nim: bool = Field(default=False, description="Whether to evaluate a NIM API endpoint.")
     nim_url: str = Field(default="http://localhost:8000", description="NIM API base URL.")
@@ -218,6 +221,7 @@ def evaluate_reranker(
     batch_size: int = 128,
     max_length: int = 512,
     k_values: list[int] | None = None,
+    prompt_template: str | None = None,
 ) -> tuple[dict, dict]:
     """Evaluate a cross-encoder reranker on first-stage retrieval results.
 
@@ -231,28 +235,87 @@ def evaluate_reranker(
         batch_size: Batch size for cross-encoder scoring.
         max_length: Maximum sequence length.
         k_values: K values for metrics.
+        prompt_template: Template for formatting query-passage pairs (e.g.
+            "question:{query} \\n \\n passage:{passage}"). When set, inputs
+            are formatted with this template to match training. When None,
+            falls back to BEIR's default pair formatting.
 
     Returns:
         Tuple of (metrics dict, reranked results dict).
     """
+    import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
     try:
-        from beir.reranking import Rerank
         from beir.retrieval.evaluation import EvaluateRetrieval
-        from sentence_transformers import CrossEncoder
     except ImportError:
-        print("Error: BEIR and sentence-transformers are required for evaluation.")
-        print("  Install with: pip install beir sentence-transformers")
+        print("Error: BEIR is required for evaluation.")
+        print("  Install with: pip install beir")
         sys.exit(1)
 
     if k_values is None:
         k_values = [1, 5, 10, 100]
 
-    # Load cross-encoder model
-    cross_encoder = CrossEncoder(str(model_path), max_length=max_length, trust_remote_code=True)
+    # Load model and tokenizer directly to control input formatting
+    tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True)
+    model = AutoModelForSequenceClassification.from_pretrained(str(model_path), trust_remote_code=True)
+    model.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
-    # Re-rank first-stage results
-    reranker = Rerank(cross_encoder, batch_size=batch_size)
-    reranked_results = reranker.rerank(corpus, queries, first_stage_results, top_k=top_k)
+    # Build inputs
+    formatted_inputs = []
+    pair_info = []
+    for qid in queries:
+        if qid not in first_stage_results:
+            continue
+        sorted_candidates = sorted(
+            first_stage_results[qid].items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )[:top_k]
+        for doc_id, _ in sorted_candidates:
+            pair_info.append((qid, doc_id))
+            doc = corpus[doc_id]
+            title = doc.get("title", "")
+            text = doc.get("text", "")
+            passage = f"{title} {text}".strip() if title else text
+            if prompt_template:
+                formatted_inputs.append(
+                    prompt_template.format(query=queries[qid], passage=passage)
+                )
+            else:
+                formatted_inputs.append((queries[qid], passage))
+
+    # Score in batches
+    all_scores = []
+    for batch_start in range(0, len(formatted_inputs), batch_size):
+        batch = formatted_inputs[batch_start:batch_start + batch_size]
+        if prompt_template:
+            features = tokenizer(
+                batch, padding=True, truncation=True,
+                max_length=max_length, return_tensors="pt",
+            )
+        else:
+            texts_a = [pair[0] for pair in batch]
+            texts_b = [pair[1] for pair in batch]
+            features = tokenizer(
+                texts_a, texts_b, padding=True, truncation=True,
+                max_length=max_length, return_tensors="pt",
+            )
+        features = {k: v.to(device) for k, v in features.items()}
+        with torch.no_grad():
+            logits = model(**features).logits.squeeze(-1)
+        if logits.dim() == 0:
+            all_scores.append(logits.item())
+        else:
+            all_scores.extend(logits.cpu().tolist())
+
+    reranked_results: dict[str, dict[str, float]] = {}
+    for (qid, doc_id), score in zip(pair_info, all_scores):
+        if qid not in reranked_results:
+            reranked_results[qid] = {}
+        reranked_results[qid][doc_id] = float(score)
 
     # Evaluate re-ranked results
     evaluator = EvaluateRetrieval(k_values=k_values)
@@ -438,6 +501,7 @@ def run_eval(cfg: EvalConfig) -> dict:
             batch_size=cfg.batch_size,
             max_length=cfg.max_length,
             k_values=cfg.k_values,
+            prompt_template=cfg.prompt_template,
         )
         results["base"] = base_metrics
         _print_summary_metrics(base_metrics, cfg.k_values)
@@ -460,6 +524,7 @@ def run_eval(cfg: EvalConfig) -> dict:
                 batch_size=cfg.batch_size,
                 max_length=cfg.max_length,
                 k_values=cfg.k_values,
+                prompt_template=cfg.prompt_template,
             )
             results["finetuned"] = ft_metrics
             _print_summary_metrics(ft_metrics, cfg.k_values)

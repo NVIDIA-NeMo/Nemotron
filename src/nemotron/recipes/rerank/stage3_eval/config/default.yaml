@@ -51,6 +51,9 @@ retrieval_normalize: true
 query_prefix: "query:"
 passage_prefix: "passage:"
 
+# Reranker prompt template (must match training config)
+prompt_template: "question:{query} \n \n passage:{passage}"
+
 # Evaluation mode
 eval_base: true
 eval_finetuned: true
