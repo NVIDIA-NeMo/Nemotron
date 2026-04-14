@@ -97,7 +97,8 @@ class EvalConfig(RecipeSettings):
     # Evaluation settings
     k_values: list[int] = Field(default_factory=lambda: [1, 5, 10, 100], description="K values for nDCG@k metrics.")
     top_k: int = Field(default=100, gt=0, description="Number of first-stage candidates to re-rank.")
-    batch_size: int = Field(default=128, gt=0, description="Batch size for encoding/scoring.")
+    batch_size: int = Field(default=128, gt=0, description="Batch size for reranker scoring.")
+    retrieval_batch_size: int = Field(default=32, gt=0, description="Batch size for first-stage retrieval encoding. Lower than batch_size because the embedding model processes longer sequences.")
     max_length: int = Field(default=512, gt=0, description="Maximum sequence length.")
     corpus_chunk_size: int = Field(default=50000, gt=0, description="Chunk size for corpus encoding.")
 
@@ -163,7 +164,7 @@ class _SentenceTransformerRetriever:
 def _get_first_stage_results(
     retrieval_model: str,
     dataset_path: Path,
-    batch_size: int = 128,
+    batch_size: int = 32,
     corpus_chunk_size: int = 50000,
     k_values: list[int] | None = None,
     query_prefix: str = "query:",
@@ -479,7 +480,7 @@ def run_eval(cfg: EvalConfig) -> dict:
     corpus, queries, qrels, first_stage_results = _get_first_stage_results(
         retrieval_model=cfg.retrieval_model,
         dataset_path=cfg.eval_data_path,
-        batch_size=cfg.batch_size,
+        batch_size=cfg.retrieval_batch_size,
         corpus_chunk_size=cfg.corpus_chunk_size,
         k_values=cfg.k_values,
         query_prefix=cfg.query_prefix,

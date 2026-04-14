@@ -42,6 +42,7 @@ top_k: 100
 
 # Encoding settings
 batch_size: 128
+retrieval_batch_size: 32
 max_length: 512
 corpus_chunk_size: 50000
 
