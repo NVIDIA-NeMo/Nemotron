@@ -8,7 +8,7 @@
 # setup = "PyTorch pre-installed. Stage dependencies resolved via UV at runtime."
 #
 # [tool.runspec.run]
-# launch = "direct"
+# launch = "torchrun"
 #
 # [tool.runspec.config]
 # dir = "./config"
