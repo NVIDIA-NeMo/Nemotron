@@ -301,11 +301,21 @@ def load_generated_json_files(input_path: str) -> pd.DataFrame:
         # Single file mode (merged JSON)
         print(f"Loading single JSON file: {input_path}")
         with open(input_path, 'r', encoding='utf-8') as f:
-            records = json.load(f)
-            if isinstance(records, list):
-                all_records.extend(records)
+            first_char = f.read(1)
+            f.seek(0)
+            if first_char == '[':
+                # Standard JSON array
+                records = json.load(f)
+                if isinstance(records, list):
+                    all_records.extend(records)
+                else:
+                    all_records.append(records)
             else:
-                all_records.append(records)
+                # JSONL: one JSON object per line
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        all_records.append(json.loads(line))
     else:
         # Folder mode (batch files)
         json_files = sorted(glob.glob(os.path.join(input_path, 'generated_batch*.json')))
