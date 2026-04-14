@@ -115,7 +115,9 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
         uv_cmd, "run",
         "--with", str(repo_root),
         "--project", str(stage_dir),
-        "python", str(script_abs),
+        "python", "-m", "torch.distributed.run",
+        "--nproc_per_node=gpu",
+        str(script_abs),
         "--config", str(train_path),
         *passthrough,
     ]
