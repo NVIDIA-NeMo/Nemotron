@@ -1,0 +1,65 @@
+[step]
+id = "curate/nemo_curator"
+name = "Data Acquisition & Curation (NeMo Curator)"
+category = "curate"
+description = """Acquire public or custom text corpora with NeMo Curator, then annotate and filter them by language, domain, and quality to produce downstream-ready JSONL."""
+tags = ["curate", "data-acquisition", "nemo-curator", "jsonl", "ray"]
+
+[[produces]]
+type = "filtered_jsonl"
+description = "Filtered JSONL records with language/domain annotations suitable for downstream translation or training."
+
+[[parameters]]
+name = "language_codes"
+description = "Target languages to keep during language identification and filtering."
+default = ["en"]
+
+[[parameters]]
+name = "domains"
+description = "Requested content domains to keep or prioritize during domain classification and export."
+default = []
+
+[[parameters]]
+name = "num_records"
+description = "Approximate number of records to acquire and retain after filtering."
+default = 100000
+
+[[strategies]]
+when = "You are starting from remote public sources such as Common Crawl, Wikipedia, or custom URL lists"
+then = "Use Curator's download/extract composite stages first, then write JSONL for downstream filtering and export."
+skill = "skills/nemotron-customize/context/curator-data-acquisition.txt"
+
+[[strategies]]
+when = "You already have local JSONL or Parquet data"
+then = "Skip remote acquisition and start with JsonlReader or ParquetReader, then apply language, quality, and domain filters."
+skill = "skills/nemotron-customize/context/curator-processing-language-quality.txt"
+
+[[strategies]]
+when = "You need multilingual or domain-specific gating before training"
+then = "Apply FastText language ID plus DomainClassifier or MultilingualDomainClassifier before final export."
+skill = "skills/nemotron-customize/context/curator-processing-language-quality.txt"
+
+[[strategies]]
+when = "Raw web data quality is noisy"
+then = "Start with heuristic ScoreFilter stages, then add QualityClassifier and deduplication for production-scale corpora."
+skill = "skills/nemotron-customize/context/curator-processing-language-quality.txt"
+
+[[errors]]
+name = "empty_or_tiny_output"
+recovery = "Relax language/domain/quality filters, increase num_records, or inspect intermediate JSONL before continuing downstream."
+
+[[errors]]
+name = "large_file_oom"
+recovery = "Split very large JSONL or Parquet files into smaller chunks and tune files_per_partition or blocksize before reading them with Curator."
+
+[[errors]]
+name = "missing_language_model"
+recovery = "Download the FastText lid.176 model and wire its path into FastTextLangId before enabling language-based filtering."
+
+[reference]
+script = "Curator/nemo_curator/stages/text/download/common_crawl/stage.py"
+docs = "Curator/docs/curate-text/load-data/index.md"
+skills = [
+  "skills/nemotron-customize/context/curator-data-acquisition.txt",
+  "skills/nemotron-customize/context/curator-processing-language-quality.txt",
+]

@@ -1,0 +1,30 @@
+[case]
+name = "4gpu-automodel-lora"
+description = "Hardware-constrained SFT should choose AutoModel with LoRA on 4 GPUs."
+tags = ["hardware", "small-gpu", "automodel", "lora", "peft"]
+
+[input]
+request = "Fine-tune an instruction model on my chat JSONL. We only have 4 GPUs, so keep it lightweight."
+
+[expected.steps]
+must_include = ["sft/automodel", "eval/model_eval"]
+may_include = []
+must_exclude = ["prep/sft_packing", "sft/megatron_bridge", "curate/nemo_curator"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 2, max = 2 }
+must_mention = ["4 GPUs", "LoRA", "checkpoint_hf"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_sft", "02_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.project.config_assertions]
+"stages/01_sft/config/default.yaml" = ["peft: lora"]
+
+[expected.disclosure]
+must_read = ["STEPS.md", "sft/guide.md"]
+must_not_read = ["prep/guide.md"]

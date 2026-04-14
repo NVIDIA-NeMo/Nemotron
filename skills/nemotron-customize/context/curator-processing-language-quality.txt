@@ -1,0 +1,3302 @@
+<file_map>
+/Users/mromeijn/src/Curator
+├── docs
+│   ├── about
+│   │   ├── concepts
+│   │   │   ├── text
+│   │   │   │   ├── _images
+│   │   │   │   └── data-processing-concepts.md *
+│   │   │   ├── audio
+│   │   │   ├── image
+│   │   │   └── video
+│   │   │       └── _images
+│   │   └── release-notes
+│   ├── curate-text
+│   │   ├── process-data
+│   │   │   ├── language-management
+│   │   │   │   └── language.md *
+│   │   │   ├── quality-assessment
+│   │   │   │   ├── classifier.md *
+│   │   │   │   └── distributed-classifier.md *
+│   │   │   ├── content-processing
+│   │   │   ├── deduplication
+│   │   │   ├── specialized-processing
+│   │   │   └── index.md *
+│   │   ├── load-data
+│   │   ├── synthetic
+│   │   │   └── nemotron-cc
+│   │   └── tutorials
+│   ├── _extensions
+│   │   ├── ai_assistant
+│   │   │   ├── assets
+│   │   │   │   └── styles
+│   │   │   ├── core
+│   │   │   ├── integrations
+│   │   │   └── ui
+│   │   ├── content_gating
+│   │   ├── json_output
+│   │   │   ├── content
+│   │   │   ├── core
+│   │   │   └── processing
+│   │   ├── rich_metadata
+│   │   │   └── templates
+│   │   └── search_assets
+│   │       ├── modules
+│   │       └── templates
+│   ├── _images
+│   ├── _templates
+│   ├── admin
+│   │   ├── deployment
+│   │   │   └── slurm
+│   │   └── integrations
+│   ├── curate-audio
+│   │   ├── load-data
+│   │   ├── process-data
+│   │   │   ├── asr-inference
+│   │   │   ├── audio-analysis
+│   │   │   ├── quality-assessment
+│   │   │   └── text-integration
+│   │   └── tutorials
+│   ├── curate-images
+│   │   ├── load-data
+│   │   ├── process-data
+│   │   │   ├── embeddings
+│   │   │   └── filters
+│   │   └── tutorials
+│   ├── curate-video
+│   │   ├── load-data
+│   │   ├── process-data
+│   │   └── tutorials
+│   │       ├── _images
+│   │       └── pipeline-customization
+│   ├── get-started
+│   └── reference
+│       └── infrastructure
+├── nemo_curator
+│   ├── config
+│   │   └── text
+│   │       └── heuristic_filter_english_pipeline.yaml *
+│   ├── stages
+│   │   ├── text
+│   │   │   ├── classifiers
+│   │   │   │   ├── base.py * +
+│   │   │   │   ├── domain.py * +
+│   │   │   │   └── quality.py * +
+│   │   │   ├── filters
+│   │   │   │   ├── fasttext
+│   │   │   │   ├── heuristic
+│   │   │   │   │   ├── code
+│   │   │   │   │   └── repetition
+│   │   │   │   ├── histogram
+│   │   │   │   ├── token
+│   │   │   │   ├── doc_filter.py * +
+│   │   │   │   └── score_filter.py * +
+│   │   │   ├── deduplication
+│   │   │   ├── download
+│   │   │   │   ├── arxiv
+│   │   │   │   ├── base
+│   │   │   │   ├── common_crawl
+│   │   │   │   ├── html_extractors
+│   │   │   │   │   └── utils
+│   │   │   │   └── wikipedia
+│   │   │   ├── embedders
+│   │   │   ├── io
+│   │   │   │   ├── reader
+│   │   │   │   └── writer
+│   │   │   ├── models
+│   │   │   ├── modifiers
+│   │   │   │   ├── fasttext
+│   │   │   │   ├── string
+│   │   │   │   └── unicode
+│   │   │   ├── modules
+│   │   │   └── utils
+│   │   ├── audio
+│   │   │   ├── advanced_pipelines
+│   │   │   │   └── audio_data_filter
+│   │   │   ├── alm
+│   │   │   ├── datasets
+│   │   │   │   ├── fleurs
+│   │   │   │   └── readspeech
+│   │   │   ├── filtering
+│   │   │   │   ├── band_filter_module
+│   │   │   │   └── sigmos_filter_module
+│   │   │   │       └── third_party
+│   │   │   │           └── sigmos
+│   │   │   ├── inference
+│   │   │   ├── io
+│   │   │   ├── metrics
+│   │   │   ├── postprocessing
+│   │   │   ├── preprocessing
+│   │   │   └── segmentation
+│   │   │       └── speaker_separation_module
+│   │   ├── deduplication
+│   │   │   ├── exact
+│   │   │   ├── fuzzy
+│   │   │   │   └── lsh
+│   │   │   ├── semantic
+│   │   │   └── shuffle_utils
+│   │   ├── image
+│   │   │   ├── deduplication
+│   │   │   ├── embedders
+│   │   │   ├── filters
+│   │   │   └── io
+│   │   ├── interleaved
+│   │   │   ├── filter
+│   │   │   ├── io
+│   │   │   │   ├── readers
+│   │   │   │   └── writers
+│   │   │   ├── pdf
+│   │   │   │   └── nemotron_parse
+│   │   │   └── utils
+│   │   ├── math
+│   │   │   ├── classifiers
+│   │   │   ├── download
+│   │   │   │   └── html_extractors
+│   │   │   └── modifiers
+│   │   ├── synthetic
+│   │   │   ├── nemo_data_designer
+│   │   │   └── nemotron_cc
+│   │   │       └── nemo_data_designer
+│   │   └── video
+│   │       ├── caption
+│   │       ├── clipping
+│   │       ├── embedding
+│   │       ├── filtering
+│   │       ├── io
+│   │       └── preview
+│   ├── backends
+│   │   ├── internal
+│   │   │   └── raft
+│   │   ├── ray_actor_pool
+│   │   ├── ray_data
+│   │   └── xenna
+│   ├── core
+│   ├── metrics
+│   ├── models
+│   │   └── client
+│   ├── pipeline
+│   ├── tasks
+│   └── utils
+├── tutorials
+│   ├── text
+│   │   ├── distributed-data-classification
+│   │   │   └── README.md *
+│   │   ├── deduplication
+│   │   │   ├── fuzzy
+│   │   │   └── semantic
+│   │   ├── download-and-extract
+│   │   ├── gliner-pii-redaction
+│   │   ├── llama-nemotron-data-curation
+│   │   │   ├── filters
+│   │   │   └── utils
+│   │   ├── megatron-tokenizer
+│   │   ├── peft-curation
+│   │   └── tinystories
+│   ├── audio
+│   │   ├── alm
+│   │   ├── callhome_diar
+│   │   ├── fleurs
+│   │   ├── readspeech
+│   │   └── single_speaker_filter
+│   ├── image
+│   │   └── getting-started
+│   ├── interleaved
+│   │   └── nemotron_parse_pdf
+│   ├── math
+│   ├── multimodal
+│   ├── slurm
+│   ├── synthetic
+│   │   ├── nemo_data_designer
+│   │   └── nemotron_cc
+│   │       ├── example_data
+│   │       └── nemo_data_designer
+│   └── video
+│       └── getting-started
+├── .cursor
+│   └── rules
+├── .github
+│   ├── actions
+│   │   ├── build-container
+│   │   └── test-template
+│   ├── scripts
+│   └── workflows
+│       └── config
+├── benchmarking
+│   ├── data_prep
+│   ├── runner
+│   │   └── sinks
+│   ├── scripts
+│   └── tools
+├── docker
+│   └── common
+├── fern
+│   ├── assets
+│   │   └── images
+│   ├── components
+│   └── versions
+│       ├── v25.09
+│       │   └── pages
+│       │       ├── about
+│       │       │   ├── concepts
+│       │       │   │   ├── audio
+│       │       │   │   ├── image
+│       │       │   │   ├── text
+│       │       │   │   └── video
+│       │       │   └── release-notes
+│       │       ├── admin
+│       │       │   ├── deployment
+│       │       │   └── integrations
+│       │       ├── api-reference
+│       │       │   ├── executors
+│       │       │   └── tasks
+│       │       ├── curate-audio
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   │   ├── asr-inference
+│       │       │   │   ├── audio-analysis
+│       │       │   │   ├── quality-assessment
+│       │       │   │   └── text-integration
+│       │       │   └── tutorials
+│       │       ├── curate-images
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   │   ├── embeddings
+│       │       │   │   └── filters
+│       │       │   └── tutorials
+│       │       ├── curate-text
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   │   ├── content-processing
+│       │       │   │   ├── deduplication
+│       │       │   │   ├── language-management
+│       │       │   │   ├── quality-assessment
+│       │       │   │   └── specialized-processing
+│       │       │   └── tutorials
+│       │       ├── curate-video
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   └── tutorials
+│       │       │       └── pipeline-customization
+│       │       ├── get-started
+│       │       └── reference
+│       │           └── infrastructure
+│       └── v26.02
+│           └── pages
+│               ├── _images
+│               ├── about
+│               │   ├── concepts
+│               │   │   ├── audio
+│               │   │   ├── image
+│               │   │   ├── text
+│               │   │   │   └── _images
+│               │   │   └── video
+│               │   │       └── _images
+│               │   └── release-notes
+│               ├── admin
+│               │   ├── deployment
+│               │   │   └── slurm
+│               │   └── integrations
+│               ├── api-reference
+│               │   ├── executors
+│               │   └── tasks
+│               ├── curate-audio
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   │   ├── asr-inference
+│               │   │   ├── audio-analysis
+│               │   │   ├── quality-assessment
+│               │   │   └── text-integration
+│               │   └── tutorials
+│               ├── curate-images
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   │   ├── embeddings
+│               │   │   └── filters
+│               │   └── tutorials
+│               ├── curate-text
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   │   ├── content-processing
+│               │   │   ├── deduplication
+│               │   │   ├── language-management
+│               │   │   ├── quality-assessment
+│               │   │   └── specialized-processing
+│               │   ├── synthetic
+│               │   │   └── nemotron-cc
+│               │   └── tutorials
+│               ├── curate-video
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   └── tutorials
+│               │       ├── _images
+│               │       └── pipeline-customization
+│               ├── get-started
+│               └── reference
+│                   └── infrastructure
+└── tests
+    ├── backends
+    │   ├── ray_actor_pool
+    │   └── ray_data
+    ├── config
+    ├── core
+    ├── fixtures
+    │   └── audio
+    │       └── alm
+    │           └── nested_manifests
+    │               ├── subdir_a
+    │               └── subdir_b
+    ├── metrics
+    ├── models
+    │   └── client
+    ├── pipelines
+    ├── stages
+    │   ├── audio
+    │   │   ├── advanced_pipelines
+    │   │   ├── alm
+    │   │   ├── datasets
+    │   │   ├── filtering
+    │   │   ├── inference
+    │   │   ├── io
+    │   │   ├── metrics
+    │   │   ├── postprocessing
+    │   │   ├── preprocessing
+    │   │   └── segmentation
+    │   ├── common
+    │   ├── deduplication
+    │   │   ├── exact
+    │   │   ├── fuzzy
+    │   │   ├── semantic
+    │   │   └── shuffle_utils
+    │   ├── image
+    │   │   ├── dedup
+    │   │   ├── embedders
+    │   │   ├── filters
+    │   │   └── io
+    │   ├── interleaved
+    │   │   ├── filter
+    │   │   ├── pdf
+    │   │   │   └── nemotron_parse
+    │   │   └── utils
+    │   ├── math_stages
+    │   │   ├── classifiers
+    │   │   ├── download
+    │   │   └── modifiers
+    │   ├── synthetic
+    │   │   ├── nemo_data_designer
+    │   │   └── nemotron_cc
+    │   │       └── nemo_data_designer
+    │   ├── text
+    │   │   ├── classifiers
+    │   │   ├── deduplication
+    │   │   ├── download
+    │   │   │   ├── arxiv
+    │   │   │   ├── base
+    │   │   │   ├── common_crawl
+    │   │   │   └── wikipedia
+    │   │   ├── embedders
+    │   │   ├── io
+    │   │   │   ├── reader
+    │   │   │   └── writer
+    │   │   ├── models
+    │   │   └── modules
+    │   └── video
+    │       ├── caption
+    │       │   └── fixtures
+    │       ├── clipping
+    │       ├── embedding
+    │       ├── filtering
+    │       ├── io
+    │       └── preview
+    ├── tasks
+    └── utils
+
+
+(* denotes selected files)
+(+ denotes code-map available)
+Config: directory-only view; selected files shown.
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/base.py
+Imports:
+  - import contextlib
+  - import copy
+  - import time
+  - from abc import ABC, ABCMeta, abstractmethod
+  - from inspect import isabstract
+  - from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
+  - from loguru import logger
+  - from nemo_curator.stages.resources import Resources
+  - from nemo_curator.tasks import Task
+  - from nemo_curator.backends.base import NodeInfo, WorkerMetadata
+---
+Classes:
+  - StageMeta
+    Methods:
+      - L46: def __new__(mcls, name, bases, namespace, **kwargs):
+  - ProcessingStage
+    Methods:
+      - L92: def _name(self) -> str:
+      - L97: def _resources(self) -> Resources:
+      - L102: def _batch_size(self) -> int | None:
+      - L106: def __init_subclass__(cls, **kwargs):
+      - L127: def num_workers(self) -> int | None:
+      - L131: def validate_input(self, task: Task) -> bool:
+      - L161: def process(self, task: X) -> Y | list[Y]:
+      - L171: def process_batch(self, tasks: list[X]) -> list[Y]:
+      - L201: def setup_on_node(self, node_info: NodeInfo | None = None, worker_metadata: WorkerMetadata | None = None) -> None:
+      - L209: def setup(self, worker_metadata: WorkerMetadata | None = None) -> None:
+      - L217: def teardown(self) -> None:
+      - L222: def supports_batch_processing(self) -> bool:
+      - L230: def __repr__(self) -> str:
+      - L234: def inputs(self) -> tuple[list[str], list[str]]:
+      - L244: def outputs(self) -> tuple[list[str], list[str]]:
+      - L254: def xenna_stage_spec(self) -> dict[str, Any]:
+      - L262: def with_(
+        self,
+        name: str | None = None,
+        resources: Resources | None = None,
+        batch_size: int | None = None,
+        runtime_env: dict[str, Any] | None = None,
+    ) -> ProcessingStage:
+      - L293: def get_config(self) -> dict[str, Any]:
+      - L305: def ray_stage_spec(self) -> dict[str, Any]:
+      - L316: def _log_metrics(self, metrics: dict[str, float]) -> None:
+      - L327: def _log_metric(self, name: str, value: float) -> None:
+      - L331: def _time_metric(self, name: str) -> contextlib.AbstractContextManager[None]:
+      - L339: def _consume_custom_metrics(self) -> dict[str, float]:
+    Properties:
+      - _is_abstract_root
+      - name
+      - resources
+      - batch_size
+      - runtime_env
+  - CompositeStage
+    Methods:
+      - L359: def __init__(self):
+      - L362: def inputs(self) -> tuple[list[str], list[str]]:
+      - L366: def outputs(self) -> tuple[list[str], list[str]]:
+      - L371: def decompose(self) -> list[ProcessingStage]:
+      - L381: def with_(self, stage_with_dict: dict[str, Any]) -> CompositeStage:
+      - L387: def decompose_and_apply_with(self) -> list[ProcessingStage]:
+      - L391: def _apply_with_(self, stages: list[ProcessingStage]) -> list[ProcessingStage]:
+      - L419: def process(self, task: X) -> Y | list[Y]:
+      - L425: def get_description(self) -> str:
+
+Functions:
+  - L62: def get_stage_class(name: str) -> type[ProcessingStage]:
+
+Global vars:
+  - X
+  - Y
+  - _STAGE_REGISTRY
+---
+
+
+File: /Users/mromeijn/src/Curator/nemo_curator/tasks/document.py
+Imports:
+  - from dataclasses import dataclass, field
+  - import pandas as pd
+  - import pyarrow as pa
+  - from loguru import logger
+  - from .tasks import Task
+---
+Classes:
+  - DocumentBatch
+    Methods:
+      - L34: def to_pyarrow(self) -> pa.Table:
+      - L44: def to_pandas(self) -> pd.DataFrame:
+      - L55: def num_items(self) -> int:
+      - L59: def get_columns(self) -> list[str]:
+      - L69: def validate(self) -> bool:
+    Properties:
+      - data
+---
+
+</file_map>
+<file_contents>
+File: /Users/mromeijn/src/Curator/docs/about/concepts/text/data-processing-concepts.md
+```md
+---
+description: "Text processing workflows including quality filtering, fuzzy deduplication, content cleaning, and pipeline design"
+categories: ["concepts-architecture"]
+tags: ["data-processing", "quality-filtering", "deduplication", "pipeline", "distributed"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "concept"
+modality: "text-only"
+---
+
+(about-concepts-text-data-processing)=
+# Text Processing Concepts
+
+This guide covers the most common text processing workflows in NVIDIA NeMo Curator, based on real-world usage patterns from production data curation pipelines.
+
+## Most Common Workflows
+
+The majority of NeMo Curator users follow these core workflows, typically in this order:
+
+### 1. Quality Filtering
+
+Most users start with basic quality filtering using heuristic filters to remove low-quality content:
+
+**Essential Quality Filters:**
+
+- `WordCountFilter` - Remove too short/long documents
+- `NonAlphaNumericFilter` - Remove symbol-heavy content
+- `RepeatedLinesFilter` - Remove if content is too repetitive
+- `PunctuationFilter` - Ensure proper sentence structure
+- `BoilerPlateStringFilter` - Remove if content contains too much template/boilerplate text
+
+### 2. Content Cleaning and Modification
+
+Basic text normalization and cleaning operations:
+
+**Common Cleaning Steps:**
+
+- `UnicodeReformatter` - Normalize Unicode characters
+- `NewlineNormalizer` - Standardize line breaks
+- Basic HTML/markup removal
+
+### 3. Deduplication
+
+Remove duplicate and near-duplicate content. For comprehensive coverage of all deduplication approaches, refer to Curator's [Deduplication Concepts](about-concepts-deduplication).
+
+#### Exact Deduplication
+
+Remove identical documents, especially useful for smaller datasets:
+
+**Implementation:** MD5 or SHA-256 hashing for document identification
+
+#### Fuzzy Deduplication
+
+For production datasets, fuzzy deduplication is essential to remove near-duplicate content across sources:
+
+**Key Components:**
+
+- Ray distributed computing framework for scalability
+- Connected components clustering for duplicate identification
+
+#### Semantic Deduplication
+
+Remove semantically similar content using embeddings for more sophisticated duplicate detection.
+
+## Core Processing Architecture
+
+NeMo Curator uses these fundamental building blocks that users combine into pipelines:
+
+```{list-table}
+:header-rows: 1
+
+* - Component
+  - Purpose
+  - Usage Pattern
+* - **`Pipeline`**
+  - Orchestrate processing stages
+  - Add processing stages, typically starting with a read and completing with a write
+* - **`ScoreFilter`**
+  - Apply filters with optional scoring
+  - Chain multiple quality filters
+* - **`Modify`**
+  - Transform document content
+  - Clean and normalize text
+* - **Reader/Writer Stages**
+  - Load and save text data
+  - Input/output for pipelines
+* - **Processing Stages**
+  - Transform DocumentBatch tasks
+  - Core processing components
+```
+
+## Implementation Examples
+
+### Complete Quality Filtering Pipeline
+
+This is the most common starting workflow, used in 90% of production pipelines:
+
+:::{dropdown} Quality Filtering Pipeline Code Example
+:icon: code-square
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.filters import ScoreFilter
+from nemo_curator.stages.text.filters.heuristic.repetition import RepeatedLinesFilter
+from nemo_curator.stages.text.filters.heuristic import (
+    WordCountFilter,
+    NonAlphaNumericFilter,
+    PunctuationFilter,
+    BoilerPlateStringFilter
+)
+
+# Start Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Create processing pipeline
+pipeline = Pipeline(name="quality_filtering")
+
+# Load dataset - the starting point for all workflows
+reader = JsonlReader(file_paths="input_data/")
+pipeline.add_stage(reader)
+
+# Standard quality filtering pipeline (most common)
+# Remove too short/long documents (essential)
+# and save the word_count field
+word_count_filter = ScoreFilter(
+    filter_obj=WordCountFilter(min_words=50, max_words=100000),
+    text_field="text",
+    score_field="word_count"
+)
+pipeline.add_stage(word_count_filter)
+
+# Remove symbol-heavy content
+alpha_numeric_filter = ScoreFilter(
+    filter_obj=NonAlphaNumericFilter(max_non_alpha_numeric_to_text_ratio=0.25),
+    text_field="text"
+)
+pipeline.add_stage(alpha_numeric_filter)
+
+# Remove repetitive content
+repeated_lines_filter = ScoreFilter(
+    filter_obj=RepeatedLinesFilter(max_repeated_line_fraction=0.7),
+    text_field="text"
+)
+pipeline.add_stage(repeated_lines_filter)
+
+# Ensure proper sentence structure
+punctuation_filter = ScoreFilter(
+    filter_obj=PunctuationFilter(max_num_sentences_without_endmark_ratio=0.85),
+    text_field="text"
+)
+pipeline.add_stage(punctuation_filter)
+
+# Remove template/boilerplate text
+boilerplate_filter = ScoreFilter(
+    filter_obj=BoilerPlateStringFilter(),
+    text_field="text"
+)
+pipeline.add_stage(boilerplate_filter)
+
+# Add writer stage
+writer = JsonlWriter(path="filtered_data/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()
+
+# Cleanup Ray when done
+ray_client.stop()
+```
+
+:::
+
+### Content Cleaning Pipeline
+
+Basic text normalization:
+
+:::{dropdown} Content Cleaning Pipeline Code Example
+:icon: code-square
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.modifiers import Modify
+from nemo_curator.stages.text.modifiers.unicode import UnicodeReformatter
+
+# Start Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Create cleaning pipeline
+pipeline = Pipeline(name="content_cleaning")
+
+# Read input data
+reader = JsonlReader(file_paths="input_data/")
+pipeline.add_stage(reader)
+
+# Essential cleaning steps
+# Normalize unicode characters (very common)
+unicode_modifier = Modify(
+    modifier_fn=UnicodeReformatter(),
+    input_fields="text"
+)
+pipeline.add_stage(unicode_modifier)
+
+# Additional processing steps can be added as needed
+
+# Write cleaned data
+writer = JsonlWriter(path="cleaned_data/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()
+
+# Cleanup Ray when done
+ray_client.stop()
+```
+
+:::
+
+### Exact Deduplication Workflow
+
+Exact deduplication for any dataset size (requires Ray and at least 1 GPU):
+
+:::{dropdown} Exact Deduplication Code Example
+:icon: code-square
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.stages.deduplication.exact.workflow import ExactDeduplicationWorkflow
+
+# Initialize Ray cluster with GPU support (required for exact deduplication)
+ray_client = RayClient(num_gpus=4)
+ray_client.start()
+
+# Configure exact deduplication workflow
+exact_workflow = ExactDeduplicationWorkflow(
+    input_path="/path/to/input/data",
+    output_path="/path/to/output",
+    text_field="text",
+    perform_removal=False,  # Currently only identification supported
+    assign_id=True,         # Automatically assign unique IDs
+    input_filetype="parquet",
+)
+
+# Run exact deduplication workflow
+exact_workflow.run()
+
+# Cleanup Ray when done
+ray_client.stop()
+```
+
+:::
+
+### Fuzzy Deduplication Workflow
+
+Critical for production datasets (requires Ray and at least 1 GPU):
+
+:::{dropdown} Fuzzy Deduplication Code Example
+:icon: code-square
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.stages.deduplication.fuzzy.workflow import FuzzyDeduplicationWorkflow
+
+# Initialize Ray cluster with GPU support (required for fuzzy deduplication)
+ray_client = RayClient(num_gpus=4)
+ray_client.start()
+
+# Configure fuzzy deduplication workflow (production settings)
+fuzzy_workflow = FuzzyDeduplicationWorkflow(
+    input_path="/path/to/input/data",
+    cache_path="/path/to/cache",
+    output_path="/path/to/output",
+    input_filetype="parquet",
+    input_blocksize="1.5GiB",
+    text_field="text",
+    perform_removal=False,  # Currently only identification supported
+    # LSH parameters for ~80% similarity threshold
+    num_bands=20,           # Number of LSH bands
+    minhashes_per_band=13,  # Hashes per band
+    char_ngrams=24,         # Character n-gram size
+    seed=42
+)
+
+# Run fuzzy deduplication workflow
+fuzzy_workflow.run()
+
+# Cleanup Ray when done
+ray_client.stop()
+```
+
+### Removing Identified Duplicates
+
+The identified duplicates can be removed using a separate workflow:
+
+:::{dropdown} Duplicate Removal Code Example
+:icon: code-square
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.stages.text.deduplication.removal_workflow import TextDuplicatesRemovalWorkflow
+
+# Start Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Configure workflow with input dataset and output duplicate IDs
+removal_workflow = TextDuplicatesRemovalWorkflow(
+    input_path="/path/to/input/data",
+    ids_to_remove_path="/path/to/output/FuzzyDuplicateIds",
+    output_path="/path/to/deduplicated/output",
+    input_filetype="parquet",  # Same as identification workflow
+    input_blocksize="1.5GiB",  # Same as identification workflow
+    duplicate_id_field="_curator_dedup_id",
+    id_generator_path="/path/to/output/fuzzy_id_generator.json",
+)
+
+# Run removal workflow
+removal_workflow.run()
+
+# Cleanup Ray when done
+ray_client.stop()
+```
+
+:::
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/process-data/index.md
+```md
+---
+description: "Process text data using comprehensive filtering, deduplication, content processing, and specialized tools for high-quality datasets"
+categories: ["workflows"]
+tags: ["data-processing", "filtering", "deduplication", "content-processing", "quality-assessment", "distributed"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "workflow"
+modality: "text-only"
+---
+
+# Process Data for Text Curation
+
+Process text data you've loaded through NeMo Curator's {ref}`pipeline architecture <about-concepts-text-data-loading>`.
+
+NeMo Curator provides a comprehensive suite of tools for processing text data as part of the AI training pipeline. These tools help you analyze, transform, and filter your text datasets to ensure high-quality input for language model training.
+
+## How it Works
+
+NeMo Curator's text processing capabilities are organized into five main categories:
+
+1. **Language Management**: Handle multilingual content and language-specific processing
+2. **Content Processing & Cleaning**: Clean, normalize, and transform text content
+3. **Deduplication**: Remove duplicate and near-duplicate documents efficiently
+4. **Quality Assessment & Filtering**: Score and remove low-quality content using heuristics and ML classifiers
+5. **Specialized Processing**: Domain-specific processing for code and advanced curation tasks
+
+Each category provides specific implementations optimized for different curation needs. The result is a cleaned and filtered dataset ready for model training.
+
+---
+
+## Language Management
+
+Handle multilingual content and language-specific processing requirements.
+
+::::{grid} 1 1 1 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`globe;1.5em;sd-mr-1` Language Identification
+:link: language-management/language
+:link-type: doc
+Identify document languages and separate multilingual datasets
++++
+{bdg-secondary}`fasttext`
+{bdg-secondary}`176-languages`
+{bdg-secondary}`detection`
+:::
+
+:::{grid-item-card} {octicon}`filter;1.5em;sd-mr-1` Stop Words
+:link: language-management/stopwords
+:link-type: doc
+Manage high-frequency words to enhance text extraction and content detection
++++
+{bdg-secondary}`preprocessing`
+{bdg-secondary}`filtering`
+{bdg-secondary}`language-specific`
+:::
+
+::::
+
+## Content Processing & Cleaning
+
+Clean, normalize, and transform text content for high-quality training data.
+
+::::{grid} 1 1 1 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`typography;1.5em;sd-mr-1` Text Cleaning
+:link: content-processing/text-cleaning
+:link-type: doc
+Fix Unicode issues, standardize spacing, and remove URLs
++++
+{bdg-secondary}`unicode`
+{bdg-secondary}`normalization`
+{bdg-secondary}`preprocessing`
+:::
+
+::::
+
+## Deduplication
+
+Remove duplicate and near-duplicate documents efficiently from your text datasets. All deduplication methods support both identification (finding duplicates) and removal (filtering them out) workflows.
+
+::::{grid} 1 1 1 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`git-pull-request;1.5em;sd-mr-1` Exact Duplicate Removal
+:link: deduplication/exact
+:link-type: doc
+Identify and remove character-for-character duplicates using MD5 hashing
++++
+{bdg-secondary}`hashing`
+{bdg-secondary}`fast`
+{bdg-secondary}`gpu-accelerated`
+:::
+
+:::{grid-item-card} {octicon}`git-compare;1.5em;sd-mr-1` Fuzzy Duplicate Removal
+:link: deduplication/fuzzy
+:link-type: doc
+Identify and remove near-duplicates using MinHash and LSH similarity
++++
+{bdg-secondary}`minhash`
+{bdg-secondary}`lsh`
+{bdg-secondary}`gpu-accelerated`
+:::
+
+:::{grid-item-card} {octicon}`repo-clone;1.5em;sd-mr-1` Semantic Deduplication
+:link: deduplication/semdedup
+:link-type: doc
+Identify and remove semantically similar documents using embeddings and clustering
++++
+{bdg-secondary}`embeddings`
+{bdg-secondary}`meaning-based`
+{bdg-secondary}`gpu-accelerated`
+:::
+
+::::
+
+## Quality Assessment & Filtering
+
+Score and remove low-quality content using heuristics and ML classifiers.
+
+::::{grid} 1 1 1 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`filter;1.5em;sd-mr-1` Heuristic Filtering
+:link: quality-assessment/heuristic
+:link-type: doc
+Filter text using configurable rules and metrics
++++
+{bdg-secondary}`rules`
+{bdg-secondary}`metrics`
+{bdg-secondary}`fast`
+:::
+
+:::{grid-item-card} {octicon}`cpu;1.5em;sd-mr-1` Classifier Filtering
+:link: quality-assessment/classifier
+:link-type: doc
+Filter text using trained quality classifiers
++++
+{bdg-secondary}`ml-models`
+{bdg-secondary}`quality`
+{bdg-secondary}`scoring`
+:::
+
+:::{grid-item-card} {octicon}`cpu;1.5em;sd-mr-1` Distributed Classification
+:link: quality-assessment/distributed-classifier
+:link-type: doc
+GPU-accelerated classification with pre-trained models
++++
+{bdg-secondary}`gpu`
+{bdg-secondary}`distributed`
+{bdg-secondary}`scalable`
+:::
+
+::::
+
+## Specialized Processing
+
+Domain-specific processing for code and advanced curation tasks.
+
+::::{grid} 1 1 1 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Processing
+:link: specialized-processing/code
+:link-type: doc
+Specialized filters for programming content and source code
++++
+{bdg-secondary}`programming`
+{bdg-secondary}`syntax`
+{bdg-secondary}`comments`
+:::
+
+::::
+
+```{toctree}
+:maxdepth: 4
+:titlesonly:
+:hidden:
+
+Language Management <language-management/index>
+Content Processing & Cleaning <content-processing/index>
+Deduplication <deduplication/index>
+Quality Assessment & Filtering <quality-assessment/index>
+Specialized Processing <specialized-processing/index>
+```
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/process-data/language-management/language.md
+```md
+---
+description: "Identify document languages accurately using FastText models supporting 176 languages for multilingual text processing"
+categories: ["how-to-guides"]
+tags: ["language-identification", "fasttext", "multilingual", "176-languages", "detection", "classification"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "how-to"
+modality: "text-only"
+---
+
+# Language Identification
+
+(text-process-data-languages-id)=
+
+Large unlabeled text corpora often contain a variety of languages. NVIDIA NeMo Curator provides tools to accurately identify the language of each document, which is essential for language-specific curation tasks and building high-quality monolingual datasets.
+
+## How it Works
+
+NeMo Curator's language identification system works through a three-step process:
+
+1. **Text Preprocessing**: For FastText classification, normalize input text by stripping whitespace and converting newlines to spaces.
+
+2. **FastText Language Detection**: The pre-trained FastText language identification model ([`lid.176.bin`](https://fasttext.cc/docs/en/language-identification.html)) analyzes the preprocessed text and returns:
+   - A confidence score (0.0 to 1.0) indicating certainty of the prediction
+   - A language code (for example, "EN", "ES", "FR") in FastText's two-letter uppercase format
+
+3. **Filtering and Scoring**: The pipeline filters documents based on a configurable confidence threshold (`min_langid_score`) and stores both the confidence score and language code as metadata.
+
+### Language Detection Process
+
+The `FastTextLangId` filter implements this workflow by:
+
+- Loading the FastText language identification model on worker initialization
+- Processing text through `model.predict()` with `k=1` to get the top language prediction
+- Extracting the language code from FastText labels (for example, `__label__en` becomes "EN")
+- Comparing confidence scores against the threshold to determine document retention
+- Returning results as `[confidence_score, language_code]` for downstream processing
+
+This approach supports **176 languages** with high accuracy, making it suitable for large-scale multilingual dataset curation where language-specific processing and monolingual dataset creation are critical.
+
+## Usage
+
+The following example demonstrates how to create a language identification pipeline using Curator with distributed processing.
+
+::::{tab-set}
+
+:::{tab-item} Python
+
+```python
+"""Language identification using Curator."""
+
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.filters.fasttext import FastTextLangId
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.filters import ScoreFilter
+
+def create_language_identification_pipeline(data_dir: str) -> Pipeline:
+    """Create a pipeline for language identification."""
+
+    # Define pipeline
+    pipeline = Pipeline(
+        name="language_identification",
+        description="Identify document languages using FastText"
+    )
+
+    # Add stages
+    # 1. Reader stage - creates tasks from JSONL files
+    pipeline.add_stage(
+        JsonlReader(
+            file_paths=data_dir,
+            files_per_partition=2,  # Each task processes 2 files
+        )
+    )
+
+    # 2. Language identification with filtering
+    # IMPORTANT: Download lid.176.bin or lid.176.ftz from https://fasttext.cc/docs/en/language-identification.html
+    fasttext_model_path = "/path/to/lid.176.bin"  # or lid.176.ftz (compressed)
+    pipeline.add_stage(
+        ScoreFilter(
+            FastTextLangId(model_path=fasttext_model_path, min_langid_score=0.3),
+            score_field="language"
+        )
+    )
+
+    return pipeline
+
+def main():
+    # Create pipeline
+    pipeline = create_language_identification_pipeline("./data")
+
+    # Print pipeline description
+    print(pipeline.describe())
+
+    # Create executor and run
+    results = pipeline.run()
+
+    # Process results
+
+    total_documents = sum(task.num_items for task in results) if results else 0
+    print(f"Total documents processed: {total_documents}")
+
+    # Access language scores
+    for i, batch in enumerate(results):
+        if batch.num_items > 0:
+            df = batch.to_pandas()
+            print(f"Batch {i} columns: {list(df.columns)}")
+            # Language scores are now in the 'language' field
+
+if __name__ == "__main__":
+    main()
+```
+
+:::
+::::
+
+## Understanding Results
+
+The language identification process adds a score field to each document batch:
+
+1. **`language` field**: Contains the FastText language identification results as a string representation of a list with two elements (for backend compatibility):
+   - Element 0: The confidence score (between 0 and 1)
+   - Element 1: The language code in FastText format (for example, "EN" for English, "ES" for Spanish)
+
+2. **Task-based processing**: Curator processes documents in batches (tasks), and results are available through the task's Pandas DataFrame:
+
+```python
+# Access results from pipeline execution
+for batch in results:
+    df = batch.to_pandas()
+    # Language scores are in the 'language' column
+    print(df[['text', 'language']].head())
+```
+
+:::{tip}
+For quick exploratory inspection, converting a `DocumentBatch` to a Pandas DataFrame is fine. For performance and scalability, write transformations as `ProcessingStage`s (or with the `@processing_stage` decorator) and run them inside a `Pipeline` with an executor. Curator’s parallelism and resource scheduling apply when code runs as pipeline stages; ad‑hoc Pandas code executes on the driver and will not scale.
+:::
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/process-data/quality-assessment/classifier.md
+```md
+---
+description: "Filter text using trained quality classifiers including FastText models and pre-trained language classification"
+categories: ["how-to-guides"]
+tags: ["classifier-filtering", "fasttext", "ml-models", "quality", "training", "scoring"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "how-to"
+modality: "text-only"
+---
+
+(text-process-data-filter-classifier)=
+
+# Classifier-Based Filtering
+
+Classifier-based filtering uses machine learning models to differentiate between high-quality and low-quality documents. NVIDIA NeMo Curator implements an approach similar to the one described in [Brown et al., 2020](https://arxiv.org/abs/2005.14165), which trains a binary skip-gram classifier to distinguish between curated high-quality data and lower-quality data.
+
+## How It Works
+
+Classifier-based filtering learns the characteristics of high-quality documents from training data, unlike heuristic filtering which relies on predefined rules and thresholds. This approach is particularly effective when:
+
+- You have a reference dataset of known high-quality documents
+- The distinction between high and low quality is complex or subtle
+- You want to filter based on domain-specific characteristics
+
+NVIDIA NeMo Curator uses [fastText](https://fasttext.cc/) for implementing classifier-based filtering, which offers excellent performance and scalability for text classification tasks.
+
+:::{note}
+fastText is the official name and capitalization used by the fastText library created by Facebook Research.
+:::
+
+The classifier-based filtering process involves:
+
+1. Preparing training data by sampling from high-quality and low-quality datasets
+2. Training a binary skip-gram classifier using fastText
+3. Using the trained model to score documents in your dataset
+4. Filtering documents based on the classifier scores, optionally using Pareto-based sampling
+
+---
+
+## Usage
+
+
+NeMo Curator provides two approaches for quality assessment:
+
+1. **Classification**: Use `QualityClassifier` to add quality predictions and optionally filter during classification
+2. **Filtering**: Use `FastTextQualityFilter` with `ScoreFilter` for document-level filtering with Pareto sampling
+
+:::{note}
+If you need to train custom fastText models for specific domains or requirements, refer to the [fastText documentation](https://fasttext.cc/docs/en/supervised-tutorial.html) for comprehensive training guides.
+:::
+
+::::{tab-set}
+
+:::{tab-item} DeBERTa Quality Classification
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import QualityClassifier
+
+# Create pipeline with DeBERTa quality classifier
+pipeline = Pipeline(name="deberta_quality_pipeline")
+
+# Add stages
+read_stage = JsonlReader("input_data/")
+classify_stage = QualityClassifier(
+    filter_by=["High"],  # Keep only high-quality documents
+    model_inference_batch_size=256,
+    max_chars=6000  # Default value
+)
+write_stage = JsonlWriter("high_quality_output/")
+
+pipeline.add_stage(read_stage)
+pipeline.add_stage(classify_stage)
+pipeline.add_stage(write_stage)
+
+# Execute pipeline
+results = pipeline.run()
+```
+
+:::
+
+:::{tab-item} FastText Quality Filter
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.filters import ScoreFilter
+from nemo_curator.stages.text.filters.fasttext import FastTextQualityFilter
+
+# Create pipeline with FastText filter (requires pre-trained model)
+pipeline = Pipeline(name="fasttext_quality_pipeline")
+
+# Add stages
+read_stage = JsonlReader("input_data/")
+filter_stage = ScoreFilter(
+    FastTextQualityFilter(
+        model_path="./quality_classifier.bin",  # Path to your fastText model
+        label="__label__hq",  # High quality label
+        alpha=3,              # Pareto distribution alpha parameter
+        seed=42               # Random seed for reproducibility
+    ),
+    text_field="text",
+    score_field="quality_score"
+)
+write_stage = JsonlWriter("high_quality_output/")
+
+pipeline.add_stage(read_stage)
+pipeline.add_stage(filter_stage)
+pipeline.add_stage(write_stage)
+
+# Execute pipeline
+results = pipeline.run()
+```
+
+:::
+
+:::{tab-item} Configuration
+
+You can configure quality classifiers and filters with different parameters:
+
+```python
+from nemo_curator.stages.text.classifiers import QualityClassifier
+from nemo_curator.stages.text.filters.fasttext import FastTextQualityFilter
+
+# DeBERTa quality classifier configurations
+basic_deberta_classifier = QualityClassifier(
+    filter_by=["High"],          # Keep only high-quality documents
+    model_inference_batch_size=256,
+    max_chars=6000               # Default value
+)
+
+# More inclusive DeBERTa classifier
+inclusive_deberta_classifier = QualityClassifier(
+    filter_by=["Medium", "High"], # Keep medium and high-quality documents
+    model_inference_batch_size=128,
+    max_chars=6000
+)
+
+# FastText quality filter configurations
+basic_fasttext_filter = FastTextQualityFilter(
+    model_path="./quality_classifier.bin",
+    label="__label__hq",         # High quality label
+    alpha=3,                     # Pareto distribution alpha parameter
+    seed=42                      # Random seed for reproducibility
+)
+
+# More selective FastText filter
+selective_fasttext_filter = FastTextQualityFilter(
+    model_path="./quality_classifier.bin",
+    label="__label__hq",
+    alpha=5,                     # Higher alpha for stricter filtering
+    seed=42
+)
+```
+
+:::
+
+::::
+
+## Quality Classifier and Filter Parameters
+
+### QualityClassifier (DeBERTa)
+
+The `QualityClassifier` accepts the following parameters:
+
+- `filter_by` (list, default=None): Quality levels to keep (options: "Low", "Medium", "High")
+- `model_inference_batch_size` (int, default=256): Batch size for inference
+- `max_chars` (int, default=6000): Max characters per document for processing
+- `label_field` (str, default="quality_pred"): Name of the prediction column
+- `text_field` (str, default="text"): Name of the text field in input data
+
+### FastTextQualityFilter
+
+The `FastTextQualityFilter` accepts the following parameters:
+
+- `model_path` (str, required): Path to the trained fastText model file
+- `label` (str, default="__label__hq"): The label for high-quality documents
+- `alpha` (float, default=3): Alpha parameter for Pareto distribution sampling
+- `seed` (int, default=42): Random seed for reproducible sampling
+
+## Best Practices
+
+For effective classifier-based filtering:
+
+1. **Model selection**: Start with the DeBERTa quality classifier for general use cases; consider fastText for high-throughput scenarios
+2. **Validation**: Manually review a sample of filtered results to confirm effectiveness
+3. **Quality level tuning**: Adjust `filter_by` levels (DeBERTa) or `alpha` values (fastText) based on your quality requirements
+4. **Batch size optimization**: Tune `model_inference_batch_size` for DeBERTa models based on your available memory
+5. **Combination with heuristics**: Consider using heuristic filters as a pre-filter to improve efficiency
+6. **Domain adaptation**: For specialized corpora, consider training custom models using domain-specific data
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/process-data/quality-assessment/distributed-classifier.md
+```md
+---
+description: "Perform distributed data classification using GPU-accelerated models for domain, quality, safety, and content assessment"
+categories: ["how-to-guides"]
+tags: ["distributed-classification", "gpu", "domain", "quality", "safety", "crossfit", "scalable"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "how-to"
+modality: "text-only"
+---
+
+(text-process-data-filter-dist-classifier)=
+
+# Distributed Data Classification
+
+NVIDIA NeMo Curator provides a module for performing distributed classification on large text datasets using GPU acceleration. This enables the categorization and filtering of text documents based on multiple dimensions such as domain, quality, safety, educational value, content type, and more. These classifications can enhance the quality of training data for large language models by identifying high-value content and removing problematic material.
+
+## How It Works
+
+The distributed data classification in NeMo Curator works by:
+
+1. **Parallel Processing**: Chunking datasets across multiple computing nodes and GPUs to accelerate classification
+2. **Pre-trained Models**: Using specialized models for different classification tasks
+3. **Batched Inference**: Optimizing throughput with intelligent batching
+4. **Consistent API**: Providing a unified interface through the `DistributedDataClassifier` base class
+
+The `DistributedDataClassifier` is designed to run on GPU clusters with minimal code changes regardless of which specific classifier you're using. All classifiers support filtering based on classification results and storing prediction scores as metadata.
+
+:::{note}
+Distributed classification requires GPU acceleration and is not supported for CPU-only processing. As long as GPU resources are available and NeMo Curator is correctly installed, GPU acceleration is handled automatically.
+:::
+
+```{tip}
+**Running the tutorial notebooks**: The classification tutorial notebooks require the `text_cuda12` or `all` installation extra to include all relevant dependencies. If you encounter `ModuleNotFoundError`, reinstall with the appropriate extra:
+
+    uv pip install "nemo-curator[text_cuda12]"
+
+When using classifiers that download from Hugging Face (such as Aegis and InstructionDataGuard), set your `HF_TOKEN` environment variable to avoid rate limiting:
+
+    export HF_TOKEN="your_token_here"
+```
+
+---
+
+## Usage
+
+NVIDIA NeMo Curator provides a base class `DistributedDataClassifier` that can be extended to fit your specific model. The only requirement is that the model can fit on a single GPU. This module operates on the GPU and works within the pipeline framework using DocumentBatch processing.
+
+### Classifier Comparison
+
+| Classifier | Purpose | Model Location | Key Parameters | Requirements |
+|---|---|---|---|---|
+| DomainClassifier | Assigns one of 26 domain labels (such as "Sports," "Science," "News") to English text | [nvidia/domain-classifier](https://huggingface.co/nvidia/domain-classifier) | `filter_by`, `text_field` | None |
+| MultilingualDomainClassifier | Assigns domain labels to text in 52 languages; same labels as DomainClassifier | [nvidia/multilingual-domain-classifier](https://huggingface.co/nvidia/multilingual-domain-classifier) | `filter_by`, `text_field` | None |
+| QualityClassifier | Rates document quality as "Low," "Medium," or "High" using a DeBERTa model | [nvidia/quality-classifier-deberta](https://huggingface.co/nvidia/quality-classifier-deberta) | `filter_by`, `text_field` | None |
+| AegisClassifier | Detects unsafe content across 13 risk categories (violence, hate speech, and others) using LlamaGuard | [nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0](https://huggingface.co/nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0) | `aegis_variant`, `filter_by` | HuggingFace token |
+| InstructionDataGuardClassifier | Identifies LLM poisoning attacks in instruction-response pairs | [nvidia/instruction-data-guard](https://huggingface.co/nvidia/instruction-data-guard) | `text_field`, `label_field` | HuggingFace token |
+| FineWebEduClassifier | Scores educational value from 0 to 5 (0=spam, 5=scholarly) for training data selection | [HuggingFaceFW/fineweb-edu-classifier](https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier) | `label_field`, `int_field` | None |
+| FineWebMixtralEduClassifier | Scores educational value from 0 to 5 using Mixtral 8x22B annotation data | [nvidia/nemocurator-fineweb-mixtral-edu-classifier](https://huggingface.co/nvidia/nemocurator-fineweb-mixtral-edu-classifier) | `label_field`, `int_field`, `model_inference_batch_size=1024` | None |
+| FineWebNemotronEduClassifier | Scores educational value from 0 to 5 using Nemotron-4-340B annotation data | [nvidia/nemocurator-fineweb-nemotron-4-edu-classifier](https://huggingface.co/nvidia/nemocurator-fineweb-nemotron-4-edu-classifier) | `label_field`, `int_field`, `model_inference_batch_size=1024` | None |
+| ContentTypeClassifier | Categorizes text into 11 speech types (such as "Blogs," "News," "Academic") | [nvidia/content-type-classifier-deberta](https://huggingface.co/nvidia/content-type-classifier-deberta) | `filter_by`, `text_field` | None |
+| PromptTaskComplexityClassifier | Labels prompts by task type (such as QA and summarization) and complexity dimensions | [nvidia/prompt-task-and-complexity-classifier](https://huggingface.co/nvidia/prompt-task-and-complexity-classifier) | `text_field` | None |
+
+### Domain Classifier
+
+The Domain Classifier categorizes English text documents into specific domains or subject areas.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import DomainClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="domain_classification")
+
+# Load dataset
+reader = JsonlReader(
+    file_paths="books_dataset/",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the classifier, filtering for specific domains
+domain_classifier = DomainClassifier(filter_by=["Games", "Sports"])
+pipeline.add_stage(domain_classifier)
+
+# Save the results
+writer = JsonlWriter(path="games_and_sports/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+### Multilingual Domain Classifier
+
+Functionally similar to the Domain Classifier, but supports 52 languages.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import MultilingualDomainClassifier
+
+pipeline = Pipeline(name="multilingual_domain_classification")
+pipeline.add_stage(JsonlReader(file_paths="multilingual_dataset/", fields=["text", "id"]))
+pipeline.add_stage(MultilingualDomainClassifier(filter_by=["Games", "Sports"]))
+pipeline.add_stage(JsonlWriter(path="classified_output/"))
+
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+### Quality Classifier
+
+The Quality Classifier assesses document quality using the NVIDIA Quality Classifier DeBERTa model.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import QualityClassifier
+
+pipeline = Pipeline(name="quality_classification")
+pipeline.add_stage(JsonlReader(file_paths="web_documents/", fields=["text", "id"]))
+pipeline.add_stage(QualityClassifier())
+pipeline.add_stage(JsonlWriter(path="quality_classified/"))
+
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+:::{note}
+The exact label categories returned by the Quality Classifier depend on the model configuration. Check the prediction column in your results to see the available labels for filtering with the `filter_by` parameter.
+:::
+
+### AEGIS Safety Classifier
+
+The AEGIS classifier detects unsafe content across 13 critical risk categories. It requires a HuggingFace token for access to Llama Guard.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import AegisClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="aegis_classification")
+
+# Load dataset
+reader = JsonlReader(
+    file_paths="content/",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the AEGIS classifier
+token = "hf_1234"  # Your HuggingFace user access token
+safety_classifier = AegisClassifier(
+    aegis_variant="nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0",
+    hf_token=token,
+    filter_by=["safe", "O13"]  # Keep only safe content and "needs caution" category
+)
+pipeline.add_stage(safety_classifier)
+
+# Save the results
+writer = JsonlWriter(path="safe_content/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+The classifier adds a column with labels: "safe," "O1" through "O13" (each representing specific safety risks), or "unknown." For raw LLM output, use:
+
+```python
+safety_classifier = AegisClassifier(
+    aegis_variant="nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0",
+    hf_token=token,
+    keep_raw_output=True,
+    raw_output_field="raw_predictions"
+)
+```
+
+### Instruction Data Guard
+
+Detects LLM poisoning attacks in instruction-response datasets. Requires HuggingFace token access.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import InstructionDataGuardClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="instruction_data_guard")
+
+# Load dataset
+# For instruction-response data: "Instruction: {instruction}. Input: {input_}. Response: {response}."
+reader = JsonlReader(
+    file_paths="instruction_data/",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the classifier
+token = "hf_1234"  # Your HuggingFace user access token
+classifier = InstructionDataGuardClassifier(hf_token=token)
+pipeline.add_stage(classifier)
+
+# Save the results
+writer = JsonlWriter(path="guard_classified/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+The output includes two columns: a float score `instruction_data_guard_poisoning_score` and a Boolean `is_poisoned`.
+
+### FineWeb Educational Content Classifier
+
+Scores documents on educational value from 0–5. This helps prioritize content for knowledge-intensive tasks.
+
+#### Score Ranges and Meanings
+
+| Score | Label | Description | Example Content |
+|-------|-------|-------------|-----------------|
+| 0-1 | Very Low | No educational value | Spam, advertisements, broken content |
+| 2 | Low | Minimal educational content | Simple lists, basic product descriptions |
+| 3 | Moderate | Some educational value | News articles, basic how-to guides |
+| 4 | High | Good educational content | Detailed tutorials, academic discussions |
+| 5 | Very High | Excellent educational material | Comprehensive guides, scholarly articles |
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import FineWebEduClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="fineweb_edu_classification")
+
+# Load dataset
+reader = JsonlReader(
+    file_paths="web_documents/*.jsonl",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the FineWeb Edu classifier
+edu_classifier = FineWebEduClassifier(
+    model_inference_batch_size=256,
+    float_score_field="fineweb-edu-score-float",  # Raw float scores
+    int_score_field="fineweb-edu-score-int",      # Rounded integer scores
+    label_field="fineweb-edu-score-label"         # Quality labels
+)
+pipeline.add_stage(edu_classifier)
+
+# Save the results
+writer = JsonlWriter(path="edu_classified/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+### FineWeb Mixtral and Nemotron Edu Classifiers
+
+Similar to the FineWeb Edu Classifier but trained with different annotation sources:
+
+- **FineWebMixtralEduClassifier**: Uses annotations from Mixtral 8x22B-Instruct
+- **FineWebNemotronEduClassifier**: Uses annotations from Nemotron-4-340B-Instruct
+
+Both provide a quality label column marking scores above 2.5 as "high_quality":
+
+#### Quality Label Mapping
+
+| Score Range | Quality Label | Description |
+|-------------|---------------|-------------|
+| 0.0 - 2.5 | `low_quality` | Below average educational value |
+| 2.5 - 5.0 | `high_quality` | Above average educational value |
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import FineWebMixtralEduClassifier  # or FineWebNemotronEduClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="fineweb_mixtral_edu_classification")
+
+# Load dataset
+reader = JsonlReader(
+    file_paths="web_documents/*.jsonl",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the FineWeb Mixtral Edu classifier
+classifier = FineWebMixtralEduClassifier(
+    float_score_field="fineweb-mixtral-edu-score-float",  # Raw float scores
+    int_score_field="fineweb-mixtral-edu-score-int",      # Rounded integer scores
+    label_field="fineweb-mixtral-edu-score-label"          # "high_quality" or "low_quality"
+)
+pipeline.add_stage(classifier)
+
+# Save the results
+writer = JsonlWriter(path="mixtral_edu_classified/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+### Content Type Classifier
+
+Categorizes documents into 11 distinct speech types.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import ContentTypeClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="content_type_classification")
+
+# Load dataset
+reader = JsonlReader(
+    file_paths="content/",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the Content Type classifier
+classifier = ContentTypeClassifier(filter_by=["Blogs", "News"])
+pipeline.add_stage(classifier)
+
+# Save the results
+writer = JsonlWriter(path="content_type_classified/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+### Prompt Task and Complexity Classifier
+
+Classifies prompts by task type and complexity dimensions.
+
+```python
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.io.writer import JsonlWriter
+from nemo_curator.stages.text.classifiers import PromptTaskComplexityClassifier
+
+# Create pipeline
+pipeline = Pipeline(name="prompt_task_complexity_classification")
+
+# Load dataset
+reader = JsonlReader(
+    file_paths="prompts/",
+    fields=["text", "id"]
+)
+pipeline.add_stage(reader)
+
+# Apply the Prompt Task Complexity classifier
+classifier = PromptTaskComplexityClassifier()
+pipeline.add_stage(classifier)
+
+# Save the results
+writer = JsonlWriter(path="prompt_complexity_classified/")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()  # Uses XennaExecutor by default
+```
+
+## Custom Model Integration
+
+You can integrate your own classification models by extending `DistributedDataClassifier`. Refer to the [Text Classifiers README](https://github.com/NVIDIA-NeMo/Curator/tree/main/nemo_curator/stages/text/classifiers#text-classifiers) for implementation details and examples.
+
+## Performance Optimization
+
+NVIDIA NeMo Curator's distributed classifiers are optimized for high-throughput processing through several key features:
+
+### CPU-based tokenization and GPU-based model inference
+
+Each classifier is broken down under the hood into a tokenizer stage and a model inference stage. Tokenization is run on the CPU while model inference is run on the GPU. For example, this means that behind the scenes, the `DomainClassifier` stage is actually being broken down into 2 stages (some parameters and details omitted to avoid complexity):
+
+```python
+class TokenizerStage:
+    self.resources = Resources(cpus=1)
+    self.model_identifier = "nvidia/domain-classifier"
+    self.text_field = "text"
+    self.padding_side = "right"
+    ...
+class ModelStage:
+    self.resources = Resources(cpus=1, gpus=1)
+    self.model_identifier = "nvidia/domain-classifier"
+    self.model_inference_batch_size = 256
+    ...
+```
+
+Pipelines take care of resource allocation and autoscaling to achieve enhanced performance and minimize GPU idleness. This means that we are able to achieve speedups by ensuring that model inference is run in parallel across all available GPUs, while other stages such as I/O, tokenization, and filtering are run across all available CPUs. This is possible because Curator pipelines are composable, which allows each stage in a pipeline to run independently and with its own specified hardware resources.
+
+### Intelligent Batching and Sequence Handling
+
+The classifiers optimize throughput through:
+
+- **Length-based sorting**: Input sequences are sorted by length when `sort_by_length=True` (default)
+- **Efficient batching**: Similar-length sequences are grouped together to minimize padding overhead
+- **GPU memory optimization**: Batches are sized to maximize GPU utilization based on available memory
+
+### Avoid Unnecessary Re-Tokenization
+
+Several of the text classifiers use the same tokenizer before running the model forward pass. To avoid unnecessary re-tokenization, the `keep_tokens` and `use_existing_tokens` parameters can be used.
+
+**Important: Not every text classifier uses the same tokenizer, so it is important to confirm that classifiers' tokenizers are compatible with each other. Curator will not verify this for you.**
+
+The `ContentTypeClassifier`, `QualityClassifier`, `DomainClassifier`, and `PromptTaskComplexityClassifier` all use a DeBERTa tokenizer, which means that we only need to tokenize once. To avoid unnecessary re-tokenization, you can do:
+
+```python
+# Since this is the first classifier in the pipeline, there are no existing tokens to use,
+# but we can make sure to keep the computed tokens for the next classifier
+content_type_classifier = ContentTypeClassifier(use_existing_tokens=False, keep_tokens=True, ...)
+pipeline.add_stage(content_type_classifier)
+
+# Use tokens from the previous classifier and keep tokens for the next classifier
+quality_classifier = QualityClassifier(use_existing_tokens=True, keep_tokens=True, ...)
+pipeline.add_stage(quality_classifier)
+
+# Use tokens from the previous classifier and keep tokens for the next classifier
+domain_classifier = DomainClassifier(use_existing_tokens=True, keep_tokens=True, ...)
+pipeline.add_stage(domain_classifier)
+
+# Use tokens from the previous classifier
+# Since this is the final classifier in the pipeline, we drop the computed tokens
+prompt_task_complexity_classifier = PromptTaskComplexityClassifier(use_existing_tokens=True, keep_tokens=False, ...)
+pipeline.add_stage(prompt_task_complexity_classifier)
+```
+
+In addition to the above example, the `FineWebEduClassifier`, `FineWebMixtralEduClassifier`, and `FineWebNemotronEduClassifier` are all compatible with each other:
+
+```python
+fineweb_classifier = FineWebEduClassifier(use_existing_tokens=False, keep_tokens=True, ...)
+pipeline.add_stage(fineweb_classifier)
+
+fineweb_mixtral_classifier = FineWebMixtralEduClassifier(use_existing_tokens=True, keep_tokens=True, ...)
+pipeline.add_stage(fineweb_mixtral_classifier)
+
+fineweb_nemotron_classifier = FineWebNemotronEduClassifier(use_existing_tokens=True, keep_tokens=False, ...)
+pipeline.add_stage(fineweb_nemotron_classifier)
+```
+
+The `AegisClassifier` variants ([nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0](https://huggingface.co/nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0) and [nvidia/Aegis-AI-Content-Safety-LlamaGuard-Permissive-1.0](https://huggingface.co/nvidia/Aegis-AI-Content-Safety-LlamaGuard-Permissive-1.0)) are compatible with each other as well. This example is a bit more complex because it also involves keeping the formatted Aegis prompt field. See the `AegisClassifier` implementation for more details.
+
+```python
+aegis_defensive_classifier = AegisClassifier(
+    aegis_variant="nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0",
+    label_field="aegis_defensive_pred",
+    use_existing_tokens=False,
+    keep_tokens=True,
+    keep_aegis_prompt_field=True,
+    ...
+)
+pipeline.add_stage(aegis_defensive_classifier)
+
+aegis_permissive_classifier = AegisClassifier(
+    aegis_variant="nvidia/Aegis-AI-Content-Safety-LlamaGuard-Permissive-1.0",
+    label_field="aegis_permissive_pred",
+    use_existing_tokens=True,
+    aegis_prompt_field="_curator_hidden_text",  # created by aegis_defensive_classifier
+    keep_tokens=False,
+    keep_aegis_prompt_field=False,
+    ...
+)
+pipeline.add_stage(aegis_permissive_classifier)
+```
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/filters/doc_filter.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from abc import ABC, abstractmethod
+
+
+class DocumentFilter(ABC):
+    """
+    An abstract base class for text-based document filters.
+
+    This class serves as a template for creating specific document filters
+    in the library. Subclasses should implement the abstract methods to
+    define custom filtering behavior.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._name = self.__class__.__name__
+        self._sentences = None
+        self._paragraphs = None
+        self._ngrams = None
+
+    @abstractmethod
+    def score_document(self, text: str) -> float | list[int | float]:
+        """
+        Calculate a score for the given document text.
+
+        This method should be implemented by subclasses to define how
+        a document's text is evaluated and scored.
+
+        Args:
+            text (str): The text content of the document to be scored.
+
+        Returns:
+            Any: A score or set of scores representing the document's
+            relevance or quality. The type and structure of the
+            return value should be consistent for each subclass.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in a subclass.
+        """
+        msg = "score_document method must be implemented by subclasses"
+        raise NotImplementedError(msg)
+
+    @abstractmethod
+    def keep_document(self, scores: float | list[int | float]) -> bool:
+        """
+        Determine whether to keep a document based on its scores.
+
+        This method should be implemented by subclasses to define the
+        criteria for keeping or discarding a document based on the
+        scores calculated by score_document().
+
+        Args:
+            scores (float | list[int | float]): The score or set of scores returned by score_document().
+                          The type should match what is returned by score_document().
+
+        Returns:
+            bool: True if the document should be kept, False otherwise.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in a subclass.
+        """
+        msg = "keep_document method must be implemented by subclasses"
+        raise NotImplementedError(msg)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def sentences(self) -> list:
+        return self._sentences
+
+    @sentences.setter
+    def sentences(self, sentences: list) -> None:
+        self._sentences = sentences
+
+    @property
+    def paragraphs(self) -> list:
+        return self._paragraphs
+
+    @paragraphs.setter
+    def paragraphs(self, paragraphs: list) -> None:
+        self._paragraphs = paragraphs
+
+    @property
+    def ngrams(self) -> dict:
+        return self._ngrams
+
+    @ngrams.setter
+    def ngrams(self, ngrams: dict) -> None:
+        self._ngrams = ngrams
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/filters/score_filter.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, Literal
+
+import pandas as pd
+from loguru import logger
+
+from nemo_curator.backends.base import NodeInfo, WorkerMetadata
+from nemo_curator.stages.base import ProcessingStage
+from nemo_curator.stages.text.filters.doc_filter import DocumentFilter
+from nemo_curator.tasks import DocumentBatch
+
+
+@dataclass
+class Score(ProcessingStage[DocumentBatch, DocumentBatch]):
+    """
+    The module responsible for adding metadata to records based on statistics about the text.
+    It accepts an arbitrary scoring function that accepts a text field and returns a score.
+    It also accepts a DocumentFilter object, in which case the score_fn will be the score_document method of the DocumentFilter.
+
+    Unlike ScoreFilter, it does not filter based on the computed score.
+    It only adds metadata to the record.
+
+    If a list of DocumentFilters is provided, the filters are applied in order.
+    In this case, the score_field parameter should be a list of strings corresponding to the filters.
+    If different filters should be applied to different text fields, then text_field should be a list of strings corresponding to the filters.
+
+    Args:
+        score_fn (Callable | DocumentFilter | list[DocumentFilter]): The score function or the DocumentFilter object (or list of DocumentFilters). If it is a DocumentFilter object, the score_fn will be the score_document method of the DocumentFilter.
+        score_field (str | list[str]): The field (or list of fields) the score will be stored in.
+        text_field (str | list[str]): The field (or list of fields) the documents will be read from.
+
+    """
+
+    score_fn: Callable[[str], float | str] | DocumentFilter | list[DocumentFilter]
+    score_field: str | list[str]
+    text_field: str | list[str] = "text"
+    name: str = "score_fn"
+
+    def __post_init__(self):
+        self.name, self.score_fn, self.text_field, _, self.score_field = _validate_and_normalize_filters(
+            self.score_fn, self.text_field, None, self.score_field, "score"
+        )
+
+    def inputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], self.text_field
+
+    def outputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], self.text_field + self.score_field
+
+    def ray_stage_spec(self) -> dict[str, Any]:
+        requires_setup = any(
+            hasattr(score_fn, "load_model") or hasattr(score_fn, "load_tokenizer")
+            for score_fn in self.score_fn
+            if isinstance(score_fn, DocumentFilter)
+        )
+        return {"is_actor_stage": requires_setup}
+
+    def setup_on_node(
+        self,
+        _node_info: NodeInfo | None = None,
+        _worker_metadata: WorkerMetadata | None = None,
+    ) -> None:
+        for score_fn in self.score_fn:
+            if isinstance(score_fn, DocumentFilter) and hasattr(score_fn, "model_check_or_download"):
+                score_fn.model_check_or_download()
+
+    def setup(self, _: WorkerMetadata | None = None) -> None:
+        for score_fn in self.score_fn:
+            if isinstance(score_fn, DocumentFilter):
+                if hasattr(score_fn, "load_model"):
+                    score_fn.load_model()
+                if hasattr(score_fn, "load_tokenizer"):
+                    score_fn.load_tokenizer()
+
+    def process(self, batch: DocumentBatch) -> DocumentBatch | None:
+        """
+        Applies the scoring to a dataset
+
+        Args:
+            batch (DocumentBatch): The batch to apply the module to
+
+        Returns:
+            DocumentBatch: A batch with the new score
+
+        """
+        df = batch.to_pandas()
+
+        if df.empty:
+            logger.info(f"Empty dataset for batch {batch.task_id}")
+            return batch
+
+        for score_fn_i, text_field_i, score_field_i in zip(
+            self.score_fn, self.text_field, self.score_field, strict=True
+        ):
+            inner_score_fn = score_fn_i.score_document if isinstance(score_fn_i, DocumentFilter) else score_fn_i
+            df[score_field_i] = df[text_field_i].apply(inner_score_fn)
+
+        # Create output batch
+        return DocumentBatch(
+            task_id=f"{batch.task_id}_{self.name}",
+            dataset_name=batch.dataset_name,
+            data=df,
+            _metadata=batch._metadata,
+            _stage_perf=batch._stage_perf,
+        )
+
+
+@dataclass
+class Filter(ProcessingStage[DocumentBatch, DocumentBatch]):
+    """
+    The module responsible for filtering records based on a metadata field.
+    It accepts an arbitrary filter function that accepts a metadata field and returns True if the field should be kept.
+    It also accepts a DocumentFilter object, in which case the filter_fn will be the keep_document method of the DocumentFilter.
+    Unlike ScoreFilter, it does not compute the metadata based on a document.
+    It only filters using existing metadata.
+
+    If a list of DocumentFilters is provided, the filters are applied in order.
+    In this case, the filter_field parameter should be a list of strings corresponding to the filters.
+    If some filters should be inverted and others not, then invert should be a list of booleans corresponding to the filters.
+
+    Args:
+        filter_fn (Callable | DocumentFilter | list[DocumentFilter]): A function (or list of functions) that returns True if the document is to be kept or a DocumentFilter object,
+            in which case the filter_fn will be the keep_document method of the DocumentFilter.
+        filter_field (str | list[str]): The field (or list of fields) to be passed into the filter function.
+        invert (bool | list[bool]): Whether to invert the filter condition.
+
+    """
+
+    filter_fn: Callable | DocumentFilter | list[DocumentFilter]
+    filter_field: str | list[str]
+    invert: bool | list[bool] = False
+    name: str = "filter_fn"
+
+    def __post_init__(self):
+        self.name, self.filter_fn, self.filter_field, self.invert, _ = _validate_and_normalize_filters(
+            self.filter_fn, self.filter_field, self.invert, None, "filter"
+        )
+
+    def inputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], self.filter_field
+
+    def outputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], self.filter_field
+
+    def compute_filter_mask(
+        self, df: pd.DataFrame, filter_fn: Callable | DocumentFilter, filter_field: str, invert: bool
+    ) -> pd.Series:
+        """Compute the bool mask to filter the dataset.
+
+        Args:
+            df (pd.DataFrame): The dataset to compute filter mask on.
+            filter_fn (Callable | DocumentFilter): The filter function to use.
+            filter_field (str): The field to read the filter from.
+            invert (bool): Whether to invert the filter condition.
+
+        Returns:
+            Series: A mask corresponding to each data instance indicating whether it will be retained.
+
+        """
+
+        if isinstance(filter_fn, DocumentFilter):
+            filter_fn = filter_fn.keep_document
+
+        bool_mask = df[filter_field].apply(filter_fn)
+
+        if invert:
+            bool_mask = ~bool_mask
+
+        return bool_mask
+
+    def process(self, batch: DocumentBatch) -> DocumentBatch | None:
+        """
+        Applies the filtering to a dataset
+
+        Args:
+            batch (DocumentBatch): The batch to apply the module to
+
+        Returns:
+            DocumentBatch: A batch with entries removed according to the filter
+
+        """
+        df = batch.to_pandas()
+
+        if df.empty:
+            logger.info(f"Empty dataset for batch {batch.task_id}")
+            return batch
+
+        for filter_fn_i, filter_field_i, invert_i in zip(self.filter_fn, self.filter_field, self.invert, strict=True):
+            bool_mask = self.compute_filter_mask(df, filter_fn_i, filter_field_i, invert_i)
+            df = df[bool_mask]
+
+        if len(df) == 0:
+            logger.info(f"All documents filtered out for batch {batch.task_id}")
+
+        # Create output batch
+        return DocumentBatch(
+            task_id=f"{batch.task_id}_{self.name}",
+            dataset_name=batch.dataset_name,
+            data=df,
+            _metadata=batch._metadata,
+            _stage_perf=batch._stage_perf,
+        )
+
+
+@dataclass
+class ScoreFilter(ProcessingStage[DocumentBatch, DocumentBatch]):
+    """
+    The module responsible for applying a filter (or chain of filters) to all documents in a dataset.
+    It accepts an arbitrary DocumentFilter and first computes the score for a document.
+    Then, determines whether to keep the document based on the criteria in the DocumentFilter.
+
+    The filter can be applied to any field in the dataset, and the score can be logged for later.
+    Also, the filter can be inverted such that "rejected" documents are kept.
+
+    If a list of DocumentFilters is provided, the filters are applied in order.
+    If different filters should be applied to different text fields, then text_field should be a list of strings corresponding to the filters.
+    If different score fields should be created for each filter, then score_field should be a list of strings corresponding to the filters.
+    If some filters should be inverted and others not, then invert should be a list of booleans corresponding to the filters.
+
+    Args:
+        filter_obj (DocumentFilter | list[DocumentFilter]): The score function (or list of score functions) that takes in a document string and outputs a score for the document.
+        text_field (str | list[str]): The field (or list of fields) the documents will be read from.
+        score_field (str | list[str] | None): The field (or list of fields) to which the scores will be written. If None, scores will be immediately discarded after use.
+        invert (bool | list[bool]): If True, will keep all documents that are normally discarded.
+
+    """
+
+    filter_obj: DocumentFilter | list[DocumentFilter]
+    text_field: str | list[str] = "text"
+    score_field: str | list[str] | None = None
+    invert: bool | list[bool] = False
+    name: str = "score_filter"
+
+    def __post_init__(self):
+        self.name, self.filter_obj, self.text_field, self.invert, self.score_field = _validate_and_normalize_filters(
+            self.filter_obj, self.text_field, self.invert, self.score_field, "score_filter"
+        )
+
+    def inputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], self.text_field
+
+    def outputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], self.text_field + self.score_field if self.score_field is not None else []
+
+    def ray_stage_spec(self) -> dict[str, Any]:
+        requires_setup = any(
+            hasattr(filter_obj, "load_model") or hasattr(filter_obj, "load_tokenizer")
+            for filter_obj in self.filter_obj
+            if isinstance(filter_obj, DocumentFilter)
+        )
+        return {"is_actor_stage": requires_setup}
+
+    def setup_on_node(
+        self,
+        _node_info: NodeInfo | None = None,
+        _worker_metadata: WorkerMetadata | None = None,
+    ) -> None:
+        for filter_obj in self.filter_obj:
+            if isinstance(filter_obj, DocumentFilter) and hasattr(filter_obj, "model_check_or_download"):
+                filter_obj.model_check_or_download()
+
+    def setup(self, _: WorkerMetadata | None = None) -> None:
+        for filter_obj in self.filter_obj:
+            if isinstance(filter_obj, DocumentFilter):
+                if hasattr(filter_obj, "load_model"):
+                    filter_obj.load_model()
+                if hasattr(filter_obj, "load_tokenizer"):
+                    filter_obj.load_tokenizer()
+
+    def compute_filter_mask(
+        self, df: pd.DataFrame, filter_obj: DocumentFilter, text_field: str, score_field: str | None, invert: bool
+    ) -> pd.Series:
+        """Compute the bool mask to filter the dataset.
+
+        Args:
+            df (pd.DataFrame): The dataset to compute filter mask on.
+            filter_obj (DocumentFilter): The filter object to use.
+            text_field (str): The field to read the text from.
+            score_field (str | None): The field to write the scores to.
+            invert (bool): Whether to invert the filter condition.
+
+        Returns:
+            Series: A mask corresponding to each data instance indicating whether it will be retained.
+
+        """
+
+        scores = df[text_field].apply(filter_obj.score_document)
+
+        if score_field is not None:
+            df[score_field] = scores
+
+        bool_mask = scores.apply(filter_obj.keep_document)
+
+        if invert:
+            bool_mask = ~bool_mask
+
+        return bool_mask
+
+    def process(self, batch: DocumentBatch) -> DocumentBatch | None:
+        """
+        Scores and filters all records in the dataset
+
+        Args:
+            batch (DocumentBatch): The batch to apply the module to
+
+        Returns:
+            DocumentBatch: A batch with the score and filter applied
+
+        """
+        df = batch.to_pandas()
+
+        if df.empty:
+            logger.info(f"Empty dataset for batch {batch.task_id}")
+            return batch
+
+        for filter_obj_i, text_field_i, score_field_i, invert_i in zip(
+            self.filter_obj, self.text_field, self.score_field, self.invert, strict=True
+        ):
+            bool_mask = self.compute_filter_mask(df, filter_obj_i, text_field_i, score_field_i, invert_i)
+            df = df[bool_mask]
+
+        if len(df) == 0:
+            logger.info(f"All documents filtered out for batch {batch.task_id}")
+
+        # Create output batch
+        return DocumentBatch(
+            task_id=f"{batch.task_id}_{self.name}",
+            dataset_name=batch.dataset_name,
+            data=df,
+            _metadata=batch._metadata,
+            _stage_perf=batch._stage_perf,
+        )
+
+
+def _filter_name(x: DocumentFilter | Callable) -> str:
+    return x.name if isinstance(x, DocumentFilter) else x.__name__
+
+
+def _get_filter_stage_name(filters: list[DocumentFilter | Callable], prefix: str) -> str:
+    """
+    Derive the stage name from the provided score/filter functions.
+
+    """
+    return (
+        _filter_name(filters[0])
+        if len(filters) == 1
+        else f"{prefix}_chain_of_" + "_".join(_filter_name(f) for f in filters)
+    )
+
+
+def _format_single_field_list(
+    _field: str | list[str] | None, field_name: str, field_type: type = str
+) -> list[str] | list[bool]:
+    """
+    In the case of a single DocumentFilter or Callable, format the relevant field
+    (filter_field, score_field, text_field, invert) to a list of length 1.
+
+    Args:
+        _field (str | list[str] | None): The field to check and format.
+        field_name (str): The name of the field, which is used in error messages.
+        field_type (type): The type of the field, which is used in an isinstance check.
+
+    Returns:
+        list[str] | list[bool]: The reformatted field.
+
+    """
+    if isinstance(_field, list):
+        if len(_field) > 1:
+            msg = f"More {field_name} fields than functions provided: {_field}"
+            raise ValueError(msg)
+    elif isinstance(_field, field_type):
+        _field = [_field]
+    else:
+        msg = f"{field_name} field must be a {field_type} or list of {field_type}: {_field}"
+        raise TypeError(msg)
+
+    return _field
+
+
+def _format_field_list(
+    _field: str | list[str] | None, filter_count: int, field_name: str, field_type: type = str
+) -> list[str] | list[bool]:
+    """
+    In the case of a list of DocumentFilters or Callables, format the relevant field
+    (filter_field, score_field, text_field, invert) to a list of length equal to the number of filters.
+
+    Args:
+        _field (str | list[str] | None): The field to check and format.
+        filter_count (int): The number of filters. This will be the length of the output list.
+        field_name (str): The name of the field, which is used in error messages.
+        field_type (type): The type of the field, which is used in an isinstance check.
+
+    Returns:
+        list[str] | list[bool]: The reformatted field.
+
+    """
+    if isinstance(_field, list):
+        if len(_field) == 1:
+            logger.info(f"Using the same {field_name} field for all functions: {_field}")
+            _field = [_field] * filter_count
+        if len(_field) != filter_count:
+            msg = f"Number of {field_name} fields must match number of functions: {_field}"
+            raise ValueError(msg)
+    elif isinstance(_field, field_type):
+        logger.info(f"Using the same {field_name} field for all functions: {_field}")
+        _field = [_field] * filter_count
+    else:
+        msg = f"{field_name} field must be a {field_type} or list of {field_type}: {_field}"
+        raise TypeError(msg)
+
+    return _field
+
+
+def _validate_and_normalize_filters(  # noqa: C901, PLR0912
+    _filter: DocumentFilter | Callable | list[DocumentFilter | Callable],
+    input_field: str | list[str] | None,
+    invert: bool | list[bool] | None,
+    output_field: str | list[str] | None,
+    fn_type: Literal["score", "filter", "score_filter"],
+) -> tuple[str, list[DocumentFilter | Callable], list[str] | None, list[bool] | None, list[str] | None]:
+    """
+    Validate and normalize all parameters needed for the Score, Filter, and ScoreFilter modules.
+    "Normalize" means to reformat all parameters to a list of length equal to the number of filters.
+
+    Args:
+        _filter (DocumentFilter | Callable | list[DocumentFilter | Callable]): The filter object or list of filter objects.
+        input_field (str | list[str] | None): The input field. For Score and ScoreFilter, this is the text field. For Filter, this is the filter field.
+        invert (bool | list[bool] | None): The invert flag. This is used for Filter and ScoreFilter.
+        output_field (str | list[str] | None): The output field. For Score and ScoreFilter, this is the score field. For Filter, this is not used.
+        fn_type (Literal["score", "filter", "score_filter"]): The type of the module.
+
+    Returns:
+        tuple[str, list[DocumentFilter | Callable], list[str] | None, list[bool] | None, list[str] | None]:
+            The first string returned corresponds to the name given to the DocumentFilter or Callable.
+            The normalized filters, input fields, invert flags, and output fields make up the rest of the tuple.
+
+    """
+
+    # For Score and ScoreFilter, the input_field is the text field
+    # For Filter, the input_field is the filter field
+    input_field_name = "filter" if fn_type == "filter" else "text"
+    if input_field is None:
+        msg = f"{input_field_name}_field cannot be None"
+        raise ValueError(msg)
+
+    # Score is the only module that explicitly requires an output field,
+    # i.e., a score_field that is calculated by the DocumentFilter or Callable.
+    if output_field is None and fn_type == "score":
+        msg = "score_field cannot be None"
+        raise ValueError(msg)
+
+    if isinstance(_filter, DocumentFilter):
+        _name = _filter.name
+    elif isinstance(_filter, Callable):
+        _name = f"{fn_type}_fn"
+
+    if isinstance(_filter, (DocumentFilter, Callable)):
+        _normalized_filter = [_filter]
+        _input_field = _format_single_field_list(input_field, input_field_name, field_type=str)
+
+        if fn_type in ["filter", "score_filter"]:
+            _invert = _format_single_field_list(invert, "invert", field_type=bool)
+        else:
+            # Score does not use an invert flag
+            _invert = None
+
+        if fn_type in ["score", "score_filter"]:
+            # ScoreFilter is allowed to have no output fields, but Score is not
+            if output_field is None and fn_type == "score_filter":
+                _output_field = [None]
+            else:
+                _output_field = _format_single_field_list(output_field, "score", field_type=str)
+        else:
+            # Filter does not use an output field
+            _output_field = None
+
+    elif isinstance(_filter, list):
+        _name = _get_filter_stage_name(_filter, prefix=fn_type)
+        _normalized_filter = _filter
+
+        # Technically, you could run a list of filters on the same filter_field.
+        # However, prefer to use a list of fields to avoid confusion.
+        if fn_type == "filter" and (
+            isinstance(input_field, str) or (isinstance(input_field, list) and len(input_field) == 1)
+        ):
+            msg = f"filter_field must be a list of strings if multiple filters are used: {input_field}"
+            raise ValueError(msg)
+
+        _input_field = _format_field_list(input_field, len(_filter), input_field_name, field_type=str)
+
+        if fn_type in ["filter", "score_filter"]:
+            _invert = _format_field_list(invert, len(_filter), "invert", field_type=bool)
+        else:
+            # Score does not use an invert flag
+            _invert = None
+
+        if fn_type in ["score", "score_filter"]:
+            # ScoreFilter is allowed to have no output fields, but Score is not
+            if output_field is None and fn_type == "score_filter":
+                _output_field = [None] * len(_filter)
+            # Output fields are always required to be a (unique) list of strings.
+            # We check that here.
+            elif isinstance(output_field, str) or (isinstance(output_field, list) and len(output_field) == 1):
+                msg = f"score_field must be a list of strings if multiple filters are used: {output_field}"
+                raise ValueError(msg)
+            else:
+                _output_field = _format_field_list(output_field, len(_filter), "score", field_type=str)
+        else:
+            # Filter does not use an output field
+            _output_field = None
+
+    return _name, _normalized_filter, _input_field, _invert, _output_field
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/classifiers/base.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+from dataclasses import dataclass
+from typing import Literal
+
+os.environ["RAPIDS_NO_INITIALIZE"] = "1"
+
+import numpy as np
+import pandas as pd
+import torch
+from huggingface_hub import PyTorchModelHubMixin
+from torch import nn
+from transformers import AutoConfig, AutoModel
+
+from nemo_curator.stages.base import CompositeStage, ProcessingStage
+from nemo_curator.stages.text.filters import Filter
+from nemo_curator.stages.text.models.model import ModelStage
+from nemo_curator.stages.text.models.tokenizer import TokenizerStage
+from nemo_curator.stages.text.models.utils import ATTENTION_MASK_FIELD, INPUT_ID_FIELD
+from nemo_curator.tasks import DocumentBatch
+
+from .utils import SortByLengthStage
+
+
+class Deberta(nn.Module, PyTorchModelHubMixin):
+    """
+    Base PyTorch model where we add a classification head.
+
+    Args:
+        config: The configuration of the model.
+
+    """
+
+    def __init__(self, config: dataclass):
+        super().__init__()
+        self.model = AutoModel.from_pretrained(config["base_model"])
+        self.dropout = nn.Dropout(config["fc_dropout"])
+        self.fc = nn.Linear(self.model.config.hidden_size, len(config["id2label"]))
+
+    @property
+    def device(self) -> torch.device:
+        return next(self.parameters()).device
+
+    @torch.no_grad()
+    def forward(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+        features = self.model(batch[INPUT_ID_FIELD], batch[ATTENTION_MASK_FIELD]).last_hidden_state
+        dropped = self.dropout(features)
+        outputs = self.fc(dropped)
+
+        del batch, features, dropped
+
+        return torch.softmax(outputs[:, 0, :], dim=1)
+
+
+class ClassifierModelStage(ModelStage):
+    """
+    Stage for Hugging Face model inference.
+
+    Args:
+        model_identifier: The identifier of the Hugging Face model.
+        label_field: The name of the prediction column.
+        score_field: The name of the probability column. Defaults to None.
+        model_inference_batch_size: The size of the batch for model inference. Defaults to 256.
+        has_seq_order: Whether to sort the input data by the length of the input tokens.
+            Sorting is encouraged to improve the performance of the inference model. Defaults to True.
+        padding_side: The side to pad the input tokens. Defaults to "right".
+        max_seq_length: If provided, clips the input tokens before the forward pass. Defaults to None.
+        autocast: Whether to use autocast. When True, we trade off minor accuracy for faster inference.
+            Defaults to True.
+        keep_tokens: Whether to keep the input tokens in the output dataframe. Defaults to False.
+
+    """
+
+    def __init__(  # noqa: PLR0913
+        self,
+        model_identifier: str,
+        cache_dir: str | None = None,
+        label_field: str = "preds",
+        score_field: str | None = None,
+        model_inference_batch_size: int = 256,
+        has_seq_order: bool = True,
+        padding_side: Literal["left", "right"] = "right",
+        max_seq_length: int | None = None,
+        autocast: bool = True,
+        keep_tokens: bool = False,
+    ):
+        super().__init__(
+            model_identifier=model_identifier,
+            cache_dir=cache_dir,
+            has_seq_order=has_seq_order,
+            model_inference_batch_size=model_inference_batch_size,
+            padding_side=padding_side,
+            max_seq_length=max_seq_length,
+            unpack_inference_batch=False,
+            autocast=autocast,
+        )
+
+        self.label_field = label_field
+        if score_field is not None:
+            self.score_field = score_field
+            self.keep_score_field = True
+        else:
+            self.score_field = "probs"
+            self.keep_score_field = False
+
+        self.keep_tokens = keep_tokens
+
+    def outputs(self) -> tuple[list[str], list[str]]:
+        return ["data"], [self.label_field] + ([self.score_field] if self.keep_score_field else [])
+
+    def _setup(self, local_files_only: bool = True) -> None:
+        self.model = (
+            Deberta.from_pretrained(self.model_identifier, cache_dir=self.cache_dir, local_files_only=local_files_only)
+            .cuda()
+            .eval()
+        )
+
+        config = AutoConfig.from_pretrained(
+            self.model_identifier, cache_dir=self.cache_dir, local_files_only=local_files_only
+        )
+        self.labels = list(config.label2id.keys())
+        self.labels.sort(key=lambda x: config.label2id[x])
+
+    def process_model_output(
+        self, outputs: torch.Tensor, _: dict[str, torch.Tensor] | None = None
+    ) -> dict[str, np.ndarray]:
+        probs = outputs.cpu().numpy()
+        preds = np.argmax(probs, axis=1)
+
+        pred_labels = [self.labels[idx] for idx in preds]
+
+        return {
+            self.score_field: probs,
+            self.label_field: np.array(pred_labels),
+        }
+
+    def create_output_dataframe(self, df_cpu: pd.DataFrame, collected_output: dict[str, np.ndarray]) -> pd.DataFrame:
+        if not self.keep_tokens:
+            df_cpu = df_cpu.drop(columns=[INPUT_ID_FIELD, ATTENTION_MASK_FIELD])
+
+        df_cpu[self.label_field] = collected_output[self.label_field]
+
+        if self.keep_score_field:
+            df_cpu[self.score_field] = collected_output[self.score_field].tolist()
+
+        return df_cpu
+
+
+@dataclass(kw_only=True)
+class DistributedDataClassifier(CompositeStage[DocumentBatch, DocumentBatch]):
+    """
+    Base composite stage for distributed data classification.
+
+    It decomposes into a tokenizer stage and a model stage.
+
+    Args:
+        model_identifier: The identifier of the Hugging Face model.
+        cache_dir: The Hugging Face cache directory. Defaults to None.
+        label_field: The name of the prediction column. Defaults to "preds".
+        score_field: The name of the probability column. Defaults to None.
+        text_field: The name of the text field in the input data. Defaults to "text".
+        filter_by: For categorical classifiers, the list of labels to filter the data by. Defaults to None.
+        max_chars: Limits the total number of characters that can be fed to the tokenizer.
+            If None, text will not be truncated. Defaults to None.
+        max_seq_length: Limits the total sequence returned by the tokenizer so that it has a maximum length.
+            If None, the tokenizer's model_max_length is used. Defaults to 512.
+        padding_side: The side to pad the input tokens. Defaults to "right".
+        sort_by_length: Whether to sort the input data by the length of the input tokens.
+            Sorting is encouraged to improve the performance of the inference model. Defaults to True.
+        model_inference_batch_size: The size of the batch for model inference. Defaults to 256.
+        autocast: Whether to use autocast. When True, we trade off minor accuracy for faster inference.
+            Defaults to True.
+        keep_tokens: Whether to keep the input tokens in the output dataframe. Defaults to False.
+        use_existing_tokens: Whether to use the existing tokens from the input dataframe.
+            If True, assume the relevant token fields are ["input_ids", "attention_mask"] and skip tokenization.
+            Defaults to False.
+
+    """
+
+    model_identifier: str
+    cache_dir: str | None = None
+    label_field: str = "preds"
+    score_field: str | None = None
+    text_field: str = "text"
+    filter_by: list[str] | None = None
+    max_chars: int | None = None
+    max_seq_length: int | None = None
+    padding_side: Literal["left", "right"] = "right"
+    sort_by_length: bool = True
+    model_inference_batch_size: int = 256
+    autocast: bool = True
+    keep_tokens: bool = False
+    use_existing_tokens: bool = False
+
+    def __post_init__(self) -> None:
+        super().__init__()
+
+        self.stages = []
+
+        if not self.use_existing_tokens:
+            tokenizer_stage = TokenizerStage(
+                model_identifier=self.model_identifier,
+                cache_dir=self.cache_dir,
+                text_field=self.text_field,
+                max_chars=self.max_chars,
+                max_seq_length=self.max_seq_length,
+                padding_side=self.padding_side,
+                sort_by_length=self.sort_by_length,
+            )
+            self.stages.append(tokenizer_stage)
+            # The TokenizerStage already truncates to the max_seq_length, so the ModelStage does not need to do it again
+            model_max_seq_length = None
+        else:
+            # The ModelStage will truncate to the max_seq_length before the forward pass
+            model_max_seq_length = self.max_seq_length
+
+        # Ensure that the data is sorted by length if the tokens are already present and sort_by_length is True
+        if self.use_existing_tokens and self.sort_by_length:
+            sort_by_length_stage = SortByLengthStage()
+            self.stages.append(sort_by_length_stage)
+
+        model_stage = ClassifierModelStage(
+            model_identifier=self.model_identifier,
+            cache_dir=self.cache_dir,
+            label_field=self.label_field,
+            score_field=self.score_field,
+            model_inference_batch_size=self.model_inference_batch_size,
+            has_seq_order=self.sort_by_length,
+            padding_side=self.padding_side,
+            max_seq_length=model_max_seq_length,
+            autocast=self.autocast,
+            keep_tokens=self.keep_tokens,
+        )
+        self.stages.append(model_stage)
+
+        if self.filter_by is not None and len(self.filter_by) > 0:
+            self.stages.append(Filter(filter_fn=self.filter_by_category, filter_field=self.label_field))
+
+    def inputs(self) -> tuple[list[str], list[str]]:
+        return self.stages[0].inputs()
+
+    def outputs(self) -> tuple[list[str], list[str]]:
+        return self.stages[-1].outputs()
+
+    def filter_by_category(self, value: str) -> bool:
+        return value in self.filter_by
+
+    def decompose(self) -> list[ProcessingStage]:
+        return self.stages
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/classifiers/domain.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+
+os.environ["RAPIDS_NO_INITIALIZE"] = "1"
+
+from nemo_curator.stages.text.models.utils import format_name_with_suffix
+
+from .base import DistributedDataClassifier
+from .utils import DEBERTA_TOKENIZER_PADDING_SIDE
+
+DOMAIN_MODEL_IDENTIFIER = "nvidia/domain-classifier"
+MULTILINGUAL_DOMAIN_MODEL_IDENTIFIER = "nvidia/multilingual-domain-classifier"
+MAX_SEQ_LENGTH = 512
+
+
+class DomainClassifier(DistributedDataClassifier):
+    """
+    DomainClassifier is a specialized classifier designed for English text domain classification tasks,
+    utilizing the NemoCurator Domain Classifier (https://huggingface.co/nvidia/domain-classifier) model.
+    This classifier is optimized for running on multi-node, multi-GPU setups to enable fast and efficient inference on large datasets.
+
+    Attributes:
+        cache_dir: The Hugging Face cache directory. Defaults to None.
+        label_field: The name of the prediction column. Defaults to "domain_pred".
+        score_field: The name of the probability column. Defaults to None.
+        text_field: The name of the text field in the input data. Defaults to "text".
+        filter_by: For categorical classifiers, the list of labels to filter the data by. Defaults to None.
+        max_chars: The maximum number of characters to use from the input text. Defaults to 2000.
+        sort_by_length: Whether to sort the input data by the length of the input tokens.
+            Sorting is encouraged to improve the performance of the inference model. Defaults to True.
+        model_inference_batch_size: The size of the batch for model inference. Defaults to 256.
+        autocast: Whether to use autocast. When True, we trade off minor accuracy for faster inference.
+            Defaults to True.
+        keep_tokens: Whether to keep the input tokens in the output dataframe. Defaults to False.
+        use_existing_tokens: Whether to use the existing tokens from the input dataframe.
+            If True, assume the relevant token fields are ["input_ids", "attention_mask"] and skip tokenization.
+            Defaults to False.
+
+    """
+
+    def __init__(  # noqa: PLR0913
+        self,
+        cache_dir: str | None = None,
+        label_field: str = "domain_pred",
+        score_field: str | None = None,
+        text_field: str = "text",
+        filter_by: list[str] | None = None,
+        max_chars: int = 2000,
+        sort_by_length: bool = True,
+        model_inference_batch_size: int = 256,
+        autocast: bool = True,
+        keep_tokens: bool = False,
+        use_existing_tokens: bool = False,
+    ):
+        super().__init__(
+            model_identifier=DOMAIN_MODEL_IDENTIFIER,
+            cache_dir=cache_dir,
+            label_field=label_field,
+            score_field=score_field,
+            text_field=text_field,
+            filter_by=filter_by,
+            max_chars=max_chars,
+            max_seq_length=MAX_SEQ_LENGTH,
+            padding_side=DEBERTA_TOKENIZER_PADDING_SIDE,
+            sort_by_length=sort_by_length,
+            model_inference_batch_size=model_inference_batch_size,
+            autocast=autocast,
+            keep_tokens=keep_tokens,
+            use_existing_tokens=use_existing_tokens,
+        )
+
+        self.name = format_name_with_suffix(DOMAIN_MODEL_IDENTIFIER)
+
+
+class MultilingualDomainClassifier(DistributedDataClassifier):
+    """
+    MultilingualDomainClassifier is a specialized classifier designed for domain classification tasks,
+    utilizing the NemoCurator Multilingual Domain Classifier (https://huggingface.co/nvidia/multilingual-domain-classifier) model.
+    It supports domain classification across 52 languages.
+    This classifier is optimized for running on multi-node, multi-GPU setups to enable fast and efficient inference on large datasets.
+
+    Attributes:
+        cache_dir: The Hugging Face cache directory. Defaults to None.
+        label_field: The name of the prediction column. Defaults to "multilingual_domain_pred".
+        score_field: The name of the probability column. Defaults to None.
+        text_field: The name of the text field in the input data. Defaults to "text".
+        filter_by: For categorical classifiers, the list of labels to filter the data by. Defaults to None.
+        max_chars: The maximum number of characters to use from the input text. Defaults to 2000.
+        sort_by_length: Whether to sort the input data by the length of the input tokens.
+            Sorting is encouraged to improve the performance of the inference model. Defaults to True.
+        model_inference_batch_size: The size of the batch for model inference. Defaults to 256.
+        autocast: Whether to use autocast. When True, we trade off minor accuracy for faster inference.
+            Defaults to True.
+        keep_tokens: Whether to keep the input tokens in the output dataframe. Defaults to False.
+        use_existing_tokens: Whether to use the existing tokens from the input dataframe.
+            If True, assume the relevant token fields are ["input_ids", "attention_mask"] and skip tokenization.
+            Defaults to False.
+
+    """
+
+    def __init__(  # noqa: PLR0913
+        self,
+        cache_dir: str | None = None,
+        label_field: str = "multilingual_domain_pred",
+        score_field: str | None = None,
+        text_field: str = "text",
+        filter_by: list[str] | None = None,
+        max_chars: int = 2000,
+        sort_by_length: bool = True,
+        model_inference_batch_size: int = 256,
+        autocast: bool = True,
+        keep_tokens: bool = False,
+        use_existing_tokens: bool = False,
+    ):
+        super().__init__(
+            model_identifier=MULTILINGUAL_DOMAIN_MODEL_IDENTIFIER,
+            cache_dir=cache_dir,
+            label_field=label_field,
+            score_field=score_field,
+            text_field=text_field,
+            filter_by=filter_by,
+            max_chars=max_chars,
+            max_seq_length=MAX_SEQ_LENGTH,
+            padding_side=DEBERTA_TOKENIZER_PADDING_SIDE,
+            sort_by_length=sort_by_length,
+            model_inference_batch_size=model_inference_batch_size,
+            autocast=autocast,
+            keep_tokens=keep_tokens,
+            use_existing_tokens=use_existing_tokens,
+        )
+
+        self.name = format_name_with_suffix(MULTILINGUAL_DOMAIN_MODEL_IDENTIFIER)
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/classifiers/quality.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+
+os.environ["RAPIDS_NO_INITIALIZE"] = "1"
+
+from nemo_curator.stages.text.models.utils import format_name_with_suffix
+
+from .base import DistributedDataClassifier
+from .utils import DEBERTA_TOKENIZER_PADDING_SIDE
+
+QUALITY_CLASSIFIER_MODEL_IDENTIFIER = "nvidia/quality-classifier-deberta"
+MAX_SEQ_LENGTH = 1024
+
+
+class QualityClassifier(DistributedDataClassifier):
+    """
+    QualityClassifier is a specialized classifier designed for quality assessment tasks,
+    utilizing the NemoCurator Quality Classifier DeBERTa model (https://huggingface.co/nvidia/quality-classifier-deberta).
+    This classifier is optimized for running on multi-node, multi-GPU setups to enable fast and efficient inference on large datasets.
+
+    Attributes:
+        cache_dir: The Hugging Face cache directory. Defaults to None.
+        label_field: The name of the prediction column. Defaults to "quality_pred".
+        score_field: The name of the probability column. Defaults to None.
+        text_field: The name of the text field in the input data. Defaults to "text".
+        filter_by: For categorical classifiers, the list of labels to filter the data by. Defaults to None.
+        max_chars: Limits the total number of characters that can be fed to the tokenizer.
+            If None, text will not be truncated. Defaults to 6000.
+        sort_by_length: Whether to sort the input data by the length of the input tokens.
+            Sorting is encouraged to improve the performance of the inference model. Defaults to True.
+        model_inference_batch_size: The size of the batch for model inference. Defaults to 256.
+        autocast: Whether to use autocast. When True, we trade off minor accuracy for faster inference.
+            Defaults to True.
+        keep_tokens: Whether to keep the input tokens in the output dataframe. Defaults to False.
+        use_existing_tokens: Whether to use the existing tokens from the input dataframe.
+            If True, assume the relevant token fields are ["input_ids", "attention_mask"] and skip tokenization.
+            Defaults to False.
+
+    """
+
+    def __init__(  # noqa: PLR0913
+        self,
+        cache_dir: str | None = None,
+        label_field: str = "quality_pred",
+        score_field: str | None = None,
+        text_field: str = "text",
+        filter_by: list[str] | None = None,
+        max_chars: int = 6000,
+        sort_by_length: bool = True,
+        model_inference_batch_size: int = 256,
+        autocast: bool = True,
+        keep_tokens: bool = False,
+        use_existing_tokens: bool = False,
+    ):
+        super().__init__(
+            model_identifier=QUALITY_CLASSIFIER_MODEL_IDENTIFIER,
+            cache_dir=cache_dir,
+            label_field=label_field,
+            score_field=score_field,
+            text_field=text_field,
+            filter_by=filter_by,
+            max_chars=max_chars,
+            max_seq_length=MAX_SEQ_LENGTH,
+            padding_side=DEBERTA_TOKENIZER_PADDING_SIDE,
+            sort_by_length=sort_by_length,
+            model_inference_batch_size=model_inference_batch_size,
+            autocast=autocast,
+            keep_tokens=keep_tokens,
+            use_existing_tokens=use_existing_tokens,
+        )
+
+        self.name = format_name_with_suffix(QUALITY_CLASSIFIER_MODEL_IDENTIFIER)
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/config/text/heuristic_filter_english_pipeline.yaml
+```yaml
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+defaults:
+  - _self_
+  - override hydra/job_logging: none
+  - override hydra/hydra_logging: none
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+documentation: |
+  NeMo Curator Pipeline English Heuristic Filter Configuration File
+  #################################################################
+  This configuration file can be used to build a NeMo Curator pipeline that filters English text.
+  This example reads the input files, runs the heuristic filters, and saves the results.
+
+  The filters below define a chain of heuristic filters to be applied to each document in a corpus.
+  This particular cascade of filters is intended to filter English language data.
+  The filter listed at the top will be applied first, and the following filters will be applied in
+  the order they appear in this file. Each filter can be removed and re-ordered as desired.
+
+  To customize your own pipeline, you can add or remove stages from the stages list,
+  where _target_ is the stage class and includes all the parameters for the stage.
+
+input_path: ???
+output_path: ???
+text_field: text
+
+stages:
+  - _target_: nemo_curator.stages.text.io.reader.JsonlReader
+    file_paths: ${input_path}
+    files_per_partition: null
+    blocksize: null
+    fields: null
+
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.NonAlphaNumericFilter
+      max_non_alpha_numeric_to_text_ratio: 0.25
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.SymbolsToWordsFilter
+      max_symbol_to_word_ratio: 0.1
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.NumbersFilter
+      max_number_to_text_ratio: 0.15
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.UrlsFilter
+      max_url_to_text_ratio: 0.2
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.WhiteSpaceFilter
+      max_white_space_ratio: 0.25
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.ParenthesesFilter
+      max_parentheses_ratio: 0.1
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.BoilerPlateStringFilter
+      remove_if_at_top_or_bottom: True
+      max_boilerplate_string_ratio: 0.4
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatedLinesFilter
+      max_repeated_line_fraction: 0.7
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatedParagraphsFilter
+      max_repeated_paragraphs_ratio: 0.7
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatedLinesByCharFilter
+      max_repeated_lines_char_ratio: 0.8
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatedParagraphsByCharFilter
+      max_repeated_paragraphs_char_ratio: 0.8
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.WordCountFilter
+      min_words: 50
+      max_words: 100000
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.PunctuationFilter
+      max_num_sentences_without_endmark_ratio: 0.85
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.WordsWithoutAlphabetsFilter
+      min_words_with_alphabets: 0.8
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.CommonEnglishWordsFilter
+      min_num_common_words: 2
+      stop_at_false: True
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.MeanWordLengthFilter
+      max_mean_word_length: 10
+      min_mean_word_length: 3
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.LongWordFilter
+      max_word_length: 1000
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.EllipsisFilter
+      max_num_lines_ending_with_ellipsis_ratio: 0.3
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Top N-Gram filters for N-gram 2
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingTopNGramsFilter
+      n: 2
+      max_repeating_ngram_ratio: 0.2
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Top N-Gram filters for N-gram 3
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingTopNGramsFilter
+      n: 3
+      max_repeating_ngram_ratio: 0.18
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Top N-Gram filters for N-gram 4
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingTopNGramsFilter
+      n: 4
+      max_repeating_ngram_ratio: 0.16
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Duplicate N-gram filters for N-gram 5
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingDuplicateNGramsFilter
+      n: 5
+      max_repeating_duplicate_ngram_ratio: 0.15
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Duplicate N-gram filters for N-gram 6
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingDuplicateNGramsFilter
+      n: 6
+      max_repeating_duplicate_ngram_ratio: 0.14
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Duplicate N-gram filters for N-gram 7
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingDuplicateNGramsFilter
+      n: 7
+      max_repeating_duplicate_ngram_ratio: 0.13
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Duplicate N-gram filters for N-gram 8
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingDuplicateNGramsFilter
+      n: 8
+      max_repeating_duplicate_ngram_ratio: 0.12
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Duplicate N-gram filters for N-gram 9
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingDuplicateNGramsFilter
+      n: 9
+      max_repeating_duplicate_ngram_ratio: 0.11
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      # Duplicate N-gram filters for N-gram 10
+      _target_: nemo_curator.stages.text.filters.heuristic.repetition.RepeatingDuplicateNGramsFilter
+      n: 10
+      max_repeating_duplicate_ngram_ratio: 0.10
+    text_field: ${text_field}
+    score_field: null
+  - _target_: nemo_curator.stages.text.filters.score_filter.ScoreFilter
+    filter_obj:
+      _target_: nemo_curator.stages.text.filters.heuristic.string.BulletsFilter
+      max_bullet_lines_ratio: 0.9
+    text_field: ${text_field}
+    score_field: null
+
+  - _target_: nemo_curator.stages.text.io.writer.JsonlWriter
+    path: ${output_path}
+    fields: null
+
+```
+
+File: /Users/mromeijn/src/Curator/tutorials/text/distributed-data-classification/README.md
+```md
+# Distributed Data Classification
+
+The following is a set of Jupyter notebook tutorials which demonstrate how to use various text classification models supported by NeMo Curator.
+The goal of using these classifiers is to help with data annotation, which is useful in data blending for foundation model training.
+
+Each of these classifiers are available on Hugging Face and can be run independently with the [Transformers](https://github.com/huggingface/transformers) library.
+By running them with NeMo Curator, the classifiers are accelerated using a heterogenous pipeline setup where tokenization is run across CPUs and model inference is run across GPUs.
+Each of the Jupyter notebooks in this directory demonstrate how to run the classifiers on text data and are easily scalable to large amounts of data.
+
+Before running any of these notebooks, see this [Installation Guide](https://docs.nvidia.com/nemo/curator/latest/admin/installation.html#admin-installation) page for instructions on how to install NeMo Curator. Be sure to use an installation method which includes GPU dependencies.
+
+For more information about the classifiers, refer to our [Distributed Data Classification](https://docs.nvidia.com/nemo/curator/latest/curate-text/process-data/quality-assessment/distributed-classifier.html) documentation page.
+
+## List of Classifiers
+
+<div align="center">
+
+| NeMo Curator Classifier | Description | Hugging Face Page |
+| --- | --- | --- |
+| `AegisClassifier` | Identify and categorize unsafe content per document | [nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0](https://huggingface.co/nvidia/Aegis-AI-Content-Safety-LlamaGuard-Defensive-1.0) and [nvidia/Aegis-AI-Content-Safety-LlamaGuard-Permissive-1.0](https://huggingface.co/nvidia/Aegis-AI-Content-Safety-LlamaGuard-Permissive-1.0) |
+| `ContentTypeClassifier` | Categorize the type-of-speech per document | [nvidia/content-type-classifier-deberta](https://huggingface.co/nvidia/content-type-classifier-deberta) |
+| `DomainClassifier` | Categorize the domain per document | [nvidia/domain-classifier](https://huggingface.co/nvidia/domain-classifier) |
+| `FineWebEduClassifier` | Determine the educational value per document; this model was trained using annotations from Llama 3 70B-Instruct | [HuggingFaceFW/fineweb-edu-classifier](https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier) |
+| `FineWebMixtralEduClassifier` | Determine the educational value per document; this model was trained using annotations from Mixtral 8x22B-Instruct | [nvidia/nemocurator-fineweb-mixtral-edu-classifier](https://huggingface.co/nvidia/nemocurator-fineweb-mixtral-edu-classifier) |
+| `FineWebNemotronEduClassifier` | Determine the educational value per document; this model was trained using annotations from Nemotron-4-340B-Instruct | [nvidia/nemocurator-fineweb-nemotron-4-edu-classifier](https://huggingface.co/nvidia/nemocurator-fineweb-nemotron-4-edu-classifier) |
+| `InstructionDataGuardClassifier` | Identify LLM poisoning attacks per document | [nvidia/instruction-data-guard](https://huggingface.co/nvidia/instruction-data-guard) |
+| `MultilingualDomainClassifier` | Categorize the domain per document; supports classification in 52 languages | [nvidia/multilingual-domain-classifier](https://huggingface.co/nvidia/multilingual-domain-classifier) |
+| `PromptTaskComplexityClassifier` | Classifies text prompts across task types and complexity dimensions | [nvidia/prompt-task-and-complexity-classifier](https://huggingface.co/nvidia/prompt-task-and-complexity-classifier) |
+| `QualityClassifier` | Categorize documents as high, medium, or low quality | [quality-classifier-deberta](https://huggingface.co/nvidia/quality-classifier-deberta) |
+
+</div>
+
+Note that all classifiers support English text classification only, except the `MultilingualDomainClassifier`.
+
+## Bring Your Own Classifier
+
+Advanced users may want to integrate their own Hugging Face classifier(s) into NeMo Curator. Broadly, this requires creating a `CompositeStage` consisting of a CPU-based tokenizer stage and a GPU-based model inference stage. Refer to the [Text Classifiers README](https://github.com/NVIDIA-NeMo/Curator/tree/main/nemo_curator/stages/text/classifiers#text-classifiers) for details about how to do this.
+
+```
+</file_contents>

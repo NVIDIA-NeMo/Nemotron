@@ -1,0 +1,28 @@
+# Quick test config — 10 iterations, smaller sequences
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
+  packed_sequence: true
+  peft: null
+
+dataset:
+  nano3_packed_sft_dir: /path/to/packed/data
+  seq_length: 4096
+  packed_sequence_specs:
+    packed_sequence_size: 4096
+
+train:
+  train_iters: 10
+  global_batch_size: 2
+
+model:
+  seq_length: 4096
+  pipeline_model_parallel_size: 1
+  tensor_model_parallel_size: 4
+  context_parallel_size: 2
+
+checkpoint:
+  save: /nemo_run/sft-model-tiny
+  save_interval: 5
+  pretrained_checkpoint: /path/to/pretrained/checkpoint
+  finetune: true

@@ -1,0 +1,27 @@
+# Starter config for data acquisition + curation with NeMo Curator.
+# Downloads a dataset snapshot from Hugging Face, keeps selected languages,
+# applies lightweight quality filters, then annotates/filter by domain.
+
+language_codes:
+  - EN
+
+domains: []
+text_field: text
+input_glob: ./data/fineweb-edu/**/*.jsonl
+output_dir: ./output/filtered_jsonl
+
+dataset:
+  repo_id: HuggingFaceFW/fineweb-edu
+  repo_type: dataset
+  local_dir: ./data/fineweb-edu
+  allow_patterns:
+    - data/*.jsonl
+
+models:
+  fasttext_langid: ./cache/models/fasttext/lid.176.bin
+  hf_cache_dir: ./cache/huggingface
+
+quality_filters:
+  min_langid_score: 0.3
+  min_words: 50
+  max_words: 5000

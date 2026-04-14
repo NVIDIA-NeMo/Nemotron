@@ -1,0 +1,76 @@
+[step]
+id = "prep/sft_packing"
+name = "SFT Data Packing"
+category = "prep"
+description = """Apply the chat template, tokenize training JSONL, and pack examples into Megatron-Bridge-compatible Parquet shards for SFT."""
+tags = ["prep", "sft", "packing", "parquet", "megatron-bridge"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Chat-format JSONL with messages ready for tokenizer and chat-template application."
+
+[[produces]]
+type = "packed_parquet"
+description = "Packed Parquet shards with input_ids and loss masks for Megatron-Bridge SFT."
+
+[[parameters]]
+name = "tokenizer"
+description = "Tokenizer identifier or path; must match the downstream training model and eval tokenizer."
+default = "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+
+[[parameters]]
+name = "pack_size"
+description = "Maximum packed sequence length in tokens; keep this aligned with downstream seq_length."
+default = 4096
+
+[[parameters]]
+name = "algorithm"
+description = "Packing algorithm used to bin tokenized examples into sequences."
+default = "first_fit_shuffle"
+choices = ["first_fit_decreasing", "first_fit_shuffle", "concatenative"]
+
+[[parameters]]
+name = "chat_template"
+description = "Chat template name or template path applied before tokenization."
+default = "nano3"
+
+[[parameters]]
+name = "num_shards"
+description = "Number of packed Parquet shards to materialize for downstream loading."
+default = 128
+
+[[strategies]]
+when = "The downstream trainer is sft/megatron_bridge or another consumer of packed Parquet"
+then = "Run this converter step before training so the dataset is materialized in packed_parquet format."
+
+[[strategies]]
+when = "The downstream trainer reads JSONL directly, such as AutoModel or HuggingFace Trainer workflows"
+then = "Skip this step and feed training_jsonl directly into training."
+
+[[strategies]]
+when = "You are changing sequence length for training"
+then = "Keep pack_size identical to the downstream training seq_length to avoid wasted padding or incompatible batches."
+
+[[strategies]]
+when = "You are iterating on a very small dataset or sample"
+then = "Reduce num_shards so each shard remains meaningfully sized and split generation stays balanced."
+
+[[errors]]
+name = "tokenizer_mismatch"
+recovery = "Use the same tokenizer and chat template as the downstream model; repack if either changes."
+
+[[errors]]
+name = "seq_length_mismatch"
+recovery = "Match pack_size to the downstream seq_length and packed_sequence_size settings before training."
+
+[[errors]]
+name = "too_many_tiny_shards"
+recovery = "Lower num_shards for small datasets or sampled runs so throughput and split balance remain healthy."
+
+[reference]
+recipe = "src/nemotron/recipes/nano3/stage1_sft/"
+script = "src/nemotron/recipes/nano3/stage1_sft/data_prep.py"
+docs = "src/nemotron/recipes/nano3/stage1_sft/README.md"
+skills = [
+  "skills/nemotron-customize/context/mbridge-sft-full.txt",
+]

@@ -1,0 +1,21 @@
+[step]
+id = "convert/merge_lora"
+name = "Merge LoRA Adapter"
+category = "convert"
+description = "Merge a LoRA adapter into the base model to produce a standalone HuggingFace checkpoint."
+tags = ["conversion", "lora", "peft", "merge"]
+
+[[consumes]]
+type = "checkpoint_lora"
+description = "LoRA adapter weights"
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "Base model in HuggingFace format"
+
+[[produces]]
+type = "checkpoint_hf"
+description = "Merged model checkpoint"
+
+[reference]
+script = "Megatron-Bridge/examples/peft/merge_lora.py"

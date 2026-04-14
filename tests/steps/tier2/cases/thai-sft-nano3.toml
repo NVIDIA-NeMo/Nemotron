@@ -1,0 +1,30 @@
+[case]
+name = "thai-sft-nano3"
+description = "Full sovereign AI pipeline for Thai Nano3 SFT on 2 nodes of 8x H100."
+tags = ["linear", "catalog", "multilingual", "multi-node", "nano3", "sovereign-ai"]
+
+[input]
+request = "Fine-tune Nemotron Nano3 for Thai customer support. We have 2 nodes of 8x H100 on Slurm."
+
+[expected.steps]
+must_include = ["curate/nemo_curator", "translate/nemo_skills", "prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+may_include = []
+must_exclude = ["sft/automodel", "rl/nemo_rl_grpo"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 5, max = 5 }
+must_mention = ["Thai", "Nano3", "packed_parquet", "Slurm"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_curate", "02_translate", "03_prep", "04_sft", "05_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.project.config_assertions]
+"stages/04_sft/config/default.yaml" = ["tensor_model_parallel_size: 4", "context_parallel_size: 2"]
+
+[expected.disclosure]
+must_read = ["STEPS.md", "sft/guide.md"]
+must_not_read = []

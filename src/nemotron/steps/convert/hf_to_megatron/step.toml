@@ -1,0 +1,18 @@
+[step]
+id = "convert/hf_to_megatron"
+name = "HuggingFace → Megatron Conversion"
+category = "convert"
+description = "Convert a HuggingFace safetensors checkpoint to Megatron distributed format."
+tags = ["conversion", "checkpoint", "huggingface", "megatron"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "HuggingFace safetensors checkpoint"
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "Megatron distributed checkpoint"
+
+[reference]
+script = "Megatron-Bridge/examples/conversion/convert_checkpoints.py"
+skills = ["skills/nemotron-customize/context/mbridge-sft-full.txt"]

@@ -1,0 +1,16 @@
+[step]
+id = "synth/data_designer"
+name = "Synthetic Data Generation (Data Designer)"
+category = "synth"
+status = "planned"
+description = "Planned: generate synthetic conversation JSONL with Data Designer for downstream SFT."
+tags = ["planned", "synthetic-data", "data-designer", "jsonl"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Optional seed examples or schema references for synthetic generation."
+required = false
+
+[[produces]]
+type = "synthetic_jsonl"
+description = "Generated conversation JSONL in training-ready chat format."

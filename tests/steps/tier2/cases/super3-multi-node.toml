@@ -1,0 +1,30 @@
+[case]
+name = "super3-multi-node"
+description = "Super3 SFT requires the Megatron-Bridge path plus model-aware parallelism on a multi-node cluster."
+tags = ["catalog", "super3", "multi-node", "parallelism", "megatron-bridge"]
+
+[input]
+request = "Fine-tune Nemotron Super3 on 4 nodes of 8x H100 with Slurm."
+
+[expected.steps]
+must_include = ["prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+may_include = []
+must_exclude = ["sft/automodel", "curate/nemo_curator", "translate/nemo_skills"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 3, max = 3 }
+must_mention = ["Super3", "tp=8", "pp=4"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_prep", "02_sft", "03_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.project.config_assertions]
+"stages/02_sft/config/default.yaml" = ["tensor_model_parallel_size: 8", "pipeline_model_parallel_size: 4"]
+
+[expected.disclosure]
+must_read = ["STEPS.md", "sft/guide.md"]
+must_not_read = []

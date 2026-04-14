@@ -1,0 +1,25 @@
+# Standard NeMo Evaluator starter config for a deployed model
+# Uses completions-style evaluation for standard NLU benchmarks.
+
+output_dir: ./results
+
+deployment:
+  model_id: megatron_model
+  url: http://0.0.0.0:8080/v1/completions/
+  endpoint_type: completions
+  api_key_name: NGC_API_KEY
+
+benchmarks:
+  - mmlu
+  - hellaswag
+  - arc_challenge
+
+params:
+  temperature: 0
+  top_p: 0
+  parallelism: 1
+  request_timeout: 3600
+  limit_samples: null
+  extra:
+    tokenizer: /path/to/checkpoint/tokenizer
+    tokenizer_backend: huggingface

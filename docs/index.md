@@ -138,6 +138,13 @@ nemotron/artifacts.md
 ```
 
 ```{toctree}
+:caption: Customization
+:hidden:
+
+customize/index.md
+```
+
+```{toctree}
 :caption: Nano3 Stages
 :hidden:
 

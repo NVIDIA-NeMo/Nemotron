@@ -1,0 +1,69 @@
+[[packs]]
+id = "sft-megatron-bridge-generate"
+step = "sft/megatron-bridge"
+intent = "generate"
+file = "mbridge-sft-full.txt"
+description = "Generate Megatron-Bridge SFT stage code — recipes, configs, training loop, and packed-sequence guidance."
+
+[[packs]]
+id = "sft-megatron-bridge-tune-performance"
+step = "sft/megatron-bridge"
+intent = "tune-performance"
+file = "mbridge-parallelism-performance.txt"
+description = "Tune Megatron-Bridge parallelism and performance — TP/PP/FSDP, overlap, recomputation, and sequence packing."
+
+[[packs]]
+id = "pretrain-megatron-bridge-generate"
+step = "pretrain/megatron-bridge"
+intent = "generate"
+file = "mbridge-pretrain.txt"
+description = "Generate Megatron-Bridge pretraining stage code — model docs, training loop, configs, and checkpointing patterns."
+
+[[packs]]
+id = "sft-automodel-generate"
+step = "sft/automodel"
+intent = "generate"
+file = "automodel-sft-peft-core.txt"
+description = "Generate AutoModel SFT stage code — dataset, finetune, PEFT, and core launcher patterns."
+
+[[packs]]
+id = "sft-automodel-launch"
+step = "sft/automodel"
+intent = "launch"
+file = "automodel-launcher-executor-modes.txt"
+description = "Choose AutoModel launcher and executor mode — local workstation, NeMo Run, SkyPilot, and Slurm."
+
+[[packs]]
+id = "curate-nemo-curator-acquire"
+step = "curate/nemo-curator"
+intent = "acquire"
+file = "curator-data-acquisition.txt"
+description = "Acquire and load text data with NeMo Curator — Common Crawl, custom sources, and existing datasets."
+
+[[packs]]
+id = "curate-nemo-curator-process"
+step = "curate/nemo-curator"
+intent = "process"
+file = "curator-processing-language-quality.txt"
+description = "Process text data with NeMo Curator — language filtering, quality assessment, and related pipelines."
+
+[[packs]]
+id = "translate-nemo-skills-generate"
+step = "translate/nemo-skills"
+intent = "generate"
+file = "speaker-translation-faith.txt"
+description = "Generate translation stage code — JSONL translation pipeline, faith evaluation, and I/O formats."
+
+[[packs]]
+id = "eval-model-eval-generate"
+step = "eval/model-eval"
+intent = "generate"
+file = "eval-standard-nlu.txt"
+description = "Generate evaluation stage code for standard NLU benchmarks — benchmark catalog, run modes, and parameter patterns."
+
+[[packs]]
+id = "eval-model-eval-deploy"
+step = "eval/model-eval"
+intent = "deploy"
+file = "eval-deploy-formats.txt"
+description = "Configure evaluator deployment targets and model formats — NIM, vLLM, Hugging Face, and Megatron-Bridge inputs."

@@ -1,0 +1,2163 @@
+<file_map>
+/Users/mromeijn/src/Automodel
+├── docs
+│   ├── launcher
+│   │   ├── local-workstation.md *
+│   │   ├── nemo-run.md *
+│   │   ├── overview.md *
+│   │   ├── skypilot.md *
+│   │   └── slurm.md *
+│   ├── about
+│   ├── guides
+│   │   ├── diffusion
+│   │   ├── llm
+│   │   ├── omni
+│   │   └── vlm
+│   └── model-coverage
+│       ├── diffusion
+│       │   ├── black-forest-labs
+│       │   ├── hunyuanvideo-community
+│       │   └── wan-ai
+│       ├── llm
+│       │   ├── allenai
+│       │   ├── baai
+│       │   ├── baichuan-inc
+│       │   ├── bigcode
+│       │   ├── bytedance-seed
+│       │   ├── cohere
+│       │   ├── deepseek-ai
+│       │   ├── eleutherai
+│       │   ├── google
+│       │   ├── ibm
+│       │   ├── inceptionai
+│       │   ├── internlm
+│       │   ├── lgai-exaone
+│       │   ├── meta
+│       │   ├── microsoft
+│       │   ├── minimax
+│       │   ├── mistralai
+│       │   ├── moonshotai
+│       │   ├── nvidia
+│       │   ├── openai
+│       │   ├── openbmb
+│       │   ├── orionstar
+│       │   ├── parasail-ai
+│       │   ├── qwen
+│       │   ├── stabilityai
+│       │   ├── stepfun-ai
+│       │   ├── thudm
+│       │   ├── tiiuae
+│       │   └── upstage
+│       ├── omni
+│       │   ├── microsoft
+│       │   └── qwen
+│       └── vlm
+│           ├── google
+│           ├── huggingface
+│           ├── internlm
+│           ├── llava-hf
+│           ├── meta
+│           ├── mistralai
+│           ├── moonshotai
+│           ├── nvidia
+│           └── qwen
+├── examples
+│   ├── llm_finetune
+│   │   ├── llama3_2
+│   │   │   ├── llama3_2_1b_squad.yaml *
+│   │   │   └── llama3_2_1b_squad_skypilot.yaml *
+│   │   ├── baichuan
+│   │   ├── cohere
+│   │   ├── deepseek_v32
+│   │   ├── devstral
+│   │   ├── falcon
+│   │   ├── gemma
+│   │   ├── glm
+│   │   ├── gpt_oss
+│   │   ├── granite
+│   │   ├── llama3_1
+│   │   ├── llama3_3
+│   │   ├── minimax_m2
+│   │   ├── mistral
+│   │   ├── moonlight
+│   │   ├── nemotron
+│   │   ├── nemotron_flash
+│   │   ├── olmo
+│   │   ├── phi
+│   │   ├── qwen
+│   │   ├── seed
+│   │   ├── starcoder
+│   │   └── stepfun
+│   ├── convergence
+│   │   └── tulu3
+│   │       ├── data
+│   │       ├── eval
+│   │       ├── inference
+│   │       ├── model-verification
+│   │       ├── models
+│   │       │   ├── gpt-oss-20b
+│   │       │   │   └── assets
+│   │       │   ├── moonlight-16b
+│   │       │   │   └── assets
+│   │       │   ├── qwen3-4b
+│   │       │   │   └── assets
+│   │       │   └── qwen3-moe-30b
+│   │       │       ├── assets
+│   │       │       └── experiments
+│   │       └── training
+│   ├── diffusion
+│   │   ├── finetune
+│   │   ├── generate
+│   │   │   └── configs
+│   │   └── pretrain
+│   ├── dllm_generate
+│   ├── dllm_sft
+│   ├── llm_benchmark
+│   │   ├── deepseek
+│   │   ├── glm
+│   │   ├── gpt_oss
+│   │   ├── kimi
+│   │   ├── llama3_3
+│   │   ├── minimax
+│   │   ├── mistral
+│   │   ├── moonlight
+│   │   ├── nemotron
+│   │   ├── qwen
+│   │   └── step
+│   ├── llm_kd
+│   │   └── llama3_2
+│   ├── llm_pretrain
+│   ├── llm_seq_cls
+│   │   └── glue
+│   ├── retrieval
+│   │   ├── bi_encoder
+│   │   │   └── llama_embed_nemotron_8b
+│   │   ├── cross_encoder
+│   │   └── data_utils
+│   ├── vlm_benchmark
+│   │   ├── kimi
+│   │   ├── mistral
+│   │   └── qwen
+│   ├── vlm_finetune
+│   │   ├── gemma3
+│   │   ├── gemma3n
+│   │   ├── gemma4
+│   │   ├── internvl
+│   │   ├── kimi
+│   │   ├── mistral
+│   │   ├── mistral4
+│   │   ├── nemotron
+│   │   ├── phi4
+│   │   ├── qwen2_5
+│   │   ├── qwen3
+│   │   ├── qwen3_5
+│   │   └── qwen3_5_moe
+│   └── vlm_generate
+├── nemo_automodel
+│   ├── components
+│   │   ├── launcher
+│   │   │   ├── nemo_run
+│   │   │   │   ├── config.py * +
+│   │   │   │   └── launcher.py * +
+│   │   │   ├── skypilot
+│   │   │   │   ├── config.py * +
+│   │   │   │   └── launcher.py * +
+│   │   │   ├── base.py * +
+│   │   │   └── interactive.py * +
+│   │   ├── _peft
+│   │   ├── attention
+│   │   ├── checkpoint
+│   │   │   └── _backports
+│   │   ├── config
+│   │   ├── datasets
+│   │   │   ├── diffusion
+│   │   │   ├── dllm
+│   │   │   ├── llm
+│   │   │   │   └── megatron
+│   │   │   └── vlm
+│   │   ├── distributed
+│   │   │   └── pipelining
+│   │   ├── flow_matching
+│   │   │   └── adapters
+│   │   ├── loggers
+│   │   ├── loss
+│   │   │   └── triton
+│   │   ├── models
+│   │   │   ├── baichuan
+│   │   │   ├── common
+│   │   │   ├── deepseek_v3
+│   │   │   ├── deepseek_v32
+│   │   │   ├── gemma4_moe
+│   │   │   ├── glm4_moe
+│   │   │   ├── glm4_moe_lite
+│   │   │   ├── glm_moe_dsa
+│   │   │   ├── gpt_oss
+│   │   │   ├── kimi_k25_vl
+│   │   │   ├── kimivl
+│   │   │   ├── llama
+│   │   │   ├── llama_bidirectional
+│   │   │   ├── minimax_m2
+│   │   │   ├── mistral3
+│   │   │   ├── mistral4
+│   │   │   ├── nemotron_parse
+│   │   │   ├── nemotron_v3
+│   │   │   ├── qwen2
+│   │   │   ├── qwen3_5_moe
+│   │   │   ├── qwen3_moe
+│   │   │   ├── qwen3_next
+│   │   │   ├── qwen3_omni_moe
+│   │   │   ├── qwen3_vl_moe
+│   │   │   └── step3p5
+│   │   ├── moe
+│   │   │   ├── megatron
+│   │   │   └── uccl_ep
+│   │   ├── optim
+│   │   ├── quantization
+│   │   ├── training
+│   │   └── utils
+│   ├── _diffusers
+│   ├── _transformers
+│   │   └── tokenization
+│   ├── autonvtx
+│   ├── cli
+│   ├── recipes
+│   │   ├── diffusion
+│   │   ├── dllm
+│   │   ├── llm
+│   │   ├── retrieval
+│   │   └── vlm
+│   └── shared
+├── .github
+│   ├── actions
+│   │   ├── build-container
+│   │   └── test-template
+│   └── workflows
+│       └── config
+├── docker
+│   └── common
+├── scripts
+├── skills
+│   ├── .claude
+│   │   └── skills
+│   │       ├── developer-guide
+│   │       ├── distributed-training
+│   │       ├── launcher-config
+│   │       ├── model-onboarding
+│   │       ├── parity-testing
+│   │       └── recipe-development
+│   ├── developer-guide
+│   ├── distributed-training
+│   ├── launcher-config
+│   ├── model-onboarding
+│   ├── parity-testing
+│   └── recipe-development
+├── tests
+│   ├── ci_tests
+│   │   ├── configs
+│   │   │   ├── llm_benchmark
+│   │   │   ├── llm_finetune
+│   │   │   ├── vlm_benchmark
+│   │   │   └── vlm_finetune
+│   │   ├── golden_values
+│   │   │   ├── llm_finetune
+│   │   │   │   ├── baichuan
+│   │   │   │   ├── falcon
+│   │   │   │   ├── gemma
+│   │   │   │   ├── glm
+│   │   │   │   ├── gpt_oss
+│   │   │   │   ├── granite
+│   │   │   │   ├── llama3_1
+│   │   │   │   ├── llama3_2
+│   │   │   │   ├── mistral
+│   │   │   │   ├── moonlight
+│   │   │   │   ├── nemotron
+│   │   │   │   ├── nemotron_flash
+│   │   │   │   ├── olmo
+│   │   │   │   ├── phi
+│   │   │   │   ├── qwen
+│   │   │   │   ├── seed
+│   │   │   │   └── starcoder
+│   │   │   └── vlm_finetune
+│   │   │       ├── gemma3
+│   │   │       ├── gemma3n
+│   │   │       ├── internvl
+│   │   │       ├── mistral
+│   │   │       ├── nemotron
+│   │   │       ├── qwen2_5
+│   │   │       ├── qwen3
+│   │   │       └── qwen3_5_moe
+│   │   ├── scripts
+│   │   └── utils
+│   ├── functional_tests
+│   │   ├── checkpoint
+│   │   ├── checkpoint_robustness
+│   │   ├── context_parallel
+│   │   ├── data
+│   │   │   └── llm
+│   │   ├── datasets
+│   │   │   └── llm
+│   │   ├── hf_dcp
+│   │   ├── hf_peft
+│   │   ├── hf_transformer
+│   │   ├── hf_transformer_finetune
+│   │   ├── hf_transformer_llm
+│   │   ├── hf_transformer_vlm
+│   │   ├── llm_pretrain_and_kd
+│   │   │   ├── customizer_retrieval
+│   │   │   ├── llm_seq_cls
+│   │   │   └── loss
+│   │   ├── retrieval
+│   │   └── training
+│   ├── unit_tests
+│   │   ├── _cli
+│   │   ├── _diffusers
+│   │   ├── _peft
+│   │   ├── _transformers
+│   │   ├── attention
+│   │   ├── checkpoint
+│   │   ├── components
+│   │   │   └── training
+│   │   ├── config
+│   │   ├── datasets
+│   │   │   ├── diffusion
+│   │   │   ├── dllm
+│   │   │   ├── llm
+│   │   │   └── vlm
+│   │   ├── diffusion_processors
+│   │   ├── distributed
+│   │   │   └── pipelining
+│   │   ├── flow_matching
+│   │   │   └── adapters
+│   │   ├── launcher
+│   │   ├── loggers
+│   │   ├── loss
+│   │   ├── models
+│   │   │   ├── baichuan
+│   │   │   ├── bi_encoder
+│   │   │   ├── common
+│   │   │   ├── deepseek_v3
+│   │   │   ├── deepseek_v32
+│   │   │   ├── gemma4
+│   │   │   ├── glm4_moe
+│   │   │   ├── glm4_moe_lite
+│   │   │   ├── glm_moe_dsa
+│   │   │   ├── gpt_oss
+│   │   │   ├── kimi_k25_vl
+│   │   │   ├── kimivl
+│   │   │   ├── llama
+│   │   │   ├── minimax_m2
+│   │   │   ├── mistral3
+│   │   │   ├── mistral4
+│   │   │   ├── nemotron_parse
+│   │   │   ├── nemotron_v3
+│   │   │   ├── qwen2
+│   │   │   ├── qwen3_5
+│   │   │   ├── qwen3_5_moe
+│   │   │   ├── qwen3_moe
+│   │   │   ├── qwen3_next
+│   │   │   ├── qwen3_omni_moe
+│   │   │   ├── qwen3_vl_moe
+│   │   │   └── step3p5
+│   │   ├── moe
+│   │   ├── optim
+│   │   ├── quantization
+│   │   ├── recipes
+│   │   │   ├── dllm
+│   │   │   └── llm
+│   │   ├── shared
+│   │   ├── tools
+│   │   ├── training
+│   │   └── utils
+│   └── utils
+├── tools
+│   └── diffusion
+│       ├── data
+│       └── processors
+└── tutorials
+    └── nemotron-parse
+
+
+(* denotes selected files)
+(+ denotes code-map available)
+Config: directory-only view; selected files shown.
+</file_map>
+<file_contents>
+File: /Users/mromeijn/src/Automodel/nemo_automodel/components/launcher/base.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+
+class Launcher(ABC):
+    """Base class for all job launchers (interactive, SLURM, SkyPilot, nemo-run)."""
+
+    @abstractmethod
+    def launch(
+        self,
+        config: Dict[str, Any],
+        config_path: Path,
+        recipe_target: str,
+        launcher_config: Any,
+        extra_args: Optional[List[str]] = None,
+    ) -> int:
+        """Launch a recipe job.
+
+        Args:
+            config: Parsed YAML config dict (without the launcher section).
+            config_path: Resolved path to the original YAML file.
+            recipe_target: Dotted import path of the recipe class.
+            launcher_config: Launcher-specific configuration (dict, int, or None).
+            extra_args: Additional CLI overrides forwarded to the recipe.
+
+        Returns:
+            Process exit code (0 = success).
+        """
+        ...
+
+```
+
+File: /Users/mromeijn/src/Automodel/nemo_automodel/components/launcher/interactive.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import importlib
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from nemo_automodel.components.launcher.base import Launcher
+
+logger = logging.getLogger(__name__)
+
+
+def _get_repo_root() -> Path:
+    """Return the repository root.  If CWD looks like an editable checkout,
+    prepend it to ``PYTHONPATH`` so the local source takes precedence."""
+    cwd = Path.cwd()
+    if (cwd / "nemo_automodel/components").exists() and (cwd / "examples/").exists():
+        new_pp = str(cwd)
+        if "PYTHONPATH" in os.environ:
+            new_pp += ":" + os.environ["PYTHONPATH"]
+        os.environ["PYTHONPATH"] = new_pp
+        logger.info("Running job using source from: %s", cwd)
+        return cwd
+    return Path(__file__).parents[3]
+
+
+def resolve_recipe_cls(target_str: str):
+    """Import and return the recipe class from a dotted path.
+
+    "  pip install nemo-automodel          # CPU/basic\n"
+    "  pip install nemo-automodel[all]     # with CUDA & all extras\n\n"
+    """
+    module_path, cls_name = target_str.rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    return getattr(module, cls_name)
+
+
+def _recipe_module_path(recipe_target: str, repo_root: Path) -> Path:
+    """Convert a dotted recipe target into an absolute filesystem path."""
+    module_path = recipe_target.rsplit(".", 1)[0]
+    relative = module_path.replace(".", "/") + ".py"
+    return repo_root / relative
+
+
+_INSTALL_MSG = (
+    "Local/interactive execution requires PyTorch and the full nemo_automodel package.\n"
+    "It looks like you have the lightweight CLI-only install (automodel[cli]).\n\n"
+    "To run jobs locally, install the full package:\n"
+    "  pip install nemo_automodel          # CPU/basic\n"
+    "  pip install nemo_automodel[all]     # with CUDA & all extras\n\n"
+    "For SLURM clusters, use sbatch with the reference slurm.sub script.\n"
+    "For SkyPilot or NeMo-Run, add a skypilot: or nemo_run: section to your YAML.\n\n"
+    "See: https://github.com/NVIDIA/NeMo-Automodel#readme"
+)
+
+
+class InteractiveLauncher(Launcher):
+    """Launch a recipe locally on the current node using torchrun or in-process."""
+
+    @staticmethod
+    def _is_torchrun_worker() -> bool:
+        """Return True when this process was already spawned by torchrun.
+
+        torchrun (``torch.distributed.run``) sets both ``LOCAL_RANK`` and
+        ``TORCHELASTIC_RUN_ID`` in the environment of every worker it spawns.
+        We check for both to avoid false positives from environments (e.g.
+        SLURM) that may set ``LOCAL_RANK`` without an active torchrun session.
+
+        When the user launches the CLI via
+        ``torchrun --nproc-per-node N -m nemo_automodel.cli.app config.yaml``,
+        each worker must run the recipe in-process instead of re-launching torchrun.
+        """
+        return "LOCAL_RANK" in os.environ and "TORCHELASTIC_RUN_ID" in os.environ
+
+    def _run_recipe_in_process(self, recipe_target: str, config: Dict[str, Any]) -> int:
+        """Instantiate and run a recipe in the current process."""
+        recipe_cls = resolve_recipe_cls(recipe_target)
+        recipe = recipe_cls(config)
+        recipe.setup()
+        return recipe.run_train_validation_loop()
+
+    def launch(
+        self,
+        config: Dict[str, Any],
+        config_path: Path,
+        recipe_target: str,
+        launcher_config: Any = None,
+        extra_args: Optional[List[str]] = None,
+    ) -> int:
+        try:
+            from torch.distributed.run import determine_local_world_size, get_args_parser
+            from torch.distributed.run import run as thrun
+        except ImportError:
+            logger.error(_INSTALL_MSG)
+            return 1
+
+        # Already inside a torchrun worker (e.g. user ran
+        # ``torchrun --nproc-per-node N -m nemo_automodel.cli.app config.yaml``).
+        # Run the recipe directly; do NOT re-launch torchrun.
+        if self._is_torchrun_worker():
+            logger.info(
+                "Detected existing torchrun environment (LOCAL_RANK=%s); running recipe in-process.",
+                os.environ["LOCAL_RANK"],
+            )
+            return self._run_recipe_in_process(recipe_target, config)
+
+        nproc_per_node: Optional[int] = launcher_config
+        repo_root = _get_repo_root()
+        script_path = _recipe_module_path(recipe_target, repo_root)
+
+        num_devices = determine_local_world_size(nproc_per_node="gpu")
+        assert num_devices > 0, "Expected num-devices to be > 0"
+
+        if nproc_per_node == 1 or num_devices == 1:
+            logger.info("Launching job locally on a single device")
+            return self._run_recipe_in_process(recipe_target, config)
+        else:
+            effective_nproc = nproc_per_node if nproc_per_node is not None else num_devices
+            logger.info("Launching job locally on %d devices", effective_nproc)
+
+            torchrun_parser = get_args_parser()
+            torchrun_args, _ = torchrun_parser.parse_known_args()
+            torchrun_args.training_script = str(script_path)
+            torchrun_args.training_script_args = ["-c", str(config_path)]
+            if extra_args:
+                torchrun_args.training_script_args.extend(extra_args)
+            torchrun_args.nproc_per_node = effective_nproc
+            return thrun(torchrun_args)
+
+```
+
+File: /Users/mromeijn/src/Automodel/nemo_automodel/components/launcher/nemo_run/config.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+
+# Default path to user-defined executor definitions.
+# Respects the NEMORUN_HOME env var used by nemo-run itself (defaults to ~/.nemo_run).
+_NEMORUN_HOME = os.environ.get("NEMORUN_HOME", os.path.join(os.path.expanduser("~"), ".nemo_run"))
+DEFAULT_EXECUTORS_FILE = os.path.join(_NEMORUN_HOME, "executors.py")
+
+# Keys that belong to NemoRunConfig itself (not executor overrides).
+_LAUNCHER_KEYS = frozenset(
+    {
+        "executor",
+        "job_name",
+        "detach",
+        "tail_logs",
+        "executors_file",
+        "job_dir",
+        "overrides",
+    }
+)
+
+
+@dataclass
+class NemoRunConfig:
+    """Configuration for the NeMo-Run launcher backend.
+
+    The ``executor`` field selects a named executor from
+    ``$NEMORUN_HOME/executors.py``, or ``"local"`` for local execution.
+
+    Any key not recognised as a launcher setting is collected into
+    ``overrides`` and applied directly to the executor via ``setattr``.
+    This means any executor attribute (``nodes``, ``partition``,
+    ``container_image``, ``time``, ``env_vars``, etc.) can be overridden
+    from YAML without changes to this config class.
+    """
+
+    # Executor selection: name from EXECUTOR_MAP or "local"
+    executor: str = "local"
+
+    # Job metadata
+    job_name: str = ""
+
+    # Experiment behaviour
+    detach: bool = True
+    tail_logs: bool = False
+
+    # Path to executor definitions file
+    executors_file: str = field(default_factory=lambda: DEFAULT_EXECUTORS_FILE)
+
+    # Local directory for job artifacts (config snapshot, logs)
+    job_dir: str = ""
+
+    # Arbitrary executor attribute overrides (e.g. nodes, partition,
+    # container_image, time, env_vars).  Populated automatically from
+    # unrecognised YAML keys by ``from_dict``.
+    overrides: dict = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "NemoRunConfig":
+        """Build from a raw YAML dict, splitting launcher keys from executor overrides."""
+        launcher_kwargs = {}
+        overrides = {}
+        for k, v in d.items():
+            if k in _LAUNCHER_KEYS:
+                launcher_kwargs[k] = v
+            else:
+                overrides[k] = v
+        launcher_kwargs.setdefault("overrides", {}).update(overrides)
+        return cls(**launcher_kwargs)
+
+```
+
+File: /Users/mromeijn/src/Automodel/nemo_automodel/components/launcher/nemo_run/launcher.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import logging
+import os
+import sys
+import time as _time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
+
+from nemo_automodel.components.launcher.base import Launcher
+from nemo_automodel.components.launcher.nemo_run.config import NemoRunConfig
+from nemo_automodel.components.launcher.nemo_run.utils import (
+    apply_overrides,
+    load_executor_from_file,
+    submit_nemo_run_job,
+)
+
+logger = logging.getLogger(__name__)
+
+# Config filename and its path inside the container (/nemo_run/code/).
+_CONFIG_FILENAME = "automodel_config.yaml"
+_REMOTE_CONFIG_PATH = f"/nemo_run/code/{_CONFIG_FILENAME}"
+
+
+class NemoRunLauncher(Launcher):
+    """Launch a recipe via NeMo-Run's executor API.
+
+    Supports loading pre-configured executors from ``$NEMORUN_HOME/executors.py``
+    (or a custom path) and submitting jobs as ``nemo_run.Script`` objects.
+    Works with any NeMo-Run executor backend (Slurm, Kubernetes, Docker, local).
+
+    Uses NeMo-Run's native ``Torchrun`` launcher so that distributed training
+    arguments (rendezvous, node rank, nproc-per-node) are managed automatically.
+    The training config YAML is packaged via ``PatternPackager`` so it is
+    available at ``/nemo_run/code/automodel_config.yaml`` inside the container.
+    """
+
+    def _resolve_executor(self, nr_config: NemoRunConfig) -> Any:
+        """Load a named executor or build a local one."""
+        try:
+            import nemo_run as run
+        except ImportError:
+            logger.error("nemo-run is not installed. Install with: pip install nemo-run")
+            sys.exit(1)
+
+        if nr_config.executor == "local":
+            executor = run.LocalExecutor()
+            apply_overrides(executor, nr_config.overrides)
+            return executor
+
+        # Named executor from executors file
+        executor = load_executor_from_file(nr_config.executor, nr_config.executors_file)
+        apply_overrides(executor, nr_config.overrides)
+        return executor
+
+    @staticmethod
+    def _configure_torchrun(executor: Any, devices: int) -> None:
+        """Enable the native NeMo-Run Torchrun launcher on *executor*.
+
+        Sets ``executor.launcher = "torchrun"`` and
+        ``torchrun_nproc_per_node`` so NeMo-Run generates the correct
+        ``torchrun --nproc-per-node=<N>`` invocation in the sbatch script.
+        """
+        executor.launcher = "torchrun"
+        if hasattr(executor, "torchrun_nproc_per_node"):
+            executor.torchrun_nproc_per_node = devices
+
+    @staticmethod
+    def _setup_packager(executor: Any, config_path: str) -> None:
+        """Configure a ``PatternPackager`` that ships the config YAML.
+
+        The packager tars the config file and NeMo-Run extracts it into
+        ``{job_dir}/code/``, which is mounted at ``/nemo_run/code/`` inside
+        the container.
+        """
+        try:
+            import nemo_run as run
+        except ImportError:
+            return
+
+        config_dir = os.path.dirname(config_path)
+        executor.packager = run.PatternPackager(
+            include_pattern=config_path,
+            relative_path=config_dir,
+        )
+
+    def launch(
+        self,
+        config: Dict[str, Any],
+        config_path: Path,
+        recipe_target: str,
+        launcher_config: Dict[str, Any],
+        extra_args: Optional[List[str]] = None,
+    ) -> int:
+        try:
+            import nemo_run as run
+        except ImportError:
+            logger.error("nemo-run is not installed. Install with: pip install nemo-run")
+            sys.exit(1)
+
+        nr_config = NemoRunConfig.from_dict(launcher_config)
+        executor = self._resolve_executor(nr_config)
+
+        # Determine devices (GPUs per node) via the executor's standard
+        # nproc_per_node() method (defined on the base Executor class and
+        # implemented by every backend).
+        try:
+            devices = executor.nproc_per_node()
+        except (NotImplementedError, AttributeError):
+            devices = 1
+
+        # Enable native Torchrun launcher (must be set *before* experiment.run
+        # because NeMo-Run reads it during the packaging phase).
+        self._configure_torchrun(executor, devices)
+
+        # -- Write the training config for both local record and packaging. --
+        job_dir = os.path.join(
+            nr_config.job_dir or os.path.join(os.getcwd(), "nemo_run_jobs"),
+            str(int(_time.time())),
+        )
+        os.makedirs(job_dir, exist_ok=True)
+        config_yaml = yaml.dump(config, default_flow_style=False, sort_keys=False)
+
+        # Local record.
+        local_config_path = os.path.join(job_dir, _CONFIG_FILENAME)
+        with open(local_config_path, "w") as fp:
+            fp.write(config_yaml)
+        logger.info("NeMo-Run job artifacts in: %s", job_dir)
+
+        # Set up PatternPackager so the config is shipped to the remote.
+        self._setup_packager(executor, local_config_path)
+
+        # Build the Script: use ``python -m <module>`` so the recipe is resolved
+        # from the installed package, not a relative file path.
+        module_path = recipe_target.rsplit(".", 1)[0]
+        args = ["-c", _REMOTE_CONFIG_PATH]
+        if extra_args:
+            args.extend(extra_args)
+
+        script = run.Script(
+            path=module_path,
+            m=True,
+            entrypoint="python",
+            args=args,
+        )
+        job_name = nr_config.job_name or f"{recipe_target.rsplit('.', 1)[-1]}"
+
+        return submit_nemo_run_job(
+            script=script,
+            executor=executor,
+            job_name=job_name,
+            detach=nr_config.detach,
+            tail_logs=nr_config.tail_logs,
+        )
+
+```
+
+File: /Users/mromeijn/src/Automodel/nemo_automodel/components/launcher/skypilot/config.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+
+SUPPORTED_CLOUDS = ("aws", "gcp", "azure", "lambda", "kubernetes")
+
+
+@dataclass
+class SkyPilotConfig:
+    # Required: cloud provider
+    cloud: str = field(metadata=dict(help=f"Cloud provider. One of: {SUPPORTED_CLOUDS}"))
+
+    # Compute resources
+    accelerators: str = field(default="T4:1", metadata=dict(help="GPU type and count per node, e.g. 'T4:1', 'A100:8'"))
+    num_nodes: int = field(default=1, metadata=dict(help="Number of nodes for distributed training"))
+    use_spot: bool = field(default=True, metadata=dict(help="Use spot/preemptible instances for cost savings"))
+    disk_size: int = field(default=100, metadata=dict(help="Disk size in GB"))
+    instance_type: str | None = field(
+        default=None, metadata=dict(help="Specific cloud instance type; auto-selected if None")
+    )
+
+    # Cloud location
+    region: str | None = field(default=None, metadata=dict(help="Cloud region"))
+    zone: str | None = field(default=None, metadata=dict(help="Availability zone within the region"))
+
+    # Job identity
+    job_name: str = field(default="", metadata=dict(help="Job and SkyPilot cluster name"))
+
+    # Remote environment
+    setup: str = field(default="", metadata=dict(help="Shell commands run on the remote VM before training starts"))
+    hf_home: str = field(
+        default="~/.cache/huggingface",
+        metadata=dict(help="HuggingFace cache directory on the remote VM"),
+    )
+
+    # Credentials (sourced from env by default, never hard-coded)
+    hf_token: str = field(
+        default_factory=lambda: os.environ.get("HF_TOKEN", ""),
+        metadata=dict(help="HuggingFace token for gated model access"),
+    )
+    wandb_key: str = field(
+        default_factory=lambda: os.environ.get("WANDB_API_KEY", ""),
+        metadata=dict(help="Weights & Biases API key"),
+    )
+    env_vars: dict[str, str] = field(
+        default_factory=dict,
+        metadata=dict(help="Additional environment variables to set on the remote VM"),
+    )
+
+    # Training command (set programmatically by the launcher, not exposed in YAML)
+    command: str = field(default="", metadata=dict(help="Training command executed on the remote VM"))
+
+    def __post_init__(self) -> None:
+        if self.cloud.lower() not in SUPPORTED_CLOUDS:
+            raise ValueError(f"'cloud' must be one of {SUPPORTED_CLOUDS}, got: {self.cloud!r}")
+        if self.num_nodes < 1:
+            raise ValueError(f"'num_nodes' must be >= 1, got: {self.num_nodes}")
+        if self.disk_size < 1:
+            raise ValueError(f"'disk_size' must be >= 1 GB, got: {self.disk_size}")
+
+```
+
+File: /Users/mromeijn/src/Automodel/nemo_automodel/components/launcher/skypilot/launcher.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import logging
+import os
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
+
+from nemo_automodel.components.launcher.base import Launcher
+from nemo_automodel.components.launcher.skypilot.config import SkyPilotConfig
+from nemo_automodel.components.launcher.skypilot.utils import REMOTE_CONFIG_PATH
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_gpus_per_node(accelerators: str) -> int:
+    """Extract GPU count from an accelerator string like ``'A100:8'``.
+
+    Returns 1 when the string cannot be parsed.
+    """
+    parts = accelerators.split(":")
+    if len(parts) == 2:
+        try:
+            return int(parts[1])
+        except ValueError:
+            pass
+    return 1
+
+
+def _recipe_module_path(recipe_target: str, repo_root: str) -> str:
+    module_path = recipe_target.rsplit(".", 1)[0]
+    return os.path.join(repo_root, module_path.replace(".", "/") + ".py")
+
+
+class SkyPilotLauncher(Launcher):
+    """Launch a recipe job on a cloud VM via SkyPilot."""
+
+    def _build_command(
+        self,
+        recipe_target: str,
+        job_conf_path: str,
+        gpus_per_node: int,
+        num_nodes: int,
+        extra_args: Optional[List[str]] = None,
+    ) -> str:
+        repo_root = "~/sky_workdir"
+        script_path = _recipe_module_path(recipe_target, repo_root)
+
+        parts = [
+            f"PYTHONPATH={repo_root}:$PYTHONPATH",
+            "torchrun",
+            f"--nproc_per_node={gpus_per_node}",
+        ]
+
+        if num_nodes > 1:
+            parts += [
+                "--nnodes=$SKYPILOT_NUM_NODES",
+                "--node_rank=$SKYPILOT_NODE_RANK",
+                "--rdzv_backend=c10d",
+                "--master_addr=$(echo $SKYPILOT_NODE_IPS | head -n1)",
+                "--master_port=12375",
+            ]
+
+        parts += [script_path, "-c", job_conf_path]
+
+        if extra_args:
+            parts.extend(extra_args)
+
+        return " ".join(parts)
+
+    def launch(
+        self,
+        config: Dict[str, Any],
+        config_path: Path,
+        recipe_target: str,
+        launcher_config: Dict[str, Any],
+        extra_args: Optional[List[str]] = None,
+    ) -> int:
+        from nemo_automodel.components.launcher.skypilot.utils import submit_skypilot_job
+
+        skypilot_cfg = dict(launcher_config)
+
+        job_dir = os.path.join(
+            skypilot_cfg.pop("job_dir", os.path.join(os.getcwd(), "skypilot_jobs")),
+            str(int(time.time())),
+        )
+        os.makedirs(job_dir, exist_ok=True)
+
+        # Write the training config (without skypilot section) for upload.
+        job_conf_path = os.path.join(job_dir, "job_config.yaml")
+        with open(job_conf_path, "w") as fp:
+            yaml.dump(config, fp, default_flow_style=False, sort_keys=False)
+        logger.info("SkyPilot job artifacts in: %s", job_dir)
+
+        accelerators = skypilot_cfg.get("accelerators", "T4:1")
+        gpus_per_node = skypilot_cfg.pop("gpus_per_node", None) or _parse_gpus_per_node(accelerators)
+        num_nodes = skypilot_cfg.get("num_nodes", 1)
+
+        command = self._build_command(
+            recipe_target,
+            REMOTE_CONFIG_PATH,
+            gpus_per_node,
+            num_nodes,
+            extra_args=extra_args,
+        )
+
+        job_name = skypilot_cfg.pop("job_name", "") or f"{recipe_target.rsplit('.', 1)[-1]}"
+
+        sky_config = SkyPilotConfig(
+            command=command,
+            job_name=job_name,
+            **{k: v for k, v in skypilot_cfg.items() if k in SkyPilotConfig.__dataclass_fields__},
+        )
+
+        return submit_skypilot_job(sky_config, job_dir)
+
+```
+
+File: /Users/mromeijn/src/Automodel/docs/launcher/overview.md
+```md
+# Job Launchers
+
+NeMo AutoModel provides several ways to launch training. The right choice depends on your hardware and environment.
+
+## Which Launcher Should I Use?
+
+| Launcher | Best for | GPUs | Guide |
+|---|---|---|---|
+| **Local Workstation** | Getting started, debugging, single-node training | 1-8 on one machine | [Local Workstation](./local-workstation.md) |
+| **Slurm** | Multi-node batch jobs on HPC clusters | 8+ across nodes | [Slurm](./slurm.md) |
+| **NeMo-Run** | Managed execution on Slurm, Kubernetes, Docker, local | 1+ | [NeMo-Run](./nemo-run.md) |
+| **SkyPilot** | Cloud training (AWS, GCP, Azure) with spot pricing | Any | [SkyPilot](./skypilot.md) |
+
+### I have 1-2 GPUs on my workstation
+
+Use the **interactive** launcher. No scheduler or cluster software needed:
+
+```bash
+automodel examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+See the [Local Workstation](./local-workstation.md) guide.
+
+### I have access to a Slurm cluster
+
+Add a `slurm:` section to your YAML config and submit with the same `automodel` command. The CLI generates the `torchrun` invocation and calls `sbatch` for you:
+
+```bash
+automodel config_with_slurm.yaml
+```
+
+See the [Slurm](./slurm.md) guide.
+
+### I want managed job submission (Slurm, Kubernetes, Docker)
+
+Add a `nemo_run:` section to your YAML config. NeMo-Run loads a pre-configured executor for your compute target and submits the job:
+
+```bash
+automodel config_with_nemo_run.yaml
+```
+
+See the [NeMo-Run](./nemo-run.md) guide.
+
+### I want to train on the cloud
+
+Add a `skypilot:` section to your YAML config. SkyPilot provisions VMs on any major cloud and handles spot-instance preemption automatically:
+
+```bash
+automodel config_with_skypilot.yaml
+```
+
+See the [SkyPilot](./skypilot.md) guide.
+
+## All Launchers Use the Same Config
+
+Every launcher shares the same YAML recipe format. The only difference is an optional launcher section (`slurm:`, `nemo_run:`, or `skypilot:`) that tells the CLI where to run. Without a launcher section, training runs interactively on the current machine.
+
+```
+
+File: /Users/mromeijn/src/Automodel/docs/launcher/local-workstation.md
+```md
+# Run on Your Local Workstation
+
+Use this guide for local, single-node workflows on a workstation or an interactive Slurm allocation. For setup details, refer to our [Installation Guide](../guides/installation.md).
+For batch multi-node jobs, see the [Slurm](./slurm.md) or [SkyPilot](./skypilot.md) guides.
+
+NeMo AutoModel uses recipes to run end-to-end workflows. If you're new to recipes, see the [Repository Structure](../repository-structure.md) guide.
+
+## Quick Start: Choose Your Job Launch Option
+
+- **CLI (recommended)**
+  ```bash
+  automodel examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+  ```
+
+- **Direct recipe script**
+  - Single GPU
+    ```bash
+    python nemo_automodel/recipes/llm/train_ft.py -c examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+    ```
+  - Multi-GPU (single node)
+    ```bash
+    torchrun --nproc-per-node=2 nemo_automodel/recipes/llm/train_ft.py -c examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+    ```
+
+## Run with AutoModel CLI (Single Node)
+
+The AutoModel CLI is the preferred method for most users. It offers a unified interface to launch training scaling from a local workstation (this guide) to large clusters (see our [cluster guide](./slurm.md)).
+
+### Basic Usage
+
+The CLI follows this format:
+```bash
+automodel [--nproc-per-node N] <config.yaml> [--key.subkey=override ...]
+```
+
+A short alias `am` is also available. Both commands also work with `uv run` (e.g., `uv run automodel <config.yaml>`).
+
+Where:
+- `<config.yaml>`: Path to your YAML configuration file (must contain a `recipe._target_` key)
+- `--nproc-per-node`: Optional override for the number of GPUs to use
+
+The recipe class is specified inside the YAML via the `recipe._target_` key:
+```yaml
+recipe:
+  _target_: nemo_automodel.recipes.llm.train_ft.TrainFinetuneRecipeForNextTokenPrediction
+```
+
+### Train on a Single GPU
+
+For simple fine-tuning on a single GPU:
+
+```bash
+automodel examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+### Train on Multiple GPUs (Single Node)
+
+For interactive single-node jobs, the CLI automatically detects the number of available GPUs and
+uses `torchrun` for multi-GPU training. You can manually specify the number of GPUs using the `--nproc-per-node` option:
+
+```bash
+automodel --nproc-per-node 2 examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+If you don't specify `--nproc-per-node`, it will use all available GPUs on your system.
+
+Looking for Slurm or cloud training? See [Slurm](./slurm.md) or [SkyPilot](./skypilot.md).
+
+## Run with uv (Development Mode)
+
+When you need more control over the environment or are actively developing with the codebase, you can use `uv` to run training scripts directly. This approach gives you direct access to the underlying Python scripts and is ideal for debugging or customization.
+
+### Train on a Single GPU
+
+```bash
+uv run nemo_automodel/recipes/llm/train_ft.py -c examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+### Train on Multiple GPUs with Torchrun (Single Node)
+
+For multi-GPU single-node training, use `torchrun` directly:
+
+```bash
+uv run torchrun --nproc-per-node=2 nemo_automodel/recipes/llm/train_ft.py -c examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+### Why Use uv?
+
+uv provides several advantages for development and experimentation:
+
+- **Automatic environment management**: uv automatically creates and manages virtual environments, ensuring consistent dependencies without manual setup.
+- **Lock file synchronization**: Keeps your local environment perfectly synchronized with the project's `uv.lock` file.
+- **No installation required**: Run scripts directly from the repository without installing packages system-wide.
+- **Development flexibility**: Direct access to Python scripts for debugging, profiling, and customization.
+- **Dependency isolation**: Each project gets its own isolated environment, preventing conflicts.
+
+## Run with Torchrun
+
+If you have NeMo AutoModel installed in your environment and prefer to run recipes directly without uv, you can use `torchrun` directly:
+
+### Train on a Single GPU
+
+```bash
+python nemo_automodel/recipes/llm/train_ft.py -c examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+### Train on Multiple GPUs (Single Node)
+
+```bash
+torchrun --nproc-per-node=2 nemo_automodel/recipes/llm/train_ft.py -c examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```
+
+This approach requires that you have already installed NeMo AutoModel and its dependencies in your Python environment (see the [installation guide](../guides/installation.md) for details).
+
+## Customize Configuration Settings
+
+All approaches use the same YAML configuration files. You can easily customize training by following the steps in this section.
+
+1. **Override config values**: Use command-line arguments to directly replace default settings.
+For example, if you want to fine-tune `Qwen/Qwen3-0.6B` instead of `meta-llama/Llama-3.2-1B`, you can use:
+   ```bash
+   automodel config.yaml --model.pretrained_model_name_or_path Qwen/Qwen3-0.6B
+   ```
+
+2. **Edit the config file**: Modify the YAML directly for persistent changes.
+
+3. **Create custom configs**: Copy and modify existing configurations from the `examples/` directory.
+
+## When to Use Which Approach
+
+**Use the AutoModel CLI when:**
+- You want a simple, unified interface
+- You are running locally on a single machine
+- You don't need to modify the underlying code
+- You prefer a higher-level abstraction
+
+**Use uv when:**
+- You're developing or debugging the codebase
+- You want automatic dependency management
+- You need maximum control over the execution
+- You want to avoid manual environment setup
+- You're experimenting with custom modifications
+
+**Use Torchrun when:**
+- You have a stable, pre-configured environment
+- You prefer explicit control over Python execution
+- You're working in environments where uv is not available
+- You're integrating with existing PyTorch workflows
+
+All approaches use the same configuration files and provide the same training capabilities on a single node. For multi-node training, see [Run on a Cluster](./slurm.md).
+
+```
+
+File: /Users/mromeijn/src/Automodel/docs/launcher/slurm.md
+```md
+# Run on a Cluster
+
+In this guide, you will learn how to submit distributed training jobs on Slurm clusters (single- or multi-node). For single-node workstation usage, see [Run on Your Local Workstation](./local-workstation.md). For setup details, refer to our [Installation Guide](../guides/installation.md).
+
+NeMo AutoModel uses recipes to run end-to-end workflows. If you're new to recipes, see the [Repository Structure](../repository-structure.md) guide.
+
+
+## Quickstart
+
+```bash
+# Edit the reference script for your cluster, then submit:
+cp slurm.sub my_cluster.sub
+vim my_cluster.sub
+sbatch my_cluster.sub
+```
+
+For interactive testing on a Slurm node:
+  - Single node, single GPU
+    ```bash
+    automodel your_config.yaml
+    ```
+  - Single node, multiple GPUs
+    ```bash
+    automodel --nproc-per-node 8 your_config.yaml
+    ```
+
+## Submit a Batch Job with Slurm
+
+SLURM clusters vary widely: some use Pyxis containers, others use
+Singularity/Apptainer, and many run bare-metal with environment modules.
+Instead of trying to cover all variations in code, AutoModel provides a
+reference sbatch script that you copy and adapt to your cluster.
+
+### Getting Started
+
+1. Copy the reference script:
+
+```bash
+cp slurm.sub my_cluster.sub
+```
+
+2. Edit `my_cluster.sub` — change `CONFIG`, `#SBATCH` directives (account,
+   partition, nodes, time), container runtime, mounts, and secrets for your
+   cluster.
+
+3. Submit the job:
+
+```bash
+sbatch my_cluster.sub
+```
+
+### How It Works
+
+The reference `slurm.sub` script:
+
+1. Sets `CONFIG` to point at your YAML recipe config
+2. Allocates nodes via SBATCH directives
+3. Sets up the multi-node environment (`MASTER_ADDR`, `MASTER_PORT`)
+4. Runs `torchrun -m nemo_automodel.cli.app $CONFIG` on each node via `srun`
+5. Each torchrun worker detects the distributed environment and runs the recipe in-process
+
+All cluster-specific configuration (SBATCH directives, container runtime,
+mounts, NCCL tuning, secrets) lives in your sbatch script where you can see
+and edit it directly.
+
+
+### Examples
+
+**Pyxis container (NVIDIA clusters):**
+
+```bash
+#!/bin/bash
+#SBATCH -A my_account
+#SBATCH -p batch
+#SBATCH -t 01:00:00
+#SBATCH -N 8
+#SBATCH --gpus-per-node=8
+#SBATCH --ntasks-per-node=1
+#SBATCH -J automodel-finetune
+#SBATCH --output=slurm_jobs/%x_%j.out
+#SBATCH --error=slurm_jobs/%x_%j.err
+
+CONFIG=examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+
+CONT=/lustre/fsw/images/automodel.sqsh
+CONT_NAME=automodel-training
+CONT_MOUNT="\
+/home/$USER/Automodel:/opt/Automodel,\
+/home/$USER/.cache/huggingface:/root/.cache/huggingface"
+
+export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
+export MASTER_PORT=13742
+
+srun \
+    --container-name="${CONT_NAME}" \
+    --container-image="${CONT}" \
+    --container-mounts="${CONT_MOUNT}" \
+    --container-entrypoint \
+    --no-container-mount-home \
+    --export=ALL \
+    bash -c "\
+        cd /opt/Automodel && \
+        torchrun \
+            --nproc-per-node=\${SLURM_GPUS_PER_NODE:-8} \
+            --nnodes=\${SLURM_NNODES:-1} \
+            --rdzv_backend=c10d \
+            --rdzv_endpoint=\${MASTER_ADDR}:\${MASTER_PORT} \
+            -m nemo_automodel.cli.app ${CONFIG}"
+```
+
+**Bare-metal (no container):**
+
+```bash
+#!/bin/bash
+#SBATCH -A my_account
+#SBATCH -p gpu
+#SBATCH -N 2
+#SBATCH --gpus-per-node=8
+#SBATCH --time=01:00:00
+
+CONFIG=examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=13742
+
+module load cuda/12.8
+source /opt/venvs/automodel/bin/activate
+
+srun bash -c "\
+    torchrun \
+        --nproc-per-node=\${SLURM_GPUS_PER_NODE:-8} \
+        --nnodes=\${SLURM_NNODES:-1} \
+        --rdzv_backend=c10d \
+        --rdzv_endpoint=\${MASTER_ADDR}:\${MASTER_PORT} \
+        -m nemo_automodel.cli.app ${CONFIG}"
+```
+
+**Apptainer / Singularity:**
+
+```bash
+#!/bin/bash
+#SBATCH -A my_account
+#SBATCH -p gpu
+#SBATCH -N 2
+#SBATCH --gpus-per-node=8
+#SBATCH --time=01:00:00
+
+CONFIG=examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=13742
+
+srun apptainer exec --nv /shared/images/automodel.sif \
+    bash -c "\
+        torchrun \
+            --nproc-per-node=\${SLURM_GPUS_PER_NODE:-8} \
+            --nnodes=\${SLURM_NNODES:-1} \
+            --rdzv_backend=c10d \
+            --rdzv_endpoint=\${MASTER_ADDR}:\${MASTER_PORT} \
+            -m nemo_automodel.cli.app ${CONFIG}"
+```
+
+
+### Launch with Modified Code
+
+If the script is executed from within a Git repository accessible to Slurm
+workers, automodel will use the repository source over the installation
+inside the container image (it prepends `$CWD` to `PYTHONPATH` when it
+detects an editable checkout).
+
+```bash
+git clone git@github.com:NVIDIA-NeMo/Automodel.git automodel_test_repo
+cd automodel_test_repo/
+sbatch slurm.sub
+```
+
+## Customize Configuration Settings
+
+You can customize training by following the steps in this section.
+
+1. **Override config values**: Edit the `CONFIG` variable and add CLI overrides
+   in your torchrun command inside the sbatch script. For example, to change
+   the model:
+   ```bash
+   -m nemo_automodel.cli.app ${CONFIG} --model.pretrained_model_name_or_path Qwen/Qwen3-0.6B
+   ```
+
+2. **Edit the config file**: Modify the YAML directly for persistent changes.
+
+3. **Create custom configs**: Copy and modify existing configurations from the `examples/` directory.
+
+For single-node workflows, see our [Run on Your Local Workstation](./local-workstation.md) guide.
+
+```
+
+File: /Users/mromeijn/src/Automodel/docs/launcher/nemo-run.md
+```md
+# Run with NeMo-Run
+
+In this guide, you will learn how to launch NeMo AutoModel training jobs using [NeMo-Run](https://github.com/NVIDIA/NeMo-Run). NeMo-Run supports multiple backends including Slurm, Kubernetes, Docker, and local execution. For cloud-based training, see [Run on Any Cloud with SkyPilot](./skypilot.md). For direct sbatch usage, see [Run on a Cluster (Slurm)](./slurm.md). For single-node workstation usage, see [Run on Your Local Workstation](./local-workstation.md).
+
+NeMo-Run is an open-source tool from NVIDIA that manages job submission across different execution backends. You define your compute configuration once in a Python file and reuse it across all your training jobs.
+
+## Before You Begin
+
+1. **Install NeMo-Run** (it is not bundled with AutoModel):
+
+```bash
+pip install nemo-run
+```
+
+2. **Create an executor definitions file** at `$NEMORUN_HOME/executors.py`. `NEMORUN_HOME` defaults to `~/.nemo_run`; set the environment variable to use a different location. This file tells NeMo-Run how to reach your compute target. Every executor you reference in a YAML config must be defined here. See [Executor Setup](#executor-setup) for a complete example.
+
+3. **Verify connectivity** to the target in your executor (e.g. SSH for Slurm, kubeconfig for Kubernetes).
+
+4. **Set required environment variables** (if needed by your training config):
+
+```bash
+export HF_TOKEN=hf_...          # Required for gated models (e.g. Llama)
+export WANDB_API_KEY=...        # Optional: Weights & Biases logging
+```
+
+## Executor Setup
+
+The `executor:` field in your YAML config is a name that maps to an entry in `$NEMORUN_HOME/executors.py`. This file must define a module-level `EXECUTOR_MAP` dictionary. NeMo-Run supports several executor types -- here are examples of the most common ones:
+
+### Slurm Executor
+
+```python
+import nemo_run as run
+
+def my_slurm_cluster():
+    executor = run.SlurmExecutor(
+        account="my_account",
+        partition="batch",
+        tunnel=run.SSHTunnel(
+            user="myuser",
+            host="login-node.example.com",
+            job_dir="/remote/path/nemo_run/jobs",
+        ),
+        nodes=1,
+        ntasks_per_node=8,
+        gpus_per_node=8,
+        mem="0",
+        exclusive=True,
+        packager=run.Packager(),
+    )
+    executor.container_image = "nvcr.io/nvidia/nemo-automodel:26.02"
+    executor.container_mounts = ["/data:/data", "/checkpoints:/checkpoints"]
+    executor.env_vars = {"HF_HOME": "/data/hf_cache"}
+    executor.time = "04:00:00"
+    return executor
+
+EXECUTOR_MAP = {
+    "my_slurm": my_slurm_cluster(),
+}
+```
+
+### Kubernetes Executor
+
+```python
+import nemo_run as run
+
+def my_k8s_cluster():
+    return run.KubeflowExecutor(
+        namespace="training",
+        image="nvcr.io/nvidia/nemo-automodel:26.02",
+        num_nodes=1,
+        nprocs_per_node=8,
+        gpus_per_node=8,
+    )
+
+EXECUTOR_MAP = {
+    "my_k8s": my_k8s_cluster(),
+}
+```
+
+### Multiple Executors
+
+You can define as many executors as you need for different backends, clusters, or resource configurations:
+
+```python
+EXECUTOR_MAP = {
+    "slurm_dev": my_slurm_dev(),
+    "slurm_prod": my_slurm_prod(),
+    "k8s": my_k8s_cluster(),
+}
+```
+
+- Keys in `EXECUTOR_MAP` are names you reference in YAML (`executor: slurm_dev`).
+- Values can be executor instances or zero-argument callables that return one.
+- Override fields in the YAML (`nodes`, `devices`, `container_image`, etc.) are applied on top of the executor defaults.
+
+## Quickstart
+
+Any existing AutoModel YAML config can be run via NeMo-Run by adding a `nemo_run:` section at the top. For example, given an existing config that you run locally:
+
+```bash
+automodel examples/llm_finetune/qwen/qwen3_moe_30b_te_packed_sequence.yaml
+```
+
+Add a `nemo_run:` block to submit it to a remote executor instead:
+
+```yaml
+# -- Add this section to any existing config ----------------------------------
+nemo_run:
+  executor: my_slurm             # Name from EXECUTOR_MAP in $NEMORUN_HOME/executors.py
+  container_image: /images/custom.sqsh  # Override executor's default image
+  nodes: 1                       # Override number of nodes
+  ntasks_per_node: 8             # GPUs per node
+  time: "04:00:00"               # Override time limit
+  job_name: qwen3_moe_finetune   # Experiment and job name
+
+# -- Everything below is your existing training config (unchanged) ------------
+recipe: TrainFinetuneRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 32
+  # ... rest of your config ...
+```
+
+Then run the same command:
+
+```bash
+automodel your_config.yaml
+```
+
+The CLI detects the `nemo_run:` key, strips it from the training config, loads the named executor from `$NEMORUN_HOME/executors.py`, and submits the job -- all in one command.
+
+## Configuration Reference
+
+### All `nemo_run:` Fields
+
+| Field | Default | Description |
+|---|---|---|
+| `executor` | `"local"` | Name from `EXECUTOR_MAP` in `$NEMORUN_HOME/executors.py`, or `"local"` for local execution |
+| `job_name` | `<recipe_class_name>` | Experiment and job name |
+| `detach` | `true` | Return immediately after submission |
+| `tail_logs` | `false` | Stream logs after submission |
+| `executors_file` | `$NEMORUN_HOME/executors.py` | Path to the executor definitions file |
+| `job_dir` | `./nemo_run_jobs` | Local directory for job artifacts (config snapshot) |
+| *(any other key)* | *(from executor)* | Applied directly to the executor via `setattr`. Use the executor's native attribute names (e.g. `nodes`, `ntasks_per_node`, `partition`, `container_image`, `time`, `env_vars`). Dicts are merged, lists are extended. |
+
+## Examples
+
+### Single-Node Fine-Tuning (1 x 8 GPUs)
+
+```yaml
+nemo_run:
+  executor: my_slurm
+  nodes: 1
+  ntasks_per_node: 8
+  job_name: single_node_finetune
+```
+
+### Multi-Node Distributed Training (2 x 8 GPUs)
+
+```yaml
+nemo_run:
+  executor: my_slurm
+  nodes: 2
+  ntasks_per_node: 8
+  time: "08:00:00"
+  job_name: multinode_pretrain
+```
+
+For multi-node jobs the launcher automatically adds `--nnodes`, `--node-rank`, `--rdzv-backend`, `--master-addr`, and `--master-port` to the `torchrun` command.
+
+### Custom Container Image and Mounts
+
+```yaml
+nemo_run:
+  executor: my_slurm
+  container_image: /images/automodel_nightly.sqsh
+  container_mounts:
+    - /scratch/datasets:/datasets
+    - /scratch/checkpoints:/checkpoints
+  env_vars:
+    HF_HOME: /datasets/hf_cache
+    NCCL_DEBUG: INFO
+```
+
+### Local Execution (No Cluster)
+
+Use `executor: local` to run on the current machine. No `$NEMORUN_HOME/executors.py` entry is needed:
+
+```yaml
+nemo_run:
+  executor: local
+  ntasks_per_node: 2
+  job_name: local_test
+```
+
+## Monitor and Manage Jobs
+
+NeMo-Run stores experiment metadata under `$NEMORUN_HOME/experiments/`. Set `tail_logs: true` in the YAML to stream job output after submission.
+
+For Slurm-based executors, standard Slurm commands also work:
+
+```bash
+squeue -u $USER                 # List your queued and running jobs
+scancel <job_id>                # Cancel a running or pending job
+sacct -j <job_id>               # View job accounting information
+```
+
+For Kubernetes-based executors, use `kubectl` to monitor pods and jobs.
+
+## How It Works
+
+1. The `automodel` CLI detects the `nemo_run:` key and imports `NemoRunLauncher`.
+2. The `nemo_run:` section is popped from the config. The remaining training config is written to `nemo_run_jobs/<timestamp>/job_config.yaml` for record-keeping.
+3. The launcher loads a pre-configured executor from `$NEMORUN_HOME/executors.py` by name (or creates a `LocalExecutor` for `executor: local`). Override fields are applied on top of the executor defaults.
+4. The training config YAML is embedded in a self-contained inline bash script via a heredoc, so no separate file transfer is needed.
+5. A `torchrun` command is built with `--nproc-per-node` and (for multi-node) distributed rendezvous arguments.
+6. The script is submitted via `nemo_run.Experiment`. By default the call returns immediately (`detach=True`).
+
+## Customize Configuration
+
+Override any training parameter from the command line, same as with local runs:
+
+```bash
+automodel config_with_nemo_run.yaml \
+  --model.pretrained_model_name_or_path meta-llama/Llama-3.2-3B
+```
+
+## When to Use NeMo-Run vs. SkyPilot vs. Slurm
+
+| | NeMo-Run | SkyPilot | Slurm (sbatch) |
+|---|---|---|---|
+| **Infrastructure** | Slurm, Kubernetes, Docker, local | Public cloud (AWS, GCP, Azure) | On-prem HPC |
+| **Container support** | Yes (Pyxis/Enroot, Docker, K8s pods) | N/A (cloud VMs) | Manual (in sbatch script) |
+| **Setup required** | `nemo-run` + `$NEMORUN_HOME/executors.py` | Cloud credentials + `sky check` | Cluster access + sbatch script |
+| **Job submission** | `automodel config.yaml` | `automodel config.yaml` | `sbatch slurm.sub` |
+| **Good for** | Managed multi-backend execution, reusable executor configs | Cloud burst, cost optimization, spot instances | Direct Slurm scripts, full control over sbatch |
+
+```
+
+File: /Users/mromeijn/src/Automodel/docs/launcher/skypilot.md
+```md
+# Run on Any Cloud with SkyPilot
+
+In this guide, you will learn how to launch NeMo AutoModel training jobs on any major cloud provider (AWS, GCP, Azure, Lambda, Kubernetes) using [SkyPilot](https://skypilot.readthedocs.io). For on-premises cluster usage, see [Run on a Cluster (Slurm)](./slurm.md). For single-node workstation usage, see [Run on Your Local Workstation](./local-workstation.md).
+
+SkyPilot is an open-source framework that abstracts cloud infrastructure so you can train on whichever cloud is cheapest or most available at launch time — including automatic spot-instance handling for significant cost savings.
+
+## Before You Begin
+
+Complete the following setup steps before launching your first AutoModel job on a cloud provider.
+
+1. **Install SkyPilot** with the connector for your target cloud:
+
+```bash
+pip install "skypilot[gcp]"      # Google Cloud
+pip install "skypilot[aws]"      # Amazon Web Services
+pip install "skypilot[azure]"    # Microsoft Azure
+pip install "skypilot[lambda]"   # Lambda Cloud
+pip install "skypilot[kubernetes]"  # Any Kubernetes cluster
+```
+
+2. **Configure your cloud credentials** by following the SkyPilot credential setup guide for your cloud, then verify:
+
+```bash
+sky check
+```
+
+You should see at least one cloud listed as **OK**.
+
+3. **Set required environment variables:**
+
+```bash
+export HF_TOKEN=hf_...          # Required for gated models (e.g. Llama)
+export WANDB_API_KEY=...        # Optional: Weights & Biases logging
+```
+
+## Quickstart
+
+Add a `skypilot:` section to any existing config YAML, then run the same `automodel` command you already know:
+
+```bash
+automodel finetune llm -c your_config_with_skypilot.yaml
+```
+
+The CLI detects the `skypilot:` key, strips it from the training config, uploads the code and config to a cloud VM, and launches training — all in one command.
+
+## Configuration Reference
+
+Below is an annotated example for fine-tuning Llama-3.2-1B on SQuAD on a GCP spot T4. A ready-to-run copy lives at [`examples/llm_finetune/llama3_2/llama3_2_1b_squad_skypilot.yaml`](../../examples/llm_finetune/llama3_2/llama3_2_1b_squad_skypilot.yaml).
+
+```yaml
+# ── SkyPilot launcher section ─────────────────────────────────────────────
+# Removed before the training config reaches the remote VM.
+skypilot:
+  cloud: gcp                  # aws | gcp | azure | lambda | kubernetes
+  accelerators: T4:1          # GPU type:count per node, e.g. A100:8
+  use_spot: true              # ~80 % cost reduction vs on-demand
+  disk_size: 100              # Remote VM disk size in GB
+  num_nodes: 1                # Increase for multi-node distributed training
+  region: us-central1         # Optional — SkyPilot picks cheapest if omitted
+  job_name: llama3_2_finetune # Also used as the SkyPilot cluster name
+
+  # Use env-var placeholders so secrets are never stored in YAML
+  hf_token: ${HF_TOKEN}
+  # wandb_key: ${WANDB_API_KEY}
+
+  # Optional: extra shell commands run on the VM after `pip install -e .`
+  # setup: |
+  #   pip install some-extra-dependency
+
+  # Optional: override the default output directory (default: ./skypilot_jobs)
+  # job_dir: /path/to/skypilot/jobs
+
+# ── Training config (forwarded to the VM unchanged) ───────────────────────
+step_scheduler:
+  global_batch_size: 64
+  local_batch_size: 8
+  num_epochs: 1
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: meta-llama/Llama-3.2-1B
+
+# ... rest of your training config ...
+```
+
+### All `skypilot:` Fields
+
+| Field | Default | Description |
+|---|---|---|
+| `cloud` | *(required)* | Cloud provider: `aws`, `gcp`, `azure`, `lambda`, `kubernetes` |
+| `accelerators` | `T4:1` | GPU type and count per node, e.g. `A100:8`, `V100:4` |
+| `num_nodes` | `1` | Number of VMs for distributed training |
+| `use_spot` | `true` | Use spot/preemptible instances |
+| `disk_size` | `100` | Remote VM disk size in GB |
+| `region` | *(auto)* | Cloud region; SkyPilot selects cheapest if omitted |
+| `zone` | *(auto)* | Availability zone within the region |
+| `instance_type` | *(auto)* | Specific instance type; auto-selected if omitted |
+| `job_name` | `<domain>_<command>` | Job and SkyPilot cluster name |
+| `setup` | *(auto)* | Extra setup commands run after `pip install -e .` |
+| `hf_home` | `~/.cache/huggingface` | Hugging Face cache directory on the remote VM |
+| `hf_token` | `$HF_TOKEN` env | Hugging Face token for gated model access |
+| `wandb_key` | `$WANDB_API_KEY` env | Weights & Biases API key |
+| `env_vars` | `{}` | Additional environment variables for the remote VM |
+| `job_dir` | `./skypilot_jobs` | Local directory for job artifacts (config snapshot, logs) |
+| `gpus_per_node` | *(parsed from `accelerators`)* | Override GPU count per node passed to `torchrun` |
+
+## Cloud Examples
+
+### AWS — On-Demand A10G
+
+```yaml
+skypilot:
+  cloud: aws
+  accelerators: A10G:1
+  use_spot: false
+  region: us-east-1
+  job_name: llm_aws_finetune
+  hf_token: ${HF_TOKEN}
+```
+
+### GCP — spot V100, 8 GPUs (single node)
+
+```yaml
+skypilot:
+  cloud: gcp
+  accelerators: V100:8
+  use_spot: true
+  region: us-west1
+  job_name: llm_gcp_v100_8gpu
+  hf_token: ${HF_TOKEN}
+```
+
+### Multi-node distributed training (2 × 8 × A100)
+
+```yaml
+skypilot:
+  cloud: gcp
+  accelerators: A100:8
+  num_nodes: 2
+  use_spot: false
+  job_name: llm_multinode_a100
+  hf_token: ${HF_TOKEN}
+```
+
+For multi-node jobs the launcher automatically adds the SkyPilot rendezvous environment variables (`$SKYPILOT_NODE_RANK`, `$SKYPILOT_NUM_NODES`, `$SKYPILOT_NODE_IPS`) to the `torchrun` command.
+
+## Monitor and Manage Jobs
+
+After submitting, use standard SkyPilot commands:
+
+```bash
+sky status                    # List running clusters and their status
+sky logs <cluster_name>       # Stream training logs
+sky ssh <cluster_name>        # SSH into the VM for debugging
+sky cancel <cluster_name> <job_id>  # Cancel a running job
+sky down <cluster_name>       # Terminate the cluster and stop billing
+```
+
+## How It Works
+
+1. The `automodel` CLI detects the `skypilot:` key in the YAML and calls `launch_with_skypilot()`.
+2. The training config (with `skypilot:` removed) is written to a local `skypilot_jobs/<timestamp>/job_config.yaml`.
+3. A `sky.Task` is created with:
+   - **workdir** — the current directory synced to `~/sky_workdir` on the remote VM.
+   - **file_mounts** — the job config uploaded to `/tmp/automodel_job_config.yaml`.
+   - **setup** — `pip install -e .` (plus any custom `setup:` commands).
+   - **run** — a `torchrun` command pointing at the recipe script and config.
+4. `sky.launch()` provisions the VM, runs setup, then executes training. The call returns immediately (`detach_run=True`); use `sky logs` to follow progress.
+
+## Customize Configuration
+
+Override any training parameter from the command line, same as with local runs:
+
+```bash
+automodel finetune llm -c config_with_skypilot.yaml \
+  --model.pretrained_model_name_or_path meta-llama/Llama-3.2-3B
+```
+
+## When to Use SkyPilot vs. Slurm
+
+| | SkyPilot | Slurm |
+|---|---|---|
+| **Infrastructure** | Any public cloud | On-premises HPC cluster |
+| **Spot instances** | Yes (automatic) | Depends on cluster config |
+| **Setup required** | Cloud credentials + `sky check` | Cluster access |
+| **Good for** | Flexible cloud burst, cost optimization | Fixed on-prem GPU clusters |
+
+```
+
+File: /Users/mromeijn/src/Automodel/examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml
+```yaml
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
+# To run this recipe:
+#   automodel examples/llm_finetune/llama3_2/llama3_2_1b_squad.yaml --nproc-per-node 8
+# Adjust --nproc-per-node to the number of GPUs available on your machine.
+
+recipe: TrainFinetuneRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 64
+  local_batch_size: 8
+  ckpt_every_steps: 1000
+  val_every_steps: 10  # will run every x number of gradient steps
+  num_epochs: 1
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 1
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: meta-llama/Llama-3.2-1B
+
+# torch.compile configuration
+compile:
+  enabled: false
+  mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
+  fullgraph: false
+  dynamic: true  # Set to false for better performance with fixed shapes
+  backend: null  # Use default backend (inductor)
+
+clip_grad_norm:
+  max_norm: 1.0
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.squad.make_squad_dataset
+  dataset_name: rajpurkar/squad
+  split: train
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: false
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.squad.make_squad_dataset
+  dataset_name: rajpurkar/squad
+  split: validation
+  limit_dataset_samples: 64
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.utils.default_collater
+
+optimizer:
+  _target_: torch.optim.Adam
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-5
+  weight_decay: 0
+  # min_lr: 1.0e-5
+
+lr_scheduler:
+  lr_decay_style: cosine
+  min_lr: 1.0e-6
+
+# Uncomment and configure for W&B logging
+# wandb:
+#   project: <your_wandb_project>
+#   entity: <your_wandb_entity>
+#   name: <your_wandb_exp_name>
+#   save_dir: <your_wandb_save_dir>
+
+# Uncomment and configure for Mlflow logging
+# mlflow:
+#   experiment_name: "automodel-llm-llama3_2_1b_squad-finetune"
+#   run_name: ""
+#   tracking_uri: null
+#   artifact_location: null 
+#   tags:
+#     task: "squad-finetune"
+#     model_family: "llama3.2"
+#     model_size: "1b"
+#     dataset: "squad"
+#     framework: "automodel"
+
+ci:
+  recipe_owner: akoumpa
+
+```
+
+File: /Users/mromeijn/src/Automodel/examples/llm_finetune/llama3_2/llama3_2_1b_squad_skypilot.yaml
+```yaml
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# Fine-tune Llama-3.2-1B on SQuAD using SkyPilot for cloud execution.
+#
+# Usage:
+#   automodel examples/llm_finetune/llama3_2/llama3_2_1b_squad_skypilot.yaml
+#
+# Prerequisites:
+#   pip install "skypilot[gcp]"   # or [aws], [azure], etc.
+#   sky check                     # verify cloud credentials
+#
+# Monitor:
+#   sky status
+#   sky logs <cluster_name>
+
+# ---------------------------------------------------------------------------
+# SkyPilot launcher config (removed before the job config reaches the VM)
+# ---------------------------------------------------------------------------
+skypilot:
+  cloud: gcp                  # aws | gcp | azure | lambda | kubernetes
+  accelerators: T4:1          # GPU type:count per node
+  use_spot: true              # ~80 % cost reduction vs on-demand
+  disk_size: 100              # GB
+  num_nodes: 1
+  region: us-central1         # optional; SkyPilot picks cheapest if omitted
+  job_name: llama3_2_1b_squad
+
+  # Credentials – use env-var placeholders so secrets are never stored in YAML.
+  hf_token: ${HF_TOKEN}
+  # wandb_key: ${WANDB_API_KEY}
+
+  # Extra setup commands run on the VM after `pip install -e .`
+  # setup: |
+  #   pip install some-extra-dependency
+
+# ---------------------------------------------------------------------------
+# Training config (forwarded to the VM unchanged)
+# ---------------------------------------------------------------------------
+recipe:
+  _target_: nemo_automodel.recipes.llm.train_ft.TrainFinetuneRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 64
+  local_batch_size: 8
+  ckpt_every_steps: 1000
+  val_every_steps: 10
+  num_epochs: 1
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 1
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: meta-llama/Llama-3.2-1B
+
+compile:
+  enabled: false
+  mode: "default"
+  fullgraph: false
+  dynamic: true
+  backend: null
+
+clip_grad_norm:
+  max_norm: 1.0
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.squad.make_squad_dataset
+  dataset_name: rajpurkar/squad
+  split: train
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: false
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.squad.make_squad_dataset
+  dataset_name: rajpurkar/squad
+  split: validation
+  limit_dataset_samples: 64
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.utils.default_collater
+
+optimizer:
+  _target_: torch.optim.Adam
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-5
+  weight_decay: 0
+
+lr_scheduler:
+  lr_decay_style: cosine
+  min_lr: 1.0e-6
+
+ci:
+  recipe_owner: adil-a
+
+```
+</file_contents>

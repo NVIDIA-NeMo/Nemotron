@@ -1,0 +1,26 @@
+[case]
+name = "unsupported-model"
+description = "Escape-hatch case for a model family that the step catalog does not support."
+tags = ["escape-hatch", "edge-case", "unsupported-model"]
+
+[input]
+request = "Fine-tune Falcon-Mamba-999B with a pipeline built from the current Nemotron customize catalog."
+
+[expected.steps]
+must_include = []
+may_include = []
+must_exclude = ["prep/sft_packing", "sft/megatron_bridge", "sft/automodel", "eval/model_eval"]
+
+[expected.plan]
+has_mermaid_diagram = false
+stage_count = { min = 0, max = 0 }
+must_mention = ["not supported", "Explorer mode"]
+
+[expected.project]
+allow_missing = true
+must_have_files = []
+must_have_stages = []
+
+[expected.disclosure]
+must_read = ["STEPS.md"]
+must_not_read = []

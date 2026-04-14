@@ -1,0 +1,36 @@
+{
+  "name": "nvidia-nemotron",
+  "owner": {
+    "name": "NVIDIA Nemotron Team"
+  },
+  "plugins": [
+    {
+      "name": "nemotron",
+      "source": ".",
+      "description": "NVIDIA Nemotron AI stack — pipeline builder and model knowledge bases",
+      "version": "0.1.0",
+      "category": "ml-pipelines",
+      "keywords": ["nvidia", "nemotron", "training", "sft", "rl", "megatron", "models"],
+      "strict": false,
+      "skills": [
+        "./skills/nemotron-customize",
+        "./skills/nemotron-nano3",
+        "./skills/nemotron-super3"
+      ]
+    },
+    {
+      "name": "nemotron-dev",
+      "source": ".",
+      "description": "Internal: contributor tools for Nemotron repo developers",
+      "version": "0.1.0",
+      "category": "developer-tools",
+      "keywords": ["nvidia", "nemotron", "internal", "contributing", "dev"],
+      "strict": false,
+      "skills": [
+        "./skills/nemotron-add-step",
+        "./skills/nemotron-add-model",
+        "./skills/nemotron-add-pattern"
+      ]
+    }
+  ]
+}

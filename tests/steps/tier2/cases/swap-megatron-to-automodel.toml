@@ -1,0 +1,30 @@
+[case]
+name = "swap-megatron-to-automodel"
+description = "Multi-turn case that swaps Megatron-Bridge SFT to AutoModel after the hardware changes."
+tags = ["iteration", "swap-step", "hardware", "automodel", "megatron-bridge"]
+
+[input]
+request = "Build an English SFT pipeline for Nemotron-style instruction tuning on one 8x H100 node."
+
+[expected.steps]
+must_include = ["prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+may_include = []
+must_exclude = ["curate/nemo_curator", "translate/nemo_skills"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 3, max = 3 }
+must_mention = ["Megatron-Bridge", "packed_parquet"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_prep", "02_sft", "03_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.iteration]
+followup = "Actually, use AutoModel instead — we only have 4 GPUs."
+must_remove_stage = "01_prep"
+must_have_step = "sft/automodel"
+must_not_have_step = "sft/megatron_bridge"
+must_mention = ["4 GPUs", "LoRA"]

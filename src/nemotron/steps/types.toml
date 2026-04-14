@@ -1,0 +1,47 @@
+# Artifact compatibility graph for nemotron-customize.
+# Compatibility is expressed with only two relationship kinds:
+# - is_a: implicit compatibility
+# - convert_to: explicit conversion step required
+
+[raw_jsonl]
+description = "Raw downloaded JSONL records"
+is_a = ["training_jsonl"]
+
+[filtered_jsonl]
+description = "JSONL with domain/language annotations (from NeMo Curator)"
+is_a = ["training_jsonl"]
+
+[translated_jsonl]
+description = "JSONL with translated messages + FAITH quality scores"
+is_a = ["training_jsonl"]
+
+[synthetic_jsonl]
+description = "AI-generated conversation JSONL (from Data Designer)"
+is_a = ["training_jsonl"]
+
+[training_jsonl]
+description = "Any JSONL with 'messages' field in OpenAI chat format"
+
+[packed_parquet]
+description = "Packed Parquet shards with input_ids + loss_mask"
+
+[binidx]
+description = "Megatron bin/idx tokenized data with blend.json"
+
+[checkpoint_megatron]
+description = "Megatron distributed checkpoint (sharded across TP/PP)"
+convert_to = { checkpoint_hf = "convert/megatron_to_hf" }
+
+[checkpoint_hf]
+description = "HuggingFace safetensors format"
+convert_to = { checkpoint_megatron = "convert/hf_to_megatron" }
+
+[checkpoint_lora]
+description = "LoRA adapter weights (merge with base to get checkpoint_hf)"
+convert_to = { checkpoint_hf = "convert/merge_lora" }
+
+[eval_results]
+description = "Evaluation metrics and benchmark scores"
+
+[benchmark_parquet]
+description = "BYOB benchmark dataset"

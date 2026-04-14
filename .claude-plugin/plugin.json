@@ -1,0 +1,11 @@
+{
+  "name": "nemotron-customize",
+  "description": "Compose custom ML training pipelines from the NVIDIA AI stack",
+  "version": "0.1.0",
+  "author": {
+    "name": "NVIDIA Nemotron Team"
+  },
+  "skills": [
+    "./skills/"
+  ]
+}

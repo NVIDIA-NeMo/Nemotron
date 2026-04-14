@@ -1,0 +1,30 @@
+[case]
+name = "simple-sft-english"
+description = "Minimal English SFT pipeline from user JSONL to Megatron-Bridge training and evaluation."
+tags = ["short", "catalog", "minimality", "english", "megatron-bridge"]
+
+[input]
+request = "Fine-tune Nemotron Nano3 on my English chat-format JSONL dataset with a single 8x H100 node."
+
+[expected.steps]
+must_include = ["prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+may_include = []
+must_exclude = ["curate/nemo_curator", "translate/nemo_skills", "sft/automodel"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 3, max = 3 }
+must_mention = ["English", "JSONL", "packed_parquet"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_prep", "02_sft", "03_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.project.config_assertions]
+"stages/02_sft/config/default.yaml" = ["tensor_model_parallel_size: 4"]
+
+[expected.disclosure]
+must_read = ["STEPS.md", "sft/guide.md", "prep/guide.md"]
+must_not_read = []

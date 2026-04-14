@@ -1,0 +1,74 @@
+[step]
+id = "translate/nemo_skills"
+name = "Translation + FAITH Scoring (NeMo Skills)"
+category = "translate"
+description = """Translate filtered JSONL into a target language with NeMo Skills and attach FAITH-based quality signals so downstream steps can keep high-faith training data."""
+tags = ["translate", "nemo-skills", "faith", "multilingual", "jsonl"]
+
+[[consumes]]
+type = "filtered_jsonl"
+description = "Filtered JSONL records whose message fields should be translated."
+
+[[produces]]
+type = "translated_jsonl"
+description = "Translated JSONL with target-language messages plus FAITH quality metadata for downstream use."
+
+[[parameters]]
+name = "target_language"
+description = "Target ISO 639-1 language code for translation output."
+default = "hi"
+
+[[parameters]]
+name = "source_language"
+description = "Source ISO 639-1 language code expected in the input JSONL."
+default = "en"
+
+[[parameters]]
+name = "faith_threshold"
+description = "Minimum normalized FAITH quality threshold to keep translated records; set to 0.0 to score without filtering."
+default = 0.7
+
+[[parameters]]
+name = "backend"
+description = "Serving backend exposed through an OpenAI-compatible endpoint for the translation model."
+default = "nim"
+choices = ["nim", "vllm"]
+
+[[strategies]]
+when = "You want a production-ready managed endpoint"
+then = "Use backend=nim and point Speaker at the NIM OpenAI-compatible chat endpoint."
+skill = "skills/nemotron-customize/context/speaker-translation-faith.txt"
+
+[[strategies]]
+when = "You are self-hosting the model or evaluating local checkpoint variants"
+then = "Use backend=vllm and provide a compatible OpenAI-style server address for translation and FAITH scoring."
+skill = "skills/nemotron-customize/context/speaker-translation-faith.txt"
+
+[[strategies]]
+when = "Long or structured messages are getting truncated or reordered"
+then = "Enable fine segmentation so Speaker preserves separators and reconstructs the original message structure more faithfully."
+skill = "skills/nemotron-customize/context/speaker-translation-faith.txt"
+
+[[strategies]]
+when = "You need to filter translations by quality before SFT"
+then = "Run FAITH scoring on the raw translation output and drop records below faith_threshold before exporting translated_jsonl."
+skill = "skills/nemotron-customize/context/speaker-translation-faith.txt"
+
+[[errors]]
+name = "missing_openai_endpoint"
+recovery = "Provision a reachable NIM or vLLM OpenAI-compatible endpoint and pass the correct server address and model name into the Speaker config."
+
+[[errors]]
+name = "faith_input_missing_segmented_translation"
+recovery = "Run FAITH on Speaker's raw translation output, not on a final JSONL that has already discarded the translations.segmented_translation metadata."
+
+[[errors]]
+name = "field_path_mismatch"
+recovery = "Make sure the translation fields_to_translate path matches the actual JSONL schema, usually messages.*.content for chat data."
+
+[reference]
+script = "speaker/src/speaker/driver/translate/pipeline_translate.py"
+docs = "speaker/docs/source/translate/explanation/pipeline-overview.md"
+skills = [
+  "skills/nemotron-customize/context/speaker-translation-faith.txt",
+]

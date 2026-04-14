@@ -1,0 +1,97 @@
+[step]
+id = "sft/megatron_bridge"
+name = "SFT Training (Megatron-Bridge)"
+category = "sft"
+description = """\
+Supervised fine-tuning using NVIDIA Megatron-Bridge. Best for large-scale
+distributed training with tensor/pipeline/context parallelism. Requires
+packed Parquet data from prep/sft_packing."""
+tags = ["sft", "fine-tuning", "megatron", "distributed-training"]
+
+[[consumes]]
+type = "packed_parquet"
+description = "Packed SFT Parquet shards with input_ids + loss_mask"
+required = true
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "Base pretrained checkpoint or a prior Megatron SFT checkpoint"
+required = false
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "Fine-tuned Megatron checkpoint"
+
+[[models]]
+name = "nvidia/Nemotron-3-Nano-30B-A3B"
+description = "31.6B / 3.6B active. Best efficiency and the default Nano3 path."
+default = true
+min_gpus = 8
+
+[[models]]
+name = "nvidia/Nemotron-3-Super-49B"
+description = "Higher-quality dense model that typically starts at 32 GPUs."
+min_gpus = 32
+
+[[parameters]]
+name = "seq_length"
+description = "Must match pack_size in prep/sft_packing"
+default = 4096
+choices = [2048, 4096, 8192, 16384, 32768]
+
+[[parameters]]
+name = "peft"
+description = "'null' = full SFT, 'lora' = LoRA with fewer GPUs and smaller checkpoints"
+default = "null"
+choices = ["null", "lora"]
+
+[[strategies]]
+when = "dataset < 10K records"
+then = "reduce global_batch_size and increase train_iters to keep optimizer steps useful"
+
+[[strategies]]
+when = "user wants LoRA"
+then = "set peft=lora to reduce GPU requirements and checkpoint size"
+skill = "Megatron-Bridge/skills/mlm-bridge-training/SKILL.md"
+
+[[strategies]]
+when = "user selects Super3 model"
+then = "start from a 32-GPU plan with tp=8, pp=4, cp=1 and verify cluster topology early"
+skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
+
+[[strategies]]
+when = "sequence_length > 32K"
+then = "enable hybrid context parallelism"
+skill = "Megatron-Bridge/skills/perf-techniques/hybrid-context-parallel/SKILL.md"
+
+[[strategies]]
+when = "GPU memory is tight (A100 40GB)"
+then = "enable activation checkpointing and consider CPU offloading"
+skill = "Megatron-Bridge/skills/perf-techniques/megatron-fsdp/SKILL.md"
+
+[[strategies]]
+when = "want maximum throughput on H100"
+then = "keep packed sequences enabled and tune overlap / sequence-packing settings before scaling up"
+skill = "Megatron-Bridge/skills/perf-techniques/sequence-packing/SKILL.md"
+
+[[errors]]
+name = "tokenizer_mismatch"
+recovery = "set prep/sft_packing tokenizer to match the training model"
+
+[[errors]]
+name = "oom"
+recovery = "reduce batch size, increase parallelism, or reduce seq_length"
+skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
+
+[[errors]]
+name = "missing_packed_data"
+recovery = "run prep/sft_packing first, or point dataset.nano3_packed_sft_dir at the packed splits directory"
+
+[reference]
+recipe = "src/nemotron/recipes/nano3/stage1_sft/"
+config = "src/nemotron/recipes/nano3/stage1_sft/config/default.yaml"
+script = "src/nemotron/recipes/nano3/stage1_sft/train.py"
+skills = [
+  "skills/nemotron-customize/context/mbridge-sft-full.txt",
+  "skills/nemotron-customize/context/mbridge-parallelism-performance.txt",
+]

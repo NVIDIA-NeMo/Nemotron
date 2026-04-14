@@ -1,0 +1,19 @@
+[step]
+id = "rl/nemo_rl_grpo"
+name = "RL Alignment (NeMo-RL / GRPO)"
+category = "rl"
+status = "planned"
+description = "Planned: align an SFT-trained Megatron checkpoint with GRPO using NeMo-RL."
+tags = ["planned", "rl", "grpo", "nemo-rl"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Prompt or rollout JSONL used for RL sampling."
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "SFT-trained Megatron checkpoint to align."
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "GRPO-aligned Megatron checkpoint."

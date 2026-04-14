@@ -1,0 +1,28 @@
+# Tiny smoke-test config for SFT data packing
+
+blend_path: /path/to/data_blend.json
+output_dir: /nemo_run/packed-sft-tiny
+num_shards: 1
+
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
+
+pack_size: 4096
+algorithm: first_fit_shuffle
+chat_template: nano3
+
+messages_field: messages
+tools_field: tools
+
+train_ratio: 0.98
+valid_ratio: 0.01
+test_ratio: 0.01
+
+sample: 100
+sample_seed: 42
+force: true
+
+observability:
+  pipeline_logging_interval_s: 10
