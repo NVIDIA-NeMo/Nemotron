@@ -1,5 +1,11 @@
 # Validated private OCI OKE deployment values for
 # nvidia/Llama-3.1-Nemotron-Nano-8B-v1 on a single VM.GPU.A10.1 node.
+#
+# Chart: vllm/vllm-stack 0.1.10
+# Validated: 2026-04-15 on OKE v1.31.10, Phoenix (us-phoenix-1)
+#
+# IMPORTANT: Before deploying, you must create the vllm-templates-pvc
+# (see prerequisites in README.md).
 
 servingEngineSpec:
   runtimeClassName: ""
@@ -10,7 +16,6 @@ servingEngineSpec:
       modelURL: "nvidia/Llama-3.1-Nemotron-Nano-8B-v1"
       enableTool: true
       toolCallParser: "llama3_json"
-      chatTemplate: "/vllm-workspace/examples/tool_chat_template_llama3.1_json.jinja"
       replicaCount: 1
       requestCPU: 4
       requestMemory: "24Gi"
@@ -28,3 +33,5 @@ servingEngineSpec:
       vllmConfig:
         maxModelLen: 4096
         gpuMemoryUtilization: 0.95
+        extraArgs:
+          - "--chat-template=/vllm-workspace/examples/tool_chat_template_llama3.1_json.jinja"
