@@ -32,6 +32,10 @@ guide, customized for the Nemotron model with tool calling support.
 - OCI tenancy with GPU capacity (`VM.GPU.A10.1`)
 - `oci` CLI configured with a valid profile
 - `kubectl`, `helm`, `ssh`, `jq`
+- An SSH key pair (e.g., `~/.ssh/id_ed25519`)
+
+**Note:** The NVIDIA device plugin is pre-installed on OKE enhanced clusters.
+No manual installation is required.
 
 ## Step 1: Set environment variables
 
@@ -184,19 +188,24 @@ oci ce cluster create \
     --service-lb-subnet-ids "[\"${LB_SUBNET_ID}\"]" \
     --endpoint-public-ip-enabled false \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+```
 
-# Wait for cluster to become ACTIVE (~10 minutes)
+Wait for the cluster to become ACTIVE (~10 minutes):
+
+```bash
+# Poll until ACTIVE
 CLUSTER_ID=$(oci ce cluster list \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
     --name "${CLUSTER_NAME}" \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
     --query 'data[0].id' --raw-output)
 
-# Check status
-oci ce cluster get --cluster-id "${CLUSTER_ID}" \
-    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
-    --query 'data."lifecycle-state"' --raw-output
+watch -n 30 "oci ce cluster get --cluster-id ${CLUSTER_ID} \
+    --profile ${OCI_PROFILE} --region ${OCI_REGION} \
+    --query 'data.\"lifecycle-state\"' --raw-output"
 ```
+
+**Do not proceed to Step 5 until the cluster is ACTIVE.**
 
 ## Step 4: Create OCI Bastion
 
@@ -233,7 +242,9 @@ CPU_IMAGE_ID=$(oci ce node-pool-options get \
              contains(\"source-name\", 'aarch64')==\`false\`].\"image-id\" | [0]" \
     --raw-output)
 
-# Pick an availability domain (try AD-2 first for Phoenix GPU capacity)
+# Pick an availability domain
+# Phoenix: AD-2 (index 1) had GPU capacity at validation time.
+# Adjust the index if your region has different GPU availability.
 AD=$(oci iam availability-domain list \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
@@ -268,7 +279,17 @@ oci ce node-pool create \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
 ```
 
-Wait for both node pools to show nodes as ACTIVE (~10 minutes).
+Wait for both node pools to show nodes as ACTIVE (~10 minutes):
+
+```bash
+watch -n 30 "oci ce node-pool list \
+    --compartment-id ${OCI_COMPARTMENT_ID} \
+    --cluster-id ${CLUSTER_ID} \
+    --profile ${OCI_PROFILE} --region ${OCI_REGION} \
+    --query 'data[].{name:name,nodes:nodes[].{ip:\"private-ip\",state:\"lifecycle-state\"}}'"
+```
+
+**Do not proceed to Step 6 until both node pools show nodes as ACTIVE.**
 
 **Important:** The CPU boot volume must be at least **100 GB**. The vLLM router
 image is ~10.5 GB and the default 47 GB boot volume causes pod eviction.
@@ -343,12 +364,13 @@ of the requested size. Both nodes must be expanded.
 ~10.5 GB, and the model weights are ~16 GB. Without expansion, pods get
 evicted for low ephemeral storage.
 
-For each node:
+For each node, run the following (use a unique pod name per node):
 
 ```bash
 NODE_IP=<node-internal-ip>
+POD_NAME=expand-$(echo $NODE_IP | tr '.' '-')
 
-kubectl run expand-disk --restart=Never \
+kubectl run ${POD_NAME} --restart=Never \
   --image=busybox:latest \
   --overrides="{
     \"spec\":{
@@ -365,9 +387,9 @@ kubectl run expand-disk --restart=Never \
     }
   }"
 
-kubectl wait --for=condition=Ready pod/expand-disk --timeout=60s
+kubectl wait --for=condition=Ready pod/${POD_NAME} --timeout=60s
 
-kubectl exec expand-disk -- chroot /host bash -c '
+kubectl exec ${POD_NAME} -- chroot /host bash -c '
   growpart /dev/sda 3
   sleep 3
   pvresize /dev/sda3
@@ -376,8 +398,8 @@ kubectl exec expand-disk -- chroot /host bash -c '
   df -h /
 '
 
-kubectl exec expand-disk -- nsenter -t 1 -m -p -- systemctl restart kubelet
-kubectl delete pod expand-disk --force
+kubectl exec ${POD_NAME} -- nsenter -t 1 -m -p -- systemctl restart kubelet
+kubectl delete pod ${POD_NAME} --force
 ```
 
 Repeat for each node. Expected results:
@@ -437,6 +459,10 @@ EOF
 ```
 
 ## Step 11: Deploy vLLM
+
+The checked-in values file
+[`vllm_oke_phoenix_private_values.yaml`](./vllm_oke_phoenix_private_values.yaml)
+contains the validated configuration for this deployment.
 
 ```bash
 helm repo add vllm https://vllm-project.github.io/production-stack
@@ -573,3 +599,37 @@ Uninstall and reinstall:
 helm uninstall vllm -n default
 helm install vllm vllm/vllm-stack -n default -f vllm_oke_phoenix_private_values.yaml
 ```
+
+## Cleanup
+
+To tear down all resources:
+
+```bash
+# 1. Uninstall Helm release and PVCs
+helm uninstall vllm -n default
+kubectl delete pvc --all -n default
+
+# 2. Delete node pools
+oci ce node-pool delete --node-pool-id <cpu-pool-id> --force \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+oci ce node-pool delete --node-pool-id <gpu-pool-id> --force \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+
+# 3. Delete cluster (wait for node pools to finish deleting first)
+oci ce cluster delete --cluster-id "${CLUSTER_ID}" --force \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+
+# 4. Delete bastion
+oci bastion bastion delete --bastion-id "${BASTION_ID}" --force \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+
+# 5. Delete subnets, gateways, and VCN (wait for cluster deletion first)
+```
+
+## Alternative: Terraform
+
+A Terraform sample using the `oracle-terraform-modules/oke/oci` module is
+available in [`terraform/`](./terraform/) for reference. Note that the
+module's NSG configuration requires its built-in bastion compute host
+(`create_bastion = true`) for OCI Bastion port-forwarding to work. The
+manual CLI approach above is recommended for initial deployments.
