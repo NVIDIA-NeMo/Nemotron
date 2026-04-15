@@ -37,12 +37,35 @@ guide, customized for the Nemotron model with tool calling support.
 **Note:** The NVIDIA device plugin is pre-installed on OKE enhanced clusters.
 No manual installation is required.
 
+## Architecture
+
+```
+                          ┌─────────────────────────────────────────────────┐
+                          │                  VCN 10.0.0.0/16               │
+  You ──SSH tunnel──►     │                                                │
+  (localhost:6443)        │  ┌──────────┐     ┌──────────────────────────┐  │
+          │               │  │ Bastion  │     │   API subnet (private)   │  │
+          │               │  │ subnet   │────►│   OKE control plane      │  │
+          │               │  │ (public) │     │   :6443                  │  │
+          ▼               │  └──────────┘     └──────────────────────────┘  │
+  kubectl / curl          │                                                │
+                          │  ┌──────────────────────────────────────────┐  │
+                          │  │         Worker subnet (private)          │  │
+                          │  │                                          │  │
+                          │  │  ┌─────────────┐  ┌──────────────────┐  │  │
+                          │  │  │ CPU node    │  │ GPU node (A10)   │  │  │
+                          │  │  │ router pod  │  │ Nemotron engine  │  │  │
+                          │  │  └─────────────┘  └──────────────────┘  │  │
+                          │  └──────────────────────────────────────────┘  │
+                          └─────────────────────────────────────────────────┘
+```
+
 ## Step 1: Set environment variables
 
 ```bash
 export OCI_COMPARTMENT_ID="<your-compartment-ocid>"
 export OCI_REGION="us-phoenix-1"
-export OCI_PROFILE="API_KEY_AUTH"
+export OCI_PROFILE="DEFAULT"          # adjust to your OCI CLI profile
 export CLUSTER_NAME="nemotron-phx"
 export KUBERNETES_VERSION="v1.31.10"
 ```
@@ -209,6 +232,10 @@ watch -n 30 "oci ce cluster get --cluster-id ${CLUSTER_ID} \
 
 ## Step 4: Create OCI Bastion
 
+The bastion is placed on the public bastion subnet so the OCI Bastion managed
+service can accept inbound SSH connections. The port-forwarding session then
+tunnels traffic to the private API endpoint over VCN-internal routing.
+
 ```bash
 BASTION_ID=$(oci bastion bastion create \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
@@ -241,6 +268,16 @@ CPU_IMAGE_ID=$(oci ce node-pool-options get \
              !contains(\"source-name\", 'GPU') && \
              contains(\"source-name\", 'aarch64')==\`false\`].\"image-id\" | [0]" \
     --raw-output)
+
+# Verify both image IDs were found
+echo "GPU image: ${GPU_IMAGE_ID}"
+echo "CPU image: ${CPU_IMAGE_ID}"
+# If either is empty, list available images and pick manually:
+# oci ce node-pool-options get --node-pool-option-id all \
+#     --compartment-id "${OCI_COMPARTMENT_ID}" \
+#     --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+#     --query "data.sources[?contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}')].{name:\"source-name\",id:\"image-id\"}" \
+#     --output table
 
 # Pick an availability domain
 # Phoenix: AD-2 (index 1) had GPU capacity at validation time.
@@ -609,13 +646,18 @@ To tear down all resources:
 helm uninstall vllm -n default
 kubectl delete pvc --all -n default
 
-# 2. Delete node pools
+# 2. List and delete node pools
+oci ce node-pool list --compartment-id "${OCI_COMPARTMENT_ID}" \
+    --cluster-id "${CLUSTER_ID}" \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+    --query 'data[].{name:name,id:id}' --output table
+
 oci ce node-pool delete --node-pool-id <cpu-pool-id> --force \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
 oci ce node-pool delete --node-pool-id <gpu-pool-id> --force \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
 
-# 3. Delete cluster (wait for node pools to finish deleting first)
+# 3. Wait for node pools, then delete cluster
 oci ce cluster delete --cluster-id "${CLUSTER_ID}" --force \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
 
@@ -623,7 +665,15 @@ oci ce cluster delete --cluster-id "${CLUSTER_ID}" --force \
 oci bastion bastion delete --bastion-id "${BASTION_ID}" --force \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
 
-# 5. Delete subnets, gateways, and VCN (wait for cluster deletion first)
+# 5. Wait for cluster deletion, then delete networking
+#    Delete subnets first, then route tables, gateways, and VCN
+for SUBNET_ID in "${API_SUBNET_ID}" "${WORKER_SUBNET_ID}" \
+                  "${LB_SUBNET_ID}" "${BASTION_SUBNET_ID}"; do
+    oci network subnet delete --subnet-id "${SUBNET_ID}" --force \
+        --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+done
+
+# Delete non-default route tables, security lists, then gateways, then VCN
 ```
 
 ## Alternative: Terraform
