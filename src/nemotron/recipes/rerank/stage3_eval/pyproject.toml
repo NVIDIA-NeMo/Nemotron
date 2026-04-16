@@ -14,6 +14,11 @@ dependencies = [
 
 # Note: exclude-dependencies injected dynamically by run_uv.py for Docker/Slurm
 
+[tool.uv]
+# Exclude torch/torchvision from resolution — supplied via --with at runtime
+# with UV_TORCH_BACKEND=auto so the correct CUDA variant is resolved.
+exclude-dependencies = ["torch", "torchvision"]
+
 [tool.nemotron]
 entry-point = "eval.py"
 container-exclude-dependencies = [
