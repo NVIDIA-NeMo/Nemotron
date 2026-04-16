@@ -95,8 +95,8 @@ class EvalConfig(RecipeSettings):
     output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage3_eval", description="Directory for saving evaluation results.")
 
     # Evaluation settings
-    k_values: list[int] = Field(default_factory=lambda: [1, 5, 10, 100], description="K values for nDCG@k metrics.")
-    top_k: int = Field(default=100, gt=0, description="Number of first-stage candidates to re-rank.")
+    k_values: list[int] = Field(default_factory=lambda: [1, 5, 10], description="K values for nDCG@k metrics.")
+    top_k: int = Field(default=10, gt=0, description="Number of first-stage candidates to re-rank.")
     batch_size: int = Field(default=128, gt=0, description="Batch size for reranker scoring.")
     retrieval_batch_size: int = Field(default=32, gt=0, description="Batch size for first-stage retrieval encoding. Lower than batch_size because the embedding model processes longer sequences.")
     max_length: int = Field(default=512, gt=0, description="Maximum sequence length.")
