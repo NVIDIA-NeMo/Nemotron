@@ -303,7 +303,10 @@ def evaluate_reranker(
 
     # Score in batches
     all_scores = []
-    for batch_start in range(0, len(formatted_inputs), batch_size):
+    num_batches = (len(formatted_inputs) + batch_size - 1) // batch_size
+    print(f"   Scoring {len(formatted_inputs)} query-passage pairs ({num_batches} batches, batch_size={batch_size})")
+    from tqdm import tqdm
+    for batch_start in tqdm(range(0, len(formatted_inputs), batch_size), total=num_batches, desc="   Reranking"):
         batch = formatted_inputs[batch_start:batch_start + batch_size]
         if prompt_template:
             features = tokenizer(
