@@ -15,6 +15,9 @@ dependencies = [
 [tool.uv]
 # Override automodel's transformers pin to use 5.5.x
 override-dependencies = ["transformers>=5.5.0,<5.6.0"]
+# Exclude torch/torchvision from resolution — supplied via --with at runtime
+# with UV_TORCH_BACKEND=auto so the correct CUDA variant is resolved.
+exclude-dependencies = ["torch", "torchvision"]
 
 [tool.nemotron]
 entry-point = "train.py"

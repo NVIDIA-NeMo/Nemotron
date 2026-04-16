@@ -20,7 +20,9 @@ tensorrt = [
 
 [tool.uv]
 override-dependencies = ["transformers>=5,<6"]
-exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
+# Exclude torch/torchvision from resolution — supplied via --with at runtime
+# with UV_TORCH_BACKEND=auto so the correct CUDA variant is resolved.
+exclude-dependencies = ["torch", "torchvision", "transformer-engine", "nvidia-pytriton"]
 environments = ["python_version >= '3.12' and python_version < '3.14'"]
 
 [tool.nemotron]

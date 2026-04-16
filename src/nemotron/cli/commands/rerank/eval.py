@@ -116,6 +116,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
     cmd = [
         uv_cmd, "run",
         "--with", str(repo_root),
+        "--with", "torch",
         "--project", str(stage_dir),
         "python", str(script_abs),
         "--config", str(train_path),
@@ -124,6 +125,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
 
     env = os.environ.copy()
     env.pop("VIRTUAL_ENV", None)
+    env.setdefault("UV_TORCH_BACKEND", "auto")
 
     typer.echo(f"Executing with uv isolated environment: {' '.join(cmd)}")
     result = subprocess.run(cmd, env=env)
