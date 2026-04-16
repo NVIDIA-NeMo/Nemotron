@@ -14,7 +14,7 @@
 
 """Export command implementation.
 
-Exports embedding models to ONNX and TensorRT for optimized inference.
+Exports reranking models to ONNX and TensorRT for optimized inference.
 """
 
 from __future__ import annotations
@@ -36,10 +36,10 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-from nemotron.recipes.embed.stage4_export.export import ExportConfig
+from nemotron.recipes.rerank.stage4_export.export import ExportConfig
 
-SCRIPT_PATH = "src/nemotron/recipes/embed/stage4_export/export.py"
-SCRIPT_REMOTE = "src/nemotron/recipes/embed/stage4_export/run_uv.py"
+SCRIPT_PATH = "src/nemotron/recipes/rerank/stage4_export/export.py"
+SCRIPT_REMOTE = "src/nemotron/recipes/rerank/stage4_export/run_uv.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(
@@ -48,7 +48,7 @@ META = RecipeMeta(
     config_dir=str(SPEC.config_dir),
     config_model=ExportConfig,
     default_config=SPEC.config.default,
-    input_artifacts={"model": "Fine-tuned model checkpoint to export"},
+    input_artifacts={"model": "Fine-tuned reranker checkpoint to export"},
     output_artifacts={"model": "Exported model (ONNX / TensorRT)"},
 )
 
@@ -98,10 +98,7 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
 
 
 def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> None:
-    """Execute export locally via UV isolated environment.
-
-    Conditionally includes TensorRT dependency based on config.
-    """
+    """Execute export locally via UV isolated environment."""
     from nemotron.kit.uv_local import execute_uv_local
 
     script_abs = SPEC.script_path
@@ -184,6 +181,6 @@ def _execute_remote(
 
 
 def export(ctx: typer.Context) -> None:
-    """Export embedding models to ONNX and TensorRT for optimized inference."""
+    """Export reranking models to ONNX and TensorRT for optimized inference."""
     cfg = parse_recipe_config(ctx)
     _execute_export(cfg)

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Export command implementation.
+"""Finetune command implementation.
 
-Exports embedding models to ONNX and TensorRT for optimized inference.
+Fine-tunes a cross-encoder reranking model using classification loss.
 """
 
 from __future__ import annotations
@@ -36,25 +36,25 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-from nemotron.recipes.embed.stage4_export.export import ExportConfig
+from nemotron.recipes.rerank.stage2_finetune.train import FinetuneConfig
 
-SCRIPT_PATH = "src/nemotron/recipes/embed/stage4_export/export.py"
-SCRIPT_REMOTE = "src/nemotron/recipes/embed/stage4_export/run_uv.py"
+SCRIPT_PATH = "src/nemotron/recipes/rerank/stage2_finetune/train.py"
+SCRIPT_REMOTE = "src/nemotron/recipes/rerank/stage2_finetune/run_uv.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(
     name=SPEC.name,
     script_path=SCRIPT_PATH,
     config_dir=str(SPEC.config_dir),
-    config_model=ExportConfig,
+    config_model=FinetuneConfig,
     default_config=SPEC.config.default,
-    input_artifacts={"model": "Fine-tuned model checkpoint to export"},
-    output_artifacts={"model": "Exported model (ONNX / TensorRT)"},
+    input_artifacts={"data": "Training data (from embed prep stage)"},
+    output_artifacts={"model": "Fine-tuned reranking model checkpoint"},
 )
 
 
-def _execute_export(cfg: RecipeConfig, *, experiment=None):
-    """Execute export with visible execution logic."""
+def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
+    """Execute finetune with visible execution logic."""
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
@@ -84,7 +84,7 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
     display_job_submission(job_path, train_path, env_vars, cfg.mode)
 
     if cfg.mode == "local":
-        _execute_uv_local(train_path, cfg.passthrough, job_config)
+        _execute_uv_local(train_path, cfg.passthrough)
     else:
         _execute_remote(
             train_path=train_path,
@@ -97,21 +97,13 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
         )
 
 
-def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> None:
-    """Execute export locally via UV isolated environment.
-
-    Conditionally includes TensorRT dependency based on config.
-    """
+def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
+    """Execute finetune locally via UV isolated environment."""
     from nemotron.kit.uv_local import execute_uv_local
 
     script_abs = SPEC.script_path
     stage_dir = script_abs.parent
     repo_root = SPEC.script_path.parents[len(Path(SCRIPT_PATH).parts) - 1]
-
-    extra_with = []
-    export_to_trt = job_config.get("export_to_trt", False)
-    if export_to_trt:
-        extra_with.append("tensorrt")
 
     rc = execute_uv_local(
         script_path=str(script_abs),
@@ -119,7 +111,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> N
         repo_root=repo_root,
         train_path=train_path,
         passthrough=passthrough,
-        extra_with=extra_with,
+        pre_script_args=["-m", "torch.distributed.run", "--nproc_per_node=gpu"],
     )
     raise typer.Exit(rc)
 
@@ -133,7 +125,7 @@ def _execute_remote(
     force_squash: bool,
     experiment=None,
 ):
-    """Execute export via nemo-run with remote backend."""
+    """Execute finetune via nemo-run with remote backend."""
     try:
         import nemo_run as run
     except ImportError:
@@ -183,7 +175,7 @@ def _execute_remote(
         exp.run(detach=not attached, tail_logs=attached)
 
 
-def export(ctx: typer.Context) -> None:
-    """Export embedding models to ONNX and TensorRT for optimized inference."""
+def finetune(ctx: typer.Context) -> None:
+    """Fine-tune cross-encoder reranking model with classification loss."""
     cfg = parse_recipe_config(ctx)
-    _execute_export(cfg)
+    _execute_finetune(cfg)

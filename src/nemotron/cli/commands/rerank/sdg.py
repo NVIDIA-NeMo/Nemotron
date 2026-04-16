@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Export command implementation.
+"""SDG command for rerank recipe.
 
-Exports embedding models to ONNX and TensorRT for optimized inference.
+Runs the same SDG pipeline as embed but with rerank-specific config
+that writes output to output/rerank/ instead of output/embed/.
 """
 
 from __future__ import annotations
@@ -36,26 +37,28 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-from nemotron.recipes.embed.stage4_export.export import ExportConfig
+from nemotron.recipes.embed.stage0_sdg.data_prep import SDGConfig
 
-SCRIPT_PATH = "src/nemotron/recipes/embed/stage4_export/export.py"
-SCRIPT_REMOTE = "src/nemotron/recipes/embed/stage4_export/run_uv.py"
+# Use embed's script but rerank's config directory
+SCRIPT_PATH = "src/nemotron/recipes/embed/stage0_sdg/data_prep.py"
+SCRIPT_REMOTE = "src/nemotron/recipes/embed/stage0_sdg/run_uv.py"
 SPEC = parse_runspec(SCRIPT_PATH)
+RERANK_CONFIG_DIR = Path("src/nemotron/recipes/rerank/stage0_sdg/config").resolve()
 
 META = RecipeMeta(
-    name=SPEC.name,
+    name="rerank/sdg",
     script_path=SCRIPT_PATH,
-    config_dir=str(SPEC.config_dir),
-    config_model=ExportConfig,
-    default_config=SPEC.config.default,
-    input_artifacts={"model": "Fine-tuned model checkpoint to export"},
-    output_artifacts={"model": "Exported model (ONNX / TensorRT)"},
+    config_dir=str(RERANK_CONFIG_DIR),
+    config_model=SDGConfig,
+    default_config="default",
+    input_artifacts={"corpus": "Document corpus directory"},
+    output_artifacts={"data": "Synthetic Q&A pairs (JSON)"},
 )
 
 
-def _execute_export(cfg: RecipeConfig, *, experiment=None):
-    """Execute export with visible execution logic."""
-    train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
+def _execute_sdg(cfg: RecipeConfig, *, experiment=None):
+    """Execute SDG with rerank output paths."""
+    train_config = parse_config(cfg.ctx, RERANK_CONFIG_DIR, "default")
     env = parse_env(cfg.ctx)
 
     script_path = SCRIPT_PATH if cfg.mode == "local" else SCRIPT_REMOTE
@@ -63,7 +66,7 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
     job_config = build_job_config(
         train_config,
         cfg.ctx,
-        SPEC.name,
+        "rerank/sdg",
         script_path,
         cfg.argv,
         env_profile=env,
@@ -74,7 +77,7 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
     if cfg.dry_run:
         return
 
-    job_dir = generate_job_dir(SPEC.name)
+    job_dir = generate_job_dir("rerank/sdg")
     train_config_for_script = extract_train_config(job_config, for_remote=False)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
@@ -84,7 +87,7 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
     display_job_submission(job_path, train_path, env_vars, cfg.mode)
 
     if cfg.mode == "local":
-        _execute_uv_local(train_path, cfg.passthrough, job_config)
+        _execute_uv_local(train_path, cfg.passthrough)
     else:
         _execute_remote(
             train_path=train_path,
@@ -97,21 +100,13 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
         )
 
 
-def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> None:
-    """Execute export locally via UV isolated environment.
-
-    Conditionally includes TensorRT dependency based on config.
-    """
+def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
+    """Execute SDG locally via UV isolated environment."""
     from nemotron.kit.uv_local import execute_uv_local
 
     script_abs = SPEC.script_path
     stage_dir = script_abs.parent
     repo_root = SPEC.script_path.parents[len(Path(SCRIPT_PATH).parts) - 1]
-
-    extra_with = []
-    export_to_trt = job_config.get("export_to_trt", False)
-    if export_to_trt:
-        extra_with.append("tensorrt")
 
     rc = execute_uv_local(
         script_path=str(script_abs),
@@ -119,7 +114,6 @@ def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> N
         repo_root=repo_root,
         train_path=train_path,
         passthrough=passthrough,
-        extra_with=extra_with,
     )
     raise typer.Exit(rc)
 
@@ -133,7 +127,7 @@ def _execute_remote(
     force_squash: bool,
     experiment=None,
 ):
-    """Execute export via nemo-run with remote backend."""
+    """Execute SDG via nemo-run with remote backend."""
     try:
         import nemo_run as run
     except ImportError:
@@ -164,7 +158,7 @@ def _execute_remote(
         default_image=SPEC.image,
     )
 
-    recipe_name = SPEC.name.replace("/", "-")
+    recipe_name = "rerank-sdg"
     script_args = [*passthrough]
 
     if experiment is not None:
@@ -183,7 +177,7 @@ def _execute_remote(
         exp.run(detach=not attached, tail_logs=attached)
 
 
-def export(ctx: typer.Context) -> None:
-    """Export embedding models to ONNX and TensorRT for optimized inference."""
+def sdg(ctx: typer.Context) -> None:
+    """Generate synthetic Q&A pairs from document corpus."""
     cfg = parse_recipe_config(ctx)
-    _execute_export(cfg)
+    _execute_sdg(cfg)

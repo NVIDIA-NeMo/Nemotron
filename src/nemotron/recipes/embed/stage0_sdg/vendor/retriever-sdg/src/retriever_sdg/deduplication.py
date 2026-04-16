@@ -38,16 +38,9 @@ class DDRetrievalDedup(ColumnGeneratorCellByCell[DDRetrievalDedupConfig]):
             model_alias=self.config.embedding_alias)
 
     def _embed(self, text: str) -> list[float]:
-        """Calculate an embedding of the text
-        """
-        response = self.embedder._router.embedding(
-            input=text,
-            model=self.embedder.model_name,
-            encoding_format="float",
-            extra_body=self.embedder._model_config.inference_parameters.
-            extra_body)
-
-        return response.data[0]["embedding"]
+        """Calculate an embedding of the text."""
+        embeddings = self.embedder.generate_text_embeddings([text])
+        return embeddings[0]
 
     def dedupe_qa_pairs(self, embeddings: list[list[float]]) -> list[int]:
         """Run a semantic dedupe of the qa pairs.

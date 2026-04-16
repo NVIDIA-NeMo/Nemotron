@@ -15,9 +15,9 @@ dependencies = [
 # Note: exclude-dependencies injected dynamically by run_uv.py for Docker/Slurm
 
 [tool.uv]
-# Auto-detect CUDA version for correct PyTorch wheel selection.
-# Without this, uv pulls the default PyPI torch (cu130) which requires CUDA 13.0 drivers.
-torch-backend = "auto"
+# Exclude torch/torchvision from resolution — supplied via --with at runtime
+# with UV_TORCH_BACKEND=auto so the correct CUDA variant is resolved.
+exclude-dependencies = ["torch", "torchvision"]
 
 [tool.nemotron]
 entry-point = "eval.py"
