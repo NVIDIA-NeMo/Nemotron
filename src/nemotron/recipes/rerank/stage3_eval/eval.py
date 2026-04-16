@@ -268,8 +268,8 @@ def evaluate_reranker(
         k_values = [1, 5, 10, 100]
 
     # Load model and tokenizer directly to control input formatting
-    tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True)
-    model = AutoModelForSequenceClassification.from_pretrained(str(model_path), trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True, padding_side="left")
+    model = AutoModelForSequenceClassification.from_pretrained(str(model_path), trust_remote_code=True, torch_dtype=torch.bfloat16)
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
