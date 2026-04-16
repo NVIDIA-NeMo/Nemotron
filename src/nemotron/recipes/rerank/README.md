@@ -107,7 +107,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 # Clone the repository
-git clone https://github.com/NVIDIA/Nemotron.git
+git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
 # UV creates a virtual environment at .venv/ and installs all dependencies
@@ -629,10 +629,10 @@ Higher scores indicate better re-ranking performance. The key metric to watch is
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA/NeMo-Data-Designer) |
-| Automodel | Cross-encoder model training framework | [GitHub](https://github.com/NVIDIA/NeMo-Automodel) |
+| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA-NeMo/DataDesigner) |
+| Automodel | Cross-encoder model training framework | [GitHub](https://github.com/NVIDIA-NeMo/Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
-| NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
+| NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA-NeMo/Export-Deploy) |
 | NVIDIA NIM | Production inference microservice with ranking API | [Developer Site](https://developer.nvidia.com/nim) |
 
 ## Base Model
@@ -648,8 +648,8 @@ Higher scores indicate better re-ranking performance. The key metric to watch is
 
 ## Further Reading
 
-- [NeMo Data Designer Documentation](https://github.com/NVIDIA/NeMo-Data-Designer) - Synthetic data generation framework
-- [Automodel Documentation](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
+- [NeMo Data Designer Documentation](https://github.com/NVIDIA-NeMo/DataDesigner) - Synthetic data generation framework
+- [Automodel Documentation](https://github.com/NVIDIA-NeMo/Automodel) - Model training framework
 - [BEIR Benchmark](https://github.com/beir-cellar/beir) - Information retrieval evaluation
 - [NVIDIA NIM Documentation](https://developer.nvidia.com/nim) - Production inference microservices
 - [Llama-Nemotron-Rerank-1B-v2 Model Card](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2) - Base model details
@@ -658,6 +658,6 @@ Higher scores indicate better re-ranking performance. The key metric to watch is
 ## Support
 
 For issues, questions, or contributions:
-- **Issues**: [GitHub Issues](https://github.com/NVIDIA/Nemotron/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/NVIDIA/Nemotron/discussions)
-- **Documentation**: [Nemotron Documentation](https://github.com/NVIDIA/Nemotron)
+- **Issues**: [GitHub Issues](https://github.com/NVIDIA-NeMo/Nemotron/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/NVIDIA-NeMo/Nemotron/discussions)
+- **Documentation**: [Nemotron Documentation](https://github.com/NVIDIA-NeMo/Nemotron)
