@@ -138,6 +138,7 @@ class _SentenceTransformerRetriever:
         query_prefix: str = "query:",
         passage_prefix: str = "passage:",
     ):
+        import torch
         from sentence_transformers import SentenceTransformer
 
         self.model = SentenceTransformer(
@@ -148,8 +149,15 @@ class _SentenceTransformerRetriever:
         self.query_prefix = query_prefix
         self.passage_prefix = passage_prefix
 
+        self._pool = None
+        if torch.cuda.device_count() > 1:
+            print(f"   Starting multi-GPU pool ({torch.cuda.device_count()} GPUs) for retrieval model")
+            self._pool = self.model.start_multi_process_pool()
+
     def encode_queries(self, queries: list[str], batch_size: int = 128, **kwargs):
         prompts = [f"{self.query_prefix} {q}" for q in queries]
+        if self._pool:
+            return self.model.encode_multi_process(prompts, self._pool, batch_size=batch_size)
         return self.model.encode(prompts, batch_size=batch_size, **kwargs)
 
     def encode_corpus(self, corpus: list[dict[str, str]], batch_size: int = 128, **kwargs):
@@ -158,6 +166,8 @@ class _SentenceTransformerRetriever:
             title = doc.get("title", "")
             text = doc.get("text", "")
             texts.append(f"{self.passage_prefix} {title} {text}".strip())
+        if self._pool:
+            return self.model.encode_multi_process(texts, self._pool, batch_size=batch_size)
         return self.model.encode(texts, batch_size=batch_size, **kwargs)
 
 
@@ -263,6 +273,9 @@ def evaluate_reranker(
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
+    if torch.cuda.device_count() > 1:
+        print(f"   Using {torch.cuda.device_count()} GPUs with DataParallel")
+        model = torch.nn.DataParallel(model)
 
     # Build inputs
     formatted_inputs = []
