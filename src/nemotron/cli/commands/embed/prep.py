@@ -100,35 +100,20 @@ def _execute_prep(cfg: RecipeConfig, *, experiment=None):
 
 def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
     """Execute data prep locally via UV isolated environment."""
-    import os
-    import shutil
-    import subprocess
-
-    uv_cmd = shutil.which("uv")
-    if not uv_cmd:
-        typer.echo("Error: 'uv' command not found. Please install uv.", err=True)
-        raise typer.Exit(1)
+    from nemotron.kit.uv_local import execute_uv_local
 
     script_abs = SPEC.script_path
     stage_dir = script_abs.parent
     repo_root = SPEC.script_path.parents[len(Path(SCRIPT_PATH).parts) - 1]
-    cmd = [
-        uv_cmd, "run",
-        "--with", str(repo_root),
-        "--with", "torch",
-        "--project", str(stage_dir),
-        "python", str(script_abs),
-        "--config", str(train_path),
-        *passthrough,
-    ]
 
-    env = os.environ.copy()
-    env.pop("VIRTUAL_ENV", None)
-    env.setdefault("UV_TORCH_BACKEND", "auto")
-
-    typer.echo(f"Executing with uv isolated environment: {' '.join(cmd)}")
-    result = subprocess.run(cmd, env=env)
-    raise typer.Exit(result.returncode)
+    rc = execute_uv_local(
+        script_path=str(script_abs),
+        stage_dir=stage_dir,
+        repo_root=repo_root,
+        train_path=train_path,
+        passthrough=passthrough,
+    )
+    raise typer.Exit(rc)
 
 
 def _execute_remote(
