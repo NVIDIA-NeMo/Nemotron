@@ -15,6 +15,68 @@
 """Environment profile loading from env.toml.
 
 Handles loading executor configurations and profile inheritance.
+
+Supported executor types and their env.toml profile formats:
+
+Local (default -- no env.toml profile needed):
+    Runs via torchrun on the local machine. No profile required.
+
+Slurm:
+    [MY-CLUSTER]
+    executor = "slurm"
+    host = "login.cluster.example.com"
+    user = "myuser"
+    account = "myaccount"
+    partition = "batch"
+    remote_job_dir = "/lustre/myuser/jobs"
+    container_image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+    gpus_per_node = 8
+    nodes = 2
+    time = "04:00:00"
+    mounts = ["/data:/data", "/models:/models"]
+
+Docker:
+    [local-docker]
+    executor = "docker"
+    container_image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+    gpus_per_node = 8
+    mounts = ["/local/data:/data"]
+
+Lepton (DGX Cloud):
+    [lepton-dgx]
+    executor = "lepton"
+    container_image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+    node_group = "my-dgx-group"
+    resource_shape = "gpu.8xh100-80gb"
+    nemo_run_dir = "/nemo_run/code"
+    nodes = 2
+    gpus_per_node = 8
+    pre_launch_commands = ["pip install flash-attn"]
+    image_pull_secrets = ["nvcr-secret"]
+
+    # Mounts are dicts with 'path' and 'mount_path' keys:
+    [[lepton-dgx.mounts]]
+    path = "/shared-storage/data"
+    mount_path = "/data"
+
+Run:AI (Kubernetes-based GPU orchestration):
+    [runai-cluster]
+    executor = "runai"
+    container_image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+    cluster = "my-runai-cluster"
+    project = "my-team"
+    nodes = 2
+    gpus_per_node = 8
+    node_pool = "h100-pool"
+
+    # PVC mounts for persistent storage:
+    [[runai-cluster.pvc_mounts]]
+    name = "training-data-pvc"
+    mount_path = "/data"
+
+    [[runai-cluster.pvc_mounts]]
+    name = "model-checkpoints-pvc"
+    mount_path = "/results"
 """
 
 from __future__ import annotations

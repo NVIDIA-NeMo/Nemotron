@@ -89,11 +89,13 @@ def _register_groups() -> None:
     from nemotron.cli.commands.super3 import super3_app
     from nemotron.cli.kit import kit_app
     from nemotron.cli.commands.embed import embed_app
+    from nemotron.cli.commands.customize import customize_app
 
     app.add_typer(nano3_app, name="nano3")
     app.add_typer(super3_app, name="super3")
     app.add_typer(kit_app, name="kit")
     app.add_typer(embed_app, name="embed")
+    app.add_typer(customize_app, name="customize")
 
 
 # Register groups on import

@@ -1,0 +1,62 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# CPT Training Config — Nemotron (Megatron-Bridge)
+# =============================================================================
+# Continued pretraining on domain/language-specific corpora.
+# Follows the same Megatron-Bridge config pattern as nano3/super3 recipes.
+
+run:
+  data: cpt-data:latest                    # Data artifact (bin/idx blends from data_prep)
+  model: null                              # Base model (downloaded from HF if null)
+  env:
+    container: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_pretrain_config
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 10000                       # Adjust based on data volume (5000-50000)
+  global_batch_size: 256                   # Tokens per step = GBS * seq_length
+  micro_batch_size: 1
+
+model:
+  seq_length: 4096
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 2
+
+optimizer:
+  lr: 1e-5                                 # Lower than pretrain (avoid forgetting)
+  min_lr: 1e-6
+  weight_decay: 0.01
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  clip_grad: 1.0
+
+scheduler:
+  lr_decay_style: cosine
+  lr_warmup_iters: 100
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}      # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}        # Set from env.toml [wandb]
+
+checkpoint:
+  save: /results/cpt_checkpoint
+  save_interval: 1000
+  load: null                               # Set to resume from a checkpoint
