@@ -14,13 +14,13 @@
 
 """CPT (Continued Pre-Training) command implementation.
 
-Runs stage0 CPT training using the production training script for the
+Runs stage1 CPT training using the production training script for the
 user's chosen model family (nano3, super3) with customization-specific
 YAML configs.
 
 Design: Same scripts, different configs.
 - Training script: resolved dynamically based on --model-family
-- Config dir: src/nemotron/customization_recipes/nemotron/stage0_cpt/config/
+- Config dir: src/nemotron/customization_recipes/nemotron/stage1_cpt/config/
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ from nemotron.cli.commands.customize._execute import (
 # =============================================================================
 
 _CUSTOMIZE_CONFIG_DIR = str(
-    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage0_cpt/config").resolve()
+    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage1_cpt/config").resolve()
 )
 
 # Default SPEC/META using default model family (for --help and registration).
@@ -78,7 +78,7 @@ def cpt(
         help="Base model family (nano3, super3). Determines which training script to use.",
     ),
 ) -> None:
-    """Run continued pre-training (stage0).
+    """Run continued pre-training (stage1).
 
     Tokenizes data and runs distributed pre-training using Megatron-Bridge.
     The training script is selected based on --model-family.

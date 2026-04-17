@@ -14,7 +14,7 @@
 
 """Data-prep command implementation for customization recipes.
 
-Supports both CPT data prep (stage0) and SFT data prep (stage1)
+Supports both CPT data prep (stage1) and SFT data prep (stage2)
 depending on the ``--mode`` flag. Default is CPT data prep.
 
 Design: LLM-Native Recipe Architecture
@@ -36,8 +36,8 @@ from nemotron.cli.commands.customize._execute import execute_recipe
 # Recipe Metadata -- CPT data prep is the default; SFT data prep via --mode sft
 # =============================================================================
 
-CPT_SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage0_cpt/run_data_prep.py"
-SFT_SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage1_sft/run_data_prep.py"
+CPT_SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage1_cpt/run_data_prep.py"
+SFT_SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage2_sft/run_data_prep.py"
 
 CPT_SPEC = parse_runspec(CPT_SCRIPT_PATH)
 SFT_SPEC = parse_runspec(SFT_SCRIPT_PATH)
@@ -58,7 +58,7 @@ META = RecipeMeta(
 
 
 def data_prep(ctx: typer.Context) -> None:
-    """Run data preparation for customization (stage0 CPT or stage1 SFT).
+    """Run data preparation for customization (stage1 CPT or stage2 SFT).
 
     By default runs CPT data-prep (acquire, filter, tokenize).
     Pass ``--mode sft`` to run SFT data-prep instead.

@@ -1,4 +1,4 @@
-# SKILL: Stage 3 -- Build Your Own Benchmark (BYOB)
+# SKILL: Stage 4 -- Build Your Own Benchmark (BYOB)
 
 ## Purpose
 
@@ -217,8 +217,8 @@ The `ByobConfig` dataclass (in `data_prep/byob.py`) maps these fields directly. 
 ## Execution
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage3_byob/run_generate.py \
-  --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_generate.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   input_dir=/data/hindi_medical_texts \
   output_dir=/data/hindi_medical_benchmark \
   language=hi \
@@ -231,14 +231,14 @@ BYOB also provides separate scripts for seed preparation and translation:
 
 ```bash
 # Prepare seed dataset only (without running the full pipeline)
-python src/nemotron/customization_recipes/nemotron/stage3_byob/run_prepare.py \
-  --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_prepare.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   input_dir=/data/domain_corpus \
   output_dir=/data/byob_seed
 
 # Translate a generated benchmark to a target language
-python src/nemotron/customization_recipes/nemotron/stage3_byob/run_translate.py \
-  --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   translate.dataset_path=/data/byob_benchmark/benchmark.jsonl \
   translate.target_language=hi-IN
 ```
@@ -272,8 +272,8 @@ translate:
 Run translation via the dedicated script:
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage3_byob/run_translate.py \
-  --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   translate.dataset_path=/data/byob_benchmark/benchmark.jsonl \
   translate.target_language=hi-IN
 ```
@@ -328,15 +328,15 @@ Additional output files:
 | All questions on same topic | Corpus is topic-homogeneous | Set `coverage.rebalance: true`, add documents covering different subtopics |
 | Translation quality poor | Machine translation artifacts | Enable `verify_translation`, use human review for critical benchmarks |
 
-## Feeding BYOB Output to Evaluation (Stage 3 -> Stage 4 Bridge)
+## Feeding BYOB Output to Evaluation (Stage 4 -> Stage 5 Bridge)
 
-After generating a benchmark with the BYOB pipeline, use the **NeMo Evaluator BYOB framework** to create a compiled benchmark definition that the evaluator can run directly. This is the "sovereign benchmark bridge" between stage3 and stage4.
+After generating a benchmark with the BYOB pipeline, use the **NeMo Evaluator BYOB framework** to create a compiled benchmark definition that the evaluator can run directly. This is the "sovereign benchmark bridge" between stage4 and stage5.
 
 ### Quick Path: Auto-Generate + Compile
 
 ```bash
 # 1. Generate the benchmark definition from BYOB output
-python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_benchmark.py \
+python src/nemotron/customization_recipes/nemotron/stage5_eval/create_sovereign_benchmark.py \
   --byob-output /data/byob_benchmark/benchmark.jsonl \
   --benchmark-name "hindi-medical-mcq" \
   --output-dir /data/eval/benchmarks/ \
@@ -354,7 +354,7 @@ For more control, copy the sovereign benchmark template and customize it:
 
 ```bash
 # 1. Copy the template
-cp src/nemotron/customization_recipes/nemotron/stage4_eval/sovereign_benchmark.py \
+cp src/nemotron/customization_recipes/nemotron/stage5_eval/sovereign_benchmark.py \
    /data/eval/benchmarks/hindi_medical_benchmark.py
 
 # 2. Edit the file: set BENCHMARK_NAME, DATASET_PATH, LANGUAGE, and
@@ -377,28 +377,28 @@ export SOVEREIGN_DATASET_PATH="/data/byob_benchmark/benchmark.jsonl"
 export SOVEREIGN_LANGUAGE="hi"
 export SOVEREIGN_NUM_CHOICES="4"
 
-nemo-evaluator-byob src/nemotron/customization_recipes/nemotron/stage4_eval/sovereign_benchmark.py
+nemo-evaluator-byob src/nemotron/customization_recipes/nemotron/stage5_eval/sovereign_benchmark.py
 ```
 
 ### Full End-to-End Command Sequence
 
 ```bash
-# Stage 3: Generate MCQ benchmark
-python src/nemotron/customization_recipes/nemotron/stage3_byob/run_generate.py \
-  --config src/nemotron/customization_recipes/nemotron/stage3_byob/config/default.yaml \
+# Stage 4: Generate MCQ benchmark
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_generate.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   input_dir=/data/hindi_medical_texts \
   output_dir=/data/byob_benchmark \
   language=hi \
   num_questions_per_query=5
 
 # Bridge: Create sovereign benchmark definition
-python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_benchmark.py \
+python src/nemotron/customization_recipes/nemotron/stage5_eval/create_sovereign_benchmark.py \
   --byob-output /data/byob_benchmark/benchmark.jsonl \
   --benchmark-name "hindi-medical-mcq" \
   --output-dir /data/eval/benchmarks/ \
   --compile
 
-# Stage 4: Evaluate with standard + sovereign benchmarks
+# Stage 5: Evaluate with standard + sovereign benchmarks
 nemotron customize eval --run MY-CLUSTER \
   -t adlr_mmlu \
   -t adlr_arc_challenge_llama_25_shot \
@@ -410,7 +410,7 @@ nemotron customize eval --run MY-CLUSTER \
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `--byob-output` | Yes | Path to stage3 benchmark.jsonl |
+| `--byob-output` | Yes | Path to stage4 benchmark.jsonl |
 | `--benchmark-name` | Yes | Benchmark name (used as eval task ID) |
 | `--output-dir` | Yes | Directory for generated benchmark file |
 | `--language` | No | Override language label (auto-detected) |
@@ -421,7 +421,7 @@ nemotron customize eval --run MY-CLUSTER \
 
 | Artifact | Type | Path | Consumed By |
 |----------|------|------|-------------|
-| MCQ benchmark | JSONL | `output_dir/benchmark.jsonl` | stage4_eval (via sovereign benchmark bridge) |
+| MCQ benchmark | JSONL | `output_dir/benchmark.jsonl` | stage5_eval (via sovereign benchmark bridge) |
 | Benchmark metadata | JSON | `output_dir/metadata.json` | Analysis |
 | Quality report | JSON | `output_dir/quality_report.json` | Analysis |
 | Raw questions (pre-filter) | JSONL | `output_dir/raw_questions.jsonl` | Debugging/re-runs |

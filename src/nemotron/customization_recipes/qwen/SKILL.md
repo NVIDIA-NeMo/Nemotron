@@ -10,14 +10,14 @@ This family uses the same stage structure as Nemotron. See `src/nemotron/customi
 
 | Stage | Directory | Status |
 |-------|-----------|--------|
-| 0 - CPT | `stage0_cpt/` | Planned |
-| 1 - SFT | `stage1_sft/` | Planned |
-| 2 - RL | `stage2_rl/` | Planned |
-| 3 - BYOB | `stage3_byob/` | Shared with Nemotron |
-| 4 - Eval | `stage4_eval/` | Shared with Nemotron |
-| 5 - Quantization | `stage5_quantization/` | Shared with Nemotron |
+| 1 - CPT | `stage1_cpt/` | Planned |
+| 2 - SFT | `stage2_sft/` | Planned |
+| 3 - RL | `stage3_rl/` | Planned |
+| 4 - BYOB | `stage4_byob/` | Shared with Nemotron |
+| 5 - Eval | `stage5_eval/` | Shared with Nemotron |
+| 6 - Quantization | `stage6_quantization/` | Shared with Nemotron |
 
-Stages 3-5 are model-agnostic and reuse the Nemotron implementations. Stages 0-2 require Qwen-specific configs.
+Stages 4-6 are model-agnostic and reuse the Nemotron implementations. Stages 1-3 require Qwen-specific configs.
 
 ## Key Differences from Nemotron
 
@@ -55,7 +55,7 @@ nemotron customize eval -c default --run MY-CLUSTER \
   deployment.checkpoint_path=/results/qwen_checkpoint
 
 # Quantize (shared)
-python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quantize.py \
+python src/nemotron/customization_recipes/nemotron/stage6_quantization/run_quantize.py \
   --config default.yaml \
   model.name_or_path=/results/qwen_checkpoint
 ```

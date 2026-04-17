@@ -580,3 +580,149 @@ def translate_byob_benchmark(cfg: "DictConfig") -> dict:
 
     log.info("BYOB benchmark translation complete: %s", output_file)
     return {"output_path": output_file, "num_translated": len(data_items)}
+
+
+# ---------------------------------------------------------------------------
+# NeMo Curator TranslationPipeline adapter (Stage 0a)
+# ---------------------------------------------------------------------------
+
+
+def translate_data(cfg: "DictConfig") -> Path:
+    """Translate a dataset using NeMo Curator's TranslationPipeline.
+
+    This is a thin adapter that maps an OmegaConf config to the Curator
+    ``TranslationPipeline`` and runs it on the input data.
+
+    Args:
+        cfg: OmegaConf DictConfig with a ``translation`` sub-key containing
+            all pipeline parameters (see ``stage0_data_prep/config/translate/default.yaml``).
+
+    Returns:
+        Path to the output directory containing translated data.
+    """
+    from omegaconf import OmegaConf
+
+    t_cfg = OmegaConf.select(cfg, "translation", default=cfg)
+    t = OmegaConf.to_container(t_cfg, resolve=True)
+
+    # --- Validate required fields ---
+    input_path = Path(t.get("input_path", "/workspace/data/source"))
+    output_dir = Path(t.get("output_dir", "/workspace/data/translated"))
+    backend = t.get("backend", "llm")
+    dry_run = t.get("dry_run", False)
+
+    if dry_run:
+        log.info("Dry run -- resolved translation config:\n%s", OmegaConf.to_yaml(t_cfg))
+        return output_dir
+
+    # --- Lazy import of NeMo Curator ---
+    try:
+        from nemo_curator.pipeline import Pipeline
+        from nemo_curator.stages.text.translation.pipeline import TranslationPipeline
+        from nemo_curator.tasks import DocumentBatch
+    except ImportError as exc:
+        raise ImportError(
+            "nemo-curator is required for the Curator translation pipeline. "
+            "Install with: pip install nemo-curator"
+        ) from exc
+
+    # --- Build the LLM client (for llm backend or FAITH eval) ---
+    client = None
+    if backend == "llm" or t.get("faith_eval", {}).get("enabled", False):
+        try:
+            from nemo_curator.models.client.openai_client import AsyncOpenAIClient
+        except ImportError as exc:
+            raise ImportError(
+                "nemo-curator with OpenAI client support is required. "
+                "Install with: pip install nemo-curator openai"
+            ) from exc
+
+        server = t.get("server", {})
+        client = AsyncOpenAIClient(
+            max_concurrent_requests=t.get("max_concurrent_requests", 64),
+            base_url=server.get("url", "https://integrate.api.nvidia.com/v1"),
+            api_key=server.get("api_key", os.environ.get("NVIDIA_API_KEY", "")),
+        )
+
+    # --- Build backend config for non-LLM backends ---
+    backend_config = {}
+    if backend == "google":
+        backend_config = dict(t.get("google", {}))
+    elif backend == "aws":
+        backend_config = dict(t.get("aws", {}))
+    elif backend == "nmt":
+        backend_config = dict(t.get("nmt", {}))
+
+    # --- FAITH eval settings ---
+    faith = t.get("faith_eval", {})
+    enable_faith = faith.get("enabled", False)
+    faith_threshold = faith.get("threshold", 2.5)
+
+    # --- Build the TranslationPipeline (a CompositeStage) ---
+    translation_pipeline = TranslationPipeline(
+        source_lang=t.get("source_lang", "en"),
+        target_lang=t.get("target_lang", "hi"),
+        text_field=t.get("text_field", "text"),
+        output_field=t.get("output_field", "translated_text"),
+        segmentation_mode=t.get("segmentation_mode", "coarse"),
+        client=client,
+        model_name=t.get("server", {}).get("model", ""),
+        backend_type=backend,
+        backend_config=backend_config,
+        enable_faith_eval=enable_faith,
+        faith_threshold=faith_threshold,
+        preserve_segment_pairs=t.get("preserve_segment_pairs", True),
+        output_mode=t.get("output_mode", "both"),
+        skip_translated=t.get("skip_translated", True),
+    )
+
+    # --- Load input data ---
+    import pandas as pd
+
+    if input_path.is_dir():
+        frames = []
+        for f in sorted(input_path.iterdir()):
+            if f.suffix == ".jsonl":
+                frames.append(pd.read_json(f, lines=True))
+            elif f.suffix == ".parquet":
+                frames.append(pd.read_parquet(f))
+        if not frames:
+            raise FileNotFoundError(f"No .jsonl or .parquet files found in {input_path}")
+        df = pd.concat(frames, ignore_index=True)
+    elif input_path.suffix == ".jsonl":
+        df = pd.read_json(input_path, lines=True)
+    elif input_path.suffix == ".parquet":
+        df = pd.read_parquet(input_path)
+    else:
+        raise ValueError(f"Unsupported input format: {input_path}")
+
+    log.info("Loaded %d rows from %s", len(df), input_path)
+
+    # --- Run the pipeline ---
+    # TranslationPipeline is a CompositeStage; calling .process() directly
+    # raises RuntimeError.  Wrap it in a Pipeline so that build() decomposes
+    # the composite into execution stages and run() drives the executor.
+    batch = DocumentBatch(
+        task_id="translate-stage0",
+        dataset_name=input_path.stem,
+        data=df,
+    )
+    curator_pipeline = Pipeline(
+        name="nemotron-translate",
+        stages=[translation_pipeline],
+    )
+    results = curator_pipeline.run(initial_tasks=[batch])
+
+    # Collect the result DataFrame from the first returned task.
+    if results and hasattr(results[0], "to_pandas"):
+        result_df = results[0].to_pandas()
+    else:
+        raise RuntimeError("Translation pipeline returned no results")
+
+    # --- Save output ---
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / "translated.jsonl"
+    result_df.to_json(output_file, orient="records", lines=True, force_ascii=False)
+
+    log.info("Translation complete: %d rows written to %s", len(result_df), output_file)
+    return output_dir

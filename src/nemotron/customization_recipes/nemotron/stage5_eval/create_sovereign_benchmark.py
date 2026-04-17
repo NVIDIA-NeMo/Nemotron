@@ -15,7 +15,7 @@
 
 """Auto-generate a NeMo Evaluator BYOB benchmark from stage3 BYOB output.
 
-Reads the stage3_byob benchmark.jsonl to understand its structure (number
+Reads the stage4_byob benchmark.jsonl to understand its structure (number
 of choices, subjects/topics, language), then generates a customized
 sovereign_benchmark.py file ready for compilation with nemo-evaluator-byob.
 

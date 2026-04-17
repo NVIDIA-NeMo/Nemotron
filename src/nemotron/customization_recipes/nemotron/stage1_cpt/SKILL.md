@@ -1,4 +1,4 @@
-# SKILL: Stage 0 -- Continued Pretraining (CPT)
+# SKILL: Stage 1 -- Continued Pretraining (CPT)
 
 ## Purpose
 
@@ -12,7 +12,7 @@ Inject new language and/or domain knowledge into a base Nemotron model by contin
 
 Skip this stage if:
 - The target language is English and the domain is general
-- You only need instruction-following capability (go to stage1_sft)
+- You only need instruction-following capability (go to stage2_sft)
 - The base model already performs well on your target distribution
 
 ## Inputs Required
@@ -39,7 +39,7 @@ If any required input is missing, ask the user before proceeding.
 
 CPT has two sub-stages that run sequentially:
 
-### Sub-Stage 0a: Data Acquisition and Preparation
+### Sub-Stage 1a: Data Acquisition and Preparation
 
 Acquire, filter, and tokenize target-language/domain corpora into Megatron bin/idx format.
 
@@ -52,7 +52,7 @@ Acquire, filter, and tokenize target-language/domain corpora into Megatron bin/i
 6. **Tokenize** to Megatron bin/idx format using `nemotron.data_prep`
 7. **Blend** multiple data sources with specified ratios
 
-### Sub-Stage 0b: CPT Training
+### Sub-Stage 1b: CPT Training
 
 Continue pretraining the base model on the prepared data using Megatron-Bridge.
 
@@ -112,8 +112,8 @@ filtered.to_jsonl("/data/hindi_filtered/")
 
 ```bash
 # Prepare CPT data using the data_prep pipeline
-python src/nemotron/customization_recipes/nemotron/stage0_cpt/run_data_prep.py \
-  --config src/nemotron/customization_recipes/nemotron/stage0_cpt/config/data_prep/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage1_cpt/run_data_prep.py \
+  --config src/nemotron/customization_recipes/nemotron/stage1_cpt/config/data_prep/default.yaml \
   output_dir=/data/cpt_prepared \
   tokenizer=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
   num_shards=128
@@ -245,7 +245,7 @@ checkpoint:
 nemotron customize cpt -c default
 # or directly:
 python src/nemotron/recipes/nano3/stage0_pretrain/train.py \
-  --config src/nemotron/customization_recipes/nemotron/stage0_cpt/config/default.yaml
+  --config src/nemotron/customization_recipes/nemotron/stage1_cpt/config/default.yaml
 ```
 
 ### Slurm (Production)
@@ -304,6 +304,6 @@ nemotron customize cpt -c default --run MY-CLUSTER \
 | Artifact | Type | Path | Consumed By |
 |----------|------|------|-------------|
 | CPT data (bin/idx) | `PretrainDataArtifact` | `output_dir/` | This stage (training) |
-| CPT checkpoint | `ModelArtifact` | `checkpoint.save/` | stage1_sft |
+| CPT checkpoint | `ModelArtifact` | `checkpoint.save/` | stage2_sft |
 | blend.json | Manifest | `output_dir/blend.json` | Data lineage |
 | Training logs | W&B/TensorBoard | W&B project | Analysis |

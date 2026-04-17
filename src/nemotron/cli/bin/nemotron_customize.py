@@ -22,6 +22,7 @@ dispatcher pattern (kipraveen/speaker-run branch).
 
 Subcommand → Container mapping
 ------------------------------
+  translate   → nemotron-curator     (Translation for data preparation)
   data-prep   → nemotron-curator     (NeMo Curator for data processing)
   sdg         → nemotron-curator     (DataDesigner for synthetic generation)
   byob        → nemotron-curator     (BYOB MCQ pipeline uses NeMo Curator)
@@ -56,6 +57,7 @@ from typing import NoReturn
 
 #: Subcommand → target service name (as defined in docker-compose.yaml)
 COMMAND_ROUTING: dict[str, str] = {
+    "translate": "nemotron-curator",
     "data-prep": "nemotron-curator",
     "sdg": "nemotron-curator",
     "byob": "nemotron-curator",

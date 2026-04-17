@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""SDG (Synthetic Data Generation) command implementation.
+"""Translate command implementation for customization recipes.
 
-Runs stage2 synthetic data generation via NeMo Data Designer.
+Runs stage0 data preparation translation via the translation driver.
+Translation is model-agnostic (no --model-family flag needed).
 
 Design: LLM-Native Recipe Architecture
 - Execution logic in _execute.py (shared across all customize commands)
@@ -35,7 +36,7 @@ from nemotron.cli.commands.customize._execute import execute_recipe
 # Recipe Metadata (read from [tool.runspec] in script)
 # =============================================================================
 
-SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage2_sft/run_sdg.py"
+SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage0_data_prep/run_translate.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(
@@ -43,8 +44,8 @@ META = RecipeMeta(
     script_path=SCRIPT_PATH,
     config_dir=str(SPEC.config_dir),
     default_config=SPEC.config.default,
-    input_artifacts={"data": "Seed data or persona definitions for SDG"},
-    output_artifacts={"data": "Synthetic conversation data (JSONL)"},
+    input_artifacts={"data": "Source language data (JSONL, HuggingFace, or raw text)"},
+    output_artifacts={"data": "Translated data in target language (JSONL)"},
 )
 
 
@@ -53,10 +54,11 @@ META = RecipeMeta(
 # =============================================================================
 
 
-def sdg(ctx: typer.Context) -> None:
-    """Run synthetic data generation (stage2 SDG).
+def translate(ctx: typer.Context) -> None:
+    """Run data translation (stage0 data preparation).
 
-    Generates synthetic conversation data using NeMo Data Designer.
+    Translates source data into a target language using configurable
+    translation backends (Google Cloud, AWS, LLM-based).
     The execution logic is in _execute.py - see execute_recipe()
     for nemo-run setup.
     """

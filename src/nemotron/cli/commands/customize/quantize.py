@@ -14,7 +14,7 @@
 
 """Quantize command implementation.
 
-Runs stage5 model quantization (FP8, INT4-AWQ, etc.) using TensorRT-LLM.
+Runs stage6 model quantization (FP8, INT4-AWQ, etc.) using TensorRT-LLM.
 
 Design: LLM-Native Recipe Architecture
 - Execution logic in _execute.py (shared across all customize commands)
@@ -35,7 +35,7 @@ from nemotron.cli.commands.customize._execute import execute_recipe
 # Recipe Metadata (read from [tool.runspec] in script)
 # =============================================================================
 
-SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quantize.py"
+SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage6_quantization/run_quantize.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(
@@ -54,7 +54,7 @@ META = RecipeMeta(
 
 
 def quantize(ctx: typer.Context) -> None:
-    """Run model quantization (stage5).
+    """Run model quantization (stage6).
 
     Quantizes a trained model to FP8, INT4-AWQ, or other formats
     using TensorRT-LLM. The execution logic is in _execute.py -

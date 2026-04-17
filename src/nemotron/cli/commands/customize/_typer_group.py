@@ -15,8 +15,8 @@
 """Customize Typer group.
 
 Contains the customize command group with subcommands for the full
-Nemotron model customization pipeline (data-prep, CPT, SFT, SDG, RL,
-BYOB, eval, quantize).
+Nemotron model customization pipeline (translate, data-prep, CPT, SFT,
+SDG, RL, BYOB, eval, quantize).
 
 When running inside the orchestrator container (``NEMOTRON_ORCHESTRATOR=1``),
 commands are automatically dispatched to the correct sibling container via
@@ -52,12 +52,14 @@ from nemotron.cli.commands.customize.sdg import META as SDG_META
 from nemotron.cli.commands.customize.sdg import sdg
 from nemotron.cli.commands.customize.sft import META as SFT_META
 from nemotron.cli.commands.customize.sft import sft
+from nemotron.cli.commands.customize.translate import META as TRANSLATE_META
+from nemotron.cli.commands.customize.translate import translate
 from nemo_runspec.recipe_typer import RecipeTyper
 
 # Create customize app using RecipeTyper
 customize_app = RecipeTyper(
     name="customize",
-    help="Nemotron model customization recipes (CPT, SFT, RL, BYOB, eval, quantize)",
+    help="Nemotron model customization recipes (translate, data-prep, CPT, SFT, SDG, RL, BYOB, eval, quantize)",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -117,6 +119,7 @@ def _orchestrator_callback(ctx: typer.Context) -> None:
 # Data Preparation
 customize_app.add_recipe_command(data_prep, meta=DATA_PREP_META, rich_help_panel="Data Preparation")
 customize_app.add_recipe_command(sdg, meta=SDG_META, rich_help_panel="Data Preparation")
+customize_app.add_recipe_command(translate, meta=TRANSLATE_META, rich_help_panel="Data Preparation")
 
 # Training Stages
 customize_app.add_recipe_command(cpt, meta=CPT_META, rich_help_panel="Training Stages")

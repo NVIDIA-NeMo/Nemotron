@@ -16,7 +16,7 @@
 """Sovereign benchmark bridge: stage3 BYOB output -> NeMo Evaluator BYOB.
 
 This is a TEMPLATE for defining NeMo Evaluator BYOB benchmarks from
-stage3_byob MCQ output. Copy this file and customize the sections
+stage4_byob MCQ output. Copy this file and customize the sections
 marked with "CUSTOMIZE" comments for your specific sovereign benchmark.
 
 The stage3 BYOB pipeline produces benchmark.jsonl with MCQ questions in
@@ -74,7 +74,7 @@ DATASET_PATH = os.environ.get(
     "SOVEREIGN_DATASET_PATH",
     # Default: relative path assuming standard pipeline directory layout.
     # Replace with absolute path to your benchmark.jsonl.
-    os.path.join(os.path.dirname(__file__), "..", "stage3_byob", "output", "benchmark.jsonl"),
+    os.path.join(os.path.dirname(__file__), "..", "stage4_byob", "output", "benchmark.jsonl"),
 )
 
 # Target language (used in prompt and metadata reporting).

@@ -24,7 +24,7 @@ Nemotron/
           nano3/                     <-- Nano3 commands: pretrain, sft, rl, eval, pipe
           super3/                    <-- Super3 commands: pretrain, sft, rl (rlhf/rlvr/swe)
           embed/                     <-- Embedding model commands: sdg, prep, finetune, eval, export, deploy
-          customize/                 <-- Customization CLI: data-prep, cpt, sft, sdg, rl, byob, eval, quantize
+          customize/                 <-- Customization CLI: translate, data-prep, cpt, sft, sdg, rl, byob, eval, quantize
         kit/                         <-- CLI utilities (app, squash)
       kit/                           <-- Domain toolkit: Artifact types, lineage tracking, W&B, recipe loading
       data_prep/                     <-- Distributed data prep library (bin/idx, packed parquet, JSONL)
@@ -43,14 +43,15 @@ Nemotron/
           stage0_sdg/ .. stage5_deploy/
         data_curation/               <-- NeMo Curator recipes (nemotron-cc)
       customization_recipes/         <-- Sovereign AI customization pipelines
-        nemotron/                    <-- Nemotron model customization (6 stages)
+        nemotron/                    <-- Nemotron model customization (7 stages: 0-6)
           SKILL.md                   <-- E2E customization pipeline skill definition
-          stage0_cpt/                <-- Continued Pretraining
-          stage1_sft/                <-- Supervised Fine-Tuning + SDG
-          stage2_rl/                 <-- Reinforcement Learning (DPO/GRPO)
-          stage3_byob/               <-- Build Your Own Benchmark
-          stage4_eval/               <-- Evaluation
-          stage5_quantization/       <-- Quantization for deployment
+          stage0_data_prep/          <-- Data Preparation & Translation
+          stage1_cpt/                <-- Continued Pretraining
+          stage2_sft/                <-- Supervised Fine-Tuning + SDG
+          stage3_rl/                 <-- Reinforcement Learning (DPO/GRPO)
+          stage4_byob/               <-- Build Your Own Benchmark
+          stage5_eval/               <-- Evaluation
+          stage6_quantization/       <-- Quantization for deployment
         llama/                       <-- Llama model customization (same stage structure)
         qwen/                        <-- Qwen model customization (same stage structure)
         data_prep/                   <-- Shared data prep utilities for customization
@@ -126,6 +127,7 @@ Distributed data prep built on cosmos-xenna pipelines:
 | Train Super3 from scratch | `src/nemotron/recipes/super3/` |
 | Train embedding model | `src/nemotron/recipes/embed/` |
 | Curate web data (CommonCrawl) | `src/nemotron/recipes/data_curation/nemotron-cc/` |
+| Translate data for customization | `src/nemotron/customization_recipes/nemotron/stage0_data_prep/SKILL.md` |
 | Customize Nemotron for a language/domain | `src/nemotron/customization_recipes/nemotron/SKILL.md` |
 | Customize Llama for a language/domain | `src/nemotron/customization_recipes/llama/SKILL.md` |
 | Customize Qwen for a language/domain | `src/nemotron/customization_recipes/qwen/SKILL.md` |
@@ -134,20 +136,21 @@ Distributed data prep built on cosmos-xenna pipelines:
 | Add a new recipe | Create `<stage>/train.py` with `[tool.runspec]` + `<stage>/config/default.yaml` |
 | Modify execution backend | Edit `_execute_*()` in the relevant CLI command module |
 | Evaluate a model | `src/nemotron/recipes/<model>/stage*_eval/` |
-| Build custom benchmarks (MCQ) | `src/nemotron/customization_recipes/nemotron/stage3_byob/SKILL.md` |
-| Quantize a model | `src/nemotron/customization_recipes/nemotron/stage5_quantization/SKILL.md` |
+| Build custom benchmarks (MCQ) | `src/nemotron/customization_recipes/nemotron/stage4_byob/SKILL.md` |
+| Quantize a model | `src/nemotron/customization_recipes/nemotron/stage6_quantization/SKILL.md` |
 
 ## SKILL.md References
 
 | Skill | Path |
 |-------|------|
 | E2E Nemotron Customization | `src/nemotron/customization_recipes/nemotron/SKILL.md` |
-| Stage 0: Continued Pretraining | `src/nemotron/customization_recipes/nemotron/stage0_cpt/SKILL.md` |
-| Stage 1: SFT + SDG | `src/nemotron/customization_recipes/nemotron/stage1_sft/SKILL.md` |
-| Stage 2: RL (DPO/GRPO) | `src/nemotron/customization_recipes/nemotron/stage2_rl/SKILL.md` |
-| Stage 3: BYOB Benchmarks | `src/nemotron/customization_recipes/nemotron/stage3_byob/SKILL.md` |
-| Stage 4: Evaluation | `src/nemotron/customization_recipes/nemotron/stage4_eval/SKILL.md` |
-| Stage 5: Quantization | `src/nemotron/customization_recipes/nemotron/stage5_quantization/SKILL.md` |
+| Stage 0: Data Preparation & Translation | `src/nemotron/customization_recipes/nemotron/stage0_data_prep/SKILL.md` |
+| Stage 1: Continued Pretraining | `src/nemotron/customization_recipes/nemotron/stage1_cpt/SKILL.md` |
+| Stage 2: SFT + SDG | `src/nemotron/customization_recipes/nemotron/stage2_sft/SKILL.md` |
+| Stage 3: RL (DPO/GRPO) | `src/nemotron/customization_recipes/nemotron/stage3_rl/SKILL.md` |
+| Stage 4: BYOB Benchmarks | `src/nemotron/customization_recipes/nemotron/stage4_byob/SKILL.md` |
+| Stage 5: Evaluation | `src/nemotron/customization_recipes/nemotron/stage5_eval/SKILL.md` |
+| Stage 6: Quantization | `src/nemotron/customization_recipes/nemotron/stage6_quantization/SKILL.md` |
 | Shared Data Prep | `src/nemotron/customization_recipes/data_prep/SKILL.md` |
 | Llama Customization | `src/nemotron/customization_recipes/llama/SKILL.md` |
 | Qwen Customization | `src/nemotron/customization_recipes/qwen/SKILL.md` |

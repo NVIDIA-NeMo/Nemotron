@@ -1,4 +1,4 @@
-# SKILL: Stage 1 -- Supervised Fine-Tuning (SFT)
+# SKILL: Stage 2 -- Supervised Fine-Tuning (SFT)
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Fine-tune the CPT checkpoint (or base model) for instruction following in the ta
 
 ## When to Use
 
-Always run this stage after CPT (stage0) or as the first stage if skipping CPT. SFT transforms a language model into an instruction-following assistant.
+Always run this stage after CPT (stage1) or as the first stage if skipping CPT. SFT transforms a language model into an instruction-following assistant.
 
 Choose SDG when:
 - You have fewer than 10K real instruction examples in the target language/domain
@@ -29,7 +29,7 @@ Before running this stage, confirm these with the user:
 | SDG language | If doing SDG | en | Ask: "What language for synthetic data generation?" |
 | SDG sample count | If doing SDG | 50000 | Ask: "How many synthetic samples? (10K-200K, more = better coverage but slower)" |
 | SDG model endpoint | If doing SDG | `openai/gpt-oss-20b` via NIM | Ask: "Which LLM for generation? (local NIM, NVIDIA API, or custom endpoint)" |
-| Base/checkpoint model path | Yes | None | Ask: "Path to CPT checkpoint from stage 0? (or base model if skipping CPT)" |
+| Base/checkpoint model path | Yes | None | Ask: "Path to CPT checkpoint from stage 1? (or base model if skipping CPT)" |
 | Pack size / max sequence length | No | 8192 | Ask: "Max sequence length? (4096 or 8192, must match model context)" |
 | Full SFT or LoRA | No | Full SFT | Ask: "Full SFT or LoRA? (LoRA is faster but slightly lower quality)" |
 | Compute resources | Yes | 2 nodes x 8 GPUs | Ask: "How many nodes and GPUs per node?" |
@@ -40,7 +40,7 @@ If any required input is missing, ask the user before proceeding.
 
 ## Sub-Stages
 
-### Sub-Stage 1a: Data Preparation
+### Sub-Stage 2a: Data Preparation
 
 Two paths depending on data availability:
 
@@ -59,7 +59,7 @@ Two paths depending on data availability:
 4. Tokenize and pack sequences into Parquet shards using `nemotron.data_prep`
 5. Split into train/validation sets
 
-### Sub-Stage 1b: SFT Training
+### Sub-Stage 2b: SFT Training
 
 Fine-tune the model using packed sequence training with Megatron-Bridge.
 
@@ -67,7 +67,7 @@ Fine-tune the model using packed sequence training with Megatron-Bridge.
 
 | Prerequisite | Description |
 |-------------|-------------|
-| CPT checkpoint | From stage0_cpt (or base model if skipping CPT) |
+| CPT checkpoint | From stage1_cpt (or base model if skipping CPT) |
 | OPENAI_API_KEY | Required for SDG via NIM API (OpenAI-compatible endpoint) |
 | Instruction data | Real data OR SDG config for synthetic generation |
 | GPU cluster | Same as CPT (2+ nodes x 8 GPUs for Nano) |
@@ -78,8 +78,8 @@ Fine-tune the model using packed sequence training with Megatron-Bridge.
 ### Using DataDesigner
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage1_sft/run_sdg.py \
-  --config src/nemotron/customization_recipes/nemotron/stage1_sft/config/sdg/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage2_sft/run_sdg.py \
+  --config src/nemotron/customization_recipes/nemotron/stage2_sft/config/sdg/default.yaml \
   domain=medical \
   language=hi \
   num_samples=50000 \
@@ -122,8 +122,8 @@ The underlying `SDGConfig` dataclass (in `data_prep/sdg.py`) uses these fields: 
 ## Data Preparation (Tokenize + Pack)
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage1_sft/run_data_prep.py \
-  --config src/nemotron/customization_recipes/nemotron/stage1_sft/config/data_prep/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage2_sft/run_data_prep.py \
+  --config src/nemotron/customization_recipes/nemotron/stage2_sft/config/data_prep/default.yaml \
   output_dir=/data/sft_prepared
 ```
 
@@ -313,5 +313,5 @@ nemotron customize sft -c default --dry-run
 |----------|------|------|-------------|
 | SDG dataset | JSONL | `sdg_output/` | Data prep (this stage) |
 | Packed SFT data | `SFTDataArtifact` | `sft_prepared/splits/` | Training (this stage) |
-| SFT checkpoint | `ModelArtifact` | `checkpoint.save/` | stage2_rl |
+| SFT checkpoint | `ModelArtifact` | `checkpoint.save/` | stage3_rl |
 | Training logs | W&B/TensorBoard | W&B project | Analysis |

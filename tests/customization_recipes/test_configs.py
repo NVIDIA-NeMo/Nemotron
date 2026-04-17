@@ -132,60 +132,60 @@ class TestConfigContent:
         return OmegaConf.load(str(full))
 
     def test_cpt_config_has_model(self) -> None:
-        cfg = self._load("nemotron/stage0_cpt/config/default.yaml")
+        cfg = self._load("nemotron/stage1_cpt/config/default.yaml")
         assert "model" in cfg, "CPT config should have 'model' section"
 
     def test_cpt_config_has_optimizer(self) -> None:
-        cfg = self._load("nemotron/stage0_cpt/config/default.yaml")
+        cfg = self._load("nemotron/stage1_cpt/config/default.yaml")
         assert "optimizer" in cfg, "CPT config should have 'optimizer' section"
 
     def test_cpt_config_has_step_scheduler(self) -> None:
-        cfg = self._load("nemotron/stage0_cpt/config/default.yaml")
+        cfg = self._load("nemotron/stage1_cpt/config/default.yaml")
         assert "step_scheduler" in cfg, "CPT config should have 'step_scheduler' section"
 
     def test_sft_config_has_model(self) -> None:
-        cfg = self._load("nemotron/stage1_sft/config/default.yaml")
+        cfg = self._load("nemotron/stage2_sft/config/default.yaml")
         assert "model" in cfg, "SFT config should have 'model' section"
 
     def test_sft_config_has_dataset(self) -> None:
-        cfg = self._load("nemotron/stage1_sft/config/default.yaml")
+        cfg = self._load("nemotron/stage2_sft/config/default.yaml")
         assert "dataset" in cfg, "SFT config should have 'dataset' section"
 
     def test_sft_config_has_packed_sequence(self) -> None:
-        cfg = self._load("nemotron/stage1_sft/config/default.yaml")
+        cfg = self._load("nemotron/stage2_sft/config/default.yaml")
         assert "packed_sequence" in cfg, "SFT config should have 'packed_sequence' section"
 
     def test_rl_config_has_training_type(self) -> None:
-        cfg = self._load("nemotron/stage2_rl/config/default.yaml")
+        cfg = self._load("nemotron/stage3_rl/config/default.yaml")
         assert "training_type" in cfg, "RL config should have 'training_type'"
         assert cfg.training_type in ("dpo", "grpo"), (
             f"training_type should be dpo or grpo, got {cfg.training_type}"
         )
 
     def test_rl_config_has_policy(self) -> None:
-        cfg = self._load("nemotron/stage2_rl/config/default.yaml")
+        cfg = self._load("nemotron/stage3_rl/config/default.yaml")
         assert "policy" in cfg, "RL config should have 'policy' section"
 
     def test_byob_config_has_generation_model(self) -> None:
-        cfg = self._load("nemotron/stage3_byob/config/default.yaml")
+        cfg = self._load("nemotron/stage4_byob/config/default.yaml")
         assert "generation_model_config" in cfg, (
             "BYOB config should have 'generation_model_config'"
         )
 
     def test_byob_config_has_judge_model(self) -> None:
-        cfg = self._load("nemotron/stage3_byob/config/default.yaml")
+        cfg = self._load("nemotron/stage4_byob/config/default.yaml")
         assert "judge_model_config" in cfg, (
             "BYOB config should have 'judge_model_config'"
         )
 
     def test_eval_config_has_sections(self) -> None:
-        cfg = self._load("nemotron/stage4_eval/config/default.yaml")
+        cfg = self._load("nemotron/stage5_eval/config/default.yaml")
         assert "data_eval" in cfg or "model_eval" in cfg, (
             "Eval config should have 'data_eval' or 'model_eval' section"
         )
 
     def test_quant_config_has_method(self) -> None:
-        cfg = self._load("nemotron/stage5_quantization/config/default.yaml")
+        cfg = self._load("nemotron/stage6_quantization/config/default.yaml")
         assert "quantization" in cfg, "Quant config should have 'quantization' section"
         assert "method" in cfg.quantization, (
             "Quant config should specify quantization.method"
@@ -194,12 +194,12 @@ class TestConfigContent:
     def test_all_stage_configs_exist(self) -> None:
         """Every stage should have a config/default.yaml."""
         stages = [
-            "nemotron/stage0_cpt",
-            "nemotron/stage1_sft",
-            "nemotron/stage2_rl",
-            "nemotron/stage3_byob",
-            "nemotron/stage4_eval",
-            "nemotron/stage5_quantization",
+            "nemotron/stage1_cpt",
+            "nemotron/stage2_sft",
+            "nemotron/stage3_rl",
+            "nemotron/stage4_byob",
+            "nemotron/stage5_eval",
+            "nemotron/stage6_quantization",
         ]
         for stage in stages:
             path = _RECIPES_ROOT / stage / "config" / "default.yaml"

@@ -94,7 +94,7 @@ class QuantizeConfig:
     def from_omegaconf(cfg: DictConfig) -> "QuantizeConfig":
         """Build a QuantizeConfig from an OmegaConf DictConfig.
 
-        Handles the nested YAML structure used by stage5_quantization configs::
+        Handles the nested YAML structure used by stage6_quantization configs::
 
             model:
               name_or_path: ...

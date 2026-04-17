@@ -40,12 +40,12 @@ _NEMOTRON_ROOT = _RECIPES_ROOT / "nemotron"
 
 _EXPECTED_SKILL_LOCATIONS = [
     _NEMOTRON_ROOT / "SKILL.md",
-    _NEMOTRON_ROOT / "stage0_cpt" / "SKILL.md",
-    _NEMOTRON_ROOT / "stage1_sft" / "SKILL.md",
-    _NEMOTRON_ROOT / "stage2_rl" / "SKILL.md",
-    _NEMOTRON_ROOT / "stage3_byob" / "SKILL.md",
-    _NEMOTRON_ROOT / "stage4_eval" / "SKILL.md",
-    _NEMOTRON_ROOT / "stage5_quantization" / "SKILL.md",
+    _NEMOTRON_ROOT / "stage1_cpt" / "SKILL.md",
+    _NEMOTRON_ROOT / "stage2_sft" / "SKILL.md",
+    _NEMOTRON_ROOT / "stage3_rl" / "SKILL.md",
+    _NEMOTRON_ROOT / "stage4_byob" / "SKILL.md",
+    _NEMOTRON_ROOT / "stage5_eval" / "SKILL.md",
+    _NEMOTRON_ROOT / "stage6_quantization" / "SKILL.md",
     _RECIPES_ROOT / "data_prep" / "SKILL.md",
 ]
 
@@ -124,12 +124,12 @@ class TestSkillReferencesValidStageDirectories:
 
         text = skill_path.read_text(encoding="utf-8")
         expected_stages = [
-            "stage0_cpt",
-            "stage1_sft",
-            "stage2_rl",
-            "stage3_byob",
-            "stage4_eval",
-            "stage5_quantization",
+            "stage1_cpt",
+            "stage2_sft",
+            "stage3_rl",
+            "stage4_byob",
+            "stage5_eval",
+            "stage6_quantization",
         ]
         for stage in expected_stages:
             assert stage in text, (
@@ -142,12 +142,12 @@ class TestSkillReferencesValidStageDirectories:
             pytest.skip("nemotron/SKILL.md not found")
 
         expected_stages = [
-            "stage0_cpt",
-            "stage1_sft",
-            "stage2_rl",
-            "stage3_byob",
-            "stage4_eval",
-            "stage5_quantization",
+            "stage1_cpt",
+            "stage2_sft",
+            "stage3_rl",
+            "stage4_byob",
+            "stage5_eval",
+            "stage6_quantization",
         ]
         for stage in expected_stages:
             stage_dir = _NEMOTRON_ROOT / stage
@@ -253,12 +253,12 @@ class TestAgentsMdContent:
         text = agents_path.read_text(encoding="utf-8")
         expected_refs = [
             "nemotron/SKILL.md",
-            "stage0_cpt/SKILL.md",
-            "stage1_sft/SKILL.md",
-            "stage2_rl/SKILL.md",
-            "stage3_byob/SKILL.md",
-            "stage4_eval/SKILL.md",
-            "stage5_quantization/SKILL.md",
+            "stage1_cpt/SKILL.md",
+            "stage2_sft/SKILL.md",
+            "stage3_rl/SKILL.md",
+            "stage4_byob/SKILL.md",
+            "stage5_eval/SKILL.md",
+            "stage6_quantization/SKILL.md",
             "data_prep/SKILL.md",
         ]
         missing = [ref for ref in expected_refs if ref not in text]

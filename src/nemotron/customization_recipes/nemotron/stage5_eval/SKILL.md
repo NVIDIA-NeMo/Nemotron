@@ -1,4 +1,4 @@
-# SKILL: Stage 4 -- Evaluation
+# SKILL: Stage 5 -- Evaluation
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Always run this stage. Evaluation is the gate between training and deployment.
 
 - Run **model benchmark evaluation** (default) after each training stage (CPT, SFT, RL) to track progress
 - Run **data quality evaluation** before and during training to catch data issues early
-- Run both before stage5_quantization to establish pre-quantization baselines
+- Run both before stage6_quantization to establish pre-quantization baselines
 
 ## Inputs Required
 
@@ -21,8 +21,8 @@ Before running this stage, confirm these with the user:
 | Model checkpoint to evaluate | Yes | None | Ask: "Which model checkpoint? (path to CPT, SFT, or RL checkpoint)" |
 | Evaluation mode | No | model (benchmark eval) | Ask: "Model benchmark evaluation, data quality evaluation, or both?" |
 | Which benchmarks (model eval) | No | MMLU + ARC + HellaSwag | Ask: "Which benchmarks? (standard only, sovereign only, or both?)" |
-| Sovereign benchmark name | If using BYOB benchmarks | None | Ask: "Name of the sovereign benchmark from stage 3? (e.g., hindi-medical-mcq)" |
-| BYOB benchmark path | If sovereign and not yet compiled | None | Ask: "Path to the BYOB benchmark.jsonl from stage 3?" |
+| Sovereign benchmark name | If using BYOB benchmarks | None | Ask: "Name of the sovereign benchmark from stage 4? (e.g., hindi-medical-mcq)" |
+| BYOB benchmark path | If sovereign and not yet compiled | None | Ask: "Path to the BYOB benchmark.jsonl from stage 4?" |
 | Input data file (data eval) | If data quality mode | None | Ask: "Path to the training data file to assess quality? (JSONL)" |
 | Quality recipe (data eval) | If data quality mode | None | Ask: "Quality recipe YAML path, or use default filters? (language, quality, repetition, word count)" |
 | Compute: executor type | Yes | Slurm | Ask: "Where will this run? (local, Slurm, Lepton, Run:AI)" |
@@ -42,19 +42,19 @@ Data quality evaluation uses NeMo Curator's filter/scorer pipeline via the `Asse
 | Prerequisite | Description |
 |-------------|-------------|
 | Model checkpoint | From any training stage (CPT, SFT, RL) |
-| Benchmark data | Standard (MMLU, ARC, HellaSwag) or custom (from stage3_byob) |
+| Benchmark data | Standard (MMLU, ARC, HellaSwag) or custom (from stage4_byob) |
 | nemo-evaluator-launcher | `pip install "nemotron[evaluator]"` |
 | GPU cluster | 1+ nodes x 8 GPUs (for model serving during eval) |
 | Container | NeMo Framework container (model serving) + evaluator containers (auto-pulled) |
 | env.toml profile | Required for `--run` mode (Slurm execution) |
 
-## Sub-Stage 4a: Model Benchmark Evaluation (Default)
+## Sub-Stage 5a: Model Benchmark Evaluation (Default)
 
 ### How It Works
 
 The eval command follows these steps (identical to nano3/super3):
 
-1. Parse config from `stage4_eval/config/default.yaml`
+1. Parse config from `stage5_eval/config/default.yaml`
 2. Build job config with artifact resolution and env.toml injection
 3. Auto-inject W&B env mappings if export is configured
 4. Auto-squash container images for Slurm execution
@@ -91,7 +91,7 @@ nemotron customize eval execution.type=local
 
 ### Adding Custom Benchmarks from BYOB (Legacy)
 
-After running stage3_byob to generate a domain-specific MCQ benchmark, you can add it as a raw JSONL task in your config. However, the **recommended** approach is to use sovereign benchmarks (see next section).
+After running stage4_byob to generate a domain-specific MCQ benchmark, you can add it as a raw JSONL task in your config. However, the **recommended** approach is to use sovereign benchmarks (see next section).
 
 ```yaml
 evaluation:
@@ -111,15 +111,15 @@ evaluation:
 
 ## Sovereign Benchmarks
 
-Sovereign benchmarks are domain/language-specific evaluation sets built from the stage3 BYOB pipeline and compiled into the NeMo Evaluator using its BYOB framework. This gives you proper MCQ scoring, per-topic breakdowns, and the ability to bake benchmarks into a "sovereign container" for reproducible evaluation.
+Sovereign benchmarks are domain/language-specific evaluation sets built from the stage4 BYOB pipeline and compiled into the NeMo Evaluator using its BYOB framework. This gives you proper MCQ scoring, per-topic breakdowns, and the ability to bake benchmarks into a "sovereign container" for reproducible evaluation.
 
 ### When to Use What
 
 ```
 Do you need domain/language-specific evaluation?
   NO  --> Use standard benchmarks only (MMLU, ARC, HellaSwag)
-  YES --> Did you run stage3_byob?
-            NO  --> Run stage3_byob first (see stage3_byob/SKILL.md)
+  YES --> Did you run stage4_byob?
+            NO  --> Run stage4_byob first (see stage4_byob/SKILL.md)
             YES --> Create a sovereign benchmark (this section)
                     |
                     v
@@ -135,7 +135,7 @@ There are three paths, from easiest to most customizable:
 **Path 1: Auto-generate (recommended for most cases)**
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_benchmark.py \
+python src/nemotron/customization_recipes/nemotron/stage5_eval/create_sovereign_benchmark.py \
   --byob-output /data/byob_benchmark/benchmark.jsonl \
   --benchmark-name "hindi-medical-mcq" \
   --output-dir /data/eval/benchmarks/ \
@@ -152,14 +152,14 @@ export SOVEREIGN_DATASET_PATH="/data/byob_benchmark/benchmark.jsonl"
 export SOVEREIGN_LANGUAGE="hi"
 
 nemo-evaluator-byob \
-  src/nemotron/customization_recipes/nemotron/stage4_eval/sovereign_benchmark.py
+  src/nemotron/customization_recipes/nemotron/stage5_eval/sovereign_benchmark.py
 ```
 
 **Path 3: Copy and customize template (maximum control)**
 
 ```bash
 # Copy template
-cp src/nemotron/customization_recipes/nemotron/stage4_eval/sovereign_benchmark.py \
+cp src/nemotron/customization_recipes/nemotron/stage5_eval/sovereign_benchmark.py \
    /data/eval/benchmarks/my_benchmark.py
 
 # Edit: change BENCHMARK_NAME, DATASET_PATH, LANGUAGE, prompt template, scorer logic
@@ -209,7 +209,7 @@ The "sovereign container" is an evaluator container image with sovereign benchma
 
 ```bash
 # Generate + compile + containerize in one step
-python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_benchmark.py \
+python src/nemotron/customization_recipes/nemotron/stage5_eval/create_sovereign_benchmark.py \
   --byob-output /data/byob_benchmark/benchmark.jsonl \
   --benchmark-name "hindi-medical-mcq" \
   --output-dir /data/eval/benchmarks/ \
@@ -217,7 +217,7 @@ python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_
 
 # Or containerize from the template directly
 nemo-evaluator-byob \
-  src/nemotron/customization_recipes/nemotron/stage4_eval/sovereign_benchmark.py \
+  src/nemotron/customization_recipes/nemotron/stage5_eval/sovereign_benchmark.py \
   --containerize
 ```
 
@@ -273,7 +273,7 @@ entity = "nvidia-nemo"
 project = "customize-eval"
 ```
 
-## Sub-Stage 4b: Data Quality Assessment
+## Sub-Stage 5b: Data Quality Assessment
 
 ### Running Data Quality Evaluation
 
@@ -358,7 +358,7 @@ The recipe YAML defines a list of NeMo Curator filters and scorers:
 |---------|-----------|-----|
 | Evaluation hangs | Model deployment failed (OOM or container issue) | Check deployment logs, reduce model parallelism, verify container image |
 | All benchmarks score 0% | API endpoint not reachable | Check `deployment.port`, verify health check passes |
-| English scores dropped significantly | Catastrophic forgetting in CPT/SFT | Return to stage0/stage1, adjust data blend (more English) |
+| English scores dropped significantly | Catastrophic forgetting in CPT/SFT | Return to stage1/stage2, adjust data blend (more English) |
 | Custom benchmark scores low | Insufficient training on domain | Increase CPT data volume, add more domain SFT data |
 | Evaluation timeout | Request timeout too low or model too slow | Increase `request_timeout`, check GPU utilization during inference |
 | W&B export fails | Missing API key or wrong project | Set `WANDB_API_KEY`, verify `export.wandb.project` |
@@ -369,7 +369,7 @@ The recipe YAML defines a list of NeMo Curator filters and scorers:
 
 | Artifact | Type | Path | Consumed By |
 |----------|------|------|-------------|
-| Evaluation results | JSON | `execution.output_dir/results/` | Decision to proceed to stage5 |
+| Evaluation results | JSON | `execution.output_dir/results/` | Decision to proceed to stage6 |
 | Data quality report | JSON | `data_eval.output_dir/` | Data iteration feedback |
 | W&B eval dashboard | W&B artifact | W&B project | Stakeholder review |
 | Per-task scores | JSON | `execution.output_dir/results/<task>/` | Detailed analysis |

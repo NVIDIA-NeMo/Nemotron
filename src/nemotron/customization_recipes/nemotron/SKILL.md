@@ -18,7 +18,7 @@ Do NOT use this pipeline if you are:
 - Fine-tuning an embedding model (use `src/nemotron/recipes/embed/`)
 - Curating web-scale pretraining data (use `src/nemotron/recipes/data_curation/`)
 
-## Step 0: Gather Requirements
+## Step 0: Gather Requirements (Before Stage 1)
 
 Before running any pipeline stage, collect these inputs from the user. Do NOT proceed with default values -- every customization is unique.
 
@@ -26,10 +26,10 @@ Before running any pipeline stage, collect these inputs from the user. Do NOT pr
 
 | Input | Question to Ask | Example | Used By |
 |-------|----------------|---------|---------|
-| Target language(s) | "What language(s) are you customizing for?" | Hindi, French, Japanese | Stages 0, 1, 3 |
-| Target domain(s) | "What domain(s)? (medical, legal, finance, code, general)" | Medical | Stages 0, 1, 3 |
+| Target language(s) | "What language(s) are you customizing for?" | Hindi, French, Japanese | Stages 1, 2, 4 |
+| Target domain(s) | "What domain(s)? (medical, legal, finance, code, general)" | Medical | Stages 1, 2, 4 |
 | Base model | "Which Nemotron model? (Nano 30B, Super 120B)" | Nemotron-3-Nano-30B | All stages |
-| Training data | "Where is your data? (local path, HuggingFace dataset, or should we acquire it?)" | /data/hindi_medical/ or "acquire from HuggingFace" | Stages 0, 1 |
+| Training data | "Where is your data? (local path, HuggingFace dataset, or should we acquire it?)" | /data/hindi_medical/ or "acquire from HuggingFace" | Stages 1, 2 |
 | Pipeline scope | "Which stages do you need? (full pipeline, or specific stages?)" | "Full pipeline" or "Just SFT + eval" | Determines which stages to run |
 | Compute environment | "Where will you run this? (local GPU, Slurm cluster, Lepton, Run:AI, Docker)" | Slurm | All stages |
 | GPU count | "How many GPUs available?" | 8 | Affects parallelism config |
@@ -38,15 +38,15 @@ Before running any pipeline stage, collect these inputs from the user. Do NOT pr
 
 | Input | When to Ask | Question | Used By |
 |-------|------------|----------|---------|
-| Translation | If target language is not English | "Do you need to translate existing English data?" | Stage 0 |
-| Translation backend | If translating | "Which translation service? (Google Cloud, AWS, LLM-based)" | Stage 0 |
-| SDG requirements | If user lacks training data | "Should we generate synthetic training data? What type? (conversations, QA, instructions)" | Stage 1 |
-| SDG model | If doing SDG | "Which LLM for generation? (local NIM, NVIDIA API, OpenAI)" | Stage 1 |
-| RL method | If doing RL stage | "DPO (preference alignment) or GRPO (reward-based)?" | Stage 2 |
-| Preference data | If DPO | "Do you have preference pairs, or should we generate them?" | Stage 2 |
-| BYOB source | If building sovereign benchmarks | "What text corpus for MCQ generation? (existing benchmarks to adapt, or raw domain text)" | Stage 3 |
-| Eval benchmarks | If custom eval needed | "Standard benchmarks only, or also sovereign benchmarks from BYOB?" | Stage 4 |
-| Quantization method | If deploying | "FP8 (fastest), INT4-AWQ (smallest), or INT8-SQ (balanced)?" | Stage 5 |
+| Translation | If target language is not English | "Do you need to translate existing English data?" | Stage 1 |
+| Translation backend | If translating | "Which translation service? (Google Cloud, AWS, LLM-based)" | Stage 1 |
+| SDG requirements | If user lacks training data | "Should we generate synthetic training data? What type? (conversations, QA, instructions)" | Stage 2 |
+| SDG model | If doing SDG | "Which LLM for generation? (local NIM, NVIDIA API, OpenAI)" | Stage 2 |
+| RL method | If doing RL stage | "DPO (preference alignment) or GRPO (reward-based)?" | Stage 3 |
+| Preference data | If DPO | "Do you have preference pairs, or should we generate them?" | Stage 3 |
+| BYOB source | If building sovereign benchmarks | "What text corpus for MCQ generation? (existing benchmarks to adapt, or raw domain text)" | Stage 4 |
+| Eval benchmarks | If custom eval needed | "Standard benchmarks only, or also sovereign benchmarks from BYOB?" | Stage 5 |
+| Quantization method | If deploying | "FP8 (fastest), INT4-AWQ (smallest), or INT8-SQ (balanced)?" | Stage 6 |
 | Airgap | If restricted environment | "Is this an airgap (no internet) environment?" | All stages |
 | W&B tracking | Optional | "Do you want Weights & Biases experiment tracking?" | All stages |
 
@@ -60,19 +60,20 @@ Before running any pipeline stage, collect these inputs from the user. Do NOT pr
 ## Pipeline Overview
 
 ```
-stage0_cpt --> stage1_sft --> stage2_rl --> stage3_byob --> [bridge] --> stage4_eval --> stage5_quantization
-(data+train)  (SDG+train)  (DPO/GRPO)    (MCQ gen)     (sovereign     (benchmark)     (INT4/FP8)
-                                                         benchmark)
+stage0_data_prep --> stage1_cpt --> stage2_sft --> stage3_rl --> stage4_byob --> [bridge] --> stage5_eval --> stage6_quantization
+(translate/       (data+train)  (SDG+train)  (DPO/GRPO)    (MCQ gen)     (sovereign     (benchmark)     (INT4/FP8)
+ curate)                                                                   benchmark)
 ```
 
 | Stage | Name | Purpose | Inputs | Outputs |
 |-------|------|---------|--------|---------|
-| 0 | Continued Pretraining (CPT) | Inject language/domain knowledge into base model | Raw corpora + base model | CPT checkpoint |
-| 1 | Supervised Fine-Tuning (SFT) | Teach instruction following in target language/domain | CPT checkpoint + SFT data (real or synthetic) | SFT checkpoint |
-| 2 | Reinforcement Learning (RL) | Align model preferences and improve reasoning | SFT checkpoint + preference data | RL checkpoint |
-| 3 | Build Your Own Benchmark (BYOB) | Generate MCQ evaluation sets from domain corpora | Domain text corpora | MCQ benchmark dataset |
-| 4 | Evaluation | Assess data quality and model performance | Model checkpoint + benchmark data | Evaluation metrics |
-| 5 | Quantization | Compress model for deployment | RL/SFT checkpoint | Quantized model (INT4/FP8) |
+| 0 | Data Preparation & Curation | Translate and curate source data for downstream stages | Source language data (JSONL, HuggingFace, raw text) | Translated/curated data in target language (JSONL) |
+| 1 | Continued Pretraining (CPT) | Inject language/domain knowledge into base model | Raw corpora + base model | CPT checkpoint |
+| 2 | Supervised Fine-Tuning (SFT) | Teach instruction following in target language/domain | CPT checkpoint + SFT data (real or synthetic) | SFT checkpoint |
+| 3 | Reinforcement Learning (RL) | Align model preferences and improve reasoning | SFT checkpoint + preference data | RL checkpoint |
+| 4 | Build Your Own Benchmark (BYOB) | Generate MCQ evaluation sets from domain corpora | Domain text corpora | MCQ benchmark dataset |
+| 5 | Evaluation | Assess data quality and model performance | Model checkpoint + benchmark data | Evaluation metrics |
+| 6 | Quantization | Compress model for deployment | RL/SFT checkpoint | Quantized model (INT4/FP8) |
 
 ## Decision Tree: Which Stages to Run
 
@@ -80,34 +81,39 @@ stage0_cpt --> stage1_sft --> stage2_rl --> stage3_byob --> [bridge] --> stage4_
 START
   |
   v
+Do you have existing English data that needs translation?
+  YES --> Run stage0_data_prep translate (sub-stage 0a: translation)
+  NO  --> Continue to next decision
+  |
+  v
 Is target language different from English?
-  YES --> Run stage0_cpt (language CPT)
+  YES --> Run stage1_cpt (language CPT)
   NO  --> Is target domain specialized?
-            YES --> Run stage0_cpt (domain CPT) OR skip to stage1_sft
-            NO  --> Skip to stage1_sft
+            YES --> Run stage1_cpt (domain CPT) OR skip to stage2_sft
+            NO  --> Skip to stage2_sft
   |
   v
 Do you have supervised instruction data?
-  YES --> Run stage1_sft with real data
-  NO  --> Run stage1_sft with SDG (synthetic data generation)
+  YES --> Run stage2_sft with real data
+  NO  --> Run stage2_sft with SDG (synthetic data generation)
   |
   v
 Do you need preference alignment?
-  YES --> Run stage2_rl (DPO for preference data, GRPO for reward-based)
-  NO  --> Skip to stage3_byob or stage4_eval
+  YES --> Run stage3_rl (DPO for preference data, GRPO for reward-based)
+  NO  --> Skip to stage4_byob or stage5_eval
   |
   v
 Do you need domain-specific evaluation?
-  YES --> Run stage3_byob to generate MCQ benchmarks
+  YES --> Run stage4_byob to generate MCQ benchmarks
           --> Run bridge: create_sovereign_benchmark.py to compile for evaluator
-  NO  --> Use existing benchmarks in stage4_eval
+  NO  --> Use existing benchmarks in stage5_eval
   |
   v
-Run stage4_eval (always recommended -- include both standard + sovereign benchmarks)
+Run stage5_eval (always recommended -- include both standard + sovereign benchmarks)
   |
   v
 Deploying to production?
-  YES --> Run stage5_quantization
+  YES --> Run stage6_quantization
   NO  --> Use checkpoint directly for research
 ```
 
@@ -117,31 +123,38 @@ Deploying to production?
 src/nemotron/customization_recipes/nemotron/
   SKILL.md                            <-- This file
   __init__.py
-  stage0_cpt/
+  stage0_data_prep/
+    SKILL.md                          <-- Stage-specific skill
+    __init__.py
+    config/
+      translate/                      <-- Translation configs
+        default.yaml
+    run_translate.py                  <-- Translation driver script
+  stage1_cpt/
     SKILL.md                          <-- Stage-specific skill
     __init__.py
     config/
       data_prep/                      <-- Data acquisition configs
     run_data_prep.py                  <-- Data prep script (training uses nano3's train.py)
-  stage1_sft/
+  stage2_sft/
     SKILL.md
     __init__.py
     config/
       data_prep/                      <-- SFT data prep configs
       sdg/                            <-- Synthetic data generation configs
-  stage2_rl/
+  stage3_rl/
     SKILL.md
     __init__.py
     config/                           <-- DPO/GRPO configs
-  stage3_byob/
+  stage4_byob/
     SKILL.md
     __init__.py
     config/                           <-- BYOB pipeline configs
-  stage4_eval/
+  stage5_eval/
     SKILL.md
     __init__.py
     config/                           <-- Evaluation configs
-  stage5_quantization/
+  stage6_quantization/
     SKILL.md
     __init__.py
     config/                           <-- Quantization configs
@@ -153,12 +166,13 @@ Each stage has a detailed SKILL.md. Read the relevant stage SKILL.md before exec
 
 | Stage | SKILL.md Path | Key Tools |
 |-------|---------------|-----------|
-| 0 - CPT | `stage0_cpt/SKILL.md` | NeMo Curator, Megatron-Bridge, nemotron.data_prep |
-| 1 - SFT | `stage1_sft/SKILL.md` | DataDesigner (SDG), Megatron-Bridge, nemotron.data_prep |
-| 2 - RL | `stage2_rl/SKILL.md` | NeMo-RL (GRPO/DPO), Megatron backend |
-| 3 - BYOB | `stage3_byob/SKILL.md` | NIM API, NeMo Curator |
-| 4 - Eval | `stage4_eval/SKILL.md` | NeMo Evaluator, NeMo Curator quality filters |
-| 5 - Quant | `stage5_quantization/SKILL.md` | TensorRT-LLM, TensorRT Model Optimizer |
+| 0 - Data Prep | `stage0_data_prep/SKILL.md` | Translation driver (Google Cloud, AWS, LLM-based) |
+| 1 - CPT | `stage1_cpt/SKILL.md` | NeMo Curator, Megatron-Bridge, nemotron.data_prep |
+| 2 - SFT | `stage2_sft/SKILL.md` | DataDesigner (SDG), Megatron-Bridge, nemotron.data_prep |
+| 3 - RL | `stage3_rl/SKILL.md` | NeMo-RL (GRPO/DPO), Megatron backend |
+| 4 - BYOB | `stage4_byob/SKILL.md` | NIM API, NeMo Curator |
+| 5 - Eval | `stage5_eval/SKILL.md` | NeMo Evaluator, NeMo Curator quality filters |
+| 6 - Quant | `stage6_quantization/SKILL.md` | TensorRT-LLM, TensorRT Model Optimizer |
 
 ## Shared Data Prep
 
@@ -206,6 +220,7 @@ dependencies installed:
 
 | Subcommand | Container | Reason |
 |------------|-----------|--------|
+| `translate` | `nemotron-curator` | Translation for data preparation |
 | `data-prep` | `nemotron-curator` | NeMo Curator for data processing |
 | `sdg` | `nemotron-curator` | DataDesigner for synthetic generation |
 | `byob` | `nemotron-curator` | BYOB MCQ pipeline uses NeMo Curator |
@@ -307,7 +322,31 @@ name = "training-data-pvc"
 mount_path = "/data"
 ```
 
-### Stage 0: Continued Pretraining on Hindi Medical Data
+### Stage 0: Translate English Medical Data to Hindi
+
+Goal: Translate existing English medical corpora into Hindi to bootstrap target-language training data.
+
+```bash
+# All commands run from the orchestrator. The dispatcher routes
+# translate -> nemotron-curator.
+
+# Translate English medical data to Hindi (routed to nemotron-curator)
+nemotron customize translate -c default \
+  translation.source_lang=en \
+  translation.target_lang=hi \
+  translation.input_path=/workspace/data/english_medical_corpus.jsonl \
+  translation.output_dir=/workspace/data/hindi_translated
+```
+
+**Key decisions:**
+- Translation backend: Google Cloud Translation (highest quality), AWS Translate, or LLM-based (cost-effective for large volumes)
+- Quality filtering: Enable post-translation quality checks to discard low-confidence translations
+- Use translated data as supplementary input for CPT alongside native Hindi corpora
+
+**Artifacts produced:**
+- Translated JSONL data at `output_dir`
+
+### Stage 1: Continued Pretraining on Hindi Medical Data
 
 Goal: Inject Hindi language + medical domain knowledge into the base Nemotron Nano model.
 
@@ -316,9 +355,11 @@ Goal: Inject Hindi language + medical domain knowledge into the base Nemotron Na
 # data-prep -> nemotron-curator, cpt -> nemotron-trainer.
 
 # 1. Acquire and prepare data (routed to nemotron-curator)
+#    Include both native Hindi data and translated data from Stage 0
 nemotron customize data-prep -c default \
   source.hf_dataset=ai4bharat/sangraha \
   language_filter.language_codes=[HI] \
+  additional_data=/workspace/data/hindi_translated \
   output_dir=/workspace/data/cpt_prepared
 
 # 2. Run CPT training (routed to nemotron-trainer)
@@ -337,7 +378,7 @@ nemotron customize cpt -c default \
 - CPT model checkpoint at `checkpoint.save` path
 - Data preparation artifacts (bin/idx blends) at `output_dir`
 
-### Stage 1: SFT with Synthetic Data Generation
+### Stage 2: SFT with Synthetic Data Generation
 
 Goal: Fine-tune the CPT model for instruction following in Hindi medical domain.
 
@@ -372,7 +413,7 @@ nemotron customize sft -c default \
 - Packed Parquet SFT data at `sft_prepared`
 - SFT model checkpoint
 
-### Stage 2: Reinforcement Learning
+### Stage 3: Reinforcement Learning
 
 Goal: Align model with human preferences and improve reasoning quality.
 
@@ -402,7 +443,7 @@ nemotron customize rl -c default \
 **Artifacts produced:**
 - RL-aligned model checkpoint
 
-### Stage 3: Build Your Own Benchmark
+### Stage 4: Build Your Own Benchmark
 
 Goal: Generate MCQ evaluation sets from Hindi medical text corpora.
 
@@ -423,11 +464,11 @@ The BYOB pipeline runs 5 sub-stages: generate → judge → expand distractors �
 
 ### Bridge: BYOB -> Sovereign Benchmark
 
-Goal: Convert BYOB MCQ output into a compiled NeMo Evaluator benchmark for use in stage4.
+Goal: Convert BYOB MCQ output into a compiled NeMo Evaluator benchmark for use in stage5.
 
 ```bash
 # Auto-generate and compile a sovereign benchmark from BYOB output
-python src/nemotron/customization_recipes/nemotron/stage4_eval/create_sovereign_benchmark.py \
+python src/nemotron/customization_recipes/nemotron/stage5_eval/create_sovereign_benchmark.py \
   --byob-output /data/byob_benchmark/benchmark.jsonl \
   --benchmark-name "hindi-medical-mcq" \
   --output-dir /data/eval/benchmarks/ \
@@ -446,7 +487,7 @@ The compiled benchmark is auto-discoverable by the evaluator and can be included
 - Compiled BYOB benchmark package (auto-installed in `~/.nemo-evaluator/byob_packages/`)
 - (Optional) Docker image with benchmark baked in (with `--containerize`)
 
-### Stage 4: Evaluation
+### Stage 5: Evaluation
 
 Goal: Assess model quality on standard + sovereign benchmarks.
 
@@ -477,7 +518,7 @@ This runs filters (language, domain, perplexity, coherence, tool-calling accurac
 - Custom BYOB MCQ: >70% accuracy
 - General English retention: <5% drop from base model
 
-### Stage 5: Quantization
+### Stage 6: Quantization
 
 Goal: Produce deployment-ready model.
 
@@ -565,7 +606,7 @@ Each stage consumes artifacts from the previous stage and produces artifacts for
 | Issue | Likely Cause | Resolution |
 |-------|-------------|------------|
 | OOM during CPT | Batch size too large or model parallelism insufficient | Reduce `train.global_batch_size`, increase `model.tensor_model_parallel_size` |
-| Loss not decreasing in CPT | Learning rate too high, data quality issues | Reduce LR to 5e-6, check data with stage4_eval data quality filters |
+| Loss not decreasing in CPT | Learning rate too high, data quality issues | Reduce LR to 5e-6, check data with stage5_eval data quality filters |
 | Catastrophic forgetting | Too much target-domain data, too few train iterations | Adjust data blend (add more English), reduce LR, add replay data |
 | SFT overfitting | Too many iterations on small SDG dataset | Reduce `train.train_iters`, increase SDG `num_records`, add regularization |
 | RL reward collapse | KL penalty too low or reward hacking | Increase `reference_policy_kl_penalty`, check reward model quality |

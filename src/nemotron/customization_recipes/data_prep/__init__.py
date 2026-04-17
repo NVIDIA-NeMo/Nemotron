@@ -37,6 +37,7 @@ from nemotron.customization_recipes.data_prep.translate import (
     LLMBackend,
     evaluate_faithfulness,
     translate_byob_benchmark,
+    translate_data,
 )
 from nemotron.customization_recipes.data_prep.sdg import (
     FunctionCall,
@@ -101,6 +102,7 @@ __all__ = [
     "LLMBackend",
     "evaluate_faithfulness",
     "translate_byob_benchmark",
+    "translate_data",
     # sdg
     "FunctionCall",
     "ToolCall",

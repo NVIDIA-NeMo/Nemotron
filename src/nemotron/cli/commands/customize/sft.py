@@ -14,13 +14,13 @@
 
 """SFT (Supervised Fine-Tuning) command implementation.
 
-Runs stage1 SFT training using the production training script for the
+Runs stage2 SFT training using the production training script for the
 user's chosen model family (nano3, super3) with customization-specific
 YAML configs.
 
 Design: Same scripts, different configs.
 - Training script: resolved dynamically based on --model-family
-- Config dir: src/nemotron/customization_recipes/nemotron/stage1_sft/config/
+- Config dir: src/nemotron/customization_recipes/nemotron/stage2_sft/config/
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from nemotron.cli.commands.customize._execute import (
 )
 
 _CUSTOMIZE_CONFIG_DIR = str(
-    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage1_sft/config").resolve()
+    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage2_sft/config").resolve()
 )
 
 _DEFAULT_SCRIPT = resolve_training_script("sft", DEFAULT_MODEL_FAMILY)
@@ -70,7 +70,7 @@ def sft(
         help="Base model family (nano3, super3). Determines which training script to use.",
     ),
 ) -> None:
-    """Run supervised fine-tuning (stage1).
+    """Run supervised fine-tuning (stage2).
 
     Fine-tunes a Nemotron model on chat-format data using Megatron-Bridge.
     The training script is selected based on --model-family.

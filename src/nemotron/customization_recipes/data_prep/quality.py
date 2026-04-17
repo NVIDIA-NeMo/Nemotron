@@ -545,7 +545,7 @@ def evaluate_model(cfg: DictConfig) -> Dict[str, Any]:
 
     Args:
         cfg: OmegaConf config dict with evaluation, deployment, execution
-            sections (same structure as the stage4_eval default.yaml).
+            sections (same structure as the stage5_eval default.yaml).
 
     Returns:
         Dict with ``invocation_id`` if evaluation was submitted.

@@ -1,4 +1,4 @@
-# SKILL: Stage 2 -- Reinforcement Learning (RL)
+# SKILL: Stage 3 -- Reinforcement Learning (RL)
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Align the SFT model with human preferences and improve reasoning quality using r
 
 ## When to Use
 
-Run this stage after stage1_sft when you need:
+Run this stage after stage2_sft when you need:
 - Preference alignment (model chooses better responses)
 - Improved reasoning and chain-of-thought quality
 - Safety alignment (reduce harmful outputs)
@@ -28,7 +28,7 @@ Before running this stage, confirm these with the user:
 | Preference data source (DPO) | If DPO and no data | None | Ask: "Do you have preference pairs, or should we generate them using an LLM judge?" |
 | Reward environment (GRPO) | If GRPO | `math_with_judge` | Ask: "What reward environment? (math_with_judge, code_gen, instruction_following, mcqa, or custom)" |
 | Prompt data path (GRPO) | If GRPO | None | Ask: "Where are the training prompts? (JSONL with messages)" |
-| SFT checkpoint path | Yes | None | Ask: "Path to SFT checkpoint from stage 1? (HuggingFace format for GRPO, Megatron for DPO)" |
+| SFT checkpoint path | Yes | None | Ask: "Path to SFT checkpoint from stage 2? (HuggingFace format for GRPO, Megatron for DPO)" |
 | KL penalty | No | 0.01 (GRPO) / 0.05 (DPO) | Ask: "KL penalty for divergence control? (higher = more conservative, 0.0-0.1)" |
 | Compute: number of nodes | Yes | 4 (GRPO) / 2 (DPO) | Ask: "How many nodes? (GRPO needs 4+ nodes, DPO can use 2+)" |
 | Compute: GPUs per node | Yes | 8 | Ask: "How many GPUs per node?" |
@@ -56,7 +56,7 @@ If any required input is missing, ask the user before proceeding.
 
 | Prerequisite | Description |
 |-------------|-------------|
-| SFT checkpoint | From stage1_sft (HuggingFace format for GRPO, Megatron for DPO) |
+| SFT checkpoint | From stage2_sft (HuggingFace format for GRPO, Megatron for DPO) |
 | Preference data (DPO) | JSONL with chosen/rejected pairs |
 | Prompt data (GRPO) | JSONL with prompts + reward config |
 | GPU cluster | 4+ nodes x 8 GPUs for Nano GRPO; 2+ nodes for DPO |
@@ -278,6 +278,6 @@ For custom domain rewards, implement a reward server compatible with NeMo Gym's 
 
 | Artifact | Type | Path | Consumed By |
 |----------|------|------|-------------|
-| RL checkpoint | `ModelArtifact` | `checkpoint.save/` or `checkpointing.checkpoint_dir/` | stage4_eval, stage5_quantization |
+| RL checkpoint | `ModelArtifact` | `checkpoint.save/` or `checkpointing.checkpoint_dir/` | stage5_eval, stage6_quantization |
 | Training logs | W&B/TensorBoard | W&B project | Analysis |
 | Generation samples | JSONL | Logged to W&B | Qualitative analysis |

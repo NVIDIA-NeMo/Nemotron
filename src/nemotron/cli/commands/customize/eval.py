@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Eval command implementation for customization recipes (stage4).
+"""Eval command implementation for customization recipes (stage5).
 
 Supports two evaluation modes:
 - ``--mode model`` (default): Model benchmark evaluation using nemo-evaluator-launcher.
@@ -57,7 +57,7 @@ console = Console()
 # Recipe Metadata (no SPEC -- evaluator has no recipe script)
 # =============================================================================
 
-CONFIG_DIR = "src/nemotron/customization_recipes/nemotron/stage4_eval/config"
+CONFIG_DIR = "src/nemotron/customization_recipes/nemotron/stage5_eval/config"
 
 META = RecipeMeta(
     name="customize/eval",
@@ -281,7 +281,7 @@ def _execute_data_eval(cfg: RecipeConfig):
 
 
 def eval(ctx: typer.Context) -> None:
-    """Run evaluation (stage4).
+    """Run evaluation (stage5).
 
     By default runs model benchmark evaluation using nemo-evaluator-launcher
     (same infrastructure as nano3/super3 eval).

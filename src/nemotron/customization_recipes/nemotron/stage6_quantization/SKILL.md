@@ -1,4 +1,4 @@
-# SKILL: Stage 5 -- Quantization
+# SKILL: Stage 6 -- Quantization
 
 ## Purpose
 
@@ -55,7 +55,7 @@ Is accuracy loss tolerance < 1%?
 
 | Prerequisite | Description |
 |-------------|-------------|
-| Model checkpoint | From stage2_rl (or stage1_sft if RL was skipped) |
+| Model checkpoint | From stage3_rl (or stage2_sft if RL was skipped) |
 | Calibration data | Representative text samples for quantization calibration |
 | TensorRT-LLM | `pip install tensorrt-llm` (requires CUDA) |
 | TensorRT Model Optimizer | For advanced quantization (AWQ, SmoothQuant) |
@@ -142,8 +142,8 @@ The `QuantizeConfig` dataclass (in `data_prep/quantize.py`) uses flat fields: `m
 ### INT4 AWQ Quantization
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quantize.py \
-  --config src/nemotron/customization_recipes/nemotron/stage5_quantization/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage6_quantization/run_quantize.py \
+  --config src/nemotron/customization_recipes/nemotron/stage6_quantization/config/default.yaml \
   model.name_or_path=/results/rl_checkpoint \
   quantization.output_dir=/deploy/hindi_medical_int4 \
   quantization.method=int4_awq
@@ -152,8 +152,8 @@ python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quant
 ### FP8 Quantization
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quantize.py \
-  --config src/nemotron/customization_recipes/nemotron/stage5_quantization/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage6_quantization/run_quantize.py \
+  --config src/nemotron/customization_recipes/nemotron/stage6_quantization/config/default.yaml \
   model.name_or_path=/results/rl_checkpoint \
   quantization.output_dir=/deploy/hindi_medical_fp8 \
   quantization.method=fp8
@@ -162,8 +162,8 @@ python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quant
 ### INT8 SmoothQuant Quantization
 
 ```bash
-python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quantize.py \
-  --config src/nemotron/customization_recipes/nemotron/stage5_quantization/config/default.yaml \
+python src/nemotron/customization_recipes/nemotron/stage6_quantization/run_quantize.py \
+  --config src/nemotron/customization_recipes/nemotron/stage6_quantization/config/default.yaml \
   model.name_or_path=/results/rl_checkpoint \
   quantization.output_dir=/deploy/hindi_medical_int8 \
   quantization.method=int8_sq
@@ -171,7 +171,7 @@ python src/nemotron/customization_recipes/nemotron/stage5_quantization/run_quant
 
 ### Validation After Quantization
 
-Validation is handled through stage4_eval. Run a benchmark evaluation comparing the quantized model against the full-precision baseline:
+Validation is handled through stage5_eval. Run a benchmark evaluation comparing the quantized model against the full-precision baseline:
 
 ```bash
 # Evaluate the quantized model using the standard eval pipeline

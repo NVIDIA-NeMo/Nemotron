@@ -14,7 +14,7 @@
 
 """BYOB (Build Your Own Benchmark) command implementation.
 
-Runs stage3 BYOB pipeline: seed data preparation, MCQ generation,
+Runs stage4 BYOB pipeline: seed data preparation, MCQ generation,
 optional translation.
 
 Design: LLM-Native Recipe Architecture
@@ -37,7 +37,7 @@ from nemotron.cli.commands.customize._execute import execute_recipe
 # (run_generate.py and run_translate.py are additional steps)
 # =============================================================================
 
-SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage3_byob/run_prepare.py"
+SCRIPT_PATH = "src/nemotron/customization_recipes/nemotron/stage4_byob/run_prepare.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
 META = RecipeMeta(
@@ -51,9 +51,9 @@ META = RecipeMeta(
 
 # Step-to-script mapping for BYOB pipeline stages
 _STEP_SCRIPTS = {
-    "prepare": "src/nemotron/customization_recipes/nemotron/stage3_byob/run_prepare.py",
-    "generate": "src/nemotron/customization_recipes/nemotron/stage3_byob/run_generate.py",
-    "translate": "src/nemotron/customization_recipes/nemotron/stage3_byob/run_translate.py",
+    "prepare": "src/nemotron/customization_recipes/nemotron/stage4_byob/run_prepare.py",
+    "generate": "src/nemotron/customization_recipes/nemotron/stage4_byob/run_generate.py",
+    "translate": "src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py",
 }
 
 
@@ -63,7 +63,7 @@ _STEP_SCRIPTS = {
 
 
 def byob(ctx: typer.Context) -> None:
-    """Run Build Your Own Benchmark pipeline (stage3).
+    """Run Build Your Own Benchmark pipeline (stage4).
 
     Prepares seed data, generates MCQ benchmarks, and optionally translates.
     Pass ``--step generate`` or ``--step translate`` for subsequent steps.

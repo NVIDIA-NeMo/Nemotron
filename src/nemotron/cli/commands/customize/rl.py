@@ -14,13 +14,13 @@
 
 """RL (Reinforcement Learning) command implementation.
 
-Runs stage2 RL training (DPO or GRPO) using the production training script
+Runs stage3 RL training (DPO or GRPO) using the production training script
 for the user's chosen model family (nano3, super3) with customization-specific
 YAML configs.
 
 Design: Same scripts, different configs.
 - Training script: resolved dynamically based on --model-family
-- Config dir: src/nemotron/customization_recipes/nemotron/stage2_rl/config/
+- Config dir: src/nemotron/customization_recipes/nemotron/stage3_rl/config/
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from nemotron.cli.commands.customize._execute import (
 )
 
 _CUSTOMIZE_CONFIG_DIR = str(
-    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage2_rl/config").resolve()
+    (Path.cwd() / "src/nemotron/customization_recipes/nemotron/stage3_rl/config").resolve()
 )
 
 _DEFAULT_SCRIPT = resolve_training_script("rl", DEFAULT_MODEL_FAMILY)
@@ -70,7 +70,7 @@ def rl(
         help="Base model family (nano3, super3). Determines which training script to use.",
     ),
 ) -> None:
-    """Run reinforcement learning (stage2).
+    """Run reinforcement learning (stage3).
 
     Runs DPO or GRPO training based on training_type config key.
     Set training_type=dpo or training_type=grpo as CLI override.

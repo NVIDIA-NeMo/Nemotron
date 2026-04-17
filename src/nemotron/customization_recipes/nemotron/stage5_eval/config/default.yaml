@@ -193,14 +193,14 @@ evaluation:
     - name: hellaswag
 
   # ---------------------------------------------------------------------------
-  # Sovereign benchmarks from BYOB (stage3_byob output)
+  # Sovereign benchmarks from BYOB (stage4_byob output)
   # ---------------------------------------------------------------------------
   # Generated via: python create_sovereign_benchmark.py \
   #   --byob-output /data/byob_benchmark/benchmark.jsonl \
   #   --benchmark-name sovereign-domain-mcq --output-dir /data/eval/benchmarks/ --compile
   #
   # To add more sovereign benchmarks, run create_sovereign_benchmark.py for each
-  # BYOB output and add the task name here. See stage4_eval/SKILL.md for details.
+  # BYOB output and add the task name here. See stage5_eval/SKILL.md for details.
   - name: byob_sovereign_domain_mcq.sovereign-domain-mcq
     nemo_evaluator_config:
       config:
