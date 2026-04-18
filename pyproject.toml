@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "nemo-run>=0.4.0",
+    "nemo-run @ git+https://github.com/rapaul-nv/Run.git@1a25aaa9a97ceaf047bab8876e1b027f552456bc",
     "pydantic>=2.0.0",
     "typer>=0.12.0",
     "omegaconf>=2.3.0",
@@ -84,6 +84,10 @@ art = "nemo_runspec.filesystem:ArtifactFileSystem"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+# Required so nemo-run can be pinned to a git ref (PR #480 DGXCloud Ray backend)
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/nemotron", "src/nemo_runspec"]
 
@@ -123,7 +127,7 @@ dev = [
     "pytest>=9.0.2",
 ]
 run = [
-    "nemo-run>=0.4.0",
+    "nemo-run @ git+https://github.com/rapaul-nv/Run.git@1a25aaa9a97ceaf047bab8876e1b027f552456bc",
 ]
 docs = [
     "myst-parser>=4.0.1",

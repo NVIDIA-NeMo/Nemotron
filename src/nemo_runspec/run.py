@@ -15,7 +15,7 @@
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
-"""NeMo-Run patches for Ray CPU templates and rsync host key handling."""
+"""NeMo-Run patches for Ray CPU templates, rsync host key handling, and cloud executor Ray backends."""
 
 from __future__ import annotations
 
@@ -235,3 +235,5 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
         slurm.rsync = patched  # type: ignore[assignment]
     except Exception:
         pass
+
+

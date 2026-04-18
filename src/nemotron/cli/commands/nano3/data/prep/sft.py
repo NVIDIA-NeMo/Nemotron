@@ -14,8 +14,10 @@
 
 """SFT data preparation command.
 
-This module defines the `data prep sft` command with **visible
-execution logic**. Data prep uses Ray + CodePackager + xenna run_command.
+Execution backends:
+- local: subprocess (default)
+- slurm: CodePackager + RayJob via SSH tunnel
+- lepton / dgxcloud: empty Packager + run.Experiment (pip install on remote)
 
 Design: LLM-Native Recipe Architecture
 - Execution logic visible and modifiable
@@ -43,7 +45,9 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
     clone_git_repos_via_tunnel,
+    execute_cloud,
     execute_local,
+    get_executor_type,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
@@ -58,13 +62,11 @@ from nemo_runspec.recipe_typer import RecipeMeta
 SCRIPT_PATH = "src/nemotron/recipes/nano3/stage1_sft/data_prep.py"
 SPEC = parse_runspec(SCRIPT_PATH)
 
-# Implementation details — setup commands stay here
 SETUP_COMMANDS = [
     "find . -type d -name __pycache__ -delete 2>/dev/null || true",
     "uv sync --reinstall-package nemotron",
 ]
 
-# For help panels
 META = RecipeMeta(
     name=SPEC.name,
     script_path=SCRIPT_PATH,
@@ -76,79 +78,62 @@ META = RecipeMeta(
 
 
 # =============================================================================
-# Execution Logic - shares pattern with pretrain data prep
+# Execution Logic
 # =============================================================================
 
 
 def _execute_data_prep_sft(cfg: RecipeConfig):
     """Execute SFT data prep with Ray via nemo-run."""
-    # =========================================================================
-    # 1. Parse configuration
-    # =========================================================================
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
-    # Build full job config with provenance
     job_config = build_job_config(
-        train_config,
-        cfg.ctx,
-        SPEC.name,
-        SCRIPT_PATH,
-        cfg.argv,
-        env_profile=env,
+        train_config, cfg.ctx, SPEC.name, SCRIPT_PATH, cfg.argv, env_profile=env,
     )
 
-    # For "code" packager, do NOT show remote paths (they resolve at runtime)
     display_job_config(job_config, for_remote=False)
-
-    # Handle dry-run mode
     if cfg.dry_run:
         return
 
-    # =========================================================================
-    # 2. Save configs and prepare execution
-    # =========================================================================
     job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=False)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
-    # Get env config from job_config.run.env (merged YAML + env.toml)
     env_for_executor = job_config.run.env if hasattr(job_config.run, "env") else None
-
     env_vars = build_env_vars(job_config, env_for_executor)
     display_job_submission(job_path, train_path, env_vars, cfg.mode, artifacts=job_config.get("artifacts"))
     startup_commands = get_startup_commands(env_for_executor)
 
-    # =========================================================================
-    # 3. Execute based on mode
-    # =========================================================================
     if cfg.mode == "local":
         execute_local(
-            SCRIPT_PATH,
-            train_path,
-            cfg.passthrough,
-            torchrun=False,
-            env_vars=env_vars,
-            startup_commands=startup_commands,
+            SCRIPT_PATH, train_path, cfg.passthrough,
+            torchrun=False, env_vars=env_vars, startup_commands=startup_commands,
         )
     else:
-        _execute_ray_code_packager(
-            train_path=train_path,
-            job_dir=job_dir,
-            job_config=job_config,
-            env=env_for_executor,
-            passthrough=cfg.passthrough,
-            attached=cfg.attached,
-            env_vars=env_vars,
-            startup_commands=startup_commands,
-            force_squash=cfg.force_squash,
-        )
+        if get_executor_type(env_for_executor) in ("dgxcloud", "lepton"):
+            execute_cloud(
+                SCRIPT_PATH, train_path, env=env_for_executor,
+                env_vars=env_vars, passthrough=cfg.passthrough,
+                attached=cfg.attached, default_image=SPEC.image,
+                script_resources=SPEC.resources,
+                startup_commands=startup_commands,
+            )
+        else:
+            _execute_slurm(
+                train_path=train_path, env=env_for_executor,
+                passthrough=cfg.passthrough, attached=cfg.attached,
+                env_vars=env_vars, startup_commands=startup_commands,
+                force_squash=cfg.force_squash,
+            )
 
 
-def _execute_ray_code_packager(
+# =============================================================================
+# Cloud Execution (Lepton / DGX Cloud)
+# =============================================================================
+
+
+def _execute_slurm(
     train_path: Path,
-    job_dir: Path,
-    job_config,
     env,
     passthrough: list[str],
     attached: bool,
@@ -156,15 +141,9 @@ def _execute_ray_code_packager(
     startup_commands: list[str] | None,
     force_squash: bool,
 ):
-    """Execute via Ray with code packager."""
-    try:
-        import nemo_run as run
-        from nemo_run.run.ray.job import RayJob
-    except ImportError:
-        typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
-        typer.echo("Install with: pip install nemo-run", err=True)
-        raise typer.Exit(1)
-
+    """Execute data prep on Slurm via RayJob with CodePackager."""
+    import nemo_run as run
+    from nemo_run.run.ray.job import RayJob
     from nemo_runspec.packaging import CodePackager
     from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
@@ -174,73 +153,14 @@ def _execute_ray_code_packager(
     patch_nemo_run_rsync_accept_new_host_keys()
     patch_nemo_run_ray_template_for_cpu()
 
-    # Helper for accessing env config (OmegaConf or dict)
-    def _get(key: str, default=None):
-        if env is None:
-            return default
-        return env.get(key, default) if hasattr(env, "get") else getattr(env, key, default)
+    _get = _make_env_getter(env)
 
-    tunnel = None
-    remote_job_dir = _get("remote_job_dir")
-    if _get("tunnel") == "ssh":
-        tunnel = run.SSHTunnel(
-            host=_get("host", "localhost"),
-            user=_get("user"),
-            job_dir=remote_job_dir,
-        )
-
-    # Build packager - code packager rsyncs full codebase
     packager = CodePackager(
         script_path=SCRIPT_PATH,
         train_path=str(train_path),
         exclude_dirs=("usage-cookbook", "use-case-examples"),
     )
-
-    container_image = _get("container_image") or _get("container") or SPEC.image
-
-    if container_image and tunnel and remote_job_dir:
-        tunnel.connect()
-        container_image = ensure_squashed_image(
-            tunnel, container_image, remote_job_dir, env, force=force_squash
-        )
-
-    git_mounts = []
-    if tunnel and remote_job_dir:
-        tunnel.connect()
-        git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
-
-    if attached:
-        partition = _get("run_partition") or _get("partition")
-    else:
-        partition = _get("batch_partition") or _get("partition")
-
-    raw_mounts = list(_get("mounts") or [])
-    mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
-    mounts.extend(git_mounts)
-    mounts.append("/lustre:/lustre")
-
-    if remote_job_dir:
-        ray_temp_path = f"{remote_job_dir}/ray_temp"
-        mounts.append(f"{ray_temp_path}:/ray-cluster")
-        if tunnel:
-            tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
-
-    executor = run.SlurmExecutor(
-        account=_get("account"),
-        partition=partition,
-        nodes=_get("nodes", 1),
-        ntasks_per_node=_get("ntasks_per_node", 1),
-        gpus_per_node=_get("gpus_per_node"),
-        cpus_per_task=_get("cpus_per_task"),
-        time=_get("time", "04:00:00"),
-        container_image=container_image,
-        container_mounts=mounts,
-        tunnel=tunnel,
-        packager=packager,
-        mem=_get("mem"),
-        env_vars=env_vars,
-        launcher=None,
-    )
+    executor = _build_slurm_executor(env, env_vars, packager, attached, force_squash)
 
     recipe_name = SPEC.name.replace("/", "-")
     job_name = f"{recipe_name}_{int(time.time())}"
@@ -249,12 +169,8 @@ def _execute_ray_code_packager(
     repo_config = Path.cwd() / "config.yaml"
     shutil.copy2(train_path, repo_config)
 
-    setup_commands = list(SETUP_COMMANDS)
-
-    remote_script = SCRIPT_PATH
     effective_run_command = _get("run_command", SPEC.run.cmd)
-
-    cmd = effective_run_command.format(script=remote_script, config="config.yaml")
+    cmd = effective_run_command.format(script=SCRIPT_PATH, config="config.yaml")
     if passthrough:
         cmd += " " + " ".join(passthrough)
     if startup_commands:
@@ -274,12 +190,13 @@ def _execute_ray_code_packager(
     ray_job.start(
         command=cmd,
         workdir=str(Path.cwd()) + "/",
-        pre_ray_start_commands=setup_commands,
+        pre_ray_start_commands=list(SETUP_COMMANDS),
         runtime_env_yaml=runtime_env_yaml,
     )
 
-    remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
-    executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
+    if hasattr(executor, "tunnel") and executor.tunnel:
+        remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
+        executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
 
     if ray_job.backend.job_id is None:
         try:
@@ -295,6 +212,64 @@ def _execute_ray_code_packager(
         except KeyboardInterrupt:
             typer.echo(f"\n[info] Detaching. Job {ray_job.backend.job_id} continues running.")
             raise typer.Exit(0)
+
+
+def _build_slurm_executor(env, env_vars, packager, attached, force_squash):
+    """Build a SlurmExecutor for Ray-based data prep."""
+    import nemo_run as run
+
+    _get = _make_env_getter(env)
+
+    tunnel = None
+    remote_job_dir = _get("remote_job_dir")
+    if _get("tunnel") == "ssh":
+        tunnel = run.SSHTunnel(host=_get("host", "localhost"), user=_get("user"), job_dir=remote_job_dir)
+
+    container_image = _get("container_image") or _get("container") or SPEC.image
+    if container_image and tunnel and remote_job_dir:
+        tunnel.connect()
+        container_image = ensure_squashed_image(tunnel, container_image, remote_job_dir, env, force=force_squash)
+
+    git_mounts = []
+    if tunnel and remote_job_dir:
+        tunnel.connect()
+        git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
+
+    partition = (_get("run_partition") or _get("partition")) if attached else (_get("batch_partition") or _get("partition"))
+
+    raw_mounts = list(_get("mounts") or [])
+    mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
+    mounts.extend(git_mounts)
+    mounts.append("/lustre:/lustre")
+
+    if remote_job_dir:
+        ray_temp_path = f"{remote_job_dir}/ray_temp"
+        mounts.append(f"{ray_temp_path}:/ray-cluster")
+        if tunnel:
+            tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
+
+    return run.SlurmExecutor(
+        account=_get("account"), partition=partition,
+        nodes=_get("nodes", 1), ntasks_per_node=_get("ntasks_per_node", 1),
+        gpus_per_node=_get("gpus_per_node"), cpus_per_task=_get("cpus_per_task"),
+        time=_get("time", "04:00:00"), container_image=container_image,
+        container_mounts=mounts, tunnel=tunnel, packager=packager,
+        mem=_get("mem"), env_vars=env_vars, launcher=None,
+    )
+
+
+# =============================================================================
+# Helpers
+# =============================================================================
+
+
+def _make_env_getter(env):
+    """Return a helper to read values from env config (OmegaConf or dict)."""
+    def _get(key: str, default=None):
+        if env is None:
+            return default
+        return env.get(key, default) if hasattr(env, "get") else getattr(env, key, default)
+    return _get
 
 
 # =============================================================================

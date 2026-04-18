@@ -18,6 +18,13 @@ Provides the shared building blocks for running recipes: startup commands,
 environment variable setup, executor creation, git repo cloning, and local
 subprocess execution.
 
+Supported executor types:
+- local: LocalExecutor for single-machine runs
+- docker: DockerExecutor for containerized local runs
+- slurm: SlurmExecutor for HPC clusters via SSH tunnel
+- dgxcloud: DGXCloudExecutor for NVIDIA DGX Cloud (run:ai API)
+- lepton: LeptonExecutor for NVIDIA DGX Cloud Lepton clusters
+
 Design principle: extract only utilities, keep policy visible.
 Commands should show exactly how they build executors and run experiments.
 """
@@ -311,6 +318,27 @@ def clone_git_repos_via_tunnel(tunnel: Any, remote_job_dir: str) -> list[str]:
 # =============================================================================
 
 
+def _to_plain(value: Any) -> Any:
+    """Convert OmegaConf containers to plain Python dicts/lists.
+
+    nemo-run's serialization (fiddle) cannot handle OmegaConf DictConfig
+    objects. This function recursively converts them so env.toml values
+    like pvcs, mounts, and custom_spec work transparently.
+    """
+    try:
+        from omegaconf import OmegaConf
+
+        if OmegaConf.is_config(value):
+            return OmegaConf.to_container(value, resolve=True)
+    except ImportError:
+        pass
+    if isinstance(value, dict):
+        return {k: _to_plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_plain(v) for v in value]
+    return value
+
+
 def _get_env(env: Any, key: str, default: Any = None) -> Any:
     """Get value from env config (OmegaConf or dict).
 
@@ -326,6 +354,15 @@ def _get_env(env: Any, key: str, default: Any = None) -> Any:
         return default
     # Works for both OmegaConf and dict
     return env.get(key, default) if hasattr(env, "get") else getattr(env, key, default)
+
+
+def get_executor_type(env: Any, default: str = "slurm") -> str:
+    """Return the ``executor`` key from env config, defaulting to ``slurm``.
+
+    Shared helper so CLI commands don't each reimplement the OmegaConf/dict
+    lookup for deciding which execution backend to dispatch to.
+    """
+    return _get_env(env, "executor", default)
 
 
 def create_executor(
@@ -404,8 +441,17 @@ def create_executor(
             packager=packager,
         )
 
+    if executor_type == "dgxcloud":
+        return _create_dgxcloud_executor(env, env_vars, packager, default_image, script_resources)
+
+    if executor_type == "lepton":
+        return _create_lepton_executor(env, env_vars, packager, default_image, script_resources)
+
     if executor_type != "slurm":
-        raise ValueError(f"Unknown executor type: {executor_type}")
+        raise ValueError(
+            f"Unknown executor type: {executor_type!r}. "
+            f"Supported: local, docker, slurm, dgxcloud, lepton"
+        )
 
     # Slurm executor setup
     remote_job_dir = _get_env(env, "remote_job_dir")
@@ -449,7 +495,11 @@ def create_executor(
     raw_mounts = list(_get_env(env, "mounts") or [])
     mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
     mounts.extend(git_mounts)
-    mounts.append("/lustre:/lustre")
+
+    # Only add /lustre mount if it exists on the host (not all clusters have Lustre)
+    lustre_mount = _get_env(env, "lustre_mount", "/lustre:/lustre")
+    if lustre_mount:
+        mounts.append(lustre_mount)
 
     if remote_job_dir:
         ray_temp_path = f"{remote_job_dir}/ray_temp"
@@ -482,6 +532,594 @@ def create_executor(
         executor_kwargs["exclusive"] = True
 
     return run.SlurmExecutor(**executor_kwargs)
+
+
+# =============================================================================
+# DGX Cloud Executor
+# =============================================================================
+
+
+def _create_dgxcloud_executor(
+    env: Any,
+    env_vars: dict[str, str],
+    packager: Any,
+    default_image: str | None,
+    script_resources: Any | None,
+) -> Any:
+    """Create a DGXCloudExecutor for NVIDIA DGX Cloud (run:ai).
+
+    Required env.toml fields:
+        base_url: DGX Cloud API base URL
+        kube_apiserver_url: Run:ai Kubernetes API server URL
+        client_id: OAuth client ID (or legacy app_id)
+        client_secret: OAuth client secret (or legacy app_secret)
+        project_name: DGX Cloud project name
+        pvc_nemo_run_dir: PVC path for nemo-run job directory
+
+    Optional fields:
+        container_image, nodes, gpus_per_node, nprocs_per_node,
+        pvcs (list of PVC mount dicts), distributed_framework,
+        custom_spec (dict for additional workload spec overrides)
+    """
+    import nemo_run as run
+
+    container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
+    if not container_image:
+        raise ValueError("container_image required for dgxcloud executor")
+
+    base_url = _get_env(env, "base_url")
+    if not base_url:
+        raise ValueError("base_url required for dgxcloud executor")
+
+    kube_apiserver_url = _get_env(env, "kube_apiserver_url")
+    if not kube_apiserver_url:
+        raise ValueError("kube_apiserver_url required for dgxcloud executor")
+
+    # Accept both old (app_id/app_secret) and new (client_id/client_secret)
+    # names in env.toml. DGXCloudExecutor itself now requires client_id /
+    # client_secret (post nemo-run PR #480 / 0.10rc).
+    client_id = _get_env(env, "client_id") or _get_env(env, "app_id")
+    client_secret = _get_env(env, "client_secret") or _get_env(env, "app_secret")
+    if not client_id or not client_secret:
+        raise ValueError("client_id/client_secret (or legacy app_id/app_secret) required for dgxcloud executor")
+
+    project_name = _get_env(env, "project_name")
+    if not project_name:
+        raise ValueError("project_name required for dgxcloud executor")
+
+    pvc_nemo_run_dir = _get_env(env, "pvc_nemo_run_dir")
+    if not pvc_nemo_run_dir:
+        raise ValueError("pvc_nemo_run_dir required for dgxcloud executor")
+
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else 0
+
+    executor_kwargs: dict[str, Any] = {
+        "base_url": base_url,
+        "kube_apiserver_url": kube_apiserver_url,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "project_name": project_name,
+        "container_image": container_image,
+        "pvc_nemo_run_dir": pvc_nemo_run_dir,
+        "nodes": _get_env(env, "nodes", default_nodes),
+        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
+        "nprocs_per_node": _get_env(env, "nprocs_per_node") or _get_env(env, "ntasks_per_node", 1),
+        "packager": packager,
+        "env_vars": env_vars,
+    }
+
+    pvcs = _get_env(env, "pvcs")
+    if pvcs:
+        executor_kwargs["pvcs"] = _to_plain(pvcs)
+
+    distributed_framework = _get_env(env, "distributed_framework")
+    if distributed_framework:
+        executor_kwargs["distributed_framework"] = distributed_framework
+
+    custom_spec = _get_env(env, "custom_spec")
+    if custom_spec:
+        executor_kwargs["custom_spec"] = _to_plain(custom_spec)
+
+    launcher = _get_env(env, "launcher", "torchrun")
+    if launcher:
+        executor_kwargs["launcher"] = launcher
+
+    return run.DGXCloudExecutor(**executor_kwargs)
+
+
+# =============================================================================
+# Lepton Executor
+# =============================================================================
+
+
+def _create_lepton_executor(
+    env: Any,
+    env_vars: dict[str, str],
+    packager: Any,
+    default_image: str | None,
+    script_resources: Any | None,
+) -> Any:
+    """Create a LeptonExecutor for NVIDIA DGX Cloud Lepton clusters.
+
+    Required env.toml fields:
+        nemo_run_dir: Remote directory for nemo-run job files on the Lepton cluster
+
+    Optional fields:
+        container_image, nodes, gpus_per_node, nprocs_per_node,
+        resource_shape, node_group, node_reservation,
+        shared_memory_size, mounts (list of mount dicts),
+        image_pull_secrets, custom_spec, pre_launch_commands
+    """
+    import nemo_run as run
+
+    container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
+    if not container_image:
+        raise ValueError("container_image required for lepton executor")
+
+    nemo_run_dir = _get_env(env, "nemo_run_dir")
+    if not nemo_run_dir:
+        raise ValueError("nemo_run_dir required for lepton executor")
+
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else 0
+
+    executor_kwargs: dict[str, Any] = {
+        "container_image": container_image,
+        "nemo_run_dir": nemo_run_dir,
+        "nodes": _get_env(env, "nodes", default_nodes),
+        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
+        "nprocs_per_node": _get_env(env, "nprocs_per_node") or _get_env(env, "ntasks_per_node", 1),
+        "packager": packager,
+        "env_vars": env_vars,
+    }
+
+    resource_shape = _get_env(env, "resource_shape")
+    if resource_shape:
+        executor_kwargs["resource_shape"] = resource_shape
+
+    node_group = _get_env(env, "node_group")
+    if node_group:
+        executor_kwargs["node_group"] = node_group
+
+    node_reservation = _get_env(env, "node_reservation")
+    if node_reservation:
+        executor_kwargs["node_reservation"] = node_reservation
+
+    shared_memory_size = _get_env(env, "shared_memory_size")
+    if shared_memory_size is not None:
+        executor_kwargs["shared_memory_size"] = int(shared_memory_size)
+
+    mounts = _get_env(env, "mounts")
+    if mounts:
+        # Filter out __auto_mount__ strings (Slurm-specific, not valid on cloud)
+        plain = _to_plain(mounts)
+        executor_kwargs["mounts"] = [
+            m for m in plain
+            if not (isinstance(m, str) and m.startswith("__auto_mount__"))
+        ]
+
+    image_pull_secrets = _get_env(env, "image_pull_secrets")
+    if image_pull_secrets:
+        executor_kwargs["image_pull_secrets"] = list(image_pull_secrets)
+
+    # LeptonRayCluster needs a plain version ("2.48.0"), not the default
+    # image-tag string 'ray:2.48.0-py312-gpu' that nemo-run supplies.
+    ray_version = _get_env(env, "ray_version")
+    if ray_version:
+        executor_kwargs["ray_version"] = ray_version
+
+    custom_spec = _get_env(env, "custom_spec")
+    if custom_spec:
+        executor_kwargs["custom_spec"] = _to_plain(custom_spec)
+
+    # Pre-launch commands: user-defined + auto_mount git repos
+    pre_launch = list(_get_env(env, "pre_launch_commands") or [])
+    pre_launch.extend(_git_mount_commands())
+    if pre_launch:
+        executor_kwargs["pre_launch_commands"] = pre_launch
+
+    launcher = _get_env(env, "launcher", "torchrun")
+    if launcher:
+        executor_kwargs["launcher"] = launcher
+
+    return run.LeptonExecutor(**executor_kwargs)
+
+
+# =============================================================================
+# Cloud Execution (Lepton / DGX Cloud)
+# =============================================================================
+
+
+def _git_mount_commands() -> list[str]:
+    """Convert registered auto_mount git repos to shell clone commands.
+
+    On Slurm, auto_mount repos are cloned via SSH tunnel and bind-mounted
+    into the container. On cloud executors (Lepton/DGXCloud), bind mounts
+    aren't available, so we clone the repos inside the container instead.
+
+    Returns:
+        List of shell commands like:
+          "rm -rf /opt/megatron-lm && git clone --depth 1 -b <ref> <url> /opt/megatron-lm"
+    """
+    from nemo_runspec.config.resolvers import get_git_mounts
+
+    commands = []
+    for repo_name, info in get_git_mounts().items():
+        url = info["url"]
+        ref = info.get("ref", "main")
+        target = info.get("target", "")
+        if not target:
+            continue
+
+        # Check if ref is a commit SHA (40 hex chars) vs branch/tag name.
+        # git clone --depth 1 -b only works with branch/tag names.
+        is_sha = len(ref) == 40 and all(c in "0123456789abcdef" for c in ref.lower())
+        if is_sha:
+            # For specific commits: try shallow fetch, but don't delete the
+            # existing target if fetch fails (keeps container's built-in version).
+            # GitHub often blocks fetching arbitrary SHAs with --depth 1.
+            commands.append(
+                f"(git init /tmp/_git_{repo_name} && git -C /tmp/_git_{repo_name} remote add origin {url}"
+                f" && git -C /tmp/_git_{repo_name} fetch --depth 1 origin {ref}"
+                f" && git -C /tmp/_git_{repo_name} checkout FETCH_HEAD"
+                f" && rm -rf {target} && mv /tmp/_git_{repo_name} {target})"
+                f" || echo '[auto_mount] WARNING: Could not fetch {ref[:12]}, using container built-in {target}'"
+            )
+        else:
+            commands.append(
+                f"rm -rf {target} && git clone --depth 1 -b {ref} {url} {target}"
+            )
+    return commands
+
+
+def _derive_cloud_workspace(env: Any) -> str:
+    """Derive persistent storage root from env config.
+
+    Priority: explicit ``workspace`` > first mount/PVC path > ``/tmp``.
+    """
+    explicit = _get_env(env, "workspace")
+    if explicit:
+        return explicit
+
+    executor_type = _get_env(env, "executor", "")
+    if executor_type == "lepton":
+        mounts = _to_plain(_get_env(env, "mounts") or [])
+        # Skip auto_mount strings — only real mount dicts have mount_path.
+        for m in mounts:
+            if isinstance(m, dict) and m.get("mount_path"):
+                return m["mount_path"]
+    else:
+        pvcs = _to_plain(_get_env(env, "pvcs") or [])
+        for p in pvcs:
+            if isinstance(p, dict) and p.get("path"):
+                return p["path"]
+
+    import logging
+    logging.getLogger(__name__).warning(
+        "No workspace, mounts, or pvcs configured — output goes to ephemeral /tmp"
+    )
+    return "/tmp"
+
+
+def execute_cloud(
+    script_path: str,
+    train_path: Path,
+    env: Any,
+    env_vars: dict[str, str],
+    passthrough: list[str],
+    attached: bool,
+    *,
+    default_image: str | None = None,
+    script_resources: Any | None = None,
+    startup_commands: list[str] | None = None,
+    run_command: str | None = None,
+    setup_commands: list[str] | None = None,
+    launch: str | None = None,
+) -> None:
+    """Execute a recipe script on Lepton or DGX Cloud.
+
+    All behavior is driven by env.toml — no hardcoded paths or packages::
+
+        [lepton]
+        executor = "lepton"
+        workspace = "/mnt/lustre-shared"       # auto-derived from mounts if absent
+        git_repo  = "https://github.com/.../Nemotron.git"
+        git_branch = "main"
+        pip_extras = ["cosmos-xenna"]           # extra pip packages to install
+        ...
+
+    How it works:
+    1. Empty ``run.Packager()`` avoids data-mover ARG_MAX limits.
+    2. Config YAML is passed as a base64 env var (~2-5 KB).
+    3. Nemotron is pip-installed from git (``--no-deps``).
+    4. Extra packages from ``pip_extras`` are installed.
+    5. Symlinks at ``{workspace}/_nemotron/src/`` make
+       ``${oc.env:PWD}/src/nemotron/...`` config paths resolve.
+    6. ``PWD`` is set to ``{workspace}/_nemotron`` so outputs
+       (``${oc.env:PWD}/../output/...``) land on persistent storage.
+    """
+    import base64
+
+    import nemo_run as run
+
+    executor_type = _get_env(env, "executor")
+
+    # ── 1. Workspace & paths ─────────────────────────────────────────
+    workspace = _derive_cloud_workspace(env)
+    nemotron_home = f"{workspace}/_nemotron"
+    config_path = f"{nemotron_home}/config.yaml"
+
+    # ── 2. Packager & config ─────────────────────────────────────────
+    packager = run.Packager()
+    env_vars["_NEMOTRON_CONFIG_B64"] = base64.b64encode(
+        train_path.read_bytes()
+    ).decode("ascii")
+
+    # ── 3. Executor ──────────────────────────────────────────────────
+    if executor_type == "lepton":
+        executor = _create_lepton_executor(env, env_vars, packager, default_image, script_resources)
+    else:
+        executor = _create_dgxcloud_executor(env, env_vars, packager, default_image, script_resources)
+    # We wrap the final command ourselves; never let nemo-run inject a launcher.
+    executor.launcher = None
+
+    # ── 4. Config from env.toml ──────────────────────────────────────
+    git_repo = _get_env(env, "git_repo") or "https://github.com/NVIDIA-NeMo/Nemotron.git"
+    git_branch = _get_env(env, "git_branch") or "main"
+    pip_extras = _to_plain(_get_env(env, "pip_extras") or [])
+
+    # ── 5. Run command ───────────────────────────────────────────────
+    module_path = script_path.replace("src/", "").replace("/", ".").removesuffix(".py")
+    if launch == "torchrun":
+        # Multi-process training. Lepton/DGXCloud populate NODE_RANK /
+        # MASTER_ADDR / MASTER_PORT per worker pod.
+        nnodes = _get_env(env, "nodes") or (script_resources.nodes if script_resources else 1)
+        nproc = (
+            _get_env(env, "nprocs_per_node")
+            or _get_env(env, "ntasks_per_node")
+            or _get_env(env, "gpus_per_node")
+            or (script_resources.gpus_per_node if script_resources else 1)
+        )
+        default_cmd = (
+            f"torchrun --nnodes {nnodes} --nproc-per-node {nproc}"
+            ' --node-rank ${{NODE_RANK:-0}}'
+            ' --master-addr ${{MASTER_ADDR:-127.0.0.1}}'
+            ' --master-port ${{MASTER_PORT:-29500}}'
+            f" -m {module_path} --config {{config}}"
+        )
+    else:
+        default_cmd = f"python -m {module_path} --config {{config}}"
+    effective_cmd = run_command or _get_env(env, "run_command") or default_cmd
+    script_cmd = effective_cmd.format(script=script_path, config=config_path)
+    if passthrough:
+        script_cmd += " " + " ".join(passthrough)
+
+    # ── 6. Inline launch script ──────────────────────────────────────
+    parts: list[str] = [
+        # Decode config to persistent workspace
+        f"mkdir -p {nemotron_home}",
+        f"echo $_NEMOTRON_CONFIG_B64 | base64 -d > {config_path}",
+        # Install nemotron from git (--no-deps preserves container packages)
+        f"pip install --no-deps -q 'nemotron @ git+{git_repo}@{git_branch}'",
+    ]
+
+    # Extra pip packages from env.toml
+    for pkg in pip_extras:
+        parts.append(f"pip install -q {pkg} 2>/dev/null || true")
+
+    # Clone auto_mount git repos (Megatron-LM, Megatron-Bridge, etc.)
+    # On Slurm these are bind-mounted; on cloud we clone inside the container.
+    parts.extend(_git_mount_commands())
+
+    # Caller-provided setup & env.toml startup commands
+    if setup_commands:
+        parts.extend(setup_commands)
+    if startup_commands:
+        parts.extend(startup_commands)
+
+    # Symlink installed packages → ${oc.env:PWD}/src/nemotron/... resolves.
+    # Set PWD on persistent storage so output goes to workspace/../output/
+    parts.append(
+        'SITE=$(python -c "import nemotron,os;print(os.path.dirname(os.path.dirname(nemotron.__file__)))")'
+        f" && mkdir -p {nemotron_home}/src"
+        f" && ln -sf $SITE/nemotron {nemotron_home}/src/nemotron"
+        f" && ln -sf $SITE/nemo_runspec {nemotron_home}/src/nemo_runspec"
+        f" && export PWD={nemotron_home} && cd {nemotron_home}"
+        f" && {script_cmd}"
+    )
+
+    # ── 7. Submit ────────────────────────────────────────────────────
+    script_task = run.Script(inline=" && ".join(parts))
+    recipe_name = (
+        script_path
+        .replace("src/nemotron/recipes/", "")
+        .replace("/", "-")
+        .removesuffix(".py")
+    )
+    with run.Experiment(recipe_name) as exp:
+        exp.add(script_task, executor=executor, name=recipe_name)
+        exp.run(detach=not attached)
+
+
+# =============================================================================
+# Cloud Ray Execution (Lepton + DGX Cloud, via nemo-run RayCluster/RayJob)
+# =============================================================================
+
+
+def execute_cloud_ray(
+    script_path: str,
+    train_path: Path,
+    env: Any,
+    env_vars: dict[str, str],
+    passthrough: list[str],
+    attached: bool,
+    *,
+    default_image: str | None = None,
+    script_resources: Any | None = None,
+    startup_commands: list[str] | None = None,
+    run_command: str | None = None,
+    setup_commands: list[str] | None = None,
+) -> None:
+    """Execute a Ray recipe (launch='ray') on Lepton / DGX Cloud via nemo-run's
+    ``RayCluster`` + ``RayJob`` classes — the same pattern Slurm already uses.
+
+    Code distribution: ``PatternPackager`` ships ``src/`` to each pod. The
+    nemo-rl container has torch/vllm/ray; we just add nemotron source to
+    ``PYTHONPATH`` via ``pre_ray_start_commands``.
+    """
+    import base64
+    import tempfile
+    import time
+
+    import nemo_run as run
+    import yaml as pyyaml
+    from nemo_run.run.ray.cluster import RayCluster
+    from nemo_run.run.ray.job import RayJob
+
+    executor_type = _get_env(env, "executor")
+
+    workspace = _derive_cloud_workspace(env)
+    nemotron_home = f"{workspace}/_nemotron"
+    config_path = f"{nemotron_home}/config.yaml"
+
+    # Ship nemotron + nemo_runspec source to every pod via PatternPackager.
+    repo_root = Path.cwd()
+    packager = run.PatternPackager(
+        include_pattern=[
+            str(repo_root / "src" / "nemotron"),
+            str(repo_root / "src" / "nemo_runspec"),
+        ],
+        relative_path=[str(repo_root), str(repo_root)],
+    )
+
+    env_vars["_NEMOTRON_CONFIG_B64"] = base64.b64encode(
+        train_path.read_bytes()
+    ).decode("ascii")
+
+    if executor_type == "lepton":
+        executor = _create_lepton_executor(env, env_vars, packager, default_image, script_resources)
+    else:
+        executor = _create_dgxcloud_executor(env, env_vars, packager, default_image, script_resources)
+    executor.launcher = None
+
+    git_repo = _get_env(env, "git_repo") or "https://github.com/NVIDIA-NeMo/Nemotron.git"
+    git_branch = _get_env(env, "git_branch") or "main"
+    pip_extras = _to_plain(_get_env(env, "pip_extras") or [])
+
+    # Per-pod setup (runs BEFORE ray start). Install lightweight CLI deps so
+    # the nemotron package imports cleanly even with --no-deps. Source itself
+    # is already on disk via the packager under the workdir.
+    pre_ray_commands: list[str] = [
+        f"pip install --no-deps -q 'nemotron @ git+{git_repo}@{git_branch}'",
+    ]
+    for pkg in pip_extras:
+        pre_ray_commands.append(f"pip install -q {pkg} 2>/dev/null || true")
+    pre_ray_commands.extend(_git_mount_commands())
+    if setup_commands:
+        pre_ray_commands.extend(setup_commands)
+
+    # Head command (runs after Ray cluster is up).
+    module_path = script_path.replace("src/", "").replace("/", ".").removesuffix(".py")
+    default_cmd = f"python -m {module_path} --config {{config}}"
+    effective_cmd = run_command or _get_env(env, "run_command") or default_cmd
+    script_cmd = effective_cmd.format(script=script_path, config=config_path)
+    if passthrough:
+        script_cmd += " " + " ".join(passthrough)
+
+    # Head entrypoint: pip-install nemotron (+ its CLI deps typer/rich/etc
+    # because nemo-rl container doesn't have them), decode config, mirror
+    # installed pkg source into nemotron_home/src so ${oc.env:PWD}/src/...
+    # references resolve, then run the recipe.
+    head_pip = ["typer", "rich", "pydantic-settings", "shellingham", *pip_extras]
+    head_setup = [
+        f"pip install -q {' '.join(head_pip)} 2>/dev/null || true",
+        f"pip install --no-deps -q 'nemotron @ git+{git_repo}@{git_branch}'",
+        f"mkdir -p {nemotron_home}",
+        f"echo $_NEMOTRON_CONFIG_B64 | base64 -d > {config_path}",
+        (
+            'SITE=$(python -c "import nemotron,os;print(os.path.dirname(os.path.dirname(nemotron.__file__)))")'
+            f" && mkdir -p {nemotron_home}/src"
+            f" && ln -sf $SITE/nemotron {nemotron_home}/src/nemotron"
+            f" && ln -sf $SITE/nemo_runspec {nemotron_home}/src/nemo_runspec"
+        ),
+    ]
+    if startup_commands:
+        head_setup.extend(startup_commands)
+    full_cmd = " && ".join([
+        *head_setup,
+        f"export PWD={nemotron_home} && cd {nemotron_home}",
+        script_cmd,
+    ])
+
+    # Don't forward env_vars through Ray's job runtime_env — nemo-rl's
+    # VllmAsyncGenerationWorker calls ``ray.init(runtime_env=...)`` itself,
+    # and Ray can't merge two runtime_envs that both set env_vars. Env vars
+    # are already present on the head pod via LeptonExecutor.env_vars, so
+    # the entrypoint inherits them naturally; Ray actors inherit from there.
+    runtime_env_yaml = None
+
+    recipe_name = (
+        script_path
+        .replace("src/nemotron/recipes/", "")
+        .replace("/", "-")
+        .removesuffix(".py")
+    )
+    stamp = int(time.time())
+    cluster_name = f"{recipe_name}-{stamp}".replace("_", "-").replace(".", "-").lower()[:35]
+    job_name = f"{recipe_name}-job-{stamp}".replace("_", "-").replace(".", "-").lower()[:35]
+
+    # For Lepton: spin a RayCluster and submit a RayJob to it.
+    # For DGXCloud: RayJob alone (DGXCloudRayCluster is a no-op placeholder in
+    # nemo-run; DGXCloudRayJob creates its own distributed workload).
+    cluster = None
+    if executor_type == "lepton":
+        cluster = RayCluster(name=cluster_name, executor=executor)
+        typer.echo(f"[ray] starting RayCluster {cluster_name} (timeout 1800s)...")
+        try:
+            cluster.start(pre_ray_start_commands=pre_ray_commands, timeout=1800)
+        except Exception as e:  # noqa: BLE001
+            typer.echo(f"[ray] cluster.start warning ({type(e).__name__}: {e}); continuing")
+
+    if executor_type == "lepton":
+        ray_job = RayJob(name=job_name, executor=executor, cluster_name=cluster_name)
+    else:
+        ray_job = RayJob(
+            name=job_name,
+            executor=executor,
+            pre_ray_start_commands=pre_ray_commands,
+        )
+
+    # Passing a non-empty workdir makes Ray's JobSubmissionClient add
+    # ``working_dir`` to the job's runtime_env. vLLM's internal ``ray.init``
+    # inside each generation actor has its OWN runtime_env that Ray can't
+    # merge with one that also has ``working_dir`` — it fails with
+    # "Failed to merge the Job's runtime env". Workaround: pass empty
+    # workdir so the job's runtime_env stays empty, and install nemotron
+    # from git in the entrypoint (only the head pod needs to import it;
+    # vLLM workers only need vllm which is in the container already).
+    typer.echo(f"[ray] submitting RayJob {job_name} (no workdir; pip install in entrypoint)")
+    ray_job.start(
+        command=full_cmd,
+        workdir="",
+        runtime_env_yaml=runtime_env_yaml,
+    )
+    typer.echo(f"[ray] submission_id={getattr(ray_job, 'submission_id', None)}")
+
+    if attached:
+        # Retry log streaming on transient disconnects (Ray dashboard/WebSocket
+        # can drop mid-stream during heavy log bursts like vLLM compile).
+        while True:
+            try:
+                ray_job.logs(follow=True)
+                break
+            except KeyboardInterrupt:
+                typer.echo("\n[info] Detaching. Job continues running.")
+                raise typer.Exit(0)
+            except Exception as e:  # noqa: BLE001
+                typer.echo(f"[ray] log stream dropped ({type(e).__name__}: {e}); reconnecting...")
+                import time as _time
+                _time.sleep(5)
 
 
 # =============================================================================
