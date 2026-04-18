@@ -237,3 +237,84 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
         pass
 
 
+def _make_configs_excluding_copy_fn(original_signature: str):
+    """Build a ``copy_directory_data_command`` replacement that skips ``configs/``.
+
+    Lepton returns ``list[str]`` (``["sh", "-c", cmd]``); DGXCloud returns a
+    single ``str`` (command body only). The ``original_signature`` switch
+    picks the right return shape.
+    """
+    import base64
+    import os
+    import subprocess
+    import tempfile
+
+    def _build_cmd(local_dir_path: str, dest_path: str) -> str:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tarball_path = os.path.join(temp_dir, "archive.tar.gz")
+            # Exclude ``configs/`` — only nemo-run's local state lives there
+            # and the pod entrypoint never reads it. Skipping it keeps the
+            # resulting single argv string under the kernel's 128 KiB
+            # ``MAX_ARG_STRLEN`` limit even when env-var chunks inflate the
+            # serialized executor config.
+            subprocess.run(
+                f"tar --exclude='./configs' -czf {tarball_path} -C {local_dir_path} .",
+                shell=True,
+                check=True,
+            )
+            with open(tarball_path, "rb") as file:
+                encoded_data = base64.b64encode(file.read()).decode("utf-8")
+        return (
+            f"rm -rf {dest_path} && mkdir -p {dest_path} && "
+            f"echo {encoded_data} | base64 -d > {dest_path}/archive.tar.gz && "
+            f"tar -xzf {dest_path}/archive.tar.gz -C {dest_path} && "
+            f"rm {dest_path}/archive.tar.gz"
+        )
+
+    if original_signature == "list":
+        def patched(self, local_dir_path, dest_path):
+            return ["sh", "-c", _build_cmd(local_dir_path, dest_path)]
+    else:
+        def patched(self, local_dir_path, dest_path):
+            return _build_cmd(local_dir_path, dest_path)
+    return patched
+
+
+def patch_cloud_data_mover_skip_configs() -> None:
+    """Shrink the inline-base64 data-mover payload on Lepton *and* DGXCloud.
+
+    Both executors ship the whole ``job_dir`` (including
+    ``configs/executor.yaml`` — which re-serializes every env var, potentially
+    hundreds of KiB once source chunks get injected) to remote storage via a
+    helper pod whose ``command`` is ``sh -c "echo <base64> | base64 -d > ..."``.
+    That single argv string is bounded by the kernel's ``MAX_ARG_STRLEN``
+    (128 KiB), so a moderately large ``configs/`` causes ``exec: argument list
+    too long``.
+
+    The pod-side launch script never reads ``configs/``; only
+    ``launch_script.sh`` matters. Excluding ``configs/`` from the tarball
+    keeps the data-mover command small while preserving correctness.
+    """
+    try:
+        from nemo_run.core.execution import lepton as lep_mod
+    except Exception:
+        lep_mod = None  # type: ignore[assignment]
+
+    try:
+        from nemo_run.core.execution import dgxcloud as dgx_mod
+    except Exception:
+        dgx_mod = None  # type: ignore[assignment]
+
+    if lep_mod and not getattr(lep_mod.LeptonExecutor, "_nemotron_data_mover_patched", False):
+        lep_mod.LeptonExecutor.copy_directory_data_command = (
+            _make_configs_excluding_copy_fn("list")
+        )
+        lep_mod.LeptonExecutor._nemotron_data_mover_patched = True
+
+    if dgx_mod and not getattr(dgx_mod.DGXCloudExecutor, "_nemotron_data_mover_patched", False):
+        dgx_mod.DGXCloudExecutor.copy_directory_data_command = (
+            _make_configs_excluding_copy_fn("str")
+        )
+        dgx_mod.DGXCloudExecutor._nemotron_data_mover_patched = True
+
+
