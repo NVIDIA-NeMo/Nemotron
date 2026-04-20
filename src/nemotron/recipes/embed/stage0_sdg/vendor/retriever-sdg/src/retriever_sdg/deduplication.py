@@ -56,14 +56,16 @@ class DDRetrievalDedup(ColumnGeneratorCellByCell[DDRetrievalDedupConfig]):
     def _embed(self, text: str) -> list[float]:
         """Calculate an embedding of the text
         """
-        response = self.embedder._router.embedding(
-            input=text,
-            model=self.embedder.model_name,
+        # Data Designer's public embedding API moved behind ModelFacade methods.
+        # Use the facade directly rather than reaching into removed private attrs
+        # like `_router`, which breaks across library versions.
+        response = self.embedder.generate_text_embeddings(
+            [text],
             encoding_format="float",
-            extra_body=self.embedder._model_config.inference_parameters.
-            extra_body)
+            extra_body=self.embedder._model_config.inference_parameters.extra_body,
+        )
 
-        return response.data[0]["embedding"]
+        return response[0]
 
     def dedupe_qa_pairs(self, embeddings: list[list[float]]) -> list[int]:
         """Run a semantic dedupe of the qa pairs.
