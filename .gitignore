@@ -71,8 +71,8 @@ outputs/
 logs/
 checkpoints/
 data/
-!src/nemotron/cli/nano3/data/
-!src/nemotron/cli/embed/data/
+!src/nemotron/cli/commands/nano3/data/
+!src/nemotron/cli/commands/embed/data/
 workspace/
 wandb/
 .nemotron/

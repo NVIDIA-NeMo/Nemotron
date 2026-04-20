@@ -366,6 +366,28 @@ def get_executor_type(env: Any, default: str = "slurm") -> str:
     return _get_env(env, "executor", default)
 
 
+def _resolve_container_image(env: Any, default_image: str | None) -> str | None:
+    """Three-way container-image fallback shared by slurm/lepton/dgxcloud.
+
+    Priority: ``env.container_image`` > ``env.container`` (legacy name) >
+    caller-provided default (typically ``SPEC.image``).
+    """
+    return _get_env(env, "container_image") or _get_env(env, "container") or default_image
+
+
+def _resolve_nodes_gpus(
+    env: Any, script_resources: Any | None
+) -> tuple[int, int | None]:
+    """Defaults for ``nodes`` / ``gpus_per_node`` — env.toml overrides the
+    script's ``[tool.runspec.resources]`` which overrides 1/None."""
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else None
+    return (
+        _get_env(env, "nodes", default_nodes),
+        _get_env(env, "gpus_per_node", default_gpus),
+    )
+
+
 def create_executor(
     env: Any,
     env_vars: dict[str, str],
@@ -395,129 +417,178 @@ def create_executor(
     Returns:
         Configured executor (LocalExecutor or SlurmExecutor)
     """
-    import nemo_run as run
-
     executor_type = _get_env(env, "executor", "local")
-
     if executor_type == "local":
-        return run.LocalExecutor(
-            ntasks_per_node=_get_env(env, "nproc_per_node", 1),
-            launcher="torchrun",
-            env_vars=env_vars,
-        )
-
+        return _create_local_executor(env, env_vars)
     if executor_type == "docker":
-        container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
-        if not container_image:
-            raise ValueError("container_image required for docker executor")
-
-        # Resolve relative paths and expand env vars in mounts
-        mounts = _get_env(env, "mounts") or []
-        resolved_mounts = []
-        for mount in mounts:
-            if ":" in mount:
-                host_path, container_path = mount.split(":", 1)
-                expanded = os.path.expandvars(host_path)
-                if "$" in expanded:
-                    typer.echo(
-                        f"[warning] Skipping mount {mount!r}: environment variable not set",
-                        err=True,
-                    )
-                    continue
-                host_path = str(Path(expanded).expanduser())
-                if not host_path.startswith("/"):
-                    host_path = str(Path.cwd() / host_path)
-                resolved_mounts.append(f"{host_path}:{container_path}")
-            else:
-                resolved_mounts.append(mount)
-
-        return run.DockerExecutor(
-            container_image=container_image,
-            num_gpus=_get_env(env, "gpus_per_node") or _get_env(env, "nproc_per_node"),
-            runtime=_get_env(env, "runtime", "nvidia"),
-            ipc_mode=_get_env(env, "ipc_mode"),
-            shm_size=_get_env(env, "shm_size"),
-            volumes=resolved_mounts,
-            env_vars=env_vars,
-            packager=packager,
+        return _create_docker_executor(env, env_vars, packager, default_image)
+    if executor_type == "slurm":
+        return create_slurm_executor(
+            env, env_vars, packager,
+            default_image=default_image,
+            script_resources=script_resources,
+            attached=attached,
+            force_squash=force_squash,
         )
-
     if executor_type == "dgxcloud":
         return _create_dgxcloud_executor(env, env_vars, packager, default_image, script_resources)
-
     if executor_type == "lepton":
         return _create_lepton_executor(env, env_vars, packager, default_image, script_resources)
+    raise ValueError(
+        f"Unknown executor type: {executor_type!r}. "
+        "Supported: local, docker, slurm, dgxcloud, lepton"
+    )
 
-    if executor_type != "slurm":
-        raise ValueError(
-            f"Unknown executor type: {executor_type!r}. "
-            f"Supported: local, docker, slurm, dgxcloud, lepton"
-        )
 
-    # Slurm executor setup
+# =============================================================================
+# Local / Docker Executors
+# =============================================================================
+
+
+def _create_local_executor(env: Any, env_vars: dict[str, str]) -> Any:
+    """LocalExecutor for single-machine runs (torchrun-based)."""
+    import nemo_run as run
+
+    return run.LocalExecutor(
+        ntasks_per_node=_get_env(env, "nproc_per_node", 1),
+        launcher="torchrun",
+        env_vars=env_vars,
+    )
+
+
+def _create_docker_executor(
+    env: Any,
+    env_vars: dict[str, str],
+    packager: Any,
+    default_image: str | None,
+) -> Any:
+    """DockerExecutor with env-var-expanded, path-resolved host mounts."""
+    import nemo_run as run
+
+    container_image = _resolve_container_image(env, default_image)
+    if not container_image:
+        raise ValueError("container_image required for docker executor")
+
+    # Resolve relative paths and expand env vars in mounts
+    resolved_mounts: list[str] = []
+    for mount in _get_env(env, "mounts") or []:
+        if ":" not in mount:
+            resolved_mounts.append(mount)
+            continue
+        host_path, container_path = mount.split(":", 1)
+        expanded = os.path.expandvars(host_path)
+        if "$" in expanded:
+            typer.echo(
+                f"[warning] Skipping mount {mount!r}: environment variable not set",
+                err=True,
+            )
+            continue
+        host_path = str(Path(expanded).expanduser())
+        if not host_path.startswith("/"):
+            host_path = str(Path.cwd() / host_path)
+        resolved_mounts.append(f"{host_path}:{container_path}")
+
+    return run.DockerExecutor(
+        container_image=container_image,
+        num_gpus=_get_env(env, "gpus_per_node") or _get_env(env, "nproc_per_node"),
+        runtime=_get_env(env, "runtime", "nvidia"),
+        ipc_mode=_get_env(env, "ipc_mode"),
+        shm_size=_get_env(env, "shm_size"),
+        volumes=resolved_mounts,
+        env_vars=env_vars,
+        packager=packager,
+    )
+
+
+# =============================================================================
+# Slurm Executor
+# =============================================================================
+
+
+def create_slurm_executor(
+    env: Any,
+    env_vars: dict[str, str],
+    packager: Any,
+    *,
+    default_image: str | None = None,
+    script_resources: Any | None = None,
+    attached: bool = False,
+    force_squash: bool = False,
+    launcher: str | None = "torchrun",
+) -> Any:
+    """SlurmExecutor for HPC clusters via SSH tunnel.
+
+    Handles SSH tunneling, container image squashing, git-repo mounting,
+    partition selection (attached vs batch), and lustre / ray-temp mounts.
+
+    Pass ``launcher=None`` for Ray-based flows (data prep, RL) that wrap the
+    command themselves and don't want nemo-run to inject a torchrun prefix.
+    """
+    import nemo_run as run
+
     remote_job_dir = _get_env(env, "remote_job_dir")
 
-    # Build SSH tunnel if configured
+    # SSH tunnel (optional). ``identity`` lets the user point paramiko at a
+    # specific key when ssh-agent isn't running / no default key matches.
     tunnel = None
     if _get_env(env, "tunnel") == "ssh":
-        tunnel = run.SSHTunnel(
-            host=_get_env(env, "host", "localhost"),
-            user=_get_env(env, "user"),
-            job_dir=remote_job_dir,
-        )
+        tunnel_kwargs: dict[str, Any] = {
+            "host": _get_env(env, "host", "localhost"),
+            "user": _get_env(env, "user"),
+            "job_dir": remote_job_dir,
+        }
+        identity = _get_env(env, "identity")
+        if identity:
+            tunnel_kwargs["identity"] = os.path.expanduser(str(identity))
+        tunnel = run.SSHTunnel(**tunnel_kwargs)
 
-    # Container image handling (env.toml > config YAML > SPEC.image fallback)
-    container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
+    container_image = _resolve_container_image(env, default_image)
 
-    # Ensure container is squashed on cluster
-    if container_image and tunnel and remote_job_dir:
-        tunnel.connect()
-        from nemo_runspec.squash import ensure_squashed_image
+    # Force-resolve ``env.mounts`` BEFORE cloning: any ``${auto_mount:git+...}``
+    # entries only register themselves in the global ``get_git_mounts()``
+    # registry at resolution time, and ``clone_git_repos_via_tunnel`` reads
+    # from that registry. Accessing the list here triggers OmegaConf to walk
+    # and resolve each element. Cache the result so the later step reuses it.
+    raw_mounts = list(_get_env(env, "mounts") or [])
 
-        # Convert env to dict for ensure_squashed_image (it uses .get internally)
-        env_dict = dict(env) if env else {}
-        container_image = ensure_squashed_image(
-            tunnel, container_image, remote_job_dir, env_dict, force=force_squash
-        )
-
-    # Clone git repos via tunnel
-    git_mounts = []
+    # One tunnel.connect() block covers both squashing and git-repo cloning.
+    git_mounts: list[str] = []
     if tunnel and remote_job_dir:
         tunnel.connect()
+        if container_image:
+            from nemo_runspec.squash import ensure_squashed_image
+
+            env_dict = dict(env) if env else {}
+            container_image = ensure_squashed_image(
+                tunnel, container_image, remote_job_dir, env_dict, force=force_squash
+            )
         git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
 
-    # Select partition based on mode
-    if attached:
-        partition = _get_env(env, "run_partition") or _get_env(env, "partition")
-    else:
-        partition = _get_env(env, "batch_partition") or _get_env(env, "partition")
+    # Partition selection: attached (--run) vs batch (--batch) can route to
+    # different Slurm queues, falling back to a single shared ``partition``.
+    partition_key = "run_partition" if attached else "batch_partition"
+    partition = _get_env(env, partition_key) or _get_env(env, "partition")
 
-    # Build container mounts
-    raw_mounts = list(_get_env(env, "mounts") or [])
+    # Container mounts = explicit mounts (minus auto-mount placeholders)
+    # + git-cloned repos + optional /lustre + optional ray-temp dir.
     mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
     mounts.extend(git_mounts)
-
-    # Only add /lustre mount if it exists on the host (not all clusters have Lustre)
     lustre_mount = _get_env(env, "lustre_mount", "/lustre:/lustre")
     if lustre_mount:
         mounts.append(lustre_mount)
-
     if remote_job_dir:
         ray_temp_path = f"{remote_job_dir}/ray_temp"
         mounts.append(f"{ray_temp_path}:/ray-cluster")
         if tunnel:
             tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
-    # Build executor kwargs
-    # Use script's runspec resources as defaults when env doesn't specify them
-    default_nodes = script_resources.nodes if script_resources else 1
-    default_gpus = script_resources.gpus_per_node if script_resources else None
-    executor_kwargs = {
+    nodes, gpus_per_node = _resolve_nodes_gpus(env, script_resources)
+    executor_kwargs: dict[str, Any] = {
         "account": _get_env(env, "account"),
         "partition": partition,
-        "nodes": _get_env(env, "nodes", default_nodes),
-        "ntasks_per_node": _get_env(env, "ntasks_per_node", default_gpus or 1),
-        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
+        "nodes": nodes,
+        "ntasks_per_node": _get_env(env, "ntasks_per_node", gpus_per_node or 1),
+        "gpus_per_node": gpus_per_node,
         "cpus_per_task": _get_env(env, "cpus_per_task"),
         "time": _get_env(env, "time", "04:00:00"),
         "container_image": container_image,
@@ -526,9 +597,8 @@ def create_executor(
         "packager": packager,
         "mem": _get_env(env, "mem"),
         "env_vars": env_vars,
-        "launcher": "torchrun",
+        "launcher": launcher,
     }
-
     if _get_env(env, "exclusive"):
         executor_kwargs["exclusive"] = True
 
@@ -564,7 +634,7 @@ def _create_dgxcloud_executor(
     """
     import nemo_run as run
 
-    container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
+    container_image = _resolve_container_image(env, default_image)
     if not container_image:
         raise ValueError("container_image required for dgxcloud executor")
 
@@ -592,9 +662,7 @@ def _create_dgxcloud_executor(
     if not pvc_nemo_run_dir:
         raise ValueError("pvc_nemo_run_dir required for dgxcloud executor")
 
-    default_nodes = script_resources.nodes if script_resources else 1
-    default_gpus = script_resources.gpus_per_node if script_resources else 0
-
+    nodes, gpus_per_node = _resolve_nodes_gpus(env, script_resources)
     executor_kwargs: dict[str, Any] = {
         "base_url": base_url,
         "kube_apiserver_url": kube_apiserver_url,
@@ -603,8 +671,8 @@ def _create_dgxcloud_executor(
         "project_name": project_name,
         "container_image": container_image,
         "pvc_nemo_run_dir": pvc_nemo_run_dir,
-        "nodes": _get_env(env, "nodes", default_nodes),
-        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
+        "nodes": nodes,
+        "gpus_per_node": gpus_per_node or 0,
         "nprocs_per_node": _get_env(env, "nprocs_per_node") or _get_env(env, "ntasks_per_node", 1),
         "packager": packager,
         "env_vars": env_vars,
@@ -661,7 +729,7 @@ def _create_lepton_executor(
     """
     import nemo_run as run
 
-    container_image = _get_env(env, "container_image") or _get_env(env, "container") or default_image
+    container_image = _resolve_container_image(env, default_image)
     if not container_image:
         raise ValueError("container_image required for lepton executor")
 
@@ -669,14 +737,12 @@ def _create_lepton_executor(
     if not nemo_run_dir:
         raise ValueError("nemo_run_dir required for lepton executor")
 
-    default_nodes = script_resources.nodes if script_resources else 1
-    default_gpus = script_resources.gpus_per_node if script_resources else 0
-
+    nodes, gpus_per_node = _resolve_nodes_gpus(env, script_resources)
     executor_kwargs: dict[str, Any] = {
         "container_image": container_image,
         "nemo_run_dir": nemo_run_dir,
-        "nodes": _get_env(env, "nodes", default_nodes),
-        "gpus_per_node": _get_env(env, "gpus_per_node", default_gpus),
+        "nodes": nodes,
+        "gpus_per_node": gpus_per_node or 0,
         "nprocs_per_node": _get_env(env, "nprocs_per_node") or _get_env(env, "ntasks_per_node", 1),
         "packager": packager,
         "env_vars": env_vars,

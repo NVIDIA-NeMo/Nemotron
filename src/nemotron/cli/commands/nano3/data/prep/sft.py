@@ -44,14 +44,13 @@ from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
-    clone_git_repos_via_tunnel,
+    create_slurm_executor,
     execute_cloud,
     execute_local,
     get_executor_type,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
-from nemo_runspec.squash import ensure_squashed_image
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
 
@@ -142,8 +141,8 @@ def _execute_slurm(
     force_squash: bool,
 ):
     """Execute data prep on Slurm via RayJob with CodePackager."""
-    import nemo_run as run
     from nemo_run.run.ray.job import RayJob
+
     from nemo_runspec.packaging import CodePackager
     from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
@@ -160,7 +159,13 @@ def _execute_slurm(
         train_path=str(train_path),
         exclude_dirs=("usage-cookbook", "use-case-examples"),
     )
-    executor = _build_slurm_executor(env, env_vars, packager, attached, force_squash)
+    executor = create_slurm_executor(
+        env, env_vars, packager,
+        default_image=SPEC.image,
+        attached=attached,
+        force_squash=force_squash,
+        launcher=None,
+    )
 
     recipe_name = SPEC.name.replace("/", "-")
     job_name = f"{recipe_name}_{int(time.time())}"
@@ -179,6 +184,7 @@ def _execute_slurm(
     runtime_env: dict = {"env_vars": dict(env_vars)}
 
     import tempfile
+
     import yaml as pyyaml
 
     runtime_env_yaml = None
@@ -212,50 +218,6 @@ def _execute_slurm(
         except KeyboardInterrupt:
             typer.echo(f"\n[info] Detaching. Job {ray_job.backend.job_id} continues running.")
             raise typer.Exit(0)
-
-
-def _build_slurm_executor(env, env_vars, packager, attached, force_squash):
-    """Build a SlurmExecutor for Ray-based data prep."""
-    import nemo_run as run
-
-    _get = _make_env_getter(env)
-
-    tunnel = None
-    remote_job_dir = _get("remote_job_dir")
-    if _get("tunnel") == "ssh":
-        tunnel = run.SSHTunnel(host=_get("host", "localhost"), user=_get("user"), job_dir=remote_job_dir)
-
-    container_image = _get("container_image") or _get("container") or SPEC.image
-    if container_image and tunnel and remote_job_dir:
-        tunnel.connect()
-        container_image = ensure_squashed_image(tunnel, container_image, remote_job_dir, env, force=force_squash)
-
-    git_mounts = []
-    if tunnel and remote_job_dir:
-        tunnel.connect()
-        git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
-
-    partition = (_get("run_partition") or _get("partition")) if attached else (_get("batch_partition") or _get("partition"))
-
-    raw_mounts = list(_get("mounts") or [])
-    mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
-    mounts.extend(git_mounts)
-    mounts.append("/lustre:/lustre")
-
-    if remote_job_dir:
-        ray_temp_path = f"{remote_job_dir}/ray_temp"
-        mounts.append(f"{ray_temp_path}:/ray-cluster")
-        if tunnel:
-            tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
-
-    return run.SlurmExecutor(
-        account=_get("account"), partition=partition,
-        nodes=_get("nodes", 1), ntasks_per_node=_get("ntasks_per_node", 1),
-        gpus_per_node=_get("gpus_per_node"), cpus_per_task=_get("cpus_per_task"),
-        time=_get("time", "04:00:00"), container_image=container_image,
-        container_mounts=mounts, tunnel=tunnel, packager=packager,
-        mem=_get("mem"), env_vars=env_vars, launcher=None,
-    )
 
 
 # =============================================================================

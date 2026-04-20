@@ -50,7 +50,7 @@ from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
-    clone_git_repos_via_tunnel,
+    create_slurm_executor,
     execute_cloud,
     execute_local,
     get_executor_type,
@@ -58,7 +58,6 @@ from nemo_runspec.execution import (
     prepend_startup_to_cmd,
 )
 from nemo_runspec.packaging import REMOTE_CONFIG, REMOTE_SCRIPT
-from nemo_runspec.squash import ensure_squashed_image
 from nemo_runspec.recipe_config import RecipeConfig
 
 # =============================================================================
@@ -254,7 +253,7 @@ def _execute_ray(
     spec = spec or SPEC
 
     try:
-        import nemo_run as run
+        import nemo_run  # noqa: F401 -- availability check
     except ImportError:
         typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
         typer.echo("Install with: pip install nemo-run", err=True)
@@ -297,12 +296,20 @@ def _execute_ray(
             startup_commands = []
         startup_commands = [_APPTAINER_INSTALL_CMD] + startup_commands
 
-    executor = _build_slurm_ray_executor(
-        env=env, env_vars=env_vars, packager=packager,
-        attached=attached, force_squash=force_squash,
-        persistent_cache=persistent_cache, sif_dir=_get("sif_dir", ""),
-        spec=spec,
+    executor = create_slurm_executor(
+        env, env_vars, packager,
+        default_image=spec.image,
+        attached=attached,
+        force_squash=force_squash,
+        launcher=None,
     )
+    # Super3-specific extras on top of the generic Slurm executor.
+    if persistent_cache and executor.tunnel:
+        for subdir in _CACHE_SUBDIRS:
+            executor.tunnel.run(f"mkdir -p {persistent_cache}/{subdir}", hide=True)
+    sif_dir = _get("sif_dir", "")
+    if sif_dir:
+        executor.container_mounts.append(f"{sif_dir}:{sif_dir}")
 
     # Ray-specific setup
     recipe_name = spec.name.replace("/", "-")
@@ -364,6 +371,7 @@ def _execute_ray(
     runtime_env: dict = {"env_vars": dict(env_vars)}
 
     import tempfile
+
     import yaml as pyyaml
 
     runtime_env_yaml = None
@@ -421,70 +429,5 @@ def _execute_ray(
             else:
                 typer.echo(f"[info] Detaching. Job {job_id} continues running.")
                 raise typer.Exit(0)
-
-
-def _build_slurm_ray_executor(
-    env, env_vars, packager, attached, force_squash,
-    persistent_cache="", sif_dir="", spec=None,
-):
-    """Build a SlurmExecutor for Ray-based RL (original Slurm path).
-
-    Handles Slurm-specific setup: SSH tunnel, image squashing, git mounts,
-    persistent cache directory creation, SIF directory mounting.
-    """
-    import nemo_run as run
-
-    spec = spec or SPEC
-
-    def _get(key, default=None):
-        if env is None:
-            return default
-        return env.get(key, default) if hasattr(env, "get") else getattr(env, key, default)
-
-    tunnel = None
-    remote_job_dir = _get("remote_job_dir")
-    if _get("tunnel") == "ssh":
-        tunnel = run.SSHTunnel(host=_get("host", "localhost"), user=_get("user"), job_dir=remote_job_dir)
-
-    container_image = _get("container_image") or _get("container") or spec.image
-    if container_image and tunnel and remote_job_dir:
-        tunnel.connect()
-        container_image = ensure_squashed_image(tunnel, container_image, remote_job_dir, env, force=force_squash)
-
-    git_mounts = []
-    if tunnel and remote_job_dir:
-        tunnel.connect()
-        git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
-
-    partition = (_get("run_partition") or _get("partition")) if attached else (_get("batch_partition") or _get("partition"))
-
-    raw_mounts = list(_get("mounts") or [])
-    mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
-    mounts.extend(git_mounts)
-    mounts.append("/lustre:/lustre")
-
-    if remote_job_dir:
-        ray_temp_path = f"{remote_job_dir}/ray_temp"
-        mounts.append(f"{ray_temp_path}:/ray-cluster")
-        if tunnel:
-            tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
-
-    # Create persistent cache directories on the remote side
-    if persistent_cache and tunnel:
-        for subdir in _CACHE_SUBDIRS:
-            tunnel.run(f"mkdir -p {persistent_cache}/{subdir}", hide=True)
-
-    # SIF directory mount for SWE-bench Apptainer images
-    if sif_dir:
-        mounts.append(f"{sif_dir}:{sif_dir}")
-
-    return run.SlurmExecutor(
-        account=_get("account"), partition=partition,
-        nodes=_get("nodes", 1), ntasks_per_node=_get("ntasks_per_node", 1),
-        gpus_per_node=_get("gpus_per_node"), cpus_per_task=_get("cpus_per_task"),
-        time=_get("time", "04:00:00"), container_image=container_image,
-        container_mounts=mounts, tunnel=tunnel, packager=packager,
-        mem=_get("mem"), env_vars=env_vars, launcher=None,
-    )
 
 

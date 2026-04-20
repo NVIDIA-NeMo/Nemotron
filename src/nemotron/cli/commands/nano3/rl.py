@@ -50,7 +50,7 @@ from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
-    clone_git_repos_via_tunnel,
+    create_slurm_executor,
     execute_cloud,
     execute_cloud_ray,
     execute_local,
@@ -59,7 +59,6 @@ from nemo_runspec.execution import (
     prepend_startup_to_cmd,
 )
 from nemo_runspec.packaging import REMOTE_CONFIG, REMOTE_SCRIPT
-from nemo_runspec.squash import ensure_squashed_image
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
 
@@ -163,9 +162,6 @@ def _execute_rl(cfg: RecipeConfig):
         # ray-launch recipes (GRPO/DPO) with cloud executors go through
         # RayCluster + RayJob (speaker pattern). execute_cloud stays for
         # non-Ray cloud jobs (data prep, single-node python scripts).
-        _nodes = 1
-        if env_for_executor is not None:
-            _nodes = env_for_executor.get("nodes", 1) if hasattr(env_for_executor, "get") else getattr(env_for_executor, "nodes", 1)
         if SPEC.run.launch == "ray":
             execute_cloud_ray(
                 SCRIPT_PATH, train_path, env=env_for_executor,
@@ -211,7 +207,7 @@ def _execute_ray(
     FORK POINT: Replace this function for different Ray submission logic.
     """
     try:
-        import nemo_run as run
+        import nemo_run  # noqa: F401 -- availability check
     except ImportError:
         typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
         typer.echo("Install with: pip install nemo-run", err=True)
@@ -236,9 +232,12 @@ def _execute_ray(
         train_path=str(train_path),
     )
 
-    executor = _build_slurm_ray_executor(
-        env=env, env_vars=env_vars, packager=packager,
-        attached=attached, force_squash=force_squash,
+    executor = create_slurm_executor(
+        env, env_vars, packager,
+        default_image=SPEC.image,
+        attached=attached,
+        force_squash=force_squash,
+        launcher=None,
     )
 
     # Ray-specific setup
@@ -297,6 +296,7 @@ def _execute_ray(
     runtime_env: dict = {"env_vars": dict(env_vars)}
 
     import tempfile
+
     import yaml as pyyaml
 
     runtime_env_yaml = None
@@ -357,51 +357,6 @@ def _execute_ray(
                 raise typer.Exit(0)
 
 
-def _build_slurm_ray_executor(env, env_vars, packager, attached, force_squash):
-    """Build a SlurmExecutor for Ray-based RL (original Slurm path)."""
-    import nemo_run as run
-
-    def _get(key, default=None):
-        if env is None:
-            return default
-        return env.get(key, default) if hasattr(env, "get") else getattr(env, key, default)
-
-    tunnel = None
-    remote_job_dir = _get("remote_job_dir")
-    if _get("tunnel") == "ssh":
-        tunnel = run.SSHTunnel(host=_get("host", "localhost"), user=_get("user"), job_dir=remote_job_dir)
-
-    container_image = _get("container_image") or _get("container") or SPEC.image
-    if container_image and tunnel and remote_job_dir:
-        tunnel.connect()
-        container_image = ensure_squashed_image(tunnel, container_image, remote_job_dir, env, force=force_squash)
-
-    git_mounts = []
-    if tunnel and remote_job_dir:
-        tunnel.connect()
-        git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
-
-    partition = (_get("run_partition") or _get("partition")) if attached else (_get("batch_partition") or _get("partition"))
-
-    raw_mounts = list(_get("mounts") or [])
-    mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
-    mounts.extend(git_mounts)
-    mounts.append("/lustre:/lustre")
-
-    if remote_job_dir:
-        ray_temp_path = f"{remote_job_dir}/ray_temp"
-        mounts.append(f"{ray_temp_path}:/ray-cluster")
-        if tunnel:
-            tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
-
-    return run.SlurmExecutor(
-        account=_get("account"), partition=partition,
-        nodes=_get("nodes", 1), ntasks_per_node=_get("ntasks_per_node", 1),
-        gpus_per_node=_get("gpus_per_node"), cpus_per_task=_get("cpus_per_task"),
-        time=_get("time", "04:00:00"), container_image=container_image,
-        container_mounts=mounts, tunnel=tunnel, packager=packager,
-        mem=_get("mem"), env_vars=env_vars, launcher=None,
-    )
 
 
 # =============================================================================
