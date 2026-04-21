@@ -141,14 +141,6 @@ nemotron customize translate -c default \
   translation.faith_eval.filter_enabled=true
 ```
 
-#### Dry run (preview config only)
-
-```bash
-nemotron customize translate -c default --dry-run \
-  translation.source_lang=en \
-  translation.target_lang=ja
-```
-
 #### Direct script execution
 
 ```bash
@@ -174,15 +166,14 @@ python src/nemotron/customization_recipes/nemotron/stage0_data_prep/run_translat
 | `translation.server.model` | str | `mistralai/mistral-small-3.1-24b-instruct` | LLM model identifier |
 | `translation.server.api_key` | str | `${oc.env:NVIDIA_API_KEY,}` | API key (resolved from env) |
 | `translation.max_concurrent_requests` | int | `64` | Max parallel translation requests |
-| `translation.dry_run` | bool | `false` | If true, print config and exit |
-| `translation.skip_translated` | bool | `true` | Skip rows that already have translations |
-| `translation.show_progress` | bool | `true` | Show tqdm progress bar |
+| `translation.skip_translated` | bool | `false` | Skip rows that already have translations |
 | `translation.faith_eval.enabled` | bool | `false` | Enable FAITH quality evaluation |
 | `translation.faith_eval.threshold` | float | `2.5` | Minimum FAITH average score (1-5 scale) |
-| `translation.faith_eval.segment_level` | bool | `true` | Score individual segments (more granular) |
+| `translation.faith_eval.segment_level` | bool | `false` | Score individual segments (more granular) |
 | `translation.faith_eval.filter_enabled` | bool | `true` | Drop rows below threshold |
 | `translation.output_mode` | str | `both` | Output format: `replaced`, `raw`, or `both` |
 | `translation.preserve_segment_pairs` | bool | `true` | Keep source/target segment pairs in metadata |
+| `translation.merge_scores` | bool | `true` | Fold `faith_*` scores into `translation_metadata` JSON |
 | `translation.google.project_id` | str | `""` | GCP project ID (for `google` backend) |
 | `translation.google.api_version` | str | `v2` | Google Translate API version: `v2` or `v3` |
 | `translation.aws.region` | str | `${oc.env:AWS_DEFAULT_REGION,us-east-2}` | AWS region (for `aws` backend) |

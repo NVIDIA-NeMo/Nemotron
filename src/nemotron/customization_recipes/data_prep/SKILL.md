@@ -232,8 +232,8 @@ def translate_batch(texts, source_lang="en", target_lang="hi"):
         headers={"Authorization": f"Bearer {api_key}"},
         json={
             "texts": texts,
-            "source_language": source_lang,
-            "target_language": target_lang,
+            "source_lang": source_lang,
+            "target_lang": target_lang,
         },
     )
     return response.json()["translations"]

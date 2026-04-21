@@ -37,20 +37,20 @@ translation:
 
   # --- Concurrency & runtime ---
   max_concurrent_requests: 64
-  dry_run: false
-  skip_translated: true
-  show_progress: true
+  jsonl_chunk_size: 5000          # Stream JSONL and parquet inputs in chunks instead of loading whole files
+  skip_translated: false
 
   # --- FAITH quality evaluation (optional) ---
   faith_eval:
     enabled: false
     threshold: 2.5                 # Minimum faith_avg to keep a row (1-5 scale)
-    segment_level: true            # Score individual segments (more granular)
-    filter_enabled: true           # Drop rows below threshold
+    segment_level: false           # Score each translated segment instead of whole doc
+    filter_enabled: true           # If false, scores are attached but no rows are dropped
 
   # --- Output format ---
   output_mode: both                # replaced | raw | both
   preserve_segment_pairs: true     # Keep source/target segment pairs in metadata
+  merge_scores: true               # Fold faith_* scores into translation_metadata JSON
 
   # --- Google Cloud Translation config (used when backend=google) ---
   google:

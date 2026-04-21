@@ -113,21 +113,45 @@ remove_easy: false
 
 # --- Translation (used by run_translate.py) ---
 translate:
-  dataset_path: null  # Path to benchmark.parquet
-  source_language: en-US
-  target_language: hi-IN
+  dataset_path: null  # Path to benchmark.parquet or benchmark.jsonl (required)
+  # Optional output directory for translated_mcq.jsonl.  If unset, defaults to
+  # ``<dataset_path>.parent / "translated"``.
+  # output_dir: /data/byob_benchmark/translated
+  # BCP 47 language codes (region suffix preserved and forwarded verbatim to
+  # the backend; e.g. zh-TW, pt-BR, en-GB).  Use the short ISO 639-1 code
+  # (``en``, ``hi``) if the backend does not need regionalisation.
+  source_lang: en
+  target_lang: hi
   translation_model_config:
+    # Translation backend: ``llm`` | ``google`` | ``aws`` | ``nmt``.
     mode: llm
+    # Backend-specific parameters. For the ``llm`` backend this holds the
+    # OpenAI-compatible server config (``base_url``, ``model``, ``api_key``,
+    # ``inference_parameters``). For ``google``/``aws``/``nmt``, place the
+    # sub-config dict here (e.g. ``project_id`` for google, ``region`` for
+    # aws, ``server_url``/``batch_size`` for nmt).
     params:
       alias: gpt-oss-120b
       model: openai/gpt-oss-120b
       provider: nvidia
       inference_parameters:
         max_tokens: 16000
-        max_parallel_requests: 8
-  backtranslation_quality_metrics:
-    - type: sacrebleu
-      threshold: 25
-    - type: chrf
-      threshold: 50
-  remove_low_quality: false
+        max_parallel_requests: 64
+  chunk_size: 5000  # Stream BYOB inputs in chunks so large benchmarks are never loaded all at once
+  # Enable LLM-based FAITH translation quality scoring during BYOB translation.
+  # When enabled, each translated row is scored on five dimensions and the
+  # scores are attached to the output.  The BYOB pipeline always runs with
+  # ``filter_enabled=False`` (user preference ignored) so row counts stay
+  # consistent with the input -- MCQ reassembly requires a 1:1 alignment
+  # between staged strings and translated strings.  Filter post-hoc on
+  # ``translated_mcq.jsonl`` using the ``faith_*`` columns if desired.
+  # faith_eval:
+  #   enabled: true
+  #   threshold: 2.5
+  # Speaker-style backtranslation quality gate (optional).
+  # backtranslation_quality_metrics:
+  #   - type: sacrebleu
+  #     threshold: 15.0
+  #   - type: chrf
+  #     threshold: 35.0
+  # remove_low_quality: false

@@ -70,8 +70,7 @@ class TestModuleImports:
             "AcquireConfig", "download_dataset", "classify_domains",
             "identify_languages", "apply_chat_template",
             # translate
-            "TranslationConfig", "TranslationBackend", "GoogleBackend",
-            "AWSBackend", "LLMBackend", "evaluate_faithfulness",
+            "translate_data", "translate_byob_benchmark",
             # sdg
             "FunctionCall", "ToolCall", "Message", "Conversation",
             "ConversationList", "SDGConfig", "run_sdg_pipeline",
@@ -138,33 +137,6 @@ class TestAcquireConfig:
         assert cfg.url_limit == 5
         # Defaults should be preserved for unspecified fields
         assert cfg.output_dir == "data/acquired"
-
-
-class TestTranslationConfig:
-    """Tests for TranslationConfig dataclass."""
-
-    def test_defaults(self) -> None:
-        from nemotron.customization_recipes.data_prep.translate import TranslationConfig
-
-        cfg = TranslationConfig()
-        assert cfg.source_lang == "en"
-        assert cfg.target_lang == "hi"
-        assert cfg.backend == "google"
-        assert cfg.max_concurrent_requests == 32
-        assert cfg.dry_run is False
-
-    def test_from_omegaconf(self) -> None:
-        from omegaconf import OmegaConf
-        from nemotron.customization_recipes.data_prep.translate import TranslationConfig
-
-        raw = OmegaConf.create({
-            "source_lang": "en",
-            "target_lang": "fr",
-            "backend": "aws",
-        })
-        cfg = TranslationConfig.from_omegaconf(raw)
-        assert cfg.target_lang == "fr"
-        assert cfg.backend == "aws"
 
 
 class TestSDGConfig:
@@ -680,21 +652,6 @@ class TestTokenizePackHelpers:
         assert result[0]["tool_calls"][0]["function"]["arguments"] == {"query": "test"}
         # Original should not be mutated (deep copy)
         assert msgs[0]["tool_calls"][0]["function"]["arguments"] == '{"query": "test"}'
-
-
-# ---------------------------------------------------------------------------
-# Translation backend instantiation (unit tests -- no actual API calls)
-# ---------------------------------------------------------------------------
-
-
-class TestTranslationBackendBase:
-    """Tests for the TranslationBackend abstract base class."""
-
-    def test_backend_is_abstract(self) -> None:
-        from nemotron.customization_recipes.data_prep.translate import TranslationBackend
-
-        with pytest.raises(TypeError):
-            TranslationBackend(None)  # Cannot instantiate abstract class
 
 
 # ---------------------------------------------------------------------------

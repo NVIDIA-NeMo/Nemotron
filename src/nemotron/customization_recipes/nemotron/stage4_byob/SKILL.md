@@ -192,24 +192,22 @@ remove_easy: false
 
 # --- Translation (used by run_translate.py) ---
 translate:
-  dataset_path: null
-  source_language: en-US
-  target_language: hi-IN
+  dataset_path: null                  # Path to benchmark.parquet or benchmark.jsonl (required)
+  # output_dir: /data/byob/translated # Optional; defaults to <dataset_path>.parent/translated
+  source_lang: en                     # BCP 47 / ISO 639-1 source code
+  target_lang: hi                     # BCP 47 / ISO 639-1 target code
   translation_model_config:
-    mode: llm
+    mode: llm                         # llm | google | aws | nmt
     params:
       alias: gpt-oss-120b
       model: openai/gpt-oss-120b
       provider: nvidia
       inference_parameters:
         max_tokens: 16000
-        max_parallel_requests: 8
-  backtranslation_quality_metrics:
-    - type: sacrebleu
-      threshold: 25
-    - type: chrf
-      threshold: 50
-  remove_low_quality: false
+        max_parallel_requests: 64
+  # faith_eval:                       # Optional LLM-based quality scoring
+  #   enabled: true
+  #   threshold: 2.5
 ```
 
 The `ByobConfig` dataclass (in `data_prep/byob.py`) maps these fields directly. **Implementation status:** Generate, judge, expand distractors, validity check, and filter are fully implemented. Semantic deduplication, coverage check, and outlier detection have config support but are not yet called in `generate_byob_benchmark()`.
@@ -240,45 +238,121 @@ python src/nemotron/customization_recipes/nemotron/stage4_byob/run_prepare.py \
 python src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py \
   --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   translate.dataset_path=/data/byob_benchmark/benchmark.jsonl \
-  translate.target_language=hi-IN
+  translate.target_lang=hi
 ```
 
 ## Translation
 
-To create benchmarks in a language where domain corpora are primarily in English, use the `translate` section of the config (see `config/default.yaml`):
+To create benchmarks in a language where domain corpora are primarily in English, use the `translate` section of the config (see `config/default.yaml`).  The `translate_byob_benchmark()` function in `data_prep/translate.py` flattens the MCQ records into per-string rows, delegates to NeMo Curator's `TranslationPipeline`, and reassembles the translated strings back into the original MCQ shape.
+
+### What gets translated
+
+Translation is **structure-preserving**.  Only the natural-language fields in each record are translated:
+
+- `question` (top-level string)
+- Every string value in `options` (supports both `dict`-shaped `{"A": ..., "B": ...}` and `list`-shaped `["...", "..."]`)
+
+Every other field -- most importantly `answer`, plus any metadata such as `subject`, `source`, `difficulty` -- passes through verbatim.  Language codes are forwarded to the backend as-is (BCP 47 with region suffixes like `zh-TW` or `pt-BR` are preserved; no region-stripping).
+
+Example:
+
+```jsonl
+# Input benchmark.jsonl (one record)
+{"question": "What is the capital of France?", "options": {"A": "Paris", "B": "London", "C": "Berlin", "D": "Madrid"}, "answer": "A", "subject": "geography"}
+```
+
+```jsonl
+# Output translated_mcq.jsonl (same record, target_lang=hi)
+{"question": "फ्रांस की राजधानी क्या है?", "options": {"A": "पेरिस", "B": "लंदन", "C": "बर्लिन", "D": "मैड्रिड"}, "answer": "A", "subject": "geography"}
+```
+
+### Output contract
+
+`translate_byob_benchmark` writes exactly one consumer-facing file:
+
+- **`<out_dir>/translated_mcq.jsonl`** -- JSONL with the original benchmark fields preserved and translated in place.  When available, aggregate `translation_metadata`, `faith_*`, `score_*`, and `is_quality_metric_passed` columns are also attached so you can inspect or filter quality post-hoc.  This file is **always** written, including when the input has no translatable strings (in which case the file contains the unmodified records, or zero lines if the input was empty).
+
+`<out_dir>` defaults to `<dataset_path>.parent / "translated"`.  Override with `translate.output_dir=...`.  Intermediate scratch files created by the underlying Curator pipeline are cleaned up before return.
+
+### FAITH quality scoring
+
+FAITH evaluation is optional and disabled by default.  Enable it with `translate.faith_eval.enabled=true` to attach five per-row quality scores (`faith_fluency`, `faith_accuracy`, `faith_idiomaticity`, `faith_terminology`, `faith_handling_of_format`) plus the `faith_avg`.  With `merge_scores=true` (the Stage 0 default) these are also folded into `translation_metadata` JSON.
+
+**Important:** The BYOB pipeline always runs with `filter_enabled=False`, even if the user sets `faith_eval.filter_enabled=true` (a warning is logged).  Dropping rows would break the 1:1 alignment that MCQ reassembly requires.  To filter by quality, post-process `translated_mcq.jsonl` using the `faith_*` columns.
+
+### Backtranslation quality gate
+
+Speaker's optional backtranslation gate is also supported.  Add `translate.backtranslation_quality_metrics` with one or more metrics (`sacrebleu`, `chrf`, `ter`) and thresholds.  After forward translation, the benchmark is translated back into the source language and each record is scored by comparing the backtranslated MCQ against the original MCQ text.
+
+Example:
 
 ```yaml
 translate:
-  dataset_path: /data/byob_benchmark/benchmark.jsonl   # Path to generated benchmark
-  source_language: en-US
-  target_language: hi-IN
-  translation_model_config:
-    mode: llm                            # Backend: google | aws | llm
-    params:
-      alias: gpt-oss-120b
-      model: openai/gpt-oss-120b
-      provider: nvidia
-      inference_parameters:
-        max_tokens: 16000
-        max_parallel_requests: 8
-  backtranslation_quality_metrics:       # Back-translate and verify consistency
+  backtranslation_quality_metrics:
     - type: sacrebleu
-      threshold: 25
+      threshold: 15.0
     - type: chrf
-      threshold: 50
+      threshold: 35.0
   remove_low_quality: false
 ```
 
-Run translation via the dedicated script:
+When `remove_low_quality=true`, any record where one of the configured metrics fails is removed from the final `translated_mcq.jsonl`.  Otherwise the records are kept and annotated with `score_<metric>`, `score_<metric>_passed`, and `is_quality_metric_passed`.
+
+### Config reference (`translate` section)
+
+Every key read by `translate_byob_benchmark` (everything else in `translate.*` is passed through untouched):
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `translate.dataset_path` | str | Yes | Absolute path to input `benchmark.parquet` or `benchmark.jsonl` |
+| `translate.output_dir` | str | No | Output directory for `translated_mcq.jsonl`.  Defaults to `<dataset_path>.parent/translated` |
+| `translate.source_lang` | str | No (`en`) | Source language code (full BCP 47 preserved) |
+| `translate.target_lang` | str | No (`hi`) | Target language code (full BCP 47 preserved) |
+| `translate.translation_model_config.mode` | str | No (`llm`) | Backend: `llm`, `google`, `aws`, or `nmt` |
+| `translate.translation_model_config.params.model` | str | For `llm` | LLM model identifier (e.g. `openai/gpt-oss-120b`) |
+| `translate.translation_model_config.params.base_url` | str | No | LLM endpoint.  Falls back to `LLM_BASE_URL` env, then NIM |
+| `translate.translation_model_config.params.api_key` | str | No | API key.  Falls back to `NVIDIA_API_KEY` env |
+| `translate.translation_model_config.params.inference_parameters.max_parallel_requests` | int | No (`64`) | Async concurrency cap for the translation client |
+| `translate.faith_eval.enabled` | bool | No (`false`) | Attach FAITH scores to each row |
+| `translate.faith_eval.threshold` | float | No (`2.5`) | FAITH threshold (used only for post-hoc filtering since `filter_enabled` is forced to `False`) |
+| `translate.backtranslation_quality_metrics` | list[dict] | No | Optional Speaker-style quality metrics (`sacrebleu`, `chrf`, `ter`) run on backtranslations |
+| `translate.remove_low_quality` | bool | No (`false`) | Drop records that fail any configured backtranslation metric |
+
+For `google`/`aws`/`nmt` backends, place backend-specific keys (`project_id`, `region`, `server_url`, `batch_size`, ...) directly under `translate.translation_model_config.params`.
+
+### Running translation
+
+Always include `translate.dataset_path` -- it has no default:
 
 ```bash
 python src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py \
   --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
   translate.dataset_path=/data/byob_benchmark/benchmark.jsonl \
-  translate.target_language=hi-IN
+  translate.target_lang=hi
 ```
 
-The `TranslationConfig` dataclass in `data_prep/translate.py` uses `source_lang` / `target_lang` (short form). The `translate_byob_benchmark()` facade maps the YAML's `source_language` / `target_language` to these fields, stripping the region suffix (e.g., `en-US` becomes `en`).
+Override backend and model:
+
+```bash
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
+  translate.dataset_path=/data/byob_benchmark/benchmark.parquet \
+  translate.source_lang=en \
+  translate.target_lang=zh-TW \
+  translate.translation_model_config.mode=llm \
+  translate.translation_model_config.params.model=openai/gpt-oss-120b
+```
+
+Enable FAITH scoring (scores attached, no filtering):
+
+```bash
+python src/nemotron/customization_recipes/nemotron/stage4_byob/run_translate.py \
+  --config src/nemotron/customization_recipes/nemotron/stage4_byob/config/default.yaml \
+  translate.dataset_path=/data/byob_benchmark/benchmark.jsonl \
+  translate.target_lang=hi \
+  translate.faith_eval.enabled=true \
+  translate.faith_eval.threshold=2.5
+```
 
 ## Output Format
 
