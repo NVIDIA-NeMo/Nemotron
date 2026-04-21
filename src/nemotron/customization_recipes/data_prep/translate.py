@@ -222,7 +222,7 @@ def _run_curator_stage(df: Any, stage: Any, dataset_name: str) -> Any:
 def _build_translation_stage(translation_cfg: dict[str, Any]) -> Any:
     """Build one Curator translation stage from a recipe config."""
     try:
-        from nemo_curator.stages.text.translation.pipeline import TranslationPipeline
+        from nemo_curator.stages.text.translation import TranslationPipeline
     except ImportError as exc:
         raise ImportError(
             "nemo-curator is required for the Curator translation pipeline. "
