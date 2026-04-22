@@ -64,10 +64,10 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 
 - **Tech Report**: Nemotron 3 Super Technical Report (coming soon)
 - **Model Weights**:
-  - NVIDIA-Nemotron-3-Super-120B-A12B-BF16 (Post-trained model, coming soon)
-  - NVIDIA-Nemotron-3-Super-120B-A12B-FP8 (FP8 quantized, coming soon)
-  - NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 (NVFP4 quantized, coming soon)
-  - NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16 (Base model, coming soon)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) (Post-trained model)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8) (FP8 quantized)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4) (NVFP4 quantized)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16) (Base model)
 - **Training Datasets**:
   - [Nemotron-Pretraining-Specialized-v1.1](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Specialized-v1.1) (Synthetic pretraining data)
 - **Megatron-Bridge Docs**: [Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md)
