@@ -1,0 +1,23 @@
+run:
+  model: omni3-sft-model:latest
+  data: omni3/rl/mpo/data:latest
+  env:
+    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-rl.tar
+    workdir: /opt/nemo-rl-omni
+    env_vars:
+      OMNI_SHARED_ROOT: ${oc.env:OMNI_SHARED_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias}
+      DATA_ROOT: ${oc.env:OMNI3_DATA_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/data}
+      CHECKPOINT_ROOT: ${oc.env:OMNI3_CHECKPOINT_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/checkpoints}
+      CONTAINER_ROOT: ${oc.env:OMNI3_CONTAINER_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/containers}
+      USER_ROOT: ${oc.env:OMNI3_USER_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias}
+      CACHE_ROOT: ${oc.env:OMNI3_CACHE_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/.cache}
+      NEMORL: ${oc.env:OMNI3_RL_ROOT,/opt/nemo-rl-omni}
+      CONTAINER: ${oc.env:OMNI3_RL_SQSH,/lustre/fs1/portfolios/coreai/users/aroshanghias/containers/omni3-rl.sqsh}
+      JOB_NAME: ${oc.env:OMNI3_MPO_JOB_NAME,mpo-nanov3omni-mmpr-public-tiny}
+      NUM_NODES: ${oc.env:OMNI3_MPO_NUM_NODES,1}
+      MODEL_NAME: ${art:model,path}
+      DATA_PATH: ${art:data,path}
+      TRAIN_DATA_PATH: ${art:data,path}
+
+launcher:
+  command: bash scripts/omni/step_1_nanov3_mpo.sh

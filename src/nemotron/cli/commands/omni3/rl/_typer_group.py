@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Data prep command group for omni3."""
+"""RL Typer subgroup for omni3."""
 
 from __future__ import annotations
 
-from nemotron.cli.commands.omni3.data.prep.rl import META as RL_META, rl
-from nemotron.cli.commands.omni3.data.prep.sft import META as SFT_META, sft
+from nemotron.cli.commands.omni3.rl.mpo import META as MPO_META, mpo
+from nemotron.cli.commands.omni3.rl.text import META as TEXT_META, text
+from nemotron.cli.commands.omni3.rl.vision import META as VISION_META, vision
 from nemo_runspec.recipe_typer import RecipeTyper
 
-prep_app = RecipeTyper(
-    name="prep",
-    help="Prepare data for omni3 training stages",
+rl_app = RecipeTyper(
+    name="rl",
+    help="Reinforcement learning sub-stages (MPO, text-only RL, vision RL)",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
 
-prep_app.add_recipe_command(sft, meta=SFT_META)
-prep_app.add_recipe_command(rl, meta=RL_META)
+rl_app.add_recipe_command(mpo, meta=MPO_META, rich_help_panel="RL Sub-Stages")
+rl_app.add_recipe_command(text, meta=TEXT_META, rich_help_panel="RL Sub-Stages")
+rl_app.add_recipe_command(vision, meta=VISION_META, rich_help_panel="RL Sub-Stages")

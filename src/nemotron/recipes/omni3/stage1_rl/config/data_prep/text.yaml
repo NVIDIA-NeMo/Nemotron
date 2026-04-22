@@ -1,0 +1,15 @@
+stage: text
+dataset_name: text_only_rl_stage1
+source_uri: hf://nvidia/Nemotron-3-Nano-RL-Training-Blend
+input_dir: ${oc.env:OMNI3_TEXT_ONLY_RL_RAW,data/text_only_rl_stage1/raw}
+input_file: ${input_dir}/train.jsonl
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/stage1_rl/data_prep/text
+meta_name: meta_public.json
+train_file_name: train.jsonl
+val_file_name: val.jsonl
+validation_strategy: same_as_train
+builder_command: >-
+  uv run --script {input_dir}/create_nanov3_jsonl.py
+  --input {input_file}
+  --output {train_path}
+force: false

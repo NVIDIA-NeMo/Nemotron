@@ -1,0 +1,25 @@
+run:
+  model: omni3-rl-text-model:latest
+  data: omni3/rl/vision/data:latest
+  env:
+    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-rl.tar
+    workdir: /opt/nemo-rl-omni
+    env_vars:
+      NEMORL: ${oc.env:OMNI3_RL_ROOT,/opt/nemo-rl-omni}
+      JOB_NAME: ${oc.env:OMNI3_VISION_JOB_NAME,vision-rl}
+      NUM_NODES: ${oc.env:OMNI3_VISION_NUM_NODES,16}
+      CONTEXT_PARALLEL_SIZE: ${oc.env:CONTEXT_PARALLEL_SIZE,1}
+      TRAIN_GLOBAL_BATCH_SIZE: ${oc.env:TRAIN_GLOBAL_BATCH_SIZE,2048}
+      NUM_PROMPTS_PER_STEP: ${oc.env:NUM_PROMPTS_PER_STEP,512}
+      NUM_GENERATIONS_PER_PROMPT: ${oc.env:NUM_GENERATIONS_PER_PROMPT,16}
+      WANDB_PROJECT: ${oc.env:WANDB_PROJECT,grpo-nanov3vl}
+      MODEL_NAME: ${art:model,path}
+      CACHE_DIR: ${art:data,path}
+
+launcher:
+  command: bash scripts/omni/step_3_nanov3_vision_rl.sh
+
+data:
+  dataset_name: mmpr_tiny
+  cache_dir: ${art:data,path}
+  val_size: 500

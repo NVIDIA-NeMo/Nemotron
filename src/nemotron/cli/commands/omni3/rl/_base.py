@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Data prep command group for omni3."""
+"""Omni3 RL command implementation.
+
+Omni3 reuses the same Ray/nemo-run execution path as super3 RL while
+parameterizing the sub-stage script path and runspec.
+"""
 
 from __future__ import annotations
 
-from nemotron.cli.commands.omni3.data.prep.rl import META as RL_META, rl
-from nemotron.cli.commands.omni3.data.prep.sft import META as SFT_META, sft
-from nemo_runspec.recipe_typer import RecipeTyper
+from nemo_runspec.recipe_config import RecipeConfig
+from nemotron.cli.commands.super3.rl._base import _execute_rl as _execute_super3_rl
 
-prep_app = RecipeTyper(
-    name="prep",
-    help="Prepare data for omni3 training stages",
-    no_args_is_help=True,
-    rich_markup_mode="rich",
-)
 
-prep_app.add_recipe_command(sft, meta=SFT_META)
-prep_app.add_recipe_command(rl, meta=RL_META)
+def _execute_rl(cfg: RecipeConfig, script_path: str | None = None, spec=None):
+    """Execute an Omni3 RL sub-stage via the shared super3 RL backend."""
+    return _execute_super3_rl(cfg, script_path=script_path, spec=spec)

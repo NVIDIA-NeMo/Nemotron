@@ -23,6 +23,7 @@ class TestOmni3AppStructure:
         assert "sft" in result.output
         assert "data" in result.output
         assert "model" in result.output
+        assert "rl" in result.output
 
     def test_build_help_succeeds(self):
         result = runner.invoke(app, ["omni3", "build", "--help"])
@@ -34,6 +35,33 @@ class TestOmni3AppStructure:
 
     def test_data_prep_sft_help_succeeds(self):
         result = runner.invoke(app, ["omni3", "data", "prep", "sft", "--help"])
+        assert result.exit_code == 0
+
+    def test_data_prep_rl_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "data", "prep", "rl", "--help"])
+        assert result.exit_code == 0
+
+    def test_build_rl_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "build", "rl", "--help"])
+        assert result.exit_code == 0
+
+    def test_rl_group_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "rl", "--help"])
+        assert result.exit_code == 0
+        assert "mpo" in result.output
+        assert "text" in result.output
+        assert "vision" in result.output
+
+    def test_rl_mpo_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "rl", "mpo", "--help"])
+        assert result.exit_code == 0
+
+    def test_rl_text_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "rl", "text", "--help"])
+        assert result.exit_code == 0
+
+    def test_rl_vision_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "rl", "vision", "--help"])
         assert result.exit_code == 0
 
     def test_model_import_pretrain_help_succeeds(self):

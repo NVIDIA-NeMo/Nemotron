@@ -1,0 +1,16 @@
+stage: vision
+dataset_name: mmpr_tiny
+source_uri: hf://OpenGVLab/MMPR-Tiny
+input_dir: ${oc.env:OMNI3_MMPR_TINY_RAW,data/mmpr_tiny/raw}
+input_file: null
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/stage1_rl/data_prep/vision
+meta_name: meta_public.json
+train_file_name: train.jsonl
+val_file_name: val.jsonl
+validation_strategy: same_as_train
+builder_command: >-
+  uv run --no-project --with pandas --with pyarrow --with tqdm
+  python scripts/omni/prepare_mmpr_tiny_for_vision_rl.py
+  --input-dir {input_dir}
+  --output-dir {output_dir}
+force: false

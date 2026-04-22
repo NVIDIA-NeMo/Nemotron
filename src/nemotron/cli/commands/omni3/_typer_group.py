@@ -19,6 +19,7 @@ from __future__ import annotations
 from nemotron.cli.commands.omni3.build import build
 from nemotron.cli.commands.omni3.data import data_app
 from nemotron.cli.commands.omni3.model import model_app
+from nemotron.cli.commands.omni3.rl import rl_app
 from nemotron.cli.commands.omni3.sft import META as SFT_META, sft
 from nemo_runspec.recipe_typer import RecipeTyper
 
@@ -38,5 +39,4 @@ omni3_app.command(
 omni3_app.add_recipe_command(sft, meta=SFT_META, rich_help_panel="Training Stages")
 omni3_app.add_typer(data_app, name="data")
 omni3_app.add_typer(model_app, name="model")
-
-# TODO(omni3-rl): extend here with the rl subgroup once stage1_rl lands.
+omni3_app.add_typer(rl_app, name="rl")
