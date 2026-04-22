@@ -14,8 +14,9 @@
 
 """Container squash utilities for Slurm execution.
 
-Handles converting Docker images to squash files on remote clusters
-using enroot. Uses deterministic naming to avoid re-squashing existing images.
+Handles converting container images or archives to squash files on remote
+clusters using enroot. Uses deterministic naming to avoid re-squashing
+existing images.
 """
 
 from __future__ import annotations
@@ -27,14 +28,41 @@ from rich.console import Console
 
 console = Console()
 
+_SUPPORTED_SCHEMES = (
+    "docker://",
+    "dockerd://",
+    "podman://",
+    "docker-archive://",
+    "oci-archive://",
+)
+_ARCHIVE_SCHEMES = ("docker-archive://", "oci-archive://")
+_DEFAULT_SCHEME = "docker://"
+
+
+def normalize_container_source(container: str) -> str:
+    """Normalize a container reference to an enroot-compatible URI."""
+    if container.startswith(_SUPPORTED_SCHEMES):
+        return container
+    return f"{_DEFAULT_SCHEME}{container}"
+
+
+def _split_container_source(container: str) -> tuple[str | None, str]:
+    """Split a normalized container URI into scheme and payload."""
+    for scheme in _SUPPORTED_SCHEMES:
+        if container.startswith(scheme):
+            return scheme, container.removeprefix(scheme)
+    return None, container
+
 
 def container_to_sqsh_name(container: str) -> str:
-    """Convert container image name to deterministic squash filename.
+    """Convert a container reference to a deterministic squash filename.
 
     Replaces any characters that can't be used in filenames with underscores.
+    Archive URIs use only the archive basename so remote paths do not leak into
+    the sqsh filename.
 
     Args:
-        container: Docker image name (e.g., "nvcr.io/nvidian/nemo:25.11-nano-v3.rc2")
+        container: Container image or archive URI.
 
     Returns:
         Safe squash filename (e.g., "nvcr_io_nvidian_nemo_25_11_nano_v3_rc2.sqsh")
@@ -45,8 +73,13 @@ def container_to_sqsh_name(container: str) -> str:
         >>> container_to_sqsh_name("rayproject/ray:nightly-extra-py312-cpu")
         'rayproject_ray_nightly_extra_py312_cpu.sqsh'
     """
+    normalized = normalize_container_source(container)
+    scheme, payload = _split_container_source(normalized)
+    if scheme in _ARCHIVE_SCHEMES:
+        payload = payload.rsplit("/", 1)[-1]
+
     # Replace any non-alphanumeric characters (except underscore) with underscore
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", container)
+    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", payload)
     # Collapse multiple underscores into one
     safe_name = re.sub(r"_+", "_", safe_name)
     # Strip leading/trailing underscores
@@ -71,22 +104,18 @@ def check_sqsh_exists(tunnel: Any, remote_path: str) -> bool:
 def get_squash_path(container_image: str, remote_job_dir: str) -> str:
     """Get the path to the squashed container image.
 
-    Creates a deterministic filename based on the container image name.
-    For example: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 -> nemo-25.11-nano-v3.rc2.sqsh
+    Creates a deterministic filename based on the container reference.
+    For example: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 ->
+    nvcr_io_nvidian_nemo_25_11_nano_v3_rc2.sqsh
 
     Args:
-        container_image: Docker container image (e.g., nvcr.io/nvidian/nemo:25.11-nano-v3.rc2)
+        container_image: Container image or archive URI.
         remote_job_dir: Remote directory for squashed images
 
     Returns:
         Full path to squashed image file
     """
-    # Extract image name and tag for readable filename
-    # nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 -> nemo:25.11-nano-v3.rc2
-    image_name = container_image.split("/")[-1]
-    # nemo:25.11-nano-v3.rc2 -> nemo-25.11-nano-v3.rc2.sqsh
-    sqsh_name = image_name.replace(":", "-") + ".sqsh"
-
+    sqsh_name = container_to_sqsh_name(container_image)
     return f"{remote_job_dir}/{sqsh_name}"
 
 
@@ -105,9 +134,9 @@ def ensure_squashed_image(
 
     Args:
         tunnel: SSHTunnel instance (already connected)
-        container_image: Docker container image to squash
+        container_image: Container image or archive URI to squash
         remote_job_dir: Remote directory for squashed images
-        env_config: Environment config with slurm settings (account, partition, time)
+        env_config: Environment config with Slurm settings
         force: If True, re-squash even if file already exists
 
     Returns:
@@ -142,8 +171,12 @@ def ensure_squashed_image(
     # Build salloc command to run enroot import on a compute node
     # (login nodes don't have enough memory for enroot import)
     account = env_config.get("account")
-    partition = env_config.get("run_partition") or env_config.get("partition")
-    time_limit = env_config.get("time", "04:00:00")
+    partition = (
+        env_config.get("build_partition")
+        or env_config.get("run_partition")
+        or env_config.get("partition")
+    )
+    time_limit = env_config.get("build_time") or env_config.get("time", "04:00:00")
     gpus_per_node = env_config.get("gpus_per_node")
 
     salloc_args = []
@@ -165,7 +198,8 @@ def ensure_squashed_image(
         f"ENROOT_DATA_PATH={enroot_runtime}/data && "
         f"mkdir -p {enroot_runtime}/cache {enroot_runtime}/data && "
     )
-    enroot_cmd = f"{enroot_env}enroot import --output {sqsh_path} docker://{container_image}"
+    container_source = normalize_container_source(container_image)
+    enroot_cmd = f"{enroot_env}enroot import --output {sqsh_path} {container_source}"
     cmd = f"salloc {' '.join(salloc_args)} srun --export=ALL bash -c '{enroot_cmd}'"
 
     # Run enroot import via salloc (this can take a while)
