@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "nemo-run @ git+https://github.com/rapaul-nv/Run.git@1a25aaa9a97ceaf047bab8876e1b027f552456bc",
+    "nemo-run @ git+https://github.com/NVIDIA-NeMo/Run.git@main",
     "pydantic>=2.0.0",
     "typer>=0.12.0",
     "omegaconf>=2.3.0",
@@ -85,7 +85,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
-# Required so nemo-run can be pinned to a git ref (PR #480 DGXCloud Ray backend)
+# Allow ``nemo-run`` to be pulled from upstream git main.
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
@@ -99,7 +99,7 @@ markers = [
     "integration: End-to-end tests that run real stage code with synthetic data",
     "gpu: Tests that require NVIDIA GPU and nemo_automodel",
     "docker: Tests that require Docker with NVIDIA runtime",
-]
+    ]
 
 [tool.mypy]
 python_version = "3.10"
@@ -127,7 +127,7 @@ dev = [
     "pytest>=9.0.2",
 ]
 run = [
-    "nemo-run @ git+https://github.com/rapaul-nv/Run.git@1a25aaa9a97ceaf047bab8876e1b027f552456bc",
+    "nemo-run @ git+https://github.com/NVIDIA-NeMo/Run.git@main",
 ]
 docs = [
     "myst-parser>=4.0.1",

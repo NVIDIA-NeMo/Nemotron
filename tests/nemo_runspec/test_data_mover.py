@@ -87,28 +87,18 @@ def test_source_packager_filters_pycache_and_pyc(tmp_path):
     assert any(n.endswith("src/nemo_runspec/__init__.py") for n in names)
 
 
-def test_source_packager_fixed_output_returns_none(tmp_path):
-    """DGXCloud flow: ``None`` return signals nemo-run to skip auto-extract."""
-    _write_fake_repo(tmp_path)
-    pkg = SourcePackager(
-        repo_root=str(tmp_path),
-        script_path=None,
-        fixed_output_name="nemotron-src.tgz",
-    )
-    out = pkg.package(None, str(tmp_path), "unused-name")
-    assert out is None
-    # File still written to job_dir under the fixed name.
-    assert (tmp_path / "nemotron-src.tgz").exists()
-
-
 # ── plan_for ─────────────────────────────────────────────────────────────────
 
 
 def test_plan_for_lepton_chunks_source_into_env_vars(tmp_path, monkeypatch):
     _write_fake_repo(tmp_path)
-    # Skip the nemo-run data-mover patch side-effect — not relevant here.
+    # Skip the nemo-run patch side-effects — not relevant here.
     monkeypatch.setattr(
         "nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None
+    )
+    monkeypatch.setattr(
+        "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
+        lambda: None,
     )
     env_vars: dict[str, str] = {}
     plan = plan_for(
@@ -130,22 +120,31 @@ def test_plan_for_lepton_chunks_source_into_env_vars(tmp_path, monkeypatch):
     assert not plan.needs_pwd_symlinks
 
 
-def test_plan_for_dgxcloud_uses_fixed_filename(tmp_path, monkeypatch):
+def test_plan_for_dgxcloud_chunks_source_into_env_vars(tmp_path, monkeypatch):
+    """DGXCloud uses the same env-var chunking as Lepton now — env vars travel
+    via ``environmentVariables`` in the Job spec (bypassing the 10 KiB Args cap)
+    and a companion patch strips them from the ``torchrun_job.sh`` exports so
+    the launcher file stays small."""
     _write_fake_repo(tmp_path)
     monkeypatch.setattr(
         "nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None
     )
+    monkeypatch.setattr(
+        "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
+        lambda: None,
+    )
+    env_vars: dict[str, str] = {}
     plan = plan_for(
         executor_type="dgxcloud",
-        env_vars={},
+        env_vars=env_vars,
         script_path="src/nemotron/recipes/nano3/x.py",
         pod_nemotron_home="/workspace/_nemotron",
         repo_root=tmp_path,
     )
-    assert plan.packager.fixed_output_name == "nemotron-src.tgz"
     assert plan.pod_src_root == "/workspace/_nemotron/src"
-    # Entrypoint extracts from /nemo_run/ (the pvc_job_dir symlink target).
-    assert any("/nemo_run/nemotron-src.tgz" in c for c in plan.pre_script_cmds)
+    # Env vars populated, no file-based PVC path.
+    assert int(env_vars["_NEMOTRON_SRC_CHUNKS"]) >= 1
+    assert "_NEMOTRON_SRC_CHUNK_0" in env_vars
     assert not plan.needs_pwd_symlinks
 
 
@@ -153,6 +152,10 @@ def test_plan_for_fallback_uses_native_packager_path(tmp_path, monkeypatch):
     _write_fake_repo(tmp_path)
     monkeypatch.setattr(
         "nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None
+    )
+    monkeypatch.setattr(
+        "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
+        lambda: None,
     )
     plan = plan_for(
         executor_type="slurm",

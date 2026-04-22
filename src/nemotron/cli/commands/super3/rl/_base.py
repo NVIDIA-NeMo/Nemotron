@@ -52,6 +52,7 @@ from nemo_runspec.execution import (
     build_env_vars,
     create_slurm_executor,
     execute_cloud,
+    execute_cloud_ray,
     execute_local,
     get_executor_type,
     get_startup_commands,
@@ -210,13 +211,25 @@ def _execute_rl(cfg: RecipeConfig, script_path: str | None = None, spec=None):
             startup_commands=startup_commands,
         )
     elif get_executor_type(env_for_executor) in ("dgxcloud", "lepton"):
-        execute_cloud(
-            script_path, train_path, env=env_for_executor,
-            env_vars=env_vars, passthrough=cfg.passthrough,
-            attached=cfg.attached, default_image=spec.image,
-            script_resources=spec.resources,
-            startup_commands=startup_commands,
-        )
+        # Ray-launch recipes (GRPO/RLVR) go through RayCluster + RayJob so the
+        # model / vllm actors can be distributed across pods. Single-script
+        # recipes stay on execute_cloud (one inline shell command per pod).
+        if spec.run.launch == "ray":
+            execute_cloud_ray(
+                script_path, train_path, env=env_for_executor,
+                env_vars=env_vars, passthrough=cfg.passthrough,
+                attached=cfg.attached, default_image=spec.image,
+                script_resources=spec.resources,
+                startup_commands=startup_commands,
+            )
+        else:
+            execute_cloud(
+                script_path, train_path, env=env_for_executor,
+                env_vars=env_vars, passthrough=cfg.passthrough,
+                attached=cfg.attached, default_image=spec.image,
+                script_resources=spec.resources,
+                startup_commands=startup_commands,
+            )
     else:
         _execute_ray(
             train_path=train_path,

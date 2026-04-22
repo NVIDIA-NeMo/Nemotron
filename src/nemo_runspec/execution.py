@@ -63,6 +63,7 @@ def get_startup_commands(env_config: dict | None) -> list[str]:
     commands = env_config.get("startup_commands")
     if not commands:
         return []
+    commands = _to_plain(commands)
     if not isinstance(commands, list):
         typer.echo(
             f"Error: startup_commands must be a list, got {type(commands).__name__}",
@@ -1014,6 +1015,16 @@ def execute_cloud(
         .replace("/", "-")
         .removesuffix(".py")
     )
+    # Lepton's JobAPI requires RFC-1123 subdomain names (lowercase alnum + -/.,
+    # must start/end with alphanumeric). nemo-run's LeptonExecutor.launch
+    # sanitizes ``_``/``.`` and truncates to 34 chars but does NOT strip a
+    # trailing ``-``, which the API rejects. Pre-truncate/strip here so the
+    # name that reaches nemo-run is already short enough to survive its
+    # truncation without losing its trailing alphanumeric.
+    recipe_name = recipe_name.replace("_", "-").replace(".", "-").lower()
+    if len(recipe_name) > 34:
+        recipe_name = recipe_name[:34].rstrip("-.")
+    recipe_name = recipe_name.strip("-.") or "nemotron-job"
     with run.Experiment(recipe_name) as exp:
         exp.add(script_task, executor=executor, name=recipe_name)
         exp.run(detach=not attached)
@@ -1109,6 +1120,12 @@ def execute_cloud_ray(
         f"mkdir -p {nemotron_home}",
         f"echo $_NEMOTRON_CONFIG_B64 | base64 -d > {config_path}",
     ]
+    # nemo-run's LeptonRayCluster.create() ignores pre_ray_start_commands
+    # (accepts the arg but never wires it into the LeptonRayClusterUserSpec).
+    # Run the transport extraction commands from the head entrypoint so the
+    # source tree is present before any startup_commands (e.g. cp ...).
+    if executor_type == "lepton" and transport.pre_script_cmds:
+        head_setup = list(transport.pre_script_cmds) + head_setup
     if transport.needs_pwd_symlinks:
         # Native-packager path: source sits at /nemo_run/code/src; symlink it
         # under nemotron_home/src so ${oc.env:PWD}/src/... still resolves.
@@ -1139,20 +1156,49 @@ def execute_cloud_ray(
         .removesuffix(".py")
     )
     stamp = int(time.time())
-    cluster_name = f"{recipe_name}-{stamp}".replace("_", "-").replace(".", "-").lower()[:35]
-    job_name = f"{recipe_name}-job-{stamp}".replace("_", "-").replace(".", "-").lower()[:35]
+    existing_cluster = _get_env(env, "existing_ray_cluster") or os.environ.get(
+        "NEMOTRON_EXISTING_RAY_CLUSTER"
+    )
+    def _sanitize(raw: str) -> str:
+        # Lepton requires RFC-1123 subdomain: lowercase alnum/dash/dot,
+        # must start and end with alphanumeric. Truncation can leave a
+        # trailing "-" or ".", which the API rejects.
+        cleaned = raw.replace("_", "-").replace(".", "-").lower()[:35]
+        return cleaned.strip("-.") or "nemotron"
+
+    def _sanitize_with_stamp(prefix: str, suffix: str) -> str:
+        """Sanitize ``{prefix}-{suffix}`` and preserve ``suffix`` under the
+        35-char limit by truncating the prefix first.
+        """
+        cleaned_prefix = prefix.replace("_", "-").replace(".", "-").lower()
+        cleaned_suffix = suffix.replace("_", "-").replace(".", "-").lower()
+        # Reserve space for suffix + connecting dash.
+        budget = 35 - len(cleaned_suffix) - 1
+        if budget < 1:
+            # Suffix alone exceeds budget — give up and just use sanitized full.
+            return _sanitize(f"{prefix}-{suffix}")
+        cleaned_prefix = cleaned_prefix[:budget].rstrip("-.")
+        return f"{cleaned_prefix}-{cleaned_suffix}".strip("-.") or "nemotron"
+
+    if existing_cluster:
+        cluster_name = str(existing_cluster)
+    else:
+        cluster_name = _sanitize_with_stamp(recipe_name, str(stamp))
+    job_name = _sanitize_with_stamp(f"{recipe_name}-job", str(stamp))
 
     # For Lepton: spin a RayCluster and submit a RayJob to it.
     # For DGXCloud: RayJob alone (DGXCloudRayCluster is a no-op placeholder in
     # nemo-run; DGXCloudRayJob creates its own distributed workload).
     cluster = None
-    if executor_type == "lepton":
+    if executor_type == "lepton" and not existing_cluster:
         cluster = RayCluster(name=cluster_name, executor=executor)
         typer.echo(f"[ray] starting RayCluster {cluster_name} (timeout 1800s)...")
         try:
             cluster.start(pre_ray_start_commands=pre_ray_commands, timeout=1800)
         except Exception as e:  # noqa: BLE001
             typer.echo(f"[ray] cluster.start warning ({type(e).__name__}: {e}); continuing")
+    elif executor_type == "lepton" and existing_cluster:
+        typer.echo(f"[ray] reusing existing RayCluster {cluster_name}")
 
     if executor_type == "lepton":
         ray_job = RayJob(name=job_name, executor=executor, cluster_name=cluster_name)
