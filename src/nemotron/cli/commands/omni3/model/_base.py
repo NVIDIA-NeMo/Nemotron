@@ -42,6 +42,15 @@ DEFAULT_CONTAINER_IMAGE = "oci-archive:///home/$USER/.cache/nemotron/containers/
 DEFAULT_WORKDIR = "/workspace/Megatron-Bridge"
 
 
+def _partition_for_mode(env, attached: bool) -> str | None:
+    """Resolve the Slurm partition for attached vs detached execution."""
+    if env is None:
+        return None
+    if attached:
+        return env.get("run_partition") or env.get("partition")
+    return env.get("batch_partition") or env.get("partition")
+
+
 def _show_plan(
     *,
     job_name: str,
@@ -67,7 +76,7 @@ def _show_plan(
     table.add_row("Time", time_limit)
     table.add_row("Command", shlex.join(command))
     if env is not None:
-        partition = env.get("run_partition") or env.get("partition") if cfg.attached else env.get("batch_partition") or env.get("partition")
+        partition = _partition_for_mode(env, cfg.attached)
         table.add_row("Partition", partition or "")
     console.print(table)
     console.print()
@@ -166,7 +175,7 @@ def _execute_remote(
         mounts.extend(git_mounts)
         mounts.append("/lustre:/lustre")
 
-        partition = _get("run_partition") or _get("partition") if attached else _get("batch_partition") or _get("partition")
+        partition = _partition_for_mode(env, attached)
 
         executor = run.SlurmExecutor(
             account=_get("account"),

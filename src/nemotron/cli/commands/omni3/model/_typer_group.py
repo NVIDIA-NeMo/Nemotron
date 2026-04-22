@@ -18,7 +18,11 @@ from __future__ import annotations
 
 import typer
 
+from nemotron.cli.commands.omni3.model.adapter_export import adapter_export
+from nemotron.cli.commands.omni3.model.eval import eval_cmd
+from nemotron.cli.commands.omni3.model.export import export_app
 from nemotron.cli.commands.omni3.model.import_ import import_app
+from nemotron.cli.commands.omni3.model.lora_merge import lora_merge
 
 model_app = typer.Typer(
     name="model",
@@ -27,3 +31,7 @@ model_app = typer.Typer(
 )
 
 model_app.add_typer(import_app, name="import")
+model_app.add_typer(export_app, name="export")
+model_app.command(name="eval")(eval_cmd)
+model_app.command(name="lora-merge")(lora_merge)
+model_app.command(name="adapter-export")(adapter_export)

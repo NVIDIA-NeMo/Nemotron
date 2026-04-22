@@ -74,6 +74,8 @@ data/
 !src/nemotron/cli/commands/nano3/data/
 !src/nemotron/cli/commands/super3/data/
 !src/nemotron/cli/commands/embed/data/
+!src/nemotron/cli/commands/omni3/data/
+!src/nemotron/cli/commands/omni3/data/**
 !src/nemotron/recipes/data/
 !src/nemotron/recipes/data/**
 workspace/
