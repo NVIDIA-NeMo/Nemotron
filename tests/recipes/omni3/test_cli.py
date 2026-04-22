@@ -92,6 +92,10 @@ class TestOmni3AppStructure:
         result = runner.invoke(app, ["omni3", "eval", "--help"])
         assert result.exit_code == 0
 
+    def test_pipe_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "pipe", "--help"])
+        assert result.exit_code == 0
+
 
 class TestDryRun:
     def test_build_dry_run_sft_stage(self, monkeypatch):
@@ -100,3 +104,10 @@ class TestDryRun:
         assert result.exit_code == 0, f"dry-run failed: {result.output}\n{result.exception}"
         assert "omni3/stage0_sft/build" in result.output
         assert "stage0_sft" in result.output
+
+    def test_pipe_dry_run_succeeds(self, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["nemotron", "omni3", "pipe", "-d"])
+        result = runner.invoke(app, ["omni3", "pipe", "-d"])
+        assert result.exit_code == 0, f"pipe dry-run failed: {result.output}\n{result.exception}"
+        assert "sft -> rl mpo -> rl text -> rl vision" in result.output
+        assert "omni3-vision-rl-model:latest" in result.output

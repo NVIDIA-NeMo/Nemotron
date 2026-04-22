@@ -21,6 +21,7 @@ from nemotron.cli.commands.omni3.data import data_app
 from nemotron.cli.commands.omni3.eval import META as EVAL_META
 from nemotron.cli.commands.omni3.eval import eval as eval_cmd
 from nemotron.cli.commands.omni3.model import model_app
+from nemotron.cli.commands.omni3.pipe import META as PIPE_META, pipe
 from nemotron.cli.commands.omni3.rl import rl_app
 from nemotron.cli.commands.omni3.sft import META as SFT_META, sft
 from nemo_runspec.recipe_typer import RecipeTyper
@@ -43,3 +44,4 @@ omni3_app.add_typer(data_app, name="data")
 omni3_app.add_typer(model_app, name="model")
 omni3_app.add_typer(rl_app, name="rl")
 omni3_app.add_recipe_command(eval_cmd, meta=EVAL_META, rich_help_panel="Evaluation")
+omni3_app.add_recipe_command(pipe, meta=PIPE_META, rich_help_panel="Pipeline")
