@@ -88,6 +88,10 @@ class TestOmni3AppStructure:
         result = runner.invoke(app, ["omni3", "model", "adapter-export", "--help"])
         assert result.exit_code == 0
 
+    def test_eval_help_succeeds(self):
+        result = runner.invoke(app, ["omni3", "eval", "--help"])
+        assert result.exit_code == 0
+
 
 class TestDryRun:
     def test_build_dry_run_sft_stage(self, monkeypatch):
