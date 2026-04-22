@@ -63,6 +63,15 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 **Stages:** Pretraining → SFT → RL
 :::
 
+:::{grid-item-card} Nemotron 3 Omni
+:link: nemotron/omni3/README
+:link-type: doc
+
+GA-checkpoint multimodal post-training recipe with stage-local container builds and a three-step RL stack.
+
+**Stages:** SFT → RL MPO → RL text → RL vision → Eval
+:::
+
 :::{grid-item-card} Embedding Fine-Tuning
 :link: nemotron/embed/README
 :link-type: doc
@@ -74,15 +83,26 @@ Fine-tune Llama-Nemotron-Embed-1B-v2 on domain-specific data with synthetic data
 
 ::::
 
+## Recipe Layout
+
+Nemotron keeps **data-producing recipes** separate from **model-family training recipes**:
+
+| Path | Purpose | Example |
+|------|---------|---------|
+| `src/nemotron/recipes/data/curation/` | Filter, dedup, and curate existing corpora | [Nemotron-CC](nemotron/nemotron-cc.md) |
+| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | Omni long-document SDG feeding [Omni3 SFT](nemotron/omni3/sft.md) |
+| `src/nemotron/recipes/<family>/` | Family-specific training, RL, evaluation, and model lifecycle commands | [Nano3](nemotron/nano3/README.md), [Omni3](nemotron/omni3/README.md) |
+
 ## Training Pipeline
 
-The Nemotron training pipeline has three stages, each tracked through [artifact lineage](nemotron/artifacts.md):
+Each recipe family has its own stage layout, and all of them can be tracked through [artifact lineage](nemotron/artifacts.md):
 
-| Stage | Name | Description |
-|-------|------|-------------|
-| 0 | [Pretraining](nemotron/nano3/pretrain.md) | Base model training on large text corpus |
-| 1 | [SFT](nemotron/nano3/sft.md) | Supervised fine-tuning for instruction following |
-| 2 | [RL](nemotron/nano3/rl.md) | Reinforcement learning for alignment |
+| Family | Stage layout |
+|--------|--------------|
+| [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
+| [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
+| [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 
 ## Why Nemotron?
 
@@ -142,6 +162,7 @@ use-case-examples/sql-lora-finetuning-and-deployment/README.md
 :hidden:
 
 nemotron/nano3/README.md
+nemotron/omni3/README.md
 nemotron/super3/README.md
 nemotron/embed/README.md
 nemotron/artifacts.md
@@ -156,6 +177,16 @@ nemotron/nano3/sft.md
 nemotron/nano3/rl.md
 nemotron/nano3/evaluate.md
 nemotron/nano3/import.md
+```
+
+```{toctree}
+:caption: Omni3 Stages
+:hidden:
+
+nemotron/omni3/README.md
+nemotron/omni3/sft.md
+nemotron/omni3/rl.md
+nemotron/omni3/evaluate.md
 ```
 
 ```{toctree}

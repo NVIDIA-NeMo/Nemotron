@@ -122,7 +122,7 @@ src/nemotron/
 │   │   └── nemotron.py               # Main entry point (typer app)
 │   ├── commands/
 │   │   ├── evaluate.py               # Top-level evaluate command
-│   │   └── nano3/
+│   │   ├── nano3/
 │   │       ├── _typer_group.py        # Command registration (RecipeTyper)
 │   │       ├── pretrain.py            # Pretrain execution logic
 │   │       ├── sft.py                 # SFT execution logic
@@ -144,9 +144,35 @@ src/nemotron/
 │   │               ├── pretrain.py
 │   │               ├── sft.py
 │   │               └── rl.py
+│   │   └── omni3/
+│   │       ├── _typer_group.py        # Registers build, sft, eval, and RL sub-groups
+│   │       ├── build.py               # Stage-local container build dispatcher
+│   │       ├── sft.py                 # Omni SFT execution logic
+│   │       ├── eval.py                # Omni evaluation command
+│   │       ├── data/                  # Data prep commands
+│   │       ├── model/                 # Model import/export/eval commands
+│   │       └── rl/                    # RL MPO / text / vision sub-stages
 │   └── kit/                           # Kit CLI commands (squash, etc.)
 │
 ├── recipes/                           # RUNTIME LAYER
+│   ├── data/
+│   │   ├── curation/                  # Data curation pipelines (for example nemotron-cc)
+│   │   └── sdg/                       # Synthetic data generation pipelines
+│   ├── omni3/
+│   │   ├── stage0_sft/
+│   │   │   ├── Dockerfile             # Stage-owned container recipe
+│   │   │   ├── build.py               # Exports the OCI archive used downstream
+│   │   │   ├── train.py               # -> Megatron-Bridge
+│   │   │   └── data_prep.py           # -> Valor32k staging / validation
+│   │   ├── stage1_rl/
+│   │   │   ├── Dockerfile             # Shared RL container recipe
+│   │   │   ├── build.py               # Exports the RL OCI archive
+│   │   │   ├── data_prep.py           # -> RL data prep dispatcher
+│   │   │   ├── stage1_mpo/
+│   │   │   ├── stage2_text_rl/
+│   │   │   └── stage3_vision_rl/
+│   │   └── stage2_eval/
+│   │       └── config/
 │   └── nano3/
 │       ├── stage0_pretrain/
 │       │   ├── train.py               # -> Megatron-Bridge
@@ -279,5 +305,7 @@ These are utilities, not abstractions. The calling code shows exactly how they'r
 | Dotlist overrides | Applied during `parse_config()` via OmegaConf |
 | Packager selection | `SelfContainedPackager` or `CodePackager` from `nemo_runspec.packaging` |
 | Ray execution | Visible in `_execute_remote()` functions in RL/data prep commands |
+| Build verb | Family-specific `build.py` dispatchers submit stage-local container builds explicitly |
+| Omni3 family layout | Top-level `omni3/` mixes build/eval commands with nested `data/`, `model/`, and `rl/` groups |
 | Rich help panels | `RecipeTyper` + `RecipeMeta` from `nemo_runspec.recipe_typer` |
 | env.toml profiles | Loaded via `nemo_runspec.env.parse_env()` with inheritance |

@@ -151,6 +151,38 @@ run_partition = "interactive" # For --run (attached)
 batch_partition = "backfill"  # For --batch (detached)
 ```
 
+### Building Containers
+
+Some recipes, including Omni3, build stage-local containers through the same profile system instead of pulling a pre-baked image.
+
+**Cluster-side build via Nemotron CLI**
+
+```bash
+uv run nemotron omni3 build sft --run YOUR-CLUSTER
+uv run nemotron omni3 build rl --run YOUR-CLUSTER
+```
+
+These commands submit short CPU-oriented build jobs through NeMo-Run. If your site uses a different partition or walltime for build jobs, set `build_partition` and `build_time` in `env.toml`.
+
+```toml
+[YOUR-CLUSTER]
+executor = "slurm"
+partition = "batch"
+build_partition = "cpu"
+build_time = "02:00:00"
+```
+
+**Local build from the stage Dockerfile**
+
+```bash
+cd src/nemotron/recipes/omni3/stage0_sft
+docker build -t nemotron/omni3-sft:latest -f Dockerfile .
+# or
+podman build -t nemotron/omni3-sft:latest -f Dockerfile .
+```
+
+Use the local path when iterating on the Dockerfile itself; use `nemotron omni3 build <stage> --run <profile>` when you want the same build recipe executed on the cluster.
+
 ### Other Executors
 
 NeMo-Run supports additional executors:
