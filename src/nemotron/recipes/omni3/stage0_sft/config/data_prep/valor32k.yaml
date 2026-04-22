@@ -1,0 +1,8 @@
+dataset_name: valor32k
+dataset_path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
+metadata_dir: ${oc.env:NEMO_RUN_DIR,.}/stage0_sft/data_prep/valor32k
+link_path: null
+builder_command: null
+modality_filter: null
+sample: null
+force: false

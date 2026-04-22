@@ -1,0 +1,37 @@
+run:
+  nproc_per_node: 8
+  env:
+    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+    workdir: /workspace/Megatron-Bridge
+    env_vars:
+      PYTORCH_ALLOC_CONF: expandable_segments:True
+
+recipe:
+  name: nemotron_omni_cord_v2_sft_config
+  step_func: nemotron_omni_step
+  dataset: vlm-hf
+
+checkpoint:
+  pretrained_checkpoint: ${oc.env:HF_MODEL_PATH,nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning}
+  save: /nemo_run/omni3-image-text-sft-model
+  save_interval: 1000
+
+dataset:
+  hf_processor_path: ${oc.env:HF_MODEL_PATH,nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning}
+  trust_remote_code: true
+  seq_length: 1024
+
+model:
+  tensor_model_parallel_size: 4
+  expert_model_parallel_size: 8
+  expert_tensor_parallel_size: 1
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+  seq_length: 1024
+  freeze_language_model: true
+
+train:
+  train_iters: 20
+  global_batch_size: 8
+  micro_batch_size: 1

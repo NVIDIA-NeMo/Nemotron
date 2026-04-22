@@ -1,0 +1,34 @@
+run:
+  nproc_per_node: 8
+  env:
+    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+    workdir: /workspace/Megatron-Bridge
+
+recipe:
+  name: nemotron_omni_valor32k_energon_sft_config
+  step_func: nemotron_omni_step
+
+checkpoint:
+  pretrained_checkpoint: ${oc.env:OMNI3_MEGATRON_CHECKPOINT,/checkpoints/nemotron_omni}
+  save: /nemo_run/omni3-sft-model
+  save_interval: 200
+  finetune: true
+
+dataset:
+  path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
+  seq_length: 4096
+
+model:
+  tensor_model_parallel_size: 4
+  expert_model_parallel_size: 4
+  seq_length: 4096
+  freeze_language_model: false
+  freeze_vision_model: false
+  freeze_vision_projection: false
+  freeze_sound_encoder: false
+  freeze_sound_projection: false
+
+train:
+  train_iters: 10000
+  global_batch_size: 128
+  micro_batch_size: 1
