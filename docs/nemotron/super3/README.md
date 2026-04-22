@@ -62,7 +62,7 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 
 ## Resources
 
-- **Tech Report**: Nemotron 3 Super Technical Report (coming soon)
+- **Tech Report**: [Nemotron 3 Super Technical Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf)
 - **Model Weights**:
   - [NVIDIA-Nemotron-3-Super-120B-A12B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) (Post-trained model)
   - [NVIDIA-Nemotron-3-Super-120B-A12B-FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8) (FP8 quantized)
@@ -104,7 +104,7 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 | **MTP Layers** | 2 (shared weight) |
 | **Precision** | BF16 mixed (NVFP4 for pretrain on B200) |
 
-> For architecture details, see the Tech Report (coming soon).
+> For architecture details, see the [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf).
 
 ## Stage Summaries
 
