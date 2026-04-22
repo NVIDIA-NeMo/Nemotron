@@ -240,9 +240,8 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
 def _make_configs_excluding_copy_fn(original_signature: str):
     """Build a ``copy_directory_data_command`` replacement that skips ``configs/``.
 
-    Lepton returns ``list[str]`` (``["sh", "-c", cmd]``); DGXCloud returns a
-    single ``str`` (command body only). The ``original_signature`` switch
-    picks the right return shape.
+    ``original_signature`` selects the return shape: ``"list"`` for Lepton
+    (``["sh", "-c", cmd]``) and ``"str"`` for DGXCloud (command body only).
     """
     import base64
     import os
@@ -280,20 +279,90 @@ def _make_configs_excluding_copy_fn(original_signature: str):
     return patched
 
 
+def patch_dgxcloud_accept_legacy_kwargs() -> None:
+    """Map legacy ``app_id``/``app_secret`` → ``client_id``/``client_secret``.
+
+    Pre-PR#480 nemo-run named the auth fields ``app_id``/``app_secret``; the
+    current fork uses ``client_id``/``client_secret``. Cached fiddle Configs
+    with the old names otherwise produce ``TypeError: unexpected keyword
+    argument 'app_id'`` noise on every status poll.
+    """
+    try:
+        from nemo_run.core.execution import dgxcloud as dgx_mod
+    except Exception:
+        return
+
+    cls = dgx_mod.DGXCloudExecutor
+    if getattr(cls, "_nemotron_legacy_kwargs_patched", False):
+        return
+
+    orig_init = cls.__init__
+
+    def patched_init(self, *args, **kwargs):
+        if "app_id" in kwargs:
+            kwargs.setdefault("client_id", kwargs.pop("app_id"))
+        if "app_secret" in kwargs:
+            kwargs.setdefault("client_secret", kwargs.pop("app_secret"))
+        return orig_init(self, *args, **kwargs)
+
+    cls.__init__ = patched_init
+    cls._nemotron_legacy_kwargs_patched = True
+
+
+def patch_dgxcloud_strip_source_chunks_from_exports() -> None:
+    """Keep ``_NEMOTRON_SRC_CHUNK_*`` out of DGXCloud's ``torchrun_job.sh``.
+
+    ``DGXCloudRequest.materialize()`` normally bakes every env var as an
+    ``export KEY=VAL`` line. With ~400 KiB of source chunks, that file
+    blows up and ``move_data`` chunks it into dozens of 10 KiB workloads
+    (run:AI's Args cap) — a ~12 min submission.
+
+    Chunks are already delivered via the Job spec's ``environmentVariables``
+    field, so we strip them from the export block. Net: one data-mover
+    workload, ~1 s submission; pod still sees the vars via ``os.environ``.
+    """
+    try:
+        from nemo_run.core.execution import dgxcloud as dgx_mod
+    except Exception:
+        return
+
+    if getattr(dgx_mod.DGXCloudRequest, "_nemotron_exports_patched", False):
+        return
+
+    orig_materialize = dgx_mod.DGXCloudRequest.materialize
+
+    def materialize(self):
+        # Snapshot + filter env_vars *before* materialize() reads them. Both
+        # fields are dataclass attrs, so we can swap and restore.
+        saved_exec_env = self.executor.env_vars
+        saved_extra_env = self.extra_env
+        self.executor.env_vars = {
+            k: v for k, v in saved_exec_env.items() if not k.startswith("_NEMOTRON_SRC_")
+        }
+        self.extra_env = {
+            k: v for k, v in saved_extra_env.items() if not k.startswith("_NEMOTRON_SRC_")
+        }
+        try:
+            return orig_materialize(self)
+        finally:
+            self.executor.env_vars = saved_exec_env
+            self.extra_env = saved_extra_env
+
+    dgx_mod.DGXCloudRequest.materialize = materialize
+    dgx_mod.DGXCloudRequest._nemotron_exports_patched = True
+
+
 def patch_cloud_data_mover_skip_configs() -> None:
-    """Shrink the inline-base64 data-mover payload on Lepton *and* DGXCloud.
+    """Exclude ``configs/`` from Lepton's and DGXCloud's data-mover tarball.
 
-    Both executors ship the whole ``job_dir`` (including
-    ``configs/executor.yaml`` — which re-serializes every env var, potentially
-    hundreds of KiB once source chunks get injected) to remote storage via a
-    helper pod whose ``command`` is ``sh -c "echo <base64> | base64 -d > ..."``.
-    That single argv string is bounded by the kernel's ``MAX_ARG_STRLEN``
-    (128 KiB), so a moderately large ``configs/`` causes ``exec: argument list
-    too long``.
+    Both executors ship ``job_dir`` via a helper pod whose command is
+    ``sh -c "echo <base64> | base64 -d > …"`` — a single argv bounded by
+    ``MAX_ARG_STRLEN`` (128 KiB). ``configs/executor.yaml`` re-serializes
+    every env var (hundreds of KiB with source chunks), which blows past
+    that limit as ``exec: argument list too long``.
 
-    The pod-side launch script never reads ``configs/``; only
-    ``launch_script.sh`` matters. Excluding ``configs/`` from the tarball
-    keeps the data-mover command small while preserving correctness.
+    The pod-side launch script reads only ``launch_script.sh``, so dropping
+    ``configs/`` keeps the command small without affecting correctness.
     """
     try:
         from nemo_run.core.execution import lepton as lep_mod

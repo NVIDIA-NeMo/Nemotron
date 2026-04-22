@@ -99,24 +99,26 @@ def _auto_includes(repo_root: Path, script_path: str | None) -> list[str]:
 class SourcePackager(_BasePackager):
     """Tarballs local src/ into ``job_dir``.
 
-    With ``fixed_output_name`` set, writes under that name and returns ``None``
-    so nemo-run skips its auto-extract step (DGXCloud file-in-job_dir flow).
-    Otherwise returns the ``.tar.gz`` path and nemo-run extracts into
-    ``job_dir/code`` (Slurm flow).
+    Returns the ``.tar.gz`` path so nemo-run's native flow extracts it into
+    ``job_dir/code`` (Slurm). For Lepton / DGXCloud we instead read the
+    tarball bytes and chunk them across env vars — see :func:`plan_for`.
     """
 
     repo_root: str
     script_path: str | None = None
+    # Accepted for backwards-compatibility with cached fiddle Configs that
+    # were serialized while the DGXCloud file-staging path existed. The
+    # field is no longer read — DGXCloud now uses env-var chunks like Lepton.
     fixed_output_name: str | None = None
 
     def package(self, path, job_dir, name):  # type: ignore[override]
-        out = os.path.join(job_dir, self.fixed_output_name or f"{name}.tar.gz")
+        out = os.path.join(job_dir, f"{name}.tar.gz")
         if not os.path.exists(out):
             root = Path(self.repo_root)
             with tarfile.open(out, "w:gz") as tf:
                 for rel in _auto_includes(root, self.script_path):
                     tf.add(root / rel, arcname=rel, filter=_tar_filter)
-        return None if self.fixed_output_name else out
+        return out
 
 
 @dataclass
@@ -136,16 +138,35 @@ def plan_for(
     repo_root: str | Path | None = None,
 ) -> Plan:
     """Build a :class:`Plan` for ``executor_type``. Mutates ``env_vars``."""
-    from nemo_runspec.run import patch_cloud_data_mover_skip_configs
+    from nemo_runspec.run import (
+        patch_cloud_data_mover_skip_configs,
+        patch_dgxcloud_accept_legacy_kwargs,
+        patch_dgxcloud_strip_source_chunks_from_exports,
+    )
     patch_cloud_data_mover_skip_configs()
+    # DGXCloud needs chunks delivered via ``environmentVariables`` only, not
+    # re-baked into ``torchrun_job.sh`` — otherwise the file balloons and
+    # ``move_data`` spends ~12 min chunking it into ~46 workloads.
+    patch_dgxcloud_strip_source_chunks_from_exports()
+    # Silence the noisy "unexpected keyword argument 'app_id'" traceback that
+    # fiddle's error-message formatter emits on every status poll when it
+    # re-hydrates cached DGXCloudExecutor Configs with legacy kwargs.
+    patch_dgxcloud_accept_legacy_kwargs()
 
     root = Path(repo_root or Path(__file__).resolve().parents[2])
     pod_src = f"{pod_nemotron_home}/src"
     common = {"repo_root": str(root), "script_path": script_path}
 
-    if executor_type == "lepton":
+    # Both Lepton and DGXCloud deliver env vars via the Job spec's structured
+    # field, which bypasses the per-workload Args cap entirely. Use the same
+    # chunked-env-var transport for both.
+    if executor_type in ("lepton", "dgxcloud"):
         # Chunk the tarball across env vars; pod reassembles via python3.
-        chunk_bytes = 96 * 1024
+        # Per-value caps differ by platform:
+        #   * Lepton: 128 KiB MAX_ARG_STRLEN → 96 KiB leaves 32 KiB headroom.
+        #   * DGX Cloud: **10 000 chars per env-var value** (hard 400 otherwise)
+        #     → 9000 bytes base64, with 1 KiB headroom.
+        chunk_bytes = 9_000 if executor_type == "dgxcloud" else 96 * 1024
         with tempfile.TemporaryDirectory() as td:
             raw = Path(SourcePackager(**common).package(None, td, "nemotron-src")).read_bytes()
         b64 = base64.b64encode(raw).decode("ascii")
@@ -153,7 +174,10 @@ def plan_for(
         env_vars["_NEMOTRON_SRC_CHUNKS"] = str(len(chunks))
         for i, c in enumerate(chunks):
             env_vars[f"_NEMOTRON_SRC_CHUNK_{i}"] = c
-        typer.echo(f"[stage] lepton: {len(raw) // 1024} KiB raw → {len(chunks)} env-var chunks")
+        typer.echo(
+            f"[stage] {executor_type}: {len(raw) // 1024} KiB raw → "
+            f"{len(chunks)} env-var chunks"
+        )
         import nemo_run as run
         # Multi-pod NFS race: when N pods share the same dest on NFS, each
         # would otherwise ``rm -rf && tar -xz`` concurrently and clobber each
@@ -176,19 +200,6 @@ def plan_for(
                 f" rm -rf {pod_src} && mkdir -p {pod_src} && {extract_cmd}"
                 f" && touch {ready_marker};"
                 f' else while [ ! -f {ready_marker} ]; do sleep 2; done; fi'
-            ],
-        )
-
-    if executor_type == "dgxcloud":
-        # Packager writes one tarball to job_dir; move_data chunks only it.
-        src_file = "nemotron-src.tgz"
-        typer.echo(f"[stage] dgxcloud: packaged as /nemo_run/{src_file}")
-        return Plan(
-            packager=SourcePackager(fixed_output_name=src_file, **common),
-            pod_src_root=pod_src,
-            pre_script_cmds=[
-                f"rm -rf {pod_src} && mkdir -p {pod_src}",
-                f"tar -xzf /nemo_run/{src_file} -C {pod_src} --strip-components=1",
             ],
         )
 

@@ -312,10 +312,14 @@ def _execute_ray(
         runtime_env_yaml=runtime_env_yaml,
     )
 
-    # Post-launch: copy config to remote (Slurm-specific via tunnel)
+    # Post-launch: copy config + main.py to remote (Slurm-specific via tunnel).
+    # The workdir rsync uses ``--filter=':- .gitignore'`` and ``.gitignore``
+    # lists both ``config.yaml`` and ``main.py``, so they're filtered out of
+    # the rsync. Push them explicitly here.
     if hasattr(executor, "tunnel") and executor.tunnel:
         remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
         executor.tunnel.put(str(repo_config), f"{remote_code_dir}/{REMOTE_CONFIG}")
+        executor.tunnel.put(str(repo_main), f"{remote_code_dir}/{REMOTE_SCRIPT}")
 
     if ray_job.backend.job_id is None:
         try:
