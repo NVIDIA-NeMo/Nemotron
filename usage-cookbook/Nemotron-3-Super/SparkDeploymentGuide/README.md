@@ -32,8 +32,6 @@ wget https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4/raw/m
 vllm/vllm-openai:cu130-nightly
 ```
 
-MTP + NVFP4 on DGX Spark requires a vLLM nightly build (cu130). The pinned release `0.17.1` does not support this combination on a single-GPU Spark configuration.
-
 ### Serve Command
 
 ```bash

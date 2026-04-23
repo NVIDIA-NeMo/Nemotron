@@ -7,8 +7,13 @@ from typing import Literal
 import numpy as np
 
 from data_designer.config.base import SingleColumnConfig
-from data_designer.engine.column_generators.generators.base import ColumnGeneratorCellByCell
 from data_designer.plugins import Plugin, PluginType
+
+__all__ = [
+    "DDRetrievalDedupConfig",
+    "DDRetrievalDedup",
+    "dd_retrieval_dedup_plugin",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +35,19 @@ class DDRetrievalDedupConfig(SingleColumnConfig):
         return []
 
 
-class DDRetrievalDedup(ColumnGeneratorCellByCell[DDRetrievalDedupConfig]):
+# Data Designer may re-enter this module during plugin discovery while the
+# generator base class import is still in progress. Publish the plugin after
+# the config exists so the re-entrant import can resolve it cleanly.
+dd_retrieval_dedup_plugin = Plugin(
+    impl_qualified_name="retriever_sdg.deduplication.DDRetrievalDedup",
+    config_qualified_name="retriever_sdg.deduplication.DDRetrievalDedupConfig",
+    plugin_type=PluginType.COLUMN_GENERATOR,
+)
 
+from data_designer.engine.column_generators.generators.base import ColumnGeneratorCellByCell  # noqa: E402
+
+
+class DDRetrievalDedup(ColumnGeneratorCellByCell[DDRetrievalDedupConfig]):
     @property
     def embedder(self):
         return self.resource_provider.model_registry.get_model(
@@ -40,14 +56,16 @@ class DDRetrievalDedup(ColumnGeneratorCellByCell[DDRetrievalDedupConfig]):
     def _embed(self, text: str) -> list[float]:
         """Calculate an embedding of the text
         """
-        response = self.embedder._router.embedding(
-            input=text,
-            model=self.embedder.model_name,
+        # Data Designer's public embedding API moved behind ModelFacade methods.
+        # Use the facade directly rather than reaching into removed private attrs
+        # like `_router`, which breaks across library versions.
+        response = self.embedder.generate_text_embeddings(
+            [text],
             encoding_format="float",
-            extra_body=self.embedder._model_config.inference_parameters.
-            extra_body)
+            extra_body=self.embedder._model_config.inference_parameters.extra_body,
+        )
 
-        return response.data[0]["embedding"]
+        return response[0]
 
     def dedupe_qa_pairs(self, embeddings: list[list[float]]) -> list[int]:
         """Run a semantic dedupe of the qa pairs.
@@ -123,10 +141,3 @@ class DDRetrievalDedup(ColumnGeneratorCellByCell[DDRetrievalDedupConfig]):
         retained_qa_pairs = [qa_pairs[i] for i in retained_qa_pair_indexes]
 
         return data | {self.config.name: retained_qa_pairs}
-
-
-dd_retrieval_dedup_plugin = Plugin(
-    impl_qualified_name="retriever_sdg.deduplication.DDRetrievalDedup",
-    config_qualified_name="retriever_sdg.deduplication.DDRetrievalDedupConfig",
-    plugin_type=PluginType.COLUMN_GENERATOR,
-)
