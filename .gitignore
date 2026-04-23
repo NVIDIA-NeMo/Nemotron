@@ -78,6 +78,10 @@ data/
 !src/nemotron/cli/commands/omni3/data/**
 !src/nemotron/recipes/data/
 !src/nemotron/recipes/data/**
+# Re-ignore __pycache__ under the un-ignored data trees (the broad !data/**
+# rules above would otherwise let them through).
+src/nemotron/cli/commands/omni3/data/**/__pycache__/
+src/nemotron/recipes/data/**/__pycache__/
 workspace/
 wandb/
 .nemotron/
