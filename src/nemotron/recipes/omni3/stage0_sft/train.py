@@ -40,6 +40,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shlex
 import subprocess
 import sys
@@ -70,6 +71,53 @@ def _flatten_overrides(prefix: str, value: Any) -> list[str]:
     return [f"{prefix}={value}"]
 
 
+def _torchrun_rendezvous_args(nproc_per_node: int) -> list[str]:
+    """Build torchrun --nnodes/--node-rank/--rdzv-* args when running under Slurm.
+
+    When invoked from a multi-node Slurm allocation, the launch-time environment
+    contains SLURM_NNODES, SLURM_NODEID, and the first entry of SLURM_STEP_NODELIST
+    (usually resolved via `scontrol show hostname`). We translate those into
+    torchrun rendezvous args so all nodes participate in one distributed group.
+
+    For single-node runs (local invocation or SLURM_NNODES=1), we return only
+    --nproc-per-node and let torchrun default to a static single-node rendezvous.
+    """
+    nnodes = int(os.environ.get("SLURM_NNODES", "1"))
+    args = [f"--nproc-per-node={nproc_per_node}"]
+    if nnodes <= 1:
+        return args
+
+    node_rank = int(os.environ.get("SLURM_NODEID", "0"))
+    # MASTER_ADDR preferred; Slurm usually sets it or we resolve the first nodelist entry.
+    master_addr = os.environ.get("MASTER_ADDR")
+    if not master_addr:
+        nodelist = os.environ.get("SLURM_STEP_NODELIST") or os.environ.get("SLURM_JOB_NODELIST", "")
+        if nodelist:
+            try:
+                master_addr = subprocess.check_output(
+                    ["scontrol", "show", "hostnames", nodelist], text=True
+                ).splitlines()[0].strip()
+            except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
+                master_addr = None
+    master_port = os.environ.get("MASTER_PORT", "29500")
+
+    args.extend([f"--nnodes={nnodes}", f"--node-rank={node_rank}"])
+    if master_addr:
+        args.append(f"--rdzv-endpoint={master_addr}:{master_port}")
+        args.extend(["--rdzv-backend=c10d", f"--rdzv-id={os.environ.get('SLURM_JOB_ID', 'nemotron-omni3-sft')}"])
+    else:
+        # Last resort: pass master-addr via the legacy flags. Works for static
+        # single-node launches but will NOT coordinate multi-node without
+        # MASTER_ADDR — log a warning so the user knows.
+        LOGGER.warning(
+            "Running with SLURM_NNODES=%d but no MASTER_ADDR/SLURM_JOB_NODELIST found; "
+            "torchrun will not be able to rendezvous across nodes. Set MASTER_ADDR "
+            "in your sbatch/srun environment.",
+            nnodes,
+        )
+    return args
+
+
 def _build_command(config: dict[str, Any], cli_overrides: list[str]) -> tuple[Path, list[str]]:
     """Build the Megatron-Bridge run_recipe.py command."""
     recipe_cfg = config.get("recipe", {})
@@ -80,11 +128,12 @@ def _build_command(config: dict[str, Any], cli_overrides: list[str]) -> tuple[Pa
     if not recipe_name:
         raise ValueError("recipe.name is required")
 
+    nproc_per_node = int(run_cfg.get("nproc_per_node", 8))
     command = [
         "uv",
         "run",
         "torchrun",
-        f"--nproc-per-node={run_cfg.get('nproc_per_node', 8)}",
+        *_torchrun_rendezvous_args(nproc_per_node),
         "scripts/training/run_recipe.py",
         "--recipe",
         str(recipe_name),

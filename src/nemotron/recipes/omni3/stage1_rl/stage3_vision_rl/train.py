@@ -18,8 +18,13 @@
 # format = "omegaconf"
 #
 # [tool.runspec.resources]
-# nodes = 16
-# gpus_per_node = 8
+# # Stub allocation (nodes=1, gpus_per_node=0) — prevents an errant
+# # `nemotron omni3 rl vision --batch` from tying up a real GPU allocation
+# # while the launcher body is still pending upstream. When the real
+# # launcher lands this should be bumped to the production footprint
+# # (e.g. nodes=16, gpus_per_node=8) alongside the main() body.
+# nodes = 1
+# gpus_per_node = 0
 # ///
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
