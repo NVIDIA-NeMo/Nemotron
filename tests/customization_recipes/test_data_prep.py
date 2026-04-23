@@ -378,7 +378,7 @@ class TestPydanticConversationModels:
 
 
 class TestPydanticMCQModels:
-    """Tests for byob.py Pydantic MCQ response models."""
+    """Tests for BYOB Pydantic MCQ response models (``data_prep/byob``)."""
 
     def test_mcq_question(self) -> None:
         from nemotron.customization_recipes.data_prep.byob import MCQQuestion

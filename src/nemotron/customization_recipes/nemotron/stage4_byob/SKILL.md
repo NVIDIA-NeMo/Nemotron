@@ -210,7 +210,7 @@ translate:
   #   threshold: 2.5
 ```
 
-The `ByobConfig` dataclass (in `data_prep/byob.py`) maps these fields directly. **Implementation status:** Generate, judge, expand distractors, validity check, and filter are fully implemented. Semantic deduplication, coverage check, and outlier detection have config support but are not yet called in `generate_byob_benchmark()`.
+The `ByobConfig` dataclass (in `data_prep/byob/config.py`) maps these fields directly. **Implementation status:** Generate, judge, expand distractors, validity check, and filter are fully implemented. Semantic deduplication, coverage check, and outlier detection have config support but are not yet called in `generate_byob_benchmark()`.
 
 ## Execution
 

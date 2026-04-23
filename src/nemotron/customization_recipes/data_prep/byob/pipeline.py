@@ -1,20 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """
-Build Your Own Benchmark (BYOB) MCQ generation pipeline.
+Build Your Own Benchmark (BYOB) MCQ generation pipeline stages and orchestrator.
 
 Generates multiple-choice questions from custom corpora using few-shot
 learning, then judges, expands distractors, validates, and filters.
@@ -24,12 +12,16 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Dict, Literal, Optional
 
 from omegaconf import DictConfig
 from pydantic import BaseModel, Field
+
+from nemotron.customization_recipes.data_prep.byob.config import ByobConfig
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -106,80 +98,6 @@ class DistractorValidityTenChoices(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ByobConfig:
-    """Configuration for the BYOB MCQ generation pipeline."""
-
-    expt_name: str = ""
-    output_dir: str = "data/byob"
-    input_dir: str = ""
-    language: str = "en"
-
-    hf_dataset: str = "cais/mmlu"
-    subset: str = ""
-    split: str = "test"
-
-    source_subjects: list[str] = field(default_factory=list)
-    target_subjects: list[str] = field(default_factory=list)
-    target_source_mapping: dict = field(default_factory=dict)
-
-    few_shot_samples_per_query: int = 5
-    queries_per_target_subject_document: int = 1
-    num_questions_per_query: int = 5
-
-    prompt_config: Optional[dict] = None
-    generation_model_config: dict = field(default_factory=dict)
-    judge_model_config: dict = field(default_factory=dict)
-
-    do_distractor_expansion: bool = False
-    distractor_expansion_model_config: dict = field(default_factory=dict)
-    distractor_validity_model_config: dict = field(default_factory=dict)
-
-    filtering_model_configs: dict = field(default_factory=lambda: {"easiness": [], "hallucination": []})
-    easiness_threshold: float = 0.5
-    hallucination_threshold: float = 0.5
-    remove_hallucinated: bool = True
-    remove_easy: bool = False
-
-    ndd_batch_size: int = 1000
-    random_seed: Optional[int] = None
-    metadata_file: Optional[str] = None
-
-    semantic_deduplication_config: dict = field(
-        default_factory=lambda: {
-            "model_identifier": "sentence-transformers/all-MiniLM-L6-v2",
-            "n_clusters": 1,
-            "eps": 0.07,
-            "remove_duplicates": False,
-        }
-    )
-    semantic_outlier_detection_config: dict = field(
-        default_factory=lambda: {
-            "model_identifier": "sentence-transformers/all-MiniLM-L6-v2",
-            "n_neighbours_min": 1,
-            "remove_outliers": False,
-        }
-    )
-    chunking_config: dict = field(default_factory=lambda: {"window_size": None})
-    do_coverage_check: bool = False
-    coverage_check_config: dict = field(
-        default_factory=lambda: {"window_size": None, "model_identifier": None}
-    )
-
-    @staticmethod
-    def from_omegaconf(cfg: DictConfig) -> "ByobConfig":
-        from omegaconf import OmegaConf
-
-        schema = OmegaConf.structured(ByobConfig)
-        merged = OmegaConf.merge(schema, cfg)
-        return ByobConfig(**OmegaConf.to_container(merged, resolve=True))
-
-
-# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -240,21 +158,43 @@ def _run_dd_stage(
     return dataset
 
 
+def _load_seed_dataframe(byob_cfg: ByobConfig) -> "pd.DataFrame":
+    """Load a seed table from ``input_dir`` (parquet/JSONL) or from Hugging Face."""
+    import pandas as pd
+
+    ind = (byob_cfg.input_dir or "").strip()
+    if ind and os.path.isfile(ind):
+        if ind.endswith(".parquet"):
+            return pd.read_parquet(ind)
+        return pd.read_json(ind, lines=True)
+    if not ind:
+        try:
+            from datasets import load_dataset as hf_load
+        except ImportError as exc:
+            raise ImportError(
+                "datasets is required for loading HuggingFace datasets. "
+                "Install with: pip install datasets"
+            ) from exc
+        sub = (byob_cfg.subset or None) or None
+        if sub == "":
+            sub = None
+        ds = hf_load(byob_cfg.hf_dataset, sub, split=byob_cfg.split)
+        return ds.to_pandas()
+
+    msg = (
+        f"input_dir {ind!r} is not a file. After prepare_byob_seed, set input_dir to the "
+        f"produced seed.parquet (or a JSONL), or clear input_dir to load hf_dataset only."
+    )
+    raise FileNotFoundError(msg)
+
+
 # ---------------------------------------------------------------------------
 # Pipeline stages
 # ---------------------------------------------------------------------------
 
 
 def generate_questions(config: ByobConfig, seed_df: "pd.DataFrame") -> "pd.DataFrame":
-    """Generate MCQ questions using LLM few-shot prompting.
-
-    Args:
-        config: BYOB configuration.
-        seed_df: Seed DataFrame with few-shot examples and target text.
-
-    Returns:
-        DataFrame with ``result`` column containing generated questions.
-    """
+    """Generate MCQ questions using LLM few-shot prompting."""
     prompts = config.prompt_config or {}
     qa_cfg = prompts.get("qa_generation", {})
     sys_prompt = qa_cfg.get("system_prompt", "").format(
@@ -278,11 +218,7 @@ def generate_questions(config: ByobConfig, seed_df: "pd.DataFrame") -> "pd.DataF
 
 
 def judge_questions(config: ByobConfig, seed_df: "pd.DataFrame") -> "pd.DataFrame":
-    """Judge quality and validity of generated questions.
-
-    Returns:
-        DataFrame with ``result`` column containing JudgeResult.
-    """
+    """Judge quality and validity of generated questions."""
     prompts = config.prompt_config or {}
     jcfg = prompts.get("question_judge", {})
     return _run_dd_stage(
@@ -299,11 +235,7 @@ def judge_questions(config: ByobConfig, seed_df: "pd.DataFrame") -> "pd.DataFram
 
 
 def expand_distractors(config: ByobConfig, seed_df: "pd.DataFrame") -> "pd.DataFrame":
-    """Expand from 4 to 10 answer choices.
-
-    Returns:
-        DataFrame with ``result_distractor_expansion`` column.
-    """
+    """Expand from 4 to 10 answer choices."""
     prompts = config.prompt_config or {}
     dcfg = prompts.get("distractor_expansion", {})
     return _run_dd_stage(
@@ -320,14 +252,7 @@ def expand_distractors(config: ByobConfig, seed_df: "pd.DataFrame") -> "pd.DataF
 
 
 def filter_questions(config: ByobConfig, dataset: "pd.DataFrame") -> "pd.DataFrame":
-    """Filter questions for easiness and hallucination.
-
-    Uses multiple LLM models to answer generated questions, then flags
-    those that are too easy or hallucinated based on correct-answer ratios.
-
-    Returns:
-        DataFrame with response columns for each filter type and model.
-    """
+    """Filter questions for easiness and hallucination."""
     _require_dd()
     from data_designer.essentials import (
         DataDesigner,
@@ -340,12 +265,20 @@ def filter_questions(config: ByobConfig, dataset: "pd.DataFrame") -> "pd.DataFra
 
     prompts = config.prompt_config or {}
     sys_prompts = {
-        "easiness": prompts.get("easiness_filter", {}).get("system_prompt", "").format(num_choices=num_choices),
-        "hallucination": prompts.get("hallucination_filter", {}).get("system_prompt", "").format(num_choices=num_choices),
+        "easiness": prompts.get("easiness_filter", {})
+        .get("system_prompt", "")
+        .format(num_choices=num_choices),
+        "hallucination": prompts.get("hallucination_filter", {})
+        .get("system_prompt", "")
+        .format(num_choices=num_choices),
     }
     user_prompts = {
-        "easiness": prompts.get("easiness_filter", {}).get("prompt", "").format(choices=choices_text),
-        "hallucination": prompts.get("hallucination_filter", {}).get("prompt", "").format(choices=choices_text),
+        "easiness": prompts.get("easiness_filter", {})
+        .get("prompt", "")
+        .format(choices=choices_text),
+        "hallucination": prompts.get("hallucination_filter", {})
+        .get("prompt", "")
+        .format(choices=choices_text),
     }
 
     all_model_configs = [
@@ -387,11 +320,7 @@ def filter_questions(config: ByobConfig, dataset: "pd.DataFrame") -> "pd.DataFra
 def check_distractor_validity(
     config: ByobConfig, dataset: "pd.DataFrame"
 ) -> "pd.DataFrame":
-    """Verify that only the designated answer is correct.
-
-    Returns:
-        DataFrame with ``result_distractor_validity`` column.
-    """
+    """Verify that only the designated answer is correct."""
     num_choices = 10 if config.do_distractor_expansion else 4
     prompts = config.prompt_config or {}
     dv = prompts.get("distractor_validity", {})
@@ -418,89 +347,29 @@ def check_distractor_validity(
 # ---------------------------------------------------------------------------
 
 
-def prepare_byob_seed(cfg: "DictConfig") -> dict:
-    """Prepare a seed dataset for BYOB MCQ generation.
-
-    Loads source data (from HuggingFace or a local directory) and writes
-    a seed JSONL file that can be consumed by :func:`generate_byob_benchmark`.
-
-    Args:
-        cfg: OmegaConf DictConfig with BYOB parameters.
-
-    Returns:
-        Dict with ``seed_path`` and ``num_records``.
-    """
-    import pandas as pd
-
-    byob_cfg = ByobConfig.from_omegaconf(cfg)
-    os.makedirs(byob_cfg.output_dir, exist_ok=True)
-
-    if byob_cfg.input_dir:
-        seed_df = pd.read_json(byob_cfg.input_dir, lines=True)
-    else:
-        try:
-            from datasets import load_dataset as hf_load
-        except ImportError as exc:
-            raise ImportError(
-                "datasets is required for loading HuggingFace datasets. "
-                "Install with: pip install datasets"
-            ) from exc
-        ds = hf_load(byob_cfg.hf_dataset, byob_cfg.subset or None, split=byob_cfg.split)
-        seed_df = ds.to_pandas()
-
-    seed_path = os.path.join(byob_cfg.output_dir, "seed_dataset.jsonl")
-    seed_df.to_json(seed_path, orient="records", lines=True)
-    log.info("BYOB seed dataset written: %s (%d records)", seed_path, len(seed_df))
-
-    return {"seed_path": seed_path, "num_records": len(seed_df)}
-
-
 def generate_byob_benchmark(cfg: "DictConfig") -> dict:
     """Run the full BYOB MCQ benchmark generation pipeline.
 
-    Orchestrates generate -> judge -> expand distractors -> validate ->
-    filter in sequence, writing the final benchmark to ``output_dir``.
-
-    Args:
-        cfg: OmegaConf DictConfig with BYOB parameters.
-
-    Returns:
-        Dict with ``output_dir``, ``num_questions``, and per-stage counts.
+    Use ``input_dir`` pointing to a ``seed.parquet`` from :func:`prepare_byob_seed`,
+    a JSONL seed, or leave ``input_dir`` empty to load the HuggingFace ``hf_dataset`` split
+    (legacy / quick test; does not use few-shot + target corpus layout).
     """
-    import pandas as pd
-
     byob_cfg = ByobConfig.from_omegaconf(cfg)
     result: Dict[str, object] = {"output_dir": byob_cfg.output_dir}
 
     os.makedirs(byob_cfg.output_dir, exist_ok=True)
 
-    # Load seed data -- either from HuggingFace or local input_dir
-    if byob_cfg.input_dir:
-        seed_df = pd.read_json(byob_cfg.input_dir, lines=True)
-    else:
-        try:
-            from datasets import load_dataset as hf_load
-        except ImportError as exc:
-            raise ImportError(
-                "datasets is required for loading HuggingFace datasets. "
-                "Install with: pip install datasets"
-            ) from exc
-        ds = hf_load(byob_cfg.hf_dataset, byob_cfg.subset or None, split=byob_cfg.split)
-        seed_df = ds.to_pandas()
-
+    seed_df = _load_seed_dataframe(byob_cfg)
     log.info("BYOB pipeline: %d seed records", len(seed_df))
 
-    # Stage 1: Generate MCQ questions
     log.info("[BYOB 1/5] Generating questions")
     gen_df = generate_questions(byob_cfg, seed_df)
     result["generated"] = len(gen_df)
 
-    # Stage 2: Judge question quality
     log.info("[BYOB 2/5] Judging questions")
     judged_df = judge_questions(byob_cfg, gen_df)
     result["judged"] = len(judged_df)
 
-    # Stage 3: Expand distractors (optional)
     if byob_cfg.do_distractor_expansion:
         log.info("[BYOB 3/5] Expanding distractors")
         judged_df = expand_distractors(byob_cfg, judged_df)
@@ -508,17 +377,14 @@ def generate_byob_benchmark(cfg: "DictConfig") -> dict:
     else:
         log.info("[BYOB 3/5] Distractor expansion skipped")
 
-    # Stage 4: Validate distractor correctness
     log.info("[BYOB 4/5] Checking distractor validity")
     validated_df = check_distractor_validity(byob_cfg, judged_df)
     result["validated"] = len(validated_df)
 
-    # Stage 5: Filter for easiness and hallucination
     log.info("[BYOB 5/5] Filtering questions")
     final_df = filter_questions(byob_cfg, validated_df)
     result["final"] = len(final_df)
 
-    # Persist final benchmark
     output_path = os.path.join(byob_cfg.output_dir, "benchmark.jsonl")
     final_df.to_json(output_path, orient="records", lines=True)
     log.info("BYOB benchmark written: %s (%d questions)", output_path, len(final_df))
