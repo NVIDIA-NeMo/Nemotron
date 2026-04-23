@@ -30,6 +30,7 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import clone_git_repos_via_tunnel, get_startup_commands, prepend_startup_to_cmd
 from nemo_runspec.packaging import CodePackager
 from nemo_runspec.recipe_config import parse_recipe_config
+from nemo_runspec.squash import resolve_build_image, resolve_build_partition, resolve_build_time
 
 console = Console()
 
@@ -65,9 +66,9 @@ def _show_build_plan(stage: str, stage_dir: Path, build_script: Path, spec, cfg,
     table.add_row("Mode", cfg.mode)
     if env is not None:
         table.add_row("Profile", cfg.profile or "")
-        table.add_row("Build image", env.get("build_image") or BUILD_IMAGE)
-        table.add_row("Partition", env.get("build_partition") or env.get("partition") or "")
-        table.add_row("Time", env.get("build_time") or env.get("time") or "02:00:00")
+        table.add_row("Build image", resolve_build_image(env, BUILD_IMAGE))
+        table.add_row("Partition", resolve_build_partition(env) or "")
+        table.add_row("Time", resolve_build_time(env, "02:00:00"))
     else:
         table.add_row("Build image", "local host execution")
     table.add_row("Cache mount", BUILD_CACHE_MOUNT)
@@ -131,13 +132,13 @@ def _execute_remote(build_script: Path, spec, passthrough: list[str], attached: 
 
         executor = run.SlurmExecutor(
             account=_get("account"),
-            partition=_get("build_partition") or _get("partition"),
+            partition=resolve_build_partition(env),
             nodes=spec.resources.nodes,
             ntasks_per_node=1,
             gpus_per_node=spec.resources.gpus_per_node,
             cpus_per_task=_get("build_cpus", 16),
-            time=_get("build_time") or _get("time", "02:00:00"),
-            container_image=_get("build_image") or BUILD_IMAGE,
+            time=resolve_build_time(env, "02:00:00"),
+            container_image=resolve_build_image(env, BUILD_IMAGE),
             container_mounts=mounts,
             tunnel=tunnel,
             packager=packager,

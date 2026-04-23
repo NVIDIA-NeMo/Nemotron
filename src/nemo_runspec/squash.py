@@ -17,16 +17,100 @@
 Handles converting container images or archives to squash files on remote
 clusters using enroot. Uses deterministic naming to avoid re-squashing
 existing images.
+
+Also hosts the small precedence helpers that build-context Slurm
+submissions share (squash + omni3 build dispatcher + family-specific
+build.py wrappers). Precedence:
+
+    partition:  build_partition  >  run_partition  >  partition
+    time:       build_time       >  time                      (default fallback)
+    image:      build_image      >  caller's default
+
+Prefer these helpers over re-implementing the precedence inline — see the
+``refactor(runspec): support archive container schemes`` commit for
+context. For nemo-run SlurmExecutor kwargs (different shape from
+salloc argv), use the three resolve_* helpers individually.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Mapping
 
 from rich.console import Console
 
 console = Console()
+
+
+# ---------------------------------------------------------------------------
+# Precedence helpers for build-context Slurm submissions
+# ---------------------------------------------------------------------------
+
+
+def resolve_build_partition(env_config: Mapping[str, Any] | None) -> str | None:
+    """Select the Slurm partition for a container-build / enroot-import job.
+
+    Precedence: ``build_partition`` > ``run_partition`` > ``partition``.
+    Returns ``None`` when no partition is set (caller decides the default).
+    """
+    if env_config is None:
+        return None
+    return (
+        env_config.get("build_partition")
+        or env_config.get("run_partition")
+        or env_config.get("partition")
+    )
+
+
+def resolve_build_time(env_config: Mapping[str, Any] | None, default: str = "04:00:00") -> str:
+    """Select the Slurm walltime for a container-build job.
+
+    Precedence: ``build_time`` > ``time`` > caller-provided ``default``.
+    """
+    if env_config is None:
+        return default
+    return env_config.get("build_time") or env_config.get("time", default)
+
+
+def resolve_build_image(env_config: Mapping[str, Any] | None, default: str) -> str:
+    """Select the container image used by the build job itself.
+
+    Precedence: ``build_image`` > caller-provided ``default``. Empty/None
+    values in env_config fall through to the default.
+    """
+    if env_config is None:
+        return default
+    return env_config.get("build_image") or default
+
+
+def build_salloc_args(
+    env_config: Mapping[str, Any] | None,
+    *,
+    default_time: str = "04:00:00",
+    include_gpus: bool = True,
+) -> list[str]:
+    """Build the salloc argv list for a single-node build/enroot-import job.
+
+    Canonical shape shared by ``ensure_squashed_image`` and ``kit squash``.
+    For nemo-run SlurmExecutor constructions (different kwargs shape), call
+    the three resolve_* helpers individually.
+    """
+    env_config = env_config or {}
+    account = env_config.get("account")
+    partition = resolve_build_partition(env_config)
+    time_limit = resolve_build_time(env_config, default_time)
+    gpus_per_node = env_config.get("gpus_per_node") if include_gpus else None
+
+    args: list[str] = []
+    if account:
+        args.append(f"--account={account}")
+    if partition:
+        args.append(f"--partition={partition}")
+    args.extend(["--nodes=1", "--ntasks-per-node=1"])
+    if gpus_per_node:
+        args.append(f"--gpus-per-node={gpus_per_node}")
+    args.append(f"--time={time_limit}")
+    return args
 
 _SUPPORTED_SCHEMES = (
     "docker://",
@@ -169,26 +253,10 @@ def ensure_squashed_image(
     tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
 
     # Build salloc command to run enroot import on a compute node
-    # (login nodes don't have enough memory for enroot import)
-    account = env_config.get("account")
-    partition = (
-        env_config.get("build_partition")
-        or env_config.get("run_partition")
-        or env_config.get("partition")
-    )
-    time_limit = env_config.get("build_time") or env_config.get("time", "04:00:00")
-    gpus_per_node = env_config.get("gpus_per_node")
-
-    salloc_args = []
-    if account:
-        salloc_args.append(f"--account={account}")
-    if partition:
-        salloc_args.append(f"--partition={partition}")
-    salloc_args.append("--nodes=1")
-    salloc_args.append("--ntasks-per-node=1")
-    if gpus_per_node:
-        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
-    salloc_args.append(f"--time={time_limit}")
+    # (login nodes don't have enough memory for enroot import).
+    # build_salloc_args applies the canonical build-context precedence
+    # (build_partition > run_partition > partition; build_time > time).
+    salloc_args = build_salloc_args(env_config)
 
     # Set up writable enroot paths (default /raid/enroot may not be user-writable)
     enroot_runtime = f"{remote_job_dir}/.enroot"

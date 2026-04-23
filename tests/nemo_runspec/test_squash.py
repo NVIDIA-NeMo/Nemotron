@@ -20,7 +20,14 @@ from dataclasses import dataclass
 
 import pytest
 
-from nemo_runspec.squash import container_to_sqsh_name, ensure_squashed_image
+from nemo_runspec.squash import (
+    build_salloc_args,
+    container_to_sqsh_name,
+    ensure_squashed_image,
+    resolve_build_image,
+    resolve_build_partition,
+    resolve_build_time,
+)
 
 
 @dataclass
@@ -122,3 +129,81 @@ def test_ensure_squashed_image_defaults_to_docker_scheme_for_bare_images():
         "enroot import --output /remote/jobs/nvcr_io_nvidian_nemo_25_11_nano_v3_rc2.sqsh "
         "docker://nvcr.io/nvidian/nemo:25.11-nano-v3.rc2"
     ) in tunnel.commands[-1]
+
+
+class TestResolveBuildPartition:
+    def test_build_partition_wins(self):
+        env = {"build_partition": "cpu", "run_partition": "interactive", "partition": "batch"}
+        assert resolve_build_partition(env) == "cpu"
+
+    def test_falls_back_to_run_partition(self):
+        env = {"run_partition": "interactive", "partition": "batch"}
+        assert resolve_build_partition(env) == "interactive"
+
+    def test_falls_back_to_partition(self):
+        assert resolve_build_partition({"partition": "batch"}) == "batch"
+
+    def test_none_when_nothing_set(self):
+        assert resolve_build_partition({}) is None
+        assert resolve_build_partition(None) is None
+
+
+class TestResolveBuildTime:
+    def test_build_time_wins(self):
+        env = {"build_time": "02:00:00", "time": "08:00:00"}
+        assert resolve_build_time(env) == "02:00:00"
+
+    def test_falls_back_to_time(self):
+        assert resolve_build_time({"time": "08:00:00"}) == "08:00:00"
+
+    def test_default_applied(self):
+        assert resolve_build_time({}) == "04:00:00"
+        assert resolve_build_time(None, default="06:00:00") == "06:00:00"
+
+
+class TestResolveBuildImage:
+    def test_build_image_wins(self):
+        env = {"build_image": "custom/podman:v1"}
+        assert resolve_build_image(env, "quay.io/podman/stable:v5.3") == "custom/podman:v1"
+
+    def test_default_used_when_unset(self):
+        assert resolve_build_image({}, "quay.io/podman/stable:v5.3") == "quay.io/podman/stable:v5.3"
+        assert resolve_build_image(None, "quay.io/podman/stable:v5.3") == "quay.io/podman/stable:v5.3"
+
+
+class TestBuildSallocArgs:
+    def test_minimal_config(self):
+        args = build_salloc_args({})
+        assert "--nodes=1" in args
+        assert "--ntasks-per-node=1" in args
+        assert "--time=04:00:00" in args
+
+    def test_full_config(self):
+        env = {
+            "account": "dl-algo",
+            "build_partition": "cpu",
+            "build_time": "02:00:00",
+            "gpus_per_node": 8,
+        }
+        args = build_salloc_args(env)
+        assert "--account=dl-algo" in args
+        assert "--partition=cpu" in args
+        assert "--time=02:00:00" in args
+        assert "--gpus-per-node=8" in args
+
+    def test_include_gpus_false(self):
+        args = build_salloc_args({"gpus_per_node": 8}, include_gpus=False)
+        assert not any("gpus-per-node" in a for a in args)
+
+    def test_build_partition_precedence_applied(self):
+        # Regression: the three-layer precedence that used to be inlined
+        # six times across the repo now lives in one helper.
+        env = {
+            "build_partition": "cpu",
+            "run_partition": "interactive",
+            "partition": "batch",
+        }
+        args = build_salloc_args(env)
+        assert "--partition=cpu" in args
+        assert "--partition=interactive" not in args
+        assert "--partition=batch" not in args
