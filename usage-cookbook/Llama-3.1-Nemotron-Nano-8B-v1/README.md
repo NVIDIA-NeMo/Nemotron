@@ -236,6 +236,10 @@ The bastion is placed on the public bastion subnet so the OCI Bastion managed
 service can accept inbound SSH connections. The port-forwarding session then
 tunnels traffic to the private API endpoint over VCN-internal routing.
 
+> Known issue on OpenSSH 10.x (macOS 15+, some recent Linux): port-forwarding
+> sessions close immediately after auth. If `ssh -V` reports 10.x, use
+> [Appendix A](#appendix-a-jump-host-vm-alternative-openssh-10x) instead.
+
 ```bash
 BASTION_ID=$(oci bastion bastion create \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
@@ -279,13 +283,26 @@ echo "CPU image: ${CPU_IMAGE_ID}"
 #     --query "data.sources[?contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}')].{name:\"source-name\",id:\"image-id\"}" \
 #     --output table
 
-# Pick an availability domain
-# Phoenix: AD-2 (index 1) had GPU capacity at validation time.
-# Adjust the index if your region has different GPU availability.
-AD=$(oci iam availability-domain list \
-    --compartment-id "${OCI_COMPARTMENT_ID}" \
-    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
-    --query "data[1].name" --raw-output)
+# Pick an availability domain with A10 capacity.
+# Iterate through ADs and use the first one with capacity available.
+AD=""
+for CANDIDATE in $(oci iam availability-domain list \
+        --compartment-id "${OCI_COMPARTMENT_ID}" \
+        --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+        --query 'data[].name' --raw-output | jq -r '.[]'); do
+    AVAIL=$(oci limits resource-availability get \
+        --compartment-id "${OCI_COMPARTMENT_ID}" \
+        --service-name compute --limit-name gpu-a10-count \
+        --availability-domain "${CANDIDATE}" \
+        --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+        --query 'data.available' --raw-output 2>/dev/null)
+    if [[ "${AVAIL}" =~ ^[0-9]+$ ]] && (( AVAIL > 0 )); then
+        AD="${CANDIDATE}"
+        echo "Selected AD with ${AVAIL} A10s available: ${AD}"
+        break
+    fi
+done
+[[ -z "${AD}" ]] && { echo "No AD with A10 capacity in ${OCI_REGION}"; exit 1; }
 
 # CPU node pool (boot volume >= 100 GB for the router image)
 oci ce node-pool create \
@@ -435,7 +452,6 @@ kubectl exec ${POD_NAME} -- chroot /host bash -c '
   df -h /
 '
 
-kubectl exec ${POD_NAME} -- nsenter -t 1 -m -p -- systemctl restart kubelet
 kubectl delete pod ${POD_NAME} --force
 ```
 
@@ -443,6 +459,61 @@ Repeat for each node. Expected results:
 
 - GPU node (200 GB boot volume): 36 GB → ~189 GB usable
 - CPU node (100 GB boot volume): 36 GB → ~89 GB usable
+
+Kubelet caches capacity at startup — in-place `systemctl restart kubelet`
+does not refresh it. See Step 7b.
+
+## Step 7b: Soft-reset each node so kubelet re-reads disk capacity
+
+Drain each node, soft-reset the VM, wait for Ready, uncordon:
+
+```bash
+for NODE_IP in <cpu-node-ip> <gpu-node-ip>; do
+    # Resolve the OCI instance OCID for this node (nodes are named by their
+    # internal IP in OKE).
+    INSTANCE_ID=$(oci ce node-pool list \
+        --compartment-id "${OCI_COMPARTMENT_ID}" \
+        --cluster-id "${CLUSTER_ID}" \
+        --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+        --query "data[].nodes[?\"private-ip\"=='${NODE_IP}'].id | [0][0]" \
+        --raw-output)
+
+    kubectl cordon "${NODE_IP}"
+    kubectl drain "${NODE_IP}" --ignore-daemonsets --delete-emptydir-data \
+        --force --grace-period=30 --timeout=120s || true
+
+    oci compute instance action \
+        --instance-id "${INSTANCE_ID}" --action SOFTRESET \
+        --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+
+    # Wait for VM RUNNING, then for node Ready
+    until [[ "$(oci compute instance get --instance-id "${INSTANCE_ID}" \
+            --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+            --query 'data."lifecycle-state"' --raw-output)" == "RUNNING" ]]; do
+        sleep 15
+    done
+    until kubectl get node "${NODE_IP}" \
+            -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+            | grep -q True; do
+        sleep 15
+    done
+
+    kubectl uncordon "${NODE_IP}"
+done
+```
+
+Verify kubelet picked up the expanded capacity before continuing:
+
+```bash
+for NODE in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+    CAP=$(kubectl get node "${NODE}" \
+        -o jsonpath='{.status.capacity.ephemeral-storage}')
+    echo "${NODE}: ${CAP}"
+done
+```
+
+Expected: CPU node ~`93476416Ki` (~89 GiB), GPU node ~`198056192Ki` (~189 GiB).
+If either still shows ~`37206272Ki`, rerun the soft-reset for that node.
 
 ## Step 8: Create StorageClasses
 
@@ -600,6 +671,40 @@ running `growpart`:
 echo 1 > /sys/class/block/sda/device/rescan
 ```
 
+### Engine pod evicted mid image pull despite Step 7 reporting success
+
+Symptoms: engine pod reaches `ContainerCreating`, then kubelet evicts it with
+`The node was low on resource: ephemeral-storage` (or `inodes`), and
+`FreeDiskSpaceFailed: ... but only found 0 bytes eligible to free`.
+
+Cause: kubelet's `Node.Capacity.ephemeral-storage` is cached at startup. Even
+after Step 7 expands the filesystem to ~189 GiB, kubelet continues to report
+the original ~37 GiB and triggers eviction thresholds against the stale value.
+Confirm with:
+
+```bash
+kubectl describe node <node-ip> | grep "ephemeral-storage:"
+```
+
+If the value is ~`37206272Ki`, apply Step 7b (soft-reset the VM). An in-place
+`systemctl restart kubelet` does **not** refresh the capacity.
+
+### SSH tunnel to OCI Bastion closes immediately after authentication
+
+Symptoms: `ssh -N -L 6443:... <session-id>@host.bastion.<region>.oci.oraclecloud.com`
+completes publickey auth, reports
+`Local forwarding listening on 127.0.0.1 port 6443`, then:
+`Connection to host.bastion.<region>.oci.oraclecloud.com closed by remote host.`
+Port 6443 never stays open on the client.
+
+Cause: OpenSSH 10.x (shipped on macOS 15+ and recent Linux distros) is
+incompatible with OCI Bastion's Go SSH server implementation for
+port-forwarding sessions.
+
+Workaround: use the jump-host VM path in
+[Appendix A](#appendix-a-jump-host-vm-alternative-openssh-10x). Downgrading
+the client to OpenSSH 9.x also works but is typically impractical on macOS.
+
 ### Engine pod stays Pending with PVC not found
 
 The `vllm-stack` chart (0.1.10) requires `vllm-templates-pvc` to exist
@@ -683,3 +788,89 @@ available in [`terraform/`](./terraform/) for reference. Note that the
 module's NSG configuration requires its built-in bastion compute host
 (`create_bastion = true`) for OCI Bastion port-forwarding to work. The
 manual CLI approach above is recommended for initial deployments.
+
+## Appendix A: Jump-host VM alternative (OpenSSH 10.x)
+
+Use this when `ssh -V` reports OpenSSH 10.x. Replaces Step 4 and the
+bastion-session block in Step 6.
+
+Trade-off: this is a public-IP VM, not OCI's managed bastion service.
+Terminate it during cleanup.
+
+### A.1 Launch the jump-host VM (replaces Step 4)
+
+```bash
+OL_IMAGE_ID=$(oci compute image list \
+    --compartment-id "${OCI_COMPARTMENT_ID}" \
+    --operating-system "Oracle Linux" --operating-system-version "9" \
+    --shape "VM.Standard.E5.Flex" \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+    --query 'data[?"lifecycle-state"==`AVAILABLE`] | sort_by(@, &"time-created") | [-1].id' \
+    --raw-output)
+
+SSH_PUB=$(cat ~/.ssh/id_ed25519.pub)
+METADATA=$(jq -cn --arg k "${SSH_PUB}" '{"ssh_authorized_keys": $k}')
+
+oci compute instance launch \
+    --compartment-id "${OCI_COMPARTMENT_ID}" \
+    --availability-domain "${AD}" \
+    --display-name "${CLUSTER_NAME}-jumphost" \
+    --shape "VM.Standard.E5.Flex" \
+    --shape-config '{"ocpus":1,"memoryInGBs":8}' \
+    --image-id "${OL_IMAGE_ID}" \
+    --subnet-id "${BASTION_SUBNET_ID}" \
+    --assign-public-ip true \
+    --metadata "${METADATA}" \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+    --wait-for-state RUNNING
+
+JUMP_HOST_ID=$(oci compute instance list \
+    --compartment-id "${OCI_COMPARTMENT_ID}" \
+    --display-name "${CLUSTER_NAME}-jumphost" \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+    --query 'data[?"lifecycle-state"==`RUNNING`] | [0].id' --raw-output)
+
+VNIC_ID=$(oci compute vnic-attachment list \
+    --compartment-id "${OCI_COMPARTMENT_ID}" --instance-id "${JUMP_HOST_ID}" \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+    --query 'data[0]."vnic-id"' --raw-output)
+
+JUMP_HOST_IP=$(oci network vnic get --vnic-id "${VNIC_ID}" \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+    --query 'data."public-ip"' --raw-output)
+
+echo "Jump host public IP: ${JUMP_HOST_IP}"
+
+# cloud-init may still be copying authorized_keys when the VM first reports
+# RUNNING — wait for port 22 to accept connections before using ssh.
+until nc -z -G 3 "${JUMP_HOST_IP}" 22 2>/dev/null; do sleep 2; done
+```
+
+### A.2 Open the tunnel through the jump-host (replaces Step 6 bastion block)
+
+Run Step 6 up through the `kubectl config set-cluster` server-URL rewrite,
+then skip the `oci bastion session` block and tunnel directly:
+
+```bash
+nohup ssh -f -N -L 6443:${PRIVATE_IP}:6443 \
+    -i ~/.ssh/id_ed25519 \
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -o IdentitiesOnly=yes -o ServerAliveInterval=30 \
+    -o ExitOnForwardFailure=yes \
+    opc@${JUMP_HOST_IP} < /dev/null > /tmp/nemotron-ssh-tunnel.log 2>&1
+
+nc -z 127.0.0.1 6443 && echo "tunnel up" || echo "tunnel failed"
+kubectl get nodes
+```
+
+No session TTL; restart the tunnel after a laptop sleep or network change.
+
+### A.3 Cleanup addition
+
+When running the cleanup steps, also terminate the jump-host:
+
+```bash
+oci compute instance terminate --instance-id "${JUMP_HOST_ID}" --force \
+    --preserve-boot-volume false \
+    --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+```
