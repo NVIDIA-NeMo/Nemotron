@@ -8,9 +8,9 @@
 # setup = "Build the Omni SFT container with `nemotron omni3 build sft` before training."
 #
 # [tool.runspec.run]
-# launch = "direct"
+# launch = "torchrun"
 # workdir = "/workspace/Megatron-Bridge"
-# cmd = "uv run torchrun --nproc-per-node=8 scripts/training/run_recipe.py --recipe {recipe} --step_func nemotron_omni_step"
+# cmd = "python {script} --recipe {recipe} --step_func {step_func} --config {config}"
 #
 # [tool.runspec.config]
 # dir = "./config"
@@ -35,152 +35,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Thin Omni SFT launcher for Megatron-Bridge's run_recipe.py."""
+"""Omni SFT entry point — thin forwarder to Megatron-Bridge's run_recipe.py.
+
+This module exists primarily to carry the PEP 723 ``[tool.runspec]`` metadata
+that the `nemotron omni3 sft` CLI reads (image, launch method, config
+directory, resource footprint). The ``cmd`` template above declares the
+contract: "torchrun-wrap ``python {script} --recipe … --step_func …
+--config …``".
+
+nemo-run's `Torchrun` launcher wraps this command with the correct
+``--nproc-per-node`` / ``--nnodes`` / ``--node-rank`` / rendezvous flags
+from Slurm env vars automatically — we do *not* hand-roll that logic. The
+container's PATH is set so ``python`` resolves to the Megatron-Bridge
+uv-synced venv (see stage0_sft/Dockerfile), which means no ``uv run``
+prefix is needed anywhere in the runspec or CLI.
+
+The module body is intentionally tiny: we accept the three ``--recipe`` /
+``--step_func`` / ``--config`` flags the CLI passes through, then
+``os.execvp`` into Megatron-Bridge's own ``run_recipe.py`` with the
+same arguments plus any Hydra-style overrides. Using ``execvp`` means
+there's no extra Python process — the child inherits torchrun's DDP
+env vars directly.
+
+If you want to run this recipe outside the Nemotron CLI, skip this file
+and invoke Megatron-Bridge's script directly:
+
+    cd /workspace/Megatron-Bridge
+    torchrun --nproc-per-node=8 scripts/training/run_recipe.py \\
+        --recipe nemotron_omni_valor32k_energon_sft_config \\
+        --step_func nemotron_omni_step \\
+        --config /path/to/default.yaml
+"""
 
 from __future__ import annotations
 
-import logging
 import os
-import shlex
-import subprocess
 import sys
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
 
-from omegaconf import OmegaConf
-
-from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
-
-LOGGER = logging.getLogger(__name__)
-
-DEFAULT_CONFIG_PATH = Path(__file__).parent / "config" / "default.yaml"
-DEFAULT_WORKDIR = Path("/workspace/Megatron-Bridge")
-
-
-def _flatten_overrides(prefix: str, value: Any) -> list[str]:
-    """Flatten a nested mapping into Hydra-style key=value overrides."""
-    if isinstance(value, Mapping):
-        overrides: list[str] = []
-        for key, nested_value in value.items():
-            nested_prefix = f"{prefix}.{key}" if prefix else str(key)
-            overrides.extend(_flatten_overrides(nested_prefix, nested_value))
-        return overrides
-    if value is None:
-        return [f"{prefix}=null"]
-    return [f"{prefix}={value}"]
-
-
-def _torchrun_rendezvous_args(nproc_per_node: int) -> list[str]:
-    """Build torchrun --nnodes/--node-rank/--rdzv-* args when running under Slurm.
-
-    When invoked from a multi-node Slurm allocation, the launch-time environment
-    contains SLURM_NNODES, SLURM_NODEID, and the first entry of SLURM_STEP_NODELIST
-    (usually resolved via `scontrol show hostname`). We translate those into
-    torchrun rendezvous args so all nodes participate in one distributed group.
-
-    For single-node runs (local invocation or SLURM_NNODES=1), we return only
-    --nproc-per-node and let torchrun default to a static single-node rendezvous.
-    """
-    nnodes = int(os.environ.get("SLURM_NNODES", "1"))
-    args = [f"--nproc-per-node={nproc_per_node}"]
-    if nnodes <= 1:
-        return args
-
-    node_rank = int(os.environ.get("SLURM_NODEID", "0"))
-    # MASTER_ADDR preferred; Slurm usually sets it or we resolve the first nodelist entry.
-    master_addr = os.environ.get("MASTER_ADDR")
-    if not master_addr:
-        nodelist = os.environ.get("SLURM_STEP_NODELIST") or os.environ.get("SLURM_JOB_NODELIST", "")
-        if nodelist:
-            try:
-                master_addr = subprocess.check_output(
-                    ["scontrol", "show", "hostnames", nodelist], text=True
-                ).splitlines()[0].strip()
-            except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
-                master_addr = None
-    master_port = os.environ.get("MASTER_PORT", "29500")
-
-    args.extend([f"--nnodes={nnodes}", f"--node-rank={node_rank}"])
-    if master_addr:
-        args.append(f"--rdzv-endpoint={master_addr}:{master_port}")
-        args.extend(["--rdzv-backend=c10d", f"--rdzv-id={os.environ.get('SLURM_JOB_ID', 'nemotron-omni3-sft')}"])
-    else:
-        # Last resort: pass master-addr via the legacy flags. Works for static
-        # single-node launches but will NOT coordinate multi-node without
-        # MASTER_ADDR — log a warning so the user knows.
-        LOGGER.warning(
-            "Running with SLURM_NNODES=%d but no MASTER_ADDR/SLURM_JOB_NODELIST found; "
-            "torchrun will not be able to rendezvous across nodes. Set MASTER_ADDR "
-            "in your sbatch/srun environment.",
-            nnodes,
-        )
-    return args
-
-
-def _build_command(config: dict[str, Any], cli_overrides: list[str]) -> tuple[Path, list[str]]:
-    """Build the Megatron-Bridge run_recipe.py command."""
-    recipe_cfg = config.get("recipe", {})
-    run_cfg = config.get("run", {})
-    env_cfg = run_cfg.get("env", {})
-
-    recipe_name = recipe_cfg.get("name")
-    if not recipe_name:
-        raise ValueError("recipe.name is required")
-
-    nproc_per_node = int(run_cfg.get("nproc_per_node", 8))
-    command = [
-        "uv",
-        "run",
-        "torchrun",
-        *_torchrun_rendezvous_args(nproc_per_node),
-        "scripts/training/run_recipe.py",
-        "--recipe",
-        str(recipe_name),
-        "--step_func",
-        str(recipe_cfg.get("step_func", "nemotron_omni_step")),
-    ]
-
-    recipe_dataset = recipe_cfg.get("dataset")
-    if recipe_dataset:
-        command.extend(["--dataset", str(recipe_dataset)])
-
-    for section in ("checkpoint", "dataset", "model", "train", "logger", "optimizer", "scheduler"):
-        section_value = config.get(section)
-        if section_value:
-            command.extend(_flatten_overrides(section, section_value))
-
-    command.extend(cli_overrides)
-    workdir = Path(env_cfg.get("workdir", DEFAULT_WORKDIR))
-    return workdir, command
+RUN_RECIPE = Path("/workspace/Megatron-Bridge/scripts/training/run_recipe.py")
 
 
 def main() -> None:
-    """Entry point for omni3 SFT."""
-    try:
-        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
-        config = load_omegaconf_yaml(config_path)
-    except FileNotFoundError as exc:
-        LOGGER.error(str(exc))
-        sys.exit(1)
-
-    resolved = OmegaConf.to_container(config, resolve=True)
-    if not isinstance(resolved, dict):
-        LOGGER.error("Expected mapping config, got %s", type(resolved).__name__)
-        sys.exit(1)
-
-    try:
-        workdir, command = _build_command(resolved, cli_overrides)
-    except Exception as exc:  # pragma: no cover - user error path
-        LOGGER.error(str(exc))
-        sys.exit(1)
-
-    if not workdir.exists():
-        LOGGER.error("Configured workdir does not exist: %s", workdir)
-        sys.exit(1)
-
-    print(f"Executing: {shlex.join(command)}")
-    subprocess.check_call(command, cwd=workdir)
+    """Forward all CLI args to run_recipe.py via execvp."""
+    if not RUN_RECIPE.is_file():
+        sys.exit(
+            f"error: {RUN_RECIPE} not found. This wrapper expects to run inside the "
+            f"omni3-sft container (`nemotron omni3 build sft`). Outside the container, "
+            f"invoke Megatron-Bridge's scripts/training/run_recipe.py directly."
+        )
+    os.execvp("python", ["python", str(RUN_RECIPE), *sys.argv[1:]])
 
 
 if __name__ == "__main__":

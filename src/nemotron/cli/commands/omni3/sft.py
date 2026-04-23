@@ -87,18 +87,31 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
     display_job_submission(job_path, train_path, env_vars, cfg.mode, artifacts=job_config.get("artifacts"))
     startup_commands = get_startup_commands(env_for_executor)
 
+    # Extract recipe name + step_func from the compiled job config so we can
+    # pass them to run_recipe.py as CLI args (run_recipe.py takes them as
+    # flags, not as YAML fields). Honors the PEP 723 cmd template:
+    #     "python {script} --recipe {recipe} --step_func {step_func} --config {config}"
+    recipe_cfg = job_config.get("recipe") or {}
+    recipe_name = recipe_cfg.get("name")
+    step_func = recipe_cfg.get("step_func", "nemotron_omni_step")
+    if not recipe_name:
+        typer.echo("Error: recipe.name is required in the config YAML", err=True)
+        raise typer.Exit(1)
+    recipe_args = ["--recipe", str(recipe_name), "--step_func", str(step_func)]
+
     if cfg.mode == "local":
         execute_local(
             SCRIPT_PATH,
             train_path,
-            cfg.passthrough,
-            torchrun=False,
+            [*recipe_args, *cfg.passthrough],
+            torchrun=(SPEC.run.launch == "torchrun"),
             env_vars=env_vars,
             startup_commands=startup_commands,
         )
     else:
         _execute_remote(
             train_path=train_path,
+            recipe_args=recipe_args,
             env=env_for_executor,
             passthrough=cfg.passthrough,
             attached=cfg.attached,
@@ -111,6 +124,7 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
 
 def _execute_remote(
     train_path: Path,
+    recipe_args: list[str],
     env,
     passthrough: list[str],
     attached: bool,
@@ -119,7 +133,19 @@ def _execute_remote(
     force_squash: bool,
     experiment=None,
 ):
-    """Execute via nemo-run with Slurm backend."""
+    """Execute via nemo-run with Slurm backend.
+
+    ``recipe_args`` carries the ``--recipe <name> --step_func <func>`` pair
+    extracted from the compiled job config. Combined with ``--config
+    REMOTE_CONFIG`` and any user passthrough, this forms the CLI surface
+    the thin ``train.py`` forwarder expects — which it then forwards to
+    Megatron-Bridge's ``scripts/training/run_recipe.py`` via ``os.execvp``.
+
+    The PEP 723 ``launch = "torchrun"`` declaration drives nemo-run to wrap
+    the command with ``torchrun --nproc-per-node=N`` and populate the
+    multi-node rendezvous flags from Slurm env vars automatically, so we
+    do not construct torchrun args here.
+    """
     try:
         import nemo_run as run
     except ImportError:
@@ -152,7 +178,7 @@ def _execute_remote(
     )
 
     recipe_name = SPEC.name.replace("/", "-")
-    script_args = ["--config", REMOTE_CONFIG, *passthrough]
+    script_args = [*recipe_args, "--config", REMOTE_CONFIG, *passthrough]
 
     if startup_commands:
         import shlex
