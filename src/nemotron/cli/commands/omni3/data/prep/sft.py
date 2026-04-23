@@ -205,7 +205,11 @@ def _execute_ray_code_packager(
     job_name = f"{recipe_name}_{int(time.time())}"
     ray_job = RayJob(name=job_name, executor=executor)
 
-    repo_config = Path.cwd() / "config.yaml"
+    # Stage the resolved config under a job-scoped filename so we don't clobber
+    # whatever the user happens to have at $CWD/config.yaml. The remote path
+    # inside the Ray workdir stays `config.yaml` so the `cmd` template below
+    # doesn't need to change; we only rename it on the local side.
+    repo_config = Path.cwd() / f".nemotron-data-prep-{job_name}.yaml"
     shutil.copy2(train_path, repo_config)
 
     cmd = (_get("run_command", SPEC.run.cmd) or "uv run python {script} --config {config}").format(
@@ -228,15 +232,27 @@ def _execute_ray_code_packager(
             pyyaml.dump(runtime_env, handle)
             runtime_env_yaml = handle.name
 
-    ray_job.start(
-        command=cmd,
-        workdir=str(Path.cwd()) + "/",
-        pre_ray_start_commands=list(SETUP_COMMANDS),
-        runtime_env_yaml=runtime_env_yaml,
-    )
+    try:
+        ray_job.start(
+            command=cmd,
+            workdir=str(Path.cwd()) + "/",
+            pre_ray_start_commands=list(SETUP_COMMANDS),
+            runtime_env_yaml=runtime_env_yaml,
+        )
 
-    remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
-    executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
+        remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
+        executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
+    finally:
+        # Clean up local scratch files so we don't leak one per invocation.
+        try:
+            repo_config.unlink()
+        except OSError:
+            pass
+        if runtime_env_yaml:
+            try:
+                Path(runtime_env_yaml).unlink()
+            except OSError:
+                pass
 
     if ray_job.backend.job_id is None:
         try:
