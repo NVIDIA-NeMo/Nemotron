@@ -4,6 +4,10 @@ Omni starts from the GA checkpoint and fine-tunes it with the Valor32k multimoda
 
 > **Container-first stage**: Omni does not ship with a pre-baked image. This stage owns the `Dockerfile` and `build.py` that produce `omni3-sft.tar`, and all later SFT/eval commands reuse that archive.
 
+> **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
+> - `nemotron omni3 data prep sft` validates and stages a **prepared** Energon dataset; the raw-shard builder is internal-only at release. See the [Valor32k and SDG Data Flow](#valor32k-and-sdg-data-flow) section for the expected layout.
+> - The `omni3-sft` Dockerfile's `ADD https://github.com/NVIDIA/Megatron-Bridge.git#dev/nomni` resolves only once the upstream branch is public (Omni release day). Before then `omni3 build sft` fails at that `ADD` step.
+
 ---
 
 ## Stage Overview

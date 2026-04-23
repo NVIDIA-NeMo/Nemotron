@@ -4,6 +4,10 @@ Evaluate trained Nemotron Omni checkpoints against standard benchmarks using [Ne
 
 > **Different execution pattern**: Like the Nano3 and Super3 evaluators, Omni eval does not submit a recipe script. The CLI resolves config, env profile values, and artifacts, then passes the compiled config directly to `nemo-evaluator-launcher`.
 
+> **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
+> - **Default task list is text-only.** The default config inherits nano3's language-benchmark tasks (`adlr_mmlu`, `hellaswag`, `openbookqa`, etc.) to track language-capability regression on the Omni checkpoint. For multimodal sanity checks (image / video / audio / audio-video-text) use `nemotron omni3 model eval` — see [SFT guide §Model lifecycle](./sft.md#model-lifecycle-export-lora-merge-adapter-export). If you want multimodal benchmarks in the eval stage itself, add task entries to `stage2_eval/config/default.yaml` (see [nemo-evaluator-launcher task list](https://github.com/NVIDIA-NeMo/Evaluator)).
+> - **Default model artifact is `omni3-vision-rl-model:latest`**, produced by the (currently stubbed) vision RL stage. Until the vision launcher lands, override to the last successfully-produced artifact: `run.model=omni3-rl-text-model:latest` (or `omni3-rl-mpo-model:latest` if text RL hasn't run).
+
 ---
 
 ## How Evaluation Works

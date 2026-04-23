@@ -2,6 +2,19 @@
 
 Multimodal post-training pipeline for Nemotron 3 Omni. Unlike Nano3 and Super3, Omni starts from a GA checkpoint and owns its stage-local container builds.
 
+## Current Limitations
+
+The recipe structure, CLI, Dockerfiles, and configs are all in place, but some pieces still depend on upstream work or internal-only data:
+
+- **Vision RL training is stubbed.** `stage3_vision_rl/train.py` raises `NotImplementedError` and declares a degenerate resource footprint (`nodes=1, gpus_per_node=0`) so a stray submission doesn't allocate GPUs. `omni3 pipe` auto-detects this and skips stage 4 by default; pass `pipe.force_vision=true` once the upstream launcher lands. Data prep for MMPR-Tiny is fully functional.
+- **RL container Dockerfile is a placeholder.** `stage1_rl/Dockerfile` has the correct ARGs (vLLM wheel pin + submodule ref) and metadata LABELs, but the body is marked `TODO(release): replace body with forked content from nemo-rl-omni/docker/Dockerfile release target`. `omni3 build rl` will fail until this lands.
+- **SFT `data prep sft` stages a prepared Energon dataset; it does not build Valor32k shards from scratch.** The raw-shard builder is internal-only at release; `data_prep.py` validates that a prepared dataset exists at the configured path and emits a manifest.json. See `stage0_sft/README.md` for the expected layout.
+- **Long-document SDG pipeline is a scaffold.** `src/nemotron/recipes/data/sdg/long-document/` has 9 numbered scripts with their argparse surfaces and a thorough README, but the script bodies raise `NotImplementedError` — port bodies from upstream at release time. See `designs/long-document-sdg-pipeline.md`.
+- **Eval defaults are text-only.** `stage2_eval/config/default.yaml` inherits nano3's language-benchmark task list to track language-capability regression. Multimodal sanity checks (image / video / audio / audio-video-text) run via `nemotron omni3 model eval` — see [SFT guide §Model lifecycle](./sft.md).
+- **Upstream branches may still be private at merge time.** The Dockerfiles reference `github.com/NVIDIA/Megatron-Bridge @ dev/nomni` and `github.com/NVIDIA/NeMo-RL @ nano-v3-omni-recipes`. These URLs come live on Omni release day; until then, `omni3 build sft` / `omni3 build rl` will fail at the `ADD <git-url>` step.
+
+The linked stage guides (SFT / RL / Evaluate) call out each stage's specific limitations.
+
 ## Quick Start
 
 ### Prerequisites

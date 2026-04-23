@@ -4,6 +4,11 @@ Omni RL continues the multimodal post-training pipeline with [NeMo-RL](../nvidia
 
 > **Shared container**: All RL sub-stages use the `src/nemotron/recipes/omni3/stage1_rl/` Dockerfile and `build.py`, which produce `omni3-rl.tar`.
 
+> **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
+> - **Vision RL launcher is stubbed.** `stage3_vision_rl/train.py` raises `NotImplementedError` and declares `nodes=1, gpus_per_node=0` so stray submissions don't allocate GPUs. `omni3 pipe` auto-detects this and skips stage 4 by default; pass `pipe.force_vision=true` once upstream lands. Data prep (`omni3 data prep rl -c vision`) is fully functional and produces the MMPR-Tiny parquet/images layout consumers expect.
+> - **RL Dockerfile body is a placeholder.** Required `ARG`s, `ADD https://github.com/NVIDIA/NeMo-RL.git#nano-v3-omni-recipes`, and `LABEL`s are in place, but the `uv sync` / vLLM install body is a `TODO(release)` stub. `omni3 build rl` will fail until that lands.
+> - **Upstream `nano-v3-omni-recipes` branch may still be private at merge time.** Same resolution timing as SFT's `dev/nomni` branch.
+
 ---
 
 ## RL Pipeline Overview
