@@ -134,4 +134,5 @@ docs = [
     "sphinx-copybutton>=0.5.2",
     "sphinx-design>=0.6.0",
     "sphinxcontrib-mermaid",
+    "sphinxcontrib-copydirs @ git+https://github.com/mikemckiernan/sphinxcontrib-copydirs@v0.4.1",
 ]

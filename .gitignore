@@ -89,3 +89,5 @@ main.py
 
 # Documentation build
 docs/_build/
+docs/usage-cookbook/
+docs/use-case-examples/
