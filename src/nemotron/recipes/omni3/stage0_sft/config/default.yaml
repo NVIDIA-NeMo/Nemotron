@@ -1,34 +1,56 @@
+# Omni3 SFT — default config (open dataset, single-node)
+#
+# Uses CORD-v2 from HuggingFace via Megatron-Bridge's `vlm-hf` dataset loader.
+# No Energon shard preparation is needed: the training container downloads
+# the dataset from the Hub on first use (HF_HOME caches across runs).
+#
+# The language model is frozen so the projector-only training fits on a
+# single 8-GPU node at seq_length 1024 (per QA validation guide §5.2.2).
+# For full-model SFT on audio-visual-language data, use `-c valor32k`
+# (requires internal Valor32k-AVQA access) or swap in your own prepared
+# Energon dataset via `dataset.path=<your-dataset>`.
+#
+# See also:
+#   - image_text_peft.yaml  — LoRA on CORD-v2 (unfreezes LM via low-rank adapters)
+#   - valor32k.yaml          — full audio-visual-language SFT (internal dataset)
+#   - audio_text.yaml        — audio-only SFT (internal dataset)
+#   - tiny.yaml              — 10-iter smoke test on CORD-v2
+
 run:
   nproc_per_node: 8
   env:
     container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
     workdir: /workspace/Megatron-Bridge
+    env_vars:
+      PYTORCH_ALLOC_CONF: expandable_segments:True
 
 recipe:
-  name: nemotron_omni_valor32k_energon_sft_config
+  name: nemotron_omni_cord_v2_sft_config
   step_func: nemotron_omni_step
+  dataset: vlm-hf
 
 checkpoint:
-  pretrained_checkpoint: ${oc.env:OMNI3_MEGATRON_CHECKPOINT,/checkpoints/nemotron_omni}
+  pretrained_checkpoint: ${oc.env:HF_MODEL_PATH,nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning}
   save: /nemo_run/omni3-sft-model
   save_interval: 200
   finetune: true
 
 dataset:
-  path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
-  seq_length: 4096
+  hf_processor_path: ${oc.env:HF_MODEL_PATH,nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning}
+  trust_remote_code: true
+  seq_length: 1024
 
 model:
   tensor_model_parallel_size: 4
-  expert_model_parallel_size: 4
-  seq_length: 4096
-  freeze_language_model: false
-  freeze_vision_model: false
-  freeze_vision_projection: false
-  freeze_sound_encoder: false
-  freeze_sound_projection: false
+  expert_model_parallel_size: 8
+  expert_tensor_parallel_size: 1
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+  seq_length: 1024
+  freeze_language_model: true
 
 train:
-  train_iters: 10000
-  global_batch_size: 128
+  train_iters: 1000
+  global_batch_size: 8
   micro_batch_size: 1

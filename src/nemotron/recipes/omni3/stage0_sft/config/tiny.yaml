@@ -1,32 +1,41 @@
+# Omni3 SFT — tiny smoke test (open dataset, single GPU)
+#
+# Uses CORD-v2 from HuggingFace so this works without any internal dataset
+# access. 10 iterations at seq_length 512 on a single GPU — enough to
+# exercise data loading, container setup, and one training step end-to-end.
+#
+# For a Valor32k-flavor tiny smoke test, override dataset path + recipe
+# name on the CLI or use the internal-flavor valor32k.yaml (needs OMNI3_VALOR32K_ENERGON_PATH).
+
 run:
   nproc_per_node: 1
   env:
     container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
     workdir: /workspace/Megatron-Bridge
+    env_vars:
+      PYTORCH_ALLOC_CONF: expandable_segments:True
 
 recipe:
-  name: nemotron_omni_valor32k_energon_sft_config
+  name: nemotron_omni_cord_v2_sft_config
   step_func: nemotron_omni_step
+  dataset: vlm-hf
 
 checkpoint:
-  pretrained_checkpoint: ${oc.env:OMNI3_MEGATRON_CHECKPOINT,/checkpoints/nemotron_omni}
+  pretrained_checkpoint: ${oc.env:HF_MODEL_PATH,nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning}
   save: /nemo_run/omni3-sft-model-tiny
   save_interval: 5
   finetune: true
 
 dataset:
-  path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
+  hf_processor_path: ${oc.env:HF_MODEL_PATH,nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning}
+  trust_remote_code: true
   seq_length: 512
 
 model:
   tensor_model_parallel_size: 1
   expert_model_parallel_size: 1
   seq_length: 512
-  freeze_language_model: false
-  freeze_vision_model: false
-  freeze_vision_projection: false
-  freeze_sound_encoder: false
-  freeze_sound_projection: false
+  freeze_language_model: true
 
 train:
   train_iters: 10

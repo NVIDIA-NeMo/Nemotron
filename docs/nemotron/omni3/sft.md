@@ -4,8 +4,11 @@ Omni starts from the GA checkpoint and fine-tunes it with the Valor32k multimoda
 
 > **Container-first stage**: Omni does not ship with a pre-baked image. This stage owns the `Dockerfile` and `build.py` that produce `omni3-sft.tar`, and all later SFT/eval commands reuse that archive.
 
+> **Defaults** — the shipped `default.yaml` uses [CORD-v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2) from HuggingFace via Megatron-Bridge's `vlm-hf` loader, so `nemotron omni3 sft --run <profile>` works out of the box with no internal data access. `-c valor32k` switches to the full audio-visual-language Energon flow but requires the internal Valor32k-AVQA dataset (see [Config Variants](#config-variants)).
+
 > **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
-> - `nemotron omni3 data prep sft` validates and stages a **prepared** Energon dataset; the raw-shard builder is internal-only at release. See the [Valor32k and SDG Data Flow](#valor32k-and-sdg-data-flow) section for the expected layout.
+> - **Open-dataset default trains projector only.** CORD-v2 plus `freeze_language_model: true` fits on a single 8-GPU node (per QA guide §5.2.2). For full-model SFT, switch to `-c image_text_peft` (LoRA on CORD-v2) or prepare your own Energon dataset and point `dataset.path` at it.
+> - `nemotron omni3 data prep sft` with `-c valor32k` validates a **prepared** Energon dataset; the raw-shard builder is internal-only. With the default (HF) flow the command is a no-op manifest writer — the training container pulls from the Hub on demand.
 > - The `omni3-sft` Dockerfile's `ADD https://github.com/NVIDIA/Megatron-Bridge.git#dev/nomni` resolves only once the upstream branch is public (Omni release day). Before then `omni3 build sft` fails at that `ADD` step.
 
 ---

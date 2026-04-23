@@ -1,5 +1,11 @@
-dataset_name: valor32k-tiny
-dataset_path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
+# Omni3 SFT data prep — tiny smoke test (open dataset, HF Hub pull)
+#
+# Matches tiny.yaml training config: CORD-v2 from HuggingFace, 32-sample
+# manifest for quick iteration without full dataset download.
+
+dataset_name: cord_v2-tiny
+hf_dataset_id: naver-clova-ix/cord-v2
+dataset_path: null
 metadata_dir: ${oc.env:NEMO_RUN_DIR,.}/stage0_sft/data_prep/tiny
 link_path: null
 builder_command: null

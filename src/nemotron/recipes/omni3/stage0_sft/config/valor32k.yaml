@@ -1,0 +1,47 @@
+# Omni3 SFT — Valor32k-AVQA full audio-visual-language SFT (INTERNAL dataset)
+#
+# Requires a prepared Valor32k-AVQA v2.0 Energon WebDataset — this is
+# NVIDIA-internal data, not available on the public Hub. On DFW a copy
+# lives at /lustre/fs1/portfolios/coreai/projects/coreai_dlalgo_llm/users/chcui/datasets/valor32k_avqa/energon.
+# Point OMNI3_VALOR32K_ENERGON_PATH at your prepared dataset before running.
+#
+# Run `nemotron omni3 data prep sft -c valor32k` first to validate the
+# dataset is reachable and emit a staging manifest.
+#
+# For an open-dataset flow use the default config (CORD-v2 via HF) or see
+# image_text_peft.yaml for LoRA on CORD-v2.
+
+run:
+  nproc_per_node: 8
+  env:
+    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
+    workdir: /workspace/Megatron-Bridge
+
+recipe:
+  name: nemotron_omni_valor32k_energon_sft_config
+  step_func: nemotron_omni_step
+
+checkpoint:
+  pretrained_checkpoint: ${oc.env:OMNI3_MEGATRON_CHECKPOINT,/checkpoints/nemotron_omni}
+  save: /nemo_run/omni3-sft-model
+  save_interval: 200
+  finetune: true
+
+dataset:
+  path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
+  seq_length: 4096
+
+model:
+  tensor_model_parallel_size: 4
+  expert_model_parallel_size: 4
+  seq_length: 4096
+  freeze_language_model: false
+  freeze_vision_model: false
+  freeze_vision_projection: false
+  freeze_sound_encoder: false
+  freeze_sound_projection: false
+
+train:
+  train_iters: 10000
+  global_batch_size: 128
+  micro_batch_size: 1
