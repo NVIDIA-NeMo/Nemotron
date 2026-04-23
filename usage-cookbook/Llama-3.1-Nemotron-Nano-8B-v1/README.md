@@ -469,14 +469,12 @@ Drain each node, soft-reset the VM, wait for Ready, uncordon:
 
 ```bash
 for NODE_IP in <cpu-node-ip> <gpu-node-ip>; do
-    # Resolve the OCI instance OCID for this node (nodes are named by their
-    # internal IP in OKE).
-    INSTANCE_ID=$(oci ce node-pool list \
-        --compartment-id "${OCI_COMPARTMENT_ID}" \
-        --cluster-id "${CLUSTER_ID}" \
-        --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
-        --query "data[].nodes[?\"private-ip\"=='${NODE_IP}'].id | [0][0]" \
-        --raw-output)
+    # Resolve the OCI instance OCID via the node's providerID, which OKE
+    # sets to oci://<instance-ocid>. (`oci ce node-pool list` does not
+    # populate the nested `nodes` array, so a list-based lookup returns
+    # null; `get` per pool also works but is noisier.)
+    INSTANCE_ID=$(kubectl get node "${NODE_IP}" \
+        -o jsonpath='{.spec.providerID}' | sed 's|^oci://||')
 
     kubectl cordon "${NODE_IP}"
     kubectl drain "${NODE_IP}" --ignore-daemonsets --delete-emptydir-data \
