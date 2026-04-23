@@ -2,7 +2,7 @@ run:
   model: omni3-rl-mpo-model:latest
   data: omni3/rl/text/data:latest
   env:
-    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-rl.tar
+    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.tar
     workdir: /opt/nemo-rl-omni
     env_vars:
       OMNI_SHARED_ROOT: ${oc.env:OMNI_SHARED_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias}

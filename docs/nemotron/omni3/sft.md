@@ -29,7 +29,7 @@ uv run nemotron omni3 build sft --run YOUR-CLUSTER
 The canonical archive path is:
 
 ```text
-oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
 ```
 
 For local iteration, you can build the same stage directly from the Dockerfile:

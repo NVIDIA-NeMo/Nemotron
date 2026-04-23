@@ -50,7 +50,7 @@ public while still giving the CLI a concrete staging hook.
 The canonical image archive path used by configs is:
 
 ```text
-oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
 ```
 
 `build.py` respects `NEMOTRON_CACHE_DIR`, which the `nemotron omni3 build`

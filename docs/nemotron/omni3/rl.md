@@ -50,7 +50,7 @@ uv run nemotron omni3 build rl --run YOUR-CLUSTER
 Canonical archive path:
 
 ```text
-oci-archive:///home/$USER/.cache/nemotron/containers/omni3-rl.tar
+oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.tar
 ```
 
 For local iteration:

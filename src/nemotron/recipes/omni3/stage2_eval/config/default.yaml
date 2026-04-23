@@ -38,7 +38,7 @@ run:
   env:
     # The eval stage reuses the Omni SFT container, which contains the
     # Megatron-Bridge fork needed to serve the Omni checkpoint.
-    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
     executor: slurm
     host: ${oc.env:HOSTNAME,localhost}
     user: ${oc.env:USER}

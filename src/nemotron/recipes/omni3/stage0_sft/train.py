@@ -4,7 +4,7 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "omni3/sft"
-# image = "oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar"
+# image = "oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar"
 # setup = "Build the Omni SFT container with `nemotron omni3 build sft` before training."
 #
 # [tool.runspec.run]

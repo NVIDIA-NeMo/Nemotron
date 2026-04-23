@@ -53,7 +53,7 @@ The default config reuses the Omni SFT container because it contains the require
 run:
   model: omni3-vision-rl-model:latest
   env:
-    container: oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
 
 deployment:
   type: generic
@@ -178,7 +178,7 @@ This stage uses:
 ### Container
 
 ```text
-oci-archive:///home/$USER/.cache/nemotron/containers/omni3-sft.tar
+oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
 ```
 
 ## Troubleshooting
