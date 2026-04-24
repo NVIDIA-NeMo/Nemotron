@@ -111,6 +111,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
         repo_root=repo_root,
         train_path=train_path,
         passthrough=passthrough,
+        pre_script_args=["-m", "torch.distributed.run", "--nproc_per_node=gpu"],
     )
 
 
