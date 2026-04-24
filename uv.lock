@@ -2224,11 +2224,10 @@ wheels = [
 
 [[package]]
 name = "nemo-run"
-version = "0.7.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.10.0+a8425c9"
+source = { git = "https://github.com/NVIDIA-NeMo/Run.git?rev=main#a8425c9f11a45412e6d5338cecb1c014b0ecc0c4" }
 dependencies = [
     { name = "catalogue" },
-    { name = "cryptography" },
     { name = "fabric" },
     { name = "fiddle" },
     { name = "inquirerpy" },
@@ -2237,15 +2236,10 @@ dependencies = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "omegaconf" },
-    { name = "packaging" },
     { name = "rich" },
     { name = "toml" },
     { name = "torchx" },
     { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/5d/ec53d87a698ef9a9d294d0e779c4c9fc0ee373882ee000200d755d02d473/nemo_run-0.7.0.tar.gz", hash = "sha256:7176cde88194eb699483191af66536843e016227c40bf49384556057a4fe8bfd", size = 2294069, upload-time = "2025-12-03T23:54:17.697Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/e9/65352abfd75df6f77a6b16617a3cae102cbe62b74778ffe50edbabe36547/nemo_run-0.7.0-py3-none-any.whl", hash = "sha256:f1b86a5675178c6207f2f32fdf2de879801daa8d3e1cf867aa5180a787d3771a", size = 243281, upload-time = "2025-12-03T23:54:16.603Z" },
 ]
 
 [[package]]
@@ -2339,7 +2333,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.20.0" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "nemo-run", specifier = ">=0.4.0" },
+    { name = "nemo-run", git = "https://github.com/NVIDIA-NeMo/Run.git?rev=main" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pyarrow", specifier = ">=14.0.0" },
@@ -2379,7 +2373,7 @@ docs = [
     { name = "sphinx-design", specifier = ">=0.6.0" },
     { name = "sphinxcontrib-mermaid" },
 ]
-run = [{ name = "nemo-run", specifier = ">=0.4.0" }]
+run = [{ name = "nemo-run", git = "https://github.com/NVIDIA-NeMo/Run.git?rev=main" }]
 
 [[package]]
 name = "networkx"

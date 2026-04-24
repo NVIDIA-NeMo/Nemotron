@@ -45,7 +45,9 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
     create_executor,
+    execute_cloud,
     execute_local,
+    get_executor_type,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
@@ -145,8 +147,21 @@ def _execute_pretrain(cfg: RecipeConfig, *, experiment=None):
             env_vars=env_vars,
             startup_commands=startup_commands,
         )
+    elif get_executor_type(env_for_executor) in ("dgxcloud", "lepton"):
+        execute_cloud(
+            SCRIPT_PATH,
+            train_path,
+            env=env_for_executor,
+            env_vars=env_vars,
+            passthrough=cfg.passthrough,
+            attached=cfg.attached,
+            default_image=SPEC.image,
+            script_resources=SPEC.resources,
+            startup_commands=startup_commands,
+            launch=SPEC.run.launch,
+        )
     else:
-        # Remote execution via nemo-run
+        # Remote execution via nemo-run (Slurm)
         _execute_remote(
             train_path=train_path,
             env=env_for_executor,
