@@ -542,3 +542,204 @@ def execute_local(
 
     result = subprocess.run(cmd)
     raise typer.Exit(result.returncode)
+
+
+def execute_uv_local(
+    *,
+    script_path: str,
+    stage_dir: Path,
+    repo_root: Path,
+    train_path: Path,
+    passthrough: list[str],
+    extra_with: list[str] | None = None,
+    extras: list[str] | None = None,
+    pre_script_args: list[str] | None = None,
+) -> None:
+    """Execute a stage script locally via UV, handling container torch correctly.
+
+    When torch is already importable in the current Python (e.g., inside an
+    NVIDIA container), creates a venv with ``--system-site-packages`` and
+    excludes torch from UV resolution. This avoids the CUDA version mismatch
+    where UV's ``torch-backend=auto`` detects the kernel driver's CUDA version
+    (via nvidia-smi) but the container's ``libcuda.so`` is a different version.
+
+    When torch is NOT importable (bare machine), falls back to
+    ``uv run --with torch`` with ``UV_TORCH_BACKEND=auto``.
+
+    Args:
+        script_path: Relative or absolute path to the stage script.
+        stage_dir: Absolute path to the stage directory (contains pyproject.toml).
+        repo_root: Absolute path to the repo root (installed via ``--with``).
+        train_path: Path to the resolved training config YAML.
+        passthrough: Extra CLI arguments to forward to the script.
+        extra_with: Additional ``--with`` packages for uv run (e.g., ["tensorrt"]).
+        extras: ``[project.optional-dependencies]`` groups to activate on the
+            stage project (e.g., ["tensorrt"] → ``--extra tensorrt``).
+        pre_script_args: Arguments inserted before the script path
+            (e.g., ["-m", "torch.distributed.run", "--nproc_per_node=gpu"]).
+
+    Raises:
+        typer.Exit: with the script's exit code.
+    """
+    import shutil
+
+    uv_cmd = shutil.which("uv")
+    if not uv_cmd:
+        typer.echo("Error: 'uv' command not found. Please install uv.", err=True)
+        raise typer.Exit(1)
+
+    script_abs = (
+        (stage_dir / Path(script_path).name)
+        if not Path(script_path).is_absolute()
+        else Path(script_path)
+    )
+
+    if _torch_is_importable():
+        rc = _execute_with_system_torch(
+            uv_cmd=uv_cmd,
+            stage_dir=stage_dir,
+            repo_root=repo_root,
+            script_abs=script_abs,
+            train_path=train_path,
+            passthrough=passthrough,
+            extras=extras or [],
+            pre_script_args=pre_script_args or [],
+        )
+    else:
+        rc = _execute_with_uv_torch(
+            uv_cmd=uv_cmd,
+            stage_dir=stage_dir,
+            repo_root=repo_root,
+            script_abs=script_abs,
+            train_path=train_path,
+            passthrough=passthrough,
+            extra_with=extra_with or [],
+            extras=extras or [],
+            pre_script_args=pre_script_args or [],
+        )
+
+    raise typer.Exit(rc)
+
+
+def _torch_is_importable() -> bool:
+    """Check if torch is importable in the current Python."""
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import torch"],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+
+def _execute_with_system_torch(
+    *,
+    uv_cmd: str,
+    stage_dir: Path,
+    repo_root: Path,
+    script_abs: Path,
+    train_path: Path,
+    passthrough: list[str],
+    extras: list[str],
+    pre_script_args: list[str],
+) -> int:
+    """Execute using system torch via --system-site-packages venv."""
+    import tempfile
+    import tomllib
+
+    from nemo_runspec._pyproject import _write_temp_pyproject
+
+    typer.echo(
+        "Detected system torch — using system-site-packages to avoid CUDA mismatch"
+    )
+
+    pyproject_path = stage_dir / "pyproject.toml"
+    with open(pyproject_path, "rb") as f:
+        pyproject_data = tomllib.load(f)
+
+    nemotron_cfg = pyproject_data.get("tool", {}).get("nemotron", {})
+    exclude_deps = nemotron_cfg.get(
+        "container-exclude-dependencies",
+        [
+            "torch", "torchvision", "flash-attn", "triton",
+            "pyarrow", "scipy", "opencv-python-headless",
+        ],
+    )
+
+    temp_dir = _write_temp_pyproject(pyproject_data, stage_dir, exclude_deps)
+
+    venv_path = Path(tempfile.mkdtemp()) / "venv"
+    result = subprocess.run(
+        [uv_cmd, "venv", "--system-site-packages", "--seed", str(venv_path)]
+    )
+    if result.returncode != 0:
+        typer.echo("Error: Failed to create venv", err=True)
+        return 1
+
+    venv_python = str(venv_path / "bin" / "python3")
+    env = os.environ.copy()
+    env.pop("VIRTUAL_ENV", None)
+    env["VIRTUAL_ENV"] = str(venv_path)
+    env["UV_PROJECT_ENVIRONMENT"] = str(venv_path)
+    env["PATH"] = f"{venv_path / 'bin'}:{env.get('PATH', '')}"
+
+    sync_cmd = [uv_cmd, "sync", "--active", "--project", str(temp_dir)]
+    for extra in extras:
+        sync_cmd += ["--extra", extra]
+    typer.echo(f"Syncing dependencies (torch excluded): {' '.join(sync_cmd)}")
+    result = subprocess.run(sync_cmd, env=env, cwd=str(temp_dir))
+    if result.returncode != 0:
+        typer.echo("Error: Package sync failed", err=True)
+        return 1
+
+    result = subprocess.run(
+        [uv_cmd, "pip", "install", "--no-deps", str(repo_root)], env=env,
+    )
+    if result.returncode != 0:
+        typer.echo("Error: Failed to install repo package", err=True)
+        return 1
+
+    cmd = [
+        venv_python, *pre_script_args, str(script_abs),
+        "--config", str(train_path), *passthrough,
+    ]
+    typer.echo(f"Executing: {' '.join(cmd)}")
+    result = subprocess.run(cmd, env=env)
+    return result.returncode
+
+
+def _execute_with_uv_torch(
+    *,
+    uv_cmd: str,
+    stage_dir: Path,
+    repo_root: Path,
+    script_abs: Path,
+    train_path: Path,
+    passthrough: list[str],
+    extra_with: list[str],
+    extras: list[str],
+    pre_script_args: list[str],
+) -> int:
+    """Execute using uv run with torch installed via UV_TORCH_BACKEND."""
+    cmd = [uv_cmd, "run", "--with", str(repo_root), "--with", "torch"]
+    for pkg in extra_with:
+        cmd += ["--with", pkg]
+    cmd += ["--project", str(stage_dir)]
+    for extra in extras:
+        cmd += ["--extra", extra]
+
+    if pre_script_args:
+        cmd += [*pre_script_args]
+    else:
+        cmd += ["python"]
+
+    cmd += [str(script_abs), "--config", str(train_path), *passthrough]
+
+    env = os.environ.copy()
+    env.pop("VIRTUAL_ENV", None)
+    env.setdefault("UV_TORCH_BACKEND", "auto")
+
+    typer.echo(f"Executing with uv isolated environment: {' '.join(cmd)}")
+    result = subprocess.run(cmd, env=env)
+    return result.returncode
