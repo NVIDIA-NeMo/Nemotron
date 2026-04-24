@@ -40,7 +40,9 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
     clone_git_repos_via_tunnel,
+    execute_cloud,
     execute_local,
+    get_executor_type,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
@@ -91,6 +93,18 @@ def _execute_data_prep_rl(cfg: RecipeConfig):
     if cfg.mode == "local":
         execute_local(SCRIPT_PATH, train_path, cfg.passthrough, torchrun=False,
                       env_vars=env_vars, startup_commands=startup_commands)
+    elif get_executor_type(env_for_executor) in ("dgxcloud", "lepton"):
+        # Data prep is single-node CPU work; xenna calls ray.init() inside the
+        # pod. One inline command per pod (execute_cloud) is the right fit —
+        # same pattern as nano3/data/prep/*.py. The Slurm path below assumes
+        # string-form mounts and would crash on Lepton's dict-form mounts.
+        execute_cloud(
+            SCRIPT_PATH, train_path, env=env_for_executor,
+            env_vars=env_vars, passthrough=cfg.passthrough,
+            attached=cfg.attached, default_image=SPEC.image,
+            script_resources=SPEC.resources,
+            startup_commands=startup_commands,
+        )
     else:
         _execute_ray_code_packager(
             train_path=train_path, job_dir=job_dir, job_config=job_config,
