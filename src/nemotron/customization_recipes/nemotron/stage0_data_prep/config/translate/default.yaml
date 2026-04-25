@@ -1,0 +1,71 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# Stage 0a — Translation via NeMo Curator TranslationPipeline
+# =============================================================================
+
+translation:
+  # --- Language pair ---
+  source_lang: en
+  target_lang: hi
+
+  # --- Backend selection: llm | google | aws | nmt ---
+  backend: llm
+
+  # --- Text field mapping ---
+  segmentation_mode: coarse        # coarse (line-level) or fine (sentence-level)
+  text_field: "text"               # Input column containing source text
+  output_field: "translated_text"  # Output column for reassembled translation
+
+  # --- LLM server config (used when backend=llm) ---
+  server:
+    url: "https://integrate.api.nvidia.com/v1"
+    model: "mistralai/mistral-small-3.1-24b-instruct"
+    api_key: ${oc.env:NVIDIA_API_KEY,}
+
+  # --- Concurrency & runtime ---
+  max_concurrent_requests: 64
+  jsonl_chunk_size: 5000          # Stream JSONL and parquet inputs in chunks instead of loading whole files
+  skip_translated: false
+
+  # --- FAITH quality evaluation (optional) ---
+  faith_eval:
+    enabled: false
+    threshold: 2.5                 # Minimum faith_avg to keep a row (1-5 scale)
+    segment_level: false           # Score each translated segment instead of whole doc
+    filter_enabled: true           # If false, scores are attached but no rows are dropped
+
+  # --- Output format ---
+  output_mode: both                # replaced | raw | both
+  preserve_segment_pairs: true     # Keep source/target segment pairs in metadata
+  merge_scores: true               # Fold faith_* scores into translation_metadata JSON
+
+  # --- Google Cloud Translation config (used when backend=google) ---
+  google:
+    project_id: ""
+    api_version: v2                # v2 or v3
+
+  # --- AWS Translate config (used when backend=aws) ---
+  aws:
+    region: ${oc.env:AWS_DEFAULT_REGION,us-east-2}
+
+  # --- NMT server config (used when backend=nmt) ---
+  nmt:
+    server_url: "http://localhost:5000"
+    batch_size: 32
+
+  # --- Data paths ---
+  input_path: /workspace/data/source
+  output_dir: /workspace/data/translated

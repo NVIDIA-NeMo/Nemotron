@@ -340,7 +340,13 @@ def create_executor(
 ) -> Any:
     """Create a nemo-run executor based on env config.
 
-    This handles the common pattern of building LocalExecutor or SlurmExecutor.
+    Dispatches on the ``executor`` field in the env.toml profile:
+      - ``local`` (default): torchrun on local GPUs
+      - ``docker``: DockerExecutor for local container execution
+      - ``slurm``: SlurmExecutor for HPC clusters
+      - ``lepton``: LeptonExecutor for DGX Cloud via Lepton API
+      - ``runai``: KubeflowExecutor configured for Run:AI Kubernetes clusters
+
     For Ray executors, see the RL command implementation.
 
     Args:
@@ -355,7 +361,7 @@ def create_executor(
             Used as defaults when env config doesn't specify nodes/gpus.
 
     Returns:
-        Configured executor (LocalExecutor or SlurmExecutor)
+        Configured executor
     """
     import nemo_run as run
 
@@ -404,8 +410,29 @@ def create_executor(
             packager=packager,
         )
 
+    if executor_type == "lepton":
+        return _create_lepton_executor(
+            env,
+            env_vars=env_vars,
+            packager=packager,
+            default_image=default_image,
+            script_resources=script_resources,
+        )
+
+    if executor_type == "runai":
+        return _create_runai_executor(
+            env,
+            env_vars=env_vars,
+            packager=packager,
+            default_image=default_image,
+            script_resources=script_resources,
+        )
+
     if executor_type != "slurm":
-        raise ValueError(f"Unknown executor type: {executor_type}")
+        raise ValueError(
+            f"Unknown executor type: {executor_type!r}. "
+            "Supported: local, docker, slurm, lepton, runai"
+        )
 
     # Slurm executor setup
     remote_job_dir = _get_env(env, "remote_job_dir")
@@ -482,6 +509,226 @@ def create_executor(
         executor_kwargs["exclusive"] = True
 
     return run.SlurmExecutor(**executor_kwargs)
+
+
+def _create_lepton_executor(
+    env: Any,
+    *,
+    env_vars: dict[str, str],
+    packager: Any,
+    default_image: str | None = None,
+    script_resources: Any | None = None,
+) -> Any:
+    """Create a LeptonExecutor for DGX Cloud Lepton.
+
+    Required env.toml fields:
+        container_image (or container): Container image for the job
+        node_group: Lepton dedicated node group name
+
+    Optional env.toml fields:
+        resource_shape: GPU shape (default: "gpu.8xh100-80gb")
+        nemo_run_dir: Remote code directory (default: "/nemo_run/code")
+        nodes: Number of nodes (default: 1)
+        gpus_per_node: GPUs per node (default: 8)
+        mounts: List of mount dicts with 'path' and 'mount_path' keys
+        node_reservation: Reservation ID for dedicated capacity
+        pre_launch_commands: Shell commands to run before launch
+        image_pull_secrets: Container registry auth secrets
+        ray_version: Ray version (for LeptonRayCluster)
+        head_resource_shape: Head node shape (for LeptonRayCluster)
+
+    Args:
+        env: Environment configuration (OmegaConf DictConfig or dict)
+        env_vars: Environment variables to pass to executor
+        packager: Packager object for code shipping
+        default_image: Fallback container image if env doesn't specify one
+        script_resources: RunspecResources defaults for nodes/gpus
+
+    Returns:
+        Configured LeptonExecutor
+    """
+    import nemo_run as run
+
+    # Container image (required)
+    container_image = (
+        _get_env(env, "container_image")
+        or _get_env(env, "container")
+        or default_image
+    )
+    if not container_image:
+        raise ValueError(
+            "container_image is required for lepton executor. "
+            "Set it in your env.toml profile or in the recipe's [tool.runspec] image."
+        )
+
+    # Node group (required)
+    node_group = _get_env(env, "node_group")
+    if not node_group:
+        raise ValueError(
+            "node_group is required for lepton executor. "
+            "Set it in your env.toml profile, e.g.: node_group = \"my-dgx-group\""
+        )
+
+    # Resource defaults from script metadata
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else 8
+
+    executor_kwargs: dict[str, Any] = {
+        "container_image": container_image,
+        "node_group": node_group,
+        "resource_shape": _get_env(env, "resource_shape", "gpu.8xh100-80gb"),
+        "nemo_run_dir": _get_env(env, "nemo_run_dir", "/nemo_run/code"),
+        "nodes": _get_env(env, "nodes", default_nodes),
+        "nprocs_per_node": _get_env(env, "gpus_per_node", default_gpus),
+        "mounts": list(_get_env(env, "mounts") or []),
+        "pre_launch_commands": list(_get_env(env, "pre_launch_commands") or []),
+        "image_pull_secrets": list(_get_env(env, "image_pull_secrets") or []),
+        "packager": packager,
+        "env_vars": env_vars,
+        "launcher": run.Torchrun(rdzv_backend="c10d", rdzv_port=29500),
+    }
+
+    # Optional fields
+    node_reservation = _get_env(env, "node_reservation")
+    if node_reservation:
+        executor_kwargs["node_reservation"] = node_reservation
+
+    ray_version = _get_env(env, "ray_version")
+    if ray_version:
+        executor_kwargs["ray_version"] = ray_version
+
+    head_resource_shape = _get_env(env, "head_resource_shape")
+    if head_resource_shape:
+        executor_kwargs["head_resource_shape"] = head_resource_shape
+
+    return run.LeptonExecutor(**executor_kwargs)
+
+
+def _create_runai_executor(
+    env: Any,
+    *,
+    env_vars: dict[str, str],
+    packager: Any,
+    default_image: str | None = None,
+    script_resources: Any | None = None,
+) -> Any:
+    """Create a KubeflowExecutor configured for Run:AI clusters.
+
+    Run:AI provides a Kubernetes-based GPU orchestration platform. Since
+    nemo-run does not ship a dedicated RunAIExecutor, we use the
+    KubeflowExecutor (Kubeflow Training Operator v2) which targets the
+    same Kubernetes API surface that Run:AI exposes.
+
+    Required env.toml fields:
+        container_image (or container): Container image for the job
+        cluster: Kubernetes context name for the Run:AI cluster
+        project: Run:AI project name (maps to Kubernetes namespace)
+
+    Optional env.toml fields:
+        nodes: Number of nodes (default: 1)
+        gpus_per_node: GPUs per node
+        pvc_mounts: List of PVC mount dicts, each with keys:
+            name: PVC name
+            mount_path: Container mount path
+            sub_path: (optional) Sub-path within the PVC
+        node_pool: Run:AI node pool name
+        runtime_ref: Kubeflow runtime reference (default: "torch-distributed")
+
+    Args:
+        env: Environment configuration (OmegaConf DictConfig or dict)
+        env_vars: Environment variables to pass to executor
+        packager: Packager object for code shipping
+        default_image: Fallback container image if env doesn't specify one
+        script_resources: RunspecResources defaults for nodes/gpus
+
+    Returns:
+        Configured KubeflowExecutor
+    """
+    import nemo_run as run
+
+    # Container image (required)
+    container_image = (
+        _get_env(env, "container_image")
+        or _get_env(env, "container")
+        or default_image
+    )
+    if not container_image:
+        raise ValueError(
+            "container_image is required for runai executor. "
+            "Set it in your env.toml profile or in the recipe's [tool.runspec] image."
+        )
+
+    # Cluster / project (required)
+    cluster = _get_env(env, "cluster")
+    if not cluster:
+        raise ValueError(
+            "cluster is required for runai executor. "
+            "Set it in your env.toml profile, e.g.: cluster = \"my-runai-cluster\""
+        )
+
+    project = _get_env(env, "project")
+    if not project:
+        raise ValueError(
+            "project is required for runai executor. "
+            "Set it in your env.toml profile, e.g.: project = \"my-team\""
+        )
+
+    # Resource defaults from script metadata
+    default_nodes = script_resources.nodes if script_resources else 1
+    default_gpus = script_resources.gpus_per_node if script_resources else None
+
+    nodes = _get_env(env, "nodes", default_nodes)
+    gpus_per_node = _get_env(env, "gpus_per_node", default_gpus)
+
+    # Build PVC volume / volumeMount specs from pvc_mounts shorthand
+    pvc_mounts = list(_get_env(env, "pvc_mounts") or [])
+    volumes: list[dict[str, Any]] = []
+    volume_mounts: list[dict[str, Any]] = []
+    for pvc in pvc_mounts:
+        pvc_name = pvc.get("name") if hasattr(pvc, "get") else getattr(pvc, "name", None)
+        mount_path = pvc.get("mount_path") if hasattr(pvc, "get") else getattr(pvc, "mount_path", None)
+        sub_path = pvc.get("sub_path", "") if hasattr(pvc, "get") else getattr(pvc, "sub_path", "")
+        if not pvc_name or not mount_path:
+            raise ValueError(
+                "Each pvc_mounts entry must have 'name' and 'mount_path'. "
+                f"Got: {pvc}"
+            )
+        vol_name = f"pvc-{pvc_name}"
+        volumes.append({
+            "name": vol_name,
+            "persistentVolumeClaim": {"claimName": pvc_name},
+        })
+        vm: dict[str, Any] = {"name": vol_name, "mountPath": mount_path}
+        if sub_path:
+            vm["subPath"] = sub_path
+        volume_mounts.append(vm)
+
+    # Node pool annotation (Run:AI-specific scheduling)
+    node_pool = _get_env(env, "node_pool")
+
+    executor_kwargs: dict[str, Any] = {
+        "runtime_ref": _get_env(env, "runtime_ref", "torch-distributed"),
+        "namespace": project,
+        "image": container_image,
+        "num_nodes": nodes,
+        "gpus_per_node": gpus_per_node,
+        "volumes": volumes,
+        "volume_mounts": volume_mounts,
+        "packager": packager,
+        "env_vars": env_vars,
+    }
+
+    if node_pool:
+        executor_kwargs["annotations"] = {
+            "run.ai/node-pool": node_pool,
+        }
+
+    console.print(
+        f"[dim]Run:AI executor: cluster={cluster}, project={project}, "
+        f"nodes={nodes}, gpus_per_node={gpus_per_node}[/dim]"
+    )
+
+    return run.KubeflowExecutor(**executor_kwargs)
 
 
 # =============================================================================

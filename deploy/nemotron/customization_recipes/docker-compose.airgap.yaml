@@ -1,0 +1,97 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# Airgap Override for Nemotron Customization Recipes
+#
+# This overlay disables all internet-dependent behavior and mounts
+# pre-downloaded assets from the airgap bundle across ALL services.
+#
+# Usage:
+#   export AIRGAP_BUNDLE_DIR=/path/to/airgap-bundle
+#
+#   docker compose --env-file /path/to/.env.airgap \
+#     -f docker-compose.yaml \
+#     -f docker-compose.airgap.yaml up -d
+#
+# Required env vars (with defaults):
+#   AIRGAP_MODELS_DIR     - Pre-downloaded models (HF, FastText, spaCy)
+#   AIRGAP_DATASETS_DIR   - Pre-downloaded datasets
+#   AIRGAP_NLTK_DIR       - Pre-downloaded NLTK data
+#   AIRGAP_CONFIGS_DIR    - Airgap config overrides
+#   AIRGAP_BENCHMARKS_DIR - Pre-downloaded evaluation benchmarks
+# =============================================================================
+
+# Shared airgap environment variables (YAML anchor)
+x-airgap-env: &airgap-env
+  # ---- Offline mode for HuggingFace libraries ----
+  - TRANSFORMERS_OFFLINE=1
+  - HF_DATASETS_OFFLINE=1
+  - HF_HUB_OFFLINE=1
+  # ---- Cache directories (point to pre-downloaded assets) ----
+  - HF_HOME=/workspace/models
+  - HF_DATASETS_CACHE=/workspace/datasets
+  - HUGGINGFACE_HUB_CACHE=/workspace/models/huggingface
+  - SENTENCE_TRANSFORMERS_HOME=/workspace/models/sentence-transformers
+  # ---- NLTK ----
+  - NLTK_DATA=/workspace/nltk_data
+  # ---- NeMo Curator / NLP models ----
+  - FASTTEXT_LID_MODEL=/workspace/models/fasttext/lid.176.bin
+  # ---- Experiment tracking (offline) ----
+  - WANDB_MODE=offline
+  - WANDB_DISABLED=true
+  # ---- Telemetry disabled ----
+  - DO_NOT_TRACK=1
+  - ANONYMIZED_TELEMETRY=false
+  # ---- Misc ----
+  - TOKENIZERS_PARALLELISM=false
+
+# Shared airgap volume mounts (YAML anchor)
+x-airgap-volumes: &airgap-volumes
+  # Pre-downloaded HuggingFace models, FastText, spaCy, sentence-transformers
+  - ${AIRGAP_MODELS_DIR:-./airgap-bundle/models}:/workspace/models:ro
+  # Pre-downloaded datasets (HuggingFace datasets, calibration data)
+  - ${AIRGAP_DATASETS_DIR:-./airgap-bundle/datasets}:/workspace/datasets:ro
+  # Pre-downloaded NLTK data (punkt, stopwords, etc.)
+  - ${AIRGAP_NLTK_DIR:-./airgap-bundle/nltk_data}:/workspace/nltk_data:ro
+  # Airgap configuration overrides
+  - ${AIRGAP_CONFIGS_DIR:-./airgap-bundle/configs}:/workspace/configs:ro
+  # Pre-downloaded evaluation benchmarks (NeMo-Skills, Gorilla, MMLU-Pro)
+  - ${AIRGAP_BENCHMARKS_DIR:-./airgap-bundle/benchmarks}:/workspace/benchmarks:ro
+  # Writable output directories
+  - ${RESULTS_DIR:-./results}:/workspace/results
+  - ${DATA_DIR:-./data}:/workspace/data
+
+services:
+  nemotron-orchestrator:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  nemotron-curator:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  nemotron-trainer:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  nemotron-evaluator:
+    environment: *airgap-env
+    volumes: *airgap-volumes
+
+  # NIM does not need airgap overrides — it loads models from its own cache.
+  # To use NIM in airgap, pre-pull the image and mount the model cache:
+  # nemotron-nim:
+  #   volumes:
+  #     - ${AIRGAP_NIM_CACHE:-./airgap-bundle/nim_cache}:/opt/nim/.cache

@@ -1,0 +1,157 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# BYOB (Build Your Own Benchmark) Config — Nemotron
+# =============================================================================
+
+expt_name: nemotron_byob
+random_seed: 42
+ndd_batch_size: 32
+
+# --- Stage 1: Seed data preparation ---
+split: test
+subset: all
+input_dir: ./datasets
+output_dir: ./output/byob
+hf_dataset: cais/mmlu
+language: en-US
+metadata_file: null
+source_subjects: []
+
+target_source_mapping: {}
+few_shot_samples_per_query: 1
+queries_per_target_subject_document: 1
+num_questions_per_query: 2
+
+chunking_config:
+  window_size: 4096
+
+# --- Stage 2: Question generation ---
+generation_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+    top_p: 1.0
+
+judge_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+    top_p: 1.0
+
+# --- Stage 2.2: Semantic deduplication ---
+semantic_deduplication_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 1
+  eps: 0.07
+  remove_duplicates: false
+
+# --- Stage 3: Distractor expansion ---
+do_distractor_expansion: true
+distractor_expansion_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+
+# --- Stage 4: Coverage check ---
+do_coverage_check: true
+coverage_check_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  window_size: 1024
+
+# --- Stage 5: Distractor validity ---
+distractor_validity_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+
+# --- Stage 6: Semantic outlier detection ---
+semantic_outlier_detection_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_neighbours_min: 1
+  remove_outliers: true
+
+# --- Stage 7: Filtering ---
+easiness_threshold: 0.8
+hallucination_threshold: 0.5
+remove_hallucinated: true
+remove_easy: false
+
+# --- Translation (used by run_translate.py) ---
+translate:
+  dataset_path: null  # Path to benchmark.parquet or benchmark.jsonl (required)
+  # Optional output directory for translated_mcq.jsonl.  If unset, defaults to
+  # ``<dataset_path>.parent / "translated"``.
+  # output_dir: /data/byob_benchmark/translated
+  # BCP 47 language codes (region suffix preserved and forwarded verbatim to
+  # the backend; e.g. zh-TW, pt-BR, en-GB).  Use the short ISO 639-1 code
+  # (``en``, ``hi``) if the backend does not need regionalisation.
+  source_lang: en
+  target_lang: hi
+  translation_model_config:
+    # Translation backend: ``llm`` | ``google`` | ``aws`` | ``nmt``.
+    mode: llm
+    # Backend-specific parameters. For the ``llm`` backend this holds the
+    # OpenAI-compatible server config (``base_url``, ``model``, ``api_key``,
+    # ``inference_parameters``). For ``google``/``aws``/``nmt``, place the
+    # sub-config dict here (e.g. ``project_id`` for google, ``region`` for
+    # aws, ``server_url``/``batch_size`` for nmt).
+    params:
+      alias: gpt-oss-120b
+      model: openai/gpt-oss-120b
+      provider: nvidia
+      inference_parameters:
+        max_tokens: 16000
+        max_parallel_requests: 64
+  chunk_size: 5000  # Stream BYOB inputs in chunks so large benchmarks are never loaded all at once
+  # Enable LLM-based FAITH translation quality scoring during BYOB translation.
+  # When enabled, each translated row is scored on five dimensions and the
+  # scores are attached to the output.  The BYOB pipeline always runs with
+  # ``filter_enabled=False`` (user preference ignored) so row counts stay
+  # consistent with the input -- MCQ reassembly requires a 1:1 alignment
+  # between staged strings and translated strings.  Filter post-hoc on
+  # ``translated_mcq.jsonl`` using the ``faith_*`` columns if desired.
+  # faith_eval:
+  #   enabled: true
+  #   threshold: 2.5
+  # Speaker-style backtranslation quality gate (optional).
+  # backtranslation_quality_metrics:
+  #   - type: sacrebleu
+  #     threshold: 15.0
+  #   - type: chrf
+  #     threshold: 35.0
+  # remove_low_quality: false

@@ -1,0 +1,55 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# SFT Data Preparation — Tokenize & Pack
+# =============================================================================
+
+mode: sft
+
+# Output directory for packed .npy files
+output_dir: ./output/sft_data_prep
+
+# Input source (choose one)
+hf_dataset: HuggingFaceH4/ultrachat_200k
+hf_subset: null
+hf_split: train_sft
+input_path: null  # Local file or directory — overrides hf_dataset
+
+# Tokenizer
+tokenizer_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+
+# Packing
+pack_size: 8192
+packing_algorithm: first_fit_decreasing
+
+# Train / validation / test split
+train_ratio: 0.9
+valid_ratio: 0.05
+test_ratio: 0.05
+
+# Message format
+messages_field: messages
+conversations_field: null  # For ShareGPT-format datasets
+
+# Processing
+seed: 42
+recursive: true
+max_samples: null  # Limit for quick tests (null = all)
+
+# Thinking tokens (optional)
+enable_thinking: false
+truncate_history_thinking: true
+thinking_start_token: "<think>"
+thinking_end_token: "</think>"
