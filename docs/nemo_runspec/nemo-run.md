@@ -159,8 +159,9 @@ Submit jobs to NVIDIA DGX Cloud via the run:ai API. This executor handles authen
 [dgxcloud]
 executor = "dgxcloud"
 base_url = "https://your-dgxcloud-instance.example.com/api/v1"
-app_id = "YOUR-APP-ID"           # or client_id for newer APIs
-app_secret = "YOUR-APP-SECRET"   # or client_secret for newer APIs
+kube_apiserver_url = "https://your-dgxcloud-k8s.example.com"
+client_id = "YOUR-CLIENT-ID"          # `app_id` accepted as legacy alias
+client_secret = "YOUR-CLIENT-SECRET"  # `app_secret` accepted as legacy alias
 project_name = "YOUR-PROJECT"
 container_image = "nvcr.io/nvidia/nemo:latest"
 pvc_nemo_run_dir = "/pvc/nemo_run"
@@ -459,8 +460,11 @@ startup_commands = ["source /opt/env.sh"]
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `base_url` | str | *required* | DGX Cloud API base URL |
-| `app_id` | str | *required* | Application ID for authentication (or `client_id`) |
-| `app_secret` | str | *required* | Application secret (or `client_secret`) |
+| `kube_apiserver_url` | str | *required* | Kubernetes API server URL for the DGX Cloud cluster |
+| `client_id` | str | *required* | Client ID for authentication |
+| `client_secret` | str | *required* | Client secret for authentication |
+| `app_id` | str | - | Legacy alias for `client_id` (back-compat shim) |
+| `app_secret` | str | - | Legacy alias for `client_secret` (back-compat shim) |
 | `project_name` | str | *required* | DGX Cloud project name |
 | `pvc_nemo_run_dir` | str | *required* | PVC path for nemo-run job directory |
 | `nodes` | int | `1` | Number of compute nodes |

@@ -257,8 +257,7 @@ def _make_configs_excluding_copy_fn(original_signature: str):
             # ``MAX_ARG_STRLEN`` limit even when env-var chunks inflate the
             # serialized executor config.
             subprocess.run(
-                f"tar --exclude='./configs' -czf {tarball_path} -C {local_dir_path} .",
-                shell=True,
+                ["tar", "--exclude=./configs", "-czf", tarball_path, "-C", local_dir_path, "."],
                 check=True,
             )
             with open(tarball_path, "rb") as file:

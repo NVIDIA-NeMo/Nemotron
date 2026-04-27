@@ -953,11 +953,13 @@ def execute_cloud(
         # Multi-process training. Lepton/DGXCloud populate NODE_RANK /
         # MASTER_ADDR / MASTER_PORT per worker pod.
         nnodes = _get_env(env, "nodes") or (script_resources.nodes if script_resources else 1)
-        nproc = (
-            _get_env(env, "nprocs_per_node")
-            or _get_env(env, "ntasks_per_node")
-            or _get_env(env, "gpus_per_node")
-            or (script_resources.gpus_per_node if script_resources else 1)
+        nproc = next(
+            v for v in (
+                _get_env(env, "nprocs_per_node"),
+                _get_env(env, "ntasks_per_node"),
+                _get_env(env, "gpus_per_node"),
+                script_resources.gpus_per_node if script_resources else 1,
+            ) if v is not None
         )
         default_cmd = (
             f"torchrun --nnodes {nnodes} --nproc-per-node {nproc}"
@@ -997,15 +999,15 @@ def execute_cloud(
     # ``/nemo_run/code/src``; symlink it under ${oc.env:PWD}/src so OmegaConf
     # interpolations resolve. Chunked / job_dir transports already extracted
     # directly into ``nemotron_home/src``.
-    launch = f"export PYTHONPATH={transport.pod_src_root}:${{PYTHONPATH:-}}"
+    launch_cmd = f"export PYTHONPATH={transport.pod_src_root}:${{PYTHONPATH:-}}"
     if transport.needs_pwd_symlinks:
-        launch += (
+        launch_cmd += (
             f" && mkdir -p {nemotron_home}/src"
             f" && ln -sfn {transport.pod_src_root}/nemotron {nemotron_home}/src/nemotron"
             f" && ln -sfn {transport.pod_src_root}/nemo_runspec {nemotron_home}/src/nemo_runspec"
         )
-    launch += f" && export PWD={nemotron_home} && cd {nemotron_home} && {script_cmd}"
-    parts.append(launch)
+    launch_cmd += f" && export PWD={nemotron_home} && cd {nemotron_home} && {script_cmd}"
+    parts.append(launch_cmd)
 
     # ── 7. Submit ────────────────────────────────────────────────────
     script_task = run.Script(inline=" && ".join(parts))
@@ -1195,8 +1197,10 @@ def execute_cloud_ray(
         typer.echo(f"[ray] starting RayCluster {cluster_name} (timeout 1800s)...")
         try:
             cluster.start(pre_ray_start_commands=pre_ray_commands, timeout=1800)
-        except Exception as e:  # noqa: BLE001
-            typer.echo(f"[ray] cluster.start warning ({type(e).__name__}: {e}); continuing")
+        except Exception as e:
+            if "already exists" not in str(e).lower():
+                raise
+            typer.echo(f"[ray] RayCluster {cluster_name} already exists; reusing")
     elif executor_type == "lepton" and existing_cluster:
         typer.echo(f"[ray] reusing existing RayCluster {cluster_name}")
 
