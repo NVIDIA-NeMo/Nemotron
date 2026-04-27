@@ -14,6 +14,20 @@ dependencies = [
 
 # Note: exclude-dependencies injected dynamically by run_uv.py for Docker/Slurm
 
+# Pin torch to the cu129 wheel on Linux so installs work on hosts with
+# CUDA 12.9 drivers. cu129 is forward-compatible with cu13.x drivers
+# (newer drivers run older toolkit binaries). Matches nemo-automodel's
+# torch source mapping to avoid resolver conflicts.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
 [tool.nemotron]
 entry-point = "eval.py"
 container-exclude-dependencies = [

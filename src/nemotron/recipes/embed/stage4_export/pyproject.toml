@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# TensorRT only needed when export_to_trt=true; CLI adds --with conditionally
+# TensorRT only needed when export_to_trt=true; CLI adds --extra conditionally
 tensorrt = [
     "tensorrt>=10.13,<10.15",
 ]
@@ -25,6 +25,20 @@ tensorrt = [
 [tool.uv]
 override-dependencies = ["transformers>=5,<6"]
 exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
+
+# Pin torch to the cu129 wheel on Linux so installs work on hosts with
+# CUDA 12.9 drivers. cu129 is forward-compatible with cu13.x drivers
+# (newer drivers run older toolkit binaries). Matches nemo-automodel's
+# torch source mapping to avoid resolver conflicts.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.nemotron]
 entry-point = "export.py"
