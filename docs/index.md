@@ -89,8 +89,8 @@ Nemotron keeps **data-producing recipes** separate from **model-family training 
 
 | Path | Purpose | Example |
 |------|---------|---------|
-| `src/nemotron/recipes/data/curation/` | Filter, dedup, and curate existing corpora | [Nemotron-CC](nemotron/nemotron-cc.md) |
-| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | Omni long-document SDG feeding [Omni3 SFT](nemotron/omni3/sft.md) |
+| `src/nemotron/recipes/data/curation/` | Filter, dedup, and curate existing corpora | [Nemotron-CC](nemotron/data/curation/nemotron-cc.md) |
+| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | [Long-document SDG](nemotron/data/sdg/long-document.md) feeding [Omni3 SFT](nemotron/omni3/sft.md) |
 | `src/nemotron/recipes/<family>/` | Family-specific training, RL, evaluation, and model lifecycle commands | [Nano3](nemotron/nano3/README.md), [Omni3](nemotron/omni3/README.md) |
 
 ## Training Pipeline
@@ -218,8 +218,15 @@ nemo_runspec/artifacts.md
 nemotron/wandb.md
 nemotron/cli.md
 nemotron/data-prep.md
-nemotron/nemotron-cc.md
 nemotron/xenna-observability.md
+```
+
+```{toctree}
+:caption: Data Recipes
+:hidden:
+
+nemotron/data/curation/nemotron-cc.md
+nemotron/data/sdg/long-document.md
 ```
 
 ```{toctree}

@@ -67,14 +67,20 @@ Usage:
     )
 """
 
+from nemotron.data_prep.stages.audio_extract import AudioExtractStage, AudioExtractStageConfig
 from nemotron.data_prep.stages.context import PipelineContext
 from nemotron.data_prep.stages.download import DownloadStage, DownloadStageConfig
 from nemotron.data_prep.stages.jsonl_plan import JsonlPlanStageConfig
 from nemotron.data_prep.stages.jsonl_write import JsonlShardStage, JsonlShardStageConfig
 from nemotron.data_prep.stages.megatron_bin_idx import BinIdxTokenizationStage, BinIdxTokenizationStageConfig
+from nemotron.data_prep.stages.vlm_preference_prep import (
+    VlmPreferencePrepStage,
+    VlmPreferencePrepStageConfig,
+)
 from nemotron.data_prep.stages.packed_sft_parquet import PackedSftParquetStage, PackedSftParquetStageConfig
 from nemotron.data_prep.stages.plan import PlanAdapter, PlanStage, PlanStageConfig
 from nemotron.data_prep.stages.sft_plan import SftPlanStageConfig
+from nemotron.data_prep.stages.webdataset_shard import WebDatasetShardStage, WebDatasetShardStageConfig
 
 __all__ = [
     # Context
@@ -89,10 +95,16 @@ __all__ = [
     "DownloadStageConfig",
     "BinIdxTokenizationStageConfig",
     "PackedSftParquetStageConfig",
+    "AudioExtractStageConfig",
+    "WebDatasetShardStageConfig",
+    "VlmPreferencePrepStageConfig",
     # Stages
     "DownloadStage",
     "PlanStage",
     "JsonlShardStage",
     "BinIdxTokenizationStage",
     "PackedSftParquetStage",
+    "AudioExtractStage",
+    "WebDatasetShardStage",
+    "VlmPreferencePrepStage",
 ]

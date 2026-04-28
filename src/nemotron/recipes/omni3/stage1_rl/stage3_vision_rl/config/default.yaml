@@ -2,7 +2,7 @@ run:
   model: omni3-rl-text-model:latest
   data: omni3/rl/vision/data:latest
   env:
-    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.tar
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.sqsh
     workdir: /opt/nemo-rl-omni
     env_vars:
       NEMORL: ${oc.env:OMNI3_RL_ROOT,/opt/nemo-rl-omni}

@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +25,7 @@ from nemo_runspec.squash import (
     build_salloc_args,
     container_to_sqsh_name,
     ensure_squashed_image,
+    resolve_build_cache_dir,
     resolve_build_image,
     resolve_build_partition,
     resolve_build_time,
@@ -131,6 +133,35 @@ def test_ensure_squashed_image_defaults_to_docker_scheme_for_bare_images():
     ) in tunnel.commands[-1]
 
 
+def test_ensure_squashed_image_omits_gpu_request():
+    """Regression: enroot import is CPU-only.
+
+    When the env profile carries ``gpus_per_node`` (typical for
+    training profiles like ``[node]`` with 8 GPUs) and
+    ``build_partition`` points at a CPU-only partition, sbatch
+    rejects the combo with "Requested node configuration is not
+    available". ``ensure_squashed_image`` must pass
+    ``include_gpus=False`` so the squash salloc never asks for GPUs.
+    """
+    tunnel = _FakeTunnel()
+    ensure_squashed_image(
+        tunnel,
+        "docker://nvcr.io/nvidian/nemo:25.11",
+        "/remote/jobs",
+        {
+            "build_partition": "cpu",
+            "partition": "batch",
+            "gpus_per_node": 8,
+            "time": "04:00:00",
+        },
+        force=True,
+    )
+
+    salloc_cmd = tunnel.commands[-1]
+    assert "--partition=cpu" in salloc_cmd
+    assert "--gpus-per-node" not in salloc_cmd, salloc_cmd
+
+
 class TestResolveBuildPartition:
     def test_build_partition_wins(self):
         env = {"build_partition": "cpu", "run_partition": "interactive", "partition": "batch"}
@@ -169,6 +200,30 @@ class TestResolveBuildImage:
     def test_default_used_when_unset(self):
         assert resolve_build_image({}, "quay.io/podman/stable:v5.3") == "quay.io/podman/stable:v5.3"
         assert resolve_build_image(None, "quay.io/podman/stable:v5.3") == "quay.io/podman/stable:v5.3"
+
+
+class TestResolveBuildCacheDir:
+    def test_build_cache_dir_wins(self):
+        env = {"build_cache_dir": "/lustre/team/cache/nemotron"}
+        assert resolve_build_cache_dir(env, "/home/u/.cache/nemotron") == Path(
+            "/lustre/team/cache/nemotron"
+        )
+
+    def test_returns_path_objects(self):
+        # Caller can pass either str or Path; result is always a Path.
+        assert isinstance(resolve_build_cache_dir({}, "/tmp/cache"), Path)
+        assert isinstance(resolve_build_cache_dir(None, Path("/tmp/cache")), Path)
+
+    def test_default_used_when_unset(self):
+        default = Path("/home/u/.cache/nemotron")
+        assert resolve_build_cache_dir({}, default) == default
+        assert resolve_build_cache_dir(None, default) == default
+
+    def test_empty_value_falls_back_to_default(self):
+        # An empty string in env.toml should not silently mount ":<container>"
+        default = Path("/home/u/.cache/nemotron")
+        assert resolve_build_cache_dir({"build_cache_dir": ""}, default) == default
+        assert resolve_build_cache_dir({"build_cache_dir": None}, default) == default
 
 
 class TestBuildSallocArgs:

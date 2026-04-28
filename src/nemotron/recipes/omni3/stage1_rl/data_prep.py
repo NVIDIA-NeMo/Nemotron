@@ -12,7 +12,7 @@
 #
 # [tool.runspec.run]
 # launch = "ray"
-# cmd = "uv run python {script} --config {config}"
+# cmd = "uv run --extra xenna python {script} --config {config}"
 #
 # [tool.runspec.config]
 # dir = "./config/data_prep"

@@ -1,15 +1,12 @@
 stage: text
 dataset_name: text_only_rl_stage1
 source_uri: hf://nvidia/Nemotron-3-Nano-RL-Training-Blend
-input_dir: ${oc.env:OMNI3_TEXT_ONLY_RL_RAW,data/text_only_rl_stage1/raw}
-input_file: ${input_dir}/train.jsonl
+# Reuses Nano3's existing recipes.rl.run_rl_resolve_pipeline. The blend below
+# is identical in shape to nano3/stage2_rl/config/data_prep/data_blend_raw.json
+# because the omni3 text RL stage consumes the same dataset with the same
+# placeholder semantics (DAPO + Skywork resolution).
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/omni3/stage1_rl/config/data_prep/data_blend_raw.json
 output_dir: ${oc.env:NEMO_RUN_DIR,.}/stage1_rl/data_prep/text
-meta_name: meta_public.json
-train_file_name: train.jsonl
-val_file_name: val.jsonl
-validation_strategy: same_as_train
-builder_command: >-
-  uv run --script {input_dir}/create_nanov3_jsonl.py
-  --input {input_file}
-  --output {train_path}
+sample: null
 force: false
+execution_mode: auto

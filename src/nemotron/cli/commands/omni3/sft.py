@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""SFT command implementation for omni3."""
+"""SFT command implementation for omni3.
+
+Mirrors ``commands/nano3/sft.py``: the dispatcher is a thin shim that parses
+the recipe config + env profile, builds a nemo-run job, and submits it. The
+training entry point lives in ``recipes/omni3/stage0_sft/train.py`` — it owns
+the recipe / step-function / dataset-selector resolution by reading them out
+of the YAML's ``recipe:`` block.
+"""
 
 from __future__ import annotations
 
@@ -62,11 +69,20 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
     env = parse_env(cfg.ctx)
 
+    # Allow config to override the train script (e.g. test.yaml → test_train.py),
+    # matching the nano3/super3 training command pattern.
+    script_path = SCRIPT_PATH
+    if "run" in train_config and "train_script" in train_config.run:
+        script_path = train_config.run.train_script
+
+    # Parse runspec from the effective script for resource defaults.
+    script_spec = parse_runspec(script_path) if script_path != SCRIPT_PATH else SPEC
+
     job_config = build_job_config(
         train_config,
         cfg.ctx,
         SPEC.name,
-        SCRIPT_PATH,
+        script_path,
         cfg.argv,
         env_profile=env,
     )
@@ -87,31 +103,20 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
     display_job_submission(job_path, train_path, env_vars, cfg.mode, artifacts=job_config.get("artifacts"))
     startup_commands = get_startup_commands(env_for_executor)
 
-    # Extract recipe name + step_func from the compiled job config so we can
-    # pass them to run_recipe.py as CLI args (run_recipe.py takes them as
-    # flags, not as YAML fields). Honors the PEP 723 cmd template:
-    #     "python {script} --recipe {recipe} --step_func {step_func} --config {config}"
-    recipe_cfg = job_config.get("recipe") or {}
-    recipe_name = recipe_cfg.get("name")
-    step_func = recipe_cfg.get("step_func", "nemotron_omni_step")
-    if not recipe_name:
-        typer.echo("Error: recipe.name is required in the config YAML", err=True)
-        raise typer.Exit(1)
-    recipe_args = ["--recipe", str(recipe_name), "--step_func", str(step_func)]
-
     if cfg.mode == "local":
         execute_local(
-            SCRIPT_PATH,
+            script_path,
             train_path,
-            [*recipe_args, *cfg.passthrough],
-            torchrun=(SPEC.run.launch == "torchrun"),
+            cfg.passthrough,
+            torchrun=(script_spec.run.launch == "torchrun"),
             env_vars=env_vars,
             startup_commands=startup_commands,
         )
     else:
         _execute_remote(
+            script_path=script_path,
+            script_resources=script_spec.resources,
             train_path=train_path,
-            recipe_args=recipe_args,
             env=env_for_executor,
             passthrough=cfg.passthrough,
             attached=cfg.attached,
@@ -123,8 +128,10 @@ def _execute_sft(cfg: RecipeConfig, *, experiment=None):
 
 
 def _execute_remote(
+    *,
+    script_path: str,
+    script_resources=None,
     train_path: Path,
-    recipe_args: list[str],
     env,
     passthrough: list[str],
     attached: bool,
@@ -135,16 +142,11 @@ def _execute_remote(
 ):
     """Execute via nemo-run with Slurm backend.
 
-    ``recipe_args`` carries the ``--recipe <name> --step_func <func>`` pair
-    extracted from the compiled job config. Combined with ``--config
-    REMOTE_CONFIG`` and any user passthrough, this forms the CLI surface
-    the thin ``train.py`` forwarder expects — which it then forwards to
-    Megatron-Bridge's ``scripts/training/run_recipe.py`` via ``os.execvp``.
-
-    The PEP 723 ``launch = "torchrun"`` declaration drives nemo-run to wrap
-    the command with ``torchrun --nproc-per-node=N`` and populate the
-    multi-node rendezvous flags from Slurm env vars automatically, so we
-    do not construct torchrun args here.
+    Recipe / step-function / dataset selection live in the YAML's ``recipe:``
+    block and are resolved inside ``train.py``. The ``launch = "torchrun"``
+    declaration in the train script's PEP 723 frontmatter drives nemo-run to
+    wrap the command with ``torchrun --nproc-per-node=N`` and populate the
+    multi-node rendezvous flags from Slurm env vars automatically.
     """
     try:
         import nemo_run as run
@@ -163,7 +165,7 @@ def _execute_remote(
     patch_nemo_run_ray_template_for_cpu()
 
     packager = SelfContainedPackager(
-        script_path=SCRIPT_PATH,
+        script_path=script_path,
         train_path=str(train_path),
     )
 
@@ -174,11 +176,11 @@ def _execute_remote(
         attached=attached,
         force_squash=force_squash,
         default_image=SPEC.image,
-        script_resources=SPEC.resources,
+        script_resources=script_resources,
     )
 
     recipe_name = SPEC.name.replace("/", "-")
-    script_args = [*recipe_args, "--config", REMOTE_CONFIG, *passthrough]
+    script_args = ["--config", REMOTE_CONFIG, *passthrough]
 
     if startup_commands:
         import shlex

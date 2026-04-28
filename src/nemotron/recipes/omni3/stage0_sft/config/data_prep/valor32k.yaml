@@ -1,8 +1,49 @@
+# Omni3 SFT data prep — Valor32k-AVQA v2.0 (audio-visual-language SFT)
+#
+# Cosmos-Xenna two-pipeline build of an Energon WebDataset from a VALOR-32K
+# source video tar plus QA annotations downloaded automatically. Runs in the
+# Ray data-prep container; per-video ffmpeg fans out across all CPU workers.
+#
+# Pipeline machinery lives in:
+#   - nemotron.data_prep.recipes.sft_omni
+#   - nemotron.data_prep.stages.audio_extract
+#   - nemotron.data_prep.stages.webdataset_shard
+#
+# Worker image deps: install via `nemotron[audio]` (pulls webdataset and
+# imageio-ffmpeg as a static binary; no apt-get required). See the runspec
+# setup block at the top of data_prep.py for the exact uv invocation.
+#
+# Cluster-local paths come from env vars (set them in your env.toml or shell):
+#   OMNI3_VALOR32K_VIDEOS_TAR    Source tar (~41 GB). May stay null if videos/
+#                                  is already populated by hand.
+#   OMNI3_VALOR32K_ENERGON_PATH  Where the built Energon dataset goes.
+#   OMNI3_VALOR32K_RAW_DIR       Intermediate dir for extracted videos +
+#                                  audio (defaults to <dataset_path>/../raw).
+
 dataset_name: valor32k
 dataset_path: ${oc.env:OMNI3_VALOR32K_ENERGON_PATH,/datasets/valor32k/energon}
+raw_dir:      ${oc.env:OMNI3_VALOR32K_RAW_DIR,null}
+source_tar:   ${oc.env:OMNI3_VALOR32K_VIDEOS_TAR,null}
+samples_per_shard: 100
+
+# Per-stage parallelism on the data-prep workers. ffmpeg saturates one CPU per
+# worker, so 4 audio workers/node × 16 cores ≈ ~25% utilization headroom.
+# Shard writing is I/O bound; 2/node is plenty.
+audio_workers_per_node: 4.0
+shard_workers_per_node: 2.0
+
+# Stage configs (passed through to AudioExtractStage / WebDatasetShardStage).
+audio_extract:
+  stage_cpus: 1.0
+  target_sr: 16000
+  timeout_sec: 60
+shard_write:
+  stage_cpus: 1.0
+
 metadata_dir: ${oc.env:NEMO_RUN_DIR,.}/stage0_sft/data_prep/valor32k
 link_path: null
-builder_command: null
 modality_filter: null
 sample: null
 force: false
+execution_mode: auto
+config_name: valor32k

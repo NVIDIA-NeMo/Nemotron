@@ -1,7 +1,7 @@
 run:
   nproc_per_node: 8
   env:
-    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.sqsh
     workdir: /workspace/Megatron-Bridge
 
 recipe:

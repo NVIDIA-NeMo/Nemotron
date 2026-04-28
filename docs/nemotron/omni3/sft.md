@@ -1,15 +1,15 @@
 # Stage 0: Supervised Fine-Tuning (SFT)
 
-Omni starts from the GA checkpoint and fine-tunes it with the Valor32k multimodal recipe family using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge).
+Omni starts from the GA [`nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16`](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16) checkpoint (30B-A3B hybrid Mamba-transformer MoE) and fine-tunes it with the Valor32k multimodal recipe family using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge). SFT teaches the perception-sub-agent surface — instruction-following over multimodal inputs — that downstream RL alignment and agentic systems consume. The released configs target the open-data subset; see [`architecture.md` §Progressive context scaling](./architecture.md#progressive-context-scaling) for how the open configs relate to the upstream 16K → 49K → 262K training schedule.
 
-> **Container-first stage**: Omni does not ship with a pre-baked image. This stage owns the `Dockerfile` and `build.py` that produce `omni3-sft.tar`, and all later SFT/eval commands reuse that archive.
+> **Container-first stage**: Omni does not ship with a pre-baked image. This stage owns the `Dockerfile` that the `nemotron omni3 build sft` dispatcher turns into `omni3-sft.sqsh`, which all later SFT/eval commands reuse via the per-cluster `build_cache_dir`.
 
 > **Defaults** — the shipped `default.yaml` uses [CORD-v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2) from HuggingFace via Megatron-Bridge's `vlm-hf` loader, so `nemotron omni3 sft --run <profile>` works out of the box with no internal data access. `-c valor32k` switches to the full audio-visual-language Energon flow but requires the internal Valor32k-AVQA dataset (see [Config Variants](#config-variants)).
 
 > **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
 > - **Open-dataset default trains projector only.** CORD-v2 plus `freeze_language_model: true` fits on a single 8-GPU node (per QA guide §5.2.2). For full-model SFT, switch to `-c image_text_peft` (LoRA on CORD-v2) or prepare your own Energon dataset and point `dataset.path` at it.
 > - `nemotron omni3 data prep sft` with `-c valor32k` validates a **prepared** Energon dataset; the raw-shard builder is internal-only. With the default (HF) flow the command is a no-op manifest writer — the training container pulls from the Hub on demand.
-> - The `omni3-sft` Dockerfile's `ADD https://github.com/NVIDIA/Megatron-Bridge.git#dev/nomni` resolves only once the upstream branch is public (Omni release day). Before then `omni3 build sft` fails at that `ADD` step.
+> - The `omni3-sft` Dockerfile clones `NVIDIA-NeMo/Megatron-Bridge @ nemotron_3_omni` (with `NVIDIA/Megatron-LM @ nemotron_3_omni` as a recursive submodule fetch). These are the active release branches for Nemotron 3 Omni; bump to a versioned tag (or `main`) once these changes merge upstream.
 
 ---
 
@@ -19,8 +19,8 @@ The stage directory is `src/nemotron/recipes/omni3/stage0_sft/` and contains:
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Builds the pinned Megatron-Bridge `dev/nomni` environment |
-| `build.py` | Saves the image as `oci-archive:///.../omni3-sft.tar` |
+| `Dockerfile` | Builds the Megatron-Bridge `nemotron_3_omni` environment |
+
 | `data_prep.py` | Validates or stages a prepared Valor32k Energon dataset |
 | `train.py` | Runs `scripts/training/run_recipe.py` with the selected recipe |
 | `config/*.yaml` | Full SFT, PEFT, audio-text, and tiny variants |
@@ -36,8 +36,16 @@ uv run nemotron omni3 build sft --run YOUR-CLUSTER
 The canonical archive path is:
 
 ```text
-oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
+${build_cache_dir}/containers/omni3-sft.sqsh
 ```
+
+`build_cache_dir` is set per profile in `env.toml` and is mounted into
+the build container at `/nemotron-cache`. The dispatcher also pulls
+your `nvcr.io` credentials out of `~/.config/enroot/.credentials` and
+exposes them to the build container as a docker-format `auth.json`,
+so `FROM nvcr.io/nvidian/nemo:<tag>` resolves without a separate
+podman login. See [How container builds authenticate](../../nemo_runspec/nemo-run.md#how-the-build-container-authenticates-with-private-registries)
+for the full mechanism + how to extend the registry allowlist.
 
 For local iteration, you can build the same stage directly from the Dockerfile:
 
@@ -93,7 +101,7 @@ $ uv run nemotron omni3 data prep sft --run YOUR-CLUSTER
 
 // 3. Convert the GA Hugging Face checkpoint to Megatron format
 $ uv run nemotron omni3 model import pretrain --run YOUR-CLUSTER \
-    --hf-model nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning \
+    --hf-model nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16 \
     --megatron-path /checkpoints/nemotron_omni
 
 // 4. Launch SFT
@@ -170,8 +178,19 @@ This stage uses:
 
 After SFT completes, proceed to [Stage 1: RL](./rl.md).
 
+## Upstream
+
+This stage is the cookbook view of the upstream Megatron-Bridge omni
+SFT flow. For the canonical recipe (hyperparameters, config tables,
+model-level training notes), see the **[Megatron-Bridge `nemotron_3_omni`
+README](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/nemotron_3_omni/examples/models/vlm/nemotron_3_omni/README.md)**.
+The Dockerfile in this stage pins `NVIDIA-NeMo/Megatron-Bridge @ nemotron_3_omni` (and `NVIDIA/Megatron-LM @ nemotron_3_omni` as a recursive submodule fetch); bump those branches once they merge to a versioned tag.
+
 ## Reference
 
-- **Recipe source:** `src/nemotron/recipes/omni3/stage0_sft/`
+- **Recipe source:** [`src/nemotron/recipes/omni3/stage0_sft/`](../../../src/nemotron/recipes/omni3/stage0_sft/) ([README](../../../src/nemotron/recipes/omni3/stage0_sft/README.md))
+- **Upstream**: [Megatron-Bridge omni SFT recipe](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/nemotron_3_omni/examples/models/vlm/nemotron_3_omni/README.md)
+- [Architecture deep-dive](./architecture.md)
+- [Inference & deployment](./inference.md)
 - [Back to Overview](./README.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)

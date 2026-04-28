@@ -51,6 +51,18 @@ s3 = ["s3fs>=2024.0.0"]
 gcs = ["gcsfs>=2024.0.0"]
 sentencepiece = ["sentencepiece>=0.2.0"]
 xenna = ["cosmos-xenna"]
+# Audio/video data prep (e.g. omni3 Valor32k SFT). imageio-ffmpeg ships a static
+# ffmpeg binary as a wheel so we don't need apt-get on the data-prep worker image.
+audio = [
+    "webdataset>=0.2.86",
+    "imageio-ffmpeg>=0.5.1",
+]
+# Synthetic data generation pipelines under `nemotron data sdg ...`
+# (e.g. recipes/data/sdg/long-document/*).  Installing this extra lets the
+# Nemotron CLI introspect each stage's Pydantic config class for rich
+# `--help` rendering; the recipe scripts themselves also work standalone via
+# `uv run --no-project` (they declare their own PEP 723 inline deps).
+data-sdg = ["data-designer>=0.5.6"]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -63,6 +75,9 @@ all = [
     "gcsfs>=2024.0.0",
     "sentencepiece>=0.2.0",
     "cosmos-xenna",
+    "webdataset>=0.2.86",
+    "imageio-ffmpeg>=0.5.1",
+    "data-designer>=0.5.6",
 ]
 
 # Note: megatron-bridge is required for training but not listed as a dependency

@@ -1,6 +1,6 @@
 # Stage 2: Evaluation
 
-Evaluate trained Nemotron Omni checkpoints against standard benchmarks using [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator).
+Evaluate trained Nemotron Omni checkpoints against standard benchmarks using [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator). Eval validates the perception-sub-agent surface across the modalities the model serves — text reasoning regression plus the multimodal sanity checks documented in the SFT guide.
 
 > **Different execution pattern**: Like the Nano3 and Super3 evaluators, Omni eval does not submit a recipe script. The CLI resolves config, env profile values, and artifacts, then passes the compiled config directly to `nemo-evaluator-launcher`.
 
@@ -57,7 +57,7 @@ The default config reuses the Omni SFT container because it contains the require
 run:
   model: omni3-vision-rl-model:latest
   env:
-    container: oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.sqsh
 
 deployment:
   type: generic
@@ -182,7 +182,7 @@ This stage uses:
 ### Container
 
 ```text
-oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.tar
+/home/${oc.env:USER}/.cache/nemotron/containers/omni3-sft.sqsh
 ```
 
 ## Troubleshooting

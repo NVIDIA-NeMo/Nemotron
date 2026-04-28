@@ -1,20 +1,19 @@
 # Omni3 SFT data prep — default (open dataset, HF Hub pull)
 #
-# The CORD-v2 default training config uses Megatron-Bridge's `vlm-hf`
-# dataset loader, which downloads from HuggingFace on-demand inside the
-# training container. No Energon shard building is required — this data
-# prep step just warms the HF cache and emits a staging manifest so
-# artifact lineage still flows cleanly through W&B.
+# CORD-v2 via Megatron-Bridge's `vlm-hf` loader. The training container
+# downloads from HuggingFace on-demand — no Energon shard building required.
+# This data-prep step just emits a manifest so artifact lineage flows through
+# W&B; no Cosmos-Xenna pipeline runs for this flow.
 #
-# Override `hf_dataset_id` to point at a different HF dataset, or switch
-# to `-c valor32k` for the internal Energon path.
+# Override `hf_dataset_id` for a different HF dataset, or switch to
+# `-c valor32k` for the Energon self-build path.
 
 dataset_name: cord_v2
 hf_dataset_id: naver-clova-ix/cord-v2
 dataset_path: null
 metadata_dir: ${oc.env:NEMO_RUN_DIR,.}/stage0_sft/data_prep/cord_v2
 link_path: null
-builder_command: null
 modality_filter: null
 sample: null
 force: false
+config_name: default

@@ -1,13 +1,13 @@
 # Stage 1: Reinforcement Learning (RL)
 
-Omni RL continues the multimodal post-training pipeline with [NeMo-RL](../nvidia-stack.md#nemo-rl) using one shared container and three explicit sub-stages.
+Omni RL continues the multimodal post-training pipeline with [NeMo-RL](../nvidia-stack.md#nemo-rl) using one shared container and three explicit sub-stages. RL aligns the model's perception-sub-agent surface — preference quality on visual reasoning, factual grounding for downstream agent calls, and ASR fidelity. The full upstream alignment corpus runs **~2.3M rollouts across 20 RL datasets / 25 environments** covering visual grounding, charts, vision-critical STEM, video understanding, and ASR (per the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/)). This recipe folder surfaces the **3 of 25** environments that have public data: MMPR (preference), the Nano RL training blend (text), and MMPR-Tiny (vision); the remaining 22 environments use internal or third-party data and aren't included.
 
-> **Shared container**: All RL sub-stages use the `src/nemotron/recipes/omni3/stage1_rl/` Dockerfile and `build.py`, which produce `omni3-rl.tar`.
+> **Shared container**: All RL sub-stages use `src/nemotron/recipes/omni3/stage1_rl/Dockerfile`. The `nemotron omni3 build rl` dispatcher turns it into `omni3-rl.sqsh` under your `build_cache_dir`.
 
 > **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
 > - **Vision RL launcher is stubbed.** `stage3_vision_rl/train.py` raises `NotImplementedError` and declares `nodes=1, gpus_per_node=0` so stray submissions don't allocate GPUs. `omni3 pipe` auto-detects this and skips stage 4 by default; pass `pipe.force_vision=true` once upstream lands. Data prep (`omni3 data prep rl -c vision`) is fully functional and produces the MMPR-Tiny parquet/images layout consumers expect.
-> - **RL Dockerfile body is a placeholder.** Required `ARG`s, `ADD https://github.com/NVIDIA/NeMo-RL.git#nano-v3-omni-recipes`, and `LABEL`s are in place, but the `uv sync` / vLLM install body is a `TODO(release)` stub. `omni3 build rl` will fail until that lands.
-> - **Upstream `nano-v3-omni-recipes` branch may still be private at merge time.** Same resolution timing as SFT's `dev/nomni` branch.
+> - **RL Dockerfile body is intentionally minimal.** `stage1_rl/Dockerfile` pulls the public CUDA base, ADDs NeMo-RL's `nano-v3-omni-recipes` branch into `/workspace/nemo-rl`, and stops there. The full-fat NeMo-RL release body (vLLM wheel install, full `uv sync`, fingerprinting) lands at the upstream Omni release; today's body is sufficient for RL data prep and the text-RL launcher to run end-to-end. `omni3 build rl` succeeds and produces `omni3-rl.tar`.
+> - **`nano-v3-omni` is the active release branch for Nemotron 3 Omni**; bump to a versioned tag (or `main`) once these changes merge upstream.
 
 ---
 
@@ -32,8 +32,7 @@ The shared RL tree contains:
 | Path | Purpose |
 |------|---------|
 | `stage1_rl/Dockerfile` | Shared NeMo-RL Omni image |
-| `stage1_rl/build.py` | Exports `omni3-rl.tar` |
-| `stage1_rl/data_prep.py` | Dispatcher for `-c mpo|text|vision` |
+| `stage1_rl/data_prep.py` | Dispatcher for `-c mpo` / `-c text` / `-c vision` |
 | `stage1_rl/stage1_mpo/` | MPO launcher, config, and data prep |
 | `stage1_rl/stage2_text_rl/` | Text RL launcher, config, and data prep |
 | `stage1_rl/stage3_vision_rl/` | Vision RL launcher stub, config, and data prep |
@@ -55,7 +54,7 @@ uv run nemotron omni3 build rl --run YOUR-CLUSTER
 Canonical archive path:
 
 ```text
-oci-archive:///home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.tar
+/home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.sqsh
 ```
 
 For local iteration:
@@ -102,11 +101,20 @@ uv run nemotron omni3 data prep rl -c vision --run YOUR-CLUSTER
 
 The configs under `stage1_rl/config/data_prep/` map to:
 
-| Config | Output |
-|--------|--------|
-| `mpo.yaml` | MMPR MPO metadata |
-| `text.yaml` | Train/validation JSONL artifacts for text RL |
-| `vision.yaml` | MMPR-Tiny cache for the vision stage |
+| Config | Source | Output |
+|--------|--------|--------|
+| `mpo.yaml` | `hf://OpenGVLab/MMPR` (auto-downloads via `source_uri`) | `MMPR-v1.2/` cache + rewritten `meta_public.json` |
+| `text.yaml` | `hf://nvidia/Nemotron-3-Nano-RL-Training-Blend` (resolved through Nano3's HF placeholder pipeline) | per-blend train/val JSONL with `responses_create_params` schema |
+| `vision.yaml` | `hf://OpenGVLab/MMPR-Tiny` (auto-downloads via `source_uri`) | `MMPR-Tiny/` cache + parquet + preview |
+
+When `input_dir` is empty/incomplete and `source_uri` is set, the
+dispatcher snapshot-downloads the HF repo before the prep stage runs.
+Pre-stage data manually (or set `OMNI3_MMPR_PUBLIC_RAW` /
+`OMNI3_MMPR_TINY_RAW`) to skip the download.
+
+> **See [data-prep.md](rl/data-prep.md)** for the full data-prep guide:
+> auto-download semantics, helper scripts under `scripts/`, output
+> layouts, artifact registration, and parallel-submission notes.
 
 ## Stage-Specific Notes
 
@@ -148,8 +156,24 @@ This stage uses:
 
 After RL completes, proceed to [Stage 2: Evaluation](./evaluate.md).
 
+## Upstream
+
+This stage is the cookbook view of the upstream NeMo-RL omni RL flow.
+For the canonical end-to-end walkthrough (build, data prep,
+MPO/text/vision launchers, `.env` setup), see the **[NeMo-RL
+`nano-v3-omni` Nemotron 3 Nano Omni guide](https://github.com/NVIDIA-NeMo/RL/blob/nano-v3-omni/docs/guides/nemotron-3-nano-omni.md)**.
+The Dockerfile in this stage pins `NVIDIA/NeMo-RL @ nano-v3-omni`,
+which carries the omni vllm fork at
+[`aroshanghias-nvd/vllm` `nano-v3-vl`](https://github.com/aroshanghias-nvd/vllm/tree/nano-v3-vl)
+as a `3rdparty/vllm` submodule. Bump the NeMo-RL branch when it merges
+to a versioned tag.
+
 ## Reference
 
-- **Recipe source:** `src/nemotron/recipes/omni3/stage1_rl/`
+- **Recipe source:** [`src/nemotron/recipes/omni3/stage1_rl/`](../../../src/nemotron/recipes/omni3/stage1_rl/) ([README](../../../src/nemotron/recipes/omni3/stage1_rl/README.md))
+- **Upstream**: [NeMo-RL `nano-v3-omni` guide](https://github.com/NVIDIA-NeMo/RL/blob/nano-v3-omni/docs/guides/nemotron-3-nano-omni.md)
+- [RL data prep deep-dive](./rl/data-prep.md)
+- [Architecture deep-dive](./architecture.md)
+- [Inference & deployment](./inference.md)
 - [Back to Overview](./README.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)

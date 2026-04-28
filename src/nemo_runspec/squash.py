@@ -35,6 +35,7 @@ salloc argv), use the three resolve_* helpers individually.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any, Mapping
 
 from rich.console import Console
@@ -81,6 +82,25 @@ def resolve_build_image(env_config: Mapping[str, Any] | None, default: str) -> s
     if env_config is None:
         return default
     return env_config.get("build_image") or default
+
+
+def resolve_build_cache_dir(
+    env_config: Mapping[str, Any] | None,
+    default: Path | str,
+) -> Path:
+    """Select the host-side cache directory for build artifacts.
+
+    Precedence: ``build_cache_dir`` from env > caller-provided ``default``.
+
+    The default is intended for *local* builds (typically
+    ``~/.cache/nemotron``). Remote builds should set ``build_cache_dir`` in
+    their env.toml profile to a cluster-visible path (typically on Lustre)
+    so the host side of the mount exists on compute nodes.
+    """
+    if env_config is None:
+        return Path(default)
+    explicit = env_config.get("build_cache_dir")
+    return Path(explicit) if explicit else Path(default)
 
 
 def build_salloc_args(
@@ -256,7 +276,12 @@ def ensure_squashed_image(
     # (login nodes don't have enough memory for enroot import).
     # build_salloc_args applies the canonical build-context precedence
     # (build_partition > run_partition > partition; build_time > time).
-    salloc_args = build_salloc_args(env_config)
+    # ``include_gpus=False`` because enroot import is CPU-only and
+    # ``build_partition`` is typically a CPU partition; mixing
+    # ``--partition=cpu`` with ``--gpus-per-node=8`` from the
+    # training profile would be rejected by sbatch with
+    # "Requested node configuration is not available".
+    salloc_args = build_salloc_args(env_config, include_gpus=False)
 
     # Set up writable enroot paths (default /raid/enroot may not be user-writable)
     enroot_runtime = f"{remote_job_dir}/.enroot"

@@ -48,4 +48,4 @@ Once curated, the output can be tokenized and used for downstream model training
 - [Nemotron-CC paper](https://arxiv.org/abs/2412.02595) — methodology and evaluation
 - [nvidia/Nemotron-CC-v2](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2) — released dataset on Hugging Face
 - [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) — the underlying data curation library
-- [Data Preparation](./data-prep.md) — last-mile processing for training
+- [Data Preparation](../../data-prep.md) — last-mile processing for training

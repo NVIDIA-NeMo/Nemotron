@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import os
+import secrets
 import shutil
 import time
 from pathlib import Path
@@ -45,6 +47,20 @@ from nemo_runspec.squash import ensure_squashed_image
 
 SCRIPT_PATH = "src/nemotron/recipes/omni3/stage1_rl/data_prep.py"
 SPEC = parse_runspec(SCRIPT_PATH)
+
+
+def _make_job_name(prefix: str) -> str:
+    """Build a unique job name for a Ray data-prep submission.
+
+    Wall-clock-second timestamps alone collide when sibling RL configs
+    (mpo, text, vision) are launched in parallel — both the local
+    repo_config filename and the remote Ray code dir derive from this,
+    so collisions corrupt the per-job config upload. Pair the timestamp
+    with the PID and a short random token so each invocation gets a
+    stable *unique* name even under tight parallel fan-out.
+    """
+    job_uid = f"{int(time.time())}-{os.getpid()}-{secrets.token_hex(3)}"
+    return f"{prefix}_{job_uid}"
 
 SETUP_COMMANDS = [
     "find . -type d -name __pycache__ -delete 2>/dev/null || true",
@@ -202,7 +218,7 @@ def _execute_ray_code_packager(
     )
 
     recipe_name = SPEC.name.replace("/", "-")
-    job_name = f"{recipe_name}_{int(time.time())}"
+    job_name = _make_job_name(recipe_name)
     ray_job = RayJob(name=job_name, executor=executor)
 
     # Stage the resolved config under a job-scoped filename so we don't clobber
@@ -233,6 +249,14 @@ def _execute_ray_code_packager(
             runtime_env_yaml = handle.name
 
     try:
+        # Order matters: the remote code dir is created during ``ray_job.start``
+        # (workdir rsync), so the put must happen *after* start. Without
+        # this ordering, the remote_code_dir wouldn't exist yet. But Ray
+        # may schedule the worker before the put completes — which is why
+        # ``executor.tunnel.put`` runs synchronously and returns only when
+        # the file is fully written; the worker's first action (running
+        # the command) happens after Ray boots its head node, giving us
+        # ample headroom.
         ray_job.start(
             command=cmd,
             workdir=str(Path.cwd()) + "/",

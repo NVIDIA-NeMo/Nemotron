@@ -1,0 +1,30 @@
+# Default deployment config for the long-document text-QA stage's reasoning LLM.
+# Schema mirrors Evaluator's vllm.yaml.
+
+name: gpt-oss-120b
+hf_model_handle: openai/gpt-oss-120b
+served_model_name: openai/gpt-oss-120b
+
+image: vllm/vllm-openai:latest
+
+# port: null   # default null = pick free port at runtime; pin only on dedicated nodes
+tensor_parallel_size: 4
+pipeline_parallel_size: 1
+gpu_memory_utilization: 0.80
+max_model_len: 32768
+max_num_seqs: null
+trust_remote_code: false
+
+# Slurm resources for the serve task.
+nodes: 1
+gpus_per_node: 4
+walltime: "08:00:00"
+partition: null
+
+# `--reasoning-parser openai_gptoss` is required for gpt-oss to surface its
+# reasoning chain via `chat.completions` correctly.
+extra_args: "--reasoning-parser openai_gptoss"
+
+env_vars: {}
+pre_cmd: ""
+chat_template_jinja: null
