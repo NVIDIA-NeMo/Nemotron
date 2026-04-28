@@ -298,5 +298,3 @@ For LoRA, the checkpoint saves adapter weights instead:
 ```
 
 > **Tip**: `LOWEST_VAL` symlink points to the checkpoint with the best validation loss.
-
----

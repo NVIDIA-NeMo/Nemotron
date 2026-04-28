@@ -90,7 +90,7 @@ Nemotron keeps **data-producing recipes** separate from **model-family training 
 | Path | Purpose | Example |
 |------|---------|---------|
 | `src/nemotron/recipes/data/curation/` | Filter, dedup, and curate existing corpora | [Nemotron-CC](nemotron/data/curation/nemotron-cc.md) |
-| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | {doc}`Long-document SDG <nemotron/data/sdg/long-document>` feeding [Omni3 SFT](nemotron/omni3/sft.md) |
+| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | [Long-document SDG](nemotron/data/sdg/long-document.md) feeding [Omni3 SFT](nemotron/omni3/sft.md) |
 | `src/nemotron/recipes/<family>/` | Family-specific training, RL, evaluation, and model lifecycle commands | [Nano3](nemotron/nano3/README.md), [Omni3](nemotron/omni3/README.md) |
 
 ## Training Pipeline
@@ -135,6 +135,8 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 usage-cookbook/README.md
 usage-cookbook/Nemotron-Nano2-VL/README.md
 usage-cookbook/Nemotron-Parse-v1.1/README.md
+usage-cookbook/Nemotron-3-Nano-Omni/Megatron-bridge/README.md
+usage-cookbook/Nemotron-3-Nano-Omni/automodel/automodel_training_cookbook.md
 usage-cookbook/Nemotron-3-Nano-Omni/doc-intelligence-with-parse/README.md
 usage-cookbook/Nemotron-3-Super/README.md
 usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
