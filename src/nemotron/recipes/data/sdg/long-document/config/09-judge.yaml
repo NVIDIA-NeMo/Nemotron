@@ -1,0 +1,16 @@
+# Default config for `09-frontier-judge-sdg.py`.
+# Required at runtime: seed_path, model_id, endpoint, api_key_env.
+# Example:
+#   nemotron data sdg long-document judge --run dlw -c 09-judge \
+#       seed_path=./single_page_qa_output.parquet \
+#       model_id=gemini-2.5-flash-preview-04-17 \
+#       endpoint=https://generativelanguage.googleapis.com/v1beta \
+#       api_key_env=GEMINI_API_KEY \
+#       num_records=100
+seed_path: null
+model_id: null
+endpoint: null
+api_key_env: null
+model_alias: frontier-judge-vlm
+num_records: 5
+artifact_path: null

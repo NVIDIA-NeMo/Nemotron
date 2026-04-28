@@ -365,11 +365,23 @@ def run_rl_resolve_pipeline(
     download_stage: DownloadStageConfig | None = None,
     jsonl_stage: JsonlShardStageConfig | None = None,
     observability: ObservabilityConfig | None = None,
+    hf_placeholder_targets: dict[str, dict[str, Any]] | None = None,
 ) -> RlResolveResult:
     """Convenience wrapper: setup → execute → finalize in one call.
 
     For full control over the pipeline stages, use setup_rl_run
     and finalize_rl_run with explicit PipelineSpec construction.
+
+    Args:
+        ...
+        hf_placeholder_targets: Optional override for the HF placeholder
+            target dataset map propagated into ``PipelineContext``.
+            Defaults to None (the JsonlShardStage falls back to
+            ``hf_placeholder.TARGET_DATASETS``, which currently aliases
+            ``NANO3_TARGET_DATASETS``). Pass ``SUPER3_TARGET_DATASETS``
+            for Super3 blends, or ``NANO3_TARGET_DATASETS`` explicitly
+            when calling from omni3 / nano3 paths that share the same
+            blend.
     """
     plan_stage_cfg = plan_stage or JsonlPlanStageConfig()
     download_stage_cfg = download_stage or DownloadStageConfig()
@@ -397,6 +409,7 @@ def run_rl_resolve_pipeline(
             resolved_tokenizer=None,
             observability=observability_cfg,
             hf_env=detect_hf_env_vars(),
+            hf_placeholder_targets=hf_placeholder_targets,
         )
         stage_specs = [
             pipelines_v1.StageSpec(

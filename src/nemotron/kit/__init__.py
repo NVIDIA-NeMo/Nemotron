@@ -61,6 +61,7 @@ from typing import Any
 from nemotron.kit.artifact import (
     Artifact,
     DataBlendsArtifact,
+    EnergonWebDatasetArtifact,
     ModelArtifact,
     PretrainBlendsArtifact,
     PretrainDataArtifact,
@@ -91,6 +92,7 @@ __all__ = [
     # Artifacts
     "Artifact",
     "DataBlendsArtifact",
+    "EnergonWebDatasetArtifact",
     "ModelArtifact",
     "PretrainBlendsArtifact",
     "PretrainDataArtifact",

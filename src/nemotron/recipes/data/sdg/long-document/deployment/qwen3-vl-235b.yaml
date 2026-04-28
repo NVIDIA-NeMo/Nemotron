@@ -1,0 +1,29 @@
+# Default deployment config for the long-document visual / single-page /
+# windowed / whole-document QA stages.  Schema mirrors Evaluator's vllm.yaml.
+
+name: qwen3-vl-235b
+hf_model_handle: Qwen/Qwen3-VL-235B-A22B-Thinking-FP8
+served_model_name: Qwen/Qwen3-VL-235B-A22B-Thinking-FP8
+
+image: vllm/vllm-openai:latest
+
+# port: null   # default null = pick free port at runtime; pin only on dedicated nodes
+tensor_parallel_size: 4
+pipeline_parallel_size: 1
+gpu_memory_utilization: 0.90
+max_model_len: 50000
+max_num_seqs: null
+trust_remote_code: true
+
+# Slurm resources for the serve task.
+nodes: 1
+gpus_per_node: 4
+walltime: "08:00:00"
+partition: null
+
+# `--reasoning-parser deepseek_r1` is required for the Thinking-FP8 variant
+# to surface its chain-of-thought via the OpenAI chat-completions response.
+extra_args: "--reasoning-parser deepseek_r1 --limit-mm-per-prompt '{\"video\": 0}'"
+env_vars: {}
+pre_cmd: ""
+chat_template_jinja: null
