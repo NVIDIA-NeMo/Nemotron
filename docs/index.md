@@ -115,6 +115,7 @@ The Nemotron training pipeline has three stages, each tracked through [artifact 
 usage-cookbook/README.md
 usage-cookbook/Nemotron-Nano2-VL/README.md
 usage-cookbook/Nemotron-Parse-v1.1/README.md
+usage-cookbook/Nemotron-3-Nano-Omni/doc-intelligence-with-parse/README.md
 usage-cookbook/Nemotron-3-Super/README.md
 usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
 usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md
