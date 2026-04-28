@@ -1,0 +1,18 @@
+# Auto-downloaded PDFs and per-page artefacts; the notebook
+# regenerates them on demand.
+data/
+output_results/
+
+# Local API key files - never commit credentials.
+.env
+.env.local
+
+# Jupyter scratch.
+.ipynb_checkpoints/
+.jupyter/
+.ipython/
+
+# uv / pip / pyenv local state if someone runs `uv venv` here.
+.venv/
+__pycache__/
+*.py[cod]
