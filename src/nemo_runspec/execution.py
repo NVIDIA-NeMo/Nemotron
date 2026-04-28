@@ -564,13 +564,8 @@ def execute_uv_local(
     container's ``libcuda.so`` is a different version.
 
     When torch is NOT importable (bare machine), runs ``uv run --project
-    <stage>``. If the stage's ``pyproject.toml`` declares mutually-exclusive
-    cuXXX optional-dependencies (the standard UV multi-CUDA pattern from
-    https://docs.astral.sh/uv/guides/integration/pytorch/), this function
-    auto-detects the host's NVIDIA driver and passes ``--extra cuXXX`` so UV
-    selects a torch wheel that matches the driver. If the stage doesn't
-    declare those extras, no extra is injected and resolution proceeds via
-    the stage's normal dependencies (i.e., transitive torch from the lock).
+    <stage>`` so resolution follows the stage's dependencies, sources, and
+    lock file. Any extras passed by the caller are forwarded unchanged.
 
     Args:
         script_path: Relative or absolute path to the stage script.
@@ -613,10 +608,6 @@ def execute_uv_local(
             pre_script_args=pre_script_args or [],
         )
     else:
-        cuda_extra = _pick_cuda_extra(_stage_optional_extras(stage_dir))
-        if cuda_extra and cuda_extra not in extras:
-            extras.append(cuda_extra)
-            typer.echo(f"Auto-detected CUDA torch extra: --extra {cuda_extra}")
         rc = _execute_with_uv_torch(
             uv_cmd=uv_cmd,
             stage_dir=stage_dir,
@@ -734,13 +725,11 @@ def _execute_with_uv_torch(
 ) -> int:
     """Execute via ``uv run --project`` against the stage's pyproject + lock.
 
-    Torch resolution is driven by the stage's declared dependencies and
-    (optionally) a ``--extra cuXXX`` injected by the caller. We do NOT pass
-    ``--with torch`` or set ``UV_TORCH_BACKEND``: ``--with`` triggers a
-    separate ephemeral resolution that bypasses the project's lock and is
-    not honored by ``UV_TORCH_BACKEND`` (only ``uv pip``/``uv add``/``uv
-    sync`` honor it). See the multi-CUDA pattern in
-    https://docs.astral.sh/uv/guides/integration/pytorch/.
+    Torch resolution is driven by the stage's declared dependencies, sources,
+    and lock file. We do NOT pass ``--with torch`` or set ``UV_TORCH_BACKEND``:
+    ``--with`` triggers a separate ephemeral resolution that bypasses the
+    project's lock and is not honored by ``UV_TORCH_BACKEND`` (only ``uv pip``,
+    ``uv add``, and ``uv sync`` honor it).
     """
     cmd = [uv_cmd, "run", "--with", str(repo_root)]
     for pkg in extra_with:
@@ -762,131 +751,3 @@ def _execute_with_uv_torch(
     typer.echo(f"Executing with uv isolated environment: {' '.join(cmd)}")
     result = subprocess.run(cmd, env=env)
     return result.returncode
-
-
-# =============================================================================
-# CUDA Driver Detection
-# =============================================================================
-#
-# Ported from astral-sh/uv (MIT/Apache-2.0):
-#   - crates/uv-torch/src/accelerator.rs (detection order)
-#   - crates/uv-torch/src/backend.rs     (driver→cuXXX table)
-#
-# Used to pick the highest cuXXX optional-dependency extra that the host
-# driver supports AND the stage's pyproject.toml declares. Matches the
-# documented pattern at
-# https://docs.astral.sh/uv/guides/integration/pytorch/#configuring-accelerators-with-optional-dependencies.
-
-# (extra-name, minimum-driver-version-for-this-CUDA-toolkit). Walk descending;
-# first row whose minimum is <= host driver wins. Source: NVIDIA CUDA Toolkit
-# Release Notes Table 2/Table 1.
-_LINUX_CUDA_DRIVERS: list[tuple[str, tuple[int, ...]]] = [
-    ("cu130", (580,)),
-    ("cu129", (525, 60, 13)),
-    ("cu128", (525, 60, 13)),
-    ("cu126", (525, 60, 13)),
-    ("cu125", (525, 60, 13)),
-    ("cu124", (525, 60, 13)),
-    ("cu123", (525, 60, 13)),
-    ("cu122", (525, 60, 13)),
-    ("cu121", (525, 60, 13)),
-    ("cu120", (525, 60, 13)),
-    ("cu118", (450, 80, 2)),
-    ("cu117", (450, 80, 2)),
-    ("cu116", (450, 80, 2)),
-    ("cu115", (450, 80, 2)),
-    ("cu114", (450, 80, 2)),
-    ("cu113", (450, 80, 2)),
-    ("cu112", (450, 80, 2)),
-    ("cu111", (450, 80, 2)),
-    ("cu110", (450, 36, 6)),
-    ("cu102", (440, 33)),
-    ("cu101", (418, 39)),
-    ("cu100", (410, 48)),
-    ("cu92", (396, 26)),
-    ("cu91", (390, 46)),
-    ("cu90", (384, 81)),
-    ("cu80", (375, 26)),
-]
-
-
-def _parse_driver_version(text: str) -> tuple[int, ...] | None:
-    """Parse a driver version string like '550.144.03' into a tuple of ints."""
-    import re
-
-    text = text.strip()
-    if not text:
-        return None
-    parts = [p for p in re.split(r"[.\-]", text) if p]
-    try:
-        return tuple(int(p) for p in parts)
-    except ValueError:
-        return None
-
-
-def _read_nvidia_driver_version() -> tuple[int, ...] | None:
-    """Detect NVIDIA driver version, mirroring uv's source order.
-
-    Order: ``UV_CUDA_DRIVER_VERSION`` env (escape hatch) →
-    ``/sys/module/nvidia/version`` → ``/proc/driver/nvidia/version`` →
-    ``nvidia-smi --query-gpu=driver_version --format=csv,noheader``.
-    Returns ``None`` if no NVIDIA driver is detectable.
-    """
-    override = os.environ.get("UV_CUDA_DRIVER_VERSION")
-    if override:
-        return _parse_driver_version(override)
-
-    try:
-        return _parse_driver_version(Path("/sys/module/nvidia/version").read_text())
-    except OSError:
-        pass
-
-    try:
-        # Format: "NVRM version: NVIDIA UNIX … x86_64  550.144.03  Release Build  …"
-        # uv splits on two-space and takes index 1.
-        content = Path("/proc/driver/nvidia/version").read_text()
-        parts = content.split("  ")
-        if len(parts) >= 2:
-            v = _parse_driver_version(parts[1])
-            if v:
-                return v
-    except OSError:
-        pass
-
-    try:
-        result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode == 0:
-            first_line = result.stdout.strip().split("\n")[0]
-            return _parse_driver_version(first_line)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-
-    return None
-
-
-def _pick_cuda_extra(stage_extras: set[str]) -> str | None:
-    """Highest cuXXX the host driver supports AND the stage declares, else None."""
-    if not stage_extras:
-        return None
-    driver = _read_nvidia_driver_version()
-    if driver is None:
-        return None
-    for variant, min_driver in _LINUX_CUDA_DRIVERS:
-        if driver >= min_driver and variant in stage_extras:
-            return variant
-    return None
-
-
-def _stage_optional_extras(stage_dir: Path) -> set[str]:
-    """Read ``[project.optional-dependencies]`` keys from the stage pyproject.toml."""
-    import tomllib
-
-    try:
-        with open(stage_dir / "pyproject.toml", "rb") as f:
-            data = tomllib.load(f)
-    except OSError:
-        return set()
-    return set(data.get("project", {}).get("optional-dependencies", {}).keys())
