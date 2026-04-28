@@ -170,7 +170,7 @@ to a versioned tag.
 
 ## Reference
 
-- **Recipe source:** [`src/nemotron/recipes/omni3/stage1_rl/`](../../../src/nemotron/recipes/omni3/stage1_rl/) ([README](../../../src/nemotron/recipes/omni3/stage1_rl/README.md))
+- **Recipe source:** [`src/nemotron/recipes/omni3/stage1_rl/`](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/omni3/stage1_rl) ([README](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/recipes/omni3/stage1_rl/README.md))
 - **Upstream**: [NeMo-RL `nano-v3-omni` guide](https://github.com/NVIDIA-NeMo/RL/blob/nano-v3-omni/docs/guides/nemotron-3-nano-omni.md)
 - [RL data prep deep-dive](./rl/data-prep.md)
 - [Architecture deep-dive](./architecture.md)

@@ -188,7 +188,7 @@ The Dockerfile in this stage pins `NVIDIA-NeMo/Megatron-Bridge @ nemotron_3_omni
 
 ## Reference
 
-- **Recipe source:** [`src/nemotron/recipes/omni3/stage0_sft/`](../../../src/nemotron/recipes/omni3/stage0_sft/) ([README](../../../src/nemotron/recipes/omni3/stage0_sft/README.md))
+- **Recipe source:** [`src/nemotron/recipes/omni3/stage0_sft/`](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/omni3/stage0_sft) ([README](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/recipes/omni3/stage0_sft/README.md))
 - **Upstream**: [Megatron-Bridge omni SFT recipe](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/nemotron_3_omni/examples/models/vlm/nemotron_3_omni/README.md)
 - [Architecture deep-dive](./architecture.md)
 - [Inference & deployment](./inference.md)

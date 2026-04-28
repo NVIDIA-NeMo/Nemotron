@@ -59,7 +59,7 @@ This recipe folder is the cookbook view; upstream sources are:
 | RL (NeMo-RL) | [`nano-v3-omni` Nemotron 3 Nano Omni guide](https://github.com/NVIDIA-NeMo/RL/blob/nano-v3-omni/docs/guides/nemotron-3-nano-omni.md) | [`NeMo-RL` `nano-v3-omni`](https://github.com/NVIDIA-NeMo/RL/tree/nano-v3-omni) |
 | Evaluation | Same Megatron-Bridge path | (above) |
 | Image training data | — | [`huggingface.co/datasets/nvidia/Nemotron-Image-Training-v3`](https://huggingface.co/datasets/nvidia/Nemotron-Image-Training-v3) |
-| Long-document SDG | — | [`src/nemotron/recipes/data/sdg/long-document/`](../../../src/nemotron/recipes/data/sdg/long-document/) (structure released; bodies port at upstream release) |
+| Long-document SDG | [Long-document SDG guide](../data/sdg/long-document.md) | [`src/nemotron/recipes/data/sdg/long-document/`](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document) (structure released; bodies port at upstream release) |
 
 ## Current Limitations
 
@@ -79,7 +79,7 @@ The linked stage guides (SFT / RL / Evaluate) call out each stage's specific lim
 - **Slurm cluster** with GPU nodes for SFT, RL, and evaluation — see [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - **[Weights & Biases](../wandb.md)** for experiment tracking and [artifact lineage](../artifacts.md)
 - **Build-capable execution profile** for `nemotron omni3 build <stage>` jobs
-- **GA checkpoint**: [nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16) (BF16 weights). FP8 and NVFP4 quantization paths are supported by the inference engines listed in [§Inference engines](#inference-engines).
+- **GA checkpoint**: [nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16) (BF16 weights). FP8 and NVFP4 quantization paths are supported by the inference engines listed in [`inference.md`](./inference.md#inference-engines).
 
 ### Installation
 

@@ -90,7 +90,7 @@ Nemotron keeps **data-producing recipes** separate from **model-family training 
 | Path | Purpose | Example |
 |------|---------|---------|
 | `src/nemotron/recipes/data/curation/` | Filter, dedup, and curate existing corpora | [Nemotron-CC](nemotron/data/curation/nemotron-cc.md) |
-| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | [Long-document SDG](nemotron/data/sdg/long-document.md) feeding [Omni3 SFT](nemotron/omni3/sft.md) |
+| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | {doc}`Long-document SDG <nemotron/data/sdg/long-document>` feeding [Omni3 SFT](nemotron/omni3/sft.md) |
 | `src/nemotron/recipes/<family>/` | Family-specific training, RL, evaluation, and model lifecycle commands | [Nano3](nemotron/nano3/README.md), [Omni3](nemotron/omni3/README.md) |
 
 ## Training Pipeline
@@ -187,6 +187,7 @@ nemotron/nano3/import.md
 nemotron/omni3/README.md
 nemotron/omni3/sft.md
 nemotron/omni3/rl.md
+nemotron/omni3/rl/data-prep.md
 nemotron/omni3/architecture.md
 nemotron/omni3/inference.md
 ```

@@ -62,7 +62,7 @@ The **16K → 49K → 262K** sequence is a *training schedule*, not a property o
 
 ## Synthetic data — long-document SDG
 
-The release blog calls out **~11.4M synthetic visual QA pairs (~45B tokens)** generated via NVIDIA NeMo Data Designer. The long-document SDG recipe is published in this repository at `src/nemotron/recipes/data/sdg/long-document/` (9-stage pipeline with structured argparse surfaces); the script bodies port at upstream release. See [`designs/long-document-sdg-pipeline.md`](../../../designs/long-document-sdg-pipeline.md) for the design discussion.
+The release blog calls out **~11.4M synthetic visual QA pairs (~45B tokens)** generated via NVIDIA NeMo Data Designer. The long-document SDG recipe is published in this repository ([guide](../data/sdg/long-document.md), [source](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document)) — a 9-stage pipeline with structured argparse surfaces. The design discussion lives in [`designs/long-document-sdg-pipeline.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/designs/long-document-sdg-pipeline.md).
 
 ## Training scale (release figures)
 
