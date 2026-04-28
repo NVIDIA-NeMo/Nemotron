@@ -10,7 +10,7 @@
 # [tool.runspec.run]
 # launch = "ray"
 # workdir = "/opt/nemo-rl-omni"
-# cmd = "bash scripts/omni/step_2_nanov3_text_only_stage_1.sh"
+# cmd = "bash scripts/nanov3_text_rl.sh"
 #
 # [tool.runspec.config]
 # dir = "./config"
@@ -58,7 +58,7 @@ from nemotron.kit.train_script import (
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config" / "default.yaml"
-DEFAULT_COMMAND = "bash scripts/omni/step_2_nanov3_text_only_stage_1.sh"
+DEFAULT_COMMAND = "bash scripts/nanov3_text_rl.sh"
 DEFAULT_WORKDIR = Path("/opt/nemo-rl-omni")
 
 

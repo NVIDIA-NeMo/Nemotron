@@ -207,10 +207,6 @@ class TestOmni3AppStructure:
         result = runner.invoke(app, ["omni3", "model", "adapter-export", "--help"])
         assert result.exit_code == 0
 
-    def test_eval_help_succeeds(self):
-        result = runner.invoke(app, ["omni3", "eval", "--help"])
-        assert result.exit_code == 0
-
     def test_pipe_help_succeeds(self):
         result = runner.invoke(app, ["omni3", "pipe", "--help"])
         assert result.exit_code == 0
@@ -228,21 +224,11 @@ class TestDryRun:
         assert "nemotron/omni3-sft:latest" in result.output
 
     def test_pipe_dry_run_succeeds(self, monkeypatch):
-        # Default: vision is stubbed (gpus_per_node=0 in its runspec), so
-        # pipe skips it and surfaces omni3-rl-text-model:latest as the final.
+        # Vision RL launcher landed upstream — pipe runs all 4 stages by
+        # default and surfaces ``omni3-vision-rl-model:latest`` as the
+        # final artifact.
         monkeypatch.setattr(sys, "argv", ["nemotron", "omni3", "pipe", "-d"])
         result = runner.invoke(app, ["omni3", "pipe", "-d"])
-        assert result.exit_code == 0, f"pipe dry-run failed: {result.output}\n{result.exception}"
-        assert "sft -> rl mpo -> rl text" in result.output
-        assert "SKIPPED" in result.output
-        assert "omni3-rl-text-model:latest" in result.output
-
-    def test_pipe_dry_run_force_vision(self, monkeypatch):
-        # Opt in to vision via the dotlist override. Once the upstream launcher
-        # lands, the runspec footprint comes back and this flag is no longer
-        # needed — the default path will include vision naturally.
-        monkeypatch.setattr(sys, "argv", ["nemotron", "omni3", "pipe", "-d", "pipe.force_vision=true"])
-        result = runner.invoke(app, ["omni3", "pipe", "-d", "pipe.force_vision=true"])
         assert result.exit_code == 0, f"pipe dry-run failed: {result.output}\n{result.exception}"
         assert "sft -> rl mpo -> rl text -> rl vision" in result.output
         assert "omni3-vision-rl-model:latest" in result.output

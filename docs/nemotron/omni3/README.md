@@ -16,7 +16,7 @@ Quick navigation for developers landing here from the [release blog](https://dev
 | Reproduce training | [§Quick Start](#quick-start) below |
 | SFT details | [`sft.md`](./sft.md) |
 | RL details | [`rl.md`](./rl.md) · [`rl/data-prep.md`](./rl/data-prep.md) |
-| Evaluation | [`evaluate.md`](./evaluate.md) |
+
 
 ## Model Overview
 
@@ -65,11 +65,9 @@ This recipe folder is the cookbook view; upstream sources are:
 
 The recipe structure, CLI, Dockerfiles, and configs are all in place, but some pieces still depend on upstream work or internal-only data:
 
-- **Vision RL training is stubbed.** `stage3_vision_rl/train.py` raises `NotImplementedError` and declares a degenerate resource footprint (`nodes=1, gpus_per_node=0`) so a stray submission doesn't allocate GPUs. `omni3 pipe` auto-detects this and skips stage 4 by default; pass `pipe.force_vision=true` once the upstream launcher lands. Data prep for MMPR-Tiny is fully functional.
-- **RL container mirrors NeMo-RL's release Dockerfile.** `stage1_rl/Dockerfile` clones `NVIDIA/NeMo-RL @ nano-v3-omni` recursively (which carries the [omni vllm fork](https://github.com/aroshanghias-nvd/vllm) as a submodule) and runs the same `BUILD_CUSTOM_VLLM=1` + `uv sync` flow as the upstream `docker/Dockerfile`. `omni3 build rl` produces `omni3-rl.sqsh`.
+- **Evaluation stage not yet included — coming soon.** The omni3 CLI doesn't have an `eval` subcommand today. Multimodal sanity checks against a trained checkpoint run via `nemotron omni3 model eval`; see [SFT guide §Model lifecycle](./sft.md). A dedicated eval stage that compiles a benchmark task list and submits through `nemo-evaluator-launcher` will land in a follow-up release.
 - **SFT default uses CORD-v2 (open); Valor32k is an opt-in.** `default.yaml` pulls [CORD-v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2) from HuggingFace via the `vlm-hf` loader — no local shard building required. `-c valor32k` switches to the full audio-visual-language flow, but requires internal access to a prepared Valor32k-AVQA Energon dataset (the raw-shard builder is internal-only at release). `data_prep.py` validates the Energon path or emits a manifest for HF — it does not assemble shards.
 - **Long-document SDG pipeline is a scaffold.** `src/nemotron/recipes/data/sdg/long-document/` has 9 numbered scripts with their argparse surfaces and a thorough README, but the script bodies raise `NotImplementedError` — port bodies from upstream at release time. See `designs/long-document-sdg-pipeline.md`.
-- **Eval defaults are text-only.** `stage2_eval/config/default.yaml` inherits nano3's language-benchmark task list to track language-capability regression. Multimodal sanity checks (image / video / audio / audio-video-text) run via `nemotron omni3 model eval` — see [SFT guide §Model lifecycle](./sft.md).
 - **Pinned to release branches.** The SFT Dockerfile pulls `github.com/NVIDIA-NeMo/Megatron-Bridge @ nemotron_3_omni` (and `github.com/NVIDIA/Megatron-LM @ nemotron_3_omni` as a recursive submodule fetch); the RL flow uses `github.com/NVIDIA/NeMo-RL @ nano-v3-omni`. These are the active release branches for Nemotron 3 Omni — bump to a versioned tag (or `main`) once these changes merge upstream.
 
 The linked stage guides (SFT / RL / Evaluate) call out each stage's specific limitations.
@@ -149,8 +147,6 @@ $ uv run nemotron omni3 rl text --run YOUR-CLUSTER
 $ uv run nemotron omni3 data prep rl -c vision --run YOUR-CLUSTER
 $ uv run nemotron omni3 rl vision --run YOUR-CLUSTER
 
-// Stage 2: Evaluation
-$ uv run nemotron omni3 eval --run YOUR-CLUSTER
 ```
 
 </div>
@@ -163,7 +159,6 @@ $ uv run nemotron omni3 eval --run YOUR-CLUSTER
 - **Release blog**: [NVIDIA Nemotron 3 Nano Omni — multimodal agent reasoning](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/)
 - **SFT recipe**: [Stage 0: SFT](./sft.md)
 - **RL recipe**: [Stage 1: RL](./rl.md)
-- **Eval recipe**: [Stage 2: Evaluation](./evaluate.md)
 - **Image training data**: [`nvidia/Nemotron-Image-Training-v3`](https://huggingface.co/datasets/nvidia/Nemotron-Image-Training-v3)
 
 ## Training Pipeline
@@ -172,7 +167,8 @@ $ uv run nemotron omni3 eval --run YOUR-CLUSTER
 |-------|------|---------|-------|
 | 0 | [SFT](./sft.md) | Fine-tune the GA checkpoint on Valor32k and related multimodal variants | [sft.md](./sft.md) |
 | 1 | [RL](./rl.md) | Multi-stage Omni RL: MPO → text RL → vision RL | [rl.md](./rl.md) |
-| 2 | [Evaluation](./evaluate.md) | Benchmark the final checkpoint with NeMo Evaluator | [evaluate.md](./evaluate.md) |
+
+> An evaluation stage (`nemotron omni3 eval`) is on the roadmap; until it lands, run benchmarks via `nemotron omni3 model eval` (see [SFT guide §Model lifecycle](./sft.md)).
 
 ## Pipeline Overview
 
@@ -186,14 +182,12 @@ flowchart LR
     sft --> mpo["omni3 rl mpo"]
     mpo --> text["omni3 rl text"]
     text --> vision["omni3 rl vision"]
-    vision --> eval["omni3 eval"]
 
     style sdg fill:#e3f2fd,stroke:#2196f3
     style sft fill:#f3e5f5,stroke:#9c27b0
     style mpo fill:#e8f5e9,stroke:#4caf50
     style text fill:#e8f5e9,stroke:#4caf50
     style vision fill:#e8f5e9,stroke:#4caf50
-    style eval fill:#fff3e0,stroke:#ff9800
 ```
 
 The upstream synthetic-data pipeline lives outside the family tree under `src/nemotron/recipes/data/sdg/long-document/`. That keeps the recipe split explicit:
@@ -221,12 +215,6 @@ The RL stack uses one shared NeMo-RL container and three sub-stages, mirroring t
 The 20 RL datasets / 25 environments / ~2.3M rollouts referenced in the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/) compose the full upstream alignment corpus; this recipe surfaces the public/open-source subset.
 
 → [RL Guide](./rl.md) · [RL Data Prep](./rl/data-prep.md)
-
-### Stage 2: Evaluation
-
-Evaluation reuses the Omni SFT container to serve the Megatron checkpoint and hands the compiled config to `nemo-evaluator-launcher`.
-
-→ [Evaluation Guide](./evaluate.md)
 
 ## Execution Options
 
@@ -259,9 +247,6 @@ Usage: nemotron omni3 [OPTIONS] COMMAND [ARGS]...
 ╭─ Training Stages ─────────────────────────────────────────────────────────╮
 │ sft        Run omni3 supervised fine-tuning.                              │
 ╰───────────────────────────────────────────────────────────────────────────╯
-╭─ Evaluation ──────────────────────────────────────────────────────────────╮
-│ eval       Run evaluation with NeMo-Evaluator (stage2).                   │
-╰───────────────────────────────────────────────────────────────────────────╯
 ```
 
 </div>
@@ -270,7 +255,8 @@ Usage: nemotron omni3 [OPTIONS] COMMAND [ARGS]...
 
 - [Stage 0: SFT](./sft.md)
 - [Stage 1: RL](./rl.md)
-- [Stage 2: Evaluation](./evaluate.md)
+- [Architecture](./architecture.md)
+- [Inference & Deployment](./inference.md)
 - [Artifact Lineage](../artifacts.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - [W&B Integration](../wandb.md)
@@ -280,5 +266,6 @@ Usage: nemotron omni3 [OPTIONS] COMMAND [ARGS]...
 
 sft.md
 rl.md
-evaluate.md
+architecture.md
+inference.md
 ```

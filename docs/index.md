@@ -186,7 +186,8 @@ nemotron/nano3/import.md
 nemotron/omni3/README.md
 nemotron/omni3/sft.md
 nemotron/omni3/rl.md
-nemotron/omni3/evaluate.md
+nemotron/omni3/architecture.md
+nemotron/omni3/inference.md
 ```
 
 ```{toctree}

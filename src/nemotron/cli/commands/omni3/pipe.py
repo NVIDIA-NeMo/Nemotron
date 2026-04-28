@@ -34,39 +34,14 @@ META = RecipeMeta(
 )
 
 
-def _is_vision_stubbed(vision_spec) -> bool:
-    """Detect the vision stub by its degenerate resource footprint.
-
-    stage3_vision_rl/train.py declares nodes=1, gpus_per_node=0 while its
-    main() raises NotImplementedError; the real launcher (TBD upstream) will
-    bump these back to the production footprint. Treat that signal as "skip
-    vision" in pipe runs so we don't burn 3 successful stages only to crash
-    at stage 4.
-    """
-    return (vision_spec.resources.gpus_per_node or 0) == 0
-
-
-def _force_vision(cfg) -> bool:
-    """User override to include vision even when it looks stubbed.
-
-    Pass `pipe.force_vision=true` via the standard dotlist mechanism once the
-    upstream launcher has landed and the runspec has been bumped back.
-    """
-    return any("pipe.force_vision=true" in item for item in (cfg.dotlist or []))
-
-
-def _print_plan(cfg, *, include_vision: bool) -> None:
-    typer.echo("Omni3 pipeline: sft -> rl mpo -> rl text" + (" -> rl vision" if include_vision else ""))
+def _print_plan(cfg) -> None:
+    typer.echo("Omni3 pipeline: sft -> rl mpo -> rl text -> rl vision")
     typer.echo("Artifact chain:")
     typer.echo("  sft         -> omni3-sft-model:latest")
     typer.echo("  rl mpo      <- omni3-sft-model:latest")
     typer.echo("  rl text     <- omni3-rl-mpo-model:latest")
-    if include_vision:
-        typer.echo("  rl vision   <- omni3-rl-text-model:latest")
-        typer.echo("  final       -> omni3-vision-rl-model:latest")
-    else:
-        typer.echo("  rl vision   SKIPPED (launcher stubbed; pass pipe.force_vision=true to include)")
-        typer.echo("  final       -> omni3-rl-text-model:latest")
+    typer.echo("  rl vision   <- omni3-rl-text-model:latest")
+    typer.echo("  final       -> omni3-vision-rl-model:latest")
     if cfg.dotlist:
         typer.echo(f"Dotlist overrides: {' '.join(cfg.dotlist)}")
     if cfg.passthrough:
@@ -84,9 +59,7 @@ def _execute_pipe(cfg):
     from nemotron.cli.commands.omni3.rl.vision import SPEC as VISION_SPEC
     from nemotron.cli.commands.omni3.sft import _execute_sft
 
-    include_vision = not _is_vision_stubbed(VISION_SPEC) or _force_vision(cfg)
-
-    _print_plan(cfg, include_vision=include_vision)
+    _print_plan(cfg)
 
     if cfg.dry_run:
         return
@@ -99,28 +72,17 @@ def _execute_pipe(cfg):
         )
         raise typer.Exit(1)
 
-    total_stages = 4 if include_vision else 3
-
-    typer.echo(f"\n=== Stage 1/{total_stages}: sft ===\n")
+    typer.echo("\n=== Stage 1/4: sft ===\n")
     _execute_sft(cfg)
 
-    typer.echo(f"\n=== Stage 2/{total_stages}: rl mpo ===\n")
+    typer.echo("\n=== Stage 2/4: rl mpo ===\n")
     _execute_rl(cfg, script_path=MPO_SCRIPT_PATH, spec=MPO_SPEC)
 
-    typer.echo(f"\n=== Stage 3/{total_stages}: rl text ===\n")
+    typer.echo("\n=== Stage 3/4: rl text ===\n")
     _execute_rl(cfg, script_path=TEXT_SCRIPT_PATH, spec=TEXT_SPEC)
 
-    if include_vision:
-        typer.echo(f"\n=== Stage 4/{total_stages}: rl vision ===\n")
-        _execute_rl(cfg, script_path=VISION_SCRIPT_PATH, spec=VISION_SPEC)
-    else:
-        typer.echo(
-            "\n=== Stage 4 (rl vision) skipped: launcher is stubbed. ===\n"
-            "Final usable artifact: omni3-rl-text-model:latest.\n"
-            "Once the upstream vision RL launcher lands, bump stage3_vision_rl/train.py's "
-            "runspec footprint back to production (nodes=16, gpus_per_node=8) or pass "
-            "pipe.force_vision=true to override today.\n"
-        )
+    typer.echo("\n=== Stage 4/4: rl vision ===\n")
+    _execute_rl(cfg, script_path=VISION_SCRIPT_PATH, spec=VISION_SPEC)
 
 
 def pipe(ctx: typer.Context) -> None:

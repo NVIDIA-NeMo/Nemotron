@@ -98,7 +98,7 @@ srun --container-image=${build_cache_dir}/containers/omni3-sft.sqsh \
      bash -lc 'vllm serve /checkpoint --tensor-parallel-size 1 --gpu-memory-utilization 0.9'
 ```
 
-See [`evaluate.md`](./evaluate.md) for the analogous flow against `nemo-evaluator-launcher`.
+For benchmark evaluation against a deployed checkpoint, run `nemotron omni3 model eval` (a dedicated `nemotron omni3 eval` stage will land in a follow-up release).
 
 ## References
 

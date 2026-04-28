@@ -171,8 +171,7 @@ src/nemotron/
 │   │   │   ├── stage1_mpo/
 │   │   │   ├── stage2_text_rl/
 │   │   │   └── stage3_vision_rl/
-│   │   └── stage2_eval/
-│   │       └── config/
+│   │   # NOTE: omni3 eval stage is on the roadmap; not yet present
 │   └── nano3/
 │       ├── stage0_pretrain/
 │       │   ├── train.py               # -> Megatron-Bridge

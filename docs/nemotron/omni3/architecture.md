@@ -84,7 +84,7 @@ The release blog frames omni as a **multimodal perception sub-agent for agentic 
 - **Reasoning-trained checkpoint** (`Reasoning-BF16` suffix) for explicit multi-step thinking before tool calls
 - **NIM + open-license** so it can drop into existing agent stacks (LangChain, LlamaIndex, custom orchestrators) without licensing friction
 
-Stage docs ([`sft.md`](./sft.md), [`rl.md`](./rl.md), [`evaluate.md`](./evaluate.md)) train and evaluate against this perception-sub-agent surface — instruction-following over multimodal inputs, not free-form chat.
+Stage docs ([`sft.md`](./sft.md), [`rl.md`](./rl.md)) train and align this perception-sub-agent surface — instruction-following over multimodal inputs, not free-form chat.
 
 ## License
 

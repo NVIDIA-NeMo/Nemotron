@@ -4,9 +4,9 @@ Omni RL continues the multimodal post-training pipeline with [NeMo-RL](../nvidia
 
 > **Shared container**: All RL sub-stages use `src/nemotron/recipes/omni3/stage1_rl/Dockerfile`. The `nemotron omni3 build rl` dispatcher turns it into `omni3-rl.sqsh` under your `build_cache_dir`.
 
-> **Current limitations** (also summarized in the [family README](./README.md#current-limitations)):
-> - **Vision RL launcher is stubbed.** `stage3_vision_rl/train.py` raises `NotImplementedError` and declares `nodes=1, gpus_per_node=0` so stray submissions don't allocate GPUs. `omni3 pipe` auto-detects this and skips stage 4 by default; pass `pipe.force_vision=true` once upstream lands. Data prep (`omni3 data prep rl -c vision`) is fully functional and produces the MMPR-Tiny parquet/images layout consumers expect.
-> - **RL Dockerfile body is intentionally minimal.** `stage1_rl/Dockerfile` pulls the public CUDA base, ADDs NeMo-RL's `nano-v3-omni-recipes` branch into `/workspace/nemo-rl`, and stops there. The full-fat NeMo-RL release body (vLLM wheel install, full `uv sync`, fingerprinting) lands at the upstream Omni release; today's body is sufficient for RL data prep and the text-RL launcher to run end-to-end. `omni3 build rl` succeeds and produces `omni3-rl.tar`.
+> **Current notes** (also summarized in the [family README](./README.md#current-limitations)):
+> - **All three sub-stages have working launchers** that mirror the upstream NeMo-RL `nano-v3-omni` flow (`scripts/nanov3_mpo.sh`, `scripts/nanov3_text_rl.sh`, `scripts/nanov3_vision_rl.sh`).
+> - **`stage1_rl/Dockerfile` mirrors NeMo-RL's release Dockerfile** — clones `NVIDIA/NeMo-RL @ nano-v3-omni` recursively (carrying the [omni vllm fork](https://github.com/aroshanghias-nvd/vllm) as a `3rdparty/vllm` submodule) and runs the same `BUILD_CUSTOM_VLLM=1` + `uv sync` flow as the upstream `docker/Dockerfile`. `omni3 build rl` produces `omni3-rl.sqsh`.
 > - **`nano-v3-omni` is the active release branch for Nemotron 3 Omni**; bump to a versioned tag (or `main`) once these changes merge upstream.
 
 ---
@@ -154,7 +154,7 @@ This stage uses:
 
 ## Next Steps
 
-After RL completes, proceed to [Stage 2: Evaluation](./evaluate.md).
+After RL completes, run benchmarks via `nemotron omni3 model eval` (a dedicated `nemotron omni3 eval` stage is on the roadmap).
 
 ## Upstream
 
