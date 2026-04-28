@@ -6,6 +6,8 @@ dependencies = [
     "beir>=2.0.0",
     "sentence-transformers>=3.0.0",
     "transformers>=5,<6",
+    # Local GPU torch wheel, sourced from PyTorch cu129 index on Linux below
+    "torch>=2.10.0",
     "requests>=2.32.0",
     # Needed by Nemotron library (added via --with flag)
     "omegaconf>=2.3.0",
@@ -14,10 +16,8 @@ dependencies = [
 
 # Note: exclude-dependencies injected dynamically by run_uv.py for Docker/Slurm
 
-# Pin torch to the cu129 wheel on Linux so installs work on hosts with
-# CUDA 12.9 drivers. cu129 is forward-compatible with cu13.x drivers
-# (newer drivers run older toolkit binaries). Matches nemo-automodel's
-# torch source mapping to avoid resolver conflicts.
+# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
+# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
