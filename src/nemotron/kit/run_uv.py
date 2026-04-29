@@ -15,14 +15,14 @@ Each stage's pyproject.toml declares its configuration in [tool.nemotron]:
 """
 from __future__ import annotations
 
-import io
 import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import tomllib
 from pathlib import Path
+
+from nemo_runspec._pyproject import _write_temp_pyproject
 
 _BASE_EXCLUDE = [
     "torch",
@@ -33,61 +33,6 @@ _BASE_EXCLUDE = [
     "scipy",
     "opencv-python-headless",
 ]
-
-
-def _write_temp_pyproject(
-    pyproject_data: dict, stage_dir: Path, exclude_deps: list[str]
-) -> Path:
-    """Write a temporary pyproject.toml with container exclude-dependencies."""
-    temp_dir = Path(tempfile.mkdtemp())
-    buf = io.StringIO()
-
-    # [project]
-    proj = pyproject_data["project"]
-    buf.write("[project]\n")
-    buf.write(f'name = "{proj["name"]}"\n')
-    buf.write(f'version = "{proj["version"]}"\n')
-    buf.write(f'requires-python = "{proj["requires-python"]}"\n')
-    buf.write("dependencies = [\n")
-    for dep in proj.get("dependencies", []):
-        buf.write(f'  "{dep}",\n')
-    buf.write("]\n\n")
-
-    uv = pyproject_data.get("tool", {}).get("uv", {})
-
-    # [tool.uv.sources] — convert relative paths to absolute
-    if "sources" in uv:
-        buf.write("[tool.uv.sources]\n")
-        for key, value in uv["sources"].items():
-            if "path" in value:
-                source_path = Path(value["path"])
-                if not source_path.is_absolute():
-                    source_path = (stage_dir / source_path).resolve()
-                buf.write(f'{key} = {{ path = "{source_path}" }}\n')
-        buf.write("\n")
-
-    # [tool.uv.extra-build-dependencies]
-    if "extra-build-dependencies" in uv:
-        buf.write("[tool.uv.extra-build-dependencies]\n")
-        for key, deps in uv["extra-build-dependencies"].items():
-            deps_str = "[" + ", ".join(f'"{d}"' for d in deps) + "]"
-            buf.write(f"{key} = {deps_str}\n")
-        buf.write("\n")
-
-    # [tool.uv]
-    buf.write("[tool.uv]\n")
-    if "override-dependencies" in uv:
-        buf.write("override-dependencies = [\n")
-        for dep in uv["override-dependencies"]:
-            buf.write(f'  "{dep}",\n')
-        buf.write("]\n")
-    buf.write("exclude-dependencies = [\n")
-    for dep in exclude_deps:
-        buf.write(f'  "{dep}",\n')
-    buf.write("]\n")
-
-    (temp_dir / "pyproject.toml").write_text(buf.getvalue())
-    return temp_dir
 
 
 def main(stage_dir: Path) -> None:

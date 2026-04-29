@@ -7,6 +7,8 @@ dependencies = [
   # Needed by Nemotron library (added via --with flag)
   "omegaconf>=2.3.0",
   "pydantic-settings>=2.0.0",
+  # Local GPU torch wheel, sourced from PyTorch cu129 index on Linux below
+  "torch>=2.10.0",
   # Pin transformers <5.2 — nemo-automodel's check_model_inputs decorator
   # is a ContextDecorator in 5.2.0 which breaks biencoder forward()
   "transformers>=5.0,<5.2",
@@ -14,6 +16,18 @@ dependencies = [
 
 # Note: exclude-dependencies are injected dynamically by run_uv.py for Docker/Slurm
 # This base config works for local mode where all packages need to be installed
+
+# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
+# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.nemotron]
 entry-point = "train.py"

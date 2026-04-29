@@ -8,13 +8,15 @@ dependencies = [
     "optimum>=1.20.0",
     "nemo-export-deploy>=0.3.1",
     "onnxscript>=0.5.0",
+    # Local GPU torch wheel, sourced from PyTorch cu129 index on Linux below
+    "torch>=2.10.0",
     # Needed by Nemotron library (added via --with flag)
     "omegaconf>=2.3.0",
     "pydantic-settings>=2.0.0",
 ]
 
 [project.optional-dependencies]
-# TensorRT only needed when export_to_trt=true; CLI adds --with conditionally
+# TensorRT only needed when export_to_trt=true; CLI adds --extra conditionally
 tensorrt = [
     "tensorrt>=10.13,<10.15",
 ]
@@ -25,6 +27,18 @@ tensorrt = [
 [tool.uv]
 override-dependencies = ["transformers>=5,<6"]
 exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
+
+# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
+# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.nemotron]
 entry-point = "export.py"
