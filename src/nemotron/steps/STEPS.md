@@ -1,5 +1,11 @@
 # Available Steps
 
+## benchmark — Benchmarking
+
+| Step | Description | Consumes | Produces |
+| --- | --- | --- | --- |
+| [benchmark/byob](benchmark/byob/) | Generate multiple-choice benchmark Parquet from custom subject text using few-shot examples from Hugging Face MCQ benchmarks (e.g. MMLU, MMLU-Pro, Global-MMLU, GPQA). Uses NeMo Data Designer for generation, judging, optional distractor expansion, deduplication, and filtering. | - | benchmark_parquet |
+
 ## convert — Conversion
 
 | Step | Description | Consumes | Produces |

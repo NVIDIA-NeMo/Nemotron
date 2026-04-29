@@ -44,4 +44,4 @@ convert_to = { checkpoint_hf = "convert/merge_lora" }
 description = "Evaluation metrics and benchmark scores"
 
 [benchmark_parquet]
-description = "BYOB benchmark dataset"
+description = "MCQ benchmark from BYOB (few-shot seeds from HF benchmarks such as MMLU, MMLU-Pro, GPQA; output uses MMLU-Pro-style columns for evaluation)"
