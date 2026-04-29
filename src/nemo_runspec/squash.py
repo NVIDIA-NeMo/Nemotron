@@ -14,27 +14,159 @@
 
 """Container squash utilities for Slurm execution.
 
-Handles converting Docker images to squash files on remote clusters
-using enroot. Uses deterministic naming to avoid re-squashing existing images.
+Handles converting container images or archives to squash files on remote
+clusters using enroot. Uses deterministic naming to avoid re-squashing
+existing images.
+
+Also hosts the small precedence helpers that build-context Slurm
+submissions share (squash + omni3 build dispatcher + family-specific
+build.py wrappers). Precedence:
+
+    partition:  build_partition  >  run_partition  >  partition
+    time:       build_time       >  time                      (default fallback)
+    image:      build_image      >  caller's default
+
+Prefer these helpers over re-implementing the precedence inline — see the
+``refactor(runspec): support archive container schemes`` commit for
+context. For nemo-run SlurmExecutor kwargs (different shape from
+salloc argv), use the three resolve_* helpers individually.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Any
+from pathlib import Path
+from typing import Any, Mapping
 
 from rich.console import Console
 
 console = Console()
 
 
+# ---------------------------------------------------------------------------
+# Precedence helpers for build-context Slurm submissions
+# ---------------------------------------------------------------------------
+
+
+def resolve_build_partition(env_config: Mapping[str, Any] | None) -> str | None:
+    """Select the Slurm partition for a container-build / enroot-import job.
+
+    Precedence: ``build_partition`` > ``run_partition`` > ``partition``.
+    Returns ``None`` when no partition is set (caller decides the default).
+    """
+    if env_config is None:
+        return None
+    return (
+        env_config.get("build_partition")
+        or env_config.get("run_partition")
+        or env_config.get("partition")
+    )
+
+
+def resolve_build_time(env_config: Mapping[str, Any] | None, default: str = "04:00:00") -> str:
+    """Select the Slurm walltime for a container-build job.
+
+    Precedence: ``build_time`` > ``time`` > caller-provided ``default``.
+    """
+    if env_config is None:
+        return default
+    return env_config.get("build_time") or env_config.get("time", default)
+
+
+def resolve_build_image(env_config: Mapping[str, Any] | None, default: str) -> str:
+    """Select the container image used by the build job itself.
+
+    Precedence: ``build_image`` > caller-provided ``default``. Empty/None
+    values in env_config fall through to the default.
+    """
+    if env_config is None:
+        return default
+    return env_config.get("build_image") or default
+
+
+def resolve_build_cache_dir(
+    env_config: Mapping[str, Any] | None,
+    default: Path | str,
+) -> Path:
+    """Select the host-side cache directory for build artifacts.
+
+    Precedence: ``build_cache_dir`` from env > caller-provided ``default``.
+
+    The default is intended for *local* builds (typically
+    ``~/.cache/nemotron``). Remote builds should set ``build_cache_dir`` in
+    their env.toml profile to a cluster-visible path (typically on Lustre)
+    so the host side of the mount exists on compute nodes.
+    """
+    if env_config is None:
+        return Path(default)
+    explicit = env_config.get("build_cache_dir")
+    return Path(explicit) if explicit else Path(default)
+
+
+def build_salloc_args(
+    env_config: Mapping[str, Any] | None,
+    *,
+    default_time: str = "04:00:00",
+    include_gpus: bool = True,
+) -> list[str]:
+    """Build the salloc argv list for a single-node build/enroot-import job.
+
+    Canonical shape shared by ``ensure_squashed_image`` and ``kit squash``.
+    For nemo-run SlurmExecutor constructions (different kwargs shape), call
+    the three resolve_* helpers individually.
+    """
+    env_config = env_config or {}
+    account = env_config.get("account")
+    partition = resolve_build_partition(env_config)
+    time_limit = resolve_build_time(env_config, default_time)
+    gpus_per_node = env_config.get("gpus_per_node") if include_gpus else None
+
+    args: list[str] = []
+    if account:
+        args.append(f"--account={account}")
+    if partition:
+        args.append(f"--partition={partition}")
+    args.extend(["--nodes=1", "--ntasks-per-node=1"])
+    if gpus_per_node:
+        args.append(f"--gpus-per-node={gpus_per_node}")
+    args.append(f"--time={time_limit}")
+    return args
+
+_SUPPORTED_SCHEMES = (
+    "docker://",
+    "dockerd://",
+    "podman://",
+    "docker-archive://",
+    "oci-archive://",
+)
+_ARCHIVE_SCHEMES = ("docker-archive://", "oci-archive://")
+_DEFAULT_SCHEME = "docker://"
+
+
+def normalize_container_source(container: str) -> str:
+    """Normalize a container reference to an enroot-compatible URI."""
+    if container.startswith(_SUPPORTED_SCHEMES):
+        return container
+    return f"{_DEFAULT_SCHEME}{container}"
+
+
+def _split_container_source(container: str) -> tuple[str | None, str]:
+    """Split a normalized container URI into scheme and payload."""
+    for scheme in _SUPPORTED_SCHEMES:
+        if container.startswith(scheme):
+            return scheme, container.removeprefix(scheme)
+    return None, container
+
+
 def container_to_sqsh_name(container: str) -> str:
-    """Convert container image name to deterministic squash filename.
+    """Convert a container reference to a deterministic squash filename.
 
     Replaces any characters that can't be used in filenames with underscores.
+    Archive URIs use only the archive basename so remote paths do not leak into
+    the sqsh filename.
 
     Args:
-        container: Docker image name (e.g., "nvcr.io/nvidian/nemo:25.11-nano-v3.rc2")
+        container: Container image or archive URI.
 
     Returns:
         Safe squash filename (e.g., "nvcr_io_nvidian_nemo_25_11_nano_v3_rc2.sqsh")
@@ -45,8 +177,13 @@ def container_to_sqsh_name(container: str) -> str:
         >>> container_to_sqsh_name("rayproject/ray:nightly-extra-py312-cpu")
         'rayproject_ray_nightly_extra_py312_cpu.sqsh'
     """
+    normalized = normalize_container_source(container)
+    scheme, payload = _split_container_source(normalized)
+    if scheme in _ARCHIVE_SCHEMES:
+        payload = payload.rsplit("/", 1)[-1]
+
     # Replace any non-alphanumeric characters (except underscore) with underscore
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", container)
+    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", payload)
     # Collapse multiple underscores into one
     safe_name = re.sub(r"_+", "_", safe_name)
     # Strip leading/trailing underscores
@@ -71,22 +208,18 @@ def check_sqsh_exists(tunnel: Any, remote_path: str) -> bool:
 def get_squash_path(container_image: str, remote_job_dir: str) -> str:
     """Get the path to the squashed container image.
 
-    Creates a deterministic filename based on the container image name.
-    For example: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 -> nemo-25.11-nano-v3.rc2.sqsh
+    Creates a deterministic filename based on the container reference.
+    For example: nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 ->
+    nvcr_io_nvidian_nemo_25_11_nano_v3_rc2.sqsh
 
     Args:
-        container_image: Docker container image (e.g., nvcr.io/nvidian/nemo:25.11-nano-v3.rc2)
+        container_image: Container image or archive URI.
         remote_job_dir: Remote directory for squashed images
 
     Returns:
         Full path to squashed image file
     """
-    # Extract image name and tag for readable filename
-    # nvcr.io/nvidian/nemo:25.11-nano-v3.rc2 -> nemo:25.11-nano-v3.rc2
-    image_name = container_image.split("/")[-1]
-    # nemo:25.11-nano-v3.rc2 -> nemo-25.11-nano-v3.rc2.sqsh
-    sqsh_name = image_name.replace(":", "-") + ".sqsh"
-
+    sqsh_name = container_to_sqsh_name(container_image)
     return f"{remote_job_dir}/{sqsh_name}"
 
 
@@ -105,9 +238,9 @@ def ensure_squashed_image(
 
     Args:
         tunnel: SSHTunnel instance (already connected)
-        container_image: Docker container image to squash
+        container_image: Container image or archive URI to squash
         remote_job_dir: Remote directory for squashed images
-        env_config: Environment config with slurm settings (account, partition, time)
+        env_config: Environment config with Slurm settings
         force: If True, re-squash even if file already exists
 
     Returns:
@@ -140,22 +273,15 @@ def ensure_squashed_image(
     tunnel.run(f"mkdir -p {remote_job_dir}", hide=True)
 
     # Build salloc command to run enroot import on a compute node
-    # (login nodes don't have enough memory for enroot import)
-    account = env_config.get("account")
-    partition = env_config.get("run_partition") or env_config.get("partition")
-    time_limit = env_config.get("time", "04:00:00")
-    gpus_per_node = env_config.get("gpus_per_node")
-
-    salloc_args = []
-    if account:
-        salloc_args.append(f"--account={account}")
-    if partition:
-        salloc_args.append(f"--partition={partition}")
-    salloc_args.append("--nodes=1")
-    salloc_args.append("--ntasks-per-node=1")
-    if gpus_per_node:
-        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
-    salloc_args.append(f"--time={time_limit}")
+    # (login nodes don't have enough memory for enroot import).
+    # build_salloc_args applies the canonical build-context precedence
+    # (build_partition > run_partition > partition; build_time > time).
+    # ``include_gpus=False`` because enroot import is CPU-only and
+    # ``build_partition`` is typically a CPU partition; mixing
+    # ``--partition=cpu`` with ``--gpus-per-node=8`` from the
+    # training profile would be rejected by sbatch with
+    # "Requested node configuration is not available".
+    salloc_args = build_salloc_args(env_config, include_gpus=False)
 
     # Set up writable enroot paths (default /raid/enroot may not be user-writable)
     enroot_runtime = f"{remote_job_dir}/.enroot"
@@ -165,7 +291,8 @@ def ensure_squashed_image(
         f"ENROOT_DATA_PATH={enroot_runtime}/data && "
         f"mkdir -p {enroot_runtime}/cache {enroot_runtime}/data && "
     )
-    enroot_cmd = f"{enroot_env}enroot import --output {sqsh_path} docker://{container_image}"
+    container_source = normalize_container_source(container_image)
+    enroot_cmd = f"{enroot_env}enroot import --output {sqsh_path} {container_source}"
     cmd = f"salloc {' '.join(salloc_args)} srun --export=ALL bash -c '{enroot_cmd}'"
 
     # Run enroot import via salloc (this can take a while)

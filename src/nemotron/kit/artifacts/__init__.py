@@ -22,6 +22,7 @@ Each artifact type defines its own W&B file/reference handling.
 from nemotron.kit.artifacts.base import Artifact, TrackingInfo
 from nemotron.kit.artifacts.data_blends import DataBlendsArtifact
 from nemotron.kit.artifacts.embed import EmbedDataArtifact, EmbedModelArtifact
+from nemotron.kit.artifacts.energon_webdataset import EnergonWebDatasetArtifact
 from nemotron.kit.artifacts.model import ModelArtifact
 from nemotron.kit.artifacts.pretrain_blends import PretrainBlendsArtifact
 from nemotron.kit.artifacts.pretrain_data import PretrainDataArtifact
@@ -35,6 +36,7 @@ __all__ = [
     # Data artifacts
     "DataBlendsArtifact",
     "EmbedDataArtifact",
+    "EnergonWebDatasetArtifact",
     "PretrainBlendsArtifact",
     "PretrainDataArtifact",
     "SFTDataArtifact",
