@@ -1,0 +1,187 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# BYOB MCQ — configuration for `build_mcq_benchmark.ipynb`
+# ------------------------------------------------------------------------------
+# All paths below are relative to the notebook working directory:
+#   Nemotron/use-case-examples/build-your-own-benchmark
+# Run Jupyter with that folder as cwd so `./assets/...` resolves correctly.
+
+expt_name: mmlu_base # Run name; creates a subdirectory under output_dir
+random_seed: 42
+ndd_batch_size: 32 # Rows per batch for NeMo Data Designer (LLM) calls
+
+# --- Data and corpus layout (prepare / seed stage) ---
+split: test # HF benchmark split used for few-shot examples (e.g. MMLU test)
+subset: all # HF subset/config name; use null to fall back to the dataset default
+# input_dir: parent folder for each key under target_source_mapping. Each key must
+# be a directory under this path containing at least one *.txt (or a .parquet).
+input_dir: ./assets
+# output_dir: parent for this run. BYOB writes:
+#   <output_dir>/<expt_name>/seed.parquet
+#   <output_dir>/<expt_name>/stage_cache/*.parquet   (notebook stage chain)
+#   <output_dir>/<expt_name>/artifacts/             (embeddings, Data Designer, etc.)
+#   <output_dir>/<expt_name>/benchmark*.parquet
+output_dir: ./assets/output
+hf_dataset: cais/mmlu # Few-shot source benchmark (must be supported by BYOB)
+language: en-IN # Locale tag for generated questions
+# metadata_file: optional CSV for tag-weighted sampling; must set tags in mapping if set
+metadata_file: null
+# source_subjects: MMLU (etc.) subject names for few-shot; empty list = all subjects
+source_subjects: []
+
+# target_source_mapping: which on-disk corpus (under input_dir) to generate for.
+# Each top-level key = directory name under input_dir with *.txt files.
+# subjects: which HF benchmark subjects supply few-shots; [] = uniform over source_subjects.
+# Do not set tags here unless metadata_file points to a real CSV.
+target_source_mapping:
+  wikipedia_finance_india:
+    subjects: []
+few_shot_samples_per_query: 1
+queries_per_target_subject_document: 1
+num_questions_per_query: 1
+# Approximate total drafts ≈ above three fields × (number of *.txt under each target key)
+chunking_config:
+  window_size: 4096 # Random chunk size for long texts; null disables chunking
+# prompt_config: null loads packaged defaults (Python). For overrides, set to a YAML
+# file defining qa_generation, question_judge, hallucination_filter, easiness_filter,
+# distractor_expansion, distractor_validity (each with system_prompt and prompt).
+prompt_config: null
+
+# --- LLM: question generation (Data Designer) ---
+generation_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+    top_p: 1.0
+
+# --- LLM: judge / refine drafts ---
+judge_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+    top_p: 1.0
+
+# --- Semantic deduplication (embeddings + clustering) ---
+semantic_deduplication_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 1 # Cluster count for grouping similar items before dedup
+  eps: 0.07 # Distance threshold within a cluster (0–1 scale; tune with model)
+  remove_duplicates: false # If true, drop rows marked as near-duplicates
+
+# --- Optional: expand 4-way MCQ to 10 choices (LLM) ---
+do_distractor_expansion: true
+distractor_expansion_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+    top_p: 1.0
+
+# --- Optional: embedding-based coverage vs source windows (heavier) ---
+do_coverage_check: true
+coverage_check_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  window_size: 1024 # Source text window size for coverage scoring
+
+# --- LLM: check distractor plausibility / correctness ---
+distractor_validity_model_config:
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+
+# --- Embedding-based: flag answer choices that sit apart from the others ---
+semantic_outlier_detection_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_neighbours_min: 1 # Minimum nearby choices embedding-wise for the keyed answer
+  remove_outliers: true # Drop rows flagged as outlier-heavy
+
+# --- LLM panel: hallucination and “too easy” filters ---
+easiness_threshold: 0.8 # If this fraction of easiness models answer correctly → “easy”
+hallucination_threshold: 0.5 # Agreement bar among hallucination models → “not hallucinated”
+remove_hallucinated: true
+remove_easy: false
+filtering_model_configs:
+  hallucination:
+    - alias: hal_1
+      model: openai/gpt-oss-120b
+      provider: nvidia
+      inference_parameters:
+        max_tokens: 16000
+        max_parallel_requests: 8
+        temperature:
+          distribution_type: uniform
+          params:
+            low: 0.9
+            high: 1.0
+        top_p: 1.0
+  # Duplicate the list entry pattern above to add more hallucination-check models
+  easiness:
+    - alias: eas_1
+      model: openai/gpt-oss-120b
+      provider: nvidia
+      inference_parameters:
+        max_tokens: 16000
+        max_parallel_requests: 8
+        temperature:
+          distribution_type: uniform
+          params:
+            low: 0.9
+            high: 1.0
+        top_p: 1.0
+    - alias: eas_2
+      model: nvidia/nemotron-3-nano-30b-a3b
+      provider: nvidia
+      inference_parameters:
+        max_tokens: 16000
+        max_parallel_requests: 8
+        temperature:
+          distribution_type: uniform
+          params:
+            low: 0.9
+            high: 1.0
+        top_p: 1.0
+  # Duplicate list entries to add more easiness judges
