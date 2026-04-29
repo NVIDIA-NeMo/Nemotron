@@ -201,7 +201,7 @@ class ByobConfig:
                 assert isinstance(config['prompt_config'][stage]['system_prompt'], str), f"Field `system_prompt` must be a string for stage {stage}"
                 assert isinstance(config['prompt_config'][stage]['prompt'], str), f"Field `prompt` must be a string for stage {stage}"
         else:
-            from speaker.core.byob.mcq.prompts.utils import get_prompts
+            from nemotron.steps.byob.mcq.prompts.utils import get_prompts
             config['prompt_config'] = get_prompts()
 
         # Set to all subjects if not specified
