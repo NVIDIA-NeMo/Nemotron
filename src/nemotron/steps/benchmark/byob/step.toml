@@ -1,0 +1,40 @@
+[step]
+id = "benchmark/byob"
+name = "Build Your Own Benchmark (BYOB MCQ)"
+category = "benchmark"
+description = """Generate multiple-choice benchmark Parquet from custom subject text using few-shot examples from Hugging Face MCQ benchmarks (e.g. MMLU, MMLU-Pro, Global-MMLU, GPQA). Uses NeMo Data Designer for generation, judging, optional distractor expansion, deduplication, and filtering."""
+tags = ["benchmark", "byob", "mcq", "data-designer", "mmlu", "gpqa"]
+
+[[produces]]
+type = "benchmark_parquet"
+description = "MMLU-Pro-style MCQ Parquet (question, options, answer_index, category) ready for evaluation or human review."
+
+[[parameters]]
+name = "hf_dataset"
+description = "Hugging Face dataset id for few-shot seed examples (must be supported by BYOB; see nemotron.steps.byob.constants)."
+default = "cais/mmlu"
+
+[[parameters]]
+name = "input_dir"
+description = "Directory of target subject text files used as generation sources."
+default = ""
+
+[[strategies]]
+when = "You need a domain-specific MCQ suite aligned with public benchmarks"
+then = "Pick a supported hf_dataset (including GPQA and MMLU variants), align target_source_mapping with your corpus subjects, then run the pipeline from seed through final Parquet export."
+
+[[strategies]]
+when = "Quality or contamination is a concern"
+then = "Enable judging, semantic deduplication, distractor validity, and easiness or hallucination filters before exporting benchmark_parquet."
+
+[[errors]]
+name = "unsupported_hf_dataset"
+recovery = "Choose a dataset from ALLOWED_HF_DATASETS in nemotron/steps/byob/constants.py or extend the dataset module accordingly."
+
+[[errors]]
+name = "empty_final_benchmark"
+recovery = "Relax filters, increase queries_per_target_subject_document, or verify input_dir text and target_source_mapping produce non-empty seeds."
+
+[reference]
+script = "use-case-examples/build-your-own-benchmark/build_mcq_benchmark.ipynb"
+config = "use-case-examples/build-your-own-benchmark/default.yaml"
