@@ -1,6 +1,6 @@
 [step]
 id = "benchmark/byob"
-name = "Bring Your Own Benchmark (BYOB MCQ)"
+name = "Build Your Own Benchmark (BYOB MCQ)"
 category = "benchmark"
 description = """Generate multiple-choice benchmark Parquet from custom subject text using few-shot examples from Hugging Face MCQ benchmarks (e.g. MMLU, MMLU-Pro, Global-MMLU, GPQA). Uses NeMo Data Designer for generation, judging, optional distractor expansion, deduplication, and filtering."""
 tags = ["benchmark", "byob", "mcq", "data-designer", "mmlu", "gpqa"]

@@ -16,7 +16,7 @@
 """Constants for BYOB pipeline configuration.
 
 This module defines supported datasets, their default subsets, module mappings,
-and available quality metrics for the BYOB (Bring Your Own Benchmark) system.
+and available quality metrics for the BYOB (Build Your Own Benchmark) system.
 
 Constants:
     ALLOWED_HF_DATASETS: List of supported HuggingFace benchmark datasets.

@@ -36,7 +36,7 @@ For the product-level pattern (when to use BYOB, quality bar, exceptions), see
    so `./default.yaml` and `./assets/...` resolve correctly.
 
 2. **Corpus**  
-   - **Bring your own:** create a subfolder with one or more `.txt` files.  
+   - **Your own text:** create a subfolder with one or more `.txt` files.  
    - **Or** run `download_wikipedia_data.ipynb` to fill a folder with `.txt` articles.
 
 3. **Configure `default.yaml`**  

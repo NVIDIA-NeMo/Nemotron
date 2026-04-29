@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ByobConfig:
-    """Configuration for BYOB (Bring Your Own Benchmark) MCQ generation pipeline.
+    """Configuration for BYOB (Build Your Own Benchmark) MCQ generation pipeline.
     
     This dataclass holds all configuration parameters for generating multiple-choice
     questions from custom text corpora using few-shot learning from existing benchmark
