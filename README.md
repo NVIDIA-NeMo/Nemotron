@@ -18,6 +18,8 @@
 ---
 
 > 🎉Nemotron 3 Ultra was announced at GTC San Jose 2026\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)\!
+>
+> 🎉**Nemotron 3 Nano Omni** is now released — a 30B-A3B hybrid Mamba-Transformer MoE with native text, image, video, and audio support, designed as a multimodal perception sub-agent for agentic AI. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/), the [training recipe](./docs/nemotron/omni3/README.md), and the [model weights](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16).
 
 
 ---
@@ -104,6 +106,7 @@ Because these are complete systems, you can extract specific techniques with con
 |-------|-------------|--------|-------|
 | **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 120.6B total / 12.7B active Hybrid Mamba Latent MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
+| **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
 
 ### Nemotron 3 Super
 
@@ -157,6 +160,41 @@ A complete training recipe for the open, efficient Mixture-of-Experts hybrid Mam
 - [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16)
 - [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
 - [Model Weights (FP8)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8)
+
+### Nemotron 3 Nano Omni
+
+A multimodal training recipe for the 30B-A3B hybrid Mamba-Transformer Mixture-of-Experts model. Native support for text, image, video, and audio in a single decoder, designed as a perception sub-agent for agentic AI.
+
+![Nemotron 3 Nano Omni hybrid MoE architecture: each modality (audio via Parakeet, vision via C-RADIOv4-H + 3D convolution + Efficient Video Sampling, text via tokenizer) has its own encoder and adaptor; all streams converge on the unified 30B-A3B LLM decoder](docs/assets/omni-3.png)
+
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data (e.g., CORD-v2 for SFT, public MMPR / MMPR-Tiny for RL). Results will differ from the release benchmarks, which used additional internal datasets. Use these recipes as reference implementations to apply the methodology with your own data.
+
+**Model Specifications**:
+- 30B total / 3B active parameters (A3B MoE)
+- Hybrid architecture: Mamba layers (sequence/memory efficiency) + transformer layers (reasoning), with a unified text decoder
+- Native modalities: text, image, video, audio
+- Vision encoder: C-RADIOv4-H · Audio encoder: NVIDIA Parakeet · Video pipeline: 3D convolutions + Efficient Video Sampling (EVS)
+- Context length: progressively scaled 16K → 49K → 262K
+- Best-in-class on MMlongbench-Doc, OCRBenchV2; leading on WorldSense, DailyOmni, VoiceBench
+- Up to ~9.2× greater video-reasoning system capacity, ~7.4× on multi-document workloads vs. comparable open omni models
+- License: NVIDIA Nemotron Open Model License (enterprise-friendly, on-prem and any deployment)
+
+**What You Can Extract**:
+- Multimodal SFT pipeline using Megatron-Bridge with the Valor32k recipe family (open-dataset CORD-v2 default + Valor32k variants)
+- Progressive context scaling: 16K → 49K → 262K
+- Multimodal preference optimization (MPO) on the public MMPR dataset
+- Text-only GRPO continuation of alignment via NeMo-RL
+- Vision GRPO on MMPR-Tiny
+- Inline NVIDIA stack: Megatron-Bridge for SFT, NeMo-RL (`nano-v3-omni` branch with the omni vllm fork as a submodule) for RL
+- Cookbook-style end-to-end recipe (build → data prep → SFT → RL → eval) reproducing the release training stages
+
+**Resources**:
+- [Training Guide](docs/nemotron/omni3/README.md)
+- [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/)
+- [Model Weights (BF16)](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16)
+- [Image Training Data](https://huggingface.co/datasets/nvidia/Nemotron-Image-Training-v3)
+- Upstream pre-training recipe: [`NVIDIA-NeMo/Megatron-Bridge` `nemotron_3_omni`](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/nemotron_3_omni)
+- Upstream RL recipe: [`NVIDIA-NeMo/RL` `nano-v3-omni`](https://github.com/NVIDIA-NeMo/RL/tree/nano-v3-omni)
 
 ---
 
