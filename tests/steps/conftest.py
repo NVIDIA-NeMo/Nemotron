@@ -47,6 +47,18 @@ def all_step_tomls(steps_root: Path) -> list[Path]:
 
 
 @pytest.fixture
+def all_step_pys(steps_root: Path) -> list[Path]:
+    """Return all step.py scripts colocated with a step.toml manifest."""
+    return sorted(p.parent / "step.py" for p in steps_root.rglob("step.toml") if (p.parent / "step.py").exists())
+
+
+@pytest.fixture
+def all_step_configs(steps_root: Path) -> list[Path]:
+    """Return all config/*.yaml files under any step directory."""
+    return sorted(p for p in steps_root.rglob("config/*.yaml"))
+
+
+@pytest.fixture
 def all_pattern_files(patterns_root: Path) -> list[Path]:
     """Return all pattern markdown files under the patterns root."""
     return sorted(patterns_root.glob("*.md"))

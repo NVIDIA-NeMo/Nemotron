@@ -1,0 +1,35 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Hopper/H100 FP8 PTQ config. Conservative recipe is the balanced default.
+
+hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
+trust_remote_code: true
+
+export_quant_cfg: mamba_moe_fp8_conservative
+megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
+
+tp: 8
+pp: 2
+ep: 8
+etp: 1
+
+# Nemotron docs mention 256 calibration samples for the FP8 checkpoint; 512 is
+# a cautious smoke/default. Override to 256 to match the published recipe.
+calib_size: 512
+
+torchrun:
+  nproc_per_node: 8
+
+extra_args: []

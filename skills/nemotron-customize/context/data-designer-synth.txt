@@ -1,0 +1,107 @@
+# NeMo Data Designer Synthetic Data Context
+
+Use this pack for `synth/data_designer`.
+
+The step builds a Data Designer pipeline from YAML. Keep `step.py` generic:
+customization belongs in config files through model aliases, columns, seed data,
+and output projections.
+
+## Config Shape
+
+Core fields:
+
+```yaml
+output_path: ./output/synth/data.jsonl
+num_records: 1000
+seed_dataset:
+  path: ./seed.jsonl
+  strategy: shuffle
+  fields: [field_a, field_b]
+models:
+  - alias: nvidia-text
+    model: nvidia/nemotron-3-nano-30b-a3b
+    provider: nvidia
+    inference_parameters:
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 1200
+columns: []
+output_projection: null
+```
+
+Use `--preview` for prompt/column iteration before generating at scale.
+
+## Output Projections
+
+The repo supports these projection patterns:
+
+- `openai_messages`: project generated fields into OpenAI chat-format
+  `messages`.
+- `dpo_preference`: project prompt/chosen/rejected style records for DPO.
+- `structured_messages`: project a structured object containing `messages` and
+  optional `tools`.
+
+Use `structured_messages` for tool-calling SFT data.
+
+## Customer-Support Tool Calls
+
+The config
+`src/nemotron/steps/synth/data_designer/config/customer_support_tools.yaml`
+generates multi-turn ecommerce support conversations with:
+
+- OpenAI-style `messages`
+- a `tools` array
+- exactly one assistant `tool_calls` message
+- exactly one matching `tool` response
+- final assistant answer grounded in the tool result
+
+This config is intended to feed SFT packing/training after basic validation.
+
+Important validation checks for tool-call data:
+
+- every assistant tool call has a matching `tool_call_id`
+- tool arguments are JSON strings, not nested objects, for OpenAI compatibility
+- final assistant answer reflects the tool response and policy hint
+- no markdown in fields intended as customer-support chat content
+
+## Preference Data
+
+Use `config/rl_pref.yaml` when generating DPO-style data. It should emit:
+
+```json
+{"prompt": "...", "chosen": "...", "rejected": "..."}
+```
+
+This can flow into:
+
+```text
+synth/data_designer -> prep/rl_prep -> rl/nemo_rl/dpo
+```
+
+## SFT Data
+
+For SFT, emit:
+
+```json
+{"messages": [{"role": "system", "content": "..."}, ...]}
+```
+
+This can flow into:
+
+```text
+synth/data_designer -> prep/sft_packing -> sft/megatron_bridge
+synth/data_designer -> sft/automodel
+```
+
+Use `prep/sft_packing` only for Megatron-Bridge consumers that need packed
+Parquet. AutoModel can consume JSONL/chat records directly.
+
+## Staleness Checks
+
+When changing this step:
+
+- keep output projection names documented in the config comments
+- keep seed data committed under the step's `data/` directory when examples
+  reference it
+- keep `step.py` free of customer-support-specific logic
+- add a preview/small-record config for new synthetic recipes when possible

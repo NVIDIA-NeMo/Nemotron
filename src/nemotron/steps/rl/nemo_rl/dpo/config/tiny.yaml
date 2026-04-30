@@ -1,0 +1,146 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Tiny DPO smoke test on the 2-node lepton_rl profile.
+#
+# Mirrors the structure of upstream /opt/nemo-rl/examples/configs/dpo.yaml
+# (every block nemo-rl reads without ``.get()`` defaults must exist), with
+# a few overrides for fast iteration:
+#   - 10 steps instead of 150,
+#   - tiny model (Llama-3.2-1B-Instruct),
+#   - cluster sized to 2 nodes × 8 GPUs,
+#   - dataset = a HF preference set via BinaryPreferenceDataset.
+#
+# Usage:
+#   nemotron step run rl/nemo_rl/dpo -c tiny -r lepton_rl
+
+dpo:
+  max_num_epochs: 1
+  max_num_steps: 10
+  val_period: 5
+  val_batches: 2
+  val_global_batch_size: 8
+  val_micro_batch_size: 1
+  val_at_start: false
+  seed: 42
+
+  reference_policy_kl_penalty: 0.05
+  preference_average_log_probs: false
+  sft_average_log_probs: ${.preference_average_log_probs}
+  preference_loss_weight: 1
+  sft_loss_weight: 0
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: ${oc.env:RL_OUTPUT_DIR,./output/rl}/dpo-checkpoints
+  metric_name: val:validation-default_loss
+  higher_is_better: false
+  keep_top_k: 3
+  save_period: 50
+  checkpoint_must_save_by: null
+
+policy:
+  model_name: meta-llama/Llama-3.2-1B-Instruct
+  tokenizer:
+    name: ${policy.model_name}
+    chat_template_kwargs: null
+  train_global_batch_size: 16
+  train_micro_batch_size: 1
+  max_total_sequence_length: 2048
+  precision: bfloat16
+  offload_optimizer_for_logprob: false
+
+  dtensor_cfg:
+    env_vars:
+      PYTORCH_CUDA_ALLOC_CONF: ""
+    enabled: true
+    cpu_offload: false
+    sequence_parallel: false
+    activation_checkpointing: false
+    tensor_parallel_size: 1
+    context_parallel_size: 1
+    custom_parallel_plan: null
+    clear_cache_every_n_steps: null
+
+  dynamic_batching:
+    enabled: false
+  sequence_packing:
+    enabled: false
+
+  make_sequence_length_divisible_by: ${policy.dtensor_cfg.tensor_parallel_size}
+  max_grad_norm: 1.0
+
+  optimizer:
+    name: torch.optim.AdamW
+    kwargs:
+      lr: 5.0e-7
+      weight_decay: 0.01
+      betas: [0.9, 0.999]
+      eps: 1e-8
+      foreach: false
+      fused: false
+
+  scheduler:
+    - name: torch.optim.lr_scheduler.LinearLR
+      kwargs:
+        start_factor: 0.1
+        end_factor: 1.0
+        total_iters: 2
+    - name: torch.optim.lr_scheduler.ConstantLR
+      kwargs:
+        factor: 1.0
+        total_iters: 10000000
+    - milestones: [2]
+
+  megatron_cfg:
+    enabled: false
+
+data:
+  # HelpSteer3 is a zero-config built-in shipped in nemo-rl's expected
+  # message format. UltraFeedback's plain-string content format hits a v0.4.0
+  # bug in get_images_from_message (KeyError 'type'); use HelpSteer3 for
+  # smoke tests until that converter is patched.
+  dataset_name: HelpSteer3
+  max_input_seq_length: ${policy.max_total_sequence_length}
+  shuffle: true
+  num_workers: 1
+
+logger:
+  log_dir: ${oc.env:RL_OUTPUT_DIR,./output/rl}/dpo-logs
+  wandb_enabled: false
+  tensorboard_enabled: false
+  mlflow_enabled: false
+  swanlab_enabled: false
+  monitor_gpus: true
+  num_val_samples_to_print: 0
+  wandb:
+    project: nemotron-dpo-dev
+    name: dpo-tiny
+  tensorboard:
+    log_dir: tb_logs-dpo-tiny
+  mlflow:
+    experiment_name: dpo-tiny
+    run_name: dpo
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+
+cluster:
+  # 1×8 sidesteps a v0.4.0 issue where ``RayWorkerGroup`` worker actors
+  # crash silently during their per-actor ``runtime_env`` venv build on
+  # multi-pod Lepton RayClusters (raylet logs show only "workers not
+  # registered within the timeout"). Bump to multi-node once the upstream
+  # path is confirmed working.
+  gpus_per_node: 8
+  num_nodes: 2

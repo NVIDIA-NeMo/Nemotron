@@ -1,0 +1,71 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "optimize/modelopt/quantize"
+name = "Quantization (ModelOpt + Megatron-Bridge)"
+category = "optimize"
+description = """\
+Post-training quantization with NVIDIA Model Optimizer through Megatron-Bridge.
+Supports Super3 FP8 recipes for Hopper/H100 and NVFP4 recipes for Blackwell/B200,
+producing Megatron distributed checkpoints ready for export/evaluation."""
+tags = ["optimize", "modelopt", "quantization", "ptq", "fp8", "nvfp4", "megatron-bridge"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "HuggingFace base or aligned checkpoint to quantize."
+required = true
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "Quantized Megatron distributed checkpoint."
+
+[[parameters]]
+name = "export_quant_cfg"
+description = "ModelOpt/Megatron-Bridge quantization recipe."
+default = "mamba_moe_fp8_conservative"
+choices = [
+  "mamba_moe_fp8_aggressive",
+  "mamba_moe_fp8_conservative",
+  "mamba_moe_nvfp4_aggressive",
+  "mamba_moe_nvfp4_conservative",
+]
+
+[[parameters]]
+name = "calib_size"
+description = "Number of calibration samples."
+default = 512
+
+[[parameters]]
+name = "extra_args"
+description = "Raw upstream quantize.py args for newly added ModelOpt/Megatron-Bridge flags."
+default = []
+
+[[strategies]]
+when = "Target hardware is Hopper/H100"
+then = "Start with config/fp8.yaml and mamba_moe_fp8_conservative."
+
+[[strategies]]
+when = "Target hardware is Blackwell/B200"
+then = "Start with config/nvfp4.yaml and mamba_moe_nvfp4_conservative."
+
+[[strategies]]
+when = "Need a HuggingFace checkpoint"
+then = "Export the produced Megatron checkpoint with /opt/Megatron-Bridge/examples/quantization/export.py."
+
+[reference]
+nemotron_quantization = "https://github.com/NVIDIA-NeMo/Nemotron/blob/main/docs/nemotron/super3/quantization.md"
+modelopt = "https://github.com/NVIDIA/Model-Optimizer"
+megatron_bridge = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
+skills = ["skills/nemotron-customize/context/modelopt-optimization.txt"]

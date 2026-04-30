@@ -1,0 +1,65 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# NeMo-RL DPO defaults. Mirrors speaker/configs/dpo/config.yaml — knobs, not internals.
+
+dpo:
+  max_num_epochs: 1
+  max_num_steps: 500
+  val_period: 50
+  val_batches: 8
+  val_global_batch_size: 8
+  val_micro_batch_size: 1
+  val_at_start: true
+  seed: 42
+
+  reference_policy_kl_penalty: 0.05
+  preference_average_log_probs: false
+  sft_average_log_probs: ${.preference_average_log_probs}
+  preference_loss_weight: 1
+  sft_loss_weight: 0
+
+policy:
+  model_name: /path/to/sft/checkpoint
+  tokenizer:
+    name: ${policy.model_name}
+  train_global_batch_size: 32
+  train_micro_batch_size: 1
+  max_total_sequence_length: 4096
+  precision: bfloat16
+  offload_optimizer_for_logprob: false
+  optimizer:
+    name: adamw
+    lr: 5.0e-7
+    weight_decay: 0.01
+  scheduler:
+    name: cosine
+    warmup_steps: 50
+
+# NeMo-RL built-in preference dataset. For HF datasets, prefer a converter that
+# emits NeMo-RL's expected chat/content format before switching dataset_name.
+data:
+  dataset_name: HelpSteer3
+  max_input_seq_length: ${policy.max_total_sequence_length}
+  shuffle: true
+  num_workers: 1
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: /nemo_run/dpo-checkpoints
+  metric_name: val:validation-default_loss
+  higher_is_better: false
+
+logger:
+  log_dir: /nemo_run/dpo-logs

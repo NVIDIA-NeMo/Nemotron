@@ -25,6 +25,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 """Data acquisition and curation via NeMo Curator — reference implementation."""
+
 from __future__ import annotations
 
 import argparse
@@ -71,7 +72,12 @@ def main() -> None:
             score_field="language",
         )
     )
-    pipeline.add_stage(Filter(filter_fn=lambda value: keep_language(value, allowed_languages), filter_field="language"))
+    pipeline.add_stage(
+        Filter(
+            filter_fn=lambda value: keep_language(value, allowed_languages),
+            filter_field="language",
+        )
+    )
     pipeline.add_stage(
         ScoreFilter(
             WordCountFilter(

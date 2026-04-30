@@ -66,6 +66,7 @@ conductor.json
 
 # Project specific
 /artifacts/
+.logs/
 output/
 outputs/
 logs/
@@ -76,6 +77,8 @@ data/
 !src/nemotron/cli/commands/embed/data/
 !src/nemotron/cli/commands/omni3/data/
 !src/nemotron/cli/commands/omni3/data/**
+!src/nemotron/steps/**/data/
+!src/nemotron/steps/**/data/**
 !src/nemotron/cli/commands/data/
 !src/nemotron/cli/commands/data/**
 !src/nemotron/recipes/data/

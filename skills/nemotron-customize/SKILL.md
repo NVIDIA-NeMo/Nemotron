@@ -214,7 +214,8 @@ step.toml to start from.
 ### Deciding which mode
 
 - "SFT with Megatron-Bridge" → **Catalog** (step exists)
-- "distill a model" → **Explorer** (no step, but MB supports distillation)
+- "distill a model" → **Catalog** (`optimize/modelopt/distill`)
+- "quantize or prune a model" → **Catalog** (`optimize/modelopt/quantize` or `optimize/modelopt/prune`)
 - "deploy to TensorRT" → **Explorer** (needs TensorRT-LLM library)
 - Ambiguous → **Ask** which approach the user wants
 

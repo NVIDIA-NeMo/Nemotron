@@ -17,10 +17,19 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class RunspecRun:
-    """How to launch the script."""
+    """How to launch the script.
+
+    ``cmd`` is ``None`` when the script's ``[tool.runspec.run]`` block does
+    not declare one — in that case the **backend** chooses the actual
+    invocation based on ``launch`` (e.g. ``torchrun`` wrapping with the right
+    nproc/node-rank for distributed multi-process training, or a bare
+    subprocess locally). A non-None value is treated as a verbatim author
+    override and forwarded as-is; ``{script}`` and ``{config}`` placeholders
+    are still expanded.
+    """
 
     launch: str = "torchrun"  # "torchrun" | "ray" | "direct"
-    cmd: str = "python {script} --config {config}"
+    cmd: str | None = None
     workdir: str | None = None  # e.g., "/opt/nemo-rl"
 
 

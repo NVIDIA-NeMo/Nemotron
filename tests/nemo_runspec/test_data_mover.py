@@ -1,5 +1,16 @@
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Tests for :mod:`nemo_runspec.data_mover`."""
 
@@ -42,9 +53,7 @@ def _write_fake_repo(root: Path) -> None:
 
 def test_auto_includes_scopes_to_active_recipe_family(tmp_path):
     _write_fake_repo(tmp_path)
-    includes = _auto_includes(
-        tmp_path, script_path="src/nemotron/recipes/nano3/stage1_sft/data_prep.py"
-    )
+    includes = _auto_includes(tmp_path, script_path="src/nemotron/recipes/nano3/stage1_sft/data_prep.py")
     # Active family included, inactive one omitted.
     assert "src/nemotron/recipes/nano3" in includes
     assert "src/nemotron/recipes/super3" not in includes
@@ -60,6 +69,52 @@ def test_auto_includes_ships_all_families_without_hint(tmp_path):
     # No family hint → ship both.
     assert "src/nemotron/recipes/nano3" in includes
     assert "src/nemotron/recipes/super3" in includes
+
+
+def test_auto_includes_scopes_to_active_step_subtree(tmp_path):
+    _write_fake_repo(tmp_path)
+    steps = tmp_path / "src" / "nemotron" / "steps"
+    (steps / "_runners").mkdir(parents=True)
+    (steps / "_runners" / "__init__.py").write_text("")
+    (steps / "index.py").write_text("")
+    (steps / "sft" / "automodel").mkdir(parents=True)
+    (steps / "sft" / "__init__.py").write_text("")
+    (steps / "sft" / "automodel" / "step.py").write_text("")
+    (steps / "prep").mkdir()
+    (steps / "prep" / "__init__.py").write_text("")
+    (steps / "prep" / "_common.py").write_text("")
+    (steps / "prep" / "sft_packing").mkdir()
+    (steps / "prep" / "sft_packing" / "step.py").write_text("")
+    (steps / "rl" / "nemo_rl").mkdir(parents=True)
+    (steps / "rl" / "nemo_rl" / "step.py").write_text("")
+
+    includes = _auto_includes(tmp_path, script_path="src/nemotron/steps/sft/automodel/step.py")
+
+    assert "src/nemotron/steps/index.py" in includes
+    assert "src/nemotron/steps/sft/__init__.py" in includes
+    assert "src/nemotron/steps/sft/automodel" in includes
+    assert "src/nemotron/steps/_runners" in includes
+    assert "src/nemotron/steps/rl" not in includes
+    assert "src/nemotron/recipes/nano3" not in includes
+
+
+def test_auto_includes_ships_active_step_ancestor_helpers(tmp_path):
+    _write_fake_repo(tmp_path)
+    steps = tmp_path / "src" / "nemotron" / "steps"
+    (steps / "prep").mkdir(parents=True)
+    (steps / "prep" / "__init__.py").write_text("")
+    (steps / "prep" / "_common.py").write_text("")
+    (steps / "prep" / "sft_packing").mkdir()
+    (steps / "prep" / "sft_packing" / "step.py").write_text("")
+    (steps / "sft" / "automodel").mkdir(parents=True)
+    (steps / "sft" / "automodel" / "step.py").write_text("")
+
+    includes = _auto_includes(tmp_path, script_path="src/nemotron/steps/prep/sft_packing/step.py")
+
+    assert "src/nemotron/steps/prep/__init__.py" in includes
+    assert "src/nemotron/steps/prep/_common.py" in includes
+    assert "src/nemotron/steps/prep/sft_packing" in includes
+    assert "src/nemotron/steps/sft" not in includes
 
 
 def test_auto_includes_raises_when_src_missing(tmp_path):
@@ -93,9 +148,7 @@ def test_source_packager_filters_pycache_and_pyc(tmp_path):
 def test_plan_for_lepton_chunks_source_into_env_vars(tmp_path, monkeypatch):
     _write_fake_repo(tmp_path)
     # Skip the nemo-run patch side-effects — not relevant here.
-    monkeypatch.setattr(
-        "nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None
-    )
+    monkeypatch.setattr("nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None)
     monkeypatch.setattr(
         "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
         lambda: None,
@@ -117,7 +170,40 @@ def test_plan_for_lepton_chunks_source_into_env_vars(tmp_path, monkeypatch):
     # NODE_RANK gate is present so multi-pod NFS runs don't race.
     script = plan.pre_script_cmds[0]
     assert "NODE_RANK" in script and "tar -xz" in script
+    assert plan.source_ready_marker is not None
+    assert plan.source_ready_marker in script
     assert not plan.needs_pwd_symlinks
+
+
+def test_plan_for_cloud_ready_marker_is_unique_per_submission(tmp_path, monkeypatch):
+    _write_fake_repo(tmp_path)
+    monkeypatch.setattr("nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None)
+    monkeypatch.setattr(
+        "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
+        lambda: None,
+    )
+
+    env_a: dict[str, str] = {}
+    env_b: dict[str, str] = {}
+    plan_a = plan_for(
+        executor_type="lepton",
+        env_vars=env_a,
+        script_path="src/nemotron/recipes/nano3/x.py",
+        pod_nemotron_home="/mnt/foo/_nemotron",
+        repo_root=tmp_path,
+    )
+    plan_b = plan_for(
+        executor_type="lepton",
+        env_vars=env_b,
+        script_path="src/nemotron/recipes/nano3/x.py",
+        pod_nemotron_home="/mnt/foo/_nemotron",
+        repo_root=tmp_path,
+    )
+
+    assert env_a["_NEMOTRON_SRC_SHA256"] == env_b["_NEMOTRON_SRC_SHA256"]
+    assert ".nemotron-src-ready-${_NEMOTRON_SRC_CHUNKS}" not in plan_a.pre_script_cmds[0]
+    assert plan_a.source_ready_marker != plan_b.source_ready_marker
+    assert plan_a.pre_script_cmds[0] != plan_b.pre_script_cmds[0]
 
 
 def test_plan_for_dgxcloud_chunks_source_into_env_vars(tmp_path, monkeypatch):
@@ -126,9 +212,7 @@ def test_plan_for_dgxcloud_chunks_source_into_env_vars(tmp_path, monkeypatch):
     and a companion patch strips them from the ``torchrun_job.sh`` exports so
     the launcher file stays small."""
     _write_fake_repo(tmp_path)
-    monkeypatch.setattr(
-        "nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None
-    )
+    monkeypatch.setattr("nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None)
     monkeypatch.setattr(
         "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
         lambda: None,
@@ -150,9 +234,7 @@ def test_plan_for_dgxcloud_chunks_source_into_env_vars(tmp_path, monkeypatch):
 
 def test_plan_for_fallback_uses_native_packager_path(tmp_path, monkeypatch):
     _write_fake_repo(tmp_path)
-    monkeypatch.setattr(
-        "nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None
-    )
+    monkeypatch.setattr("nemo_runspec.run.patch_cloud_data_mover_skip_configs", lambda: None)
     monkeypatch.setattr(
         "nemo_runspec.run.patch_dgxcloud_strip_source_chunks_from_exports",
         lambda: None,

@@ -1,13 +1,26 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
+import argparse
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-import argparse
+
 import tomllib
-
 import yaml
-
 
 DEFAULT_STEPS_ROOT = Path(__file__).resolve().parent
 DEFAULT_PATTERNS_DIR = DEFAULT_STEPS_ROOT / "patterns"
@@ -16,6 +29,8 @@ CATEGORY_TITLES = {
     "convert": "Conversion",
     "curate": "Data Curation",
     "eval": "Evaluation",
+    "optimize": "Model Optimization",
+    "peft": "Parameter-Efficient Fine-Tuning",
     "prep": "Data Preparation",
     "pretrain": "Pretraining",
     "rl": "Reinforcement Learning",
@@ -133,11 +148,13 @@ def generate_steps_md(steps_root: Path | None = None) -> str:
                 row.append(step.stack or "-")
             if include_difficulty:
                 row.append(step.difficulty or "-")
-            row.extend([
-                _escape_pipes(step.description),
-                _format_artifacts(step.consumes),
-                _format_artifacts(step.produces),
-            ])
+            row.extend(
+                [
+                    _escape_pipes(step.description),
+                    _format_artifacts(step.consumes),
+                    _format_artifacts(step.produces),
+                ]
+            )
             lines.append("| " + " | ".join(row) + " |")
 
         lines.append("")
@@ -150,7 +167,11 @@ def generate_patterns_md(
     output_path: Path | None = None,
 ) -> str:
     """Render a Markdown catalog of all discovered patterns and optionally write it."""
-    root = patterns[0].path.parent.parent if patterns else (output_path.parent if output_path else DEFAULT_STEPS_ROOT).resolve()
+    root = (
+        patterns[0].path.parent.parent
+        if patterns
+        else (output_path.parent if output_path else DEFAULT_STEPS_ROOT).resolve()
+    )
     lines = ["# Available Patterns", ""]
 
     if not patterns:

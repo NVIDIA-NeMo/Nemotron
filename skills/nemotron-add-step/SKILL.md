@@ -52,7 +52,7 @@ Read these first:
 
 Then ask the contributor:
 1. What does this step do? (one sentence)
-2. Which category? (`curate`, `synth`, `translate`, `prep`, `pretrain`, `sft`, `rl`, `eval`, `convert`, `benchmark`)
+2. Which category? (`curate`, `synth`, `translate`, `prep`, `pretrain`, `sft`, `peft`, `rl`, `optimize`, `eval`, `convert`, `benchmark`)
 3. Which NVIDIA stack library? (Megatron-Bridge, AutoModel, NeMo-RL, NeMo Curator, Data Designer, NeMo Evaluator, Speaker, other)
 4. What does it consume? (artifact types from `src/nemotron/steps/types.toml`)
 5. What does it produce? (artifact types)
@@ -95,7 +95,7 @@ For `step.toml`, include:
 Generation rules:
 1. Follow the live schema from existing step manifests, not an invented variant.
 2. Keep parameters short. Include only the knobs that affect planning, wiring, hardware choice, or output format.
-3. Every reference path in `[reference]` must resolve in this workspace or another loaded NVIDIA repo.
+3. Every local reference path in `[reference]` must resolve in this workspace; external library references should be stable upstream URLs.
 4. If you add `step.py`, keep it thin and runnable. Include a PEP 723 `# /// script` header with `[tool.runspec]`.
 5. Keep `step.py` at 30 lines or less unless a slightly longer wrapper is unavoidable.
 6. `config/default.yaml` is the production starter config.
@@ -137,7 +137,7 @@ Show:
 
 ### Don't
 - Don't modify existing steps just to refactor or rename them
-- Don't modify anything inside `skills/nemotron-customize/` (`SKILL.md`, `act/*.md`, `examples/*.md`, or `context/*`)
+- Don't modify anything inside `skills/nemotron-customize/` (`SKILL.md`, `act/*.md`, `examples/*.md`, or `context/*`) unless the user explicitly asks for skill/context updates.
 - Don't invent new schema fields for `step.toml`
 - Don't add exhaustive parameter catalogs
 - Don't skip `[reference]`

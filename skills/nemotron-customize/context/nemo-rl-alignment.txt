@@ -1,0 +1,140 @@
+# NeMo-RL Alignment Step Context
+
+Use this pack for:
+
+- `rl/nemo_rl/dpo`
+- `rl/nemo_rl/rlvr`
+- `rl/nemo_rl/rlhf`
+
+The NeMo-RL steps share the same design rule: the wrapper is generic and the
+algorithm-specific behavior lives in YAML. Generated projects should expose
+clear config files rather than hardcoding reward, data, or cluster behavior in
+Python.
+
+## Shared Runner Shape
+
+The repo uses `src/nemotron/steps/_runners/nemo_rl.py` as the shared launcher.
+Keep stage scripts thin:
+
+1. Resolve config path and overrides.
+2. Select the upstream NeMo-RL example or configured script.
+3. Pass the YAML config and CLI overrides through.
+4. Let NeMo-RL own the training loop.
+
+Use container defaults from the step configs unless the user has a cluster image.
+
+## DPO
+
+Step: `rl/nemo_rl/dpo`
+
+Use when the data contains prompt/preference pairs and there is no executable
+reward function.
+
+Expected training data shape:
+
+```json
+{"prompt": "...", "chosen": "...", "rejected": "..."}
+```
+
+Important knobs:
+
+- `dpo.reference_policy_kl_penalty`
+- policy checkpoint path
+- preference dataset path
+- learning rate / global batch size
+
+If KL collapses or loss diverges, increase the KL penalty or lower learning rate.
+
+## RLVR / GRPO
+
+Step: `rl/nemo_rl/rlvr`
+
+Use when reward can be verified programmatically, such as:
+
+- math final-answer checking
+- unit-test passing for code
+- exact or normalized-answer matching
+- tool/task environment success
+
+Expected data shape:
+
+```json
+{"prompt": "...", "answer": "...", "metadata": {...}}
+```
+
+Important knobs:
+
+- `grpo.num_generations_per_prompt`
+- reward function / verifier configuration
+- rollout temperature and max tokens
+- policy checkpoint path
+
+If reward variance is low, increase generations per prompt or improve the
+verifier signal before scaling training.
+
+## RLHF
+
+Step: `rl/nemo_rl/rlhf`
+
+Use when the reward is learned from a reward model rather than directly
+verifiable. It consumes:
+
+- prompt JSONL
+- SFT policy checkpoint
+- reward model checkpoint in HuggingFace format
+
+Important knobs:
+
+- reward model path
+- rollout count
+- KL/reward clipping
+- policy learning rate
+
+If reward hacking appears, increase KL, lower learning rate, clip rewards, or
+improve reward-model coverage.
+
+## Data Prep
+
+Use `prep/rl_prep` when the data starts as HF dataset references or a blend file.
+
+For DPO:
+
+- preserve `prompt`, `chosen`, `rejected`
+- validate that chosen/rejected are non-empty
+- keep train/validation splits deterministic
+
+For RLVR:
+
+- preserve verifier fields such as `answer`, `tests`, or `expected_output`
+- materialize any remote resources before cluster training
+
+For RLHF:
+
+- preserve prompt metadata needed by the reward model
+
+## Pipeline Placement
+
+Typical chain:
+
+```text
+synth/data_designer -> prep/rl_prep -> rl/nemo_rl/dpo
+prep/rl_prep -> rl/nemo_rl/rlvr
+prep/rl_prep -> rl/nemo_rl/rlhf
+```
+
+Artifact rules:
+
+- All NeMo-RL steps consume `training_jsonl`.
+- DPO and RLVR consume an SFT policy checkpoint.
+- RLHF also consumes a reward model in `checkpoint_hf` format.
+- The current catalog emits `checkpoint_megatron`; add conversion stages if the
+  next consumer expects HF.
+
+## Staleness Checks
+
+When updating these steps, check:
+
+- upstream example script names in NeMo-RL
+- config key compatibility with the selected NeMo-RL release/container
+- reward model format for RLHF
+- dataset schema assumptions in prep and synthetic-data configs

@@ -1,0 +1,63 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "rl/nemo_rl/rlhf"
+name = "RL — RLHF (NeMo-RL)"
+category = "rl"
+description = """\
+RLHF with a learned judge / generative reward model on top of NeMo-RL's GRPO
+loop. Uses NeMo-Gym for GenRM-style comparison rewards by default."""
+tags = ["rl", "rlhf", "grpo", "reward-model", "genrm", "nemo-rl", "nemo-gym"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Prompt JSONL for rollouts."
+required = true
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "SFT policy to align."
+required = true
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "Reward model checkpoint (HF-format reward / classifier model)."
+required = true
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "RLHF-aligned policy."
+
+[[parameters]]
+name = "grpo.num_generations_per_prompt"
+description = "Rollouts per prompt; GRPO group size."
+default = 8
+
+[[parameters]]
+name = "env.nemo_gym.genrm_model.responses_api_models.vllm_model.model"
+description = "HF path or local path for the GenRM judge model served by NeMo-Gym."
+default = "/path/to/genrm/model"
+
+[[strategies]]
+when = "Reward model saturates / reward hacking is observed"
+then = "Increase KL penalty, lower learning rate, or add reward clipping."
+
+[[strategies]]
+when = "You have Super3-style RLHF data"
+then = "Keep env.should_use_nemo_gym=true and point data.train.data_path / data.validation.data_path at the prepared NeMo-Gym JSONL."
+
+[reference]
+script = "https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/super3/stage2_rl/stage3_rlhf"
+skills = ["skills/nemotron-customize/context/nemo-rl-alignment.txt"]

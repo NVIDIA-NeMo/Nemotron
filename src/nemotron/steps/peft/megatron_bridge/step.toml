@@ -1,0 +1,65 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "peft/megatron_bridge"
+name = "PEFT / LoRA Training (Megatron-Bridge)"
+category = "peft"
+description = """\
+Parameter-efficient fine-tuning (LoRA) on top of Megatron-Bridge. Useful when a
+full SFT exceeds memory but you still want TP/PP/CP scaling. Consumes packed
+Parquet from prep/sft_packing."""
+tags = ["peft", "lora", "fine-tuning", "megatron", "distributed-training"]
+
+[[consumes]]
+type = "packed_parquet"
+description = "Packed SFT Parquet shards with input_ids + loss_mask"
+required = true
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "Base pretrained Megatron checkpoint to adapt."
+required = true
+
+[[produces]]
+type = "checkpoint_lora"
+description = "LoRA adapter weights (merge with the base via convert/merge_lora for an HF checkpoint)."
+
+[[parameters]]
+name = "peft.type"
+description = "PEFT scheme — typically 'lora'."
+default = "lora"
+choices = ["lora"]
+
+[[parameters]]
+name = "peft.dim"
+description = "LoRA rank."
+default = 32
+
+[[strategies]]
+when = "Full SFT does not fit in memory at the desired model size"
+then = "Switch to peft/megatron_bridge to keep TP/PP scaling but drop trainable params drastically."
+skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
+
+[[errors]]
+name = "missing_packed_data"
+recovery = "Run prep/sft_packing first."
+
+[reference]
+recipe = "src/nemotron/recipes/nano3/stage1_sft/"
+script = "src/nemotron/recipes/nano3/stage1_sft/train.py"
+skills = [
+  "skills/nemotron-customize/context/mbridge-sft-full.txt",
+  "skills/nemotron-customize/context/mbridge-parallelism-performance.txt",
+]

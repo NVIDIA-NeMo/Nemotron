@@ -1,0 +1,52 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "prep/rl_prep"
+name = "RL Data Prep (resolve + shard)"
+category = "prep"
+description = """\
+Resolve HuggingFace dataset references in an RL data blend and shard the
+output JSONL into the prompt / preference layout expected by rl/nemo_rl/*."""
+tags = ["prep", "rl", "dpo", "grpo", "jsonl"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "RL data blend referencing HF or local prompt / preference datasets."
+
+[[produces]]
+type = "training_jsonl"
+description = "Sharded JSONL splits ready for rl/nemo_rl/{dpo,rlvr,rlhf}."
+
+[[parameters]]
+name = "num_shards_per_split"
+description = "Output shards per split."
+default = 1
+
+[[parameters]]
+name = "resolve_hf_placeholders"
+description = "If true, materialise HF placeholders into local JSONL (recommended for closed-network clusters)."
+default = true
+
+[[strategies]]
+when = "Cluster has no HF Hub access"
+then = "Keep resolve_hf_placeholders=true so all data is materialised locally before training."
+
+[[strategies]]
+when = "Producing data for RLVR / GRPO"
+then = "Ensure each prompt record has the verifiable answer field (e.g. 'answer' for math)."
+
+[reference]
+script = "src/nemotron/data_prep/recipes/rl.py"
+skills = ["skills/nemotron-customize/context/nemotron-data-prep.txt"]
