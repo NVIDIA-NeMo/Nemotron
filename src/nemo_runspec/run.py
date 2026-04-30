@@ -15,7 +15,7 @@
 # Copyright (c) Nemotron Contributors
 # SPDX-License-Identifier: MIT
 
-"""NeMo-Run patches for Ray CPU templates and rsync host key handling."""
+"""NeMo-Run patches for Ray CPU templates, rsync host key handling, and cloud executor Ray backends."""
 
 from __future__ import annotations
 
@@ -235,3 +235,154 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
         slurm.rsync = patched  # type: ignore[assignment]
     except Exception:
         pass
+
+
+def _make_configs_excluding_copy_fn(original_signature: str):
+    """Build a ``copy_directory_data_command`` replacement that skips ``configs/``.
+
+    ``original_signature`` selects the return shape: ``"list"`` for Lepton
+    (``["sh", "-c", cmd]``) and ``"str"`` for DGXCloud (command body only).
+    """
+    import base64
+    import os
+    import subprocess
+    import tempfile
+
+    def _build_cmd(local_dir_path: str, dest_path: str) -> str:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tarball_path = os.path.join(temp_dir, "archive.tar.gz")
+            # Exclude ``configs/`` — only nemo-run's local state lives there
+            # and the pod entrypoint never reads it. Skipping it keeps the
+            # resulting single argv string under the kernel's 128 KiB
+            # ``MAX_ARG_STRLEN`` limit even when env-var chunks inflate the
+            # serialized executor config.
+            subprocess.run(
+                ["tar", "--exclude=./configs", "-czf", tarball_path, "-C", local_dir_path, "."],
+                check=True,
+            )
+            with open(tarball_path, "rb") as file:
+                encoded_data = base64.b64encode(file.read()).decode("utf-8")
+        return (
+            f"rm -rf {dest_path} && mkdir -p {dest_path} && "
+            f"echo {encoded_data} | base64 -d > {dest_path}/archive.tar.gz && "
+            f"tar -xzf {dest_path}/archive.tar.gz -C {dest_path} && "
+            f"rm {dest_path}/archive.tar.gz"
+        )
+
+    if original_signature == "list":
+        def patched(self, local_dir_path, dest_path):
+            return ["sh", "-c", _build_cmd(local_dir_path, dest_path)]
+    else:
+        def patched(self, local_dir_path, dest_path):
+            return _build_cmd(local_dir_path, dest_path)
+    return patched
+
+
+def patch_dgxcloud_accept_legacy_kwargs() -> None:
+    """Map legacy ``app_id``/``app_secret`` → ``client_id``/``client_secret``.
+
+    Pre-PR#480 nemo-run named the auth fields ``app_id``/``app_secret``; the
+    current fork uses ``client_id``/``client_secret``. Cached fiddle Configs
+    with the old names otherwise produce ``TypeError: unexpected keyword
+    argument 'app_id'`` noise on every status poll.
+    """
+    try:
+        from nemo_run.core.execution import dgxcloud as dgx_mod
+    except Exception:
+        return
+
+    cls = dgx_mod.DGXCloudExecutor
+    if getattr(cls, "_nemotron_legacy_kwargs_patched", False):
+        return
+
+    orig_init = cls.__init__
+
+    def patched_init(self, *args, **kwargs):
+        if "app_id" in kwargs:
+            kwargs.setdefault("client_id", kwargs.pop("app_id"))
+        if "app_secret" in kwargs:
+            kwargs.setdefault("client_secret", kwargs.pop("app_secret"))
+        return orig_init(self, *args, **kwargs)
+
+    cls.__init__ = patched_init
+    cls._nemotron_legacy_kwargs_patched = True
+
+
+def patch_dgxcloud_strip_source_chunks_from_exports() -> None:
+    """Keep ``_NEMOTRON_SRC_CHUNK_*`` out of DGXCloud's ``torchrun_job.sh``.
+
+    ``DGXCloudRequest.materialize()`` normally bakes every env var as an
+    ``export KEY=VAL`` line. With ~400 KiB of source chunks, that file
+    blows up and ``move_data`` chunks it into dozens of 10 KiB workloads
+    (run:AI's Args cap) — a ~12 min submission.
+
+    Chunks are already delivered via the Job spec's ``environmentVariables``
+    field, so we strip them from the export block. Net: one data-mover
+    workload, ~1 s submission; pod still sees the vars via ``os.environ``.
+    """
+    try:
+        from nemo_run.core.execution import dgxcloud as dgx_mod
+    except Exception:
+        return
+
+    if getattr(dgx_mod.DGXCloudRequest, "_nemotron_exports_patched", False):
+        return
+
+    orig_materialize = dgx_mod.DGXCloudRequest.materialize
+
+    def materialize(self):
+        # Snapshot + filter env_vars *before* materialize() reads them. Both
+        # fields are dataclass attrs, so we can swap and restore.
+        saved_exec_env = self.executor.env_vars
+        saved_extra_env = self.extra_env
+        self.executor.env_vars = {
+            k: v for k, v in saved_exec_env.items() if not k.startswith("_NEMOTRON_SRC_")
+        }
+        self.extra_env = {
+            k: v for k, v in saved_extra_env.items() if not k.startswith("_NEMOTRON_SRC_")
+        }
+        try:
+            return orig_materialize(self)
+        finally:
+            self.executor.env_vars = saved_exec_env
+            self.extra_env = saved_extra_env
+
+    dgx_mod.DGXCloudRequest.materialize = materialize
+    dgx_mod.DGXCloudRequest._nemotron_exports_patched = True
+
+
+def patch_cloud_data_mover_skip_configs() -> None:
+    """Exclude ``configs/`` from Lepton's and DGXCloud's data-mover tarball.
+
+    Both executors ship ``job_dir`` via a helper pod whose command is
+    ``sh -c "echo <base64> | base64 -d > …"`` — a single argv bounded by
+    ``MAX_ARG_STRLEN`` (128 KiB). ``configs/executor.yaml`` re-serializes
+    every env var (hundreds of KiB with source chunks), which blows past
+    that limit as ``exec: argument list too long``.
+
+    The pod-side launch script reads only ``launch_script.sh``, so dropping
+    ``configs/`` keeps the command small without affecting correctness.
+    """
+    try:
+        from nemo_run.core.execution import lepton as lep_mod
+    except Exception:
+        lep_mod = None  # type: ignore[assignment]
+
+    try:
+        from nemo_run.core.execution import dgxcloud as dgx_mod
+    except Exception:
+        dgx_mod = None  # type: ignore[assignment]
+
+    if lep_mod and not getattr(lep_mod.LeptonExecutor, "_nemotron_data_mover_patched", False):
+        lep_mod.LeptonExecutor.copy_directory_data_command = (
+            _make_configs_excluding_copy_fn("list")
+        )
+        lep_mod.LeptonExecutor._nemotron_data_mover_patched = True
+
+    if dgx_mod and not getattr(dgx_mod.DGXCloudExecutor, "_nemotron_data_mover_patched", False):
+        dgx_mod.DGXCloudExecutor.copy_directory_data_command = (
+            _make_configs_excluding_copy_fn("str")
+        )
+        dgx_mod.DGXCloudExecutor._nemotron_data_mover_patched = True
+
+
