@@ -9,7 +9,7 @@ request = "Build an English SFT pipeline for Nemotron-style instruction tuning o
 [expected.steps]
 must_include = ["prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
 may_include = []
-must_exclude = ["curate/nemo_curator", "translate/nemo_skills"]
+must_exclude = ["curate/nemo_curator", "translate/translation"]
 
 [expected.plan]
 has_mermaid_diagram = true

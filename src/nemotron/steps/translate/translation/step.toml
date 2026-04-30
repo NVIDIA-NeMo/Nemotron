@@ -1,0 +1,138 @@
+[step]
+id = "translate/translation"
+name = "Corpus Translation + FAITH Scoring"
+category = "translate"
+description = """Translate JSONL or Parquet training corpora with NeMo Curator's TranslationStage, preserving structured fields and optionally attaching FAITH quality scores."""
+tags = ["translate", "nemo-curator", "faith", "multilingual", "jsonl", "parquet"]
+
+[[consumes]]
+type = "filtered_jsonl"
+description = "Filtered JSONL records whose text or chat-message fields should be translated."
+
+[[produces]]
+type = "translated_jsonl"
+description = "Translated JSONL records with translated text fields, optional metadata, and optional FAITH quality scores."
+
+[[parameters]]
+name = "input_path"
+description = "Input file, glob, or homogeneous directory of JSONL/Parquet records."
+
+[[parameters]]
+name = "output_dir"
+description = "Directory where Curator writes translated output shards."
+
+[[parameters]]
+name = "source_language"
+description = "Required source ISO 639-1 language code for the input corpus. Ask the user explicitly."
+
+[[parameters]]
+name = "target_language"
+description = "Required target ISO 639-1 language code for translation output. Ask the user explicitly."
+
+[[parameters]]
+name = "text_field"
+description = "Source field path to translate. Use messages.*.content for OpenAI-style chat records."
+default = "messages.*.content"
+
+[[parameters]]
+name = "backend"
+description = "Translation backend. Use llm for OpenAI-compatible endpoints, nmt for a local service, or cloud backends when configured."
+default = "llm"
+choices = ["llm", "nmt", "google", "aws"]
+
+[[parameters]]
+name = "server"
+description = "OpenAI-compatible server config for backend=llm and for FAITH scoring: url, model, api_key_env or api_key."
+
+[[parameters]]
+name = "nmt"
+description = "NMT backend config: server_url, batch_size, timeout, and max_concurrent_requests."
+
+[[parameters]]
+name = "google"
+description = "Google backend config: api_version, project_id for v3, location, and max_concurrent_requests. Credentials come from Google environment auth."
+
+[[parameters]]
+name = "aws"
+description = "AWS backend config: region and max_concurrent_requests. Credentials come from AWS environment, config, or role."
+
+[[parameters]]
+name = "output_mode"
+description = "Curator output mode: replace source fields, emit raw metadata, or both."
+default = "both"
+choices = ["replaced", "raw", "both"]
+
+[[parameters]]
+name = "faith_enabled"
+description = "Whether to run FAITH translation quality scoring through an LLM client."
+default = true
+
+[[parameters]]
+name = "faith_threshold"
+description = "Minimum FAITH average score to keep translated records when filtering is enabled."
+default = 2.5
+
+[[strategies]]
+when = "The input records are OpenAI-style chat data"
+then = "Set text_field=messages.*.content and reconstruct_messages=true so translated_messages is emitted for inspection."
+skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+
+[[strategies]]
+when = "The corpus is large and a local translation service is available"
+then = "Use backend=nmt with nmt.server_url and keep Curator reader/writer stages as the default I/O path."
+skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+
+[[strategies]]
+when = "The user selects a hosted LLM backend"
+then = "Ask for the exact live model name and verify it is available before a real run; hosted models can be retired."
+skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+
+[[strategies]]
+when = "The user selects Google or AWS translation"
+then = "Keep secrets out of config files. Use cloud provider environment credentials and set only project/location or region in YAML."
+skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+
+[[strategies]]
+when = "The corpus contains JSON, code, tool payloads, or structured chat messages"
+then = "Keep segmentation_mode=coarse first; Curator preserves valid JSON and fenced code while translating natural-language segments."
+skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+
+[[strategies]]
+when = "Translation quality must gate SFT data"
+then = "Enable faith_eval and set output_mode=both so scores and translation metadata remain available for downstream review."
+skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+
+[[errors]]
+name = "missing_llm_endpoint"
+recovery = "For backend=llm or FAITH scoring, provide server.url, server.model, and server.api_key or NVIDIA_API_KEY."
+
+[[errors]]
+name = "missing_language_codes"
+recovery = "Ask for source_language and target_language explicitly. Do not use starter defaults for production translation."
+
+[[errors]]
+name = "missing_nmt_server"
+recovery = "For backend=nmt, provide nmt.server_url and confirm the service implements POST /translate with texts, src_lang, and tgt_lang."
+
+[[errors]]
+name = "missing_cloud_credentials"
+recovery = "For backend=google or backend=aws, configure provider credentials in the runtime environment instead of storing secrets in YAML."
+
+[[errors]]
+name = "field_path_mismatch"
+recovery = "Verify text_field against the input schema. For chat records this is usually messages.*.content."
+
+[[errors]]
+name = "mixed_input_formats"
+recovery = "Do not point one step at a directory mixing JSONL and Parquet. Split the input or set input_format explicitly."
+
+[[errors]]
+name = "single_huge_file_memory_pressure"
+recovery = "Curator readers are file-partition oriented. For one huge file, generate a one-off row-chunking pre-step and feed chunks into this step."
+
+[reference]
+script = "src/nemotron/steps/translate/translation/step.py"
+docs = "docs/customize/steps/translate/translation.md"
+skills = [
+  "skills/nemotron-customize/context/curator-translation-faith.txt",
+]
