@@ -15,20 +15,25 @@
 # Blackwell/B200 NVFP4 PTQ config. NVFP4 offers roughly 1.5-2.2x higher GEMM
 # FLOPS than FP8 on Blackwell while reducing model memory footprint.
 
-hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
-trust_remote_code: true
+script:
+  path: null
+  flag_style: hyphen
 
-export_quant_cfg: mamba_moe_nvfp4_conservative
-megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-nvfp4
+args:
+  hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
+  trust_remote_code: true
 
-tp: 8
-pp: 2
-ep: 8
-etp: 1
+  export_quant_cfg: mamba_moe_nvfp4_conservative
+  megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-nvfp4
 
-# Nemotron docs describe larger NVFP4 calibration/QAD inputs; keep this high for
-# quality-oriented runs and lower it for smoke tests.
-calib_size: 2000
+  tp: 8
+  pp: 2
+  ep: 8
+  etp: 1
+
+  # Nemotron docs describe larger NVFP4 calibration/QAD inputs; keep this high for
+  # quality-oriented runs and lower it for smoke tests.
+  calib_size: 2000
 
 torchrun:
   nproc_per_node: 16

@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -47,7 +47,10 @@ def exec_torchrun_script(
     raw = apply_hydra_overrides(load_omegaconf_yaml(config_path), cli_overrides)
     cfg = OmegaConf.to_container(raw, resolve=True)
 
-    script = str(cfg.get("upstream_script") or upstream_script)
+    script_cfg = _optional_mapping(cfg.get("script"), "script")
+    script = str(script_cfg.get("path") or cfg.get("upstream_script") or upstream_script)
+    resolved_flag_style = _resolve_flag_style(script_cfg.get("flag_style", cfg.get("flag_style", flag_style)))
+
     torchrun = dict(cfg.get("torchrun") or {})
     nproc = int(
         torchrun.get(
@@ -61,7 +64,7 @@ def exec_torchrun_script(
         if value is not None:
             cmd.append(f"--{key}={value}")
 
-    script_args = to_cli_args(cfg, forwarded_fields=forwarded_fields, flag_style=flag_style)
+    script_args = to_cli_args(cfg, forwarded_fields=forwarded_fields, flag_style=resolved_flag_style)
     cmd.extend([script, *script_args])
     print(f"$ {shlex.join(cmd)}", flush=True)
     os.execvp(cmd[0], cmd)
@@ -73,12 +76,28 @@ def to_cli_args(
     forwarded_fields: Iterable[str],
     flag_style: FlagStyle,
 ) -> list[str]:
-    """Translate named YAML fields to argparse-compatible CLI arguments."""
+    """Translate YAML-controlled script args to argparse-compatible CLI arguments.
+
+    Preferred shape:
+
+    ```yaml
+    args:
+      hf_model_id: model/name
+      trust_remote_code: true
+    extra_args: ["--new-upstream-flag", "value"]
+    ```
+
+    ``forwarded_fields`` keeps older flat configs working and lets a flat Hydra
+    override such as ``hf_model_id=...`` override ``args.hf_model_id``.
+    """
     args: list[str] = []
+    merged_args = dict(_optional_mapping(cfg.get("args"), "args"))
     for key in forwarded_fields:
-        if key not in cfg or cfg[key] is None:
-            continue
-        _append_flag(args, key, cfg[key], flag_style)
+        if key in cfg and cfg[key] is not None:
+            merged_args[key] = cfg[key]
+    for key, value in merged_args.items():
+        if value is not None:
+            _append_flag(args, key, value, flag_style)
     args.extend(str(item) for item in (cfg.get("extra_args") or []))
     return args
 
@@ -97,3 +116,17 @@ def _append_flag(args: list[str], key: str, value: Any, flag_style: FlagStyle) -
         args.extend([flag, json.dumps(value)])
         return
     args.extend([flag, str(value)])
+
+
+def _optional_mapping(value: Any, name: str) -> Mapping[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{name} must be a mapping when set")
+    return value
+
+
+def _resolve_flag_style(value: Any) -> FlagStyle:
+    if value not in ("hyphen", "underscore"):
+        raise ValueError("flag_style must be 'hyphen' or 'underscore'")
+    return value

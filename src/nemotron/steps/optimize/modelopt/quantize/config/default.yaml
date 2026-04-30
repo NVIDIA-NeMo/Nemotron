@@ -21,50 +21,52 @@
 #
 # Usage:
 #   nemotron step run optimize/modelopt/quantize -c default
-#   nemotron step run optimize/modelopt/quantize -c default export_quant_cfg=mamba_moe_nvfp4_conservative
+#   nemotron step run optimize/modelopt/quantize -c default args.export_quant_cfg=fp8
 #
-# Any upstream quantize.py flag not listed below can be passed with extra_args:
-#   extra_args: ["--some-new-flag", "value", "--some-bool-flag"]
+# Script arguments are forwarded from args: using hyphenated CLI flags. For
+# example, args.hf_model_id becomes --hf-model-id. New upstream flags can be
+# added directly under args: or passed literally through extra_args.
 
-# Optional override for the upstream script path. Keep unset in normal containers.
-upstream_script: null
+script:
+  # Optional override for the upstream script path. Keep unset in normal containers.
+  path: null
+  flag_style: hyphen
 
-# HuggingFace model id or local HF checkpoint path.
-hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
+args:
+  # HuggingFace model id or local HF checkpoint path.
+  hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
 
-# Trust custom model code from the HF repo/path. Usually true for Nemotron/Super3.
-trust_remote_code: true
+  # Trust custom model code from the HF repo/path.
+  trust_remote_code: true
 
-# Quantization recipe. Supported Super3 Mamba-MoE recipes:
-# - mamba_moe_fp8_conservative: H100/Hopper, balanced accuracy/throughput.
-# - mamba_moe_fp8_aggressive: H100/Hopper, faster with more accuracy risk.
-# - mamba_moe_nvfp4_conservative: B200/Blackwell, strong default for FP4.
-# - mamba_moe_nvfp4_aggressive: B200/Blackwell, maximum compression/perf tradeoff.
-export_quant_cfg: mamba_moe_fp8_conservative
+  # Quantization recipe. Use generic recipes such as fp8/nvfp4 for broadly
+  # supported models, or model-specific recipes when the upstream script supports
+  # them, e.g. mamba_moe_fp8_conservative for Nemotron Super.
+  export_quant_cfg: mamba_moe_fp8_conservative
 
-# Output Megatron distributed checkpoint path. Export to HF afterwards with
-# /opt/Megatron-Bridge/examples/quantization/export.py if deployment needs HF.
-megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
+  # Output Megatron distributed checkpoint path. Export to HF afterwards with
+  # /opt/Megatron-Bridge/examples/quantization/export.py if deployment needs HF.
+  megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
 
-# Parallelism. World size must be compatible with tp * pp and expert layout.
-tp: 8          # tensor parallel size
-pp: 2          # pipeline parallel size; docs use 2 for quantization, larger for multi-node export
-ep: 8          # expert parallel size for MoE
-etp: 1         # expert tensor parallel size
+  # Parallelism. World size must be compatible with tp * pp and expert layout.
+  tp: 8        # tensor parallel size
+  pp: 2        # pipeline parallel size
+  ep: 8        # expert parallel size for MoE
+  etp: 1       # expert tensor parallel size
 
-# Calibration samples. Nemotron docs note FP8 used 256 SFT samples; NVFP4/QAD
-# workflows often use larger calibration sets such as 2K samples.
-calib_size: 512
+  # Calibration samples. PTQ guidance is typically 128-512 samples; NVFP4/QAD
+  # workflows often use larger calibration sets such as 2K samples.
+  calib_size: 512
 
-# Optional prompt/calibration input understood by upstream quantize.py. Leave
-# null to use the script default calibration dataset.
-prompts: null
+  # Optional prompt/calibration input understood by upstream quantize.py. Leave
+  # null to use the script default calibration dataset.
+  prompts: null
 
-# Optional upstream boolean flags.
-compress: false
-weight_only: false
-export_kv_cache_quant: false
-disable_hf_datasets_file_lock: false
+  # Optional upstream boolean flags.
+  compress: false
+  weight_only: false
+  export_kv_cache_quant: false
+  disable_hf_datasets_file_lock: false
 
 # Torchrun settings used by this thin wrapper.
 torchrun:

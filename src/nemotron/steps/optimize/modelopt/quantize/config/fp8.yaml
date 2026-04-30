@@ -14,20 +14,25 @@
 
 # Hopper/H100 FP8 PTQ config. Conservative recipe is the balanced default.
 
-hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
-trust_remote_code: true
+script:
+  path: null
+  flag_style: hyphen
 
-export_quant_cfg: mamba_moe_fp8_conservative
-megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
+args:
+  hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
+  trust_remote_code: true
 
-tp: 8
-pp: 2
-ep: 8
-etp: 1
+  export_quant_cfg: mamba_moe_fp8_conservative
+  megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
 
-# Nemotron docs mention 256 calibration samples for the FP8 checkpoint; 512 is
-# a cautious smoke/default. Override to 256 to match the published recipe.
-calib_size: 512
+  tp: 8
+  pp: 2
+  ep: 8
+  etp: 1
+
+  # Nemotron docs mention 256 calibration samples for the FP8 checkpoint; 512 is
+  # a cautious smoke/default. Override to 256 to match the published recipe.
+  calib_size: 512
 
 torchrun:
   nproc_per_node: 8

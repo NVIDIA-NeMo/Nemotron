@@ -14,13 +14,13 @@
 
 [step]
 id = "optimize/modelopt/prune"
-name = "Pruning (ModelOpt Minitron)"
+name = "Pruning (ModelOpt + Megatron-Bridge)"
 category = "optimize"
 description = """\
-Prune a HuggingFace model with NVIDIA Model Optimizer's Minitron flow in the
-Megatron-Bridge framework. Supports target-parameter search or manual architecture
-pruning via prune_export_config."""
-tags = ["optimize", "modelopt", "pruning", "minitron", "megatron-bridge"]
+Prune HuggingFace GPT/Mamba-family checkpoints with NVIDIA Model Optimizer and
+Megatron-Bridge. Supports target-parameter search or manual architecture
+pruning via config-controlled upstream arguments."""
+tags = ["optimize", "modelopt", "pruning", "structured-pruning", "megatron-bridge"]
 
 [[consumes]]
 type = "checkpoint_hf"
@@ -32,34 +32,34 @@ type = "checkpoint_hf"
 description = "Pruned HuggingFace checkpoint."
 
 [[parameters]]
-name = "prune_target_params"
+name = "args.prune_target_params"
 description = "Target parameter count for search, e.g. 6e9."
 default = 6e9
 
 [[parameters]]
-name = "prune_export_config"
+name = "args.prune_export_config"
 description = "Manual architecture dict such as hidden_size / ffn_hidden_size / num_layers."
 
 [[parameters]]
-name = "hparams_to_skip"
+name = "args.hparams_to_skip"
 description = "Architecture hparams to leave untouched, e.g. num_attention_heads."
 
 [[parameters]]
 name = "extra_args"
-description = "Raw upstream prune_minitron.py args for newly added ModelOpt flags."
+description = "Literal upstream args for newly added ModelOpt pruning flags."
 default = []
 
 [[strategies]]
 when = "You know the target model budget"
-then = "Set prune_target_params and leave prune_export_config null so Minitron searches candidates."
+then = "Set args.prune_target_params and leave args.prune_export_config null so ModelOpt searches candidates."
 
 [[strategies]]
 when = "You need a specific architecture"
-then = "Set prune_export_config and set prune_target_params=null."
+then = "Set args.prune_export_config and set args.prune_target_params=null."
 
 [[strategies]]
 when = "Layer count does not divide PP size"
-then = "Use num_layers_in_first_pipeline_stage / num_layers_in_last_pipeline_stage for uneven PP."
+then = "Use args.num_layers_in_first_pipeline_stage / args.num_layers_in_last_pipeline_stage for uneven PP."
 
 [reference]
 modelopt_megatron_bridge = "https://github.com/NVIDIA/Model-Optimizer/blob/main/examples/megatron_bridge/README.md"

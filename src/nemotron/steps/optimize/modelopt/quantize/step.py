@@ -33,7 +33,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""PTQ quantization through Megatron-Bridge + NVIDIA Model Optimizer."""
+"""Generic ModelOpt quantization launcher through Megatron-Bridge."""
 
 from __future__ import annotations
 
@@ -44,7 +44,9 @@ from nemotron.steps._runners.modelopt import exec_torchrun_script
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 UPSTREAM_SCRIPT = "/opt/Megatron-Bridge/examples/quantization/quantize.py"
 
-FORWARDED_FIELDS = (
+# Backward-compatible flat config keys. New configs should put upstream script
+# arguments under `args:` so users can control ModelOpt without editing Python.
+LEGACY_FORWARDED_FIELDS = (
     "hf_model_id",
     "export_quant_cfg",
     "megatron_save_path",
@@ -66,7 +68,7 @@ def main() -> None:
     exec_torchrun_script(
         default_config=DEFAULT_CONFIG,
         upstream_script=UPSTREAM_SCRIPT,
-        forwarded_fields=FORWARDED_FIELDS,
+        forwarded_fields=LEGACY_FORWARDED_FIELDS,
         flag_style="hyphen",
         default_nproc_per_node=8,
     )

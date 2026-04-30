@@ -42,6 +42,51 @@ def test_hyphen_flag_translation_with_lists_and_bools() -> None:
     ]
 
 
+def test_args_mapping_drives_script_arguments() -> None:
+    args = to_cli_args(
+        {
+            "args": {
+                "hf_model_id": "model",
+                "trust_remote_code": True,
+                "compress": False,
+                "data_paths": [1.0, "prefix"],
+            },
+            "extra_args": ["--new-flag", "x"],
+        },
+        forwarded_fields=(),
+        flag_style="hyphen",
+    )
+
+    assert args == [
+        "--hf-model-id",
+        "model",
+        "--trust-remote-code",
+        "--data-paths",
+        "1.0",
+        "prefix",
+        "--new-flag",
+        "x",
+    ]
+
+
+def test_flat_overrides_can_replace_args_mapping_values() -> None:
+    args = to_cli_args(
+        {
+            "args": {"hf_model_id": "base-model", "calib_size": 128},
+            "hf_model_id": "override-model",
+        },
+        forwarded_fields=("hf_model_id",),
+        flag_style="hyphen",
+    )
+
+    assert args == [
+        "--hf-model-id",
+        "override-model",
+        "--calib-size",
+        "128",
+    ]
+
+
 def test_underscore_flag_translation_with_dict_json() -> None:
     args = to_cli_args(
         {"prune_export_config": {"hidden_size": 3584}},

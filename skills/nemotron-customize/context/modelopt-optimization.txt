@@ -17,7 +17,7 @@ Use `optimize/modelopt` as the umbrella. It is intentionally broader than
 `quantize` and covers:
 
 - post-training quantization
-- pruning / Minitron-style architecture reduction
+- structured pruning / architecture reduction
 - teacher-student distillation
 
 `compression` is too narrow because distillation can be a quality-recovery or
@@ -29,8 +29,9 @@ All three steps use:
 
 - `src/nemotron/steps/_runners/modelopt.py`
 - `torchrun`
-- selected top-level YAML keys forwarded to the upstream script
-- `extra_args` as the escape hatch for new upstream flags
+- `script:` for upstream script path / flag-style control
+- `args:` for upstream script arguments
+- `extra_args` as the literal escape hatch for new upstream flags
 
 Keep generated stage scripts similarly thin:
 
@@ -40,8 +41,9 @@ Keep generated stage scripts similarly thin:
 4. Print the command.
 5. Exec it.
 
-Do not hardcode model-specific customization in Python. Add config keys and
-comments instead.
+Do not hardcode model-specific customization in Python. Put ModelOpt controls
+under `args:` and keep Python as a launcher only. Legacy flat overrides for the
+common args are accepted for compatibility, but new configs should use `args:`.
 
 ## Quantization
 
@@ -56,15 +58,19 @@ Upstream script:
 Primary config:
 
 ```yaml
-hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-49B-BF16
-trust_remote_code: true
-export_quant_cfg: mamba_moe_fp8_conservative
-megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
-tp: 8
-pp: 2
-ep: 8
-etp: 1
-calib_size: 512
+script:
+  path: null
+  flag_style: hyphen
+args:
+  hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
+  trust_remote_code: true
+  export_quant_cfg: mamba_moe_fp8_conservative
+  megatron_save_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/quantize/super3-fp8
+  tp: 8
+  pp: 2
+  ep: 8
+  etp: 1
+  calib_size: 512
 torchrun:
   nproc_per_node: 8
 extra_args: []
@@ -111,12 +117,16 @@ Upstream script:
 Primary config:
 
 ```yaml
-hf_model_name_or_path: Qwen/Qwen3-8B
-output_hf_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/prune/pruned-hf
-pp_size: 2
-prune_target_params: 6e9
-prune_export_config: null
-hparams_to_skip: null
+script:
+  path: null
+  flag_style: underscore
+args:
+  hf_model_name_or_path: Qwen/Qwen3-8B
+  output_hf_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/prune/pruned-hf
+  pp_size: 2
+  prune_target_params: 6e9
+  prune_export_config: null
+  hparams_to_skip: null
 torchrun:
   nproc_per_node: 2
 extra_args: []
@@ -124,9 +134,10 @@ extra_args: []
 
 Use one of two modes:
 
-- target search: set `prune_target_params`, leave `prune_export_config: null`
-- fixed architecture: set `prune_export_config` and set
-  `prune_target_params: null`
+- target search: set `args.prune_target_params`, leave
+  `args.prune_export_config: null`
+- fixed architecture: set `args.prune_export_config` and set
+  `args.prune_target_params: null`
 
 Common `prune_export_config` keys:
 
@@ -139,7 +150,8 @@ Common `prune_export_config` keys:
 Use `hparams_to_skip` when a dimension should remain stable, for example:
 
 ```yaml
-hparams_to_skip: num_attention_heads
+args:
+  hparams_to_skip: num_attention_heads
 ```
 
 Output:
@@ -160,16 +172,20 @@ Upstream script:
 Primary config:
 
 ```yaml
-teacher_hf_path: Qwen/Qwen3-8B
-student_hf_path: Qwen/Qwen3-4B
-tp_size: 8
-data_paths: null
-use_mock_data: false
-seq_length: 8192
-mbs: 1
-gbs: 768
-train_iters: 15000
-output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/distill/run
+script:
+  path: null
+  flag_style: underscore
+args:
+  teacher_hf_path: Qwen/Qwen3-8B
+  student_hf_path: Qwen/Qwen3-4B
+  tp_size: 8
+  data_paths: null
+  use_mock_data: false
+  seq_length: 8192
+  mbs: 1
+  gbs: 768
+  train_iters: 15000
+  output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/distill/run
 torchrun:
   nproc_per_node: 8
 extra_args: []
@@ -178,9 +194,10 @@ extra_args: []
 Real-data runs expect Megatron bin/idx prefixes:
 
 ```yaml
-data_paths:
-  - 1.0
-  - /data/tokenized/domain_text_document
+args:
+  data_paths:
+    - 1.0
+    - /data/tokenized/domain_text_document
 ```
 
 Use `prep/pretrain_prep` before distillation when data must be prepared from
@@ -224,4 +241,5 @@ When updating these steps, check:
   distill examples use underscore flags
 - the step manifest references are URLs or repo-local files, not stale local
   external checkout paths
-- generated configs keep `extra_args` for new upstream flags
+- generated configs keep `args:` for normal upstream flags and `extra_args` for
+  literal args that are not convenient to express as YAML

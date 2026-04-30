@@ -37,25 +37,25 @@ type = "checkpoint_megatron"
 description = "Distilled Megatron distributed checkpoint."
 
 [[parameters]]
-name = "teacher_hf_path"
+name = "args.teacher_hf_path"
 description = "Teacher HF checkpoint path or model id."
 
 [[parameters]]
-name = "student_hf_path"
+name = "args.student_hf_path"
 description = "Student HF checkpoint path or model id."
 
 [[parameters]]
-name = "data_paths"
+name = "args.data_paths"
 description = "Megatron data blend CLI sequence: [weight, prefix, ...]."
 
 [[parameters]]
-name = "use_mock_data"
+name = "args.use_mock_data"
 description = "Run a smoke test without real bin/idx data."
 default = false
 
 [[parameters]]
 name = "extra_args"
-description = "Raw upstream distill.py args for newly added ModelOpt flags."
+description = "Literal upstream args for newly added ModelOpt distillation flags."
 default = []
 
 [[strategies]]
@@ -64,11 +64,11 @@ then = "Use the original BF16 checkpoint as teacher and the optimized checkpoint
 
 [[strategies]]
 when = "Smoke testing plumbing"
-then = "Set use_mock_data=true, seq_length=512, train_iters=100, and small eval_iters."
+then = "Set args.use_mock_data=true, args.seq_length=512, args.train_iters=100, and small args.eval_iters."
 
 [[strategies]]
 when = "Need a HuggingFace checkpoint"
-then = "Set hf_export_path and student_hf_model, or convert a saved Megatron iteration later."
+then = "Set args.hf_export_path and args.student_hf_model, or convert a saved Megatron iteration later."
 
 [reference]
 modelopt_megatron_bridge = "https://github.com/NVIDIA/Model-Optimizer/blob/main/examples/megatron_bridge/README.md"

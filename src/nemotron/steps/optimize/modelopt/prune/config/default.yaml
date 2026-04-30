@@ -12,64 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Generic Minitron pruning config for NVIDIA Model Optimizer + Megatron-Bridge.
+# Generic structured-pruning config for NVIDIA Model Optimizer + Megatron-Bridge.
 #
 # Reference flow:
-# - prune_minitron.py can search for a target parameter budget or apply a
-#   manually supplied architecture through prune_export_config.
-# - Upstream examples use 1024 calibration samples from a gated Nemotron
-#   post-training dataset by default.
+# - The upstream script is named prune_minitron.py because it implements the
+#   ModelOpt Minitron pruning algorithm, but this step is intentionally generic
+#   for supported HuggingFace GPT/Mamba-family checkpoints.
+# - It can search for a target parameter budget or apply a manually supplied
+#   architecture through prune_export_config.
+# - Upstream examples use calibration/evaluation data from a gated Nemotron
+#   post-training dataset by default; override data-related flags in args: or
+#   extra_args when using your own data.
 #
 # Usage:
 #   nemotron step run optimize/modelopt/prune -c default
-#   nemotron step run optimize/modelopt/prune -c default prune_target_params=6e9
+#   nemotron step run optimize/modelopt/prune -c default args.prune_target_params=6e9
 #
-# Any upstream prune_minitron.py flag not listed below can be passed via:
-#   extra_args: ["--flag_name", "value"]
+# Script arguments are forwarded from args: using underscore CLI flags. For
+# example, args.prune_target_params becomes --prune_target_params. New upstream
+# flags can be added directly under args: or passed literally through extra_args.
 
-upstream_script: null
+script:
+  path: null
+  flag_style: underscore
 
-# HuggingFace model id/path to prune.
-hf_model_name_or_path: Qwen/Qwen3-8B
+args:
+  # HuggingFace model id/path to prune.
+  hf_model_name_or_path: Qwen/Qwen3-8B
 
-# Output HuggingFace checkpoint path for the pruned model.
-output_hf_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/prune/pruned-hf
+  # Output HuggingFace checkpoint path for the pruned model.
+  output_hf_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/prune/pruned-hf
 
-# Pipeline parallelism for pruning. The ModelOpt README example uses pp_size=2
-# on 2 GPUs. Use uneven stage args below when layers do not divide cleanly.
-pp_size: 2
+  # Pipeline parallelism for pruning. The ModelOpt README example uses pp_size=2
+  # on 2 GPUs. Use uneven stage args below when layers do not divide cleanly.
+  pp_size: 2
 
-# Search target. Use scientific notation strings/floats, e.g. 6e9 for 6B params.
-# Set null when using prune_export_config for manual architecture pruning.
-prune_target_params: 6e9
+  # Search target. Use scientific notation strings/floats, e.g. 6e9 for 6B params.
+  # Set null when using prune_export_config for manual architecture pruning.
+  prune_target_params: 6e9
 
-# Manual architecture override. When set, upstream skips target search and prunes
-# to this exact shape. Common keys include:
-# - hidden_size
-# - ffn_hidden_size
-# - num_layers
-# - num_attention_heads
-# - num_query_groups
-prune_export_config: null
-# prune_export_config:
-#   hidden_size: 3584
-#   ffn_hidden_size: 9216
+  # Manual architecture override. When set, upstream skips target search and
+  # prunes to this exact shape. Common keys include:
+  # - hidden_size
+  # - ffn_hidden_size
+  # - num_layers
+  # - num_attention_heads
+  # - num_query_groups
+  prune_export_config: null
+  # prune_export_config:
+  #   hidden_size: 3584
+  #   ffn_hidden_size: 9216
 
-# Hparams to leave untouched during search. Possible values depend on model
-# architecture; common values include:
-# - num_attention_heads
-# - num_query_groups
-# - hidden_size
-# - ffn_hidden_size
-# - num_layers
-hparams_to_skip: null
-# hparams_to_skip: num_attention_heads
+  # Hparams to leave untouched during search. Possible values depend on model
+  # architecture; common values include:
+  # - num_attention_heads
+  # - num_query_groups
+  # - hidden_size
+  # - ffn_hidden_size
+  # - num_layers
+  hparams_to_skip: null
+  # hparams_to_skip: num_attention_heads
 
-# Uneven PP helpers when layer count is not divisible by pp_size.
-num_layers_in_first_pipeline_stage: null
-num_layers_in_last_pipeline_stage: null
+  # Uneven PP helpers when layer count is not divisible by pp_size.
+  num_layers_in_first_pipeline_stage: null
+  num_layers_in_last_pipeline_stage: null
 
-trust_remote_code: true
+  trust_remote_code: true
 
 torchrun:
   nproc_per_node: 2

@@ -33,7 +33,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Minitron pruning through NVIDIA Model Optimizer + Megatron-Bridge."""
+"""Generic ModelOpt structured-pruning launcher through Megatron-Bridge."""
 
 from __future__ import annotations
 
@@ -44,7 +44,9 @@ from nemotron.steps._runners.modelopt import exec_torchrun_script
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 UPSTREAM_SCRIPT = "/opt/Model-Optimizer/examples/megatron_bridge/prune_minitron.py"
 
-FORWARDED_FIELDS = (
+# Backward-compatible flat config keys. New configs should put upstream script
+# arguments under `args:` so users can control ModelOpt without editing Python.
+LEGACY_FORWARDED_FIELDS = (
     "pp_size",
     "hf_model_name_or_path",
     "output_hf_path",
@@ -61,7 +63,7 @@ def main() -> None:
     exec_torchrun_script(
         default_config=DEFAULT_CONFIG,
         upstream_script=UPSTREAM_SCRIPT,
-        forwarded_fields=FORWARDED_FIELDS,
+        forwarded_fields=LEGACY_FORWARDED_FIELDS,
         flag_style="underscore",
         default_nproc_per_node=8,
     )

@@ -22,61 +22,64 @@
 #
 # Usage:
 #   nemotron step run optimize/modelopt/distill -c default
-#   nemotron step run optimize/modelopt/distill -c default use_mock_data=true train_iters=100
+#   nemotron step run optimize/modelopt/distill -c default args.use_mock_data=true args.train_iters=100
 #
-# Any upstream distill.py flag not listed below can be passed via:
-#   extra_args: ["--flag_name", "value"]
+# Script arguments are forwarded from args: using underscore CLI flags. For
+# example, args.teacher_hf_path becomes --teacher_hf_path. New upstream flags can
+# be added directly under args: or passed literally through extra_args.
 
-upstream_script: null
+script:
+  path: null
+  flag_style: underscore
 
-# Parallelism.
-tp_size: 8
-pp_size: null
+args:
+  # Parallelism.
+  tp_size: 8
+  pp_size: null
 
-# Teacher and student HuggingFace checkpoints. ModelOpt also supports
-# Puzzletron AnyModel checkpoints through these path arguments.
-teacher_hf_path: Qwen/Qwen3-8B
-student_hf_path: Qwen/Qwen3-4B
+  # Teacher and student HuggingFace checkpoints.
+  teacher_hf_path: Qwen/Qwen3-8B
+  student_hf_path: Qwen/Qwen3-4B
 
-# Required when exporting the final Megatron checkpoint back to HF inline.
-# For standard HF students this should match student_hf_path.
-student_hf_model: null
+  # Required when exporting the final Megatron checkpoint back to HF inline.
+  # For standard HF students this should match student_hf_path.
+  student_hf_model: null
 
-# Real-data distillation. Format is the exact upstream CLI sequence:
-#   [weight1, prefix1, weight2, prefix2, ...]
-# Example:
-#   data_paths: [1.0, tokenized_qwen3/data1_text_document, 1.0, tokenized_qwen3/data2_text_document]
-data_paths: null
-data_path_to_cache: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/distill/cache
+  # Real-data distillation. Format is the exact upstream CLI sequence:
+  #   [weight1, prefix1, weight2, prefix2, ...]
+  # Example:
+  #   data_paths: [1.0, tokenized_qwen3/data1_text_document, 1.0, tokenized_qwen3/data2_text_document]
+  data_paths: null
+  data_path_to_cache: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/distill/cache
 
-# Quick test path. Set true for mock-data smoke tests without bin/idx data.
-use_mock_data: false
+  # Quick test path. Set true for mock-data smoke tests without bin/idx data.
+  use_mock_data: false
 
-# Sequence/batch/training schedule.
-seq_length: 8192
-mbs: 1          # micro batch size
-gbs: 768        # global batch size
-train_iters: 15000
-lr: 1.0e-4
-min_lr: 1.0e-5
-lr_warmup_iters: 50
-eval_interval: 100
-eval_iters: 32
-log_interval: 10
+  # Sequence/batch/training schedule.
+  seq_length: 8192
+  mbs: 1        # micro batch size
+  gbs: 768      # global batch size
+  train_iters: 15000
+  lr: 1.0e-4
+  min_lr: 1.0e-5
+  lr_warmup_iters: 50
+  eval_interval: 100
+  eval_iters: 32
+  log_interval: 10
 
-# Output. Distilled Megatron checkpoints go under output_dir/checkpoints.
-output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/distill/run
+  # Output. Distilled Megatron checkpoints go under output_dir/checkpoints.
+  output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/distill/run
 
-# Optional inline HF export. Leave null to export later with Megatron-Bridge
-# conversion scripts.
-hf_export_path: null
+  # Optional inline HF export. Leave null to export later with Megatron-Bridge
+  # conversion scripts.
+  hf_export_path: null
 
-# Optional W&B logging. Requires WANDB_API_KEY in the environment.
-wandb_project: null
-wandb_entity: null
-wandb_exp_name: null
+  # Optional W&B logging. Requires WANDB_API_KEY in the environment.
+  wandb_project: null
+  wandb_entity: null
+  wandb_exp_name: null
 
-trust_remote_code: true
+  trust_remote_code: true
 
 torchrun:
   nproc_per_node: 8

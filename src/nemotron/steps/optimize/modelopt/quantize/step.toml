@@ -18,8 +18,9 @@ name = "Quantization (ModelOpt + Megatron-Bridge)"
 category = "optimize"
 description = """\
 Post-training quantization with NVIDIA Model Optimizer through Megatron-Bridge.
-Supports Super3 FP8 recipes for Hopper/H100 and NVFP4 recipes for Blackwell/B200,
-producing Megatron distributed checkpoints ready for export/evaluation."""
+Supports generic PTQ recipes such as FP8/NVFP4 plus model-specific recipes when
+the upstream Megatron-Bridge script supports them, producing Megatron distributed
+checkpoints ready for export/evaluation."""
 tags = ["optimize", "modelopt", "quantization", "ptq", "fp8", "nvfp4", "megatron-bridge"]
 
 [[consumes]]
@@ -32,33 +33,27 @@ type = "checkpoint_megatron"
 description = "Quantized Megatron distributed checkpoint."
 
 [[parameters]]
-name = "export_quant_cfg"
-description = "ModelOpt/Megatron-Bridge quantization recipe."
+name = "args.export_quant_cfg"
+description = "ModelOpt/Megatron-Bridge quantization recipe, e.g. fp8, nvfp4, or a model-specific recipe."
 default = "mamba_moe_fp8_conservative"
-choices = [
-  "mamba_moe_fp8_aggressive",
-  "mamba_moe_fp8_conservative",
-  "mamba_moe_nvfp4_aggressive",
-  "mamba_moe_nvfp4_conservative",
-]
 
 [[parameters]]
-name = "calib_size"
+name = "args.calib_size"
 description = "Number of calibration samples."
 default = 512
 
 [[parameters]]
 name = "extra_args"
-description = "Raw upstream quantize.py args for newly added ModelOpt/Megatron-Bridge flags."
+description = "Literal upstream args for newly added ModelOpt/Megatron-Bridge flags."
 default = []
 
 [[strategies]]
 when = "Target hardware is Hopper/H100"
-then = "Start with config/fp8.yaml and mamba_moe_fp8_conservative."
+then = "Start with config/fp8.yaml. Use args.export_quant_cfg=fp8 for generic models or the Mamba-MoE recipe for Nemotron Super."
 
 [[strategies]]
 when = "Target hardware is Blackwell/B200"
-then = "Start with config/nvfp4.yaml and mamba_moe_nvfp4_conservative."
+then = "Start with config/nvfp4.yaml. Use args.export_quant_cfg=nvfp4 for generic models or the Mamba-MoE recipe for Nemotron Super."
 
 [[strategies]]
 when = "Need a HuggingFace checkpoint"
