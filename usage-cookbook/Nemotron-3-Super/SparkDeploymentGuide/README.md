@@ -29,14 +29,12 @@ wget https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4/raw/m
 ### Image
 
 ```
-vllm/vllm-openai:cu130-nightly
+vllm/vllm-openai:v0.20.0
 ```
 
 ### Serve Command
 
 ```bash
-wget https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4/raw/main/super_v3_reasoning_parser.py
-
 docker run --rm -it --gpus all \
   -e VLLM_NVFP4_GEMM_BACKEND=marlin \
   -e VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 \
@@ -46,9 +44,9 @@ docker run --rm -it --gpus all \
   -v ~/.cache/huggingface:/root/.cache/huggingface \
   -v $(pwd)/super_v3_reasoning_parser.py:/app/super_v3_reasoning_parser.py \
   -p 8000:8000 \
-  vllm/vllm-openai:cu130-nightly \
+  vllm/vllm-openai:v0.20.0 \
     --model nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 \
-    --served-model-name nemotron-3-super \
+    --served-model-name nvidia/nemotron-3-super \
     --host 0.0.0.0 \
     --port 8000 \
     --async-scheduling \
@@ -63,7 +61,7 @@ docker run --rm -it --gpus all \
     --max-num-seqs 4 \
     --max-model-len 1000000 \
     --moe-backend marlin \
-    --mamba_ssm_cache_dtype float32 \
+    --mamba_ssm_cache_dtype float16 \
     --quantization fp4 \
     --speculative_config '{"method":"mtp","num_speculative_tokens":3,"moe_backend":"triton"}' \
     --reasoning-parser-plugin /app/super_v3_reasoning_parser.py \
