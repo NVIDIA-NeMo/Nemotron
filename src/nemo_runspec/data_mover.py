@@ -14,20 +14,22 @@
 
 """Ship local ``src/`` to remote pods.
 
-Per-executor strategy (one function, three branches):
+Per-executor strategy:
 
-* **lepton** — chunk tarball across env vars (envp bypasses 128 KiB argv limit).
-* **dgxcloud** — drop tarball in ``job_dir`` as one file; run:AI's ``move_data``
-  chunks only that file (its API caps each workload at 10 000 chars).
+* **lepton** / **dgxcloud** — chunk tarball across env vars. The env field
+  bypasses argv / Args limits, and each pod reassembles the source locally.
 * **anything else** — nemo-run's native packager extraction.
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
+import shlex
 import tarfile
 import tempfile
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -39,10 +41,17 @@ except ImportError:
     _BasePackager = object  # type: ignore[assignment,misc]
 
 
-_EXCLUDE_NAMES = frozenset({
-    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    ".git", ".venv", "node_modules",
-})
+_EXCLUDE_NAMES = frozenset(
+    {
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".git",
+        ".venv",
+        "node_modules",
+    }
+)
 _EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".pyd")
 
 
@@ -56,40 +65,93 @@ def _tar_filter(info):
 def _auto_includes(repo_root: Path, script_path: str | None) -> list[str]:
     """Discover repo-relative paths to ship.
 
-    Walks ``<repo>/src/*`` and ships every top-level package. For a package
-    that has a ``recipes/`` subdir (conventional in this repo), only the
-    *active* recipe family from ``script_path`` is included (e.g. ``nano3``)
-    to keep the tarball small — unrelated families can weigh many MiB.
+    Walks ``<repo>/src/*`` and ships every top-level package. For packages
+    with ``recipes/`` or ``steps/``, only the active recipe family or step
+    subtree from ``script_path`` is included when possible. This keeps the
+    tarball small because unrelated families and steps can weigh many MiB.
     """
     src = repo_root / "src"
     if not src.is_dir():
         raise ValueError(f"No src/ under {repo_root}. Set repo_root in env.toml.")
 
     includes: list[str] = []
+
+    # Filters keyed off script_path: ship only the active recipe family or
+    # active step subtree. Lepton's etcd has a hard request cap (~1.5 MiB);
+    # DGXCloud has a tighter per-env-var cap. Without filtering, every
+    # unrelated recipe family + step ships and blows past those limits.
     family = None
+    step_path: str | None = None
     if script_path:
         parts = Path(script_path).parts
         if "recipes" in parts:
             idx = parts.index("recipes")
             if idx + 1 < len(parts):
                 family = parts[idx + 1]
+        elif "steps" in parts:
+            idx = parts.index("steps")
+            tail = parts[idx + 1 : -1]  # drop the step.py filename
+            if tail:
+                step_path = "/".join(tail)
 
     for pkg in sorted(p for p in src.iterdir() if p.is_dir() and p.name not in _EXCLUDE_NAMES):
         recipes = pkg / "recipes"
-        if recipes.is_dir():
-            # Ship every non-recipes child + top-level recipe files + one family.
+        steps = pkg / "steps"
+        has_recipes = recipes.is_dir()
+        has_steps = steps.is_dir()
+
+        if has_recipes or has_steps:
             for child in sorted(pkg.iterdir()):
-                if child.name in _EXCLUDE_NAMES or child == recipes:
+                if child.name in _EXCLUDE_NAMES or child == recipes or child == steps:
                     continue
                 includes.append(f"src/{pkg.name}/{child.name}")
-            for child in sorted(recipes.iterdir()):
-                if child.is_file():
-                    includes.append(f"src/{pkg.name}/recipes/{child.name}")
-            chosen_families: list[str] = [family] if family and (recipes / family).is_dir() else [
-                c.name for c in recipes.iterdir() if c.is_dir() and c.name not in _EXCLUDE_NAMES
-            ]
-            for fam in sorted(chosen_families):
-                includes.append(f"src/{pkg.name}/recipes/{fam}")
+
+            if has_recipes:
+                for child in sorted(recipes.iterdir()):
+                    if child.is_file():
+                        includes.append(f"src/{pkg.name}/recipes/{child.name}")
+                if family and (recipes / family).is_dir():
+                    chosen_families = [family]
+                elif step_path:
+                    # Shipping a step — don't drag any recipe family along.
+                    chosen_families = []
+                else:
+                    chosen_families = [
+                        c.name for c in recipes.iterdir() if c.is_dir() and c.name not in _EXCLUDE_NAMES
+                    ]
+                for fam in sorted(chosen_families):
+                    includes.append(f"src/{pkg.name}/recipes/{fam}")
+
+            if has_steps:
+                # Top-level files (e.g. index.py, types.toml) always ride along.
+                for child in sorted(steps.iterdir()):
+                    if child.is_file():
+                        includes.append(f"src/{pkg.name}/steps/{child.name}")
+                if step_path and (steps / step_path).is_dir():
+                    # Active step's leaf + ancestor ``__init__.py`` files so
+                    # ``python -m nemotron.steps.<a>.<b>.step`` can traverse
+                    # the package path. Without these the runner imports the
+                    # leaf module directly but Python can't resolve the chain.
+                    parts = Path(step_path).parts
+                    for i in range(1, len(parts)):
+                        ancestor = "/".join(parts[:i])
+                        ancestor_dir = steps / ancestor
+                        for child in sorted(ancestor_dir.iterdir()):
+                            if child.is_file() and (
+                                child.name == "__init__.py" or child.name.startswith("_")
+                            ):
+                                includes.append(f"src/{pkg.name}/steps/{ancestor}/{child.name}")
+                    includes.append(f"src/{pkg.name}/steps/{step_path}")
+                    # Any shared-infra sibling (``_runners/`` etc.) that step
+                    # wrappers import from — leading-underscore convention.
+                    for child in sorted(steps.iterdir()):
+                        if child.is_dir() and child.name.startswith("_") and child.name not in _EXCLUDE_NAMES:
+                            includes.append(f"src/{pkg.name}/steps/{child.name}")
+                else:
+                    # No active step (e.g. shipping a recipe) — include all.
+                    for child in sorted(steps.iterdir()):
+                        if child.is_dir() and child.name not in _EXCLUDE_NAMES:
+                            includes.append(f"src/{pkg.name}/steps/{child.name}")
         else:
             includes.append(f"src/{pkg.name}")
     return includes
@@ -127,6 +189,7 @@ class Plan:
     pod_src_root: str
     pre_script_cmds: list[str] = field(default_factory=list)
     needs_pwd_symlinks: bool = False
+    source_ready_marker: str | None = None
 
 
 def plan_for(
@@ -143,6 +206,7 @@ def plan_for(
         patch_dgxcloud_accept_legacy_kwargs,
         patch_dgxcloud_strip_source_chunks_from_exports,
     )
+
     patch_cloud_data_mover_skip_configs()
     # DGXCloud needs chunks delivered via ``environmentVariables`` only, not
     # re-baked into ``torchrun_job.sh`` — otherwise the file balloons and
@@ -169,37 +233,44 @@ def plan_for(
         chunk_bytes = 9_000 if executor_type == "dgxcloud" else 96 * 1024
         with tempfile.TemporaryDirectory() as td:
             raw = Path(SourcePackager(**common).package(None, td, "nemotron-src")).read_bytes()
+        source_digest = hashlib.sha256(raw).hexdigest()[:16]
+        source_marker_id = f"{source_digest}-{uuid.uuid4().hex[:8]}"
         b64 = base64.b64encode(raw).decode("ascii")
         chunks = [b64[i : i + chunk_bytes] for i in range(0, len(b64), chunk_bytes)]
         env_vars["_NEMOTRON_SRC_CHUNKS"] = str(len(chunks))
+        env_vars["_NEMOTRON_SRC_SHA256"] = source_digest
         for i, c in enumerate(chunks):
             env_vars[f"_NEMOTRON_SRC_CHUNK_{i}"] = c
         typer.echo(
             f"[stage] {executor_type}: {len(raw) // 1024} KiB raw → "
-            f"{len(chunks)} env-var chunks"
+            f"{len(chunks)} env-var chunks (sha256={source_digest})"
         )
         import nemo_run as run
+
         # Multi-pod NFS race: when N pods share the same dest on NFS, each
         # would otherwise ``rm -rf && tar -xz`` concurrently and clobber each
         # other. Gate on NODE_RANK: rank-0 extracts and drops a marker; others
-        # wait for it. The marker uses the chunk count so stale markers from
-        # prior runs with different source can't mislead waiters.
-        ready_marker = f"{pod_src}/.nemotron-src-ready-${{_NEMOTRON_SRC_CHUNKS}}"
+        # wait for it. The marker is unique per submission so stale markers
+        # from prior runs can't mislead waiters.
+        pod_src_q = shlex.quote(pod_src)
+        ready_marker = f"{pod_src}/.nemotron-src-ready-{source_marker_id}"
+        ready_marker_q = shlex.quote(ready_marker)
         extract_cmd = (
-            'python3 -c \'import os,sys,base64;'
+            "python3 -c 'import os,sys,base64;"
             'n=int(os.environ["_NEMOTRON_SRC_CHUNKS"]);'
             'sys.stdout.buffer.write(base64.b64decode("".join('
             'os.environ[f"_NEMOTRON_SRC_CHUNK_{i}"] for i in range(n))))\''
-            f" | tar -xz -C {pod_src} --strip-components=1"
+            f" | tar -xz -C {pod_src_q} --strip-components=1"
         )
         return Plan(
             packager=run.Packager(),
             pod_src_root=pod_src,
+            source_ready_marker=ready_marker,
             pre_script_cmds=[
                 'if [ "${NODE_RANK:-0}" = "0" ]; then'
-                f" rm -rf {pod_src} && mkdir -p {pod_src} && {extract_cmd}"
-                f" && touch {ready_marker};"
-                f' else while [ ! -f {ready_marker} ]; do sleep 2; done; fi'
+                f" rm -rf {pod_src_q} && mkdir -p {pod_src_q} && {extract_cmd}"
+                f" && touch {ready_marker_q};"
+                f" else while [ ! -f {ready_marker_q} ]; do sleep 2; done; fi"
             ],
         )
 

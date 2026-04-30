@@ -36,8 +36,9 @@ import json
 import os
 import shlex
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -186,7 +187,6 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
             _ = test_api.viewer  # triggers the actual auth request
             env_vars["WANDB_API_KEY"] = api_key
     except Exception as e:
-
         err_str = str(e)
         err_type = type(e).__name__
         if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
@@ -270,9 +270,7 @@ def clone_git_repos_via_tunnel(tunnel: Any, remote_job_dir: str) -> list[str]:
             # Repo exists in cache
             if is_commit_sha:
                 # For exact commits, check if we already have it
-                have_commit = tunnel.run(
-                    f"git -C {repo_cache} cat-file -t {ref} 2>/dev/null", hide=True, warn=True
-                )
+                have_commit = tunnel.run(f"git -C {repo_cache} cat-file -t {ref} 2>/dev/null", hide=True, warn=True)
                 if have_commit.ok:
                     typer.echo(f"[auto_mount] Using cached {repo_name}@{ref[:8]}...")
                 else:
@@ -420,9 +418,7 @@ def materialize_podman_auth_from_enroot(
         of registries to avoid leaking unrelated tokens.
     """
     quoted_path = enroot_credentials_path  # leave $HOME/quotes for remote shell
-    cat_cmd = (
-        f'test -f "{quoted_path}" && cat "{quoted_path}" || true'
-    )
+    cat_cmd = f'test -f "{quoted_path}" && cat "{quoted_path}" || true'
     result = tunnel.run(cat_cmd, hide=True, warn=True)
     content = (getattr(result, "stdout", "") or "").strip()
     if not content:
@@ -514,9 +510,7 @@ def _resolve_container_image(env: Any, default_image: str | None) -> str | None:
     return _get_env(env, "container_image") or _get_env(env, "container") or default_image
 
 
-def _resolve_nodes_gpus(
-    env: Any, script_resources: Any | None
-) -> tuple[int, int | None]:
+def _resolve_nodes_gpus(env: Any, script_resources: Any | None) -> tuple[int, int | None]:
     """Defaults for ``nodes`` / ``gpus_per_node`` — env.toml overrides the
     script's ``[tool.runspec.resources]`` which overrides 1/None."""
     default_nodes = script_resources.nodes if script_resources else 1
@@ -563,7 +557,9 @@ def create_executor(
         return _create_docker_executor(env, env_vars, packager, default_image)
     if executor_type == "slurm":
         return create_slurm_executor(
-            env, env_vars, packager,
+            env,
+            env_vars,
+            packager,
             default_image=default_image,
             script_resources=script_resources,
             attached=attached,
@@ -573,10 +569,7 @@ def create_executor(
         return _create_dgxcloud_executor(env, env_vars, packager, default_image, script_resources)
     if executor_type == "lepton":
         return _create_lepton_executor(env, env_vars, packager, default_image, script_resources)
-    raise ValueError(
-        f"Unknown executor type: {executor_type!r}. "
-        "Supported: local, docker, slurm, dgxcloud, lepton"
-    )
+    raise ValueError(f"Unknown executor type: {executor_type!r}. Supported: local, docker, slurm, dgxcloud, lepton")
 
 
 # =============================================================================
@@ -907,10 +900,7 @@ def _create_lepton_executor(
     if mounts:
         # Filter out __auto_mount__ strings (Slurm-specific, not valid on cloud)
         plain = _to_plain(mounts)
-        executor_kwargs["mounts"] = [
-            m for m in plain
-            if not (isinstance(m, str) and m.startswith("__auto_mount__"))
-        ]
+        executor_kwargs["mounts"] = [m for m in plain if not (isinstance(m, str) and m.startswith("__auto_mount__"))]
 
     image_pull_secrets = _get_env(env, "image_pull_secrets")
     if image_pull_secrets:
@@ -980,9 +970,7 @@ def _git_mount_commands() -> list[str]:
                 f" || echo '[auto_mount] WARNING: Could not fetch {ref[:12]}, using container built-in {target}'"
             )
         else:
-            commands.append(
-                f"rm -rf {target} && git clone --depth 1 -b {ref} {url} {target}"
-            )
+            commands.append(f"rm -rf {target} && git clone --depth 1 -b {ref} {url} {target}")
     return commands
 
 
@@ -1009,10 +997,113 @@ def _derive_cloud_workspace(env: Any) -> str:
                 return p["path"]
 
     import logging
-    logging.getLogger(__name__).warning(
-        "No workspace, mounts, or pvcs configured — output goes to ephemeral /tmp"
-    )
+
+    logging.getLogger(__name__).warning("No workspace, mounts, or pvcs configured — output goes to ephemeral /tmp")
     return "/tmp"
+
+
+def _transport_env_cleanup_cmd() -> str:
+    """Drop one-shot source/config transport vars before spawning user code.
+
+    NeMo-RL calls ``ray.init(runtime_env={"env_vars": dict(os.environ)})``.
+    Keeping base64 source/config payloads in ``os.environ`` makes every Ray
+    worker inherit large transient vars, which can kill worker startup on
+    Lepton Ray clusters. The files have already been decoded by this point.
+    """
+    return (
+        'if [ -n "${_NEMOTRON_SRC_CHUNKS:-}" ]; then '
+        'i=0; while [ "$i" -lt "${_NEMOTRON_SRC_CHUNKS}" ]; do '
+        'unset "_NEMOTRON_SRC_CHUNK_${i}"; i=$((i+1)); '
+        "done; fi; "
+        "unset _NEMOTRON_SRC_CHUNKS _NEMOTRON_SRC_SHA256 _NEMOTRON_CONFIG_B64"
+    )
+
+
+def _ray_node_source_sync_cmd(pod_src_root: str, ready_marker: str | None) -> str:
+    """Return a shell command that ensures chunked source exists on every Ray node.
+
+    Lepton's ``RayCluster`` currently ignores ``pre_ray_start_commands``. The
+    head entrypoint can still run a tiny Ray task pinned once per live node,
+    which covers both shared-PVC clusters (marker already visible, tasks skip)
+    and node-local filesystems (workers extract their own copy).
+    """
+    if not ready_marker:
+        return "true"
+
+    code = f"""
+import base64
+import hashlib
+import os
+
+import ray
+from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
+
+DEST = {pod_src_root!r}
+MARKER = {ready_marker!r}
+
+n = int(os.environ.get("_NEMOTRON_SRC_CHUNKS", "0"))
+if n < 1:
+    raise RuntimeError("_NEMOTRON_SRC_CHUNKS is missing; cannot sync source to Ray nodes")
+payload = "".join(os.environ[f"_NEMOTRON_SRC_CHUNK_{{i}}"] for i in range(n))
+raw = base64.b64decode(payload)
+expected = os.environ.get("_NEMOTRON_SRC_SHA256")
+if expected and hashlib.sha256(raw).hexdigest()[:16] != expected:
+    raise RuntimeError("source payload digest mismatch")
+
+ray.init(address="auto", ignore_reinit_error=True)
+
+
+@ray.remote(num_cpus=0)
+def _extract_on_node(raw_bytes, dest, marker):
+    import copy
+    import io
+    import os
+    import shutil
+    import tarfile
+
+    if marker and os.path.exists(marker):
+        return "already-ready"
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    elif os.path.exists(dest):
+        os.remove(dest)
+    os.makedirs(dest, exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(raw_bytes), mode="r:gz") as tf:
+        for member in tf.getmembers():
+            _, _, stripped_name = member.name.partition("/")
+            if not stripped_name:
+                continue
+            member = copy.copy(member)
+            member.name = stripped_name
+            tf.extract(member, dest)
+    if marker:
+        os.makedirs(os.path.dirname(marker), exist_ok=True)
+        with open(marker, "w", encoding="utf-8") as fh:
+            fh.write("ready\\n")
+    return "extracted"
+
+
+node_ids = []
+seen = set()
+for node in ray.nodes():
+    node_id = node.get("NodeID")
+    if node.get("Alive") and node_id and node_id not in seen:
+        node_ids.append(node_id)
+        seen.add(node_id)
+if not node_ids:
+    raise RuntimeError("Ray reported no live nodes for source sync")
+
+raw_ref = ray.put(raw)
+refs = [
+    _extract_on_node.options(
+        scheduling_strategy=NodeAffinitySchedulingStrategy(node_id=node_id, soft=False)
+    ).remote(raw_ref, DEST, MARKER)
+    for node_id in node_ids
+]
+ray.get(refs, timeout=600)
+print(f"[stage] source ready on {{len(node_ids)}} Ray node(s)")
+"""
+    return f"python3 -c {shlex.quote(code)}"
 
 
 def execute_cloud(
@@ -1032,19 +1123,18 @@ def execute_cloud(
 ) -> None:
     """Execute a recipe script on Lepton or DGX Cloud.
 
-    Source distribution: ``PatternPackager`` tars the local ``src/nemotron``
-    and ``src/nemo_runspec`` directories and extracts them to
-    ``/nemo_run/code/src/...`` on the remote pod. This is airgap-friendly and
-    picks up local uncommitted edits — no ``git clone`` is required on the
-    remote.
+    Source distribution is delegated to :mod:`nemo_runspec.data_mover`. For
+    Lepton and DGX Cloud, the local ``src/`` subset is tarred, base64-encoded,
+    split across ``_NEMOTRON_SRC_CHUNK_*`` environment variables, and decoded
+    into ``{workspace}/_nemotron/src`` inside the pod. This is airgap-friendly
+    and picks up local uncommitted edits without relying on remote git clones.
 
     How it works:
-    1. ``PatternPackager`` uploads ``src/`` to ``/nemo_run/code/src`` on the pod.
+    1. ``data_mover`` stages local source through executor-appropriate transport.
     2. Config YAML is passed as a base64 env var and decoded into the workspace.
     3. Extra packages from ``pip_extras`` are installed (CLI deps, etc.).
-    4. Symlinks at ``{workspace}/_nemotron/src/`` point at ``/nemo_run/code/src``
-       so ``${oc.env:PWD}/src/nemotron/...`` config paths resolve.
-    5. ``PWD`` is set to ``{workspace}/_nemotron`` so outputs
+    4. ``PYTHONPATH`` points at the staged source root.
+    5. ``PWD`` is set to ``{workspace}/_nemotron`` so configs using
        (``${oc.env:PWD}/../output/...``) land on persistent storage.
     """
     import base64
@@ -1059,9 +1149,7 @@ def execute_cloud(
     config_path = f"{nemotron_home}/config.yaml"
 
     # ── 2. Config + source transport ────────────────────────────────
-    env_vars["_NEMOTRON_CONFIG_B64"] = base64.b64encode(
-        train_path.read_bytes()
-    ).decode("ascii")
+    env_vars["_NEMOTRON_CONFIG_B64"] = base64.b64encode(train_path.read_bytes()).decode("ascii")
     transport = data_mover.plan_for(
         executor_type=executor_type or "",
         env_vars=env_vars,
@@ -1072,13 +1160,9 @@ def execute_cloud(
 
     # ── 3. Executor ──────────────────────────────────────────────────
     if executor_type == "lepton":
-        executor = _create_lepton_executor(
-            env, env_vars, transport.packager, default_image, script_resources
-        )
+        executor = _create_lepton_executor(env, env_vars, transport.packager, default_image, script_resources)
     else:
-        executor = _create_dgxcloud_executor(
-            env, env_vars, transport.packager, default_image, script_resources
-        )
+        executor = _create_dgxcloud_executor(env, env_vars, transport.packager, default_image, script_resources)
     # We wrap the final command ourselves; never let nemo-run inject a launcher.
     executor.launcher = None
 
@@ -1092,18 +1176,20 @@ def execute_cloud(
         # MASTER_ADDR / MASTER_PORT per worker pod.
         nnodes = _get_env(env, "nodes") or (script_resources.nodes if script_resources else 1)
         nproc = next(
-            v for v in (
+            v
+            for v in (
                 _get_env(env, "nprocs_per_node"),
                 _get_env(env, "ntasks_per_node"),
                 _get_env(env, "gpus_per_node"),
                 script_resources.gpus_per_node if script_resources else 1,
-            ) if v is not None
+            )
+            if v is not None
         )
         default_cmd = (
             f"torchrun --nnodes {nnodes} --nproc-per-node {nproc}"
-            ' --node-rank ${{NODE_RANK:-0}}'
-            ' --master-addr ${{MASTER_ADDR:-127.0.0.1}}'
-            ' --master-port ${{MASTER_PORT:-29500}}'
+            " --node-rank ${{NODE_RANK:-0}}"
+            " --master-addr ${{MASTER_ADDR:-127.0.0.1}}"
+            " --master-port ${{MASTER_PORT:-29500}}"
             f" -m {module_path} --config {{config}}"
         )
     else:
@@ -1121,6 +1207,7 @@ def execute_cloud(
     ]
     # Per-transport extraction (env-var chunks, job_dir tarball, or nothing).
     parts.extend(transport.pre_script_cmds)
+    parts.append(_transport_env_cleanup_cmd())
     # Extra pip packages from env.toml (CLI deps, experimental libs, etc.)
     for pkg in pip_extras:
         parts.append(f"pip install -q {pkg} 2>/dev/null || true")
@@ -1149,12 +1236,16 @@ def execute_cloud(
 
     # ── 7. Submit ────────────────────────────────────────────────────
     script_task = run.Script(inline=" && ".join(parts))
-    recipe_name = (
-        script_path
-        .replace("src/nemotron/recipes/", "")
-        .replace("/", "-")
-        .removesuffix(".py")
-    )
+    # Derive a short, RFC-1123-friendly job name from the script's tail.
+    # Strip whichever marker prefix the script lives under (recipes/ for
+    # recipe scripts or steps/ for generic step scripts) so the absolute
+    # repo path doesn't leak into the slug.
+    _path_tail = script_path
+    for _marker in ("src/nemotron/recipes/", "src/nemotron/steps/"):
+        if _marker in _path_tail:
+            _path_tail = _path_tail.split(_marker, 1)[1]
+            break
+    recipe_name = _path_tail.replace("/", "-").removesuffix(".py")
     # Lepton's JobAPI requires RFC-1123 subdomain names (lowercase alnum + -/.,
     # must start/end with alphanumeric). nemo-run's LeptonExecutor.launch
     # sanitizes ``_``/``.`` and truncates to 34 chars but does NOT strip a
@@ -1208,9 +1299,7 @@ def execute_cloud_ray(
     nemotron_home = f"{workspace}/_nemotron"
     config_path = f"{nemotron_home}/config.yaml"
 
-    env_vars["_NEMOTRON_CONFIG_B64"] = base64.b64encode(
-        train_path.read_bytes()
-    ).decode("ascii")
+    env_vars["_NEMOTRON_CONFIG_B64"] = base64.b64encode(train_path.read_bytes()).decode("ascii")
 
     # Same source-transport strategy selection as the non-Ray path.
     transport = data_mover.plan_for(
@@ -1225,13 +1314,9 @@ def execute_cloud_ray(
     env_vars["PYTHONPATH"] = transport.pod_src_root + ":" + env_vars.get("PYTHONPATH", "")
 
     if executor_type == "lepton":
-        executor = _create_lepton_executor(
-            env, env_vars, transport.packager, default_image, script_resources
-        )
+        executor = _create_lepton_executor(env, env_vars, transport.packager, default_image, script_resources)
     else:
-        executor = _create_dgxcloud_executor(
-            env, env_vars, transport.packager, default_image, script_resources
-        )
+        executor = _create_dgxcloud_executor(env, env_vars, transport.packager, default_image, script_resources)
     executor.launcher = None
 
     pip_extras = _to_plain(_get_env(env, "pip_extras") or [])
@@ -1255,17 +1340,15 @@ def execute_cloud_ray(
 
     head_pip = ["typer", "rich", "pydantic-settings", "shellingham", *pip_extras]
     head_setup = [
+        *transport.pre_script_cmds,
         f"pip install -q {' '.join(head_pip)} 2>/dev/null || true",
         f"export PYTHONPATH={transport.pod_src_root}:${{PYTHONPATH:-}}",
         f"mkdir -p {nemotron_home}",
         f"echo $_NEMOTRON_CONFIG_B64 | base64 -d > {config_path}",
     ]
-    # nemo-run's LeptonRayCluster.create() ignores pre_ray_start_commands
-    # (accepts the arg but never wires it into the LeptonRayClusterUserSpec).
-    # Run the transport extraction commands from the head entrypoint so the
-    # source tree is present before any startup_commands (e.g. cp ...).
-    if executor_type == "lepton" and transport.pre_script_cmds:
-        head_setup = list(transport.pre_script_cmds) + head_setup
+    if transport.source_ready_marker:
+        head_setup.append(_ray_node_source_sync_cmd(transport.pod_src_root, transport.source_ready_marker))
+    head_setup.append(_transport_env_cleanup_cmd())
     if transport.needs_pwd_symlinks:
         # Native-packager path: source sits at /nemo_run/code/src; symlink it
         # under nemotron_home/src so ${oc.env:PWD}/src/... still resolves.
@@ -1276,11 +1359,13 @@ def execute_cloud_ray(
         )
     if startup_commands:
         head_setup.extend(startup_commands)
-    full_cmd = " && ".join([
-        *head_setup,
-        f"export PWD={nemotron_home} && cd {nemotron_home}",
-        script_cmd,
-    ])
+    full_cmd = " && ".join(
+        [
+            *head_setup,
+            f"export PWD={nemotron_home} && cd {nemotron_home}",
+            script_cmd,
+        ]
+    )
 
     # Note: we deliberately do NOT forward env_vars through Ray's job
     # ``runtime_env``. nemo-rl's ``VllmAsyncGenerationWorker`` calls
@@ -1289,16 +1374,18 @@ def execute_cloud_ray(
     # the head pod via ``LeptonExecutor.env_vars``, so the entrypoint
     # inherits them naturally; Ray actors inherit from there.
 
-    recipe_name = (
-        script_path
-        .replace("src/nemotron/recipes/", "")
-        .replace("/", "-")
-        .removesuffix(".py")
-    )
+    # Derive a short, RFC-1123-friendly job/cluster name from the script's
+    # tail. Strip whichever marker the script lives under so absolute repo
+    # paths don't leak into Lepton resource names.
+    _path_tail = script_path
+    for _marker in ("src/nemotron/recipes/", "src/nemotron/steps/"):
+        if _marker in _path_tail:
+            _path_tail = _path_tail.split(_marker, 1)[1]
+            break
+    recipe_name = _path_tail.replace("/", "-").removesuffix(".py")
     stamp = int(time.time())
-    existing_cluster = _get_env(env, "existing_ray_cluster") or os.environ.get(
-        "NEMOTRON_EXISTING_RAY_CLUSTER"
-    )
+    existing_cluster = _get_env(env, "existing_ray_cluster") or os.environ.get("NEMOTRON_EXISTING_RAY_CLUSTER")
+
     def _sanitize(raw: str) -> str:
         # Lepton requires RFC-1123 subdomain: lowercase alnum/dash/dot,
         # must start and end with alphanumeric. Truncation can leave a
@@ -1379,6 +1466,7 @@ def execute_cloud_ray(
             except Exception as e:  # noqa: BLE001
                 typer.echo(f"[ray] log stream dropped ({type(e).__name__}: {e}); reconnecting...")
                 import time as _time
+
                 _time.sleep(5)
 
 

@@ -84,20 +84,33 @@ def main_callback(
 
 # Import and register recipe groups
 def _register_groups() -> None:
-    """Register all recipe groups with the main app."""
-    from nemotron.cli.commands.data import data_app
-    from nemotron.cli.commands.nano3 import nano3_app
-    from nemotron.cli.commands.omni3 import omni3_app
-    from nemotron.cli.commands.super3 import super3_app
-    from nemotron.cli.kit import kit_app
-    from nemotron.cli.commands.embed import embed_app
+    """Register all recipe groups with the main app.
 
-    app.add_typer(data_app, name="data")
-    app.add_typer(nano3_app, name="nano3")
-    app.add_typer(omni3_app, name="omni3")
-    app.add_typer(super3_app, name="super3")
-    app.add_typer(kit_app, name="kit")
-    app.add_typer(embed_app, name="embed")
+    Each group is loaded independently so a broken / in-progress recipe group
+    does not take the whole CLI down. Failures surface as a one-line warning
+    via ``NEMOTRON_DEBUG_CLI=1``.
+    """
+    import os
+
+    debug = os.environ.get("NEMOTRON_DEBUG_CLI") == "1"
+    groups = (
+        ("data", "nemotron.cli.commands.data", "data_app"),
+        ("nano3", "nemotron.cli.commands.nano3", "nano3_app"),
+        ("omni3", "nemotron.cli.commands.omni3", "omni3_app"),
+        ("super3", "nemotron.cli.commands.super3", "super3_app"),
+        ("kit", "nemotron.cli.kit", "kit_app"),
+        ("embed", "nemotron.cli.commands.embed", "embed_app"),
+        ("step", "nemotron.cli.commands.step", "step_app"),
+    )
+    import importlib
+
+    for name, module_path, attr in groups:
+        try:
+            module = importlib.import_module(module_path)
+            app.add_typer(getattr(module, attr), name=name)
+        except Exception as exc:
+            if debug:
+                typer.echo(f"[nemotron] skipped '{name}' group: {exc}", err=True)
 
 
 # Register groups on import

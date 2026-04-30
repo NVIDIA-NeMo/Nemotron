@@ -1,28 +1,78 @@
-# Quick test config — 10 iterations, smaller sequences
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Tiny SFT for the 2-node lepton_sft_train profile.
+# Points at lepton's lustre-shared mount by default.
+# Pulls base weights from HuggingFace via AutoBridge so no pre-existing
+# Megatron checkpoint is required. Uses the packed_parquet shards produced by
+# `nemotron step run prep/sft_packing -c tiny -r lepton_sft_dataprep`.
+
+# Override the container's stale Megatron-Bridge with a branch that supports
+# packed-parquet specs.
+run:
+  env:
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bbbedbb9f53343762e4dc70abc771b813a83d817,/opt/megatron-lm}
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
+
+hf_model_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+trust_remote_code: true
+load_hf_weights: true
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
   packed_sequence: true
   peft: null
+  seq_length: 4096
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
 
 dataset:
-  nano3_packed_sft_dir: /path/to/packed/data
   seq_length: 4096
   packed_sequence_specs:
     packed_sequence_size: 4096
+    # Canonical splits/ layout produced by step.py's
+    # realize_packed_shards_into_split_dirs() post-processing — sits at the
+    # SFT_OUTPUT_DIR root (the pipeline manages sample-N internally).
+    packed_train_data_path: ${oc.env:SFT_PACKED_DIR,/mnt/lustre-shared/output/test/sft_dataprep/splits/train/*.parquet}
 
 train:
   train_iters: 10
-  global_batch_size: 2
+  # 16 GPUs / TP=4 => DP=4; micro=1, so global must be a multiple of 4.
+  global_batch_size: 8
+  micro_batch_size: 1
 
 model:
   seq_length: 4096
-  pipeline_model_parallel_size: 1
   tensor_model_parallel_size: 4
-  context_parallel_size: 2
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 1
+  expert_model_parallel_size: 8
+  expert_tensor_parallel_size: 1
+  sequence_parallel: true
+  calculate_per_token_loss: true
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+
+scheduler:
+  lr_warmup_iters: 2
+
+logger:
+  log_interval: 1
 
 checkpoint:
-  save: /nemo_run/sft-model-tiny
+  save: ${oc.env:SFT_OUTPUT_DIR}/sft-tiny-2node
   save_interval: 5
-  pretrained_checkpoint: /path/to/pretrained/checkpoint
   finetune: true

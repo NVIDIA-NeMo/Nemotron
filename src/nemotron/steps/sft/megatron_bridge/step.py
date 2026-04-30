@@ -17,14 +17,48 @@
 # nodes = 1
 # gpus_per_node = 8
 # ///
-"""Thin Megatron-Bridge SFT wrapper; full recipe: `src/nemotron/recipes/nano3/stage1_sft/train.py`."""
+
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Megatron-Bridge SFT.
+
+YAML drives everything: ``recipe._target_`` swaps the recipe; ``hf_model_path``
+loads weights from HF; ``dataset:`` overrides the FinetuningDatasetConfig;
+``peft:`` enables LoRA-style adapters; every other top-level section
+(``train``, ``checkpoint``, ``optimizer``, …) is auto-discovered and merged
+onto the recipe's ConfigContainer.
+"""
 from __future__ import annotations
+
 from pathlib import Path
-from megatron.bridge.training.finetune import finetune; from megatron.bridge.training.gpt_step import forward_step
-from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function; from nemotron.kit.train_script import apply_hydra_overrides, load_omegaconf_yaml, parse_config_and_overrides
-DEFAULT_CONFIG = Path(__file__).parent / "config" / "nano3.yaml"; DEFAULT_RECIPE = "megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config"
+
+from megatron.bridge.training.finetune import finetune
+
+from nemotron.steps._runners.megatron_bridge import run_megatron_bridge
+
+DEFAULT_CONFIG = Path(__file__).parent / "config" / "nano3.yaml"
+DEFAULT_RECIPE = "megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config"
+
+
 def main() -> None:
-    config_path, overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG); config = apply_hydra_overrides(load_omegaconf_yaml(config_path), overrides)
-    target, kwargs = extract_recipe_config(config, default_target=DEFAULT_RECIPE); finetune(config=import_recipe_function(target)(**kwargs), forward_step_func=forward_step)
+    run_megatron_bridge(
+        default_recipe=DEFAULT_RECIPE,
+        default_config=DEFAULT_CONFIG,
+        entry=finetune,
+    )
+
+
 if __name__ == "__main__":
     main()

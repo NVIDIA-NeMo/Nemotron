@@ -1,0 +1,96 @@
+# AutoModel Pretraining Context
+
+Use this pack for `pretrain/automodel`.
+
+This step uses the same shared AutoModel runner pattern as SFT and PEFT:
+
+```text
+src/nemotron/steps/_runners/automodel.py
+```
+
+The runner resolves `_step_recipe` from YAML when present; otherwise it uses the
+default recipe target from `step.py`.
+
+## Default Recipe
+
+```text
+nemo_automodel.recipes.llm.train_pretrain:TrainPretrainRecipeForNextTokenPrediction
+```
+
+Keep generated stage code generic:
+
+1. load AutoModel config
+2. resolve recipe class
+3. instantiate recipe
+4. run setup and train/validation loop
+
+Do not put model-family-specific logic in the wrapper.
+
+## Data
+
+The catalog step consumes `binidx`, normally produced by:
+
+```text
+prep/pretrain_prep
+```
+
+Default dataset config uses:
+
+```yaml
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.megatron.indexed_dataset.IndexedDataset
+  blend_path: /path/to/blend.json
+  split: train
+  sequence_length: 4096
+```
+
+Use the same tokenizer and sequence-length assumptions across prep and training.
+
+## CPT vs From Scratch
+
+Continued pretraining:
+
+```yaml
+model:
+  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+load_weights: true
+optimizer:
+  lr: 1.0e-5
+```
+
+From scratch:
+
+```yaml
+load_weights: false
+```
+
+Use a warmup/cosine schedule sized to the token budget for from-scratch runs.
+
+## Distributed Defaults
+
+AutoModel is the smaller-cluster path compared with Megatron-Bridge. Start with:
+
+```yaml
+distributed:
+  strategy: fsdp2
+  tp_size: 1
+  cp_size: 1
+  sequence_parallel: true
+```
+
+Increase tensor/context parallelism only when model size or sequence length
+requires it.
+
+## Output
+
+The step produces a HuggingFace-format checkpoint. Add an explicit conversion
+stage if a downstream Megatron consumer is selected.
+
+## Staleness Checks
+
+When updating:
+
+- keep `_step_recipe` separate from AutoModel's own `_target_` keys
+- keep data target compatible with bin/idx `blend.json`
+- keep config-only customization in YAML
+- verify the runner still matches AutoModel's config parser API

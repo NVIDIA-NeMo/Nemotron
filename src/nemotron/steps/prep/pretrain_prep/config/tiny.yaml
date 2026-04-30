@@ -1,0 +1,43 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Tiny pretrain bin/idx tokenisation — fast iteration with the in-step
+# blend_tiny.json (small NVIDIA HF datasets). Self-contained: ships under the
+# step's data/ dir so the same config works under any source layout.
+#
+# Usage:
+#   nemotron step run prep/pretrain_prep -c tiny                          # local
+#   nemotron step run prep/pretrain_prep -c tiny -r lepton_pretrain_dataprep
+#   nemotron step run prep/pretrain_prep -c tiny -r slurm_pretrain_dataprep
+
+# blend_path is omitted on purpose — step.py defaults to data/blend_tiny.json.
+output_dir: ${oc.env:PRETRAIN_OUTPUT_DIR,./output/pretrain_dataprep_tiny}
+
+num_shards: 4
+
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+  add_bos: false
+  add_eos: true
+
+dtype: int32
+text_field: text
+
+# Cap docs / tokens for a fast smoke test.
+sample: 500
+sample_seed: 42
+force: false
+
+observability:
+  pipeline_logging_interval_s: 5
