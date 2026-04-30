@@ -1,3 +1,7 @@
+<!--
+  SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+  SPDX-License-Identifier: Apache-2.0
+-->
 # Nemotron Training Recipes
 
 **Open and efficient models for agentic AI.** Reproducible training pipelines with transparent data, techniques, and weights.
@@ -28,20 +32,20 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 > **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](nemo_runspec/nemo-run.md) for setup instructions.
 
-## Usage Cookbook & Examples
+## Sample Deployments and Applications
 
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Usage Cookbook
-:link: usage-cookbook/README
+:::{grid-item-card} Deployment Guides
+:link: deployment-guides
 :link-type: doc
 
 Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, and Hugging Face.
 :::
 
-:::{grid-item-card} Use Case Examples
-:link: use-case-examples/README
+:::{grid-item-card} Sample Applications
+:link: application-examples
 :link-type: doc
 
 End-to-end applications: RAG agents, ML agents, and multi-agent systems.
@@ -49,7 +53,7 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 
 ::::
 
-## Available Training Recipes
+## Training Recipes
 
 ::::{grid} 1 2 2 2
 :gutter: 3
@@ -129,35 +133,12 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 - [Artifact Lineage](nemotron/artifacts.md) – W&B integration guide
 
 ```{toctree}
-:caption: Usage Cookbook
+:caption: Nemotron
 :hidden:
 
-usage-cookbook/README.md
-usage-cookbook/Nemotron-Nano2-VL/README.md
-usage-cookbook/Nemotron-Parse-v1.1/README.md
-usage-cookbook/Nemotron-3-Nano-Omni/Megatron-bridge/README.md
-usage-cookbook/Nemotron-3-Nano-Omni/automodel/automodel_training_cookbook.md
-usage-cookbook/Nemotron-3-Nano-Omni/doc-intelligence-with-parse/README.md
-usage-cookbook/Nemotron-3-Super/README.md
-usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
-usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md
-usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README.md
-usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README.md
-usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide/README.md
-usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.md
-```
-
-```{toctree}
-:caption: Use Case Examples
-:hidden:
-
-use-case-examples/README.md
-use-case-examples/Simple Nemotron-3-Nano Usage Example/README.md
-use-case-examples/Data Science ML Agent/README.md
-use-case-examples/RAG Agent with Nemotron RAG Models/README.md
-use-case-examples/Intelligent Document Processing with Nemotron RAG/README.md
-use-case-examples/nemotron-voice-rag-agent-example/README.md
-use-case-examples/sql-lora-finetuning-and-deployment/README.md
+Home <self>
+application-examples.md
+deployment-guides.md
 ```
 
 ```{toctree}
