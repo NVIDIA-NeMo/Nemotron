@@ -207,8 +207,25 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
                 env_vars["WANDB_ENTITY"] = str(wandb_config["entity"])
             if wandb_config.get("project"):
                 env_vars["WANDB_PROJECT"] = str(wandb_config["project"])
+                env_vars["WANDB_ENABLED"] = "true"
+            if wandb_config.get("run_name") or wandb_config.get("name"):
+                env_vars["WANDB_NAME"] = str(wandb_config.get("run_name") or wandb_config.get("name"))
+            if wandb_config.get("group"):
+                env_vars["WANDB_GROUP"] = str(wandb_config["group"])
+            if wandb_config.get("job_type"):
+                env_vars["WANDB_JOB_TYPE"] = str(wandb_config["job_type"])
+            if wandb_config.get("tags"):
+                env_vars["WANDB_TAGS"] = ",".join(str(tag) for tag in wandb_config["tags"])
     except Exception:
         pass
+
+    if "WANDB_PROJECT" in env_vars and hasattr(job_config, "run") and hasattr(job_config.run, "recipe"):
+        try:
+            recipe_name = str(job_config.run.recipe.name)
+            env_vars.setdefault("WANDB_JOB_TYPE", recipe_name)
+            env_vars.setdefault("WANDB_NAME", recipe_name.replace("/", "-"))
+        except Exception:
+            pass
 
     # Merge explicit env_vars from run.env config (YAML or env.toml).
     # These are applied last so they can override auto-detected values above.

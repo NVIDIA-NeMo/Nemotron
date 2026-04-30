@@ -262,14 +262,15 @@ env:
 logger:
   log_dir: /nemo_run/rlvr-nemo-gym-logs
   num_val_samples_to_print: 0
-  wandb_enabled: false
+  wandb_enabled: ${oc.decode:${oc.env:WANDB_ENABLED,false}}
   tensorboard_enabled: false
   mlflow_enabled: false
   swanlab_enabled: false
   monitor_gpus: true
   wandb:
-    project: nemotron-rlvr-dev
-    name: rlvr-nemo-gym
+    project: ${oc.env:WANDB_PROJECT,nemotron-rlvr-dev}
+    entity: ${oc.env:WANDB_ENTITY,null}
+    name: ${oc.env:WANDB_NAME,rlvr-nemo-gym}
   tensorboard:
     log_dir: tb_logs-rlvr-nemo-gym
   mlflow:

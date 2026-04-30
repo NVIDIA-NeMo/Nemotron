@@ -47,6 +47,7 @@ from nemotron.kit.train_script import (
     load_omegaconf_yaml,
     parse_config_and_overrides,
 )
+from nemotron.steps.prep._common import init_prep_wandb
 
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 
@@ -58,6 +59,8 @@ def main() -> None:
         resolve=True,
     )
 
+    init_prep_wandb(["data-prep", "rl"])
+
     run_rl_resolve_pipeline(
         blend=DataBlend.load(cfg["blend_path"]),
         output_dir=cfg["output_dir"],
@@ -68,7 +71,6 @@ def main() -> None:
         resolve_hf_placeholders=cfg.get("resolve_hf_placeholders", True),
         observability=ObservabilityConfig(**cfg.get("observability", {})),
     )
-
 
 if __name__ == "__main__":
     main()

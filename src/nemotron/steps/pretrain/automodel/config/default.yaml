@@ -87,3 +87,8 @@ lr_scheduler:
   lr_decay_style: cosine
   min_lr: 3.0e-5
   warmup_steps: 500
+
+wandb:
+  project: ${oc.env:WANDB_PROJECT,null}
+  entity: ${oc.env:WANDB_ENTITY,null}
+  name: ${oc.env:WANDB_NAME,pretrain-automodel}

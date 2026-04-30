@@ -64,6 +64,7 @@ from nemotron.kit.train_script import (
 from nemotron.steps.prep._common import (
     chdir_to_scratch,
     config_dataclass,
+    init_prep_wandb,
     resolve_blend_path,
     resolve_output_dir,
 )
@@ -89,6 +90,7 @@ def main() -> None:
     output_dir = resolve_output_dir(cfg["output_dir"])
 
     chdir_to_scratch("nemotron-pretrain-prep-")
+    init_prep_wandb(["data-prep", "pretrain", cfg.get("config_name", "pretrain-prep")])
 
     run_pretrain_pipeline(
         blend=DataBlend.load(blend_path),
@@ -109,7 +111,6 @@ def main() -> None:
         tokenization_stage=config_dataclass(BinIdxTokenizationStageConfig, cfg.get("tokenization")),
         observability=ObservabilityConfig(**cfg.get("observability", {})),
     )
-
 
 if __name__ == "__main__":
     main()

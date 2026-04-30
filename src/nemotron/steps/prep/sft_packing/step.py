@@ -55,6 +55,7 @@ from nemotron.kit.train_script import (
 from nemotron.steps.prep._common import (
     chdir_to_scratch,
     config_dataclass,
+    init_prep_wandb,
     resolve_blend_path,
     resolve_output_dir,
 )
@@ -144,6 +145,7 @@ def main() -> None:
     # Switch cwd after resolving local paths. Xenna/Ray otherwise packages cwd as
     # its runtime working_dir, which can exceed Ray's upload cap on shared mounts.
     chdir_to_scratch("nemotron-sft-packing-")
+    init_prep_wandb(["data-prep", "sft", cfg.get("config_name", "sft-packing")])
 
     result = run_sft_pipeline(
         blend=DataBlend.load(blend_path),
@@ -181,7 +183,6 @@ def main() -> None:
         cfg=cfg,
         seed=cfg.get("sample_seed", 42),
     )
-
 
 if __name__ == "__main__":
     main()

@@ -75,9 +75,9 @@ args:
   hf_export_path: null
 
   # Optional W&B logging. Requires WANDB_API_KEY in the environment.
-  wandb_project: null
-  wandb_entity: null
-  wandb_exp_name: null
+  wandb_project: ${oc.env:WANDB_PROJECT,null}
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_exp_name: ${oc.env:WANDB_NAME,null}
 
   trust_remote_code: true
 

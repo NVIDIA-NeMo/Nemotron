@@ -71,6 +71,9 @@ scheduler:
 
 logger:
   log_interval: 1
+  wandb_project: ${oc.env:WANDB_PROJECT,null}
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_exp_name: ${oc.env:WANDB_NAME,sft-megatron-bridge-tiny}
 
 checkpoint:
   save: ${oc.env:SFT_OUTPUT_DIR}/sft-tiny-2node

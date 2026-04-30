@@ -63,3 +63,13 @@ checkpointing:
 
 logger:
   log_dir: /nemo_run/dpo-logs
+  wandb_enabled: ${oc.decode:${oc.env:WANDB_ENABLED,false}}
+  tensorboard_enabled: false
+  mlflow_enabled: false
+  swanlab_enabled: false
+  monitor_gpus: true
+  num_val_samples_to_print: 0
+  wandb:
+    project: ${oc.env:WANDB_PROJECT,nemotron-dpo-dev}
+    entity: ${oc.env:WANDB_ENTITY,null}
+    name: ${oc.env:WANDB_NAME,dpo}

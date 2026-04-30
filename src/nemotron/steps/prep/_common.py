@@ -74,3 +74,12 @@ def config_dataclass(cls: type[T], block: object | None) -> T | None:
     if not isinstance(block, dict):
         raise TypeError(f"{cls.__name__} config must be a mapping, got {type(block).__name__}")
     return cls(**block)
+
+
+def init_prep_wandb(tags: list[str]) -> None:
+    """Initialize W&B from the executor environment and attach prep tags."""
+    from nemotron.kit import wandb_kit
+    from nemotron.kit.train_script import init_wandb_from_env
+
+    init_wandb_from_env()
+    wandb_kit.add_run_tags([tag for tag in tags if tag])

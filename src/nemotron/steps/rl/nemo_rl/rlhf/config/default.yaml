@@ -293,14 +293,15 @@ env:
 logger:
   log_dir: /nemo_run/rlhf-genrm-logs
   num_val_samples_to_print: 0
-  wandb_enabled: false
+  wandb_enabled: ${oc.decode:${oc.env:WANDB_ENABLED,false}}
   tensorboard_enabled: false
   mlflow_enabled: false
   swanlab_enabled: false
   monitor_gpus: true
   wandb:
-    project: nemotron-rlhf-dev
-    name: rlhf-genrm
+    project: ${oc.env:WANDB_PROJECT,nemotron-rlhf-dev}
+    entity: ${oc.env:WANDB_ENTITY,null}
+    name: ${oc.env:WANDB_NAME,rlhf-genrm}
   tensorboard:
     log_dir: tb_logs-rlhf-genrm
   mlflow:

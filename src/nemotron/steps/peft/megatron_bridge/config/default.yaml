@@ -46,6 +46,12 @@ peft:
     - linear_qkv
     - linear_proj
 
+logger:
+  log_interval: 10
+  wandb_project: ${oc.env:WANDB_PROJECT,null}
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_exp_name: ${oc.env:WANDB_NAME,peft-megatron-bridge}
+
 checkpoint:
   save: /nemo_run/peft-model
   save_interval: 50

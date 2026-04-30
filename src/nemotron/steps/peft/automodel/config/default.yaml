@@ -93,3 +93,8 @@ optimizer:
 lr_scheduler:
   lr_decay_style: cosine
   min_lr: 1.0e-6
+
+wandb:
+  project: ${oc.env:WANDB_PROJECT,null}
+  entity: ${oc.env:WANDB_ENTITY,null}
+  name: ${oc.env:WANDB_NAME,peft-automodel}
