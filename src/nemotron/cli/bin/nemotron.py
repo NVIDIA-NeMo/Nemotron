@@ -85,13 +85,19 @@ def main_callback(
 # Import and register recipe groups
 def _register_groups() -> None:
     """Register all recipe groups with the main app."""
+    from nemotron.cli.commands.data import data_app
     from nemotron.cli.commands.nano3 import nano3_app
+    from nemotron.cli.commands.omni3 import omni3_app
     from nemotron.cli.commands.super3 import super3_app
     from nemotron.cli.kit import kit_app
+    from nemotron.cli.commands.embed import embed_app
 
+    app.add_typer(data_app, name="data")
     app.add_typer(nano3_app, name="nano3")
+    app.add_typer(omni3_app, name="omni3")
     app.add_typer(super3_app, name="super3")
     app.add_typer(kit_app, name="kit")
+    app.add_typer(embed_app, name="embed")
 
 
 # Register groups on import

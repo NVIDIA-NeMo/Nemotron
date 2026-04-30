@@ -1,0 +1,93 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Minimal config for hard negative mining.
+# The model is loaded directly from --mining.model_name_or_path,
+# so no model architecture config is needed here.
+#
+# Usage:
+# torchrun --nproc_per_node=8 ./examples/biencoder/mine_hard_negatives.py \
+#     --config examples/biencoder/mining_config.yaml \
+#     --mining.model_name_or_path /path/to/biencoder/checkpoint \
+#     --mining.train_qa_file_path /path/to/input.json \
+#     --mining.train_file_output_path /path/to/output.json
+
+# Distributed environment settings
+dist_env:
+  backend: nccl
+  timeout_minutes: 30
+
+# Mining parameters - can be overridden via command line
+# Required parameters (must be provided via command line or here):
+#   mining.model_name_or_path: Path to biencoder checkpoint
+#   mining.train_qa_file_path: Input QA file
+#   mining.train_file_output_path: Output file with mined negatives
+
+mining:
+  # Model path - REQUIRED (override via --mining.model_name_or_path)
+  # model_name_or_path: /path/to/biencoder/checkpoint
+  
+  # Tokenizer path - defaults to model_name_or_path if not specified
+  # tokenizer_name_or_path: /path/to/tokenizer
+
+  # Tokenizer special token behavior
+  # 
+  # DEFAULT (recommended for Automodel-trained models):
+  #   Leave commented out to use Automodel's tokenizer defaults.
+  #   This ensures mining stays synchronized with training behavior.
+  #
+  # OVERRIDE (for models trained in other frameworks):
+  #   Uncomment and set explicitly only when mining with models trained
+  #   outside Automodel that used specific tokenizer configurations.
+  #
+  # Examples:
+  #   - Automodel models: Leave commented (uses Automodel defaults)
+  #   - nvidia/llama-embed-nemotron-8b: add_bos_token: true, add_eos_token: false
+  #   - Custom external model: Check training config and set accordingly
+  #
+  # add_bos_token: true
+  # add_eos_token: false
+  
+  # Input/Output - REQUIRED
+  # train_qa_file_path: /path/to/input.json
+  # train_file_output_path: /path/to/output.json
+  
+  # Caching (optional)
+  # cache_embeddings_dir: /path/to/cache
+  load_embeddings_from_cache: false
+  
+  # Mining parameters
+  hard_negatives_to_mine: 20
+  hard_neg_margin: 0.95
+  hard_neg_margin_type: perc
+  mining_batch_size: 128
+  
+  # Embedding generation batch sizes
+  query_embedding_batch_size: 16
+  document_embedding_batch_size: 16
+  corpus_chunk_size: 50000
+  
+  # Text prefixes (for models trained with prefixes)
+  query_prefix: ""
+  passage_prefix: ""
+  
+  # Attention implementation for model loading
+  attn_implementation: sdpa
+
+  # Maximum sequence lengths
+  query_max_length: 512
+  passage_max_length: 512
+  
+  # Whether to include negatives from the input file
+  use_negatives_from_file: false

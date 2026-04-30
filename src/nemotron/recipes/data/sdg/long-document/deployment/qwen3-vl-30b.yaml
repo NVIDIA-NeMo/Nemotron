@@ -1,0 +1,27 @@
+# Default deployment config for the long-document page-classification stage.
+# Schema mirrors Evaluator's vllm.yaml.
+
+name: qwen3-vl-30b
+hf_model_handle: Qwen/Qwen3-VL-30B-A3B-Instruct
+served_model_name: Qwen/Qwen3-VL-30B-A3B-Instruct
+
+image: vllm/vllm-openai:latest
+
+# port: null   # default null = pick free port at runtime; pin only on dedicated nodes
+tensor_parallel_size: 2
+pipeline_parallel_size: 1
+gpu_memory_utilization: 0.95
+max_model_len: 128000
+max_num_seqs: null
+trust_remote_code: true
+
+# Slurm resources for the serve task.
+nodes: 1
+gpus_per_node: 2
+walltime: "08:00:00"
+partition: null
+
+extra_args: "--limit-mm-per-prompt '{\"video\": 0}'"
+env_vars: {}
+pre_cmd: ""
+chat_template_jinja: null
