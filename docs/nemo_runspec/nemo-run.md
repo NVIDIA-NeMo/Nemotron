@@ -214,6 +214,73 @@ runtime = "nvidia"
 mounts = ["/data:/data"]
 ```
 
+### Building Containers
+
+Some recipes, including Omni3, build stage-local containers through the same profile system instead of pulling a pre-baked image.
+
+**Cluster-side build via Nemotron CLI**
+
+```bash
+uv run nemotron omni3 build sft --run YOUR-CLUSTER
+uv run nemotron omni3 build rl --run YOUR-CLUSTER
+```
+
+These commands submit short CPU-oriented build jobs through NeMo-Run. If your site uses a different partition or walltime for build jobs, set `build_partition` and `build_time` in `env.toml`. The dispatcher only runs on slurm executors today; non-slurm executors (e.g. Lepton, k8s) error out cleanly with a hook for future PRs.
+
+```toml
+[YOUR-CLUSTER]
+executor = "slurm"
+partition = "batch"
+build_partition = "cpu"
+build_time = "02:00:00"
+# Lustre-visible host path for the build cache; mounted into the build
+# container at /nemotron-cache and used to land the OCI archive output.
+build_cache_dir = "/lustre/.../users/<user>/.cache/nemotron"
+```
+
+> **Why `build_cache_dir`?** The dispatcher mounts this path into the
+> build container so podman can save the resulting OCI archive somewhere
+> a future training job can read. Pre-`build_cache_dir`, the dispatcher
+> hard-coded `~/.cache/nemotron` evaluated at submission time, which
+> resolved to the laptop's home directory and didn't exist on cluster
+> nodes. Set `build_cache_dir` to a Lustre-visible path; the dispatcher
+> will `mkdir -p` it on the remote before submission so first-run is
+> seamless.
+
+### How the build container authenticates with private registries
+
+The SFT Dockerfile's `FROM` references `nvcr.io/nvidian/nemo:<tag>`,
+which is gated behind NGC credentials. Rather than ask operators to
+provision a separate `~/.docker/config.json`, the dispatcher reuses
+enroot's existing credentials at job-submission time:
+
+1. The dispatcher reads `~/.config/enroot/.credentials` (netrc format)
+   over the SSH tunnel.
+2. It filters to the `nvcr.io` entry (other registries in the file —
+   gitlab tokens, etc. — are *not* exposed to the build container).
+3. It transcodes the entry into a docker-format `auth.json` and writes
+   it to `<build_cache_dir>/.auth/auth.json` with mode `0600`.
+4. It mounts that file into the build container at
+   `/root/.config/containers/auth.json:ro`.
+
+Podman inside the build container then authenticates with `nvcr.io`
+automatically. No env vars, no per-job secrets in slurm scripts. If you
+add a new private registry the build needs, add an entry for it in
+`~/.config/enroot/.credentials` and extend the dispatcher's allowlist
+(see `materialize_podman_auth_from_enroot` in
+`src/nemo_runspec/execution.py`).
+
+**Local build from the stage Dockerfile**
+
+```bash
+cd src/nemotron/recipes/omni3/stage0_sft
+docker build -t nemotron/omni3-sft:latest -f Dockerfile .
+# or
+podman build -t nemotron/omni3-sft:latest -f Dockerfile .
+```
+
+Use the local path when iterating on the Dockerfile itself; use `nemotron omni3 build <stage> --run <profile>` when you want the same build recipe executed on the cluster.
+
 ### Other Executors
 
 NeMo-Run also supports these executors (not yet integrated into env.toml profiles):

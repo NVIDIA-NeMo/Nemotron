@@ -28,10 +28,10 @@ Steps 1–3 progressively filter and annotate the data. Step 4 generates synthet
 The recipe scripts live in:
 
 ```
-src/nemotron/recipes/data_curation/nemotron-cc/
+src/nemotron/recipes/data/curation/nemotron-cc/
 ```
 
-See the recipe README at `src/nemotron/recipes/data_curation/nemotron-cc/README.md` for detailed per-step documentation, resource recommendations, and usage examples.
+See the recipe README at `src/nemotron/recipes/data/curation/nemotron-cc/README.md` for detailed per-step documentation, resource recommendations, and usage examples.
 
 ## Prerequisites
 
@@ -48,4 +48,4 @@ Once curated, the output can be tokenized and used for downstream model training
 - [Nemotron-CC paper](https://arxiv.org/abs/2412.02595) — methodology and evaluation
 - [nvidia/Nemotron-CC-v2](https://huggingface.co/datasets/nvidia/Nemotron-CC-v2) — released dataset on Hugging Face
 - [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) — the underlying data curation library
-- [Data Preparation](./data-prep.md) — last-mile processing for training
+- [Data Preparation](../../data-prep.md) — last-mile processing for training

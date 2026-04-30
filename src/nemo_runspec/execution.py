@@ -31,10 +31,13 @@ Commands should show exactly how they build executors and run experiments.
 
 from __future__ import annotations
 
+import base64
+import json
 import os
+import shlex
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import typer
 from rich.console import Console
@@ -155,11 +158,15 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
     elif env_config and env_config.get("remote_job_dir"):
         env_vars["HF_HOME"] = f"{env_config['remote_job_dir']}/hf"
 
-    # Auto-detect HuggingFace token
+    # Auto-detect HuggingFace token. ``HfFolder.get_token`` was removed
+    # in huggingface_hub 1.x; the modern ``get_token`` helper checks the
+    # ``HF_TOKEN`` env var first, then ``$HF_HOME/token`` (or the legacy
+    # ``~/.cache/huggingface/token`` path), so it works for both
+    # `huggingface-cli login`-style and env-var-style auth setups.
     try:
-        from huggingface_hub import HfFolder
+        from huggingface_hub import get_token
 
-        token = HfFolder.get_token()
+        token = get_token()
         if token:
             env_vars["HF_TOKEN"] = token
     except Exception:
@@ -313,6 +320,137 @@ def clone_git_repos_via_tunnel(tunnel: Any, remote_job_dir: str) -> list[str]:
             mounts.append(f"{repo_cache}:{target}")
 
     return mounts
+
+
+# =============================================================================
+# Container Auth Bridging (enroot → podman)
+# =============================================================================
+
+
+def _parse_netrc(content: str) -> dict[str, tuple[str, str]]:
+    """Parse a netrc-style credentials file into ``{machine: (login, password)}``.
+
+    Tolerant to extra whitespace and missing fields. Skips ``default``
+    catch-all entries (along with their ``login`` / ``password`` tokens)
+    since podman wants per-registry creds. Comments are not part of the
+    netrc spec, so we don't strip ``#`` lines.
+    """
+    tokens = content.split()
+    creds: dict[str, tuple[str, str]] = {}
+    machine: str | None = None
+    login: str | None = None
+    password: str | None = None
+    in_default_block = False
+    i = 0
+
+    def _flush() -> None:
+        if machine and login is not None and password is not None:
+            creds[machine] = (login, password)
+
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "machine":
+            _flush()
+            machine = tokens[i + 1] if i + 1 < len(tokens) else None
+            login = password = None
+            in_default_block = False
+            i += 2
+        elif tok == "default":
+            # Flush any in-progress machine entry, then enter a swallow
+            # state so the default block's login/password tokens don't
+            # overwrite the previous machine's creds.
+            _flush()
+            machine = login = password = None
+            in_default_block = True
+            i += 1
+        elif tok == "login" and i + 1 < len(tokens):
+            if not in_default_block:
+                login = tokens[i + 1]
+            i += 2
+        elif tok == "password" and i + 1 < len(tokens):
+            if not in_default_block:
+                password = tokens[i + 1]
+            i += 2
+        else:
+            i += 1
+    _flush()
+    return creds
+
+
+def materialize_podman_auth_from_enroot(
+    tunnel: Any,
+    out_dir: str,
+    *,
+    registries: Iterable[str] = ("nvcr.io",),
+    enroot_credentials_path: str = "$HOME/.config/enroot/.credentials",
+) -> str | None:
+    """Translate enroot netrc credentials to a podman auth.json on the remote.
+
+    Reads the enroot credentials file via the SSH tunnel, filters to
+    entries for the requested registries, and writes a docker-format
+    ``auth.json`` to ``<out_dir>/auth.json`` with mode ``0600``. The path
+    is suitable for mounting into a podman build container at
+    ``/root/.config/containers/auth.json`` (or ``$HOME/.docker/config.json``).
+
+    Args:
+        tunnel: A connected SSH tunnel exposing ``run(cmd, hide=, warn=)``.
+        out_dir: Remote directory to write ``auth.json`` into. Created if
+            missing. Should be on a path the user owns and that the
+            container can read (typically the build cache dir).
+        registries: Hostnames whose entries should be included in the
+            generated auth.json. Defaults to ``("nvcr.io",)`` so other
+            credentials in the netrc file are not exposed to the build.
+        enroot_credentials_path: Override the source path. Default uses
+            ``$HOME`` so the remote shell expands per user.
+
+    Returns:
+        Absolute remote path to the generated ``auth.json``, or ``None``
+        when the credentials file is missing or contains no entries for
+        the requested registries.
+
+    Notes:
+        Why this exists: enroot/pyxis pulls images using its own
+        ``~/.config/enroot/.credentials`` file. When a recipe builds a
+        container by running podman *inside* a pyxis-launched build
+        container (e.g. ``nemotron omni3 build``), podman is a separate
+        process with separate credential lookup paths and won't find the
+        enroot creds. This helper bridges the two by translating the
+        netrc-format credentials enroot already has into the docker
+        config format podman expects, scoped to a configurable allowlist
+        of registries to avoid leaking unrelated tokens.
+    """
+    quoted_path = enroot_credentials_path  # leave $HOME/quotes for remote shell
+    cat_cmd = (
+        f'test -f "{quoted_path}" && cat "{quoted_path}" || true'
+    )
+    result = tunnel.run(cat_cmd, hide=True, warn=True)
+    content = (getattr(result, "stdout", "") or "").strip()
+    if not content:
+        return None
+
+    creds = _parse_netrc(content)
+    target_set = {r.lower() for r in registries}
+    selected = {m: lp for m, lp in creds.items() if m.lower() in target_set}
+    if not selected:
+        return None
+
+    auths = {
+        machine: {
+            "auth": base64.b64encode(f"{login}:{password}".encode()).decode(),
+        }
+        for machine, (login, password) in selected.items()
+    }
+    auth_json = json.dumps({"auths": auths})
+
+    auth_path = f"{out_dir.rstrip('/')}/auth.json"
+    encoded = base64.b64encode(auth_json.encode()).decode()
+    write_cmd = (
+        f"mkdir -p {shlex.quote(out_dir)} && "
+        f"printf %s {shlex.quote(encoded)} | base64 -d > {shlex.quote(auth_path)} && "
+        f"chmod 600 {shlex.quote(auth_path)}"
+    )
+    tunnel.run(write_cmd, hide=True)
+    return auth_path
 
 
 # =============================================================================

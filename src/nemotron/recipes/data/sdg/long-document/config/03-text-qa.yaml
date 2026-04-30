@@ -1,0 +1,8 @@
+# Default config for `03-text-qa-sdg.py`.
+# Required at runtime: vllm_endpoint, seed_path.
+vllm_endpoint: null
+seed_path: null
+model_alias: reasoner
+model_id: openai/gpt-oss-120b
+num_records: 5
+artifact_path: null
