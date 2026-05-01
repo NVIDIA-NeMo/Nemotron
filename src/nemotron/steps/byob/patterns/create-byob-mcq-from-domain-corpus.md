@@ -9,4 +9,4 @@ steps: [byob]
 confidence: high
 ---
 
-Use the MCQ family with `prepare` followed by `generate`. Start from `assets/default.yaml`.
+Use the MCQ family with `prepare` followed by `generate`. Start from `config/default.yaml`.

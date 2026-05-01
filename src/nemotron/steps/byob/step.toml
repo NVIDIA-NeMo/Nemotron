@@ -43,7 +43,41 @@ description = "Path to a BYOB YAML config."
 name = "skip_until"
 description = "Optional resume stage enum name for cached generation or translation runs."
 
+[[strategies]]
+when = "You need a domain-specific multiple-choice benchmark from user-provided documents"
+then = "Use family=mcq, run prepare before generate, and start from config/default.yaml or config/tiny.yaml for a smoke run."
+skill = "src/nemotron/steps/byob/SKILL.md"
+
+[[strategies]]
+when = "You need to extend BYOB beyond MCQ, for example GSM8K-style math problems"
+then = "Answer references/new-family-checklist.md first, then add a package under runtime/benchmark_families/ and register it without changing the dispatcher."
+skill = "src/nemotron/steps/byob/SKILL.md"
+
+[[strategies]]
+when = "You need to translate an existing BYOB MCQ benchmark"
+then = "Use stage=translate with config/translate.yaml and preserve question_id, options, answer_index, answer, cot_content, src, and category."
+skill = "src/nemotron/steps/byob/SKILL.md"
+
+[[errors]]
+name = "missing_byob_source_documents"
+recovery = "Create input_dir entries that match target_source_mapping keys. For MCQ generation, use one directory or parquet per target subject."
+
+[[errors]]
+name = "unsupported_hf_dataset"
+recovery = "Choose a dataset from runtime/constants.py or add a dataset parser for the new benchmark family."
+
+[[errors]]
+name = "mcq_schema_mismatch"
+recovery = "Keep final MCQ benchmark.parquet columns aligned with references/benchmark-schema.md and the speaker MMLU-Pro format."
+
+[[errors]]
+name = "new_family_keeps_mcq_assumptions"
+recovery = "For non-MCQ families, define a family-specific schema and replace MCQ-only stages such as distractor expansion and answer-letter validation."
+
 [reference]
 skill = "src/nemotron/steps/byob/SKILL.md"
-entrypoint = "src/nemotron/steps/byob/scripts/run.py"
+script = "src/nemotron/steps/byob/step.py"
+default_config = "src/nemotron/steps/byob/config/default.yaml"
+tiny_config = "src/nemotron/steps/byob/config/tiny.yaml"
+translate_config = "src/nemotron/steps/byob/config/translate.yaml"
 runtime = "src/nemotron/steps/byob/runtime/pipeline.py"

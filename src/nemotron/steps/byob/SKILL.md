@@ -15,7 +15,7 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 ## Default
 
 1. Read [references/STEP.md](references/STEP.md) for the artifact contract.
-2. Start from [assets/default.yaml](assets/default.yaml) for MCQ generation or [assets/translate.yaml](assets/translate.yaml) for translation.
+2. Start from [config/default.yaml](config/default.yaml) for MCQ generation or [config/translate.yaml](config/translate.yaml) for translation.
 3. Run `python -m nemotron.steps.byob.scripts.run --family mcq --stage prepare --config CONFIG`.
 4. Run `python -m nemotron.steps.byob.scripts.run --family mcq --stage generate --config CONFIG`.
 5. Translate an existing benchmark with `--stage translate` and a translation config.

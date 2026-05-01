@@ -28,7 +28,7 @@ the config, or existing files.
 - Keep family prompts, response models, dataset parsing, postprocessing, and export code inside that package.
 - Register the family in `runtime/benchmark_families/registry.py` with a `BenchmarkFamilySpec`.
 - Keep `scripts/runtime.py` as a dispatcher. Do not add family-specific branches there.
-- Add a family config template under `assets/` only if the default MCQ template is not appropriate.
+- Add a family config template under `config/` only if the default MCQ template is not appropriate.
 - Add or update references and patterns so another agent can discover when to use the new family.
 - Preserve existing MCQ behavior and final MCQ schema.
 

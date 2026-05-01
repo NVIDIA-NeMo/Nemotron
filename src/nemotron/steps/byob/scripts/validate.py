@@ -13,12 +13,13 @@ REQUIRED_FILES = (
     "SKILL.md",
     "step.toml",
     "adapter.py",
+    "step.py",
     "scripts/run.py",
     "scripts/runtime.py",
     "scripts/validate.py",
-    "assets/default.yaml",
-    "assets/tiny.yaml",
-    "assets/translate.yaml",
+    "config/default.yaml",
+    "config/tiny.yaml",
+    "config/translate.yaml",
     "references/STEP.md",
     "references/guide.md",
     "references/benchmark-schema.md",
@@ -49,7 +50,7 @@ def validate_skill_dir(skill_dir: Path) -> list[str]:
         if not frontmatter.get("when_to_use"):
             errors.append("SKILL.md when_to_use is required")
 
-    for rel_path in ("assets/default.yaml", "assets/tiny.yaml", "assets/translate.yaml"):
+    for rel_path in ("config/default.yaml", "config/tiny.yaml", "config/translate.yaml"):
         path = skill_dir / rel_path
         if path.exists():
             data = yaml.safe_load(path.read_text(encoding="utf-8"))
