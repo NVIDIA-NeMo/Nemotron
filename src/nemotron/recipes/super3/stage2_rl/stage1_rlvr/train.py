@@ -199,9 +199,25 @@ def setup_initial_checkpoint(initial_checkpoint_path: str, checkpoint_dir: str) 
 
 def setup_single_nemo_gym_dataset(jsonl_fpath: str, tokenizer, num_repeats: int | None = None):
     """Load and prepare a NeMo-Gym dataset from JSONL file."""
+    import torch
+
     from nemo_rl.data.datasets import AllTaskProcessedDataset
     from nemo_rl.data.interfaces import DatumSpec
-    from nemo_rl.environments.nemo_gym import nemo_gym_example_to_nemo_rl_datum_spec
+
+    try:
+        from nemo_rl.environments.nemo_gym import nemo_gym_example_to_nemo_rl_datum_spec
+    except ImportError:
+        def nemo_gym_example_to_nemo_rl_datum_spec(nemo_gym_example: dict, idx: int) -> DatumSpec:
+            return DatumSpec(
+                message_log=[{"role": "user", "content": "", "token_ids": torch.tensor([])}],
+                length=0,
+                extra_env_info=nemo_gym_example,
+                loss_multiplier=1.0,
+                idx=idx,
+                task_name="nemo_gym",
+                stop_strings=None,
+                token_ids=[],
+            )
 
     with open(jsonl_fpath) as f:
         nemo_gym_examples = list(map(json.loads, f))
