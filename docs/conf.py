@@ -22,7 +22,10 @@
 
 import os
 import shutil
+import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.abspath("_ext"))
 
 
 # -- Preprocessing: Replace symlinks with actual copies ---------------------
@@ -79,6 +82,7 @@ extensions = [
     "sphinx_copybutton",  # For copy button in code blocks
     "sphinx_design",  # For grid cards and other design elements
     "sphinxcontrib.mermaid",  # For mermaid diagrams
+    "nemotron_customize",
 ]
 
 templates_path = ["_templates"]
@@ -111,6 +115,7 @@ mermaid_version = "latest"  # Use the latest version of mermaid
 html_static_path = ["_static"]
 html_css_files = [
     "css/termynal.css",
+    "customize.css",
 ]
 html_js_files = [
     "js/termynal.js",

@@ -1,0 +1,61 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Megatron-Bridge pretrain / CPT defaults. Adapted from speaker/configs/cpt/megatron.
+
+mode: cpt
+
+hf_model_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+load_hf_weights: true
+trust_remote_code: true
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_pretrain_config
+  seq_length: 8192
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallelism: 1
+  sequence_parallelism: true
+
+dataset:
+  data_paths: /path/to/blend.json
+  seq_length: 8192
+  reset_attention_mask: false
+  reset_position_ids: false
+  eod_mask_loss: false
+  data_sharding: true
+
+train:
+  train_iters: 20000
+  global_batch_size: 64
+
+optimizer:
+  lr: 3.0e-4
+  min_lr: 3.0e-5
+  weight_decay: 0.1
+
+scheduler:
+  lr_warmup_iters: 500
+  lr_decay_style: cosine
+
+logger:
+  log_interval: 10
+  wandb_project: ${oc.env:WANDB_PROJECT,null}
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_exp_name: ${oc.env:WANDB_NAME,pretrain-megatron-bridge}
+
+checkpoint:
+  save: /nemo_run/pretrain-model
+  save_interval: 500
+  finetune: false

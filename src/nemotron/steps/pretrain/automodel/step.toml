@@ -1,0 +1,54 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "pretrain/automodel"
+name = "Pretraining (AutoModel)"
+category = "pretrain"
+description = """\
+Causal-LM pretraining or continued pretraining (CPT) using the NeMo-AutoModel
+stack. Reads tokenized text data and trains from scratch or from an HF base."""
+tags = ["pretrain", "cpt", "automodel", "huggingface"]
+
+[[consumes]]
+type = "binidx"
+description = "Megatron bin/idx tokenized text shards (from prep/pretrain_prep)."
+required = true
+
+[[produces]]
+type = "checkpoint_hf"
+description = "HuggingFace-format pretrained checkpoint."
+
+[[models]]
+name = "Qwen/Qwen3.6-35B-A3B"
+description = "Larger MoE HF backbone example for AutoModel continued pretraining."
+default = true
+min_gpus = 8
+
+[[parameters]]
+name = "model.pretrained_model_name_or_path"
+description = "HF base for CPT, or pass a config-only path to train from scratch."
+default = "Qwen/Qwen3.6-35B-A3B"
+
+[[strategies]]
+when = "Continued pretraining on a domain corpus"
+then = "Set load_weights=true and lower the learning rate (1e-5 to 5e-5)."
+
+[[strategies]]
+when = "Pretraining from scratch"
+then = "Set load_weights=false and use a warmup + cosine schedule sized to the token budget."
+
+[reference]
+script = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/nemo_automodel/recipes/llm/train_pretrain.py"
+skills = ["skills/nemotron-customize/context/automodel-pretrain.txt"]

@@ -1,0 +1,95 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# AutoModel pretraining defaults.
+# Uses Qwen3.6-35B-A3B as the HF model example for continued pretraining.
+
+recipe: TrainPretrainRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 64
+  local_batch_size: 1
+  ckpt_every_steps: 500
+  val_every_steps: 500
+  max_steps: 10000
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 60
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1234
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: Qwen/Qwen3.6-35B-A3B
+  trust_remote_code: true
+
+# Set load_weights=false for from-scratch pretraining.
+load_weights: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  sequence_parallel: true
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: ./checkpoints/pretrain
+  model_save_format: safetensors
+  save_consolidated: true
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+# Pretraining consumes bin/idx tokenized data; HF dataset compat: switch _target_ to a HF text dataset.
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.megatron.indexed_dataset.IndexedDataset
+  blend_path: /path/to/blend.json
+  split: train
+  sequence_length: 4096
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.megatron.indexed_dataset.IndexedDataset
+  blend_path: /path/to/blend.json
+  split: valid
+  sequence_length: 4096
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  shuffle: true
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+
+optimizer:
+  _target_: torch.optim.AdamW
+  betas: [0.9, 0.95]
+  eps: 1e-8
+  lr: 3.0e-4
+  weight_decay: 0.1
+
+lr_scheduler:
+  lr_decay_style: cosine
+  min_lr: 3.0e-5
+  warmup_steps: 500
+
+wandb:
+  project: ${oc.env:WANDB_PROJECT,null}
+  entity: ${oc.env:WANDB_ENTITY,null}
+  name: ${oc.env:WANDB_NAME,pretrain-automodel}

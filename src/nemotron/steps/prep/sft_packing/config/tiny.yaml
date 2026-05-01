@@ -1,0 +1,72 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Tiny SFT packing — fast iteration with the in-step blend_tiny.json
+# (two NVIDIA SFT datasets, no lustre dependency). Self-contained so the step ships
+# without dragging the recipes/ tree along.
+#
+# Usage:
+#   nemotron step run prep/sft_packing -c tiny                          # local
+#   nemotron step run prep/sft_packing -c tiny -r slurm_sft_dataprep_tiny
+#   nemotron step run prep/sft_packing -c tiny -r test_lepton_sft_dataprep
+
+# blend_path is omitted on purpose — step.py defaults to the in-step
+# data/blend_tiny.json so the same config works under any source layout
+# (local, /nemo_run/code on slurm, /mnt/lustre-shared/_nemotron on lepton).
+output_dir: ${oc.env:SFT_OUTPUT_DIR,./output/stage1_sft_tiny}
+
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
+
+pack_size: 4096
+num_shards: 4
+algorithm: first_fit_shuffle
+
+train_ratio: 0.98
+valid_ratio: 0.01
+test_ratio: 0.01
+
+chat_template: nano3
+messages_field: messages
+tools_field: tools
+
+# used_in filter omitted for the tiny NVIDIA SFT blend.
+used_in_filter: null
+used_in_field: used_in
+
+max_doc_tokens: null
+sample: 1000
+sample_seed: 42
+force: false
+config_name: tiny
+
+plan:
+  planner_cpus: 0.5
+
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+
+tokenization:
+  cpus_per_worker: 1
+
+observability:
+  pipeline_logging_interval_s: 5
+  wandb_log_pipeline_stats: true

@@ -1,0 +1,100 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Tiny SFT smoke test on the 2-node lepton_sft_train profile.
+# Uses Llama-3.2-1B + a small public chat dataset so the run is self-contained
+# and finishes in minutes (no upstream prep step required).
+#
+# Usage:
+#   nemotron step run sft/automodel -c tiny -r lepton_sft_train
+
+# Recipe class: defaults to TrainFinetuneRecipeForNextTokenPrediction. To
+# swap recipes, set the top-level ``_step_recipe`` key using Python import
+# style, for example:
+#   _step_recipe: nemo_automodel.recipes.llm.train_ft:OtherClass
+
+step_scheduler:
+  global_batch_size: 16
+  local_batch_size: 1
+  ckpt_every_steps: 50
+  val_every_steps: 50
+  max_steps: 20
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 30
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: meta-llama/Llama-3.2-1B-Instruct
+  trust_remote_code: true
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: ${oc.env:SFT_OUTPUT_DIR,./output/automodel-tiny}/checkpoints
+  model_save_format: safetensors
+  save_consolidated: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  sequence_parallel: false
+
+# LoRA keeps the trainable surface tiny.
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  match_all_linear: true
+  dim: 16
+  alpha: 32
+  dropout: 0.05
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+# ChatDataset accepts HF dataset ids directly via path_or_dataset_id.
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.chat_dataset.ChatDataset
+  path_or_dataset_id: HuggingFaceH4/ultrachat_200k
+  split: train_sft[:1000]
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: true
+
+optimizer:
+  _target_: torch.optim.AdamW
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-5
+  weight_decay: 0.01
+
+lr_scheduler:
+  lr_decay_style: cosine
+  min_lr: 1.0e-6
+
+wandb:
+  project: ${oc.env:WANDB_PROJECT,null}
+  entity: ${oc.env:WANDB_ENTITY,null}
+  name: ${oc.env:WANDB_NAME,sft-automodel-tiny}

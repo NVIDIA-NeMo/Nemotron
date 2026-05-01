@@ -22,7 +22,7 @@ Design: LLM-Native Recipe Architecture
 from __future__ import annotations
 
 from nemotron.cli.commands.super3.data.prep.pretrain import META as PRETRAIN_META, pretrain
-from nemotron.cli.commands.super3.data.prep.rl import META as RL_META, rl
+from nemotron.cli.commands.super3.data.prep.rl import rl_app
 from nemotron.cli.commands.super3.data.prep.sft import META as SFT_META, sft
 from nemo_runspec.recipe_typer import RecipeTyper
 
@@ -43,4 +43,4 @@ prep_app = RecipeTyper(
 
 prep_app.add_recipe_command(pretrain, meta=PRETRAIN_META)
 prep_app.add_recipe_command(sft, meta=SFT_META)
-prep_app.add_recipe_command(rl, meta=RL_META)
+prep_app.add_typer(rl_app, name="rl")

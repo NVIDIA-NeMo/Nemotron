@@ -1,0 +1,76 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "optimize/modelopt/distill"
+name = "Distillation (ModelOpt + Megatron-Bridge)"
+category = "optimize"
+description = """\
+Distill a student model from a teacher model with NVIDIA Model Optimizer and
+Megatron-Bridge. Can run standalone or recover quality after pruning or
+quantization; real-data runs consume Megatron bin/idx data."""
+tags = ["optimize", "modelopt", "distillation", "teacher-student", "megatron-bridge"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "Teacher and student HuggingFace checkpoints."
+required = true
+
+[[consumes]]
+type = "binidx"
+description = "Optional real distillation data from prep/pretrain_prep. Not needed when use_mock_data=true."
+required = false
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "Distilled Megatron distributed checkpoint."
+
+[[parameters]]
+name = "args.teacher_hf_path"
+description = "Teacher HF checkpoint path or model id."
+
+[[parameters]]
+name = "args.student_hf_path"
+description = "Student HF checkpoint path or model id."
+
+[[parameters]]
+name = "args.data_paths"
+description = "Megatron data blend CLI sequence: [weight, prefix, ...]."
+
+[[parameters]]
+name = "args.use_mock_data"
+description = "Run a smoke test without real bin/idx data."
+default = false
+
+[[parameters]]
+name = "extra_args"
+description = "Literal upstream args for newly added ModelOpt distillation flags."
+default = []
+
+[[strategies]]
+when = "Recovering quality after pruning or quantization"
+then = "Use the original BF16 checkpoint as teacher and the optimized checkpoint as student."
+
+[[strategies]]
+when = "Smoke testing plumbing"
+then = "Set args.use_mock_data=true, args.seq_length=512, args.train_iters=100, and small args.eval_iters."
+
+[[strategies]]
+when = "Need a HuggingFace checkpoint"
+then = "Set args.hf_export_path and args.student_hf_model, or convert a saved Megatron iteration later."
+
+[reference]
+modelopt_megatron_bridge = "https://github.com/NVIDIA/Model-Optimizer/blob/main/examples/megatron_bridge/README.md"
+modelopt = "https://github.com/NVIDIA/Model-Optimizer"
+skills = ["skills/nemotron-customize/context/modelopt-optimization.txt"]

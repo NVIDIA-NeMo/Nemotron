@@ -1,0 +1,84 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "eval/model_eval"
+name = "Model Evaluation (NeMo Evaluator)"
+category = "eval"
+description = """Deploy a trained checkpoint behind an OpenAI-compatible endpoint and run benchmark suites with NeMo Evaluator, producing consolidated evaluation results."""
+tags = ["eval", "benchmarks", "nemo-evaluator", "checkpoint", "launcher"]
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "Megatron Bridge checkpoint directory, usually an iter_* directory, for deployment and evaluation."
+required = false
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "Hugging Face checkpoint or model path for deployment and evaluation."
+required = false
+
+[[produces]]
+type = "eval_results"
+description = "Benchmark metrics, artifacts, and evaluation summaries produced by NeMo Evaluator."
+
+[[parameters]]
+name = "benchmarks"
+description = "Benchmark task names to run, using NeMo Evaluator or launcher task identifiers."
+default = ["lm-evaluation-harness.ifeval", "simple_evals.gpqa_diamond"]
+
+[[strategies]]
+when = "The input artifact is checkpoint_hf"
+then = "Deploy with a Hugging Face-friendly backend such as vLLM or Ray Serve, then point NeMo Evaluator at the resulting chat or completions endpoint."
+skill = "skills/nemotron-customize/context/eval-deploy-formats.txt"
+
+[[strategies]]
+when = "The input artifact is checkpoint_megatron"
+then = "Deploy the iter_* Megatron Bridge checkpoint with the Megatron-serving path and use the checkpoint tokenizer for log-probability benchmarks."
+skill = "skills/nemotron-customize/context/eval-deploy-formats.txt"
+
+[[strategies]]
+when = "The benchmark suite is chat or instruction-following oriented"
+then = "Use a chat endpoint and start from deterministic generation settings unless the model card recommends reasoning-specific settings."
+skill = "skills/nemotron-customize/context/eval-standard-nlu.txt"
+
+[[strategies]]
+when = "The benchmark suite is log-probability based, such as arc_challenge, hellaswag, or piqa"
+then = "Use a completions endpoint with logprobs support and provide a matching tokenizer path or model handle."
+skill = "skills/nemotron-customize/context/eval-standard-nlu.txt"
+
+[[strategies]]
+when = "You are evaluating a reasoning model"
+then = "Increase max_new_tokens, enable reasoning-trace processing, and use the model-card temperature and top-p defaults for reasoning tasks."
+skill = "skills/nemotron-customize/context/eval-standard-nlu.txt"
+
+[[errors]]
+name = "missing_tokenizer_for_logprobs"
+recovery = "Provide tokenizer and tokenizer_backend for log-probability tasks, using checkpoint/tokenizer for Megatron Bridge or the HF tokenizer handle/path for checkpoint_hf."
+
+[[errors]]
+name = "wrong_endpoint_type"
+recovery = "Use chat endpoints for instruction/chat benchmarks and completions endpoints with logprobs for multiple-choice log-probability tasks."
+
+[[errors]]
+name = "bad_megatron_checkpoint_path"
+recovery = "Point evaluation deployment at the specific iter_* checkpoint directory rather than only the parent output folder."
+
+[reference]
+script = "https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator-launcher/examples/local_basic.yaml"
+docs = "https://docs.nvidia.com/nemo/evaluator/latest/get-started/quickstart/launcher.html"
+skills = [
+  "skills/nemotron-customize/context/eval-standard-nlu.txt",
+  "skills/nemotron-customize/context/eval-deploy-formats.txt",
+]

@@ -1,0 +1,92 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "sft/automodel"
+name = "SFT Training (AutoModel)"
+category = "sft"
+description = """\
+Supervised fine-tuning with the AutoModel stack for HF-format models and JSONL
+datasets that already use OpenAI chat-format messages. Supports full SFT and
+LoRA-style adapter tuning from the same step."""
+tags = ["sft", "fine-tuning", "automodel", "huggingface", "peft"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Instruction data in JSONL with a messages field"
+required = true
+
+[[produces]]
+type = "checkpoint_hf"
+description = "HuggingFace checkpoint directory (full model or adapter-style PEFT output)"
+
+[[models]]
+name = "Qwen/Qwen3.6-35B-A3B"
+description = "Larger MoE HF backbone example for AutoModel SFT and LoRA-style runs."
+default = true
+min_gpus = 8
+
+[[models]]
+name = "mistralai/Mistral-7B-Instruct-v0.3"
+description = "Good default when GPU count is small and iteration speed matters."
+min_gpus = 2
+
+[[models]]
+name = "meta-llama/Llama-3.1-8B-Instruct"
+description = "Common HF baseline for single-node SFT and LoRA."
+min_gpus = 4
+
+[[parameters]]
+name = "peft"
+description = "Use 'lora' for adapter tuning, or 'null' for full fine-tuning."
+default = "lora"
+choices = ["lora", "null"]
+
+[[strategies]]
+when = "1-2 GPUs or memory is tight"
+then = "prefer peft=lora and start with a Mistral-class model"
+skill = "skills/nemotron-customize/context/automodel-sft-peft-core.txt"
+
+[[strategies]]
+when = "3-4 GPUs and the model fits comfortably"
+then = "consider full fine-tuning only if checkpoint size and iteration speed are acceptable"
+skill = "Automodel/docs/guides/llm/finetune.md"
+
+[[strategies]]
+when = "dataset already uses OpenAI chat-format JSONL"
+then = "skip prep/sft_packing and train directly from training_jsonl"
+skill = "Automodel/docs/guides/dataset-overview.md"
+
+[[strategies]]
+when = "you need an immediately deployable HF checkpoint"
+then = "save safetensors checkpoints and prefer the consolidated HF output layout"
+skill = "Automodel/docs/guides/checkpointing.md"
+
+[[errors]]
+name = "chat_template_missing"
+recovery = "use a tokenizer with chat-template support, or convert the data to prompt/completion format before training"
+
+[[errors]]
+name = "oom"
+recovery = "switch to peft=lora, reduce batch size, or move to a smaller model"
+skill = "skills/nemotron-customize/context/automodel-sft-peft-core.txt"
+
+[reference]
+script = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/nemo_automodel/recipes/llm/train_ft.py"
+config = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/examples/llm_finetune/llama3_1/llama3_1_8b_columnmapped_lora.yaml"
+docs = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/docs/guides/llm/finetune.md"
+skills = [
+  "skills/nemotron-customize/context/automodel-sft-peft-core.txt",
+  "skills/nemotron-customize/context/automodel-launcher-executor-modes.txt",
+]

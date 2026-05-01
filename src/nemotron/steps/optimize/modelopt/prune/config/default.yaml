@@ -1,0 +1,89 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Generic structured-pruning config for NVIDIA Model Optimizer + Megatron-Bridge.
+#
+# Reference flow:
+# - The upstream script is named prune_minitron.py because it implements the
+#   ModelOpt Minitron pruning algorithm, but this step is intentionally generic
+#   for supported HuggingFace GPT/Mamba-family checkpoints.
+# - It can search for a target parameter budget or apply a manually supplied
+#   architecture through prune_export_config.
+# - Upstream examples use calibration/evaluation data from a gated Nemotron
+#   post-training dataset by default; override data-related flags in args: or
+#   extra_args when using your own data.
+#
+# Usage:
+#   nemotron step run optimize/modelopt/prune -c default
+#   nemotron step run optimize/modelopt/prune -c default args.prune_target_params=6e9
+#
+# Script arguments are forwarded from args: using underscore CLI flags. For
+# example, args.prune_target_params becomes --prune_target_params. New upstream
+# flags can be added directly under args: or passed literally through extra_args.
+
+script:
+  path: null
+  flag_style: underscore
+
+args:
+  # HuggingFace model id/path to prune.
+  hf_model_name_or_path: Qwen/Qwen3-8B
+
+  # Output HuggingFace checkpoint path for the pruned model.
+  output_hf_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/optimize/prune/pruned-hf
+
+  # Pipeline parallelism for pruning. The ModelOpt README example uses pp_size=2
+  # on 2 GPUs. Use uneven stage args below when layers do not divide cleanly.
+  pp_size: 2
+
+  # Search target. Use scientific notation strings/floats, e.g. 6e9 for 6B params.
+  # Set null when using prune_export_config for manual architecture pruning.
+  prune_target_params: 6e9
+
+  # Manual architecture override. When set, upstream skips target search and
+  # prunes to this exact shape. Common keys include:
+  # - hidden_size
+  # - ffn_hidden_size
+  # - num_layers
+  # - num_attention_heads
+  # - num_query_groups
+  prune_export_config: null
+  # prune_export_config:
+  #   hidden_size: 3584
+  #   ffn_hidden_size: 9216
+
+  # Hparams to leave untouched during search. Possible values depend on model
+  # architecture; common values include:
+  # - num_attention_heads
+  # - num_query_groups
+  # - hidden_size
+  # - ffn_hidden_size
+  # - num_layers
+  hparams_to_skip: null
+  # hparams_to_skip: num_attention_heads
+
+  # Uneven PP helpers when layer count is not divisible by pp_size.
+  num_layers_in_first_pipeline_stage: null
+  num_layers_in_last_pipeline_stage: null
+
+  trust_remote_code: true
+
+torchrun:
+  nproc_per_node: 2
+  # nnodes: 1
+  # node_rank: 0
+  # master_addr: localhost
+  # master_port: 29500
+
+extra_args: []

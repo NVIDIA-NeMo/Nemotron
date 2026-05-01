@@ -1,0 +1,132 @@
+# Nemotron Data Prep Context
+
+Use this pack for:
+
+- `prep/sft_packing`
+- `prep/pretrain_prep`
+- `prep/rl_prep`
+
+The step family wraps `src/nemotron/data_prep` recipes. Keep path resolution,
+scratch handling, and output contracts consistent across prep steps.
+
+## Shared Principles
+
+- Resolve output paths before changing into scratch directories.
+- Keep HF dataset references compatible with local JSONL/parquet files.
+- Emit deterministic splits and shard manifests.
+- Treat tokenizer outputs as tokenizer-locked; changing tokenizer means rerun
+  prep.
+- Keep receipts/manifests near the output so downstream stages can validate
+  what was produced.
+
+The shared helper file is:
+
+```text
+src/nemotron/steps/prep/_common.py
+```
+
+Use it for:
+
+- `resolve_blend_path`
+- `resolve_output_dir`
+- `chdir_to_scratch`
+- config dataclass conversion
+
+## SFT Packing
+
+Step: `prep/sft_packing`
+
+Consumes OpenAI chat-format JSONL and emits packed Parquet for Megatron-Bridge.
+
+Important knobs:
+
+- tokenizer
+- chat template
+- `pack_size`
+- packing algorithm
+- `num_shards`
+
+Keep `pack_size` equal to downstream SFT `seq_length` /
+`packed_sequence_size`. Too many shards on small samples creates tiny files and
+bad throughput.
+
+Use this before:
+
+```text
+sft/megatron_bridge
+peft/megatron_bridge
+```
+
+Skip it before AutoModel unless the user explicitly wants packed Parquet.
+
+## Pretraining Prep
+
+Step: `prep/pretrain_prep`
+
+Consumes curated text and emits Megatron bin/idx shards plus `blend.json`.
+
+Important knobs:
+
+- tokenizer model
+- split ratios or explicit split definitions
+- shard count
+- optional document truncation
+- source blend containing HF/local inputs
+
+Use this before:
+
+```text
+pretrain/megatron_bridge
+pretrain/automodel
+optimize/modelopt/distill
+```
+
+Changing tokenizer or sequence length assumptions requires rerunning prep.
+
+## RL Prep
+
+Step: `prep/rl_prep`
+
+Consumes RL blend references and emits sharded JSONL for NeMo-RL.
+
+For DPO, preserve:
+
+- `prompt`
+- `chosen`
+- `rejected`
+
+For RLVR, preserve:
+
+- `prompt`
+- verifier fields such as `answer`, tests, expected output, or environment
+  metadata
+
+For RLHF, preserve:
+
+- prompt text
+- metadata required by the reward model
+
+Use `resolve_hf_placeholders: true` when the training cluster may not have HF
+Hub access.
+
+## HF Dataset Compatibility
+
+Configs should allow a blend entry to describe:
+
+- HF dataset id
+- split
+- text/messages field mapping
+- optional sampling limit
+- local JSONL or parquet path
+
+Avoid embedding one dataset's schema in the wrapper. Put schema mapping in YAML.
+
+## Staleness Checks
+
+When updating prep:
+
+- verify downstream artifact type still matches (`packed_parquet`, `binidx`, or
+  `training_jsonl`)
+- verify the output path is resolved before scratch chdir
+- verify config comments mention tokenizer lock-in
+- run `uv run pytest tests/steps/prep -q` and `uv run pytest tests/steps -q`

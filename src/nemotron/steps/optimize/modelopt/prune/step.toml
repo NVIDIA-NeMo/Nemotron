@@ -1,0 +1,67 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "optimize/modelopt/prune"
+name = "Pruning (ModelOpt + Megatron-Bridge)"
+category = "optimize"
+description = """\
+Prune HuggingFace GPT/Mamba-family checkpoints with NVIDIA Model Optimizer and
+Megatron-Bridge. Supports target-parameter search or manual architecture
+pruning via config-controlled upstream arguments."""
+tags = ["optimize", "modelopt", "pruning", "structured-pruning", "megatron-bridge"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "HuggingFace model or checkpoint to prune."
+required = true
+
+[[produces]]
+type = "checkpoint_hf"
+description = "Pruned HuggingFace checkpoint."
+
+[[parameters]]
+name = "args.prune_target_params"
+description = "Target parameter count for search, e.g. 6e9."
+default = 6e9
+
+[[parameters]]
+name = "args.prune_export_config"
+description = "Manual architecture dict such as hidden_size / ffn_hidden_size / num_layers."
+
+[[parameters]]
+name = "args.hparams_to_skip"
+description = "Architecture hparams to leave untouched, e.g. num_attention_heads."
+
+[[parameters]]
+name = "extra_args"
+description = "Literal upstream args for newly added ModelOpt pruning flags."
+default = []
+
+[[strategies]]
+when = "You know the target model budget"
+then = "Set args.prune_target_params and leave args.prune_export_config null so ModelOpt searches candidates."
+
+[[strategies]]
+when = "You need a specific architecture"
+then = "Set args.prune_export_config and set args.prune_target_params=null."
+
+[[strategies]]
+when = "Layer count does not divide PP size"
+then = "Use args.num_layers_in_first_pipeline_stage / args.num_layers_in_last_pipeline_stage for uneven PP."
+
+[reference]
+modelopt_megatron_bridge = "https://github.com/NVIDIA/Model-Optimizer/blob/main/examples/megatron_bridge/README.md"
+modelopt = "https://github.com/NVIDIA/Model-Optimizer"
+skills = ["skills/nemotron-customize/context/modelopt-optimization.txt"]

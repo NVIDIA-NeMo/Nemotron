@@ -1,0 +1,64 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "rl/nemo_rl/rlvr"
+name = "RL — RLVR / GRPO (NeMo-RL)"
+category = "rl"
+description = """\
+RL with Verifiable Rewards via GRPO (NeMo-RL). Designed for tasks with
+programmatic reward signals such as math problem solving or unit-tested code.
+Use config/nemo_gym.yaml for NeMo-Gym resource-server rewards."""
+tags = ["rl", "rlvr", "grpo", "verifiable-rewards", "nemo-rl", "nemo-gym"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Prompt JSONL with verifiable answers (e.g. ground-truth solutions for math)."
+required = true
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "SFT policy to optimise."
+required = true
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "RLVR-aligned checkpoint."
+
+[[parameters]]
+name = "grpo.num_generations_per_prompt"
+description = "Rollouts per prompt; the GRPO group size."
+default = 8
+
+[[parameters]]
+name = "grpo.normalize_rewards"
+description = "Normalise rewards within the group before computing advantages."
+default = true
+
+[[parameters]]
+name = "env.should_use_nemo_gym"
+description = "Switch from the upstream math example to the generic NeMo-Gym GRPO runner."
+default = false
+
+[[strategies]]
+when = "Reward variance is low"
+then = "Raise num_generations_per_prompt and use leave-one-out baselines."
+
+[[strategies]]
+when = "You have Super3-style JSONL or resource-server rewards"
+then = "Start from config/nemo_gym.yaml and set data.train.data_path, data.validation.data_path, and env.nemo_gym.config_paths."
+
+[reference]
+script = "https://github.com/NVIDIA-NeMo/RL/blob/main/examples/run_grpo_math.py"
+skills = ["skills/nemotron-customize/context/nemo-rl-alignment.txt"]

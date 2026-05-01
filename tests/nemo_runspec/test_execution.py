@@ -23,27 +23,29 @@ Also tests Ray executor helpers and the cloud Ray backend patching.
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
 import base64
 import json
 import re
 from dataclasses import dataclass, field
+from unittest.mock import patch
+
+import pytest
 from omegaconf import OmegaConf
 
 from nemo_runspec.execution import (
     _derive_cloud_workspace,
     _get_env,
     _git_mount_commands,
+    _parse_netrc,
+    _ray_node_source_sync_cmd,
     _to_plain,
+    _transport_env_cleanup_cmd,
     build_env_vars,
     create_executor,
     get_executor_type,
     get_startup_commands,
-    prepend_startup_to_cmd,
-    _parse_netrc,
     materialize_podman_auth_from_enroot,
+    prepend_startup_to_cmd,
 )
 
 # ---------------------------------------------------------------------------
@@ -63,6 +65,7 @@ def _make_env_omegaconf(**kwargs):
 
 class _FakePackager:
     """Minimal packager stub for executor creation tests."""
+
     pass
 
 
@@ -108,6 +111,35 @@ class TestStartupCommands:
 
     def test_prepend_empty(self):
         assert prepend_startup_to_cmd([], "main_cmd") == "main_cmd"
+
+
+class TestTransportEnvCleanup:
+    def test_cleanup_unsets_source_chunks_and_config_payload(self):
+        cmd = _transport_env_cleanup_cmd()
+
+        assert "_NEMOTRON_SRC_CHUNKS" in cmd
+        assert "_NEMOTRON_SRC_CHUNK_${i}" in cmd
+        assert "_NEMOTRON_SRC_SHA256" in cmd
+        assert "_NEMOTRON_CONFIG_B64" in cmd
+        assert "PYTHONPATH" not in cmd
+        assert "HF_TOKEN" not in cmd
+
+
+class TestRayNodeSourceSync:
+    def test_sync_command_pins_extraction_once_per_ray_node(self):
+        cmd = _ray_node_source_sync_cmd(
+            "/mnt/work/_nemotron/src",
+            "/mnt/work/_nemotron/src/.nemotron-src-ready-deadbeef-1234",
+        )
+
+        assert "python3 -c" in cmd
+        assert "_NEMOTRON_SRC_CHUNKS" in cmd
+        assert "NodeAffinitySchedulingStrategy" in cmd
+        assert "ray.get(refs, timeout=600)" in cmd
+        assert ".nemotron-src-ready-deadbeef-1234" in cmd
+
+    def test_sync_command_is_noop_without_marker(self):
+        assert _ray_node_source_sync_cmd("/mnt/work/_nemotron/src", None) == "true"
 
 
 # ---------------------------------------------------------------------------
@@ -316,19 +348,13 @@ class TestCreateExecutorDGXCloud:
             create_executor(env=env, env_vars={}, packager=_FakePackager())
 
     def test_dgxcloud_with_pvcs(self, dgxcloud_env):
-        dgxcloud_env["pvcs"] = [
-            {"claimName": "my-pvc", "path": "/data", "readOnly": False}
-        ]
-        executor = create_executor(
-            env=dgxcloud_env, env_vars={}, packager=_FakePackager()
-        )
+        dgxcloud_env["pvcs"] = [{"claimName": "my-pvc", "path": "/data", "readOnly": False}]
+        executor = create_executor(env=dgxcloud_env, env_vars={}, packager=_FakePackager())
         assert executor.pvcs == [{"claimName": "my-pvc", "path": "/data", "readOnly": False}]
 
     def test_dgxcloud_with_custom_spec(self, dgxcloud_env):
         dgxcloud_env["custom_spec"] = {"schedulerName": "runai-scheduler"}
-        executor = create_executor(
-            env=dgxcloud_env, env_vars={}, packager=_FakePackager()
-        )
+        executor = create_executor(env=dgxcloud_env, env_vars={}, packager=_FakePackager())
         assert executor.custom_spec == {"schedulerName": "runai-scheduler"}
 
     def test_dgxcloud_with_omegaconf(self):
@@ -405,37 +431,27 @@ class TestCreateExecutorLepton:
         lepton_env["mounts"] = [
             {"path": "/data", "mount_path": "/data"},
         ]
-        executor = create_executor(
-            env=lepton_env, env_vars={}, packager=_FakePackager()
-        )
+        executor = create_executor(env=lepton_env, env_vars={}, packager=_FakePackager())
         assert executor.mounts == [{"path": "/data", "mount_path": "/data"}]
 
     def test_lepton_with_shared_memory(self, lepton_env):
         lepton_env["shared_memory_size"] = 131072
-        executor = create_executor(
-            env=lepton_env, env_vars={}, packager=_FakePackager()
-        )
+        executor = create_executor(env=lepton_env, env_vars={}, packager=_FakePackager())
         assert executor.shared_memory_size == 131072
 
     def test_lepton_with_pre_launch_commands(self, lepton_env):
         lepton_env["pre_launch_commands"] = ["pip install foo", "echo ready"]
-        executor = create_executor(
-            env=lepton_env, env_vars={}, packager=_FakePackager()
-        )
+        executor = create_executor(env=lepton_env, env_vars={}, packager=_FakePackager())
         assert executor.pre_launch_commands == ["pip install foo", "echo ready"]
 
     def test_lepton_with_node_reservation(self, lepton_env):
         lepton_env["node_reservation"] = "reserved-pool-123"
-        executor = create_executor(
-            env=lepton_env, env_vars={}, packager=_FakePackager()
-        )
+        executor = create_executor(env=lepton_env, env_vars={}, packager=_FakePackager())
         assert executor.node_reservation == "reserved-pool-123"
 
     def test_lepton_with_image_pull_secrets(self, lepton_env):
         lepton_env["image_pull_secrets"] = ["nvcr-secret"]
-        executor = create_executor(
-            env=lepton_env, env_vars={}, packager=_FakePackager()
-        )
+        executor = create_executor(env=lepton_env, env_vars={}, packager=_FakePackager())
         assert executor.image_pull_secrets == ["nvcr-secret"]
 
     def test_lepton_with_omegaconf(self):
@@ -658,10 +674,12 @@ class TestDeriveCloudWorkspace:
         assert any("ephemeral" in rec.message for rec in caplog.records)
 
     def test_omegaconf_env_supported(self):
-        env = OmegaConf.create({
-            "executor": "lepton",
-            "mounts": [{"path": "/src", "mount_path": "/mnt/omega"}],
-        })
+        env = OmegaConf.create(
+            {
+                "executor": "lepton",
+                "mounts": [{"path": "/src", "mount_path": "/mnt/omega"}],
+            }
+        )
         assert _derive_cloud_workspace(env) == "/mnt/omega"
 
 
@@ -896,8 +914,7 @@ class TestParseNetrc:
         # ``default`` is netrc's catch-all entry; we don't surface it
         # because podman auth.json is keyed per-registry.
         content = (
-            "machine nvcr.io login $oauthtoken password nvapi-secret\n"
-            "default login fallback password fbk-token\n"
+            "machine nvcr.io login $oauthtoken password nvapi-secret\ndefault login fallback password fbk-token\n"
         )
         assert _parse_netrc(content) == {
             "nvcr.io": ("$oauthtoken", "nvapi-secret"),
@@ -932,9 +949,7 @@ class TestMaterializePodmanAuth:
         tunnel = _ScriptedTunnel(
             files={self.DEFAULT_PATH: "machine gitlab.example.com login a password b\n"},
         )
-        assert (
-            materialize_podman_auth_from_enroot(tunnel, "/lustre/cache/.auth") is None
-        )
+        assert materialize_podman_auth_from_enroot(tunnel, "/lustre/cache/.auth") is None
         assert tunnel.writes == {}
 
     def test_writes_auth_json_for_default_registry(self):
@@ -980,17 +995,12 @@ class TestMaterializePodmanAuth:
         materialize_podman_auth_from_enroot(tunnel, "/lustre/cache/.auth")
         # The chmod is part of the same shell command as the write; assert
         # at least one issued command sets 0600 on the auth file.
-        assert any(
-            "chmod 600" in c and "/lustre/cache/.auth/auth.json" in c
-            for c in tunnel.commands
-        ), tunnel.commands
+        assert any("chmod 600" in c and "/lustre/cache/.auth/auth.json" in c for c in tunnel.commands), tunnel.commands
 
     def test_creates_out_dir(self):
         tunnel = _ScriptedTunnel(files={self.DEFAULT_PATH: self.NETRC})
         materialize_podman_auth_from_enroot(tunnel, "/lustre/cache/.auth")
-        assert any(
-            "mkdir -p" in c and "/lustre/cache/.auth" in c for c in tunnel.commands
-        ), tunnel.commands
+        assert any("mkdir -p" in c and "/lustre/cache/.auth" in c for c in tunnel.commands), tunnel.commands
 
     def test_custom_credentials_path(self):
         custom = "/etc/enroot/credentials"

@@ -272,6 +272,10 @@ def init_wandb_from_env() -> None:
     """
     project = os.environ.get("WANDB_PROJECT")
     entity = os.environ.get("WANDB_ENTITY")
+    run_name = os.environ.get("WANDB_NAME")
+    group = os.environ.get("WANDB_GROUP")
+    job_type = os.environ.get("WANDB_JOB_TYPE", "data-prep")
+    tags = [tag for tag in os.environ.get("WANDB_TAGS", "").split(",") if tag]
 
     if not project:
         return
@@ -284,7 +288,10 @@ def init_wandb_from_env() -> None:
             wandb.init(
                 project=project,
                 entity=entity,
-                job_type="data-prep",
+                name=run_name,
+                group=group,
+                tags=tags or None,
+                job_type=job_type,
             )
             # Set up lineage tracker for artifact publishing
             from nemotron.kit.trackers import WandbTracker, set_lineage_tracker

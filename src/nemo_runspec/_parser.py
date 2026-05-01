@@ -72,7 +72,9 @@ def parse_runspec(toml_dict: dict) -> Runspec:
         setup=rs.get("setup", "").strip(),
         run=RunspecRun(
             launch=run_data.get("launch", "torchrun"),
-            cmd=run_data.get("cmd", "python {script} --config {config}"),
+            # ``cmd`` defaults to None when the author doesn't declare one;
+            # backends pick the appropriate invocation for their environment.
+            cmd=run_data.get("cmd"),
             workdir=run_data.get("workdir"),
         ),
         config=RunspecConfig(

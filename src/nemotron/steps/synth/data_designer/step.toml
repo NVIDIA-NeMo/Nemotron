@@ -1,0 +1,61 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "synth/data_designer"
+name = "Synthetic Data Generation (NeMo Data Designer)"
+category = "synth"
+description = """\
+Build a NeMo Data Designer pipeline declaratively and generate synthetic data.
+Two recipes ship in config/: 'default' produces SFT chat data,
+'rl_pref' produces preference pairs (chosen / rejected) for DPO.
+
+Customisation lives in YAML — step.py just translates declarative column specs
+into the upstream DataDesignerConfigBuilder API."""
+tags = ["synth", "data-designer", "sft", "rl", "preferences"]
+
+[[consumes]]
+type = "training_jsonl"
+description = "Seed examples — a handful of high-quality records that anchor the generation."
+required = false
+
+[[produces]]
+type = "synthetic_jsonl"
+description = "Generated JSONL (chat or preference format depending on the chosen pipeline)."
+
+[[parameters]]
+name = "num_records"
+description = "Total synthetic records to generate via client.create()."
+default = 1000
+
+[[parameters]]
+name = "seed_dataset.path"
+description = "Path to seed JSONL referenced by 'seed'-typed columns."
+
+[[strategies]]
+when = "Iterating on column specs"
+then = "Run with --preview to emit a small batch via client.preview() before scaling to client.create()."
+
+[[strategies]]
+when = "Generating preference data for DPO"
+then = "Use config/rl_pref.yaml — it emits chosen / rejected fields ready for rl/nemo_rl/dpo."
+
+[[strategies]]
+when = "Output needs to feed prep/sft_packing"
+then = "Add a final post-processing column or transform that projects the generated columns into OpenAI 'messages' chat format."
+
+[reference]
+docs = "https://nvidia-nemo.github.io/DataDesigner/latest/"
+upstream = "https://github.com/NVIDIA-NeMo/DataDesigner"
+skills = ["skills/nemotron-customize/context/data-designer-synth.txt"]

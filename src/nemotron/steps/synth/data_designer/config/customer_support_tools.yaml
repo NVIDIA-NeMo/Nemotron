@@ -1,0 +1,172 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Multi-turn customer-support SFT data with OpenAI-style tool calls.
+#
+# Output records are training-ready JSONL:
+#   {"messages": [...], "tools": [...], ...metadata}
+#
+# Each generated conversation includes one assistant tool call, one matching
+# tool response, and a final assistant answer grounded in that tool result.
+
+output_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/synth/customer_support_tool_sft.jsonl
+num_records: 1000
+
+seed_dataset:
+  path: ${oc.env:PWD}/src/nemotron/steps/synth/data_designer/data/customer_support_tool_seeds.jsonl
+  strategy: shuffle
+  fields: [customer_name, issue, order_id, product, policy_hint]
+
+models:
+  - alias: nvidia-text
+    model: nvidia/nemotron-3-nano-30b-a3b
+    provider: nvidia
+    skip_health_check: true
+    inference_parameters:
+      temperature: 0.75
+      top_p: 0.95
+      max_tokens: 1800
+
+columns:
+  - name: urgency
+    type: category
+    values: [calm, frustrated, rushed, confused]
+
+  - name: channel
+    type: category
+    values: [web_chat, mobile_app, email_followup]
+
+  - name: conversation
+    type: llm_structured
+    model_alias: nvidia-text
+    prompt: |
+      Generate one realistic multi-turn ecommerce customer-support chat for SFT.
+
+      Seed facts:
+      - customer_name: {{ customer_name }}
+      - customer_issue: {{ issue }}
+      - order_id: {{ order_id }}
+      - product: {{ product }}
+      - policy_hint: {{ policy_hint }}
+      - customer_tone: {{ urgency }}
+      - channel: {{ channel }}
+
+      Requirements:
+      - Return only JSON matching the schema.
+      - Produce 6 to 10 messages in OpenAI chat format.
+      - Include a brief system message that defines the support-agent behavior.
+      - The user should speak naturally and provide imperfect information at first.
+      - The assistant should ask at least one clarifying question before using a tool.
+      - Include exactly one assistant message with tool_calls.
+      - Include exactly one tool message that has the matching tool_call_id.
+      - The assistant's final answer must use the tool result and the policy_hint.
+      - Do not include markdown in message content.
+      - Function arguments must be a JSON string, not a JSON object.
+
+      Available tool functions:
+      - lookup_order(order_id: string)
+      - check_refund_eligibility(order_id: string, reason: string)
+      - update_shipping_address(order_id: string, new_address: string)
+      - verify_warranty(order_id: string, product: string)
+      - get_subscription_status(order_id: string)
+
+      Example assistant tool-call message shape:
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_lookup_001",
+            "type": "function",
+            "function": {
+              "name": "lookup_order",
+              "arguments": "{\"order_id\":\"ORD-10492\"}"
+            }
+          }
+        ]
+      }
+
+      Example tool message shape:
+      {
+        "role": "tool",
+        "tool_call_id": "call_lookup_001",
+        "name": "lookup_order",
+        "content": "{\"status\":\"delayed\",\"eta\":\"tomorrow\"}"
+      }
+    output_format:
+      type: object
+      properties:
+        tools:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [function]
+              function:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  parameters:
+                    type: object
+                required: [name, description, parameters]
+            required: [type, function]
+        messages:
+          type: array
+          minItems: 6
+          maxItems: 10
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+                enum: [system, user, assistant, tool]
+              content:
+                type: string
+              tool_call_id:
+                type: string
+              name:
+                type: string
+              tool_calls:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    type:
+                      type: string
+                      enum: [function]
+                    function:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        arguments:
+                          type: string
+                      required: [name, arguments]
+                  required: [id, type, function]
+            required: [role, content]
+      required: [tools, messages]
+
+output_projection:
+  type: structured_messages
+  source_field: conversation
+  messages_field: messages
+  tools_field: tools
+  metadata_fields: [customer_name, issue, order_id, product, urgency, channel]

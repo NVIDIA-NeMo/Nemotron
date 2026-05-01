@@ -1,0 +1,59 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Megatron-Bridge LoRA defaults. Same recipe as sft/megatron_bridge but with peft block enabled.
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
+  packed_sequence: true
+  peft: lora
+  seq_length: 4096
+
+dataset:
+  nano3_packed_sft_dir: /path/to/packed/data
+  seq_length: 4096
+  packed_sequence_specs:
+    packed_sequence_size: 4096
+
+train:
+  train_iters: 1000
+  global_batch_size: 4
+
+model:
+  seq_length: 4096
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 1
+
+# LoRA adapter spec applied via megatron.bridge.recipes.utils.finetune_utils.default_peft_config
+peft:
+  type: lora
+  dim: 32
+  alpha: 32
+  dropout: 0.0
+  target_modules:
+    - linear_qkv
+    - linear_proj
+
+logger:
+  log_interval: 10
+  wandb_project: ${oc.env:WANDB_PROJECT,null}
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_exp_name: ${oc.env:WANDB_NAME,peft-megatron-bridge}
+
+checkpoint:
+  save: /nemo_run/peft-model
+  save_interval: 50
+  pretrained_checkpoint: /path/to/pretrained/checkpoint
+  finetune: true

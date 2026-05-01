@@ -1,0 +1,80 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# DPO preference data — two responses per prompt + LLM judge for chosen/rejected.
+
+output_path: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/synth/rl_pref.jsonl
+num_records: 2000
+
+seed_dataset:
+  path: ${oc.env:PWD}/seeds.jsonl
+  strategy: shuffle
+
+# Two model aliases: a high-temperature 'creative' model and a low-temperature
+# 'precise' model, so the resulting preference pairs are meaningfully distinct.
+models:
+  - alias: nvidia-text
+    model: nvidia/nemotron-3-nano-30b-a3b
+    provider: nvidia
+    skip_health_check: true
+    inference_parameters:
+      temperature: 0.9
+      top_p: 1.0
+      max_tokens: 1024
+
+  - alias: nvidia-text-precise
+    model: nvidia/nemotron-3-nano-30b-a3b
+    provider: nvidia
+    skip_health_check: true
+    inference_parameters:
+      temperature: 0.3
+      top_p: 1.0
+      max_tokens: 1024
+
+# `prompt` is supplied automatically by the seed dataset (must match the field
+# name in the seed JSONL). No need to declare it here.
+columns:
+  - name: response_a
+    type: llm_text
+    model_alias: nvidia-text
+    prompt: "Answer the user's question: {{ prompt }}"
+
+  - name: response_b
+    type: llm_text
+    model_alias: nvidia-text-precise
+    prompt: "Answer the user's question: {{ prompt }}"
+
+  - name: judge
+    type: llm_judge
+    model_alias: nvidia-text
+    prompt: |
+      Compare two responses for: {{ prompt }}
+      A: {{ response_a }}
+      B: {{ response_b }}
+      Which is more helpful and correct?
+    output_format:
+      type: object
+      properties:
+        winner:
+          type: string
+          enum: [A, B]
+      required: [winner]
+
+output_projection:
+  type: dpo_preference
+  prompt_field: prompt
+  response_a_field: response_a
+  response_b_field: response_b
+  judge_field: judge
+  winner_field: winner

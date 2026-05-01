@@ -1,0 +1,29 @@
+[case]
+name = "add-rl-after-sft"
+description = "Multi-turn case that adds a GRPO RL stage after an initial SFT pipeline."
+tags = ["iteration", "add-stage", "rl", "grpo", "multi-turn"]
+
+[input]
+request = "Build a Nano3 SFT pipeline for my instruction JSONL on 2 nodes of 8x H100."
+
+[expected.steps]
+must_include = ["prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+may_include = []
+must_exclude = ["sft/automodel"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 3, max = 3 }
+must_mention = ["Nano3", "checkpoint_megatron"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_prep", "02_sft", "03_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.iteration]
+followup = "Add RL with GRPO after SFT."
+must_add_stage = "03_rl"
+must_have_step = "rl/nemo_rl_grpo"
+must_mention = ["GRPO", "checkpoint_megatron"]

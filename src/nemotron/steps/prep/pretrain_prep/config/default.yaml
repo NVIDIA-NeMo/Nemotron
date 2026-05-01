@@ -1,0 +1,36 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Pretrain bin/idx tokenisation. HF-dataset compatible via the blend file.
+
+blend_path: /path/to/pretrain_blend.json   # references HF or local datasets
+output_dir: /nemo_run/pretrain-binidx
+num_shards: 128
+
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+  add_bos: false
+  add_eos: true
+
+dtype: int32
+text_field: text
+min_doc_chars: null
+max_doc_tokens: null
+
+sample: null
+sample_seed: 42
+force: false
+
+observability:
+  pipeline_logging_interval_s: 30

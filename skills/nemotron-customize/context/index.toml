@@ -1,0 +1,160 @@
+[[packs]]
+id = "sft-megatron-bridge-generate"
+step = "sft/megatron_bridge"
+intent = "generate"
+file = "mbridge-sft-full.txt"
+description = "Generate Megatron-Bridge SFT stage code — recipes, configs, training loop, and packed-sequence guidance."
+
+[[packs]]
+id = "sft-megatron-bridge-tune-performance"
+step = "sft/megatron_bridge"
+intent = "tune-performance"
+file = "mbridge-parallelism-performance.txt"
+description = "Tune Megatron-Bridge parallelism and performance — TP/PP/FSDP, overlap, recomputation, and sequence packing."
+
+[[packs]]
+id = "pretrain-megatron-bridge-generate"
+step = "pretrain/megatron_bridge"
+intent = "generate"
+file = "mbridge-pretrain.txt"
+description = "Generate Megatron-Bridge pretraining stage code — model docs, training loop, configs, and checkpointing patterns."
+
+[[packs]]
+id = "sft-automodel-generate"
+step = "sft/automodel"
+intent = "generate"
+file = "automodel-sft-peft-core.txt"
+description = "Generate AutoModel SFT stage code — dataset, finetune, PEFT, and core launcher patterns."
+
+[[packs]]
+id = "sft-automodel-launch"
+step = "sft/automodel"
+intent = "launch"
+file = "automodel-launcher-executor-modes.txt"
+description = "Choose AutoModel launcher and executor mode — local workstation, NeMo Run, SkyPilot, and Slurm."
+
+[[packs]]
+id = "curate-nemo-curator-acquire"
+step = "curate/nemo_curator"
+intent = "acquire"
+file = "curator-data-acquisition.txt"
+description = "Acquire and load text data with NeMo Curator — Common Crawl, custom sources, and existing datasets."
+
+[[packs]]
+id = "curate-nemo-curator-process"
+step = "curate/nemo_curator"
+intent = "process"
+file = "curator-processing-language-quality.txt"
+description = "Process text data with NeMo Curator — language filtering, quality assessment, and related pipelines."
+
+[[packs]]
+id = "translate-nemo-skills-generate"
+step = "translate/nemo_skills"
+intent = "generate"
+file = "speaker-translation-faith.txt"
+description = "Generate translation stage code — JSONL translation pipeline, faith evaluation, and I/O formats."
+
+[[packs]]
+id = "eval-model-eval-generate"
+step = "eval/model_eval"
+intent = "generate"
+file = "eval-standard-nlu.txt"
+description = "Generate evaluation stage code for standard NLU benchmarks — benchmark catalog, run modes, and parameter patterns."
+
+[[packs]]
+id = "eval-model-eval-deploy"
+step = "eval/model_eval"
+intent = "deploy"
+file = "eval-deploy-formats.txt"
+description = "Configure evaluator deployment targets and model formats — NIM, vLLM, Hugging Face, and Megatron-Bridge inputs."
+
+[[packs]]
+id = "pretrain-automodel-generate"
+step = "pretrain/automodel"
+intent = "generate"
+file = "automodel-pretrain.txt"
+description = "Generate AutoModel pretraining/CPT stages — recipe override, bin/idx data, FSDP2, and HF checkpoint output."
+
+[[packs]]
+id = "peft-automodel-generate"
+step = "peft/automodel"
+intent = "generate"
+file = "automodel-sft-peft-core.txt"
+description = "Generate AutoModel PEFT/LoRA stages — chat JSONL input, LoRA knobs, and HF adapter output."
+
+[[packs]]
+id = "peft-megatron-bridge-generate"
+step = "peft/megatron_bridge"
+intent = "generate"
+file = "mbridge-sft-full.txt"
+description = "Generate Megatron-Bridge PEFT/LoRA stages — packed Parquet input, adapter output, and SFT-compatible training flow."
+
+[[packs]]
+id = "prep-data-generate"
+step = "prep/sft_packing"
+intent = "generate"
+file = "nemotron-data-prep.txt"
+description = "Generate SFT packing stages — chat templates, sequence packing, shard sizing, and packed Parquet outputs."
+
+[[packs]]
+id = "prep-pretrain-generate"
+step = "prep/pretrain_prep"
+intent = "generate"
+file = "nemotron-data-prep.txt"
+description = "Generate pretraining data prep stages — HF/local blends, bin/idx tokenization, split blends, and tokenizer lock-in."
+
+[[packs]]
+id = "prep-rl-generate"
+step = "prep/rl_prep"
+intent = "generate"
+file = "nemotron-data-prep.txt"
+description = "Generate RL data prep stages — HF placeholder resolution, sharded JSONL, and DPO/RLVR/RLHF schemas."
+
+[[packs]]
+id = "synth-data-designer-generate"
+step = "synth/data_designer"
+intent = "generate"
+file = "data-designer-synth.txt"
+description = "Generate Data Designer synthetic-data stages — column specs, seed data, output projections, preference data, and tool-call SFT."
+
+[[packs]]
+id = "rl-nemo-rl-dpo-generate"
+step = "rl/nemo_rl/dpo"
+intent = "generate"
+file = "nemo-rl-alignment.txt"
+description = "Generate NeMo-RL DPO stages — preference JSONL, reference-policy KL, and aligned checkpoint output."
+
+[[packs]]
+id = "rl-nemo-rl-rlvr-generate"
+step = "rl/nemo_rl/rlvr"
+intent = "generate"
+file = "nemo-rl-alignment.txt"
+description = "Generate NeMo-RL RLVR/GRPO stages — verifier fields, rollout groups, and reward-variance guidance."
+
+[[packs]]
+id = "rl-nemo-rl-rlhf-generate"
+step = "rl/nemo_rl/rlhf"
+intent = "generate"
+file = "nemo-rl-alignment.txt"
+description = "Generate NeMo-RL RLHF stages — prompt data, reward model, KL/reward clipping, and GRPO reward-model flow."
+
+[[packs]]
+id = "optimize-modelopt-quantize-generate"
+step = "optimize/modelopt/quantize"
+intent = "generate"
+file = "modelopt-optimization.txt"
+description = "Generate ModelOpt quantization stages — FP8/NVFP4 recipes, calibration, parallelism, and Megatron checkpoint output."
+
+[[packs]]
+id = "optimize-modelopt-prune-generate"
+step = "optimize/modelopt/prune"
+intent = "generate"
+file = "modelopt-optimization.txt"
+description = "Generate ModelOpt pruning stages — Minitron target search, fixed architecture pruning, and HF checkpoint output."
+
+[[packs]]
+id = "optimize-modelopt-distill-generate"
+step = "optimize/modelopt/distill"
+intent = "generate"
+file = "modelopt-optimization.txt"
+description = "Generate ModelOpt distillation stages — teacher/student setup, bin/idx data, mock-data smoke tests, and quality recovery."
