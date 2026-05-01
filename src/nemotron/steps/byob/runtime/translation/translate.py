@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Curator-backed translation for BYOB benchmark rows."""
+"""Curator experimental translation for BYOB benchmark rows."""
 
 from __future__ import annotations
 
@@ -55,10 +55,10 @@ def _load_curator_symbols() -> _CuratorSymbols:
     try:
         from nemo_curator.models.client.llm_client import GenerationConfig
         from nemo_curator.models.client.openai_client import AsyncOpenAIClient
-        from nemo_curator.stages.text.translation import TranslationStage
+        from nemo_curator.stages.text.experimental.translation import TranslationStage
         from nemo_curator.tasks import DocumentBatch
     except ImportError as exc:  # pragma: no cover - exercised only without Curator installed
-        raise ImportError("BYOB translation requires Curator translation support to be installed.") from exc
+        raise ImportError("BYOB translation requires Curator experimental translation support.") from exc
 
     return _CuratorSymbols(
         async_openai_client=AsyncOpenAIClient,
@@ -69,7 +69,7 @@ def _load_curator_symbols() -> _CuratorSymbols:
 
 
 class CuratorTranslationModule:
-    """Translate BYOB seed rows with Curator's translation stages."""
+    """Translate BYOB seed rows with Curator experimental translation stages."""
 
     def __init__(
         self,
@@ -120,7 +120,7 @@ class CuratorTranslationModule:
         out = batch.to_pandas()
         if self.translation_field not in out.columns:
             raise RuntimeError(
-                f"Curator translation did not emit the expected {self.translation_field!r} column."
+                f"Curator experimental translation did not emit the expected {self.translation_field!r} column."
             )
         return out
 
@@ -275,21 +275,23 @@ class CuratorTranslationModule:
                 return os.environ[env_name]
 
         if provider == "nvidia":
-            raise RuntimeError("Set NGC_API_KEY or NVIDIA_API_KEY before running Curator-backed BYOB translation.")
+            raise RuntimeError(
+                "Set NGC_API_KEY or NVIDIA_API_KEY before running Curator experimental BYOB translation."
+            )
         return None
 
     def _validate_required_columns(self, dataframe: pd.DataFrame) -> None:
         required_columns = [self.id_field, self.text_field, self.src_lang_field, self.tgt_lang_field]
         missing = [column for column in required_columns if column not in dataframe.columns]
         if missing:
-            raise ValueError(f"Curator translation input is missing required columns: {missing}")
+            raise ValueError(f"Curator experimental translation input is missing required columns: {missing}")
 
     def _get_language_pair(self, dataframe: pd.DataFrame) -> tuple[str, str]:
         source_langs = _unique_nonempty_values(dataframe[self.src_lang_field])
         target_langs = _unique_nonempty_values(dataframe[self.tgt_lang_field])
         if len(source_langs) != 1 or len(target_langs) != 1:
             raise ValueError(
-                "Curator-backed BYOB translation expects one source/target language pair per translation pass. "
+                "Curator experimental BYOB translation expects one source/target language pair per translation pass. "
                 f"Got source={source_langs}, target={target_langs}."
             )
         return source_langs[0], target_langs[0]
@@ -297,10 +299,10 @@ class CuratorTranslationModule:
 
 def _coerce_single_batch(result: Any) -> Any:
     if result is None:
-        raise RuntimeError("Curator translation stage returned no batch")
+        raise RuntimeError("Curator experimental translation stage returned no batch")
     if isinstance(result, list):
         if len(result) != 1:
-            raise RuntimeError(f"Curator translation stage returned {len(result)} batches; expected 1")
+            raise RuntimeError(f"Curator experimental translation stage returned {len(result)} batches; expected 1")
         return result[0]
     return result
 

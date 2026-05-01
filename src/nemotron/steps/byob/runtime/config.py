@@ -473,7 +473,7 @@ class ByobTranslationConfig:
         output_dir: Directory for output files.
         source_language: Source language code (e.g., 'en').
         target_language: Target language code (e.g., 'hi').
-        translation_model_config: Configuration for Curator translation.
+        translation_model_config: Configuration for Curator experimental translation.
         backtranslation_quality_metrics: List of quality metrics for evaluation.
     """
 

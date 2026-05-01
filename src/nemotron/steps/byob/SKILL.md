@@ -2,7 +2,7 @@
 name: byob
 description: Generate and translate bring-your-own MCQ benchmarks from domain documents with a modular benchmark-family runtime. Use when a user asks to create an MCQ benchmark, translate a BYOB benchmark, or extend the flow to a new benchmark family such as GSM8K.
 when_to_use: Use for requests like "create a custom benchmark from these documents", "run BYOB MCQ generation", "translate the generated benchmark", "add a GSM8K-style BYOB family", or "keep the benchmark schema intact". Do not use for ordinary training-corpus translation.
-compatibility: Generation uses Data Designer; translation uses Curator. Runtime also requires pandas, parquet IO, embedding models, and translation metric dependencies.
+compatibility: Generation uses Data Designer; translation uses Curator experimental translation. Runtime also requires pandas, parquet IO, embedding models, and translation metric dependencies.
 metadata:
   owner: nemotron
   workflow-step: byob
@@ -27,7 +27,7 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 - Register the family in `runtime/benchmark_families/registry.py`.
 - Keep `scripts/runtime.py` as a dispatcher only; family-specific schema, prompts, postprocessing, and export code belong in family modules.
 - Use `adapter.py` only for schema bridging when composing BYOB with other skills.
-- Use Curator as the translation backend; BYOB should only flatten/reassemble benchmark-family schema around it.
+- Use Curator experimental translation as the translation backend; BYOB should only flatten/reassemble benchmark-family schema around it.
 
 ## Gotchas
 

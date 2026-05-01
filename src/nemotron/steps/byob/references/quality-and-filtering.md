@@ -9,6 +9,6 @@ MCQ generation uses several quality gates:
 - Hallucination filtering checks whether model answers agree with the generated answer.
 - Easiness filtering flags questions that too many models answer correctly.
 
-Translation quality uses Curator for backtranslation metrics such as SacreBLEU, chrF, and TER. Keep inline
-Curator filtering disabled until rows are restored to the benchmark schema unless the run is intentionally
-allowed to drop low-quality translated questions with `remove_low_quality`.
+Translation quality uses Curator experimental translation metrics such as SacreBLEU, chrF, and TER. Keep
+inline Curator filtering disabled until rows are restored to the benchmark schema unless the run is
+intentionally allowed to drop low-quality translated questions with `remove_low_quality`.

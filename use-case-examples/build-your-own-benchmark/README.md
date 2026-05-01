@@ -15,7 +15,7 @@ The notebook is intentionally aligned with the agentic step structure:
 | --- | --- |
 | `build_mcq_benchmark.ipynb` | End-to-end notebook for preparing finance text, writing a working config, running BYOB, and previewing the final parquet. |
 | `assets/` | Example corpus location. The notebook creates `assets/wiki_finance/*.txt`. |
-| `config/` | Example working config location. The notebook writes generation and Curator translation configs from the packaged step configs. |
+| `config/` | Example working config location. The notebook writes generation and Curator experimental translation configs from the packaged step configs. |
 | `outputs/` | Example output location for `seed.parquet`, `stage_cache/`, `benchmark_raw.parquet`, and `benchmark.parquet`. |
 
 ## Run

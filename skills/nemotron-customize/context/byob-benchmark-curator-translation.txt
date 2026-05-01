@@ -43,15 +43,17 @@ Final MCQ parquet columns must remain:
 
 ## Translation Flow
 
-BYOB translation uses Curator as the only text translation engine.
+BYOB translation uses Curator experimental translation as the only text translation engine. Import
+translation stages from `nemo_curator.stages.text.experimental.translation`; do not use the old
+`nemo_curator.stages.text.translation` namespace.
 
 Preserve this division of responsibility:
 
 - BYOB flattens MCQ questions/options into text rows.
-- Curator `TranslationStage` translates source language to target language.
+- Curator experimental `TranslationStage` translates source language to target language.
 - BYOB reassembles translated rows back into MCQ schema and answer indexes.
-- Curator `TranslationStage` runs again for target-to-source backtranslation.
-- Curator `TextQualityMetricStage` computes round-trip metrics.
+- Curator experimental `TranslationStage` runs again for target-to-source backtranslation.
+- Curator experimental `TextQualityMetricStage` computes round-trip metrics.
 - BYOB writes final translated `benchmark_raw.parquet` and `benchmark.parquet`.
 
 The BYOB translate stage should therefore create two Curator `TranslationStage`

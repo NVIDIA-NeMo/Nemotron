@@ -21,7 +21,7 @@ from nemotron.steps.byob.runtime.translation.translate import CuratorTranslation
 
 
 class TranslationPipeline:
-    """Curator-backed translation pipeline for BYOB text rows."""
+    """Curator experimental translation pipeline for BYOB text rows."""
 
     def __init__(
         self,

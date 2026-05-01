@@ -51,8 +51,8 @@ Also read in Orient (small files, always cheap):
 - `skills/nemotron-customize/context/index.toml` — **authoritative map** of step → context pack. Note them for Act. (Individual step.toml files cross-link the same pack paths under `[reference].skills`; treat those as convenience aliases, not a separate source.)
 
 Step-specific caution: for BYOB benchmark translation, use the `byob` context pack.
-Do not substitute the general `translate/nemo-skills` pack; BYOB translation is
-Curator-backed, uses backtranslation metrics, and preserves benchmark schema.
+Do not substitute the general `translate/nemo-skills` pack; BYOB translation uses
+Curator experimental translation, backtranslation metrics, and preserved benchmark schema.
 
 **Ask the user if any of these are unclear:**
 

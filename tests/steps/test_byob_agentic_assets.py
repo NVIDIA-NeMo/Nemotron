@@ -215,6 +215,19 @@ def test_byob_translation_has_no_data_designer_fallback() -> None:
     assert "data_designer" not in (translation_root / "translate.py").read_text(encoding="utf-8")
 
 
+def test_byob_translation_uses_curator_experimental_namespace() -> None:
+    translation_root = BYOB_ROOT / "runtime" / "translation"
+    runtime_text = "\n".join(
+        [
+            (translation_root / "translate.py").read_text(encoding="utf-8"),
+            (translation_root / "quality_metrics.py").read_text(encoding="utf-8"),
+        ]
+    )
+
+    assert "nemo_curator.stages.text.experimental.translation" in runtime_text
+    assert "nemo_curator.stages.text.translation" not in runtime_text
+
+
 def test_byob_translation_pipeline_uses_curator_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     import pandas as pd
 

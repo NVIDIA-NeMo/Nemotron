@@ -35,7 +35,7 @@ def evaluate_quality_metrics(dataset: pd.DataFrame, config: ByobTranslationConfi
         pd.DataFrame: Original dataset augmented with score columns for each metric
                      (score_{metric}, score_{metric}_passed).
     """
-    from nemo_curator.stages.text.translation import TextQualityMetricStage
+    from nemo_curator.stages.text.experimental.translation import TextQualityMetricStage
     from nemo_curator.tasks import DocumentBatch
 
     dataset_out = dataset.copy()

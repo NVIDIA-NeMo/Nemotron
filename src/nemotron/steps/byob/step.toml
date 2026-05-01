@@ -55,7 +55,7 @@ skill = "skills/nemotron-customize/context/byob-benchmark-curator-translation.tx
 
 [[strategies]]
 when = "You need to translate an existing BYOB MCQ benchmark"
-then = "Use stage=translate with config/translate.yaml. Curator performs translation; BYOB preserves question_id, options, answer_index, answer, cot_content, src, and category."
+then = "Use stage=translate with config/translate.yaml. Curator experimental translation performs translation; BYOB preserves question_id, options, answer_index, answer, cot_content, src, and category."
 skill = "skills/nemotron-customize/context/byob-benchmark-curator-translation.txt"
 
 [[errors]]

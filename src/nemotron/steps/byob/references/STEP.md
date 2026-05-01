@@ -29,7 +29,7 @@ compute:
   optional_services:
     - OpenAI-compatible LLM endpoint
     - embedding model downloads
-    - Curator-supported translation backend
+    - Curator experimental translation backend
 source:
   - repo: Nemotron
     path: src/nemotron/steps/byob/scripts/run.py
@@ -45,5 +45,6 @@ family is `mcq`; new families should add isolated modules under `runtime/benchma
 The MCQ generation path writes stage cache parquet files under `output_dir/expt_name/stage_cache/`, then
 writes `benchmark_raw.parquet` and filtered `benchmark.parquet`.
 
-The translation path reads an existing benchmark parquet, flattens MCQ text for Curator translation, writes
-translation and quality cache files, then writes translated `benchmark_raw.parquet` and `benchmark.parquet`.
+The translation path reads an existing benchmark parquet, flattens MCQ text for Curator experimental
+translation, writes translation and quality cache files, then writes translated `benchmark_raw.parquet`
+and `benchmark.parquet`.
