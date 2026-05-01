@@ -30,10 +30,16 @@ required = true
 type = "checkpoint_hf"
 description = "HuggingFace-format pretrained checkpoint."
 
+[[models]]
+name = "Qwen/Qwen3.6-35B-A3B"
+description = "Larger MoE HF backbone example for AutoModel continued pretraining."
+default = true
+min_gpus = 8
+
 [[parameters]]
 name = "model.pretrained_model_name_or_path"
 description = "HF base for CPT, or pass a config-only path to train from scratch."
-default = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16"
+default = "Qwen/Qwen3.6-35B-A3B"
 
 [[strategies]]
 when = "Continued pretraining on a domain corpus"

@@ -17,9 +17,9 @@ id = "sft/automodel"
 name = "SFT Training (AutoModel)"
 category = "sft"
 description = """\
-Supervised fine-tuning with the AutoModel stack. Best for smaller GPU counts,
-rapid iteration, and LoRA-style adapter tuning on JSONL datasets that already
-use OpenAI chat-format messages."""
+Supervised fine-tuning with the AutoModel stack for HF-format models and JSONL
+datasets that already use OpenAI chat-format messages. Supports full SFT and
+LoRA-style adapter tuning from the same step."""
 tags = ["sft", "fine-tuning", "automodel", "huggingface", "peft"]
 
 [[consumes]]
@@ -32,9 +32,14 @@ type = "checkpoint_hf"
 description = "HuggingFace checkpoint directory (full model or adapter-style PEFT output)"
 
 [[models]]
+name = "Qwen/Qwen3.6-35B-A3B"
+description = "Larger MoE HF backbone example for AutoModel SFT and LoRA-style runs."
+default = true
+min_gpus = 8
+
+[[models]]
 name = "mistralai/Mistral-7B-Instruct-v0.3"
 description = "Good default when GPU count is small and iteration speed matters."
-default = true
 min_gpus = 2
 
 [[models]]

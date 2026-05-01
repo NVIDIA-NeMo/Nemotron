@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # AutoModel LoRA default config. Adapted from speaker/configs/sft/automodel/config_peft.yaml
-# Heavy customisation lives here — step.py is a thin wrapper.
+# Uses Qwen3.6-35B-A3B as the larger HF model example; step.py is a thin wrapper.
 
 recipe: TrainFinetuneRecipeForNextTokenPrediction
 
@@ -35,7 +35,7 @@ rng:
 
 model:
   _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
-  pretrained_model_name_or_path: mistralai/Mistral-7B-Instruct-v0.3
+  pretrained_model_name_or_path: Qwen/Qwen3.6-35B-A3B
   trust_remote_code: true
 
 checkpoint:
