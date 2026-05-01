@@ -15,6 +15,7 @@ Use this context when generating a `translate/translation` stage.
 
 - Step wrapper: `src/nemotron/steps/translate/translation/step.py`
 - Step config: `src/nemotron/steps/translate/translation/config/default.yaml`
+- CLI command: `nemotron steps translation`
 - Curator stage: `nemo_curator.stages.text.translation.TranslationStage`
 - Curator I/O: `JsonlReader`, `ParquetReader`, `JsonlWriter`, `ParquetWriter`
 

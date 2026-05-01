@@ -20,6 +20,21 @@ stage.
 - If FAITH is enabled, configure the LLM `server` fields even when translation uses a non-LLM backend.
 - Keep `output_mode=both` when users need auditability of translated fields and metadata.
 
+## CLI
+
+Run the step directly:
+
+```bash
+nemotron steps translation \
+  input_path=/path/to/source.jsonl \
+  output_dir=/path/to/translated \
+  source_language=en \
+  target_language=hi
+```
+
+Use `-c` or `--config` to pass a config file or config name from the step's
+`config/` directory. The CLI currently supports local execution only.
+
 ## Reference Implementation
 
 ```{literalinclude} ../../../../src/nemotron/steps/translate/translation/step.py
