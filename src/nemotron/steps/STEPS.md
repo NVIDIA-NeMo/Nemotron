@@ -49,4 +49,4 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
-| [translate/nemo_skills](translate/nemo_skills/) | Translate filtered JSONL into a target language with NeMo Skills and attach FAITH-based quality signals so downstream steps can keep high-faith training data. | filtered_jsonl | translated_jsonl |
+| [translate/translation](translate/translation/) | Translate JSONL or Parquet training corpora with NeMo Curator's TranslationStage, preserving structured fields and optionally attaching FAITH quality scores. | filtered_jsonl | translated_jsonl |

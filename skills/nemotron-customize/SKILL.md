@@ -54,7 +54,7 @@ Also read in Orient (small files, always cheap):
 
 1. What model to fine-tune (or if pretraining from scratch)
 2. What data they have or need to acquire
-3. Target language(s) if applicable
+3. Source and target language(s) if translation is applicable
 4. GPU type, count, and node count
 5. Execution: nemo-run (default) or plain Python scripts?
 6. Deploy target: local only (default), Airflow, Kubeflow?
@@ -67,7 +67,7 @@ Present as a compact list with defaults in [brackets]:
 Quick setup — reply with numbers or Enter for [defaults]:
 
 1. Model:     [Nano3] / Super3
-2. Data:      [Translate EN→{lang}] / Have data already
+2. Data:      [Translate {src}->{tgt}] / Have data already
 3. Data size: _____ examples
 4. GPUs:      _____ (e.g. "8x H100 1 node")
 5. Backend:   [nemo-run] / plain scripts

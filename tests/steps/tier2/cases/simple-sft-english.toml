@@ -9,7 +9,7 @@ request = "Fine-tune Nemotron Nano3 on my English chat-format JSONL dataset with
 [expected.steps]
 must_include = ["prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
 may_include = []
-must_exclude = ["curate/nemo_curator", "translate/nemo_skills", "sft/automodel"]
+must_exclude = ["curate/nemo_curator", "translate/translation", "sft/automodel"]
 
 [expected.plan]
 has_mermaid_diagram = true

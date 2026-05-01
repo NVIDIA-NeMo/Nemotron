@@ -157,7 +157,7 @@ Generated code must be clean enough for an AI agent to operate in effectively.
 
 - **One function = one job.** `run()` does: load config → validate inputs → dry-run check → call library API → log result. That's it.
 - **No nested helpers.** If a stage needs more than `run()`, it's too complex — you're reimplementing.
-- **Explicit > clever.** `subprocess.run(["speaker", "translate", "--config", str(path)])` is better than dynamically built command strings.
+- **Explicit > clever.** `subprocess.run(["python", "step.py", "--config", str(path)])` is better than dynamically built command strings.
 - **Flat > nested.** Two levels of nesting max. If you're four levels deep, refactor.
 
 ### What an agent needs to modify a stage

@@ -7,7 +7,7 @@ tags = ["linear", "catalog", "multilingual", "multi-node", "nano3", "sovereign-a
 request = "Fine-tune Nemotron Nano3 for Thai customer support. We have 2 nodes of 8x H100 on Slurm."
 
 [expected.steps]
-must_include = ["curate/nemo_curator", "translate/nemo_skills", "prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+must_include = ["curate/nemo_curator", "translate/translation", "prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
 may_include = []
 must_exclude = ["sft/automodel", "rl/nemo_rl_grpo"]
 

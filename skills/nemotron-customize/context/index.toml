@@ -48,11 +48,11 @@ file = "curator-processing-language-quality.txt"
 description = "Process text data with NeMo Curator — language filtering, quality assessment, and related pipelines."
 
 [[packs]]
-id = "translate-nemo-skills-generate"
-step = "translate/nemo-skills"
+id = "translate-translation-generate"
+step = "translate/translation"
 intent = "generate"
-file = "speaker-translation-faith.txt"
-description = "Generate translation stage code — JSONL translation pipeline, faith evaluation, and I/O formats."
+file = "curator-translation-faith.txt"
+description = "Generate translation stage code with NeMo Curator — JSONL/Parquet I/O, structured fields, and FAITH evaluation."
 
 [[packs]]
 id = "eval-model-eval-generate"
