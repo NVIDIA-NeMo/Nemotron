@@ -18,8 +18,8 @@ name = "PEFT / LoRA Training (AutoModel)"
 category = "peft"
 description = """\
 Parameter-efficient fine-tuning (LoRA) with the AutoModel stack. Same training
-loop as sft/automodel but with a LoRA adapter wired in by default — best for
-small GPU counts where a full SFT would not fit."""
+loop as sft/automodel but with a LoRA adapter wired in by default, making larger
+HF backbones practical for adapter-based tuning."""
 tags = ["peft", "lora", "fine-tuning", "automodel", "huggingface"]
 
 [[consumes]]
@@ -32,9 +32,14 @@ type = "checkpoint_lora"
 description = "LoRA adapter weights (merge with base via convert/merge_lora to get a deployable HF checkpoint)."
 
 [[models]]
+name = "Qwen/Qwen3.6-35B-A3B"
+description = "Larger MoE HF backbone example for AutoModel LoRA tuning."
+default = true
+min_gpus = 8
+
+[[models]]
 name = "mistralai/Mistral-7B-Instruct-v0.3"
 description = "Strong default for 1-2 GPU LoRA tuning."
-default = true
 min_gpus = 1
 
 [[models]]
