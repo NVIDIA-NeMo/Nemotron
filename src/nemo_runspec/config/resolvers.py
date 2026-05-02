@@ -800,6 +800,10 @@ def register_resolvers(
         replace=replace,
     )
 
+    # Manifest resolver travels with the artifact resolvers since both are
+    # used to point configs at data-prep outputs.
+    register_manifest_resolver(replace=replace)
+
     return qualified_names
 
 
@@ -1044,5 +1048,39 @@ def register_auto_mount_resolver(*, replace: bool = True) -> None:
     OmegaConf.register_new_resolver(
         "auto_mount",
         _auto_mount_resolver,
+        replace=replace,
+    )
+
+
+def _manifest_resolver(directory: str, key: str) -> str:
+    """Resolve ``${manifest:<dir>,<key>}`` to ``<dir>/manifest.json[<key>]``.
+
+    Lets configs consume the self-describing manifest that data-prep recipes
+    write — no symlink or hashed-path workaround needed on the training side.
+    """
+    import json
+
+    manifest_path = Path(directory) / "manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"manifest.json not found at {manifest_path}. "
+            "Run data prep first or check the path passed to ${manifest:...}."
+        )
+    manifest = json.loads(manifest_path.read_text())
+    if key not in manifest:
+        raise KeyError(
+            f"key {key!r} not in {manifest_path} (available: {sorted(manifest)})"
+        )
+    return str(manifest[key])
+
+
+def register_manifest_resolver(*, replace: bool = True) -> None:
+    """Register the ``${manifest:<dir>,<key>}`` OmegaConf resolver.
+
+    Safe to call multiple times.
+    """
+    OmegaConf.register_new_resolver(
+        "manifest",
+        _manifest_resolver,
         replace=replace,
     )

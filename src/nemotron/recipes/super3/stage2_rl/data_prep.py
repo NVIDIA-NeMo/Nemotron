@@ -69,6 +69,7 @@ Direct usage:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -167,6 +168,79 @@ class RLDataPrepConfig:
         # Add sample suffix to output_dir if sampling
         if self.sample is not None:
             self.output_dir = self.output_dir / f"sample-{self.sample}"
+
+
+def _create_train_val_splits(
+    split_paths: dict[str, str],
+    output_dir: Path,
+    val_holdout: int = 100,
+    force: bool = False,
+) -> dict[str, dict[str, str]]:
+    """Split each resolved shard into train/val by holding out the last rows.
+
+    For every ``{split_name: shard_path}`` entry, writes
+    ``output_dir/<split_name>/{train,val}-split.jsonl``. Idempotent unless
+    ``force=True``.
+
+    Returns:
+        Mapping ``{split_name: {"train": path, "val": path}}``.
+    """
+    per_split: dict[str, dict[str, str]] = {}
+    for split_name, shard_path in split_paths.items():
+        split_dir = output_dir / split_name
+        train_path = split_dir / "train-split.jsonl"
+        val_path = split_dir / "val-split.jsonl"
+
+        if not force and train_path.exists() and val_path.exists():
+            logger.info(f"[{split_name}] splits already exist, skipping")
+            per_split[split_name] = {"train": str(train_path), "val": str(val_path)}
+            continue
+
+        split_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(shard_path) as f:
+            rows = f.readlines()
+
+        if len(rows) <= val_holdout:
+            logger.warning(
+                f"[{split_name}] only {len(rows)} rows — "
+                f"using all for train, val will be empty"
+            )
+            train_rows, val_rows = rows, []
+        else:
+            train_rows = rows[:-val_holdout]
+            val_rows = rows[-val_holdout:]
+
+        train_path.write_text("".join(train_rows))
+        val_path.write_text("".join(val_rows))
+        logger.info(
+            f"[{split_name}] {len(train_rows):,} train + {len(val_rows):,} val "
+            f"rows → {split_dir}"
+        )
+        per_split[split_name] = {"train": str(train_path), "val": str(val_path)}
+
+    return per_split
+
+
+def _write_splits_to_manifest(
+    manifest_path: str,
+    per_split: dict[str, dict[str, str]],
+    primary_split: str | None = None,
+) -> None:
+    """Extend manifest.json with a ``splits`` key for per-split train/val paths.
+
+    If ``primary_split`` is provided and present in ``per_split``, also expose
+    its paths at the top-level ``train``/``val`` keys for back-compat.
+    """
+    p = Path(manifest_path)
+    manifest = json.loads(p.read_text())
+    manifest["splits"] = per_split
+    if primary_split and primary_split in per_split:
+        primary = per_split[primary_split]
+        manifest["train"] = primary.get("train", manifest.get("train", ""))
+        manifest["val"] = primary.get("val", manifest.get("val", ""))
+    p.write_text(json.dumps(manifest, indent=2))
+    logger.info(f"Updated manifest with per-split paths at {manifest_path}")
 
 
 def run_data_prep_main(
@@ -272,6 +346,21 @@ def run_data_prep_main(
     dataset_name_base = blend.datasets[0].name
     result = finalize_rl_run(run_dir, cfg.output_dir, available_splits, dataset_name_base)
 
+    # Phase 4: Per-split train/val
+    #
+    # finalize_rl_run only populates manifest["train"/"val"/"test"], which are
+    # empty when the HF dataset's split names don't match those keywords.
+    # Hold out the last rows of each resolved shard so training configs can
+    # point at  output_dir/<split_name>/train-split.jsonl  directly.
+    primary_split = available_splits[0] if available_splits else None
+    per_split = _create_train_val_splits(
+        split_paths=result.split_paths,
+        output_dir=cfg.output_dir,
+        val_holdout=100,
+        force=cfg.force,
+    )
+    _write_splits_to_manifest(result.manifest_path, per_split, primary_split=primary_split)
+
     # Add external placeholder datasets (DAPO, Skywork) for lineage tracking
     # The resolver is loaded on pipeline workers, but we need metadata on the driver
     # for W&B artifact lineage. This is a separate load (unavoidable since the
@@ -290,14 +379,19 @@ def run_data_prep_main(
 
     elapsed = time.time() - start_time
 
-    # Build artifact with split paths
+    # Build artifact — expose the first available split's train/val as the
+    # primary paths so ${art:data,train} resolves to something usable by
+    # default. Training configs targeting other splits should override
+    # data.train/validation explicitly (via manifest "splits" key or direct
+    # paths).
+    primary = per_split.get(primary_split, {}) if primary_split else {}
     artifact = SplitJsonlDataArtifact(
         path=Path(result.manifest_path),
         total_sequences=result.total_records,
         elapsed_sec=elapsed,
         source_datasets=source_datasets,
-        train=result.split_paths.get("train"),
-        val=result.split_paths.get("val"),
+        train=primary.get("train"),
+        val=primary.get("val"),
         test=result.split_paths.get("test"),
     )
 

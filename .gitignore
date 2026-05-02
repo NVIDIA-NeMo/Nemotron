@@ -71,8 +71,25 @@ outputs/
 logs/
 checkpoints/
 data/
-!src/nemotron/cli/nano3/data/
-!src/nemotron/cli/embed/data/
+!src/nemotron/cli/commands/nano3/data/
+!src/nemotron/cli/commands/super3/data/
+!src/nemotron/cli/commands/embed/data/
+!src/nemotron/cli/commands/omni3/data/
+!src/nemotron/cli/commands/omni3/data/**
+!src/nemotron/cli/commands/data/
+!src/nemotron/cli/commands/data/**
+!src/nemotron/recipes/data/
+!src/nemotron/recipes/data/**
+# Documentation pages for data recipes (curation/, sdg/) live under
+# docs/nemotron/data/. Without this exception the broad ``data/`` rule
+# above swallows them — losing e.g. docs/nemotron/data/sdg/long-document.md.
+!docs/nemotron/data/
+!docs/nemotron/data/**
+# Re-ignore __pycache__ under the un-ignored data trees (the broad !data/**
+# rules above would otherwise let them through).
+src/nemotron/cli/commands/omni3/data/**/__pycache__/
+src/nemotron/cli/commands/data/**/__pycache__/
+src/nemotron/recipes/data/**/__pycache__/
 workspace/
 wandb/
 .nemotron/

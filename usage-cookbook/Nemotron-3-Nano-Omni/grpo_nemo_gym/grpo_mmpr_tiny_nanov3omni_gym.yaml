@@ -1,0 +1,276 @@
+# GRPO with NeMo-Gym: MMPR-Tiny visual reasoning dataset (MCQ + numeric subset)
+# Model: Nemotron NanoV3 Omni (VLM)
+# Verifier: mcqa_simple_agent (exact-match on letter answers)
+#           math_with_judge_simple_agent (math_verify library on numeric answers)
+#           — no LLM judge required for either
+# Dataset: OpenGVLab/MMPR-Tiny (CC-BY-SA)
+#
+# ---------- Data prep (run once before training) ----------
+# python /shared/code/Nemotron/usage-cookbook/Nemotron-3-Nano-Omni/grpo_nemo_gym/convert_mmpr_tiny_to_gym_jsonl.py \
+#     --cache-dir /shared/data/mmpr_tiny \
+#     --output-dir /shared/data/mmpr_tiny_gym \
+#     --question-type mcqa_and_numeric
+#
+# Produces: /shared/data/mmpr_tiny_gym/mmpr_tiny_train_mcqa_and_numeric.jsonl  (~45 000 rows)
+#           /shared/data/mmpr_tiny_gym/mmpr_tiny_val_mcqa_and_numeric.jsonl    (~468 rows)
+#
+# For a quick smoke-test using the bundled text example:
+#   data.train_jsonl_fpath=3rdparty/Gym-workspace/Gym/resources_servers/equivalence_llm_judge/data/example.jsonl
+#   data.validation_jsonl_fpath=3rdparty/Gym-workspace/Gym/resources_servers/equivalence_llm_judge/data/example.jsonl
+# ---------------------------------------------------------
+
+grpo:
+  num_prompts_per_step: 64
+  num_generations_per_prompt: 16
+  max_rollout_turns: 1
+  max_num_epochs: 1
+  max_num_steps: 1000000
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  val_period: 5
+  val_at_start: false
+  overlong_filtering: true
+  zero_variance_prompt_filtering: false
+  max_val_samples: null
+  val_batch_size: 256
+  seed: 42
+  seq_logprob_error_threshold: 2
+  use_dynamic_sampling: false
+  batch_multiplier: 1
+  # deduplicate_multimodal_data is incompatible with async_engine (NeMo-Gym requires async)
+  deduplicate_multimodal_data: false
+  async_grpo:
+    enabled: false
+    max_trajectory_age_steps: 1
+  use_best_at_k: false
+  reward_shaping:
+    enabled: false
+  reward_scaling:
+    enabled: false
+
+loss_fn:
+  reference_policy_kl_penalty: 0
+  reference_policy_kl_type: k3
+  kl_input_clamp_value: null
+  kl_output_clamp_value: null
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: null
+  use_on_policy_kl_approximation: true
+  use_importance_sampling_correction: false
+  sequence_level_importance_ratios: true
+  token_level_loss: false
+  use_sequence_length_scaling: false
+  truncated_importance_sampling_ratio: null
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: "results/grpo-mmpr-tiny-nanov3omni-gym"
+  metric_name: "val:total_reward/mean"
+  higher_is_better: true
+  keep_top_k: 5
+  save_period: 5
+  checkpoint_must_save_by: 00:03:40:00
+
+policy:
+  is_vlm: true
+  model_name: "/shared/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16"   # container-mounted path; see Prerequisites in the notebook
+  tokenizer:
+    name: ${policy.model_name}
+
+  train_global_batch_size: 1024
+  train_micro_batch_size: 1
+  logprob_batch_size: 1
+  max_total_sequence_length: 4096
+  precision: "bfloat16"
+  logprob_chunk_size: 512
+  offload_optimizer_for_logprob: false
+
+  dtensor_cfg:
+    enabled: false
+
+  dynamic_batching:
+    enabled: false
+
+  make_sequence_length_divisible_by: ${policy.megatron_cfg.tensor_model_parallel_size}
+  max_grad_norm: 1.0
+
+  sequence_packing:
+    enabled: true
+    train_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.train_micro_batch_size}}
+    logprob_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.logprob_batch_size}}
+    algorithm: "modified_first_fit_decreasing"
+    sequence_length_round: 64
+
+  optimizer: null
+  scheduler: null
+
+  megatron_cfg:
+    enabled: true
+    empty_unused_memory_level: 2
+    activation_checkpointing: true
+    tensor_model_parallel_size: 8
+    expert_model_parallel_size: 8
+    expert_tensor_parallel_size: 1
+    pipeline_model_parallel_size: 1
+    num_layers_in_first_pipeline_stage: null
+    num_layers_in_last_pipeline_stage: null
+    context_parallel_size: 1
+    pipeline_dtype: ${policy.precision}
+    sequence_parallel: true
+
+    freeze_moe_router: true
+    moe_router_dtype: "fp32"
+    moe_router_load_balancing_type: "none"
+    moe_router_bias_update_rate: 1e-3
+    moe_router_enable_expert_bias: true
+    moe_permute_fusion: true
+    moe_enable_deepep: false
+    moe_token_dispatcher_type: "alltoall"
+    moe_shared_expert_overlap: true
+    moe_aux_loss_coeff: 0.0
+    track_moe_metrics: true
+    moe_per_layer_logging: false
+
+    apply_rope_fusion: true
+    bias_activation_fusion: false
+    defer_fp32_logits: true
+
+    radio_force_cpe_eval_mode: true
+    freeze_vision_encoder: false
+    freeze_vision_projector: false
+    freeze_audio_encoder: true
+    freeze_audio_projector: true
+
+    do_not_average_loss: true
+    cp_normalize: true
+    calculate_per_token_loss: true
+    scale_loss_by_dp_cp_size: false
+
+    optimizer:
+      optimizer: "adam"
+      lr: 3e-6
+      min_lr: 2e-9
+      weight_decay: 0.0
+      bf16: true
+      fp16: false
+      params_dtype: "bfloat16"
+      adam_beta1: 0.9
+      adam_beta2: 0.99
+      adam_eps: 1e-8
+      sgd_momentum: 0.9
+      use_distributed_optimizer: true
+      use_precision_aware_optimizer: true
+      clip_grad: ${policy.max_grad_norm}
+      optimizer_cpu_offload: true
+      optimizer_offload_fraction: 1.0
+
+    scheduler:
+      start_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      end_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      weight_decay_incr_style: "constant"
+      lr_decay_style: "constant"
+      lr_decay_iters: null
+      lr_warmup_iters: 10
+      lr_warmup_init: 0.3e-7
+
+    distributed_data_parallel_config:
+      grad_reduce_in_fp32: false
+      overlap_grad_reduce: false
+      overlap_param_gather: false
+      average_in_collective: false
+      use_custom_fsdp: false
+      data_parallel_sharding_strategy: "optim_grads_params"
+
+    env_vars: null
+
+  generation:
+    backend: "vllm"
+    max_new_tokens: ${policy.max_total_sequence_length}
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    stop_token_ids: null
+    stop_strings: null
+    # Prevent hallucinated image placeholder tokens in the response
+    bad_words: ["<image>", "<img>", "</img>", "<so_embedding>", "<so_start>", "<so_end>"]
+    vllm_cfg:
+      async_engine: true         # required for NeMo-Gym HTTP server
+      kv_cache_dtype: auto
+      precision: ${policy.precision}
+      tensor_parallel_size: 8
+      pipeline_parallel_size: 1
+      expert_parallel_size: 8
+      gpu_memory_utilization: 0.20
+      max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: true   # disable inductor/Triton compilation to avoid NaN logprob bug
+      use_deep_gemm: false
+      num_last_layers_in_bf16: 0
+      num_first_layers_in_bf16: 0
+      skip_tokenizer_init: false
+      expose_http_server: true   # required for NeMo-Gym HTTP server
+      http_server_serving_chat_kwargs:
+        enable_auto_tools: true
+        tool_parser: qwen3_coder
+        reasoning_parser: deepseek_r1
+    vllm_kwargs:
+      # Cap images per prompt to 1 (MMPR-Tiny has single-image questions)
+      limit_mm_per_prompt: {"image": 1}
+      max_num_batched_tokens: ${policy.max_total_sequence_length}
+      mamba_ssm_cache_dtype: "float32"
+      skip_mm_profiling: true
+    colocated:
+      enabled: true
+      resources:
+        gpus_per_node: null
+        num_nodes: null
+
+data:
+  # MCQ + numeric subset: rule-based grading only, no LLM judge (~45 000 train / ~468 val)
+  # Generate with: python scripts/convert_mmpr_tiny_to_gym_jsonl.py --question-type mcqa_and_numeric ...
+  train_jsonl_fpath: "/shared/data/mmpr_tiny_gym/mmpr_tiny_train_mcqa_and_numeric.jsonl"
+  validation_jsonl_fpath: "/shared/data/mmpr_tiny_gym/mmpr_tiny_val_mcqa_and_numeric.jsonl"
+  shuffle: true
+  num_workers: 1
+
+env:
+  should_use_nemo_gym: true
+  should_log_nemo_gym_responses: true
+  nemo_gym:
+    config_paths:
+    - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml  # Required
+    - resources_servers/mcqa/configs/mcqa.yaml                              # letter exact-match
+    - resources_servers/math_with_judge/configs/math_with_judge.yaml        # math_verify, judge disabled below
+    math_with_judge:
+      resources_servers:
+        math_with_judge:
+          judge_model_server:
+            name: policy_model  # required field; never called when should_use_judge is false
+          should_use_judge: false  # math_verify library only — no LLM judge
+    policy_model:
+      responses_api_models:
+        vllm_model:
+          uses_reasoning_parser: true
+          extra_body:
+            chat_template_kwargs:
+              enable_thinking: true
+
+logger:
+  log_dir: "logs"
+  num_val_samples_to_print: 1
+  wandb_enabled: false
+  tensorboard_enabled: false
+  mlflow_enabled: false
+  swanlab_enabled: false
+  monitor_gpus: true
+  wandb:
+    project: "grpo-mmpr-tiny-gym"
+    name: "grpo-mmpr-tiny-nanov3omni-gym"
+  tensorboard: {}
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 1

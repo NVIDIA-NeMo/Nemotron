@@ -12,7 +12,7 @@ dependencies = [
 
 [tool.uv.sources]
 # Point to vendored retriever-sdg package
-retriever-sdg = { path = "vendor/retriever-sdg" }
+retriever-sdg = { path = "vendor/retriever-sdg", editable = true }
 
 [tool.uv.extra-build-dependencies]
 # Build dependencies for vendored packages
