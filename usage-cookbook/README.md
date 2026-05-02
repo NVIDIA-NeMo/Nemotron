@@ -13,5 +13,4 @@ This directory contains cookbook-style guides showing how to deploy and use the 
 - **SGLang Deployment** - Tutorials on serving and interacting with Nemotron via SGLang
 - **NIM Microservice** - Guide to deploying Nemotron as scalable, production-ready endpoints using NVIDIA Inference Microservices (NIM).
 - **Hugging Face Transformers** - Direct loading and inference of Nemotron models with Hugging Face Transformers
-
-
+- **OCI OKE Private Deployment** - A Phoenix-only private deployment guide for `nvidia/Llama-3.1-Nemotron-Nano-8B-v1` using OKE, OCI Bastion service, and `vLLM`, providing a reproducible OCI path comparable to common AWS GPU/Kubernetes deployment patterns.
