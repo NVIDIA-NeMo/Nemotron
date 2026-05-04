@@ -172,6 +172,14 @@ nemotron/artifacts.md
 ```
 
 ```{toctree}
+:caption: Agentic Workflows
+:hidden:
+
+About <agentic/index.md>
+agentic/key-terms.md
+```
+
+```{toctree}
 :caption: Customization
 :hidden:
 
