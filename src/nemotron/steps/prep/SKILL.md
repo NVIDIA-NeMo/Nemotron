@@ -17,12 +17,13 @@ Use this skill to choose and configure data preparation under `src/nemotron/step
 
 ## Workflow
 
-1. Read the target step's `step.toml` for artifacts, parameters, strategies, and references.
-2. Start with `config/tiny.yaml` for smoke tests and `config/default.yaml` for production shape.
-3. Keep tokenizer, chat template, sequence length, split names, and shard policy aligned with the downstream trainer.
-4. Inspect sample outputs before launching expensive training.
-5. Check `src/nemotron/steps/patterns/prepared-data-is-tokenizer-locked.md` when reusing or changing prepared artifacts.
-6. Use each step's `step.toml [reference]` section for upstream repos and documentation.
+1. For Lepton, Slurm, Ray, or batch execution, verify the env profile file first. Default lookup uses repository-root `env.toml`; generated backend files such as `env.lepton.toml` or `env.slurm.toml` require `NEMOTRON_ENV_FILE`.
+2. Read the target step's `step.toml` for artifacts, parameters, strategies, and references.
+3. Start with `config/tiny.yaml` for smoke tests and `config/default.yaml` for production shape.
+4. Keep tokenizer, chat template, sequence length, split names, and shard policy aligned with the downstream trainer.
+5. Inspect sample outputs before launching expensive training.
+6. Check `src/nemotron/steps/patterns/prepared-data-is-tokenizer-locked.md` when reusing or changing prepared artifacts.
+7. Use each step's `step.toml [reference]` section for upstream repos and documentation.
 
 ## Local Files
 

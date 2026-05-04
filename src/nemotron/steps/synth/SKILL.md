@@ -17,12 +17,13 @@ Use this skill when synthetic data should be generated declaratively before prep
 
 ## Workflow
 
-1. Use `synth/data_designer` for both SFT SDG and RL preference SDG.
-2. Start with preview mode or `config/tiny.yaml` while editing columns.
-3. Project SFT output into OpenAI-style `messages` before `prep/sft_packing` or AutoModel SFT.
-4. Project preference output into prompt, chosen, and rejected fields before DPO.
-5. Check `src/nemotron/steps/patterns/version-sdg-pipeline.md` before scaling generated datasets.
-6. Check `src/nemotron/steps/patterns/data-quality-before-quantity.md` before increasing synthetic volume.
+1. For Lepton, Slurm, Ray, or batch execution, verify the env profile file first. Default lookup uses repository-root `env.toml`; generated backend files such as `env.lepton.toml` or `env.slurm.toml` require `NEMOTRON_ENV_FILE`.
+2. Use `synth/data_designer` for both SFT SDG and RL preference SDG.
+3. Start with preview mode or `config/tiny.yaml` while editing columns.
+4. Project SFT output into OpenAI-style `messages` before `prep/sft_packing` or AutoModel SFT.
+5. Project preference output into prompt, chosen, and rejected fields before DPO.
+6. Check `src/nemotron/steps/patterns/version-sdg-pipeline.md` before scaling generated datasets.
+7. Check `src/nemotron/steps/patterns/data-quality-before-quantity.md` before increasing synthetic volume.
 
 ## Guardrails
 

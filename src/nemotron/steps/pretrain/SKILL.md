@@ -16,12 +16,13 @@ Use this skill to choose between AutoModel and Megatron-Bridge pretraining.
 
 ## Workflow
 
-1. Produce compatible bin/idx data with `prep/pretrain_prep`.
-2. Choose AutoModel when staying HF-native matters more than Megatron parallelism.
-3. Choose Megatron-Bridge when model size, sequence length, or throughput requires distributed parallelism.
-4. Start from `config/tiny.yaml` to validate data access, launch, and checkpoint writes.
-5. Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before moving beyond smoke tests.
-6. Check `src/nemotron/steps/patterns/prepared-data-is-tokenizer-locked.md` before reusing bin/idx data.
+1. For Lepton, Slurm, Ray, or batch execution, verify the env profile file first. Default lookup uses repository-root `env.toml`; generated backend files such as `env.lepton.toml` or `env.slurm.toml` require `NEMOTRON_ENV_FILE`.
+2. Produce compatible bin/idx data with `prep/pretrain_prep`.
+3. Choose AutoModel when staying HF-native matters more than Megatron parallelism.
+4. Choose Megatron-Bridge when model size, sequence length, or throughput requires distributed parallelism.
+5. Start from `config/tiny.yaml` to validate data access, launch, and checkpoint writes.
+6. Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before moving beyond smoke tests.
+7. Check `src/nemotron/steps/patterns/prepared-data-is-tokenizer-locked.md` before reusing bin/idx data.
 
 ## Local Files
 

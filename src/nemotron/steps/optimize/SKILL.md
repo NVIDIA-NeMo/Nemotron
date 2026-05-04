@@ -17,12 +17,13 @@ Use this skill to choose a ModelOpt optimization path.
 
 ## Workflow
 
-1. Decide target hardware, serving stack, checkpoint format, and quality budget first.
-2. Read the target step's `step.toml` and `config/default.yaml`.
-3. Smoke with `config/tiny.yaml` when present, or use mock-data and short-iteration overrides for distillation.
-4. Convert or export checkpoints when the downstream consumer requires a different format.
-5. Check `src/nemotron/steps/patterns/representative-calibration-before-optimization.md` before judging optimized quality.
-6. Check `src/nemotron/steps/patterns/distill-after-structural-compression.md` when pruning or quantization creates a quality gap.
+1. For Lepton, Slurm, Ray, or batch execution, verify the env profile file first. Default lookup uses repository-root `env.toml`; generated backend files such as `env.lepton.toml` or `env.slurm.toml` require `NEMOTRON_ENV_FILE`.
+2. Decide target hardware, serving stack, checkpoint format, and quality budget first.
+3. Read the target step's `step.toml` and `config/default.yaml`.
+4. Smoke with `config/tiny.yaml` when present, or use mock-data and short-iteration overrides for distillation.
+5. Convert or export checkpoints when the downstream consumer requires a different format.
+6. Check `src/nemotron/steps/patterns/representative-calibration-before-optimization.md` before judging optimized quality.
+7. Check `src/nemotron/steps/patterns/distill-after-structural-compression.md` when pruning or quantization creates a quality gap.
 
 ## Guardrails
 

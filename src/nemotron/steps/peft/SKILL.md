@@ -16,12 +16,13 @@ Use this skill to choose a LoRA path and wire adapter outputs correctly.
 
 ## Workflow
 
-1. Prefer AutoModel PEFT for the simplest JSONL-to-adapter path.
-2. Prefer Megatron-Bridge PEFT when TP/PP scaling or a Megatron base checkpoint is required.
-3. Add `prep/sft_packing` before Megatron-Bridge PEFT.
-4. Add `convert/merge_lora` when a standalone HF checkpoint is needed.
-5. Check `src/nemotron/steps/patterns/small-dataset-lora.md` when deciding whether LoRA is appropriate.
-6. Check `src/nemotron/steps/patterns/adapter-artifact-before-merge.md` before merging adapters for deployment.
+1. For Lepton, Slurm, Ray, or batch execution, verify the env profile file first. Default lookup uses repository-root `env.toml`; generated backend files such as `env.lepton.toml` or `env.slurm.toml` require `NEMOTRON_ENV_FILE`.
+2. Prefer AutoModel PEFT for the simplest JSONL-to-adapter path.
+3. Prefer Megatron-Bridge PEFT when TP/PP scaling or a Megatron base checkpoint is required.
+4. Add `prep/sft_packing` before Megatron-Bridge PEFT.
+5. Add `convert/merge_lora` when a standalone HF checkpoint is needed.
+6. Check `src/nemotron/steps/patterns/small-dataset-lora.md` when deciding whether LoRA is appropriate.
+7. Check `src/nemotron/steps/patterns/adapter-artifact-before-merge.md` before merging adapters for deployment.
 
 ## Guardrails
 

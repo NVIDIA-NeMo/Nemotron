@@ -17,11 +17,12 @@ Use this skill to choose a NeMo-RL alignment step and prepare the correct data s
 
 ## Workflow
 
-1. Start from a validated SFT policy checkpoint in `checkpoint_megatron` format.
-2. Run `prep/rl_prep` when data references or splits need materialization.
-3. Use `config/tiny.yaml` for startup validation and method-specific configs for production.
-4. Track KL, reward variance, reward saturation, response length, and held-out examples before scaling rollout count.
-5. Check `src/nemotron/steps/patterns/validate-rl-rewards-before-scale.md` before increasing rollout count or trusting reward gains.
+1. For Lepton, Slurm, Ray, or batch execution, verify the env profile file first. Default lookup uses repository-root `env.toml`; generated backend files such as `env.lepton.toml` or `env.slurm.toml` require `NEMOTRON_ENV_FILE`.
+2. Start from a validated SFT policy checkpoint in `checkpoint_megatron` format.
+3. Run `prep/rl_prep` when data references or splits need materialization.
+4. Use `config/tiny.yaml` for startup validation and method-specific configs for production.
+5. Track KL, reward variance, reward saturation, response length, and held-out examples before scaling rollout count.
+6. Check `src/nemotron/steps/patterns/validate-rl-rewards-before-scale.md` before increasing rollout count or trusting reward gains.
 
 ## Guardrails
 
