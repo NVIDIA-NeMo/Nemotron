@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit checks for ModelOpt CLI argument translation."""
+"""Unit checks for ModelOpt runner helpers."""
 
-from nemotron.steps._runners.modelopt import to_cli_args
+import os
+
+from nemotron.steps._runners.modelopt import _wandb_wrapper_enabled, to_cli_args
 
 
 def test_hyphen_flag_translation_with_lists_and_bools() -> None:
@@ -95,3 +97,16 @@ def test_underscore_flag_translation_with_dict_json() -> None:
     )
 
     assert args == ["--prune_export_config", '{"hidden_size": 3584}']
+
+
+def test_wandb_wrapper_only_enables_on_global_rank_zero(monkeypatch) -> None:
+    monkeypatch.setenv("WANDB_API_KEY", "secret")
+    monkeypatch.setenv("WANDB_PROJECT", "project")
+
+    monkeypatch.setenv("RANK", "1")
+    assert _wandb_wrapper_enabled({"enabled": True}) is False
+    assert os.environ["WANDB_MODE"] == "disabled"
+
+    monkeypatch.setenv("RANK", "0")
+    monkeypatch.delenv("WANDB_MODE", raising=False)
+    assert _wandb_wrapper_enabled({"enabled": True}) is True

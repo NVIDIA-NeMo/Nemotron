@@ -198,6 +198,33 @@ def project_records(records: list[dict[str, Any]], projection: dict[str, Any] | 
     raise ValueError(f"Unknown output_projection type: {kind!r}")
 
 
+def records_from_designer_result(result: Any) -> list[dict[str, Any]]:
+    """Extract records from either preview or dataset-creation results."""
+    if hasattr(result, "load_dataset"):
+        dataset = result.load_dataset()
+    elif hasattr(result, "dataset"):
+        dataset = result.dataset
+    else:
+        raise TypeError(
+            "Data Designer result must expose either `load_dataset()` "
+            "or an in-memory `dataset` attribute"
+        )
+
+    if dataset is None:
+        raise ValueError("Data Designer returned an empty dataset result")
+
+    if isinstance(dataset, list):
+        return dataset
+
+    if hasattr(dataset, "to_pandas"):
+        dataset = dataset.to_pandas()
+
+    if hasattr(dataset, "to_dict"):
+        return dataset.to_dict(orient="records")
+
+    raise TypeError(f"Unsupported Data Designer dataset type: {type(dataset).__name__}")
+
+
 def main() -> None:
     config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG)
     raw = apply_hydra_overrides(load_omegaconf_yaml(config_path), cli_overrides)
@@ -251,14 +278,17 @@ def main() -> None:
     client = DataDesigner()
 
     if cfg.get("preview", False):
-        result = client.preview(builder)
-        records = result.dataset.to_pandas().to_dict(orient="records")
+        result = client.preview(builder, num_records=cfg["num_records"])
         verb = "Preview"
     else:
-        job = client.create(builder, num_records=cfg["num_records"])
-        records = job.dataset.to_pandas().to_dict(orient="records")
+        result = client.create(
+            builder,
+            num_records=cfg["num_records"],
+            wait_until_done=True,
+        )
         verb = "Generated"
 
+    records = records_from_designer_result(result)
     records = project_records(records, cfg.get("output_projection"))
 
     with output_path.open("w") as f:

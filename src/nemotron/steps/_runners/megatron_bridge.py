@@ -162,6 +162,33 @@ def _maybe_apply_peft(cfg: Any, container: dict[str, Any]) -> None:
 
 
 # =============================================================================
+# Checkpointing compatibility patches
+# =============================================================================
+
+
+def _maybe_patch_checkpointing(container: dict[str, Any]) -> None:
+    """Apply narrow runtime patches for checkpointing implementation quirks."""
+    patch_cfg = dict(container.get("checkpoint_patch") or {})
+    if not patch_cfg.get("use_spawn_queue_for_torch_dist", False):
+        return
+
+    from torch import multiprocessing as mp
+
+    try:
+        import megatron.core.dist_checkpointing.strategies.filesystem_async as filesystem_async
+    except Exception:
+        return
+
+    def _get_write_results_queue() -> Any:
+        if filesystem_async._results_queue is None:
+            filesystem_async._results_queue = mp.get_context("spawn").Queue()
+        return filesystem_async._results_queue
+
+    filesystem_async._results_queue = None
+    filesystem_async._get_write_results_queue = _get_write_results_queue
+
+
+# =============================================================================
 # Dataset (SFT-style)
 # =============================================================================
 
@@ -245,6 +272,8 @@ def run_megatron_bridge(
     # Section overrides. SFT-style steps translate dataset separately below;
     # pretrain needs the native recipe dataset section to merge normally.
     skip_sections = {"dataset"} if dataset_mode in {"finetune", "skip"} else set()
+    if enable_peft:
+        skip_sections.add("peft")
     _apply_section_overrides(cfg, container, skip=skip_sections)
 
     if enable_hf_weights:
@@ -252,6 +281,8 @@ def run_megatron_bridge(
 
     if enable_peft:
         _maybe_apply_peft(cfg, container)
+
+    _maybe_patch_checkpointing(container)
 
     if dataset_mode == "finetune":
         _maybe_build_dataset(cfg, container)

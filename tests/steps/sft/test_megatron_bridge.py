@@ -13,5 +13,5 @@ def test_sft_megatron_bridge_static() -> None:
         step_dir(__file__, "sft", "megatron_bridge"),
         expected_name="steps/sft/megatron_bridge",
         expected_launch="torchrun",
-        expected_default_config="nano3",
+        expected_default_config="default",
     )

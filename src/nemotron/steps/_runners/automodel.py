@@ -31,6 +31,29 @@ from nemotron.kit.train_script import parse_config_and_overrides
 _STEP_RECIPE_KEY = "_step_recipe"
 
 
+def _patch_automodel_compat() -> None:
+    """Patch known container-version mismatches before AutoModel setup.
+
+    Some AutoModel images pair a Megatron dataset builder that reads
+    ``GPTDatasetConfig.multiple_validation_sets`` with a config class that does
+    not define that field yet. Setting a class-level default keeps single
+    validation-set configs on the old behavior and avoids patching site-packages.
+    """
+    for module_path in (
+        "megatron.core.datasets.gpt_dataset",
+        "nemo_automodel.components.datasets.llm.megatron.gpt_dataset",
+        "nemo_automodel.components.datasets.llm.megatron_dataset",
+    ):
+        try:
+            module = importlib.import_module(module_path)
+        except ImportError:
+            continue
+
+        config_cls = getattr(module, "GPTDatasetConfig", None)
+        if config_cls is not None and not hasattr(config_cls, "multiple_validation_sets"):
+            setattr(config_cls, "multiple_validation_sets", False)
+
+
 def _resolve_recipe(default_target: str, cfg) -> type:
     """Return the recipe class. YAML override via ``_step_recipe`` key, else default."""
     target = default_target
@@ -64,6 +87,8 @@ def run_automodel(*, default_target: str, default_config: Path) -> None:
 
     config_path, _ = parse_config_and_overrides(default_config=default_config)
     cfg = parse_args_and_load_config(str(config_path))
+
+    _patch_automodel_compat()
 
     recipe_cls = _resolve_recipe(default_target, cfg)
     recipe = recipe_cls(cfg)

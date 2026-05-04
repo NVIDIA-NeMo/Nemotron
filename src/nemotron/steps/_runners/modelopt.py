@@ -19,6 +19,9 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import subprocess
+import sys
+import time
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, Literal
@@ -58,15 +61,23 @@ def exec_torchrun_script(
         )
     )
 
-    cmd = ["torchrun", f"--nproc_per_node={nproc}"]
-    for key in ("nnodes", "node_rank", "master_addr", "master_port"):
-        value = torchrun.get(key, cfg.get(key))
-        if value is not None:
-            cmd.append(f"--{key}={value}")
-
     script_args = to_cli_args(cfg, forwarded_fields=forwarded_fields, flag_style=resolved_flag_style)
-    cmd.extend([script, *script_args])
+    if os.environ.get("WORLD_SIZE") and os.environ.get("RANK"):
+        # The step itself was launched by the backend's distributed launcher.
+        # Reuse that process group instead of nesting a per-node torchrun, which
+        # would split multi-node jobs into independent single-node worlds.
+        cmd = [sys.executable, script, *script_args]
+    else:
+        cmd = ["torchrun", f"--nproc_per_node={nproc}"]
+        for key in ("nnodes", "node_rank", "master_addr", "master_port"):
+            value = torchrun.get(key, cfg.get(key))
+            if value is not None:
+                cmd.append(f"--{key}={value}")
+        cmd.extend([script, *script_args])
     print(f"$ {shlex.join(cmd)}", flush=True)
+    wandb_cfg = _optional_mapping(cfg.get("wandb_wrapper"), "wandb_wrapper")
+    if _wandb_wrapper_enabled(wandb_cfg):
+        raise SystemExit(_run_with_wandb_wrapper(cmd, cfg, script, script_args, wandb_cfg))
     os.execvp(cmd[0], cmd)
 
 
@@ -130,3 +141,94 @@ def _resolve_flag_style(value: Any) -> FlagStyle:
     if value not in ("hyphen", "underscore"):
         raise ValueError("flag_style must be 'hyphen' or 'underscore'")
     return value
+
+
+def _wandb_wrapper_enabled(wandb_cfg: Mapping[str, Any]) -> bool:
+    if not wandb_cfg or not wandb_cfg.get("enabled", False):
+        return False
+    rank = _distributed_rank()
+    if rank not in (None, 0):
+        os.environ.setdefault("WANDB_MODE", "disabled")
+        return False
+    if not os.environ.get("WANDB_API_KEY"):
+        print("[wandb] wrapper disabled: WANDB_API_KEY is not set", flush=True)
+        return False
+    project = wandb_cfg.get("project") or os.environ.get("WANDB_PROJECT")
+    if not project:
+        print("[wandb] wrapper disabled: no project configured", flush=True)
+        return False
+    return True
+
+
+def _distributed_rank() -> int | None:
+    """Return the global distributed rank when launched under torchrun/MPI/Slurm."""
+    for key in ("RANK", "SLURM_PROCID", "OMPI_COMM_WORLD_RANK", "PMI_RANK"):
+        value = os.environ.get(key)
+        if value is None:
+            continue
+        try:
+            return int(value)
+        except ValueError:
+            continue
+    return None
+
+
+def _run_with_wandb_wrapper(
+    cmd: list[str],
+    cfg: dict[str, Any],
+    script: str,
+    script_args: list[str],
+    wandb_cfg: Mapping[str, Any],
+) -> int:
+    project = str(wandb_cfg.get("project") or os.environ["WANDB_PROJECT"])
+    entity = wandb_cfg.get("entity") or os.environ.get("WANDB_ENTITY")
+    name = wandb_cfg.get("name") or os.environ.get("WANDB_NAME")
+
+    run = None
+    started = time.time()
+    try:
+        import wandb
+
+        run = wandb.init(
+            project=project,
+            entity=str(entity) if entity else None,
+            name=str(name) if name else None,
+            job_type=str(wandb_cfg.get("job_type") or Path(script).stem),
+            config=_wandb_safe_config(cfg),
+        )
+        wandb.summary["upstream_script"] = script
+        wandb.summary["command"] = shlex.join(cmd)
+        wandb.summary["script_args"] = " ".join(script_args)
+        for key, value in _output_path_summary(cfg).items():
+            wandb.summary[key] = value
+    except Exception as exc:  # noqa: BLE001
+        print(f"[wandb] wrapper init failed ({type(exc).__name__}: {exc}); continuing without W&B", flush=True)
+
+    result = subprocess.run(cmd, check=False)
+    elapsed = time.time() - started
+
+    if run is not None:
+        import wandb
+
+        status = "success" if result.returncode == 0 else "failed"
+        wandb.log({"exit_code": result.returncode, "duration_seconds": elapsed})
+        wandb.summary["status"] = status
+        wandb.summary["exit_code"] = result.returncode
+        wandb.summary["duration_seconds"] = elapsed
+        run.finish(exit_code=result.returncode)
+    return result.returncode
+
+
+def _wandb_safe_config(cfg: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "script": cfg.get("script"),
+        "args": cfg.get("args"),
+        "torchrun": cfg.get("torchrun"),
+        "extra_args": cfg.get("extra_args"),
+    }
+
+
+def _output_path_summary(cfg: dict[str, Any]) -> dict[str, str]:
+    args = _optional_mapping(cfg.get("args"), "args")
+    keys = ("output_hf_path", "megatron_save_path", "output_dir", "hf_export_path")
+    return {f"arg_{key}": str(args[key]) for key in keys if args.get(key)}

@@ -35,7 +35,7 @@
 
 """NeMo-RL RLVR step (verifiable rewards via GRPO).
 
-The default config delegates to the upstream math GRPO example. Configs with
+The default config delegates to the upstream generic GRPO example. Configs with
 ``env.should_use_nemo_gym=true`` use the generic NeMo-Gym GRPO runner so custom
 resource servers and Super3-style JSONL can be driven from YAML.
 """
@@ -47,7 +47,7 @@ from pathlib import Path
 from nemotron.steps._runners.nemo_rl import exec_or_run_nemo_rl_grpo
 
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
-UPSTREAM_SCRIPT = "/opt/nemo-rl/examples/run_grpo_math.py"
+UPSTREAM_SCRIPT = "/opt/nemo-rl/examples/run_grpo.py"
 
 
 def main() -> None:

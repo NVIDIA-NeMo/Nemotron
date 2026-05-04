@@ -46,6 +46,7 @@ Mirrors the runtime safety pattern from prep/sft_packing:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from omegaconf import OmegaConf
@@ -56,6 +57,7 @@ from nemotron.data_prep import (
     TokenizerConfig,
     run_pretrain_pipeline,
 )
+from nemotron.data_prep.utils.splits import distribute_shards_to_splits
 from nemotron.kit.train_script import (
     apply_hydra_overrides,
     load_omegaconf_yaml,
@@ -92,7 +94,7 @@ def main() -> None:
     chdir_to_scratch("nemotron-pretrain-prep-")
     init_prep_wandb(["data-prep", "pretrain", cfg.get("config_name", "pretrain-prep")])
 
-    run_pretrain_pipeline(
+    result = run_pretrain_pipeline(
         blend=DataBlend.load(blend_path),
         output_dir=output_dir,
         tokenizer=TokenizerConfig(**cfg["tokenizer"]),
@@ -111,6 +113,19 @@ def main() -> None:
         tokenization_stage=config_dataclass(BinIdxTokenizationStageConfig, cfg.get("tokenization")),
         observability=ObservabilityConfig(**cfg.get("observability", {})),
     )
+
+    split_data_paths = distribute_shards_to_splits(
+        data_paths=result.data_paths,
+        num_shards=result.num_shards,
+        valid_shards=int(cfg.get("valid_shards", 1)),
+        test_shards=int(cfg.get("test_shards", 1)),
+        seed=int(cfg.get("split_seed", cfg.get("sample_seed", 42))),
+    )
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    with (output_path / "blend.json").open("w") as f:
+        json.dump(split_data_paths, f, indent=2)
 
 if __name__ == "__main__":
     main()

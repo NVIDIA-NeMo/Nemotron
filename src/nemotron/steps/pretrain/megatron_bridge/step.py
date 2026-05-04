@@ -42,7 +42,12 @@ present (e.g. to swap data blends without forking the recipe).
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+# Transformer Engine userbuffers may attempt CUDA multicast on systems that do
+# not support it. Use the TE-recommended CUDA IPC fallback by default.
+os.environ.setdefault("UB_SKIPMC", "1")
 
 from megatron.bridge.training.pretrain import pretrain
 

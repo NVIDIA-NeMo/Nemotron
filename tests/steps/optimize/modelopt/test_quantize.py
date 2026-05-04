@@ -21,7 +21,7 @@ def test_optimize_modelopt_quantize_static() -> None:
     assert_step_static(
         step_dir(__file__, "optimize", "modelopt", "quantize"),
         expected_name="steps/optimize/modelopt/quantize",
-        expected_launch="python",
+        expected_launch="torchrun",
         expected_default_config="default",
         require_workdir=True,
     )

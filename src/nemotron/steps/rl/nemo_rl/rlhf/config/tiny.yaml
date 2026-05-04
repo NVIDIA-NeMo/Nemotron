@@ -76,12 +76,12 @@ env:
       responses_api_models:
         vllm_model:
           router_dp_size: 1
-          model: Qwen/Qwen2.5-0.5B-Instruct
+          model: ${oc.env:RL_REWARD_MODEL,Qwen/Qwen2.5-3B-Instruct}
           server_args:
             tensor_parallel_size: 1
             max_num_seqs: 1
             max_model_len: 1024
-            gpu_memory_utilization: 0.2
+            gpu_memory_utilization: 0.35
             enforce_eager: true
             compilation_config:
               cudagraph_capture_sizes: [1]

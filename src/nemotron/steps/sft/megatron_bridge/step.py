@@ -10,7 +10,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "nano3"
+# default = "default"
 # format = "omegaconf"
 #
 # [tool.runspec.resources]

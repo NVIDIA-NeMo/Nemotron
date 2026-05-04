@@ -6,7 +6,7 @@
 # image = "nvcr.io/nvidia/nemo:26.02"
 #
 # [tool.runspec.run]
-# launch = "python"
+# launch = "torchrun"
 # workdir = "/opt/Megatron-Bridge"
 #
 # [tool.runspec.config]

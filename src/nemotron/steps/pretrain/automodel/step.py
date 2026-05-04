@@ -39,7 +39,7 @@ from pathlib import Path
 from nemotron.steps._runners.automodel import run_automodel
 
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
-DEFAULT_TARGET = "nemo_automodel.recipes.llm.train_pretrain:TrainPretrainRecipeForNextTokenPrediction"
+DEFAULT_TARGET = "nemo_automodel.recipes.llm.train_ft:TrainFinetuneRecipeForNextTokenPrediction"
 
 
 def main() -> None:
