@@ -1,8 +1,7 @@
-"""Composable BYOB pipeline functions.
+"""MCQ benchmark-family orchestration.
 
-The orchestration here is intentionally thin. Benchmark-specific behavior lives under
-`benchmark_families/<family>/`, so future families such as GSM8K can be added without
-rewriting the dispatcher.
+The generic CLI dispatcher lives in `nemotron.steps.byob.scripts.runtime`.
+This module owns the MCQ-specific stage order, cache paths, and final schema.
 """
 
 from __future__ import annotations
@@ -248,8 +247,6 @@ def translate_mcq(config_path: str | os.PathLike[str], *, skip_until: str | None
             options_field="options",
         )
         translation_pipeline = TranslationPipeline(
-            mode=config.translation_model_config["mode"],
-            model_params=config.translation_model_config["params"],
             config=config,
         )
         dataset_out = translation_pipeline.translate(seed_df)
@@ -269,8 +266,6 @@ def translate_mcq(config_path: str | os.PathLike[str], *, skip_until: str | None
             options_field="options_translated",
         )
         translation_pipeline = TranslationPipeline(
-            mode=config.translation_model_config["mode"],
-            model_params=config.translation_model_config["params"],
             config=config,
         )
         dataset_out = translation_pipeline.translate(seed_df)

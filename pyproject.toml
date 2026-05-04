@@ -28,7 +28,7 @@ dependencies = [
     "omegaconf>=2.3.0",
     "rich>=13.0.0",
     "textual>=0.70.0",
-    "ray[default]==2.49.2",
+    "ray[default,data]>=2.54",
     "fsspec>=2024.0.0",
     "numpy>=1.24.0",
     "pyarrow>=14.0.0",
@@ -50,6 +50,24 @@ s3 = ["s3fs>=2024.0.0"]
 gcs = ["gcsfs>=2024.0.0"]
 sentencepiece = ["sentencepiece>=0.2.0"]
 xenna = ["cosmos-xenna"]
+byob = [
+    # BYOB uses Curator's current translation and semantic dedup stack, which is Python 3.11+.
+    "data-designer>=0.2.2,<0.6.0; python_version>='3.11'",
+    "nemo-curator>=1.1.0; python_version>='3.11'",
+    "pandas>=2.1.0; python_version>='3.11'",
+    "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
+    "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cudf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuml-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibcugraph-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibraft-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "raft-dask-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "rapidsmpf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -62,6 +80,21 @@ all = [
     "gcsfs>=2024.0.0",
     "sentencepiece>=0.2.0",
     "cosmos-xenna",
+    "data-designer>=0.2.2,<0.6.0; python_version>='3.11'",
+    "nemo-curator>=1.1.0; python_version>='3.11'",
+    "pandas>=2.1.0; python_version>='3.11'",
+    "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
+    "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cudf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuml-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibcugraph-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibraft-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "raft-dask-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "rapidsmpf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
 ]
 
 # Note: megatron-bridge is required for training but not listed as a dependency

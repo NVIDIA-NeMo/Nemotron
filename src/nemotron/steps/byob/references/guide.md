@@ -2,8 +2,15 @@
 
 ## Generation
 
+Install runtime dependencies before running BYOB:
+
+```bash
+uv sync --extra byob
+```
+
 Prepare source documents as one directory or parquet file per target subject. In the MCQ family, each target
-subject maps to few-shot source subjects from the configured Hugging Face benchmark. The generation run:
+subject maps to few-shot source subjects from the configured Hugging Face benchmark. MCQ stage orchestration
+lives in `runtime/benchmark_families/mcq/pipeline.py`. The generation run:
 
 1. Samples few-shot examples and target document chunks into `seed.parquet`.
 2. Generates candidate MCQs with Data Designer.
@@ -35,12 +42,12 @@ the MCQ schema, Curator computes configured backtranslation quality metrics, and
 translated benchmark.
 
 Run translation through the same CLI with `--stage translate` and a translation config. Keep
-`translation_model_config.mode: curator`; BYOB does not maintain a separate translation engine.
+Curator settings under `translation_model_config`; BYOB does not maintain a separate translation engine or mode selector.
 
 ## Extending To Another Family
 
 Read [new-family-checklist.md](new-family-checklist.md) first. Answer the schema, source-data,
 quality-gate, and validation questions before editing code. Then add a new package under
 `runtime/benchmark_families/<family>/`, implement the family-specific schema, prompts, postprocessing,
-and export code, and register a `BenchmarkFamilySpec` in `runtime/benchmark_families/registry.py`.
-Keep CLI parsing and stage dispatch unchanged.
+export code, and stage orchestration, then register a `BenchmarkFamilySpec` in
+`runtime/benchmark_families/registry.py`. Keep CLI parsing and stage dispatch unchanged.

@@ -11,4 +11,5 @@ confidence: high
 
 Before coding, read `references/new-family-checklist.md` and answer the task-format, final-schema,
 source-example, quality-gate, and validation questions. Then create a new package under
-`runtime/benchmark_families/`, keep family logic local, and register it.
+`runtime/benchmark_families/`, keep family logic and stage orchestration local, and register it.
+Use `<family>/pipeline.py` for staged family flow instead of adding a top-level `runtime/pipeline.py`.

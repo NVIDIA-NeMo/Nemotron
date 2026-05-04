@@ -2,7 +2,7 @@
 name: byob
 description: Generate and translate bring-your-own MCQ benchmarks from domain documents with a modular benchmark-family runtime. Use when a user asks to create an MCQ benchmark, translate a BYOB benchmark, or extend the flow to a new benchmark family such as GSM8K.
 when_to_use: Use for requests like "create a custom benchmark from these documents", "run BYOB MCQ generation", "translate the generated benchmark", "add a GSM8K-style BYOB family", or "keep the benchmark schema intact". Do not use for ordinary training-corpus translation.
-compatibility: Generation uses Data Designer and Curator semantic deduplication; translation uses Curator experimental translation. Runtime also requires pandas, parquet IO, embedding models, and translation metric dependencies.
+compatibility: Install the optional `byob` extra before running this step. Generation uses Data Designer and Curator semantic deduplication; translation uses Curator experimental translation.
 metadata:
   owner: nemotron
   workflow-step: byob
@@ -14,11 +14,12 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 
 ## Default
 
-1. Read [references/STEP.md](references/STEP.md) for the artifact contract.
-2. Start from [config/default.yaml](config/default.yaml) for MCQ generation or [config/translate.yaml](config/translate.yaml) for translation.
-3. Run `nemotron byob --family mcq --stage prepare --config CONFIG`.
-4. Run `nemotron byob --family mcq --stage generate --config CONFIG`.
-5. Translate an existing benchmark with `--stage translate` and a translation config.
+1. Install BYOB runtime dependencies with `uv sync --extra byob` or `pip install ".[byob]"` in the target environment.
+2. Read [references/STEP.md](references/STEP.md) for the artifact contract.
+3. Start from [config/default.yaml](config/default.yaml) for MCQ generation or [config/translate.yaml](config/translate.yaml) for translation.
+4. Run `nemotron byob --family mcq --stage prepare --config CONFIG`.
+5. Run `nemotron byob --family mcq --stage generate --config CONFIG`.
+6. Translate an existing benchmark with `--stage translate` and a translation config.
 
 ## Change Points
 
@@ -26,6 +27,7 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 - Before adding a new family, answer the questions in [references/new-family-checklist.md](references/new-family-checklist.md).
 - Register the family in `runtime/benchmark_families/registry.py`.
 - Keep `scripts/runtime.py` as a dispatcher only; family-specific schema, prompts, postprocessing, and export code belong in family modules.
+- Keep MCQ stage orchestration in `runtime/benchmark_families/mcq/pipeline.py`; do not recreate a top-level `runtime/pipeline.py`.
 - Use `adapter.py` only for schema bridging when composing BYOB with other skills.
 - Use Curator experimental translation as the translation backend; BYOB should only flatten/reassemble benchmark-family schema around it.
 - Use Curator semantic dedup with `RayDataExecutor`, `RayActorPoolExecutor`, and package-level `SemanticDeduplicationWorkflow`.
@@ -33,9 +35,10 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 ## Gotchas
 
 - Do not merge the whole runtime into `scripts/runtime.py`; that blocks future GSM8K-style extensions.
+- Do not put MCQ-specific orchestration in top-level `runtime/`; family pipelines belong under `runtime/benchmark_families/<family>/`.
 - Keep `question_id`, `question`, `options`, `answer_index`, `answer`, `cot_content`, `src`, and `category` stable in final MCQ parquet outputs.
 - Do not drop staged rows inline during translation reassembly. Filtering belongs after rows are restored.
-- Keep `translation_model_config.mode` set to `curator`; there is no BYOB Data Designer translation fallback.
+- Do not add a translation mode selector; BYOB translation always uses Curator experimental translation.
 - Keep semantic dedup as a two-step flow: compute embeddings first, then run KMeans, pairwise similarity, and duplicate identification.
 - Resume with `--skip-until` only when the expected cached parquet for the previous stage already exists.
 - Use deterministic seeds for sampling and distractor shuffling when comparing benchmark runs.

@@ -5,7 +5,6 @@ source_language: en-US
 target_language: hi-IN
 
 translation_model_config:
-  mode: curator
   backend_type: llm
   params:
     alias: gpt-oss-120b

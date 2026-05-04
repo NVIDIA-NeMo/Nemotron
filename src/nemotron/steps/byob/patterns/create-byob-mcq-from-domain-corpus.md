@@ -10,5 +10,6 @@ confidence: high
 ---
 
 Use the MCQ family with `prepare` followed by `generate`. Start from `config/default.yaml`.
+MCQ orchestration lives in `runtime/benchmark_families/mcq/pipeline.py`.
 If the request touches semantic deduplication, use Curator's `RayDataExecutor`,
 `RayActorPoolExecutor`, and package-level `SemanticDeduplicationWorkflow`.

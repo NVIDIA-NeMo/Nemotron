@@ -25,9 +25,10 @@ the config, or existing files.
 ## Implementation Rules
 
 - Create `runtime/benchmark_families/<family>/`.
-- Keep family prompts, response models, dataset parsing, postprocessing, and export code inside that package.
+- Keep family prompts, response models, dataset parsing, stage orchestration, postprocessing, and export code inside that package.
 - Register the family in `runtime/benchmark_families/registry.py` with a `BenchmarkFamilySpec`.
 - Keep `scripts/runtime.py` as a dispatcher. Do not add family-specific branches there.
+- Do not recreate top-level `runtime/pipeline.py`; create `<family>/pipeline.py` when a family needs staged orchestration.
 - Add a family config template under `config/` only if the default MCQ template is not appropriate.
 - Add or update references and patterns so another agent can discover when to use the new family.
 - Preserve existing MCQ behavior and final MCQ schema.

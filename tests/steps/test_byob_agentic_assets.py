@@ -40,6 +40,10 @@ def test_byob_skill_assets_exist() -> None:
         "scripts/run.py",
         "scripts/runtime.py",
         "scripts/validate.py",
+        "runtime/benchmark_families/base.py",
+        "runtime/benchmark_families/registry.py",
+        "runtime/benchmark_families/mcq/family.py",
+        "runtime/benchmark_families/mcq/pipeline.py",
         "config/default.yaml",
         "config/tiny.yaml",
         "config/translate.yaml",
@@ -57,6 +61,8 @@ def test_byob_skill_assets_exist() -> None:
     ]
     for rel_path in expected:
         assert (BYOB_ROOT / rel_path).exists(), f"Missing BYOB asset: {rel_path}"
+
+    assert not (BYOB_ROOT / "runtime" / "pipeline.py").exists()
 
 
 def test_byob_skill_frontmatter_is_valid() -> None:
@@ -90,6 +96,29 @@ def test_byob_step_manifest_references_byob_files() -> None:
         raw_paths = raw_reference if isinstance(raw_reference, list) else [raw_reference]
         for raw_path in raw_paths:
             assert (REPO_ROOT / raw_path).exists(), f"Missing BYOB reference path: {raw_path}"
+
+
+def test_byob_runtime_dependencies_are_optional() -> None:
+    with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+        data = tomllib.load(handle)
+
+    base_dependencies = "\n".join(data["project"]["dependencies"])
+    byob_dependencies = data["project"]["optional-dependencies"]["byob"]
+    byob_text = "\n".join(byob_dependencies)
+
+    for package_name in (
+        "data-designer",
+        "nemo-curator",
+        "sentence-transformers",
+        "sacrebleu",
+        "cuml-cu12",
+    ):
+        assert package_name not in base_dependencies
+        assert package_name in byob_text
+
+    curator_requirements = [requirement for requirement in byob_dependencies if requirement.startswith("nemo-curator")]
+    assert curator_requirements == ["nemo-curator>=1.1.0; python_version>='3.11'"]
+    assert "<" not in curator_requirements[0].split(";")[0]
 
 
 def test_byob_imports_are_lightweight() -> None:
@@ -170,12 +199,12 @@ def test_byob_adapter_round_trip() -> None:
     assert restored[0]["translation_time"] == pytest.approx(0.4)
 
 
-def test_byob_translate_config_defaults_to_curator() -> None:
+def test_byob_translate_config_uses_curator_without_mode_selector() -> None:
     from nemotron.steps.byob.runtime.config import ByobTranslationConfig
 
     config = ByobTranslationConfig.from_yaml(str(BYOB_ROOT / "config" / "translate.yaml"))
 
-    assert config.translation_model_config["mode"] == "curator"
+    assert "mode" not in config.translation_model_config
     assert config.translation_model_config["backend_type"] == "llm"
     assert "enable_faith_eval" not in config.translation_model_config.get("stage", {})
 
@@ -193,7 +222,6 @@ def test_byob_translate_config_rejects_faith_eval(tmp_path: Path) -> None:
                 "source_language": "en-US",
                 "target_language": "hi-IN",
                 "translation_model_config": {
-                    "mode": "curator",
                     "params": {},
                     "stage": {"enable_faith_eval": True},
                 },
@@ -242,6 +270,8 @@ def test_byob_agent_assets_document_current_curator_namespaces() -> None:
     assert "nemo_curator.stages.deduplication.semantic" in agent_text
     assert "nemo_curator.stages.text.experimental.translation" in agent_text
     assert "TextQualityMetricStage" in agent_text
+    assert "runtime/benchmark_families/mcq/pipeline.py" in agent_text
+    assert "scripts/runtime.py" in agent_text
 
 
 def test_byob_translation_uses_curator_experimental_namespace() -> None:
@@ -335,7 +365,6 @@ def test_byob_translation_pipeline_uses_curator_adapter(monkeypatch: pytest.Monk
         source_language="en-US",
         target_language="hi-IN",
         translation_model_config={
-            "mode": "curator",
             "backend_type": "llm",
             "params": {
                 "model": "openai/gpt-oss-120b",
@@ -368,11 +397,7 @@ def test_byob_translation_pipeline_uses_curator_adapter(monkeypatch: pytest.Monk
         ]
     )
 
-    translated = TranslationPipeline(
-        mode="curator",
-        model_params=config.translation_model_config["params"],
-        config=config,
-    ).translate(dataframe)
+    translated = TranslationPipeline(config=config).translate(dataframe)
 
     assert translated["translation"].tolist() == [
         "What is inflation? [translated]",
@@ -383,21 +408,3 @@ def test_byob_translation_pipeline_uses_curator_adapter(monkeypatch: pytest.Monk
     assert stage_calls[0]["target_lang"] == "hi"
     assert client_calls[0]["base_url"] == "https://integrate.api.nvidia.com/v1"
     assert client_calls[0]["max_concurrent_requests"] == 2
-
-
-def test_byob_translation_pipeline_rejects_legacy_modes() -> None:
-    from nemotron.steps.byob.runtime.config import ByobTranslationConfig
-    from nemotron.steps.byob.runtime.translation.translation import TranslationPipeline
-
-    config = ByobTranslationConfig(
-        expt_name="unit",
-        dataset_path="unused.parquet",
-        output_dir="unused",
-        source_language="en-US",
-        target_language="hi-IN",
-        translation_model_config={"mode": "curator", "params": {}},
-        backtranslation_quality_metrics=[],
-    )
-
-    with pytest.raises(ValueError, match="only curator"):
-        TranslationPipeline(mode="llm", model_params={}, config=config)

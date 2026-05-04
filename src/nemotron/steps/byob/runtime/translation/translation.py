@@ -25,8 +25,6 @@ class TranslationPipeline:
 
     def __init__(
         self,
-        mode: str,
-        model_params: dict,
         config: ByobTranslationConfig,
         text_field: str = "text",
         translation_field: str = "translation",
@@ -37,20 +35,14 @@ class TranslationPipeline:
         """Initialize the translation pipeline.
 
         Args:
-            mode: Translation mode. BYOB translation supports only 'curator'.
-            model_params: Dictionary containing model configuration parameters.
             config: Translation configuration object.
             text_field: Name of the column containing source text.
             translation_field: Name of the column to store translations.
             id_field: Name of the column containing unique identifiers.
             src_lang_field: Name of the column containing source language codes.
             tgt_lang_field: Name of the column containing target language codes.
-
-        Raises:
-            ValueError: If mode is not supported.
         """
-        self.mode = mode
-        self.model_params = model_params
+        self.model_params = config.translation_model_config.get("params", {})
         self.text_field = text_field
         self.translation_field = translation_field
         self.id_field = id_field
@@ -58,18 +50,15 @@ class TranslationPipeline:
         self.tgt_lang_field = tgt_lang_field
         self.config = config
 
-        if mode == "curator":
-            self.module = CuratorTranslationModule(
-                model_params=model_params,
-                config=config,
-                text_field=text_field,
-                translation_field=translation_field,
-                id_field=id_field,
-                src_lang_field=src_lang_field,
-                tgt_lang_field=tgt_lang_field,
-            )
-        else:
-            raise ValueError(f"Invalid mode: {mode}. BYOB translation supports only curator mode.")
+        self.module = CuratorTranslationModule(
+            model_params=self.model_params,
+            config=config,
+            text_field=text_field,
+            translation_field=translation_field,
+            id_field=id_field,
+            src_lang_field=src_lang_field,
+            tgt_lang_field=tgt_lang_field,
+        )
 
     def translate(self, dataframe: pd.DataFrame):
         """Translate text in the dataframe using the configured backend.

@@ -80,7 +80,7 @@ script = "src/nemotron/steps/byob/step.py"
 default_config = "src/nemotron/steps/byob/config/default.yaml"
 tiny_config = "src/nemotron/steps/byob/config/tiny.yaml"
 translate_config = "src/nemotron/steps/byob/config/translate.yaml"
-runtime = "src/nemotron/steps/byob/runtime/pipeline.py"
+runtime = "src/nemotron/steps/byob/runtime/benchmark_families/mcq/pipeline.py"
 skills = [
   "skills/nemotron-customize/context/byob-benchmark-curator-translation.txt",
 ]

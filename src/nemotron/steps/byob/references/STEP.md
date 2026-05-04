@@ -26,6 +26,8 @@ parameters:
     - filtering_model_configs
 compute:
   shape: single-node plus model endpoints
+  dependency_extra: byob
+  python: ">=3.11 for BYOB Curator runtime dependencies"
   optional_services:
     - OpenAI-compatible LLM endpoint
     - embedding model downloads
@@ -35,13 +37,22 @@ source:
   - repo: Nemotron
     path: src/nemotron/steps/byob/scripts/run.py
   - repo: Nemotron
-    path: src/nemotron/steps/byob/runtime/benchmark_families/mcq/
+    path: src/nemotron/steps/byob/scripts/runtime.py
+  - repo: Nemotron
+    path: src/nemotron/steps/byob/runtime/benchmark_families/mcq/pipeline.py
 ---
 
 # BYOB Step Contract
 
 BYOB produces benchmark parquet artifacts from user-provided domain documents. The current registered
 family is `mcq`; new families should add isolated modules under `runtime/benchmark_families/`.
+The generic dispatcher is `scripts/runtime.py`; MCQ stage orchestration is
+`runtime/benchmark_families/mcq/pipeline.py`.
+
+Install BYOB runtime dependencies explicitly with `uv sync --extra byob` or
+`pip install ".[byob]"`. The base Nemotron install does not pull Data Designer,
+Curator, RAPIDS semantic deduplication packages, embedding models, or translation
+metric packages unless the `byob` extra is selected.
 
 The MCQ generation path writes stage cache parquet files under `output_dir/expt_name/stage_cache/`, then
 writes `benchmark_raw.parquet` and filtered `benchmark.parquet`.

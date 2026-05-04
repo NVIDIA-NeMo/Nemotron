@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from nemotron.steps.byob.runtime.benchmark_families.base import BenchmarkFamilySpec
-from nemotron.steps.byob.runtime.pipeline import generate_mcq, prepare_mcq_data, translate_mcq
+from nemotron.steps.byob.runtime.benchmark_families.mcq.pipeline import (
+    generate_mcq,
+    prepare_mcq_data,
+    translate_mcq,
+)
 
 SPEC = BenchmarkFamilySpec(
     name="mcq",

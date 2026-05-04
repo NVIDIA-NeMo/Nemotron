@@ -505,11 +505,10 @@ class ByobTranslationConfig:
         assert "translation_model_config" in config, (
             "Field `translation_model_config` is required in the configuration file"
         )
-        config["translation_model_config"]["mode"] = config["translation_model_config"].get("mode", "curator")
-        config["translation_model_config"]["params"] = config["translation_model_config"].get("params", {})
-        assert config["translation_model_config"]["mode"] == "curator", (
-            "BYOB translation supports only `translation_model_config.mode: curator`"
+        assert isinstance(config["translation_model_config"], dict), (
+            "Field `translation_model_config` must be a mapping"
         )
+        config["translation_model_config"]["params"] = config["translation_model_config"].get("params", {})
         translation_stage_config = config["translation_model_config"].get("stage", {})
         assert not translation_stage_config.get("enable_faith_eval", False), (
             "BYOB translation uses backtranslation quality metrics; FAITH evaluation is not part of this flow"
