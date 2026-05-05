@@ -331,6 +331,7 @@ model = AutoModel.from_pretrained(
     BASE, trust_remote_code=True, dtype=torch.bfloat16,
     device_map={"": torch.cuda.current_device()},
 )
+# RADIO non-persistent buffer; can deserialize as a meta tensor after load — reset to force re-init.
 if hasattr(model, "vision_model") and hasattr(model.vision_model, "radio_model"):
     model.vision_model.radio_model.summary_idxs = None
 model.eval()
@@ -400,6 +401,7 @@ model = AutoModel.from_pretrained(
     device_map={"": torch.cuda.current_device()},
 )
 
+# RADIO non-persistent buffer; can deserialize as a meta tensor after load — reset to force re-init.
 if hasattr(model, "vision_model") and hasattr(model.vision_model, "radio_model"):
     model.vision_model.radio_model.summary_idxs = None
 
@@ -461,6 +463,7 @@ model = AutoModel.from_pretrained(
     BASE, trust_remote_code=True, dtype=torch.bfloat16,
     device_map={"": torch.cuda.current_device()},
 )
+# RADIO non-persistent buffer; can deserialize as a meta tensor after load — reset to force re-init.
 if hasattr(model, "vision_model") and hasattr(model.vision_model, "radio_model"):
     model.vision_model.radio_model.summary_idxs = None
 
