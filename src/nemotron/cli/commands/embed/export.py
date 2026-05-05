@@ -102,18 +102,12 @@ def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> N
 
     Conditionally includes TensorRT dependency based on config.
     """
-    from nemo_runspec.execution import execute_uv_local
-
-    script_abs = SPEC.script_path
-    stage_dir = script_abs.parent
-    repo_root = SPEC.script_path.parents[len(Path(SCRIPT_PATH).parts) - 1]
+    from nemo_runspec.execution import execute_uv_local_from_spec
 
     extras = ["tensorrt"] if job_config.get("export_to_trt", False) else []
 
-    execute_uv_local(
-        script_path=str(script_abs),
-        stage_dir=stage_dir,
-        repo_root=repo_root,
+    execute_uv_local_from_spec(
+        spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
         extras=extras,
@@ -136,8 +130,8 @@ def _execute_remote(
         typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
         raise typer.Exit(1)
 
-    from nemo_runspec.packaging import CodePackager
     from nemo_runspec.execution import create_executor
+    from nemo_runspec.packaging import CodePackager
     from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,

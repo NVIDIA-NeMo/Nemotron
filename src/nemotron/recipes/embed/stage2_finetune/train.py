@@ -16,7 +16,7 @@
 #
 # [tool.runspec.resources]
 # nodes = 1
-# gpus_per_node = 1
+# gpus_per_node = "gpu"
 # ///
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #

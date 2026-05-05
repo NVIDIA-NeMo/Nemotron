@@ -1521,6 +1521,67 @@ def execute_uv_local(
     raise typer.Exit(rc)
 
 
+def execute_uv_local_from_spec(
+    *,
+    spec: Any,
+    train_path: Path,
+    passthrough: list[str],
+    extra_with: list[str] | None = None,
+    extras: list[str] | None = None,
+    torchrun_nproc_per_node: str | int | None = None,
+) -> None:
+    """Execute a runspec stage locally via UV using ``spec.run.launch``.
+
+    This is a runspec-aware convenience wrapper around ``execute_uv_local``.
+    Stage layout comes from ``spec.script_path`` and launch semantics come from
+    ``spec.run.launch``; caller-provided extras are forwarded unchanged.
+    """
+    script_abs = Path(spec.script_path)
+    stage_dir = script_abs.parent
+    nproc_per_node = torchrun_nproc_per_node
+    if nproc_per_node is None:
+        nproc_per_node = getattr(getattr(spec, "resources", None), "gpus_per_node", 1)
+
+    execute_uv_local(
+        script_path=str(script_abs),
+        stage_dir=stage_dir,
+        repo_root=_find_repo_root_for_script(script_abs),
+        train_path=train_path,
+        passthrough=passthrough,
+        extra_with=extra_with,
+        extras=extras,
+        pre_script_args=_pre_script_args_for_launch(
+            spec.run.launch,
+            torchrun_nproc_per_node=nproc_per_node,
+        ),
+    )
+
+
+def _find_repo_root_for_script(script_path: Path) -> Path:
+    """Find the repository root for a runspec script path."""
+    for parent in script_path.parents:
+        if (parent / "pyproject.toml").exists() and (parent / "src" / "nemotron").exists():
+            return parent
+    return Path.cwd()
+
+
+def _pre_script_args_for_launch(
+    launch: str,
+    *,
+    torchrun_nproc_per_node: str | int,
+) -> list[str]:
+    """Translate runspec launch metadata into args before the script path."""
+    if launch == "torchrun":
+        return [
+            "-m",
+            "torch.distributed.run",
+            f"--nproc_per_node={torchrun_nproc_per_node}",
+        ]
+    if launch in {"direct", "python"}:
+        return []
+    raise ValueError(f"Unsupported local UV launch mode: {launch}")
+
+
 def _torch_is_importable() -> bool:
     """Check if torch is importable in the current Python."""
     import sys
@@ -1546,6 +1607,7 @@ def _execute_with_system_torch(
 ) -> int:
     """Execute using system torch via --system-site-packages venv."""
     import tempfile
+
     import tomllib
 
     from nemo_runspec._pyproject import _write_temp_pyproject
