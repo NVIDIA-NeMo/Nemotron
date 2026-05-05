@@ -271,7 +271,7 @@ Validation:
 
 You should see a loss curve similar to this:
 
-![SFT and LoRA training loss curves on CORD-v2](../../../docs/assets/omni3/omni_loss_curve.png)
+![SFT and LoRA training loss curves on CORD-v2](../../../assets/omni3/omni_loss_curve.png)
 
 ### Checkpoints saved
 
