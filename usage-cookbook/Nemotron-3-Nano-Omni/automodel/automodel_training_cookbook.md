@@ -267,6 +267,25 @@ Validation:
   step 399 | val_loss 0.0566
 ```
 
+### Live training visualization
+
+Stdout-only loss is hard to follow when warnings interleave the log lines. The
+recipe writes per-step metrics to `<checkpoint_dir>/training.jsonl` and
+`<checkpoint_dir>/validation.jsonl`, which makes live visualization
+straightforward:
+
+- **TensorBoard** — stream the JSONL files into a `SummaryWriter`, then run
+  `tensorboard --logdir <checkpoint_dir>/tb` and open the URL. Re-run the
+  consumer (or wrap it in a `tail -f`-style watcher) to keep the dashboard
+  updated mid-run.
+- **`tqdm` + `matplotlib`** — for a quick spot-check, read the JSONL files and
+  plot `step` vs `loss` for train and val on the same axis. `tqdm` wraps the
+  step loop for a live progress bar without a long-running process.
+
+Example loss curves from the SFT and LoRA runs above:
+
+![Loss curves: SFT and LoRA train + val on CORD-v2](TODO-loss-curves.png)
+
 ### Checkpoints saved
 
 ```
