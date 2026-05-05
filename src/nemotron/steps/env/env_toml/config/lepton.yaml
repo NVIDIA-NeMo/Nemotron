@@ -63,9 +63,13 @@ sections:
       RAY_DEDUP_LOGS: "0"
       RAY_GRAFANA_IFRAME_HOST: ""
 
-  # prep/sft_packing: same backend, but the step needs data-prep extras and Ray actors.
+  # prep/sft_packing: data prep is CPU-only. Override the GPU base so Lepton
+  # schedules a CPU shape and the executor does not request GPUs.
   lepton_prep_sft_packing:
     extends: lepton_base
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.medium}
+    gpus_per_node: 0
+    nprocs_per_node: 1
     startup_commands:
       - python -m pip install --quiet --break-system-packages cosmos-xenna protobuf
     env_vars:

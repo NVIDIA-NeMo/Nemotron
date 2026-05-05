@@ -40,6 +40,7 @@ The loader in `src/nemo_runspec/env.py` searches for repository-root `env.toml` 
 
 - Prefer one backend base and concrete profiles named for individual steps, such as `lepton_prep_sft_packing`, `lepton_pretrain_megatron_bridge`, or `slurm_optimize_modelopt_quantize`.
 - Env profiles are inherited with `extends`; child profiles should override only what the step needs, such as image, node count, startup commands, or output path.
+- Data-prep profiles should be CPU-only by default. For Slurm prep profiles, override the GPU base with CPU partitions, `gpus_per_node = 0`, `build_include_gpus = false`, and enough `cpus_per_task` for Ray/Xenna. For Lepton prep profiles, use a CPU `resource_shape` and `gpus_per_node = 0`.
 - Keep secrets as `${oc.env:...}` placeholders. Do not write tokens directly into env files.
 - Keep `[wandb]` for run metadata and pass `WANDB_API_KEY`/`WANDB_PROJECT` through profile `env_vars` so subprocess-heavy steps such as ModelOpt pruning/quantization inherit logging settings.
 - Do not put every NeMo-RL runtime flag in env files. Step YAML `run.env.env_vars` carries runtime-specific flags; the config loader deep-merges those with the selected env profile.

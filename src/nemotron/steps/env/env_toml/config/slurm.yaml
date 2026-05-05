@@ -54,10 +54,17 @@ sections:
       PYTHONPATH: /nemo_run/code/src
       RAY_DEDUP_LOGS: "0"
 
-  # prep/sft_packing: Slurm needs explicit prep deps and Ray worker import path.
+  # prep/sft_packing: data prep is CPU-only. Override the GPU base so Slurm
+  # does not submit to GPU partitions or request GPUs for the image import/job.
   slurm_prep_sft_packing:
     extends: slurm_base
+    partition: ${oc.env:SLURM_CPU_PARTITION,cpu}
+    build_partition: ${oc.env:SLURM_CPU_PARTITION,cpu}
+    build_include_gpus: false
+    build_gpus_per_node: 0
     ntasks_per_node: 1
+    cpus_per_task: 4
+    gpus_per_node: 0
     time: "01:00:00"
     startup_commands:
       - uv pip install --python /opt/venv/bin/python --quiet cosmos-xenna protobuf

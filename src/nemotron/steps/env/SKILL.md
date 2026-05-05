@@ -17,4 +17,5 @@ Use this category for execution-profile setup under `src/nemotron/steps/env/`.
 - Keep env profile files at the repository root. Default profile discovery uses `env.toml`; generated backend examples use `env.lepton.toml` or `env.slurm.toml` and require `export NEMOTRON_ENV_FILE=<file>`.
 - If the target env file exists, inspect and extend it rather than overwriting; only use `force=true` when the user intentionally asks to replace it.
 - Keep site logistics in env profiles and step runtime flags in the step YAML unless the flag is truly site-wide.
+- Keep data-prep step profiles CPU-only unless the step explicitly needs GPUs. Slurm prep profiles should override GPU bases with CPU partitions and `gpus_per_node = 0`; Lepton prep profiles should use a CPU resource shape.
 - Compile one small run after profile changes and inspect `run.env` before submitting.
