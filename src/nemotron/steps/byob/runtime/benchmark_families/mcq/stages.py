@@ -2,11 +2,8 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from data_designer.essentials import (
-    DataDesigner,
-    DataDesignerConfigBuilder,
-    SeedConfig,
-)
+from data_designer.config import DataDesignerConfigBuilder, LocalFileSeedSource
+from data_designer.interface import DataDesigner
 
 from nemotron.steps.byob.runtime.benchmark_families.mcq.response_model import (
     DistractorExpansion,
@@ -37,7 +34,7 @@ def generate_questions(config: ByobConfig, seed_df: pd.DataFrame):
     os.makedirs(f"{config.output_dir}/temp", exist_ok=True)
     seed_path = f"{config.output_dir}/temp/{config.expt_name}_generation_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
     seed_df.to_csv(seed_path, index=False)
-    seed_dataset = SeedConfig(dataset=seed_path)
+    seed_dataset = LocalFileSeedSource(path=seed_path)
 
     data_designer = DataDesigner(artifact_path=f"{config.output_dir}/{config.expt_name}/artifacts/data_designer")
     config_builder = DataDesignerConfigBuilder(model_configs=[generation_model_config])
@@ -55,7 +52,7 @@ def generate_questions(config: ByobConfig, seed_df: pd.DataFrame):
         output_format=QuestionAnswerList,
         model_alias=config.generation_model_config["alias"],
     )
-    config_builder.validate()
+    data_designer.validate(config_builder)
 
     job_results = data_designer.create(config_builder=config_builder, num_records=len(seed_df))
     dataset = job_results.load_dataset()
@@ -83,7 +80,7 @@ def judge_questions(config: ByobConfig, seed_df: pd.DataFrame):
     os.makedirs(f"{config.output_dir}/temp", exist_ok=True)
     seed_path = f"{config.output_dir}/temp/{config.expt_name}_judge_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
     seed_df.to_csv(seed_path, index=False)
-    seed_dataset = SeedConfig(dataset=seed_path)
+    seed_dataset = LocalFileSeedSource(path=seed_path)
 
     data_designer = DataDesigner(artifact_path=f"{config.output_dir}/{config.expt_name}/artifacts/data_designer")
     config_builder = DataDesignerConfigBuilder(model_configs=[judge_model_config])
@@ -99,7 +96,7 @@ def judge_questions(config: ByobConfig, seed_df: pd.DataFrame):
         output_format=JudgeResult,
         model_alias=config.judge_model_config["alias"],
     )
-    config_builder.validate()
+    data_designer.validate(config_builder)
 
     job_results = data_designer.create(config_builder=config_builder, num_records=len(seed_df))
     dataset = job_results.load_dataset()
@@ -128,7 +125,7 @@ def expand_distractors(config: ByobConfig, seed_df: pd.DataFrame):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     seed_path = f"{config.output_dir}/temp/{config.expt_name}_distractor_expansion_{timestamp}.csv"
     seed_df.to_csv(seed_path, index=False)
-    seed_dataset = SeedConfig(dataset=seed_path)
+    seed_dataset = LocalFileSeedSource(path=seed_path)
 
     data_designer = DataDesigner(artifact_path=f"{config.output_dir}/{config.expt_name}/artifacts/data_designer")
     config_builder = DataDesignerConfigBuilder(model_configs=[distractor_expansion_model_config])
@@ -144,7 +141,7 @@ def expand_distractors(config: ByobConfig, seed_df: pd.DataFrame):
         output_format=DistractorExpansion,
         model_alias=config.distractor_expansion_model_config["alias"],
     )
-    config_builder.validate()
+    data_designer.validate(config_builder)
 
     job_results = data_designer.create(config_builder=config_builder, num_records=len(seed_df))
     dataset = job_results.load_dataset()
@@ -187,7 +184,7 @@ def filter_questions(config: ByobConfig, dataset: pd.DataFrame):
     os.makedirs(f"{config.output_dir}/temp", exist_ok=True)
     seed_path = f"{config.output_dir}/temp/{config.expt_name}_filtering_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
     dataset.to_csv(seed_path, index=False)
-    seed_dataset = SeedConfig(dataset=seed_path)
+    seed_dataset = LocalFileSeedSource(path=seed_path)
 
     data_designer = DataDesigner(artifact_path=f"{config.output_dir}/{config.expt_name}/artifacts/data_designer")
     config_builder = DataDesignerConfigBuilder(model_configs=filter_model_configs)
@@ -202,7 +199,7 @@ def filter_questions(config: ByobConfig, dataset: pd.DataFrame):
                 prompt=prompt_filter[filter_type],
                 model_alias=filtering_model_config["alias"],
             )
-    config_builder.validate()
+    data_designer.validate(config_builder)
 
     job_results = data_designer.create(config_builder=config_builder, num_records=len(dataset))
     dataset = job_results.load_dataset()
@@ -238,7 +235,7 @@ def check_distractor_validity(config: ByobConfig, dataset: pd.DataFrame):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     seed_path = f"{config.output_dir}/temp/{config.expt_name}_distractor_validity_{timestamp}.csv"
     dataset.to_csv(seed_path, index=False)
-    seed_dataset = SeedConfig(dataset=seed_path)
+    seed_dataset = LocalFileSeedSource(path=seed_path)
 
     data_designer = DataDesigner(artifact_path=f"{config.output_dir}/{config.expt_name}/artifacts/data_designer")
     config_builder = DataDesignerConfigBuilder(model_configs=[distractor_validity_model_config])
@@ -252,7 +249,7 @@ def check_distractor_validity(config: ByobConfig, dataset: pd.DataFrame):
         output_format=DistractorValidityTenChoices if num_choices == 10 else DistractorValidityFourChoices,
         model_alias=config.distractor_validity_model_config["alias"],
     )
-    config_builder.validate()
+    data_designer.validate(config_builder)
     job_results = data_designer.create(config_builder=config_builder, num_records=len(dataset))
     dataset = job_results.load_dataset()
     dataset.dropna(inplace=True)

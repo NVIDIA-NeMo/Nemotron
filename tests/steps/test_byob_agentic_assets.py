@@ -111,14 +111,24 @@ def test_byob_runtime_dependencies_are_optional() -> None:
         "nemo-curator",
         "sentence-transformers",
         "sacrebleu",
+        "bcp47",
         "cuml-cu12",
     ):
         assert package_name not in base_dependencies
         assert package_name in byob_text
 
+    data_designer_requirements = [
+        requirement for requirement in byob_dependencies if requirement.startswith("data-designer")
+    ]
+    assert data_designer_requirements == [
+        "data-designer==0.5.5; python_version>='3.11' and python_version<'3.14'"
+    ]
+
     curator_requirements = [requirement for requirement in byob_dependencies if requirement.startswith("nemo-curator")]
-    assert curator_requirements == ["nemo-curator>=1.1.0; python_version>='3.11'"]
-    assert "<" not in curator_requirements[0].split(";")[0]
+    assert curator_requirements == [
+        "nemo-curator @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; "
+        "python_version>='3.11' and python_version<'3.14'"
+    ]
 
 
 def test_byob_imports_are_lightweight() -> None:

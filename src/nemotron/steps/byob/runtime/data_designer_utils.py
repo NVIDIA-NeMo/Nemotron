@@ -17,7 +17,7 @@
 from collections.abc import Callable
 
 import pandas as pd
-from data_designer.essentials import ChatCompletionInferenceParams, ModelConfig
+from data_designer.config import ChatCompletionInferenceParams, ModelConfig
 from tqdm import tqdm
 
 from nemotron.steps.byob.runtime.config import ByobConfig

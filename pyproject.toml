@@ -52,13 +52,14 @@ sentencepiece = ["sentencepiece>=0.2.0"]
 xenna = ["cosmos-xenna"]
 byob = [
     # BYOB uses Curator's current translation and semantic dedup stack, which is Python 3.11+.
-    "data-designer>=0.2.2,<0.6.0; python_version>='3.11'",
-    "nemo-curator>=1.1.0; python_version>='3.11'",
+    "data-designer==0.5.5; python_version>='3.11' and python_version<'3.14'",
+    "nemo-curator @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
     "pandas>=2.1.0; python_version>='3.11'",
     "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
     "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
     "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
     "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
     "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
     "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
     "cudf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
@@ -80,13 +81,14 @@ all = [
     "gcsfs>=2024.0.0",
     "sentencepiece>=0.2.0",
     "cosmos-xenna",
-    "data-designer>=0.2.2,<0.6.0; python_version>='3.11'",
-    "nemo-curator>=1.1.0; python_version>='3.11'",
+    "data-designer==0.5.5; python_version>='3.11' and python_version<'3.14'",
+    "nemo-curator @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
     "pandas>=2.1.0; python_version>='3.11'",
     "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
     "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
     "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
     "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
     "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
     "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
     "cudf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
@@ -119,6 +121,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/nemotron", "src/nemo_runspec"]
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
@@ -144,6 +149,17 @@ ignore = []
 
 [tool.uv]
 package = true
+constraint-dependencies = [
+    # Curator main currently keeps these constraints in its own uv config, but
+    # they are not published transitively through package metadata.
+    "transformers>=4.56.0,<5.0",
+]
+override-dependencies = [
+    # data-designer-engine==0.5.5 declares huggingface-hub>=1.0.1, while
+    # Curator's Transformers-compatible stack requires the pre-1.0 API.
+    "huggingface-hub>=0.34,<1.0",
+    "torch==2.10.0",
+]
 
 [dependency-groups]
 dev = [
