@@ -75,7 +75,7 @@ loss_fn:
 # MegatronPretraining wrapper.
 dataset:
   _target_: nemo_automodel.components.datasets.llm.megatron_dataset.MegatronPretraining
-  paths: /path/to/blend.json
+  paths: ${oc.env:PRETRAIN_BLEND_PATH}
   index_mapping_dir: ./index_mapping/train
   tokenizer:
     _target_: nemo_automodel._transformers.auto_tokenizer.NeMoAutoTokenizer.from_pretrained
@@ -86,7 +86,7 @@ dataset:
 
 validation_dataset:
   _target_: nemo_automodel.components.datasets.llm.megatron_dataset.MegatronPretraining
-  paths: /path/to/blend.json
+  paths: ${oc.env:PRETRAIN_BLEND_PATH}
   index_mapping_dir: ./index_mapping/validation
   tokenizer:
     _target_: nemo_automodel._transformers.auto_tokenizer.NeMoAutoTokenizer.from_pretrained

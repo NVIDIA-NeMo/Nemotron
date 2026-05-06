@@ -3,7 +3,7 @@
 # [tool.runspec]
 # schema = "1"
 # name = "steps/rl/nemo_rl/rlhf"
-# image = "nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super"
+# image = "nvcr.io/nvidia/nemo-rl:v0.6.0"
 #
 # [tool.runspec.run]
 # launch = "ray"

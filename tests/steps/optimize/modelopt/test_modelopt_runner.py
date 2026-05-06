@@ -71,7 +71,7 @@ def test_args_mapping_drives_script_arguments() -> None:
     ]
 
 
-def test_flat_overrides_can_replace_args_mapping_values() -> None:
+def test_args_mapping_wins_over_legacy_flat_config(capsys) -> None:
     args = to_cli_args(
         {
             "args": {"hf_model_id": "base-model", "calib_size": 128},
@@ -79,6 +79,26 @@ def test_flat_overrides_can_replace_args_mapping_values() -> None:
         },
         forwarded_fields=("hf_model_id",),
         flag_style="hyphen",
+    )
+
+    assert args == [
+        "--hf-model-id",
+        "base-model",
+        "--calib-size",
+        "128",
+    ]
+    assert "ignoring legacy flat config key 'hf_model_id'" in capsys.readouterr().out
+
+
+def test_cli_overrides_can_replace_args_mapping_values() -> None:
+    args = to_cli_args(
+        {
+            "args": {"hf_model_id": "base-model", "calib_size": 128},
+            "hf_model_id": "override-model",
+        },
+        forwarded_fields=("hf_model_id",),
+        flag_style="hyphen",
+        cli_overrides=("hf_model_id=override-model",),
     )
 
     assert args == [

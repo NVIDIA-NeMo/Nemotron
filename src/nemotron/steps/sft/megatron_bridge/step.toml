@@ -41,8 +41,8 @@ choices = [2048, 4096, 8192, 16384, 32768]
 
 [[parameters]]
 name = "peft"
-description = "'null' = full SFT, 'lora' = LoRA with fewer GPUs and smaller checkpoints"
-default = "null"
+description = "'lora' = the shipped 30B default, 'null' = full SFT when the model fits"
+default = "lora"
 choices = ["null", "lora"]
 
 [[strategies]]

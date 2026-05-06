@@ -29,7 +29,7 @@ recipe:
   sequence_parallelism: true
 
 dataset:
-  data_paths: /path/to/blend.json
+  data_paths: ${oc.env:PRETRAIN_BLEND_PATH}
   seq_length: 8192
   reset_attention_mask: false
   reset_position_ids: false

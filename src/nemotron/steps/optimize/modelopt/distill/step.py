@@ -38,11 +38,14 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
-from nemotron.steps._runners.modelopt import exec_torchrun_script
+from nemotron.steps._runners.modelopt import (
+    exec_torchrun_script,
+    run_modelopt_setup_command,
+    validate_model_optimizer_checkout,
+)
 
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 UPSTREAM_SCRIPT = "/opt/Model-Optimizer/examples/megatron_bridge/distill.py"
@@ -86,19 +89,16 @@ def ensure_model_optimizer_examples(script_path: str) -> None:
     if script.exists() and not _env_flag(MODELOPT_SYNC_ENV):
         return
     if (repo_root / ".git").exists() and _env_flag(MODELOPT_SYNC_ENV):
-        subprocess.run(
+        run_modelopt_setup_command(
             ["git", "-C", str(repo_root), "fetch", "--depth", "1", "origin", "main"],
-            check=True,
         )
-        subprocess.run(
+        run_modelopt_setup_command(
             ["git", "-C", str(repo_root), "checkout", "--force", "origin/main"],
-            check=True,
         )
     elif not repo_root.exists():
         repo_root.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
+        run_modelopt_setup_command(
             ["git", "clone", "--depth", "1", MODELOPT_REPO, str(repo_root)],
-            check=True,
         )
     if not script.exists():
         raise FileNotFoundError(
@@ -113,8 +113,8 @@ def install_model_optimizer_checkout(script_path: str) -> None:
         repo_root = Path(script_path).parents[2]
         os.environ["PYTHONPATH"] = f"{repo_root}:{os.environ.get('PYTHONPATH', '')}"
         return
-    repo_root = Path(script_path).parents[2]
-    subprocess.run(
+    repo_root = validate_model_optimizer_checkout(script_path)
+    run_modelopt_setup_command(
         [
             sys.executable,
             "-m",
@@ -126,7 +126,6 @@ def install_model_optimizer_checkout(script_path: str) -> None:
             "-e",
             str(repo_root),
         ],
-        check=True,
     )
     os.environ["PYTHONPATH"] = f"{repo_root}:{os.environ.get('PYTHONPATH', '')}"
 

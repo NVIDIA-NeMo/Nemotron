@@ -47,7 +47,8 @@ The loader in `src/nemo_runspec/env.py` searches for repository-root `env.toml` 
 - If a profile defines `env_vars`, it should usually contain only site/output variables such as `RL_OUTPUT_DIR`, `HF_HOME`, `WANDB_PROJECT`, or `OPTIM_OUTPUT_DIR`.
 - For Ray jobs, avoid job `runtime_env` workdirs when vLLM or NeMo-RL starts nested Ray actors. Use staged source plus `PYTHONPATH` and keep source-transport cleanup in the runner, not in env.toml profiles.
 - For RLHF with GenRM, budget physical Ray nodes for policy/generation, NeMo-Gym GPU servers, and extra placement headroom. For example, a small logical `cluster.num_nodes=2` plus `env.nemo_gym.num_gpu_nodes=1` should use a 4x8-GPU Lepton profile until proven stable.
-- Use separate image bases: NeMo for Megatron Bridge, NeMo-RL for DPO/RLVR/RLHF, NeMo-AutoModel for AutoModel, and NeMo 26.02 for ModelOpt.
+- Use separate image bases: NeMo for Megatron Bridge, NeMo-RL `nvcr.io/nvidia/nemo-rl:v0.6.0` for DPO/RLVR/RLHF, NeMo-AutoModel for AutoModel, and NeMo 26.02 for ModelOpt.
+- For Lepton NeMo-RL profiles, keep `ray_version` on the latest workspace-supported Ray version. NeMo-RL v0.6.0 pins Ray 2.54 upstream, but some Lepton workspaces may only accept older Ray versions such as 2.48.0.
 - Keep functional runner `gpu_count` aligned with the env profile, not only the step config.
 
 ## Local Files

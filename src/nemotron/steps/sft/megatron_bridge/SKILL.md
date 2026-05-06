@@ -21,7 +21,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Keep `seq_length` equal to the prep step's `pack_size`.
 - Start Nano3 plans around the existing recipe defaults; scale Super3-like plans only after short validation runs pass.
 - Tune tensor, pipeline, and context parallelism before scaling global batch.
-- Use `peft=lora` only when adapter training is intended; otherwise keep full SFT.
+- The shipped 30B default uses `peft=lora` to fit the starter topology; set `recipe.peft=null` and remove the top-level `peft:` block only when full SFT fits.
 - Check `src/nemotron/steps/patterns/prepared-data-is-tokenizer-locked.md` before reusing packed data.
 - Check `src/nemotron/steps/patterns/pack-variable-length.md` when packing efficiency is part of the decision.
 

@@ -115,11 +115,15 @@ policy:
     context_parallel_size: 1
     custom_parallel_plan: null
     clear_cache_every_n_steps: null
+    automodel_kwargs:
+      force_hf: true
   megatron_cfg:
     enabled: false
   dynamic_batching:
     enabled: false
   sequence_packing:
+    enabled: false
+  draft:
     enabled: false
   make_sequence_length_divisible_by: ${policy.dtensor_cfg.tensor_parallel_size}
   max_grad_norm: 1.0
@@ -154,7 +158,6 @@ policy:
         enable_auto_tools: true
         tool_parser: hermes
         reasoning_parser: null
-        reasoning_parser_plugin: null
     vllm_kwargs: {}
     colocated:
       enabled: true
@@ -194,6 +197,7 @@ data:
   max_input_seq_length: ${policy.max_total_sequence_length}
   shuffle: false
   num_workers: 1
+  use_multiple_dataloader: false
   train:
     data_path: /path/to/train.jsonl
   validation:
@@ -215,6 +219,7 @@ checkpointing:
   checkpoint_must_save_by: null
   model_save_format: safetensors
   save_consolidated: false
+  save_optimizer: false
 
 logger:
   log_dir: /nemo_run/rlvr-logs

@@ -81,3 +81,16 @@ def test_non_prep_ray_step_keeps_raycluster_submit(monkeypatch: pytest.MonkeyPat
 
     assert len(calls) == 1
     assert calls[0][0] == "ray"
+
+
+def test_pod_relative_script_is_repo_relative_from_any_cwd(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    script = "/home/user/Nemotron/src/nemotron/steps/rl/nemo_rl/rlvr/step.py"
+
+    assert CloudBackend._pod_relative_script(script) == (
+        "src/nemotron/steps/rl/nemo_rl/rlvr/step.py"
+    )

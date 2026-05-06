@@ -16,7 +16,7 @@
 
 output_dir: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/synth}
 output_path: ${output_dir}/rl_pref.jsonl
-num_records: 2000
+num_records: 100
 
 seed_dataset:
   path: ${oc.env:PWD}/src/nemotron/steps/synth/data_designer/data/rl_pref_prompt_seeds.jsonl

@@ -38,11 +38,15 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-from nemotron.steps._runners.modelopt import exec_torchrun_script
+from nemotron.steps._runners.modelopt import (
+    exec_torchrun_script,
+    run_modelopt_setup_command,
+    validate_model_optimizer_checkout,
+)
 
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 UPSTREAM_SCRIPT = "/opt/Model-Optimizer/examples/megatron_bridge/prune_minitron.py"
@@ -71,19 +75,16 @@ def ensure_model_optimizer_examples(script_path: str) -> None:
     if script.exists() and not _env_flag(MODELOPT_SYNC_ENV):
         return
     if (repo_root / ".git").exists() and _env_flag(MODELOPT_SYNC_ENV):
-        subprocess.run(
+        run_modelopt_setup_command(
             ["git", "-C", str(repo_root), "fetch", "--depth", "1", "origin", "main"],
-            check=True,
         )
-        subprocess.run(
+        run_modelopt_setup_command(
             ["git", "-C", str(repo_root), "checkout", "--force", "origin/main"],
-            check=True,
         )
     elif not repo_root.exists():
         repo_root.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
+        run_modelopt_setup_command(
             ["git", "clone", "--depth", "1", MODELOPT_REPO, str(repo_root)],
-            check=True,
         )
     if not script.exists():
         raise FileNotFoundError(
@@ -98,8 +99,8 @@ def install_model_optimizer_checkout(script_path: str) -> None:
         repo_root = Path(script_path).parents[2]
         os.environ["PYTHONPATH"] = f"{repo_root}:{os.environ.get('PYTHONPATH', '')}"
         return
-    repo_root = Path(script_path).parents[2]
-    subprocess.run(
+    repo_root = validate_model_optimizer_checkout(script_path)
+    run_modelopt_setup_command(
         [
             sys.executable,
             "-m",
@@ -111,7 +112,6 @@ def install_model_optimizer_checkout(script_path: str) -> None:
             "-e",
             str(repo_root),
         ],
-        check=True,
     )
     os.environ["PYTHONPATH"] = f"{repo_root}:{os.environ.get('PYTHONPATH', '')}"
 
@@ -120,19 +120,35 @@ def _env_flag(name: str) -> bool:
     return os.environ.get(name, "").lower() in {"1", "true", "yes", "on"}
 
 
-def patch_model_optimizer_script(script_path: str) -> None:
-    """Patch Megatron-Bridge API drift not fixed by reinstalling ModelOpt."""
-    script = Path(script_path)
-    text = script.read_text(encoding="utf-8")
-    patched = text.replace("\n        moe_grouped_gemm=False,", "")
-    if patched != text:
-        script.write_text(patched, encoding="utf-8")
+def install_moe_grouped_gemm_compat_patch() -> None:
+    """Drop the obsolete ``moe_grouped_gemm`` kwarg without mutating /opt files."""
+    patch_dir = Path(tempfile.mkdtemp(prefix="nemotron-modelopt-prune-compat-"))
+    (patch_dir / "sitecustomize.py").write_text(
+        """
+import inspect
+
+try:
+    from modelopt.torch.utils.plugins import mbridge
+
+    original = mbridge.load_mbridge_model_from_hf
+    if "moe_grouped_gemm" not in inspect.signature(original).parameters:
+        def load_mbridge_model_from_hf_compat(*args, **kwargs):
+            kwargs.pop("moe_grouped_gemm", None)
+            return original(*args, **kwargs)
+
+        mbridge.load_mbridge_model_from_hf = load_mbridge_model_from_hf_compat
+except Exception as exc:
+    print(f"[modelopt] prune compatibility patch disabled: {type(exc).__name__}: {exc}", flush=True)
+""".lstrip(),
+        encoding="utf-8",
+    )
+    os.environ["PYTHONPATH"] = f"{patch_dir}:{os.environ.get('PYTHONPATH', '')}"
 
 
 def main() -> None:
     ensure_model_optimizer_examples(UPSTREAM_SCRIPT)
     install_model_optimizer_checkout(UPSTREAM_SCRIPT)
-    patch_model_optimizer_script(UPSTREAM_SCRIPT)
+    install_moe_grouped_gemm_compat_patch()
     exec_torchrun_script(
         default_config=DEFAULT_CONFIG,
         upstream_script=UPSTREAM_SCRIPT,

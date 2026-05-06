@@ -16,6 +16,8 @@ preamble: |
   #   export NEMOTRON_ENV_FILE=env.lepton.toml
   #   uv run nemotron step run prep/sft_packing -c default --batch lepton_prep_sft_packing
   #   uv run nemotron step run pretrain/megatron_bridge -c default --batch lepton_pretrain_megatron_bridge
+  #   uv run nemotron step run rl/nemo_rl/dpo -c default --batch lepton_rl_nemo_rl_dpo
+  #   uv run nemotron step run rl/nemo_rl/rlvr -c default --batch lepton_rl_nemo_rl_rlvr
   #   uv run nemotron step run rl/nemo_rl/rlhf -c default --batch lepton_rl_nemo_rl_rlhf
   #   uv run nemotron step run optimize/modelopt/quantize -c default --batch lepton_optimize_modelopt_quantize
 
@@ -25,6 +27,8 @@ checks:
     - lepton_prep_sft_packing
     - lepton_pretrain_megatron_bridge
     - lepton_sft_megatron_bridge
+    - lepton_rl_nemo_rl_dpo
+    - lepton_rl_nemo_rl_rlvr
     - lepton_rl_nemo_rl_rlhf
     - lepton_optimize_modelopt_quantize
   recommended_min_nodes:
@@ -45,6 +49,7 @@ sections:
     nemo_run_dir: ${oc.env:NEMO_RUN_DIR,/mnt/lustre-shared/nemo-run}
     remote_job_dir: ${oc.env:NEMOTRON_REMOTE_JOB_DIR,/mnt/lustre-shared/output}
     workspace: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}
+    # Lepton may lag NeMo-RL's upstream Ray pin; override only after your workspace supports it.
     ray_version: "2.48.0"
     nodes: 1
     gpus_per_node: 8
@@ -102,12 +107,18 @@ sections:
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   lepton_rl_nemo_rl_dpo:
     extends: lepton_base
-    container_image: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    container_image: nvcr.io/nvidia/nemo-rl:v0.6.0
     nodes: 2
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
       RL_OUTPUT_DIR: /mnt/lustre-shared/output/rl/dpo
+
+  # rl/nemo_rl/rlvr: same NeMo-RL image, with GRPO/RLVR output wiring.
+  lepton_rl_nemo_rl_rlvr:
+    extends: lepton_rl_nemo_rl_dpo
+    env_vars:
+      RL_OUTPUT_DIR: /mnt/lustre-shared/output/rl/rlvr
 
   # rl/nemo_rl/rlhf: same RL profile, but more physical nodes for GenRM/NeMo-Gym placement.
   lepton_rl_nemo_rl_rlhf:

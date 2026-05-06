@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import shlex
 import subprocess
@@ -46,6 +47,7 @@ from rich.console import Console
 from nemo_runspec import data_mover
 
 console = Console()
+_log = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -216,16 +218,16 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
                 env_vars["WANDB_JOB_TYPE"] = str(wandb_config["job_type"])
             if wandb_config.get("tags"):
                 env_vars["WANDB_TAGS"] = ",".join(str(tag) for tag in wandb_config["tags"])
-    except Exception:
-        pass
+    except Exception as e:
+        _log.debug("Skipping W&B env extraction from job_config: %s", e)
 
     if "WANDB_PROJECT" in env_vars and hasattr(job_config, "run") and hasattr(job_config.run, "recipe"):
         try:
             recipe_name = str(job_config.run.recipe.name)
             env_vars.setdefault("WANDB_JOB_TYPE", recipe_name)
             env_vars.setdefault("WANDB_NAME", recipe_name.replace("/", "-"))
-        except Exception:
-            pass
+        except Exception as e:
+            _log.debug("Skipping W&B recipe-name defaults: %s", e)
 
     # Merge explicit env_vars from run.env config (YAML or env.toml).
     # These are applied last so they can override auto-detected values above.
@@ -1233,7 +1235,10 @@ def execute_cloud(
         # Configs are normalized to /nemo_run/code/... before submission. The
         # cloud chunk transport stages source elsewhere, so keep that legacy
         # path valid for packaged data files referenced from YAML.
-        parts.append(f"mkdir -p /nemo_run/code && rm -rf /nemo_run/code/src && ln -s {transport.pod_src_root} /nemo_run/code/src")
+        parts.append(
+            "mkdir -p /nemo_run/code && rm -rf /nemo_run/code/src && "
+            f"ln -s {transport.pod_src_root} /nemo_run/code/src"
+        )
     parts.append(_transport_env_cleanup_cmd())
     # Extra pip packages from env.toml (CLI deps, experimental libs, etc.)
     for pkg in pip_extras:
@@ -1379,7 +1384,8 @@ def execute_cloud_ray(
         # Keep rewritten /nemo_run/code/... config paths valid when source was
         # delivered through the cloud chunk transport.
         head_setup.append(
-            f"mkdir -p /nemo_run/code && rm -rf /nemo_run/code/src && ln -s {transport.pod_src_root} /nemo_run/code/src"
+            "mkdir -p /nemo_run/code && rm -rf /nemo_run/code/src && "
+            f"ln -s {transport.pod_src_root} /nemo_run/code/src"
         )
     head_setup.append(_transport_env_cleanup_cmd())
     if transport.needs_pwd_symlinks:

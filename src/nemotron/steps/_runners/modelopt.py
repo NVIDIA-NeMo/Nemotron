@@ -35,6 +35,7 @@ from nemotron.kit.train_script import (
 )
 
 FlagStyle = Literal["hyphen", "underscore"]
+MODELOPT_SETUP_TIMEOUT_ENV = "NEMOTRON_MODELOPT_SETUP_TIMEOUT_SECONDS"
 
 
 def exec_torchrun_script(
@@ -61,7 +62,12 @@ def exec_torchrun_script(
         )
     )
 
-    script_args = to_cli_args(cfg, forwarded_fields=forwarded_fields, flag_style=resolved_flag_style)
+    script_args = to_cli_args(
+        cfg,
+        forwarded_fields=forwarded_fields,
+        flag_style=resolved_flag_style,
+        cli_overrides=cli_overrides,
+    )
     if os.environ.get("WORLD_SIZE") and os.environ.get("RANK"):
         # The step itself was launched by the backend's distributed launcher.
         # Reuse that process group instead of nesting a per-node torchrun, which
@@ -86,6 +92,7 @@ def to_cli_args(
     *,
     forwarded_fields: Iterable[str],
     flag_style: FlagStyle,
+    cli_overrides: Iterable[str] = (),
 ) -> list[str]:
     """Translate YAML-controlled script args to argparse-compatible CLI arguments.
 
@@ -98,19 +105,44 @@ def to_cli_args(
     extra_args: ["--new-upstream-flag", "value"]
     ```
 
-    ``forwarded_fields`` keeps older flat configs working and lets a flat Hydra
-    override such as ``hf_model_id=...`` override ``args.hf_model_id``.
+    ``forwarded_fields`` keeps older flat configs working. When both ``args.X``
+    and a legacy flat ``X`` are present in a config file, ``args.X`` wins and a
+    warning is printed. A CLI-time override such as ``hf_model_id=...`` still
+    wins because it is the user's explicit last-mile override.
     """
     args: list[str] = []
     merged_args = dict(_optional_mapping(cfg.get("args"), "args"))
+    cli_override_keys = _cli_override_root_keys(cli_overrides)
     for key in forwarded_fields:
         if key in cfg and cfg[key] is not None:
+            if key in merged_args and key not in cli_override_keys:
+                print(
+                    f"[modelopt] ignoring legacy flat config key {key!r} because args.{key} is set; "
+                    f"use a CLI override {key}=... to replace it",
+                    flush=True,
+                )
+                continue
             merged_args[key] = cfg[key]
     for key, value in merged_args.items():
         if value is not None:
             _append_flag(args, key, value, flag_style)
     args.extend(str(item) for item in (cfg.get("extra_args") or []))
     return args
+
+
+def _cli_override_root_keys(overrides: Iterable[str]) -> set[str]:
+    keys: set[str] = set()
+    for override in overrides:
+        if override.startswith("--"):
+            flag = override[2:]
+            if flag.startswith("no-"):
+                flag = flag[3:]
+            keys.add(flag.replace("-", "_").split(".", 1)[0])
+            continue
+        if "=" in override:
+            key, _ = override.split("=", 1)
+            keys.add(key.replace("-", "_").split(".", 1)[0])
+    return keys
 
 
 def _append_flag(args: list[str], key: str, value: Any, flag_style: FlagStyle) -> None:
@@ -127,6 +159,37 @@ def _append_flag(args: list[str], key: str, value: Any, flag_style: FlagStyle) -
         args.extend([flag, json.dumps(value)])
         return
     args.extend([flag, str(value)])
+
+
+def modelopt_setup_timeout_seconds() -> int:
+    raw = os.environ.get(MODELOPT_SETUP_TIMEOUT_ENV, "600")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{MODELOPT_SETUP_TIMEOUT_ENV} must be an integer number of seconds") from exc
+    if value <= 0:
+        raise ValueError(f"{MODELOPT_SETUP_TIMEOUT_ENV} must be greater than 0")
+    return value
+
+
+def run_modelopt_setup_command(cmd: list[str]) -> None:
+    subprocess.run(cmd, check=True, timeout=modelopt_setup_timeout_seconds())
+
+
+def validate_model_optimizer_checkout(script_path: str) -> Path:
+    script = Path(script_path)
+    repo_root = script.parents[2]
+    missing: list[str] = []
+    if not script.is_file():
+        missing.append(str(script))
+    if not (repo_root / "modelopt").is_dir():
+        missing.append(str(repo_root / "modelopt"))
+    if missing:
+        raise RuntimeError(
+            "ModelOpt checkout is incomplete; refusing to run setup that mutates the Python environment. "
+            f"Missing: {', '.join(missing)}"
+        )
+    return repo_root
 
 
 def _optional_mapping(value: Any, name: str) -> Mapping[str, Any]:
@@ -185,6 +248,7 @@ def _run_with_wandb_wrapper(
     name = wandb_cfg.get("name") or os.environ.get("WANDB_NAME")
 
     run = None
+    wandb_init_error: BaseException | None = None
     started = time.time()
     try:
         import wandb
@@ -202,6 +266,7 @@ def _run_with_wandb_wrapper(
         for key, value in _output_path_summary(cfg).items():
             wandb.summary[key] = value
     except Exception as exc:  # noqa: BLE001
+        wandb_init_error = exc
         print(f"[wandb] wrapper init failed ({type(exc).__name__}: {exc}); continuing without W&B", flush=True)
 
     result = subprocess.run(cmd, check=False)
@@ -216,6 +281,12 @@ def _run_with_wandb_wrapper(
         wandb.summary["exit_code"] = result.returncode
         wandb.summary["duration_seconds"] = elapsed
         run.finish(exit_code=result.returncode)
+    elif wandb_init_error is not None:
+        print(
+            "[wandb] this run was NOT logged to W&B because wrapper init failed "
+            f"({type(wandb_init_error).__name__}: {wandb_init_error})",
+            flush=True,
+        )
     return result.returncode
 
 

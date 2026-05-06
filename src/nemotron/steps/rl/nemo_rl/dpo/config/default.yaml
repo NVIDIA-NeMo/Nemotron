@@ -68,6 +68,7 @@ checkpointing:
   checkpoint_dir: /nemo_run/dpo-checkpoints
   metric_name: val:validation-default_loss
   higher_is_better: false
+  save_optimizer: false
 
 logger:
   log_dir: /nemo_run/dpo-logs

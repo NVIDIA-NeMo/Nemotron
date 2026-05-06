@@ -173,6 +173,9 @@ def test_plan_for_lepton_chunks_source_into_env_vars(tmp_path, monkeypatch):
     assert "NODE_RANK" in script and "tar -xz" in script
     assert plan.source_ready_marker is not None
     assert plan.source_ready_marker in script
+    assert ".nemotron-src-failed" in script
+    assert 'while [ "$i" -lt 600 ]' in script
+    assert "timed out waiting for" in script
     assert not plan.needs_pwd_symlinks
 
 

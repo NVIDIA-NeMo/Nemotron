@@ -28,9 +28,9 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Config Nuances
 
 - Ensure the RL prep manifest has non-empty `train` and `val` paths; only allow train-as-validation when the run is explicitly non-evaluative.
-- Keep each NeMo-Gym row compatible with the Responses API path. Data should include or be normalized into `responses_create_params`; plain prompt-only rows need runner normalization before GRPO rollout.
+- Keep each NeMo-Gym row compatible with the Responses API path. Data should include or be normalized into `responses_create_params` before NeMo-RL loads response data.
 - Size GenRM vLLM according to available GPU memory and concurrency: tune tensor parallelism, `max_num_seqs`, `max_model_len`, and `gpu_memory_utilization` so the `genrm_model` server reaches readiness.
-- Treat NeMo-RL setup return shape, optional `health_check`, and NemoGym runtime attributes as version-sensitive Super3 compatibility points; do not remove the compatibility shim unless the target image is upgraded and revalidated.
+- Keep the runner close to NeMo-RL's upstream NeMo-Gym GRPO example; avoid local rollout or actor shims unless the target image is upgraded and revalidated.
 - Keep policy, reference, GenRM, and resource-server settings explicit in YAML; hidden defaults make Ray startup failures hard to distinguish from reward-model failures.
 
 ## Local Files

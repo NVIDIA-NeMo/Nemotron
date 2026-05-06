@@ -18,6 +18,7 @@ checkpointing:
   checkpoint_dir: ${oc.env:RL_OUTPUT_DIR,./output/rl}/rlhf-tiny-checkpoints
   save_period: 5
   keep_top_k: 1
+  save_optimizer: false
 
 grpo:
   num_prompts_per_step: 4
@@ -25,7 +26,7 @@ grpo:
   num_val_generations_per_prompt: 1
   max_num_steps: 5
   val_period: 5
-  val_batch_size: 8
+  val_batch_size: null
   dynamic_sampling_max_gen_batches: 2
 
 policy:
@@ -52,7 +53,10 @@ policy:
   generation:
     max_new_tokens: 256
     vllm_cfg:
+      async_engine: false
       max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: true
+      gpu_memory_utilization: 0.65
     colocated:
       resources:
         gpus_per_node: 8
@@ -60,13 +64,12 @@ policy:
 
 data:
   manifest_path: ${oc.env:RL_PREP_MANIFEST,/mnt/lustre-shared/output/functional/prep/rl/tiny/manifest.json}
-  # The tiny RL prep blend may only expose a train split. Validation is disabled
-  # for this smoke config, but NeMo-Gym setup still requires a validation path.
   allow_train_as_validation: true
 
 env:
   nemo_gym:
     num_gpu_nodes: 1
+    genrm_model_name: ${oc.env:RL_REWARD_MODEL,Qwen/Qwen2.5-3B-Instruct}
     genrm_compare:
       resources_servers:
         genrm_compare:
@@ -74,11 +77,13 @@ env:
             max_output_tokens: 128
     genrm_model:
       responses_api_models:
-        vllm_model:
-          router_dp_size: 1
+        genrm_model:
           model: ${oc.env:RL_REWARD_MODEL,Qwen/Qwen2.5-3B-Instruct}
-          server_args:
+          vllm_serve_kwargs:
+            data_parallel_size: 1
             tensor_parallel_size: 1
+            pipeline_parallel_size: 1
+            trust_remote_code: true
             max_num_seqs: 1
             max_model_len: 1024
             gpu_memory_utilization: 0.35
@@ -93,4 +98,4 @@ logger:
 
 cluster:
   gpus_per_node: 8
-  num_nodes: 2
+  num_nodes: 1

@@ -253,6 +253,8 @@ def plan_for(
         pod_src_q = shlex.quote(pod_src)
         ready_marker = f"{pod_src}/.nemotron-src-ready"
         ready_marker_q = shlex.quote(ready_marker)
+        failed_marker = f"{pod_src}/.nemotron-src-failed"
+        failed_marker_q = shlex.quote(failed_marker)
         extract_cmd = (
             "python3 -c 'import os,sys,base64;"
             'n=int(os.environ["_NEMOTRON_SRC_CHUNKS"]);'
@@ -267,8 +269,17 @@ def plan_for(
             pre_script_cmds=[
                 'if [ "${NODE_RANK:-0}" = "0" ]; then'
                 f" rm -rf {pod_src_q} && mkdir -p {pod_src_q} && {extract_cmd}"
-                f" && touch {ready_marker_q};"
-                f" else while [ ! -f {ready_marker_q} ]; do sleep 2; done; fi"
+                f" && touch {ready_marker_q}"
+                f" || {{ status=$?; mkdir -p {pod_src_q}; touch {failed_marker_q}; exit $status; }};"
+                " else i=0;"
+                " while [ \"$i\" -lt 600 ]; do"
+                f" [ -f {ready_marker_q} ] && break;"
+                f" [ -f {failed_marker_q} ] && echo 'source extraction failed on rank 0' >&2 && exit 1;"
+                " i=$((i + 1)); sleep 2;"
+                " done;"
+                f" [ -f {ready_marker_q} ] || "
+                f"{{ echo 'timed out waiting for {ready_marker_q}' >&2; exit 1; }};"
+                " fi"
             ],
         )
 

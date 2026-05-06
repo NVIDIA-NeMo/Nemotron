@@ -32,8 +32,8 @@ type = "checkpoint_lora"
 description = "LoRA adapter weights (merge with base via convert/merge_lora to get a deployable HF checkpoint)."
 
 [[models]]
-name = "Qwen/Qwen3.6-35B-A3B"
-description = "Larger MoE HF backbone example for AutoModel LoRA tuning."
+name = "Qwen/Qwen3-30B-A3B"
+description = "MoE HF backbone example for AutoModel LoRA tuning."
 default = true
 min_gpus = 8
 

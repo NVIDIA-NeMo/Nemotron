@@ -14,9 +14,14 @@ import json
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
-from nemotron.steps.synth.data_designer.step import project_records, records_from_designer_result
+from nemotron.steps.synth.data_designer.step import (
+    parse_json_object,
+    project_records,
+    records_from_designer_result,
+)
 
 from .._step_helpers import assert_step_static, step_dir
 
@@ -307,6 +312,61 @@ def test_structured_messages_projection() -> None:
             "issue": "late delivery",
         }
     ]
+
+
+def test_structured_messages_projection_parses_fenced_json() -> None:
+    conversation = {
+        "tools": [],
+        "messages": [
+            {"role": "system", "content": "You are a support agent."},
+            {"role": "user", "content": "Where is my order?"},
+        ],
+    }
+    records = [
+        {
+            "customer_name": "Priya",
+            "conversation": f"```json\n{json.dumps(conversation)}\n```",
+        }
+    ]
+
+    assert project_records(
+        records,
+        {
+            "type": "structured_messages",
+            "metadata_fields": ["customer_name"],
+        },
+    ) == [
+        {
+            "tools": [],
+            "messages": conversation["messages"],
+            "customer_name": "Priya",
+        }
+    ]
+
+
+def test_parse_json_object_extracts_object_from_extra_text() -> None:
+    assert parse_json_object('Here is JSON: {"winner": "A"}', "judge") == {"winner": "A"}
+
+
+def test_structured_messages_projection_skips_bad_json(capsys: pytest.CaptureFixture[str]) -> None:
+    conversation = {
+        "messages": [
+            {"role": "system", "content": "You are a support agent."},
+            {"role": "user", "content": "Where is my order?"},
+        ],
+    }
+    records = [
+        {"conversation": "not json"},
+        {"conversation": json.dumps(conversation)},
+    ]
+
+    assert project_records(records, {"type": "structured_messages"}) == [{"messages": conversation["messages"]}]
+    assert "skipped 1/2 record(s)" in capsys.readouterr().out
+
+
+def test_structured_messages_projection_fails_when_all_json_is_bad() -> None:
+    with pytest.raises(ValueError, match="All 1 records had unparseable 'conversation'"):
+        project_records([{"conversation": "not json"}], {"type": "structured_messages"})
 
 
 def test_dpo_preference_projection() -> None:

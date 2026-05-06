@@ -15,6 +15,9 @@ preamble: |
   #   uv run nemotron step run prep/sft_packing -c default --batch slurm_prep_sft_packing
   #   uv run nemotron step run pretrain/megatron_bridge -c default --batch slurm_pretrain_megatron_bridge
   #   uv run nemotron step run sft/megatron_bridge -c default --batch slurm_sft_megatron_bridge
+  #   uv run nemotron step run rl/nemo_rl/dpo -c default --batch slurm_rl_nemo_rl_dpo
+  #   uv run nemotron step run rl/nemo_rl/rlvr -c default --batch slurm_rl_nemo_rl_rlvr
+  #   uv run nemotron step run rl/nemo_rl/rlhf -c default --batch slurm_rl_nemo_rl_rlhf
 
 checks:
   required_profiles:
@@ -23,6 +26,8 @@ checks:
     - slurm_pretrain_megatron_bridge
     - slurm_sft_megatron_bridge
     - slurm_rl_nemo_rl_dpo
+    - slurm_rl_nemo_rl_rlvr
+    - slurm_rl_nemo_rl_rlhf
     - slurm_optimize_modelopt_quantize
 
 sections:
@@ -94,13 +99,26 @@ sections:
   # rl/nemo_rl/dpo: switch image for NeMo-RL while keeping tunnel/account/mounts.
   slurm_rl_nemo_rl_dpo:
     extends: slurm_base
-    container_image: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    container_image: nvcr.io/nvidia/nemo-rl:v0.6.0
     nodes: 2
     time: "04:00:00"
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
       RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/rl/dpo
+
+  # rl/nemo_rl/rlvr: same NeMo-RL image, with RLVR output wiring.
+  slurm_rl_nemo_rl_rlvr:
+    extends: slurm_rl_nemo_rl_dpo
+    env_vars:
+      RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/rl/rlvr
+
+  # rl/nemo_rl/rlhf: same RL profile, but more physical nodes for GenRM/NeMo-Gym placement.
+  slurm_rl_nemo_rl_rlhf:
+    extends: slurm_rl_nemo_rl_dpo
+    nodes: 4
+    env_vars:
+      RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/rl/rlhf
 
   # optimize/modelopt/quantize: switch to the ModelOpt-capable NeMo image.
   slurm_optimize_modelopt_quantize:

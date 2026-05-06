@@ -20,7 +20,7 @@
 
 run:
   env:
-    container: nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
+    container: nvcr.io/nvidia/nemo-rl:v0.6.0
     persistent_cache: ""
     env_vars:
       NRL_WG_USE_RAY_REF: "1"
@@ -46,6 +46,7 @@ checkpointing:
   checkpoint_must_save_by: null
   model_save_format: safetensors
   save_consolidated: false
+  save_optimizer: false
 
 grpo:
   num_prompts_per_step: 16
@@ -63,7 +64,7 @@ grpo:
   val_at_end: false
   overlong_filtering: false
   max_val_samples: null
-  val_batch_size: 256
+  val_batch_size: null
   seed: 42
   use_dynamic_sampling: false
   dynamic_sampling_max_gen_batches: 10
@@ -149,6 +150,8 @@ policy:
     enabled: false
   sequence_packing:
     enabled: false
+  draft:
+    enabled: false
   make_sequence_length_divisible_by: ${policy.dtensor_cfg.tensor_parallel_size}
   max_grad_norm: 1.0
   optimizer:
@@ -182,7 +185,7 @@ policy:
     stop_token_ids: null
     stop_strings: null
     vllm_cfg:
-      async_engine: true
+      async_engine: false
       precision: ${policy.precision}
       kv_cache_dtype: auto
       tensor_parallel_size: 1
@@ -190,7 +193,7 @@ policy:
       expert_parallel_size: 1
       gpu_memory_utilization: 0.8
       max_model_len: ${policy.max_total_sequence_length}
-      enforce_eager: false
+      enforce_eager: true
       use_deep_gemm: false
       num_last_layers_in_bf16: 0
       num_first_layers_in_bf16: 0
@@ -202,7 +205,6 @@ policy:
         enable_auto_tools: true
         tool_parser: hermes
         reasoning_parser: null
-        reasoning_parser_plugin: null
     vllm_kwargs: {}
     colocated:
       enabled: true
@@ -212,12 +214,14 @@ policy:
 
 data:
   max_input_seq_length: null
-  shuffle: false
-  num_workers: 1
+  shuffle: true
+  num_workers: 0
+  use_multiple_dataloader: false
   train:
     data_path: /path/to/nemo_gym/rlhf-train.jsonl
   validation:
     data_path: /path/to/nemo_gym/rlhf-val.jsonl
+    repeat: ${grpo.num_generations_per_prompt}
   default:
     dataset_name: NemoGymDataset
     env_name: nemo_gym
@@ -227,12 +231,15 @@ data:
 
 env:
   should_use_nemo_gym: true
+  should_log_nemo_gym_responses: true
   use_genrm_compare: true
   genrm_agent_names:
     - genrm_simple_agent
-    - genrm_simple_agent_reasoning_off
   genrm_compare_server_name: genrm_compare
   nemo_gym:
+    uv_venv_dir: ${oc.env:NEMO_GYM_VENV_DIR,/opt/gym_venvs}
+    rollout_max_attempts_to_avoid_lp_nan: 1
+    is_trajectory_collection: false
     skip_venv_if_present: true
     num_gpu_nodes: 1
     port_range_low: 15001
@@ -248,13 +255,21 @@ env:
     config_paths:
       - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
       - resources_servers/genrm_compare/configs/genrm_compare.yaml
-      - resources_servers/single_step_tool_use_with_argument_comparison/configs/single_step_tool_use_with_argument_comparison.yaml
+    genrm_model_name: ${oc.env:RL_REWARD_MODEL,meta-llama/Llama-3.2-1B-Instruct}
+    policy_model:
+      responses_api_models:
+        vllm_model:
+          uses_reasoning_parser: false
+          extra_body:
+            chat_template_kwargs:
+              enable_thinking: false
     genrm_compare:
       resources_servers:
         genrm_compare:
           genrm_model_server:
             type: responses_api_models
             name: genrm_model
+          num_rollouts_per_prompt: ${grpo.num_generations_per_prompt}
           genrm_responses_create_params:
             max_output_tokens: 4096
             temperature: 0.6
@@ -274,17 +289,20 @@ env:
           default_ranking: 3.5
     genrm_model:
       responses_api_models:
-        vllm_model:
+        genrm_model:
           entrypoint: app.py
-          base_url: http://127.0.0.1:8000/v1
-          api_key: dummy_key
           model: ${oc.env:RL_REWARD_MODEL,meta-llama/Llama-3.2-1B-Instruct}
           uses_reasoning_parser: false
           return_token_id_information: false
-          spinup_server: true
-          router_dp_size: 1
-          server_args:
+          supports_principle_role: true
+          hf_home: ${oc.env:HF_HOME,/mnt/lustre-shared/hf}
+          vllm_serve_env_vars:
+            VLLM_RAY_DP_PACK_STRATEGY: strict
+          vllm_serve_kwargs:
+            data_parallel_size: 1
             tensor_parallel_size: 1
+            pipeline_parallel_size: 1
+            trust_remote_code: true
             gpu_memory_utilization: 0.85
             max_model_len: 8192
             compilation_config:

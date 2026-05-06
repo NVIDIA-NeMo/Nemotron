@@ -18,4 +18,5 @@ Use this category for execution-profile setup under `src/nemotron/steps/env/`.
 - If the target env file exists, inspect and extend it rather than overwriting; only use `force=true` when the user intentionally asks to replace it.
 - Keep site logistics in env profiles and step runtime flags in the step YAML unless the flag is truly site-wide.
 - Keep data-prep step profiles CPU-only unless the step explicitly needs GPUs. Slurm prep profiles should override GPU bases with CPU partitions and `gpus_per_node = 0`; Lepton prep profiles should use a CPU resource shape.
+- Use the NeMo-RL v0.6.0 image for DPO/RLVR/RLHF profiles on Lepton and Slurm. On Lepton, keep `ray_version` on the latest version supported by the workspace rather than blindly matching the upstream NeMo-RL Ray pin.
 - Compile one small run after profile changes and inspect `run.env` before submitting.

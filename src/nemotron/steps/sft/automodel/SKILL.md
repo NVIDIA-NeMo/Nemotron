@@ -17,8 +17,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Default `sft/automodel` is full fine-tuning (`peft=null`); use `peft/automodel` or add a LoRA `peft:` block when adapter training is intended.
 - Keep `peft=lora` for memory-constrained runs or fast adapter experiments.
-- Use `peft=null` only when full fine-tuning fits and a full checkpoint is required.
 - Choose a tokenizer with chat-template support or preprocess prompts explicitly.
 - Use the AutoModel launcher and executor settings when moving from local to cluster execution.
 - Check `src/nemotron/steps/patterns/eval-bookends.md` before comparing SFT results.

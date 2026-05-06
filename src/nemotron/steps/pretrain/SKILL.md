@@ -9,10 +9,10 @@ Use this skill to choose between AutoModel and Megatron-Bridge pretraining.
 
 ## Route
 
-| Backend | Best For | Input | Output |
-| --- | --- | --- | --- |
-| `pretrain/automodel` | HF-native CPT, smaller GPU counts, fast iteration | `binidx` | `checkpoint_hf` |
-| `pretrain/megatron_bridge` | Large distributed training, TP/PP/CP/EP scaling | `binidx`, optional `checkpoint_megatron` | `checkpoint_megatron` |
+| Backend | Best For | Default Model | Input | Output |
+| --- | --- | --- | --- | --- |
+| `pretrain/automodel` | HF-native CPT, smaller GPU counts, fast iteration | `Qwen/Qwen3-30B-A3B` | `binidx` | `checkpoint_hf` |
+| `pretrain/megatron_bridge` | Large distributed training, TP/PP/CP/EP scaling | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16` | `binidx`, optional `checkpoint_megatron` | `checkpoint_megatron` |
 
 ## Workflow
 
@@ -23,6 +23,7 @@ Use this skill to choose between AutoModel and Megatron-Bridge pretraining.
 5. Start from `config/tiny.yaml` to validate data access, launch, and checkpoint writes.
 6. Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before moving beyond smoke tests.
 7. Check `src/nemotron/steps/patterns/prepared-data-is-tokenizer-locked.md` before reusing bin/idx data.
+8. Treat backend choice as a checkpoint-family choice unless you explicitly align the model and tokenizer overrides across backends.
 
 ## Local Files
 

@@ -128,20 +128,32 @@ def project_records(records: list[dict[str, Any]], projection: dict[str, Any] | 
         tools_field = projection.get("tools_field", "tools")
         metadata_fields = projection.get("metadata_fields") or []
         projected = []
+        skipped = 0
         for record in records:
-            source = record[source_field]
-            if isinstance(source, str):
-                source = json.loads(source)
-            if not isinstance(source, dict):
-                raise ValueError(f"{source_field!r} must be a mapping or JSON object string")
+            try:
+                source = record[source_field]
+                if isinstance(source, str):
+                    source = parse_json_object(source, source_field)
+                if not isinstance(source, dict):
+                    raise ValueError(f"{source_field!r} must be a mapping or JSON object string")
+                if messages_field not in source:
+                    raise ValueError(f"{source_field!r} is missing required {messages_field!r}")
 
-            item = {"messages": source[messages_field]}
-            if tools_field in source:
-                item["tools"] = source[tools_field]
-            for field in metadata_fields:
-                if field in record:
-                    item[field] = record[field]
-            projected.append(item)
+                item = {"messages": source[messages_field]}
+                if tools_field in source:
+                    item["tools"] = source[tools_field]
+                for field in metadata_fields:
+                    if field in record:
+                        item[field] = record[field]
+                projected.append(item)
+            except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
+                skipped += 1
+                if skipped <= 3:
+                    print(f"warning: skipping record with unparseable {source_field!r}: {e}")
+        if skipped:
+            print(f"warning: skipped {skipped}/{len(records)} record(s) total")
+            if not projected:
+                raise ValueError(f"All {len(records)} records had unparseable {source_field!r}")
         return projected
 
     if kind == "openai_messages":
@@ -172,7 +184,7 @@ def project_records(records: list[dict[str, Any]], projection: dict[str, Any] | 
         for record in records:
             judge = record.get(judge_field)
             if isinstance(judge, str):
-                judge = json.loads(judge)
+                judge = parse_json_object(judge, judge_field)
             if not isinstance(judge, dict):
                 raise ValueError(f"{judge_field!r} must be a mapping or JSON object string")
 
@@ -198,6 +210,31 @@ def project_records(records: list[dict[str, Any]], projection: dict[str, Any] | 
     raise ValueError(f"Unknown output_projection type: {kind!r}")
 
 
+def parse_json_object(value: str, field_name: str) -> dict[str, Any]:
+    """Parse a JSON object, tolerating common fenced-code LLM wrappers."""
+    text = value.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].lstrip().startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start == -1 or end <= start:
+            raise
+        parsed = json.loads(text[start : end + 1])
+
+    if not isinstance(parsed, dict):
+        raise ValueError(f"{field_name!r} must decode to a JSON object")
+    return parsed
+
+
 def records_from_designer_result(result: Any) -> list[dict[str, Any]]:
     """Extract records from either preview or dataset-creation results."""
     if hasattr(result, "load_dataset"):
@@ -205,10 +242,7 @@ def records_from_designer_result(result: Any) -> list[dict[str, Any]]:
     elif hasattr(result, "dataset"):
         dataset = result.dataset
     else:
-        raise TypeError(
-            "Data Designer result must expose either `load_dataset()` "
-            "or an in-memory `dataset` attribute"
-        )
+        raise TypeError("Data Designer result must expose either `load_dataset()` or an in-memory `dataset` attribute")
 
     if dataset is None:
         raise ValueError("Data Designer returned an empty dataset result")
@@ -234,13 +268,13 @@ def main() -> None:
     if not columns:
         raise ValueError(f"{config_path}: config must declare a non-empty `columns:` list")
 
-    output_path = Path(cfg["output_path"])
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
     # Deferred imports keep the module importable on dev hosts without
     # data_designer installed.
     import data_designer.config as dd
     from data_designer.interface import DataDesigner
+
+    output_path = Path(cfg["output_path"])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     builder = dd.DataDesignerConfigBuilder()
 
@@ -252,6 +286,9 @@ def main() -> None:
         try:
             builder.delete_model_config(alias)
         except Exception:
+            # Data Designer versions differ on the concrete "alias not found"
+            # exception type. If delete really failed for an existing alias,
+            # add_model_config below will still surface the duplicate/problem.
             pass  # alias not yet registered — fine, just add it.
 
         params = spec.get("inference_parameters") or {}
@@ -281,11 +318,10 @@ def main() -> None:
         result = client.preview(builder, num_records=cfg["num_records"])
         verb = "Preview"
     else:
-        result = client.create(
-            builder,
-            num_records=cfg["num_records"],
-            wait_until_done=True,
-        )
+        create_kwargs: dict[str, Any] = {"num_records": cfg["num_records"]}
+        if "dataset_name" in cfg:
+            create_kwargs["dataset_name"] = cfg["dataset_name"]
+        result = client.create(builder, **create_kwargs)
         verb = "Generated"
 
     records = records_from_designer_result(result)

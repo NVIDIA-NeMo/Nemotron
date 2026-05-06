@@ -65,13 +65,6 @@ distributed:
   sequence_parallel: false
   activation_checkpointing: false
 
-peft:
-  _target_: nemo_automodel.components._peft.lora.PeftConfig
-  match_all_linear: true
-  dim: 16
-  alpha: 32
-  dropout: 0.1
-
 loss_fn:
   _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
 

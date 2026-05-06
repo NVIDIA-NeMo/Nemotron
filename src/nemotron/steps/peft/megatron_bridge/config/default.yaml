@@ -28,7 +28,7 @@ recipe:
   seq_length: 4096
 
 dataset:
-  nano3_packed_sft_dir: /path/to/packed/data
+  nano3_packed_sft_dir: ${oc.env:SFT_PACKED_DIR}
   seq_length: 4096
   packed_sequence_specs:
     packed_sequence_size: 4096
@@ -75,7 +75,7 @@ logger:
 checkpoint:
   save: /nemo_run/peft-model
   save_interval: 50
-  pretrained_checkpoint: /path/to/pretrained/checkpoint
+  pretrained_checkpoint: ${oc.env:NEMOTRON_PRETRAINED_CKPT}
   finetune: true
   # PEFT saves adapter-filtered checkpoint sections. The fully-parallel
   # distributed checkpoint writer is fragile for that sparse adapter-only state,

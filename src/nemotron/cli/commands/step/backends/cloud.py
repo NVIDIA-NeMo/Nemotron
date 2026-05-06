@@ -33,6 +33,8 @@ Both paths share the chunked-env-var source transport (no PatternPackager).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from nemo_runspec.execution import execute_cloud, execute_cloud_ray
 from nemotron.cli.commands.step.backends.base import JobContext
 
@@ -90,8 +92,9 @@ class CloudBackend:
         but the pod's workspace is the repo root, so we want
         ``src/nemotron/steps/prep/sft_packing/step.py`` instead.
         """
-        for marker in ("/src/nemotron/", "src/nemotron/"):
-            if marker in script_path:
-                tail = script_path.split(marker, 1)[1]
-                return f"src/nemotron/{tail}"
-        return script_path
+        path = Path(script_path)
+        parts = path.parts
+        for idx in range(len(parts) - 1):
+            if parts[idx] == "src" and parts[idx + 1] == "nemotron":
+                return str(Path(*parts[idx:]))
+        return str(path)
