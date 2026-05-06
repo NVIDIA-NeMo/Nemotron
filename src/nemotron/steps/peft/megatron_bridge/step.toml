@@ -64,3 +64,4 @@ megatron_bridge_readme = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/ma
 megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
 peft_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/peft.html"
 packed_sequences_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/packed-sequences.html"
+skills = ["skills/nemotron-customize/context/mbridge-sft.txt"]

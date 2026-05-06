@@ -11,6 +11,20 @@
 # Don't add new packs unless they survive the "<250 line authored extract" bar.
 
 [[packs]]
+id = "sft-megatron-bridge-generate"
+step = "sft/megatron_bridge"
+intent = "generate"
+file = "mbridge-sft.txt"
+description = "Megatron-Bridge SFT — recipe selection, packed Parquet wiring, MoE/parallelism knobs, full SFT vs LoRA. Use this for Nemotron + MB-recipe-supported models; for non-MB models route to AutoModel SFT."
+
+[[packs]]
+id = "peft-megatron-bridge-generate"
+step = "peft/megatron_bridge"
+intent = "generate"
+file = "mbridge-sft.txt"
+description = "Megatron-Bridge PEFT/LoRA — adapter dim/alpha, packed Parquet input, base checkpoint binding, adapter-only checkpoint discipline."
+
+[[packs]]
 id = "prep-generate"
 step = "prep/sft_packing"
 intent = "generate"

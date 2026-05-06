@@ -3,6 +3,34 @@
 Use this pack when generating stage code for `pretrain/automodel` (continued
 pretraining or from-scratch causal-LM training with NeMo-AutoModel).
 
+## When AutoModel is the right choice
+
+**AutoModel is the path for non-Nemotron models, and for any HF model that
+isn't covered by a native Megatron-Bridge recipe.** Pick AutoModel when:
+
+- The base model is **not Nemotron** (Llama, Mistral, Qwen, Gemma, Phi,
+  internal customer models, third-party HF checkpoints, etc.) **and** has no
+  matching `megatron.bridge.recipes.<family>.*` module. Megatron-Bridge ships
+  recipes for a curated set of model families (nemotronh / Nano3 / Super3,
+  llama, qwen, mixtral, deepseek, kimi, gpt_oss, etc.); anything outside
+  that set goes through AutoModel.
+- The base model **is** in the MB recipe set but the user wants HF-native
+  outputs, single-node iteration speed, or doesn't need TP/PP/CP/EP scaling.
+- The deployment target consumes HuggingFace-format checkpoints
+  (`checkpoint_hf`) directly, with no Megatron conversion in the path.
+
+Route to **`pretrain/megatron_bridge`** instead when:
+
+- The base model has a native MB recipe (Nemotron + the families above) AND
+- The training scale needs distributed parallelism (TP/PP/CP/EP) AND
+- A `checkpoint_megatron` output is acceptable (or a `convert/megatron_to_hf`
+  step is added downstream).
+
+The same rule applies on the SFT/PEFT side: AutoModel SFT/PEFT
+(`sft/automodel`, `peft/automodel`) is the path for models without an MB
+recipe; Megatron-Bridge SFT/PEFT (`sft/megatron_bridge`, `peft/megatron_bridge`)
+requires both an MB recipe and the parallelism / packed-Parquet workflow.
+
 ## In-repo references (read these first)
 
 - Step manifest: `src/nemotron/steps/pretrain/automodel/step.toml`
