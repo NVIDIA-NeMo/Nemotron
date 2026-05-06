@@ -79,13 +79,42 @@ def find_last_user_message_end(
     Returns:
         Character position where last user message ends.
 
-    Note:
-        Exact port of materialize.py::find_last_user_message_end()
-    """
-    # Find the last user message index
-    last_user_idx = max(i for i, msg in enumerate(messages) if msg["role"] == "user")
+    Raises:
+        ValueError: If ``messages`` contains no user message, or if the last
+            user message is the final message in the conversation (no
+            assistant turn follows). Both cases would otherwise crash with
+            ``ValueError`` / ``IndexError``; we raise typed errors with
+            informative messages so upstream filters can categorize them.
 
-    # Render up to the last user message (inclusive)
+    Note:
+        Exact port of materialize.py::find_last_user_message_end(), with
+        added input guards. The actual rendering pipeline is preserved
+        byte-for-byte to keep output identical to the original on rows it
+        processes successfully.
+    """
+    # Guard: at least one user message must exist. The original
+    # implementation crashes with ``ValueError: max() iterable argument is
+    # empty`` here; we raise a typed error instead so callers can
+    # distinguish this from other failures.
+    user_idxs = [i for i, msg in enumerate(messages) if msg["role"] == "user"]
+    if not user_idxs:
+        raise ValueError("conversation has no user message")
+    last_user_idx = user_idxs[-1]
+
+    # Guard: there must be a message after the last user turn so the
+    # ``messages[last_user_idx + 1]`` access below is safe. The original
+    # implementation crashes with ``IndexError`` for trailing-user
+    # conversations; we raise a typed error instead.
+    if last_user_idx + 1 >= len(messages):
+        raise ValueError(
+            "conversation ends with a user message; no assistant response to render"
+        )
+
+    # Render up to the last user message (inclusive). Mirrors the original
+    # exactly -- no rstrip here, because there is no prefix-mismatch signal
+    # at this layer to gate a fallback on. Stripping unconditionally would
+    # shift chunk boundaries on every row, including ones the original
+    # processed cleanly.
     if enable_thinking and (
         "reasoning_content" not in messages[last_user_idx + 1]
         or messages[last_user_idx + 1]["reasoning_content"] == ""
@@ -152,7 +181,13 @@ def split_template_into_messages(
     # Get first "message": if starting from last user, this includes all prior turns
     if start_from_last_user:
         system_end = full_template.find("<|im_end|>\n") + len("<|im_end|>\n")
-        last_user_idx = max(i for i, msg in enumerate(messages) if msg["role"] == "user")
+        # Guard mirrors find_last_user_message_end: original crashes here
+        # with ``ValueError: max() iterable argument is empty`` when the
+        # conversation has no user message.
+        user_idxs = [i for i, msg in enumerate(messages) if msg["role"] == "user"]
+        if not user_idxs:
+            raise ValueError("conversation has no user message")
+        last_user_idx = user_idxs[-1]
         last_user_pos = find_last_user_message_end(
             messages, tokenizer, enable_thinking=enable_thinking, tools=tools
         )
@@ -207,14 +242,26 @@ def split_template_into_messages(
                 chat_template_kwargs={"enable_thinking": enable_thinking},
             )
 
+        # Verify incremental rendering matches full template. Strict check
+        # first -- this preserves byte-identical chunk boundaries with the
+        # original implementation on every row it processed successfully.
+        if template_up_to_here != full_template[: len(template_up_to_here)]:
+            # Trailing-whitespace fallback for issue #184: some chat
+            # templates emit a newline after the generation prompt that
+            # does not appear at the matching position in the full
+            # rendering. rstrip lets us recover those rows instead of
+            # filtering them out, while staying a no-op for templates that
+            # already line up exactly.
+            stripped = template_up_to_here.rstrip()
+            if stripped and stripped == full_template[: len(stripped)]:
+                template_up_to_here = stripped
+            else:
+                raise ValueError(
+                    f"Template mismatch at message {i}: incremental rendering doesn't match full"
+                )
+
         current_pos = len(template_up_to_here)
         chunk_text = full_template[previous_pos:current_pos]
-
-        # Verify incremental rendering matches full template
-        if template_up_to_here != full_template[:current_pos]:
-            raise ValueError(
-                f"Template mismatch at message {i}: incremental rendering doesn't match full"
-            )
 
         result.append({"role": messages[i]["role"], "content": chunk_text})
         previous_pos = current_pos
