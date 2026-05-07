@@ -14,7 +14,7 @@ Both models share the same Omni-Nano-v3 backbone and run on the same vLLM TP=2 s
 
 Switch between them with the `MODEL_FAMILY` env var; the FastAPI server picks the right agent class at startup. **Only one vLLM container can serve at a time** on a 2-GPU host — stop the active vLLM and start the sibling for the other model. See [Launch vLLM](#launch-vllm) below.
 
-By default, inference uses an OpenAI-compatible **vLLM** endpoint. You can run vLLM locally on a GPU machine, point the demo at a remote vLLM server, or switch to the NVIDIA Build / NIM endpoint with `INFERENCE_PROVIDER=nvidia` (Nemotron only — NVIDIA Build does not currently host Holotron).
+Inference currently uses an OpenAI-compatible **vLLM** endpoint only. You can run vLLM locally on a GPU machine or point the demo at a remote vLLM server. The hosted build.nvidia.com / NVIDIA Build / NIM path is intentionally disabled for now because current hosted endpoint behavior differs from the local vLLM server and breaks the computer-use agent loop.
 
 ```
  Your browser (http://localhost:8000)
@@ -81,7 +81,6 @@ The web UI shows:
 | Docker + Docker Compose | Desktop or server, any OS |
 | NVIDIA GPU machine or remote vLLM endpoint | Required for the default `INFERENCE_PROVIDER=vllm` path |
 | Hugging Face access | Required if your vLLM server downloads the model from Hugging Face |
-| NVIDIA API Key | Optional, only for `INFERENCE_PROVIDER=nvidia` |
 | ~12 GB disk | For the desktop container image and build cache |
 
 Nemotron-3 Nano Omni BF16 model weights are about 62 GB. Holotron-3-Nano weights are similar (also a 30B-class A3B model). Plan GPU memory and disk accordingly, or use a quantized variant supported by your vLLM setup.
@@ -300,7 +299,7 @@ The two families use different ports by convention (8001 vs 8011) so you can lea
 
 2. The **FastAPI backend** (`server/`) orchestrates the agent loop:
    - Takes a screenshot from the desktop API
-   - Sends screenshot + instruction + history through the selected inference provider
+   - Sends screenshot + instruction + history through the configured vLLM endpoint
    - Parses the model's response — `## Action` / `## Code` for Nemotron, or a JSON `tool_call` for Holotron — into a uniform `ParsedStep`
    - Executes the resulting pyautogui commands inside the desktop container
    - Feeds tool execution results back into the conversation as `<tool_output>` for Holotron's next turn
@@ -328,7 +327,6 @@ The two families use different ports by convention (8001 vs 8011) so you can lea
 │  │  └──────────────────────────┘    │  ├─ Desktop apps          │  │
 │  │         │                         │  │  Chrome, Code, Office │  │
 │  │         │ vLLM /v1 endpoint       │  └───────────────────────│  │
-│  │         │ or NVIDIA Build / NIM   │                           │  │
 │  │         └─────────────────────────│──────────────────────────┘  │
 │  └───────────────────────────────────────────────────────────────── │
 └─────────────────────────────────────────────────────────────────────┘
@@ -344,10 +342,7 @@ All settings go in `.env` (see `.env.example`):
 
 | Variable | Default | Description |
 |---|---|---|
-| `INFERENCE_PROVIDER` | `vllm` | `vllm` or `nvidia` |
-| `NVIDIA_API_KEY` | *(required only for nvidia)* | Your NVIDIA Build / NIM API key |
-| `NVIDIA_MODEL` | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | Model endpoint |
-| `NVIDIA_API_BASE` | `https://integrate.api.nvidia.com/v1` | API base URL |
+| `INFERENCE_PROVIDER` | `vllm` | Must be `vllm`; other values are rejected by the server |
 | `VLLM_API_BASE` | `http://host.docker.internal:8001/v1` | OpenAI-compatible vLLM base URL for Docker Compose |
 | `VLLM_API_KEY` | `EMPTY` | Bearer token for vLLM |
 | `VLLM_MODEL` | `vllm_local` | vLLM served model name (use `holotron_local` for the Holotron container) |
@@ -376,20 +371,7 @@ The server container mounts `/var/run/docker.sock` so the **Restart** button can
 
 ## NVIDIA Build / NIM
 
-vLLM is the default because it matches the open model release path. NVIDIA Build hosts the Nemotron family only; Holotron is currently available exclusively through self-hosted vLLM. To use NVIDIA's hosted OpenAI-compatible endpoint instead, edit `.env`:
-
-```bash
-INFERENCE_PROVIDER=nvidia
-NVIDIA_API_KEY=nvapi-...
-NVIDIA_API_BASE=https://integrate.api.nvidia.com/v1
-NVIDIA_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
-```
-
-Then restart the server container:
-
-```bash
-docker compose up -d --build server
-```
+Hosted build.nvidia.com / NVIDIA Build / NIM inference is not supported by this demo at the moment. The computer-use agent loop is currently validated only against an OpenAI-compatible vLLM server because the hosted endpoint has behavior differences that affect action generation and parsing. Keep `INFERENCE_PROVIDER=vllm`.
 
 ## Project Structure
 
@@ -414,7 +396,7 @@ computer-use-agent-with-omni/
 │   ├── main.py               # FastAPI app (REST + SSE + VNC proxy); MODEL_FAMILY dispatch
 │   ├── agent.py              # NemotronAgent: ## Action / ## Code prompt + parsing + coord projection
 │   ├── holotron_agent.py     # HolotronAgent: H Company agent-loop (12-tool JSON schema, structured_outputs)
-│   ├── nvinference.py        # NVIDIA Build / NIM inference path (Nemotron only)
+│   ├── nvinference.py        # Reserved inactive hosted inference path
 │   ├── vllm_inference.py     # vLLM OpenAI-compatible inference path (both families)
 │   ├── agent_runner.py       # Async screenshot→model→action loop (model-family agnostic)
 │   └── desktop_client.py     # HTTP client for the desktop container API

@@ -1,9 +1,9 @@
-"""Nemotron-3 Nano Omni agent — NVIDIA Build API edition.
+"""Nemotron-3 Nano Omni prompt, history, and response parser.
 
 This agent observes a desktop environment via screenshots and generates
-executable pyautogui actions to complete automation tasks. It uses the
-NVIDIA Build API (integrate.api.nvidia.com) for inference, so no local
-GPU is needed.
+executable pyautogui actions to complete automation tasks. The demo currently
+uses local or remote vLLM inference; the hosted NVIDIA Build / NIM path is not
+enabled because its current behavior differs from the local vLLM server.
 
 The prompt format matches the Nemotron CUA training specification:
 - System prompt with password injection
@@ -298,9 +298,8 @@ def parse_response(
     if parsed.status != "error":
         return parsed
 
-    # The hosted Build API is not always shaped exactly like the local vLLM
-    # endpoint used by cua_demo. Occasionally the formatted action/code block
-    # arrives in the reasoning stream instead of the final content field. Only
+    # Some OpenAI-compatible vLLM responses may place the formatted action/code
+    # block in the reasoning stream instead of the final content field. Only
     # fall back when reasoning contains explicit response headings, so random
     # scratch-pad examples are not executed.
     if thinking:
@@ -329,7 +328,7 @@ class _Turn:
 
 @dataclass
 class NemotronAgent:
-    """Desktop automation agent powered by Nemotron-3 Nano Omni via NVIDIA Build API."""
+    """Desktop automation agent using Nemotron-3 Nano Omni prompt conventions."""
 
     api_key: str
     api_base: str = "https://integrate.api.nvidia.com/v1"
@@ -438,7 +437,7 @@ class NemotronAgent:
         return messages
 
     def build_extra_body(self) -> dict[str, Any]:
-        """Build reasoning controls shared by hosted NIM/Build and local vLLM.
+        """Build reasoning controls for the local or remote vLLM path.
 
         Nemotron-3 Nano Omni uses thinking mode for CUA quality. The model docs
         and vLLM launch path both describe the same contract: enable thinking
@@ -472,7 +471,7 @@ class NemotronAgent:
         *,
         delta_callback: Optional[DeltaCallback] = None,
     ) -> ParsedStep:
-        """Send one inference request to NVIDIA Build API and parse the result.
+        """Send one OpenAI-compatible inference request and parse the result.
 
         Retry logic:
         - Retry request, timeout, finish-reason, and parse failures
