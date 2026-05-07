@@ -37,6 +37,7 @@ from nemo_runspec.execution import (
     _get_env,
     _git_mount_commands,
     _parse_netrc,
+    _cloud_script_path,
     _ray_node_source_sync_cmd,
     _to_plain,
     _transport_env_cleanup_cmd,
@@ -125,6 +126,26 @@ class TestTransportEnvCleanup:
         assert "_NEMOTRON_CONFIG_B64" in cmd
         assert "PYTHONPATH" not in cmd
         assert "HF_TOKEN" not in cmd
+
+
+class TestCloudScriptPath:
+    def test_rewrites_src_relative_script_to_pod_local_source(self):
+        assert (
+            _cloud_script_path(
+                "src/nemotron/steps/prep/pretrain_prep/step.py",
+                "/mnt/work/_nemotron/src-deadbeef-12345678",
+            )
+            == "/nemo_run/code/src/nemotron/steps/prep/pretrain_prep/step.py"
+        )
+
+    def test_keeps_script_path_for_native_source_layout(self):
+        assert (
+            _cloud_script_path(
+                "src/nemotron/steps/prep/pretrain_prep/step.py",
+                "/nemo_run/code/src",
+            )
+            == "src/nemotron/steps/prep/pretrain_prep/step.py"
+        )
 
 
 class TestRayNodeSourceSync:

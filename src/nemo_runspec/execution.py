@@ -1043,6 +1043,21 @@ def _transport_env_cleanup_cmd() -> str:
     )
 
 
+def _cloud_script_path(script_path: str, pod_src_root: str) -> str:
+    """Return a script path that is valid inside a cloud pod.
+
+    Cloud chunk transport extracts repo ``src/`` contents into a unique
+    ``pod_src_root`` where ``nemotron/...`` sits at the root. The launcher also
+    exposes that tree as pod-local ``/nemo_run/code/src`` for compatibility
+    with configs that were normalized to ``/nemo_run/code``. Prefer that
+    pod-local path for file-based ``{script}`` commands so concurrent jobs do
+    not share a mutable ``${workspace}/_nemotron/src`` symlink.
+    """
+    if pod_src_root != "/nemo_run/code/src" and script_path.startswith("src/"):
+        return f"/nemo_run/code/{script_path}"
+    return script_path
+
+
 def _ray_node_source_sync_cmd(pod_src_root: str, ready_marker: str | None) -> str:
     """Return a shell command that ensures chunked source exists on every Ray node.
 
@@ -1150,8 +1165,9 @@ def execute_cloud(
     Source distribution is delegated to :mod:`nemo_runspec.data_mover`. For
     Lepton and DGX Cloud, the local ``src/`` subset is tarred, base64-encoded,
     split across ``_NEMOTRON_SRC_CHUNK_*`` environment variables, and decoded
-    into ``{workspace}/_nemotron/src`` inside the pod. This is airgap-friendly
-    and picks up local uncommitted edits without relying on remote git clones.
+    into a unique ``{workspace}/_nemotron/src-<digest>`` path inside the pod.
+    This is airgap-friendly and picks up local uncommitted edits without
+    relying on remote git clones.
 
     How it works:
     1. ``data_mover`` stages local source through executor-appropriate transport.
@@ -1219,7 +1235,10 @@ def execute_cloud(
     else:
         default_cmd = f"python -m {module_path} --config {{config}}"
     effective_cmd = run_command or _get_env(env, "run_command") or default_cmd
-    script_cmd = effective_cmd.format(script=script_path, config=config_path)
+    script_cmd = effective_cmd.format(
+        script=_cloud_script_path(script_path, transport.pod_src_root),
+        config=config_path,
+    )
     if passthrough:
         script_cmd += " " + " ".join(passthrough)
 
@@ -1252,11 +1271,13 @@ def execute_cloud(
     if startup_commands:
         parts.extend(startup_commands)
 
-    # Final line: activate source + run. Native-packager source lives under
-    # ``/nemo_run/code/src``; symlink it under ${oc.env:PWD}/src so OmegaConf
-    # interpolations resolve. Chunked / job_dir transports already extracted
-    # directly into ``nemotron_home/src``.
-    launch_cmd = f"export PYTHONPATH={transport.pod_src_root}:${{PYTHONPATH:-}}"
+    # Final line: activate source + run. PYTHONPATH points at the unique staged
+    # tree; file-based ``{script}`` commands are rewritten to pod-local
+    # ``/nemo_run/code/src`` above.
+    launch_cmd = (
+        f"export PYTHONPATH={transport.pod_src_root}:${{PYTHONPATH:-}}"
+        f" && export RAY_RUNTIME_ENV_PYTHONPATH={transport.pod_src_root}"
+    )
     if transport.needs_pwd_symlinks:
         launch_cmd += (
             f" && mkdir -p {nemotron_home}/src"
@@ -1366,7 +1387,10 @@ def execute_cloud_ray(
     module_path = script_path.replace("src/", "").replace("/", ".").removesuffix(".py")
     default_cmd = f"python -m {module_path} --config {{config}}"
     effective_cmd = run_command or _get_env(env, "run_command") or default_cmd
-    script_cmd = effective_cmd.format(script=script_path, config=config_path)
+    script_cmd = effective_cmd.format(
+        script=_cloud_script_path(script_path, transport.pod_src_root),
+        config=config_path,
+    )
     if passthrough:
         script_cmd += " " + " ".join(passthrough)
 
