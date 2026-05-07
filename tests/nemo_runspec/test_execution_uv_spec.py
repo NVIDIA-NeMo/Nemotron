@@ -75,6 +75,35 @@ def test_execute_uv_local_uses_stage_project_lock(monkeypatch) -> None:
     assert "VIRTUAL_ENV" not in calls[0][1]["env"]
 
 
+def test_execute_uv_local_preserves_nested_relative_script_path(monkeypatch) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    stage_dir = repo_root / "src" / "nemotron" / "recipes" / "embed" / "stage2_finetune"
+    train_path = Path("/tmp/train.yaml")
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/uv" if name == "uv" else None)
+    monkeypatch.setattr(execution.subprocess, "run", fake_run)
+
+    with pytest.raises(typer.Exit):
+        execution.execute_uv_local(
+            script_path="scripts/train.py",
+            stage_dir=stage_dir,
+            repo_root=repo_root,
+            train_path=train_path,
+            passthrough=[],
+        )
+
+    assert calls[0][0][-3:] == [
+        str(stage_dir / "scripts" / "train.py"),
+        "--config",
+        str(train_path),
+    ]
+
+
 def test_execute_uv_local_from_spec_uses_torchrun_launch(monkeypatch) -> None:
     repo_root = Path(__file__).resolve().parents[2]
     script_path = repo_root / "src" / "nemotron" / "recipes" / "embed" / "stage2_finetune" / "train.py"

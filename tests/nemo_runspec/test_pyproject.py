@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import shutil
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 from nemo_runspec._pyproject import _write_temp_pyproject
 
@@ -26,6 +27,9 @@ def test_write_temp_pyproject_preserves_extras_sources_and_indexes() -> None:
 
         uv = temp["tool"]["uv"]
         assert uv["sources"]["torch"] == [
+            {"index": "pytorch-cu129", "marker": "sys_platform == 'linux'"}
+        ]
+        assert uv["sources"]["torchvision"] == [
             {"index": "pytorch-cu129", "marker": "sys_platform == 'linux'"}
         ]
         assert {index["name"] for index in uv["index"]} >= {"pytorch-cu129"}

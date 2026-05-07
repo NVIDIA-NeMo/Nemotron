@@ -1477,10 +1477,11 @@ def execute_uv_local(
         typer.echo("Error: 'uv' command not found. Please install uv.", err=True)
         raise typer.Exit(1)
 
+    script_path_obj = Path(script_path)
     script_abs = (
-        (stage_dir / Path(script_path).name)
-        if not Path(script_path).is_absolute()
-        else Path(script_path)
+        script_path_obj
+        if script_path_obj.is_absolute()
+        else stage_dir / script_path_obj
     )
     extra_with = list(extra_with or [])
     extras = list(extras or [])

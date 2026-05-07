@@ -19,8 +19,9 @@ import os
 import shutil
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 from nemo_runspec._pyproject import _write_temp_pyproject
 
