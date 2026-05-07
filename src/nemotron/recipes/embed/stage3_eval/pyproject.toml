@@ -10,9 +10,35 @@ dependencies = [
     # Needed by Nemotron library (added via --with flag)
     "omegaconf>=2.3.0",
     "pydantic-settings>=2.0.0",
+    # Pin torch to a CUDA 12.9-compatible build. Without this pin, uv resolves
+    # torch 2.11+ from PyPI, which requires CUDA 13 and silently falls back to
+    # CPU on systems whose NVIDIA driver only supports CUDA 12.x.
+    "torch<=2.10.0",
 ]
 
 # Note: exclude-dependencies injected dynamically by run_uv.py for Docker/Slurm
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform != 'linux' and sys_platform != 'darwin'" },
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+    { index = "pypi", marker = "sys_platform == 'darwin'" },
+]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.nemotron]
 entry-point = "eval.py"
