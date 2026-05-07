@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+import typer
+
 from nemo_runspec import execution, parse
 
 
@@ -15,6 +18,61 @@ def test_embed_finetune_runspec_defaults_to_all_local_gpus() -> None:
     spec = parse(script_path)
 
     assert spec.resources.gpus_per_node == "gpu"
+
+
+def test_execute_uv_local_uses_stage_project_lock(monkeypatch) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    stage_dir = repo_root / "src" / "nemotron" / "recipes" / "embed" / "stage2_finetune"
+    script_path = stage_dir / "train.py"
+    train_path = Path("/tmp/train.yaml")
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/uv" if name == "uv" else None)
+    monkeypatch.setattr(execution.subprocess, "run", fake_run)
+    monkeypatch.setenv("VIRTUAL_ENV", "/tmp/ambient-venv")
+
+    with pytest.raises(typer.Exit) as exc_info:
+        execution.execute_uv_local(
+            script_path=str(script_path),
+            stage_dir=stage_dir,
+            repo_root=repo_root,
+            train_path=train_path,
+            passthrough=["model.foo=bar"],
+            extra_with=["demo-extra"],
+            extras=["tensorrt"],
+            pre_script_args=[
+                "-m",
+                "torch.distributed.run",
+                "--nproc_per_node=gpu",
+            ],
+        )
+
+    assert exc_info.value.exit_code == 0
+    assert len(calls) == 1
+    assert calls[0][0] == [
+        "/usr/bin/uv",
+        "run",
+        "--with",
+        str(repo_root),
+        "--with",
+        "demo-extra",
+        "--project",
+        str(stage_dir),
+        "--extra",
+        "tensorrt",
+        "-m",
+        "torch.distributed.run",
+        "--nproc_per_node=gpu",
+        str(script_path),
+        "--config",
+        str(train_path),
+        "model.foo=bar",
+    ]
+    assert "VIRTUAL_ENV" not in calls[0][1]["env"]
 
 
 def test_execute_uv_local_from_spec_uses_torchrun_launch(monkeypatch) -> None:
