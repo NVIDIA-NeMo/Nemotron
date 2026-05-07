@@ -21,6 +21,7 @@ nemotron = "nemotron.cli.bin.nemotron:main"
 
 ```
 nemotron
+├── byob                     # Bring-your-own benchmark generation and translation
 ├── nano3                    # Nano3 training recipe
 │   ├── pretrain             # Stage 0: Pretraining
 │   ├── sft                  # Stage 1: Supervised fine-tuning
@@ -100,6 +101,11 @@ uv run nemotron nano3 pretrain -c tiny --dry-run
 
 # Override config values
 uv run nemotron nano3 pretrain -c tiny train.train_iters=5000
+
+# BYOB benchmark generation
+uv run nemotron byob --family mcq --stage prepare --config src/nemotron/steps/byob/config/default.yaml
+uv run nemotron byob --family mcq --stage generate --config src/nemotron/steps/byob/config/default.yaml
+uv run nemotron byob --list-families
 
 # Data preparation
 uv run nemotron nano3 data prep pretrain --run MY-CLUSTER

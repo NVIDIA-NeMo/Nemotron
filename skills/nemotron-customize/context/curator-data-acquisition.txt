@@ -1,0 +1,2905 @@
+<file_map>
+/Users/mromeijn/src/Curator
+├── docs
+│   ├── about
+│   │   ├── concepts
+│   │   │   ├── text
+│   │   │   │   ├── _images
+│   │   │   │   ├── data-acquisition-concepts.md *
+│   │   │   │   └── data-loading-concepts.md *
+│   │   │   ├── audio
+│   │   │   ├── image
+│   │   │   └── video
+│   │   │       └── _images
+│   │   └── release-notes
+│   ├── curate-text
+│   │   ├── load-data
+│   │   │   ├── common-crawl.md *
+│   │   │   ├── custom.md *
+│   │   │   ├── index.md *
+│   │   │   └── read-existing.md *
+│   │   ├── process-data
+│   │   │   ├── content-processing
+│   │   │   ├── deduplication
+│   │   │   ├── language-management
+│   │   │   ├── quality-assessment
+│   │   │   └── specialized-processing
+│   │   ├── synthetic
+│   │   │   └── nemotron-cc
+│   │   └── tutorials
+│   ├── _extensions
+│   │   ├── ai_assistant
+│   │   │   ├── assets
+│   │   │   │   └── styles
+│   │   │   ├── core
+│   │   │   ├── integrations
+│   │   │   └── ui
+│   │   ├── content_gating
+│   │   ├── json_output
+│   │   │   ├── content
+│   │   │   ├── core
+│   │   │   └── processing
+│   │   ├── rich_metadata
+│   │   │   └── templates
+│   │   └── search_assets
+│   │       ├── modules
+│   │       └── templates
+│   ├── _images
+│   ├── _templates
+│   ├── admin
+│   │   ├── deployment
+│   │   │   └── slurm
+│   │   └── integrations
+│   ├── curate-audio
+│   │   ├── load-data
+│   │   ├── process-data
+│   │   │   ├── asr-inference
+│   │   │   ├── audio-analysis
+│   │   │   ├── quality-assessment
+│   │   │   └── text-integration
+│   │   └── tutorials
+│   ├── curate-images
+│   │   ├── load-data
+│   │   ├── process-data
+│   │   │   ├── embeddings
+│   │   │   └── filters
+│   │   └── tutorials
+│   ├── curate-video
+│   │   ├── load-data
+│   │   ├── process-data
+│   │   └── tutorials
+│   │       ├── _images
+│   │       └── pipeline-customization
+│   ├── get-started
+│   └── reference
+│       └── infrastructure
+├── nemo_curator
+│   ├── stages
+│   │   ├── text
+│   │   │   ├── download
+│   │   │   │   ├── base
+│   │   │   │   │   ├── download.py * +
+│   │   │   │   │   ├── extract.py * +
+│   │   │   │   │   └── stage.py * +
+│   │   │   │   ├── common_crawl
+│   │   │   │   │   └── stage.py * +
+│   │   │   │   ├── arxiv
+│   │   │   │   ├── html_extractors
+│   │   │   │   │   └── utils
+│   │   │   │   └── wikipedia
+│   │   │   ├── classifiers
+│   │   │   ├── deduplication
+│   │   │   ├── embedders
+│   │   │   ├── filters
+│   │   │   │   ├── fasttext
+│   │   │   │   ├── heuristic
+│   │   │   │   │   ├── code
+│   │   │   │   │   └── repetition
+│   │   │   │   ├── histogram
+│   │   │   │   └── token
+│   │   │   ├── io
+│   │   │   │   ├── reader
+│   │   │   │   └── writer
+│   │   │   ├── models
+│   │   │   ├── modifiers
+│   │   │   │   ├── fasttext
+│   │   │   │   ├── string
+│   │   │   │   └── unicode
+│   │   │   ├── modules
+│   │   │   └── utils
+│   │   ├── audio
+│   │   │   ├── advanced_pipelines
+│   │   │   │   └── audio_data_filter
+│   │   │   ├── alm
+│   │   │   ├── datasets
+│   │   │   │   ├── fleurs
+│   │   │   │   └── readspeech
+│   │   │   ├── filtering
+│   │   │   │   ├── band_filter_module
+│   │   │   │   └── sigmos_filter_module
+│   │   │   │       └── third_party
+│   │   │   │           └── sigmos
+│   │   │   ├── inference
+│   │   │   ├── io
+│   │   │   ├── metrics
+│   │   │   ├── postprocessing
+│   │   │   ├── preprocessing
+│   │   │   └── segmentation
+│   │   │       └── speaker_separation_module
+│   │   ├── deduplication
+│   │   │   ├── exact
+│   │   │   ├── fuzzy
+│   │   │   │   └── lsh
+│   │   │   ├── semantic
+│   │   │   └── shuffle_utils
+│   │   ├── image
+│   │   │   ├── deduplication
+│   │   │   ├── embedders
+│   │   │   ├── filters
+│   │   │   └── io
+│   │   ├── interleaved
+│   │   │   ├── filter
+│   │   │   ├── io
+│   │   │   │   ├── readers
+│   │   │   │   └── writers
+│   │   │   ├── pdf
+│   │   │   │   └── nemotron_parse
+│   │   │   └── utils
+│   │   ├── math
+│   │   │   ├── classifiers
+│   │   │   ├── download
+│   │   │   │   └── html_extractors
+│   │   │   └── modifiers
+│   │   ├── synthetic
+│   │   │   ├── nemo_data_designer
+│   │   │   └── nemotron_cc
+│   │   │       └── nemo_data_designer
+│   │   └── video
+│   │       ├── caption
+│   │       ├── clipping
+│   │       ├── embedding
+│   │       ├── filtering
+│   │       ├── io
+│   │       └── preview
+│   ├── backends
+│   │   ├── internal
+│   │   │   └── raft
+│   │   ├── ray_actor_pool
+│   │   ├── ray_data
+│   │   └── xenna
+│   ├── config
+│   │   └── text
+│   ├── core
+│   ├── metrics
+│   ├── models
+│   │   └── client
+│   ├── pipeline
+│   ├── tasks
+│   └── utils
+├── tutorials
+│   ├── text
+│   │   ├── download-and-extract
+│   │   │   └── README.md *
+│   │   ├── llama-nemotron-data-curation
+│   │   │   ├── filters
+│   │   │   ├── utils
+│   │   │   ├── README.md *
+│   │   │   └── main.py * +
+│   │   ├── deduplication
+│   │   │   ├── fuzzy
+│   │   │   └── semantic
+│   │   ├── distributed-data-classification
+│   │   ├── gliner-pii-redaction
+│   │   ├── megatron-tokenizer
+│   │   ├── peft-curation
+│   │   └── tinystories
+│   ├── audio
+│   │   ├── alm
+│   │   ├── callhome_diar
+│   │   ├── fleurs
+│   │   ├── readspeech
+│   │   └── single_speaker_filter
+│   ├── image
+│   │   └── getting-started
+│   ├── interleaved
+│   │   └── nemotron_parse_pdf
+│   ├── math
+│   ├── multimodal
+│   ├── slurm
+│   ├── synthetic
+│   │   ├── nemo_data_designer
+│   │   └── nemotron_cc
+│   │       ├── example_data
+│   │       └── nemo_data_designer
+│   └── video
+│       └── getting-started
+├── .cursor
+│   └── rules
+├── .github
+│   ├── actions
+│   │   ├── build-container
+│   │   └── test-template
+│   ├── scripts
+│   └── workflows
+│       └── config
+├── benchmarking
+│   ├── data_prep
+│   ├── runner
+│   │   └── sinks
+│   ├── scripts
+│   └── tools
+├── docker
+│   └── common
+├── fern
+│   ├── assets
+│   │   └── images
+│   ├── components
+│   └── versions
+│       ├── v25.09
+│       │   └── pages
+│       │       ├── about
+│       │       │   ├── concepts
+│       │       │   │   ├── audio
+│       │       │   │   ├── image
+│       │       │   │   ├── text
+│       │       │   │   └── video
+│       │       │   └── release-notes
+│       │       ├── admin
+│       │       │   ├── deployment
+│       │       │   └── integrations
+│       │       ├── api-reference
+│       │       │   ├── executors
+│       │       │   └── tasks
+│       │       ├── curate-audio
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   │   ├── asr-inference
+│       │       │   │   ├── audio-analysis
+│       │       │   │   ├── quality-assessment
+│       │       │   │   └── text-integration
+│       │       │   └── tutorials
+│       │       ├── curate-images
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   │   ├── embeddings
+│       │       │   │   └── filters
+│       │       │   └── tutorials
+│       │       ├── curate-text
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   │   ├── content-processing
+│       │       │   │   ├── deduplication
+│       │       │   │   ├── language-management
+│       │       │   │   ├── quality-assessment
+│       │       │   │   └── specialized-processing
+│       │       │   └── tutorials
+│       │       ├── curate-video
+│       │       │   ├── load-data
+│       │       │   ├── process-data
+│       │       │   └── tutorials
+│       │       │       └── pipeline-customization
+│       │       ├── get-started
+│       │       └── reference
+│       │           └── infrastructure
+│       └── v26.02
+│           └── pages
+│               ├── _images
+│               ├── about
+│               │   ├── concepts
+│               │   │   ├── audio
+│               │   │   ├── image
+│               │   │   ├── text
+│               │   │   │   └── _images
+│               │   │   └── video
+│               │   │       └── _images
+│               │   └── release-notes
+│               ├── admin
+│               │   ├── deployment
+│               │   │   └── slurm
+│               │   └── integrations
+│               ├── api-reference
+│               │   ├── executors
+│               │   └── tasks
+│               ├── curate-audio
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   │   ├── asr-inference
+│               │   │   ├── audio-analysis
+│               │   │   ├── quality-assessment
+│               │   │   └── text-integration
+│               │   └── tutorials
+│               ├── curate-images
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   │   ├── embeddings
+│               │   │   └── filters
+│               │   └── tutorials
+│               ├── curate-text
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   │   ├── content-processing
+│               │   │   ├── deduplication
+│               │   │   ├── language-management
+│               │   │   ├── quality-assessment
+│               │   │   └── specialized-processing
+│               │   ├── synthetic
+│               │   │   └── nemotron-cc
+│               │   └── tutorials
+│               ├── curate-video
+│               │   ├── load-data
+│               │   ├── process-data
+│               │   └── tutorials
+│               │       ├── _images
+│               │       └── pipeline-customization
+│               ├── get-started
+│               └── reference
+│                   └── infrastructure
+└── tests
+    ├── backends
+    │   ├── ray_actor_pool
+    │   └── ray_data
+    ├── config
+    ├── core
+    ├── fixtures
+    │   └── audio
+    │       └── alm
+    │           └── nested_manifests
+    │               ├── subdir_a
+    │               └── subdir_b
+    ├── metrics
+    ├── models
+    │   └── client
+    ├── pipelines
+    ├── stages
+    │   ├── audio
+    │   │   ├── advanced_pipelines
+    │   │   ├── alm
+    │   │   ├── datasets
+    │   │   ├── filtering
+    │   │   ├── inference
+    │   │   ├── io
+    │   │   ├── metrics
+    │   │   ├── postprocessing
+    │   │   ├── preprocessing
+    │   │   └── segmentation
+    │   ├── common
+    │   ├── deduplication
+    │   │   ├── exact
+    │   │   ├── fuzzy
+    │   │   ├── semantic
+    │   │   └── shuffle_utils
+    │   ├── image
+    │   │   ├── dedup
+    │   │   ├── embedders
+    │   │   ├── filters
+    │   │   └── io
+    │   ├── interleaved
+    │   │   ├── filter
+    │   │   ├── pdf
+    │   │   │   └── nemotron_parse
+    │   │   └── utils
+    │   ├── math_stages
+    │   │   ├── classifiers
+    │   │   ├── download
+    │   │   └── modifiers
+    │   ├── synthetic
+    │   │   ├── nemo_data_designer
+    │   │   └── nemotron_cc
+    │   │       └── nemo_data_designer
+    │   ├── text
+    │   │   ├── classifiers
+    │   │   ├── deduplication
+    │   │   ├── download
+    │   │   │   ├── arxiv
+    │   │   │   ├── base
+    │   │   │   ├── common_crawl
+    │   │   │   └── wikipedia
+    │   │   ├── embedders
+    │   │   ├── io
+    │   │   │   ├── reader
+    │   │   │   └── writer
+    │   │   ├── models
+    │   │   └── modules
+    │   └── video
+    │       ├── caption
+    │       │   └── fixtures
+    │       ├── clipping
+    │       ├── embedding
+    │       ├── filtering
+    │       ├── io
+    │       └── preview
+    ├── tasks
+    └── utils
+
+
+(* denotes selected files)
+(+ denotes code-map available)
+Config: directory-only view; selected files shown.
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/base.py
+Imports:
+  - import contextlib
+  - import copy
+  - import time
+  - from abc import ABC, ABCMeta, abstractmethod
+  - from inspect import isabstract
+  - from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
+  - from loguru import logger
+  - from nemo_curator.stages.resources import Resources
+  - from nemo_curator.tasks import Task
+  - from nemo_curator.backends.base import NodeInfo, WorkerMetadata
+---
+Classes:
+  - StageMeta
+    Methods:
+      - L46: def __new__(mcls, name, bases, namespace, **kwargs):
+  - ProcessingStage
+    Methods:
+      - L92: def _name(self) -> str:
+      - L97: def _resources(self) -> Resources:
+      - L102: def _batch_size(self) -> int | None:
+      - L106: def __init_subclass__(cls, **kwargs):
+      - L127: def num_workers(self) -> int | None:
+      - L131: def validate_input(self, task: Task) -> bool:
+      - L161: def process(self, task: X) -> Y | list[Y]:
+      - L171: def process_batch(self, tasks: list[X]) -> list[Y]:
+      - L201: def setup_on_node(self, node_info: NodeInfo | None = None, worker_metadata: WorkerMetadata | None = None) -> None:
+      - L209: def setup(self, worker_metadata: WorkerMetadata | None = None) -> None:
+      - L217: def teardown(self) -> None:
+      - L222: def supports_batch_processing(self) -> bool:
+      - L230: def __repr__(self) -> str:
+      - L234: def inputs(self) -> tuple[list[str], list[str]]:
+      - L244: def outputs(self) -> tuple[list[str], list[str]]:
+      - L254: def xenna_stage_spec(self) -> dict[str, Any]:
+      - L262: def with_(
+        self,
+        name: str | None = None,
+        resources: Resources | None = None,
+        batch_size: int | None = None,
+        runtime_env: dict[str, Any] | None = None,
+    ) -> ProcessingStage:
+      - L293: def get_config(self) -> dict[str, Any]:
+      - L305: def ray_stage_spec(self) -> dict[str, Any]:
+      - L316: def _log_metrics(self, metrics: dict[str, float]) -> None:
+      - L327: def _log_metric(self, name: str, value: float) -> None:
+      - L331: def _time_metric(self, name: str) -> contextlib.AbstractContextManager[None]:
+      - L339: def _consume_custom_metrics(self) -> dict[str, float]:
+    Properties:
+      - _is_abstract_root
+      - name
+      - resources
+      - batch_size
+      - runtime_env
+  - CompositeStage
+    Methods:
+      - L359: def __init__(self):
+      - L362: def inputs(self) -> tuple[list[str], list[str]]:
+      - L366: def outputs(self) -> tuple[list[str], list[str]]:
+      - L371: def decompose(self) -> list[ProcessingStage]:
+      - L381: def with_(self, stage_with_dict: dict[str, Any]) -> CompositeStage:
+      - L387: def decompose_and_apply_with(self) -> list[ProcessingStage]:
+      - L391: def _apply_with_(self, stages: list[ProcessingStage]) -> list[ProcessingStage]:
+      - L419: def process(self, task: X) -> Y | list[Y]:
+      - L425: def get_description(self) -> str:
+
+Functions:
+  - L62: def get_stage_class(name: str) -> type[ProcessingStage]:
+
+Global vars:
+  - X
+  - Y
+  - _STAGE_REGISTRY
+---
+
+
+File: /Users/mromeijn/src/Curator/nemo_curator/tasks/file_group.py
+Imports:
+  - from dataclasses import dataclass, field
+  - from typing import Any
+  - from loguru import logger
+  - from .tasks import Task
+---
+Classes:
+  - FileGroupTask
+    Methods:
+      - L33: def num_items(self) -> int:
+      - L37: def validate(self) -> bool:
+    Properties:
+      - reader_config
+      - data
+---
+
+</file_map>
+<file_contents>
+File: /Users/mromeijn/src/Curator/docs/about/concepts/text/data-acquisition-concepts.md
+```md
+---
+description: "Core concepts for acquiring text data from remote sources including DocumentDownloader, DocumentIterator, and DocumentExtractor components"
+categories: ["concepts-architecture"]
+tags: ["data-acquisition", "remote-sources", "download", "extract", "distributed"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "concept"
+modality: "text-only"
+---
+
+(about-concepts-text-data-acquisition)=
+
+# Data Acquisition Concepts
+
+This guide covers the core concepts for acquiring and processing text data from remote sources in NeMo Curator. Data acquisition focuses on downloading, extracting, and converting remote data sources into the `DocumentBatch` format for further processing.
+
+## Overview
+
+Data acquisition in NeMo Curator follows a three-stage architecture:
+
+1. **Generate URLs**: Discover and generate download URLs from minimal input
+2. **Download**: Retrieve raw data files from remote sources
+3. **Iterate** and **Extract**: Extract individual records from downloaded containers and convert raw content to clean, structured text
+
+This process transforms diverse remote data sources into a standardized `DocumentBatch` that can be used throughout the text curation pipeline.
+
+## Core Components
+
+The data acquisition framework consists of four abstract base classes that define the acquisition workflow:
+
+### URLGenerator
+
+Generates URLs for downloading from minimal input configuration. You need to override `generate_urls` which generates a bunch of URLs that user wants to download.
+
+**Example Implementation**:
+
+```python
+from dataclasses import dataclass
+from nemo_curator.stages.text.download import URLGenerator
+
+@dataclass
+class CustomURLGenerator(URLGenerator):
+    def generate_urls(self):
+        # Custom URL generation logic
+        urls = []
+        ...
+        return urls
+```
+
+### DocumentDownloader
+
+Connects to and downloads data from remote repositories. You must override `_get_output_filename` and `_download_to_path` which are called by an underlying function called `download` which tries to be idempotent.
+
+**Example Implementation**:
+
+```python
+from nemo_curator.stages.text.download import DocumentDownloader
+
+class CustomDownloader(DocumentDownloader):
+    def __init__(self, download_dir: str):
+        super().__init__(download_dir=download_dir)
+    
+    def _get_output_filename(self, url: str) -> str:
+        # Custom logic to extract filename from URL
+        return url.split("/")[-1]
+    
+    def _download_to_path(self, url: str, path: str) -> tuple[bool, str | None]:
+        # Custom download logic
+        # Return (success_bool, error_message)
+        try:
+            # ... download implementation ...
+            return True, None
+        except Exception as e:
+            return False, str(e)
+```
+
+### DocumentIterator
+
+Extracts individual records from downloaded containers. You should only override `iterate` and `output_columns` where `iterate` must have logic to load the local file path and return bunch of documents. The `list[dict]` is finally considered to a Pandas DataFrame which is passed to Extractor.
+
+**Example Implementation**:
+
+```python
+from collections.abc import Iterator
+from typing import Any
+from nemo_curator.stages.text.download import DocumentIterator
+
+class CustomIterator(DocumentIterator):
+    def __init__(self, log_frequency: int = 1000):
+        super().__init__()
+        self._log_frequency = log_frequency
+    
+    def iterate(self, file_path: str) -> Iterator[dict[str, Any]]:
+        # Custom iteration logic to load local file and return documents
+        for record in load_local_file_fn(file_path):
+            yield {"content": record_content, "metadata": record_metadata}
+    
+    def output_columns(self) -> list[str]:
+        return ["content", "metadata"]
+```
+
+### DocumentExtractor (Optional)
+
+DocumentExtractor works on a Pandas DataFrame and is optional.
+
+**Example Implementation**:
+
+```python
+from typing import Any
+from nemo_curator.stages.text.download import DocumentExtractor
+
+class CustomExtractor(DocumentExtractor):
+    def __init__(self):
+        super().__init__()
+    
+    def extract(self, record: dict[str, str]) -> dict[str, Any] | None:
+        # Custom extraction logic
+        cleaned_text = clean_content(record["content"])
+        detected_lang = detect_language(cleaned_text)
+        return {"text": cleaned_text, "language": detected_lang}
+    
+    def input_columns(self):
+        return ["content", "metadata"]
+    
+    def output_columns(self):
+        return ["text", "language"]
+```
+
+## Supported Data Sources
+
+NeMo Curator provides built-in support for major public text datasets:
+
+::::{grid} 2 2 2 3
+:gutter: 2
+
+:::{grid-item-card} {octicon}`globe;1.5em;sd-mr-1` Common Crawl
+:link: text-load-data-common-crawl
+:link-type: ref
+
+Download and extract web archive data from Common Crawl
++++
+{bdg-secondary}`web-scale` {bdg-secondary}`multilingual`
+:::
+
+:::{grid-item-card} {octicon}`typography;1.5em;sd-mr-1` ArXiv
+:link: text-load-data-arxiv
+:link-type: ref
+
+Download and extract scientific papers from arXiv
++++
+{bdg-secondary}`academic` {bdg-secondary}`scientific`
+:::
+
+:::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Wikipedia
+:link: text-load-data-wikipedia
+:link-type: ref
+
+Download and extract Wikipedia articles from Wikipedia dumps
++++
+{bdg-secondary}`encyclopedic` {bdg-secondary}`structured`
+:::
+
+:::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Custom Data Sources
+:link: text-load-data-custom
+:link-type: ref
+
+Implement a download and extract pipeline for a custom data source
++++
+{bdg-secondary}`extensible` {bdg-secondary}`specialized`
+:::
+
+::::
+
+## Integration with Pipeline Architecture
+
+The data acquisition process seamlessly integrates with NeMo Curator's pipeline-based architecture. The `DocumentDownloadExtractStage` handles parallel processing through the distributed computing framework.
+
+### Acquisition Workflow
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.download import DocumentDownloadExtractStage
+from nemo_curator.stages.text.io.writer.jsonl import JsonlWriter
+from nemo_curator.stages.base import ProcessingStage
+
+# Create composite stage
+class CustomDownloadExtractStage(DocumentDownloadExtractStage):
+    def __init__(
+        self,
+        download_dir: str = "./custom_downloads",
+        url_limit: int | None = None,
+        record_limit: int | None = None,
+        add_filename_column: bool | str = True,
+    ):
+        # Create the URL generator
+        self.url_generator = CustomURLGenerator()
+
+        # Create the downloader
+        self.downloader = CustomDownloader(download_dir=download_dir)
+
+        # Create the iterator
+        self.iterator = CustomIterator()
+
+        # Create the extractor
+        self.extractor = CustomExtractor()
+
+        # Initialize the parent composite stage
+        super().__init__(
+            url_generator=self.url_generator,
+            downloader=self.downloader,
+            iterator=self.iterator,
+            extractor=self.extractor,
+            url_limit=url_limit,
+            record_limit=record_limit,
+            add_filename_column=add_filename_column,
+        )
+        self.name = "custom_pipeline"
+
+    def decompose(self) -> list[ProcessingStage]:
+        """Decompose this composite stage into its constituent stages."""
+        return self.stages
+
+    def get_description(self) -> str:
+        """Get a description of this composite stage."""
+        return "Custom pipeline"
+
+# Initialize Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Define acquisition pipeline
+pipeline = Pipeline(name="data_acquisition")
+
+# Create download and extract stage with custom components
+custom_download_extract_stage = CustomDownloadExtractStage(...)
+pipeline.add_stage(custom_download_extract_stage)
+
+# Write the results
+pipeline.add_stage(JsonlWriter(...))
+
+# Execute acquisition pipeline
+results = pipeline.run()
+
+# Stop Ray client
+ray_client.stop()
+```
+
+## Performance Optimization
+
+### Parallel Processing
+
+Data acquisition leverages distributed computing frameworks for scalable processing:
+
+- **Parallel Downloads**: Each URL in the generated list downloads through separate workers
+- **Concurrent Extraction**: Files process in parallel across workers
+- **Memory Management**: Streaming processing for large files
+
+## Integration with Data Loading
+
+Data acquisition produces a standardized output that integrates seamlessly with Curator's {ref}`Data Loading Concepts <about-concepts-text-data-loading>`:
+
+```{note}
+Data acquisition includes basic content-level deduplication during extraction (such as removing duplicate HTML content within individual web pages). This is separate from the main deduplication pipeline stages (exact, fuzzy, and semantic deduplication) that operate on the full dataset after acquisition.
+```
+
+```python
+from nemo_curator.stages.text.io.writer import ParquetWriter
+
+# Create acquisition pipeline with all stages including writer
+acquisition_pipeline = Pipeline(name="data_acquisition")
+# ... add acquisition stages ...
+
+# Add writer to save results directly
+writer = ParquetWriter(path="acquired_data/")
+acquisition_pipeline.add_stage(writer)
+
+# Run pipeline to acquire and save data in one execution
+results = acquisition_pipeline.run()
+
+# Later: Load using pipeline-based data loading
+from nemo_curator.stages.text.io.reader import ParquetReader
+
+load_pipeline = Pipeline(name="load_acquired_data")
+reader = ParquetReader(file_paths="acquired_data/")
+load_pipeline.add_stage(reader)
+```
+
+This enables you to:
+
+- **Separate acquisition from processing** for better workflow management
+- **Cache acquired data** to avoid re-downloading
+- **Mix acquired and local data** in the same processing pipeline
+- **Use standard loading patterns** regardless of data origin
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/about/concepts/text/data-loading-concepts.md
+```md
+---
+description: "Core concepts for loading and managing text datasets using pipeline-based readers and DocumentBatch tasks"
+categories: ["concepts-architecture"]
+tags: ["data-loading", "document-dataset", "parallel-dataset", "distributed", "gpu-accelerated", "local-files"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "concept"
+modality: "text-only"
+---
+
+(about-concepts-text-data-loading)=
+
+# Data Loading Concepts
+
+This guide covers the core concepts for loading and managing text data from local files in NVIDIA NeMo Curator.
+
+## Pipeline-Based Data Loading
+
+NeMo Curator uses a **pipeline-based architecture** for handling large-scale text data processing. Data flows through processing stages that transform data, enabling distributed processing of local files.
+
+The system provides two primary readers for text data:
+
+- **JsonlReader** - For JSON Lines format files (most common).
+- **ParquetReader** - For columnar Parquet files (better performance for large datasets with PyArrow optimization).
+
+Both readers support optimization through:
+
+- **Field selection** - Reading specified columns to reduce memory usage.
+- **Partitioning control** - Using `blocksize` or `files_per_partition` to optimize `DocumentBatch` sizes during distributed processing.
+- **Recommended block size** - Use ~128MB for optimal object store performance with smaller data chunks.
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader, ParquetReader
+
+# Initialize Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Basic usage with optimization
+pipeline = Pipeline(name="data_processing")
+
+# Define file type (example)
+file_type = "jsonl"  # or "parquet" based on your data
+
+if file_type == "jsonl":
+    # JSONL reader with field selection and partitioning
+    jsonl_reader = JsonlReader(
+        file_paths="/path/to/jsonl_directory",
+        blocksize="128MB",  # Recommended for object store optimization
+        fields=["text", "id"]  # Column selection for efficiency
+    )
+    pipeline.add_stage(jsonl_reader)
+else:
+    # Parquet reader with performance optimization
+    parquet_reader = ParquetReader(
+        file_paths="/path/to/parquet_directory",
+        files_per_partition=4,  # Alternative to blocksize
+        fields=["text", "metadata"]
+    )
+    pipeline.add_stage(parquet_reader)
+
+# Execute pipeline
+results = pipeline.run()
+
+# Stop Ray client
+ray_client.stop()
+```
+
+## Optimization Strategies
+
+### Partitioning Control
+
+:::{note}
+**Partitioning Strategy**: Specify either `files_per_partition` or `blocksize`. If `files_per_partition` is provided, `blocksize` is ignored.
+:::
+
+```python
+# Option 1: Size-based partitioning (recommended)
+reader = JsonlReader(
+    file_paths="/path/to/data",
+    blocksize="128MB"  # Optimal for object store performance
+)
+
+# Option 2: File count-based partitioning  
+reader = JsonlReader(
+    file_paths="/path/to/data",
+    files_per_partition=16  # Match your cluster size
+)
+```
+
+### Performance Recommendations
+
+- **Block size and files per partition**: Use ~128MB for optimal performance. Very large batches lead to memory overhead when passing data between stages through the object store, while very small batches induce overhead from processing many more tasks. We recommend ~128MB as a good balance. Try to avoid going below 32MB or above 1GiB partition sizes.
+- **Field selection**: Specify the `fields` parameter to read only the required columns.
+- **Engine choice**: ParquetReader defaults to PyArrow with `dtype_backend="pyarrow"` for optimal performance and memory efficiency. If you encounter compatibility issues with certain data types or schemas, you can override these defaults through `read_kwargs`:
+  ```python
+  # Remove PyArrow dtype backend if compatibility issues arise
+  reader = ParquetReader(
+      file_paths="data.parquet",
+      read_kwargs={"dtype_backend": "numpy_nullable"}  # Falls back to Pandas default behavior
+  )
+  ```
+
+### Memory Tips
+
+:::{warning}
+If you set the `blocksize` parameter to a size smaller than your input file size(s), Curator does not split the input files and instead attempts to read each file in full. To avoid out-of-memory issues, use the helper script described below.
+:::
+
+If any of your individual JSONL or Parquet files are greater than 2 GiB, we recommend using the `nemo_curator/utils/split_large_files.py` helper script to split them into more manageable sizes and prevent out-of-memory issues. You can run it with:
+
+```bash
+python nemo_curator/utils/split_large_files.py --input-path "/path/to/input/dir" --file-type "parquet" --output-path "/path/to/output/dir" --target-size-mb 128
+```
+
+It supports splitting JSONL or Parquet files as specified by the `--file-type` argument.
+
+Another option is running file splitting within your existing script. For example, you can split large JSONL files with:
+
+```python
+import ray
+from nemo_curator.core.client import RayClient
+from nemo_curator.utils.split_large_files import split_jsonl_file_by_size
+
+# Start Ray client as usual
+ray_client = RayClient()
+ray_client.start()
+
+input_files = []  # your list of input jsonl files
+
+ray.get(
+  [
+    split_jsonl_file_by_size.remote(
+      input_file=f,
+      output_path="/path/to/output/dir",
+      target_size_mb=128,
+    )
+    for f in input_files
+  ]
+)
+
+# initialize your Curator pipeline with JsonlReader, etc.
+```
+
+Similarly for Parquet files:
+
+```python
+import ray
+from nemo_curator.core.client import RayClient
+from nemo_curator.utils.split_large_files import split_parquet_file_by_size
+
+# Start Ray client as usual
+ray_client = RayClient()
+ray_client.start()
+
+input_files = []  # your list of input parquet files
+
+ray.get(
+  [
+    split_parquet_file_by_size.remote(
+      input_file=f,
+      output_path="/path/to/output/dir",
+      target_size_mb=128,
+    )
+    for f in input_files
+  ]
+)
+
+# initialize your Curator pipeline with ParquetReader, etc.
+```
+
+## Data Export Options
+
+NeMo Curator provides flexible export options for processed datasets:
+
+```python
+from nemo_curator.stages.text.io.writer import JsonlWriter, ParquetWriter
+
+# Add writers to pipeline after processing stages
+pipeline.add_stage(JsonlWriter(path="output_directory/"))
+# or
+pipeline.add_stage(ParquetWriter(path="output_directory/"))
+```
+
+## Common Loading Patterns
+
+### Multi-Source Data
+
+```python
+# Combine multiple directories with same reader type
+reader = JsonlReader(file_paths=[
+    "dataset_v1/",
+    "dataset_v2/", 
+    "additional_data/"
+])
+```
+
+:::{note}
+You cannot combine different reader types (`JsonlReader` + `ParquetReader`)  in the same pipeline stage. For different file types, you would need to create a new `CustomReader` from the underlying `BaseReader` that can read based on different extensions provided.
+:::
+
+## Remote Data Sources
+
+This page focuses on loading text data from **local files** using `JsonlReader` and `ParquetReader`. Both readers support remote storage locations (Amazon S3, Azure) when you provide remote file paths.
+
+For downloading and processing data from **remote sources** like ArXiv, Common Crawl, and Wikipedia, refer to the {ref}`Data Acquisition Concepts <about-concepts-text-data-acquisition>` page which covers:
+
+- **URLGenerator, DocumentDownloader, DocumentIterator, DocumentExtractor** components.
+- **Built-in support** for Common Crawl, ArXiv, Wikipedia, and custom sources.
+- **Integration patterns** with pipeline-based processing.
+- **Configuration and scaling** strategies.
+
+The data acquisition process produces standardized output that integrates seamlessly with the pipeline-based loading concepts described on this page.
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/load-data/index.md
+```md
+---
+description: "Load text data from Common Crawl, Wikipedia, and custom datasets using Curator."
+categories: ["workflows"]
+tags: ["data-loading", "arxiv", "common-crawl", "wikipedia", "custom-data", "distributed", "ray"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "workflow"
+modality: "text-only"
+---
+
+(text-load-data)=
+
+# Download Data
+
+Load text data from ArXiv, Common Crawl, Wikipedia, and custom sources using Curator.
+
+Curator provides a task-centric pipeline for downloading and processing large-scale public text datasets. It runs on Ray and converts raw formats like Common Crawl's `.warc.gz` into JSONL.
+
+## How it Works
+
+Curator uses a {ref}`4-step pipeline pattern <about-concepts-text-data-acquisition>` where data flows through stages as tasks. Each step uses a `ProcessingStage` that transforms tasks according to Curator's {ref}`pipeline-based architecture <about-concepts-text-data-loading>`.
+
+Data sources provide composite stages that combine these steps into complete download-and-extract pipelines, producing `DocumentBatch` tasks for further processing.
+
+::::{tab-set}
+
+:::{tab-item} Python
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.download import CommonCrawlDownloadExtractStage
+from nemo_curator.stages.text.io.writer import JsonlWriter
+
+# Initialize Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Create a pipeline for downloading Common Crawl data
+pipeline = Pipeline(
+    name="common_crawl_download",
+    description="Download and process Common Crawl web archives"
+)
+
+# Add data loading stage
+cc_stage = CommonCrawlDownloadExtractStage(
+    start_snapshot="2020-50",
+    end_snapshot="2020-50",
+    download_dir="/tmp/cc_downloads",
+    crawl_type="main",
+    url_limit=10  # Limit for testing
+)
+pipeline.add_stage(cc_stage)
+
+# Add writer stage to save as JSONL
+writer = JsonlWriter(path="/output/folder")
+pipeline.add_stage(writer)
+
+# Execute pipeline
+results = pipeline.run()
+
+# Stop Ray client
+ray_client.stop()
+```
+
+:::
+
+::::
+
+---
+
+## Data Sources & File Formats
+
+Load data from public datasets and custom data sources using Curator stages.
+
+::::{grid} 1 1 1 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`file;1.5em;sd-mr-1` Read Existing Data
+:link: text-load-data-read-existing
+:link-type: ref
+Read existing JSONL and Parquet datasets using Curator's reader stages
++++
+{bdg-secondary}`jsonl`
+{bdg-secondary}`parquet`
+:::
+
+:::{grid-item-card} {octicon}`download;1.5em;sd-mr-1` Common Crawl
+:link: text-load-data-common-crawl
+:link-type: ref
+Download and extract web archive data from Common Crawl
++++
+{bdg-secondary}`web-data`
+{bdg-secondary}`warc`
+{bdg-secondary}`html-extraction`
+:::
+
+:::{grid-item-card} {octicon}`download;1.5em;sd-mr-1` Wikipedia
+:link: text-load-data-wikipedia
+:link-type: ref
+Download and extract Wikipedia articles from Wikipedia dumps
++++
+{bdg-secondary}`articles`
+{bdg-secondary}`multilingual`
+{bdg-secondary}`xml-dumps`
+:::
+
+:::{grid-item-card} {octicon}`download;1.5em;sd-mr-1` Custom Data Sources
+:link: text-load-data-custom
+:link-type: ref
+Implement a download and extract pipeline for a custom data source
++++
+{bdg-secondary}`jsonl`
+{bdg-secondary}`parquet`
+{bdg-secondary}`file-partitioning`
+:::
+
+::::
+
+```{toctree}
+:maxdepth: 4
+:titlesonly:
+:hidden:
+
+Read Existing Data <read-existing>
+arxiv
+common-crawl
+wikipedia
+Custom Data Sources <custom.md>
+```
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/load-data/common-crawl.md
+```md
+---
+description: "Download and extract text from Common Crawl web archives using Curator."
+categories: ["how-to-guides"]
+tags: ["common-crawl", "web-data", "warc", "language-detection", "distributed", "html-extraction", "pipeline"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "intermediate"
+content_type: "how-to"
+modality: "text-only"
+---
+
+(text-load-data-common-crawl)=
+
+# Common Crawl
+
+Download and extract text from Common Crawl snapshots using Curator.
+
+Common Crawl provides petabytes of web data collected over years of web crawling. The data uses a compressed web archive format (`.warc.gz`), which requires processing to extract useful text for language model training.
+
+## How it Works
+
+Curator's Common Crawl processing pipeline consists of four sequential stages:
+
+1. **URL Generation**: Generates WARC file URLs from Common Crawl's index for the specified snapshot range
+2. **Download**: Downloads the compressed WARC files from Common Crawl's servers (optionally using S3 for faster downloads)
+3. **Iteration**: Extracts individual records from WARC files and decodes HTML content
+4. **Extraction**: Performs language detection and extracts clean text using configurable HTML extraction algorithms
+
+The pipeline outputs structured data that you can write to JSONL or Parquet files for further processing.
+
+## Before You Start
+
+Choose your download method and ensure you have the prerequisites:
+
+- HTTPS downloads (default): No AWS account required.
+- S3 downloads (set `use_aws_to_download=True`):
+  - An AWS account with credentials configured (profile, environment, or instance role).
+  - Common Crawl's S3 access uses Requester Pays; you incur charges for requests and data transfer.
+  - `s5cmd` installed for fast S3 listing and copy operations:
+
+```bash
+# Install s5cmd for faster S3 downloads
+pip install s5cmd
+```
+
+---
+
+## Usage
+
+Here's how to create and run a Common Crawl processing pipeline:
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.download import CommonCrawlDownloadExtractStage
+from nemo_curator.stages.text.io.writer import JsonlWriter
+
+def main():
+    # Initialize Ray client
+    ray_client = RayClient()
+    ray_client.start()
+
+    # Create pipeline
+    pipeline = Pipeline(
+        name="common_crawl_pipeline",
+        description="Download and process Common Crawl data"
+    )
+
+    # Add Common Crawl processing stage
+    cc_stage = CommonCrawlDownloadExtractStage(
+        start_snapshot="2020-50",  # YYYY-WW format for CC-MAIN
+        end_snapshot="2020-50",
+        download_dir="./cc_downloads",
+        crawl_type="main",  # or "news"
+        use_aws_to_download=True,  # Faster S3 downloads (requires s5cmd)
+        url_limit=10,  # Limit number of WARC files for testing
+        record_limit=1000,  # Limit records per WARC file
+    )
+    pipeline.add_stage(cc_stage)
+
+    # Add output writer stage
+    writer = JsonlWriter("./cc_output")
+    pipeline.add_stage(writer)
+
+    # Run pipeline
+    results = pipeline.run()
+
+    # Stop Ray client
+    ray_client.stop()
+
+if __name__ == "__main__":
+    main()
+```
+
+For executor options and configuration, refer to {ref}`reference-execution-backends`.
+
+### Writing to Parquet
+
+To write to Parquet files instead of JSONL, use `ParquetWriter`:
+
+```python
+from nemo_curator.stages.text.io.writer import ParquetWriter
+
+# Replace the JSONL writer with ParquetWriter
+writer = ParquetWriter("./cc_output_parquet")
+pipeline.add_stage(writer)
+```
+
+### Parameters
+
+```{list-table} CommonCrawlDownloadExtractStage Parameters
+:header-rows: 1
+:widths: 25 20 35 20
+
+* - Parameter
+  - Type
+  - Description
+  - Default
+* - `start_snapshot`
+  - str
+  - First snapshot to include (format: "YYYY-WW" for main, "YYYY-MM" for news). Not every year and week has a snapshot; refer to the official list at [https://data.commoncrawl.org/](https://data.commoncrawl.org/).
+  - Required
+* - `end_snapshot`
+  - str
+  - Last snapshot to include (same format as `start_snapshot`). Ensure your range includes at least one valid snapshot.
+  - Required
+* - `download_dir`
+  - str
+  - Directory to store downloaded WARC files
+  - Required
+* - `crawl_type`
+  - Literal["main", "news"]
+  - Whether to use CC-MAIN or CC-NEWS dataset
+  - "main"
+* - `html_extraction`
+  - HTMLExtractorAlgorithm | str | None
+  - Text extraction algorithm to use. Defaults to `JusTextExtractor()` if not specified.
+  - JusTextExtractor() if not specified
+* - `html_extraction_kwargs`
+  - dict | None
+  - Additional arguments for the HTML extractor. Ignored when `html_extraction` is a concrete extractor object (for example, `JusTextExtractor()`); pass kwargs to the extractor constructor instead. When `html_extraction` is a string ("justext", "resiliparse", or "trafilatura"), kwargs are forwarded.
+  - None
+* - `stop_lists`
+  - dict[str, frozenset[str]] | None
+  - Language-specific stop words for text quality assessment. If not provided, Curator uses jusText defaults with additional support for Thai, Chinese, and Japanese languages.
+  - None
+* - `use_aws_to_download`
+  - bool
+  - Use S3 downloads via s5cmd instead of HTTPS (requires s5cmd installation)
+  - False
+* - `verbose`
+  - bool
+  - Enable verbose logging for download operations
+  - False
+* - `url_limit`
+  - int | None
+  - Maximum number of WARC files to download (useful for testing)
+  - None
+* - `record_limit`
+  - int | None
+  - Maximum number of records to extract per WARC file
+  - None
+* - `add_filename_column`
+  - bool | str
+  - Whether to add source filename column to output; if str, uses it as the column name (default name: "file_name")
+  - True
+```
+
+## Output Format
+
+The pipeline processes Common Crawl data through several stages, ultimately producing structured documents. The extracted text includes the following fields:
+
+```json
+{
+  "url": "http://example.com/page.html",
+  "warc_id": "a515a7b6-b6ec-4bed-998b-8be2f86f8eac", 
+  "source_id": "CC-MAIN-20201123153826-20201123183826-00000.warc.gz",
+  "language": "ENGLISH",
+  "text": "Extracted web page content..."
+}
+```
+
+```{list-table} Output Fields
+:header-rows: 1
+:widths: 20 80
+
+* - Field
+  - Description
+* - `url`
+  - Original URL of the web page
+* - `warc_id`
+  - Unique identifier for the WARC record
+* - `source_id`
+  - Name of the source WARC file
+* - `language`
+  - Detected language of the content (e.g., "ENGLISH", "SPANISH")
+* - `text`
+  - Extracted and cleaned text content
+```
+
+If you enable `add_filename_column`, the output includes an extra field `file_name` (or your custom column name).
+
+## Customization Options
+
+### HTML Text Extraction Algorithms
+
+Curator supports several HTML text extraction algorithms:
+
+```{list-table} Available HTML Extractors
+:header-rows: 1
+:widths: 30 70
+
+* - Extractor
+  - Library
+* - `JusTextExtractor`
+  - [jusText](https://github.com/miso-belica/jusText)
+* - `ResiliparseExtractor`
+  - [Resiliparse](https://github.com/chatnoir-eu/chatnoir-resiliparse)
+* - `TrafilaturaExtractor`
+  - [Trafilatura](https://trafilatura.readthedocs.io/)
+```
+
+#### Configuring HTML Extractors
+
+```python
+from nemo_curator.stages.text.download.html_extractors import ResiliparseExtractor
+from nemo_curator.stages.text.download.html_extractors import TrafilaturaExtractor
+
+# Use Resiliparse for extraction
+cc_stage = CommonCrawlDownloadExtractStage(
+    start_snapshot="2020-50",
+    end_snapshot="2020-50",
+    download_dir="./downloads",
+    html_extraction=ResiliparseExtractor(
+        required_stopword_density=0.25,
+        main_content=True
+    )
+)
+
+# Or use Trafilatura with custom parameters
+cc_stage = CommonCrawlDownloadExtractStage(
+    start_snapshot="2020-50", 
+    end_snapshot="2020-50",
+    download_dir="./downloads",
+    html_extraction=TrafilaturaExtractor(
+        min_extracted_size=200,
+        max_repetitions=3
+    )
+)
+```
+
+### Language Processing
+
+You can customize language detection and extraction by providing stop words for different languages:
+
+```python
+# Define custom stop words for specific languages
+stop_lists = {
+    "ENGLISH": frozenset(["the", "and", "is", "in", "for", "where", "when", "to", "at"]),
+    "SPANISH": frozenset(["el", "la", "de", "que", "y", "en", "un", "es", "se", "no"])
+}
+
+cc_stage = CommonCrawlDownloadExtractStage(
+    start_snapshot="2020-50",
+    end_snapshot="2020-50", 
+    download_dir="./downloads",
+    stop_lists=stop_lists
+)
+```
+
+## Advanced Usage
+
+### Processing CC-NEWS Data
+
+For Common Crawl News data, use the `news` crawl type with month-based snapshots:
+
+```python
+cc_stage = CommonCrawlDownloadExtractStage(
+    start_snapshot="2020-08",  # YYYY-MM format for CC-NEWS
+    end_snapshot="2020-10",
+    download_dir="./news_downloads",
+    crawl_type="news"  # Use CC-NEWS instead of CC-MAIN
+)
+```
+
+See [https://data.commoncrawl.org/crawl-data/CC-NEWS/index.html](https://data.commoncrawl.org/crawl-data/CC-NEWS/index.html) for more information.
+
+### Large-Scale Processing
+
+For production workloads, consider these optimizations:
+
+```python
+cc_stage = CommonCrawlDownloadExtractStage(
+    start_snapshot="2020-50",
+    end_snapshot="2020-50", 
+    download_dir="/fast_storage/cc_downloads",
+    use_aws_to_download=True,  # Faster S3 downloads
+    verbose=False,  # Reduce logging overhead
+    # Remove limits for full processing
+    # url_limit=None,
+    # record_limit=None
+)
+```
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/load-data/custom.md
+```md
+---
+description: "Create custom data loading pipelines using Curator."
+categories: ["how-to-guides"]
+tags: ["custom-data", "stages", "pipelines", "data-loading"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "advanced"
+content_type: "how-to"
+modality: "text-only"
+---
+
+(text-load-data-custom)=
+
+# Custom Data Loading
+
+Create custom data loading pipelines using Curator. This guide shows how to build modular stages that run on Curator's distributed processing.
+
+## How It Works
+
+Curator uses the same **3-step pipeline pattern** described in {ref}`Data Acquisition Concepts <about-concepts-text-data-acquisition>` for custom data loading. Each step uses an abstract base class with corresponding processing stages that compose into pipelines.
+
+---
+
+## Architecture Overview
+
+For detailed information about the core components and data flow, see {ref}`Data Acquisition Concepts <about-concepts-text-data-acquisition>` and {ref}`Data Loading Concepts <about-concepts-text-data-loading>`.
+
+---
+
+## Implementation Guide
+
+### 1. Create Directory Structure
+
+```text
+your_data_source/
+├── __init__.py
+├── stage.py           # Main composite stage
+├── url_generation.py  # URL generation logic
+├── download.py        # Download implementation
+├── iterator.py        # File iteration logic
+└── extract.py         # Data extraction logic (optional)
+```
+
+### 2. Build Core Components
+
+#### URL Generator (`url_generation.py`)
+
+```python
+from dataclasses import dataclass
+from nemo_curator.stages.text.download import URLGenerator
+
+@dataclass
+class CustomURLGenerator(URLGenerator):
+    def generate_urls(self) -> list[str]:
+        """Generate list of URLs to download."""
+        # Your URL generation logic here
+        return [
+            "https://example.com/dataset1.zip",
+            "https://example.com/dataset2.zip",
+        ]
+```
+
+#### Document Downloader (`download.py`)
+
+```python
+from nemo_curator.stages.text.download import DocumentDownloader
+
+class CustomDownloader(DocumentDownloader):
+    def __init__(self, download_dir: str):
+        super().__init__(download_dir=download_dir)
+
+    def _get_output_filename(self, url: str) -> str:
+        """Extract filename from URL."""
+        return url.split("/")[-1]
+
+    def _download_to_path(self, url: str, path: str) -> tuple[bool, str | None]:
+        """Download file from URL to local path."""
+        # Custom download logic
+        # Return (success_bool, error_message)
+        try:
+            # ... download implementation ...
+            return True, None
+        except Exception as e:
+            return False, str(e)
+```
+
+#### Document Iterator (`iterator.py`)
+
+```python
+import json
+from collections.abc import Iterator
+from typing import Any
+from nemo_curator.stages.text.download import DocumentIterator
+
+class CustomIterator(DocumentIterator):
+    def __init__(self, log_frequency: int = 1000):
+        super().__init__()
+        self._log_frequency = log_frequency
+
+    def iterate(self, file_path: str) -> Iterator[dict[str, Any]]:
+        """Iterate over records in a file."""
+        # Custom iteration logic to load local file and return documents
+        for record in load_local_file_fn(file_path):
+            yield {"content": record_content, "metadata": record_metadata, "id": record_id}
+
+    def output_columns(self) -> list[str]:
+        """Define output columns."""
+        return ["content", "metadata", "id"]
+```
+
+#### Document Extractor (`extract.py`)
+
+```python
+from typing import Any
+from nemo_curator.stages.text.download import DocumentExtractor
+
+class CustomExtractor(DocumentExtractor):
+    def __init__(self):
+        super().__init__()
+
+    def extract(self, record: dict[str, str]) -> dict[str, Any] | None:
+        """Transform raw record to final format."""
+        # Skip invalid records
+        if not record.get("content"):
+            return None
+
+        # Extract and clean text
+        cleaned_text = self._clean_text(record["content"])
+
+        # Generate unique ID if not present
+        doc_id = record.get("id", self._generate_id(cleaned_text))
+
+        return {
+            "text": cleaned_text,
+            "id": doc_id,
+            "source": record.get("metadata", {}).get("source", "unknown")
+        }
+
+    def input_columns(self) -> list[str]:
+        return ["content", "metadata", "id"]
+
+    def output_columns(self) -> list[str]:
+        return ["text", "id", "source"]
+
+    def _clean_text(self, text: str) -> str:
+        """Clean and normalize text."""
+        # Your text cleaning logic here
+        return text.strip()
+
+    def _generate_id(self, text: str) -> str:
+        """Generate unique ID for text."""
+        import hashlib
+        return hashlib.md5(text.encode()).hexdigest()[:16]
+```
+
+### 3. Create Composite Stage (`stage.py`)
+
+```python
+from nemo_curator.stages.text.download import DocumentDownloadExtractStage
+from nemo_curator.stages.base import ProcessingStage
+from .url_generation import CustomURLGenerator
+from .download import CustomDownloader
+from .iterator import CustomIterator
+from .extract import CustomExtractor
+
+class CustomDataStage(DocumentDownloadExtractStage):
+    """Custom data loading stage combining all components."""
+
+    def __init__(
+        self,
+        download_dir: str = "./custom_downloads",
+        url_limit: int | None = None,
+        record_limit: int | None = None,
+        add_filename_column: bool | str = True,
+    ):
+        self.url_generator = CustomURLGenerator()
+        self.downloader = CustomDownloader(download_dir=download_dir)
+        self.iterator = CustomIterator()
+        self.extractor = CustomExtractor()
+
+        # Initialize the parent composite stage
+        super().__init__(
+            url_generator=self.url_generator,
+            downloader=self.downloader,
+            iterator=self.iterator,
+            extractor=self.extractor,  # Optional - remove if not needed
+            url_limit=url_limit,
+            record_limit=record_limit,
+            add_filename_column=add_filename_column,
+        )
+        self.name = "custom_data"
+
+    def decompose(self) -> list[ProcessingStage]:
+        """Decompose this composite stage into its constituent stages."""
+        return self.stages
+
+    def get_description(self) -> str:
+        """Get a description of this composite stage."""
+        return "Custom data"
+```
+
+---
+
+## Usage Examples
+
+### Basic Pipeline
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from your_data_source.stage import CustomDataStage
+from nemo_curator.stages.text.io.writer.jsonl import JsonlWriter
+
+def main():
+    # Initialize Ray client
+    ray_client = RayClient()
+    ray_client.start()
+
+    # Create pipeline
+    pipeline = Pipeline(
+        name="custom_data_pipeline",
+        description="Load and process custom dataset"
+    )
+
+    # Create custom data loading stage
+    data_stage = CustomDataStage(...)
+
+    pipeline.add_stage(data_stage)
+
+    # Save the results to JSONL
+    pipeline.add_stage(JsonlWriter(...))
+
+    # Run pipeline
+    print("Starting pipeline...")
+    results = pipeline.run()
+
+    # Stop Ray client
+    ray_client.stop()
+
+if __name__ == "__main__":
+    main()
+```
+
+For executor options and configuration, refer to {ref}`reference-execution-backends`.
+
+---
+
+## Parameters Reference
+
+```{list-table} Custom Data Loading Parameters
+:header-rows: 1
+:widths: 20 20 40 20
+
+* - Parameter
+  - Type
+  - Description
+  - Default
+* - `url_generator`
+  - URLGenerator
+  - Custom URL generation implementation
+  - Required
+* - `downloader`
+  - DocumentDownloader
+  - Custom download implementation
+  - Required
+* - `iterator`
+  - DocumentIterator
+  - Custom file iteration implementation
+  - Required
+* - `extractor`
+  - DocumentExtractor | None
+  - Optional extraction/transformation step
+  - None
+* - `url_limit`
+  - int | None
+  - Maximum number of URLs to process
+  - None
+* - `record_limit`
+  - int | None
+  - Maximum records per file
+  - None
+* - `add_filename_column`
+  - bool | str
+  - Add filename column to output; if str, uses it as the column name (default name: "file_name")
+  - True
+```
+
+---
+
+## Output Format
+
+Processed data flows through the pipeline as `DocumentBatch` tasks containing Pandas DataFrames or PyArrow Tables:
+
+### Example Output Schema
+
+```python
+{
+    "text": "This is the processed document text",
+    "id": "unique-document-id",
+    "source": "example.com",
+    "file_name": "dataset1.jsonl"  # If add_filename_column=True (default column name)
+}
+```
+
+```
+
+File: /Users/mromeijn/src/Curator/docs/curate-text/load-data/read-existing.md
+```md
+---
+description: "Read existing JSONL and Parquet datasets using Curator's reader stages."
+categories: ["how-to-guides"]
+tags: ["jsonl", "parquet", "data-loading", "reader", "pipelines"]
+personas: ["data-scientist-focused", "mle-focused"]
+difficulty: "beginner"
+content_type: "how-to"
+modality: "text-only"
+---
+
+(text-load-data-read-existing)=
+
+# Read Existing Data
+
+Use Curator's `JsonlReader` and `ParquetReader` to read existing datasets into a pipeline, then optionally add processing stages.
+
+::::{tab-set}
+
+:::{tab-item} JSONL Reader
+:sync: jsonl
+
+## Example: Read JSONL and Filter
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import JsonlReader
+from nemo_curator.stages.text.filters import ScoreFilter
+from nemo_curator.stages.text.filters.heuristic import WordCountFilter
+
+# Initialize Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Create pipeline for processing existing JSONL files
+pipeline = Pipeline(name="jsonl_data_processing")
+
+# Read JSONL files
+reader = JsonlReader(
+    file_paths="/path/to/data",
+    files_per_partition=4,
+    fields=["text", "url"]  # Only read specific columns
+)
+pipeline.add_stage(reader)
+
+# Add filtering stage
+word_filter = ScoreFilter(
+    filter_obj=WordCountFilter(min_words=50, max_words=1000),
+    text_field="text"
+)
+pipeline.add_stage(word_filter)
+
+# Add more stages to pipeline...
+
+# Execute pipeline
+results = pipeline.run()
+
+# Stop Ray client
+ray_client.stop()
+```
+
+:::
+
+:::{tab-item} Parquet Reader
+:sync: parquet
+
+## Example: Read Parquet and Filter
+
+```python
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.io.reader import ParquetReader
+from nemo_curator.stages.text.filters import ScoreFilter
+from nemo_curator.stages.text.filters.heuristic import WordCountFilter
+
+# Initialize Ray client
+ray_client = RayClient()
+ray_client.start()
+
+# Create pipeline for processing existing Parquet files
+pipeline = Pipeline(name="parquet_data_processing")
+
+# Read Parquet files with PyArrow engine
+reader = ParquetReader(
+    file_paths="/path/to/data",
+    files_per_partition=4,
+    fields=["text", "metadata"]  # Only read specific columns
+)
+pipeline.add_stage(reader)
+
+# Add filtering stage
+word_filter = ScoreFilter(
+    filter_obj=WordCountFilter(min_words=50, max_words=1000),
+    text_field="text"
+)
+pipeline.add_stage(word_filter)
+
+# Add more stages to pipeline...
+
+# Execute pipeline
+results = pipeline.run()
+
+# Stop Ray client
+ray_client.stop()
+```
+
+:::
+
+::::
+
+## Reader Configuration
+
+### Common Parameters
+
+Both `JsonlReader` and `ParquetReader` support these configuration options:
+
+```{list-table}
+:header-rows: 1
+:widths: 20 20 40 20
+
+* - Parameter
+  - Type
+  - Description
+  - Default
+* - `file_paths`
+  - str | list[str]
+  - File paths or glob patterns to read
+  - Required
+* - `files_per_partition`
+  - int | None
+  - Number of files per partition. Overrides `blocksize` if both are provided.
+  - None
+* - `blocksize`
+  - int | str | None
+  - Target partition size (e.g., "128MB"). Ignored if `files_per_partition` is provided.
+  - None
+* - `fields`
+  - list[str] | None
+  - Column names to read (column selection)
+  - None (all columns)
+* - `read_kwargs`
+  - dict[str, Any] | None
+  - Extra arguments for the underlying reader
+  - None
+```
+
+### Parquet-Specific Features
+
+`ParquetReader` provides these optimizations:
+
+- **PyArrow Engine**: Uses `pyarrow` engine by default for better performance.
+- **Storage Options**: Supports cloud storage through `storage_options` in `read_kwargs`.
+- **Schema Handling**: Automatic schema inference and validation.
+- **Columnar Efficiency**: Optimized for reading specific columns.
+
+### Performance Tips
+
+- Use the `fields` parameter to read only the required columns for better performance.
+- Set `files_per_partition` based on your cluster size and memory constraints.
+- Use the `blocksize` parameter for fine-grained control over partition sizes.
+
+### Memory Tips
+
+:::{warning}
+If you set the `blocksize` parameter to a size smaller than your input file size(s), Curator does not split the input files and instead attempts to read each file in full. To avoid out-of-memory issues, use the helper script described below.
+:::
+
+If any of your individual JSONL or Parquet files are greater than 2 GiB, we recommend using the `nemo_curator/utils/split_large_files.py` helper script to split them into more manageable sizes and prevent out-of-memory issues. You can run it with:
+
+```bash
+python nemo_curator/utils/split_large_files.py --input-path "/path/to/input/dir" --file-type "parquet" --output-path "/path/to/output/dir" --target-size-mb 128
+```
+
+It supports splitting JSONL or Parquet files as specified by the `--file-type` argument.
+
+Another option is running file splitting within your existing script. For example, you can split large JSONL files with:
+
+```python
+import ray
+from nemo_curator.core.client import RayClient
+from nemo_curator.utils.split_large_files import split_jsonl_file_by_size
+
+# Start Ray client as usual
+ray_client = RayClient()
+ray_client.start()
+
+input_files = []  # your list of input jsonl files
+
+ray.get(
+  [
+    split_jsonl_file_by_size.remote(
+      input_file=f,
+      output_path="/path/to/output/dir",
+      target_size_mb=128,
+    )
+    for f in input_files
+  ]
+)
+
+# initialize your Curator pipeline with JsonlReader, etc.
+```
+
+Similarly for Parquet files:
+
+```python
+import ray
+from nemo_curator.core.client import RayClient
+from nemo_curator.utils.split_large_files import split_parquet_file_by_size
+
+# Start Ray client as usual
+ray_client = RayClient()
+ray_client.start()
+
+input_files = []  # your list of input parquet files
+
+ray.get(
+  [
+    split_parquet_file_by_size.remote(
+      input_file=f,
+      output_path="/path/to/output/dir",
+      target_size_mb=128,
+    )
+    for f in input_files
+  ]
+)
+
+# initialize your Curator pipeline with ParquetReader, etc.
+```
+
+## Output Integration
+
+Both readers produce `DocumentBatch` tasks that integrate seamlessly with:
+
+- **Processing Stages**: Apply filters, transformations, and quality checks.
+- **Writer Stages**: Export to JSONL, Parquet, or other formats.
+- **Analysis Tools**: Convert to Pandas/PyArrow for inspection and debugging.
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/download/base/download.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any
+
+from loguru import logger
+
+from nemo_curator.stages.base import ProcessingStage
+from nemo_curator.stages.resources import Resources
+from nemo_curator.tasks import FileGroupTask
+
+
+class DocumentDownloader(ABC):
+    """Abstract base class for document downloaders."""
+
+    def __init__(self, download_dir: str, verbose: bool = False):
+        """Initialize the downloader.
+
+        Args:
+            download_dir: Directory to store downloaded files
+            verbose: If True, logs detailed download information
+        """
+        self._download_dir = download_dir
+        self._verbose = verbose
+        os.makedirs(download_dir, exist_ok=True)
+
+    @abstractmethod
+    def _get_output_filename(self, url: str) -> str:
+        """Generate output filename from URL.
+
+        Args:
+            url: URL to download
+
+        Returns:
+            Output filename (without directory path)
+        """
+        ...
+
+    @abstractmethod
+    def _download_to_path(self, url: str, path: str) -> tuple[bool, str | None]:
+        """Download URL to specified path.
+
+        Args:
+            url: URL to download
+            path: Local path to save file
+
+        Returns:
+            Tuple of (success, error_message). If success is True, error_message should be None.
+            If success is False, error_message should contain the error details.
+        """
+        ...
+
+    def download(self, url: str) -> str | None:
+        """Download a document from URL with temporary file handling.
+
+        Downloads file to temporary location then atomically moves to final path.
+        Checks for existing file to avoid re-downloading. Supports resumable downloads.
+        Args:
+            url: URL to download
+
+        Returns:
+            Path to downloaded file, or None if download failed
+        """
+        # Generate output filename
+        output_name = self._get_output_filename(url)
+        output_file = os.path.join(self._download_dir, output_name)
+        temp_file = output_file + ".tmp"
+
+        # If final file exists and is non-empty, assume it's complete
+        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+            if self._verbose:
+                logger.info(f"File: {output_file} exists. Not downloading")
+            return output_file
+
+        # Download to temporary file
+        success, error_message = self._download_to_path(url, temp_file)
+
+        if success:
+            # Download successful, atomically move temp file to final location
+            os.rename(temp_file, output_file)
+            if self._verbose:
+                file_size = os.path.getsize(output_file)
+                logger.info(f"Successfully downloaded to {output_file} ({file_size} bytes)")
+            return output_file
+        else:
+            # Download failed
+            logger.error(f"Failed to download to {output_file}: {error_message}")
+            return None
+
+    def num_workers_per_node(self) -> int | None:
+        """Number of workers per node for Downloading. This is sometimes needed to ensure we are not overloading the network.
+
+        Returns:
+            Number of workers per node, or None if there is no limit and we can download as fast as possible
+        """
+        return None
+
+
+@dataclass
+class DocumentDownloadStage(ProcessingStage[FileGroupTask, FileGroupTask]):
+    """Stage that downloads files from URLs to local storage.
+
+    Takes a FileGroupTask with URLs and returns a FileGroupTask with local file paths.
+    This allows the download step to scale independently from iteration/extraction.
+    """
+
+    resources = Resources(cpus=0.5)
+    downloader: DocumentDownloader
+    batch_size = None
+
+    def __post_init__(self):
+        self.name = f"download_{self.downloader.__class__.__name__.lower()}"
+
+    def inputs(self) -> tuple[list[str], list[str]]:
+        """Define input requirements - expects FileGroupTask with URLs."""
+        return (["data"], [])
+
+    def outputs(self) -> tuple[list[str], list[str]]:
+        """Define output - produces FileGroupTask with local paths."""
+        return (["data"], [])
+
+    def process(self, task: FileGroupTask) -> FileGroupTask:
+        """Download URLs to local files.
+
+        Args:
+            task (FileGroupTask): Task containing URLs to download
+
+        Returns:
+            FileGroupTask: Task containing local file paths
+        """
+        local_files = []
+
+        for url in task.data:
+            downloaded_file = self.downloader.download(url)
+            if downloaded_file:
+                local_files.append(downloaded_file)
+
+        return FileGroupTask(
+            task_id=task.task_id,
+            dataset_name=task.dataset_name,
+            data=local_files,
+            _metadata={
+                **task._metadata,
+                "source_files": local_files,  # Add downloaded files for deterministic naming during write stage
+            },
+            _stage_perf=task._stage_perf,
+        )
+
+    def xenna_stage_spec(self) -> dict[str, Any]:
+        return {
+            "num_workers_per_node": self.downloader.num_workers_per_node(),
+        }
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/download/base/extract.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+
+class DocumentExtractor(ABC):
+    """Abstract base class for document extractors.
+
+    Takes a record dict and returns processed record dict or None to skip.
+    Can transform any fields in the input dict.
+    """
+
+    @abstractmethod
+    def extract(self, record: dict[str, str]) -> dict[str, Any] | None:
+        """Extract/transform a record dict into final record dict."""
+        ...
+
+    @abstractmethod
+    def input_columns(self) -> list[str]:
+        """Define input columns - produces DocumentBatch with records."""
+        ...
+
+    @abstractmethod
+    def output_columns(self) -> list[str]:
+        """Define output columns - produces DocumentBatch with records."""
+        ...
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/download/base/stage.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from dataclasses import dataclass
+
+from nemo_curator.stages.base import CompositeStage, ProcessingStage
+from nemo_curator.tasks import DocumentBatch, _EmptyTask
+
+from .download import DocumentDownloader, DocumentDownloadStage
+from .extract import DocumentExtractor
+from .iterator import DocumentIterateExtractStage, DocumentIterator
+from .url_generation import URLGenerationStage, URLGenerator
+
+
+@dataclass
+class DocumentDownloadExtractStage(CompositeStage[_EmptyTask, DocumentBatch]):
+    """Composite stage that combines URL generation, download, and iterate-extract stages.
+
+    This supports the full 3-step pipeline pattern like Common Crawl:
+    1. Generate URLs from minimal input
+    2. Download files from URLs
+    3. Iterate through files to extract structured content
+
+    """
+
+    url_generator: URLGenerator
+    downloader: DocumentDownloader
+    iterator: DocumentIterator
+    extractor: DocumentExtractor | None = None
+    url_limit: int | None = None
+    record_limit: int | None = None
+    add_filename_column: bool | str = True
+    # Restart worker Process every N tasks to mitigate memory fragmentation
+    # Only used if executor is Ray Data
+    extractor_max_calls_per_worker: int | None = None
+
+    def __post_init__(self):
+        """Initialize the constituent stages."""
+        # URL generation stage
+        url_stage = URLGenerationStage(
+            url_generator=self.url_generator,
+            limit=self.url_limit,
+        )
+
+        # Download stage
+        download_stage = DocumentDownloadStage(
+            downloader=self.downloader,
+        )
+
+        # Iterate-extract stage
+        iterate_extract_stage = DocumentIterateExtractStage(
+            iterator=self.iterator,
+            extractor=self.extractor,
+            record_limit=self.record_limit,
+            add_filename_column=self.add_filename_column,
+            max_calls_per_worker=self.extractor_max_calls_per_worker,
+        )
+
+        stages = [url_stage, download_stage, iterate_extract_stage]
+        self.stages = stages
+
+        url_generator_name = self.url_generator.__class__.__name__.lower()
+        downloader_name = self.downloader.__class__.__name__.lower()
+        self.name = f"document_download_extract_{url_generator_name}_{downloader_name}_composite"
+        super().__init__()
+
+    def decompose(self) -> list[ProcessingStage]:
+        """Decompose into constituent stages."""
+        return self.stages
+
+    def get_description(self) -> str:
+        """Get description of this composite stage."""
+        return f"URL-Download-Iterate-Extract pipeline using {self.url_generator.__class__.__name__} and {self.downloader.__class__.__name__}"
+
+```
+
+File: /Users/mromeijn/src/Curator/nemo_curator/stages/text/download/common_crawl/stage.py
+```py
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from typing import Literal
+
+from loguru import logger
+
+from nemo_curator.stages.base import ProcessingStage
+from nemo_curator.stages.text.download import DocumentDownloadExtractStage
+from nemo_curator.stages.text.download.html_extractors import HTMLExtractorAlgorithm
+from nemo_curator.stages.text.download.html_extractors.justext import JusTextExtractor
+
+from .download import CommonCrawlWARCDownloader
+from .extract import CommonCrawlHTMLExtractor
+from .url_generation import MainCommonCrawlUrlGenerator, NewsCommonCrawlUrlGenerator
+from .warc_iterator import CommonCrawlWarcIterator
+
+
+class CommonCrawlDownloadExtractStage(DocumentDownloadExtractStage):
+    """Composite stage for downloading and processing Common Crawl data.
+
+    This pipeline:
+    1. Generates WARC URLs (either from main or news crawls)
+    2. Downloads WARC files
+    3. Extracts content from WARC files
+    4. Extracts text from HTML content
+    """
+
+    def __init__(  # noqa: PLR0913
+        self,
+        start_snapshot: str,
+        end_snapshot: str,
+        download_dir: str,
+        crawl_type: Literal["main", "news"] = "main",
+        html_extraction: HTMLExtractorAlgorithm | str | None = None,
+        html_extraction_kwargs: dict | None = None,
+        stop_lists: dict[str, frozenset[str]] | None = None,
+        use_aws_to_download: bool = False,
+        verbose: bool = False,
+        url_limit: int | None = None,
+        record_limit: int | None = None,
+        add_filename_column: bool | str = True,
+        extractor_max_calls_per_worker: int | None = None,
+    ):
+        self.crawl_type = crawl_type
+        self.start_snapshot = start_snapshot
+        self.end_snapshot = end_snapshot
+
+        if crawl_type == "main":
+            self.url_generator = MainCommonCrawlUrlGenerator(
+                start_snapshot_str=start_snapshot, end_snapshot_str=end_snapshot, limit=url_limit
+            )
+        else:
+            self.url_generator = NewsCommonCrawlUrlGenerator(
+                start_snapshot_str=start_snapshot, end_snapshot_str=end_snapshot, limit=url_limit
+            )
+
+        self.downloader = CommonCrawlWARCDownloader(
+            download_dir=download_dir, use_aws_to_download=use_aws_to_download, verbose=verbose
+        )
+        self.iterator = CommonCrawlWarcIterator()
+        self.extractor = CommonCrawlHTMLExtractor(
+            algorithm=html_extraction,
+            algorithm_kwargs=html_extraction_kwargs,
+            stop_lists=stop_lists,
+        )
+        if extractor_max_calls_per_worker is None and isinstance(self.extractor.algorithm, JusTextExtractor):
+            extractor_max_calls_per_worker = 2
+            logger.info(
+                "jusText extraction can cause memory fragmentation and lead to OOM errors. "
+                "Setting extractor_max_calls_per_worker=2 for the iterate-extract stage. "
+                "Pass extractor_max_calls_per_worker explicitly to override."
+            )
+        super().__init__(
+            url_generator=self.url_generator,
+            downloader=self.downloader,
+            iterator=self.iterator,
+            extractor=self.extractor,
+            url_limit=url_limit,
+            record_limit=record_limit,
+            add_filename_column=add_filename_column,
+            extractor_max_calls_per_worker=extractor_max_calls_per_worker,
+        )
+        self.name = f"common_crawl_{self.crawl_type}_pipeline"
+
+    def decompose(self) -> list[ProcessingStage]:
+        """Decompose this composite stage into its constituent stages."""
+        return self.stages
+
+    def get_description(self) -> str:
+        """Get a description of this composite stage."""
+        return f"Common Crawl {self.crawl_type} pipeline: {self.start_snapshot} to {self.end_snapshot}"
+
+```
+
+File: /Users/mromeijn/src/Curator/tutorials/text/download-and-extract/README.md
+```md
+# Download and Extract Common Crawl, Wikipedia, and ArXiv Data
+
+This Jupyter notebook tutorial demonstrates how to use NeMo Curator to download text data from [Common Crawl](https://commoncrawl.org/), [Wikipedia](https://dumps.wikimedia.org/backup-index.html), and [ArXiv](https://info.arxiv.org/help/bulk_data_s3.html), respectively.
+
+For more information about downloading and extracting data with NeMo Curator, refer to the [Download Data](https://docs.nvidia.com/nemo/curator/latest/curate-text/load-data/index.html) and [Data Acquisition Concepts](https://docs.nvidia.com/nemo/curator/latest/about/concepts/text/data-acquisition-concepts.html) documentation pages.
+
+Please note that the ArXiv section of the tutorial requires the [s5cmd](https://github.com/peak/s5cmd) tool to be installed and configured with proper AWS credentials.
+
+```
+
+File: /Users/mromeijn/src/Curator/tutorials/text/llama-nemotron-data-curation/README.md
+```md
+# Curate the Llama Nemotron Reasoning Dataset with NVIDIA NeMo Curator
+
+The [Llama Nemotron Post-Training Dataset](https://huggingface.co/datasets/nvidia/Llama-Nemotron-Post-Training-Dataset) is a curated collection of approximately 30 million high-quality synthetic samples designed to enhance the reasoning capabilities of large language models.
+It is organized into distinct subsets for supervised fine-tuning (SFT) or reinforcement learning (RL) and encompasses samples from various problem domains.
+All samples are in JSON lines (JSONL) format and contain metadata such as license type, source model, as well as the [Llama Nemotron](https://www.nvidia.com/en-us/ai-data-science/foundation-models/llama-nemotron/) model(s) trained with that sample.
+
+Each sample consists of a prompt and an expected response. Samples either include detailed chain-of-thought (CoT) reasoning traces followed by a response ("reasoning on"), or contain a direct response without reasoning traces ("reasoning off").
+Here is an example of what a sample from the dataset may look like:
+
+```json
+{
+  "input": [
+    {"role": "user", "content": "Can you explain the Pythagorean theorem?"}
+  ],
+  "output": "<think>The user is asking for an explanation of the Pythagorean theorem. This is a fundamental principle in geometry related to right-angled triangles. I should mention the formula and what each variable represents.</think>The Pythagorean theorem states that in a right triangle, the square of the hypotenuse equals the sum of the squares of the other two sides: a² + b² = c².",
+  "reasoning": "on",
+  "system_prompt": "detailed thinking on",
+  "category": "math",
+  "license": "apache_v2",
+  "generator": "llama-3.3-70b",
+  "used_in_training": ["Ultra"],
+  "version": "v1"
+}
+```
+
+The relevant attributes for this tutorial are as follows:
+
+- `input`: the prompt(s) to the model in the multi-turn chat completions message format. It always contains a message with the role `user`, followed by zero or more turns.
+- `output`: the expected response from the model (ground truth).
+- `reasoning`: whether the sample is for reasoning "on" mode or not
+    - If the value is "on", then the output contains a detailed CoT trace encoded inside think HTML tags followed by the output.
+    - If the value is "off", then the output doesn't contain any reasoning traces and contains a direct response.
+- `system_prompt`: the (suggested) system prompt to control the reasoning mode of the system. For Llama Nemotron training, the system prompt is always either "detailed thinking on" or "detailed thinking off". This field is tied to the value in the `reasoning` field.
+- `used_in_training`: the list of Llama Nemotron models that used this sample for training. For instance, a value of `["Ultra", "Nano"]` indicates that this sample was used for training the Ultra and Nano models, but not Super.
+
+This tutorial demonstrates how a user can process a subset of the Llama Nemotron dataset using NeMo Curator. The output files are created in the `input/output` JSONL format, suitable for use with various training frameworks, including [NVIDIA NeMo Framework](https://github.com/NVIDIA/NeMo). You can easily modify this pipeline as you see fit and adapt it to your domain- or business-specific needs, and the resulting dataset can be used to train a reasoning model with a modest computing budget.
+
+## Environment Setup
+
+Setup requirements:
+
+- Hardware: This tutorial can be run entirely on CPU workers
+- Recommended environment: This tutorial was developed and tested with a Conda environment
+
+Refer to the NeMo Curator [documentation](https://docs.nvidia.com/nemo/curator/latest/) for instructions on how to download NeMo Curator through PyPI, source, or Docker.
+
+## Prerequisites
+
+### Download Input Dataset
+
+The input dataset can be downloaded from Hugging Face: https://huggingface.co/datasets/nvidia/Llama-Nemotron-Post-Training-Dataset
+
+The following commands can be used to download the dataset:
+
+```bash
+# If needed: apt-get update && apt-get install -y git-lfs
+git lfs install
+git clone https://huggingface.co/datasets/nvidia/Llama-Nemotron-Post-Training-Dataset
+```
+
+Alternatively, the dataset can be downloaded using Python:
+
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="nvidia/Llama-Nemotron-Post-Training-Dataset", 
+    repo_type="dataset", 
+    local_dir="/path/to/save/data",
+    # allow_patterns=["SFT/chat/chat.jsonl", "SFT/math/math_v1.1.jsonl"],  # Select specific files or directories (if desired)
+)
+```
+
+Ensure that the dataset was downloaded correctly. You can verify with the following commands:
+
+```bash
+$ ls /path/to/Llama-Nemotron-Post-Training-Dataset/SFT
+chat  code  math  safety  science
+$ du -sh /path/to/Llama-Nemotron-Post-Training-Dataset/SFT
+122G    /path/to/Llama-Nemotron-Post-Training-Dataset/SFT
+```
+
+The above example ensures that the full SFT dataset was downloaded and is ready to use for the tutorial. If you only selected a subset of the data to download, then you should check that it matches the files on the [Hugging Face page](https://huggingface.co/datasets/nvidia/Llama-Nemotron-Post-Training-Dataset).
+
+### Tokenizer Access Instructions
+
+The tokenizer used by this tutorial is called [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct). Using it requires requesting access:
+
+1. Visit the [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) model page on Hugging Face.
+2. Click "Access request".
+3. Fill out the form and wait for approval.
+4. After approval, log in to your Hugging Face account using the Hugging Face CLI. In the terminal, run `huggingface-cli login`.
+
+### Download FastText Language Identification Model
+
+The FastText language identification model is used to identify and filter out non-English text from the dataset. It can be downloaded from the FastText language identification page: https://fasttext.cc/docs/en/language-identification.html
+
+Use the following command to download the FastText language identification model to your current working directory:
+
+```bash
+wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz -P ./
+```
+
+## Usage
+
+This tutorial can be run with:
+
+```bash
+LOGURU_LEVEL="ERROR" python main.py \
+    --input-dir "/path/to/Llama-Nemotron-Post-Training-Dataset/SFT" \
+    --filename-filter "chat" "math_v1.1" \
+    --jsonl-blocksize-mb 100 \
+    --tokenizer "meta-llama/Llama-3.1-8B-Instruct" \
+    --lang-id-model-path "/path/to/lid.176.ftz" \
+    --max-token-count 16384 \
+    --max-completion-token-count 8192 \
+    --keep-columns "input" "output" \
+    --output-dir "/path/to/curated-data" \
+    --num-cpus 16
+```
+
+Setting `LOGURU_LEVEL="ERROR"` minimizes log output. Remove it when debugging. If you encounter issues, see the **Debugging Out of Memory Errors** section for help (reducing `--num-cpus` is the most common fix).
+
+Set `--hf-token` as needed for the tokenizer.
+
+Since the entire input dataset is very large, we recommend curating a focused subset of the data that aligns closely with your domain-specific tasks. To help with this, we provide a way to filter files before reading. There are many ways to subset the Llama Nemotron dataset, but we recommend starting with the math and chat subsets because they contain strong examples of domain-agnostic reasoning. To filter files by name, pass `--filename-filter` followed by any number of strings, such as "chat" and "math_v1.1". When reading the input data directory, the list of files will be filtered to only include files with names containing at least one of the strings provided by `--filename-filter`. If `--filename-filter` is not specified, then all files within the directory (over 30 million rows) will be used.
+
+The above script applies basic filtering to the input dataset:
+
+- Only take samples used for Nemotron Nano training.
+- Remove empty and malformed samples.
+- Remove non-English samples.
+- Remove samples with total length (system prompt, input, and output responses) longer than 16k tokens (with chat template applied using the tokenizer).
+- Remove samples with output responses longer than 8k tokens (with chat template applied using the tokenizer).
+- Only keep columns specified by the `--keep-columns` parameter. We recommend keeping the "input", "output", and "completion_token_count" columns (the "completion_token_count" column always needs to be kept, so that the samples can be sorted).
+
+After filtering, it sorts all samples by completion (output response) length, then interleaves thinking ON and thinking OFF samples for curriculum learning. Samples are sorted in increasing order of difficulty, using the completion token count as a measure of difficulty. By default, records are interleaved one at a time (alternating one thinking ON sample with one thinking OFF sample). Pass `--chunk-size` followed by an integer to interleave in larger groups (for example, 10 or 100 records at a time). Interleaving samples from the "reasoning on" and "reasoning off" buckets gradually introduces complexity.
+
+## System Requirements
+
+- **Memory**: This tutorial can be CPU-only but is memory-intensive. For smaller memory systems, use `--filename-filter` to select a subset of the data.
+- **CPU allocation**: The `--num-cpus` parameter controls parallelism. Each CPU worker processes data in parallel, so more CPUs means more memory usage. Start with a conservative value and increase gradually.
+
+## Debugging Out-of-Memory Errors
+
+If you encounter out-of-memory (OOM) errors:
+
+1. **Reduce partition size**: Lower the blocksize to reduce per-partition memory. Set `--jsonl-blocksize-mb 50` (default is 100 MB).
+2. **Reduce CPU count**: Lower `--num-cpus` to reduce parallel memory pressure rather than using all available cores.
+3. **Subset the data**: Use `--filename-filter` to process only specific subsets relevant to your use case (such as `--filename-filter "chat"`).
+
+## Next Steps
+
+To see how to train a reasoning model with the resulting dataset, refer to this NeMo tutorial: [Train Your Own Reasoning Model in 48 Hours on a Single GPU](https://github.com/NVIDIA/NeMo/tree/main/tutorials/llm/reasoning).
+
+The NeMo tutorial expects the `/path/to/curated-data/training.jsonl` file generated by this tutorial as input.
+
+```
+
+File: /Users/mromeijn/src/Curator/tutorials/text/llama-nemotron-data-curation/main.py
+```py
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import argparse
+import os
+import time
+
+import ray
+from filters.heuristic_filters import (
+    ContainsThinkOpenTagFilter,
+    EmptyThinkTagsFilter,
+    MissingThinkCloseTagFilter,
+    MissingThinkOpenTagFilter,
+    NanoFilter,
+    ThinkingOnFilter,
+    malformed_filter,
+)
+from filters.model_filters import ApplyChatTemplate, CompletionTokenCountFilter, NonEnglishFilter, TokenCountFilter
+from utils.jsonl_utils import interleave_datasets
+
+from nemo_curator.core.client import RayClient
+from nemo_curator.pipeline import Pipeline
+from nemo_curator.stages.text.filters import ScoreFilter
+from nemo_curator.stages.text.io.reader.jsonl import JsonlReader
+from nemo_curator.stages.text.io.writer.jsonl import JsonlWriter
+from nemo_curator.utils.file_utils import get_all_file_paths_under
+from nemo_curator.utils.split_large_files import split_jsonl_file_by_size
+
+
+def main(args: argparse.Namespace) -> None:  # noqa: PLR0915
+    try:
+        os.makedirs(args.output_dir, exist_ok=False)
+    except FileExistsError as e:
+        msg = f"Output directory already exists: {args.output_dir}. Please delete or rename it and try again."
+        raise FileExistsError(msg) from e
+
+    # Initialize and start Ray client with the number of CPUs specified by the user
+    ray_client = RayClient(num_cpus=args.num_cpus)
+    ray_client.start()
+
+    # Initialize pipelines
+    pipeline_thinking_on = Pipeline(
+        name="curriculum_learning_thinking_on", description="Prepare dataset for curriculum learning with thinking ON."
+    )
+    pipeline_thinking_off = Pipeline(
+        name="curriculum_learning_thinking_off",
+        description="Prepare dataset for curriculum learning with thinking OFF.",
+    )
+
+    start_time = time.time()
+
+    # Handle input path
+    input_files = list(get_all_file_paths_under(args.input_dir, recurse_subdirectories=True, keep_extensions="jsonl"))
+    if args.filename_filter:
+        # Filter out files that don't contain any of the provided substrings
+        input_files = [filename for filename in input_files if any(s in filename for s in args.filename_filter)]
+
+    input_dir = os.path.join(args.output_dir, "input_data_shards")
+    os.makedirs(input_dir, exist_ok=False)
+
+    # Split into smaller files for parallel processing
+    ray.get(
+        [
+            split_jsonl_file_by_size.remote(
+                input_file=f,
+                output_path=input_dir,
+                target_size_mb=args.jsonl_blocksize_mb,
+            )
+            for f in input_files
+        ]
+    )
+
+    # Read files for each pipeline
+    pipeline_thinking_on.add_stage(JsonlReader(file_paths=input_dir))
+    pipeline_thinking_off.add_stage(JsonlReader(file_paths=input_dir))
+
+    # Split pipelines into thinking ON and OFF
+    pipeline_thinking_on.add_stage(ScoreFilter(ThinkingOnFilter(), text_field="reasoning"))
+    pipeline_thinking_off.add_stage(ScoreFilter(ThinkingOnFilter(), text_field="reasoning", invert=True))
+
+    # Filter out samples based on various criteria
+    filter_steps = [
+        ScoreFilter(
+            NanoFilter(),
+            text_field="used_in_training",
+        ),
+        ScoreFilter(
+            EmptyThinkTagsFilter(),
+            text_field="output",
+        ),
+        malformed_filter,
+        ScoreFilter(
+            MissingThinkCloseTagFilter(),
+            text_field="output",
+        ),
+    ]
+    for filter_step in filter_steps:
+        pipeline_thinking_on.add_stage(filter_step)
+        pipeline_thinking_off.add_stage(filter_step)
+
+    # Filter out samples in thinking OFF that contain think tags
+    pipeline_thinking_off.add_stage(
+        ScoreFilter(
+            ContainsThinkOpenTagFilter(),
+            text_field="output",
+        )
+    )
+    # Filter out samples in thinking ON that do not contain think tags
+    pipeline_thinking_on.add_stage(
+        ScoreFilter(
+            MissingThinkOpenTagFilter(),
+            text_field="output",
+        )
+    )
+
+    # Filter out samples based on token count
+    tokenizer_steps = [
+        NonEnglishFilter(
+            tokenizer_identifier=args.tokenizer,
+            hf_token=args.hf_token,
+            lang_id_model_path=args.lang_id_model_path,
+            input_field="input",
+            output_field="output",
+            system_prompt_field="system_prompt",
+        ),
+        TokenCountFilter(
+            tokenizer_identifier=args.tokenizer,
+            hf_token=args.hf_token,
+            max_token_count=args.max_token_count,
+            input_field="input",
+            output_field="output",
+            system_prompt_field="system_prompt",
+        ),
+        CompletionTokenCountFilter(
+            tokenizer_identifier=args.tokenizer,
+            hf_token=args.hf_token,
+            max_completion_token_count=args.max_completion_token_count,
+            output_field="output",
+        ),
+        ApplyChatTemplate(
+            tokenizer_identifier=args.tokenizer,
+            hf_token=args.hf_token,
+            input_field="input",
+            output_field="output",
+            system_prompt_field="system_prompt",
+        ),
+    ]
+    for tokenizer_step in tokenizer_steps:
+        pipeline_thinking_on.add_stage(tokenizer_step)
+        pipeline_thinking_off.add_stage(tokenizer_step)
+
+    if args.keep_columns:
+        keep_columns = args.keep_columns
+        # Always keep the completion_token_count column, so that we can sort the samples
+        if "completion_token_count" not in keep_columns:
+            keep_columns.append("completion_token_count")
+    else:
+        keep_columns = ["input", "output", "completion_token_count"]
+
+    # Save intermediate datasets
+    thinking_on_unsorted_path = os.path.join(args.output_dir, "thinking_on_unsorted")
+    thinking_off_unsorted_path = os.path.join(args.output_dir, "thinking_off_unsorted")
+    pipeline_thinking_on.add_stage(JsonlWriter(thinking_on_unsorted_path, fields=keep_columns))
+    pipeline_thinking_off.add_stage(JsonlWriter(thinking_off_unsorted_path, fields=keep_columns))
+
+    # Run pipelines
+    _thinking_on_output = pipeline_thinking_on.run()
+    _thinking_off_output = pipeline_thinking_off.run()
+
+    # Sort datasets
+    thinking_on_ds = ray.data.read_json(thinking_on_unsorted_path, lines=True)
+    thinking_on_ds = thinking_on_ds.sort("completion_token_count")
+    thinking_on_sorted_path = os.path.join(args.output_dir, "thinking_on_sorted")
+    thinking_on_ds.write_json(thinking_on_sorted_path, orient="records", lines=True)
+
+    thinking_off_ds = ray.data.read_json(thinking_off_unsorted_path, lines=True)
+    thinking_off_ds = thinking_off_ds.sort("completion_token_count")
+    thinking_off_sorted_path = os.path.join(args.output_dir, "thinking_off_sorted")
+    thinking_off_ds.write_json(thinking_off_sorted_path, orient="records", lines=True)
+
+    # Interleave datasets and combine into a single output file
+    interleave_datasets(
+        thinking_on_sorted_path,
+        thinking_off_sorted_path,
+        os.path.join(args.output_dir, "training.jsonl"),
+        chunk_size=args.chunk_size,
+    )
+
+    end_time = time.time()
+    print(f"Total time taken: {end_time - start_time} seconds")
+
+    ray_client.stop()
+
+
+def attach_args() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        "Prepare dataset for curriculum learning.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--num-cpus",
+        type=int,
+        default=16,
+        help="Number of CPUs to use.",
+    )
+
+    parser.add_argument(
+        "--input-dir",
+        type=str,
+        help="Path to the input directory containing JSONL files.",
+        required=True,
+    )
+    parser.add_argument(
+        "--filename-filter",
+        nargs="+",
+        type=str,
+        help="If specified, only files with names containing one or more of the provided substrings will be processed.",
+    )
+    parser.add_argument(
+        "--jsonl-blocksize-mb",
+        type=int,
+        default=100,
+        help="Blocksize (in MB) to use for splitting the JSONL files.",
+    )
+
+    parser.add_argument(
+        "--tokenizer",
+        type=str,
+        default="meta-llama/Llama-3.1-8B-Instruct",
+        help="Hugging Face tokenizer",
+    )
+    parser.add_argument(
+        "--hf-token",
+        type=str,
+        help="Hugging Face token (if needed)",
+    )
+    parser.add_argument(
+        "--lang-id-model-path",
+        type=str,
+        help="Path to the FastText model",
+        required=True,
+    )
+    parser.add_argument(
+        "--max-token-count",
+        type=int,
+        default=16384,
+        help="Optional maximum token count. Rows exceeding this count will be filtered out.",
+    )
+    parser.add_argument(
+        "--max-completion-token-count",
+        type=int,
+        default=8192,
+        help="Optional maximum completion token count. Rows exceeding this count will be filtered out.",
+    )
+
+    parser.add_argument(
+        "--keep-columns",
+        nargs="+",
+        type=str,
+        help="Columns to keep when the dataset is written to disk.",
+    )
+
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1,
+        help="Chunk size to use for interleaving the datasets.",
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        help="Path to the output directory.",
+        required=True,
+    )
+
+    return parser
+
+
+if __name__ == "__main__":
+    main(attach_args().parse_args())
+
+```
+</file_contents>

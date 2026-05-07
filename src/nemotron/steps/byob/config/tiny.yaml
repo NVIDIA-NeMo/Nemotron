@@ -1,0 +1,72 @@
+expt_name: byob_mcq_tiny
+random_seed: 7
+ndd_batch_size: 2
+
+split: test
+subset: all
+input_dir: /tmp/byob/input
+output_dir: /tmp/byob/output
+hf_dataset: cais/mmlu
+language: en-US
+metadata_file: null
+source_subjects:
+  - high_school_mathematics
+
+target_source_mapping:
+  maths:
+    subjects:
+      - high_school_mathematics
+
+few_shot_samples_per_query: 1
+queries_per_target_subject_document: 1
+num_questions_per_query: 1
+chunking_config:
+  window_size: null
+prompt_config: null
+
+generation_model_config: &tiny_model
+  alias: local_test_model
+  model: local/test-model
+  provider: local
+  inference_parameters:
+    max_tokens: 1024
+    max_parallel_requests: 1
+    temperature: 0.0
+    top_p: 1.0
+
+judge_model_config: *tiny_model
+
+semantic_deduplication_config:
+  enabled: true
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 1
+  eps: 0.07
+  remove_duplicates: false
+
+do_distractor_expansion: false
+distractor_expansion_model_config: *tiny_model
+
+do_coverage_check: false
+coverage_check_config:
+  model_identifier: null
+  window_size: null
+
+distractor_validity_model_config: *tiny_model
+
+semantic_outlier_detection_config:
+  enabled: true
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_neighbours_min: 1
+  remove_outliers: false
+
+easiness_threshold: 0.8
+hallucination_threshold: 0.5
+remove_hallucinated: false
+remove_easy: false
+filtering_model_configs:
+  hallucination:
+    - alias: hal_1
+      <<: *tiny_model
+  easiness:
+    - alias: eas_1
+      <<: *tiny_model

@@ -1,0 +1,27 @@
+[case]
+name = "translation-faith-governance"
+description = "Governed chat translation should enable FAITH and keep audit metadata."
+tags = ["translation", "faith", "governance", "chat"]
+
+[input]
+request = "Translate this tool-calling chat dataset to German and include FAITH evaluation for governance review."
+
+[expected.steps]
+must_include = ["translate/translation"]
+may_include = []
+must_exclude = ["curate/nemo_curator", "prep/sft_packing", "sft/megatron_bridge", "sft/automodel"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 1, max = 1 }
+must_mention = ["German", "FAITH", "messages.*.content", "output_mode=both"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_translate"]
+must_have_tiny_config = false
+no_relative_data_paths = true
+
+[expected.disclosure]
+must_read = ["STEPS.md", "PATTERNS.md", "translate/translation/step.toml"]
+must_not_read = ["sft/guide.md"]

@@ -1,5 +1,11 @@
 # Available Steps
 
+## byob — Bring Your Own Benchmark
+
+| Step | Description | Consumes | Produces |
+| --- | --- | --- | --- |
+| [byob](byob/) | Generate and translate BYOB MCQ benchmark parquet artifacts from domain documents with an extensible benchmark-family runtime. | benchmark_source_corpus, benchmark_parquet (optional) | mcq_benchmark_parquet, translated_mcq_benchmark_parquet (optional) |
+
 ## convert — Conversion
 
 | Step | Description | Consumes | Produces |
@@ -63,6 +69,7 @@
 | [rl/nemo_rl/dpo](rl/nemo_rl/dpo/) | Direct Preference Optimisation alignment with NeMo-RL. Consumes a preference dataset (chosen / rejected pairs) and an SFT-trained checkpoint. | training_jsonl, checkpoint_megatron | checkpoint_megatron |
 | [rl/nemo_rl/rlhf](rl/nemo_rl/rlhf/) | RLHF with a learned judge / generative reward model on top of NeMo-RL's GRPO loop. Uses NeMo-Gym for GenRM-style comparison rewards by default. | training_jsonl, checkpoint_megatron, checkpoint_hf | checkpoint_megatron |
 | [rl/nemo_rl/rlvr](rl/nemo_rl/rlvr/) | RL with Verifiable Rewards via GRPO (NeMo-RL). Designed for tasks with programmatic reward signals such as math problem solving or unit-tested code. Use config/nemo_gym.yaml for NeMo-Gym resource-server rewards. | training_jsonl, checkpoint_megatron | checkpoint_megatron |
+| [rl/nemo_rl_grpo](rl/nemo_rl_grpo/) | Planned: align an SFT-trained Megatron checkpoint with GRPO using NeMo-RL. | training_jsonl, checkpoint_megatron | checkpoint_megatron |
 
 ## sdg — Synthetic Data Generation
 
@@ -77,8 +84,15 @@
 | [sft/automodel](sft/automodel/) | Supervised fine-tuning with the AutoModel stack for HF-format models and JSONL datasets that already use OpenAI chat-format messages. Supports full SFT and LoRA-style adapter tuning from the same step. | training_jsonl | checkpoint_hf |
 | [sft/megatron_bridge](sft/megatron_bridge/) | Supervised fine-tuning using NVIDIA Megatron-Bridge. Best for large-scale distributed training with tensor/pipeline/context parallelism. Requires packed Parquet data from prep/sft_packing. | packed_parquet, checkpoint_megatron (optional) | checkpoint_megatron |
 
+## synth — Synthetic Data Generation
+
+| Step | Description | Consumes | Produces |
+| --- | --- | --- | --- |
+| [synth/data_designer](synth/data_designer/) | Planned: generate synthetic conversation JSONL with Data Designer for downstream SFT. | training_jsonl (optional) | synthetic_jsonl |
+
 ## translate — Translation
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
 | [translate/nemo_skills](translate/nemo_skills/) | Translate filtered JSONL into a target language with NeMo Skills and attach FAITH-based quality signals so downstream steps can keep high-faith training data. | filtered_jsonl | translated_jsonl |
+| [translate/translation](translate/translation/) | Translate JSONL or Parquet training corpora with NeMo Curator's TranslationStage, preserving structured fields and optionally attaching FAITH quality scores. | filtered_jsonl | translated_jsonl |

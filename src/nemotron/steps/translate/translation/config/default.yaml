@@ -1,0 +1,57 @@
+# Starter config for NeMo Curator corpus translation.
+
+input_path: /path/to/filtered_data.jsonl
+output_dir: ./output/translated
+
+# Required. Ask the user; do not infer silently.
+source_language: ""
+target_language: ""
+
+input_format: auto        # auto | jsonl | parquet
+output_format: jsonl      # jsonl | parquet
+backend: llm              # llm | nmt | google | aws
+
+text_field: messages.*.content
+output_field: translated_text
+translation_column: translated_text
+output_mode: both         # replaced | raw | both
+merge_scores: true
+reconstruct_messages: true
+messages_field: messages
+messages_content_field: content
+
+segmentation_mode: coarse # coarse | fine
+min_segment_chars: 0
+max_concurrent_requests: 64
+skip_translated: false
+files_per_partition: null
+blocksize: null
+
+server:
+  url: https://integrate.api.nvidia.com/v1
+  model: ""              # Required for backend=llm and used by FAITH unless faith_eval.model_name is set.
+  api_key_env: NVIDIA_API_KEY
+  api_key: ""
+
+faith_eval:
+  enabled: true
+  threshold: 2.5
+  model_name: ""
+  segment_level: true
+  filter_enabled: true
+
+nmt:
+  server_url: http://localhost:5000
+  batch_size: 32
+  timeout: 120
+  max_concurrent_requests: 32
+
+google:
+  project_id: ""
+  location: global
+  api_version: v2
+  max_concurrent_requests: 32
+
+aws:
+  region: us-east-2
+  max_concurrent_requests: 32

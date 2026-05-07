@@ -1,0 +1,27 @@
+[case]
+name = "translation-chat-before-sft"
+description = "Chat-corpus translation before SFT should insert the Curator translation step before prep/training."
+tags = ["translation", "chat", "multilingual", "sft"]
+
+[input]
+request = "Translate a multi-turn chat corpus from English to Thai before SFT on Nemotron Nano3."
+
+[expected.steps]
+must_include = ["translate/translation", "prep/sft_packing", "sft/megatron_bridge", "eval/model_eval"]
+may_include = []
+must_exclude = ["curate/nemo_curator", "sft/automodel"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 4, max = 4 }
+must_mention = ["English", "Thai", "messages.*.content", "packed_parquet"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_translate", "02_prep", "03_sft", "04_eval"]
+must_have_tiny_config = true
+no_relative_data_paths = true
+
+[expected.disclosure]
+must_read = ["STEPS.md", "PATTERNS.md", "translate/translation/step.toml"]
+must_not_read = []

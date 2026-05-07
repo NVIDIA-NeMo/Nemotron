@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-
+import re
 import tomllib
+
 
 DEFAULT_STEPS_ROOT = Path(__file__).resolve().parents[3] / "src" / "nemotron" / "steps"
 STEP_ID_PATTERN = re.compile(
-    r"(benchmark|convert|curate|eval|prep|pretrain|rl|sft|sdg|translate)/[a-z0-9_]+"
+    r"(benchmark|byob|convert|curate|eval|prep|pretrain|rl|sft|sdg|synth|translate)/[a-z0-9_]+"
 )
 
 

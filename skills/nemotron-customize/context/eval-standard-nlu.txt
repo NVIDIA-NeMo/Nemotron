@@ -1,0 +1,1920 @@
+<file_map>
+/Users/mromeijn/src/Evaluator
+├── docs
+│   └── evaluation
+│       ├── benchmarks
+│       │   ├── catalog
+│       │   │   └── index.md *
+│       │   └── about.md *
+│       ├── run-evals
+│       │   ├── index.md *
+│       │   ├── logprobs.md *
+│       │   ├── reasoning.md *
+│       │   └── text-gen.md *
+│       ├── index.md *
+│       └── parameters.md *
+└── packages
+    └── nemo-evaluator-launcher
+        ├── examples
+        │   ├── local_basic.yaml *
+        │   └── local_reasoning.yaml *
+        └── src
+            └── nemo_evaluator_launcher
+                └── resources
+                    └── config_templates
+                        └── evaluation
+                            ├── base
+                            │   ├── default.yaml *
+                            │   └── standard.yaml *
+                            └── chat
+                                └── default.yaml *
+</file_map>
+<file_contents>
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/index.md
+```md
+(evaluation-overview)=
+
+# About Evaluation
+
+Evaluate LLMs, VLMs, agentic systems, and retrieval models across 100+ benchmarks using unified workflows.
+
+## Before You Start
+
+Before you run evaluations, ensure you have:
+
+1. **Chosen your approach**: See {ref}`get-started-overview` for installation and setup guidance
+2. **Deployed your model**: See {ref}`deployment-overview` for deployment options
+3. **OpenAI-compatible endpoint**: Your model must expose a compatible API (see {ref}`deployment-testing-compatibility`).
+4. **API credentials**: Access tokens for your model endpoint and Hugging Face Hub.
+
+---
+
+## Quick Start: Academic Benchmarks
+
+:::{admonition} Fastest path to evaluate academic benchmarks
+:class: tip
+
+**For researchers and data scientists**: Evaluate your model on standard academic benchmarks in 3 steps.
+
+**Step 1: Choose Your Approach**
+- **Launcher CLI** (Recommended): `nemo-evaluator-launcher run --config packages/nemo-evaluator-launcher/examples/local_basic.yaml`
+- **Python API**: Direct programmatic control with `evaluate()` function
+
+**Step 2: Select Benchmarks**
+
+Common academic suites:
+- **General Knowledge**: `mmlu_pro`, `gpqa_diamond`
+- **Mathematical Reasoning**: `AIME_2025`, `mgsm`
+- **Instruction Following**: `ifbench`, `mtbench`
+
+
+
+Discover all available tasks:
+```bash
+nemo-evaluator-launcher ls tasks
+```
+
+**Step 3: Run Evaluation**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: mmlu_pro
+    - name: ifbench
+```
+
+Launch the job:
+
+```bash
+export NGC_API_KEY=nvapi-...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+<!-- **Next Steps**:
+- {ref}`text-gen` - Complete text generation guide
+- {ref}`eval-parameters` - Optimize configuration parameters
+- {ref}`eval-benchmarks` - Explore all available benchmarks -->
+:::
+
+---
+
+## Evaluation Workflows
+
+Select a workflow based on your environment and desired level of control.
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`terminal;1.5em;sd-mr-1` Launcher Workflows
+:link: ../get-started/quickstart/launcher
+:link-type: doc
+Unified CLI for running evaluations across local, Slurm, and cloud backends with built-in result export.
+:::
+
+:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Core API Workflows
+:link: ../libraries/nemo-evaluator/workflows/python-api
+:link-type: doc
+Programmatic evaluation using Python API for integration into ML pipelines and custom workflows.
+:::
+
+:::{grid-item-card} {octicon}`package;1.5em;sd-mr-1` Container Workflows
+:link: ../libraries/nemo-evaluator/containers/index
+:link-type: doc
+Direct container access for specialized use cases and custom evaluation environments.
+:::
+
+::::
+
+## Configuration and Customization
+
+Configure your evaluations, create custom tasks, explore benchmarks, and extend the framework with these guides.
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`plus;1.5em;sd-mr-1` Configuration Parameters
+:link: parameters
+:link-type: doc
+Comprehensive reference for evaluation configuration parameters and framework-specific settings.
+:::
+
+:::{grid-item-card} {octicon}`list-unordered;1.5em;sd-mr-1` Benchmark Catalog
+:link: eval-benchmarks
+:link-type: ref
+Explore 100+ available benchmarks across 18 evaluation harnesses and their specific use cases.
+:::
+
+:::{grid-item-card} {octicon}`plus;1.5em;sd-mr-1` Extend Framework
+:link: ../libraries/nemo-evaluator/extending/framework-definition-file/index
+:link-type: doc
+Add custom evaluation frameworks using Framework Definition Files for specialized benchmarks.
+:::
+
+::::
+
+## Advanced Features
+
+Scale your evaluations, export results, customize adapters, and resolve issues with these advanced features.
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` Multi-Backend Execution
+:link: ../libraries/nemo-evaluator-launcher/configuration/executors/index
+:link-type: doc
+Run evaluations on local machines, HPC clusters, or cloud platforms with unified configuration.
+:::
+
+:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Result Export
+:link: ../libraries/nemo-evaluator-launcher/exporters/index
+:link-type: doc
+Export evaluation results to MLflow, Weights & Biases, Google Sheets, and other platforms.
+:::
+
+:::{grid-item-card} {octicon}`shield;1.5em;sd-mr-1` Adapter System
+:link: ../libraries/nemo-evaluator/interceptors/index
+:link-type: doc
+Configure request/response processing, logging, caching, and custom interceptors.
+:::
+
+::::
+
+## Core Evaluation Concepts
+
+- For architectural details and core concepts, refer to {ref}`evaluation-model`.
+- For container specifications, refer to {ref}`nemo-evaluator-containers`.
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/benchmarks/about.md
+```md
+(eval-benchmarks)=
+
+# About Selecting Benchmarks
+
+NeMo Evaluator provides a comprehensive suite of benchmarks spanning academic reasoning, code generation, safety testing, and domain-specific evaluations. Whether you're validating a new model's capabilities or conducting rigorous academic research, you'll find the right benchmarks to assess your AI system's performance.
+See {ref}`benchmarks-full-list` for the complete catalog of available benchmarks.
+
+## Available via Launcher
+
+```{literalinclude} ../_snippets/commands/list_tasks.sh
+:language: bash
+:start-after: "# [snippet-start]"
+:end-before: "# [snippet-end]"
+```
+
+## Available via Direct Container Access
+
+```{literalinclude} ../_snippets/commands/list_tasks_core.sh
+:language: bash
+:start-after: "# [snippet-start]"
+:end-before: "# [snippet-end]"
+```
+
+## Choosing Benchmarks for Academic Research
+
+:::{admonition} Benchmark Selection Guide
+:class: tip
+
+**For General Knowledge**:
+- `mmlu_pro` - Expert-level knowledge across 14 domains
+- `gpqa_diamond` - Graduate-level science questions
+
+**For Mathematical & Quantitative Reasoning**:
+- `AIME_2025` - American Invitational Mathematics Examination (AIME) 2025 questions
+- `mgsm` - Multilingual math reasoning
+
+**For Instruction Following & Alignment**:
+- `ifbench` - Precise instruction following
+- `mtbench` - Multi-turn conversation quality
+
+See benchmark categories below and {ref}`benchmarks-full-list` for more details.
+:::
+
+## Benchmark Categories
+
+###  **Academic and Reasoning**
+
+```{list-table}
+:header-rows: 1
+:widths: 20 30 30 50
+
+* - Container
+  - Description
+  - NGC Catalog
+  - Benchmarks
+* - **simple-evals**
+  - Common evaluation tasks
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/simple-evals)
+  - GPQA-D, MATH-500, AIME 24 & 25, HumanEval, HumanEval+, MGSM, MMLU (also multilingual), MMLU-Pro, MMLU-lite (AR, BN, DE, EN, ES, FR, HI, ID, IT, JA, KO, MY, PT, SW, YO, ZH), SimpleQA, BrowseComp, HealthBench
+* - **lm-evaluation-harness**
+  - Language model benchmarks
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/lm-evaluation-harness)
+  - ARC Challenge (also multilingual), GSM8K, HumanEval, HumanEval+, MBPP, MBPP+, MINERVA Math, RACE, AGIEval, BBH, BBQ, CSQA, Frames, Global MMLU, GPQA-D, HellaSwag (also multilingual), IFEval, MGSM, MMLU, MMLU-Pro, MMLU-ProX (de, es, fr, it, ja), MMLU-Redux, MUSR, OpenbookQA, Piqa, Social IQa, TruthfulQA, WikiLingua, WinoGrande
+* - **hle**
+  - Academic knowledge and problem solving
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/hle)
+  - HLE
+* - **ifbench**
+  - Instruction following
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/ifbench)
+  - IFBench
+* - **mtbench**
+  - Multi-turn conversation evaluation
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/mtbench)
+  - MT-Bench
+* - **nemo-skills**
+  - Language model benchmarks (science, math, agentic)
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/nemo_skills)
+  - AIME 24 & 25, BFCL_v3, GPQA, HLE, LiveCodeBench, MMLU, MMLU-Pro
+* - **profbench**
+  - Evaluation of professional knowledge accross Physics PhD, Chemistry PhD, Finance MBA and Consulting MBA
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/mtbench)
+  - Report Gerenation, LLM Judge
+```
+
+:::{note}
+BFCL tasks from the nemo-skills container require function calling capabilities. See {ref}`deployment-testing-compatibility` for checking if your endpoint is compatible.
+:::
+
+**Example Usage:**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: ifeval
+    - name: gsm8k_cot_instruct
+    - name: gpqa_diamond
+```
+
+Run evaluation:
+
+```bash
+export NGC_API_KEY=nvapi-...
+export HF_TOKEN=hf_...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+###  **Code Generation**
+
+```{list-table}
+:header-rows: 1
+:widths: 20 30 30 50
+
+* - Container
+  - Description
+  - NGC Catalog
+  - Benchmarks
+* - **bigcode-evaluation-harness**
+  - Code generation evaluation
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/bigcode-evaluation-harness)
+  - MBPP, MBPP-Plus, HumanEval, HumanEval+, Multiple (cpp, cs, d, go, java, jl, js, lua, php, pl, py, r, rb, rkt, rs, scala, sh, swift, ts)
+* - **livecodebench**
+  - Coding
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/livecodebench)
+  - LiveCodeBench (v1-v6, 0724_0125, 0824_0225)
+* - **scicode**
+  - Coding for scientific research
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/scicode)
+  - SciCode
+```
+
+**Example Usage:**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: humaneval_instruct
+    - name: mbbp
+```
+
+Run evaluation:
+
+```bash
+export NGC_API_KEY=nvapi-...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+###  **Safety and Security**
+
+```{list-table}
+:header-rows: 1
+:widths: 20 30 30 50
+
+* - Container
+  - Description
+  - NGC Catalog
+  - Benchmarks
+* - **garak**
+  - Safety and vulnerability testing
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/garak)
+  - Garak
+* - **safety-harness**
+  - Safety and bias evaluation
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/safety-harness)
+  - Aegis v2, WildGuard
+```
+
+**Example Usage:**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: aegis_v2
+    - name: garak
+```
+
+Run evaluation:
+
+```bash
+export NGC_API_KEY=nvapi-...
+export HF_TOKEN=hf_...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+###  **Function Calling**
+
+```{list-table}
+:header-rows: 1
+:widths: 20 30 30 50
+
+* - Container
+  - Description
+  - NGC Catalog
+  - Benchmarks
+* - **bfcl**
+  - Function calling
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/bfcl)
+  - BFCL v2 and v3
+* - **tooltalk**
+  - Tool usage evaluation
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/tooltalk)
+  - ToolTalk
+```
+
+:::{note}
+Some of the tasks in this category require function calling capabilities. See {ref}`deployment-testing-compatibility` for checking if your endpoint is compatible.
+:::
+
+**Example Usage:**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: bfclv2_ast_prompting
+    - name: tooltalk
+```
+
+Run evaluation:
+
+```bash
+export NGC_API_KEY=nvapi-...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+
+###  **Vision-Language Models**
+
+```{list-table}
+:header-rows: 1
+:widths: 20 30 30 50
+
+* - Container
+  - Description
+  - NGC Catalog
+  - Benchmarks
+* - **vlmevalkit**
+  - Vision-language model evaluation
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/vlmevalkit)
+  - AI2D, ChartQA, MMMU, MathVista-MINI, OCRBench, SlideVQA
+```
+
+:::{note}
+The tasks in this category require a VLM chat endpoint. See {ref}`deployment-testing-compatibility` for checking if your endpoint is compatible.
+:::
+
+**Example Usage:**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: ocrbench
+    - name: chartqa
+```
+
+Run evaluation:
+
+```bash
+export NGC_API_KEY=nvapi-...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+###  **Domain-Specific**
+
+```{list-table}
+:header-rows: 1
+:widths: 20 30 30 50
+
+* - Container
+  - Description
+  - NGC Catalog
+  - Benchmarks
+* - **helm**
+  - Holistic evaluation framework
+  - [Link](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/eval-factory/containers/helm)
+  - MedHelm
+```
+
+**Example Usage:**
+
+Create `config.yml`:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+evaluation:
+  tasks:
+    - name: pubmed_qa
+    - name: medcalc_bench
+```
+
+Run evaluation:
+
+```bash
+export NGC_API_KEY=nvapi-...
+
+nemo-evaluator-launcher run \
+    --config ./config.yml \
+    -o execution.output_dir=results \
+    -o +target.api_endpoint.model_id=meta/llama-3.2-3b-instruct \
+    -o +target.api_endpoint.url=https://integrate.api.nvidia.com/v1/chat/completions \
+    -o +target.api_endpoint.api_key_name=NGC_API_KEY
+```
+
+## Container Details
+
+For detailed specifications of each container, see {ref}`nemo-evaluator-containers`.
+
+### Quick Container Access
+
+Pull and run any evaluation container directly:
+
+```bash
+# Academic benchmarks
+docker pull nvcr.io/nvidia/eval-factory/simple-evals:{{ docker_compose_latest }}
+docker run --rm -it nvcr.io/nvidia/eval-factory/simple-evals:{{ docker_compose_latest }}
+
+# Code generation
+docker pull nvcr.io/nvidia/eval-factory/bigcode-evaluation-harness:{{ docker_compose_latest }}
+docker run --rm -it nvcr.io/nvidia/eval-factory/bigcode-evaluation-harness:{{ docker_compose_latest }}
+
+# Safety evaluation
+docker pull nvcr.io/nvidia/eval-factory/safety-harness:{{ docker_compose_latest }}
+docker run --rm -it nvcr.io/nvidia/eval-factory/safety-harness:{{ docker_compose_latest }}
+```
+
+### Available Tasks by Container
+
+For a complete list of available tasks in each container:
+
+```bash
+# List tasks in any container
+docker run --rm nvcr.io/nvidia/eval-factory/simple-evals:{{ docker_compose_latest }} nemo-evaluator ls
+
+# Or use the launcher for unified access
+nemo-evaluator-launcher ls tasks
+```
+
+## Integration Patterns
+
+NeMo Evaluator provides multiple integration options to fit your workflow:
+
+```bash
+# Launcher CLI (recommended for most users)
+nemo-evaluator-launcher ls tasks
+nemo-evaluator-launcher run --config ./local_mmlu_evaluation.yaml
+
+# Container direct execution
+docker run --rm nvcr.io/nvidia/eval-factory/simple-evals:{{ docker_compose_latest }} nemo-evaluator ls
+
+# Python API (for programmatic control)
+# See the Python API documentation for details
+```
+
+## Benchmark Selection Best Practices
+
+### For Model Development
+
+**Iterative Testing**:
+- Start with `limit_samples=100` for quick feedback during development
+- Run full evaluations before major releases
+- Track metrics over time to measure improvement
+
+**Configuration**:
+```python
+# Development testing
+params = ConfigParams(
+    limit_samples=100,      # Quick iteration
+    temperature=0.01,       # Deterministic
+    parallelism=4
+)
+
+# Production evaluation
+params = ConfigParams(
+    limit_samples=None,     # Full dataset
+    temperature=0.01,       # Deterministic
+    parallelism=8          # Higher throughput
+)
+```
+
+### For Specialized Domains
+
+- **Code Models**: Focus on `humaneval`, `mbpp`, `livecodebench`
+- **Instruction Models**: Emphasize `ifbench`, `mtbench`
+- **Multilingual Models**: Include `arc_multilingual`, `hellaswag_multilingual`, `mgsm`
+- **Safety-Critical**: Prioritize `safety-harness` and `garak` evaluations
+
+
+## Next Steps
+
+- **Container Details**: Browse {ref}`nemo-evaluator-containers` for complete specifications
+- **Custom Benchmarks**: Learn {ref}`framework-definition-file` for custom evaluations
+
+
+
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/benchmarks/catalog/index.md
+```md
+(benchmarks-full-list)=
+# Available Benchmarks
+
+<!-- NOTE(agronskiy) below file is autogenerated -->
+```{include} all/benchmarks-table.md
+```
+
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/run-evals/index.md
+```md
+(eval-run)=
+
+# Evaluation Techniques
+
+Follow step-by-step guides for different evaluation scenarios and methodologies in NeMo Evaluator.
+
+## Before You Start
+
+Ensure you have:
+
+1. Completed the initial getting started guides for {ref}`gs-install` and {ref}`gs-quickstart`.
+2. Have your endpoint and API key ready or prepared for the checkpoint you wish to deploy.
+3. Prepared your [Hugging Face token](https://huggingface.co/docs/hub/en/security-tokens) for accessing gated datasets.
+
+
+## Evaluations
+
+Select an evaluation type tailored to your model capabilities.
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`pencil;1.5em;sd-mr-1` Text Generation
+:link: text-gen
+:link-type: ref
+Measure model performance through natural language generation for academic benchmarks, reasoning tasks, and general knowledge assessment.
+:::
+
+:::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Log-Probability
+:link: logprobs
+:link-type: ref
+Assess model confidence and uncertainty using log-probabilities for multiple-choice scenarios without text generation.
+:::
+
+:::{grid-item-card} {octicon}`comment;1.5em;sd-mr-1` Reasoning
+:link: run-eval-reasoning
+:link-type: ref
+Control the thinking budget and post-process the responses to extract the reasoning content and the final answer
+:::
+
+
+::::
+
+<!-- TODO: add once ready
+:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Generation
+:link: code-generation
+:link-type: ref
+Measure programming capabilities through code generation, completion, and algorithmic problem solving.
+:::
+
+:::{grid-item-card} {octicon}`tools;1.5em;sd-mr-1` Function Calling
+:link: function-calling
+:link-type: ref
+Assess tool use capabilities, API calling accuracy, and structured output generation for agent-like behaviors.
+::: -->
+
+
+<!-- TODO: add once ready
+Code Generation <code-generation>
+Function Calling <function-calling> -->
+
+
+:::{toctree}
+:hidden:
+Text Generation <text-gen>
+Log Probability <logprobs>
+Reasoning <reasoning>
+:::
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/run-evals/text-gen.md
+```md
+(text-gen)=
+
+# Text Generation Evaluation
+
+Text generation evaluation is the primary method for assessing LLM capabilities where models produce natural language responses to prompts. This approach evaluates the quality, accuracy, and appropriateness of generated text across various tasks and domains.
+
+
+:::{tip}
+In the example below we use the `gpqa_diamond` benchmark, but the instructions provided apply to all text generation tasks, such as:
+
+- `mmlu`
+- `mmlu_pro`
+- `ifeval`
+- `gsm8k`
+- `mgsm`
+- `mbpp`
+
+:::
+
+## Before You Start
+
+Ensure you have:
+
+- **Model Endpoint**: An OpenAI-compatible API endpoint for your model (completions or chat). See {ref}`deployment-testing-compatibility` for snippets you can use to test your endpoint.
+- **API Access**: Valid API key if your endpoint requires authentication
+- **Installed Packages**: NeMo Evaluator or access to evaluation containers
+
+## Evaluation Approach
+
+In text generation evaluation:
+
+1. **Prompt Construction**: Models receive carefully crafted prompts (questions, instructions, or text to continue)
+2. **Response Generation**: Models generate natural language responses using their trained parameters
+3. **Response Assessment**: Generated text is evaluated for correctness, quality, or adherence to specific criteria
+4. **Metric Calculation**: Numerical scores are computed based on evaluation criteria
+
+This differs from **log-probability evaluation** where models assign confidence scores to predefined choices.
+For log-probability methods, see the {ref}`logprobs`.
+
+
+## Use NeMo Evaluator Launcher
+
+Use an example config for evaluating the [Meta Llama 3.1 8B Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) model:
+
+```{literalinclude} ../../../packages/nemo-evaluator-launcher/examples/local_basic.yaml
+:language: yaml
+:start-after: "[docs-start-snippet]"
+```
+
+
+To launch the evaluation, run:
+
+```bash
+
+export HF_TOKEN_FOR_GPQA_DIAMOND=hf_your-token-here  # GPQA is a gated dataset
+export NGC_API_KEY=nvapi-your-token-here  # API Key with access to build.nvidia.com
+
+nemo-evaluator-launcher run \
+  --config packages/nemo-evaluator-launcher/examples/local_basic.yaml
+```
+
+
+## Use NeMo Evaluator
+
+Start `simple-evals` docker container:
+
+```bash
+docker run --rm -it nvcr.io/nvidia/eval-factory/simple-evals:{{ docker_compose_latest }}
+```
+
+or install `nemo-evaluator` and `nvidia-simple-evals` Python package in your environment of choice:
+
+```bash
+pip install nemo-evaluator nvidia-simple-evals
+```
+
+### Run with CLI
+
+```bash
+export HF_TOKEN_FOR_GPQA_DIAMOND=hf_your-token-here  # GPQA is a gated dataset
+export NGC_API_KEY=nvapi-your-token-here  # API Key with access to build.nvidia.com
+
+# Run evaluation
+nemo-evaluator run_eval \
+    --eval_type gpqa_diamond \
+    --model_id meta/llama-3.2-3b-instruct \
+    --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+    --model_type chat \
+    --api_key_name NGC_API_KEY \
+    --output_dir ./llama_3_1_8b_instruct_results
+```
+
+### Run with Python API
+
+```python
+# set env variables before entering Python:
+# export HF_TOKEN_FOR_GPQA_DIAMOND=hf_your-token-here  # GPQA is a gated dataset
+# export NGC_API_KEY=nvapi-your-token-here  # API Key with access to build.nvidia.com
+
+from nemo_evaluator.core.evaluate import evaluate
+from nemo_evaluator.api.api_dataclasses import (
+    ApiEndpoint, EvaluationConfig, EvaluationTarget, ConfigParams, EndpointType
+)
+
+# Configure target endpoint
+api_endpoint = ApiEndpoint(
+    url="https://integrate.api.nvidia.com/v1/chat/completions",
+    type=EndpointType.CHAT,
+    model_id="meta/llama-3.2-3b-instruct",
+    api_key="NGC_API_KEY"  # variable name storing the key
+)
+target = EvaluationTarget(api_endpoint=api_endpoint)
+
+# Configure evaluation task
+config = EvaluationConfig(
+    type="gpqa_diamond",
+    output_dir="./llama_3_1_8b_instruct_results"
+)
+
+# Execute evaluation
+results = evaluate(target_cfg=target, eval_cfg=config)
+```
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/run-evals/logprobs.md
+```md
+(logprobs)=
+# Evaluate LLMs Using Log-Probabilities
+
+## Introduction
+
+While the most typical approach to LLM evaluation involves assessing the quality of a model's generated response to a question, an alternative method uses **log-probabilities**.
+
+In this approach, we quantify a model's "surprise" or uncertainty when processing a text sequence.
+This is done by calculating the sum of log-probabilities that the model assigns to each token.
+A higher sum indicates the model is more confident about the sequence.
+
+In this evaluation approach:
+* The LLM is given a single combined text containing both the question and a potential answer.
+* Next, the sum of log-probabilities is calculated only for the tokens that belong to the answer.
+* This allows an assessment of how likely it is that the model would provide that answer for the given question.
+
+For multiple-choice scenarios, the answer with the highest sum is treated as the one selected by the model.
+
+The sum of log-probabilities can be used to calculate different metrics, such as **perplexity**.
+Additionally, log-probabilities can be analyzed to assess whether a response would be generated by the model using greedy sampling—a method commonly employed to evaluate **accuracy**.
+
+Using log-probabilities is especially useful for evaluating base (pre-trained) models, as it eliminates the need for complex instruction-following and does not require the model to adhere to a specific output format.
+
+:::{tip}
+In the example below we use the `piqa` benchmark, but the instructions provided apply to all `lm-evaluation-harness` tasks utilizing log-probabilities, such as:
+
+- arc_challenge
+- arc_multilingual
+- bbh
+- commonsense_qa
+- hellaswag
+- hellaswag_multilingual
+- musr
+- openbookqa
+- social_iqa
+- truthfulqa
+- winogrande
+:::
+
+## Before You Start
+
+Ensure you have:
+
+- **Completions Endpoint**: Log-probability tasks require completions endpoints (not chat) that supports `logprobs` and `echo` parameters (see {ref}`compatibility-log-probs`)
+- **Model Tokenizer**: Access to tokenizer files for client-side tokenization (supported types: `huggingface` or `tiktoken`)
+- **API Access**: Valid API key for your model endpoint if it is gated
+- **Authentication**: Hugging Face token for gated datasets and tokenizers
+
+
+## Use NeMo Evaluator Launcher
+
+Use an example config for deploying and evaluating the [Meta Llama 3.1 8B](https://huggingface.co/meta-llama/Llama-3.1-8B) model:
+
+```{literalinclude} ../../../packages/nemo-evaluator-launcher/examples/local_vllm_logprobs.yaml
+:language: yaml
+:start-after: "[docs-start-snippet]"
+```
+
+To launch the evaluation, run:
+
+```bash
+nemo-evaluator-launcher run \
+  --config packages/nemo-evaluator-launcher/examples/local_vllm_logprobs.yaml
+```
+
+:::{tip}
+Set `deployment: none` and provide `target` specification if you want to evaluate an existing endpoint instead:
+
+```yaml
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+execution:
+  output_dir: llama_local
+  env_vars:
+    HF_TOKEN: ${oc.env:HF_TOKEN}  # needed to access meta-llama/Llama-3.1-8B gated model
+ 
+target:
+  api_endpoint:
+    model_id: meta-llama/Llama-3.1-8B
+    url: https://your-endpoint.com/v1/completions
+    api_key_name: NGC_API_KEY # API Key with access to provided url
+
+# specify the benchmarks to evaluate
+evaluation:
+  nemo_evaluator_config:  # global config settings that apply to all tasks
+    config:
+      params:
+        extra:  # for log-probability tasks like piqa, you need to specify the tokenizer
+          tokenizer: meta-llama/Llama-3.1-8B  # or use a path to locally stored checkpoint
+          tokenizer_backend: huggingface      # or "tiktoken"
+  tasks:
+    - name: piqa
+
+```
+:::
+
+## Use NeMo Evaluator
+
+Start `lm-evaluation-harness` docker container:
+
+```bash
+docker run --rm -it nvcr.io/nvidia/eval-factory/lm-evaluation-harness:{{ docker_compose_latest }}
+```
+
+or install `nemo-evaluator` and `nvidia-lm-eval` Python package in your environment of choice:
+
+```bash
+pip install nemo-evaluator nvidia-lm-eval
+```
+
+
+To launch the evaluation, run the following Python code:
+
+```{literalinclude} ../_snippets/piqa_hf.py
+:language: python
+:start-after: "# [snippet-start]"
+:end-before: "# [snippet-end]"
+```
+
+Make sure to provide the source for the tokenizer and a backend for loading it.
+
+For models trained with NeMo Framework, the tokenizer is stored inside the checkpoint directory.
+For the NeMo format it is available inside `context/nemo_tokenizer` subdirectory:
+
+```python
+    extra={
+        "tokenizer": "/workspace/llama3_8b_nemo2/context/nemo_tokenizer",
+        "tokenizer_backend": "huggingface",
+    },
+```
+
+For Megatron Bridge checkpoints, the tokenizer is stored under `tokenizer` subdirectory:
+
+```python
+    extra={
+        "tokenizer": "/workspace/mbridge_llama3_8b/iter_0000000/tokenizer",
+        "tokenizer_backend": "huggingface",
+    },
+```
+
+
+## How it works
+
+When the server receives a `logprob=<int>` parameter in the request, it will return the log-probabilities of tokens.
+When combined with `echo=true`, the model will include the input in its response, along with the corresponding log-probabilities.
+
+Then the recieved response is processed on the client (benchmark) side to isolate the log-probabilities corresponding specifically to the answer portion of the input.
+For this purpose the input is tokenized, which allows to trace which log-probabilities originated from the question, and which from the answer.
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/run-evals/reasoning.md
+```md
+(run-eval-reasoning)=
+# Evaluation of Reasoning Models
+
+Reasoning models require a distinct approach compared to standard language models. Their outputs are typically longer, may contain dedicated reasoning tokens, and are more susceptible to generating loops or repetitive sequences. Evaluating these models effectively requires custom parameter settings and careful handling of generation constraints.
+
+## Before You Start
+
+Ensure you have:
+
+- **Model Endpoint**: An OpenAI-compatible API endpoint for your model (completions or chat). See {ref}`deployment-testing-compatibility` for snippets you can use to test your endpoint.
+- **API Access**: Valid API key if your endpoint requires authentication
+- **Installed Packages**: NeMo Evaluator or access to evaluation containers
+
+
+## Recommended Settings
+
+### Generation Settings
+
+Below are recommended generation settings for some popular reasoning-optimized models. These configurations should be included in the **model card**:
+
+| Model               | Temperature | Top-p  | Top-k  | 
+|---------------------|-------------|--------|--------|
+| **NVIDIA Nemotron** | 0.6         | 0.95   | —      |
+| **DeepSeek R1**     | 0.6         | 0.95   | —      |
+| **Qwen 230B**       | 0.6         | 0.95   | 20     |
+| **Phi-4 Reasoning** | 0.8         | 0.95   | 50     |
+
+
+### Token Configuration
+
+- `max_new_tokens` must be **significantly increased** for reasoning tasks as it includes the length of both reasoning trace and the final answer.
+- Check the model card to see settings recommended by the model creators.
+- It is important to observe if the specified `max_new_tokens` is enough for the model to finish reasoning.
+
+:::{tip}
+You can verify successful reasoning completion in the logs via the {ref}`interceptor-reasoning` Interceptor, for example:
+
+```
+[I 2025-12-02T16:14:28.257] Reasoning tracking information reasoning_words=1905 original_content_words=85 updated_content_words=85 reasoning_finished=True reasoning_started=True reasoning_tokens=unknown updated_content_tokens=unknown logger=ResponseReasoningInterceptor request_id=ccff76b2-2b85-4eed-a9d0-2363b533ae58
+```
+:::
+
+## Reasoning Output Formats
+
+Reasoning models produce outputs that contain both the **reasoning trace** (the model's step-by-step thinking process) and the **final answer**. The reasoning trace typically includes intermediate thoughts, calculations, and logical steps before arriving at the conclusion.
+
+There are two main ways to structure reasoning output:
+
+### 1. Wrapped with reasoning tokens
+
+e.g.
+
+```
+... </think>
+```
+
+```
+<think> ... </think>
+```
+
+or
+
+```
+<reason> ... </reason><final></final>
+```
+
+Most of the benchmarks expect only the final answer to be present in model's response.
+If your model endpoint replies with reasoning trace present in the main content, it needs to be removed from the assistant messages.
+You can do it using the {ref}`interceptor-reasoning` Interceptor.
+The interceptor will remove reasoning trace from the content and (optionally) track statistics for reasoning traces.
+
+:::{note}
+The `ResponseReasoningInterceptor` is by default configured for the `...</think>` and `<think> ...</think>` format. If your model uses these special tokens, you do not need to modify anything in your configuration.
+:::
+
+### 2. Returned as `reasoning_content` field in messages output
+
+If your model is deployed with e.g. vLLM, sglang or NIM, the reasoning part of the model's output is likely returned in the separate `reasoning_content` field in messages output (see [vLLM documentation](https://docs.vllm.ai/en/stable/features/reasoning_outputs.html) and [sglang documentation](https://sgl-project.github.io/advanced_features/separate_reasoning.html)).
+
+In the messages returned by the endpoint, there are:
+
+- `reasoning_content`: The reasoning part of the output.
+- `content`: The content of the final answer.
+
+Conversely to the first method, this setup does not require any extra response parsing.
+However, in some benchmarks, errors may appear if the reasoning has not finished and the benchmark does not support empty answers in `content`.
+
+#### Enabling reasoning parser in vLLM
+
+To enable the `reasoning_content` field in vLLM, you need to pass the `--reasoning-parser` argument to the vLLM server.
+In NeMo Evaluator Launcher, you can do this via `deployment.extra_args`:
+
+```yaml
+deployment:
+  hf_model_handle: Qwen/Qwen3-Next-80B-A3B-Thinking
+  extra_args: "--reasoning-parser deepseek_r1"
+```
+
+Available reasoning parsers depend on your vLLM version. Common options include `deepseek_r1` for models using `<think>...</think>` format.
+See the [vLLM reasoning outputs documentation](https://docs.vllm.ai/en/stable/features/reasoning_outputs.html) for details.
+
+---
+
+## Control the Reasoning Effort
+
+Some models allow turning reasoning on/off or setting its level of effort. There are usually 2 ways of doing it:
+
+- **Special instruction in the system prompt**
+- **Extra parameters passed to the chat_template**
+
+:::{tip}
+Check the model card and documentation of the deployment of your choice to see how you can control the reasoning effort for your model.
+If there are several options available, it is recommended to use the dedicated chat template parameters over the system prompt.
+:::
+
+### Control reasoning with the system prompt
+
+In this example we will use the [NVIDIA-Nemotron-Nano-9B-v2](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard) model.
+This model allows you to control the reasoning effort by including `/think` or `/no_think` in the system prompt, e.g.:
+
+
+```json
+{
+  "model": "nvidia/nvidia-nemotron-nano-9b-v2",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant. /think"},
+    {"role": "user", "content": "What is 2+2?"}
+  ],
+  "temperature": 0.6,   
+  "top_p": 0.95,
+  "max_tokens": 32768
+}
+```
+
+When launching the evaluation, we can use the {ref}`interceptor-system-messages` Interceptor to add `/think` or `/no_think` to the system prompt.
+
+
+```yaml
+config:
+  params:
+    temperature: 0.6
+    top_p: 0.95
+    max_new_tokens: 32768  # for reasoning + final answer
+target:
+  api_endpoint:
+    adapter_config:
+      process_reasoning_traces: true # strips reasoning tokens and collects reasoning stats
+      use_system_prompt: true # turn reasoning on with special system prompt
+      custom_system_prompt: >-
+        "/think"
+```
+
+
+### Control reasoning with additional parameters
+
+In this example we will use the [Granite-3.3-8B-Instruct](https://build.nvidia.com/ibm/granite-3_3-8b-instruct/modelcard) model.
+Conversely to NVIDIA-Nemotron-Nano-9B-v2, this model allows you to turn the reasoning on with an additional `thinking` parameter passed to the chat template:
+
+```json
+{
+  "model": "ibm/granite-3.3-8b-instruct",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is 2+2?"
+    }
+  ],
+  "temperature": 0.2,
+  "top_p": 0.7,
+  "max_tokens": 8192,
+  "seed": 42,
+  "stream": true,
+  "chat_template_kwargs": {
+    "thinking": true
+  }
+}
+```
+
+When running the evaluation, use the {ref}`interceptor-payload-modification` Interceptor to add this parameter to benchmarks' requests:
+
+```yaml
+config:
+  params:
+    temperature: 0.6
+    top_p: 0.95
+    max_new_tokens: 32768  # for reasoning + final answer
+target:
+  api_endpoint:
+    adapter_config:
+      process_reasoning_traces: true 
+      params_to_add:
+        chat_template_kwargs:
+          thinking: true
+```
+
+
+## Benchmarks for Reasoning
+
+Reasoning models excel at tasks that require multi-step thinking, logical deduction, and complex problem-solving. The following benchmark categories are particularly well-suited for evaluating reasoning capabilities:
+
+
+- **CoT tasks**: e.g., AIME, Math, GPQA-diamond
+- **Coding**: e.g., scicodebench, livedocebench
+
+
+:::{tip}
+When evaluating your model on a task that does not require step-by-step thinking, consider turning the reasoning off or lowering the thinking budget.
+:::
+
+
+## Full Working Example
+
+### Run the evaluation
+
+An example config is available in `packages/nemo-evaluator-launcher/examples/local_reasoning.yaml`:
+
+```{literalinclude} ../../../packages/nemo-evaluator-launcher/examples/local_reasoning.yaml
+:language: yaml
+:start-after: "[docs-start-snippet]"
+```
+
+To launch the evaluation, run:
+
+```bash
+export NGC_API_KEY=nvapi-...
+nemo-evaluator-launcher run \
+  --config packages/nemo-evaluator-launcher/examples/local_reasoning.yaml
+```
+
+### Analyze the artifacts
+
+NeMo Evaluator produces several artifacts for analysis after evaluation completion.
+The primary output file is `results.yaml`, which stores the metrics produced by the benchmark (see {ref}`evaluation-output` for more details).
+
+The `eval_factory_metrics.json` file provides valuable insights into your model's behavior.
+When the reasoning interceptor is enabled, this file contains a `reasoning` key that stores statistics about reasoning traces in your model's responses:
+
+```json
+"reasoning": {
+    "description": "Reasoning statistics saved during processing",
+    "total_responses": 3672,
+    "responses_with_reasoning": 2860,
+    "reasoning_finished_count": 2860,
+    "reasoning_finished_ratio": 1.0,
+    "reasoning_started_count": 2860,
+    "reasoning_unfinished_count": 0,
+    "avg_reasoning_words": 153.21,
+    "avg_original_content_words": 192.17,
+    "avg_updated_content_words": 38.52,
+    "max_reasoning_words": 806,
+    "max_original_content_words": 863,
+    "max_updated_content_words": 863,
+    "max_reasoning_tokens": null,
+    "avg_reasoning_tokens": null,
+    "max_updated_content_tokens": null,
+    "avg_updated_content_tokens": null,
+    "total_reasoning_words": 561696,
+    "total_original_content_words": 705555,
+    "total_updated_content_words": 140999,
+    "total_reasoning_tokens": 0,
+    "total_updated_content_tokens": 0
+  },
+```
+
+In the example above, the model used reasoning for 2860 out of 3672 responses (approximately 78%).
+
+The matching values for `reasoning_started_count` and `reasoning_finished_count` (and `reasoning_unfinished_count` being 0) indicate that the `max_new_tokens` parameter was set sufficiently high, allowing the model to complete all reasoning traces without truncation.
+
+These statistics also enable cost analysis for reasoning operations.
+While the endpoint in this example does not return reasoning token usage statistics (the `*_tokens` fields are null or zero), you can still analyze computational cost using the word count metrics from the responses.
+
+For more information on available artifacts, see {ref}`evaluation-output`.
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/evaluation/parameters.md
+```md
+(eval-parameters)=
+
+# Evaluation Configuration Parameters
+
+Comprehensive reference for configuring evaluation tasks in {{ product_name_short }}, covering universal parameters, framework-specific settings, and optimization patterns.
+
+:::{admonition} Quick Navigation
+:class: info
+
+**Looking for available benchmarks?**
+- {ref}`eval-benchmarks` - Browse available benchmarks by category
+
+**Need help getting started?**
+- {ref}`evaluation-overview` - Overview of evaluation workflows
+- {ref}`eval-run` - Step-by-step evaluation guides
+:::
+
+## Overview
+
+All evaluation tasks in {{ product_name_short }} use the {ref}`ConfigParams <modelling-inout>` class for configuration. This provides a consistent interface across different evaluation harnesses while allowing framework-specific customization through the `extra` parameter. Default configuration (including which parameters a task uses) is defined in the **Framework Definition File (FDF)** for each framework; see {ref}`framework-definition-file` for details.
+
+
+```python
+from nemo_evaluator.api.api_dataclasses import ConfigParams
+
+# Basic configuration
+params = ConfigParams(
+    temperature=0,
+    top_p=1.0,
+    max_new_tokens=256,
+    limit_samples=100
+)
+
+# With framework-specific parameters (extra)
+params = ConfigParams(
+    temperature=0,
+    parallelism=8,
+    extra={
+        "num_fewshot": 5,
+        "tokenizer": "/path/to/tokenizer",
+        "custom_prompt": "Answer the question:"
+    }
+)
+```
+
+:::{admonition} How to see possible parameters for a given task
+:class: important
+
+**Python API (core)** — Get default params and which params a task uses. Use `framework_name.task_name` to avoid ambiguity when the same task name exists in multiple harnesses:
+
+```python
+from nemo_evaluator.core.input import get_available_evaluations
+
+# Returns (framework_evals_mapping, framework_defaults, all_eval_name_mapping)
+framework_evals, _, _ = get_available_evaluations()
+
+# Use framework_name.task_name (e.g. simple_evals.mmlu_pro) for a single task
+framework_name, task_name = "simple_evals", "mmlu_pro"
+eval_obj = framework_evals[framework_name][task_name]
+
+# Default params for this task (ConfigParams / dict-like)
+print(eval_obj.config.params)
+
+# Command template shows which {{ config.params.* }} the task uses
+print(eval_obj.command)
+```
+
+**CLI (core)** — List tasks, then show merged config (including params) for a task:
+
+```bash
+# List available tasks
+nemo-evaluator ls
+
+# Show full rendered config (including config.params) for a task without running
+# Use framework_name.task_name (e.g. simple_evals.mmlu_pro) to avoid ambiguity
+nemo-evaluator run_eval --eval_type simple_evals.mmlu_pro --model_id x --model_url https://example.com/v1/chat/completions --model_type chat --output_dir ./out --dry_run
+```
+
+The `--dry_run` output prints the merged configuration (YAML) and the rendered command, so you can see which parameters apply to that task.
+
+**Launcher** — If you use the launcher, `nemo-evaluator-launcher ls task <task_name>` (or `harness.task_name`) prints task details including **Defaults** with `config.params` and `config.params.extra`. List all tasks with `nemo-evaluator-launcher ls tasks`.
+:::
+
+## Universal Parameters
+
+These parameters are standardized across all frameworks and share the same names and semantics. That does **not** mean every framework supports every parameter: each task’s command template only uses a subset. If you pass a parameter that the task does not use, you will see a warning like: *"Configuration contains parameter(s) that are not used in the command template"* (see `validate_params_in_command` in `nemo_evaluator.core.utils`). 
+
+```{list-table}
+:header-rows: 1
+:widths: 12 14 10 28 22 14
+
+* - Category
+  - Parameter
+  - Type
+  - Description
+  - Example Values
+  - Notes
+* - Sampling
+  - `temperature`
+  - `float`
+  - Sampling randomness
+  - `0` (deterministic), `0.7` (creative)
+  - Use `0` for reproducible results
+* - Sampling
+  - `top_p`
+  - `float`
+  - Nucleus sampling threshold
+  - `1.0` (disabled), `0.9` (selective)
+  - Controls diversity of generated text
+* - Sampling
+  - `max_new_tokens`
+  - `int`
+  - Maximum response length
+  - `256`, `512`, `1024`
+  - Limits generation length
+* - Evaluation control
+  - `limit_samples`
+  - `int/float`
+  - Evaluation subset size
+  - `100` (count), `0.1` (10% of dataset)
+  - Use for quick testing or resource limits
+* - Evaluation control
+  - `task`
+  - `str`
+  - Task-specific identifier
+  - `"custom_task"`
+  - Used by some harnesses for task routing
+* - Performance
+  - `parallelism`
+  - `int`
+  - Concurrent request threads
+  - `1`, `8`, `16`
+  - Balance against server capacity
+* - Performance
+  - `max_retries`
+  - `int`
+  - Retry attempts for failed requests
+  - `3`, `5`, `10`
+  - Increases robustness for network issues
+* - Performance
+  - `request_timeout`
+  - `int`
+  - Request timeout (seconds)
+  - `60`, `120`, `300`
+  - Adjust for model response time
+```
+
+## Framework-Specific Parameters
+
+Framework-specific parameters are passed through the `extra` dictionary within `ConfigParams`.
+
+::::{dropdown} LM-Evaluation-Harness Parameters
+:icon: code-square
+
+```{list-table}
+:header-rows: 1
+:widths: 15 10 30 25 20
+
+* - Parameter
+  - Type
+  - Description
+  - Example Values
+  - Use Cases
+* - `num_fewshot`
+  - `int`
+  - Few-shot examples count
+  - `0`, `5`, `25`
+  - Academic benchmarks
+* - `tokenizer`
+  - `str`
+  - Tokenizer path
+  - `"/path/to/tokenizer"`
+  - Log-probability tasks
+* - `tokenizer_backend`
+  - `str`
+  - Tokenizer implementation
+  - `"huggingface"`, `"sentencepiece"`
+  - Custom tokenizer setups
+* - `trust_remote_code`
+  - `bool`
+  - Allow remote code execution
+  - `True`, `False`
+  - For custom tokenizers
+* - `add_bos_token`
+  - `bool`
+  - Add beginning-of-sequence token
+  - `True`, `False`
+  - Model-specific formatting
+* - `add_eos_token`
+  - `bool`
+  - Add end-of-sequence token
+  - `True`, `False`
+  - Model-specific formatting
+* - `fewshot_delimiter`
+  - `str`
+  - Separator between examples
+  - `"\\n\\n"`, `"\\n---\\n"`
+  - Custom prompt formatting
+* - `fewshot_seed`
+  - `int`
+  - Reproducible example selection
+  - `42`, `1337`
+  - Ensures consistent few-shot examples
+* - `description`
+  - `str`
+  - Custom prompt prefix
+  - `"Answer the question:"`
+  - Task-specific instructions
+* - `bootstrap_iters`
+  - `int`
+  - Statistical bootstrap iterations
+  - `1000`, `10000`
+  - For confidence intervals
+```
+
+::::
+
+::::{dropdown} Simple-Evals Parameters
+:icon: code-square
+
+```{list-table}
+:header-rows: 1
+:widths: 15 10 30 25 20
+
+* - Parameter
+  - Type
+  - Description
+  - Example Values
+  - Use Cases
+* - `pass_at_k`
+  - `list[int]`
+  - Code evaluation metrics
+  - `[1, 5, 10]`
+  - Code generation tasks
+* - `timeout`
+  - `int`
+  - Code execution timeout
+  - `5`, `10`, `30`
+  - Code generation tasks
+* - `max_workers`
+  - `int`
+  - Parallel execution workers
+  - `4`, `8`, `16`
+  - Code execution parallelism
+* - `languages`
+  - `list[str]`
+  - Target programming languages
+  - `["python", "java", "cpp"]`
+  - Multi-language evaluation
+```
+
+::::
+
+::::{dropdown} BigCode-Evaluation-Harness Parameters
+:icon: code-square
+
+```{list-table}
+:header-rows: 1
+:widths: 15 10 30 25 20
+
+* - Parameter
+  - Type
+  - Description
+  - Example Values
+  - Use Cases
+* - `num_workers`
+  - `int`
+  - Parallel execution workers
+  - `4`, `8`, `16`
+  - Code execution parallelism
+* - `eval_metric`
+  - `str`
+  - Evaluation metric
+  - `"pass_at_k"`, `"bleu"`
+  - Different scoring methods
+* - `languages`
+  - `list[str]`
+  - Programming languages
+  - `["python", "javascript"]`
+  - Language-specific evaluation
+```
+
+::::
+
+::::{dropdown} Safety and Specialized Harnesses
+:icon: code-square
+
+```{list-table}
+:header-rows: 1
+:widths: 15 10 30 25 20
+
+* - Parameter
+  - Type
+  - Description
+  - Example Values
+  - Use Cases
+* - `probes`
+  - `str`
+  - Garak security probes
+  - `"ansiescape.AnsiEscaped"`
+  - Security evaluation
+* - `detectors`
+  - `str`
+  - Garak security detectors
+  - `"base.TriggerListDetector"`
+  - Security evaluation
+* - `generations`
+  - `int`
+  - Number of generations per prompt
+  - `1`, `5`, `10`
+  - Safety evaluation
+```
+
+::::
+
+## Parameter Selection Guidelines
+
+- Configure `parallelism` and `request_timeout` based on server capacity.
+- Use `limit_samples` for subset evaluation (e.g. for debugging or quick validation).
+
+## Common Configuration Errors
+
+### Tokenizer Issues
+
+:::{admonition} Problem
+:class: error
+Missing tokenizer for log-probability tasks
+
+```python
+# Incorrect - missing tokenizer
+params = ConfigParams(extra={})
+```
+:::
+
+:::{admonition} Solution
+:class: tip
+Always specify tokenizer for log-probability tasks
+
+```python
+# Correct
+params = ConfigParams(
+    extra={
+        "tokenizer_backend": "huggingface",
+        "tokenizer": "/path/to/nemo_tokenizer"
+    }
+)
+```
+:::
+
+### Performance Issues
+
+:::{admonition} Problem
+:class: error
+Excessive parallelism overwhelming server
+
+```python
+# Incorrect - too many concurrent requests
+params = ConfigParams(parallelism=100)
+```
+:::
+
+:::{admonition} Solution
+:class: tip
+Start conservative and scale up
+
+```python
+# Correct - reasonable concurrency
+params = ConfigParams(parallelism=8, max_retries=3)
+```
+:::
+
+### Parameter Conflicts
+
+:::{admonition} Problem
+:class: error
+Mixing generation and log-probability parameters
+
+```python
+# Incorrect - generation params unused for log-probability
+params = ConfigParams(
+    temperature=0.7,  # Ignored for log-probability tasks
+    extra={"tokenizer": "/path"}
+)
+```
+:::
+
+:::{admonition} Solution
+:class: tip
+Use appropriate parameters for task type
+
+```python
+# Correct - only relevant parameters
+params = ConfigParams(
+    limit_samples=100,  # Relevant for all tasks
+    extra={"tokenizer": "/path"}  # Required for log-probability
+)
+```
+:::
+
+## Next Steps
+
+- **Basic Usage**: See {ref}`text-gen` for getting started
+- **Custom Tasks**: Learn {ref}`eval-custom-tasks` for specialized evaluations
+- **Troubleshooting**: Refer to {ref}`troubleshooting-index` for common issues
+- **Benchmarks**: Browse {ref}`eval-benchmarks` for task-specific recommendations
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/examples/local_basic.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# How to use:
+#
+# 1. copy this file locally or clone the repository
+# 2. (optional) comment out limit_samples in the config file to run on the full dataset
+# 3. run `nemo-evaluator-launcher run --config path/to/local_basic.yaml`
+#
+# ⚠️  WARNING:
+#     Always run full evaluations (without limit_samples) for actual benchmark results.
+#     Using a subset of samples is solely for testing configuration and setup.
+#     Results from such test runs should NEVER be used to compare models or
+#     report benchmark performance.
+
+# [docs-start-snippet]
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+execution:
+  output_dir: nel-results
+
+target:
+  api_endpoint:
+    # see https://build.nvidia.com/meta/llama-3_1-8b-instruct for endpoint details
+    model_id: meta/llama-3.2-3b-instruct
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key_name: NGC_API_KEY # API Key with access to build.nvidia.com
+
+# specify the benchmarks to evaluate
+evaluation:
+  # global config settings that apply to all tasks, unless overridden by task-specific config
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600  # timeout for API request in seconds
+        parallelism: 1  # 1 parallel request to avoid overloading the server
+        limit_samples: 10 # TEST ONLY: Limits all benchmarks to 10 samples for quick testing
+  tasks:
+    - name: lm-evaluation-harness.ifeval
+    - name: simple_evals.gpqa_diamond
+      env_vars:
+        HF_TOKEN: host:HF_TOKEN_FOR_GPQA_DIAMOND # Click request access for GPQA-Diamond: https://huggingface.co/datasets/Idavidrein/gpqa
+    - name: bigcode-evaluation-harness.mbpp-chat
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/examples/local_reasoning.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# How to use:
+#
+# 1. copy this file locally or clone the repository
+# 2. (optional) uncomment limit_samples in the config file to run with 10 samples for quick testing
+# 3. run `nemo-evaluator-launcher run --config path/to/local_reasoning.yaml`
+
+# ⚠️  WARNING:
+#     Always run full evaluations (without limit_samples) for actual benchmark results.
+#     Using a subset of samples is solely for testing configuration and setup.
+#     Results from such test runs should NEVER be used to compare models or
+#     report benchmark performance.
+
+# [docs-start-snippet]
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+execution:
+  output_dir: nel-results
+
+target:
+  api_endpoint:
+    # see https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2 for endpoint details
+    model_id: nvidia/nvidia-nemotron-nano-9b-v2
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key_name: NGC_API_KEY # API Key with access to build.nvidia.com
+
+evaluation:
+  # global config settings that apply to all tasks, unless overridden by task-specific config
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600  # timeout for API request in seconds
+        parallelism: 1  # 1 parallel request to avoid overloading the server
+        # limit_samples: 10 # uncomment to limit number of samples for quick testing
+
+  tasks:
+    # run complex tasks with reasoning on
+    - name: simple_evals.mmlu_pro
+      nemo_evaluator_config:
+        config:
+          params:
+            temperature: 0.6
+            top_p: 0.95
+            max_new_tokens: 32768  # for reasoning + final answer
+        target:
+          api_endpoint:
+            adapter_config:
+              process_reasoning_traces: true # strips reasoning tokens and collects reasoning stats
+              use_system_prompt: true # turn reasoning on with special system prompt
+              custom_system_prompt: >-
+                "/think"
+
+    # run simpler tasks with reasoning off
+    - name: lm-evaluation-harness.ifeval
+      nemo_evaluator_config:
+        config:
+          params:
+            max_new_tokens: 1024 # we can use less tokens with reasoning off
+        target:
+          api_endpoint:
+            adapter_config:
+              use_system_prompt: true # turn reasoning off with special system prompt
+              custom_system_prompt: >-
+                "/no_think"
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/resources/config_templates/evaluation/base/default.yaml
+```yaml
+# Base model evaluation configuration (completions endpoint)
+# Uses log-probabilities for multiple-choice tasks
+# See: https://docs.nvidia.com/nemo/evaluator/latest/evaluation/run-evals/logprobs.html
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600
+        parallelism: 64
+        extra:
+          # Tokenizer required for log-probability tasks
+          tokenizer: ??? # HuggingFace model handle or path to tokenizer (must match evaluated model)
+          tokenizer_backend: huggingface # or "tiktoken"
+  env_vars:
+    HF_TOKEN: HF_TOKEN # Required to access gated tokenizers
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/resources/config_templates/evaluation/base/standard.yaml
+```yaml
+# Standard LLM Benchmarks for base models (completions endpoint, log-probability based)
+# These tasks use log-probabilities to assess model confidence on answer choices
+evaluation:
+  tasks:
+    - name: lm-evaluation-harness.mmlu # Log-prob based multiple choice
+    - name: lm-evaluation-harness.gpqa # Log-prob based (completions version)
+    - name: lm-evaluation-harness.arc_challenge # Log-prob based
+    - name: lm-evaluation-harness.hellaswag # Log-prob based
+    - name: lm-evaluation-harness.commonsense_qa # Log-prob based
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/resources/config_templates/evaluation/chat/default.yaml
+```yaml
+# Chat model evaluation configuration (chat endpoint)
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600
+        parallelism: 64
+        temperature: 0.0 # Deterministic for reproducibility
+        max_new_tokens: 2048
+
+```
+</file_contents>

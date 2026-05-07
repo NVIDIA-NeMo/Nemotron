@@ -26,6 +26,7 @@ DEFAULT_STEPS_ROOT = Path(__file__).resolve().parent
 DEFAULT_PATTERNS_DIR = DEFAULT_STEPS_ROOT / "patterns"
 CATEGORY_TITLES = {
     "benchmark": "Benchmarking",
+    "byob": "Bring Your Own Benchmark",
     "convert": "Conversion",
     "curate": "Data Curation",
     "eval": "Evaluation",
@@ -36,6 +37,7 @@ CATEGORY_TITLES = {
     "rl": "Reinforcement Learning",
     "sft": "Supervised Fine-Tuning",
     "sdg": "Synthetic Data Generation",
+    "synth": "Synthetic Data Generation",
     "translate": "Translation",
 }
 VALID_PATTERN_CONFIDENCE = {"high", "medium", "experimental"}

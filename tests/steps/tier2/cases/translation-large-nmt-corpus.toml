@@ -1,0 +1,27 @@
+[case]
+name = "translation-large-nmt-corpus"
+description = "Large plain-text corpus translation with a local NMT server should stay translation-only and choose the NMT backend."
+tags = ["translation", "nmt", "large-corpus", "throughput"]
+
+[input]
+request = "Translate a large English news corpus to Hindi with a local NMT server."
+
+[expected.steps]
+must_include = ["translate/translation"]
+may_include = []
+must_exclude = ["curate/nemo_curator", "prep/sft_packing", "sft/megatron_bridge", "sft/automodel", "eval/model_eval"]
+
+[expected.plan]
+has_mermaid_diagram = true
+stage_count = { min = 1, max = 1 }
+must_mention = ["English", "Hindi", "NMT", "server_url"]
+
+[expected.project]
+must_have_files = ["pipeline.py", "pyproject.toml", "README.md", "env.toml.example"]
+must_have_stages = ["01_translate"]
+must_have_tiny_config = false
+no_relative_data_paths = true
+
+[expected.disclosure]
+must_read = ["STEPS.md", "PATTERNS.md", "translate/translation/step.toml"]
+must_not_read = ["sft/guide.md"]

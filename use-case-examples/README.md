@@ -16,3 +16,4 @@ These examples showcase **complete implementations** of agentic workflows, RAG s
 |---------|-------------|
 | [RAG Agent with Nemotron RAG Models](RAG Agent with Nemotron RAG Models/README.md) | End-to-end example of a Retrieval-Augmented Generation (RAG) agent workflow using Nemotron RAG models through Hugging Face and Nemotron 9B hosted through build.nvidia.com models |
 | [Data Science ML Agent](Data Science ML Agent/README.md) | End-to-end example of a natural language-driven data science and machine learning agent powered by NVIDIA GPUs. The agent allows users to perform data exploration, model training, and hyperparameter optimization interactively using RAPIDS cuDF and cuML for GPU acceleration.|
+| [Build Your Own Benchmark](build-your-own-benchmark/README.md) | End-to-end BYOB MCQ benchmark example using the `src/nemotron/steps/byob` step, packaged step configs, and `nemotron byob` CLI. |

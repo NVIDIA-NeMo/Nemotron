@@ -1,0 +1,743 @@
+<file_map>
+/Users/mromeijn/src/Evaluator
+├── docs
+│   └── deployment
+│       ├── launcher-orchestrated
+│       │   └── index.md *
+│       └── nemo-fw
+│           ├── hf.md *
+│           ├── index.md *
+│           └── mbridge.md *
+└── packages
+    └── nemo-evaluator-launcher
+        ├── examples
+        │   ├── local_nim.yaml *
+        │   ├── local_vllm_logprobs.yaml *
+        │   └── slurm_nim.yaml *
+        └── src
+            └── nemo_evaluator_launcher
+                ├── configs
+                │   ├── deployment
+                │   │   ├── nim.yaml *
+                │   │   └── vllm.yaml *
+                │   └── default.yaml *
+                └── resources
+                    └── config_templates
+                        └── deployment
+                            ├── nim.yaml *
+                            └── vllm.yaml *
+</file_map>
+<file_contents>
+File: /Users/mromeijn/src/Evaluator/docs/deployment/nemo-fw/index.md
+```md
+(deployment-nemo-fw)=
+# Deploy and Evaluate Checkpoints Trained by NeMo Framework
+
+The NeMo Framework is NVIDIA’s GPU-accelerated, end-to-end training platform for large language models (LLMs), multimodal models, and speech models. It enables seamless scaling of both pretraining and post-training workloads, from a single GPU to clusters with thousands of nodes, supporting Hugging Face/PyTorch and Megatron models. NeMo includes a suite of libraries and curated training recipes to help users build models from start to finish.
+
+The NeMo Evaluator is integrated within NeMo Framework, offering streamlined deployment and advanced evaluation capabilities for models trained using NeMo, leveraging state-of-the-art evaluation harnesses.
+
+## Features
+
+- **Multi-Backend Deployment**: Supports PyTriton and multi-instance evaluations using the Ray Serve deployment backend
+- **Production-Ready**: Supports high-performance inference with CUDA graphs and flash decoding for Megatron models, vLLM backend for Hugging Face models and TRTLLM engine for TRTLLM models
+- **Multi-GPU and Multi-Node Support**: Enables distributed inference across multiple GPUs and compute nodes
+- **OpenAI-Compatible API**: Provides RESTful endpoints aligned with OpenAI API specifications
+
+## Architecture
+
+### 1. Deployment Layer
+
+- **PyTriton Backend**: Provides high-performance inference through the NVIDIA Triton Inference Server, with OpenAI API compatibility via a FastAPI interface. Supports model parallelism across single-node and multi-node configurations. Note: Multi-instance evaluation is not supported.
+- **Ray Backend**: Enables multi-instance evaluation with model parallelism on a single node using Ray Serve, while maintaining OpenAI API compatibility. Multi-node support is coming soon.
+
+For more information on the deployment, please see [NeMo Export-Deploy](https://github.com/NVIDIA-NeMo/Export-Deploy).
+
+### 2. Evaluation Layer
+
+- **NeMo Evaluator**: Provides standardized benchmark evaluations using packages from NVIDIA Eval Factory, bundled in the NeMo Framework container. The `lm-evaluation-harness` is pre-installed by default, and additional evaluation packages can be added as needed. For more information, see {ref}`core-wheels` and {ref}`lib-core`.
+
+
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+Introduction <self>
+PyTriton Serving Backend <pytriton>
+Ray Serving Backend <ray>
+Evaluate Megatron Bridge Checkpoints <mbridge>
+Evaluate Automodel Checkpoints <hf>
+Evaluate TRTLLM Checkpoints <trtllm>
+```
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/deployment/nemo-fw/hf.md
+```md
+# Evaluate Automodel Checkpoints Trained by NeMo Framework
+
+This guide provides step-by-step instructions for evaluating checkpoints trained using the NeMo Framework with the Automodel backend. This section specifically covers evaluation with [nvidia-lm-eval](https://pypi.org/project/nvidia-lm-eval/), a wrapper around the [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness/tree/main) tool.
+
+Here, we focus on benchmarks within the `lm-evaluation-harness` that depend on text generation. Evaluation on log-probability-based benchmarks is available in [Evaluate Automodel Checkpoints on Log-probability benchmarks](#evaluate-automodel-checkpoints-on-log-probability-benchmarks).
+
+## Deploy Automodel Checkpoints
+
+This section outlines the steps to deploy Automodel checkpoints using Python commands.
+
+Automodel checkpoint deployment uses Ray Serve as the serving backend. It also offers an OpenAI API (OAI)-compatible endpoint, similar to deployments of checkpoints trained with the Megatron Core backend. An example deployment command is shown below.
+
+```{literalinclude} _snippets/deploy_hf.sh
+:language: bash
+:start-after: "# [snippet-start]"
+:end-before: "# [snippet-end]"
+```
+
+The `--model_path` can refer to either a local checkpoint path or a Hugging Face model ID, as shown in the example above. In the example above, checkpoint deployment uses the `vLLM` backend. To enable accelerated inference, install `vLLM` in your environment. To install `vLLM` inside the NeMo Framework container, follow the steps below as shared in [Export-Deploy's README](https://github.com/NVIDIA-NeMo/Export-Deploy?tab=readme-ov-file#install-tensorrt-llm-vllm-or-trt-onnx-backend:~:text=cd%20/opt/export%2ddeploy%0auv%20sync%20%2d%2dinexact%20%2d%2dlink%2dmode%20symlink%20%2d%2dlocked%20%2d%2dextra%20vllm%20%24(cat%20/opt/uv_args.txt)):
+
+```shell
+cd /opt/Export-Deploy
+uv sync --inexact --link-mode symlink --locked --extra vllm $(cat /opt/uv_args.txt)
+```
+
+To install `vLLM` outside of the NeMo Framework container, follow the steps mentioned [here](https://github.com/NVIDIA-NeMo/Export-Deploy?tab=readme-ov-file#install-tensorrt-llm-vllm-or-trt-onnx-backend:~:text=install%20transformerengine%20%2b%20vllm).
+
+:::{note}
+25.11 release of NeMo Framework container comes with `vLLM` pre-installed and its not necessary to explicitly install it. However for all previous releases, please refer to the instructions above to install `vLLM` inside the NeMo Framework container.
+:::
+
+If you prefer to evaluate the Automodel checkpoint without using the `vLLM` backend, remove the `--use_vllm_backend` flag from the command above.
+
+:::{note}
+To speed up evaluation using multiple instances, increase the `num_replicas` parameter.
+For additional guidance, refer to {ref}`nemo-fw-ray`.
+:::
+
+## Evaluate Automodel Checkpoints
+
+This section outlines the steps to evaluate Automodel checkpoints using Python commands. This method is quick and easy, making it ideal for interactive evaluations. 
+
+Once deployment is successful, you can run evaluations using the {ref}`lib-core` API.
+
+Before starting the evaluation, it’s recommended to use the [`check_endpoint`](https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator/src/nemo_evaluator/core/utils.py) function to verify that the endpoint is responsive and ready to accept requests.
+
+```{literalinclude} _snippets/mmlu.py
+:language: python
+:start-after: "## Run the evaluation"
+```
+
+## Evaluate Automodel Checkpoints on Log-probability Benchmarks
+
+To evaluate Automodel checkpoints on benchmarks that require log-probabilities, use the same deployment command provided in [Deploy Automodel Checkpoints](#deploy-automodel-checkpoints). These benchmarks are supported by both the `vLLM` backend (enabled via the `--use_vllm_backend` flag) and by directly deploying the Automodel checkpoint.
+
+For evaluation, you must specify the path to the `tokenizer` and set the `tokenizer_backend` parameter as shown below. The `tokenizer` files are located within the checkpoint directory.
+
+```{literalinclude} _snippets/arc_challenge_hf.py
+:language: python
+:start-after: "## Run the evaluation"
+```
+
+## Evaluate Automodel Checkpoints on Chat Benchmarks
+
+To evaluate Automodel checkpoints on chat benchmarks you need the chat endpoint (`/v1/chat/completions/`). The deployment command provided in [Deploy Automodel Checkpoints](#deploy-automodel-checkpoints) also exposes the chat endpoint, and the same command can be used for evaluating on chat benchmarks.
+
+For evaluation, update the URL by replacing `/v1/completions/` with `/v1/chat/completions/` as shown below. Additionally, set the `type` field to `"chat"` to indicate a chat benchmark.
+
+```{literalinclude} _snippets/ifeval.py
+:language: python
+:start-after: "## Run the evaluation"
+```
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/deployment/nemo-fw/mbridge.md
+```md
+# Evaluate Megatron Bridge Checkpoints Trained by NeMo Framework
+
+This guide provides step-by-step instructions for evaluating [Megatron Bridge](https://docs.nvidia.com/nemo/megatron-bridge/latest/index.html) checkpoints trained using the NeMo Framework with the Megatron Core backend. This section specifically covers evaluation with [nvidia-lm-eval](https://pypi.org/project/nvidia-lm-eval/), a wrapper around the [
+lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness/tree/main) tool.
+
+First, we focus on benchmarks within the `lm-evaluation-harness` that depend on text generation. Evaluation on log-probability-based benchmarks is available in the subsequent section [Evaluate Megatron Bridge Checkpoints on Log-probability benchmarks](#evaluate-megatron-bridge-checkpoints-on-log-probability-benchmarks).
+
+## Deploy Megatron Bridge Checkpoints
+
+To evaluate a checkpoint saved during pretraining or fine-tuning with [Megatron-Bridge](https://docs.nvidia.com/nemo/megatron-bridge/latest/recipe-usage.html), provide the path to the saved checkpoint using the `--megatron_checkpoint` flag in the deployment command below. Otherwise, Hugging Face checkpoints can be converted to Megatron Bridge using the single shell command:
+
+```bash
+huggingface-cli login --token <your token>
+python -c "from megatron.bridge import AutoBridge; AutoBridge.import_ckpt('meta-llama/Meta-Llama-3-8B','/workspace/mbridge_llama3_8b/')"
+```
+
+The deployment scripts are available inside the [`/opt/Export-Deploy/scripts/deploy/nlp/`](https://github.com/NVIDIA-NeMo/Export-Deploy/tree/main/scripts/deploy/nlp) directory. Below is an example command for deployment. It uses a Hugging Face LLaMA 3 8B checkpoint that has been converted to Megatron Bridge format using the command shared above.
+
+```{literalinclude} _snippets/deploy_mbridge.sh
+:language: bash
+:start-after: "# [snippet-start]"
+:end-before: "# [snippet-end]"
+```
+
+:::{note}
+Megatron Bridge creates checkpoints in directories named `iter_N`, where *N* is the iteration number. Each `iter_N` directory contains model weights and related artifacts. When using a checkpoint, make sure to provide the path to the appropriate `iter_N` directory. Hugging Face checkpoints converted for Megatron Bridge are typically stored in a directory named `iter_0000000`, as shown in the command above.
+:::
+
+:::{note}
+Megatron Bridge deployment for evaluation is supported only with Ray Serve and not PyTriton.
+:::
+
+## Evaluate Megatron Bridge Checkpoints
+
+Once deployment is successful, you can run evaluations using the NeMo Evaluator API. See {ref}`lib-core` for more details.
+
+Before starting the evaluation, it’s recommended to use the [`check_endpoint`](https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator/src/nemo_evaluator/core/utils.py) function to verify that the endpoint is responsive and ready to accept requests.
+
+```{literalinclude} _snippets/mmlu.py
+:language: python
+:start-after: "## Run the evaluation"
+```
+
+## Evaluate Megatron Bridge Checkpoints on Log-probability Benchmarks
+
+To evaluate Megatron Bridge checkpoints on benchmarks that require log-probabilities, use the same deployment command provided in [Deploy Megatron Bridge Checkpoints](#deploy-megatron-bridge-checkpoints).
+
+For evaluation, you must specify the path to the `tokenizer` and set the `tokenizer_backend` parameter as shown below. The `tokenizer` files are located within the `tokenizer` directory of the checkpoint.
+
+```{literalinclude} _snippets/arc_challenge_mbridge.py
+:language: python
+:start-after: "## Run the evaluation"
+```
+
+## Evaluate Megatron Bridge Checkpoints on Chat Benchmarks
+
+To evaluate Megatron Bridge checkpoints on chat benchmarks you need the chat endpoint (/v1/chat/completions/). The deployment command provided in [Deploy Megatron Bridge Checkpoints](#deploy-megatron-bridge-checkpoints) also exposes the chat endpoint, and the same command can be used for evaluating on chat benchmarks.
+
+For evaluation, update the URL by replacing `/v1/completions/` with `/v1/chat/completions/` as shown below. Additionally, set the `type` field to `"chat"` to indicate a chat benchmark.
+
+```{literalinclude} _snippets/ifeval.py
+:language: python
+:start-after: "## Run the evaluation"
+```
+
+```
+
+File: /Users/mromeijn/src/Evaluator/docs/deployment/launcher-orchestrated/index.md
+```md
+---
+orphan: true
+---
+(launcher-orchestrated-deployment)=
+
+# Launcher-Orchestrated Deployment
+
+Let NeMo Evaluator Launcher handle both model deployment and evaluation orchestration automatically. This is the recommended approach for most users, providing automated lifecycle management, multi-backend support, and integrated monitoring.
+
+## Overview
+
+Launcher-orchestrated deployment means the launcher:
+- Deploys your model using the specified deployment type
+- Manages the model serving lifecycle
+- Runs evaluations against the deployed model
+- Handles cleanup and resource management
+
+The launcher supports multiple deployment backends and execution environments.
+
+## Quick Start
+
+```bash
+# Deploy model and run evaluation in one command (Slurm example)
+HOSTNAME=cluster-login-node.com
+ACCOUNT=my_account
+OUT_DIR=/absolute/path/on/login/node
+
+nemo-evaluator-launcher run \
+    -o execution.hostname=$HOSTNAME \
+    -o execution.account=$ACCOUNT \
+    -o execution.output_dir=$OUT_DIR \
+    --config packages/nemo-evaluator-launcher/examples/slurm_vllm_basic.yaml
+```
+
+## Execution Backends
+
+Choose the execution backend that matches your infrastructure:
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`desktop-download;1.5em;sd-mr-1` Local Execution
+:link: local
+:link-type: doc
+Run evaluations on your local machine against existing endpoints. **Note**: Local executor does **not** deploy models. Use Slurm or Lepton for deployment.
+:::
+
+:::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` Slurm Deployment
+:link: slurm
+:link-type: doc
+Deploy on HPC clusters with Slurm workload manager. Ideal for large-scale evaluations with multi-node parallelism.
+:::
+
+:::{grid-item-card} {octicon}`cloud;1.5em;sd-mr-1` Lepton Deployment
+:link: lepton
+:link-type: doc
+Deploy on Lepton AI cloud platform. Best for cloud-native deployments with managed infrastructure and auto-scaling.
+:::
+
+::::
+
+## Deployment Types
+
+The launcher supports multiple deployment types:
+
+### vLLM Deployment
+- **Fast inference** with optimized attention mechanisms
+- **Continuous batching** for high throughput
+- **Tensor parallelism** support for large models
+- **Memory optimization** with configurable GPU utilization
+
+### NIM Deployment  
+- **Production-grade reliability** with enterprise features
+- **NVIDIA optimized containers** for maximum performance
+- **Built-in monitoring** and logging capabilities
+- **Enterprise security** features
+
+### SGLang Deployment
+- **Structured generation** support for complex tasks
+- **Function calling** capabilities
+- **JSON mode** for structured outputs
+- **Efficient batching** for high throughput
+
+### No Deployment
+- **Use existing endpoints** without launcher deployment
+- **Bring-your-own-endpoint** integration
+- **Flexible configuration** for any OpenAI-compatible API
+
+## Configuration Overview
+
+Basic configuration structure for launcher-orchestrated deployment:
+
+```yaml
+# Use Hydra defaults to compose config
+defaults:
+  - execution: slurm/default  # or lepton/default; local does not deploy
+  - deployment: vllm  # or nim, sglang, none
+  - _self_
+
+# Deployment configuration
+deployment:
+  checkpoint_path: /path/to/model  # Or HuggingFace model ID
+  served_model_name: my-model
+  # ... deployment-specific options
+
+# Execution backend configuration
+execution:
+  account: my-account
+  output_dir: /path/to/results
+  # ... backend-specific options
+
+# Evaluation tasks
+evaluation:
+  tasks:
+    - name: mmlu_pro
+    - name: gsm8k
+```
+
+## Key Benefits
+
+### Automated Lifecycle Management
+- **Deployment automation**: No manual setup required
+- **Resource management**: Automatic allocation and cleanup  
+- **Error handling**: Built-in retry and recovery mechanisms
+- **Monitoring integration**: Real-time status and logging
+
+### Multi-Backend Support
+- **Consistent interface**: Same commands work across all backends
+- **Environment flexibility**: Local development to production clusters
+- **Resource optimization**: Backend-specific optimizations
+- **Scalability**: From single GPU to multi-node deployments
+
+### Integrated Workflows
+- **End-to-end automation**: From model to results in one command
+- **Configuration management**: Version-controlled, reproducible configs
+- **Result integration**: Built-in export and analysis tools
+- **Monitoring and debugging**: Comprehensive logging and status tracking
+
+## Getting Started
+
+1. **Choose your backend**: Start with {ref}`launcher-orchestrated-local` for development
+2. **Configure your model**: Set deployment type and model path
+3. **Run evaluation**: Use the launcher to deploy and evaluate
+4. **Monitor progress**: Check status and logs during execution
+5. **Analyze results**: Export and analyze evaluation outcomes
+
+## Next Steps
+
+- **Local Development**: Start with {ref}`launcher-orchestrated-local` for testing
+- **Scale Up**: Move to {ref}`launcher-orchestrated-slurm` for production workloads  
+- **Cloud Native**: Try {ref}`launcher-orchestrated-lepton` for managed infrastructure
+- **Configure Adapters**: Set up {ref}`adapters` for custom processing
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+Local Deployment <local>
+Slurm Deployment <slurm>
+Lepton Deployment <lepton>
+```
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/examples/local_nim.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# How to use:
+#
+# 1. copy this file locally or clone the repository
+# 2. set the NIM image and model name for your model
+# 3. replace /path/to/nim/cache with the absolute path to the NIM cache directory on your machine
+# 4. (optional) comment out limit_samples to run on the full dataset
+# 5. run `nemo-evaluator-launcher run --config path/to/local_nim.yaml`
+#
+# ⚠️  WARNING:
+#     Always run full evaluations (without limit_samples) for actual benchmark results.
+#     Using a subset of samples is solely for testing configuration and setup.
+#     Results from such test runs should NEVER be used to compare models or
+#     report benchmark performance.
+
+defaults:
+  - execution: local
+  - deployment: nim
+  - _self_
+
+execution:
+  output_dir: nel-results-nim
+  mounts:
+    deployment:
+      # Replace /path/to/nim/cache with the absolute path to the NIM cache directory on your machine
+      /path/to/nim/cache: /opt/nim/.cache
+
+# NIM deployment configuration
+# Note: model_id is auto-derived from deployment.served_model_name
+deployment:
+  image: nvcr.io/nim/meta/llama-3.2-1b-instruct:latest
+  served_model_name: meta/llama-3.2-1b-instruct
+  env_vars:
+    NGC_API_KEY: host:NGC_API_KEY
+
+# Specify the benchmarks to evaluate
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600
+        parallelism: 4
+        limit_samples: 10 # TEST ONLY: remove for full evaluation
+  tasks:
+    - name: lm-evaluation-harness.ifeval
+    - name: gsm8k
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/examples/slurm_nim.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# How to use:
+#
+# 1. copy this file locally or clone the repository
+# 2. set the required values (marked with ???) or pass them via -o cli arguments, e.g.
+#    -o execution.hostname=my-cluster.com -o execution.output_dir=/path/on/cluster -o execution.account=my-account
+# 3. replace /path/to/nim/cache with the absolute path to the NIM cache directory on the cluster
+# 4. (optional) run with 10 samples for quick testing:
+#    -o ++evaluation.nemo_evaluator_config.config.params.limit_samples=10
+# 5. run full evaluation:
+#    nemo-evaluator-launcher run --config path/to/slurm_nim.yaml
+#
+# ⚠️  WARNING:
+#     Always run full evaluations (without limit_samples) for actual benchmark results.
+#     Using a subset of samples is solely for testing configuration and setup.
+#     Results from such test runs should NEVER be used to compare models or
+#     report benchmark performance.
+
+defaults:
+  - execution: slurm/default
+  - deployment: nim
+  - _self_
+
+# SLURM execution configuration
+execution:
+  hostname: ???  # SLURM headnode hostname (required)
+  account: ???  # SLURM account (required)
+  output_dir: ???  # ABSOLUTE path on cluster (required)
+  mounts:
+    deployment:
+      # Replace /path/to/nim/cache with the absolute path to the NIM cache directory on the cluster
+      /path/to/nim/cache: /opt/nim/.cache
+
+# NIM deployment configuration
+deployment:
+  image: nvcr.io/nim/meta/llama-3.2-1b-instruct:latest
+  served_model_name: meta/llama-3.2-1b-instruct
+  env_vars:
+    NGC_API_KEY: host:NGC_API_KEY
+
+# Specify the benchmarks to evaluate
+evaluation:
+  tasks:
+    - name: lm-evaluation-harness.ifeval
+    - name: gsm8k
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/examples/local_vllm_logprobs.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# How to use:
+#
+# 1. copy this file locally or clone the repository
+# 2. (optional) uncomment limit_samples in the config file to run with 10 samples for quick testing
+# 3. run `nemo-evaluator-launcher run --config path/to/local_vllm_logprobs.yaml`
+
+# ⚠️  WARNING: 
+#     Always run full evaluations (without limit_samples) for actual benchmark results.
+#     Using a subset of samples is solely for testing configuration and setup.
+#     Results from such test runs should NEVER be used to compare models or
+#     report benchmark performance.
+
+# [docs-start-snippet]
+defaults:
+  - execution: local
+  - deployment: vllm
+  - _self_
+
+execution:
+  output_dir: llama_local
+deployment:
+  checkpoint_path: null
+  hf_model_handle: meta-llama/Llama-3.1-8B
+  served_model_name: meta-llama/Llama-3.1-8B
+  tensor_parallel_size: 1
+  data_parallel_size: 1
+  extra_args: "--max-model-len 32768"
+  env_vars:
+    HF_TOKEN: host:HF_TOKEN
+
+# specify the benchmarks to evaluate
+evaluation:
+  # global config settings that apply to all tasks, unless overridden by task-specific config
+  nemo_evaluator_config:
+    config:
+      params:
+        request_timeout: 3600  # timeout for API request in seconds
+        parallelism: 1  # 1 parallel request to avoid overloading the server
+        # limit_samples: 10 # uncomment to limit number of samples for quick testing
+        extra:  # for log-probability tasks like piqa, you need to specify the tokenizer
+          tokenizer: meta-llama/Llama-3.1-8B  # or use a path to locally stored checkpoint
+          tokenizer_backend: huggingface      # or "tiktoken"
+  env_vars:
+      HF_TOKEN: host:HF_TOKEN  # needed to access the tokenizer on the client side
+  tasks:
+    - name: piqa
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/configs/default.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+defaults:
+  - execution: local
+  - deployment: none
+  - _self_
+
+# Top-level env vars applied to all jobs (deployment + evaluation).
+# Values use explicit prefixes: "host:VAR_NAME", "lit:value", "runtime:VAR_NAME".
+# Section-level and task-level env_vars override these.
+env_vars: {}
+
+# NOTE(dfridman): If deployment is used, `target` parameters will be automatically populated.
+target:
+  api_endpoint:
+    url: ???
+    model_id: ???
+    api_key_name: "<YOUR_API_KEY_NAME>" # NOTE: the name of the env var
+
+evaluation: []
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/configs/deployment/nim.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+type: nim
+image: ??? # e.g., nvcr.io/nim/meta/llama-3.1-8b-instruct:1.8.6
+served_model_name: ???
+port: 8000
+
+command: /opt/nim/start_server.sh
+
+# NIM containers use default entrypoint - no custom command needed
+# Configuration is done via environment variables in lepton_config
+
+endpoints:
+  chat: /v1/chat/completions
+  completions: /v1/completions
+  health: /v1/health/ready
+# Note: Environment variables should be configured in lepton_config.envs
+# Auto-derived environment variables from deployment config:
+# - SERVED_MODEL_NAME (from served_model_name)
+# - NIM_MODEL_NAME (from served_model_name for NIM)
+# - MODEL_PORT (from port)
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/configs/deployment/vllm.yaml
+```yaml
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+type: vllm
+image: vllm/vllm-openai:latest
+checkpoint_path: ???
+served_model_name: ???
+port: 8000
+tensor_parallel_size: 8
+pipeline_parallel_size: 1
+data_parallel_size: 1
+gpu_memory_utilization: 0.95
+extra_args: ""
+env_vars: {} # {name: value} dict
+
+endpoints:
+  chat: /v1/chat/completions
+  completions: /v1/completions
+  health: /health
+
+command: vllm serve ${oc.select:deployment.hf_model_handle,/checkpoint}
+  --tensor-parallel-size=${deployment.tensor_parallel_size}
+  --pipeline-parallel-size=${deployment.pipeline_parallel_size}
+  --data-parallel-size=${deployment.data_parallel_size}
+  --port ${deployment.port}
+  --trust-remote-code
+  --served-model-name ${deployment.served_model_name}
+  --gpu-memory-utilization ${deployment.gpu_memory_utilization}
+  ${deployment.extra_args}
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/resources/config_templates/deployment/nim.yaml
+```yaml
+defaults:
+  - deployment: nim
+
+execution:
+  env_vars:
+    deployment:
+      NGC_API_KEY: $NGC_API_KEY # Required for NIM container authentication
+  mounts:
+    deployment:
+      /path/to/nim/cache: /opt/nim/.cache # Replace with absolute path to NIM cache directory
+
+deployment:
+  image: ??? # NIM image (e.g., nvcr.io/nim/meta/llama-3.2-1b-instruct:latest)
+  served_model_name: ??? # Model name (e.g., meta/llama-3.2-1b-instruct)
+
+```
+
+File: /Users/mromeijn/src/Evaluator/packages/nemo-evaluator-launcher/src/nemo_evaluator_launcher/resources/config_templates/deployment/vllm.yaml
+```yaml
+defaults:
+  - deployment: vllm
+
+execution:
+  env_vars:
+    deployment:
+      HF_TOKEN: $HF_TOKEN # Required for gated HuggingFace models
+
+deployment:
+  checkpoint_path: null # Set to path if using local checkpoint
+  hf_model_handle: ??? # HuggingFace model handle (e.g., meta-llama/Llama-3.1-8B)
+  served_model_name: ??? # Model name for API (e.g., meta-llama/Llama-3.1-8B)
+  tensor_parallel_size: 1
+  data_parallel_size: 1
+  extra_args: "--max-model-len 32768"
+
+```
+</file_contents>
