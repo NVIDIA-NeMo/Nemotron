@@ -1,5 +1,11 @@
 # Available Steps
 
+## byob — Bring Your Own Benchmark
+
+| Step | Description | Consumes | Produces |
+| --- | --- | --- | --- |
+| [byob](byob/) | Generate and translate BYOB MCQ benchmark parquet artifacts from domain documents with an extensible benchmark-family runtime. | benchmark_source_corpus, benchmark_parquet (optional) | mcq_benchmark_parquet, translated_mcq_benchmark_parquet (optional) |
+
 ## convert — Conversion
 
 | Step | Description | Consumes | Produces |

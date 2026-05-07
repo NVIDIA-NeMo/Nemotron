@@ -1,0 +1,36 @@
+expt_name: byob_mcq_translation
+dataset_path: /workspace/byob/outputs/byob_mcq_default/benchmark.parquet
+output_dir: /workspace/byob/outputs
+source_language: en-US
+target_language: hi-IN
+
+translation_model_config:
+  backend_type: llm
+  params:
+    alias: gpt-oss-120b
+    model: openai/gpt-oss-120b
+    provider: nvidia
+    api_key_env: NGC_API_KEY
+    base_url: https://integrate.api.nvidia.com/v1
+    inference_parameters:
+      max_tokens: 16000
+      max_parallel_requests: 8
+      temperature: 0.0
+      top_p: 0.95
+  stage:
+    segmentation_mode: coarse
+    min_segment_chars: 0
+    output_mode: both
+  segment_stage:
+    health_check: true
+    max_concurrent_requests: 8
+
+backtranslation_quality_metrics:
+  - type: sacrebleu
+    threshold: 25
+  - type: chrf
+    threshold: 50
+  - type: ter
+    threshold: 50
+
+remove_low_quality: false

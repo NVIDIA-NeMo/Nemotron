@@ -52,7 +52,7 @@ Read these first:
 
 Then ask the contributor:
 1. What does this step do? (one sentence)
-2. Which category? (`curate`, `synth`, `translate`, `prep`, `pretrain`, `sft`, `rl`, `eval`, `convert`, `benchmark`)
+2. Which category? (`curate`, `synth`, `translate`, `prep`, `pretrain`, `sft`, `rl`, `eval`, `convert`, `benchmark`, `byob`)
 3. Which NVIDIA stack library? (Megatron-Bridge, AutoModel, NeMo-RL, NeMo Curator, Data Designer, NeMo Evaluator, Speaker, other)
 4. What does it consume? (artifact types from `src/nemotron/steps/types.toml`)
 5. What does it produce? (artifact types)
@@ -61,6 +61,7 @@ Then ask the contributor:
 
 Use these repo conventions:
 - Step ids and directory names are snake_case, matching existing paths like `sft/megatron_bridge` and `eval/model_eval`.
+- Category directories usually contain multiple step packages. A single-purpose agentic workflow may use `src/nemotron/steps/{category}/` directly when the category and step id intentionally match, such as `byob`.
 - `step.toml` uses `[step].id`, `name`, `category`, `description`, and `tags`.
 - `[[strategies]]` uses `when` / `then` / optional `skill`.
 - `[[errors]]` uses `name` / `recovery` / optional `skill`.
@@ -71,12 +72,14 @@ Use these repo conventions:
 
 Create the step directory:
 - `src/nemotron/steps/{category}/{step_name}/`
+- Or, when the step is a single-purpose category whose category and step id intentionally match, `src/nemotron/steps/{category}/`
 
 Create these files:
 - `src/nemotron/steps/{category}/{step_name}/step.toml`
 - `src/nemotron/steps/{category}/{step_name}/config/default.yaml`
 - `src/nemotron/steps/{category}/{step_name}/config/tiny.yaml`
 - `src/nemotron/steps/{category}/{step_name}/step.py` only if needed
+- For a single-purpose category layout, place those same files directly under `src/nemotron/steps/{category}/`
 
 If needed, also create:
 - `src/nemotron/steps/{category}/guide.md` if the category now has multiple steps and no guide exists yet

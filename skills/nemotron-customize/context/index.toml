@@ -1,4 +1,11 @@
 [[packs]]
+id = "byob-benchmark-generate"
+step = "byob"
+intent = "generate"
+file = "byob-benchmark-curator-translation.txt"
+description = "Generate or translate BYOB MCQ benchmarks — domain corpus inputs, MCQ schema, Curator semantic deduplication, experimental translation, and round-trip metrics."
+
+[[packs]]
 id = "sft-megatron-bridge-generate"
 step = "sft/megatron-bridge"
 intent = "generate"

@@ -43,5 +43,16 @@ convert_to = { checkpoint_hf = "convert/merge_lora" }
 [eval_results]
 description = "Evaluation metrics and benchmark scores"
 
+[benchmark_source_corpus]
+description = "Domain documents grouped by benchmark target subject"
+
 [benchmark_parquet]
 description = "BYOB benchmark dataset"
+
+[mcq_benchmark_parquet]
+description = "Multiple-choice BYOB benchmark parquet"
+is_a = ["benchmark_parquet"]
+
+[translated_mcq_benchmark_parquet]
+description = "Translated multiple-choice BYOB benchmark parquet"
+is_a = ["mcq_benchmark_parquet"]

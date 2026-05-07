@@ -13,6 +13,7 @@ DEFAULT_STEPS_ROOT = Path(__file__).resolve().parent
 DEFAULT_PATTERNS_DIR = DEFAULT_STEPS_ROOT / "patterns"
 CATEGORY_TITLES = {
     "benchmark": "Benchmarking",
+    "byob": "Bring Your Own Benchmark",
     "convert": "Conversion",
     "curate": "Data Curation",
     "eval": "Evaluation",

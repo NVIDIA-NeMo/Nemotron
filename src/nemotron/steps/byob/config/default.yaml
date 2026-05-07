@@ -1,0 +1,82 @@
+expt_name: byob_mcq_default
+random_seed: 42
+ndd_batch_size: 32
+
+split: test
+subset: all
+input_dir: /workspace/byob/datasets
+output_dir: /workspace/byob/outputs
+hf_dataset: cais/mmlu
+language: en-US
+metadata_file: null
+source_subjects:
+  - high_school_mathematics
+  - management
+  - marketing
+
+target_source_mapping:
+  banking:
+    subjects:
+      management: 0.7
+      marketing: 0.3
+  maths:
+    subjects:
+      - high_school_mathematics
+
+few_shot_samples_per_query: 1
+queries_per_target_subject_document: 1
+num_questions_per_query: 2
+chunking_config:
+  window_size: 4096
+prompt_config: null
+
+generation_model_config: &generator
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 16000
+    max_parallel_requests: 8
+    temperature:
+      distribution_type: uniform
+      params:
+        low: 0.9
+        high: 1.0
+    top_p: 1.0
+
+judge_model_config: *generator
+
+semantic_deduplication_config:
+  enabled: true
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 1
+  eps: 0.07
+  remove_duplicates: false
+
+do_distractor_expansion: true
+distractor_expansion_model_config: *generator
+
+do_coverage_check: true
+coverage_check_config:
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  window_size: 1024
+
+distractor_validity_model_config: *generator
+
+semantic_outlier_detection_config:
+  enabled: true
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_neighbours_min: 1
+  remove_outliers: true
+
+easiness_threshold: 0.8
+hallucination_threshold: 0.5
+remove_hallucinated: true
+remove_easy: false
+filtering_model_configs:
+  hallucination:
+    - alias: hal_1
+      <<: *generator
+  easiness:
+    - alias: eas_1
+      <<: *generator
