@@ -17,6 +17,10 @@ ENV WANDB_MODE=offline
 ENV PYTHONPATH=/workspace/Nemotron/src
 ENV PATH=/workspace/Nemotron/.venv/bin:$PATH
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
 COPY . .

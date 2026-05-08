@@ -1071,7 +1071,7 @@ def docker_image_platform(image: str) -> str | None:
             "{{.Os}}/{{.Architecture}}{{if .Variant}}/{{.Variant}}{{end}}",
             image,
         ],
-        capture_output=True,
+        stdout=subprocess.PIPE,
         text=True,
         stderr=subprocess.DEVNULL,
         cwd=REPO_ROOT,
