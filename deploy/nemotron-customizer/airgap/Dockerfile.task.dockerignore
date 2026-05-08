@@ -1,0 +1,14 @@
+**
+
+!deploy
+!deploy/nemotron-customizer
+!deploy/nemotron-customizer/airgap
+!deploy/nemotron-customizer/airgap/out
+!deploy/nemotron-customizer/airgap/out/task-context
+!deploy/nemotron-customizer/airgap/out/task-context/**
+!deploy/nemotron-customizer/airgap/out/repo-overlays
+!deploy/nemotron-customizer/airgap/out/repo-overlays/**
+
+**/.git
+**/__pycache__
+**/*.pyc

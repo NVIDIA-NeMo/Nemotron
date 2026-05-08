@@ -1,0 +1,52 @@
+# Derivative task image for Nemotron Customizer airgap.
+# Built from the real training/runtime image and only adds small missing
+# wrapper packages.
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG TASK_REQUIREMENTS
+ARG REPO_OVERLAYS
+ARG REPO_OVERLAYS_DIR
+ARG PYTHON_BIN=python
+ARG PIP_NO_DEPS=true
+
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_DATASETS_OFFLINE=1
+ENV WANDB_MODE=offline
+
+COPY ${TASK_REQUIREMENTS} /opt/nemotron-airgap/task-requirements.txt
+COPY ${REPO_OVERLAYS} /opt/nemotron-airgap/repo-overlays.json
+COPY ${REPO_OVERLAYS_DIR}/ /opt/nemotron-airgap/repo-overlays/
+
+# Build-time installs keep --no-cache-dir so derivative image layers stay small.
+RUN if [ -s /opt/nemotron-airgap/task-requirements.txt ]; then \
+      if [ "${PIP_NO_DEPS}" = "true" ]; then \
+        ${PYTHON_BIN} -m pip install --no-cache-dir --no-deps -r /opt/nemotron-airgap/task-requirements.txt; \
+      else \
+        ${PYTHON_BIN} -m pip install --no-cache-dir -r /opt/nemotron-airgap/task-requirements.txt; \
+      fi; \
+    fi && \
+    ${PYTHON_BIN} - <<'PY'
+import json
+import pathlib
+import shutil
+
+root = pathlib.Path("/opt/nemotron-airgap/repo-overlays")
+items = json.loads(pathlib.Path("/opt/nemotron-airgap/repo-overlays.json").read_text())
+for item in items:
+    repo = item["repo"]
+    source = item.get("source", repo)
+    target = pathlib.Path(item["target"])
+    src = root / source
+    if not src.exists():
+        raise SystemExit(f"missing baked repo overlay: {src}")
+    if target.exists() or target.is_symlink():
+        if target.is_dir() and not target.is_symlink():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src, target)
+PY
