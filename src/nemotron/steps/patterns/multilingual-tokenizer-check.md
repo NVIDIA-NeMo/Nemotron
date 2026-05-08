@@ -44,6 +44,9 @@ Do not blame the tokenizer for every multilingual failure. Data quality, transla
 
 ## References
 
-- Cross-check before `prep/sft_packing` so sequence-length and pack-size choices reflect real tokenized lengths.
-- Revisit during `sft/megatron_bridge` or `sft/automodel` planning if throughput or truncation looks worse than expected.
+- Pair with `prep-data-is-tokenizer-locked` so the prepared artifact records the tokenizer choice and survives this audit.
+- Pair with `sft-sequence-packing` — pack_size choices should reflect actual tokenized lengths in the target language, not English-derived defaults.
+- Pair with `cpt-data-blend-scoping` whenever CPT is the customization tool (the tokenizer is *the* lock-in for CPT).
+- Pair with `sft-data-blending` when blending target-language native data with translated data.
+- Pair with `byob-benchmark-design` — your held-out benchmark must use the same tokenizer discipline as training.
 - For sovereign or regional use cases, tokenizer validation is often as important as model-size selection.

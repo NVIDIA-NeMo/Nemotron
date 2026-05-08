@@ -1,3 +1,8 @@
+---
+name: nemotron-add-step
+description: Add a new step under src/nemotron/steps/<category>/<step_id>/ — manifest (step.toml), runner glue, configs, and per-step SKILL.md. Use when extending the catalog so /nemotron-customize can route to it.
+---
+
 # nemotron-add-step
 
 Invocation: `/nemotron-add-step`.
@@ -30,7 +35,7 @@ Then I'll create the step directory, write step.toml + starter configs, add step
 
 Example — new artifact type:
 ```
-user: Add a synth step that produces preference-pair JSONL.
+user: Add an sdg step that produces preference-pair JSONL.
 assistant: `preference_jsonl` is not in `src/nemotron/steps/types.toml`.
 I'll first confirm no existing type fits. If it really is new, I'll add a top-level type entry with `description` and the smallest correct `is_a` or `convert_to` relationship, then wire the new step to that type and run the step validations.
 ```
@@ -52,7 +57,7 @@ Read these first:
 
 Then ask the contributor:
 1. What does this step do? (one sentence)
-2. Which category? (`curate`, `synth`, `translate`, `prep`, `pretrain`, `sft`, `rl`, `eval`, `convert`, `benchmark`, `byob`)
+2. Which category? (`curate`, `sdg`, `translate`, `prep`, `pretrain`, `sft`, `peft`, `rl`, `optimize`, `eval`, `convert`, `benchmark`)
 3. Which NVIDIA stack library? (Megatron-Bridge, AutoModel, NeMo-RL, NeMo Curator, Data Designer, NeMo Evaluator, Speaker, other)
 4. What does it consume? (artifact types from `src/nemotron/steps/types.toml`)
 5. What does it produce? (artifact types)
@@ -61,7 +66,6 @@ Then ask the contributor:
 
 Use these repo conventions:
 - Step ids and directory names are snake_case, matching existing paths like `sft/megatron_bridge` and `eval/model_eval`.
-- Category directories usually contain multiple step packages. A single-purpose agentic workflow may use `src/nemotron/steps/{category}/` directly when the category and step id intentionally match, such as `byob`.
 - `step.toml` uses `[step].id`, `name`, `category`, `description`, and `tags`.
 - `[[strategies]]` uses `when` / `then` / optional `skill`.
 - `[[errors]]` uses `name` / `recovery` / optional `skill`.
@@ -72,14 +76,12 @@ Use these repo conventions:
 
 Create the step directory:
 - `src/nemotron/steps/{category}/{step_name}/`
-- Or, when the step is a single-purpose category whose category and step id intentionally match, `src/nemotron/steps/{category}/`
 
 Create these files:
 - `src/nemotron/steps/{category}/{step_name}/step.toml`
 - `src/nemotron/steps/{category}/{step_name}/config/default.yaml`
 - `src/nemotron/steps/{category}/{step_name}/config/tiny.yaml`
 - `src/nemotron/steps/{category}/{step_name}/step.py` only if needed
-- For a single-purpose category layout, place those same files directly under `src/nemotron/steps/{category}/`
 
 If needed, also create:
 - `src/nemotron/steps/{category}/guide.md` if the category now has multiple steps and no guide exists yet
@@ -98,7 +100,7 @@ For `step.toml`, include:
 Generation rules:
 1. Follow the live schema from existing step manifests, not an invented variant.
 2. Keep parameters short. Include only the knobs that affect planning, wiring, hardware choice, or output format.
-3. Every reference path in `[reference]` must resolve in this workspace or another loaded NVIDIA repo.
+3. Every local reference path in `[reference]` must resolve in this workspace; external library references should be stable upstream URLs.
 4. If you add `step.py`, keep it thin and runnable. Include a PEP 723 `# /// script` header with `[tool.runspec]`.
 5. Keep `step.py` at 30 lines or less unless a slightly longer wrapper is unavoidable.
 6. `config/default.yaml` is the production starter config.
@@ -140,7 +142,7 @@ Show:
 
 ### Don't
 - Don't modify existing steps just to refactor or rename them
-- Don't modify anything inside `skills/nemotron-customize/` (`SKILL.md`, `act/*.md`, `examples/*.md`, or `context/*`)
+- Don't modify anything inside `skills/nemotron-customize/` (`SKILL.md`, `act/*.md`, `examples/*.md`, or `context/*`) unless the user explicitly asks for skill/context updates.
 - Don't invent new schema fields for `step.toml`
 - Don't add exhaustive parameter catalogs
 - Don't skip `[reference]`

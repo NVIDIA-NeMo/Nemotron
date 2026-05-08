@@ -4,7 +4,7 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "super3/sft"
-# image = "nvcr.io/nvidian/nemo:26.02.super.rc4"
+# image = "nvcr.io/nvidia/nemo:26.02.nemotron_3_super"
 # setup = "NeMo and all training dependencies are pre-installed in the image."
 #
 # [tool.runspec.run]

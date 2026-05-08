@@ -1,3 +1,8 @@
+---
+name: nemotron-nano3
+description: Reference desk for Nemotron 3 Nano / Llama-Nemotron Nano 3 — architecture, training data, recipes, evaluation, quantization, deployment. Use when the user asks facts about the model rather than building a pipeline.
+---
+
 # nemotron-nano3
 
 Invocation: `/nemotron-nano3`.

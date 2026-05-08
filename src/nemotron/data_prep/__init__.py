@@ -90,6 +90,7 @@ from nemotron.kit.wandb_kit import finish_run
 # Public API - Recipe entry points
 from nemotron.data_prep.api import (
     run_pretrain_pipeline,
+    run_sft_omni_pipeline,
     run_sft_pipeline,
 )
 
@@ -102,6 +103,7 @@ from nemotron.data_prep.observability.wandb_hook import (
 __all__ = [
     # Public API - Recipe entry points
     "run_pretrain_pipeline",
+    "run_sft_omni_pipeline",
     "run_sft_pipeline",
     # Input specification
     "DataBlend",

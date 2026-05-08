@@ -1,0 +1,64 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+defaults: default.yaml
+
+hf_model_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+trust_remote_code: true
+load_hf_weights: false
+
+run:
+  env:
+    nodes: 2
+    gpus_per_node: 8
+    nprocs_per_node: 8
+
+dataset:
+  packed_sequence_specs:
+    packed_sequence_size: 4096
+    packed_train_data_path: ${oc.env:SFT_PACKED_DIR,/mnt/lustre-shared/output/functional/prep/sft_packing/tiny/splits/train/*.parquet}
+
+train:
+  train_iters: 5
+  global_batch_size: 8
+  micro_batch_size: 1
+
+scheduler:
+  lr_warmup_iters: 1
+
+logger:
+  log_interval: 1
+  wandb_exp_name: ${oc.env:WANDB_NAME,peft-megatron-bridge-tiny}
+
+model:
+  seq_length: 4096
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 1
+  expert_model_parallel_size: 8
+  expert_tensor_parallel_size: 1
+  sequence_parallel: true
+  calculate_per_token_loss: true
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+
+checkpoint:
+  save: ${oc.env:SFT_OUTPUT_DIR,./output/peft-megatron-bridge-tiny}
+  save_interval: 5
+  async_save: false
+  fully_parallel_save: false
+  save_optim: false
+  save_rng: false
+  pretrained_checkpoint: ${oc.env:MEGATRON_PRETRAINED_CHECKPOINT,/mnt/lustre-shared/output/functional/sft/megatron_bridge/tiny/sft-tiny-2node}

@@ -1,0 +1,51 @@
+# Stage 5: Deploy Configuration
+#
+# Launches NIM embedding service with a custom fine-tuned model.
+# The NIM provides an OpenAI-compatible embeddings API.
+#
+# Usage:
+#   nemotron embed deploy -c default
+#   nemotron embed deploy -c default detach=true
+#   nemotron embed deploy -c default model_dir=/path/to/onnx
+#
+# Test the deployed service:
+#   curl -X POST http://localhost:8000/v1/embeddings \
+#     -H 'Content-Type: application/json' \
+#     -d '{"input": ["hello"], "model": "nvidia/llama-3.2-nv-embedqa-1b-v2", "input_type": "query"}'
+
+# NIM container image
+nim_image: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1
+
+# Container name (for management)
+container_name: nemotron-embed-nim
+
+# Path to custom model (ONNX or TensorRT from stage4_export)
+model_dir: ./output/embed/stage4_export/onnx
+
+# Use ONNX instead of TensorRT
+use_onnx: true
+
+# Container internal paths
+container_model_path: /opt/nim/custom_model
+container_cache_path: /opt/nim/.cache
+
+# Network settings
+host_port: 8000
+container_port: 8000
+
+# GPU allocation
+gpus: all
+
+# Shared memory size
+shm_size: 2gb
+
+# Runtime settings
+detach: false  # Run in foreground by default
+remove_on_exit: true  # Remove container when stopped
+
+# Health check settings
+health_check_timeout: 120  # seconds
+health_check_interval: 5   # seconds
+
+# Environment variable for NGC API key
+ngc_api_key_env: NGC_API_KEY

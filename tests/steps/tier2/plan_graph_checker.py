@@ -11,7 +11,7 @@ import tomllib
 
 DEFAULT_STEPS_ROOT = Path(__file__).resolve().parents[3] / "src" / "nemotron" / "steps"
 STEP_ID_PATTERN = re.compile(
-    r"(benchmark|convert|curate|eval|prep|pretrain|rl|sft|synth|translate)/[a-z0-9_]+"
+    r"(benchmark|byob|convert|curate|eval|prep|pretrain|rl|sft|sdg|synth|translate)/[a-z0-9_]+"
 )
 
 
@@ -154,7 +154,8 @@ def check_plan_graph(
         if target_contract is not None and target_contract.consumes:
             if not any(types_related(artifact_type, consumed, type_defs) for consumed in target_contract.consumes):
                 errors.append(
-                    f"{source.step_id} outputs {artifact_type!r} but {target.step_id} does not consume a compatible type"
+                    f"{source.step_id} outputs {artifact_type!r} but "
+                    f"{target.step_id} does not consume a compatible type"
                 )
 
     for node_id, node in graph.nodes.items():

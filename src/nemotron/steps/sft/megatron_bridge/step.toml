@@ -23,14 +23,14 @@ type = "checkpoint_megatron"
 description = "Fine-tuned Megatron checkpoint"
 
 [[models]]
-name = "nvidia/Nemotron-3-Nano-30B-A3B"
-description = "31.6B / 3.6B active. Best efficiency and the default Nano3 path."
+name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
+description = "Nemotron 3 Nano 30B-A3B (31.6B total / 3.2B active hybrid Mamba-Transformer MoE). Default Nano3 path."
 default = true
 min_gpus = 8
 
 [[models]]
-name = "nvidia/Nemotron-3-Super-49B"
-description = "Higher-quality dense model that typically starts at 32 GPUs."
+name = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16"
+description = "Nemotron 3 Super 120B-A12B (120.6B total / 12.7B active hybrid Mamba LatentMoE). Typically starts at 32 GPUs."
 min_gpus = 32
 
 [[parameters]]
@@ -41,8 +41,8 @@ choices = [2048, 4096, 8192, 16384, 32768]
 
 [[parameters]]
 name = "peft"
-description = "'null' = full SFT, 'lora' = LoRA with fewer GPUs and smaller checkpoints"
-default = "null"
+description = "'lora' = the shipped 30B default, 'null' = full SFT when the model fits"
+default = "lora"
 choices = ["null", "lora"]
 
 [[strategies]]
@@ -91,7 +91,9 @@ recovery = "run prep/sft_packing first, or point dataset.nano3_packed_sft_dir at
 recipe = "src/nemotron/recipes/nano3/stage1_sft/"
 config = "src/nemotron/recipes/nano3/stage1_sft/config/default.yaml"
 script = "src/nemotron/recipes/nano3/stage1_sft/train.py"
-skills = [
-  "skills/nemotron-customize/context/mbridge-sft-full.txt",
-  "skills/nemotron-customize/context/mbridge-parallelism-performance.txt",
-]
+megatron_bridge_repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
+megatron_bridge_readme = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/README.md"
+megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
+training_entry_points = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/entry-points.html"
+packed_sequences_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/packed-sequences.html"
+skills = ["skills/nemotron-customize/context/mbridge-sft.txt"]

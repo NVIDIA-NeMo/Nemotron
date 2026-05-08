@@ -29,6 +29,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pydantic_settings import BaseSettings
 
 import typer
 
@@ -64,6 +68,7 @@ class RecipeMeta:
     default_config: str = "default"
     input_artifacts: dict[str, str] = field(default_factory=dict)
     output_artifacts: dict[str, str] = field(default_factory=dict)
+    config_model: type[BaseSettings] | None = None
 
 
 class RecipeTyper(typer.Typer):
@@ -92,6 +97,7 @@ class RecipeTyper(typer.Typer):
         config_dir: str | None = None,
         input_artifacts: dict[str, str] | None = None,
         output_artifacts: dict[str, str] | None = None,
+        config_model: type[BaseSettings] | None = None,
         rich_help_panel: str | None = None,
         name: str | None = None,
     ) -> Callable[[Callable], Callable]:
@@ -120,6 +126,7 @@ class RecipeTyper(typer.Typer):
             cmd_class = make_recipe_command(
                 artifact_overrides=effective_artifact_overrides,
                 config_dir=config_dir,
+                config_model=config_model,
             )
 
             # Register with standard recipe context settings
@@ -143,6 +150,7 @@ class RecipeTyper(typer.Typer):
         config_dir: str | None = None,
         input_artifacts: dict[str, str] | None = None,
         output_artifacts: dict[str, str] | None = None,
+        config_model: type[BaseSettings] | None = None,
         rich_help_panel: str | None = None,
         name: str | None = None,
     ) -> None:
@@ -165,11 +173,13 @@ class RecipeTyper(typer.Typer):
             config_dir = meta.config_dir
             input_artifacts = meta.input_artifacts
             output_artifacts = meta.output_artifacts
+            config_model = config_model or meta.config_model
 
         self.recipe_command(
             config_dir=config_dir,
             input_artifacts=input_artifacts,
             output_artifacts=output_artifacts,
+            config_model=config_model,
             rich_help_panel=rich_help_panel,
             name=name,
         )(fn)

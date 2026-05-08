@@ -2,7 +2,7 @@
 
 Nemotron recipes use [NeMo-Run](https://github.com/NVIDIA-NeMo/Run) for job orchestration. NeMo-Run is an NVIDIA tool for configuring, executing, and managing ML experiments across computing environments.
 
-> **Note**: This release has been tested primarily with Slurm execution. Support for additional executors is planned.
+> **Note**: This release supports Slurm, DGX Cloud (run:ai), and Lepton executors, including Ray-based runs on all three backends.
 
 ## What is NeMo-Run?
 
@@ -151,16 +151,144 @@ run_partition = "interactive" # For --run (attached)
 batch_partition = "backfill"  # For --batch (detached)
 ```
 
+### DGX Cloud (run:ai)
+
+Submit jobs to NVIDIA DGX Cloud via the run:ai API. This executor handles authentication, data movement to PVCs, and multi-node distributed training through DGX Cloud workloads.
+
+```toml
+[dgxcloud]
+executor = "dgxcloud"
+base_url = "https://your-dgxcloud-instance.example.com/api/v1"
+kube_apiserver_url = "https://your-dgxcloud-k8s.example.com"
+client_id = "YOUR-CLIENT-ID"          # `app_id` accepted as legacy alias
+client_secret = "YOUR-CLIENT-SECRET"  # `app_secret` accepted as legacy alias
+project_name = "YOUR-PROJECT"
+container_image = "nvcr.io/nvidia/nemo:latest"
+pvc_nemo_run_dir = "/pvc/nemo_run"
+nodes = 2
+gpus_per_node = 8
+nprocs_per_node = 8
+pvcs = [
+    { claimName = "my-pvc", path = "/pvc", readOnly = false }
+]
+```
+
+For run:ai scheduler integration, use `custom_spec`:
+
+```toml
+[dgxcloud-runai]
+extends = "dgxcloud"
+custom_spec = { schedulerName = "runai-scheduler" }
+```
+
+### Lepton
+
+Submit jobs to NVIDIA DGX Cloud Lepton clusters. Lepton provides SDK-based job submission with node group scheduling and shared memory configuration.
+
+```toml
+[lepton]
+executor = "lepton"
+container_image = "nvcr.io/nvidia/nemo:latest"
+nemo_run_dir = "/nemo_run"
+nodes = 2
+gpus_per_node = 8
+resource_shape = "gpu.h100.8"
+node_group = "my-node-group"
+shared_memory_size = 65536
+mounts = [
+    { path = "/data", mount_path = "/data" }
+]
+pre_launch_commands = ["pip install my-package"]
+```
+
+### Docker
+
+Run in a local Docker container with GPU support:
+
+```toml
+[docker]
+executor = "docker"
+container_image = "nvcr.io/nvidia/nemo:latest"
+gpus_per_node = 8
+runtime = "nvidia"
+mounts = ["/data:/data"]
+```
+
+### Building Containers
+
+Some recipes, including Omni3, build stage-local containers through the same profile system instead of pulling a pre-baked image.
+
+**Cluster-side build via Nemotron CLI**
+
+```bash
+uv run nemotron omni3 build sft --run YOUR-CLUSTER
+uv run nemotron omni3 build rl --run YOUR-CLUSTER
+```
+
+These commands submit short CPU-oriented build jobs through NeMo-Run. If your site uses a different partition or walltime for build jobs, set `build_partition` and `build_time` in `env.toml`. The dispatcher only runs on slurm executors today; non-slurm executors (e.g. Lepton, k8s) error out cleanly with a hook for future PRs.
+
+```toml
+[YOUR-CLUSTER]
+executor = "slurm"
+partition = "batch"
+build_partition = "cpu"
+build_time = "02:00:00"
+# Lustre-visible host path for the build cache; mounted into the build
+# container at /nemotron-cache and used to land the OCI archive output.
+build_cache_dir = "/lustre/.../users/<user>/.cache/nemotron"
+```
+
+> **Why `build_cache_dir`?** The dispatcher mounts this path into the
+> build container so podman can save the resulting OCI archive somewhere
+> a future training job can read. Pre-`build_cache_dir`, the dispatcher
+> hard-coded `~/.cache/nemotron` evaluated at submission time, which
+> resolved to the laptop's home directory and didn't exist on cluster
+> nodes. Set `build_cache_dir` to a Lustre-visible path; the dispatcher
+> will `mkdir -p` it on the remote before submission so first-run is
+> seamless.
+
+### How the build container authenticates with private registries
+
+The SFT Dockerfile's `FROM` references `nvcr.io/nvidian/nemo:<tag>`,
+which is gated behind NGC credentials. Rather than ask operators to
+provision a separate `~/.docker/config.json`, the dispatcher reuses
+enroot's existing credentials at job-submission time:
+
+1. The dispatcher reads `~/.config/enroot/.credentials` (netrc format)
+   over the SSH tunnel.
+2. It filters to the `nvcr.io` entry (other registries in the file —
+   gitlab tokens, etc. — are *not* exposed to the build container).
+3. It transcodes the entry into a docker-format `auth.json` and writes
+   it to `<build_cache_dir>/.auth/auth.json` with mode `0600`.
+4. It mounts that file into the build container at
+   `/root/.config/containers/auth.json:ro`.
+
+Podman inside the build container then authenticates with `nvcr.io`
+automatically. No env vars, no per-job secrets in slurm scripts. If you
+add a new private registry the build needs, add an entry for it in
+`~/.config/enroot/.credentials` and extend the dispatcher's allowlist
+(see `materialize_podman_auth_from_enroot` in
+`src/nemo_runspec/execution.py`).
+
+**Local build from the stage Dockerfile**
+
+```bash
+cd src/nemotron/recipes/omni3/stage0_sft
+docker build -t nemotron/omni3-sft:latest -f Dockerfile .
+# or
+podman build -t nemotron/omni3-sft:latest -f Dockerfile .
+```
+
+Use the local path when iterating on the Dockerfile itself; use `nemotron omni3 build <stage> --run <profile>` when you want the same build recipe executed on the cluster.
+
 ### Other Executors
 
-NeMo-Run supports additional executors:
+NeMo-Run also supports these executors (not yet integrated into env.toml profiles):
 
-| Executor | Description | Status |
-|----------|-------------|--------|
-| `local` | Local execution with torchrun | Planned |
-| `docker` | Docker container with GPU support | Planned |
-| `skypilot` | Cloud instances (AWS, GCP, Azure) | Planned |
-| `dgxcloud` | NVIDIA DGX Cloud | Planned |
+| Executor | Description |
+|----------|-------------|
+| `skypilot` | Cloud instances (AWS, GCP, Azure) via SkyPilot |
+| `kubeflow` | Kubernetes Training Operator (PyTorchJob) |
 
 ## Packagers
 
@@ -346,7 +474,7 @@ startup_commands = ["source /opt/env.sh"]
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `executor` | str | `"local"` | Execution backend: `"local"` or `"slurm"` |
+| `executor` | str | `"local"` | Execution backend: `"local"`, `"docker"`, `"slurm"`, `"dgxcloud"`, or `"lepton"` |
 | `extends` | str | - | Parent profile to inherit from |
 
 **Local executor:**
@@ -393,6 +521,42 @@ startup_commands = ["source /opt/env.sh"]
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `startup_commands` | list | `[]` | Shell commands to run before the training script |
+
+**DGX Cloud executor:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `base_url` | str | *required* | DGX Cloud API base URL |
+| `kube_apiserver_url` | str | *required* | Kubernetes API server URL for the DGX Cloud cluster |
+| `client_id` | str | *required* | Client ID for authentication |
+| `client_secret` | str | *required* | Client secret for authentication |
+| `app_id` | str | - | Legacy alias for `client_id` (back-compat shim) |
+| `app_secret` | str | - | Legacy alias for `client_secret` (back-compat shim) |
+| `project_name` | str | *required* | DGX Cloud project name |
+| `pvc_nemo_run_dir` | str | *required* | PVC path for nemo-run job directory |
+| `nodes` | int | `1` | Number of compute nodes |
+| `gpus_per_node` | int | `0` | GPUs per node |
+| `nprocs_per_node` | int | `1` | Processes per node |
+| `pvcs` | list | `[]` | PVC mount specifications (list of dicts with `claimName`, `path`, `readOnly`) |
+| `distributed_framework` | str | `"PyTorch"` | Distributed framework (`"PyTorch"`) |
+| `custom_spec` | dict | `{}` | Additional workload spec overrides (e.g., `schedulerName` for run:ai) |
+
+**Lepton executor:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `nemo_run_dir` | str | *required* | Remote directory for nemo-run job files |
+| `nodes` | int | `1` | Number of compute nodes |
+| `gpus_per_node` | int | `0` | GPUs per node |
+| `nprocs_per_node` | int | `1` | Processes per node |
+| `resource_shape` | str | `""` | Resource shape (e.g., `"gpu.h100.8"`) |
+| `node_group` | str | `""` | Target node group |
+| `node_reservation` | str | `""` | Node reservation identifier |
+| `shared_memory_size` | int | `65536` | Shared memory size in MB |
+| `mounts` | list | `[]` | Mount specifications (list of dicts with `path`, `mount_path`) |
+| `image_pull_secrets` | list | `[]` | Container registry authentication secrets |
+| `pre_launch_commands` | list | `[]` | Commands to run before launching the job |
+| `custom_spec` | dict | `{}` | Additional job spec overrides |
 
 ### How Profiles Are Resolved
 
@@ -466,6 +630,34 @@ cpus_per_task = 96
 [rl]
 extends = "pretrain"
 container_image = "/lustre/users/me/nano3-rl.sqsh"
+
+# --- DGX Cloud (run:ai) ---
+
+[dgxcloud]
+executor = "dgxcloud"
+base_url = "https://dgx.example.com/api/v1"
+app_id = "MY-APP-ID"
+app_secret = "MY-APP-SECRET"
+project_name = "my-project"
+container_image = "nvcr.io/nvidia/nemo:latest"
+pvc_nemo_run_dir = "/pvc/nemo_run"
+nodes = 2
+gpus_per_node = 8
+nprocs_per_node = 8
+pvcs = [
+    { claimName = "my-pvc", path = "/pvc", readOnly = false }
+]
+
+# --- Lepton ---
+
+[lepton]
+executor = "lepton"
+container_image = "nvcr.io/nvidia/nemo:latest"
+nemo_run_dir = "/nemo_run"
+nodes = 2
+gpus_per_node = 8
+resource_shape = "gpu.h100.8"
+node_group = "my-node-group"
 ```
 
 ## Ray-Enabled Recipes
@@ -478,6 +670,45 @@ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
 
 # RL training uses Ray
 uv run nemotron nano3 rl -c tiny --run YOUR-CLUSTER
+```
+
+### Ray on DGX Cloud and Lepton
+
+Ray-based recipes work with DGX Cloud and Lepton executors. The framework automatically selects the appropriate Ray backend based on the executor type:
+
+- **Slurm**: Uses `SlurmRayJob` with SSH tunnel (default)
+- **DGX Cloud**: Uses `DGXCloudRayJob` for self-organizing Ray topology within distributed workloads
+- **Lepton**: Uses `LeptonRayJob` with the Lepton SDK
+
+```toml
+# Ray-enabled RL on DGX Cloud
+[dgxcloud-rl]
+executor = "dgxcloud"
+base_url = "https://dgx.example.com/api/v1"
+app_id = "YOUR-ID"
+app_secret = "YOUR-SECRET"
+project_name = "your-project"
+container_image = "nvcr.io/nvidia/nemo-rl:latest"
+pvc_nemo_run_dir = "/pvc/nemo_run"
+nodes = 4
+gpus_per_node = 8
+
+# Ray-enabled RL on Lepton
+[lepton-rl]
+executor = "lepton"
+container_image = "nvcr.io/nvidia/nemo-rl:latest"
+nemo_run_dir = "/nemo_run"
+nodes = 4
+gpus_per_node = 8
+resource_shape = "gpu.h100.8"
+node_group = "my-node-group"
+```
+
+Use with any Ray-enabled recipe:
+
+```bash
+uv run nemotron nano3 rl -c tiny --run dgxcloud-rl
+uv run nemotron nano3 rl -c tiny --run lepton-rl
 ```
 
 ## Further Reading

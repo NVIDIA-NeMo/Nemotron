@@ -101,29 +101,40 @@ def _safe_add_typer(module_path: str, attr_name: str, command_name: str) -> None
 
 
 def _register_groups() -> None:
-    """Register all recipe groups with the main app."""
-<<<<<<< rkalani/agentic-curator-translation
-    _safe_add_typer("nemotron.cli.commands.nano3", "nano3_app", "nano3")
-    _safe_add_typer("nemotron.cli.commands.super3", "super3_app", "super3")
-    _safe_add_typer("nemotron.cli.commands.steps", "steps_app", "steps")
-    _safe_add_typer("nemotron.cli.kit", "kit_app", "kit")
-=======
-    from nemotron.cli.commands.byob import byob
-    from nemotron.cli.commands.nano3 import nano3_app
-    from nemotron.cli.kit import kit_app
+    """Register all recipe groups with the main app.
 
-    app.add_typer(nano3_app, name="nano3")
-    app.add_typer(kit_app, name="kit")
-    app.command(name="byob", rich_help_panel="Benchmarking")(byob)
+    Each group is loaded independently so a broken / in-progress recipe group
+    does not take the whole CLI down. Failures surface as a one-line warning
+    via ``NEMOTRON_DEBUG_CLI=1``.
+    """
+    import os
+
+    debug = os.environ.get("NEMOTRON_DEBUG_CLI") == "1"
+    groups = (
+        ("data", "nemotron.cli.commands.data", "data_app"),
+        ("nano3", "nemotron.cli.commands.nano3", "nano3_app"),
+        ("omni3", "nemotron.cli.commands.omni3", "omni3_app"),
+        ("super3", "nemotron.cli.commands.super3", "super3_app"),
+        ("kit", "nemotron.cli.kit", "kit_app"),
+        ("embed", "nemotron.cli.commands.embed", "embed_app"),
+        ("step", "nemotron.cli.commands.step", "step_app"),
+        ("steps", "nemotron.cli.commands.steps", "steps_app"),
+    )
+
+    for name, module_path, attr in groups:
+        try:
+            _safe_add_typer(module_path, attr, name)
+        except Exception as exc:
+            if debug:
+                typer.echo(f"[nemotron] skipped '{name}' group: {exc}", err=True)
 
     try:
-        from nemotron.cli.commands.super3 import super3_app
-    except ModuleNotFoundError as exc:
-        if exc.name != "nemotron.cli.commands.super3.data":
-            raise
+        from nemotron.cli.commands.byob import byob
+    except Exception as exc:
+        if debug:
+            typer.echo(f"[nemotron] skipped 'byob' command: {exc}", err=True)
     else:
-        app.add_typer(super3_app, name="super3")
->>>>>>> romeyn/agentic
+        app.command(name="byob", rich_help_panel="Benchmarking")(byob)
 
 
 # Register groups on import

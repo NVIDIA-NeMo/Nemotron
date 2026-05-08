@@ -1,3 +1,8 @@
+---
+name: nemotron-add-pattern
+description: Add a cross-cutting decision pattern under src/nemotron/steps/patterns/. Use when a recurring ML decision (tokenizer lock, eval bookends, LoRA-on-small-data, etc.) must be encoded so other skills can fire it during planning.
+---
+
 # nemotron-add-pattern
 
 Invocation: `/nemotron-add-pattern`.
@@ -24,7 +29,7 @@ Four phases. Always in this order.
 ### 1. Orient
 
 Read these first:
-- `src/nemotron/steps/patterns/small-dataset-lora.md`
+- `src/nemotron/steps/patterns/sft-small-dataset-prefer-lora.md`
 - `src/nemotron/steps/PATTERNS.md`
 - `src/nemotron/steps/index.py`
 - `tests/steps/test_patterns.py`

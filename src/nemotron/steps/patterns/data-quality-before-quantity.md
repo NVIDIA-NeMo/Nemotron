@@ -44,6 +44,9 @@ If the user problem is genuinely missing coverage, then more data is the answer 
 
 ## References
 
-- Most directly relevant to `curate/nemo_curator` and upstream data decisions that feed all later steps.
-- This pattern often explains why a "small clean pilot" outperforms a rushed large corpus.
-- Pair with eval-bookends so curation improvements are measured, not assumed.
+- Most directly relevant to `curate/nemo_curator` and upstream data decisions that feed every later step.
+- Pair with `eval-before-and-after-training` so curation improvements are measured, not assumed.
+- Pair with `sft-data-blending` per source before blending — quality is per-source, blend is across sources.
+- Pair with `cpt-data-blend-scoping` when domain corpora are noisy or scraped.
+- Pair with `sdg-pipeline-versioning` to apply the same quality bar to synthetic data.
+- Pair with `byob-benchmark-design` — the same quality discipline applies to the held-out benchmark.

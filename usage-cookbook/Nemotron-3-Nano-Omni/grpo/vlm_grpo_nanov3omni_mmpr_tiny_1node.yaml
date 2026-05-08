@@ -1,0 +1,264 @@
+# GRPO training for Nemotron Nano v3 Omni on MMPR-Tiny
+# Target: 1× DGX H100 node (8× H100 80 GB)
+# Algorithm: GRPO with GSPO-style loss (sequence-level ratios, clip-higher)
+# Dataset:   OpenGVLab/MMPR-Tiny  -- auto-downloaded on first run into data.cache_dir
+#
+# ── Parallelism layout (8 GPUs total) ─────────────────────────────────────────
+#   TP=8  — all 8 GPUs in one tensor-parallel group (intra-NVLink, fast)
+#   EP=8  — 128 routed experts sharded to 16 per GPU (intra-node alltoall only)
+#   PP=1  — no pipeline parallel
+#   DP    = 8 / (TP×PP) = 8 / 8 = 1   ← single replica; full node required for memory
+
+grpo:
+  num_prompts_per_step: 64         
+  num_generations_per_prompt: 16    
+  max_rollout_turns: 1
+  max_num_epochs: 1
+  max_num_steps: 1000000
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  val_period: 10
+  val_at_start: false
+  overlong_filtering: true
+  zero_variance_prompt_filtering: false
+  max_val_samples: 64
+  val_batch_size: 64
+  seed: 42
+  seq_logprob_error_threshold: 2
+  use_dynamic_sampling: false
+  batch_multiplier: 1
+  deduplicate_multimodal_data: true
+  reward_shaping:
+    enabled: false
+    overlong_buffer_length: 512
+    overlong_buffer_penalty: 1
+    max_response_length: ${policy.max_total_sequence_length}
+  reward_scaling:
+    enabled: false
+    source_min: 0.0
+    source_max: 1.0
+    target_min: 0.0
+    target_max: 1.0
+  async_grpo:
+    enabled: false
+    max_trajectory_age_steps: 1
+
+loss_fn:
+  reference_policy_kl_penalty: 0.0
+  reference_policy_kl_type: k3
+  kl_input_clamp_value: null
+  kl_output_clamp_value: null
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28              # Clip-Higher (DAPO / JustRL)
+  ratio_clip_c: null
+  use_on_policy_kl_approximation: true
+  use_importance_sampling_correction: false
+  sequence_level_importance_ratios: true   # GSPO-style
+  token_level_loss: false                  # GSPO-style
+  use_sequence_length_scaling: false
+  truncated_importance_sampling_ratio: null
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: "results/grpo-nanov3omni-mmpr-tiny-1node"   # relative to NeMo-RL repo root inside the container
+  metric_name: "val:accuracy"
+  higher_is_better: true
+  keep_top_k: 5
+  save_period: 10
+  checkpoint_must_save_by: null
+
+policy:
+  model_name: "/shared/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16"   # container-mounted path; see Prerequisites in the notebook
+  # Set to false when warm-starting from a checkpoint saved with a different
+  # expert_model_parallel_size. The distributed optimizer state is not reshardable
+  # across EP changes; skipping it lets the model weights load while the optimizer
+  # starts fresh. Remove this (or set true) once EP is stable across runs.
+  load_optimizer_from_checkpoint: false
+  tokenizer:
+    name: ${policy.model_name}
+  train_global_batch_size:  1024 
+  train_micro_batch_size: 1         # Megatron dynamic resolution requires mbz=1
+  logprob_batch_size: 1             # Megatron dynamic resolution requires mbz=1
+  max_total_sequence_length: 2048
+  precision: "bfloat16"
+  logprob_chunk_size: 1024
+  offload_optimizer_for_logprob: false
+
+  dtensor_cfg:
+    enabled: false
+
+  dynamic_batching:
+    enabled: false
+
+  make_sequence_length_divisible_by: ${policy.megatron_cfg.tensor_model_parallel_size}
+  max_grad_norm: 1.0
+
+  sequence_packing:
+    enabled: true
+    train_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.train_micro_batch_size}}
+    logprob_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.logprob_batch_size}}
+    algorithm: "modified_first_fit_decreasing"
+    sequence_length_round: 64
+
+  optimizer: null
+  scheduler: null
+
+  megatron_cfg:
+    enabled: true
+    empty_unused_memory_level: 2
+    activation_checkpointing: true
+    # ── Single-node single-replica config ────────────────────────────────────
+    # TP=8 places all 8 GPUs in one tensor-parallel group (intra-NVLink only).
+    # EP=8 shards 128 routed experts to 16 per GPU; alltoall stays intra-node.
+    # DP=1 → no data-parallel gradient-reduce overhead; the full node is one replica.
+    tensor_model_parallel_size: 8
+    expert_model_parallel_size: 8
+    expert_tensor_parallel_size: 1
+    pipeline_model_parallel_size: 1
+    num_layers_in_first_pipeline_stage: null
+    num_layers_in_last_pipeline_stage: null
+    context_parallel_size: 1
+    pipeline_dtype: ${policy.precision}
+    sequence_parallel: true
+    # MoE router settings (Omni has 128 routed experts)
+    freeze_moe_router: true
+    moe_router_dtype: "fp32"
+    moe_router_load_balancing_type: "none"
+    moe_router_bias_update_rate: 1e-3
+    moe_router_enable_expert_bias: true
+    moe_permute_fusion: true
+    moe_enable_deepep: false
+    moe_token_dispatcher_type: "alltoall"
+    moe_shared_expert_overlap: true
+    moe_aux_loss_coeff: 0.0
+    track_moe_metrics: true
+    moe_per_layer_logging: false
+    # LLM settings
+    apply_rope_fusion: true
+    bias_activation_fusion: false   # Must be false for Nano v3 Omni
+    defer_fp32_logits: true
+    # Omni VLM-specific
+    radio_force_cpe_eval_mode: true
+    freeze_vision_encoder: false
+    freeze_vision_projector: false
+    freeze_audio_encoder: true
+    freeze_audio_projector: true
+
+    optimizer:
+      optimizer: "adam"
+      lr: 3e-6
+      min_lr: 2e-9
+      weight_decay: 0.0
+      bf16: true
+      fp16: false
+      params_dtype: "bfloat16"
+      adam_beta1: 0.9
+      adam_beta2: 0.99
+      adam_eps: 1e-8
+      sgd_momentum: 0.9
+      use_distributed_optimizer: true
+      use_precision_aware_optimizer: true
+      clip_grad: ${policy.max_grad_norm}
+      # CPU offload: optimizer fp32 master weights are large (~62 GiB) relative to 80 GiB.
+      # With DP=1 there is no ZeRO sharding; keeping optimizer on CPU avoids
+      # competing with activations and DDP buffers for the same HBM headroom.
+      optimizer_cpu_offload: true
+      optimizer_offload_fraction: 1.0
+
+    scheduler:
+      start_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      end_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      weight_decay_incr_style: "constant"
+      lr_decay_style: "constant"
+      lr_decay_iters: null
+      lr_warmup_iters: 10
+      lr_warmup_init: 0.3e-7
+
+    distributed_data_parallel_config:
+      grad_reduce_in_fp32: false
+      overlap_grad_reduce: false
+      overlap_param_gather: false
+      average_in_collective: false
+      use_custom_fsdp: false
+      data_parallel_sharding_strategy: "optim_grads_params"
+
+    env_vars:
+      PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"
+
+  generation:
+    backend: "vllm"
+    max_new_tokens: ${policy.max_total_sequence_length}
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    stop_token_ids: null
+    stop_strings: null
+    bad_words: ["<image>", "<img>", "</img>", "<so_embedding>", "<so_start>", "<so_end>"]
+    vllm_cfg:
+      async_engine: false
+      kv_cache_dtype: auto
+      precision: ${policy.precision}
+      # TP=8: vLLM uses all 8 GPUs on one node for generation (intra-node NVLink).
+      # With DP_eff=1 there is only one vLLM engine instance across the cluster.
+      tensor_parallel_size: 8
+      pipeline_parallel_size: 1
+      expert_parallel_size: 8
+      # 0.20 reserves ~16 GiB for vLLM KV cache on one node (80 GiB H100).
+      # Raise with care: the DDP buffer and optimizer state compete for the same headroom.
+      gpu_memory_utilization: 0.2
+      max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: False
+      use_deep_gemm: False
+      num_last_layers_in_bf16: 0
+      num_first_layers_in_bf16: 0
+      skip_tokenizer_init: False
+    vllm_kwargs:
+      limit_mm_per_prompt: {"image": 2}
+      max_num_batched_tokens: 4096
+      mamba_ssm_cache_dtype: "float32"
+    colocated:
+      enabled: true
+      resources:
+        gpus_per_node: null
+        num_nodes: null
+
+data:
+  max_input_seq_length: ${policy.max_total_sequence_length}
+  dataset_name: "mmpr_tiny"
+  env_name: "mmpr_tiny"
+  split: "train"
+  shuffle: true
+  val_size: 200
+  cache_dir: "data/mmpr_tiny_cache"
+  prompt_file: null
+  system_prompt_file: "examples/prompts/nemotron_system_prompt.txt"
+  num_workers: 1
+
+env:
+  mmpr_tiny:
+    num_workers: 8
+    reward_functions:
+      - name: verl_geo3k
+        weight: 1.0
+        kwargs:
+          format_score: 0.1
+
+logger:
+  log_dir: "logs"
+  num_val_samples_to_print: 2
+  wandb_enabled: true
+  tensorboard_enabled: true
+  mlflow_enabled: false
+  swanlab_enabled: false
+  monitor_gpus: true
+  wandb:
+    project: "grpo-nanov3omni"
+    name: "grpo-nanov3omni-mmpr-tiny-1node"
+  tensorboard: {}
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 1

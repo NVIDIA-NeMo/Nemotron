@@ -1,3 +1,8 @@
+---
+name: nemotron-add-model
+description: Onboard a new model family (Nemotron or third-party) into skills/ — paper chunks, recipe summaries, context packs, and model card. Use when a contributor wants downstream skills like /nemotron-customize to be able to route to a new model.
+---
+
 # nemotron-add-model
 
 Invocation: `/nemotron-add-model`.

@@ -43,6 +43,9 @@ convert_to = { checkpoint_hf = "convert/merge_lora" }
 [eval_results]
 description = "Evaluation metrics and benchmark scores"
 
+[env_toml]
+description = "nemo-run environment profile TOML with cluster, image, mount, and env-var settings"
+
 [benchmark_source_corpus]
 description = "Domain documents grouped by benchmark target subject"
 

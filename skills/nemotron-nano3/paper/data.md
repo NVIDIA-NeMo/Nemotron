@@ -15,7 +15,7 @@ key_facts:
 related_steps:
   - "curate/nemo_curator"
   - "prep/sft_packing"
-  - "translate/translation"
+  - "translate/nemo_skills"
   - "sft/megatron_bridge"
 currency: "frozen"
 ---

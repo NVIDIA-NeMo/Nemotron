@@ -1,3 +1,8 @@
+---
+name: nemotron-super3
+description: Reference desk for NVIDIA Nemotron 3 Super — architecture, training data, recipes (pretrain/SFT/RL/eval/quantization), and deployment notes. Use when the user asks facts about Super3 rather than building a pipeline.
+---
+
 # nemotron-super3
 
 Invocation: `/nemotron-super3`.

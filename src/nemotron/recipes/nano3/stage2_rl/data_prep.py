@@ -269,6 +269,8 @@ def run_data_prep_main(
             pipelines_v1.run_pipeline(spec)
 
     # Phase 3: Finalize — scan receipts, write manifest.json
+    # Downstream configs read paths via ``${manifest:<output_dir>,<split>}``
+    # (see ``nemo_runspec.config.resolvers``), so no flat-symlink dance here.
     dataset_name_base = blend.datasets[0].name
     result = finalize_rl_run(run_dir, cfg.output_dir, available_splits, dataset_name_base)
 
