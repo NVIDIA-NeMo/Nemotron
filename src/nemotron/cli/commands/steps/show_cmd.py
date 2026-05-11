@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""`nemotron step show` — full manifest + runspec for one step."""
+"""`nemotron steps show` — full manifest + runspec for one step."""
 from __future__ import annotations
 
 import json as json_module
@@ -23,8 +23,8 @@ import typer
 from rich.console import Console
 
 from nemo_runspec import parse as parse_runspec
-from nemotron.cli.commands.step._resolve import resolve_step
-from nemotron.cli.commands.step.list_cmd import _step_to_dict
+from nemotron.cli.commands.steps._resolve import resolve_step
+from nemotron.cli.commands.steps.list_cmd import _step_to_dict
 
 console = Console()
 

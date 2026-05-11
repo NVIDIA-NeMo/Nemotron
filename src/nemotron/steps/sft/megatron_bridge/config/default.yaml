@@ -15,7 +15,7 @@
 # Tiny SFT for the 2-node slurm_sft profile.
 # Pulls base weights from HuggingFace via AutoBridge so no pre-existing
 # Megatron checkpoint is required. Uses the packed_parquet shards produced by
-# `nemotron step run prep/sft_packing -c tiny -r slurm_sft_dataprep_tiny`.
+# `nemotron steps run prep/sft_packing -c tiny -r slurm_sft_dataprep_tiny`.
 #
 # Note: dataset paths are explicit (Megatron-Bridge's vanilla schema). This
 # step is generic — recipe-specific dir shortcuts live in recipes/, not here.

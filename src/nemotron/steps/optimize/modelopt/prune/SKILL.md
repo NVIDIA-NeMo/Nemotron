@@ -13,7 +13,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Consume `checkpoint_hf`.
 - Produce pruned `checkpoint_hf`.
-- Smoke with `nemotron step run optimize/modelopt/prune -c tiny`.
+- Smoke with `nemotron steps run optimize/modelopt/prune -c tiny`.
 
 ## Configure
 

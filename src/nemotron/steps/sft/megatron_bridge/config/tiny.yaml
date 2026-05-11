@@ -16,7 +16,7 @@
 # Points at lepton's lustre-shared mount by default.
 # Pulls base weights from HuggingFace via AutoBridge so no pre-existing
 # Megatron checkpoint is required. Uses the packed_parquet shards produced by
-# `nemotron step run prep/sft_packing -c tiny -r lepton_sft_dataprep`.
+# `nemotron steps run prep/sft_packing -c tiny -r lepton_sft_dataprep`.
 
 # Override the container's stale Megatron-Bridge with a branch that supports
 # packed-parquet specs.

@@ -23,7 +23,7 @@
 #   - dataset = a HF preference set via BinaryPreferenceDataset.
 #
 # Usage:
-#   nemotron step run rl/nemo_rl/dpo -c tiny -r lepton_rl
+#   nemotron steps run rl/nemo_rl/dpo -c tiny -r lepton_rl
 
 dpo:
   max_num_epochs: 1

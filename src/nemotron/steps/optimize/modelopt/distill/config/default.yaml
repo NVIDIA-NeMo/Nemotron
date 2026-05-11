@@ -21,8 +21,8 @@
 #   prep/pretrain_prep first and pass the produced data prefixes via data_paths.
 #
 # Usage:
-#   nemotron step run optimize/modelopt/distill -c default
-#   nemotron step run optimize/modelopt/distill -c default args.use_mock_data=true args.train_iters=100
+#   nemotron steps run optimize/modelopt/distill -c default
+#   nemotron steps run optimize/modelopt/distill -c default args.use_mock_data=true args.train_iters=100
 #
 # Script arguments are forwarded from args: using underscore CLI flags. For
 # example, args.teacher_hf_path becomes --teacher_hf_path. New upstream flags can

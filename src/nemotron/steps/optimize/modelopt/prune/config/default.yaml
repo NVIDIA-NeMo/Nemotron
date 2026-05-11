@@ -25,8 +25,8 @@
 #   extra_args when using your own data.
 #
 # Usage:
-#   nemotron step run optimize/modelopt/prune -c default
-#   nemotron step run optimize/modelopt/prune -c default args.prune_target_params=6e9
+#   nemotron steps run optimize/modelopt/prune -c default
+#   nemotron steps run optimize/modelopt/prune -c default args.prune_target_params=6e9
 #
 # Script arguments are forwarded from args: using underscore CLI flags. For
 # example, args.prune_target_params becomes --prune_target_params. New upstream

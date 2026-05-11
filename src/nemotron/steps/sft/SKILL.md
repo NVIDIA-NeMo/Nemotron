@@ -50,8 +50,8 @@ Pick an SFT backend and keep data and checkpoint formats compatible.
 ## Smoke commands
 
 ```bash
-nemotron step run sft/automodel -c tiny
-nemotron step run sft/megatron_bridge -c tiny   # requires compatible packed_parquet
+nemotron steps run sft/automodel -c tiny
+nemotron steps run sft/megatron_bridge -c tiny   # requires compatible packed_parquet
 ```
 
 ## Patterns to cite

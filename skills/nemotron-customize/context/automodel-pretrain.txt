@@ -100,7 +100,7 @@ Default `model.pretrained_model_name_or_path` in this repo is
 `[[models]]`). Override at CLI:
 
 ```bash
-nemotron step run pretrain/automodel -c default \
+nemotron steps run pretrain/automodel -c default \
   model.pretrained_model_name_or_path=<your-hf-id>
 ```
 

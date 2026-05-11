@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""`nemotron step list` — discovery for humans and agents."""
+"""`nemotron steps list` — discovery for humans and agents."""
 
 from __future__ import annotations
 

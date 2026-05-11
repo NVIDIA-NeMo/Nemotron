@@ -17,9 +17,9 @@
 # without dragging the recipes/ tree along.
 #
 # Usage:
-#   nemotron step run prep/sft_packing -c tiny                          # local
-#   nemotron step run prep/sft_packing -c tiny -r slurm_sft_dataprep_tiny
-#   nemotron step run prep/sft_packing -c tiny -r test_lepton_sft_dataprep
+#   nemotron steps run prep/sft_packing -c tiny                          # local
+#   nemotron steps run prep/sft_packing -c tiny -r slurm_sft_dataprep_tiny
+#   nemotron steps run prep/sft_packing -c tiny -r test_lepton_sft_dataprep
 
 # blend_path is omitted on purpose — step.py defaults to the in-step
 # data/blend_tiny.json so the same config works under any source layout

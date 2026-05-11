@@ -15,7 +15,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Consume an SFT `checkpoint_megatron` policy.
 - Consume a reward-model `checkpoint_hf`.
 - Produce an RLHF-aligned `checkpoint_megatron`.
-- Smoke with `nemotron step run rl/nemo_rl/rlhf -c tiny`.
+- Smoke with `nemotron steps run rl/nemo_rl/rlhf -c tiny`.
 
 ## Configure
 

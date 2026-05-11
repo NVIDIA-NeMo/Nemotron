@@ -46,6 +46,22 @@ def test_root_cli_registers_steps_translation_command() -> None:
     assert "translation" in result.output
 
 
+def test_root_cli_registers_steps_catalog_commands() -> None:
+    result = CliRunner().invoke(app, ["steps", "--help"])
+
+    assert result.exit_code == 0
+    assert "list" in result.output
+    assert "show" in result.output
+    assert "run" in result.output
+
+
+def test_root_cli_does_not_register_step_alias() -> None:
+    result = CliRunner().invoke(app, ["step", "--help"])
+
+    assert result.exit_code != 0
+    assert "No such command" in result.output
+
+
 def test_translation_cli_runs_checked_in_step(monkeypatch: pytest.MonkeyPatch) -> None:
     config = {
         "input_path": "/data/source.jsonl",

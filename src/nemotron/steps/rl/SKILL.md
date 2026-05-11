@@ -74,9 +74,9 @@ when the next consumer (eval, deployment) expects HF.
 ## Smoke commands
 
 ```bash
-nemotron step run rl/nemo_rl/dpo  -c tiny
-nemotron step run rl/nemo_rl/rlvr -c tiny
-nemotron step run rl/nemo_rl/rlhf -c tiny
+nemotron steps run rl/nemo_rl/dpo  -c tiny
+nemotron steps run rl/nemo_rl/rlvr -c tiny
+nemotron steps run rl/nemo_rl/rlhf -c tiny
 ```
 
 ## Guardrails

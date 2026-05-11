@@ -1,0 +1,130 @@
+# One file controls the Nemotron Customizer airgap plan.
+#
+# Change workflow.stages to the steps the customer wants. The runner expands
+# dependencies, validates those step files/configs, groups selected steps by
+# execution image, then builds only the images needed for that selection.
+
+workflow:
+  name: sft-megatron-bridge
+  stages:
+    - sft/megatron_bridge:tiny
+  # Example SDG-only run:
+  # stages:
+  #   - sdg/data_designer:tiny
+  # Example SDG -> SFT run:
+  # stages:
+  #   - sdg/data_designer:tiny
+  #   - sft/megatron_bridge:tiny
+
+build_stages:
+  - validate
+  - discover-execution-deps
+  - build-launcher-image
+  - build-execution-images
+  - save-images
+
+paths:
+  output_dir: deploy/nemotron-customizer/airgap/out
+
+launcher_image:
+  base_image: python:3.12-slim
+  tag: nemotron-customizer-launcher-airgap:latest
+  tar: launcher-image.tar
+
+# Central dependency map. Keep this small and explicit: it is only for steps
+# that naturally require a previous Nemotron Customizer step output.
+dependencies:
+  sft/megatron_bridge:
+    - prep/sft_packing:tiny
+  peft/megatron_bridge:
+    - prep/sft_packing:tiny
+  pretrain/megatron_bridge:
+    - prep/pretrain_prep:tiny
+  pretrain/automodel:
+    - prep/pretrain_prep:tiny
+  rl/nemo_rl/dpo:
+    - prep/rl_prep:tiny
+  rl/nemo_rl/rlhf:
+    - prep/rl_prep:tiny
+  rl/nemo_rl/rlvr:
+    - prep/rl_prep:tiny
+  # SDG can feed SFT or RL prep, but it is not forced as a dependency because
+  # many customers bring their own JSONL on persistent storage.
+
+# Step -> execution-image mapping. The runner only uses entries reached from
+# workflow.stages after dependency expansion.
+step_execution_images:
+  byob: nemo-data-designer
+  convert/hf_to_megatron: nemo-megatron
+  convert/megatron_to_hf: nemo-megatron
+  convert/merge_lora: nemo-megatron
+  curate/nemo_curator: nemo-curator
+  env/env_toml: launcher-python
+  eval/model_eval: nemo-eval
+  optimize/modelopt/distill: nemo-modelopt
+  optimize/modelopt/prune: nemo-modelopt
+  optimize/modelopt/quantize: nemo-modelopt
+  peft/automodel: nemo-automodel
+  peft/megatron_bridge: nemo-megatron
+  prep/pretrain_prep: nemo-megatron
+  prep/rl_prep: nemo-rl
+  prep/sft_packing: nemo-megatron
+  pretrain/automodel: nemo-automodel
+  pretrain/megatron_bridge: nemo-megatron
+  rl/nemo_rl/dpo: nemo-rl
+  rl/nemo_rl/rlhf: nemo-rl
+  rl/nemo_rl/rlvr: nemo-rl
+  sdg/data_designer: nemo-data-designer
+  sft/automodel: nemo-automodel
+  sft/megatron_bridge: nemo-megatron
+  translate/nemo_skills: nemo-curator
+  translate/translation: nemo-curator
+
+execution_images:
+  launcher-python:
+    base_image: python:3.12-slim
+    tag: nemotron-customizer-python-execution-airgap:latest
+    tar: execution-python-image.tar
+
+  nemo-megatron:
+    base_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    tag: nemotron-customizer-nemo-megatron-airgap:latest
+    tar: execution-nemo-megatron-image.tar
+    required_imports: []
+
+  nemo-automodel:
+    base_image: nvcr.io/nvidia/nemo-automodel:26.04
+    tag: nemotron-customizer-nemo-automodel-airgap:latest
+    tar: execution-nemo-automodel-image.tar
+    required_imports: []
+
+  nemo-rl:
+    base_image: nvcr.io/nvidia/nemo-rl:v0.6.0
+    tag: nemotron-customizer-nemo-rl-airgap:latest
+    tar: execution-nemo-rl-image.tar
+    required_imports: []
+
+  nemo-modelopt:
+    base_image: nvcr.io/nvidia/nemo:26.02
+    tag: nemotron-customizer-nemo-modelopt-airgap:latest
+    tar: execution-nemo-modelopt-image.tar
+    required_imports: []
+
+  nemo-curator:
+    base_image: nvcr.io/nvidia/nemo-curator:25.07
+    tag: nemotron-customizer-nemo-curator-airgap:latest
+    tar: execution-nemo-curator-image.tar
+    required_imports: []
+
+  nemo-data-designer:
+    base_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    tag: nemotron-customizer-nemo-data-designer-airgap:latest
+    tar: execution-nemo-data-designer-image.tar
+    required_imports:
+      - data_designer
+
+  nemo-eval:
+    base_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    tag: nemotron-customizer-nemo-eval-airgap:latest
+    tar: execution-nemo-eval-image.tar
+    required_imports: []

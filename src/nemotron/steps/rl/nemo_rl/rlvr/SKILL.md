@@ -14,7 +14,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Consume prompt `training_jsonl` with verifier fields such as answers.
 - Consume an SFT `checkpoint_megatron` policy.
 - Produce an RLVR-aligned `checkpoint_megatron`.
-- Smoke with `nemotron step run rl/nemo_rl/rlvr -c tiny`.
+- Smoke with `nemotron steps run rl/nemo_rl/rlvr -c tiny`.
 
 ## Configure
 

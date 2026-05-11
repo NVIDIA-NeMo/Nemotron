@@ -32,7 +32,7 @@ from nemo_runspec.packaging import (
     CodePackager,
     SelfContainedPackager,
 )
-from nemotron.cli.commands.step.backends.base import JobContext
+from nemotron.cli.commands.steps.backends.base import JobContext
 
 
 class SlurmBackend:
