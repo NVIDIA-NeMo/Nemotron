@@ -14,11 +14,17 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - SFT SDG: use `config/default.yaml` or `config/customer_support_tools.yaml`.
 - RL preference SDG: use `config/rl_pref.yaml` for chosen and rejected preference pairs.
 - Tiny validation: use `config/tiny.yaml` or preview mode while editing columns.
+- Custom endpoint example: see the commented `providers:` block in
+  `config/customer_support_tools.yaml`.
 
 ## Configure
 
 - Set `num_records` to the target generated count only after preview output looks correct.
 - Set `seed_dataset.path` for seed-typed columns.
+- For custom inference endpoints, add `providers:` and point each
+  `models[].provider` at a declared provider name.
+- In `providers[].api_key`, write the environment variable name such as
+  `OPENAI_API_KEY`; do not resolve the secret into YAML with `${oc.env:...}`.
 - Add post-processing or projection columns so downstream steps receive the expected schema.
 - Use SFT output with AutoModel directly only after it is projected to chat `messages`.
 - Use preference output with `rl/nemo_rl/dpo` only after prompt, chosen, and rejected fields are present.

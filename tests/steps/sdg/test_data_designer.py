@@ -18,6 +18,7 @@ import pytest
 import yaml
 
 from nemotron.steps.sdg.data_designer.step import (
+    build_model_providers,
     parse_json_object,
     project_records,
     records_from_designer_result,
@@ -27,6 +28,7 @@ from .._step_helpers import assert_step_static, step_dir
 
 VALID_COLUMN_TYPES = {"category", "seed", "llm_text", "llm_structured", "llm_judge"}
 LLM_COLUMN_TYPES = {"llm_text", "llm_structured", "llm_judge"}
+BUILTIN_PROVIDER_NAMES = {"anthropic", "nvidia", "openai", "openrouter"}
 
 STEP = step_dir(__file__, "sdg", "data_designer")
 REPO_ROOT = STEP.parents[4]
@@ -119,6 +121,86 @@ def test_llm_columns_reference_declared_model_aliases() -> None:
             if col["type"] in LLM_COLUMN_TYPES:
                 alias = col.get("model_alias", "nvidia-text")
                 assert alias in aliases, f"{path.name}: column {col['name']!r} references unknown model {alias!r}"
+
+
+def test_custom_providers_are_well_formed() -> None:
+    for path in _config_paths():
+        cfg = _load_config(path)
+        providers = cfg.get("providers") or []
+        assert isinstance(providers, list), f"{path.name}: providers must be a list"
+
+        names = []
+        for provider in providers:
+            assert isinstance(provider, dict), f"{path.name}: providers entries must be mappings"
+            assert provider.get("name"), f"{path.name}: providers entries require name"
+            assert provider.get("endpoint"), f"{path.name}: provider {provider.get('name')!r} requires endpoint"
+            provider_type = provider.get("provider_type", "openai")
+            assert provider_type in {"anthropic", "openai"}, (
+                f"{path.name}: provider {provider['name']!r} has unsupported provider_type {provider_type!r}"
+            )
+            api_key = provider.get("api_key")
+            assert not (isinstance(api_key, str) and api_key.startswith("${oc.env:")), (
+                f"{path.name}: provider {provider['name']!r} should reference the API key env var name, "
+                "not resolve the secret through OmegaConf"
+            )
+            names.append(provider["name"])
+
+        assert len(names) == len(set(names)), f"{path.name}: provider names must be unique"
+
+
+def test_model_providers_reference_declared_or_builtin_providers() -> None:
+    for path in _config_paths():
+        cfg = _load_config(path)
+        declared_providers = {provider["name"] for provider in cfg.get("providers") or []}
+        for model in cfg.get("models") or []:
+            provider = model.get("provider")
+            if declared_providers:
+                assert provider, f"{path.name}: models[].provider is required when custom providers are declared"
+            if provider:
+                assert provider in declared_providers | BUILTIN_PROVIDER_NAMES, (
+                    f"{path.name}: model {model['alias']!r} references unknown provider {provider!r}"
+                )
+
+
+def test_build_model_providers_from_config() -> None:
+    class FakeProvider:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeDD:
+        ModelProvider = FakeProvider
+
+    providers = build_model_providers(
+        {
+            "providers": [
+                {
+                    "name": "my-provider",
+                    "endpoint": "https://example.test/v1",
+                    "provider_type": "openai",
+                    "api_key": "OPENAI_API_KEY",
+                    "extra_body": {"foo": "bar"},
+                    "extra_headers": {"X-Test": "1"},
+                },
+                {
+                    "name": "no-auth-provider",
+                    "endpoint": "http://localhost:8000/v1",
+                    "api_key": "",
+                },
+            ]
+        },
+        FakeDD,
+    )
+
+    assert providers is not None
+    assert providers[0].kwargs == {
+        "name": "my-provider",
+        "endpoint": "https://example.test/v1",
+        "provider_type": "openai",
+        "api_key": "OPENAI_API_KEY",
+        "extra_body": {"foo": "bar"},
+        "extra_headers": {"X-Test": "1"},
+    }
+    assert providers[1].kwargs["api_key"] is None
 
 
 def test_structured_llm_columns_have_output_format() -> None:
