@@ -292,6 +292,31 @@ def records_from_designer_result(result: Any) -> list[dict[str, Any]]:
     raise TypeError(f"Unsupported Data Designer dataset type: {type(dataset).__name__}")
 
 
+def build_model_providers(cfg: dict[str, Any], dd: Any) -> list[Any] | None:
+    """Build custom Data Designer model providers from optional YAML config."""
+    providers = cfg.get("providers") or []
+    if not providers:
+        return None
+    if not isinstance(providers, list):
+        raise ValueError("`providers:` must be a list when declared")
+
+    model_providers = []
+    for spec in providers:
+        if not isinstance(spec, dict):
+            raise ValueError("each `providers:` entry must be a mapping")
+        model_providers.append(
+            dd.ModelProvider(
+                name=spec["name"],
+                endpoint=spec["endpoint"],
+                provider_type=spec.get("provider_type", "openai"),
+                api_key=spec.get("api_key") or None,
+                extra_body=spec.get("extra_body"),
+                extra_headers=spec.get("extra_headers"),
+            )
+        )
+    return model_providers
+
+
 def main() -> None:
     config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG)
     raw = apply_hydra_overrides(load_omegaconf_yaml(config_path), cli_overrides)
@@ -345,7 +370,7 @@ def main() -> None:
 
     build_columns(builder, columns, dd)
 
-    client = DataDesigner()
+    client = DataDesigner(model_providers=build_model_providers(cfg, dd))
 
     if cfg.get("preview", False):
         result = client.preview(builder, num_records=cfg["num_records"])
