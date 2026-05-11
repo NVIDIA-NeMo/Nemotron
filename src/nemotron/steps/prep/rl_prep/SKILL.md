@@ -13,7 +13,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Consume `training_jsonl` through an RL data blend.
 - Produce sharded `training_jsonl` ready for `rl/nemo_rl/dpo`, `rl/nemo_rl/rlvr`, or `rl/nemo_rl/rlhf`.
-- Smoke with `nemotron step run prep/rl_prep -c tiny`.
+- Smoke with `nemotron steps run prep/rl_prep -c tiny`.
 
 ## Configure
 

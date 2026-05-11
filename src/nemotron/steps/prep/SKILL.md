@@ -46,9 +46,9 @@ Skip packing when:
 ## Smoke commands
 
 ```bash
-nemotron step run prep/sft_packing   -c tiny
-nemotron step run prep/pretrain_prep -c tiny
-nemotron step run prep/rl_prep       -c tiny
+nemotron steps run prep/sft_packing   -c tiny
+nemotron steps run prep/pretrain_prep -c tiny
+nemotron steps run prep/rl_prep       -c tiny
 ```
 
 ## Patterns to cite

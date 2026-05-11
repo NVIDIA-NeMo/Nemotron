@@ -19,9 +19,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import nemotron.cli.commands.step.backends.cloud as cloud_mod
-from nemotron.cli.commands.step.backends.base import JobContext
-from nemotron.cli.commands.step.backends.cloud import CloudBackend
+import nemotron.cli.commands.steps.backends.cloud as cloud_mod
+from nemotron.cli.commands.steps.backends.base import JobContext
+from nemotron.cli.commands.steps.backends.cloud import CloudBackend
 
 
 def _ctx(step_id: str, *, launch: str = "ray") -> JobContext:

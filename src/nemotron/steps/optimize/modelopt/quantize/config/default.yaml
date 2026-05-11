@@ -22,8 +22,8 @@
 #   Megatron-Bridge quantization scripts.
 #
 # Usage:
-#   nemotron step run optimize/modelopt/quantize -c default
-#   nemotron step run optimize/modelopt/quantize -c default args.export_quant_cfg=fp8
+#   nemotron steps run optimize/modelopt/quantize -c default
+#   nemotron steps run optimize/modelopt/quantize -c default args.export_quant_cfg=fp8
 #
 # Script arguments are forwarded from args: using hyphenated CLI flags. For
 # example, args.hf_model_id becomes --hf-model-id. New upstream flags can be

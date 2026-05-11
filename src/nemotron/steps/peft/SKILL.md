@@ -61,8 +61,8 @@ instruction-format adherence).
 ## Smoke commands
 
 ```bash
-nemotron step run peft/automodel -c tiny
-nemotron step run peft/megatron_bridge -c tiny   # requires compatible packed_parquet + base checkpoint
+nemotron steps run peft/automodel -c tiny
+nemotron steps run peft/megatron_bridge -c tiny   # requires compatible packed_parquet + base checkpoint
 ```
 
 ## Guardrails

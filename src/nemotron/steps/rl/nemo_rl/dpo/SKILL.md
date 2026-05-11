@@ -14,7 +14,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Consume `training_jsonl` with prompt, chosen, and rejected fields.
 - Consume an SFT `checkpoint_megatron` policy.
 - Produce a DPO-aligned `checkpoint_megatron`.
-- Smoke with `nemotron step run rl/nemo_rl/dpo -c tiny`.
+- Smoke with `nemotron steps run rl/nemo_rl/dpo -c tiny`.
 
 ## Configure
 

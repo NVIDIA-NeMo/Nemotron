@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""`nemotron step run` — generic step execution.
+"""`nemotron steps run` — generic step execution.
 
 Thin dispatcher. The job of this command is to:
   1. Resolve a step id → step.py + runspec.
@@ -21,7 +21,7 @@ Thin dispatcher. The job of this command is to:
   4. Hand off to ``backend.submit(ctx)``.
 
 All execution-mechanics live in the per-backend modules under
-``nemotron.cli.commands.step.backends.*``. To add a new submission target,
+``nemotron.cli.commands.steps.backends.*``. To add a new submission target,
 write one Backend subclass and ``register()`` it — no edits here.
 """
 
@@ -43,8 +43,8 @@ from nemo_runspec.config import (
 from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars, get_startup_commands
-from nemotron.cli.commands.step._resolve import resolve_step
-from nemotron.cli.commands.step.backends import JobContext, get_backend
+from nemotron.cli.commands.steps._resolve import resolve_step
+from nemotron.cli.commands.steps.backends import JobContext, get_backend
 
 
 def run_step(

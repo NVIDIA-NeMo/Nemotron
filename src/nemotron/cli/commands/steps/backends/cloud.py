@@ -36,7 +36,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from nemo_runspec.execution import execute_cloud, execute_cloud_ray
-from nemotron.cli.commands.step.backends.base import JobContext
+from nemotron.cli.commands.steps.backends.base import JobContext
 
 
 class CloudBackend:

@@ -69,9 +69,9 @@ prep/pretrain_prep → optimize/modelopt/distill → eval/model_eval     # stand
 ## Smoke commands
 
 ```bash
-nemotron step run optimize/modelopt/quantize -c tiny
-nemotron step run optimize/modelopt/prune -c tiny
-nemotron step run optimize/modelopt/distill -c tiny    # uses use_mock_data=true
+nemotron steps run optimize/modelopt/quantize -c tiny
+nemotron steps run optimize/modelopt/prune -c tiny
+nemotron steps run optimize/modelopt/distill -c tiny    # uses use_mock_data=true
 ```
 
 ## Guardrails

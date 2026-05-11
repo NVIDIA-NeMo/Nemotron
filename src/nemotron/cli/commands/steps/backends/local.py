@@ -22,7 +22,7 @@ import subprocess
 import sys
 
 from nemo_runspec.execution import execute_local
-from nemotron.cli.commands.step.backends.base import JobContext
+from nemotron.cli.commands.steps.backends.base import JobContext
 
 
 class LocalBackend:

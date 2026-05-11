@@ -63,8 +63,8 @@ sdg/data_designer (rl_pref.yaml)              → prep/rl_prep      → rl/nemo_
 ## Smoke commands
 
 ```bash
-nemotron step run sdg/data_designer -c tiny
-nemotron step run sdg/data_designer -c default --extra-args=--preview
+nemotron steps run sdg/data_designer -c tiny
+nemotron steps run sdg/data_designer -c default --extra-args=--preview
 ```
 
 ## Patterns to cite

@@ -17,9 +17,9 @@
 # step's data/ dir so the same config works under any source layout.
 #
 # Usage:
-#   nemotron step run prep/pretrain_prep -c tiny                          # local
-#   nemotron step run prep/pretrain_prep -c tiny -r lepton_pretrain_dataprep
-#   nemotron step run prep/pretrain_prep -c tiny -r slurm_pretrain_dataprep
+#   nemotron steps run prep/pretrain_prep -c tiny                          # local
+#   nemotron steps run prep/pretrain_prep -c tiny -r lepton_pretrain_dataprep
+#   nemotron steps run prep/pretrain_prep -c tiny -r slurm_pretrain_dataprep
 
 # blend_path is omitted on purpose — step.py defaults to data/blend_tiny.json.
 output_dir: ${oc.env:PRETRAIN_OUTPUT_DIR,./output/pretrain_dataprep_tiny}

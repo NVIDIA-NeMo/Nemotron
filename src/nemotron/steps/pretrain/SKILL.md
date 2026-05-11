@@ -20,7 +20,7 @@ The "default model" column shows what the shipped `config/default.yaml`
 selects. Override at CLI:
 
 ```bash
-nemotron step run pretrain/automodel -c default \
+nemotron steps run pretrain/automodel -c default \
   model.pretrained_model_name_or_path=<your-hf-id>
 ```
 
@@ -88,8 +88,8 @@ curate/nemo_curator → prep/pretrain_prep → pretrain/automodel        → che
 ## Smoke commands
 
 ```bash
-nemotron step run pretrain/automodel       -c tiny
-nemotron step run pretrain/megatron_bridge -c tiny
+nemotron steps run pretrain/automodel       -c tiny
+nemotron steps run pretrain/megatron_bridge -c tiny
 ```
 
 ## Patterns to cite

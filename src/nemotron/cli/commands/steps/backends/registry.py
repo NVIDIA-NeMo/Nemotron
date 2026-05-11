@@ -25,7 +25,7 @@ from collections.abc import Callable
 
 import typer
 
-from nemotron.cli.commands.step.backends.base import Backend
+from nemotron.cli.commands.steps.backends.base import Backend
 
 _BackendFactory = type[Backend] | Callable[[], Backend] | str
 _REGISTRY: dict[str, _BackendFactory] = {}
