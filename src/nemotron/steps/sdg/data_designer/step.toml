@@ -57,7 +57,7 @@ then = "Run with --preview to emit a small batch via client.preview() before sca
 
 [[strategies]]
 when = "Using a self-hosted or non-NVIDIA OpenAI-compatible endpoint"
-then = "Start from config/custom_provider_example.yaml and set OPENAI_BASE_URL plus OPENAI_API_KEY in the execution environment."
+then = "Use the commented providers example in config/customer_support_tools.yaml and set OPENAI_BASE_URL plus OPENAI_API_KEY in the execution environment."
 
 [[strategies]]
 when = "Generating preference data for DPO"

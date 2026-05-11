@@ -14,8 +14,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - SFT SDG: use `config/default.yaml` or `config/customer_support_tools.yaml`.
 - RL preference SDG: use `config/rl_pref.yaml` for chosen and rejected preference pairs.
 - Tiny validation: use `config/tiny.yaml` or preview mode while editing columns.
-- Custom endpoint example: use `config/custom_provider_example.yaml` after
-  setting `OPENAI_BASE_URL` and `OPENAI_API_KEY`.
+- Custom endpoint example: see the commented `providers:` block in
+  `config/customer_support_tools.yaml`.
 
 ## Configure
 
@@ -34,7 +34,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Contract: `src/nemotron/steps/sdg/data_designer/step.toml`
 - Runner: `src/nemotron/steps/sdg/data_designer/step.py`
-- Configs: `config/default.yaml`, `config/customer_support_tools.yaml`, `config/rl_pref.yaml`, `config/tiny.yaml`, `config/custom_provider_example.yaml`
+- Configs: `config/default.yaml`, `config/customer_support_tools.yaml`, `config/rl_pref.yaml`, `config/tiny.yaml`
 - Seeds: `data/sft_topic_seeds.jsonl`, `data/customer_support_tool_seeds.jsonl`, `data/rl_pref_prompt_seeds.jsonl`
 
 ## Guardrails

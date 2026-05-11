@@ -29,6 +29,30 @@ seed_dataset:
   strategy: shuffle
   fields: [customer_name, issue, order_id, product, policy_hint]
 
+# Optional custom endpoint example:
+#
+# To route this pipeline through an OpenAI-compatible endpoint instead of the
+# built-in NVIDIA provider, uncomment and edit both blocks below.
+# Keep providers[].api_key as the environment variable name. Data Designer
+# resolves it at request time; using `${oc.env:OPENAI_API_KEY}` here would put
+# the secret into the resolved config.
+#
+# providers:
+#   - name: my-provider
+#     endpoint: ${oc.env:OPENAI_BASE_URL}
+#     provider_type: openai
+#     api_key: OPENAI_API_KEY
+#
+# models:
+#   - alias: nvidia-text
+#     model: google/gemma-4-31B-it
+#     provider: my-provider
+#     skip_health_check: true
+#     inference_parameters:
+#       temperature: 0.75
+#       top_p: 0.95
+#       max_tokens: 1800
+
 models:
   - alias: nvidia-text
     model: openai/gpt-oss-20b
