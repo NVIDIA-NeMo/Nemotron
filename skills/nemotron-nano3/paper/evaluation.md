@@ -16,7 +16,7 @@ related_steps:
   - "eval/model_eval"
   - "convert/megatron_to_hf"
   - "convert/hf_to_megatron"
-  - "rl/nemo_rl_grpo"
+  - "rl/nemo_rl/rlvr"
 currency: "frozen"
 ---
 

@@ -14,7 +14,7 @@ key_facts:
   - "The release bundle includes Base BF16, post-trained BF16, FP8 model weights, a GenRM, recipe code, and most of the newly added data collections."
 related_steps:
   - "sft/megatron_bridge"
-  - "rl/nemo_rl_grpo"
+  - "rl/nemo_rl/rlvr"
   - "eval/model_eval"
   - "convert/hf_to_megatron"
 currency: "frozen"

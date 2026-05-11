@@ -13,7 +13,7 @@ key_facts:
   - "The paper says RLVR can match or surpass a heavily fine-tuned SFT checkpoint."
   - "The RLHF stage uses a GenRM plus group-relative length control and reports roughly 30% lower verbosity without sacrificing accuracy."
 related_steps:
-  - "rl/nemo_rl_grpo"
+  - "rl/nemo_rl/rlvr"
   - "eval/model_eval"
   - "convert/megatron_to_hf"
   - "sft/megatron_bridge"

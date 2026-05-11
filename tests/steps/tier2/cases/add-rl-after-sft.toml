@@ -25,5 +25,5 @@ no_relative_data_paths = true
 [expected.iteration]
 followup = "Add RL with GRPO after SFT."
 must_add_stage = "03_rl"
-must_have_step = "rl/nemo_rl_grpo"
+must_have_step = "rl/nemo_rl/rlvr"
 must_mention = ["GRPO", "checkpoint_megatron"]

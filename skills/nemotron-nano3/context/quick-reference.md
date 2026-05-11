@@ -239,7 +239,7 @@ So if asked “can I match the paper numbers?” the safe answer is:
 | pack Nano3 SFT JSONL | `prep/sft_packing` |
 | SFT with Megatron-Bridge | `sft/megatron_bridge` |
 | SFT with smaller GPU counts / LoRA | `sft/automodel` |
-| RL with GRPO | `rl/nemo_rl_grpo` *(present in the step catalog as planned; ground it on `src/nemotron/recipes/nano3/stage2_rl/`)* |
+| RL with GRPO | `rl/nemo_rl/rlvr` |
 | evaluate model | `eval/model_eval` |
 | convert HF → Megatron | `convert/hf_to_megatron` |
 | convert Megatron → HF | `convert/megatron_to_hf` |
@@ -248,7 +248,7 @@ So if asked “can I match the paper numbers?” the safe answer is:
 
 There is **currently no public catalog step** for Nano3 pretraining in `src/nemotron/steps/STEPS.md`.
 
-Also note that `rl/nemo_rl_grpo` is listed in the step catalog but its manifest marks it as **planned**, so RL builds should still be grounded carefully on the stage2 recipe rather than treated as a fully mature catalog path.
+For Nano3 RL builds, use `rl/nemo_rl/rlvr` and ground recipe-specific settings on `src/nemotron/recipes/nano3/stage2_rl/`.
 
 If the user asks to build stage0 pretraining via `/nemotron-customize`:
 
@@ -258,8 +258,7 @@ If the user asks to build stage0 pretraining via `/nemotron-customize`:
 
 If the user asks for Nano3 RL generation via `/nemotron-customize`:
 
-- mention `rl/nemo_rl_grpo` as the closest step surface
-- note that it is still marked **planned**
+- mention `rl/nemo_rl/rlvr` as the catalog step surface
 - ground specifics on `src/nemotron/recipes/nano3/stage2_rl/`
 
 ## 19. Quick Answer Templates

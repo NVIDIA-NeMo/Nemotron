@@ -13,7 +13,7 @@ key_facts:
   - "The DPO run uses learning rate 3e-6, batch size 128, and 50 training steps."
   - "In the DPO appendix, hallucinated tool usage drops from 1.25% to 0% on AIME25 and from 8.33% to 0.7% on GPQA."
 related_steps:
-  - "rl/nemo_rl_grpo"
+  - "rl/nemo_rl/rlvr"
   - "eval/model_eval"
   - "sft/megatron_bridge"
 currency: "frozen"

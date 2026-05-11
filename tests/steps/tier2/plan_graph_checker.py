@@ -11,7 +11,7 @@ import tomllib
 
 DEFAULT_STEPS_ROOT = Path(__file__).resolve().parents[3] / "src" / "nemotron" / "steps"
 STEP_ID_PATTERN = re.compile(
-    r"(benchmark|byob|convert|curate|eval|prep|pretrain|rl|sft|sdg|synth|translate)/[a-z0-9_]+"
+    r"(benchmark|byob|convert|curate|eval|prep|pretrain|rl|sft|sdg|translate)/[a-z0-9_]+"
 )
 
 

@@ -14,7 +14,7 @@ key_facts:
   - "Long-context extension is done with a separate continuous-pretraining phase using 8-way context, tensor, and expert parallelism plus 4-way pipeline parallelism."
 related_steps:
   - "sft/megatron_bridge"
-  - "rl/nemo_rl_grpo"
+  - "rl/nemo_rl/rlvr"
   - "eval/model_eval"
   - "convert/hf_to_megatron"
 currency: "frozen"

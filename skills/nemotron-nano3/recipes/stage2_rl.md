@@ -117,13 +117,12 @@ The repo gives you the GRPO/RLVR backbone directly, but not a separate one-click
 
 The closest catalog step surface is:
 
-- `rl/nemo_rl_grpo`
+- `rl/nemo_rl/rlvr`
 
-Important maturity note:
+Important grounding note:
 
-- the step exists in `src/nemotron/steps/` and is listed in `STEPS.md`
-- its manifest marks it as **planned**
-- so generation/build work should still be grounded on `src/nemotron/recipes/nano3/stage2_rl/`
+- use the catalog step for GRPO/RLVR wiring
+- ground Nano3-specific data and config details on `src/nemotron/recipes/nano3/stage2_rl/`
 
 Common surrounding steps:
 
@@ -133,4 +132,4 @@ Common surrounding steps:
 
 ## Good Handoff Pattern
 
-> “For the public Nano3 RL path, the nearest `nemotron-customize` surface is `rl/nemo_rl_grpo`, but it is still marked planned. I would ground the build on `src/nemotron/recipes/nano3/stage2_rl/` and use the step only as the conceptual catalog bridge.”
+> “For the public Nano3 RL path, use `rl/nemo_rl/rlvr` as the `nemotron-customize` surface and ground the concrete config details on `src/nemotron/recipes/nano3/stage2_rl/`.”

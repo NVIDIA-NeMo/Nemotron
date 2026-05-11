@@ -16,6 +16,8 @@
 
 from pathlib import Path
 
+from nemotron.steps.index import discover_steps
+
 
 def test_steps_index_exists(steps_root: Path) -> None:
     assert (steps_root / "STEPS.md").exists(), "src/nemotron/steps/STEPS.md does not exist"
@@ -35,3 +37,27 @@ def test_every_step_manifest_is_mentioned_in_steps_index(
         assert step_dir in steps_index, (
             f"{manifest_path}: step directory {step_dir!r} is not mentioned in STEPS.md"
         )
+
+
+def test_legacy_data_designer_namespace_is_not_discoverable(steps_root: Path) -> None:
+    discovered_step_ids = {step.id for step in discover_steps(steps_root)}
+    legacy_step_id = "/".join(("syn" + "th", "data_" + "designer"))
+
+    assert "sdg/data_designer" in discovered_step_ids
+    assert legacy_step_id not in discovered_step_ids
+    assert legacy_step_id not in (steps_root / "STEPS.md").read_text(encoding="utf-8")
+
+
+def test_discovered_steps_have_runners(steps_root: Path) -> None:
+    missing_runners = [step.id for step in discover_steps(steps_root) if not (step.path / "step.py").exists()]
+
+    assert not missing_runners, f"Discovered steps without step.py runners: {missing_runners}"
+
+
+def test_legacy_grpo_step_is_not_discoverable(steps_root: Path) -> None:
+    discovered_step_ids = {step.id for step in discover_steps(steps_root)}
+    legacy_step_id = "/".join(("rl", "nemo_rl_" + "grpo"))
+
+    assert "rl/nemo_rl/rlvr" in discovered_step_ids
+    assert legacy_step_id not in discovered_step_ids
+    assert legacy_step_id not in (steps_root / "STEPS.md").read_text(encoding="utf-8")

@@ -102,7 +102,7 @@ Use this map when the user shifts from “what is Nano3?” to “help me build 
 | pack SFT JSONL for Megatron | `prep/sft_packing` |
 | run Nano3-style Megatron SFT | `sft/megatron_bridge` |
 | run smaller-GPU SFT | `sft/automodel` |
-| run GRPO alignment | `rl/nemo_rl_grpo` *(listed in the step catalog as planned; ground it on the stage2 recipe)* |
+| run GRPO alignment | `rl/nemo_rl/rlvr` |
 | benchmark a checkpoint | `eval/model_eval` |
 | convert released HF weights to Megatron | `convert/hf_to_megatron` |
 | export Megatron checkpoint back to HF | `convert/megatron_to_hf` |
@@ -116,12 +116,10 @@ So when a user wants to build Nano3-like pretraining with `/nemotron-customize`:
 - ground on `src/nemotron/recipes/nano3/stage0_pretrain/`
 - optionally combine with `curate/nemo_curator` for upstream corpus work
 
-For RL, `rl/nemo_rl_grpo` does appear in the step catalog, but its manifest is marked **planned**.
-So RL requests should still be handled with recipe-grounded caution:
+For RL, use `rl/nemo_rl/rlvr` as the catalog step and keep Nano3-specific details grounded in the recipe:
 
-- mention `rl/nemo_rl_grpo` as the nearest step surface
+- mention `rl/nemo_rl/rlvr` as the step surface
 - ground details on `src/nemotron/recipes/nano3/stage2_rl/`
-- avoid implying that the RL catalog path is as mature as the SFT/eval paths
 
 ## Recommended Answer Pattern
 

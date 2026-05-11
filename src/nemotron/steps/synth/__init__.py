@@ -1,1 +1,0 @@
-"""Synthetic-data step category."""

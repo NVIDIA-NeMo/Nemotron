@@ -52,7 +52,7 @@ Here's the plan:
 2. translate/translation → translated_jsonl
 3. prep/sft_packing      → packed_parquet
 4. sft/megatron_bridge   → checkpoint_megatron
-5. rl/nemo_rl_grpo       → checkpoint_megatron (RL-tuned)
+5. rl/nemo_rl/rlvr       → checkpoint_megatron (RL-tuned)
 6. eval/model_eval       → eval_results
 
 ## Validation
