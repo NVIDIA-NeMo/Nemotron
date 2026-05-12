@@ -55,7 +55,7 @@ The **base model** produces free-form descriptions. After fine-tuning, it output
 ## Step 0 — Set Up the Environment
 
 ```bash
-# Inside the NeMo AutoModel container (26.04+):
+# Inside the NeMo AutoModel container (nvcr.io/nvidia/nemo-automodel:26.04):
 cd /opt/Automodel
 
 # Or from a source checkout:
