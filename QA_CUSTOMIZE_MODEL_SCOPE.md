@@ -25,7 +25,7 @@ Out of scope:
 - Public benchmark leaderboard validation.
 - Production deployment hardening outside the Airgap module.
 - Vendor account provisioning, cloud quota, and external service uptime.
-- Curator internals, except validating that Nemotron installs and calls a Curator build with experimental translation support.
+- Curator implementation details.
 
 ## Runbook Rules
 
@@ -56,8 +56,7 @@ export EVAL_MODEL_ID="${EVAL_MODEL_ID:-megatron_model}"
 export EVAL_URL="${EVAL_URL:-http://0.0.0.0:8080/v1/completions/}"
 export EVAL_TOKENIZER="${EVAL_TOKENIZER:-/path/to/checkpoint/tokenizer}"
 
-# Required on the remote QA machine used for this run. Ray 2.55 can otherwise
-# propagate uv runtime state to workers and start workers in an incomplete env.
+# Required for reliable Ray worker startup in the QA environment.
 export RAY_ENABLE_UV_RUN_RUNTIME_ENV="${RAY_ENABLE_UV_RUN_RUNTIME_ENV:-0}"
 ```
 
@@ -86,7 +85,6 @@ uv run nemotron steps --help
 uv run nemotron steps list
 uv run nemotron steps show --help
 uv run nemotron steps run --help
-uv run nemotron data --help
 uv run nemotron byob --help
 ```
 
@@ -94,7 +92,7 @@ Success criteria:
 
 - `uv sync` exits 0.
 - All listed help and discovery commands exit 0.
-- Help output is captured for `nemotron`, `nemotron steps`, `nemotron data`, and `nemotron byob`.
+- Help output is captured for `nemotron`, `nemotron steps`, and `nemotron byob`.
 
 Evidence to collect: command logs, CLI help snippets, and final exit status.
 
@@ -103,14 +101,10 @@ Evidence to collect: command logs, CLI help snippets, and final exit status.
 Prerequisites: Network access to package indexes and Git dependencies.
 
 ```bash
-uv sync --extra translation
-uv sync --extra byob
-uv sync --extra data-sdg
-uv sync --group run
+uv sync --extra translation --extra byob --extra data-sdg --group run
 
-# Until the Curator package-data change is available from a released package,
-# validate translation against an editable Curator checkout so prompt YAML files
-# are available from site-packages.
+# For this RC, install Curator from source so translation prompt resources are
+# available from site-packages.
 export CURATOR_ROOT="${CURATOR_ROOT:-$QA_ROOT/curator-main}"
 if [ ! -d "$CURATOR_ROOT/.git" ]; then
   git clone https://github.com/NVIDIA-NeMo/Curator.git "$CURATOR_ROOT"
@@ -817,43 +811,16 @@ Evidence to collect: agent transcript, generated configs, command logs, validati
 
 ## Training
 
-### Test Data Setup
+### Training Workspace Setup
 
 ```bash
 export TRN_ROOT="$QA_ROOT/training"
-mkdir -p "$TRN_ROOT/data" "$TRN_ROOT/output"
-
-cat > "$TRN_ROOT/data/sft_chat.jsonl" <<'EOF'
-{"messages":[{"role":"user","content":"Summarize what a budget is."},{"role":"assistant","content":"A budget is a plan for income, spending, saving, and borrowing over time."}]}
-{"messages":[{"role":"user","content":"Give one reason to diversify investments."},{"role":"assistant","content":"Diversification spreads risk across assets instead of concentrating it in one place."}]}
-EOF
-
-cat > "$TRN_ROOT/data/pretrain.jsonl" <<'EOF'
-{"text":"Finance studies how people and organizations allocate resources under uncertainty."}
-{"text":"Risk management identifies, measures, and mitigates sources of financial loss."}
-EOF
-
-cat > "$TRN_ROOT/data/preferences.jsonl" <<'EOF'
-{"prompt":"Explain diversification in one sentence.","chosen":"Diversification spreads investment risk across multiple assets.","rejected":"Diversification means buying only one stock."}
-{"prompt":"What is budgeting?","chosen":"Budgeting plans income and expenses over a period of time.","rejected":"Budgeting predicts tomorrow's weather."}
-EOF
-
-cat > "$TRN_ROOT/data/sft_blend.json" <<EOF
-{"datasets":[{"name":"qa_sft_chat","path":"$TRN_ROOT/data/sft_chat.jsonl"}]}
-EOF
-
-cat > "$TRN_ROOT/data/pretrain_blend.json" <<EOF
-{"datasets":[{"name":"qa_pretrain_text","path":"$TRN_ROOT/data/pretrain.jsonl","text_field":"text"}]}
-EOF
-
-cat > "$TRN_ROOT/data/rl_blend.json" <<EOF
-{"datasets":[{"name":"qa_preferences","path":"$TRN_ROOT/data/preferences.jsonl"}]}
-EOF
+mkdir -p "$TRN_ROOT/output"
 ```
 
 ### TRAIN-001 Discover Training And Data-Prep Step Metadata
 
-Prerequisites: Base environment from `SETUP-001`; training test data setup completed.
+Prerequisites: Base environment from `SETUP-001`; training workspace setup completed.
 
 ```bash
 uv run --no-sync nemotron steps list --json > "$TRN_ROOT/steps.json"
@@ -907,7 +874,7 @@ Evidence to collect: command logs and blend file paths.
 
 ### TRAIN-003 Agent-Driven Training Workflow
 
-Prerequisites: Agent environment available; tiny training data.
+Prerequisites: Agent environment available; Lepton env file from `LEP-001`.
 
 Ask the agent:
 
@@ -1157,26 +1124,17 @@ export WANDB_NAME="${WANDB_NAME:-nemotron-qa-$QA_RUN_ID}"
 : "${WANDB_API_KEY:?Set WANDB_API_KEY for Lepton training and data-prep telemetry}"
 uvx --from leptonai lep login -c "$LEPTON_WORKSPACE:$LEPTON_API_KEY"
 
-export NEMOTRON_ENV_FILE="$LEPTON_ROOT/env.lepton.toml"
-
+export LEPTON_ENV_FILE="$LEPTON_ROOT/env.lepton.toml"
 uv run --no-sync nemotron steps run env/env_toml \
   -c lepton \
-  output_path="$NEMOTRON_ENV_FILE" \
-  force=true
+  output_path="$LEPTON_ENV_FILE" \
+  force=true \
+  sections.lepton_base.node_group="$LEPTON_NODE_GROUP" \
+  sections.lepton_base.env_vars.WANDB_PROJECT="$WANDB_PROJECT" \
+  sections.lepton_base.env_vars.WANDB_ENTITY="$WANDB_ENTITY" \
+  sections.lepton_base.env_vars.WANDB_NAME="$WANDB_NAME"
 
-python - <<'PY'
-import os
-from pathlib import Path
-
-path = Path(os.environ["NEMOTRON_ENV_FILE"])
-text = path.read_text()
-text = text.replace('node_group = "lepton-node-group"', f'node_group = "{os.environ["LEPTON_NODE_GROUP"]}"')
-text = text.replace(
-    'WANDB_PROJECT = "nemotron"',
-    'WANDB_PROJECT = "${oc.env:WANDB_PROJECT,nemotron-qa}", WANDB_ENTITY = "${oc.env:WANDB_ENTITY,\'\'}", WANDB_NAME = "${oc.env:WANDB_NAME,nemotron-qa}"',
-)
-path.write_text(text)
-PY
+export NEMOTRON_ENV_FILE="$LEPTON_ENV_FILE"
 
 uvx --from leptonai lep node list
 uvx --from leptonai lep node storage -ng "$LEPTON_NODE_GROUP"
@@ -1241,7 +1199,12 @@ Lepton job submissions, not simulations.
 
 ```bash
 export NEMOTRON_ENV_FILE="$LEPTON_ROOT/env.lepton.toml"
-export LEPTON_CONTAINER_MOUNT="${NEMOTRON_WORKSPACE:-/mnt/lustre-shared}"
+export LEPTON_NODE_GROUP="${LEPTON_NODE_GROUP:-az-sat-lepton-001}"
+export NEMOTRON_HOST_MOUNT="${NEMOTRON_HOST_MOUNT:-/sovereign-ai-playbook/}"
+export NEMOTRON_WORKSPACE="${NEMOTRON_WORKSPACE:-/mnt/lustre-shared}"
+export NEMOTRON_MOUNT_FROM="${NEMOTRON_MOUNT_FROM:-node-nfs:amlfs}"
+export NEMO_RUN_DIR="${NEMO_RUN_DIR:-$NEMOTRON_WORKSPACE/nemo-run}"
+export LEPTON_CONTAINER_MOUNT="$NEMOTRON_WORKSPACE"
 export LEPTON_OUTPUT_ROOT="${LEPTON_OUTPUT_ROOT:-$LEPTON_CONTAINER_MOUNT/output/nemotron-qa-$QA_RUN_ID}"
 export HF_HOME="${HF_HOME:-$LEPTON_CONTAINER_MOUNT/hf}"
 export WANDB_PROJECT="${WANDB_PROJECT:-nemotron-qa}"
@@ -1252,56 +1215,124 @@ export WANDB_NAME="${WANDB_NAME:-nemotron-qa-$QA_RUN_ID}"
 SFT_PREP_DIR="$LEPTON_OUTPUT_ROOT/data_prep/sft_packing"
 PRETRAIN_PREP_DIR="$LEPTON_OUTPUT_ROOT/data_prep/pretrain_prep"
 RL_PREP_DIR="$LEPTON_OUTPUT_ROOT/data_prep/rl_prep"
+LEPTON_JOB_POLL_SECONDS="${LEPTON_JOB_POLL_SECONDS:-60}"
+LEPTON_JOB_MAX_WAIT_SECONDS="${LEPTON_JOB_MAX_WAIT_SECONDS:-14400}"
 
+lepton_job_state() {
+  uvx --from leptonai lep job get -i "$1" | uv run --no-sync python -c '
+import re
+import sys
+
+text = sys.stdin.read()
+match = re.search(r"\"state\":\s*\"([^\"]+)\"", text)
+if not match:
+    raise SystemExit("Could not parse Lepton job state")
+print(match.group(1))
+'
+}
+
+wait_for_lepton_job() {
+  job_id="$1"
+  start_time="$SECONDS"
+  while true; do
+    state="$(lepton_job_state "$job_id")"
+    echo "$job_id: $state"
+    case "$state" in
+      Completed|Succeeded)
+        return 0
+        ;;
+      Failed|Stopped|Deleted)
+        uvx --from leptonai lep job log -i "$job_id"
+        return 1
+        ;;
+    esac
+    if (( SECONDS - start_time >= LEPTON_JOB_MAX_WAIT_SECONDS )); then
+      echo "$job_id: timed out after ${LEPTON_JOB_MAX_WAIT_SECONDS}s"
+      uvx --from leptonai lep job log -i "$job_id"
+      return 1
+    fi
+    sleep "$LEPTON_JOB_POLL_SECONDS"
+  done
+}
+
+SFT_PACKING_SUBMIT_LOG="$LEPTON_ROOT/sft_packing_submit.log"
 SFT_OUTPUT_DIR="$SFT_PREP_DIR" \
   uv run --no-sync nemotron steps run data_prep/sft_packing \
   -c tiny \
-  --batch lepton_prep_sft_packing
+  --batch lepton_prep_sft_packing 2>&1 | tee "$SFT_PACKING_SUBMIT_LOG"
+SFT_PACKING_JOB_ID="$(grep -oE 'data-prep-sft-packing-step-[a-z0-9]+' "$SFT_PACKING_SUBMIT_LOG" | tail -1)"
+test -n "$SFT_PACKING_JOB_ID"
+wait_for_lepton_job "$SFT_PACKING_JOB_ID"
 
+PRETRAIN_PREP_SUBMIT_LOG="$LEPTON_ROOT/pretrain_prep_submit.log"
 PRETRAIN_OUTPUT_DIR="$PRETRAIN_PREP_DIR" \
   uv run --no-sync nemotron steps run data_prep/pretrain_prep \
   -c tiny \
-  --batch lepton_prep_pretrain_prep
+  --batch lepton_prep_pretrain_prep 2>&1 | tee "$PRETRAIN_PREP_SUBMIT_LOG"
+PRETRAIN_PREP_JOB_ID="$(grep -oE 'data-prep-pretrain-prep-step-[a-z0-9]+' "$PRETRAIN_PREP_SUBMIT_LOG" | tail -1)"
+test -n "$PRETRAIN_PREP_JOB_ID"
+wait_for_lepton_job "$PRETRAIN_PREP_JOB_ID"
 
+RL_PREP_SUBMIT_LOG="$LEPTON_ROOT/rl_prep_submit.log"
 RL_OUTPUT_DIR="$RL_PREP_DIR" \
   uv run --no-sync nemotron steps run data_prep/rl_prep \
   -c tiny \
-  --batch lepton_prep_rl_prep
+  --batch lepton_prep_rl_prep 2>&1 | tee "$RL_PREP_SUBMIT_LOG"
+RL_PREP_JOB_ID="$(grep -oE 'data-prep-rl-prep-step-[a-z0-9]+' "$RL_PREP_SUBMIT_LOG" | tail -1)"
+test -n "$RL_PREP_JOB_ID"
+wait_for_lepton_job "$RL_PREP_JOB_ID"
 
+SFT_MB_SUBMIT_LOG="$LEPTON_ROOT/sft_megatron_bridge_submit.log"
 SFT_PACKED_DIR="$SFT_PREP_DIR/splits/train/*.parquet" \
 SFT_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/sft/megatron_bridge" \
   uv run --no-sync nemotron steps run sft/megatron_bridge \
   -c tiny \
-  --batch lepton_sft_megatron_bridge
+  --batch lepton_sft_megatron_bridge 2>&1 | tee "$SFT_MB_SUBMIT_LOG"
+SFT_MB_JOB_ID="$(grep -oE 'sft-megatron-bridge-step-[a-z0-9]+' "$SFT_MB_SUBMIT_LOG" | tail -1)"
+test -n "$SFT_MB_JOB_ID"
+wait_for_lepton_job "$SFT_MB_JOB_ID"
 
+PRETRAIN_MB_SUBMIT_LOG="$LEPTON_ROOT/pretrain_megatron_bridge_submit.log"
 PRETRAIN_BLEND_PATH="$PRETRAIN_PREP_DIR/blend.json" \
 PRETRAIN_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/pretrain/megatron_bridge" \
   uv run --no-sync nemotron steps run pretrain/megatron_bridge \
   -c tiny \
-  --batch lepton_pretrain_megatron_bridge
+  --batch lepton_pretrain_megatron_bridge 2>&1 | tee "$PRETRAIN_MB_SUBMIT_LOG"
+PRETRAIN_MB_JOB_ID="$(grep -oE 'pretrain-megatron-bridge-step-[a-z0-9]+' "$PRETRAIN_MB_SUBMIT_LOG" | tail -1)"
+test -n "$PRETRAIN_MB_JOB_ID"
+wait_for_lepton_job "$PRETRAIN_MB_JOB_ID"
 
+SFT_AM_SUBMIT_LOG="$LEPTON_ROOT/sft_automodel_submit.log"
 SFT_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/sft/automodel" \
   uv run --no-sync nemotron steps run sft/automodel \
   -c tiny \
-  --batch lepton_sft_automodel
+  --batch lepton_sft_automodel 2>&1 | tee "$SFT_AM_SUBMIT_LOG"
+SFT_AM_JOB_ID="$(grep -oE 'sft-automodel-step-[a-z0-9]+' "$SFT_AM_SUBMIT_LOG" | tail -1)"
+test -n "$SFT_AM_JOB_ID"
+wait_for_lepton_job "$SFT_AM_JOB_ID"
 
+PRETRAIN_AM_SUBMIT_LOG="$LEPTON_ROOT/pretrain_automodel_submit.log"
 PRETRAIN_BLEND_PATH="$PRETRAIN_PREP_DIR/blend.json" \
 PRETRAIN_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/pretrain/automodel" \
   uv run --no-sync nemotron steps run pretrain/automodel \
   -c tiny \
-  --batch lepton_pretrain_automodel
+  --batch lepton_pretrain_automodel 2>&1 | tee "$PRETRAIN_AM_SUBMIT_LOG"
+PRETRAIN_AM_JOB_ID="$(grep -oE 'pretrain-automodel-step-[a-z0-9]+' "$PRETRAIN_AM_SUBMIT_LOG" | tail -1)"
+test -n "$PRETRAIN_AM_JOB_ID"
+wait_for_lepton_job "$PRETRAIN_AM_JOB_ID"
 ```
 
 Success criteria:
 
-- Real data-prep and training runs return Lepton job IDs or complete successfully depending on executor behavior.
+- Real data-prep and training runs submit Lepton job IDs and each submitted job reaches `Completed` or `Succeeded`.
 - The required end-to-end checks use data-prep outputs as training inputs: `SFT_PACKED_DIR` points to the SFT packing output and `PRETRAIN_BLEND_PATH` points to the pretrain prep output.
 - Training commands do not override model names, dataset names, split sizes, or scheduler knobs; those come from `tiny.yaml` and `default.yaml`.
 - AutoModel commands use their packaged tiny configs. Do not force packed-parquet data into AutoModel SFT; the packed output is for Megatron-Bridge SFT.
 - Remote logs show mounted paths and do not print secrets.
+- Jobs that exceed `LEPTON_JOB_MAX_WAIT_SECONDS` are reported with the Lepton job ID and job logs.
 - If Lepton workspace, quota, credentials, images, or shared storage are unavailable, mark the specific run `BLOCKED`.
 
-Evidence to collect: Lepton job IDs, logs, prepared data artifacts, checkpoints, and redacted secret evidence.
+Evidence to collect: submit logs, Lepton job IDs, status lines, prepared data artifacts, checkpoints, and redacted secret evidence.
 
 ### LEP-004 Agent-Driven Lepton Workflow
 
@@ -1414,12 +1445,6 @@ Success criteria:
 - Validates output artifact paths after the real run.
 
 Evidence to collect: agent transcript, generated command, and result summary.
-
-## Follow-Up TODOs From QA Execution
-
-- Rename or document `merge_scores` more clearly as metadata-specific behavior, because it means "merge FAITH scores into translation metadata", not "merge translated segments back into documents".
-- Harden Curator FAITH response parsing so a null model response is handled as a parse failure or clear backend error instead of `TypeError: 'NoneType' object is not iterable`.
-- Add dedicated Lepton CPU profiles for `data_prep/pretrain_prep` and `data_prep/rl_prep`; the current runbook reuses the existing CPU data-prep profile.
 
 ## Reporting
 

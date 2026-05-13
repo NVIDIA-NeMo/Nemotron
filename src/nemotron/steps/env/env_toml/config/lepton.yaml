@@ -100,6 +100,7 @@ sections:
       HF_HOME: ${oc.env:HF_HOME,/mnt/lustre-shared/hf}
       WANDB_API_KEY: ${oc.env:WANDB_API_KEY,''}
       WANDB_PROJECT: nemotron
+      RAY_ENABLE_UV_RUN_RUNTIME_ENV: "0"
       RAY_DEDUP_LOGS: "0"
       RAY_GRAFANA_IFRAME_HOST: ""
 
@@ -107,9 +108,10 @@ sections:
   # schedules a CPU shape and the executor does not request GPUs.
   lepton_prep_base:
     extends: lepton_base
-    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.medium}
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
     gpus_per_node: 0
     nprocs_per_node: 1
+    shared_memory_size: 4096
     startup_commands:
       - python -m pip install --quiet --break-system-packages cosmos-xenna protobuf
     env_vars:
@@ -118,19 +120,19 @@ sections:
   lepton_prep_sft_packing:
     extends: lepton_prep_base
     env_vars:
-      SFT_OUTPUT_DIR: /mnt/lustre-shared/output/data_prep/sft_packing
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/sft_packing}
       RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
 
   lepton_prep_pretrain_prep:
     extends: lepton_prep_base
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /mnt/lustre-shared/output/data_prep/pretrain_prep
+      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/pretrain_prep}
       RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
 
   lepton_prep_rl_prep:
     extends: lepton_prep_base
     env_vars:
-      RL_OUTPUT_DIR: /mnt/lustre-shared/output/data_prep/rl_prep
+      RL_OUTPUT_DIR: ${oc.env:RL_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/rl_prep}
       RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
 
   # Curator-backed steps: byob, translate, and curate all use the Curator
@@ -139,7 +141,7 @@ sections:
   lepton_curator_base:
     extends: lepton_base
     container_image: nvcr.io/nvidia/nemo-curator:26.02
-    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.medium}
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
     nodes: 1
     gpus_per_node: 0
     nprocs_per_node: 1
@@ -183,35 +185,35 @@ sections:
   # endpoints. Config variants choose SFT vs tool-call vs RL preference output.
   lepton_sdg_data_designer:
     extends: lepton_base
-    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.medium}
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
     gpus_per_node: 0
     nprocs_per_node: 1
     shared_memory_size: 4096
     startup_commands:
       - python -m pip install --quiet --break-system-packages data-designer==0.5.5
     env_vars:
-      SDG_OUTPUT_DIR: /mnt/lustre-shared/output/sdg
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg}
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
 
   lepton_sdg_data_designer_tiny:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /mnt/lustre-shared/output/sdg/sft/tiny
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/sft/tiny}
 
   lepton_sdg_data_designer_default:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /mnt/lustre-shared/output/sdg/sft/default
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/sft/default}
 
   lepton_sdg_data_designer_customer_support_tools:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /mnt/lustre-shared/output/sdg/sft/customer_support_tools
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/sft/customer_support_tools}
 
   lepton_sdg_data_designer_rl_pref:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /mnt/lustre-shared/output/sdg/rl/rl_pref
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/rl/rl_pref}
 
   # translate/translation: use mounted /opt/Curator plus a small target install
   # for the Xenna version required by the pinned Curator checkout.
@@ -241,8 +243,8 @@ sections:
     extends: lepton_base
     nodes: 2
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /mnt/lustre-shared/output/pretrain/megatron_bridge
-      PRETRAIN_BLEND_PATH: /mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json
+      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/pretrain/megatron_bridge}
+      PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,/mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json}
 
   # pretrain/automodel: AutoModel pretrain uses the AutoModel image/deps with
   # the same pretrain data-prep output wiring.
@@ -253,16 +255,16 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /mnt/lustre-shared/output/pretrain/automodel
-      PRETRAIN_BLEND_PATH: /mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json
+      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/pretrain/automodel}
+      PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,/mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json}
 
   # sft/megatron_bridge: overrides only scale and output location.
   lepton_sft_megatron_bridge:
     extends: lepton_base
     nodes: 2
     env_vars:
-      SFT_OUTPUT_DIR: /mnt/lustre-shared/output/sft/megatron_bridge
-      SFT_PACKED_DIR: /mnt/lustre-shared/output/data_prep/sft_packing/splits/train/*.parquet
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/sft/megatron_bridge}
+      SFT_PACKED_DIR: ${oc.env:SFT_PACKED_DIR,/mnt/lustre-shared/output/data_prep/sft_packing/splits/train/*.parquet}
 
   # sft/automodel: demonstrates extending an individual step profile and changing image/deps.
   lepton_sft_automodel:
@@ -271,19 +273,19 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      SFT_OUTPUT_DIR: /mnt/lustre-shared/output/sft/automodel
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/sft/automodel}
 
   # peft/*: PEFT uses the same training backends as SFT but writes to PEFT paths.
   lepton_peft_megatron_bridge:
     extends: lepton_sft_megatron_bridge
     env_vars:
-      SFT_OUTPUT_DIR: /mnt/lustre-shared/output/peft/megatron_bridge
-      SFT_PACKED_DIR: /mnt/lustre-shared/output/data_prep/sft_packing/splits/train/*.parquet
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/peft/megatron_bridge}
+      SFT_PACKED_DIR: ${oc.env:SFT_PACKED_DIR,/mnt/lustre-shared/output/data_prep/sft_packing/splits/train/*.parquet}
 
   lepton_peft_automodel:
     extends: lepton_sft_automodel
     env_vars:
-      SFT_OUTPUT_DIR: /mnt/lustre-shared/output/peft/automodel
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/peft/automodel}
 
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   lepton_rl_nemo_rl_dpo:
