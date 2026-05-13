@@ -55,6 +55,10 @@ export SDG_MODEL="${SDG_MODEL:-nvidia/nemotron-3-nano-30b-a3b}"
 export EVAL_MODEL_ID="${EVAL_MODEL_ID:-megatron_model}"
 export EVAL_URL="${EVAL_URL:-http://0.0.0.0:8080/v1/completions/}"
 export EVAL_TOKENIZER="${EVAL_TOKENIZER:-/path/to/checkpoint/tokenizer}"
+
+# Required on the remote QA machine used for this run. Ray 2.55 can otherwise
+# propagate uv runtime state to workers and start workers in an incomplete env.
+export RAY_ENABLE_UV_RUN_RUNTIME_ENV="${RAY_ENABLE_UV_RUN_RUNTIME_ENV:-0}"
 ```
 
 Credential variables used by the runbook:
@@ -97,12 +101,38 @@ Prerequisites: Network access to package indexes and Git dependencies.
 ```bash
 uv sync --extra translation
 uv sync --extra byob
+uv sync --extra data-sdg
 uv sync --group run
+
+# Until the Curator package-data change is available from a released package,
+# validate translation against an editable Curator checkout so prompt YAML files
+# are available from site-packages.
+export CURATOR_ROOT="${CURATOR_ROOT:-$QA_ROOT/curator-main}"
+if [ ! -d "$CURATOR_ROOT/.git" ]; then
+  git clone https://github.com/NVIDIA-NeMo/Curator.git "$CURATOR_ROOT"
+fi
+git -C "$CURATOR_ROOT" fetch origin main
+git -C "$CURATOR_ROOT" checkout main
+git -C "$CURATOR_ROOT" pull --ff-only origin main
+uv pip install -e "$CURATOR_ROOT[translation_all]"
+
+uv run --no-sync python - <<'PY'
+import importlib.resources as ir
+
+prompt = ir.files("nemo_curator.stages.text.experimental.translation.prompts").joinpath("translate.yaml")
+assert prompt.is_file(), prompt
+print(prompt)
+PY
 ```
+
+After this setup, use `uv run --no-sync ...` for validation commands in this
+runbook. This avoids an implicit `uv` resync replacing the editable Curator
+install during the same QA pass.
 
 Success criteria:
 
-- Translation, BYOB, and run dependencies install successfully.
+- Translation, BYOB, SDG, and run dependencies install successfully.
+- Editable Curator is installed and `translate.yaml` is importable through package resources.
 - If package indexes or Git dependencies are unavailable, this test is marked `BLOCKED` with the exact failed dependency or network error.
 
 Evidence to collect: install logs and final exit status.
@@ -134,7 +164,7 @@ for STEP in \
   eval/model_eval \
   env/env_toml
 do
-  uv run nemotron steps show "$STEP" --json > "$QA_ROOT/metadata/${STEP//\//_}.json"
+  uv run --no-sync nemotron steps show "$STEP" --json > "$QA_ROOT/metadata/${STEP//\//_}.json"
 done
 ```
 
@@ -148,6 +178,11 @@ Success criteria:
 Evidence to collect: metadata JSON files under `$QA_ROOT/metadata` and command logs.
 
 ## Translation
+
+Required translation QA should focus on `output_mode=replaced`, because that is the user-facing workflow where
+the output dataset is ready for downstream customization. `output_mode=raw` and `output_mode=both` are useful
+for audit/debug workflows, but they are optional coverage and should not be required for release signoff unless
+the feature under test explicitly needs translation metadata.
 
 ### Test Data Setup
 
@@ -170,11 +205,12 @@ cat > "$TR_ROOT/chat_code_en.jsonl" <<'EOF'
 {"messages":[{"role":"user","content":"Call the weather tool for London."},{"role":"assistant","content":"Issuing the call.","tool_calls":[{"id":"call_w","type":"function","function":{"name":"get_weather","arguments":"{\"city\":\"London\",\"units\":\"metric\"}"}}]}]}
 EOF
 
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
+import os
 import pandas as pd
 
-root = Path("$TR_ROOT")
+root = Path(os.environ["TR_ROOT"])
 df = pd.DataFrame(
     [
         {"text": "A solar startup announced a new battery pilot in Nevada."},
@@ -188,38 +224,24 @@ cp "$TR_ROOT/news_en/shard_0001.jsonl" "$TR_ROOT/mixed_dir/shard_0001.jsonl"
 cp "$TR_ROOT/news_en.parquet" "$TR_ROOT/mixed_dir/shard_0002.parquet"
 ```
 
-### TR-001 Discover Translation Step And Run Dry-Run
+### TR-001 Discover Translation Step
 
 Prerequisites: Translation extra installed with `uv sync --extra translation`; test data from `Test Data Setup`.
 
 ```bash
-uv run nemotron steps show translate/translation
-uv run nemotron steps run translate/translation --help
-uv run nemotron steps translation --help
-uv run python -c "from nemo_curator.stages.text.experimental.translation import TranslationStage; print(TranslationStage)"
-
-uv run --extra translation nemotron steps translation \
-  --dry-run \
-  input_path="$TR_ROOT/news_en" \
-  output_dir="$TR_ROOT/dry" \
-  source_language=en \
-  target_language=hi \
-  backend=llm \
-  text_field=text \
-  faith_eval.enabled=false \
-  server.url="$TRANSLATION_BASE_URL" \
-  server.model="$TRANSLATION_MODEL" \
-  server.api_key_env=NVIDIA_API_KEY
+uv run --no-sync nemotron steps show translate/translation
+uv run --no-sync nemotron steps run translate/translation --help
+uv run --no-sync nemotron steps translation --help
+uv run --no-sync python -c "from nemo_curator.stages.text.experimental.translation import TranslationStage; print(TranslationStage)"
 ```
 
 Success criteria:
 
-- Dry run prints resolved YAML.
+- Step metadata and CLI help are available.
 - `source_language` and `target_language` are explicit.
-- No output directory is created by dry run.
 - `TranslationStage` imports from `nemo_curator.stages.text.experimental.translation`.
 
-Evidence to collect: CLI logs, resolved config, import output, and absence of output files in `$TR_ROOT/dry`.
+Evidence to collect: CLI logs, metadata/help output, and import output.
 
 ### TR-002 Translate JSONL Text Records With Hosted LLM
 
@@ -228,14 +250,15 @@ Prerequisites: `NVIDIA_API_KEY` or configured hosted LLM credential; live `TRANS
 ```bash
 : "${NVIDIA_API_KEY:?Set NVIDIA_API_KEY for hosted LLM translation}"
 
-uv run --extra translation nemotron steps translation \
+uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/news_en" \
   output_dir="$TR_ROOT/out_llm_hi" \
   source_language=en \
   target_language=hi \
   backend=llm \
   text_field=text \
-  output_mode=both \
+  output_mode=replaced \
+  merge_scores=false \
   reconstruct_messages=false \
   faith_eval.enabled=false \
   server.url="$TRANSLATION_BASE_URL" \
@@ -246,11 +269,12 @@ uv run --extra translation nemotron steps translation \
 Validate output:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import json
+import os
 
-root = Path("$TR_ROOT/out_llm_hi")
+root = Path(os.environ["TR_ROOT"]) / "out_llm_hi"
 files = sorted(root.rglob("*.jsonl"))
 assert files, f"No JSONL output found under {root}"
 rows = []
@@ -277,14 +301,15 @@ Evidence to collect: output JSONL files, row-count validation output, sampled ro
 Prerequisites: Hosted LLM backend available; chat test data from `Test Data Setup`.
 
 ```bash
-uv run --extra translation nemotron steps translation \
+uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/chat_code_en.jsonl" \
   output_dir="$TR_ROOT/out_chat_hi" \
   source_language=en \
   target_language=hi \
   backend=llm \
   text_field='messages.*.content' \
-  output_mode=both \
+  output_mode=replaced \
+  merge_scores=false \
   reconstruct_messages=true \
   segmentation_mode=coarse \
   faith_eval.enabled=false \
@@ -296,11 +321,12 @@ uv run --extra translation nemotron steps translation \
 Validate output:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import json
+import os
 
-root = Path("$TR_ROOT/out_chat_hi")
+root = Path(os.environ["TR_ROOT"]) / "out_chat_hi"
 rows = []
 for path in sorted(root.rglob("*.jsonl")):
     rows.extend(json.loads(line) for line in path.read_text().splitlines() if line.strip())
@@ -320,7 +346,7 @@ Success criteria:
 - Command exits 0.
 - Tool-call JSON remains parseable.
 - Code fences are not corrupted.
-- Natural-language message content is translated or accompanied by translated output fields depending on `output_mode`.
+- Natural-language message content is translated in the output `messages` field.
 - Output rows exist and preserve the expected chat structure.
 
 Evidence to collect: output JSONL, JSON parse validation output, sampled translated row, and redacted logs.
@@ -330,15 +356,16 @@ Evidence to collect: output JSONL, JSON parse validation output, sampled transla
 Prerequisites: Hosted LLM backend available for `FAITH_MODEL`.
 
 ```bash
-uv run --extra translation nemotron steps translation \
+uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/news_en" \
   output_dir="$TR_ROOT/out_faith_annotated" \
   source_language=en \
   target_language=hi \
   backend=llm \
   text_field=text \
-  output_mode=both \
+  output_mode=replaced \
   reconstruct_messages=false \
+  merge_scores=false \
   faith_eval.enabled=true \
   faith_eval.filter_enabled=false \
   faith_eval.model_name="$FAITH_MODEL" \
@@ -351,7 +378,7 @@ Success criteria:
 
 - Command exits 0.
 - Output rows are retained.
-- FAITH score metadata is present.
+- FAITH scoring runs without row filtering.
 - Logs do not print API keys.
 
 Evidence to collect: output files, score-field inspection, row count, and redacted logs.
@@ -363,7 +390,7 @@ Prerequisites: Reachable `NMT_SERVER_URL` implementing the expected translation 
 ```bash
 : "${NMT_SERVER_URL:?Set NMT_SERVER_URL to an NMT service endpoint}"
 
-uv run --extra translation nemotron steps translation \
+uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/news_en" \
   output_dir="$TR_ROOT/out_nmt_hi" \
   source_language=en \
@@ -371,7 +398,8 @@ uv run --extra translation nemotron steps translation \
   backend=nmt \
   nmt.server_url="$NMT_SERVER_URL" \
   text_field=text \
-  output_mode=both \
+  output_mode=replaced \
+  merge_scores=false \
   reconstruct_messages=false \
   faith_eval.enabled=false
 ```
@@ -389,7 +417,7 @@ Evidence to collect: command logs, output files, sampled rows, and service logs 
 Prerequisites: Hosted LLM backend available; `pandas` and `pyarrow` available.
 
 ```bash
-uv run --extra translation nemotron steps translation \
+uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/news_en.parquet" \
   output_dir="$TR_ROOT/out_parquet_hi" \
   source_language=en \
@@ -398,17 +426,20 @@ uv run --extra translation nemotron steps translation \
   output_format=parquet \
   backend=llm \
   text_field=text \
+  output_mode=replaced \
+  merge_scores=false \
   reconstruct_messages=false \
   faith_eval.enabled=false \
   server.url="$TRANSLATION_BASE_URL" \
   server.model="$TRANSLATION_MODEL" \
   server.api_key_env=NVIDIA_API_KEY
 
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import pandas as pd
+import os
 
-root = Path("$TR_ROOT/out_parquet_hi")
+root = Path(os.environ["TR_ROOT"]) / "out_parquet_hi"
 files = sorted(root.rglob("*.parquet"))
 assert files, f"No Parquet output found under {root}"
 df = pd.concat([pd.read_parquet(path) for path in files], ignore_index=True)
@@ -430,14 +461,15 @@ Evidence to collect: Parquet validation output, sampled rows, and redacted logs.
 Prerequisites: Prior translated output from `TR-002` or equivalent.
 
 ```bash
-uv run --extra translation nemotron steps translation \
+uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/out_llm_hi" \
   output_dir="$TR_ROOT/out_resume_hi" \
   source_language=en \
   target_language=hi \
   backend=llm \
   text_field=text \
-  output_mode=both \
+  output_mode=replaced \
+  merge_scores=false \
   reconstruct_messages=false \
   skip_translated=true \
   faith_eval.enabled=false \
@@ -459,13 +491,15 @@ Evidence to collect: resume command logs and output sample.
 Prerequisites: Mixed-format test directory from `Test Data Setup`.
 
 ```bash
-if uv run --extra translation nemotron steps translation \
+if uv run --no-sync nemotron steps translation \
   input_path="$TR_ROOT/mixed_dir" \
   output_dir="$TR_ROOT/out_mixed_should_fail" \
   source_language=en \
   target_language=hi \
   backend=llm \
   text_field=text \
+  output_mode=replaced \
+  merge_scores=false \
   faith_eval.enabled=false \
   server.url="$TRANSLATION_BASE_URL" \
   server.model="$TRANSLATION_MODEL" \
@@ -524,12 +558,12 @@ cp src/nemotron/steps/byob/config/translate.yaml "$BYOB_ROOT/config/byob_transla
 Patch the BYOB generation config:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import os
 import yaml
 
-root = Path("$BYOB_ROOT")
+root = Path(os.environ["BYOB_ROOT"])
 cfg_path = root / "config" / "byob_mcq.yaml"
 cfg = yaml.safe_load(cfg_path.read_text())
 cfg["expt_name"] = "byob_mcq_qa"
@@ -563,11 +597,12 @@ PY
 Create a standalone benchmark for translation-only validation:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
+import os
 import pandas as pd
 
-root = Path("$BYOB_ROOT")
+root = Path(os.environ["BYOB_ROOT"])
 rows = [
     {
         "question_id": "finance-001",
@@ -590,12 +625,12 @@ PY
 Patch the BYOB translation config:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import os
 import yaml
 
-root = Path("$BYOB_ROOT")
+root = Path(os.environ["BYOB_ROOT"])
 cfg_path = root / "config" / "byob_translate.yaml"
 cfg = yaml.safe_load(cfg_path.read_text())
 cfg["expt_name"] = "byob_mcq_translation_qa"
@@ -621,9 +656,9 @@ PY
 Prerequisites: BYOB extra installed with `uv sync --extra byob`.
 
 ```bash
-uv run --extra byob nemotron byob --help
-uv run --extra byob nemotron byob --list-families
-uv run python src/nemotron/steps/byob/scripts/validate.py --help
+uv run --no-sync nemotron byob --help
+uv run --no-sync nemotron byob --list-families
+uv run --no-sync python src/nemotron/steps/byob/scripts/validate.py --help
 ```
 
 Success criteria:
@@ -641,7 +676,7 @@ Prerequisites: `NGC_API_KEY` or `NVIDIA_API_KEY`; live generation and judge mode
 ```bash
 : "${NGC_API_KEY:?Set NGC_API_KEY or NVIDIA_API_KEY for BYOB generation}"
 
-uv run --extra byob nemotron byob \
+uv run --no-sync nemotron byob \
   --family mcq \
   --stage all \
   --config "$BYOB_ROOT/config/byob_mcq.yaml"
@@ -652,11 +687,12 @@ Validate benchmark artifacts:
 ```bash
 find "$BYOB_ROOT/output" -maxdepth 4 -type f | sort
 
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
+import os
 import pandas as pd
 
-root = Path("$BYOB_ROOT/output")
+root = Path(os.environ["BYOB_ROOT"]) / "output"
 benchmarks = sorted(root.rglob("benchmark.parquet"))
 assert benchmarks, f"No benchmark.parquet under {root}"
 df = pd.read_parquet(benchmarks[-1])
@@ -681,12 +717,12 @@ Evidence to collect: artifact listing, Parquet schema validation, row count, and
 Optional stage-by-stage commands for isolating failures:
 
 ```bash
-uv run --extra byob nemotron byob \
+uv run --no-sync nemotron byob \
   --family mcq \
   --stage prepare \
   --config "$BYOB_ROOT/config/byob_mcq.yaml"
 
-uv run --extra byob nemotron byob \
+uv run --no-sync nemotron byob \
   --family mcq \
   --stage generate \
   --config "$BYOB_ROOT/config/byob_mcq.yaml"
@@ -697,7 +733,7 @@ uv run --extra byob nemotron byob \
 Prerequisites: Outputs from `BYOB-002` or compatible stage cache.
 
 ```bash
-uv run --extra byob nemotron byob \
+uv run --no-sync nemotron byob \
   --family mcq \
   --stage generate \
   --skip-until JUDGEMENT \
@@ -719,7 +755,7 @@ Prerequisites: BYOB translation config; hosted translation credential; benchmark
 ```bash
 : "${NGC_API_KEY:?Set NGC_API_KEY or NVIDIA_API_KEY for BYOB translation}"
 
-uv run --extra byob nemotron byob \
+uv run --no-sync nemotron byob \
   --family mcq \
   --stage translate \
   --config "$BYOB_ROOT/config/byob_translate.yaml"
@@ -730,11 +766,12 @@ Validate translation artifacts:
 ```bash
 find "$BYOB_ROOT/output" -maxdepth 5 -type f | sort
 
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
+import os
 import pandas as pd
 
-root = Path("$BYOB_ROOT/output")
+root = Path(os.environ["BYOB_ROOT"]) / "output"
 benchmarks = sorted(root.rglob("benchmark.parquet"))
 assert benchmarks, f"No translated benchmark.parquet under {root}"
 df = pd.read_parquet(benchmarks[-1])
@@ -787,14 +824,26 @@ cat > "$TRN_ROOT/data/sft_chat.jsonl" <<'EOF'
 {"messages":[{"role":"user","content":"Give one reason to diversify investments."},{"role":"assistant","content":"Diversification spreads risk across assets instead of concentrating it in one place."}]}
 EOF
 
-cat > "$TRN_ROOT/data/pretrain.txt" <<'EOF'
-Finance studies how people and organizations allocate resources under uncertainty.
-Risk management identifies, measures, and mitigates sources of financial loss.
+cat > "$TRN_ROOT/data/pretrain.jsonl" <<'EOF'
+{"text":"Finance studies how people and organizations allocate resources under uncertainty."}
+{"text":"Risk management identifies, measures, and mitigates sources of financial loss."}
 EOF
 
 cat > "$TRN_ROOT/data/preferences.jsonl" <<'EOF'
 {"prompt":"Explain diversification in one sentence.","chosen":"Diversification spreads investment risk across multiple assets.","rejected":"Diversification means buying only one stock."}
 {"prompt":"What is budgeting?","chosen":"Budgeting plans income and expenses over a period of time.","rejected":"Budgeting predicts tomorrow's weather."}
+EOF
+
+cat > "$TRN_ROOT/data/sft_blend.json" <<EOF
+{"datasets":[{"name":"qa_sft_chat","path":"$TRN_ROOT/data/sft_chat.jsonl"}]}
+EOF
+
+cat > "$TRN_ROOT/data/pretrain_blend.json" <<EOF
+{"datasets":[{"name":"qa_pretrain_text","path":"$TRN_ROOT/data/pretrain.jsonl","text_field":"text"}]}
+EOF
+
+cat > "$TRN_ROOT/data/rl_blend.json" <<EOF
+{"datasets":[{"name":"qa_preferences","path":"$TRN_ROOT/data/preferences.jsonl"}]}
 EOF
 ```
 
@@ -803,22 +852,22 @@ EOF
 Prerequisites: Base environment from `SETUP-001`; training test data setup completed.
 
 ```bash
-uv run nemotron steps list --json > "$TRN_ROOT/steps.json"
-uv run nemotron steps show data_prep/sft_packing --json > "$TRN_ROOT/data_prep_sft_packing.json"
-uv run nemotron steps show data_prep/pretrain_prep --json > "$TRN_ROOT/data_prep_pretrain_prep.json"
-uv run nemotron steps show data_prep/rl_prep --json > "$TRN_ROOT/data_prep_rl_prep.json"
-uv run nemotron steps show sft/automodel --json > "$TRN_ROOT/sft_automodel.json"
-uv run nemotron steps show sft/megatron_bridge --json > "$TRN_ROOT/sft_megatron_bridge.json"
-uv run nemotron steps show peft/automodel --json > "$TRN_ROOT/peft_automodel.json"
-uv run nemotron steps show peft/megatron_bridge --json > "$TRN_ROOT/peft_megatron_bridge.json"
-uv run nemotron steps show pretrain/automodel --json > "$TRN_ROOT/pretrain_automodel.json"
-uv run nemotron steps show pretrain/megatron_bridge --json > "$TRN_ROOT/pretrain_megatron_bridge.json"
-uv run nemotron steps show rl/nemo_rl/dpo --json > "$TRN_ROOT/rl_dpo.json"
-uv run nemotron steps show rl/nemo_rl/rlvr --json > "$TRN_ROOT/rl_rlvr.json"
-uv run nemotron steps show rl/nemo_rl/rlhf --json > "$TRN_ROOT/rl_rlhf.json"
-uv run nemotron steps show optimize/modelopt/quantize --json > "$TRN_ROOT/modelopt_quantize.json"
-uv run nemotron steps show optimize/modelopt/prune --json > "$TRN_ROOT/modelopt_prune.json"
-uv run nemotron steps show optimize/modelopt/distill --json > "$TRN_ROOT/modelopt_distill.json"
+uv run --no-sync nemotron steps list --json > "$TRN_ROOT/steps.json"
+uv run --no-sync nemotron steps show data_prep/sft_packing --json > "$TRN_ROOT/data_prep_sft_packing.json"
+uv run --no-sync nemotron steps show data_prep/pretrain_prep --json > "$TRN_ROOT/data_prep_pretrain_prep.json"
+uv run --no-sync nemotron steps show data_prep/rl_prep --json > "$TRN_ROOT/data_prep_rl_prep.json"
+uv run --no-sync nemotron steps show sft/automodel --json > "$TRN_ROOT/sft_automodel.json"
+uv run --no-sync nemotron steps show sft/megatron_bridge --json > "$TRN_ROOT/sft_megatron_bridge.json"
+uv run --no-sync nemotron steps show peft/automodel --json > "$TRN_ROOT/peft_automodel.json"
+uv run --no-sync nemotron steps show peft/megatron_bridge --json > "$TRN_ROOT/peft_megatron_bridge.json"
+uv run --no-sync nemotron steps show pretrain/automodel --json > "$TRN_ROOT/pretrain_automodel.json"
+uv run --no-sync nemotron steps show pretrain/megatron_bridge --json > "$TRN_ROOT/pretrain_megatron_bridge.json"
+uv run --no-sync nemotron steps show rl/nemo_rl/dpo --json > "$TRN_ROOT/rl_dpo.json"
+uv run --no-sync nemotron steps show rl/nemo_rl/rlvr --json > "$TRN_ROOT/rl_rlvr.json"
+uv run --no-sync nemotron steps show rl/nemo_rl/rlhf --json > "$TRN_ROOT/rl_rlhf.json"
+uv run --no-sync nemotron steps show optimize/modelopt/quantize --json > "$TRN_ROOT/modelopt_quantize.json"
+uv run --no-sync nemotron steps show optimize/modelopt/prune --json > "$TRN_ROOT/modelopt_prune.json"
+uv run --no-sync nemotron steps show optimize/modelopt/distill --json > "$TRN_ROOT/modelopt_distill.json"
 ```
 
 Success criteria:
@@ -829,102 +878,47 @@ Success criteria:
 
 Evidence to collect: metadata JSON files and command logs.
 
-### TRAIN-002 Dry-Run Scoped Training And Data-Prep Steps
+### TRAIN-002 Confirm Tiny Data-Prep Inputs
 
-Prerequisites: Base environment from `SETUP-001`; step configs present.
+Prerequisites: Base environment from `SETUP-001`.
+
+Training and data-prep runtime validation is intentionally not local. The
+bundled tiny data-prep configs carry in-step `blend_tiny.json` files, so QA does
+not need the driver machine to write custom blend files into Lepton shared
+storage before submitting the runtime smoke. Actual data prep and training run
+through the Lepton executor in `LEP-003`.
 
 ```bash
-uv run nemotron steps run data_prep/sft_packing -c tiny --dry-run
-uv run nemotron steps run data_prep/pretrain_prep -c tiny --dry-run
-uv run nemotron steps run data_prep/rl_prep -c tiny --dry-run
-uv run nemotron steps run sft/automodel -c tiny --dry-run
-uv run nemotron steps run sft/megatron_bridge -c tiny --dry-run
-uv run nemotron steps run peft/automodel -c tiny --dry-run
-uv run nemotron steps run peft/megatron_bridge -c tiny --dry-run
-uv run nemotron steps run pretrain/automodel -c tiny --dry-run
-uv run nemotron steps run pretrain/megatron_bridge -c tiny --dry-run
-uv run nemotron steps run rl/nemo_rl/dpo -c tiny --dry-run
-uv run nemotron steps run rl/nemo_rl/rlvr -c tiny --dry-run
-uv run nemotron steps run rl/nemo_rl/rlhf -c tiny --dry-run
-uv run nemotron steps run optimize/modelopt/quantize -c tiny --dry-run
-uv run nemotron steps run optimize/modelopt/prune -c tiny --dry-run
-uv run nemotron steps run optimize/modelopt/distill -c tiny --dry-run
+test -s src/nemotron/steps/data_prep/sft_packing/data/blend_tiny.json
+test -s src/nemotron/steps/data_prep/pretrain_prep/data/blend_tiny.json
+test -s src/nemotron/steps/data_prep/rl_prep/data/blend_tiny.json
 ```
 
 Success criteria:
 
-- Dry runs compile configs and show resolved resources.
-- No remote job is submitted during dry run.
-- Missing optional dependencies are reported clearly if a dry-run cannot compile.
+- Bundled tiny blend files exist for SFT, pretrain, and RL data prep.
+- No local shared-storage mount is required for this setup case.
 
-Evidence to collect: dry-run logs and resolved configs.
+Evidence to collect: command logs and blend file paths.
 
-### TRAIN-003 Run Local Data-Prep Smoke Commands
-
-Prerequisites: Tiny training test data; tokenizer access or a recorded tokenizer-access blocker.
-
-```bash
-SFT_OUTPUT_DIR="$TRN_ROOT/output/sft_packing" \
-  uv run nemotron steps run data_prep/sft_packing -c tiny
-
-PRETRAIN_OUTPUT_DIR="$TRN_ROOT/output/pretrain_prep" \
-  uv run nemotron steps run data_prep/pretrain_prep -c tiny
-
-RL_OUTPUT_DIR="$TRN_ROOT/output/rl_prep" \
-  uv run nemotron steps run data_prep/rl_prep -c tiny
-```
-
-Validate outputs:
-
-```bash
-find "$TRN_ROOT/output" -maxdepth 5 -type f | sort | tee "$TRN_ROOT/output_files.txt"
-test -s "$TRN_ROOT/output_files.txt"
-```
-
-Success criteria:
-
-- Prep outputs are written under `TRN_ROOT/output`.
-- Missing tokenizer, dataset, or package failures are clear and actionable.
-- Generated output file listing is non-empty when the run succeeds.
-
-Evidence to collect: output directories, generated files, row or file counts, and command logs.
-
-### TRAIN-004 Validate W&B Offline Dry-Run Behavior
-
-Prerequisites: W&B package installed.
-
-```bash
-WANDB_MODE=offline \
-SFT_OUTPUT_DIR="$TRN_ROOT/output/sft_automodel" \
-  uv run nemotron steps run sft/automodel -c tiny --dry-run
-```
-
-Success criteria:
-
-- Dry-run output includes W&B offline settings where supported.
-- No API key is printed.
-- No online W&B login is required.
-
-Evidence to collect: dry-run logs showing offline mode and no credential leakage.
-
-### TRAIN-005 Agent-Driven Training Workflow
+### TRAIN-003 Agent-Driven Training Workflow
 
 Prerequisites: Agent environment available; tiny training data.
 
 Ask the agent:
 
 ```text
-Prepare a tiny SFT workflow for /tmp/nemotron-qa-<run-id>/training/data/sft_chat.jsonl. Show the prep step, the AutoModel SFT option, and the Megatron-Bridge option. Do not run full training unless I provide a GPU executor.
+Prepare a tiny SFT workflow using Lepton. Use the bundled tiny data-prep config, run data_prep/sft_packing on Lepton first, then submit one actual one-GPU SFT training smoke on Lepton.
 ```
 
 Success criteria:
 
-- Uses `data_prep/sft_packing` before Megatron-Bridge SFT/PEFT.
-- Does not add `data_prep/sft_packing` before AutoModel unless the chosen step requires packed data.
-- Uses tiny or dry-run first.
-- Explains what requires GPU or remote executor.
+- Uses `data_prep/sft_packing` before a packed-data Megatron-Bridge SFT smoke.
+- Uses the one-GPU AutoModel smoke command when the selected Lepton profile has one A100.
+- Uses `--batch lepton` and submits real Lepton jobs.
+- Keeps models, datasets, checkpoints, and generated outputs on shared storage.
 
-Evidence to collect: agent transcript, generated command plan, and dry-run logs.
+Evidence to collect: agent transcript, generated command plan, Lepton job IDs, and output artifact paths.
 
 ## SDG
 
@@ -942,17 +936,18 @@ cat > "$SDG_ROOT/data/topic_seeds.jsonl" <<'EOF'
 EOF
 
 cp src/nemotron/steps/sdg/data_designer/config/tiny.yaml "$SDG_ROOT/config/sdg_tiny.yaml"
+cp src/nemotron/steps/sdg/data_designer/config/default.yaml "$SDG_ROOT/config/default.yaml"
 ```
 
 Patch the copied SDG config:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import os
 import yaml
 
-root = Path("$SDG_ROOT")
+root = Path(os.environ["SDG_ROOT"])
 cfg_path = root / "config" / "sdg_tiny.yaml"
 cfg = yaml.safe_load(cfg_path.read_text())
 cfg["output_dir"] = str(root / "output")
@@ -985,27 +980,22 @@ Evidence to collect: config path, test data path, and copied config contents.
 Prerequisites: `data-sdg` dependencies; hosted model credential if running real generation.
 
 ```bash
-uv run nemotron steps list --category sdg --json
-uv run nemotron steps show sdg/data_designer --json
-uv run nemotron steps run sdg/data_designer -c "$SDG_ROOT/config/sdg_tiny.yaml" --dry-run
-```
-
-Real generation:
-
-```bash
+uv run --no-sync nemotron steps list --category sdg --json
+uv run --no-sync nemotron steps show sdg/data_designer --json
 : "${NVIDIA_API_KEY:?Set NVIDIA_API_KEY for SDG generation}"
 
-uv run nemotron steps run sdg/data_designer -c "$SDG_ROOT/config/sdg_tiny.yaml"
+uv run --no-sync nemotron steps run sdg/data_designer -c "$SDG_ROOT/config/sdg_tiny.yaml"
 ```
 
 Validate output:
 
 ```bash
-uv run python - <<PY
+uv run --no-sync python - <<'PY'
 from pathlib import Path
 import json
+import os
 
-path = Path("$SDG_ROOT/output/sft-tiny.jsonl")
+path = Path(os.environ["SDG_ROOT"]) / "output" / "sft-tiny.jsonl"
 assert path.exists(), path
 rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 assert rows, "No SDG rows"
@@ -1016,7 +1006,6 @@ PY
 
 Success criteria:
 
-- Dry run compiles without model calls.
 - Real run writes OpenAI-style `messages`.
 - Invalid endpoint/key failures identify the missing credential or service.
 
@@ -1036,7 +1025,7 @@ Success criteria:
 
 - Uses `sdg/data_designer`.
 - Copies and patches config instead of editing repo files.
-- Runs dry-run before real generation.
+- Runs real generation or records a concrete endpoint/credential blocker.
 - Validates output JSONL schema.
 
 Evidence to collect: agent transcript, generated config, logs, and artifacts.
@@ -1045,15 +1034,15 @@ Evidence to collect: agent transcript, generated config, logs, and artifacts.
 
 ### AIR-001 Generate Airgap Plan
 
-Prerequisites: Airgap runner config available; Docker is not required for plan-only mode.
+Prerequisites: Airgap runner config available; Docker is not required for metadata planning mode.
 
-Airgap plan mode is the default. Do not pass `--execute` unless QA is intentionally building and saving images.
+Airgap planning is the default command behavior. Pass `--execute` only when QA is intentionally building and saving images.
 
 ```bash
 export AIRGAP_ROOT="$QA_ROOT/airgap"
 mkdir -p "$AIRGAP_ROOT"
 
-uv run python deploy/nemotron-customizer/airgap/runner.py \
+uv run --no-sync python deploy/nemotron-customizer/airgap/runner.py \
   --config deploy/nemotron-customizer/airgap/airgap.yaml
 ```
 
@@ -1061,7 +1050,7 @@ Success criteria:
 
 - Plan command exits 0.
 - Generated plan includes scoped targets and required dependency categories.
-- No image build starts in plan-only mode.
+- No image build starts during metadata planning.
 
 Evidence to collect: plan output and target list.
 
@@ -1071,18 +1060,18 @@ Prerequisites: Required local tooling and images for validation, or a recorded b
 
 ```bash
 
-uv run python deploy/nemotron-customizer/airgap/runner.py \
+uv run --no-sync python deploy/nemotron-customizer/airgap/runner.py \
   --config deploy/nemotron-customizer/airgap/airgap.yaml \
   --stage validate \
   --target sdg/data_designer:tiny
 
-uv run python deploy/nemotron-customizer/airgap/runner.py \
+uv run --no-sync python deploy/nemotron-customizer/airgap/runner.py \
   --config deploy/nemotron-customizer/airgap/airgap.yaml \
   --stage validate \
   --target data_prep/sft_packing:tiny \
   --target sft/megatron_bridge:tiny
 
-uv run python deploy/nemotron-customizer/airgap/runner.py \
+uv run --no-sync python deploy/nemotron-customizer/airgap/runner.py \
   --config deploy/nemotron-customizer/airgap/airgap.yaml \
   --stage validate \
   --target sdg/data_designer:tiny \
@@ -1093,7 +1082,7 @@ uv run python deploy/nemotron-customizer/airgap/runner.py \
 Dependency discovery plan:
 
 ```bash
-uv run python deploy/nemotron-customizer/airgap/runner.py \
+uv run --no-sync python deploy/nemotron-customizer/airgap/runner.py \
   --config deploy/nemotron-customizer/airgap/airgap.yaml \
   --stage validate \
   --stage discover-execution-deps \
@@ -1104,7 +1093,7 @@ uv run python deploy/nemotron-customizer/airgap/runner.py \
 Optional connected-machine image build:
 
 ```bash
-uv run python deploy/nemotron-customizer/airgap/runner.py \
+uv run --no-sync python deploy/nemotron-customizer/airgap/runner.py \
   --config deploy/nemotron-customizer/airgap/airgap.yaml \
   --execute \
   --target sdg/data_designer:tiny \
@@ -1113,7 +1102,7 @@ uv run python deploy/nemotron-customizer/airgap/runner.py \
 
 Success criteria:
 
-- Plan mode validates selected targets without building images.
+- Planning and validation commands validate selected targets without building images.
 - Selected targets and dependencies are printed.
 - Models, datasets, checkpoints, and customer files remain external to images.
 - Execute mode writes outputs under `deploy/nemotron-customizer/airgap/out/` if Docker and registry access are available.
@@ -1128,13 +1117,13 @@ Prerequisites: Agent environment available; target list from user.
 Ask the agent:
 
 ```text
-Create an airgap plan for SDG plus Megatron-Bridge SFT. Validate the plan only; do not build images. Explain which assets remain outside the images.
+Create an airgap plan for SDG plus Megatron-Bridge SFT. Run target validation and explain which assets remain outside the images.
 ```
 
 Success criteria:
 
 - Uses `deploy/nemotron-customizer/airgap/runner.py`.
-- Omits `--execute` for plan-only validation.
+- Uses `--execute` only if QA explicitly requests image builds.
 - Selects scoped targets.
 - States that models, datasets, checkpoints, and customer data remain on persistent storage.
 
@@ -1142,116 +1131,178 @@ Evidence to collect: agent transcript, plan output, validation logs, and selecte
 
 ## Lepton Testing
 
-### LEP-001 Generate Lepton Env File
+### LEP-001 Create Lepton Env File
 
-Prerequisites: Lepton env profile config available.
+Prerequisites: Lepton workspace credential available.
 
 ```bash
 export LEPTON_ROOT="$QA_ROOT/lepton"
 mkdir -p "$LEPTON_ROOT"
 
-uv run nemotron steps run env/env_toml \
-  -c lepton \
-  output_path="$LEPTON_ROOT/env.lepton.toml" \
-  force=true
+export LEPTON_WORKSPACE="${LEPTON_WORKSPACE:?Set Lepton workspace name}"
+export LEPTON_API_KEY="${LEPTON_API_KEY:?Set Lepton API key}"
+uvx --from leptonai lep login -c "$LEPTON_WORKSPACE:$LEPTON_API_KEY"
+
+cat > "$LEPTON_ROOT/env.lepton.toml" <<'EOF'
+[lepton]
+executor = "lepton"
+container_image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+node_group = "az-sat-lepton-001"
+resource_shape = "gpu.a100-80gb"
+nemo_run_dir = "/mnt/lustre-shared/nemo-run"
+nodes = 1
+gpus_per_node = 1
+image_pull_secrets = []
+pip_extras = ["cosmos-xenna"]
+ray_version = "2.48.0"
+# NOTE: OTEL_EXPORTER_OTLP_ENDPOINT intentionally omitted. Setting it to ""
+# can crash Ray's OpenTelemetryMetricRecorder during actor init.
+# Raylet-level tuning: avoid prestarting 96 workers at once on 96-CPU nodes.
+env_vars = { HF_TOKEN = "${oc.env:HF_TOKEN,''}", HF_HOME = "${oc.env:HF_HOME,/mnt/lustre-shared/hf}", RAY_GRAFANA_IFRAME_HOST = "", RAY_DEDUP_LOGS = "0", RAY_worker_maximum_startup_concurrency = "16", RAY_num_prestart_python_workers = "16", RAY_worker_register_timeout_seconds = "1200", WANDB_API_KEY = "${oc.env:WANDB_API_KEY,''}" }
+pre_launch_commands = [
+  "export RAY_worker_maximum_startup_concurrency=16",
+  "export RAY_num_prestart_python_workers=16",
+]
+mounts = [
+  { path = "/sovereign-ai-playbook/", mount_path = "/mnt/lustre-shared", from = "node-nfs:amlfs" },
+]
+
+[lepton_sft_automodel]
+extends = "lepton"
+container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
+startup_commands = [
+  "python -m pip install --quiet --break-system-packages omegaconf",
+]
+EOF
 
 export NEMOTRON_ENV_FILE="$LEPTON_ROOT/env.lepton.toml"
+
+uvx --from leptonai lep node list
+uvx --from leptonai lep node storage -ng az-sat-lepton-001
+uv run --no-sync python - <<'PY'
+import os
+import tomllib
+from pathlib import Path
+
+path = Path(os.environ["NEMOTRON_ENV_FILE"])
+parsed = tomllib.loads(path.read_text())
+assert "lepton" in parsed, parsed.keys()
+assert "lepton_sft_automodel" in parsed, parsed.keys()
+assert parsed["lepton"]["mounts"][0]["mount_path"] == "/mnt/lustre-shared"
+print(path)
+PY
 ```
 
 Success criteria:
 
 - `env.lepton.toml` is generated.
-- QA reviews and edits workspace, node group, mounts, shapes, and secret passthrough before submitting jobs.
-- Generated profiles include `lepton_translate`.
+- Lepton login succeeds.
+- Node group `az-sat-lepton-001` and storage `node-nfs:amlfs` are visible to the workspace.
+- Profile `[lepton]` uses `/sovereign-ai-playbook/` mounted at `/mnt/lustre-shared`.
+- Profile `[lepton_sft_automodel]` uses the AutoModel container image.
 - Secrets are not written in plain text unless explicitly intended by the profile.
 
 Evidence to collect: generated env file path and redacted content sample.
 
-### LEP-002 Run Lepton Dry-Runs For Scoped Steps
+### LEP-002 Validate Lepton Profiles For Scoped Steps
 
-Prerequisites: Env file from `LEP-001`; no real Lepton submission required.
+Prerequisites: Env file from `LEP-001`.
 
 ```bash
-uv run nemotron steps run translate/translation \
-  -c default \
-  --dry-run \
-  --batch lepton_translate \
-  input_path=/mnt/lustre-shared/data/nemotron-qa/tiny.jsonl \
-  output_dir=/mnt/lustre-shared/output/nemotron-qa/translated \
-  source_language=en \
-  target_language=hi \
-  backend=llm \
-  text_field=text \
-  faith_eval.enabled=false \
-  server.model="$TRANSLATION_MODEL"
-
-uv run nemotron steps run data_prep/sft_packing \
-  -c tiny \
-  --dry-run \
-  --batch lepton_prep_sft_packing
-
-uv run nemotron steps run sft/automodel \
-  -c tiny \
-  --dry-run \
-  --batch lepton_sft_automodel
-
-uv run nemotron steps run sft/megatron_bridge \
-  -c tiny \
-  --dry-run \
-  --batch lepton_sft_megatron_bridge
-
-uv run nemotron steps run rl/nemo_rl/dpo \
-  -c tiny \
-  --dry-run \
-  --batch lepton_rl_nemo_rl_dpo
-
-uv run nemotron steps run optimize/modelopt/quantize \
-  -c tiny \
-  --dry-run \
-  --batch lepton_optimize_modelopt_quantize
+test -s "$NEMOTRON_ENV_FILE"
+grep -E "^\[(lepton|lepton_sft_automodel)\]" "$NEMOTRON_ENV_FILE"
+uvx --from leptonai lep workspace list
 ```
 
 Success criteria:
 
-- Dry-runs compile against batch profiles.
-- Rendered commands reference shared storage paths where required.
-- No real Lepton job is submitted during dry-run.
+- Required Lepton profile exists in `env.lepton.toml`.
+- AutoModel-specific Lepton profile exists in `env.lepton.toml`.
+- Lepton workspace listing succeeds.
+- This profile-validation case does not replace the actual Lepton runtime cases in `LEP-003`.
 
-Evidence to collect: dry-run logs and rendered executor config.
+Evidence to collect: env file path, profile grep output, and Lepton workspace listing.
 
 ### LEP-003 Run Real Lepton Smoke Commands
 
 Prerequisites: Lepton workspace, quota, credentials, images, shared storage, and reviewed env file.
 
-Run only after the env file has valid site-specific values:
+Run only after the env file has valid site-specific values. These are real
+Lepton job submissions, not simulations.
 
 ```bash
-uv run nemotron steps run data_prep/sft_packing \
-  -c tiny \
-  --batch lepton_prep_sft_packing
+export NEMOTRON_ENV_FILE="$LEPTON_ROOT/env.lepton.toml"
+export LEPTON_CONTAINER_MOUNT="${LEPTON_CONTAINER_MOUNT:-/mnt/lustre-shared}"
+export LEPTON_OUTPUT_ROOT="${LEPTON_OUTPUT_ROOT:-$LEPTON_CONTAINER_MOUNT/output/nemotron-qa-$QA_RUN_ID}"
 
-uv run nemotron steps run translate/translation \
-  -c default \
-  --batch lepton_translate \
-  input_path=/mnt/lustre-shared/data/nemotron-qa/tiny.jsonl \
-  output_dir=/mnt/lustre-shared/output/nemotron-qa/translated \
-  source_language=en \
-  target_language=hi \
-  backend=llm \
-  text_field=text \
-  faith_eval.enabled=false \
-  server.url="$TRANSLATION_BASE_URL" \
-  server.model="$TRANSLATION_MODEL" \
-  server.api_key_env=NVIDIA_API_KEY
+SFT_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/sft/packed" \
+  uv run --no-sync nemotron steps run data_prep/sft_packing \
+  -c tiny \
+  --batch lepton \
+  sample=8 \
+  num_shards=1 \
+  valid_shards=0 \
+  test_shards=0 \
+  pack_size=1024 \
+  force=true \
+  observability.pipeline_logging_interval_s=30
+
+PRETRAIN_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/pretrain/prep" \
+  uv run --no-sync nemotron steps run data_prep/pretrain_prep \
+  -c tiny \
+  --batch lepton \
+  sample=8 \
+  num_shards=1 \
+  valid_shards=0 \
+  test_shards=0 \
+  force=true \
+  observability.pipeline_logging_interval_s=30
+
+RL_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/rl/prep" \
+  uv run --no-sync nemotron steps run data_prep/rl_prep \
+  -c tiny \
+  --batch lepton \
+  sample=8 \
+  num_shards_per_split=1 \
+  force=true \
+  observability.pipeline_logging_interval_s=30
+
+SFT_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/sft/automodel" \
+  uv run --no-sync nemotron steps run sft/automodel \
+  -c tiny \
+  --batch lepton_sft_automodel \
+  run.env.nodes=1 \
+  run.env.gpus_per_node=1 \
+  run.env.nprocs_per_node=1 \
+  model.pretrained_model_name_or_path=Qwen/Qwen3-0.6B \
+  distributed.ep_size=1 \
+  step_scheduler.max_steps=1 \
+  step_scheduler.global_batch_size=1 \
+  dataset.split='train_sft[:8]' \
+  validation_dataset.split='test_sft[:2]'
+
+SFT_PACKED_DIR="$LEPTON_OUTPUT_ROOT/sft/packed/splits/train/*.parquet" \
+SFT_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/sft/megatron_bridge" \
+  uv run --no-sync nemotron steps run sft/megatron_bridge \
+  -c tiny \
+  --batch lepton
+
+PRETRAIN_BLEND_PATH="$LEPTON_OUTPUT_ROOT/pretrain/prep/blend.json" \
+PRETRAIN_OUTPUT_DIR="$LEPTON_OUTPUT_ROOT/pretrain/megatron_bridge" \
+  uv run --no-sync nemotron steps run pretrain/megatron_bridge \
+  -c tiny \
+  --batch lepton
 ```
 
 Success criteria:
 
-- Real runs return Lepton job IDs or complete locally depending on executor behavior.
+- Real data-prep and training runs return Lepton job IDs or complete successfully depending on executor behavior.
+- The one-GPU AutoModel smoke is the required training check for the provided one-A100 profile.
+- Megatron-Bridge training commands are follow-on compatibility checks; if they require more GPUs than the selected profile provides, record the resource mismatch instead of treating it as a product failure.
 - Remote logs show mounted paths and do not print secrets.
 - If Lepton workspace, quota, credentials, images, or shared storage are unavailable, mark the specific run `BLOCKED`.
 
-Evidence to collect: Lepton job IDs, logs, output artifacts, and redacted secret evidence.
+Evidence to collect: Lepton job IDs, logs, prepared data artifacts, checkpoints, and redacted secret evidence.
 
 ### LEP-004 Agent-Driven Lepton Workflow
 
@@ -1260,17 +1311,17 @@ Prerequisites: Agent environment available; generated and reviewed `env.lepton.t
 Ask the agent:
 
 ```text
-Convert this local translation validation into a Lepton run using the generated env.lepton.toml. Use the generic steps runner, not the local translation shortcut.
+Run the tiny training workflow on Lepton. Copy the QA training data to shared storage, run data_prep/sft_packing on Lepton, then submit one actual tiny SFT job on Lepton. Do not substitute metadata checks for the training runtime.
 ```
 
 Success criteria:
 
-- Uses `nemotron steps run translate/translation`.
-- Uses `--batch lepton_translate`.
+- Uses `nemotron steps run data_prep/sft_packing` with `--batch lepton`.
+- Uses one training step with the `--batch lepton` profile.
 - Keeps input/output under shared storage.
-- Does not use `nemotron steps translation` for Lepton.
+- Returns Lepton job IDs and validates output artifact paths.
 
-Evidence to collect: agent transcript, generated commands, dry-run logs or job logs.
+Evidence to collect: agent transcript, generated commands, Lepton job IDs, job logs, and output artifact paths.
 
 ## Evaluation
 
@@ -1295,32 +1346,21 @@ Success criteria:
 
 Evidence to collect: test data paths and file samples.
 
-### EVAL-002 Discover And Dry-Run Model Evaluation
+### EVAL-002 Discover Model Evaluation
 
 Prerequisites: Eval step config present.
 
 ```bash
-uv run nemotron steps list --category eval --json
-uv run nemotron steps show eval/model_eval --json
-
-uv run nemotron steps run eval/model_eval \
-  -c tiny \
-  --dry-run \
-  output_dir="$EVAL_ROOT/results-tiny" \
-  deployment.url="$EVAL_URL" \
-  deployment.model_id="$EVAL_MODEL_ID" \
-  deployment.api_key_name=NVIDIA_API_KEY \
-  params.limit_samples=1 \
-  params.extra.tokenizer="$EVAL_TOKENIZER"
+uv run --no-sync nemotron steps list --category eval --json
+uv run --no-sync nemotron steps show eval/model_eval --json
 ```
 
 Success criteria:
 
 - Eval step is discoverable.
-- Dry run resolves endpoint/model/tokenizer parameters.
-- No endpoint call is made during dry run.
+- Metadata describes required endpoint, model, tokenizer, and output parameters.
 
-Evidence to collect: dry-run logs and resolved config.
+Evidence to collect: metadata JSON and CLI logs.
 
 ### EVAL-003 Run Hosted Eval Smoke
 
@@ -1332,7 +1372,7 @@ Prerequisites: Reachable evaluation endpoint and tokenizer/model identifiers.
 : "${EVAL_MODEL_ID:?Set EVAL_MODEL_ID for the eval endpoint}"
 : "${EVAL_TOKENIZER:?Set EVAL_TOKENIZER to a tokenizer path visible to the run}"
 
-uv run nemotron steps run eval/model_eval \
+uv run --no-sync nemotron steps run eval/model_eval \
   -c tiny \
   output_dir="$EVAL_ROOT/results-tiny" \
   deployment.url="$EVAL_URL" \
@@ -1369,11 +1409,17 @@ Set up a one-sample hosted evaluation smoke run for my model endpoint. Ask me fo
 Success criteria:
 
 - Uses `eval/model_eval`.
-- Runs dry-run first.
+- Runs a real one-sample eval or records a concrete endpoint/tokenizer/credential blocker.
 - Asks for missing endpoint/model/tokenizer/key instead of inventing values.
 - Validates output artifact paths after the real run.
 
 Evidence to collect: agent transcript, generated command, and result summary.
+
+## Follow-Up TODOs From QA Execution
+
+- Rename or document `merge_scores` more clearly as metadata-specific behavior, because it means "merge FAITH scores into translation metadata", not "merge translated segments back into documents".
+- Harden Curator FAITH response parsing so a null model response is handled as a parse failure or clear backend error instead of `TypeError: 'NoneType' object is not iterable`.
+- Add dedicated Lepton CPU profiles for `data_prep/pretrain_prep` and `data_prep/rl_prep`; the current runbook reuses the existing CPU data-prep profile.
 
 ## Reporting
 
@@ -1402,9 +1448,9 @@ For each module, report:
 - General setup commands pass in a clean `uv` environment.
 - Translation direct local workflow passes for at least one real backend, or unavailable backend is marked `BLOCKED`.
 - BYOB prepare/generate and translation workflows pass, or unavailable hosted model/backend is marked `BLOCKED`.
-- Training dry-runs pass for required training paths, and at least one prep smoke writes artifacts.
-- SDG dry-run passes, and real generation either writes JSONL or is marked `BLOCKED` for missing endpoint/key.
+- Training metadata discovery passes locally; actual data prep and tiny training jobs run on Lepton and return job IDs or completed artifacts.
+- SDG real generation writes JSONL or is marked `BLOCKED` for missing endpoint/key.
 - Airgap plan validation passes for SDG plus SFT targets.
-- Lepton dry-runs compile against generated profiles, and real Lepton smoke is run or marked `BLOCKED`.
-- Evaluation dry-run passes, and hosted eval smoke runs or is marked `BLOCKED`.
+- Lepton profile validation passes, and real Lepton data-prep/training smoke is run or marked `BLOCKED`.
+- Hosted eval smoke runs or is marked `BLOCKED`.
 - Agent-driven runs choose the same module contracts and do not invent missing credentials, endpoints, paths, or model names.
