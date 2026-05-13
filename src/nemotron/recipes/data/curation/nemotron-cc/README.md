@@ -4,10 +4,10 @@ This directory contains the recipe for curating datasets similar to the [Nemotro
 
 ### Requirements
 
-- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) > 1.1.0 ([install from main](https://docs.nvidia.com/nemo/curator/latest/admin/installation.html))
+- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) 1.2.0 (26.04 release) or newer ([install instructions](https://docs.nvidia.com/nemo/curator/latest/admin/installation.html))
 - GPU(s) for steps 2a, 2b, and 3 (deduplication and classification)
 - [Cargo/Rust](https://doc.rust-lang.org/cargo/getting-started/installation.html) for step 2c (building `deduplicate-text-datasets`)
-- Access to an OpenAI-compatible LLM endpoint for step 4 (NVIDIA NIM, vLLM, or cloud API)
+- For step 4, one of: GPU(s) to host a local inference server (default), an OpenAI-compatible endpoint (self-hosted vLLM/NIM or cloud), or an [NVIDIA Build](https://build.nvidia.com/) API key
 
 ### Pipeline Overview
 
@@ -65,7 +65,7 @@ Ensemble quality scoring and bucketing into 20 quality tiers:
 
 #### Step 4: Synthetic Data Generation (`step_4-sdg.py`)
 
-LLM-based synthetic data generation on the highest-quality documents (buckets 18 and 19). This is a CPU-only pipeline — LLM inference happens via API calls to an external endpoint (NVIDIA Integrate, or a self-hosted OAI endpoint compatible server).
+LLM-based synthetic data generation on the highest-quality documents (buckets 18 and 19).
 
 Four generation tasks:
 
@@ -78,6 +78,12 @@ Four generation tasks:
 
 Each task runs as an independent pipeline (preprocessing, LLM generation, postprocessing, write). When `--task all` is used, the four tasks run sequentially. They can also be run as separate processes in parallel.
 
-- **Default model:** [`Qwen/Qwen3-30B-A3B-Instruct-2507`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). This model is not available on [NVIDIA Build](https://build.nvidia.com/), so you'll need to provide a `--base-url` pointing to an endpoint serving it (self-hosted via vLLM/NIM, or any OpenAI-compatible cloud provider). Alternatively, you can use any model available on NVIDIA Build by setting `--model-name` and `--tokenizer` accordingly.
+**LLM backends.** The script supports three ways to reach the model — pick one:
+
+1. **Local inference server (default).** The script spins up a Ray Serve + vLLM deployment of `--model-name` on the local GPU cluster. No API key needed; scales out across replicas. Tune with `--tensor-parallel-size`, `--min-replicas`, `--max-replicas`. If GPU utilization is low, increase `--max-concurrent-requests` (try 256–512). Pass `--no-serve-model` to use one of the external options below instead.
+2. **Existing OpenAI-compatible endpoint.** Pass `--no-serve-model --base-url <url>` to use a self-hosted vLLM/TRT-LLM/NIM server (or any OpenAI-compatible cloud provider). `--api-key` is forwarded if needed.
+3. **[NVIDIA Build](https://build.nvidia.com/).** Pass `--no-serve-model` to use the default `--base-url`. Requires `--api-key` (or `NVIDIA_API_KEY` env var). The default `--model-name` (`Qwen/Qwen3-30B-A3B-Instruct-2507`) is not on NVIDIA Build, so set `--model-name` (and `--tokenizer`) to a model that is.
+
+- **Default model:** [`Qwen/Qwen3-30B-A3B-Instruct-2507`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507).
 - **Output:** `data/sdg_output/<task_name>/`.
-- **Resources:** CPU-only for the script itself. Requires access to an LLM endpoint.
+- **Resources:** With `--serve-model`, GPU(s) for vLLM. Otherwise CPU-only; just needs network access to the chosen endpoint.
