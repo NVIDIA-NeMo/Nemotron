@@ -1089,7 +1089,7 @@ name = "cuda-bindings"
 version = "12.9.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cuda-pathfinder", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "cuda-pathfinder", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/d8/b546104b8da3f562c1ff8ab36d130c8fe1dd6a045ced80b4f6ad74f7d4e1/cuda_bindings-12.9.4-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4d3c842c2a4303b2a580fe955018e31aea30278be19795ae05226235268032e5", size = 12148218, upload-time = "2025-10-21T14:51:28.855Z" },
@@ -4176,22 +4176,46 @@ audio = [
     { name = "webdataset" },
 ]
 byob = [
+    { name = "attrs", marker = "python_full_version >= '3.11'" },
     { name = "bcp47", marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
+    { name = "cattrs", marker = "python_full_version >= '3.11'" },
+    { name = "cosmos-xenna", version = "0.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
     { name = "cuda-bindings", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cuda-python", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cudf-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "cuml-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "cupy-cuda12x", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "data-designer", marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
+    { name = "datasets", version = "4.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "iso639-lang", marker = "python_full_version >= '3.11'" },
+    { name = "jinja2", marker = "python_full_version >= '3.11'" },
+    { name = "loguru", marker = "python_full_version >= '3.11'" },
     { name = "nemo-curator", extra = ["translation-all"], marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform != 'linux'" },
+    { name = "obstore", marker = "python_full_version >= '3.11'" },
     { name = "pandas", marker = "python_full_version >= '3.11'" },
+    { name = "portpicker", marker = "python_full_version >= '3.11'" },
+    { name = "pulp", marker = "python_full_version >= '3.11'" },
+    { name = "pyarrow", version = "19.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pydantic", marker = "python_full_version >= '3.11'" },
     { name = "pylibcugraph-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pylibraft-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "pyyaml", marker = "python_full_version >= '3.11'" },
     { name = "raft-dask-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "rapidsmpf-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "requests", version = "2.33.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sacrebleu", marker = "python_full_version >= '3.11'" },
     { name = "scikit-learn", marker = "python_full_version >= '3.11'" },
     { name = "sentence-transformers", marker = "python_full_version >= '3.11'" },
+    { name = "tabulate", marker = "python_full_version >= '3.11'" },
+    { name = "torch" },
+    { name = "tqdm", marker = "python_full_version >= '3.11'" },
+    { name = "transformers", marker = "python_full_version >= '3.11'" },
+    { name = "urllib3", marker = "python_full_version >= '3.11'" },
+]
+curate = [
+    { name = "nemo-curator", marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
 ]
 data-sdg = [
     { name = "data-designer", marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
@@ -4217,7 +4241,7 @@ s3 = [
 sentencepiece = [
     { name = "sentencepiece" },
 ]
-translation = [
+translate = [
     { name = "nemo-curator", extra = ["translation-all"], marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
 ]
 wandb = [
@@ -4251,9 +4275,12 @@ run = [
 
 [package.metadata]
 requires-dist = [
+    { name = "attrs", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=25.4,<26" },
     { name = "bcp47", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'all'", specifier = ">=0.1.0" },
     { name = "bcp47", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'byob'", specifier = ">=0.1.0" },
+    { name = "cattrs", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=25.3,<26" },
     { name = "colorama", specifier = ">=0.4.6" },
+    { name = "cosmos-xenna", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'byob'", specifier = ">=0.2,<0.3" },
     { name = "cosmos-xenna", marker = "extra == 'all'" },
     { name = "cosmos-xenna", marker = "extra == 'xenna'" },
     { name = "cuda-bindings", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'all'", specifier = ">=12.9,<13" },
@@ -4264,10 +4291,12 @@ requires-dist = [
     { name = "cudf-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'byob'", specifier = "==25.10.*" },
     { name = "cuml-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'all'", specifier = "==25.10.*" },
     { name = "cuml-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'byob'", specifier = "==25.10.*" },
+    { name = "cupy-cuda12x", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'byob'", specifier = ">=14.0,<15" },
     { name = "data-designer", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'all'", specifier = "==0.5.5" },
     { name = "data-designer", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'byob'", specifier = "==0.5.5" },
     { name = "data-designer", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'data-sdg'", specifier = "==0.5.5" },
     { name = "datasets", specifier = ">=2.14.0" },
+    { name = "datasets", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.14.0" },
     { name = "fsspec", specifier = ">=2024.0.0" },
     { name = "gcsfs", marker = "extra == 'all'", specifier = ">=2024.0.0" },
     { name = "gcsfs", marker = "extra == 'gcs'", specifier = ">=2024.0.0" },
@@ -4277,19 +4306,28 @@ requires-dist = [
     { name = "iso639-lang", marker = "python_full_version >= '3.11' and extra == 'all'", specifier = ">=2.6.0,<3.0.0" },
     { name = "iso639-lang", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.6.0,<3.0.0" },
     { name = "jinja2", specifier = ">=3.0.0" },
+    { name = "jinja2", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=3.1,<4" },
+    { name = "loguru", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=0.7,<1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "nemo-curator", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'curate'", git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main" },
     { name = "nemo-curator", extras = ["translation-all"], marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'all'", git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main" },
     { name = "nemo-curator", extras = ["translation-all"], marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'byob'", git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main" },
-    { name = "nemo-curator", extras = ["translation-all"], marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'translation'", git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main" },
+    { name = "nemo-curator", extras = ["translation-all"], marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'translate'", git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main" },
     { name = "nemo-evaluator-launcher", marker = "extra == 'all'", specifier = ">=0.1.0" },
     { name = "nemo-evaluator-launcher", marker = "extra == 'evaluator'", specifier = ">=0.1.0" },
     { name = "nemo-run", git = "https://github.com/NVIDIA-NeMo/Run.git?rev=main" },
     { name = "numpy", specifier = ">=1.24.0" },
+    { name = "numpy", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.2,<3" },
+    { name = "obstore", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=0.8,<0.9" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pandas", marker = "python_full_version >= '3.11' and extra == 'all'", specifier = ">=2.1.0" },
     { name = "pandas", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.1.0" },
+    { name = "portpicker", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=1.6,<2" },
+    { name = "pulp", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=3.3,<4" },
     { name = "pyarrow", specifier = ">=14.0.0" },
+    { name = "pyarrow", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=14.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pydantic", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.0.0" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pylibcugraph-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'all'", specifier = "==25.10.*" },
     { name = "pylibcugraph-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'byob'", specifier = "==25.10.*" },
@@ -4298,11 +4336,13 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "pyyaml", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=6.0" },
     { name = "raft-dask-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'all'", specifier = "==25.10.*" },
     { name = "raft-dask-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'byob'", specifier = "==25.10.*" },
     { name = "rapidsmpf-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'all'", specifier = "==25.10.*" },
     { name = "rapidsmpf-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'byob'", specifier = "==25.10.*" },
     { name = "ray", extras = ["default", "data"], specifier = ">=2.54" },
+    { name = "requests", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.0.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "s3fs", marker = "extra == 'all'", specifier = ">=2024.0.0" },
@@ -4315,11 +4355,16 @@ requires-dist = [
     { name = "sentence-transformers", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=5.0.0,<6.0.0" },
     { name = "sentencepiece", marker = "extra == 'all'", specifier = ">=0.2.0" },
     { name = "sentencepiece", marker = "extra == 'sentencepiece'", specifier = ">=0.2.0" },
+    { name = "tabulate", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=0.9,<1" },
     { name = "textual", specifier = ">=0.70.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
     { name = "tomlkit", specifier = ">=0.12.0" },
+    { name = "torch", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=2.10,<2.11" },
+    { name = "tqdm", marker = "python_full_version >= '3.11' and extra == 'byob'" },
     { name = "transformers", specifier = ">=4.36.0" },
+    { name = "transformers", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=4.56.0,<5.0" },
     { name = "typer", specifier = ">=0.12.0" },
+    { name = "urllib3", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=1.26,<3" },
     { name = "wandb", specifier = ">=0.23.1" },
     { name = "wandb", marker = "extra == 'all'", specifier = ">=0.15.0" },
     { name = "wandb", marker = "extra == 'wandb'", specifier = ">=0.15.0" },
@@ -4327,7 +4372,7 @@ requires-dist = [
     { name = "webdataset", marker = "extra == 'audio'", specifier = ">=0.2.86" },
     { name = "xxhash", specifier = ">=3.4.0" },
 ]
-provides-extras = ["wandb", "s3", "gcs", "sentencepiece", "xenna", "audio", "data-sdg", "byob", "translation", "evaluator", "dev", "all"]
+provides-extras = ["wandb", "s3", "gcs", "sentencepiece", "xenna", "audio", "data-sdg", "byob", "translate", "evaluator", "curate", "dev", "all"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.0.2" }]
@@ -4621,7 +4666,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.10.2.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/51/e123d997aa098c61d029f76663dedbfb9bc8dcf8c60cbd6adbe42f76d049/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:949452be657fa16687d0930933f032835951ef0892b37d2d53824d1a84dc97a8", size = 706758467, upload-time = "2025-06-06T21:54:08.597Z" },
@@ -4632,7 +4677,7 @@ name = "nvidia-cufft-cu12"
 version = "11.3.3.83"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/13/ee4e00f30e676b66ae65b4f08cb5bcbb8392c03f54f2d5413ea99a5d1c80/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4d2dd21ec0b88cf61b62e6b43564355e5222e4a3fb394cac0db101f2dd0d4f74", size = 193118695, upload-time = "2025-03-07T01:45:27.821Z" },
@@ -4659,9 +4704,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.7.3.90"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cusparse-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
+    { name = "nvidia-cusparse-cu12", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/85/48/9a13d2975803e8cf2777d5ed57b87a0b6ca2cc795f9a4f59796a910bfb80/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:4376c11ad263152bd50ea295c05370360776f8c3427b30991df774f9fb26c450", size = 267506905, upload-time = "2025-03-07T01:47:16.273Z" },
@@ -4672,7 +4717,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.8.93"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(python_full_version < '3.11' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/f5/e1854cb2f2bcd4280c44736c93550cc300ff4b8c95ebe370d0aa7d2b473d/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1ec05d76bbbd8b61b06a80e1eaf8cf4959c3d4ce8e711b65ebd0443bb0ebb13b", size = 288216466, upload-time = "2025-03-07T01:48:13.779Z" },
@@ -5345,7 +5390,7 @@ name = "portpicker"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "psutil", marker = "python_full_version < '3.14'" },
+    { name = "psutil" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/4d/d0/cda2fc582f09510c84cd6b7d7b9e22a02d4e45dbad2b2ef1c6edd7847e00/portpicker-1.6.0.tar.gz", hash = "sha256:bd507fd6f96f65ee02781f2e674e9dc6c99bbfa6e3c39992e3916204c9d431fa", size = 25676, upload-time = "2023-08-15T04:37:08.865Z" }
 wheels = [
@@ -7825,7 +7870,7 @@ name = "sympy"
 version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "mpmath", marker = "python_full_version >= '3.11'" },
+    { name = "mpmath" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
 wheels = [
@@ -8107,31 +8152,33 @@ name = "torch"
 version = "2.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cuda-bindings", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "filelock", marker = "python_full_version >= '3.11'" },
+    { name = "cuda-bindings", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "filelock" },
     { name = "fsspec", version = "2025.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "jinja2", marker = "python_full_version >= '3.11'" },
+    { name = "fsspec", version = "2025.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "jinja2" },
+    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "nvidia-cublas-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-cupti-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-nvrtc-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-runtime-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cudnn-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cufft-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cufile-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-curand-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cusolver-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cusparse-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-cusparselt-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nccl-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nvshmem-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "nvidia-nvtx-cu12", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cufft-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cufile-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-curand-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cusolver-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-cusparselt-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-nccl-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvshmem-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvtx-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux')" },
     { name = "setuptools", version = "82.0.1", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and platform_machine != 'aarch64' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version >= '3.12' and sys_platform != 'linux')" },
-    { name = "sympy", marker = "python_full_version >= '3.11'" },
-    { name = "triton", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "typing-extensions", marker = "python_full_version >= '3.11'" },
+    { name = "sympy" },
+    { name = "triton", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/30/bfebdd8ec77db9a79775121789992d6b3b75ee5494971294d7b4b7c999bc/torch-2.10.0-2-cp310-none-macosx_11_0_arm64.whl", hash = "sha256:2b980edd8d7c0a68c4e951ee1856334a43193f98730d97408fbd148c1a933313", size = 79411457, upload-time = "2026-02-10T21:44:59.189Z" },

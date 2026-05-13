@@ -30,6 +30,7 @@ command, e.g. ``nemotron steps run peft/automodel -c default train.train_iters=5
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -48,6 +49,8 @@ from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars, get_startup_commands
 from nemotron.cli.commands.steps._resolve import resolve_step
 from nemotron.cli.commands.steps.backends import JobContext, get_backend
+
+_CURATOR_RUNTIME_MODULE = "nemotron.steps._bootstrap.curator_runtime"
 
 
 def run_step(
@@ -114,6 +117,11 @@ def run_step(
 
     env_vars = build_env_vars(job_config, env_for_executor)
     startup_commands = list(get_startup_commands(env_for_executor) or [])
+    curator_runtime_env = _build_curator_runtime_env_vars(
+        script_path=script_path,
+        env=env_for_executor,
+        mode=global_ctx.mode,
+    )
 
     display_job_submission(
         job_path,
@@ -122,6 +130,7 @@ def run_step(
         global_ctx.mode,
         artifacts=job_config.get("artifacts"),
     )
+    env_vars.update(curator_runtime_env)
 
     executor_type = _executor_type(env_for_executor, default="local" if global_ctx.mode == "local" else None)
     if executor_type is None:
@@ -156,3 +165,52 @@ def _executor_type(env: object, *, default: str | None) -> str | None:
     if hasattr(env, "get"):
         return env.get("executor", default)
     return getattr(env, "executor", default)
+
+
+def _build_curator_runtime_env_vars(*, script_path: Path, env: object, mode: str) -> dict[str, str]:
+    """Build env-encoded Curator runtime requirements for remote submission."""
+    if mode not in {"run", "batch"} or not _uses_curator_runtime(env):
+        return {}
+
+    from nemotron.steps._bootstrap import runtime_payloads
+
+    source_checkout = _find_source_checkout_root(script_path)
+    if source_checkout is not None:
+        payloads = runtime_payloads.build_runtime_payloads(source_checkout)
+        source_description = str(source_checkout)
+    else:
+        payloads = runtime_payloads.read_runtime_payloads()
+        source_description = str(runtime_payloads.DEFAULT_OUTPUT_DIR)
+
+    if not payloads:
+        typer.echo(
+            "Curator runtime metadata is required for this remote profile, but none was found. "
+            "Run this command from a source checkout containing pyproject.toml and src/nemotron, "
+            "or install a wheel that includes nemotron.steps._bootstrap.runtime package data.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    typer.echo(f"Prepared Curator runtime requirements from {source_description}")
+    return runtime_payloads.encode_runtime_payload_env(payloads)
+
+
+def _uses_curator_runtime(env: object) -> bool:
+    run_command = _env_get(env, "run_command")
+    return isinstance(run_command, str) and _CURATOR_RUNTIME_MODULE in run_command
+
+
+def _env_get(env: object, key: str, default: object = None) -> object:
+    if env is None:
+        return default
+    if hasattr(env, "get"):
+        return env.get(key, default)
+    return getattr(env, key, default)
+
+
+def _find_source_checkout_root(path: Path) -> Path | None:
+    resolved = path.resolve()
+    for candidate in (resolved.parent, *resolved.parents):
+        if (candidate / "pyproject.toml").is_file() and (candidate / "src" / "nemotron").is_dir():
+            return candidate
+    return None

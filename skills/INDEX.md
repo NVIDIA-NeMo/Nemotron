@@ -38,7 +38,7 @@ src/nemotron/steps/                ← step library (the catalog skills route in
     ├── step.toml                  ← machine contract (consumes/produces/params/strategies/errors)
     ├── SKILL.md                   ← agent prose: when/why/gotchas (per-step)
     ├── step.py                    ← runspec + entry point
-    └── config/                    ← default.yaml + tiny.yaml
+    └── config/                    ← one or more named configs
 ```
 
 **Rule of thumb:**

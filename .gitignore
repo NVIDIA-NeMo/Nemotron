@@ -105,6 +105,7 @@ CLAUDE.md
 # Compiled config
 config.yaml
 main.py
+src/nemotron/steps/_bootstrap/runtime/
 
 # Documentation build
 docs/_build/

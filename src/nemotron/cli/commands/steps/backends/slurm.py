@@ -34,6 +34,9 @@ from nemo_runspec.packaging import (
 )
 from nemotron.cli.commands.steps.backends.base import JobContext
 
+_CURATOR_RUNTIME_MODULE = "nemotron.steps._bootstrap.curator_runtime"
+_REMOTE_SRC_DIR = "/nemo_run/code/src"
+
 
 class SlurmBackend:
     """Submit to a Slurm cluster (attached or detached) via nemo-run."""
@@ -134,8 +137,12 @@ class SlurmBackend:
         (so WORLD_SIZE matches the slurm allocation), bare ``python``
         otherwise.
         """
-        if ctx.spec.run.cmd is not None:
-            return ctx.spec.run.cmd.format(script=REMOTE_SCRIPT, config=REMOTE_CONFIG)
+        command_template = SlurmBackend._command_template(ctx)
+        if command_template is not None:
+            command = command_template.format(script=REMOTE_SCRIPT, config=REMOTE_CONFIG)
+            if SlurmBackend._command_uses_curator_runtime(command_template):
+                return SlurmBackend._with_remote_src_pythonpath(command)
+            return command
         if ctx.spec.run.launch == "torchrun":
             # nemo-run's torchrun launcher is set on the executor and handles
             # the actual srun-side wrap; on this code path we just feed the
@@ -144,9 +151,37 @@ class SlurmBackend:
         return f"python {REMOTE_SCRIPT} --config {REMOTE_CONFIG}"
 
     @staticmethod
+    def _env_get(env: object, key: str, default: object = None) -> object:
+        if env is None:
+            return default
+        if hasattr(env, "get"):
+            return env.get(key, default)
+        return getattr(env, key, default)
+
+    @staticmethod
     def _uses_code_packager(ctx: JobContext) -> bool:
         """Data prep steps start Ray internally, so workers need importable modules."""
-        return ctx.step_id.startswith("data_prep/")
+        return ctx.step_id.startswith("data_prep/") or SlurmBackend._uses_curator_runtime(ctx)
+
+    @staticmethod
+    def _uses_curator_runtime(ctx: JobContext) -> bool:
+        command_template = SlurmBackend._command_template(ctx)
+        return SlurmBackend._command_uses_curator_runtime(command_template)
+
+    @staticmethod
+    def _command_template(ctx: JobContext) -> str | None:
+        if ctx.spec.run.cmd is not None:
+            return ctx.spec.run.cmd
+        run_command = SlurmBackend._env_get(ctx.env, "run_command")
+        return run_command if isinstance(run_command, str) and run_command else None
+
+    @staticmethod
+    def _command_uses_curator_runtime(command: object) -> bool:
+        return isinstance(command, str) and _CURATOR_RUNTIME_MODULE in command
+
+    @staticmethod
+    def _with_remote_src_pythonpath(command: str) -> str:
+        return f"export PYTHONPATH={_REMOTE_SRC_DIR}${{PYTHONPATH:+:$PYTHONPATH}}; {command}"
 
     @staticmethod
     def _wait_for_ray_job(ray_job: object, *, poll_seconds: int = 30) -> str:
