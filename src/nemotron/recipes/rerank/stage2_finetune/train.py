@@ -52,8 +52,10 @@ from __future__ import annotations
 
 import json
 import os
+import pickle
 import sys
 from pathlib import Path
+from types import MethodType
 from typing import Literal
 
 from pydantic import ConfigDict, Field
@@ -89,6 +91,8 @@ class FinetuneConfig(RecipeSettings):
     lr_warmup_steps: int = Field(default=100, ge=0, description="Learning rate warmup steps.")
     lr_decay_style: Literal["cosine", "linear"] = Field(default="cosine", description="LR decay schedule (cosine, linear).")
     weight_decay: float = Field(default=0.01, ge=0, description="Weight decay for optimizer.")
+    max_steps: int | None = Field(default=None, gt=0, description="Optional absolute maximum optimizer step to run to. Useful for short smoke tests and controlled resume runs.")
+    force_fp32_parameters: bool = Field(default=True, description="Cast model parameters to fp32 before training so torch AdamW creates fp32 optimizer state.")
 
     # Model architecture
     attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(default=None, description="Attention implementation (sdpa, flash_attention_2, eager). None auto-detects.")
@@ -104,7 +108,119 @@ class FinetuneConfig(RecipeSettings):
     # Checkpointing
     checkpoint_every_steps: int = Field(default=100, gt=0, description="Save checkpoint every N steps.")
     val_every_steps: int = Field(default=100, gt=0, description="Run validation every N steps.")
+    restore_from: str | None = Field(default=None, description="Optional checkpoint directory or name to restore from.")
 
+
+_ADAM_METADATA_KEYS = ("exp_avg", "exp_avg_sq", "step")
+
+
+def _cast_model_parts_to_fp32(model_parts) -> None:
+    """Cast model parameters in-place so torch AdamW keeps fp32 params/state."""
+    print("Casting model parameters to fp32 before training")
+    for model_part in model_parts:
+        model_part.float()
+
+
+def _optimizer_metadata_dtype_counts(metadata) -> dict[str, dict[str, int]]:
+    """Summarize optimizer state dtypes from torch distributed checkpoint metadata."""
+    counts: dict[str, dict[str, int]] = {}
+    state_metadata = getattr(metadata, "state_dict_metadata", {})
+    for key, value in state_metadata.items():
+        if not str(key).startswith("optim.state."):
+            continue
+        state_name = str(key).rsplit(".", 1)[-1]
+        if state_name not in _ADAM_METADATA_KEYS:
+            continue
+
+        properties = getattr(value, "properties", None)
+        dtype = getattr(properties, "dtype", None)
+        if dtype is None:
+            continue
+
+        dtype_counts = counts.setdefault(state_name, {})
+        dtype_name = str(dtype)
+        dtype_counts[dtype_name] = dtype_counts.get(dtype_name, 0) + 1
+    return counts
+
+
+def _read_optimizer_metadata_dtype_counts(checkpoint_dir: Path) -> dict[str, dict[str, int]]:
+    metadata_path = checkpoint_dir / "optim" / ".metadata"
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Optimizer metadata not found: {metadata_path}")
+
+    with metadata_path.open("rb") as f:
+        return _optimizer_metadata_dtype_counts(pickle.load(f))
+
+
+def _assert_optimizer_metadata_fp32(checkpoint_dir: Path) -> dict[str, dict[str, int]]:
+    """Assert Adam optimizer checkpoint metadata contains only fp32 state tensors."""
+    counts = _read_optimizer_metadata_dtype_counts(checkpoint_dir)
+    missing = [state_name for state_name in _ADAM_METADATA_KEYS if state_name not in counts]
+    non_fp32 = {
+        state_name: dtype_counts
+        for state_name, dtype_counts in counts.items()
+        if set(dtype_counts) != {"torch.float32"}
+    }
+    if missing or non_fp32:
+        raise AssertionError(
+            "Expected resumed optimizer checkpoint metadata to be fp32. "
+            f"missing={missing}, non_fp32={non_fp32}, counts={counts}"
+        )
+    return counts
+
+
+def _install_fp32_restore_hook(recipe) -> None:
+    """Load restored model in fp32 before loading optimizer state.
+
+    Automodel default restore order is model plus optimizer load inside setup.
+    If we cast after setup, optimizer state has already been attached and fused
+    AdamW can fail because param, grad, and moment tensor lists no longer have
+    matching dtypes. This hook keeps the load order explicit for fp32-state
+    resumes: load model, cast params to fp32, then load optimizer and scheduler.
+    """
+
+    def load_checkpoint_with_fp32_cast(self, restore_from: str | None = None):
+        if not self.checkpointer.config.enabled:
+            if restore_from is not None:
+                print("Enable checkpointing to resume from a checkpoint, skipping...", flush=True)
+            return
+        if restore_from is None:
+            # Keep Automodel auto-detect path unchanged for non-explicit resumes.
+            return original_load_checkpoint(restore_from)
+
+        import torch
+
+        is_rank_0 = not torch.distributed.is_initialized() or torch.distributed.get_rank() == 0
+        if str(restore_from).upper() == "LATEST":
+            from nemo_automodel.recipes.base_recipe import _find_latest_checkpoint
+
+            ckpt_dir = _find_latest_checkpoint(self.checkpointer.config.checkpoint_dir)
+            if ckpt_dir is None:
+                if is_rank_0:
+                    print(
+                        "restore_from=LATEST specified but no checkpoint found in "
+                        f"{self.checkpointer.config.checkpoint_dir}. Starting fresh.",
+                        flush=True,
+                    )
+                return
+            ckpt_dir = str(ckpt_dir)
+        elif os.path.sep not in str(restore_from) and not os.path.isabs(str(restore_from)):
+            ckpt_dir = os.path.join(self.checkpointer.config.checkpoint_dir, str(restore_from))
+        else:
+            ckpt_dir = str(restore_from)
+
+        self._validate_checkpoint_dir_exists(ckpt_dir, restore_from=str(restore_from), is_rank_0=is_rank_0)
+        if is_rank_0:
+            print(f"Loading checkpoint from {ckpt_dir}", flush=True)
+            print("Restoring model before fp32 cast, then loading optimizer state", flush=True)
+
+        model, optimizer, scheduler = self._load_checkpoint_tracked_state(ckpt_dir)
+        self.checkpointer.load_model(model, os.path.join(ckpt_dir, "model"))
+        _cast_model_parts_to_fp32(self.model_parts)
+        self.checkpointer.load_optimizer(optimizer, model, ckpt_dir, scheduler)
+
+    original_load_checkpoint = recipe.load_checkpoint
+    recipe.load_checkpoint = MethodType(load_checkpoint_with_fp32_cast, recipe)
 
 def _count_training_examples(train_data_path: Path) -> int:
     """Count the number of training examples in a training data file."""
@@ -133,6 +249,8 @@ def _auto_scale_hyperparams(
     steps_per_epoch = max(1, num_examples // global_batch_size)
     num_epochs = cfg.num_epochs
     total_steps = steps_per_epoch * num_epochs
+    if cfg.max_steps is not None:
+        total_steps = min(total_steps, cfg.max_steps)
 
     if total_steps < cfg.checkpoint_every_steps * 3:
         checkpoint_every_steps = max(1, total_steps // 3)
@@ -171,6 +289,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     steps_per_epoch = max(1, num_examples // global_batch_size)
     total_steps = steps_per_epoch * num_epochs
+    if cfg.max_steps is not None:
+        total_steps = min(total_steps, cfg.max_steps)
 
     # Print training plan
     print(f"Training plan:")
@@ -184,7 +304,10 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     print(f"  Epochs:           {num_epochs}")
     print(f"  Steps/epoch:      ~{steps_per_epoch}")
     print(f"  Total steps:      ~{total_steps}")
-    print(f"  LR schedule:      {cfg.lr_decay_style}, warmup={cfg.lr_warmup_steps}, peak={cfg.learning_rate}")
+    if cfg.max_steps is not None:
+        print(f"  Max steps:        {cfg.max_steps}")
+    lr_warmup_steps = min(cfg.lr_warmup_steps, max(1, total_steps - 1))
+    print(f"  LR schedule:      {cfg.lr_decay_style}, warmup={lr_warmup_steps}, peak={cfg.learning_rate}")
     print(f"  Checkpoint every: {ckpt_every} steps")
     print(f"  Validate every:   {val_every} steps")
     print()
@@ -245,21 +368,30 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.step_scheduler.local_batch_size = cfg.local_batch_size
     automodel_cfg.step_scheduler.ckpt_every_steps = ckpt_every
     automodel_cfg.step_scheduler.val_every_steps = val_every
+    if cfg.max_steps is not None:
+        automodel_cfg.step_scheduler.max_steps = cfg.max_steps
 
     # Optimizer settings
     automodel_cfg.optimizer.lr = cfg.learning_rate
     automodel_cfg.optimizer.weight_decay = cfg.weight_decay
-    # Warmup must be strictly less than total decay steps
-    lr_warmup_steps = min(cfg.lr_warmup_steps, max(1, total_steps - 1))
     automodel_cfg.lr_scheduler.lr_warmup_steps = lr_warmup_steps
 
     # Checkpoint settings
     automodel_cfg.checkpoint.checkpoint_dir = str(cfg.checkpoint_dir)
+    if cfg.restore_from is not None:
+        automodel_cfg.checkpoint.restore_from = cfg.restore_from
 
     # Create and run the cross-encoder recipe
     recipe = TrainCrossEncoderRecipe(automodel_cfg)
+    if cfg.force_fp32_parameters and cfg.restore_from is not None:
+        _install_fp32_restore_hook(recipe)
     recipe.setup()
+    if cfg.force_fp32_parameters and cfg.restore_from is None:
+        _cast_model_parts_to_fp32(recipe.model_parts)
     recipe.run_train_validation_loop()
+    if cfg.force_fp32_parameters and cfg.restore_from is not None:
+        counts = _assert_optimizer_metadata_fp32(cfg.checkpoint_dir / "LATEST")
+        print(f"Verified resumed optimizer checkpoint metadata is fp32: {counts}")
 
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"

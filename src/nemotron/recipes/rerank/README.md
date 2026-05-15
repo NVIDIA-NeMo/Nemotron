@@ -446,9 +446,16 @@ prompt_template: "question:{query} \n \n passage:{passage}"
 train_n_passages: 5            # 1 positive + 4 hard negatives
 num_labels: 1
 temperature: 1.0
+force_fp32_parameters: true    # Keep torch AdamW parameters and optimizer state in fp32
+checkpoint_every_steps: 100
+restore_from: null             # Optional checkpoint path or name for explicit resume
 ```
 
 > **Warning — Overfitting risk**: The default `num_epochs: 3` is set for the small example dataset shipped with this recipe, where fewer epochs may not produce a visible training signal. For most real-world datasets, **1–2 epochs is sufficient** and 3 epochs carries a high risk of overfitting. Lower this value when working with your own data (e.g., `nemotron rerank finetune -c default num_epochs=1`).
+
+> **Precision note**: Local fine-tuning keeps parameters in fp32 when `force_fp32_parameters: true` so native torch AdamW creates and checkpoints fp32 Adam moments. This matches the Automodel POC behavior more closely than bf16 optimizer state and is also enforced on explicit resume before optimizer state is loaded.
+
+> **Tokenizer note**: Reranker train and eval tokenization must stay aligned. Training pins `add_eos_token: false` in the Automodel tokenizer config, and Stage 3 eval pins the same value when loading the fine-tuned tokenizer. Keep this setting and `prompt_template` matched between stages when customizing the recipe.
 
 **Stage 3: Eval**
 ```yaml

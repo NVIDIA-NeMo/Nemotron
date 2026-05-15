@@ -33,6 +33,10 @@ learning_rate: 3.0e-6
 lr_warmup_steps: 100
 lr_decay_style: cosine
 weight_decay: 0.01
+# Optional absolute optimizer step limit. Leave null for full epoch-based training.
+max_steps: null
+# Keep torch AdamW state fp32 in local mode.
+force_fp32_parameters: true
 
 # Model architecture
 # attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa
@@ -48,3 +52,4 @@ prompt_template: "question:{query} \n \n passage:{passage}"
 # Checkpointing
 checkpoint_every_steps: 100
 val_every_steps: 100
+restore_from: null

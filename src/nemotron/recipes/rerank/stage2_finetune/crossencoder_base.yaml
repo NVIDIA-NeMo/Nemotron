@@ -27,7 +27,7 @@ step_scheduler:
 
 dist_env:
   backend: nccl
-  timeout_minutes: 1
+  timeout_minutes: 30
 
 model:
   _target_: nemo_automodel.NeMoAutoModelCrossEncoder.from_pretrained
@@ -38,7 +38,8 @@ model:
   pooling: avg
   use_liger_kernel: true
   use_sdpa_patching: true
-  torch_dtype: bfloat16
+  # Load weights in fp32 so the FSDP policy below gives torch AdamW fp32 state.
+  torch_dtype: float32
 
 tokenizer:
   _target_: nemo_automodel.NeMoAutoTokenizer.from_pretrained
@@ -71,6 +72,7 @@ optimizer:
   weight_decay: 0.01
   betas: [0.9, 0.999]
   eps: 1.0e-8
+  fused: true
 
 lr_scheduler:
   lr_warmup_steps: 100
@@ -87,3 +89,8 @@ distributed:
   tp_size: 1
   cp_size: 1
   sequence_parallel: false
+  mp_policy:
+    _target_: torch.distributed.fsdp.MixedPrecisionPolicy
+    param_dtype: float32
+    reduce_dtype: float32
+    output_dtype: float32

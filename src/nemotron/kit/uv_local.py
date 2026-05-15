@@ -177,10 +177,11 @@ def _execute_with_uv_torch(
     pre_script_args: list[str],
 ) -> int:
     """Execute using uv run with torch installed via UV_TORCH_BACKEND."""
+    torch_spec = os.environ.get("NEMOTRON_LOCAL_TORCH_SPEC", "torch<=2.10.0")
     cmd = [
         uv_cmd, "run",
         "--with", str(repo_root),
-        "--with", "torch",
+        "--with", torch_spec,
     ]
     for pkg in extra_with:
         cmd += ["--with", pkg]
