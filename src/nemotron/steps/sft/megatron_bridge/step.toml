@@ -40,14 +40,35 @@ default = 4096
 choices = [2048, 4096, 8192, 16384, 32768]
 
 [[parameters]]
+name = "dataset.packed_sequence_specs.packed_train_data_path"
+description = "Packed training Parquet glob, usually data_prep/sft_packing output_dir/splits/train/*.parquet."
+
+[[parameters]]
 name = "peft"
 description = "'lora' = the shipped 30B default, 'null' = full SFT when the model fits"
 default = "lora"
 choices = ["null", "lora"]
 
+[[parameters]]
+name = "checkpoint.pretrained_checkpoint"
+description = "Optional Megatron base checkpoint or prior SFT checkpoint. Keep it distinct from the output checkpoint.save path."
+
+[[parameters]]
+name = "train.micro_batch_size"
+description = "Per-rank micro batch size. Start at 1 when validating a new distributed shape."
+default = 1
+
+[[parameters]]
+name = "train.global_batch_size"
+description = "Global batch size. Keep it divisible by the resulting data-parallel size."
+
 [[strategies]]
 when = "dataset < 10K records"
 then = "reduce global_batch_size and increase train_iters to keep optimizer steps useful"
+
+[[strategies]]
+when = "consuming packed Parquet"
+then = "Set recipe.packed_sequence=true and keep dataset.seq_length, dataset.packed_sequence_specs.packed_sequence_size, model.seq_length, and data_prep pack_size identical."
 
 [[strategies]]
 when = "user wants LoRA"
@@ -87,7 +108,16 @@ skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
 name = "missing_packed_data"
 recovery = "run data_prep/sft_packing first, or point dataset.nano3_packed_sft_dir at the packed splits directory"
 
+[[errors]]
+name = "bad_parallel_batch_shape"
+recovery = "Set train.global_batch_size as a multiple of data-parallel size and start with train.micro_batch_size=1 while validating TP/PP/CP."
+
+[[errors]]
+name = "bad_loss_masks_or_template"
+recovery = "Inspect packed records from data_prep/sft_packing before training; prompt/template bugs often look like poor SFT quality."
+
 [reference]
+skill = "src/nemotron/steps/sft/megatron_bridge/SKILL.md"
 recipe = "src/nemotron/recipes/nano3/stage1_sft/"
 config = "src/nemotron/recipes/nano3/stage1_sft/config/default.yaml"
 script = "src/nemotron/recipes/nano3/stage1_sft/train.py"
@@ -96,4 +126,4 @@ megatron_bridge_readme = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/ma
 megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
 training_entry_points = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/entry-points.html"
 packed_sequences_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/packed-sequences.html"
-skills = ["skills/nemotron-customize/context/mbridge-sft.txt"]
+skills = ["skills/nemotron-customize/references/context/mbridge-sft.txt"]

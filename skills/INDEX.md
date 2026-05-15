@@ -20,12 +20,13 @@ its own `SKILL.md` (frontmatter + body) and lives in a sibling directory.
 skills/                            ← workflow & reference skills (this directory)
 └── nemotron-customize/            ← e.g. pipeline-builder skill
     ├── SKILL.md                   ← agent entry point (Orient/Plan/Act/Verify)
-    ├── act/                       ← codegen rules loaded during Act phase
-    │   ├── PROJECT.md             ← project-scaffold rules (R1–R10)
-    │   └── STAGE.md               ← per-stage rules (R1–R5, dry-run, W&B)
-    └── context/                   ← authored library API extracts for codegen
-        ├── index.toml             ← (step_id, intent) → pack file
-        └── README.md              ← provenance + nv-base notes
+    ├── references/
+    │   ├── act/                   ← codegen rules loaded during Act phase
+    │   │   ├── PROJECT.md         ← project-scaffold rules (R1–R10)
+    │   │   └── STAGE.md           ← per-stage rules (R1–R5, dry-run, W&B)
+    │   └── context/               ← authored library API extracts for codegen
+    │       ├── index.toml         ← (step_id, intent) → pack file
+    │       └── README.md          ← provenance notes
 
 src/nemotron/steps/                ← step library (the catalog skills route into)
 ├── SKILL.md                       ← per-category routing
@@ -48,12 +49,6 @@ src/nemotron/steps/                ← step library (the catalog skills route in
 
 ## Validation
 
-This directory is validated by [nv-base](https://gitlab-master.nvidia.com/ai_tools/nvcarps_team/nv-base):
-
-```bash
-nv-base validate skills/ --type skill --no-llm -r cli json -o reports/nv-base -c
-```
-
 Every `SKILL.md` requires a YAML frontmatter block:
 
 ```markdown
@@ -63,9 +58,8 @@ description: <one-line "when to use" hook>
 ---
 ```
 
-The 17 files under `nemotron-customize/context/*.txt` are extracted upstream
-documentation from the Nemotron-stack libraries (Megatron-Bridge, AutoModel,
-Curator, NeMo-RL, Speaker, Evaluator, ModelOpt, Data Designer). They contain
-code snippets that nv-base flags for `Env Variable Harvesting`, `Credential
-Access`, etc. — these are **documentation false positives**, not executable
-code paths in this repo.
+The files under `nemotron-customize/references/context/*.txt` are short
+curated context packs for the Nemotron-stack libraries (Megatron-Bridge,
+AutoModel, Curator, NeMo-RL, Evaluator, ModelOpt, Data Designer). They are
+read-only reference material for grounding agent changes in the real library
+APIs, not runtime code paths.

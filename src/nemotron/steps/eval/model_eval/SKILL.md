@@ -24,6 +24,7 @@ strategies/errors/parameters list.
 - **Match endpoint type to benchmark family.** Chat/instruction → chat
   endpoint. Log-probability (arc_challenge, hellaswag, piqa, etc.) → completions
   endpoint with `logprobs` support.
+- Set `deployment.url` to the OpenAI-compatible serving endpoint.
 - **Tokenizer is required for log-probability tasks.** For `checkpoint_megatron`,
   point at `checkpoint/tokenizer`. For `checkpoint_hf`, use the HF handle or path.
 - **Megatron deployments need the iter_* path**, not the parent output dir.

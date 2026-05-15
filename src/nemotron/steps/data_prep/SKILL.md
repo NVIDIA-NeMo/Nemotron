@@ -32,24 +32,44 @@ Skip packing when:
 
 ## Workflow
 
-1. **Env profile first** — verify the env profile for Lepton/Slurm/Ray/batch
-   runs (`env.toml` by default, or `NEMOTRON_ENV_FILE` for backend-specific
-   files).
-2. Read the target step's `step.toml` for artifacts, parameters, strategies,
+1. Read the target step's `step.toml` for artifacts, parameters, strategies,
    and references.
-3. Start with `config/tiny.yaml` for smoke tests, `config/default.yaml` for
+2. Start with `config/tiny.yaml` for smoke tests, `config/default.yaml` for
    production shape.
-4. Keep tokenizer, chat template, sequence length, split names, and shard
+3. Keep tokenizer, chat template, sequence length, split names, and shard
    policy aligned with the downstream trainer.
+4. For remote submission, select the profile from
+   `env/env_toml/config/{lepton,slurm,dgxcloud}.yaml` or the generated env file;
+   do not hardcode profile names here.
 5. Inspect sample outputs before launching expensive training.
 
 ## Smoke commands
 
 ```bash
-nemotron steps run data_prep/sft_packing   -c tiny
-nemotron steps run data_prep/pretrain_prep -c tiny
-nemotron steps run data_prep/rl_prep       -c tiny
+uv run nemotron steps run data_prep/sft_packing   -c tiny --dry-run
+uv run nemotron steps run data_prep/pretrain_prep -c tiny --dry-run
+uv run nemotron steps run data_prep/rl_prep       -c tiny --dry-run
 ```
+
+## Project layout for generated configs
+
+Keep every generated overlay config and any supporting code under a single
+self-contained project root that also holds the local input data, so the
+whole directory is rsync/scp-portable to the remote machine that will run
+the data_prep step.
+
+- `<project>/config/` for generated YAML — never write into
+  `src/nemotron/steps/data_prep/<step>/config/`; the shipped `default.yaml`
+  and `tiny.yaml` stay as catalog references.
+- `<project>/data/` for source blends (`blend.json`), local JSONL inputs,
+  and the prepared artifact destination (packed Parquet shards, bin/idx +
+  emitted `blend.json`, or RL JSONL splits).
+- Tokenizer, chat-template, and `pack_size` / `seq_length` metadata should
+  be captured under the same project root so downstream training can be
+  shipped together as one portable bundle.
+- Project-root scripts only when catalog code cannot serve the request.
+- Do not split generated files into home dirs, scratch dirs, or paths
+  outside the project root that will not ship with the bundle.
 
 ## Patterns to cite
 

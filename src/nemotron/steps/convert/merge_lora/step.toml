@@ -31,5 +31,48 @@ description = "Base model in HuggingFace format"
 type = "checkpoint_hf"
 description = "Merged model checkpoint"
 
+[[parameters]]
+name = "lora_checkpoint"
+description = "Adapter checkpoint path produced by a PEFT step."
+
+[[parameters]]
+name = "base_hf_path"
+description = "The original HF base checkpoint the adapter was trained against. Do not substitute a different base."
+
+[[parameters]]
+name = "output_hf_path"
+description = "Directory for the merged standalone HF checkpoint."
+
+[[parameters]]
+name = "cpu"
+description = "Merge on CPU when GPU memory is tight or when running outside a training container."
+default = true
+
+[[strategies]]
+when = "The adapter came from peft/automodel"
+then = "Merge directly into the same HF base model used for PEFT training."
+
+[[strategies]]
+when = "The adapter came from peft/megatron_bridge"
+then = "Convert or export the compatible base to HF layout first, then merge only against that same base."
+
+[[strategies]]
+when = "Quality is being compared before and after merge"
+then = "Evaluate the adapter-loaded model and the merged checkpoint separately; do not assume scores are identical."
+
+[[errors]]
+name = "base_model_mismatch"
+recovery = "Merge only into the exact base checkpoint used during adapter training, including tokenizer and chat-template assumptions."
+
+[[errors]]
+name = "adapter_not_validated"
+recovery = "Run a small adapter-loaded generation or eval before producing the merged deployment artifact."
+
+[[errors]]
+name = "output_path_overlaps_inputs"
+recovery = "Write output_hf_path to a fresh directory so failed merges cannot overwrite the base or adapter."
+
 [reference]
+skill = "src/nemotron/steps/convert/merge_lora/SKILL.md"
 script = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/peft/merge_lora.py"
+skills = ["skills/nemotron-customize/references/context/checkpoint-conversion.txt"]

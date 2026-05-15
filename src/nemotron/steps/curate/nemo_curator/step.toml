@@ -19,6 +19,10 @@ category = "curate"
 description = """Read JSONL text with NeMo Curator, optionally hydrate a Hugging Face snapshot, apply light language, word-count, and domain filters, and write downstream-ready JSONL."""
 tags = ["curate", "nemo-curator", "jsonl", "ray", "huggingface"]
 
+[[consumes]]
+type = "raw_jsonl"
+description = "Raw local JSONL records, or a Hugging Face dataset snapshot materialized before Curator reads input_glob."
+
 [[produces]]
 type = "filtered_jsonl"
 description = "Filtered JSONL records suitable for downstream translation, pretraining prep, or SFT prep. Language/domain annotations are present only when those filters are enabled."
@@ -113,5 +117,6 @@ name = "large_file_oom"
 recovery = "Split very large JSONL files into smaller shards before reading them with Curator."
 
 [reference]
+skill = "src/nemotron/steps/curate/nemo_curator/SKILL.md"
 script = "https://github.com/NVIDIA-NeMo/Curator/tree/main/nemo_curator/stages/text"
 docs = "https://docs.nvidia.com/nemo/curator/latest/"

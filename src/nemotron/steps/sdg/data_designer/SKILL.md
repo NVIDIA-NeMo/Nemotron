@@ -21,6 +21,9 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Set `num_records` to the target generated count only after preview output looks correct.
 - Set `seed_dataset.path` for seed-typed columns.
+- Keep `columns` references valid and preview them before scaling.
+- Set `output_projection.type` to the downstream schema:
+  `openai_messages`, `structured_messages`, or `dpo_preference`.
 - For custom inference endpoints, add `providers:` and point each
   `models[].provider` at a declared provider name.
 - In `providers[].api_key`, write the environment variable name such as
@@ -41,4 +44,6 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Keep generated schema explicit in YAML; avoid hidden assumptions in `step.py`.
 - Inspect a sample of generated records before running prep or training.
+- Do not put resolved API keys in YAML; provider `api_key` values are env-var
+  names.
 - Version prompts, seed data, model aliases, inference parameters, and projections.

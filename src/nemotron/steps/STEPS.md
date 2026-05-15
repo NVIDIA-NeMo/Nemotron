@@ -18,7 +18,7 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
-| [curate/nemo_curator](curate/nemo_curator/) | Read JSONL text with NeMo Curator, optionally hydrate a Hugging Face snapshot, apply light language, word-count, and domain filters, and write downstream-ready JSONL. | - | filtered_jsonl |
+| [curate/nemo_curator](curate/nemo_curator/) | Read JSONL text with NeMo Curator, optionally hydrate a Hugging Face snapshot, apply light language, word-count, and domain filters, and write downstream-ready JSONL. | raw_jsonl | filtered_jsonl |
 
 ## data_prep — Data Preparation
 
@@ -32,7 +32,7 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
-| [env/env_toml](env/env_toml/) | Generate and validate step-linked env profile examples from compact YAML templates for Lepton or Slurm, including inheritance, image overrides, mounts, env-var placeholders, Curator/Data Designer profiles, and Ray/RL guardrails. | - | env_toml |
+| [env/env_toml](env/env_toml/) | Generate and validate step-linked env profile examples from compact YAML templates for Lepton, Slurm, or DGX Cloud, including inheritance, image overrides, mounts, env-var placeholders, Curator/Data Designer profiles, and Ray/RL guardrails. | - | env_toml |
 
 ## eval — Evaluation
 
@@ -74,7 +74,7 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
-| [sdg/data_designer](sdg/data_designer/) | Build a NeMo Data Designer pipeline declaratively and generate synthetic data. Two recipes ship in config/: 'default' produces SFT chat data, 'rl_pref' produces preference pairs (chosen / rejected) for DPO.  Customisation lives in YAML — step.py just translates declarative column specs into the upstream DataDesignerConfigBuilder API. | training_jsonl (optional) | synthetic_jsonl |
+| [sdg/data_designer](sdg/data_designer/) | Build a NeMo Data Designer pipeline declaratively and generate synthetic data. Three recipes ship in config/: 'default' produces SFT chat data, 'customer_support_tools' produces tool-call SFT data, and 'rl_pref' produces preference pairs (chosen / rejected) for DPO.  Customisation lives in YAML — step.py just translates declarative column specs into the upstream DataDesignerConfigBuilder API. | training_jsonl (optional) | synthetic_jsonl |
 
 ## sft — Supervised Fine-Tuning
 

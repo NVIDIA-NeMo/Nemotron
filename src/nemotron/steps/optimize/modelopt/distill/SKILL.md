@@ -20,6 +20,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Set `args.teacher_hf_path` and `args.student_hf_path`.
 - Set `args.data_paths` for real Megatron bin/idx distillation data.
+- Set `args.output_dir` away from teacher and student checkpoint roots.
 - Use `args.use_mock_data=true` only for launch validation.
 - Set `args.hf_export_path` when a Hugging Face export is needed directly.
 - Use `extra_args` for newly exposed upstream flags.
@@ -43,4 +44,5 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Use the original BF16 model as teacher when recovering from pruning or quantization.
 - Do not treat mock-data runs as quality validation.
+- Keep teacher, student, tokenizer, and distillation-data assumptions explicit.
 - Choose distillation data that matches the deployment domain.

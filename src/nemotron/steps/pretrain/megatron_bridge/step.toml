@@ -42,9 +42,22 @@ default = 8192
 choices = [2048, 4096, 8192, 16384]
 
 [[parameters]]
+name = "dataset.data_paths"
+description = "Path to data_prep/pretrain_prep emitted blend.json. Do not use SFT packed Parquet here."
+
+[[parameters]]
 name = "load_hf_weights"
 description = "If true, initialise from HF base weights (CPT). If false, train from scratch."
 default = true
+
+[[parameters]]
+name = "train.micro_batch_size"
+description = "Per-rank micro batch size. Start at 1 while validating a new parallelism shape."
+default = 1
+
+[[parameters]]
+name = "train.global_batch_size"
+description = "Global batch size. Keep it divisible by data-parallel size."
 
 [[strategies]]
 when = "Large token budget (> 100B)"
@@ -59,9 +72,19 @@ then = "Lower LR (1e-5 - 5e-5) and shorter warmup; keep load_hf_weights=true."
 name = "missing_blend_json"
 recovery = "Run data_prep/pretrain_prep and point dataset.data_paths at the produced blend.json."
 
+[[errors]]
+name = "sequence_length_mismatch"
+recovery = "Keep recipe.seq_length, model.seq_length, dataset.seq_length, and pretrain token-budget assumptions identical."
+
+[[errors]]
+name = "transformer_engine_userbuffer_failure"
+recovery = "If CUDA multicast is unavailable, set UB_SKIPMC=1 in run.env.env_vars before Bridge initialization."
+
 [reference]
+skill = "src/nemotron/steps/pretrain/megatron_bridge/SKILL.md"
 repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
 readme = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/README.md"
 docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
 training_entry_points = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/entry-points.html"
 recipe = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main/megatron/bridge/recipes/nemotronh"
+skills = ["skills/nemotron-customize/references/context/mbridge-pretrain.txt"]

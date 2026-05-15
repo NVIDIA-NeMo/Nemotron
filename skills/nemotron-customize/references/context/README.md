@@ -20,22 +20,13 @@ one of:
 | `automodel-*.txt` | NVIDIA-NeMo/Automodel | `$AUTOMODEL_ROOT` |
 | `curator-*.txt` | NVIDIA-NeMo/Curator | `$CURATOR_ROOT` |
 | `eval-*.txt` | NVIDIA-NeMo/Evaluator | `$EVALUATOR_ROOT` |
+| `checkpoint-conversion.txt` | NVIDIA-NeMo/Megatron-Bridge / HF PEFT | `$MBRIDGE_ROOT`, `$HF_HOME` |
 | `nemo-rl-alignment.txt` | NVIDIA-NeMo/RL | (linked via URL) |
-| `speaker-translation-faith.txt` | NVIDIA Speaker | `$SPEAKER_ROOT` |
+| `curator-translation-faith.txt` | NVIDIA-NeMo/Curator | `$CURATOR_ROOT` |
 | `modelopt-optimization.txt` | NVIDIA Model Optimizer | (linked via URL) |
 | `data-designer-sdg.txt` | NVIDIA Data Designer | (linked via URL) |
 | `nemotron-data-prep.txt` | NVIDIA-NeMo/Nemotron (this repo) | `$NEMOTRON_ROOT` |
 
-Original contributor-host absolute paths have been replaced with the env vars
-listed above.
-
-## nv-base findings
-
-Several packs trigger nv-base SECURITY and PII rules because they contain
-upstream library code samples (env-var-based credential setup, install steps
-that mention root, optimizer hyperparameter literals, etc.). These are
-**documentation excerpts**, not executable paths in this repo. The packs are
-read-only docs consumed by the Act phase — no code path here invokes them.
-
-When triaging an nv-base run, file findings under `context/*.txt` separately
-from findings under any `SKILL.md` / `act/*.md`.
+These packs are curated summaries for agent grounding. They are intentionally
+short and should point agents back to the repo step manifest, config, runner,
+and active env TOML instead of duplicating upstream documentation.

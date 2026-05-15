@@ -23,7 +23,7 @@ Per-stage implementations are delegated to sub-agents via [STAGE.md](STAGE.md)
 └── .generated/
     ├── pipeline.toml           # canonical stage graph
     ├── SKILL.md                # invocable as /<project-name>
-    └── plugin.json             # .claude-plugin manifest
+    └── plugin.json             # agent plugin manifest
 ```
 
 **Naming:**
@@ -77,7 +77,7 @@ $DATA_ROOT/
 The filesystem **is** the artifact graph. Document the layout in `README.md`.
 
 The reference recipes under
-[src/nemotron/recipes/](../../../src/nemotron/recipes/) use `${art:...}` for
+[src/nemotron/recipes/](../../../../src/nemotron/recipes/) use `${art:...}` for
 W&B-Artifacts lineage — that's a different system. Don't propagate it into
 generated code.
 
@@ -116,7 +116,7 @@ STAGES = [s["id"] for s in _pipeline["stages"]]
 ### R5. Generated skill + plugin
 
 `.generated/SKILL.md` + `.generated/plugin.json` make the project invocable as
-`/<project-name>` so the user can run, debug, and iterate via Claude Code.
+`/<project-name>` so the user can run, debug, and iterate via an agent client.
 
 Keep it narrow: "what this pipeline does, how to run each stage, README
 layout." **Don't duplicate `nemotron-customize` content.**
@@ -162,7 +162,7 @@ This pipeline follows the eval-bookends pattern (eval before and after training)
 Packing follows pack-variable-length for heterogeneous SFT data.
 ```
 
-Patterns live at [src/nemotron/steps/patterns/](../../../src/nemotron/steps/patterns/).
+Patterns live at [src/nemotron/steps/patterns/](../../../../src/nemotron/steps/patterns/).
 
 ### R10. Deploy targets share `stages/`
 
@@ -195,7 +195,7 @@ After the scaffold is written, spawn one sub-agent per stage. Each sub-agent:
 You are implementing stage <NN>_<name> = <step_id>.
 
 Load:
-  - skills/nemotron-customize/act/STAGE.md     (implementation contract)
+  - skills/nemotron-customize/references/act/STAGE.md     (implementation contract)
   - <context_pack_path>                         (from context/index.toml lookup)
 
 Plan requirements:

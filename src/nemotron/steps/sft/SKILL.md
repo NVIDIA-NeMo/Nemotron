@@ -36,23 +36,39 @@ Pick an SFT backend and keep data and checkpoint formats compatible.
 
 ## Workflow
 
-1. **Env profile first** — for Lepton/Slurm/Ray runs verify the env profile.
-   Default lookup is repo-root `env.toml`; backend-specific files
-   (`env.lepton.toml`, `env.slurm.toml`) require `NEMOTRON_ENV_FILE`.
-2. Read the chosen step's `step.toml` for parameters/strategies/errors.
-3. Smoke-test with `config/tiny.yaml` before scaling.
-4. Keep `pack_size`, `seq_length`, tokenizer, and chat template identical
+1. Read the chosen step's `step.toml` for parameters/strategies/errors.
+2. Smoke-test with `config/tiny.yaml` before scaling.
+3. Keep `pack_size`, `seq_length`, tokenizer, and chat template identical
    across prep, train, eval, and deployment — see
    [../patterns/prep-data-is-tokenizer-locked.md](../patterns/prep-data-is-tokenizer-locked.md).
+4. For remote submission, select the profile from
+   `env/env_toml/config/{lepton,slurm,dgxcloud}.yaml` or the generated env file;
+   do not hardcode profile names here.
 5. Inspect formatted prompts and loss masks before treating a run as meaningful.
 6. Bookend with eval — see [../patterns/eval-before-and-after-training.md](../patterns/eval-before-and-after-training.md).
 
 ## Smoke commands
 
 ```bash
-nemotron steps run sft/automodel -c tiny
-nemotron steps run sft/megatron_bridge -c tiny   # requires compatible packed_parquet
+uv run nemotron steps run sft/automodel -c tiny --dry-run
+uv run nemotron steps run sft/megatron_bridge -c tiny --dry-run   # requires compatible packed_parquet
 ```
+
+## Project layout for generated configs
+
+Keep every generated overlay config and any supporting code under a single
+self-contained project root that also holds the local input data, so the
+whole directory is rsync/scp-portable to the remote machine that will run
+the SFT step.
+
+- `<project>/config/` for generated YAML — never write into
+  `src/nemotron/steps/sft/<backend>/config/`; the shipped `default.yaml`
+  and `tiny.yaml` stay as catalog references.
+- `<project>/data/` for local datasets, chat-format JSONL, and packed
+  Parquet splits referenced by the overlay.
+- Project-root scripts only when catalog code cannot serve the request.
+- Do not split generated files into home dirs, scratch dirs, or paths
+  outside the project root that will not ship with the bundle.
 
 ## Patterns to cite
 

@@ -18,8 +18,9 @@ name = "Synthetic Data Generation (NeMo Data Designer)"
 category = "sdg"
 description = """\
 Build a NeMo Data Designer pipeline declaratively and generate synthetic data.
-Two recipes ship in config/: 'default' produces SFT chat data,
-'rl_pref' produces preference pairs (chosen / rejected) for DPO.
+Three recipes ship in config/: 'default' produces SFT chat data,
+'customer_support_tools' produces tool-call SFT data, and 'rl_pref' produces
+preference pairs (chosen / rejected) for DPO.
 
 Customisation lives in YAML — step.py just translates declarative column specs
 into the upstream DataDesignerConfigBuilder API."""
@@ -51,6 +52,15 @@ description = "Optional custom Data Designer model providers for OpenAI-compatib
 name = "models.provider"
 description = "Provider name for each model alias. Use a built-in provider such as 'nvidia', or a name declared under providers."
 
+[[parameters]]
+name = "columns"
+description = "Declarative Data Designer column specs. Prompts may reference seed and prior columns, so validate references in preview before scaling."
+
+[[parameters]]
+name = "output_projection.type"
+description = "Final output schema projection: openai_messages for SFT, structured_messages for tool-call SFT, or dpo_preference for DPO."
+choices = ["openai_messages", "structured_messages", "dpo_preference"]
+
 [[strategies]]
 when = "Iterating on column specs"
 then = "Run with --preview to emit a small batch via client.preview() before scaling to client.create()."
@@ -67,10 +77,31 @@ then = "Use config/rl_pref.yaml — it emits chosen / rejected fields ready for 
 when = "Output needs to feed data_prep/sft_packing"
 then = "Add a final post-processing column or transform that projects the generated columns into OpenAI 'messages' chat format."
 
+[[strategies]]
+when = "Generating tool-call SFT data"
+then = "Use config/customer_support_tools.yaml and project messages plus tools with structured_messages so downstream SFT sees assistant tool_calls and matching tool responses."
+
+[[errors]]
+name = "provider_secret_resolved_into_yaml"
+recovery = "Set providers[].api_key to an environment variable name such as OPENAI_API_KEY; do not store resolved secret values in YAML."
+
+[[errors]]
+name = "unknown_model_provider"
+recovery = "Ensure every models[].provider is either a built-in provider or appears in providers[].name."
+
+[[errors]]
+name = "projection_schema_mismatch"
+recovery = "Set output_projection.type to the downstream schema: openai_messages for SFT, structured_messages for tool-call SFT, or dpo_preference for DPO."
+
+[[errors]]
+name = "unvalidated_generation_scaled"
+recovery = "Run preview or config/tiny.yaml and inspect generated records before raising num_records."
+
 [reference]
+skill = "src/nemotron/steps/sdg/data_designer/SKILL.md"
 repo = "https://github.com/NVIDIA-NeMo/DataDesigner"
 readme = "https://github.com/NVIDIA-NeMo/DataDesigner/blob/main/README.md"
 library_docs = "https://nvidia-nemo.github.io/DataDesigner/"
 nemo_platform_docs = "https://docs.nvidia.com/nemo/microservices/latest/data-designer/index.html"
 nemo_platform_quickstart = "https://docs.nvidia.com/nemo/microservices/latest/data-designer/quickstart.html"
-skills = ["skills/nemotron-customize/context/data-designer-sdg.txt"]
+skills = ["skills/nemotron-customize/references/context/data-designer-sdg.txt"]

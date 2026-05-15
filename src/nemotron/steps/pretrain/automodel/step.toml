@@ -41,6 +41,23 @@ name = "model.pretrained_model_name_or_path"
 description = "HF base for CPT, or pass a config-only path to train from scratch."
 default = "Qwen/Qwen3-30B-A3B"
 
+[[parameters]]
+name = "load_weights"
+description = "True for continued pretraining from an HF base; false only when intentionally training from scratch."
+default = true
+
+[[parameters]]
+name = "dataset.paths"
+description = "Path to data_prep/pretrain_prep emitted blend.json for training bin/idx data."
+
+[[parameters]]
+name = "validation_dataset.paths"
+description = "Path to the validation blend.json or validation portion emitted by pretrain prep."
+
+[[parameters]]
+name = "dataset.seq_length"
+description = "Sequence length used by MegatronPretraining data loader; keep aligned with validation_dataset.seq_length and model context."
+
 [[strategies]]
 when = "Continued pretraining on a domain corpus"
 then = "Set load_weights=true and lower the learning rate (1e-5 to 5e-5)."
@@ -49,7 +66,20 @@ then = "Set load_weights=true and lower the learning rate (1e-5 to 5e-5)."
 when = "Pretraining from scratch"
 then = "Set load_weights=false and use a warmup + cosine schedule sized to the token budget."
 
+[[errors]]
+name = "missing_blend_json"
+recovery = "Run data_prep/pretrain_prep first and set dataset.paths / validation_dataset.paths to the emitted blend.json."
+
+[[errors]]
+name = "tokenizer_or_sequence_mismatch"
+recovery = "Rebuild bin/idx if tokenizer assumptions change, and keep dataset.seq_length, validation_dataset.seq_length, and model context aligned."
+
+[[errors]]
+name = "unsupported_scheduler_kwargs"
+recovery = "Use lr_scheduler.lr_decay_style and min_lr with containers whose OptimizerParamScheduler does not accept warmup_steps."
+
 [reference]
+skill = "src/nemotron/steps/pretrain/automodel/SKILL.md"
 repo = "https://github.com/NVIDIA-NeMo/Automodel"
 readme = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/README.md"
 docs = "https://docs.nvidia.com/nemo/automodel/latest/index.html"
@@ -57,4 +87,4 @@ pretrain_guide = "https://docs.nvidia.com/nemo/automodel/latest/guides/llm/nanog
 recipes_overview = "https://docs.nvidia.com/nemo/automodel/latest/guides/overview.html"
 examples = "https://github.com/NVIDIA-NeMo/Automodel/tree/main/examples/llm_pretrain"
 recipe_script = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/nemo_automodel/recipes/llm/train_ft.py"
-skills = ["skills/nemotron-customize/context/automodel-pretrain.txt"]
+skills = ["skills/nemotron-customize/references/context/automodel-pretrain.txt"]

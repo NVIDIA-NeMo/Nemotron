@@ -19,6 +19,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Configure
 
 - Increase `grpo.num_generations_per_prompt` when reward variance is too low.
+- Size `grpo.num_prompts_per_step`, `grpo.num_generations_per_prompt`, and
+  policy batch sizes for the active Ray worker topology.
 - Keep `grpo.normalize_rewards=true` unless debugging raw reward scale.
 - Use `config/nemo_gym.yaml` for resource-server rewards.
 - Set `data.train.data_path`, `data.validation.data_path`, and `env.nemo_gym.config_paths` explicitly for NeMo-Gym.
@@ -43,5 +45,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Guardrails
 
 - Validate reward functions on sample rollouts before training.
+- Do not mix NeMo-Gym resource-server config with the upstream generic GRPO
+  data schema.
 - Keep reward outputs bounded and deterministic when possible.
 - Avoid ambiguous reward fields; schema drift tends to surface as poor learning rather than clear failures.

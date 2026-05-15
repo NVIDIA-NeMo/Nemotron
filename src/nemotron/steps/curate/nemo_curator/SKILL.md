@@ -23,7 +23,7 @@ or add them as a separate step.
 
 ## Inputs and outputs
 
-- Consume: JSONL files matched by `input_glob`. If `dataset` is set, the
+- Consume: `raw_jsonl` files matched by `input_glob`. If `dataset` is set, the
   Hugging Face snapshot is downloaded first and `input_glob` should point into
   that local snapshot.
 - Produce: JSONL shards under `output_dir`. Language/domain fields appear only

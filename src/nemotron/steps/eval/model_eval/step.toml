@@ -38,6 +38,23 @@ name = "benchmarks"
 description = "Benchmark task names to run, using NeMo Evaluator or launcher task identifiers."
 default = ["lm-evaluation-harness.ifeval", "simple_evals.gpqa_diamond"]
 
+[[parameters]]
+name = "deployment.endpoint_type"
+description = "Endpoint family used by the benchmark suite: chat for instruction tasks, completions for log-probability tasks."
+choices = ["chat", "completions"]
+
+[[parameters]]
+name = "deployment.url"
+description = "OpenAI-compatible endpoint URL for the deployed model."
+
+[[parameters]]
+name = "params.extra.tokenizer"
+description = "Tokenizer path or handle required by log-probability benchmarks."
+
+[[parameters]]
+name = "params.max_new_tokens"
+description = "Generation budget. Increase for reasoning models or long-answer benchmark tasks."
+
 [[strategies]]
 when = "The input artifact is checkpoint_hf"
 then = "Deploy with a Hugging Face-friendly backend such as vLLM or Ray Serve, then point NeMo Evaluator at the resulting chat or completions endpoint."
@@ -71,5 +88,6 @@ name = "bad_megatron_checkpoint_path"
 recovery = "Point evaluation deployment at the specific iter_* checkpoint directory rather than only the parent output folder."
 
 [reference]
+skill = "src/nemotron/steps/eval/model_eval/SKILL.md"
 script = "https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator-launcher/examples/local_basic.yaml"
 docs = "https://docs.nvidia.com/nemo/evaluator/latest/get-started/quickstart/launcher.html"

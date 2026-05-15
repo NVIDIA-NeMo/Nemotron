@@ -2,8 +2,8 @@
 id = "env/env_toml"
 name = "Env TOML Generator"
 category = "env"
-description = """Generate and validate step-linked env profile examples from compact YAML templates for Lepton or Slurm, including inheritance, image overrides, mounts, env-var placeholders, Curator/Data Designer profiles, and Ray/RL guardrails."""
-tags = ["env", "lepton", "slurm", "ray", "profiles", "toml", "curator", "sdg"]
+description = """Generate and validate step-linked env profile examples from compact YAML templates for Lepton, Slurm, or DGX Cloud, including inheritance, image overrides, mounts, env-var placeholders, Curator/Data Designer profiles, and Ray/RL guardrails."""
+tags = ["env", "lepton", "slurm", "dgxcloud", "ray", "profiles", "toml", "curator", "sdg"]
 
 [[produces]]
 type = "env_toml"
@@ -12,7 +12,7 @@ description = "A generated env profile file containing reusable execution profil
 [[parameters]]
 name = "output_path"
 description = "Where to write the generated env profile file. Keep this at the repository root for normal use."
-default = "env.lepton.toml or env.slurm.toml from the selected config"
+default = "env.lepton.toml, env.slurm.toml, or env.dgxcloud.toml from the selected config"
 
 [[parameters]]
 name = "force"
@@ -30,6 +30,10 @@ then = "Start from config/lepton.yaml, run from the repository root so output_pa
 [[strategies]]
 when = "Creating a Slurm env profile from scratch"
 then = "Start from config/slurm.yaml, run from the repository root so output_path=env.slurm.toml lands beside pyproject.toml, set host, user, account, partition, remote_job_dir, and mounts, then export NEMOTRON_ENV_FILE=env.slurm.toml before using the resulting profiles with `nemotron steps run`."
+
+[[strategies]]
+when = "Creating a DGX Cloud env profile from scratch"
+then = "Start from config/dgxcloud.yaml, run from the repository root so output_path=env.dgxcloud.toml lands beside pyproject.toml, set Run:AI endpoint credentials, project/PVC values, shared workspace paths, and then export NEMOTRON_ENV_FILE=env.dgxcloud.toml."
 
 [[strategies]]
 when = "Configuring NeMo-RL or NeMo-Gym profiles"
@@ -52,10 +56,12 @@ name = "rlhf_genrm_server_missing"
 recovery = "Use a step-specific RLHF profile with enough physical nodes for policy/generation, NeMo-Gym GPU workers, and placement headroom. Keep source-transport cleanup in the runner and resource sizing in env.toml."
 
 [reference]
+skill = "src/nemotron/steps/env/env_toml/SKILL.md"
 runner = "src/nemotron/steps/env/env_toml/step.py"
 configs = [
   "src/nemotron/steps/env/env_toml/config/lepton.yaml",
   "src/nemotron/steps/env/env_toml/config/slurm.yaml",
+  "src/nemotron/steps/env/env_toml/config/dgxcloud.yaml",
 ]
 related = [
   "src/nemo_runspec/env.py",

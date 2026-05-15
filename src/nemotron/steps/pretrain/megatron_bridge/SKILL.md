@@ -19,6 +19,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Configure
 
 - Keep `seq_length` aligned with the data and token budget.
+- Set `dataset.data_paths` to the data_prep/pretrain_prep emitted `blend.json`.
 - Set `load_hf_weights` or checkpoint paths explicitly for continued pretraining.
 - Start from the closest Megatron-Bridge recipe and override only required knobs.
 - Tune tensor, pipeline, context, and expert parallelism before scaling global batch.

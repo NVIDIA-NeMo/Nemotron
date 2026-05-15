@@ -20,7 +20,7 @@ The "default model" column shows what the shipped `config/default.yaml`
 selects. Override at CLI:
 
 ```bash
-nemotron steps run pretrain/automodel -c default \
+uv run nemotron steps run pretrain/automodel -c default --dry-run \
   model.pretrained_model_name_or_path=<your-hf-id>
 ```
 
@@ -68,15 +68,16 @@ curate/nemo_curator → data_prep/pretrain_prep → pretrain/automodel        �
 
 ## Workflow
 
-1. **Env profile first** — verify the env profile for Lepton/Slurm/Ray runs
-   (`env.toml` by default, or `NEMOTRON_ENV_FILE` for backend-specific files).
-2. Run [`data_prep/pretrain_prep`](../data_prep/pretrain_prep/SKILL.md) on a tokenizer
+1. Run [`data_prep/pretrain_prep`](../data_prep/pretrain_prep/SKILL.md) on a tokenizer
    that matches the trainer.
-3. Write the budget down (target_tokens / seq_length / gbs / train_iters /
+2. Write the budget down (target_tokens / seq_length / gbs / train_iters /
    lr schedule / ckpt cadence) **before code changes**.
-4. Pick backend per the decision tree.
-5. Smoke with `config/tiny.yaml` to verify launch + data access + checkpoint
+3. Pick backend per the decision tree.
+4. Smoke with `config/tiny.yaml` to verify launch + data access + checkpoint
    write/restore.
+5. For remote submission, select the profile from
+   `env/env_toml/config/{lepton,slurm,dgxcloud}.yaml` or the generated env file;
+   do not hardcode profile names here.
 6. Run a short *representative* job at production sequence length and
    parallelism to validate throughput and val-loss movement.
 7. For CPT, evaluate at every checkpoint to catch forgetting early.
@@ -88,9 +89,27 @@ curate/nemo_curator → data_prep/pretrain_prep → pretrain/automodel        �
 ## Smoke commands
 
 ```bash
-nemotron steps run pretrain/automodel       -c tiny
-nemotron steps run pretrain/megatron_bridge -c tiny
+uv run nemotron steps run pretrain/automodel       -c tiny --dry-run
+uv run nemotron steps run pretrain/megatron_bridge -c tiny --dry-run
 ```
+
+## Project layout for generated configs
+
+Keep every generated overlay config and any supporting code under a single
+self-contained project root that also holds the local input data, so the
+whole directory is rsync/scp-portable to the remote machine that will run
+the pretrain step.
+
+- `<project>/config/` for generated YAML — never write into
+  `src/nemotron/steps/pretrain/<backend>/config/`; the shipped
+  `default.yaml` and `tiny.yaml` stay as catalog references.
+- `<project>/data/` for the bin/idx shards and the `blend.json` emitted by
+  `data_prep/pretrain_prep`, plus any held-out validation slices.
+- Keep checkpoint save dirs and budget/lr-schedule notes under the same
+  project root so the run is reproducible after a remote transfer.
+- Project-root scripts only when catalog code cannot serve the request.
+- Do not split generated files into home dirs, scratch dirs, or paths
+  outside the project root that will not ship with the bundle.
 
 ## Patterns to cite
 

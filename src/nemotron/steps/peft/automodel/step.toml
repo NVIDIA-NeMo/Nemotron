@@ -48,6 +48,14 @@ description = "Common HF baseline for single-node LoRA."
 min_gpus = 2
 
 [[parameters]]
+name = "model.pretrained_model_name_or_path"
+description = "HF base model used for adapter training. Record it with the adapter because merge requires the same base."
+
+[[parameters]]
+name = "dataset.path_or_dataset_id"
+description = "Chat-format JSONL path or dataset id. This step consumes JSONL directly, not packed Parquet."
+
+[[parameters]]
 name = "peft.dim"
 description = "LoRA rank. 8-32 is the typical range; raise for harder tasks."
 default = 16
@@ -69,7 +77,16 @@ then = "After training, run convert/merge_lora to fold the adapter into the base
 name = "oom"
 recovery = "Reduce dim, lower seq_length, or move to a smaller base model."
 
+[[errors]]
+name = "base_not_recorded_for_merge"
+recovery = "Record model.pretrained_model_name_or_path, tokenizer, rank, alpha, and target modules with the adapter so convert/merge_lora can use the exact base."
+
+[[errors]]
+name = "packed_parquet_used_with_automodel"
+recovery = "Use the source training_jsonl or switch to peft/megatron_bridge if packed Parquet and Megatron checkpoints are required."
+
 [reference]
+skill = "src/nemotron/steps/peft/automodel/SKILL.md"
 repo = "https://github.com/NVIDIA-NeMo/Automodel"
 readme = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/README.md"
 docs = "https://docs.nvidia.com/nemo/automodel/latest/index.html"

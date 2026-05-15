@@ -32,6 +32,14 @@ type = "checkpoint_hf"
 description = "Pruned HuggingFace checkpoint."
 
 [[parameters]]
+name = "args.hf_model_name_or_path"
+description = "HF model id or local HF checkpoint path to prune. Use a clean merged checkpoint."
+
+[[parameters]]
+name = "args.output_hf_path"
+description = "Output HF checkpoint path for the pruned model. Keep it outside the input checkpoint directory."
+
+[[parameters]]
 name = "args.prune_target_params"
 description = "Target parameter count for search, e.g. 6e9."
 default = 6e9
@@ -43,6 +51,10 @@ description = "Manual architecture dict such as hidden_size / ffn_hidden_size / 
 [[parameters]]
 name = "args.hparams_to_skip"
 description = "Architecture hparams to leave untouched, e.g. num_attention_heads."
+
+[[parameters]]
+name = "args.pp_size"
+description = "Pipeline parallel size used by the pruning script; layer counts and uneven-stage overrides must be compatible."
 
 [[parameters]]
 name = "extra_args"
@@ -61,7 +73,28 @@ then = "Set args.prune_export_config and set args.prune_target_params=null."
 when = "Layer count does not divide PP size"
 then = "Use args.num_layers_in_first_pipeline_stage / args.num_layers_in_last_pipeline_stage for uneven PP."
 
+[[strategies]]
+when = "Quality recovery matters"
+then = "Run optimize/modelopt/distill after pruning with the original BF16 checkpoint as teacher and the pruned HF output as student."
+
+[[errors]]
+name = "target_and_export_config_both_set"
+recovery = "Use args.prune_target_params for search, or set it to null when args.prune_export_config defines the exact target architecture."
+
+[[errors]]
+name = "output_path_overlaps_input"
+recovery = "Set args.output_hf_path outside args.hf_model_name_or_path because pruning writes intermediate state near the output."
+
+[[errors]]
+name = "modelopt_package_drift"
+recovery = "Keep the ModelOpt checkout and installed package in sync when errors mention missing utilities or mismatched scoring signatures."
+
+[[errors]]
+name = "invalid_parallel_divisibility"
+recovery = "Check attention heads, query groups, Mamba groups, and layer counts against pp/tp settings after pruning."
+
 [reference]
+skill = "src/nemotron/steps/optimize/modelopt/prune/SKILL.md"
 modelopt_repo = "https://github.com/NVIDIA/Model-Optimizer"
 modelopt_readme = "https://github.com/NVIDIA/Model-Optimizer/blob/main/README.md"
 modelopt_docs = "https://nvidia.github.io/Model-Optimizer/"
@@ -69,4 +102,4 @@ modelopt_megatron_bridge_readme = "https://github.com/NVIDIA/Model-Optimizer/blo
 megatron_bridge_repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
 megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
 megatron_bridge_pruning_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/pruning.html"
-skills = ["skills/nemotron-customize/context/modelopt-optimization.txt"]
+skills = ["skills/nemotron-customize/references/context/modelopt-optimization.txt"]

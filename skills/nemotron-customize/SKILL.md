@@ -1,9 +1,39 @@
 ---
 name: nemotron-customize
-description: Compose runnable Nemotron customization pipelines from the current repo's existing steps and runners. Plans a stage DAG, validates artifact wiring against types.toml, fires patterns, then creates only the YAML configs needed for the user's request. Generate new code only when the current codebase cannot support the request.
+description: Use when building runnable Nemotron model-customization pipelines from existing repo steps and artifact contracts.
+version: 0.1.0
+metadata:
+  author: NVIDIA NeMo Team <nemo-toolkit@nvidia.com>
+  tags:
+    - nemotron
+    - customization
+    - training
+    - pipelines
 ---
 
 # nemotron-customize
+
+## Purpose
+
+Use this skill to turn a model-customization request into a repo-native Nemotron step pipeline. It plans the step DAG, validates artifact wiring, and creates only the YAML configs needed to run existing steps.
+
+Use it only for inspecting, configuring, validating, running, or submitting
+existing Nemotron steps or multi-step training/customization pipelines. If the
+request is a frontend, dashboard, visualization, generic ML-advice,
+billing/access, or unrelated coding task, stop with a short scope note and do
+not inspect the step catalog or edit files in that turn.
+
+## Requirements
+
+- A checkout of this Nemotron repo with `src/nemotron/steps/` available.
+- User-provided model, data, hardware, backend, and output constraints before writing configs.
+- Backend credentials only when the selected step requires them, such as translation or W&B-enabled training.
+
+## Limitations
+
+- This skill does not invent new catalog steps when an existing step can satisfy the request.
+- New Python or shell code is allowed only in Explorer mode after the repo capability gap is explicit.
+- Post-training deployment-only requests are out of scope unless they are part of a model-customization pipeline.
 
 Invocation: `/nemotron-customize`.
 
@@ -25,17 +55,10 @@ When you need to configure a stage, read `step.py` + the runner + existing
 configs to learn the supported YAML shape. Read context packs only if new code
 is unavoidable.
 
-## Tone
-
-Concise. Technical. No fluff.
-
-- Status updates: ≤2 lines.
-- Plan commentary: one sentence per stage, max.
-- Decision explanations: tables over paragraphs.
-- Never start with "Great", "Sure", "Certainly", "Of course".
-- No emojis unless the user uses them first.
-
----
+For a command request, the fast path is: verify repo root, run or read the step
+catalog, read the selected `step.toml`, verify the requested config exists,
+read the active env TOML for any remote profile, then emit the complete command.
+Do not guess `--batch` profiles from examples or naming conventions.
 
 ## How information is split (and where to find it)
 
@@ -48,9 +71,9 @@ Concise. Technical. No fluff.
 | Cross-step constraint (tokenizer lock, sequence packing, data quality, ...) | `src/nemotron/steps/patterns/<id>.md` |
 | Artifact compatibility / `is_a` hierarchy | [src/nemotron/steps/types.toml](../../src/nemotron/steps/types.toml) |
 | GPU memory / parallelism heuristics | [src/nemotron/steps/hardware.md](../../src/nemotron/steps/hardware.md) |
-| Library API extracts for exceptional code generation | [context/index.toml](context/index.toml) → `context/<pack>.txt` |
-| Project scaffold rules, only when repo code cannot support the request | [act/PROJECT.md](act/PROJECT.md) |
-| Per-stage code rules, only when repo code cannot support the request | [act/STAGE.md](act/STAGE.md) |
+| Library API extracts for exceptional code generation | [references/context/index.toml](references/context/index.toml) → `references/context/<pack>.txt` |
+| Project scaffold rules, only when repo code cannot support the request | [references/act/PROJECT.md](references/act/PROJECT.md) |
+| Per-stage code rules, only when repo code cannot support the request | [references/act/STAGE.md](references/act/STAGE.md) |
 
 If two sources say the same thing, the **deeper, more specific** one wins
 (`step.toml` > category `SKILL.md` > this file).
@@ -76,6 +99,34 @@ Follow the workflow below in order:
 Do not treat this skill as general ML advice. The step library under
 [src/nemotron/steps/](../../src/nemotron/steps/) is the source of truth.
 
+For single-step command questions, use this shorter flow instead of the full
+pipeline workflow:
+
+1. Confirm the repo root has `pyproject.toml` and `src/nemotron/steps/`.
+2. Run `uv run nemotron steps list --json` when available; otherwise read
+   [STEPS.md](../../src/nemotron/steps/STEPS.md).
+3. Read the selected step's `step.toml` and the requested checked-in config.
+4. For remote execution, read `NEMOTRON_ENV_FILE` or a repo-root `env*.toml`
+   and choose an actual section name whose profile matches the step.
+5. Return the command first, followed by only the rationale needed to explain
+   config/profile choices.
+
+Source tiers for command answers:
+
+- **Verified**: CLI, manifest, config, env profile, and dry-run all succeeded.
+- **Repo-grounded**: manifest, config, and env profile were read, but dry-run
+  could not be executed.
+- **Blocked**: a required repo file or env TOML is missing; name it and stop
+  before emitting a guessed remote command.
+
+Canonical commands:
+
+```bash
+uv run nemotron steps run <step_id> -c <config-or-path> --dry-run
+uv run nemotron steps run <step_id> -c <config-or-path> --dry-run --batch <profile>
+uv run nemotron steps run <step_id> -c <config-or-path> --batch <profile>
+```
+
 ---
 
 ## Workflow
@@ -98,13 +149,6 @@ nemotron steps list --json --consumes training_jsonl       # by input type
 nemotron steps list --json --produces checkpoint_megatron  # by output type
 nemotron steps show <step_id>                              # full manifest
 ```
-
-Implementation: [list_cmd.py](../../src/nemotron/cli/commands/steps/list_cmd.py),
-[show_cmd.py](../../src/nemotron/cli/commands/steps/show_cmd.py),
-[run_cmd.py](../../src/nemotron/cli/commands/steps/run_cmd.py).
-
-Per-step JSON schema: `{id, name, category, description, tags, path,
-consumes:[{type,required,description}], produces:[...], parameters:[...]}`.
 
 **Step 1.2 — Read these in parallel** (small files, all cheap):
 
@@ -159,57 +203,12 @@ Goal: produce a markdown plan the user reviews before any code is written.
 - Strategies fired (the `when:` clauses from `step.toml` that match).
 - Patterns cited (from `src/nemotron/steps/patterns/`).
 
-**Step 2.3 — Run preflight validation.** Each item is a hard check:
-
-| # | Check | Source of truth |
-|---|---|---|
-| 1 | Every `consumes.type` matches an upstream `produces.type` (direct or via `is_a`). | [types.toml](../../src/nemotron/steps/types.toml) |
-| 2 | Tokenizer + chat template + seq_length consistent across prep ↔ train ↔ RL. | [patterns/prep-data-is-tokenizer-locked.md](../../src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md), [patterns/sft-sequence-packing.md](../../src/nemotron/steps/patterns/sft-sequence-packing.md) |
-| 3 | RL warm-starts from SFT; rewards validated before scale. | [patterns/rl-validate-rewards-before-scale.md](../../src/nemotron/steps/patterns/rl-validate-rewards-before-scale.md) |
-| 4 | GPU count ≥ chosen model's `min_gpus` (from `[[models]]` block in each `step.toml`). | step.toml + [hardware.md](../../src/nemotron/steps/hardware.md) |
-| 5 | Sovereign / customization patterns checked: `cpt-data-blend-scoping`, `sft-data-blending`, `multilingual-tokenizer-check`, `data-quality-before-quantity`, `sdg-pipeline-versioning`, `pretrain-token-budget-before-scale`, `sft-small-dataset-prefer-lora`. | [patterns/](../../src/nemotron/steps/patterns/) |
-When a check fails: surface it as a `⚠` warning in the plan and propose a
+**Step 2.3 — Run preflight validation.** Hard checks: artifact types chain via [types.toml](../../src/nemotron/steps/types.toml); tokenizer/template/sequence length align across prep and train; RL warm-starts from SFT; GPU count satisfies the selected model; applicable patterns are cited. When a check fails: surface it as a `WARNING:` warning in the plan and propose a
 fix. When the user can't satisfy it (e.g. hardware), propose alternatives in
 descending preference: smaller model → AutoModel instead of Megatron-Bridge →
 LoRA instead of full FT.
 
-**Step 2.4 — Plan format:**
-
-````markdown
-# Pipeline Plan: <project-name>
-
-## Intent
-<One sentence: what we're building and why.>
-
-## Stages
-```mermaid
-graph LR
-    A[01_curate] -->|filtered_jsonl| B[02_prep]
-    B -->|packed_parquet| C[03_sft]
-```
-
-### 1. <category>/<step_id>
-- Consumes: <type> from <stage NN | user>
-- Produces: <type>
-- Key params: <2–3 from step.toml>
-- Strategies fired: <when-clauses that match>
-- Patterns cited: <pattern_id, pattern_id>
-
-<repeat per stage>
-
-## Validation (preflight)
-✓ Artifact chain
-✓ Tokenizer / template / seq_length consistency
-✓ GPU count ≥ min_gpus
-✓ All applicable patterns acknowledged
-⚠ <warnings — missing data, hardware risk, pattern violation, etc.>
-
-## Infrastructure
-| Resource | Required by | Notes |
-|---|---|---|
-| <resource> | <stage> | <status / question> |
-
-````
+**Step 2.4 — Plan format.** Include `Intent`, `Stages`, `Validation`, and `Infrastructure`. Use a Mermaid graph for artifact flow, one short stage block per step, and explicit `PASS:` / `WARNING:` validation lines.
 
 **Step 2.5 — Present the plan and wait.** Don't proceed to Act until the
 user approves or requests changes. If new code appears necessary, name the
@@ -255,8 +254,8 @@ Each YAML config must:
 If the repo lacks a callable step, runner, CLI, or config surface for the
 requested behavior, load codegen rules:
 
-- Main agent reads [act/PROJECT.md](act/PROJECT.md) (project scaffold rules).
-- Each per-stage sub-agent reads [act/STAGE.md](act/STAGE.md) (R1–R5 +
+- Main agent reads [references/act/PROJECT.md](references/act/PROJECT.md) (project scaffold rules).
+- Each per-stage sub-agent reads [references/act/STAGE.md](references/act/STAGE.md) (R1–R5 +
   code-quality + dry-run + W&B).
 
 Then implement the missing stage with the narrowest possible code change:
@@ -265,7 +264,7 @@ Then implement the missing stage with the narrowest possible code change:
 You are implementing stage <NN>_<name> = <step_id>.
 
 Load:
-  - skills/nemotron-customize/act/STAGE.md
+  - skills/nemotron-customize/references/act/STAGE.md
   - <context_pack_path>                       # from context/index.toml; OPTIONAL — skip if not mapped
   - src/nemotron/steps/<cat>/<step>/step.py   # primary code shape
   - src/nemotron/steps/_runners/<runner>.py   # if step.py imports a shared runner
@@ -296,10 +295,7 @@ or library APIs from memory. Mirror what the in-repo code does:
 - [steps/_runners/automodel.py](../../src/nemotron/steps/_runners/automodel.py) — used by AutoModel steps.
 - [steps/_runners/nemo_rl.py](../../src/nemotron/steps/_runners/nemo_rl.py) — used by all NeMo-RL alignment steps.
 
-For steps without a context pack (`sft/megatron_bridge`, `eval/model_eval`,
-`curate/nemo_curator`, `translate/translation`, `convert/*`), the agent
-combines: per-step `SKILL.md` + `step.toml [[strategies]]` + `step.py` + the
-URLs in `[reference]`. That's enough.
+When a step has no context pack, the agent combines: per-step `SKILL.md` + `step.toml [[strategies]]` + `step.py` + the URLs in `[reference]`. That is enough.
 
 ---
 
@@ -324,41 +320,19 @@ If verification finds issues, fix them silently. Don't say "I noticed an issue."
 
 ---
 
-## Operational nuances (not in patterns/)
+## Operational Nuances
 
-These are generation-time concerns, not ML decision rules. Patterns own ML
-rules; this section owns what *this skill specifically* does.
+- `tiny.yaml` is for wiring smoke tests, not model-quality evidence.
+- If a `step.toml` strategy points to unavailable upstream docs, use its `then:` text and mark the plan for manual review.
+- Preserve `${art:...}` only in recipe-backed configs; standalone YAML should use plain paths.
+- Keep pretraining `bin/idx` data and `blend.json` from the same Nemotron release.
 
-### `tiny.yaml` is for plumbing, not metrics
+## Examples
 
-Each step may ship `config/default.yaml` (production) and `config/tiny.yaml`
-(smoke test: handful of iters, micro batch, tiny seqlen). New user configs
-should mirror the existing repo convention and **default to production-scale
-settings unless the user asks for a smoke test**. tiny is for verifying the
-wiring runs end-to-end on a cheap budget — never for evidence of model quality.
-
-### Strategy `skill:` pointers may not resolve
-
-Many `[[strategies]]` blocks in `step.toml` carry a `skill:` pointer
-(`Megatron-Bridge/skills/perf-techniques/...`, `Automodel/docs/guides/...`).
-Those paths live in upstream repos, not here. If you can't read them, **don't
-fail** — use the `then:` text as guidance and put a `⚠` in the plan: "Could
-not read perf-tuning docs for `<topic>` — config may need manual review."
-
-### `${art:...}` belongs only to recipe-backed configs
-
-The reference recipes under [src/nemotron/recipes/](../../src/nemotron/recipes/)
-may use `${art:data,path}`, `${art:model,iteration}` for W&B-Artifacts lineage.
-Preserve these only when using that existing recipe path. For standalone user
-YAML, prefer plain DATA_ROOT layout unless the user asks for W&B artifacts.
-
-### `bin/idx + blend.json` is version-coupled
-
-Pretraining data prep produces `binidx` plus a `blend.json` manifest. The
-`pretrain/megatron_bridge` step reads it via `dataset.data_paths`. **The two
-must come from the same Nemotron release** — don't mix a freshly-prepped
-blend with a six-month-old recipe. When the user can't reprep, surface a
-`⚠`.
+- Single step: read the manifest/config/env profile, then return a complete
+  `uv run nemotron steps run <step_id> -c <config> --dry-run` command.
+- Pipeline: plan the step DAG first, validate artifact edges, then create only
+  the project YAML overlays needed for the approved stages.
 
 ---
 
@@ -397,85 +371,11 @@ run `/nemotron-add-step` to land it in the catalog.
 | "SFT with Megatron-Bridge / AutoModel" | Catalog |
 | "DPO / RLVR / GRPO / RLHF" | Catalog ([rl/nemo_rl/*](../../src/nemotron/steps/rl/nemo_rl/)) |
 | "Synthesize preference / SFT data" | Catalog ([sdg/data_designer](../../src/nemotron/steps/sdg/data_designer/)) |
-| "Translate EN → \<lang\> for training data" | Catalog ([translate/nemo_skills](../../src/nemotron/steps/translate/nemo_skills/)) |
+| "Translate EN → \<lang\> for training data" | Catalog ([translate/translation](../../src/nemotron/steps/translate/translation/)) |
 | "Curate web text" | Catalog ([curate/nemo_curator](../../src/nemotron/steps/curate/nemo_curator/)) |
 | "Train with X exotic backend" | Explorer or **ask** |
 | Post-training-only request | Out of scope for this skill; ask the user to use a more appropriate workflow. |
 | Ambiguous | **Ask** |
-
----
-
-## Examples
-
-### Fine-tuning pipeline request
-
-User: "Fine-tune Nemotron on my JSONL conversations with 8xH100 and give me
-the config to run it."
-
-Expected handling: use Catalog mode. Read the SFT category, candidate
-`step.toml`, [types.toml](../../src/nemotron/steps/types.toml), and
-[hardware.md](../../src/nemotron/steps/hardware.md); plan a DAG from
-`training_jsonl` to a checkpoint artifact; validate the artifact chain; then
-generate only the YAML config needed by the existing SFT runner after the user
-approves the plan.
-
-### Multi-stage customization request
-
-User: "Continue pretraining on a domain corpus, then fine-tune on my
-instruction JSONL."
-
-Expected handling: ask for missing constraints such as model, GPU topology,
-backend, output path, and W&B preference. Then plan a prep/pretrain → SFT DAG,
-cite relevant cross-step patterns, and verify each consume/produce edge against
-[types.toml](../../src/nemotron/steps/types.toml). Create YAML configs for the
-existing repo code; do not generate Python unless the plan exposes an unsupported
-repo capability.
-
-### Unrelated request
-
-User: "Build a React leaderboard component."
-
-Expected handling: do not invoke this skill workflow. Answer as a frontend task
-and do not read Nemotron step catalogs or generate a training pipeline.
-
----
-
-## Domain vocabulary
-
-### Step vs stage
-
-- **Step** = abstract building block in [src/nemotron/steps/](../../src/nemotron/steps/) (e.g. "SFT with Megatron-Bridge"). No position, no customer config.
-- **Stage** = a step instantiated in a user workflow (e.g. "stage 03: SFT for Thai Nano3"). Has a number, wired inputs, customer-specific YAML.
-
-Use "step" for the catalog, "stage" for the configured workflow.
-
-### Artifact graph
-
-```
-raw_jsonl ─is_a─> training_jsonl ─prep─> packed_parquet ─sft─> checkpoint_megatron
-```
-
-Definitions in [types.toml](../../src/nemotron/steps/types.toml).
-
-### Config hierarchy
-
-```
-config/default.yaml  →  recipe defaults  →  CLI overrides
-```
-
-Plain OmegaConf YAML + `parse_hydra_overrides`. **Never** generate Hydra
-configs.
-
----
-
-## Tool preferences
-
-- **Catalog discovery**: `nemotron steps list --json --consumes <type>` — don't grep `**/step.toml`.
-- **Manifest read**: `nemotron steps show <id>` — fastest single read.
-- **Context packs**: load only for exceptional codegen; YAML-only requests should not need them.
-- **Step.py read**: full file — they're <100 lines.
-- **Type validation**: read [types.toml](../../src/nemotron/steps/types.toml) once during Orient; keep in context through Verify.
-- **Parallel reads**: batch step.toml + category SKILL.md reads.
 
 ---
 
@@ -514,17 +414,15 @@ configs.
 |---|---|
 | No existing repo path matches the user's request | Check libraries cited in nearby `step.toml [reference]`. If supported, use Explorer mode. Otherwise ask. |
 | Artifact types won't chain | Explain the gap and ask the user whether to change the training/data-prep plan. Do not add post-training work here. |
-| Strategy points to a missing skill file | Skip the load. Use the `then:` text as guidance. Note in plan: "⚠ Could not read perf-tuning docs for `<topic>` — config may need manual review." |
+| Strategy points to a missing skill file | Skip the load. Use the `then:` text as guidance. Note in plan: "WARNING: Could not read perf-tuning docs for `<topic>` — config may need manual review." |
 | User's hardware is too small | Show the relevant `[[models]]` `min_gpus` table. Suggest in order: smaller model → AutoModel → LoRA. |
 | Two failed Act attempts | Stop. Explain what was tried, what failed, ask the user how to proceed. |
 | User wants a feature that crosses 3+ projects | Confirm YAML and existing repo code cannot serve it. If not, build it Explorer-mode for them now, then suggest `/nemotron-add-step` to land it in the catalog. |
 
----
+## Troubleshooting
 
-## Related skills
-
-- **[/nemotron-nano3](../nemotron-nano3/SKILL.md)** — facts about Nano3 architecture, data, and recipes. Hands off here for "build me a pipeline."
-- **[/nemotron-super3](../nemotron-super3/SKILL.md)** — facts about Super3.
-- **[/nemotron-add-step](../nemotron-add-step/SKILL.md)** — extend the step catalog when Explorer mode keeps recurring.
-- **[/nemotron-add-pattern](../nemotron-add-pattern/SKILL.md)** — encode a new cross-cutting decision rule.
-- **[/nemotron-add-model](../nemotron-add-model/SKILL.md)** — onboard a new model family.
+| Symptom | Action |
+|---|---|
+| Artifact types do not chain | Recheck `types.toml` and change the DAG before writing configs |
+| Remote profile is unclear | Read the active env TOML; do not guess `--batch` |
+| Config key is unclear | Read the step config, `step.py`, and shared runner before editing |

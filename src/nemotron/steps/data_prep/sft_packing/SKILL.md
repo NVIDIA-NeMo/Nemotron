@@ -21,6 +21,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Set `pack_size` equal to downstream `seq_length`.
 - Set `chat_template` to the target model family or template path.
 - Lower `num_shards` for small samples so shards remain useful.
+- Keep `train_ratio`, `valid_ratio`, and `test_ratio` explicit when downstream
+  training expects stable split directories.
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before reusing packed data after tokenizer, template, or sequence-length changes.
 - Check `src/nemotron/steps/patterns/sft-sequence-packing.md` when deciding whether packing is useful for a corpus.
 

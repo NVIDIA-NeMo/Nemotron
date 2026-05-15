@@ -69,7 +69,7 @@ If a library lacks a clean public API, write the minimal shim and add a
 reimplementation.
 
 The reference implementation for SFT data prep lives in
-[src/nemotron/recipes/nano3/stage1_sft/data_prep.py](../../../src/nemotron/recipes/nano3/stage1_sft/data_prep.py).
+[src/nemotron/recipes/nano3/stage1_sft/data_prep.py](../../../../src/nemotron/recipes/nano3/stage1_sft/data_prep.py).
 Use it as your shape model — same `# /// script [tool.runspec] ///` header
 pattern, same thin-wrapper-around-library-API approach.
 
@@ -172,7 +172,7 @@ sequence_parallel: true
    library's API — read it, adapt, don't copy verbatim.
 2. **Valid imports only.** Every import must reference a real module from the
    step's reference code (`steps/<cat>/<step>/step.py` or one of
-   [steps/_runners/](../../../src/nemotron/steps/_runners/)).
+   [steps/_runners/](../../../../src/nemotron/steps/_runners/)).
 3. **No placeholders, hardcoded paths, or tmpdir.** Every path is a CLI arg
    or DATA_ROOT-relative. Runtime-generated orchestrator configs (e.g. nemo-run
    launch files) go to `$DATA_ROOT/<stage>/configs/`. Don't confuse those with
@@ -232,7 +232,7 @@ def run_prep(
 ```
 
 Keep `tokenizer` and `pack_size` aligned with the downstream training stage —
-see [patterns/prep-data-is-tokenizer-locked.md](../../../src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md) and [patterns/sft-sequence-packing.md](../../../src/nemotron/steps/patterns/sft-sequence-packing.md).
+see [patterns/prep-data-is-tokenizer-locked.md](../../../../src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md) and [patterns/sft-sequence-packing.md](../../../../src/nemotron/steps/patterns/sft-sequence-packing.md).
 
 ---
 
@@ -242,13 +242,13 @@ Multi-GPU training needs a process launcher (torchrun) and lives behind
 nemo-run's `Experiment` + `Script` abstraction. **Don't invent the nemo-run
 API from memory.** The authoritative reference is the in-repo runner:
 
-- [src/nemotron/steps/_runners/megatron_bridge.py](../../../src/nemotron/steps/_runners/megatron_bridge.py) — used by sft/peft/pretrain Megatron-Bridge steps.
-- [src/nemotron/steps/_runners/automodel.py](../../../src/nemotron/steps/_runners/automodel.py) — used by AutoModel steps.
-- [src/nemotron/steps/_runners/nemo_rl.py](../../../src/nemotron/steps/_runners/nemo_rl.py) — used by all NeMo-RL alignment steps.
+- [src/nemotron/steps/_runners/megatron_bridge.py](../../../../src/nemotron/steps/_runners/megatron_bridge.py) — used by sft/peft/pretrain Megatron-Bridge steps.
+- [src/nemotron/steps/_runners/automodel.py](../../../../src/nemotron/steps/_runners/automodel.py) — used by AutoModel steps.
+- [src/nemotron/steps/_runners/nemo_rl.py](../../../../src/nemotron/steps/_runners/nemo_rl.py) — used by all NeMo-RL alignment steps.
 
 Mirror the runner's call shape; don't import recipe modules directly. Use
 `nemotron.kit.recipe_loader.import_recipe_function` with a string target —
-the live [src/nemotron/steps/sft/megatron_bridge/step.py](../../../src/nemotron/steps/sft/megatron_bridge/step.py)
+the live [src/nemotron/steps/sft/megatron_bridge/step.py](../../../../src/nemotron/steps/sft/megatron_bridge/step.py)
 shows the exact pattern.
 
 W&B for training is **not** configured through a nemo-run tracker. It's driven

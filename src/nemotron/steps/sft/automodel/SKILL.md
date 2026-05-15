@@ -17,6 +17,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Set `model.pretrained_model_name_or_path` to the HF base or checkpoint.
+- Set `dataset.path_or_dataset_id` to chat-format JSONL, not packed Parquet.
 - Default `sft/automodel` is full fine-tuning (`peft=null`); use `peft/automodel` or add a LoRA `peft:` block when adapter training is intended.
 - Keep `peft=lora` for memory-constrained runs or fast adapter experiments.
 - Choose a tokenizer with chat-template support or preprocess prompts explicitly.
@@ -39,5 +41,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Guardrails
 
 - Do not add `data_prep/sft_packing`; AutoModel reads JSONL directly.
+- Keep `dataloader.collate_fn` on the chat collater unless you intentionally
+  provide pre-tokenized data.
 - Reduce batch size or switch to LoRA before changing unrelated training logic for OOMs.
 - Inspect formatted conversations before trusting loss curves.

@@ -27,5 +27,50 @@ description = "HuggingFace safetensors checkpoint"
 type = "checkpoint_megatron"
 description = "Megatron distributed checkpoint"
 
+[[parameters]]
+name = "hf_model_id"
+description = "HF model id or local checkpoint path to import. Use a clean model directory, not a training-state folder."
+
+[[parameters]]
+name = "megatron_path"
+description = "Output directory for the Megatron distributed checkpoint. Keep it separate from the HF source path."
+
+[[parameters]]
+name = "dtype"
+description = "Torch dtype used during import, normally bfloat16 for Nemotron/NVIDIA checkpoints."
+default = "bfloat16"
+choices = ["bfloat16", "float16", "float32"]
+
+[[parameters]]
+name = "trust_remote_code"
+description = "Whether to trust HF custom model code when AutoBridge loads the source model config."
+default = true
+
+[[strategies]]
+when = "A Megatron-Bridge consumer needs an HF-produced checkpoint"
+then = "Insert this converter explicitly instead of changing the downstream trainer to accept HF layout."
+
+[[strategies]]
+when = "The source checkpoint came from LoRA training"
+then = "Merge the adapter into its original HF base first with convert/merge_lora, then import the merged HF checkpoint."
+
+[[strategies]]
+when = "Tokenizer or model config is missing from the HF directory"
+then = "Use the original HF model id/path as hf_model_id or copy the tokenizer/config files before conversion."
+
+[[errors]]
+name = "source_not_clean_hf_checkpoint"
+recovery = "Point hf_model_id at a model directory with config/tokenizer/safetensors, not at trainer logs, optimizer state, or adapter-only output."
+
+[[errors]]
+name = "output_path_overlaps_source"
+recovery = "Set megatron_path to a new directory so a failed import cannot corrupt the HF source checkpoint."
+
+[[errors]]
+name = "unsupported_or_custom_architecture"
+recovery = "Keep trust_remote_code=true for supported custom HF repos, and verify the installed Megatron-Bridge AutoBridge supports the architecture."
+
 [reference]
+skill = "src/nemotron/steps/convert/hf_to_megatron/SKILL.md"
 script = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/conversion/convert_checkpoints.py"
+skills = ["skills/nemotron-customize/references/context/checkpoint-conversion.txt"]
