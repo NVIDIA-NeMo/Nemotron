@@ -3962,8 +3962,8 @@ wheels = [
 
 [[package]]
 name = "nemo-curator"
-version = "1.2.0+d10cd6f"
-source = { git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main#d10cd6ffe9f5ac4cbb176d7b3ada698f22633aea" }
+version = "1.2.0+ad58743"
+source = { git = "https://github.com/NVIDIA-NeMo/Curator.git?rev=main#ad58743668d5a6c324fb1af63225d474f985344c" }
 dependencies = [
     { name = "absl-py", marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
     { name = "comment-parser", version = "1.2.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and python_full_version < '3.13'" },

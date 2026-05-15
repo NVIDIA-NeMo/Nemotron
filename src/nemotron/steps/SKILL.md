@@ -12,6 +12,7 @@ Use this skill as the entry point for the Nemotron training and optimization ste
 | Need | Start With | Primary Artifacts |
 | --- | --- | --- |
 | SFT packing, pretrain bin/idx, RL sharding | `data_prep/SKILL.md` | `training_jsonl`, `packed_parquet`, `binidx` |
+| Corpus translation before multilingual training | `translate/SKILL.md` | `translated_jsonl`, `translated_parquet` |
 | Pretraining or continued pretraining | `pretrain/SKILL.md` | `binidx`, `checkpoint_hf`, `checkpoint_megatron` |
 | Supervised fine-tuning | `sft/SKILL.md` | `training_jsonl`, `packed_parquet`, checkpoints |
 | LoRA or adapter tuning | `peft/SKILL.md` | `checkpoint_lora` |
@@ -32,6 +33,7 @@ Use this skill as the entry point for the Nemotron training and optimization ste
 ## Decision Patterns
 
 - Use `patterns/prep-data-is-tokenizer-locked.md` for packed Parquet, bin/idx, tokenizer, chat-template, and sequence-length compatibility.
+- Use `patterns/translate-training-corpus.md`, `patterns/prefer-llm-for-structured-chat.md`, `patterns/prefer-nmt-for-large-corpora.md`, and `patterns/enable-faith-for-high-value-data.md` for multilingual corpus translation.
 - Use `patterns/pretrain-token-budget-before-scale.md` before scaling pretraining or continued pretraining.
 - Use `patterns/sft-small-dataset-prefer-lora.md` and `patterns/peft-adapter-merge-discipline.md` for PEFT and LoRA decisions.
 - Use `patterns/rl-validate-rewards-before-scale.md` before scaling DPO, RLVR, or RLHF jobs.
