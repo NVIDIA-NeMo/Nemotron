@@ -1,7 +1,9 @@
 # Evaluation Deployment Context
 
-Use this pack when `eval/model_eval` needs deployment guidance for HF or
-Megatron checkpoints.
+Use this pack when `eval/model_eval` needs deployment guidance for hosted
+endpoints or Megatron checkpoints. HF checkpoints require an existing hosted
+endpoint or a conversion path before using the checked-in Megatron deployment
+config.
 
 ## Product Contract
 
@@ -14,8 +16,8 @@ Megatron checkpoints.
 
 | Input artifact | Deployment path |
 |---|---|
-| `checkpoint_hf` | HF-friendly serving stack such as vLLM or NIM, then evaluator endpoint |
-| `checkpoint_megatron` | Megatron-aware deployment path or explicit conversion before HF-native serving |
+| `checkpoint_hf` | Existing hosted endpoint, or convert to a supported deployment format first |
+| `checkpoint_megatron` | `eval/model_eval/config/default.yaml` Megatron deployment path |
 | LoRA adapter | merge or load adapter with base before evaluation, depending on supported serving path |
 | Existing URL | skip deployment and configure evaluator against the URL |
 

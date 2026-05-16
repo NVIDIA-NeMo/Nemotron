@@ -52,9 +52,8 @@ export NMT_SERVER_URL="${NMT_SERVER_URL:-http://localhost:5000}"
 
 export BYOB_MODEL="${BYOB_MODEL:-nvidia/nemotron-3-nano-30b-a3b}"
 export SDG_MODEL="${SDG_MODEL:-nvidia/nemotron-3-nano-30b-a3b}"
-export EVAL_MODEL_ID="${EVAL_MODEL_ID:-megatron_model}"
-export EVAL_URL="${EVAL_URL:-http://0.0.0.0:8080/v1/completions/}"
-export EVAL_TOKENIZER="${EVAL_TOKENIZER:-/path/to/checkpoint/tokenizer}"
+export EVAL_MODEL_ID="${EVAL_MODEL_ID:-openai/gpt-oss-120b}"
+export EVAL_URL="${EVAL_URL:-https://integrate.api.nvidia.com/v1/chat/completions}"
 
 # Required for reliable Ray worker startup in the QA environment.
 export RAY_ENABLE_UV_RUN_RUNTIME_ENV="${RAY_ENABLE_UV_RUN_RUNTIME_ENV:-0}"
@@ -101,7 +100,7 @@ Evidence to collect: command logs, CLI help snippets, and final exit status.
 Prerequisites: Network access to package indexes and Git dependencies.
 
 ```bash
-uv sync --extra translation --extra byob --extra data-sdg --group run
+uv sync --extra translation --extra byob --extra data-sdg --extra evaluator --group run
 
 # For this RC, install Curator from source so translation prompt resources are
 # available from site-packages.
@@ -129,7 +128,7 @@ install during the same QA pass.
 
 Success criteria:
 
-- Translation, BYOB, SDG, and run dependencies install successfully.
+- Translation, BYOB, SDG, evaluator, and run dependencies install successfully.
 - Editable Curator is installed and `translate.yaml` is importable through package resources.
 - If package indexes or Git dependencies are unavailable, this test is marked `BLOCKED` with the exact failed dependency or network error.
 
@@ -137,7 +136,7 @@ Evidence to collect: install logs and final exit status.
 
 ### SETUP-003 Snapshot Step Metadata
 
-Prerequisites: Base environment from `SETUP-001`.
+Prerequisites: Optional workflow extras from `SETUP-002`.
 
 ```bash
 for STEP in \
@@ -1359,26 +1358,28 @@ Evidence to collect: agent transcript, generated commands, Lepton job IDs, job l
 
 ## Evaluation
 
-### EVAL-001 Create Evaluation Test Data
+### EVAL-001 Verify Evaluator Dependencies
 
-Prerequisites: Base environment from `SETUP-001`.
+Prerequisites: Optional workflow extras from `SETUP-002`.
 
 ```bash
 export EVAL_ROOT="$QA_ROOT/eval"
-mkdir -p "$EVAL_ROOT/results"
+mkdir -p "$EVAL_ROOT"
 
-cat > "$EVAL_ROOT/results/synthetic_results.jsonl" <<'EOF'
-{"benchmark":"qa-smoke","sample_id":"1","prediction":"B","answer":"B","score":1.0}
-{"benchmark":"qa-smoke","sample_id":"2","prediction":"A","answer":"C","score":0.0}
-EOF
+uv run --no-sync python - <<'PY'
+import importlib.util
+
+assert importlib.util.find_spec("nemo_evaluator_launcher") is not None
+PY
 ```
 
 Success criteria:
 
-- Test data files are created under `$QA_ROOT`.
+- Evaluator dependencies installed in `SETUP-002` remain available.
+- `nemo_evaluator_launcher` is importable in the uv environment.
 - Checked-in files are not modified.
 
-Evidence to collect: test data paths and file samples.
+Evidence to collect: import-check output.
 
 ### EVAL-002 Discover Model Evaluation
 
@@ -1392,40 +1393,54 @@ uv run --no-sync nemotron steps show eval/model_eval --json
 Success criteria:
 
 - Eval step is discoverable.
-- Metadata describes required endpoint, model, tokenizer, and output parameters.
+- Metadata describes required endpoint, model, API key environment variable, and output parameters.
 
 Evidence to collect: metadata JSON and CLI logs.
 
-### EVAL-003 Run Hosted Eval Smoke
+### EVAL-003 Run Hosted Chat Eval Smoke
 
-Prerequisites: Reachable evaluation endpoint and tokenizer/model identifiers.
+Prerequisites: `NVIDIA_API_KEY` is set and `EVAL-001` completed successfully.
 
 ```bash
-: "${NVIDIA_API_KEY:?Set NVIDIA_API_KEY for hosted eval}"
+: "${NVIDIA_API_KEY:?Set NVIDIA_API_KEY}"
 : "${EVAL_URL:?Set EVAL_URL for the eval endpoint}"
 : "${EVAL_MODEL_ID:?Set EVAL_MODEL_ID for the eval endpoint}"
-: "${EVAL_TOKENIZER:?Set EVAL_TOKENIZER to a tokenizer path visible to the run}"
 
-uv run --no-sync nemotron steps run eval/model_eval \
-  -c tiny \
-  output_dir="$EVAL_ROOT/results-tiny" \
-  deployment.url="$EVAL_URL" \
-  deployment.model_id="$EVAL_MODEL_ID" \
-  deployment.api_key_name=NVIDIA_API_KEY \
-  params.limit_samples=1 \
-  params.extra.tokenizer="$EVAL_TOKENIZER"
+export NEMO_EVALUATOR_MODEL_ID="$EVAL_MODEL_ID"
+export NEMO_EVALUATOR_MODEL_URL="$EVAL_URL"
+export NEMO_EVALUATOR_API_KEY_NAME=NVIDIA_API_KEY
+export NEMO_EVALUATOR_ENDPOINT_TYPE=chat
+
+set -o pipefail
+uv run --no-sync nemotron steps run eval/model_eval -c tiny_chat \
+  output_dir="$EVAL_ROOT/results-tiny-chat" \
+  2>&1 | tee "$EVAL_ROOT/tiny-chat.log"
+
+export EVAL_INVOCATION_ID="$(
+  awk '/launcher_invocation_id:/ {print $2}' "$EVAL_ROOT/tiny-chat.log" | tail -1
+)"
+test -n "$EVAL_INVOCATION_ID"
 ```
 
 Validate output:
 
 ```bash
-find "$EVAL_ROOT/results-tiny" -maxdepth 5 -type f | sort
+uv run --no-sync nemo-evaluator-launcher status "$EVAL_INVOCATION_ID"
+
+# Wait until the launcher status is SUCCESS, then check the artifacts.
+
+find "$EVAL_ROOT/results-tiny-chat" -path "*/artifacts/results.yml" -o \
+  -path "*/artifacts/report.json" -o \
+  -path "*/artifacts/eval_factory_metrics.json" | sort
+test -n "$(find "$EVAL_ROOT/results-tiny-chat" -path "*/artifacts/results.yml" -print -quit)"
 ```
 
 Success criteria:
 
-- One-sample eval runs or fails with a clear endpoint/tokenizer/credential error.
-- Result files are written under `EVAL_ROOT/results-tiny` when successful.
+- One-sample hosted chat eval exits 0.
+- Launcher status reaches `SUCCESS`.
+- Result files are written under `$EVAL_ROOT/results-tiny-chat/<run>/<task>.0/artifacts/`.
+- `artifacts/results.yml` exists.
 - Secrets are not printed in logs.
 
 Evidence to collect: result files, summary logs, endpoint metadata, and redacted logs.
@@ -1437,14 +1452,15 @@ Prerequisites: Agent environment available; endpoint details from user.
 Ask the agent:
 
 ```text
-Set up a one-sample hosted evaluation smoke run for my model endpoint. Ask me for any missing endpoint, model ID, tokenizer path, or API key environment variable before running.
+Set up a one-sample hosted chat evaluation smoke run for my model endpoint. Use eval/model_eval with the tiny_chat config. Ask me for any missing endpoint URL, model ID, or API key environment variable before running.
 ```
 
 Success criteria:
 
 - Uses `eval/model_eval`.
-- Runs a real one-sample eval or records a concrete endpoint/tokenizer/credential blocker.
-- Asks for missing endpoint/model/tokenizer/key instead of inventing values.
+- Uses `tiny_chat.yaml`.
+- Runs a real one-sample hosted chat eval or records a concrete endpoint/credential blocker.
+- Asks for missing endpoint/model/key instead of inventing values.
 - Validates output artifact paths after the real run.
 
 Evidence to collect: agent transcript, generated command, and result summary.

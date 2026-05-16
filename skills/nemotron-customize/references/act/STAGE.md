@@ -23,7 +23,7 @@ config, write the stage files. Thin. Runnable. Agent-legible.
 ├── __init__.py             # re-export only: `from .run import run_<stage_name>`
 └── config/
     ├── default.yaml        # production config
-    └── tiny.yaml           # smoke test (10 iters, small data, tiny seqlen)
+    └── tiny.yaml           # smoke test, or the step's checked-in smoke config name
 ```
 
 Don't create shared project files — the main agent owns those (see
@@ -144,7 +144,8 @@ sequence_parallel: true
 
 - Directories: lowercase + underscores (`stages/sft/`, not `stages/SFT/`).
 - Public entry: `run_<stage_name>()`.
-- Configs: `default.yaml` and `tiny.yaml`, always.
+- Configs: `default.yaml` and the step's checked-in smoke config name. Most
+  stages use `tiny.yaml`; eval/model_eval uses `tiny_chat.yaml`.
 
 ### Style
 

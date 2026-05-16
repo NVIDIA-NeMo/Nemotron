@@ -209,7 +209,7 @@ Deliverables (exactly these, all under output path):
   - run.py
   - __init__.py
   - config/default.yaml
-  - config/tiny.yaml
+  - config/tiny.yaml, or the step's checked-in smoke config name such as config/tiny_chat.yaml for eval/model_eval
 
 Report back: files written, config knobs exposed, any UPSTREAM notes,
 strategies followed (for the plan's traceability log).
@@ -225,5 +225,5 @@ Stages can be generated in parallel — they're independent directories.
 - [ ] Every `consumes`/`produces` chain is consistent.
 - [ ] `pyproject.toml` covers every import in every stage.
 - [ ] `README.md` mermaid matches actual stages.
-- [ ] `tiny.yaml` exists per stage with reduced iterations.
+- [ ] A smoke config exists per stage with reduced scope, using the step's checked-in naming convention.
 - [ ] No `${art:...}` references leaked into generated stage configs.

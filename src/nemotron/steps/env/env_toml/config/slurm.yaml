@@ -27,7 +27,7 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/quantize -c tiny --batch slurm_optimize_modelopt_quantize
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch slurm_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch slurm_optimize_modelopt_prune
-  #   uv run nemotron steps run eval/model_eval -c tiny --batch slurm_eval_model_eval
+  #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch slurm_eval_model_eval
   #   uv run nemotron steps run byob -c tiny --batch slurm_byob_cpu stage=all
   #   uv run nemotron steps run byob -c tiny --batch slurm_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch slurm_sdg_data_designer_tiny

@@ -46,6 +46,13 @@ file = "eval-deploy-formats.txt"
 description = "Configure evaluator deployment targets and model formats — NIM, vLLM, Hugging Face, and Megatron-Bridge inputs."
 
 [[packs]]
+id = "eval-model-eval-container"
+step = "eval/model_eval"
+intent = "container"
+file = "eval-sovereign-benchmarks.txt"
+description = "Configure NeMo Evaluator Launcher container-backed tasks — sovereign, multilingual, custom-language, standard English, tool, or agent benchmark containers."
+
+[[packs]]
 id = "convert-hf-to-megatron-generate"
 step = "convert/hf_to_megatron"
 intent = "generate"

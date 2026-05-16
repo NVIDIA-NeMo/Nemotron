@@ -16,7 +16,7 @@
 id = "eval/model_eval"
 name = "Model Evaluation (NeMo Evaluator)"
 category = "eval"
-description = """Deploy a trained checkpoint behind an OpenAI-compatible endpoint and run benchmark suites with NeMo Evaluator, producing consolidated evaluation results."""
+description = """Deploy a Megatron Bridge checkpoint behind an OpenAI-compatible endpoint, or evaluate an existing hosted endpoint, with NeMo Evaluator Launcher."""
 tags = ["eval", "benchmarks", "nemo-evaluator", "checkpoint", "launcher"]
 
 [[consumes]]
@@ -24,44 +24,62 @@ type = "checkpoint_megatron"
 description = "Megatron Bridge checkpoint directory, usually an iter_* directory, for deployment and evaluation."
 required = false
 
-[[consumes]]
-type = "checkpoint_hf"
-description = "Hugging Face checkpoint or model path for deployment and evaluation."
-required = false
-
 [[produces]]
 type = "eval_results"
 description = "Benchmark metrics, artifacts, and evaluation summaries produced by NeMo Evaluator."
 
 [[parameters]]
-name = "benchmarks"
-description = "Benchmark task names to run, using NeMo Evaluator or launcher task identifiers."
-default = ["lm-evaluation-harness.ifeval", "simple_evals.gpqa_diamond"]
+name = "evaluation.tasks"
+description = "Configured NeMo Evaluator Launcher task entries. Each entry uses an exact task ID from `nemo-evaluator-launcher ls tasks`."
+default = [{ name = "adlr_mmlu" }, { name = "hellaswag" }]
 
 [[parameters]]
-name = "deployment.endpoint_type"
-description = "Endpoint family used by the benchmark suite: chat for instruction tasks, completions for log-probability tasks."
-choices = ["chat", "completions"]
+name = "target.api_endpoint.url"
+description = "OpenAI-compatible endpoint URL for a hosted model when deployment.type=none. Hosted chat smoke tests use config/tiny_chat.yaml."
 
 [[parameters]]
-name = "deployment.url"
-description = "OpenAI-compatible endpoint URL for the deployed model."
+name = "target.api_endpoint.model_id"
+description = "Exact hosted endpoint model id. Prefer ids returned by the endpoint's /v1/models API."
 
 [[parameters]]
-name = "params.extra.tokenizer"
-description = "Tokenizer path or handle required by log-probability benchmarks."
+name = "target.api_endpoint.type"
+description = "Endpoint type expected by the evaluator task. Use chat for hosted tiny_chat smoke tests; use the deployed default config for checkpoint tasks."
+default = "completions"
 
 [[parameters]]
-name = "params.max_new_tokens"
-description = "Generation budget. Increase for reasoning models or long-answer benchmark tasks."
+name = "deployment.checkpoint_path"
+description = "Megatron Bridge checkpoint path passed to NeMo Evaluator Launcher's deployment config. Defaults to ${art:model,path}; override with an explicit iter_* path."
 
-[[strategies]]
-when = "The input artifact is checkpoint_hf"
-then = "Deploy with a Hugging Face-friendly backend such as vLLM or Ray Serve, then point NeMo Evaluator at the resulting chat or completions endpoint."
+[[parameters]]
+name = "deployment.image"
+description = "Container image used by NeMo Evaluator Launcher to host the checkpoint."
+
+[[parameters]]
+name = "evaluation.nemo_evaluator_config.config.params.extra.tokenizer"
+description = "Tokenizer path or Hugging Face id required by loglikelihood/logprob tasks such as HellaSwag. Use the evaluated model's tokenizer for real scores."
+
+[[parameters]]
+name = "target.api_endpoint.api_key_name"
+description = "Environment variable name that stores the endpoint key. Never put the raw key in config."
+default = "NVIDIA_API_KEY"
+
+[[parameters]]
+name = "evaluation.nemo_evaluator_config.config.params.limit_samples"
+description = "Optional per-task sample limit. The default Megatron checkpoint config runs the full task with null; config/tiny_chat.yaml sets this to 1 for hosted smoke testing."
+
+[[parameters]]
+name = "task_filters"
+description = "Optional task names passed to NeMo Evaluator Launcher to run a subset of configured tasks."
+default = []
+
+[[parameters]]
+name = "dry_run"
+description = "Pass dry_run=true to NeMo Evaluator Launcher. This is different from nemotron steps run --dry-run, which only compiles the Nemotron job config."
+default = false
 
 [[strategies]]
 when = "The input artifact is checkpoint_megatron"
-then = "Deploy the iter_* Megatron Bridge checkpoint with the Megatron-serving path and use the checkpoint tokenizer for log-probability benchmarks."
+then = "Use config/default.yaml and point deployment.checkpoint_path at the concrete iter_* Megatron Bridge checkpoint."
 
 [[strategies]]
 when = "The benchmark suite is chat or instruction-following oriented"
@@ -69,15 +87,25 @@ then = "Use a chat endpoint and start from deterministic generation settings unl
 
 [[strategies]]
 when = "The benchmark suite is log-probability based, such as arc_challenge, hellaswag, or piqa"
-then = "Use a completions endpoint with logprobs support and provide a matching tokenizer path or model handle."
+then = "Verify the selected task supports the endpoint capability and provide the evaluated model tokenizer. Some tasks require completions/logprobs rather than chat."
 
 [[strategies]]
 when = "You are evaluating a reasoning model"
 then = "Increase max_new_tokens, enable reasoning-trace processing, and use the model-card temperature and top-p defaults for reasoning tasks."
 
+[[strategies]]
+when = "The user wants a quick hosted endpoint validation"
+then = "Use config/tiny_chat.yaml with a chat-compatible hosted endpoint; keep limit_samples=1 for smoke tests."
+skill = "src/nemotron/steps/eval/model_eval/SKILL.md"
+
+[[strategies]]
+when = "You are selecting benchmark names"
+then = "Use exact task IDs from `nemo-evaluator-launcher ls tasks` or `nemo-evaluator-launcher ls task <task_id>`; do not prepend harness names unless that exact dotted ID is listed."
+skill = "src/nemotron/steps/eval/model_eval/SKILL.md"
+
 [[errors]]
 name = "missing_tokenizer_for_logprobs"
-recovery = "Provide tokenizer and tokenizer_backend for log-probability tasks, using checkpoint/tokenizer for Megatron Bridge or the HF tokenizer handle/path for checkpoint_hf."
+recovery = "Use a task/endpoint pairing that does not require logprobs, or provide a deployment endpoint and tokenizer supported by the selected Launcher task."
 
 [[errors]]
 name = "wrong_endpoint_type"
@@ -86,6 +114,10 @@ recovery = "Use chat endpoints for instruction/chat benchmarks and completions e
 [[errors]]
 name = "bad_megatron_checkpoint_path"
 recovery = "Point evaluation deployment at the specific iter_* checkpoint directory rather than only the parent output folder."
+
+[[errors]]
+name = "framework_cli_not_found"
+recovery = "Install the evaluator extra with uv sync --extra evaluator and run through the same environment so Launcher task CLIs are on PATH."
 
 [reference]
 skill = "src/nemotron/steps/eval/model_eval/SKILL.md"

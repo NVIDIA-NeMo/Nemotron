@@ -285,7 +285,7 @@ Deliverables (exactly these):
   - run.py
   - __init__.py
   - config/default.yaml
-  - config/tiny.yaml
+  - config/tiny.yaml, or the step's checked-in smoke config name such as config/tiny_chat.yaml for eval/model_eval
 
 Report back: files written, knobs exposed, UPSTREAM notes, strategies followed.
 ```
@@ -327,7 +327,7 @@ If verification finds issues, fix them silently. Don't say "I noticed an issue."
 
 ## Operational Nuances
 
-- `tiny.yaml` is for wiring smoke tests, not model-quality evidence.
+- Smoke configs such as `tiny.yaml` or eval/model_eval's `tiny_chat.yaml` are for wiring tests, not model-quality evidence.
 - If a `step.toml` strategy points to unavailable upstream docs, use its `then:` text and mark the plan for manual review.
 - Preserve `${art:...}` only in recipe-backed configs; standalone YAML should use plain paths.
 - Keep pretraining `bin/idx` data and `blend.json` from the same Nemotron release.

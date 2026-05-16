@@ -23,10 +23,10 @@ endpoint behavior.
 
 ## Required Runtime Inputs
 
-- `benchmarks`: concrete evaluator task ids.
-- `deployment.url`: OpenAI-compatible endpoint URL unless deployment is handled
-  by the eval step config.
-- `deployment.endpoint_type`: `chat` or `completions`.
+- `evaluation.tasks`: concrete NeMo Evaluator Launcher task entries.
+- `target.api_endpoint.url`: OpenAI-compatible endpoint URL when
+  `deployment.type=none`.
+- `target.api_endpoint.type`: `chat` or `completions`.
 - Tokenizer path/model handle for logprob benchmarks.
 - API key environment variable when the endpoint requires auth.
 

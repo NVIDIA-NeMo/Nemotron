@@ -27,7 +27,7 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/quantize -c tiny --batch dgxcloud_optimize_modelopt_quantize
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch dgxcloud_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch dgxcloud_optimize_modelopt_prune
-  #   uv run nemotron steps run eval/model_eval -c tiny --batch dgxcloud_eval_model_eval
+  #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch dgxcloud_eval_model_eval
   #   uv run nemotron steps run byob -c tiny --batch dgxcloud_byob_cpu stage=all
   #   uv run nemotron steps run byob -c tiny --batch dgxcloud_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch dgxcloud_sdg_data_designer_tiny
@@ -330,5 +330,10 @@ sections:
     nodes: 1
     gpus_per_node: 1
     nprocs_per_node: 1
+    pip_extras:
+      - typer
+      - rich
+      - pydantic-settings
+      - nemo-evaluator-launcher
     env_vars:
       EVAL_OUTPUT_DIR: /workspace/output/eval/model_eval

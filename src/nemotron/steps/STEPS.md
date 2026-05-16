@@ -38,7 +38,7 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
-| [eval/model_eval](eval/model_eval/) | Deploy a trained checkpoint behind an OpenAI-compatible endpoint and run benchmark suites with NeMo Evaluator, producing consolidated evaluation results. | checkpoint_megatron (optional), checkpoint_hf (optional) | eval_results |
+| [eval/model_eval](eval/model_eval/) | Run NeMo Evaluator Launcher benchmark suites against a hosted OpenAI-compatible endpoint or a deployed Megatron checkpoint, producing consolidated evaluation results. | checkpoint_megatron (optional) | eval_results |
 
 ## optimize — Model Optimization
 
