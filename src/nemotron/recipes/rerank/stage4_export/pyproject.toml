@@ -1,13 +1,17 @@
 [project]
 name = "recipe-runner-export"
 version = "0.0.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "onnx>=1.16.0,<1.20",
     "onnxruntime>=1.18.0",
     "optimum>=1.20.0",
     "nemo-export-deploy>=0.3.1",
     "onnxscript>=0.5.0",
+    # Local GPU torch wheel, sourced from PyTorch cu129 index on Linux below
+    "torch>=2.10.0",
+    # Keep PyTorch extension wheels on the same CUDA backend as torch
+    "torchvision>=0.25.0",
     # Needed by Nemotron library (added via --with flag)
     "omegaconf>=2.3.0",
     "pydantic-settings>=2.0.0",
@@ -20,10 +24,22 @@ tensorrt = [
 
 [tool.uv]
 override-dependencies = ["transformers>=5,<6"]
-# Exclude torch/torchvision from resolution — supplied via --with at runtime
-# with UV_TORCH_BACKEND=auto so the correct CUDA variant is resolved.
-exclude-dependencies = ["torch", "torchvision", "transformer-engine", "nvidia-pytriton"]
-environments = ["python_version >= '3.12' and python_version < '3.14'"]
+exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
+
+# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
+# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.nemotron]
 entry-point = "export.py"

@@ -101,20 +101,13 @@ def _execute_eval(cfg: RecipeConfig, *, experiment=None):
 
 def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
     """Execute eval locally via UV isolated environment."""
-    from nemotron.kit.uv_local import execute_uv_local
+    from nemo_runspec.execution import execute_uv_local_from_spec
 
-    script_abs = SPEC.script_path
-    stage_dir = script_abs.parent
-    repo_root = SPEC.script_path.parents[len(Path(SCRIPT_PATH).parts) - 1]
-
-    rc = execute_uv_local(
-        script_path=str(script_abs),
-        stage_dir=stage_dir,
-        repo_root=repo_root,
+    execute_uv_local_from_spec(
+        spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
     )
-    raise typer.Exit(rc)
 
 
 def _execute_remote(
