@@ -5,12 +5,12 @@ description: Translate JSONL or Parquet training corpora with NeMo Curator, incl
 
 # Nemotron Translation
 
-Use this skill when a user wants to translate corpus data, chat records, or row-oriented training artifacts. The concrete step is [`translate/nemo_curator`](curator/SKILL.md).
+Use this skill when a user wants to translate corpus data, chat records, or row-oriented training artifacts. The concrete step is [`translate/nemo_curator`](nemo_curator/SKILL.md).
 
 ## Default Workflow
 
 1. Install runtime dependencies with `uv sync --extra translate`.
-2. Read [`curator/step.toml`](curator/step.toml) for the step contract.
+2. Read [`nemo_curator/step.toml`](nemo_curator/step.toml) for the step contract.
 3. Ask for `source_language`, `target_language`, input path, output path, backend, and field path. Do not infer source or target language silently.
 4. For downstream training data, start with `output_mode=replaced`, `merge_scores=false`, and `faith_eval.enabled=false`.
 5. For audit or quality review, use `output_mode=both` and enable `faith_eval`.
@@ -146,6 +146,6 @@ uv run --no-sync nemotron steps run translate/nemo_curator \
 ## Load More
 
 - [`guide.md`](guide.md) for detailed flow, output modes, FAITH, resume semantics, and validation.
-- [`curator/SKILL.md`](curator/SKILL.md) for the concrete step.
-- [`curator/config/default.yaml`](curator/config/default.yaml) for starter config.
-- [`curator/step.py`](curator/step.py) for the reader -> translation stage -> writer implementation.
+- [`nemo_curator/SKILL.md`](nemo_curator/SKILL.md) for the concrete step.
+- [`nemo_curator/config/default.yaml`](nemo_curator/config/default.yaml) for starter config.
+- [`nemo_curator/step.py`](nemo_curator/step.py) for the reader -> translation stage -> writer implementation.
