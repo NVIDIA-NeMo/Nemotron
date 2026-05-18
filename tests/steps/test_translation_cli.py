@@ -65,14 +65,6 @@ def test_steps_show_resolves_curator_step() -> None:
     assert "translate/curator" in result.output
 
 
-def test_steps_show_resolves_legacy_translation_alias() -> None:
-    result = CliRunner().invoke(app, ["steps", "show", "translate/translation"])
-
-    assert result.exit_code == 0, result.output
-    assert "translate/curator" in result.output
-    assert "deprecated" in result.output.lower() or "deprecated" in (result.stderr or "").lower()
-
-
 def test_steps_show_resolves_byob_mcq_step() -> None:
     result = CliRunner().invoke(app, ["steps", "show", "byob/mcq"])
 
@@ -80,8 +72,26 @@ def test_steps_show_resolves_byob_mcq_step() -> None:
     assert "byob/mcq" in result.output
 
 
-def test_steps_show_resolves_legacy_byob_alias() -> None:
+def test_steps_show_rejects_legacy_translation_id() -> None:
+    """The legacy `translate/translation` id no longer resolves."""
+
+    result = CliRunner().invoke(app, ["steps", "show", "translate/translation"])
+
+    assert result.exit_code != 0
+    combined = (result.output or "") + (result.stderr or "")
+    assert "Unknown step id" in combined or "Did you mean" in combined
+
+
+def test_steps_show_rejects_legacy_byob_id() -> None:
+    """The legacy single-segment `byob` id no longer resolves.
+
+    The directory-tail short-form would have matched ``byob`` to a folder named
+    ``byob``, but the new layout has no such folder — the step lives at
+    ``byob/mcq``.
+    """
+
     result = CliRunner().invoke(app, ["steps", "show", "byob"])
 
-    assert result.exit_code == 0, result.output
-    assert "byob/mcq" in result.output
+    assert result.exit_code != 0
+    combined = (result.output or "") + (result.stderr or "")
+    assert "Unknown step id" in combined or "Did you mean" in combined

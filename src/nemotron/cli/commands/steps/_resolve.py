@@ -21,36 +21,18 @@ import typer
 
 from nemotron.steps.index import StepInfo, discover_steps
 
-# Legacy step ids kept resolvable for one release after the layout normalisation
-# in commit "steps: normalise byob and translate step layout".
-#
-# Drop these once external skills, docs, and notebooks have migrated.
-_LEGACY_ID_ALIASES: dict[str, str] = {
-    "byob": "byob/mcq",
-    "translate/translation": "translate/curator",
-}
-
 
 def resolve_step(step_id: str) -> StepInfo:
     """Find a step by id, with a helpful error if missing.
 
-    Accepts the canonical id (``peft/automodel``), the directory tail
-    (``automodel``) when unambiguous, or a legacy alias from
-    ``_LEGACY_ID_ALIASES``.
+    Accepts the canonical id (``peft/automodel``) or the directory tail
+    (``automodel``) when unambiguous.
     """
     steps = discover_steps()
     by_id = {s.id: s for s in steps}
 
     if step_id in by_id:
         return by_id[step_id]
-
-    alias_target = _LEGACY_ID_ALIASES.get(step_id)
-    if alias_target and alias_target in by_id:
-        typer.echo(
-            f"Note: step id {step_id!r} is deprecated; use {alias_target!r} instead.",
-            err=True,
-        )
-        return by_id[alias_target]
 
     # Allow short form when unambiguous.
     tail_matches = [s for s in steps if s.path.name == step_id]
