@@ -60,7 +60,10 @@ def show_step(
         console.print("\n[bold]Parameters[/bold]")
         for p in step.parameters:
             default = "" if p.default is None else f" (default={p.default})"
-            console.print(f"  • [yellow]{p.name}[/yellow]{default} — {p.description}")
+            choices = (
+                f" (choices: {', '.join(str(c) for c in p.choices)})" if p.choices else ""
+            )
+            console.print(f"  • [yellow]{p.name}[/yellow]{default}{choices} — {p.description}")
     if spec is not None:
         console.print("\n[bold]Runspec[/bold]")
         console.print(f"  launcher: [magenta]{spec.run.launch}[/magenta]")

@@ -23,6 +23,9 @@ Thin dispatcher. The job of this command is to:
 All execution-mechanics live in the per-backend modules under
 ``nemotron.cli.commands.steps.backends.*``. To add a new submission target,
 write one Backend subclass and ``register()`` it — no edits here.
+
+Overrides are passed as bare ``key=value`` positionals at the end of the
+command, e.g. ``nemotron steps run peft/automodel -c default train.train_iters=5000``.
 """
 
 from __future__ import annotations

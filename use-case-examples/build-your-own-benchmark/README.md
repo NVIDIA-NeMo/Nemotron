@@ -34,10 +34,10 @@ The equivalent CLI is:
 uv run nemotron steps show byob/mcq                          # see family.choices, parameters
 uv run nemotron steps run byob/mcq \
   -c use-case-examples/build-your-own-benchmark/config/finance_wiki.yaml \
-  -o stage=prepare -o family=mcq
+  stage=prepare family=mcq
 uv run nemotron steps run byob/mcq \
   -c use-case-examples/build-your-own-benchmark/config/finance_wiki.yaml \
-  -o stage=generate -o family=mcq
+  stage=generate family=mcq
 ```
 
 Optional translation uses:
@@ -45,5 +45,5 @@ Optional translation uses:
 ```bash
 uv run nemotron steps run byob/mcq \
   -c use-case-examples/build-your-own-benchmark/config/finance_wiki_translate.yaml \
-  -o stage=translate -o family=mcq
+  stage=translate family=mcq
 ```

@@ -25,7 +25,7 @@ from nemotron.cli.commands.steps.show_cmd import show_step
 
 
 def _add_catalog_commands(app: typer.Typer) -> None:
-    app.command("list", help="List discovered steps. Use --output json/yaml for machine-readable output.")(list_steps)
+    app.command("list", help="List discovered steps. Use --json for machine-readable output or --tree for a grouped view.")(list_steps)
     app.command("show", help="Show a step's manifest, runspec, and parameters.")(show_step)
     app.command(
         "run",

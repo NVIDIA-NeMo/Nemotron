@@ -28,19 +28,20 @@ Install the Curator-backed translation dependencies before running the step:
 uv sync --extra translation
 ```
 
-Run the step through the generic step dispatcher with `-o key=value` overrides:
+Run the step through the generic step dispatcher with bare ``key=value``
+overrides appended at the end of the command:
 
 ```bash
 uv run --extra translation nemotron steps run translate/curator \
-  -o input_path=/path/to/source.jsonl \
-  -o output_dir=/path/to/translated \
-  -o source_language=en \
-  -o target_language=hi
+  input_path=/path/to/source.jsonl \
+  output_dir=/path/to/translated \
+  source_language=en \
+  target_language=hi
 ```
 
 Use `-c` or `--config` to pass a config name from the step's `config/`
-directory or a path to a YAML file. Repeat `-o` (or `--override`) for each
-config override; bare ``key=value`` positionals are also still accepted.
+directory or a path to a YAML file. Trailing tokens that contain ``=`` and do
+not begin with ``-`` are routed into the Hydra-style dotlist override layer.
 
 For batch executors such as Lepton or Slurm, add ``--batch <profile>``:
 
@@ -48,10 +49,10 @@ For batch executors such as Lepton or Slurm, add ``--batch <profile>``:
 uv run nemotron steps run translate/curator \
   -c default \
   --batch lepton_translate \
-  -o input_path=/mnt/lustre-shared/data/source.jsonl \
-  -o output_dir=/mnt/lustre-shared/output/translated \
-  -o source_language=en \
-  -o target_language=hi
+  input_path=/mnt/lustre-shared/data/source.jsonl \
+  output_dir=/mnt/lustre-shared/output/translated \
+  source_language=en \
+  target_language=hi
 ```
 
 ## Reference Implementation

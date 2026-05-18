@@ -19,9 +19,9 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 3. Start from [mcq/config/default.yaml](mcq/config/default.yaml) for MCQ generation or [mcq/config/translate.yaml](mcq/config/translate.yaml) for translation.
 4. Ensure generation configs include `target_source_mapping` and explicit
    `filtering_model_configs`.
-5. Run `nemotron steps run byob/mcq -c <CONFIG> -o stage=prepare -o family=mcq`.
-6. Run `nemotron steps run byob/mcq -c <CONFIG> -o stage=generate -o family=mcq`.
-7. Translate an existing benchmark with `-o stage=translate` and a translation config.
+5. Run `nemotron steps run byob/mcq -c <CONFIG> stage=prepare family=mcq`.
+6. Run `nemotron steps run byob/mcq -c <CONFIG> stage=generate family=mcq`.
+7. Translate an existing benchmark with `stage=translate` and a translation config.
 
 ## Change Points
 

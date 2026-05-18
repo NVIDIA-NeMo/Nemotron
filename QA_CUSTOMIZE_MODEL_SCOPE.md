@@ -674,7 +674,7 @@ Prerequisites: `NGC_API_KEY` or `NVIDIA_API_KEY`; live generation and judge mode
 
 uv run --no-sync nemotron steps run byob/mcq \
   -c "$BYOB_ROOT/config/byob_mcq.yaml" \
-  -o stage=all -o family=mcq
+  stage=all family=mcq
 ```
 
 Validate benchmark artifacts:
@@ -714,11 +714,11 @@ Optional stage-by-stage commands for isolating failures:
 ```bash
 uv run --no-sync nemotron steps run byob/mcq \
   -c "$BYOB_ROOT/config/byob_mcq.yaml" \
-  -o stage=prepare -o family=mcq
+  stage=prepare family=mcq
 
 uv run --no-sync nemotron steps run byob/mcq \
   -c "$BYOB_ROOT/config/byob_mcq.yaml" \
-  -o stage=generate -o family=mcq
+  stage=generate family=mcq
 ```
 
 ### BYOB-003 Resume BYOB Generation From A Named Stage
@@ -728,7 +728,7 @@ Prerequisites: Outputs from `BYOB-002` or compatible stage cache.
 ```bash
 uv run --no-sync nemotron steps run byob/mcq \
   -c "$BYOB_ROOT/config/byob_mcq.yaml" \
-  -o stage=generate -o family=mcq -o skip_until=JUDGEMENT
+  stage=generate family=mcq skip_until=JUDGEMENT
 ```
 
 Success criteria:
@@ -748,7 +748,7 @@ Prerequisites: BYOB translation config; hosted translation credential; benchmark
 
 uv run --no-sync nemotron steps run byob/mcq \
   -c "$BYOB_ROOT/config/byob_translate.yaml" \
-  -o stage=translate -o family=mcq
+  stage=translate family=mcq
 ```
 
 Validate translation artifacts:
@@ -794,8 +794,8 @@ Use BYOB to create a tiny MCQ benchmark from /tmp/nemotron-qa-<run-id>/byob/inpu
 
 Success criteria:
 
-- Uses `nemotron steps run byob/mcq -o stage=all -o family=mcq` for prepare+generate, or explicitly explains why it is running `prepare` and `generate` separately.
-- Uses `nemotron steps run byob/mcq -o stage=translate -o family=mcq`.
+- Uses `nemotron steps run byob/mcq stage=all family=mcq` for prepare+generate, or explicitly explains why it is running `prepare` and `generate` separately.
+- Uses `nemotron steps run byob/mcq stage=translate family=mcq`.
 - Patches config copies only.
 - Validates final Parquet schema.
 

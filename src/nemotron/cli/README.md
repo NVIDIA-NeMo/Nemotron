@@ -86,8 +86,7 @@ All commands support these global options (managed by `nemo_runspec.cli_context.
 | `--batch` | `-b` | Detached execution via NeMo-Run |
 | `--dry-run` | `-d` | Preview config without execution |
 | `--stage` | | Stage script to remote for debugging |
-| `--override key=value` | `-o` | Repeatable dotlist override (preferred) |
-| `key=value` | | Bare positional dotlist override (still accepted) |
+| `key=value` | | Dotlist overrides (any position) |
 
 ## Usage Examples
 
@@ -104,15 +103,12 @@ uv run nemotron nano3 pretrain -c tiny --batch MY-CLUSTER
 # Preview without execution
 uv run nemotron nano3 pretrain -c tiny --dry-run
 
-# Override config values (preferred form)
-uv run nemotron nano3 pretrain -c tiny -o train.train_iters=5000
-
-# Bare positionals are also still accepted
+# Override config values
 uv run nemotron nano3 pretrain -c tiny train.train_iters=5000
 
 # BYOB benchmark generation (via the generic step dispatcher)
-uv run nemotron steps run byob/mcq -c default -o stage=prepare -o family=mcq
-uv run nemotron steps run byob/mcq -c default -o stage=generate -o family=mcq
+uv run nemotron steps run byob/mcq -c default stage=prepare family=mcq
+uv run nemotron steps run byob/mcq -c default stage=generate family=mcq
 uv run nemotron steps show byob/mcq        # parameters include family.choices
 
 # Data preparation

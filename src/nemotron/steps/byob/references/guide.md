@@ -25,8 +25,8 @@ lives in `runtime/benchmark_families/mcq/pipeline.py`. The generation run:
 Run generation through the generic step dispatcher:
 
 ```bash
-nemotron steps run byob/mcq -c default -o stage=prepare -o family=mcq
-nemotron steps run byob/mcq -c default -o stage=generate -o family=mcq
+nemotron steps run byob/mcq -c default stage=prepare family=mcq
+nemotron steps run byob/mcq -c default stage=generate family=mcq
 ```
 
 You can also pass a YAML config path explicitly to ``-c``:
@@ -34,7 +34,7 @@ You can also pass a YAML config path explicitly to ``-c``:
 ```bash
 nemotron steps run byob/mcq \
   -c src/nemotron/steps/byob/mcq/config/default.yaml \
-  -o stage=prepare -o family=mcq
+  stage=prepare family=mcq
 ```
 
 The BYOB configs declare Curator through the normal step config mount path:
@@ -62,7 +62,7 @@ questions and choices into text rows, Curator experimental translation translate
 the MCQ schema, Curator computes configured backtranslation quality metrics, and BYOB exports the final
 translated benchmark.
 
-Run translation through the same dispatcher with `-o stage=translate` and a translation config. Keep
+Run translation through the same dispatcher with `stage=translate` and a translation config. Keep
 Curator settings under `translation_model_config`; BYOB does not maintain a separate translation engine or mode selector.
 
 ## Extending To Another Family

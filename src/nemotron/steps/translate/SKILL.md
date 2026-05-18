@@ -56,55 +56,55 @@ Plain text JSONL through a hosted LLM:
 
 ```bash
 uv run --no-sync nemotron steps run translate/curator \
-  -o input_path="$TR_ROOT/news_en" \
-  -o output_dir="$TR_ROOT/out_llm_hi" \
-  -o source_language=en \
-  -o target_language=hi \
-  -o backend=llm \
-  -o text_field=text \
-  -o output_mode=replaced \
-  -o merge_scores=false \
-  -o reconstruct_messages=false \
-  -o faith_eval.enabled=false \
-  -o server.url="$TRANSLATION_BASE_URL" \
-  -o server.model="$TRANSLATION_MODEL" \
-  -o server.api_key_env=NVIDIA_API_KEY
+  input_path="$TR_ROOT/news_en" \
+  output_dir="$TR_ROOT/out_llm_hi" \
+  source_language=en \
+  target_language=hi \
+  backend=llm \
+  text_field=text \
+  output_mode=replaced \
+  merge_scores=false \
+  reconstruct_messages=false \
+  faith_eval.enabled=false \
+  server.url="$TRANSLATION_BASE_URL" \
+  server.model="$TRANSLATION_MODEL" \
+  server.api_key_env=NVIDIA_API_KEY
 ```
 
 Structured chat records:
 
 ```bash
 uv run --no-sync nemotron steps run translate/curator \
-  -o input_path="$TR_ROOT/chat_code_en.jsonl" \
-  -o output_dir="$TR_ROOT/out_chat_hi" \
-  -o source_language=en \
-  -o target_language=hi \
-  -o backend=llm \
-  -o text_field='messages.*.content' \
-  -o output_mode=replaced \
-  -o merge_scores=false \
-  -o reconstruct_messages=true \
-  -o faith_eval.enabled=false \
-  -o server.url="$TRANSLATION_BASE_URL" \
-  -o server.model="$TRANSLATION_MODEL" \
-  -o server.api_key_env=NVIDIA_API_KEY
+  input_path="$TR_ROOT/chat_code_en.jsonl" \
+  output_dir="$TR_ROOT/out_chat_hi" \
+  source_language=en \
+  target_language=hi \
+  backend=llm \
+  text_field='messages.*.content' \
+  output_mode=replaced \
+  merge_scores=false \
+  reconstruct_messages=true \
+  faith_eval.enabled=false \
+  server.url="$TRANSLATION_BASE_URL" \
+  server.model="$TRANSLATION_MODEL" \
+  server.api_key_env=NVIDIA_API_KEY
 ```
 
 NMT server:
 
 ```bash
 uv run --no-sync nemotron steps run translate/curator \
-  -o input_path="$TR_ROOT/news_en" \
-  -o output_dir="$TR_ROOT/out_nmt_hi" \
-  -o source_language=en \
-  -o target_language=hi \
-  -o backend=nmt \
-  -o nmt.server_url="$NMT_SERVER_URL" \
-  -o text_field=text \
-  -o output_mode=replaced \
-  -o merge_scores=false \
-  -o reconstruct_messages=false \
-  -o faith_eval.enabled=false
+  input_path="$TR_ROOT/news_en" \
+  output_dir="$TR_ROOT/out_nmt_hi" \
+  source_language=en \
+  target_language=hi \
+  backend=nmt \
+  nmt.server_url="$NMT_SERVER_URL" \
+  text_field=text \
+  output_mode=replaced \
+  merge_scores=false \
+  reconstruct_messages=false \
+  faith_eval.enabled=false
 ```
 
 ## Patterns To Cite
