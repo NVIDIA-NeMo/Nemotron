@@ -19,6 +19,9 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Configure
 
 - Keep `seq_length` equal to the data_prep step's `pack_size`.
+- Point `dataset.packed_sequence_specs.packed_train_data_path` at the packed
+  `splits/train/*.parquet` glob.
+- Keep base checkpoint paths separate from `checkpoint.save`.
 - Start Nano3 plans around the existing recipe defaults; scale Super3-like plans only after short validation runs pass.
 - Tune tensor, pipeline, and context parallelism before scaling global batch.
 - The shipped 30B default uses `peft=lora` to fit the starter topology; set `recipe.peft=null` and remove the top-level `peft:` block only when full SFT fits.
@@ -31,6 +34,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Keep `dataset.seq_length`, `dataset.packed_sequence_specs.packed_sequence_size`, and `model.seq_length` equal.
 - Use `model.sequence_parallel: true` for MoE plus tensor parallelism.
 - Start with `train.micro_batch_size: 1` when validating a new distributed shape and choose `train.global_batch_size` as a multiple of the resulting data-parallel size.
+- Inspect data_prep loss masks before trusting loss curves from a new template
+  or tool-call format.
 
 ## Local Files
 

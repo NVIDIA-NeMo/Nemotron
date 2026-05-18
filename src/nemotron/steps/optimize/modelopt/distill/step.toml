@@ -49,9 +49,17 @@ name = "args.data_paths"
 description = "Megatron data blend CLI sequence: [weight, prefix, ...]."
 
 [[parameters]]
+name = "args.output_dir"
+description = "Output directory for distilled Megatron checkpoints. Keep it distinct from teacher and student roots."
+
+[[parameters]]
 name = "args.use_mock_data"
 description = "Run a smoke test without real bin/idx data."
 default = false
+
+[[parameters]]
+name = "args.hf_export_path"
+description = "Optional HF export path when a standalone Hugging Face checkpoint is needed directly from distillation."
 
 [[parameters]]
 name = "extra_args"
@@ -70,7 +78,28 @@ then = "Set args.use_mock_data=true, args.seq_length=512, args.train_iters=100, 
 when = "Need a HuggingFace checkpoint"
 then = "Set args.hf_export_path and args.student_hf_model, or convert a saved Megatron iteration later."
 
+[[strategies]]
+when = "Distilling after pruning"
+then = "Set args.student_hf_path to the pruned HF output and args.teacher_hf_path to the original full-precision checkpoint."
+
+[[errors]]
+name = "mock_data_used_as_quality_signal"
+recovery = "Use args.use_mock_data=true only for launch validation. Switch to real args.data_paths before judging quality."
+
+[[errors]]
+name = "teacher_student_or_tokenizer_mismatch"
+recovery = "Keep teacher, student, tokenizer, and distillation data assumptions explicit, especially after structural pruning."
+
+[[errors]]
+name = "output_dir_overlaps_checkpoint_roots"
+recovery = "Set args.output_dir away from args.teacher_hf_path and args.student_hf_path to avoid mixing inputs and outputs."
+
+[[errors]]
+name = "wandb_not_inherited"
+recovery = "Use the upstream distill W&B flags and pass project/entity/name through the run environment instead of wrapping the process."
+
 [reference]
+skill = "src/nemotron/steps/optimize/modelopt/distill/SKILL.md"
 modelopt_repo = "https://github.com/NVIDIA/Model-Optimizer"
 modelopt_readme = "https://github.com/NVIDIA/Model-Optimizer/blob/main/README.md"
 modelopt_docs = "https://nvidia.github.io/Model-Optimizer/"
@@ -78,4 +107,4 @@ modelopt_megatron_bridge_readme = "https://github.com/NVIDIA/Model-Optimizer/blo
 megatron_bridge_repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
 megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
 megatron_bridge_distillation_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/distillation.html"
-skills = ["skills/nemotron-customize/context/modelopt-optimization.txt"]
+skills = ["skills/nemotron-customize/references/context/modelopt-optimization.txt"]

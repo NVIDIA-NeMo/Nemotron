@@ -17,6 +17,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Set `args.hf_model_name_or_path` to a clean HF checkpoint and
+  `args.output_hf_path` to a fresh output directory.
 - Set `args.prune_target_params` when ModelOpt should search for a target budget.
 - Set `args.prune_export_config` when the deployment architecture is fixed.
 - Set `args.prune_target_params=null` when using a fixed export config.
@@ -42,4 +44,6 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Check pipeline-parallel and attention-head divisibility after pruning layer counts or hidden dimensions.
 - Distill the pruned model when quality recovery matters.
+- Keep the ModelOpt checkout and installed package in sync before debugging
+  wrapper-level changes.
 - Validate export and downstream loading before claiming the pruned artifact is usable.

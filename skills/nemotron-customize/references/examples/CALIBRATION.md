@@ -58,8 +58,8 @@ Here's the plan:
 ## Validation
 ✓ All artifact types chain
 ✓ Tokenizer consistent (Nano3 across data_prep + SFT + RL)
-⚠ RL needs 16+ GPUs (2 nodes) — do you have that?
-⚠ translate needs an LLM endpoint (NIM or vLLM) — do you have one?
+WARNING: RL needs 16+ GPUs (2 nodes) — do you have that?
+WARNING: translate needs an LLM endpoint (NIM or vLLM) — do you have one?
 
 Approve this plan, or want changes?
 ```

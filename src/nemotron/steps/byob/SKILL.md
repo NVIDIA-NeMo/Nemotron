@@ -17,9 +17,11 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 1. Install BYOB runtime dependencies with `uv sync --extra byob` or `pip install ".[byob]"` in the target environment.
 2. Read [references/STEP.md](references/STEP.md) for the artifact contract.
 3. Start from [config/default.yaml](config/default.yaml) for MCQ generation or [config/translate.yaml](config/translate.yaml) for translation.
-4. Run `nemotron byob --family mcq --stage prepare --config CONFIG`.
-5. Run `nemotron byob --family mcq --stage generate --config CONFIG`.
-6. Translate an existing benchmark with `--stage translate` and a translation config.
+4. Ensure generation configs include `target_source_mapping` and explicit
+   `filtering_model_configs`.
+5. Run `nemotron byob --family mcq --stage prepare --config CONFIG`.
+6. Run `nemotron byob --family mcq --stage generate --config CONFIG`.
+7. Translate an existing benchmark with `--stage translate` and a translation config.
 
 ## Change Points
 

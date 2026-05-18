@@ -35,6 +35,18 @@ description = "Source field path to translate. Use messages.*.content for OpenAI
 default = "messages.*.content"
 
 [[parameters]]
+name = "input_format"
+description = "Input format: auto infers homogeneous JSONL/Parquet paths; set explicitly when globs or directories are ambiguous."
+default = "auto"
+choices = ["auto", "jsonl", "parquet"]
+
+[[parameters]]
+name = "output_format"
+description = "Output shard format written by Curator."
+default = "jsonl"
+choices = ["jsonl", "parquet"]
+
+[[parameters]]
 name = "backend"
 description = "Translation backend. Use llm for OpenAI-compatible endpoints, nmt for a local service, or cloud backends when configured."
 default = "llm"
@@ -63,44 +75,55 @@ default = "both"
 choices = ["replaced", "raw", "both"]
 
 [[parameters]]
-name = "faith_enabled"
+name = "faith_eval.enabled"
 description = "Whether to run FAITH translation quality scoring through an LLM client."
 default = true
 
 [[parameters]]
-name = "faith_threshold"
+name = "faith_eval.threshold"
 description = "Minimum FAITH average score to keep translated records when filtering is enabled."
 default = 2.5
+
+[[parameters]]
+name = "reconstruct_messages"
+description = "For chat records, emit reconstructed translated messages for inspection and downstream SFT prep."
+default = true
+
+[[parameters]]
+name = "segmentation_mode"
+description = "Translation segmentation mode. Start coarse for JSON, code, tool payloads, or structured chat records."
+default = "coarse"
+choices = ["coarse", "fine"]
 
 [[strategies]]
 when = "The input records are OpenAI-style chat data"
 then = "Set text_field=messages.*.content and reconstruct_messages=true so translated_messages is emitted for inspection."
-skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+skill = "skills/nemotron-customize/references/context/curator-translation-faith.txt"
 
 [[strategies]]
 when = "The corpus is large and a local translation service is available"
 then = "Use backend=nmt with nmt.server_url and keep Curator reader/writer stages as the default I/O path."
-skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+skill = "skills/nemotron-customize/references/context/curator-translation-faith.txt"
 
 [[strategies]]
 when = "The user selects a hosted LLM backend"
 then = "Ask for the exact live model name and verify it is available before a real run; hosted models can be retired."
-skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+skill = "skills/nemotron-customize/references/context/curator-translation-faith.txt"
 
 [[strategies]]
 when = "The user selects Google or AWS translation"
 then = "Keep secrets out of config files. Use cloud provider environment credentials and set only project/location or region in YAML."
-skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+skill = "skills/nemotron-customize/references/context/curator-translation-faith.txt"
 
 [[strategies]]
 when = "The corpus contains JSON, code, tool payloads, or structured chat messages"
 then = "Keep segmentation_mode=coarse first; Curator preserves valid JSON and fenced code while translating natural-language segments."
-skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+skill = "skills/nemotron-customize/references/context/curator-translation-faith.txt"
 
 [[strategies]]
 when = "Translation quality must gate SFT data"
 then = "Enable faith_eval and set output_mode=both so scores and translation metadata remain available for downstream review."
-skill = "skills/nemotron-customize/context/curator-translation-faith.txt"
+skill = "skills/nemotron-customize/references/context/curator-translation-faith.txt"
 
 [[errors]]
 name = "missing_llm_endpoint"
@@ -131,8 +154,9 @@ name = "single_huge_file_memory_pressure"
 recovery = "Curator readers are file-partition oriented. For one huge file, generate a one-off row-chunking pre-step and feed chunks into this step."
 
 [reference]
+skill = "src/nemotron/steps/translate/translation/SKILL.md"
 script = "src/nemotron/steps/translate/translation/step.py"
 docs = "docs/customize/steps/translate/translation.md"
 skills = [
-  "skills/nemotron-customize/context/curator-translation-faith.txt",
+  "skills/nemotron-customize/references/context/curator-translation-faith.txt",
 ]

@@ -29,7 +29,7 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/quantize -c tiny --batch lepton_optimize_modelopt_quantize
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch lepton_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch lepton_optimize_modelopt_prune
-  #   uv run nemotron steps run eval/model_eval -c tiny --batch lepton_eval_model_eval
+  #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch lepton_eval_model_eval
   #   uv run nemotron steps run byob -c tiny --batch lepton_byob_cpu stage=all
   #   uv run nemotron steps run byob -c tiny --batch lepton_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch lepton_sdg_data_designer_tiny
@@ -338,5 +338,10 @@ sections:
   lepton_eval_model_eval:
     extends: lepton_base
     nodes: 1
+    pip_extras:
+      - typer
+      - rich
+      - pydantic-settings
+      - nemo-evaluator-launcher
     env_vars:
       EVAL_OUTPUT_DIR: /mnt/lustre-shared/output/eval/model_eval

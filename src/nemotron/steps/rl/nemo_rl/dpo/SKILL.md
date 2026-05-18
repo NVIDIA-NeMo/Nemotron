@@ -19,6 +19,8 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Configure
 
 - Tune `dpo.reference_policy_kl_penalty` when KL collapses or loss diverges.
+- Set train and validation preference paths explicitly in the active NeMo-RL
+  data schema.
 - Lower learning rate before making structural changes to the runner.
 - Use `data_prep/rl_prep` when preference data starts as HF references or blended local files.
 - Keep the reference policy aligned with the SFT policy.
@@ -40,5 +42,7 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Guardrails
 
 - Validate chosen and rejected ordering; inverted pairs silently teach the wrong behavior.
+- Keep `policy.train_global_batch_size` divisible by the active policy worker
+  shape and micro batch size.
 - Keep train and validation preference distributions comparable.
 - Inspect examples where the model regresses after DPO; preference data can encode style bias.

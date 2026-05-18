@@ -19,6 +19,10 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Set `model.pretrained_model_name_or_path` for continued pretraining from an HF base.
 - Set `load_weights=false` only when intentionally training from scratch.
+- Set `dataset.paths` and `validation_dataset.paths` to the
+  data_prep-emitted `blend.json`.
+- Keep `dataset.seq_length`, `validation_dataset.seq_length`, and model
+  context aligned.
 - Keep tokenizer and vocab settings aligned with the bin/idx artifact.
 - Use launcher and executor settings from the AutoModel runner for cluster moves.
 - Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before changing pretraining strategy.

@@ -53,17 +53,18 @@ when the next consumer (eval, deployment) expects HF.
 
 ## Workflow
 
-1. **Env profile first** — verify the env profile for Lepton/Slurm/Ray runs
-   (`env.toml` by default, or `NEMOTRON_ENV_FILE` for backend-specific files).
-2. Confirm the SFT warm-start checkpoint exists and was trained on a
+1. Confirm the SFT warm-start checkpoint exists and was trained on a
    compatible tokenizer and chat template.
-3. Run [`data_prep/rl_prep`](../data_prep/rl_prep/SKILL.md) when data needs HF
+2. Run [`data_prep/rl_prep`](../data_prep/rl_prep/SKILL.md) when data needs HF
    resolution or sharding.
-4. Pick the step per the decision tree.
-5. Validate the reward path on a tiny set **before scaling rollout count** —
+3. Pick the step per the decision tree.
+4. Validate the reward path on a tiny set **before scaling rollout count** —
    see the rewards pattern above.
-6. Use `config/tiny.yaml` for runner validation; method-specific configs
+5. Use `config/tiny.yaml` for runner validation; method-specific configs
    (`config/nemo_gym.yaml` for resource-server rewards) for production.
+6. For remote submission, select the profile from
+   `env/env_toml/config/{lepton,slurm,dgxcloud}.yaml` or the generated env file;
+   do not hardcode profile names here.
 7. Track KL, reward variance, reward saturation, response length, and
    held-out task evals — not just reward.
 8. Bookend with eval — see
@@ -74,10 +75,31 @@ when the next consumer (eval, deployment) expects HF.
 ## Smoke commands
 
 ```bash
-nemotron steps run rl/nemo_rl/dpo  -c tiny
-nemotron steps run rl/nemo_rl/rlvr -c tiny
-nemotron steps run rl/nemo_rl/rlhf -c tiny
+uv run nemotron steps run rl/nemo_rl/dpo  -c tiny --dry-run
+uv run nemotron steps run rl/nemo_rl/rlvr -c tiny --dry-run
+uv run nemotron steps run rl/nemo_rl/rlhf -c tiny --dry-run
 ```
+
+## Project layout for generated configs
+
+Keep every generated overlay config and any supporting code under a single
+self-contained project root that also holds the local input data, so the
+whole directory is rsync/scp-portable to the remote machine that will run
+the alignment step.
+
+- `<project>/config/` for generated YAML — never write into
+  `src/nemotron/steps/rl/nemo_rl/<algo>/config/`; the shipped
+  `default.yaml`, `tiny.yaml`, and `nemo_gym.yaml` stay as catalog
+  references.
+- `<project>/data/` for sharded preference / prompt / verifier JSONL
+  produced by `data_prep/rl_prep`.
+- Keep the SFT warm-start `checkpoint_megatron` path, RLHF reward-model
+  `checkpoint_hf` path, and any NeMo-Gym resource-server configs resolvable
+  under the same project root so the whole alignment job ships in one
+  bundle.
+- Project-root scripts only when catalog code cannot serve the request.
+- Do not split generated files into home dirs, scratch dirs, or paths
+  outside the project root that will not ship with the bundle.
 
 ## Guardrails
 

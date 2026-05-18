@@ -46,9 +46,26 @@ description = "Rollouts per prompt; GRPO group size."
 default = 8
 
 [[parameters]]
+name = "env.should_use_nemo_gym"
+description = "Keep true for GenRM-style comparison rewards served through NeMo-Gym."
+default = true
+
+[[parameters]]
 name = "env.nemo_gym.genrm_model.responses_api_models.vllm_model.model"
 description = "HF path or local path for the GenRM judge model served by NeMo-Gym."
 default = "/path/to/genrm/model"
+
+[[parameters]]
+name = "data.train.data_path"
+description = "Training prompt JSONL normalized for the NeMo-Gym Responses API path."
+
+[[parameters]]
+name = "data.validation.data_path"
+description = "Validation prompt JSONL. Avoid train-as-validation unless the run is explicitly non-evaluative."
+
+[[parameters]]
+name = "env.nemo_gym.genrm_model.vllm"
+description = "GenRM serving resources and limits such as tensor_parallel_size, max_num_seqs, max_model_len, and gpu_memory_utilization."
 
 [[strategies]]
 when = "Reward model saturates / reward hacking is observed"
@@ -58,6 +75,27 @@ then = "Increase KL penalty, lower learning rate, or add reward clipping."
 when = "You have Super3-style RLHF data"
 then = "Keep env.should_use_nemo_gym=true and point data.train.data_path / data.validation.data_path at the prepared NeMo-Gym JSONL."
 
+[[strategies]]
+when = "Sizing a GenRM run"
+then = "Budget separate placement for policy/generation, NeMo-Gym GPU servers, and Ray headroom; validate GenRM readiness before policy optimization."
+
+[[errors]]
+name = "genrm_server_not_ready"
+recovery = "Tune GenRM vLLM tensor parallelism, max_num_seqs, max_model_len, and gpu_memory_utilization, then validate serving before launching policy optimization."
+
+[[errors]]
+name = "responses_api_schema_missing"
+recovery = "Normalize data rows into the Responses API shape expected by NeMo-Gym, including responses_create_params where required."
+
+[[errors]]
+name = "reward_model_policy_confused"
+recovery = "Keep policy checkpoint, reference policy, and reward-model checkpoint paths separate in config and artifact tracking."
+
+[[errors]]
+name = "train_used_as_validation_unintentionally"
+recovery = "Provide a real validation path unless the run is explicitly non-evaluative and documented as such."
+
 [reference]
+skill = "src/nemotron/steps/rl/nemo_rl/rlhf/SKILL.md"
 script = "https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/super3/stage2_rl/stage3_rlhf"
-skills = ["skills/nemotron-customize/context/nemo-rl-alignment.txt"]
+skills = ["skills/nemotron-customize/references/context/nemo-rl-alignment.txt"]

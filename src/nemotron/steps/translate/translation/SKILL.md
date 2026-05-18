@@ -26,6 +26,20 @@ Use `translate/translation` for corpus translation. Before changing configs or c
 - For FAITH annotation, set `faith_eval.enabled=true` and usually `faith_eval.filter_enabled=false` first.
 - For FAITH filtering, confirm with the user because rows can be dropped.
 
+For one-shot or eval-style runs, emit an execution-ready handoff before deep
+exploration:
+
+- Step decision and scope: `translate/translation`, either translation-only or translation+FAITH.
+- Input policy: selected JSONL or Parquet path and excluded incompatible inputs.
+- Config: inline key fields or a config path.
+- Run: exact command.
+- Output: expected translated artifact path.
+- Env: required environment variable names only.
+
+If model variant or source-language evidence is incomplete, state explicit
+assumptions and continue with a runnable default rather than stalling. Prefer
+inline config in the response before optional file writes.
+
 ## Local Files
 
 - Contract: `src/nemotron/steps/translate/translation/step.toml`
@@ -38,6 +52,7 @@ Use `translate/translation` for corpus translation. Before changing configs or c
 
 - Do not mix JSONL and Parquet in one input directory.
 - Do not store API keys in config files.
+- Do not print environment values or run env-dump commands that may expose tokens or keys.
 - Do not use `merge_scores=true` with `output_mode=replaced`.
 - Do not treat `skip_translated=true` as output-directory resume.
 - Do not add custom chunking to `step.py` for normal use. Split huge single files before this step if needed.
@@ -50,3 +65,23 @@ Use `translate/translation` for corpus translation. Before changing configs or c
 - LLM smoke: translate two plain-text JSONL rows with `faith_eval.enabled=false`.
 - NMT smoke: call `GET /health`, then translate two rows with `backend=nmt`.
 - Chat smoke: translate `messages.*.content` and verify `tool_calls[].function.arguments` remains valid JSON.
+- If a command fails with CLI argument errors, return to the documented step command template before retrying.
+- If file validation fails with `FileNotFoundError`, re-check actual output paths and validate only existing files.
+
+## Runtime Prerequisites
+
+- Runtime dependencies must include parser/config basics such as `toml` and `pyyaml`.
+- If an eval container misses these packages, report the environment blocker
+  and still provide a complete handoff.
+- Do not end with blocker-only output when a command template and expected
+  output path can still be provided.
+
+## Completion Checklist
+
+Before ending a response, ensure these are explicitly present:
+
+1. Runnable config evidence.
+2. `Run` command and expected `Output` path.
+3. Required `Env` variable names, never values.
+4. For FAITH runs, `faith_eval.enabled=true` and expected FAITH outputs.
+5. Any environment/runtime blocker plus the workaround-ready command.

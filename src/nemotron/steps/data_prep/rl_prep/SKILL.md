@@ -17,8 +17,10 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Set `blend_path` to the RL data blend that should be resolved and sharded.
 - Keep `resolve_hf_placeholders=true` for closed-network or production clusters.
 - Set `num_shards_per_split` to match dataset size and filesystem throughput.
+- Keep output split names aligned with the downstream RL config.
 - For DPO, ensure records include prompt, chosen, and rejected responses.
 - For RLVR, ensure each prompt carries verifier fields such as ground-truth answers.
 - For RLHF, ensure prompt data and reward-model references are handled separately.

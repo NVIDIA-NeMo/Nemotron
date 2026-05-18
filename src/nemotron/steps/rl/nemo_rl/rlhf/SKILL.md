@@ -20,9 +20,11 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 ## Configure
 
 - Set `env.nemo_gym.genrm_model.responses_api_models.vllm_model.model` to the reward-model path.
+- Keep `env.should_use_nemo_gym=true` for GenRM comparison rewards.
+- Set `data.train.data_path` and `data.validation.data_path` to prompt JSONL
+  normalized for the NeMo-Gym Responses API path.
 - Tune `grpo.num_generations_per_prompt` based on reward variance and serving cost.
 - Increase KL penalty, lower learning rate, or clip rewards when reward hacking appears.
-- Keep `env.should_use_nemo_gym=true` for GenRM-style comparison rewards.
 - Check `src/nemotron/steps/patterns/rl-validate-rewards-before-scale.md` before changing RLHF reward or rollout behavior.
 
 ## Config Nuances
@@ -44,4 +46,6 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Validate reward-model serving separately before launching policy optimization.
 - Keep policy, reference, and reward-model checkpoints clearly separated in config.
+- Do not use train data as validation unless the run is explicitly marked
+  non-evaluative.
 - Review held-out reward examples to detect judge bias or reward saturation.

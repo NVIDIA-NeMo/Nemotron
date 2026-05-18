@@ -40,23 +40,31 @@ name = "config"
 description = "Path to a BYOB YAML config."
 
 [[parameters]]
+name = "target_source_mapping"
+description = "Benchmark target subjects mapped to source document directories or parquet references. Required for MCQ generation."
+
+[[parameters]]
+name = "filtering_model_configs"
+description = "Model configs used by quality filtering and semantic dedup stages. Keep these explicit for reproducible benchmark generation."
+
+[[parameters]]
 name = "skip_until"
 description = "Optional resume stage enum name for cached generation or translation runs."
 
 [[strategies]]
 when = "You need a domain-specific multiple-choice benchmark from user-provided documents"
 then = "Use family=mcq with stage=all, or run prepare before generate, and start from config/default.yaml or config/tiny.yaml for a smoke run. Curator semantic dedup uses RayDataExecutor, RayActorPoolExecutor, and package-level SemanticDeduplicationWorkflow."
-skill = "skills/nemotron-customize/context/byob-benchmark-curator-translation.txt"
+skill = "skills/nemotron-customize/references/context/byob-benchmark-curator-translation.txt"
 
 [[strategies]]
 when = "You need to extend BYOB beyond MCQ, for example GSM8K-style math problems"
 then = "Answer references/new-family-checklist.md first, then add a package under runtime/benchmark_families/ and register it without changing the dispatcher."
-skill = "skills/nemotron-customize/context/byob-benchmark-curator-translation.txt"
+skill = "skills/nemotron-customize/references/context/byob-benchmark-curator-translation.txt"
 
 [[strategies]]
 when = "You need to translate an existing BYOB MCQ benchmark"
 then = "Use stage=translate with config/translate.yaml. Curator experimental translation performs translation; BYOB preserves question_id, options, answer_index, answer, cot_content, src, and category."
-skill = "skills/nemotron-customize/context/byob-benchmark-curator-translation.txt"
+skill = "skills/nemotron-customize/references/context/byob-benchmark-curator-translation.txt"
 
 [[errors]]
 name = "missing_byob_source_documents"
@@ -74,13 +82,22 @@ recovery = "Keep final MCQ benchmark.parquet columns aligned with references/ben
 name = "new_family_keeps_mcq_assumptions"
 recovery = "For non-MCQ families, define a family-specific schema and replace MCQ-only stages such as distractor expansion and answer-letter validation."
 
+[[errors]]
+name = "resume_cache_missing"
+recovery = "Use skip_until only when the previous stage cache parquet exists under output_dir/expt_name/stage_cache."
+
+[[errors]]
+name = "translation_row_count_drift"
+recovery = "Translated outputs should preserve row count unless remove_low_quality is intentionally enabled; inspect quality cache before filtering."
+
 [reference]
 skill = "src/nemotron/steps/byob/SKILL.md"
+contract = "src/nemotron/steps/byob/references/STEP.md"
 script = "src/nemotron/steps/byob/step.py"
 default_config = "src/nemotron/steps/byob/config/default.yaml"
 tiny_config = "src/nemotron/steps/byob/config/tiny.yaml"
 translate_config = "src/nemotron/steps/byob/config/translate.yaml"
 runtime = "src/nemotron/steps/byob/runtime/benchmark_families/mcq/pipeline.py"
 skills = [
-  "skills/nemotron-customize/context/byob-benchmark-curator-translation.txt",
+  "skills/nemotron-customize/references/context/byob-benchmark-curator-translation.txt",
 ]

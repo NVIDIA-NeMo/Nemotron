@@ -46,6 +46,34 @@ file = "eval-deploy-formats.txt"
 description = "Configure evaluator deployment targets and model formats — NIM, vLLM, Hugging Face, and Megatron-Bridge inputs."
 
 [[packs]]
+id = "eval-model-eval-container"
+step = "eval/model_eval"
+intent = "container"
+file = "eval-sovereign-benchmarks.txt"
+description = "Configure NeMo Evaluator Launcher container-backed tasks — sovereign, multilingual, custom-language, standard English, tool, or agent benchmark containers."
+
+[[packs]]
+id = "convert-hf-to-megatron-generate"
+step = "convert/hf_to_megatron"
+intent = "generate"
+file = "checkpoint-conversion.txt"
+description = "Convert a clean Hugging Face checkpoint to Megatron distributed layout for Megatron-Bridge consumers."
+
+[[packs]]
+id = "convert-megatron-to-hf-generate"
+step = "convert/megatron_to_hf"
+intent = "generate"
+file = "checkpoint-conversion.txt"
+description = "Export a concrete Megatron iter_* checkpoint to Hugging Face safetensors for evaluation, deployment, or merge flows."
+
+[[packs]]
+id = "convert-merge-lora-generate"
+step = "convert/merge_lora"
+intent = "generate"
+file = "checkpoint-conversion.txt"
+description = "Merge a LoRA adapter with its exact HF base model to produce a standalone HF checkpoint."
+
+[[packs]]
 id = "optimize-modelopt-distill-generate"
 step = "optimize/modelopt/distill"
 intent = "generate"

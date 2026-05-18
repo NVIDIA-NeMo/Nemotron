@@ -17,8 +17,12 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Set `blend_path` to the source data blend; downstream trainers should use
+  the emitted `blend.json`.
 - Set `tokenizer.model` to the downstream pretraining model tokenizer.
 - Tune `num_shards` for target filesystem and trainer throughput.
+- Keep `valid_shards`, `test_shards`, and `split_seed` explicit so validation
+  data is reproducible.
 - Leave `max_doc_tokens` unset unless the data policy requires truncation.
 - Point pretrain configs at the emitted `blend.json`.
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before changing tokenization, split, or sharding behavior.

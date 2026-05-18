@@ -17,10 +17,13 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Set `args.hf_model_id` to the HF checkpoint to quantize; merge LoRA inputs
+  before this step.
 - Use `config/fp8.yaml` for Hopper or H100 targets when FP8 is the intended serving format.
 - Use `config/nvfp4.yaml` for Blackwell or B200 targets when NVFP4 is supported by the model and serving stack.
 - Set `args.export_quant_cfg` to a value accepted by the installed upstream script: `int8_sq`, `fp8`, `fp8_blockwise`, `int4_awq`, `w4a8_awq`, or `nvfp4`.
 - Set `args.calib_size` high enough for representative activation ranges.
+- Keep `args.megatron_save_path` outside the source checkpoint path.
 - Use `extra_args` for new upstream ModelOpt or Megatron-Bridge flags.
 
 ## Config Nuances

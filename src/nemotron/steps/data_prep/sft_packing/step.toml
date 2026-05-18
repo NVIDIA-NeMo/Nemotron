@@ -53,6 +53,21 @@ name = "num_shards"
 description = "Number of packed Parquet shards to materialize for downstream loading."
 default = 128
 
+[[parameters]]
+name = "train_ratio"
+description = "Training split ratio used to materialize the canonical splits/{train,valid,test}/ Parquet layout when explicit split shard counts are not set."
+default = 0.98
+
+[[parameters]]
+name = "valid_ratio"
+description = "Validation split ratio used when explicit valid_shards is not set."
+default = 0.01
+
+[[parameters]]
+name = "test_ratio"
+description = "Test split ratio used when explicit test_shards is not set."
+default = 0.01
+
 [[strategies]]
 when = "The downstream trainer is sft/megatron_bridge or another consumer of packed Parquet"
 then = "Run this converter step before training so the dataset is materialized in packed_parquet format."
@@ -69,6 +84,10 @@ then = "Keep pack_size identical to the downstream training seq_length to avoid 
 when = "You are iterating on a very small dataset or sample"
 then = "Reduce num_shards so each shard remains meaningfully sized and split generation stays balanced."
 
+[[strategies]]
+when = "You are validating a new chat template or tool-call format"
+then = "Inspect formatted prompts and loss_mask spans before treating packing efficiency or training loss as meaningful."
+
 [[errors]]
 name = "tokenizer_mismatch"
 recovery = "Use the same tokenizer and chat template as the downstream model; repack if either changes."
@@ -81,7 +100,12 @@ recovery = "Match pack_size to the downstream seq_length and packed_sequence_siz
 name = "too_many_tiny_shards"
 recovery = "Lower num_shards for small datasets or sampled runs so throughput and split balance remain healthy."
 
+[[errors]]
+name = "bad_loss_masks"
+recovery = "Inspect a few packed records for assistant-only loss masks, especially after changing chat_template, messages_field, tools_field, or tool-call formatting."
+
 [reference]
+skill = "src/nemotron/steps/data_prep/sft_packing/SKILL.md"
 recipe = "src/nemotron/recipes/nano3/stage1_sft/"
 script = "src/nemotron/recipes/nano3/stage1_sft/data_prep.py"
 docs = "src/nemotron/recipes/nano3/stage1_sft/README.md"
@@ -90,5 +114,5 @@ megatron_bridge_readme = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/ma
 megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
 packed_sequences_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/packed-sequences.html"
 skills = [
-  "skills/nemotron-customize/context/nemotron-data-prep.txt",
+  "skills/nemotron-customize/references/context/nemotron-data-prep.txt",
 ]

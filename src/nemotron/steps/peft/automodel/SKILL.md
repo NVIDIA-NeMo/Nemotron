@@ -17,6 +17,9 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 ## Configure
 
+- Set `model.pretrained_model_name_or_path` and keep that exact base recorded
+  with the adapter for later merge.
+- Set `dataset.path_or_dataset_id` to chat-format JSONL.
 - Start with `peft.dim=8` or `16` on tight memory, then increase for harder tasks.
 - Keep `peft.alpha` near `2 * peft.dim` unless there is a reason to tune it.
 - Use smaller base models for single-GPU experiments.
@@ -40,4 +43,5 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Do not run `data_prep/sft_packing`; this step consumes JSONL directly.
 - Reduce rank and sequence length before changing the training wrapper for OOMs.
-- Treat the adapter as a separate artifact until merge and eval have passed.
+- Treat the adapter as a separate artifact until merge and eval have passed,
+  and preserve base/tokenizer/rank/alpha provenance with it.

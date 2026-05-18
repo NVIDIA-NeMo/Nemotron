@@ -17,6 +17,30 @@ Use this skill when a user wants to translate corpus data, chat records, or row-
 6. Run a two-row smoke test before a large corpus.
 7. Validate row count, schema, translated field content, and that secrets were not printed.
 
+For one-shot translation requests, do not end in exploration mode. Provide the
+minimal runnable handoff first:
+
+- `Decision`: chosen step and scope, such as `translation-only` or `translation+FAITH`.
+- `Config`: key fields or config path bound to a concrete input path and format.
+- `Run`: exact command.
+- `Output`: expected output directory and artifacts.
+- `Env`: required environment variable names only, never values.
+
+Before finalizing, make these constraints explicit in prose even when the
+command implies them:
+
+- Input path and format selected for the run.
+- Incompatible inputs excluded, such as mixed JSONL and Parquet roots.
+- Observed language mismatch versus requested translation direction, with the
+  assumption used.
+- Exact model variant used, or the default model assumption if the user gave
+  only a model family.
+- Credential environment variable names used for auth.
+
+For `translation+FAITH`, add a short `FAITH handoff` section that confirms
+`faith_eval.enabled=true`, states any filter assumptions, lists expected
+FAITH-related outputs, and includes the exact run command and output path.
+
 ## Backend Choice
 
 | Need | Backend | Notes |
@@ -95,10 +119,29 @@ uv run --no-sync nemotron steps translation \
 
 - Do not build custom readers or writers first. Use Curator `JsonlReader` or `ParquetReader`, `TranslationStage`, and `JsonlWriter` or `ParquetWriter`.
 - Do not mix JSONL and Parquet in one input directory.
+- If the user provides a mixed-format root, require an explicit include/exclude decision before running.
 - Do not use `merge_scores=true` with `output_mode=replaced`; use `output_mode=both` if scores must be merged.
 - Do not treat `skip_translated=true` as output-directory resume. It only skips input rows that already contain a non-empty translation column.
 - Do not enable FAITH filtering without telling the user that rows may be dropped.
 - Keep API keys in environment variables such as `NVIDIA_API_KEY`, `NGC_API_KEY`, AWS credentials, or Google application credentials.
+- Never run environment-dump commands such as `env`, `printenv`, `set`, or broad `export` listings.
+- For diagnostics, mention only environment variable names and keep values redacted.
+
+## Troubleshooting
+
+- CLI mismatch or unexpected-argument errors: return to the documented command
+  shape in this file and confirm supported flags with `--help`; do not invent
+  alternate subcommands.
+- Missing translation dependencies: run `uv sync --extra translation` first.
+  If an eval/runtime environment still misses basics such as `toml` or
+  `pyyaml`, report the blocker and still provide the runnable handoff.
+- Mixed `.jsonl` and `.parquet` roots: bind `input_path` to one format only and
+  explicitly state excluded paths or formats.
+- Missing `translate/translation` metadata in a runtime workspace: treat it as
+  an environment/path issue, state the blocker, and provide the canonical
+  command for a complete checkout.
+- Path-not-found during validation: inspect actual created paths before
+  retrying; do not guess output roots.
 
 ## Load More
 

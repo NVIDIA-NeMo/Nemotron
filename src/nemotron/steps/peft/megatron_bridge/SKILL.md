@@ -20,6 +20,9 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 
 - Keep `peft.type=lora`.
 - Start with the default `peft.dim`, then reduce it if memory is tight.
+- Set `checkpoint.pretrained_checkpoint` to a real Megatron checkpoint
+  directory and keep adapter outputs separate.
+- Set `load_hf_weights=false` for normal Megatron-checkpoint PEFT starts.
 - Keep packed-data tokenizer and sequence length aligned with the base model.
 - Merge or convert adapters when downstream consumers need HF model layout.
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before reusing packed data.

@@ -54,13 +54,14 @@ data_prep/pretrain_prep → optimize/modelopt/distill → eval/model_eval     # 
 
 ## Workflow
 
-1. **Env profile first** — verify the env profile for Lepton/Slurm/Ray runs
-   (`env.toml` by default, or `NEMOTRON_ENV_FILE` for backend-specific files).
-2. Decide deployment hardware, serving stack, checkpoint format, and quality
+1. Decide deployment hardware, serving stack, checkpoint format, and quality
    budget **before** picking the step.
-3. Read the target step's `step.toml` and `config/default.yaml`.
-4. Smoke with `config/tiny.yaml` (quantize/prune) or
+2. Read the target step's `step.toml` and `config/default.yaml`.
+3. Smoke with `config/tiny.yaml` (quantize/prune) or
    `args.use_mock_data=true` (distill) — these prove the wrapper, not quality.
+4. For remote submission, select the profile from
+   `env/env_toml/config/{lepton,slurm,dgxcloud}.yaml` or the generated env file;
+   do not hardcode profile names here.
 5. Run the full job on representative calibration / distillation data.
 6. Convert the output if the next stage expects a different checkpoint format
    (`convert/megatron_to_hf` after quantize/distill if HF is needed).
@@ -69,9 +70,9 @@ data_prep/pretrain_prep → optimize/modelopt/distill → eval/model_eval     # 
 ## Smoke commands
 
 ```bash
-nemotron steps run optimize/modelopt/quantize -c tiny
-nemotron steps run optimize/modelopt/prune -c tiny
-nemotron steps run optimize/modelopt/distill -c tiny    # uses use_mock_data=true
+uv run nemotron steps run optimize/modelopt/quantize -c tiny --dry-run
+uv run nemotron steps run optimize/modelopt/prune -c tiny --dry-run
+uv run nemotron steps run optimize/modelopt/distill -c tiny --dry-run    # uses use_mock_data=true
 ```
 
 ## Guardrails
