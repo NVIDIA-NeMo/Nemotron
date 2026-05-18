@@ -22,14 +22,13 @@ so we can pull out its ``<Stage>Config`` Pydantic class for the rich help
 panel that ``RecipeMeta(config_model=...)`` powers.
 
 The recipe scripts depend on ``data_designer`` (and other PEP 723 deps) for
-their *runtime* behavior.  For the CLI to introspect them, those deps must
-also be available in the parent CLI environment — install via:
+their *runtime* behavior.  The base CLI should still load when those optional
+deps are absent; in that case rich config-model help is skipped for these
+commands and the scripts resolve their PEP 723 deps at execution time.
+
+Install the optional CLI introspection dependencies with:
 
     uv sync --extra data-sdg
-
-If ``data_designer`` (or any other heavy import) is missing, this loader
-raises with a clear message pointing at the extra rather than silently
-degrading the help panel.
 """
 
 from __future__ import annotations
@@ -79,9 +78,23 @@ def load_recipe_module(script_path: Path, module_alias: str) -> ModuleType:
     return module
 
 
-def load_config_class(script_path: Path, class_name: str, module_alias: str) -> type[BaseModel]:
-    """Load and return the Pydantic config class from a recipe script."""
-    module = load_recipe_module(script_path, module_alias)
+def load_config_class(
+    script_path: Path,
+    class_name: str,
+    module_alias: str,
+) -> type[BaseModel] | None:
+    """Load and return the Pydantic config class from a recipe script.
+
+    Returns ``None`` when optional recipe runtime dependencies are not installed
+    in the parent CLI environment.  ``RecipeTyper`` treats that as "no rich
+    config-model panel", which keeps unrelated CLI commands usable.
+    """
+    try:
+        module = load_recipe_module(script_path, module_alias)
+    except ImportError:
+        sys.modules.pop(module_alias, None)
+        return None
+
     cls = getattr(module, class_name, None)
     if cls is None:
         raise AttributeError(
