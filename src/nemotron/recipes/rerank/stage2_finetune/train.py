@@ -4,8 +4,8 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "rerank/finetune"
-# image = "nvcr.io/nvidia/pytorch:25.12-py3"
-# setup = "PyTorch pre-installed. Stage dependencies resolved via UV at runtime."
+# image = "nvcr.io/nvidia/nemo-automodel:26.04"
+# setup = "NeMo Automodel pre-installed. Stage dependencies resolved via UV at runtime."
 #
 # [tool.runspec.run]
 # launch = "torchrun"

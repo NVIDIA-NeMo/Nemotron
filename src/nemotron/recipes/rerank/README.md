@@ -347,7 +347,7 @@ entity = "my-team"
 # Local Docker execution profile
 [local-docker]
 executor = "docker"
-container_image = "nvcr.io/nvidia/pytorch:25.12-py3"
+container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
 runtime = "nvidia"  # Enable GPU passthrough
 ipc_mode = "host"
 shm_size = "16g"
@@ -362,7 +362,7 @@ executor = "slurm"
 account = "my-account"
 partition = "interactive"
 batch_partition = "batch"
-container_image = "nvcr.io/nvidia/pytorch:25.12-py3"
+container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
 tunnel = "ssh"
 host = "cluster.example.com"
 user = "username"

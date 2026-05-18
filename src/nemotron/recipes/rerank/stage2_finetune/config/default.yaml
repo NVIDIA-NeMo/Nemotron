@@ -14,7 +14,7 @@
 run:
   env:
     # Container image for remote execution (Docker/Slurm)
-    container: nvcr.io/nvidia/pytorch:25.12-py3
+    container: nvcr.io/nvidia/nemo-automodel:26.04
 
 # Base reranking model to fine-tune
 base_model: nvidia/llama-nemotron-rerank-1b-v2
