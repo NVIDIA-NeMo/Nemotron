@@ -12,9 +12,9 @@
 
 ## Starter Configs
 
-```{literalinclude} ../../../../src/nemotron/steps/sft/megatron_bridge/config/nano3.yaml
+```{literalinclude} ../../../../src/nemotron/steps/sft/megatron_bridge/config/default.yaml
 :language: yaml
-:caption: config/nano3.yaml
+:caption: config/default.yaml
 ```
 
 ```{literalinclude} ../../../../src/nemotron/steps/sft/megatron_bridge/config/tiny.yaml

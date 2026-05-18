@@ -106,7 +106,7 @@ skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
 
 [[errors]]
 name = "missing_packed_data"
-recovery = "run data_prep/sft_packing first, or point dataset.nano3_packed_sft_dir at the packed splits directory"
+recovery = "run data_prep/sft_packing first, or point dataset.packed_sequence_specs.packed_train_data_path at the packed splits directory"
 
 [[errors]]
 name = "bad_parallel_batch_shape"

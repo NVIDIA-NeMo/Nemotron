@@ -48,7 +48,7 @@ from megatron.bridge.training.finetune import finetune
 
 from nemotron.steps._runners.megatron_bridge import run_megatron_bridge
 
-DEFAULT_CONFIG = Path(__file__).parent / "config" / "nano3.yaml"
+DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 DEFAULT_RECIPE = "megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config"
 
 
