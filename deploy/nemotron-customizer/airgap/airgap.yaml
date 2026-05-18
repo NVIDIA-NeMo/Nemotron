@@ -54,7 +54,7 @@ dependencies:
 # Step -> execution-image mapping. The runner only uses entries reached from
 # workflow.stages after dependency expansion.
 step_execution_images:
-  byob: nemo-data-designer
+  byob/mcq: nemo-data-designer
   convert/hf_to_megatron: nemo-megatron
   convert/megatron_to_hf: nemo-megatron
   convert/merge_lora: nemo-megatron
@@ -77,7 +77,7 @@ step_execution_images:
   sdg/data_designer: nemo-data-designer
   sft/automodel: nemo-automodel
   sft/megatron_bridge: nemo-megatron
-  translate/translation: nemo-curator
+  translate/curator: nemo-curator
 
 execution_images:
   launcher-python:

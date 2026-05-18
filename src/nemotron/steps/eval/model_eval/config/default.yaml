@@ -39,15 +39,6 @@ execution:
   auto_export:
     destinations:
       - wandb
-  env_vars:
-    deployment:
-      HF_HOME: ${run.env.remote_job_dir}/hf
-      HF_TOKEN: HF_TOKEN
-      NIM_CACHE_PATH: ${run.env.remote_job_dir}/nim
-      VLLM_CACHE_ROOT: ${run.env.remote_job_dir}/vllm
-    evaluation:
-      HF_HOME: ${run.env.remote_job_dir}/hf
-      HF_TOKEN: HF_TOKEN
   mounts:
     deployment: {}
     evaluation: {}
@@ -61,6 +52,11 @@ deployment:
   port: 1235
   served_model_name: nemo-model
   health_check_path: /v1/health
+  env_vars:
+    HF_HOME: lit:${run.env.remote_job_dir}/hf
+    HF_TOKEN: host:HF_TOKEN
+    NIM_CACHE_PATH: lit:${run.env.remote_job_dir}/nim
+    VLLM_CACHE_ROOT: lit:${run.env.remote_job_dir}/vllm
   command: >-
     bash -c 'export TRITON_CACHE_DIR=/tmp/triton_cache;
     python /opt/Export-Deploy/scripts/deploy/nlp/deploy_ray_inframework.py
@@ -76,6 +72,9 @@ deployment:
     health: /v1/health
 
 evaluation:
+  env_vars:
+    HF_HOME: lit:${run.env.remote_job_dir}/hf
+    HF_TOKEN: host:HF_TOKEN
   nemo_evaluator_config:
     config:
       params:
@@ -102,7 +101,7 @@ evaluation:
       nemo_evaluator_config:
         config:
           params:
-            top_p: 0.0
+            top_p: 1.0
     - name: hellaswag
 
 export:

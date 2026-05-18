@@ -28,10 +28,10 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch slurm_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch slurm_optimize_modelopt_prune
   #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch slurm_eval_model_eval
-  #   uv run nemotron steps run byob -c tiny --batch slurm_byob_cpu stage=all
-  #   uv run nemotron steps run byob -c tiny --batch slurm_byob_full stage=all
+  #   uv run nemotron steps run byob/mcq -c tiny --batch slurm_byob_cpu stage=all
+  #   uv run nemotron steps run byob/mcq -c tiny --batch slurm_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch slurm_sdg_data_designer_tiny
-  #   uv run nemotron steps run translate/translation -c default --batch slurm_translate
+  #   uv run nemotron steps run translate/curator -c default --batch slurm_translate
   #   uv run nemotron steps run curate/nemo_curator -c tiny --batch slurm_curate
 
 checks:
@@ -133,7 +133,7 @@ sections:
       RAY_RUNTIME_ENV_PYTHONPATH: /nemo_run/code/src
       RAY_MAX_LIMIT_FROM_API_SERVER: "100000"
 
-  # Curator-backed steps: byob, translate, and curate all use the Curator
+  # Curator-backed steps: byob/mcq, translate/curator, and curate all use the Curator
   # container and install their Python runtime through the generic curator_runtime
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   slurm_curator_base:
@@ -152,7 +152,7 @@ sections:
   # disabled. Those optional stages need the GPU/RAPIDS profile below.
   slurm_byob_cpu:
     extends: slurm_curator_base
-    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m nemotron.steps.byob.step --config {config}
+    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m nemotron.steps.byob.mcq.step --config {config}
     env_vars:
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
       NGC_API_KEY: ${oc.env:NGC_API_KEY,''}
@@ -169,6 +169,7 @@ sections:
     cpus_per_task: 8
     gpus_per_node: 1
     time: "02:00:00"
+    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob-gpu -- python -m nemotron.steps.byob.mcq.step --config {config}
 
   # sdg/data_designer: CPU-only synthetic generation through remote model
   # endpoints. Config variants choose SFT vs tool-call vs RL preference output.
@@ -209,7 +210,7 @@ sections:
     env_vars:
       SDG_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sdg/rl/rl_pref
 
-  # translate/translation: uses the translate Curator runtime profile.
+  # translate/curator: uses the translate Curator runtime profile.
   slurm_translate:
     extends: slurm_curator_base
     partition: ${oc.env:SLURM_GPU_PARTITION,${oc.env:SLURM_PARTITION,batch}}
@@ -220,7 +221,7 @@ sections:
     cpus_per_task: 8
     gpus_per_node: 1
     time: "02:00:00"
-    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile translate -- python -m nemotron.steps.translate.translation.step --config {config}
+    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile translate -- python -m nemotron.steps.translate.curator.step --config {config}
     env_vars:
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
       NGC_API_KEY: ${oc.env:NGC_API_KEY,''}

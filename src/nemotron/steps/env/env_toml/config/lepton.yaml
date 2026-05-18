@@ -30,10 +30,10 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch lepton_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch lepton_optimize_modelopt_prune
   #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch lepton_eval_model_eval
-  #   uv run nemotron steps run byob -c tiny --batch lepton_byob_cpu stage=all
-  #   uv run nemotron steps run byob -c tiny --batch lepton_byob_full stage=all
+  #   uv run nemotron steps run byob/mcq -c tiny --batch lepton_byob_cpu stage=all
+  #   uv run nemotron steps run byob/mcq -c tiny --batch lepton_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch lepton_sdg_data_designer_tiny
-  #   uv run nemotron steps run translate/translation -c default --batch lepton_translate
+  #   uv run nemotron steps run translate/curator -c default --batch lepton_translate
   #   uv run nemotron steps run curate/nemo_curator -c tiny --batch lepton_curate
 
 checks:
@@ -135,7 +135,7 @@ sections:
       RL_OUTPUT_DIR: ${oc.env:RL_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/rl_prep}
       RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
 
-  # Curator-backed steps: byob, translate, and curate all use the Curator
+  # Curator-backed steps: byob/mcq, translate/curator, and curate all use the Curator
   # container and install their Python runtime through the generic curator_runtime
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   lepton_curator_base:
@@ -156,7 +156,7 @@ sections:
   # disabled. Those optional stages need the GPU/RAPIDS profile below.
   lepton_byob_cpu:
     extends: lepton_curator_base
-    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m nemotron.steps.byob.step --config {config}
+    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m nemotron.steps.byob.mcq.step --config {config}
     env_vars:
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
       NGC_API_KEY: ${oc.env:NGC_API_KEY,''}
@@ -168,6 +168,7 @@ sections:
     resource_shape: ${oc.env:LEPTON_BYOB_GPU_SHAPE,gpu.a100-80gb}
     gpus_per_node: 1
     shared_memory_size: 8192
+    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob-gpu -- python -m nemotron.steps.byob.mcq.step --config {config}
 
   # sdg/data_designer: CPU-only synthetic generation through remote model
   # endpoints. Config variants choose SFT vs tool-call vs RL preference output.
@@ -203,13 +204,13 @@ sections:
     env_vars:
       SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/rl/rl_pref}
 
-  # translate/translation: uses the translate Curator runtime profile.
+  # translate/curator: uses the translate Curator runtime profile.
   lepton_translate:
     extends: lepton_curator_base
     resource_shape: ${oc.env:LEPTON_TRANSLATE_GPU_SHAPE,gpu.a100-80gb}
     gpus_per_node: 1
     shared_memory_size: 8192
-    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile translate -- python -m nemotron.steps.translate.translation.step --config {config}
+    run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile translate -- python -m nemotron.steps.translate.curator.step --config {config}
     env_vars:
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
       NGC_API_KEY: ${oc.env:NGC_API_KEY,''}

@@ -21,13 +21,13 @@ The translation sub-stages operate on Curator `DocumentBatch` objects in memory.
 Install translation dependencies before running locally:
 
 ```bash
-uv sync --extra translation
+uv sync --extra translate
 ```
 
 If a QA environment needs BYOB and SDG in the same run:
 
 ```bash
-uv sync --extra translation --extra byob --extra data-sdg --group run
+uv sync --extra translate --extra byob --extra data-sdg --group run
 ```
 
 For package-resource validation, confirm Curator prompt files are visible from the installed environment:

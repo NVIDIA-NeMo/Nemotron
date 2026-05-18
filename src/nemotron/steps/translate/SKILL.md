@@ -9,7 +9,7 @@ Use this skill when a user wants to translate corpus data, chat records, or row-
 
 ## Default Workflow
 
-1. Install runtime dependencies with `uv sync --extra translation`.
+1. Install runtime dependencies with `uv sync --extra translate`.
 2. Read [`curator/step.toml`](curator/step.toml) for the step contract.
 3. Ask for `source_language`, `target_language`, input path, output path, backend, and field path. Do not infer source or target language silently.
 4. For downstream training data, start with `output_mode=replaced`, `merge_scores=false`, and `faith_eval.enabled=false`.
@@ -132,7 +132,7 @@ uv run --no-sync nemotron steps run translate/curator \
 - CLI mismatch or unexpected-argument errors: return to the documented command
   shape in this file and confirm supported flags with `--help`; do not invent
   alternate subcommands.
-- Missing translation dependencies: run `uv sync --extra translation` first.
+- Missing translation dependencies: run `uv sync --extra translate` first.
   If an eval/runtime environment still misses basics such as `toml` or
   `pyyaml`, report the blocker and still provide the runnable handoff.
 - Mixed `.jsonl` and `.parquet` roots: bind `input_path` to one format only and

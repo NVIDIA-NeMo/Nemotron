@@ -14,8 +14,8 @@ def _ctx(*, env: dict[str, object], cmd: str | None = None) -> JobContext:
         resources=None,
     )
     return JobContext(
-        step_id="byob",
-        script_path=Path("/repo/src/nemotron/steps/byob/step.py"),
+        step_id="byob/mcq",
+        script_path=Path("/repo/src/nemotron/steps/byob/mcq/step.py"),
         train_path=Path("/repo/.nemotron/train.yaml"),
         spec=spec,
         env=env,
@@ -30,20 +30,20 @@ def _ctx(*, env: dict[str, object], cmd: str | None = None) -> JobContext:
 def test_slurm_backend_honors_env_run_command() -> None:
     command = (
         "python -m nemotron.steps._bootstrap.curator_runtime --profile byob "
-        "-- python -m nemotron.steps.byob.step --config {config}"
+        "-- python -m nemotron.steps.byob.mcq.step --config {config}"
     )
 
     assert SlurmBackend._build_cmd(_ctx(env={"run_command": command})) == (
         "export PYTHONPATH=/nemo_run/code/src${PYTHONPATH:+:$PYTHONPATH}; "
         "python -m nemotron.steps._bootstrap.curator_runtime --profile byob "
-        "-- python -m nemotron.steps.byob.step --config config.yaml"
+        "-- python -m nemotron.steps.byob.mcq.step --config config.yaml"
     )
 
 
 def test_slurm_backend_uses_code_packager_for_curator_runtime() -> None:
     command = (
         "python -m nemotron.steps._bootstrap.curator_runtime --profile byob "
-        "-- python -m nemotron.steps.byob.step --config {config}"
+        "-- python -m nemotron.steps.byob.mcq.step --config {config}"
     )
 
     assert SlurmBackend._uses_code_packager(_ctx(env={"run_command": command}))

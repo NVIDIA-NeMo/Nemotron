@@ -64,7 +64,7 @@ audio = [
 # `uv run --no-project` (they declare their own PEP 723 inline deps).
 data-sdg = ["data-designer==0.5.5; python_version>='3.11' and python_version<'3.14'"]
 byob = [
-    # BYOB uses Curator's current translation and semantic dedup stack, which is Python 3.11+.
+    # BYOB CPU/runtime dependencies. GPU semantic-dedup/outlier dependencies live in `byob-gpu`.
     "cosmos-xenna>=0.2,<0.3; python_version>='3.11' and python_version<'3.14'",
     "data-designer==0.5.5; python_version>='3.11' and python_version<'3.14'",
     "nemo-curator[translation_all] @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
@@ -85,13 +85,15 @@ byob = [
     "jinja2>=3.1,<4; python_version>='3.11'",
     "loguru>=0.7,<1; python_version>='3.11'",
     "tabulate>=0.9,<1; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
+]
+byob-gpu = [
     "torch>=2.10,<2.11; python_version>='3.11'",
     "transformers>=4.56.0,<5.0; python_version>='3.11'",
     "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
     "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
-    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
-    "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
-    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
     "cupy-cuda12x>=14.0,<15; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
     "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
     "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
@@ -104,10 +106,24 @@ byob = [
 ]
 translate = [
     "nemo-curator[translation_all] @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
+    "pyarrow>=14.0.0; python_version>='3.11'",
+    "pyyaml>=6.0; python_version>='3.11'",
+    "obstore>=0.8,<0.9; python_version>='3.11'",
+    "portpicker>=1.6,<2; python_version>='3.11'",
+    "pulp>=3.3,<4; python_version>='3.11'",
+    "attrs>=25.4,<26; python_version>='3.11'",
+    "cattrs>=25.3,<26; python_version>='3.11'",
+    "jinja2>=3.1,<4; python_version>='3.11'",
+    "loguru>=0.7,<1; python_version>='3.11'",
+    "tabulate>=0.9,<1; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
 ]
 evaluator = ["nemo-evaluator-launcher>=0.1.0"]
 curate = [
     "nemo-curator @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
+    "huggingface_hub>=0.20.0; python_version>='3.11'",
+    "pyyaml>=6.0; python_version>='3.11'",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -214,6 +230,33 @@ override-dependencies = [
 extras = ["byob"]
 venv-name = "byob"
 extra-index-urls = ["https://pypi.nvidia.com"]
+omit-packages = ["nemo-curator"]
+required-imports = [
+    "bcp47",
+    "cattrs",
+    "data_designer",
+    "datasets",
+    "jinja2",
+    "loguru",
+    "nemo_curator",
+    "numpy",
+    "obstore",
+    "pandas",
+    "portpicker",
+    "pulp",
+    "pyarrow",
+    "pydantic",
+    "requests",
+    "sacrebleu",
+    "tabulate",
+    "tqdm",
+    "yaml",
+]
+
+[tool.nemotron.runtime.byob-gpu]
+extras = ["byob", "byob-gpu"]
+venv-name = "byob-gpu"
+extra-index-urls = ["https://pypi.nvidia.com"]
 torch-backend = "cu128"
 omit-packages = ["nemo-curator"]
 required-imports = [
@@ -244,10 +287,9 @@ required-imports = [
 spec-only-imports = ["cudf", "cuml", "cupy"]
 
 [tool.nemotron.runtime.translate]
-extras = ["byob"]
+extras = ["translate"]
 venv-name = "translate"
 extra-index-urls = ["https://pypi.nvidia.com"]
-torch-backend = "cu128"
 omit-packages = ["nemo-curator"]
 required-imports = [
     "bcp47",
@@ -265,10 +307,9 @@ required-imports = [
 ]
 
 [tool.nemotron.runtime.curate]
-extras = ["byob"]
+extras = ["curate"]
 venv-name = "curate"
 extra-index-urls = ["https://pypi.nvidia.com"]
-torch-backend = "cu128"
 omit-packages = ["nemo-curator"]
 required-imports = [
     "huggingface_hub",

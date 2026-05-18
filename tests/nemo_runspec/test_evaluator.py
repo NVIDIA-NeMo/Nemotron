@@ -235,24 +235,24 @@ class TestNeedsWandb:
 class TestInjectWandbEnvMappings:
     """Tests for inject_wandb_env_mappings."""
 
-    def test_injects_evaluation_env_vars(self):
+    def test_injects_top_level_env_vars(self):
         cfg = OmegaConf.create({"evaluation": {}, "execution": {}})
         inject_wandb_env_mappings(cfg)
-        assert cfg.evaluation.env_vars.WANDB_API_KEY == "WANDB_API_KEY"
-        assert cfg.evaluation.env_vars.WANDB_PROJECT == "WANDB_PROJECT"
-        assert cfg.evaluation.env_vars.WANDB_ENTITY == "WANDB_ENTITY"
+        assert cfg.env_vars.WANDB_API_KEY == "host:WANDB_API_KEY"
+        assert cfg.env_vars.WANDB_PROJECT == "host:WANDB_PROJECT"
+        assert cfg.env_vars.WANDB_ENTITY == "host:WANDB_ENTITY"
 
-    def test_injects_export_env_vars(self):
+    def test_does_not_inject_removed_execution_env_vars(self):
         cfg = OmegaConf.create({"evaluation": {}, "execution": {}})
         inject_wandb_env_mappings(cfg)
-        assert cfg.execution.env_vars.export.WANDB_API_KEY == "WANDB_API_KEY"
+        assert "env_vars" not in cfg.execution
 
     def test_does_not_overwrite_existing(self):
         cfg = OmegaConf.create(
-            {"evaluation": {"env_vars": {"WANDB_API_KEY": "CUSTOM"}}, "execution": {}}
+            {"env_vars": {"WANDB_API_KEY": "CUSTOM"}, "evaluation": {}, "execution": {}}
         )
         inject_wandb_env_mappings(cfg)
-        assert cfg.evaluation.env_vars.WANDB_API_KEY == "CUSTOM"
+        assert cfg.env_vars.WANDB_API_KEY == "CUSTOM"
 
 
 class TestCollectEvaluatorImages:

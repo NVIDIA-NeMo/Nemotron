@@ -163,15 +163,15 @@ def ensure_wandb_host_env() -> None:
 def inject_wandb_env_mappings(cfg: Any) -> None:
     """Inject W&B env var mappings into evaluator config.
 
-    The nemo-evaluator-launcher expects:
-    - evaluation.env_vars: mapping of container env var -> host env var name
-    - execution.env_vars.export: env vars for the W&B export container
+    The nemo-evaluator-launcher expects env vars at the top level for values
+    shared by deployment, evaluation, and export jobs. Values use explicit
+    prefixes such as ``host:WANDB_API_KEY``.
 
     This function adds the WANDB_API_KEY (and optionally PROJECT/ENTITY)
     mappings so the launcher knows to forward these from the host environment.
 
-    Note: This only adds string mappings (e.g., "WANDB_API_KEY": "WANDB_API_KEY"),
-    not actual secrets. The launcher resolves these via os.getenv() at runtime.
+    Note: This only adds string mappings, not actual secrets. The launcher
+    resolves these from the host environment at runtime.
 
     Args:
         cfg: Job configuration (OmegaConf DictConfig) - modified in place
@@ -189,29 +189,17 @@ def inject_wandb_env_mappings(cfg: Any) -> None:
             current = current[key]
         return current
 
-    # Inject into evaluation.env_vars (for evaluation containers)
+    # Inject into top-level env_vars so deployment/evaluation/export jobs can
+    # all inherit W&B settings without using the removed execution.env_vars key.
     try:
-        eval_env = _ensure_nested(cfg, "evaluation", "env_vars")
-        with open_dict(eval_env):
-            if "WANDB_API_KEY" not in eval_env:
-                eval_env["WANDB_API_KEY"] = "WANDB_API_KEY"
-            if "WANDB_PROJECT" not in eval_env:
-                eval_env["WANDB_PROJECT"] = "WANDB_PROJECT"
-            if "WANDB_ENTITY" not in eval_env:
-                eval_env["WANDB_ENTITY"] = "WANDB_ENTITY"
-    except Exception:
-        pass  # Config structure doesn't support this
-
-    # Inject into execution.env_vars.export (for W&B export container)
-    try:
-        export_env = _ensure_nested(cfg, "execution", "env_vars", "export")
-        with open_dict(export_env):
-            if "WANDB_API_KEY" not in export_env:
-                export_env["WANDB_API_KEY"] = "WANDB_API_KEY"
-            if "WANDB_PROJECT" not in export_env:
-                export_env["WANDB_PROJECT"] = "WANDB_PROJECT"
-            if "WANDB_ENTITY" not in export_env:
-                export_env["WANDB_ENTITY"] = "WANDB_ENTITY"
+        env_vars = _ensure_nested(cfg, "env_vars")
+        with open_dict(env_vars):
+            if "WANDB_API_KEY" not in env_vars:
+                env_vars["WANDB_API_KEY"] = "host:WANDB_API_KEY"
+            if "WANDB_PROJECT" not in env_vars:
+                env_vars["WANDB_PROJECT"] = "host:WANDB_PROJECT"
+            if "WANDB_ENTITY" not in env_vars:
+                env_vars["WANDB_ENTITY"] = "host:WANDB_ENTITY"
     except Exception:
         pass  # Config structure doesn't support this
 

@@ -8,7 +8,9 @@ from nemotron.steps.byob.runtime.config import ByobConfig
 
 
 def test_checked_in_tiny_config_validates(tmp_path: Path) -> None:
-    config_path = Path(__file__).resolve().parents[3] / "src" / "nemotron" / "steps" / "byob" / "config" / "tiny.yaml"
+    config_path = (
+        Path(__file__).resolve().parents[3] / "src" / "nemotron" / "steps" / "byob" / "mcq" / "config" / "tiny.yaml"
+    )
     config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     input_dir = tmp_path / "input"
     (input_dir / "maths").mkdir(parents=True)

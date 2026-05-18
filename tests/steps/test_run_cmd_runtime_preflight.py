@@ -11,7 +11,7 @@ from nemotron.steps._bootstrap import runtime_payloads
 
 def _write_step_tree(root: Path) -> Path:
     (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
-    script_path = root / "src" / "nemotron" / "steps" / "byob" / "step.py"
+    script_path = root / "src" / "nemotron" / "steps" / "byob" / "mcq" / "step.py"
     script_path.parent.mkdir(parents=True)
     script_path.write_text("", encoding="utf-8")
     return script_path
@@ -76,7 +76,7 @@ def test_curator_runtime_env_vars_uses_packaged_runtime_when_not_source_checkout
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    script_path = tmp_path / "site-packages" / "nemotron" / "steps" / "byob" / "step.py"
+    script_path = tmp_path / "site-packages" / "nemotron" / "steps" / "byob" / "mcq" / "step.py"
     script_path.parent.mkdir(parents=True)
     script_path.write_text("", encoding="utf-8")
     encode_calls = []
@@ -106,7 +106,7 @@ def test_curator_runtime_env_vars_fail_fast_without_source_or_packaged_runtime(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    script_path = tmp_path / "site-packages" / "nemotron" / "steps" / "byob" / "step.py"
+    script_path = tmp_path / "site-packages" / "nemotron" / "steps" / "byob" / "mcq" / "step.py"
     script_path.parent.mkdir(parents=True)
     script_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(runtime_payloads, "read_runtime_payloads", lambda: [])

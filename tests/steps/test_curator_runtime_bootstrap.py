@@ -20,7 +20,17 @@ version = "0"
 byob = [
     "data-designer==0.5.5",
     "nemo-curator[translation_all] @ git+https://example.invalid/Curator.git",
+]
+byob-gpu = [
     "cupy-cuda12x==14.0.1",
+]
+translate = [
+    "nemo-curator[translation_all] @ git+https://example.invalid/Curator.git",
+    "sacrebleu==2.6.0",
+]
+curate = [
+    "nemo-curator @ git+https://example.invalid/Curator.git",
+    "pyyaml==6.0.2",
 ]
 
 [tool.uv]
@@ -31,24 +41,29 @@ override-dependencies = ["torch==2.10.0"]
 extras = ["byob"]
 venv-name = "byob"
 extra-index-urls = ["https://pypi.nvidia.com"]
+omit-packages = ["nemo-curator"]
+required-imports = ["data_designer"]
+
+[tool.nemotron.runtime.byob-gpu]
+extras = ["byob", "byob-gpu"]
+venv-name = "byob-gpu"
+extra-index-urls = ["https://pypi.nvidia.com"]
 torch-backend = "cu128"
 omit-packages = ["nemo-curator"]
 required-imports = ["data_designer"]
 spec-only-imports = ["cupy"]
 
 [tool.nemotron.runtime.translate]
-extras = ["byob"]
+extras = ["translate"]
 venv-name = "translate"
 extra-index-urls = ["https://pypi.nvidia.com"]
-torch-backend = "cu128"
 omit-packages = ["nemo-curator"]
 required-imports = ["nemo_curator", "yaml"]
 
 [tool.nemotron.runtime.curate]
-extras = ["byob"]
+extras = ["curate"]
 venv-name = "curate"
 extra-index-urls = ["https://pypi.nvidia.com"]
-torch-backend = "cu128"
 omit-packages = ["nemo-curator"]
 required-imports = ["huggingface_hub", "nemo_curator", "yaml"]
 """.lstrip(),
@@ -83,7 +98,7 @@ def _write_runtime_manifest(root: Path) -> Path:
                 "spec_only_modules": ["cupy"] if name == "byob" else [],
                 "digest": "abc123",
             }
-            for name in ("byob", "translate", "curate")
+            for name in ("byob", "byob-gpu", "translate", "curate")
         },
     }
     (runtime_dir / "runtime.json").write_text(json.dumps(manifest), encoding="utf-8")
@@ -117,13 +132,19 @@ def test_named_curator_runtime_profiles_from_pyproject(tmp_path: Path) -> None:
     _write_pyproject(tmp_path)
     metadata = curator_runtime._find_project_metadata(tmp_path)  # noqa: SLF001
 
-    profiles = {name: curator_runtime.load_runtime_spec(name, metadata) for name in ("byob", "translate", "curate")}
+    profiles = {
+        name: curator_runtime.load_runtime_spec(name, metadata)
+        for name in ("byob", "byob-gpu", "translate", "curate")
+    }
 
-    assert set(profiles) == {"byob", "translate", "curate"}
+    assert set(profiles) == {"byob", "byob-gpu", "translate", "curate"}
+    assert profiles["byob-gpu"].venv_name == "byob-gpu"
     assert profiles["translate"].venv_name == "translate"
     assert profiles["curate"].venv_name == "curate"
-    assert profiles["translate"].extras == ("byob",)
-    assert profiles["curate"].extras == ("byob",)
+    assert profiles["byob"].extras == ("byob",)
+    assert profiles["byob-gpu"].extras == ("byob", "byob-gpu")
+    assert profiles["translate"].extras == ("translate",)
+    assert profiles["curate"].extras == ("curate",)
 
 
 def test_build_requirement_files_from_pyproject_extra(tmp_path: Path) -> None:
@@ -140,10 +161,16 @@ def test_build_requirement_files_from_pyproject_extra(tmp_path: Path) -> None:
     overrides = paths["overrides"].read_text(encoding="utf-8")
 
     assert "data-designer==0.5.5" in requirements
-    assert "cupy-cuda12x==14.0.1" in requirements
+    assert "cupy-cuda12x==14.0.1" not in requirements
     assert "nemo-curator" not in requirements
     assert "transformers>=4.56.0,<5.0" in constraints
     assert "torch==2.10.0" in overrides
+
+    gpu_spec = curator_runtime.load_runtime_spec("byob-gpu", metadata)
+    gpu_paths = curator_runtime._build_requirement_files(metadata, gpu_spec, work_dir)  # noqa: SLF001
+    gpu_requirements = gpu_paths["requirements"].read_text(encoding="utf-8")
+    assert "data-designer==0.5.5" in gpu_requirements
+    assert "cupy-cuda12x==14.0.1" in gpu_requirements
 
 
 def test_runtime_payloads_ship_uv_constraints_and_overrides(
@@ -158,12 +185,13 @@ def test_runtime_payloads_ship_uv_constraints_and_overrides(
     manifest = json.loads((output_dir / "runtime.json").read_text(encoding="utf-8"))
     byob = manifest["profiles"]["byob"]
 
-    assert set(manifest["profiles"]) == {"byob", "curate", "translate"}
+    assert set(manifest["profiles"]) == {"byob", "byob-gpu", "curate", "translate"}
     assert byob["requirements"] == "byob.requirements.txt"
     assert byob["constraints"] == "byob.constraints.txt"
     assert byob["overrides"] == "byob.overrides.txt"
-    assert manifest["profiles"]["translate"]["requirements"] == "byob.requirements.txt"
-    assert manifest["profiles"]["curate"]["requirements"] == "byob.requirements.txt"
+    assert manifest["profiles"]["byob-gpu"]["requirements"] == "byob-gpu.requirements.txt"
+    assert manifest["profiles"]["translate"]["requirements"] == "translate.requirements.txt"
+    assert manifest["profiles"]["curate"]["requirements"] == "curate.requirements.txt"
     assert (output_dir / "byob.constraints.txt").read_text(encoding="utf-8") == "transformers>=4.56.0,<5.0\n"
     assert (output_dir / "byob.overrides.txt").read_text(encoding="utf-8") == "torch==2.10.0\n"
 
@@ -272,9 +300,9 @@ def test_normalize_command_replaces_python_with_runtime_python(tmp_path: Path) -
     runtime_python = tmp_path / "venv" / "bin" / "python"
 
     assert curator_runtime._normalize_command(  # noqa: SLF001
-        ["--", "python", "-m", "nemotron.steps.byob.step"],
+        ["--", "python", "-m", "nemotron.steps.byob.mcq.step"],
         runtime_python,
-    ) == [str(runtime_python), "-m", "nemotron.steps.byob.step"]
+    ) == [str(runtime_python), "-m", "nemotron.steps.byob.mcq.step"]
 
 
 def test_normalize_command_requires_payload(tmp_path: Path) -> None:

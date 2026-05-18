@@ -46,7 +46,7 @@ generation_model_config: &tiny_model
 judge_model_config: *tiny_model
 
 semantic_deduplication_config:
-  enabled: true
+  enabled: false
   model_identifier: sentence-transformers/all-MiniLM-L6-v2
   n_clusters: 1
   eps: 0.07
@@ -55,7 +55,7 @@ semantic_deduplication_config:
 do_distractor_expansion: true
 distractor_expansion_model_config: *tiny_model
 
-do_coverage_check: true
+do_coverage_check: false
 coverage_check_config:
   model_identifier: null
   window_size: null
@@ -63,7 +63,7 @@ coverage_check_config:
 distractor_validity_model_config: *tiny_model
 
 semantic_outlier_detection_config:
-  enabled: true
+  enabled: false
   model_identifier: sentence-transformers/all-MiniLM-L6-v2
   n_neighbours_min: 1
   remove_outliers: false

@@ -57,7 +57,7 @@ The loader in `src/nemo_runspec/env.py` searches for repository-root `env.toml` 
 - For RLHF with GenRM, budget physical Ray nodes for policy/generation, NeMo-Gym GPU servers, and extra placement headroom. For example, a small logical `cluster.num_nodes=2` plus `env.nemo_gym.num_gpu_nodes=1` should use a 4x8-GPU Lepton profile until proven stable.
 - Use separate image bases: NeMo for Megatron Bridge, NeMo-RL `nvcr.io/nvidia/nemo-rl:v0.6.0` for DPO/RLVR/RLHF, NeMo-AutoModel for AutoModel, and NeMo 26.02 for ModelOpt.
 - For DGX Cloud profiles, keep Run:AI credentials and client secrets as `${oc.env:...}` placeholders, use existing PVC declarations for shared storage, and keep `pvc_nemo_run_dir` on the mounted workspace path.
-- Use Curator image profiles for `byob`, `translate/translation`, and `curate/nemo_curator`; use the normal NeMo image with `data-designer==0.5.5` for `sdg/data_designer`.
+- Use Curator image profiles for `byob/mcq`, `translate/curator`, and `curate/nemo_curator`; use the normal NeMo image with `data-designer==0.5.5` for `sdg/data_designer`.
 - For Lepton NeMo-RL profiles, keep `ray_version` on the latest workspace-supported Ray version. NeMo-RL v0.6.0 pins Ray 2.54 upstream, but some Lepton workspaces may only accept older Ray versions such as 2.48.0.
 - Keep functional runner `gpu_count` aligned with the env profile, not only the step config.
 

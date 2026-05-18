@@ -100,7 +100,7 @@ Evidence to collect: command logs, CLI help snippets, and final exit status.
 Prerequisites: Network access to package indexes and Git dependencies.
 
 ```bash
-uv sync --extra translation --extra byob --extra data-sdg --extra evaluator --group run
+uv sync --extra translate --extra byob --extra data-sdg --extra evaluator --group run
 
 # For this RC, install Curator from source so translation prompt resources are
 # available from site-packages.
@@ -223,7 +223,7 @@ cp "$TR_ROOT/news_en.parquet" "$TR_ROOT/mixed_dir/shard_0002.parquet"
 
 ### TR-001 Discover Translation Step
 
-Prerequisites: Translation extra installed with `uv sync --extra translation`; test data from `Test Data Setup`.
+Prerequisites: Translation extra installed with `uv sync --extra translate`; test data from `Test Data Setup`.
 
 ```bash
 uv run --no-sync nemotron steps show translate/curator
