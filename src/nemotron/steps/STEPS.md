@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | [convert/hf_to_megatron](convert/hf_to_megatron/) | Convert a HuggingFace safetensors checkpoint to Megatron distributed format. | checkpoint_hf | checkpoint_megatron |
 | [convert/megatron_to_hf](convert/megatron_to_hf/) | Convert a Megatron distributed checkpoint to HuggingFace safetensors format. | checkpoint_megatron | checkpoint_hf |
-| [convert/merge_lora](convert/merge_lora/) | Merge a LoRA adapter into the base model to produce a standalone HuggingFace checkpoint. | checkpoint_lora, checkpoint_hf | checkpoint_hf |
+| [convert/merge_lora](convert/merge_lora/) | Merge a LoRA adapter into its original base model, producing a standalone HuggingFace checkpoint. | checkpoint_lora, checkpoint_hf, checkpoint_megatron (optional) | checkpoint_hf, checkpoint_megatron (optional) |
 
 ## curate — Data Curation
 

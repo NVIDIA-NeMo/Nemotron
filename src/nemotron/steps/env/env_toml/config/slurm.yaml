@@ -21,6 +21,9 @@ preamble: |
   #   uv run nemotron steps run sft/automodel -c tiny --batch slurm_sft_automodel
   #   uv run nemotron steps run peft/megatron_bridge -c tiny --batch slurm_peft_megatron_bridge
   #   uv run nemotron steps run peft/automodel -c tiny --batch slurm_peft_automodel
+  #   uv run nemotron steps run convert/hf_to_megatron -c default --batch slurm_convert_model
+  #   uv run nemotron steps run convert/megatron_to_hf -c default --batch slurm_convert_model
+  #   uv run nemotron steps run convert/merge_lora -c default --batch slurm_convert_model
   #   uv run nemotron steps run rl/nemo_rl/dpo -c tiny --batch slurm_rl_nemo_rl_dpo
   #   uv run nemotron steps run rl/nemo_rl/rlvr -c tiny --batch slurm_rl_nemo_rl_rlvr
   #   uv run nemotron steps run rl/nemo_rl/rlhf -c tiny --batch slurm_rl_nemo_rl_rlhf
@@ -48,6 +51,7 @@ checks:
     - slurm_sft_automodel
     - slurm_peft_megatron_bridge
     - slurm_peft_automodel
+    - slurm_convert_model
     - slurm_rl_nemo_rl_dpo
     - slurm_rl_nemo_rl_rlvr
     - slurm_rl_nemo_rl_rlhf
@@ -256,6 +260,8 @@ sections:
     env_vars:
       PRETRAIN_OUTPUT_DIR: /lustre/${oc.env:USER}/output/pretrain/automodel
       PRETRAIN_BLEND_PATH: /lustre/${oc.env:USER}/output/data_prep/pretrain_prep/blend.json
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # sft/megatron_bridge: child overrides scale/time while inheriting site logistics.
   slurm_sft_megatron_bridge:
@@ -275,6 +281,8 @@ sections:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
       SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sft/automodel
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # peft/*: PEFT uses the same training backends as SFT but writes to PEFT paths.
   slurm_peft_megatron_bridge:
@@ -287,6 +295,16 @@ sections:
     extends: slurm_sft_automodel
     env_vars:
       SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/peft/automodel
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
+
+  # convert/*: one shared GPU profile for HF<->Megatron conversion and LoRA merge/export.
+  slurm_convert_model:
+    extends: slurm_base
+    nodes: 1
+    time: "02:00:00"
+    env_vars:
+      CONVERT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/convert
 
   # rl/nemo_rl/dpo: switch image for NeMo-RL while keeping tunnel/account/mounts.
   slurm_rl_nemo_rl_dpo:

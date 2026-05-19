@@ -16,7 +16,7 @@
 id = "convert/merge_lora"
 name = "Merge LoRA Adapter"
 category = "convert"
-description = "Merge a LoRA adapter into the base model to produce a standalone HuggingFace checkpoint."
+description = "Merge a LoRA adapter into its original base model, producing a standalone HuggingFace checkpoint."
 tags = ["conversion", "lora", "peft", "merge"]
 
 [[consumes]]
@@ -25,11 +25,27 @@ description = "LoRA adapter weights"
 
 [[consumes]]
 type = "checkpoint_hf"
-description = "Base model in HuggingFace format"
+description = "Base model or HF config source for adapter merge"
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "Base Megatron checkpoint for Megatron-Bridge adapter merge"
+required = false
 
 [[produces]]
 type = "checkpoint_hf"
 description = "Merged model checkpoint"
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "Merged Megatron checkpoint when backend=megatron_bridge"
+required = false
+
+[[parameters]]
+name = "backend"
+description = "Adapter merge backend. auto selects megatron_bridge when base_megatron_path is set, otherwise hf_peft."
+default = "auto"
+choices = ["auto", "hf_peft", "megatron_bridge"]
 
 [[parameters]]
 name = "lora_checkpoint"
@@ -37,24 +53,51 @@ description = "Adapter checkpoint path produced by a PEFT step."
 
 [[parameters]]
 name = "base_hf_path"
-description = "The original HF base checkpoint the adapter was trained against. Do not substitute a different base."
+description = "Original HF base checkpoint for backend=hf_peft, or HF config/model source for backend=megatron_bridge."
+
+[[parameters]]
+name = "base_megatron_path"
+description = "Original dense Megatron checkpoint for backend=megatron_bridge. Do not substitute a different base."
+
+[[parameters]]
+name = "hf_model_id"
+description = "HF model id or path used to reconstruct architecture when exporting a Megatron-Bridge merge to HF."
 
 [[parameters]]
 name = "output_hf_path"
 description = "Directory for the merged standalone HF checkpoint."
 
 [[parameters]]
+name = "output_megatron_path"
+description = "Directory for the merged Megatron checkpoint when backend=megatron_bridge."
+
+[[parameters]]
 name = "cpu"
 description = "Merge on CPU when GPU memory is tight or when running outside a training container."
 default = true
 
+[[parameters]]
+name = "tp"
+description = "Tensor parallel size for Megatron-Bridge merge."
+default = 1
+
+[[parameters]]
+name = "pp"
+description = "Pipeline parallel size for Megatron-Bridge merge."
+default = 1
+
+[[parameters]]
+name = "ep"
+description = "Expert parallel size for Megatron-Bridge merge."
+default = 1
+
 [[strategies]]
 when = "The adapter came from peft/automodel"
-then = "Merge directly into the same HF base model used for PEFT training."
+then = "Use backend=hf_peft and merge directly into the same HF base model used for PEFT training."
 
 [[strategies]]
 when = "The adapter came from peft/megatron_bridge"
-then = "Convert or export the compatible base to HF layout first, then merge only against that same base."
+then = "Use backend=megatron_bridge with the original dense Megatron base, then export the merged checkpoint to HF."
 
 [[strategies]]
 when = "Quality is being compared before and after merge"
@@ -75,4 +118,5 @@ recovery = "Write output_hf_path to a fresh directory so failed merges cannot ov
 [reference]
 skill = "src/nemotron/steps/convert/merge_lora/SKILL.md"
 script = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/peft/merge_lora.py"
+hf_peft_library = "https://github.com/huggingface/peft"
 skills = ["skills/nemotron-customize/references/context/checkpoint-conversion.txt"]

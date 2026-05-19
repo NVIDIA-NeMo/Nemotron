@@ -3,19 +3,48 @@
 # [tool.runspec]
 # schema = "1"
 # name = "steps/convert/hf_to_megatron"
+# image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
 #
 # [tool.runspec.run]
 # launch = "python"
+#
+# [tool.runspec.config]
+# dir = "./config"
+# default = "default"
+# format = "omegaconf"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 8
 # ///
-"""HF -> Megatron pattern. Real script: Megatron-Bridge/examples/conversion/convert_checkpoints.py"""
-import torch
-from megatron.bridge import AutoBridge
+
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""HF -> Megatron conversion using Megatron-Bridge AutoBridge."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from nemotron.steps._runners.convert import run_hf_to_megatron
+
+DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 
 
 def main() -> None:
-    hf_model = "nvidia/Nemotron-3-Nano-30B-A3B"
-    megatron_path = "/path/to/megatron_ckpt"
-    AutoBridge.import_ckpt(hf_model_id=hf_model, megatron_path=megatron_path, torch_dtype=torch.bfloat16)
+    run_hf_to_megatron(DEFAULT_CONFIG)
 
 
 if __name__ == "__main__":

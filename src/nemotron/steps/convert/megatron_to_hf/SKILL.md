@@ -25,6 +25,8 @@ parameters, strategies, and failure modes.
 - Set `hf_model_id` to the original model/config source when the checkpoint
   lacks enough HF metadata.
 - Set `hf_path` to a fresh export directory.
+- Keep `strict=true` unless you intentionally accept source/target checkpoint
+  key mismatches for a known architecture drift.
 
 ## Guardrails
 

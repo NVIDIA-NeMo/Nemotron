@@ -21,6 +21,9 @@ preamble: |
   #   uv run nemotron steps run sft/automodel -c tiny --batch dgxcloud_sft_automodel
   #   uv run nemotron steps run peft/megatron_bridge -c tiny --batch dgxcloud_peft_megatron_bridge
   #   uv run nemotron steps run peft/automodel -c tiny --batch dgxcloud_peft_automodel
+  #   uv run nemotron steps run convert/hf_to_megatron -c default --batch dgxcloud_convert_model
+  #   uv run nemotron steps run convert/megatron_to_hf -c default --batch dgxcloud_convert_model
+  #   uv run nemotron steps run convert/merge_lora -c default --batch dgxcloud_convert_model
   #   uv run nemotron steps run rl/nemo_rl/dpo -c tiny --batch dgxcloud_rl_nemo_rl_dpo
   #   uv run nemotron steps run rl/nemo_rl/rlvr -c tiny --batch dgxcloud_rl_nemo_rl_rlvr
   #   uv run nemotron steps run rl/nemo_rl/rlhf -c tiny --batch dgxcloud_rl_nemo_rl_rlhf
@@ -48,6 +51,7 @@ checks:
     - dgxcloud_sft_automodel
     - dgxcloud_peft_megatron_bridge
     - dgxcloud_peft_automodel
+    - dgxcloud_convert_model
     - dgxcloud_rl_nemo_rl_dpo
     - dgxcloud_rl_nemo_rl_rlvr
     - dgxcloud_rl_nemo_rl_rlhf
@@ -225,6 +229,8 @@ sections:
     env_vars:
       PRETRAIN_OUTPUT_DIR: /workspace/output/pretrain/automodel
       PRETRAIN_BLEND_PATH: /workspace/output/data_prep/pretrain_prep/blend.json
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # sft/megatron_bridge: GPU-backed SFT profile.
   dgxcloud_sft_megatron_bridge:
@@ -244,6 +250,8 @@ sections:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
       SFT_OUTPUT_DIR: /workspace/output/sft/automodel
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # peft/*: PEFT uses the same training backends as SFT but writes to PEFT paths.
   dgxcloud_peft_megatron_bridge:
@@ -256,6 +264,17 @@ sections:
     extends: dgxcloud_sft_automodel
     env_vars:
       SFT_OUTPUT_DIR: /workspace/output/peft/automodel
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
+
+  # convert/*: one shared GPU profile for HF<->Megatron conversion and LoRA merge/export.
+  dgxcloud_convert_model:
+    extends: dgxcloud_base
+    nodes: 1
+    gpus_per_node: 8
+    nprocs_per_node: 8
+    env_vars:
+      CONVERT_OUTPUT_DIR: /workspace/output/convert
 
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   dgxcloud_rl_nemo_rl_dpo:

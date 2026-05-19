@@ -36,10 +36,19 @@ name = "megatron_path"
 description = "Output directory for the Megatron distributed checkpoint. Keep it separate from the HF source path."
 
 [[parameters]]
-name = "dtype"
+name = "torch_dtype"
 description = "Torch dtype used during import, normally bfloat16 for Nemotron/NVIDIA checkpoints."
 default = "bfloat16"
 choices = ["bfloat16", "float16", "float32"]
+
+[[parameters]]
+name = "dtype"
+description = "Deprecated alias for torch_dtype."
+
+[[parameters]]
+name = "device_map"
+description = "Optional Transformers device_map forwarded during HF model loading, such as auto or cuda:0."
+default = ""
 
 [[parameters]]
 name = "trust_remote_code"

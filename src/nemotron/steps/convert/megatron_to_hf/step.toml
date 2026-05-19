@@ -44,6 +44,16 @@ name = "trust_remote_code"
 description = "Whether to trust custom HF model code while reconstructing the export target."
 default = true
 
+[[parameters]]
+name = "show_progress"
+description = "Whether to show Megatron-Bridge export progress output."
+default = true
+
+[[parameters]]
+name = "strict"
+description = "Whether Megatron-Bridge should require source and target checkpoint keys to match strictly."
+default = true
+
 [[strategies]]
 when = "The next consumer is HF-native evaluation, deployment, pruning, quantization input, or adapter merge"
 then = "Export the specific Megatron iter_* checkpoint to HF before running the downstream step."

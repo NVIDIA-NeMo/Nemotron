@@ -23,6 +23,9 @@ preamble: |
   #   uv run nemotron steps run sft/automodel -c tiny --batch lepton_sft_automodel
   #   uv run nemotron steps run peft/megatron_bridge -c tiny --batch lepton_peft_megatron_bridge
   #   uv run nemotron steps run peft/automodel -c tiny --batch lepton_peft_automodel
+  #   uv run nemotron steps run convert/hf_to_megatron -c default --batch lepton_convert_model
+  #   uv run nemotron steps run convert/megatron_to_hf -c default --batch lepton_convert_model
+  #   uv run nemotron steps run convert/merge_lora -c default --batch lepton_convert_model
   #   uv run nemotron steps run rl/nemo_rl/dpo -c tiny --batch lepton_rl_nemo_rl_dpo
   #   uv run nemotron steps run rl/nemo_rl/rlvr -c tiny --batch lepton_rl_nemo_rl_rlvr
   #   uv run nemotron steps run rl/nemo_rl/rlhf -c tiny --batch lepton_rl_nemo_rl_rlhf
@@ -50,6 +53,7 @@ checks:
     - lepton_sft_automodel
     - lepton_peft_megatron_bridge
     - lepton_peft_automodel
+    - lepton_convert_model
     - lepton_rl_nemo_rl_dpo
     - lepton_rl_nemo_rl_rlvr
     - lepton_rl_nemo_rl_rlhf
@@ -240,6 +244,8 @@ sections:
     env_vars:
       PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/pretrain/automodel}
       PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,/mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json}
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # sft/megatron_bridge: overrides only scale and output location.
   lepton_sft_megatron_bridge:
@@ -257,6 +263,8 @@ sections:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
       SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/sft/automodel}
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # peft/*: PEFT uses the same training backends as SFT but writes to PEFT paths.
   lepton_peft_megatron_bridge:
@@ -269,6 +277,15 @@ sections:
     extends: lepton_sft_automodel
     env_vars:
       SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/peft/automodel}
+      WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
+      WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
+
+  # convert/*: one shared GPU profile for HF<->Megatron conversion and LoRA merge/export.
+  lepton_convert_model:
+    extends: lepton_base
+    nodes: 1
+    env_vars:
+      CONVERT_OUTPUT_DIR: ${oc.env:CONVERT_OUTPUT_DIR,/mnt/lustre-shared/output/convert}
 
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   lepton_rl_nemo_rl_dpo:

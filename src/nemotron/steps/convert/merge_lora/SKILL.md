@@ -1,6 +1,6 @@
 ---
 name: nemotron-convert-merge-lora
-description: Configure convert/merge_lora to merge a LoRA adapter into its original Hugging Face base checkpoint and produce a standalone HF checkpoint.
+description: Configure convert/merge_lora to merge a LoRA adapter into its original base checkpoint and produce a standalone HF checkpoint.
 ---
 
 # Merge LoRA
@@ -13,16 +13,24 @@ parameters, strategies, and failure modes.
 
 ## Inputs And Outputs
 
-- Consume `checkpoint_lora` plus the original HF base checkpoint.
-- Produce a merged HF checkpoint suitable for HF-native eval, deployment, or
-  conversion to Megatron.
+- Consume `checkpoint_lora` plus the original base checkpoint.
+- With `backend=hf_peft`, consume the original HF base and write HF output
+  directly.
+- With `backend=megatron_bridge`, consume the original dense Megatron base,
+  write a merged Megatron checkpoint, then export it to HF when `export_hf=true`.
 
 ## Configure
 
+- Keep `backend=auto` unless you want to force a merge path.
+- Set `backend=hf_peft` for AutoModel/HuggingFace PEFT adapters.
+- Set `backend=megatron_bridge` for Megatron-Bridge adapters.
 - Set `lora_checkpoint` to the adapter output from the PEFT run.
-- Set `base_hf_path` to the exact base model used during adapter training.
-- Set `output_hf_path` to a fresh directory.
-- Use CPU merge for memory-constrained or non-training environments.
+- For HF PEFT, set `base_hf_path` to the exact base model used during adapter
+  training and `output_hf_path` to a fresh directory.
+- For Megatron-Bridge, set `base_megatron_path`, `hf_model_id` or
+  `hf_model_path`, `output_megatron_path`, and `output_hf_path`.
+- Use CPU merge for memory-constrained or non-training environments when
+  parallelism is 1.
 
 ## Guardrails
 
