@@ -34,6 +34,13 @@ lr_warmup_steps: 100
 lr_decay_style: cosine
 weight_decay: 0.01
 
+# Optimizer
+# auto uses Transformer Engine FusedAdam when available (container), otherwise
+# FlashAdamW with bf16 model parameters and 32-bit effective master weights.
+optimizer_backend: auto
+flash_adamw_master_weight_bits: 32
+adamw_model_dtype: float32  # Only used with optimizer_backend=adamw
+
 # Model architecture
 # attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa
 train_n_passages: 5  # 1 positive + 4 negatives

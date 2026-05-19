@@ -441,6 +441,9 @@ learning_rate: 3.0e-6
 lr_warmup_steps: 100
 lr_decay_style: cosine
 weight_decay: 0.01
+optimizer_backend: auto           # FusedAdam in the container, FlashAdamW locally without TE
+flash_adamw_master_weight_bits: 32 # Effective master-weight precision for FlashAdamW
+adamw_model_dtype: float32        # Only used with optimizer_backend=adamw
 rerank_max_length: 512         # Max tokens for concatenated query+passage
 prompt_template: "question:{query} \n \n passage:{passage}"
 train_n_passages: 5            # 1 positive + 4 hard negatives

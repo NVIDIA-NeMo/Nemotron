@@ -50,11 +50,12 @@ Usage:
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
@@ -73,13 +74,22 @@ class FinetuneConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Model settings
-    base_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model to fine-tune.")
+    base_model: str = Field(
+        default="nvidia/llama-nemotron-rerank-1b-v2",
+        description="Base reranking model to fine-tune.",
+    )
 
     # Data paths
-    train_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/train_mined.automodel_unrolled.json", description="Path to training data file.")
+    train_data_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/train_mined.automodel_unrolled.json",
+        description="Path to training data file.",
+    )
 
     # Output settings
-    checkpoint_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints", description="Directory for saving checkpoints.")
+    checkpoint_dir: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints",
+        description="Directory for saving checkpoints.",
+    )
 
     # Training hyperparameters
     num_epochs: int = Field(default=3, gt=0, description="Number of training epochs.")
@@ -87,19 +97,48 @@ class FinetuneConfig(RecipeSettings):
     local_batch_size: int = Field(default=4, gt=0, description="Per-GPU batch size.")
     learning_rate: float = Field(default=3e-6, gt=0, description="Learning rate.")
     lr_warmup_steps: int = Field(default=100, ge=0, description="Learning rate warmup steps.")
-    lr_decay_style: Literal["cosine", "linear"] = Field(default="cosine", description="LR decay schedule (cosine, linear).")
+    lr_decay_style: Literal["cosine", "linear"] = Field(
+        default="cosine",
+        description="LR decay schedule (cosine, linear).",
+    )
     weight_decay: float = Field(default=0.01, ge=0, description="Weight decay for optimizer.")
+    optimizer_backend: Literal["auto", "fused_adam", "flash_adamw", "adamw"] = Field(
+        default="auto",
+        description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
+    )
+    flash_adamw_master_weight_bits: Literal[24, 32] = Field(
+        default=32,
+        description="Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable.",
+    )
+    adamw_model_dtype: Literal["float32", "bfloat16"] = Field(
+        default="float32",
+        description="Model parameter dtype to use with the explicit AdamW backend.",
+    )
 
     # Model architecture
-    attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(default=None, description="Attention implementation (sdpa, flash_attention_2, eager). None auto-detects.")
-    train_n_passages: int = Field(default=5, ge=2, description="Number of passages per query during training (1 pos + n-1 neg).")
+    attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(
+        default=None,
+        description="Attention implementation (sdpa, flash_attention_2, eager). None auto-detects.",
+    )
+    train_n_passages: int = Field(
+        default=5,
+        ge=2,
+        description="Number of passages per query during training (1 pos + n-1 neg).",
+    )
     num_labels: int = Field(default=1, ge=1, description="Number of classification labels.")
     temperature: float = Field(default=1.0, gt=0, description="Temperature for cross-entropy loss.")
     pooling: Literal["avg", "cls", "last"] = Field(default="avg", description="Pooling strategy.")
 
     # Tokenization
-    rerank_max_length: int = Field(default=512, gt=0, description="Maximum sequence length for concatenated query+passage.")
-    prompt_template: str = Field(default="question:{query} \n \n passage:{passage}", description="Template for formatting query-passage pairs.")
+    rerank_max_length: int = Field(
+        default=512,
+        gt=0,
+        description="Maximum sequence length for concatenated query+passage.",
+    )
+    prompt_template: str = Field(
+        default="question:{query} \n \n passage:{passage}",
+        description="Template for formatting query-passage pairs.",
+    )
 
     # Checkpointing
     checkpoint_every_steps: int = Field(default=100, gt=0, description="Save checkpoint every N steps.")
@@ -147,6 +186,84 @@ def _auto_scale_hyperparams(
     return global_batch_size, num_epochs, checkpoint_every_steps, val_every_steps
 
 
+def _can_import_fused_adam() -> tuple[bool, str | None]:
+    """Return whether Transformer Engine FusedAdam is importable."""
+    try:
+        importlib.import_module("transformer_engine.pytorch.optimizers.fused_adam")
+    except Exception as e:
+        return False, str(e)
+    return True, None
+
+
+def _can_import_flash_adamw() -> tuple[bool, str | None]:
+    """Return whether FlashAdamW is importable."""
+    try:
+        importlib.import_module("flashoptim")
+    except Exception as e:
+        return False, str(e)
+    return True, None
+
+
+def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[Any, str]:
+    """Load Automodel YAML after choosing an optimizer that is importable here."""
+    import yaml
+
+    base_config_path = STAGE_PATH / "crossencoder_base.yaml"
+    with open(base_config_path) as f:
+        raw_config = yaml.safe_load(f)
+
+    te_available, te_error = _can_import_fused_adam()
+    flash_available, flash_error = _can_import_flash_adamw()
+    optimizer_backend = cfg.optimizer_backend
+    if optimizer_backend == "auto":
+        optimizer_backend = "fused_adam" if te_available else "flash_adamw"
+
+    if optimizer_backend == "fused_adam":
+        if not te_available:
+            print("Error: optimizer_backend=fused_adam requires Transformer Engine.", file=sys.stderr)
+            if te_error:
+                print(f"  Import error: {te_error}", file=sys.stderr)
+            print(
+                "  Use optimizer_backend=flash_adamw or adamw for local runs without Transformer Engine.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    elif optimizer_backend == "flash_adamw":
+        if not flash_available:
+            print("Error: optimizer_backend=flash_adamw requires flashoptim.", file=sys.stderr)
+            if flash_error:
+                print(f"  Import error: {flash_error}", file=sys.stderr)
+            print("  Use optimizer_backend=adamw for a pure PyTorch fallback.", file=sys.stderr)
+            sys.exit(1)
+        raw_config["optimizer"] = {
+            "_target_": "flashoptim.FlashAdamW",
+            "lr": raw_config.get("optimizer", {}).get("lr", cfg.learning_rate),
+            "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
+            "betas": [0.9, 0.999],
+            "eps": 1.0e-8,
+            "quantize": False,
+            "compress_state_dict": False,
+            "master_weight_bits": cfg.flash_adamw_master_weight_bits,
+            "fused": True,
+        }
+        raw_config.setdefault("model", {})["torch_dtype"] = "bfloat16"
+        raw_config["model"]["dtype"] = "bfloat16"
+    elif optimizer_backend == "adamw":
+        raw_config["optimizer"] = {
+            "_target_": "torch.optim.AdamW",
+            "lr": raw_config.get("optimizer", {}).get("lr", cfg.learning_rate),
+            "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
+            "betas": [0.9, 0.999],
+            "eps": 1.0e-8,
+        }
+        # Automodel's retrieval wrapper consumes torch_dtype; dtype is passed through
+        # to Transformers v5 from_pretrained.
+        raw_config.setdefault("model", {})["torch_dtype"] = cfg.adamw_model_dtype
+        raw_config["model"]["dtype"] = cfg.adamw_model_dtype
+
+    return config_node_cls(raw_config), optimizer_backend
+
+
 def run_finetune(cfg: FinetuneConfig) -> Path:
     """Run cross-encoder reranking model fine-tuning using nemo-automodel.
 
@@ -173,11 +290,14 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     total_steps = steps_per_epoch * num_epochs
 
     # Print training plan
-    print(f"Training plan:")
+    print("Training plan:")
     print(f"  Dataset:          {num_examples:,} examples")
 
     if global_batch_size != cfg.global_batch_size:
-        print(f"  Batch size:       {global_batch_size} (auto-scaled from {cfg.global_batch_size} — dataset < 2000 examples)")
+        print(
+            f"  Batch size:       {global_batch_size} "
+            f"(auto-scaled from {cfg.global_batch_size} — dataset < 2000 examples)"
+        )
     else:
         print(f"  Batch size:       {global_batch_size}")
 
@@ -192,7 +312,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     if total_steps < 50:
         print(f"Warning: Only ~{total_steps} total training steps. "
               f"Dataset may be too small for meaningful fine-tuning.", file=sys.stderr)
-        print(f"         Consider adding more documents to your corpus.", file=sys.stderr)
+        print("         Consider adding more documents to your corpus.", file=sys.stderr)
         print()
 
     print(f"Base model:     {cfg.base_model}")
@@ -202,17 +322,24 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Import nemo-automodel components
     try:
-        from nemo_automodel.components.config.loader import load_yaml_config
+        from nemo_automodel.components.config.loader import ConfigNode
         from nemo_automodel.recipes.retrieval import TrainCrossEncoderRecipe
     except ImportError as e:
-        print(f"Error: Failed to import nemo-automodel. Is it installed?", file=sys.stderr)
-        print(f"  Install with: pip install nemo-automodel", file=sys.stderr)
+        print("Error: Failed to import nemo-automodel. Is it installed?", file=sys.stderr)
+        print("  Install with: pip install nemo-automodel", file=sys.stderr)
         print(f"  Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Load base config from nemo-automodel defaults
-    base_config_path = STAGE_PATH / "crossencoder_base.yaml"
-    automodel_cfg = load_yaml_config(str(base_config_path))
+    # Load base config from nemo-automodel defaults. ConfigNode resolves _target_
+    # imports during construction, so optimizer selection must happen on raw YAML.
+    automodel_cfg, optimizer_backend = _load_automodel_config(cfg, ConfigNode)
+    optimizer_detail = optimizer_backend
+    if optimizer_backend == "adamw":
+        optimizer_detail = f"{optimizer_backend} (model dtype={cfg.adamw_model_dtype})"
+    elif optimizer_backend == "flash_adamw":
+        optimizer_detail = f"{optimizer_backend} (bf16 model, {cfg.flash_adamw_master_weight_bits}-bit master weights)"
+    print(f"Optimizer:      {optimizer_detail}")
+    print()
 
     # Apply overrides from our config
     # Model settings
@@ -264,7 +391,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
 
-    print(f"\nFine-tuning complete!")
+    print("\nFine-tuning complete!")
     print(f"   Checkpoint: {cfg.checkpoint_dir}")
     print(f"   Model:      {final_model_dir}")
 
