@@ -29,14 +29,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pydantic_settings import BaseSettings
 
 import typer
 
-from nemo_runspec.help import make_recipe_command
+from nemo_runspec.help import ConfigModelProvider, make_recipe_command
 
 
 @dataclass(frozen=True)
@@ -50,6 +46,7 @@ class RecipeMeta:
     - default_config: Default config name
     - input_artifacts: What data the recipe consumes
     - output_artifacts: What the recipe produces
+    - config_model: Pydantic config class or LazyConfigModel for rich help
 
     Example:
         META = RecipeMeta(
@@ -68,7 +65,7 @@ class RecipeMeta:
     default_config: str = "default"
     input_artifacts: dict[str, str] = field(default_factory=dict)
     output_artifacts: dict[str, str] = field(default_factory=dict)
-    config_model: type[BaseSettings] | None = None
+    config_model: ConfigModelProvider | None = None
 
 
 class RecipeTyper(typer.Typer):
@@ -97,7 +94,7 @@ class RecipeTyper(typer.Typer):
         config_dir: str | None = None,
         input_artifacts: dict[str, str] | None = None,
         output_artifacts: dict[str, str] | None = None,
-        config_model: type[BaseSettings] | None = None,
+        config_model: ConfigModelProvider | None = None,
         rich_help_panel: str | None = None,
         name: str | None = None,
     ) -> Callable[[Callable], Callable]:
@@ -150,7 +147,7 @@ class RecipeTyper(typer.Typer):
         config_dir: str | None = None,
         input_artifacts: dict[str, str] | None = None,
         output_artifacts: dict[str, str] | None = None,
-        config_model: type[BaseSettings] | None = None,
+        config_model: ConfigModelProvider | None = None,
         rich_help_panel: str | None = None,
         name: str | None = None,
     ) -> None:
