@@ -1,0 +1,6 @@
+.venv/
+data/
+/pytest_cache/
+/artifacts/
+uv.lock 
+outputs/
