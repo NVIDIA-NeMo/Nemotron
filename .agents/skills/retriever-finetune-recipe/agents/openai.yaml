@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retriever Fine-Tune Recipe"
+  short_description: "Run and debug retrieval fine-tuning"
+  default_prompt: "Use $retriever-finetune-recipe to plan, run, debug, and validate Nemotron embedding or reranking recipe stages."

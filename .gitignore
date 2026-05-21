@@ -101,6 +101,11 @@ wandb/
 # Claude Code
 CLAUDE.md
 .claude/
+!.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/retriever-finetune-recipe
 
 # Compiled config
 config.yaml
