@@ -1,4 +1,16 @@
 {
+  "_comment": "Nano3 pretrain blend (combined reference). Phase 1 covered 23.5T tokens (94% of 25T total, diversity focus). Phase 2 covered 1.5T tokens (6% of 25T, quality focus). See data_blend_raw_phase1.json and data_blend_raw_phase2.json for phase-specific configs with approximate internal weights. The open-sourced data covers the main training categories. Results will differ from the tech report, which used additional proprietary data including code and academic text not available here. 23 datasets. Weights here are uniform placeholders; use the phase files for approximate internal ratios.",
+  "_missing_categories": {
+    "code-internal": {
+      "description": "Proprietary code data used during training. Open-source alternatives Nemotron-CC-Code-v1 (427B tokens) and Nemotron-Pretraining-Code-v2 are available on HuggingFace but are not included in this blend. Add them to close the gap."
+    },
+    "crawl++": {
+      "description": "Internal web crawl sources combining OpenWebText, BigScience, and Reddit. Not publicly released."
+    },
+    "academic": {
+      "description": "Academic papers and scholarly text used internally. Not publicly released."
+    }
+  },
   "datasets": [
     {
       "name": "nemotron-math-3",

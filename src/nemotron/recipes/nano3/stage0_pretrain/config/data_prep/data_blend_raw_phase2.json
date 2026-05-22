@@ -1,0 +1,160 @@
+{
+  "_comment": "Nano3 pretrain Phase 2 blend. This phase covered 1.5T tokens (6% of 25T total), the quality-focused stage of training. Key changes from Phase 1: medium-quality subsets removed, synthetic medium-high-quality weight reduced. 21 datasets. Weights approximate internal ratios and are unnormalized; the pipeline normalizes at runtime.",
+  "_missing_categories": {
+    "code-internal": {
+      "description": "Proprietary code data used during training. Open-source alternatives Nemotron-CC-Code-v1 (427B tokens) and Nemotron-Pretraining-Code-v2 are available on HuggingFace but are not included in this blend. Add them to close the gap."
+    },
+    "academic": {
+      "description": "Academic papers and scholarly text used internally. Not publicly released."
+    }
+  },
+  "datasets": [
+    {
+      "name": "nemotron-cc-v2-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "High-Quality",
+      "text_field": "text",
+      "weight": 2.2
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality",
+      "text_field": "text",
+      "weight": 4.3
+    },
+    {
+      "name": "nemotron-cc-v2-medium-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Medium-High-Quality",
+      "text_field": "text",
+      "weight": 1.9
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality",
+      "text_field": "text",
+      "weight": 3.8
+    },
+    {
+      "name": "nemotron-cc-v2-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "High-Quality-Synthetic",
+      "text_field": "text",
+      "weight": 7.5
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Synthetic",
+      "text_field": "text",
+      "weight": 14.9
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality-Synthetic",
+      "text_field": "text",
+      "weight": 6.2
+    },
+    {
+      "name": "nemotron-cc-v2-diverse-qa",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Diverse-QA",
+      "text_field": "text",
+      "weight": 2.5
+    },
+    {
+      "name": "nemotron-cc-v2-translated-diverse-qa",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Translated-Diverse-QA",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-translated-to-english",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Translated-To-English",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-translated-to-english-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Translated-To-English-Synthetic",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality-translated-to-english",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality-Translated-To-English",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-math-3",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "3",
+      "text_field": "text",
+      "weight": 1.3
+    },
+    {
+      "name": "nemotron-math-4plus",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "4plus",
+      "text_field": "text",
+      "weight": 2.9
+    },
+    {
+      "name": "nemotron-math-4plus-mind",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "4plus_MIND",
+      "text_field": "text",
+      "weight": 1.7
+    },
+    {
+      "name": "nemotron-pretraining-math-textbooks",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Math-Textbooks",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-pretraining-stem-sft",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-STEM-SFT",
+      "text_field": "text",
+      "weight": 4.0
+    },
+    {
+      "name": "nemotron-pretraining-scientific-coding",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Scientific-Coding",
+      "text_field": "text",
+      "weight": 0.6
+    },
+    {
+      "name": "nemotron-pretraining-rqa",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-RQA",
+      "text_field": "text",
+      "weight": 0.05
+    },
+    {
+      "name": "nemotron-pretraining-infinibyte-reasoning",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-InfiniByte-Reasoning",
+      "text_field": "text",
+      "weight": 0.05
+    },
+    {
+      "name": "nemotron-pretraining-wiki-rewrite",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Wiki-Rewrite",
+      "text_field": "text",
+      "weight": 0.6
+    }
+  ]
+}
