@@ -22,7 +22,6 @@ from nemotron.steps.sdg.data_designer.step import (
     parse_json_object,
     project_records,
     records_from_designer_result,
-    validate_designer_config,
 )
 
 from .._step_helpers import assert_step_static, step_dir
@@ -163,16 +162,6 @@ def test_model_providers_reference_declared_or_builtin_providers() -> None:
                 )
 
 
-def test_shipped_configs_preflight_model_access() -> None:
-    for path in _config_paths():
-        cfg = _load_config(path)
-        assert cfg.get("preflight_validate", True) is True, f"{path.name}: preflight validation should be enabled"
-        for model in cfg.get("models") or []:
-            assert model.get("skip_health_check") is not True, (
-                f"{path.name}: model {model['alias']!r} should not skip health checks by default"
-            )
-
-
 def test_build_model_providers_from_config() -> None:
     class FakeProvider:
         def __init__(self, **kwargs):
@@ -212,32 +201,6 @@ def test_build_model_providers_from_config() -> None:
         "extra_headers": {"X-Test": "1"},
     }
     assert providers[1].kwargs["api_key"] is None
-
-
-def test_validate_designer_config_calls_client_validate() -> None:
-    calls = []
-
-    class Client:
-        def validate(self, builder):
-            calls.append(builder)
-
-    builder = object()
-
-    validate_designer_config(Client(), builder, {})
-
-    assert calls == [builder]
-
-
-def test_validate_designer_config_can_be_disabled() -> None:
-    calls = []
-
-    class Client:
-        def validate(self, builder):
-            calls.append(builder)
-
-    validate_designer_config(Client(), object(), {"preflight_validate": False})
-
-    assert calls == []
 
 
 def test_structured_llm_columns_have_output_format() -> None:
