@@ -72,9 +72,11 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
   - [Nemotron-Pretraining-Specialized-v1.1](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Specialized-v1.1) (Synthetic pretraining data)
 - **Megatron-Bridge Docs**: [Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md)
 
+<!-- TODO - Move whatever customization docs for Super 3 to this section of the docs.
 ```{seealso}
 For model cards, technical report chunks, and recipe summaries, see {doc}`/customize/models/super3/index`.
 ```
+-->
 
 ## Training Pipeline
 
@@ -262,3 +264,17 @@ wandb login
 - [NVIDIA AI Stack](../nvidia-stack.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - [Data Preparation Module](../data-prep.md)
+
+```{toctree}
+:hidden:
+
+pretrain.md
+sft.md
+rl/index.md
+rl/rlvr.md
+rl/swe.md
+rl/rlhf.md
+rl/data-prep.md
+evaluate.md
+quantization.md
+```
