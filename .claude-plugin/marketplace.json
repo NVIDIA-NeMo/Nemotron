@@ -1,0 +1,27 @@
+{
+  "name": "nvidia-nemotron",
+  "owner": {
+    "name": "NVIDIA Nemotron Team"
+  },
+  "metadata": {
+    "description": "NVIDIA Nemotron AI stack plugins"
+  },
+  "plugins": [
+    {
+      "name": "nemotron-customize",
+      "source": "./skills/nemotron-customize",
+      "description": "Compose runnable Nemotron model-customization pipelines from repo steps.",
+      "version": "0.1.0",
+      "category": "ml-pipelines",
+      "keywords": [
+        "nvidia",
+        "nemotron",
+        "training",
+        "sft",
+        "rl",
+        "megatron",
+        "customization"
+      ]
+    }
+  ]
+}

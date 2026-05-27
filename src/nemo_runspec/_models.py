@@ -13,14 +13,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass(frozen=True)
 class RunspecRun:
-    """How to launch the script."""
+    """How to launch the script.
+
+    ``cmd`` is ``None`` when the script's ``[tool.runspec.run]`` block does
+    not declare one — in that case the **backend** chooses the actual
+    invocation based on ``launch`` (e.g. ``torchrun`` wrapping with the right
+    nproc/node-rank for distributed multi-process training, or a bare
+    subprocess locally). A non-None value is treated as a verbatim author
+    override and forwarded as-is; ``{script}`` and ``{config}`` placeholders
+    are still expanded.
+    """
 
     launch: str = "torchrun"  # "torchrun" | "ray" | "direct"
-    cmd: str = "python {script} --config {config}"
+    cmd: str | None = None
     workdir: str | None = None  # e.g., "/opt/nemo-rl"
 
 
@@ -38,7 +48,7 @@ class RunspecResources:
     """Default resource requirements."""
 
     nodes: int = 1
-    gpus_per_node: int = 8
+    gpus_per_node: int | Literal["gpu"] = 8
 
 
 @dataclass(frozen=True)

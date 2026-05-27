@@ -76,6 +76,10 @@ $ uv run nemotron nano3 pipe --run YOUR-CLUSTER
   - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)
   - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) (SFT and RL data)
 
+```{seealso}
+For model cards, technical report chunks, and recipe summaries, see {doc}`/customize/models/nano3/index`.
+```
+
 ## Training Pipeline
 
 | Stage | Name | Purpose | Guide |

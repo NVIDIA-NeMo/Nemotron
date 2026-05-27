@@ -13,7 +13,7 @@ If you are adapting it for Slurm:
 3. The `remove_duplicates` step must run on a single exclusive node.
 
 Dependencies:
-- `nemo_curator>=1.1.0`
+- `nemo_curator>=1.2.0` (26.04 release)
 - `cargo` (for building `deduplicate-text-datasets`). See https://doc.rust-lang.org/cargo/getting-started/installation.html
 
 We recommend splitting up the dataset into 100 GB chunks or less, and executing `exact_substring_dedup.sh` on each 100 GB chunk.

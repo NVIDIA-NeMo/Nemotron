@@ -30,25 +30,53 @@ preprocesses documents (splitting, filtering, joining segments), sends them
 to an LLM for generation, postprocesses the results, and writes output to
 parquet or JSONL.
 
-This is a CPU-only pipeline — LLM inference happens via API calls to an
-external endpoint (NVIDIA Integrate, or a self-hosted vLLM/TRT-LLM server).
+LLM backends (pick one):
+
+  1. Local inference server (default).
+     The script spins up a Ray Serve + vLLM deployment of --model-name on
+     the local cluster and routes generation through it. No API key
+     required, and it scales out across replicas. Pass --no-serve-model
+     to opt out and use one of the external options below.
+
+  2. Existing OpenAI-compatible endpoint.
+     Pass --no-serve-model --base-url <url> for a self-hosted vLLM/TRT-LLM/
+     NIM server (or any OpenAI-compatible cloud provider). --api-key is
+     forwarded if set.
+
+  3. NVIDIA Build (build.nvidia.com).
+     Pass --no-serve-model to use the default --base-url. Requires
+     --api-key (or NVIDIA_API_KEY env var). Note: the default --model-name
+     (Qwen3-30B-A3B-Instruct-2507) is not hosted on NVIDIA Build — pass
+     --model-name to a model that is.
+
+Note on --tokenizer:
+  The tokenizer is loaded via Hugging Face AutoTokenizer, so --tokenizer
+  must be a Hugging Face repo id (or local path to HF tokenizer files).
+  If --tokenizer is not set, it defaults to --model-name, which in some
+  cases is not a valid HF tokenizer path — e.g. --model-name
+  meta/llama-3.3-70b-instruct needs --tokenizer
+  meta-llama/Llama-3.3-70B-Instruct set explicitly.
 
 Usage:
-    # Run all SDG tasks on bucket 18/19 data
+    # Default: stand up a local inference server (4 GPUs, 4 replicas).
+    # Bump --max-concurrent-requests if GPU utilization is low.
     python step_4-sdg.py \\
         --task all \\
-        --tokenizer Qwen/Qwen3-30B-A3B-Instruct-2507
+        --tensor-parallel-size 1
 
-    # Run a single task
+    # Hit an existing self-hosted OpenAI-compatible endpoint
     python step_4-sdg.py \\
-        --task diverse_qa \\
-        --tokenizer Qwen/Qwen3-30B-A3B-Instruct-2507
-
-    # Use a local/self-hosted endpoint
-    python step_4-sdg.py \\
-        --task distill \\
+        --task all \\
+        --no-serve-model \\
         --base-url http://localhost:8000/v1 \\
         --tokenizer Qwen/Qwen3-30B-A3B-Instruct-2507
+
+    # Hit NVIDIA Build (set NVIDIA_API_KEY in env or pass --api-key)
+    python step_4-sdg.py \\
+        --task all \\
+        --no-serve-model \\
+        --model-name meta/llama-3.3-70b-instruct \\
+        --tokenizer meta-llama/Llama-3.3-70B-Instruct
 
 See README.md in this directory for detailed usage instructions.
 """
@@ -61,7 +89,7 @@ import time
 from loguru import logger
 from transformers import AutoTokenizer
 
-from nemo_curator.backends.experimental.ray_data import RayDataExecutor
+from nemo_curator.backends.ray_data import RayDataExecutor
 from nemo_curator.backends.xenna import XennaExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.models.client.llm_client import GenerationConfig
@@ -524,79 +552,140 @@ def run_task(
     return metrics
 
 
+def _start_inference_server(args: argparse.Namespace):
+    """Start a local Ray Serve inference server for the model.
+
+    Returns the InferenceServer instance.
+    """
+    from nemo_curator.backends.utils import get_available_cpu_gpu_resources
+    from nemo_curator.core.serve import InferenceModelConfig, InferenceServer
+
+    _, num_gpus = get_available_cpu_gpu_resources()
+    num_gpus = int(num_gpus)
+
+    tp_size = args.tensor_parallel_size if args.tensor_parallel_size is not None else num_gpus
+    default_replicas = max(num_gpus // tp_size, 1)
+    min_replicas = args.min_replicas if args.min_replicas is not None else default_replicas
+    max_replicas = args.max_replicas if args.max_replicas is not None else default_replicas
+    logger.info(
+        f"Starting local inference server with tensor_parallel_size={tp_size}, "
+        f"min_replicas={min_replicas}, max_replicas={max_replicas}"
+    )
+
+    server_config = InferenceModelConfig(
+        model_identifier=args.model_name,
+        deployment_config={
+            "autoscaling_config": {
+                "min_replicas": min_replicas,
+                "max_replicas": max_replicas,
+            },
+        },
+        engine_kwargs={
+            "tensor_parallel_size": tp_size,
+            "max_model_len": args.max_model_len,
+            "gpu_memory_utilization": args.gpu_memory_utilization,
+        },
+    )
+
+    server = InferenceServer(models=[server_config])
+    server.start()
+    logger.info(f"Local inference server ready at {server.endpoint}")
+    return server
+
+
 def main(args: argparse.Namespace) -> None:
-    ray_client = RayClient(num_cpus=args.num_cpus, include_dashboard=False)
-    ray_client.start()
+    inference_server = None
 
-    tokenizer_name = args.tokenizer if args.tokenizer else args.model_name
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    args.hf_token = os.environ.get("HF_TOKEN", "")
+    try:
+        tokenizer_name = args.tokenizer if args.tokenizer else args.model_name
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        args.hf_token = os.environ.get("HF_TOKEN", "")
 
-    api_key = args.api_key
-    if not api_key:
-        msg = (
-            "API key is required. Set NVIDIA_API_KEY environment variable or use --api-key. "
-            "Get your API key from https://build.nvidia.com/settings/api-keys"
-        )
-        raise ValueError(msg)
+        # Start the Ray cluster FIRST — InferenceServer requires an existing
+        # cluster to deploy Serve actors onto.
+        ray_client = RayClient(num_cpus=args.num_cpus, include_dashboard=False)
+        ray_client.start()
 
-    llm_client = AsyncOpenAIClient(
-        api_key=api_key,
-        base_url=args.base_url,
-        max_concurrent_requests=args.max_concurrent_requests,
-        max_retries=args.max_retries,
-        base_delay=args.base_delay,
-        timeout=args.timeout,
-    )
+        if args.serve_model:
+            import ray
+            if not ray.is_initialized():
+                ray.init(address="auto", ignore_reinit_error=True)
+            inference_server = _start_inference_server(args)
+            base_url = inference_server.endpoint
+            api_key = "unused"
+        else:
+            base_url = args.base_url
+            api_key = args.api_key
+            if not api_key:
+                msg = (
+                    "API key is required. Set NVIDIA_API_KEY environment variable or use --api-key. "
+                    "Get your API key from https://build.nvidia.com/settings/api-keys"
+                )
+                raise ValueError(msg)
 
-    generation_config = GenerationConfig(
-        temperature=args.temperature if args.temperature is not None else GENERATION_DEFAULTS["temperature"],
-        top_p=args.top_p if args.top_p is not None else GENERATION_DEFAULTS["top_p"],
-        top_k=args.top_k if args.top_k is not None else GENERATION_DEFAULTS["top_k"],
-        max_tokens=args.max_tokens if args.max_tokens is not None else GENERATION_DEFAULTS["max_output_tokens"],
-        stop=args.end_strings if args.end_strings is not None else GENERATION_DEFAULTS["end_strings"],
-        seed=args.seed,
-    )
-
-    if args.task == "all":
-        tasks = list(TASK_CONFIGS.keys())
-    else:
-        tasks = [args.task]
-
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    logger.info("Nemotron-CC SDG Pipeline")
-    logger.info(f"  Input:     {args.input_dir}")
-    logger.info(f"  Output:    {args.output_dir}")
-    logger.info(f"  Buckets:   {HIGH_QUALITY_BUCKETS}")
-    logger.info(f"  Tasks:     {tasks}")
-    logger.info(f"  Model:     {args.model_name}")
-    logger.info(f"  Tokenizer: {tokenizer_name}")
-
-    all_metrics = {}
-    total_start = time.perf_counter()
-
-    for task_name in tasks:
-        task_metrics = run_task(
-            task_name=task_name,
-            args=args,
-            llm_client=llm_client,
-            generation_config=generation_config,
-            tokenizer=tokenizer,
-        )
-        all_metrics[task_name] = task_metrics
-        _save_metrics(
-            task_metrics,
-            os.path.join(args.output_dir, f"{task_name}_metrics.json"),
+        llm_client = AsyncOpenAIClient(
+            api_key=api_key,
+            base_url=base_url,
+            max_concurrent_requests=args.max_concurrent_requests,
+            max_retries=args.max_retries,
+            base_delay=args.base_delay,
+            timeout=args.timeout,
         )
 
-    total_elapsed = time.perf_counter() - total_start
-    all_metrics["total_elapsed_s"] = round(total_elapsed, 2)
-    _save_metrics(all_metrics, os.path.join(args.output_dir, "sdg_metrics.json"))
+        generation_config = GenerationConfig(
+            temperature=args.temperature if args.temperature is not None else GENERATION_DEFAULTS["temperature"],
+            top_p=args.top_p if args.top_p is not None else GENERATION_DEFAULTS["top_p"],
+            top_k=args.top_k if args.top_k is not None else GENERATION_DEFAULTS["top_k"],
+            max_tokens=args.max_tokens if args.max_tokens is not None else GENERATION_DEFAULTS["max_output_tokens"],
+            stop=args.end_strings if args.end_strings is not None else GENERATION_DEFAULTS["end_strings"],
+            seed=args.seed,
+        )
 
-    logger.info(f"All SDG tasks completed in {total_elapsed:.1f}s ({total_elapsed / 60:.1f}m)")
+        if args.task == "all":
+            tasks = list(TASK_CONFIGS.keys())
+        else:
+            tasks = [args.task]
 
-    ray_client.stop()
+        os.makedirs(args.output_dir, exist_ok=True)
+
+        logger.info("Nemotron-CC SDG Pipeline")
+        logger.info(f"  Input:     {args.input_dir}")
+        logger.info(f"  Output:    {args.output_dir}")
+        logger.info(f"  Buckets:   {HIGH_QUALITY_BUCKETS}")
+        logger.info(f"  Tasks:     {tasks}")
+        logger.info(f"  Model:     {args.model_name}")
+        logger.info(f"  Tokenizer: {tokenizer_name}")
+        logger.info(f"  Endpoint:  {base_url}")
+        if args.serve_model:
+            logger.info("  Mode:      local inference server")
+
+        all_metrics = {}
+        total_start = time.perf_counter()
+
+        for task_name in tasks:
+            task_metrics = run_task(
+                task_name=task_name,
+                args=args,
+                llm_client=llm_client,
+                generation_config=generation_config,
+                tokenizer=tokenizer,
+            )
+            all_metrics[task_name] = task_metrics
+            _save_metrics(
+                task_metrics,
+                os.path.join(args.output_dir, f"{task_name}_metrics.json"),
+            )
+
+        total_elapsed = time.perf_counter() - total_start
+        all_metrics["total_elapsed_s"] = round(total_elapsed, 2)
+        _save_metrics(all_metrics, os.path.join(args.output_dir, "sdg_metrics.json"))
+
+        logger.info(f"All SDG tasks completed in {total_elapsed:.1f}s ({total_elapsed / 60:.1f}m)")
+
+    finally:
+        if inference_server is not None:
+            inference_server.stop()
+        ray_client.stop()
 
 
 def attach_args() -> argparse.ArgumentParser:
@@ -652,6 +741,62 @@ def attach_args() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--serve-model",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Start a local Ray Serve inference server for the model instead of "
+            "calling an external API (default: True). Requires GPUs and the model "
+            "weights to be accessible (downloaded automatically from HuggingFace). "
+            "When enabled, --base-url and --api-key are ignored. Pass "
+            "--no-serve-model to disable and use --base-url instead."
+        ),
+    )
+    parser.add_argument(
+        "--tensor-parallel-size",
+        type=int,
+        default=None,
+        help=(
+            "Number of GPUs for tensor parallelism when using --serve-model. "
+            "Defaults to the number of available GPUs."
+        ),
+    )
+    parser.add_argument(
+        "--min-replicas",
+        type=int,
+        default=None,
+        help=(
+            "Minimum number of model replicas when using --serve-model. "
+            "Defaults to num_gpus // tensor_parallel_size."
+        ),
+    )
+    parser.add_argument(
+        "--max-replicas",
+        type=int,
+        default=None,
+        help=(
+            "Maximum number of model replicas when using --serve-model. "
+            "Defaults to num_gpus // tensor_parallel_size."
+        ),
+    )
+    parser.add_argument(
+        "--max-model-len",
+        type=int,
+        default=8192,
+        help=(
+            "Maximum sequence length for the vLLM engine when using --serve-model. "
+            "Reduces KV cache memory. The pipeline needs at most ~4K tokens, so the "
+            "default of 8192 is sufficient. Set higher only if needed."
+        ),
+    )
+    parser.add_argument(
+        "--gpu-memory-utilization",
+        type=float,
+        default=0.9,
+        help="Fraction of GPU memory for vLLM when using --serve-model (0.0-1.0).",
+    )
+
+    parser.add_argument(
         "--api-key",
         type=str,
         default=os.environ.get("NVIDIA_API_KEY", ""),
@@ -666,8 +811,12 @@ def attach_args() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-concurrent-requests",
         type=int,
-        default=3,
-        help="Maximum number of concurrent API requests.",
+        default=32,
+        help=(
+            "Maximum number of concurrent API requests. Increase if GPU "
+            "utilization on the inference server is low (e.g. 256-512 for "
+            "a local --serve-model deployment with multiple replicas)."
+        ),
     )
     parser.add_argument(
         "--max-retries",

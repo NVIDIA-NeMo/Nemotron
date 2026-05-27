@@ -1,12 +1,14 @@
 [project]
 name = "recipe-runner"
 version = "0.0.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
   "nemo-automodel @ git+https://github.com/NVIDIA-NeMo/Automodel.git@ecd7cb4297ae06990c94b7581f34c03ce8ed5488",
   # Needed by Nemotron library (added via --with flag)
   "omegaconf>=2.3.0",
   "pydantic-settings>=2.0.0",
+  # Local GPU torch wheel, sourced from PyTorch cu129 index on Linux below
+  "torch>=2.10.0",
   # Pin transformers <5.2 — nemo-automodel's check_model_inputs decorator
   # is a ContextDecorator in 5.2.0 which breaks biencoder forward()
   "transformers>=5.0,<5.2",
@@ -14,6 +16,24 @@ dependencies = [
 
 # Note: exclude-dependencies are injected dynamically by run_uv.py for Docker/Slurm
 # This base config works for local mode where all packages need to be installed
+
+# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
+# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+    { index = "pytorch-cpu", marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.nemotron]
 entry-point = "train.py"

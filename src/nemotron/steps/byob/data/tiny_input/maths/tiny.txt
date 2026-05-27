@@ -1,0 +1,1 @@
+Algebra studies symbols and the rules for manipulating them. Linear equations can model simple relationships, such as converting between a starting value and a constant rate of change.

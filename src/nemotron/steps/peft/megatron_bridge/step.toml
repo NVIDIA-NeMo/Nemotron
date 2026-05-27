@@ -1,0 +1,97 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "peft/megatron_bridge"
+name = "PEFT / LoRA Training (Megatron-Bridge)"
+category = "peft"
+description = """\
+Parameter-efficient fine-tuning (LoRA) on top of Megatron-Bridge. Useful when a
+full SFT exceeds memory but you still want TP/PP/CP scaling. Consumes packed
+Parquet from data_prep/sft_packing."""
+tags = ["peft", "lora", "fine-tuning", "megatron", "distributed-training"]
+
+[[consumes]]
+type = "packed_parquet"
+description = "Packed SFT Parquet shards with input_ids + loss_mask"
+required = true
+
+[[consumes]]
+type = "checkpoint_megatron"
+description = "Base pretrained Megatron checkpoint to adapt."
+required = true
+
+[[produces]]
+type = "checkpoint_lora"
+description = "LoRA adapter weights (merge with the base via convert/merge_lora for an HF checkpoint)."
+
+[[parameters]]
+name = "peft.type"
+description = "PEFT scheme — typically 'lora'."
+default = "lora"
+choices = ["lora"]
+
+[[parameters]]
+name = "peft.dim"
+description = "LoRA rank."
+default = 32
+
+[[parameters]]
+name = "checkpoint.pretrained_checkpoint"
+description = "Megatron base checkpoint directory to adapt. Required for PEFT; keep it separate from adapter output paths."
+
+[[parameters]]
+name = "load_hf_weights"
+description = "Set false when starting PEFT from checkpoint.pretrained_checkpoint. Use HF loading only when deliberately bootstrapping from HF weights."
+default = false
+
+[[parameters]]
+name = "dataset.packed_sequence_specs.packed_train_data_path"
+description = "Packed training Parquet glob, usually data_prep/sft_packing output_dir/splits/train/*.parquet."
+
+[[strategies]]
+when = "Full SFT does not fit in memory at the desired model size"
+then = "Switch to peft/megatron_bridge to keep TP/PP scaling but drop trainable params drastically."
+skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
+
+[[strategies]]
+when = "Checkpoint save reliability matters more than throughput"
+then = "Prefer checkpoint.async_save=false, checkpoint.fully_parallel_save=false, checkpoint.save_optim=false, and checkpoint.save_rng=false for adapter runs."
+
+[[strategies]]
+when = "The adapter must become an HF deployment artifact"
+then = "Plan the export/merge path up front: preserve the original base, convert layouts only when required, then run convert/merge_lora."
+
+[[errors]]
+name = "missing_packed_data"
+recovery = "Run data_prep/sft_packing first."
+
+[[errors]]
+name = "missing_base_checkpoint"
+recovery = "Set checkpoint.pretrained_checkpoint to a real Megatron checkpoint directory and keep load_hf_weights=false for normal PEFT."
+
+[[errors]]
+name = "base_and_adapter_paths_mixed"
+recovery = "Keep the base Megatron checkpoint path, adapter save path, and later merged HF output path distinct."
+
+[reference]
+skill = "src/nemotron/steps/peft/megatron_bridge/README.md"
+recipe = "src/nemotron/recipes/nano3/stage1_sft/"
+script = "src/nemotron/recipes/nano3/stage1_sft/train.py"
+megatron_bridge_repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
+megatron_bridge_readme = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/README.md"
+megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
+peft_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/peft.html"
+packed_sequences_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/training/packed-sequences.html"
+skills = ["skills/nemotron-customize/references/context/mbridge-sft.txt"]
