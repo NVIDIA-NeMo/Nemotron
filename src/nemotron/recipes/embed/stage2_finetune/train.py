@@ -4,8 +4,8 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "embed/finetune"
-# image = "nvcr.io/nvidia/pytorch:25.12-py3"
-# setup = "PyTorch pre-installed. Stage dependencies resolved via UV at runtime."
+# image = "nvcr.io/nvidia/nemo-automodel:26.04"
+# setup = "NeMo Automodel pre-installed. Stage dependencies resolved via UV at runtime."
 #
 # [tool.runspec.run]
 # launch = "torchrun"
@@ -50,11 +50,12 @@ Usage:
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
@@ -82,6 +83,10 @@ class FinetuneConfig(RecipeSettings):
         default="nvidia/llama-nemotron-embed-1b-v2",
         description="Base embedding model to fine-tune.",
     )
+    trust_remote_code: bool = Field(
+        default=True,
+        description="Allow Hugging Face custom model code. Required by the default Nemotron Embed model.",
+    )
 
     # Data paths
     train_data_path: Path = Field(
@@ -107,6 +112,14 @@ class FinetuneConfig(RecipeSettings):
         description="LR decay schedule (cosine, linear).",
     )
     weight_decay: float = Field(default=0.01, ge=0, description="Weight decay for optimizer.")
+    optimizer_backend: Literal["auto", "fused_adam", "flash_adamw"] = Field(
+        default="auto",
+        description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
+    )
+    flash_adamw_master_weight_bits: Literal[24, 32] = Field(
+        default=32,
+        description="Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable.",
+    )
 
     # Model architecture
     attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(
@@ -213,6 +226,74 @@ def _auto_scale_hyperparams(
     return global_batch_size, num_epochs, checkpoint_every_steps, val_every_steps
 
 
+def _can_import_fused_adam() -> tuple[bool, str | None]:
+    """Return whether Transformer Engine FusedAdam is importable."""
+    try:
+        importlib.import_module("transformer_engine.pytorch.optimizers.fused_adam")
+    except Exception as e:
+        return False, str(e)
+    return True, None
+
+
+def _can_import_flash_adamw() -> tuple[bool, str | None]:
+    """Return whether FlashAdamW is importable."""
+    try:
+        importlib.import_module("flashoptim")
+    except Exception as e:
+        return False, str(e)
+    return True, None
+
+
+def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[Any, str]:
+    """Load Automodel YAML after choosing an optimizer that is importable here."""
+    import yaml
+
+    base_config_path = STAGE_PATH / "biencoder_base.yaml"
+    with open(base_config_path) as f:
+        raw_config = yaml.safe_load(f)
+
+    te_available, te_error = _can_import_fused_adam()
+    flash_available, flash_error = _can_import_flash_adamw()
+    optimizer_backend = cfg.optimizer_backend
+    if optimizer_backend == "auto":
+        optimizer_backend = "fused_adam" if te_available else "flash_adamw"
+
+    if optimizer_backend == "fused_adam":
+        if not te_available:
+            print("Error: optimizer_backend=fused_adam requires Transformer Engine.", file=sys.stderr)
+            if te_error:
+                print(f"  Import error: {te_error}", file=sys.stderr)
+            print(
+                "  Use optimizer_backend=flash_adamw for local runs without Transformer Engine.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    elif optimizer_backend == "flash_adamw":
+        if not flash_available:
+            print("Error: optimizer_backend=flash_adamw requires flashoptim.", file=sys.stderr)
+            if flash_error:
+                print(f"  Import error: {flash_error}", file=sys.stderr)
+            print(
+                "  Install flashoptim, or run in an environment with Transformer Engine FusedAdam.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        raw_config["optimizer"] = {
+            "_target_": "flashoptim.FlashAdamW",
+            "lr": raw_config.get("optimizer", {}).get("lr", cfg.learning_rate),
+            "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
+            "betas": [0.9, 0.999],
+            "eps": 1.0e-8,
+            "quantize": False,
+            "compress_state_dict": False,
+            "master_weight_bits": cfg.flash_adamw_master_weight_bits,
+            "fused": True,
+        }
+        raw_config.setdefault("model", {})["torch_dtype"] = "bfloat16"
+
+    return config_node_cls(raw_config), optimizer_backend
+
+
 def run_finetune(cfg: FinetuneConfig) -> Path:
     """Run embedding model fine-tuning using nemo-automodel.
 
@@ -278,22 +359,32 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Import nemo-automodel components
     try:
-        from nemo_automodel.components.config.loader import load_yaml_config
-        from nemo_automodel.recipes.biencoder import TrainBiencoderRecipe
+        from nemo_automodel.components.config.loader import ConfigNode
+        from nemo_automodel.recipes.retrieval import TrainBiEncoderRecipe
     except ImportError as e:
         print("Error: Failed to import nemo-automodel. Is it installed?", file=sys.stderr)
         print("  Install with: pip install nemo-automodel", file=sys.stderr)
         print(f"  Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Load base config from nemo-automodel defaults
-    base_config_path = STAGE_PATH / "biencoder_base.yaml"
-    automodel_cfg = load_yaml_config(str(base_config_path))
+    # Load base config from nemo-automodel defaults. ConfigNode resolves _target_
+    # imports during construction, so optimizer selection must happen on raw YAML.
+    automodel_cfg, optimizer_backend = _load_automodel_config(cfg, ConfigNode)
+    optimizer_detail = optimizer_backend
+    if optimizer_backend == "flash_adamw":
+        optimizer_detail = (
+            f"{optimizer_backend} "
+            f"(bf16 model, {cfg.flash_adamw_master_weight_bits}-bit master weights)"
+        )
+    print(f"Optimizer:      {optimizer_detail}")
+    print()
 
     # Apply overrides from our config
     # Model settings
     automodel_cfg.model.pretrained_model_name_or_path = cfg.base_model
     automodel_cfg.tokenizer.pretrained_model_name_or_path = cfg.base_model
+    automodel_cfg.model.trust_remote_code = cfg.trust_remote_code
+    automodel_cfg.tokenizer.trust_remote_code = cfg.trust_remote_code
     # Auto-detect attention implementation if not explicitly set
     if cfg.attn_implementation is not None:
         attn_impl = cfg.attn_implementation
@@ -308,7 +399,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Data settings
     automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
-    automodel_cfg.dataloader.dataset.train_n_passages = cfg.train_n_passages
+    automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
     automodel_cfg.dataloader.collate_fn.q_max_len = cfg.query_max_length
     automodel_cfg.dataloader.collate_fn.p_max_len = cfg.passage_max_length
     automodel_cfg.dataloader.collate_fn.query_prefix = cfg.query_prefix
@@ -330,13 +421,13 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Model architecture
     automodel_cfg.model.pooling = cfg.pooling
     automodel_cfg.model.l2_normalize = cfg.l2_normalize
-    automodel_cfg.model.t = cfg.temperature
+    automodel_cfg.temperature = cfg.temperature
 
     # Checkpoint settings
     automodel_cfg.checkpoint.checkpoint_dir = str(cfg.checkpoint_dir)
 
-    # Create and run the biencoder recipe
-    recipe = TrainBiencoderRecipe(automodel_cfg)
+    # Create and run the bi-encoder recipe
+    recipe = TrainBiEncoderRecipe(automodel_cfg)
     recipe.setup()
     recipe.run_train_validation_loop()
 
