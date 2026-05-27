@@ -6,14 +6,14 @@ Evaluation of the `retriever-finetune-recipe` skill, which guides agents through
 
 This report follows the functional skill evaluation approach: define realistic task cases, run the agent harness with and without the skill, compare aggregate metrics, and publish only reusable fixtures plus the summary report. Generated run artifacts stay out of source control.
 
-Current publication status: Codex evaluation is recorded; Claude Code evaluation is still pending and should be completed, or an explicit exception documented, before final publication.
+Current publication status: Codex evaluation is recorded; Claude Code with-skill live evaluation is recorded. Full Claude Code lift analysis is still pending because the baseline leg hit evaluation harness failures.
 
 ## Agents Used
 
 | Agent harness | Model | Status |
 | --- | --- | --- |
 | Codex | Configured evaluation model | Evaluated |
-| Claude Code | Configured evaluation model | Required before publication; pending explicit live-run approval |
+| Claude Code | Configured evaluation model | With-skill live run recorded; baseline/lift run invalid due harness failures |
 
 ## Metrics Used
 
@@ -53,8 +53,14 @@ The dataset contains 12 realistic task cases in `evals/evals.json`:
 | --- | ---: | --- | --- |
 | Static quality score | 1 skill | 100/100 | Not agent-specific |
 | Command freshness checklist | 6 representative commands | Passed manually in current checkout | Not agent-specific |
-| Live overall score (original set) | 4 tasks | 0.90 with skill vs 0.66 without skill (+0.24) | Pending |
-| Security (original set) | 4 tasks | 1.00 | Pending |
+| Live overall score (original set) | 4 tasks | 0.90 with skill vs 0.66 without skill (+0.24) | Baseline/lift pending |
+| Live with-skill score (expanded set) | 12 tasks | Not rerun | 0.86 |
+| Security | 12 tasks | 1.00 on original set | 1.00 |
+| Skill execution | 12 tasks | Not rerun | 0.90 |
+| Efficiency | 12 tasks | Not rerun | 0.77 |
+| Accuracy | 12 tasks | Not rerun | 0.95 |
+| Goal accuracy | 12 tasks | Not rerun | 0.85 |
+| Behavior check | 12 tasks | Not rerun | 0.69 |
 
 ## Experiential Design Iteration
 
@@ -64,4 +70,4 @@ A follow-up design iteration used three Codex-native trace-bundle trials: one ba
 
 The eval setup compares with-skill and without-skill performance, keeps generated `evals/results/` output out of source control, and uses task prompts that do not explicitly name the skill. The eight newer cases expand adversarial coverage; rerun live evaluation before replacing the original-set aggregate scores. The committed `evals/evals.json` file is the reusable test dataset; aggregate results are summarized here rather than committing full run directories or raw provider traces.
 
-The Claude Code run is not recorded here yet because live evaluation sends workspace skill/eval content to configured model providers and requires explicit approval in this environment.
+The Claude Code with-skill live run completed 12/12 scored attempts after explicit approval for provider-backed evaluation. Full Claude Code with/without lift was attempted, but the baseline leg was invalid because two baseline attempts failed in the evaluation harness (`AgentTimeoutError` and a tool-schema API error). Do not use the partial lift scores for pass/fail or model comparison.
