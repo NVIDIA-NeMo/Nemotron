@@ -17,8 +17,8 @@ from nemotron.recipes.rerank.stage2_finetune.train import (  # noqa: E402
 
 def _torch_and_shard():
     torch = pytest.importorskip("torch")
-    Shard = pytest.importorskip("torch.distributed.tensor").Shard
-    return torch, Shard
+    shard = pytest.importorskip("torch.distributed.tensor").Shard
+    return torch, shard
 
 
 class _Mesh:
@@ -44,7 +44,7 @@ def test_get_fsdp_shard_mesh_size_uses_last_dim_for_hsdp() -> None:
 
 
 def test_flashoptim_patch_shards_uneven_2d_params_on_dim1(monkeypatch: pytest.MonkeyPatch) -> None:
-    torch, Shard = _torch_and_shard()
+    torch, shard = _torch_and_shard()
     parallelizer = pytest.importorskip("nemo_automodel.components.distributed.parallelizer")
     captured: dict[str, object] = {}
 
@@ -62,7 +62,7 @@ def test_flashoptim_patch_shards_uneven_2d_params_on_dim1(monkeypatch: pytest.Mo
     assert callable(shard_placement_fn)
 
     placement = shard_placement_fn(torch.nn.Parameter(torch.empty(1, 32)))
-    assert isinstance(placement, Shard)
+    assert isinstance(placement, shard)
     assert placement.dim == 1
 
     assert shard_placement_fn(torch.nn.Parameter(torch.empty(32, 32))) is None
@@ -70,7 +70,7 @@ def test_flashoptim_patch_shards_uneven_2d_params_on_dim1(monkeypatch: pytest.Mo
 
 
 def test_flashoptim_patch_preserves_existing_shard_placement(monkeypatch: pytest.MonkeyPatch) -> None:
-    torch, Shard = _torch_and_shard()
+    torch, shard = _torch_and_shard()
     parallelizer = pytest.importorskip("nemo_automodel.components.distributed.parallelizer")
     captured: dict[str, object] = {}
 
@@ -84,12 +84,12 @@ def test_flashoptim_patch_preserves_existing_shard_placement(monkeypatch: pytest
     parallelizer.fully_shard(
         object(),
         mesh=_Mesh(2),
-        shard_placement_fn=lambda param: Shard(0),
+        shard_placement_fn=lambda param: shard(0),
     )
 
     shard_placement_fn = captured["shard_placement_fn"]
     assert callable(shard_placement_fn)
 
     placement = shard_placement_fn(torch.nn.Parameter(torch.empty(1, 32)))
-    assert isinstance(placement, Shard)
+    assert isinstance(placement, shard)
     assert placement.dim == 0

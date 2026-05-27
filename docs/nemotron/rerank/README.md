@@ -186,6 +186,7 @@ All files matching the `file_extensions` config (default: `.txt,.md,.text,` plus
 - **Python**: 3.12 or later
 - **UV**: Package manager (installation instructions above)
 - **NVIDIA API Key**: Required for synthetic data generation
+- **NGC API Key**: Required for authenticated NIM deployment
 - **NVIDIA GPU Drivers**: Latest drivers for your GPU
 - **Docker** (optional): For containerized execution or NIM deployment
 - **Slurm** (optional): For cluster execution
@@ -218,6 +219,7 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 # Set environment (important for CUDA compatibility)
 export LD_LIBRARY_PATH=""
 export NVIDIA_API_KEY=nvapi-your_key_here
+export NGC_API_KEY=ngc-your_key_here
 
 # Stage 0: Generate synthetic Q&A pairs from your documents
 nemotron rerank sdg -c default corpus_dir=/path/to/your/docs
@@ -234,8 +236,10 @@ nemotron rerank eval -c default
 # Stage 4: Export to ONNX/TensorRT for conversion checks or NIM packaging
 nemotron rerank export -c default
 
-# Stage 5: Deploy NeMo Retriever Reranking NIM
-nemotron rerank deploy -c default
+# Optional Stage 5: Deploy NeMo Retriever Reranking NIM once a NIM manifest is available.
+# Deploy looks for ./output/rerank/stage4_export/model_manifest.yaml by default;
+# provide nim_manifest_path if the NIM packaging step writes it elsewhere.
+nemotron rerank deploy -c default detach=true
 
 # Optional: Verify NIM accuracy matches checkpoint
 nemotron rerank eval -c default eval_nim=true eval_base=false
@@ -481,12 +485,14 @@ trt_opt_seq_len: 256           # Optimal sequence length for TRT
 **Stage 5: Deploy**
 ```yaml
 nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.11.0
-model_dir: null                # Optional directory containing model_manifest.yaml
+model_dir: ./output/rerank/stage4_export  # Directory containing model_manifest.yaml
 nim_manifest_path: null        # Optional explicit NIM model manifest path
 nim_model_profile: null        # Optional profile from the manifest
 bind_address: 127.0.0.1        # Host interface for the NIM ranking API
 host_port: 8000                # Host port for the NIM ranking API
 detach: false                  # Run in background
+replace_existing: false        # Require explicit opt-in before replacing a running container
+keep_failed_container: false   # Remove unhealthy detached containers after timeout
 ```
 
 ### Overriding Configuration
@@ -556,17 +562,17 @@ nemotron rerank export -c default quant_cfg=fp8
 ### Deploy
 
 ```bash
-# Deploy the default Reranking NIM (foreground)
-nemotron rerank deploy -c default
-
-# Deploy in background (detached mode)
+# Deploy the Stage 4 NIM package in background (detached mode)
 nemotron rerank deploy -c default detach=true
 
-# Deploy with a custom NIM manifest
+# Deploy with a custom NIM manifest if packaging wrote it elsewhere
 nemotron rerank deploy -c default nim_manifest_path=/path/to/model_manifest.yaml
 
 # Or point at a directory that contains model_manifest.yaml
 nemotron rerank deploy -c default model_dir=/path/to/nim-model-dir
+
+# Replace a recipe-owned container with the same name
+nemotron rerank deploy -c default detach=true replace_existing=true
 
 # Stop the NIM container
 docker stop nemotron-rerank-nim
@@ -618,6 +624,7 @@ output/rerank/
 ├── stage3_eval/                   # Evaluation results
 │   └── eval_results.json
 └── stage4_export/                 # Exported models
+    ├── model_manifest.yaml         # NIM manifest, when packaging creates one
     ├── onnx/                      # ONNX model files
     │   └── model.onnx
     └── tensorrt/                  # TensorRT engine (if enabled)

@@ -57,9 +57,10 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from nemotron.recipes.rerank._trust import validate_trust_remote_code
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -82,6 +83,10 @@ class FinetuneConfig(RecipeSettings):
     base_model: str = Field(
         default="nvidia/llama-nemotron-rerank-1b-v2",
         description="Base reranking model to fine-tune.",
+    )
+    allow_untrusted_remote_code: bool = Field(
+        default=False,
+        description="Allow trust_remote_code for non-NVIDIA remote model refs.",
     )
 
     # Data paths
@@ -145,6 +150,14 @@ class FinetuneConfig(RecipeSettings):
     checkpoint_every_steps: int = Field(default=100, gt=0, description="Save checkpoint every N steps.")
     val_every_steps: int = Field(default=100, gt=0, description="Run validation every N steps.")
 
+    @model_validator(mode="after")
+    def _check_remote_code_trust(self):
+        validate_trust_remote_code(
+            [self.base_model],
+            allow_untrusted_remote_code=self.allow_untrusted_remote_code,
+        )
+        return self
+
 
 def _count_training_examples(train_data_path: Path) -> int:
     """Count the number of training examples in a training data file."""
@@ -174,9 +187,7 @@ def _warn_if_negatives_sparse(train_data_path: Path, train_n_passages: int) -> N
         print()
 
 
-def _auto_scale_hyperparams(
-    cfg: FinetuneConfig, num_examples: int
-) -> tuple[int, int, int, int]:
+def _auto_scale_hyperparams(cfg: FinetuneConfig, num_examples: int) -> tuple[int, int, int, int]:
     """Auto-scale training hyperparameters based on dataset size.
 
     Args:
@@ -353,9 +364,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     num_examples = _count_training_examples(cfg.train_data_path)
     _warn_if_negatives_sparse(cfg.train_data_path, cfg.train_n_passages)
 
-    global_batch_size, num_epochs, ckpt_every, val_every = _auto_scale_hyperparams(
-        cfg, num_examples
-    )
+    global_batch_size, num_epochs, ckpt_every, val_every = _auto_scale_hyperparams(cfg, num_examples)
 
     steps_per_epoch = max(1, num_examples // global_batch_size)
     total_steps = steps_per_epoch * num_epochs
@@ -381,8 +390,10 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     print()
 
     if total_steps < 50:
-        print(f"Warning: Only ~{total_steps} total training steps. "
-              f"Dataset may be too small for meaningful fine-tuning.", file=sys.stderr)
+        print(
+            f"Warning: Only ~{total_steps} total training steps. Dataset may be too small for meaningful fine-tuning.",
+            file=sys.stderr,
+        )
         print("         Consider adding more documents to your corpus.", file=sys.stderr)
         print()
 
@@ -426,6 +437,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     else:
         try:
             import flash_attn  # noqa: F401
+
             attn_impl = "flash_attention_2"
         except ImportError:
             attn_impl = "sdpa"
@@ -500,9 +512,7 @@ def main(cfg: FinetuneConfig | None = None) -> Path:
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, FinetuneConfig)

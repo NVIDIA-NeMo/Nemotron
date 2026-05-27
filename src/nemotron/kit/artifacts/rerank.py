@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rerank artifacts - fine-tuned reranking model artifacts."""
+"""Rerank artifacts - reranking data prep and fine-tuned model artifacts."""
 
 from __future__ import annotations
 
@@ -21,6 +21,20 @@ from typing import Annotated
 from pydantic import Field
 
 from nemotron.kit.artifacts.base import Artifact
+
+
+class RerankDataArtifact(Artifact):
+    """Prepared reranking training data (output of stage1_prep).
+
+    The path points to the output directory containing training data,
+    eval BEIR data, and mined hard negatives.
+    """
+
+    training_examples: Annotated[int, Field(ge=0, description="Number of training examples")]
+    eval_queries: Annotated[int, Field(ge=0, description="Number of evaluation queries")]
+    base_model: Annotated[str, Field(description="Embedding model used for hard negative mining")]
+    quality_threshold: Annotated[float, Field(description="Minimum quality score")]
+    hard_negatives_per_query: Annotated[int, Field(ge=0, description="Negatives mined per query")]
 
 
 class RerankModelArtifact(Artifact):

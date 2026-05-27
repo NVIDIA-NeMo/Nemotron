@@ -25,6 +25,7 @@ sdg_input_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage0_sdg
 
 # Output directory for prepared training data
 output_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage1_prep
+artifact_recipe: rerank
 
 # Base embedding model for hard negative mining
 base_model: nvidia/llama-nemotron-embed-1b-v2

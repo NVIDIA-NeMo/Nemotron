@@ -1,8 +1,8 @@
 # Stage 5: Deploy Configuration
 #
-# Launches NVIDIA NeMo Retriever Reranking NIM. Custom fine-tuned models
-# require a NIM model_manifest.yaml; raw ONNX/TensorRT directories from
-# Stage 4 are not passed to NIM directly.
+# Launches NVIDIA NeMo Retriever Reranking NIM. By default deploy looks for
+# the Stage 4 model_manifest.yaml and fails if it is missing, so it does not
+# silently serve the stock image model after a fine-tune/export pipeline.
 #
 # Usage:
 #   nemotron rerank deploy -c default
@@ -20,12 +20,14 @@ nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.11.0
 # Container name (for management)
 container_name: nemotron-rerank-nim
 
-# Replace an existing recipe-owned container with the same name
-replace_existing: true
+# Replace an existing recipe-owned container with the same name. This is
+# explicit by default because replacement stops the old service before starting
+# the new one.
+replace_existing: false
 
-# Optional custom NIM model directory or manifest. If model_dir is set, it must
-# contain model_manifest.yaml unless nim_manifest_path is provided.
-model_dir: null
+# Optional custom NIM model directory or manifest. The default points at Stage 4
+# output and must contain model_manifest.yaml unless nim_manifest_path is provided.
+model_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage4_export
 nim_manifest_path: null
 nim_model_profile: null
 nim_served_model_name: null
@@ -48,6 +50,7 @@ shm_size: 16gb
 # Runtime settings
 detach: false
 remove_on_exit: true
+keep_failed_container: false
 
 # Health check settings
 health_check_timeout: 120

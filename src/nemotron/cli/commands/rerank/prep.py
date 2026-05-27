@@ -134,8 +134,8 @@ def _execute_remote(
         typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
         raise typer.Exit(1)
 
-    from nemo_runspec.packaging import CodePackager
     from nemo_runspec.execution import create_executor
+    from nemo_runspec.packaging import CodePackager
     from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,

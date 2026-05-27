@@ -41,13 +41,17 @@ class TestRerankDryRun:
         assert "sdg -> prep -> finetune -> eval -> export -> deploy" in result.output
 
     def test_remote_run_rejects_local_only_deploy_before_env_lookup(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["nemotron", "rerank", "run", "--run", "missing", "--dry-run", "--to", "deploy"])
+        monkeypatch.setattr(
+            sys, "argv", ["nemotron", "rerank", "run", "--run", "missing", "--dry-run", "--to", "deploy"]
+        )
         result = runner.invoke(app, ["rerank", "run", "--run", "missing", "--dry-run", "--to", "deploy"])
         assert result.exit_code == 1
         assert "deploy do not support remote execution" in result.output
 
     def test_remote_run_rejects_stage_flag_before_submission(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["nemotron", "rerank", "run", "--run", "missing", "--stage", "--from", "sdg", "--to", "eval"])
+        monkeypatch.setattr(
+            sys, "argv", ["nemotron", "rerank", "run", "--run", "missing", "--stage", "--from", "sdg", "--to", "eval"]
+        )
         result = runner.invoke(app, ["rerank", "run", "--run", "missing", "--stage", "--from", "sdg", "--to", "eval"])
         assert result.exit_code == 1
         assert "--stage is not supported for rerank run" in result.output

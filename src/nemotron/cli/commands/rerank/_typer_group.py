@@ -28,14 +28,20 @@ from __future__ import annotations
 
 from rich.console import Console
 
-from nemotron.cli.commands.rerank.sdg import META as SDG_META, sdg
-from nemotron.cli.commands.rerank.prep import META as PREP_META, prep
-from nemotron.cli.commands.rerank.finetune import META as FINETUNE_META, finetune
-from nemotron.cli.commands.rerank.eval import META as EVAL_META, eval as eval_cmd
-from nemotron.cli.commands.rerank.export import META as EXPORT_META, export
-from nemotron.cli.commands.rerank.deploy import META as DEPLOY_META, deploy
-from nemotron.cli.commands.rerank.run import run as run_cmd
 from nemo_runspec.recipe_typer import RecipeTyper
+from nemotron.cli.commands.rerank.deploy import META as DEPLOY_META
+from nemotron.cli.commands.rerank.deploy import deploy
+from nemotron.cli.commands.rerank.eval import META as EVAL_META
+from nemotron.cli.commands.rerank.eval import eval as eval_cmd
+from nemotron.cli.commands.rerank.export import META as EXPORT_META
+from nemotron.cli.commands.rerank.export import export
+from nemotron.cli.commands.rerank.finetune import META as FINETUNE_META
+from nemotron.cli.commands.rerank.finetune import finetune
+from nemotron.cli.commands.rerank.prep import META as PREP_META
+from nemotron.cli.commands.rerank.prep import prep
+from nemotron.cli.commands.rerank.run import run as run_cmd
+from nemotron.cli.commands.rerank.sdg import META as SDG_META
+from nemotron.cli.commands.rerank.sdg import sdg
 
 console = Console()
 

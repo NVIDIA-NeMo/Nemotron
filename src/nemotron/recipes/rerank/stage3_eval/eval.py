@@ -58,15 +58,14 @@ from __future__ import annotations
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
-
-# Must be set before transformers is imported (BEIR imports it at module level)
-os.environ.setdefault("HF_HUB_TRUST_REMOTE_CODE", "1")
-os.environ.setdefault("TRUST_REMOTE_CODE", "True")
 
 from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from nemotron.recipes.rerank._trust import validate_trust_remote_code
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -82,23 +81,49 @@ class EvalConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Model paths
-    base_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model for comparison.")
-    finetuned_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned model checkpoint.")
+    base_model: str = Field(
+        default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model for comparison."
+    )
+    finetuned_model_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated",
+        description="Path to fine-tuned model checkpoint.",
+    )
+    allow_untrusted_remote_code: bool = Field(
+        default=False,
+        description="Allow trust_remote_code for non-NVIDIA remote model refs.",
+    )
 
     # First-stage retrieval model (for generating candidates to re-rank)
-    retrieval_model: str = Field(default="nvidia/llama-nemotron-embed-1b-v2", description="Dense retrieval model for first-stage candidate generation.")
+    retrieval_model: str = Field(
+        default="nvidia/llama-nemotron-embed-1b-v2",
+        description="Dense retrieval model for first-stage candidate generation.",
+    )
 
     # Evaluation data
-    eval_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/eval_beir", description="Path to BEIR-formatted evaluation data.")
+    eval_data_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/eval_beir",
+        description="Path to BEIR-formatted evaluation data.",
+    )
 
     # Output settings
-    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage3_eval", description="Directory for saving evaluation results.")
+    output_dir: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage3_eval",
+        description="Directory for saving evaluation results.",
+    )
 
     # Evaluation settings
     k_values: list[int] = Field(default_factory=lambda: [1, 5, 10, 100], description="K values for nDCG@k metrics.")
     top_k: int = Field(default=100, gt=0, description="Number of first-stage candidates to re-rank.")
     batch_size: int = Field(default=128, gt=0, description="Batch size for reranker scoring.")
-    retrieval_batch_size: int = Field(default=32, gt=0, description="Batch size for first-stage retrieval encoding. Lower than batch_size because the embedding model processes longer sequences.")
+    use_data_parallel: bool = Field(default=False, description="Use all visible GPUs with torch.nn.DataParallel.")
+    retrieval_batch_size: int = Field(
+        default=32,
+        gt=0,
+        description=(
+            "Batch size for first-stage retrieval encoding. Lower than batch_size because the embedding model "
+            "processes longer sequences."
+        ),
+    )
     max_length: int = Field(default=512, gt=0, description="Maximum sequence length.")
     corpus_chunk_size: int = Field(default=50000, gt=0, description="Chunk size for corpus encoding.")
 
@@ -112,17 +137,26 @@ class EvalConfig(RecipeSettings):
     eval_finetuned: bool = Field(default=True, description="Whether to evaluate the fine-tuned reranker.")
 
     # Reranker prompt template (must match training config)
-    prompt_template: str = Field(default=DEFAULT_PROMPT_TEMPLATE, description="Template for formatting query-passage pairs. Must match the template used during training.")
+    prompt_template: str = Field(
+        default=DEFAULT_PROMPT_TEMPLATE,
+        description="Template for formatting query-passage pairs. Must match the template used during training.",
+    )
 
     # NIM API evaluation settings
     eval_nim: bool = Field(default=False, description="Whether to evaluate a NIM API endpoint.")
     nim_url: str = Field(default="http://localhost:8000", description="NIM API base URL.")
-    nim_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Model name for NIM API requests.")
+    nim_model: str = Field(
+        default="nvidia/llama-nemotron-rerank-1b-v2", description="Model name for NIM API requests."
+    )
     nim_batch_size: int = Field(default=32, gt=0, description="Batch size for NIM API requests.")
     nim_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for NIM API requests.")
 
     @model_validator(mode="after")
     def _check_eval_settings(self):
+        validate_trust_remote_code(
+            [self.base_model, self.retrieval_model],
+            allow_untrusted_remote_code=self.allow_untrusted_remote_code,
+        )
         if self.k_values and self.top_k < max(self.k_values):
             raise ValueError(
                 f"top_k ({self.top_k}) must be >= max(k_values) ({max(self.k_values)}) "
@@ -151,13 +185,13 @@ class _SentenceTransformerRetriever:
         query_prefix: str = "query:",
         passage_prefix: str = "passage:",
         normalize_embeddings: bool = True,
+        trust_remote_code: bool = True,
     ):
-        import torch
         from sentence_transformers import SentenceTransformer
 
         self.model = SentenceTransformer(
             model_path,
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
             model_kwargs={"torch_dtype": "bfloat16"},
         )
         self.query_prefix = query_prefix
@@ -188,6 +222,7 @@ def _get_first_stage_results(
     query_prefix: str = "query:",
     passage_prefix: str = "passage:",
     normalize_embeddings: bool = True,
+    trust_remote_code: bool = True,
 ) -> tuple[dict, dict, dict, dict]:
     """Run first-stage dense retrieval to get candidates for re-ranking.
 
@@ -197,9 +232,7 @@ def _get_first_stage_results(
     try:
         from beir.datasets.data_loader import GenericDataLoader
         from beir.retrieval.evaluation import EvaluateRetrieval
-        from beir.retrieval.search.dense.exact_search import (
-            DenseRetrievalExactSearch as DRES,
-        )
+        from beir.retrieval.search.dense.exact_search import DenseRetrievalExactSearch
     except ImportError:
         print("Error: BEIR is required for evaluation. Install with: pip install beir")
         sys.exit(1)
@@ -212,9 +245,10 @@ def _get_first_stage_results(
         query_prefix=query_prefix,
         passage_prefix=passage_prefix,
         normalize_embeddings=normalize_embeddings,
+        trust_remote_code=trust_remote_code,
     )
 
-    dres_model = DRES(
+    dres_model = DenseRetrievalExactSearch(
         dense_model,
         corpus_chunk_size=corpus_chunk_size,
         batch_size=batch_size,
@@ -243,6 +277,8 @@ def evaluate_reranker(
     max_length: int = 512,
     k_values: list[int] | None = None,
     prompt_template: str | None = None,
+    trust_remote_code: bool = True,
+    use_data_parallel: bool = False,
 ) -> tuple[dict, dict]:
     """Evaluate a cross-encoder reranker on first-stage retrieval results.
 
@@ -278,12 +314,20 @@ def evaluate_reranker(
         k_values = [1, 5, 10, 100]
 
     # Load model and tokenizer directly to control input formatting
-    tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True, padding_side="left")
-    model = AutoModelForSequenceClassification.from_pretrained(str(model_path), trust_remote_code=True, torch_dtype=torch.bfloat16)
+    tokenizer = AutoTokenizer.from_pretrained(
+        str(model_path),
+        trust_remote_code=trust_remote_code,
+        padding_side="left",
+    )
+    model = AutoModelForSequenceClassification.from_pretrained(
+        str(model_path),
+        trust_remote_code=trust_remote_code,
+        torch_dtype=torch.bfloat16,
+    )
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
-    if torch.cuda.device_count() > 1:
+    if use_data_parallel and torch.cuda.device_count() > 1:
         print(f"   Using {torch.cuda.device_count()} GPUs with DataParallel")
         model = torch.nn.DataParallel(model)
 
@@ -305,9 +349,7 @@ def evaluate_reranker(
             text = doc.get("text", "")
             passage = f"{title} {text}".strip() if title else text
             if prompt_template:
-                formatted_inputs.append(
-                    prompt_template.format(query=queries[qid], passage=passage)
-                )
+                formatted_inputs.append(prompt_template.format(query=queries[qid], passage=passage))
             else:
                 formatted_inputs.append((queries[qid], passage))
 
@@ -316,19 +358,27 @@ def evaluate_reranker(
     num_batches = (len(formatted_inputs) + batch_size - 1) // batch_size
     print(f"   Scoring {len(formatted_inputs)} query-passage pairs ({num_batches} batches, batch_size={batch_size})")
     from tqdm import tqdm
+
     for batch_start in tqdm(range(0, len(formatted_inputs), batch_size), total=num_batches, desc="   Reranking"):
-        batch = formatted_inputs[batch_start:batch_start + batch_size]
+        batch = formatted_inputs[batch_start : batch_start + batch_size]
         if prompt_template:
             features = tokenizer(
-                batch, padding=True, truncation=True,
-                max_length=max_length, return_tensors="pt",
+                batch,
+                padding=True,
+                truncation=True,
+                max_length=max_length,
+                return_tensors="pt",
             )
         else:
             texts_a = [pair[0] for pair in batch]
             texts_b = [pair[1] for pair in batch]
             features = tokenizer(
-                texts_a, texts_b, padding=True, truncation=True,
-                max_length=max_length, return_tensors="pt",
+                texts_a,
+                texts_b,
+                padding=True,
+                truncation=True,
+                max_length=max_length,
+                return_tensors="pt",
             )
         features = {k: v.to(device) for k, v in features.items()}
         with torch.no_grad():
@@ -380,9 +430,6 @@ def evaluate_nim_reranker(
     Returns:
         Tuple of (metrics dict, reranked results dict).
     """
-    import urllib.request
-    import urllib.error
-
     try:
         from beir.retrieval.evaluation import EvaluateRetrieval
     except ImportError:
@@ -422,13 +469,15 @@ def evaluate_nim_reranker(
         # Score in batches
         all_scores = []
         for batch_start in range(0, len(passages), batch_size):
-            batch_passages = passages[batch_start:batch_start + batch_size]
+            batch_passages = passages[batch_start : batch_start + batch_size]
 
-            payload = json.dumps({
-                "model": nim_model,
-                "query": {"text": query_text},
-                "passages": batch_passages,
-            }).encode("utf-8")
+            payload = json.dumps(
+                {
+                    "model": nim_model,
+                    "query": {"text": query_text},
+                    "passages": batch_passages,
+                }
+            ).encode("utf-8")
 
             req = urllib.request.Request(
                 ranking_url,
@@ -446,6 +495,8 @@ def evaluate_nim_reranker(
                 error_body = e.read().decode("utf-8") if e.fp else ""
                 raise RuntimeError(f"NIM API error {e.code}: {error_body}") from e
 
+        if len(all_scores) != len(doc_ids):
+            raise RuntimeError(f"NIM returned {len(all_scores)} scores for {len(doc_ids)} passages for query {qid!r}")
         reranked_results[qid] = {did: score for did, score in zip(doc_ids, all_scores)}
 
         if (i + 1) % 50 == 0:
@@ -479,15 +530,15 @@ def run_eval(cfg: EvalConfig) -> dict:
     Returns:
         Dictionary with evaluation results.
     """
-    print(f"Reranking Model Evaluation")
-    print(f"=" * 60)
+    print("Reranking Model Evaluation")
+    print("=" * 60)
     print(f"Eval data:         {cfg.eval_data_path}")
     print(f"Retrieval model:   {cfg.retrieval_model}")
     print(f"Base reranker:     {cfg.base_model}")
     print(f"Finetuned reranker:{cfg.finetuned_model_path}")
     print(f"Top-k to re-rank:  {cfg.top_k}")
     print(f"K values:          {cfg.k_values}")
-    print(f"=" * 60)
+    print("=" * 60)
     print()
 
     # Validate inputs
@@ -513,6 +564,7 @@ def run_eval(cfg: EvalConfig) -> dict:
         query_prefix=cfg.query_prefix,
         passage_prefix=cfg.passage_prefix,
         normalize_embeddings=cfg.retrieval_normalize,
+        trust_remote_code=True,
     )
     print(f"   Retrieved candidates for {len(queries)} queries")
     print()
@@ -531,6 +583,8 @@ def run_eval(cfg: EvalConfig) -> dict:
             max_length=cfg.max_length,
             k_values=cfg.k_values,
             prompt_template=cfg.prompt_template,
+            trust_remote_code=True,
+            use_data_parallel=cfg.use_data_parallel,
         )
         results["base"] = base_metrics
         _print_summary_metrics(base_metrics, cfg.k_values)
@@ -554,6 +608,8 @@ def run_eval(cfg: EvalConfig) -> dict:
                 max_length=cfg.max_length,
                 k_values=cfg.k_values,
                 prompt_template=cfg.prompt_template,
+                trust_remote_code=True,
+                use_data_parallel=cfg.use_data_parallel,
             )
             results["finetuned"] = ft_metrics
             _print_summary_metrics(ft_metrics, cfg.k_values)
@@ -562,9 +618,6 @@ def run_eval(cfg: EvalConfig) -> dict:
     # Step 4: Evaluate NIM reranker endpoint
     if cfg.eval_nim:
         print(f"Evaluating NIM reranker endpoint: {cfg.nim_url}")
-
-        import urllib.request
-        import urllib.error
 
         nim_healthy = False
         try:
@@ -576,8 +629,8 @@ def run_eval(cfg: EvalConfig) -> dict:
 
         if not nim_healthy:
             print(f"   Error: NIM endpoint is not reachable at {cfg.nim_url}", file=sys.stderr)
-            print(f"   Ensure the NIM service is running and healthy before evaluating.", file=sys.stderr)
-            print()
+            print("   Ensure the NIM service is running and healthy before evaluating.", file=sys.stderr)
+            sys.exit(1)
         else:
             try:
                 nim_metrics, _ = evaluate_nim_reranker(
@@ -596,13 +649,13 @@ def run_eval(cfg: EvalConfig) -> dict:
                 _print_summary_metrics(nim_metrics, cfg.k_values)
                 print()
             except Exception as e:
-                print(f"   Error evaluating NIM: {e}")
-                print()
+                print(f"   Error evaluating NIM: {e}", file=sys.stderr)
+                sys.exit(1)
 
     # Print comparison
     if "base" in results and "finetuned" in results:
-        print(f"Comparison (Base -> Fine-tuned)")
-        print(f"=" * 60)
+        print("Comparison (Base -> Fine-tuned)")
+        print("=" * 60)
 
         metric_names = ["NDCG", "Recall"]
         metric_indices = [0, 2]
@@ -620,9 +673,9 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     # Print NIM vs Fine-tuned comparison (accuracy check for export)
     if "finetuned" in results and "nim" in results:
-        print(f"Comparison (Fine-tuned -> NIM)")
-        print(f"=" * 60)
-        print(f"   This verifies the exported model matches the checkpoint accuracy.")
+        print("Comparison (Fine-tuned -> NIM)")
+        print("=" * 60)
+        print("   This verifies the exported model matches the checkpoint accuracy.")
         print()
 
         metric_names = ["NDCG", "Recall"]
@@ -657,7 +710,7 @@ def run_eval(cfg: EvalConfig) -> dict:
     with open(results_file, "w") as f:
         json.dump(serializable_results, f, indent=2)
 
-    print(f"Evaluation complete!")
+    print("Evaluation complete!")
     print(f"   Results saved to: {results_file}")
 
     # Save artifact
@@ -682,9 +735,7 @@ def main(cfg: EvalConfig | None = None) -> dict:
         Dictionary with evaluation results.
     """
     if cfg is None:
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, EvalConfig)

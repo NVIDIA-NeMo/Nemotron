@@ -127,7 +127,8 @@ def _validate_remote_stages(stages: list[str]) -> None:
     if unsupported:
         names = ", ".join(unsupported)
         print(
-            f"Error: stage(s) {names} do not support remote execution; run them locally or stop the remote pipeline before them.",
+            f"Error: stage(s) {names} do not support remote execution; "
+            "run them locally or stop the remote pipeline before them.",
             file=sys.stderr,
         )
         raise typer.Exit(1)
@@ -137,7 +138,8 @@ def _validate_remote_pipeline(stages: list[str], base_options: RecipeConfig) -> 
     _validate_remote_stages(stages)
     if base_options.stage:
         print(
-            "Error: --stage is not supported for rerank run; run a single stage command with --dry-run for inspection.",
+            "Error: --stage is not supported for rerank run; "
+            "run a single stage command with --dry-run for inspection.",
             file=sys.stderr,
         )
         raise typer.Exit(1)
@@ -149,7 +151,8 @@ def _validate_remote_pipeline(stages: list[str], base_options: RecipeConfig) -> 
     env = parse_env(base_options.ctx)
     if not _env_value(env, "remote_job_dir"):
         print(
-            "Error: remote rerank pipelines with multiple stages require env.remote_job_dir so stages share NEMO_RUN_DIR outputs.",
+            "Error: remote rerank pipelines with multiple stages require env.remote_job_dir "
+            "so stages share NEMO_RUN_DIR outputs.",
             file=sys.stderr,
         )
         raise typer.Exit(1)
@@ -164,8 +167,9 @@ def _run_pipeline_remote(
     """Run stages as tasks in a single nemo-run Experiment."""
     _validate_remote_pipeline(stages, base_options)
 
-    import nemo_run as run
     from importlib import import_module
+
+    import nemo_run as run
 
     experiment_name = "rerank-" + "-".join(stages)
 

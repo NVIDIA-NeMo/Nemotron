@@ -55,7 +55,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-
 from typing import Annotated
 
 from pydantic import BeforeValidator, ConfigDict, Field
@@ -65,6 +64,7 @@ from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, par
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
 
+_OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 _CONTAINER_LABEL_KEY = "nemotron.recipe"
 _CONTAINER_LABEL_VALUE = "rerank"
 
@@ -80,19 +80,35 @@ class DeployConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Container settings
-    nim_image: str = Field(default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.11.0", description="NIM container image to use.")
+    nim_image: str = Field(
+        default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.11.0",
+        description="NIM container image to use.",
+    )
     container_name: str = Field(default="nemotron-rerank-nim", description="Name for the Docker container.")
-    replace_existing: bool = Field(default=True, description="Replace an existing container created by this recipe.")
+    replace_existing: bool = Field(default=False, description="Replace an existing container created by this recipe.")
 
     # Optional NIM model selection. Reranking NIM uses documented manifest/profile
     # env vars; it does not support a raw NIM_CUSTOM_MODEL directory.
-    model_dir: Path | None = Field(default=None, description="Optional directory containing model_manifest.yaml and NIM model assets.")
-    nim_manifest_path: Path | None = Field(default=None, description="Optional host path to a NIM model manifest YAML file.")
-    nim_model_profile: str | None = Field(default=None, description="Optional NIM_MODEL_PROFILE value to select a model profile.")
-    nim_served_model_name: str | None = Field(default=None, description="Optional NIM_SERVED_MODEL_NAME value for API model aliases.")
+    model_dir: Path | None = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export",
+        description="Optional directory containing model_manifest.yaml and NIM model assets.",
+    )
+    nim_manifest_path: Path | None = Field(
+        default=None,
+        description="Optional host path to a NIM model manifest YAML file.",
+    )
+    nim_model_profile: str | None = Field(
+        default=None, description="Optional NIM_MODEL_PROFILE value to select a model profile."
+    )
+    nim_served_model_name: str | None = Field(
+        default=None, description="Optional NIM_SERVED_MODEL_NAME value for API model aliases."
+    )
 
     # Container paths
-    container_model_path: str = Field(default="/opt/nim/custom_model", description="Container mount path for custom NIM manifest assets.")
+    container_model_path: str = Field(
+        default="/opt/nim/custom_model",
+        description="Container mount path for custom NIM manifest assets.",
+    )
     container_cache_path: str = Field(default="/opt/nim/.cache", description="Path inside container for NIM cache.")
 
     # Network settings
@@ -101,18 +117,30 @@ class DeployConfig(RecipeSettings):
     container_port: int = Field(default=8000, ge=1, le=65535, description="Port inside container.")
 
     # Resource settings
-    gpus: Annotated[str, BeforeValidator(str)] = Field(default="all", description="Number of GPUs to use for the container.")
+    gpus: Annotated[str, BeforeValidator(str)] = Field(
+        default="all",
+        description="Number of GPUs to use for the container.",
+    )
     shm_size: str = Field(default="16gb", description="Shared memory size.")
-    container_user: str = Field(default_factory=_default_container_user, description="User ID to run as inside the container. Empty string uses the image default.")
+    container_user: str = Field(
+        default_factory=_default_container_user,
+        description="User ID to run as inside the container. Empty string uses the image default.",
+    )
 
     # Runtime settings
     detach: bool = Field(default=False, description="Run container in detached mode.")
     remove_on_exit: bool = Field(default=True, description="Remove container when it exits.")
+    keep_failed_container: bool = Field(
+        default=False, description="Keep detached containers after health-check failure."
+    )
     health_check_timeout: int = Field(default=120, gt=0, description="Timeout in seconds for health check.")
     health_check_interval: int = Field(default=5, gt=0, description="Interval in seconds between health checks.")
 
     # Environment
-    ngc_api_key_env: str = Field(default="NGC_API_KEY", description="Host environment variable name for the NGC API key.")
+    ngc_api_key_env: str = Field(
+        default="NGC_API_KEY",
+        description="Host environment variable name for the NGC API key.",
+    )
 
 
 def check_docker() -> bool:
@@ -358,13 +386,22 @@ def run_deploy(cfg: DeployConfig) -> dict:
             print("   Test with:")
             print(f"   curl -X POST {result['api_url']}")
             print("     -H 'Content-Type: application/json'")
-            print("     -d '{\"model\": \"nvidia/llama-nemotron-rerank-1b-v2\", \"query\": {\"text\": \"what is AI?\"}, \"passages\": [{\"text\": \"AI is artificial intelligence\"}]}'")
+            sample_payload = (
+                '{"model": "nvidia/llama-nemotron-rerank-1b-v2", '
+                '"query": {"text": "what is AI?"}, '
+                '"passages": [{"text": "AI is artificial intelligence"}]}'
+            )
+            print(f"     -d '{sample_payload}'")
             print()
             print(f"   Stop with: docker stop {cfg.container_name}")
         else:
             print()
             print(f"Error: Health check timed out after {cfg.health_check_timeout}s.", file=sys.stderr)
-            print(f"   Check logs with: docker logs {cfg.container_name}", file=sys.stderr)
+            if cfg.keep_failed_container:
+                print(f"   Check logs with: docker logs {cfg.container_name}", file=sys.stderr)
+            else:
+                print(f"   Removing failed container: {cfg.container_name}", file=sys.stderr)
+                stop_existing_container(cfg.container_name, True)
             sys.exit(1)
     else:
         print("   Running in foreground. Press Ctrl+C to stop.")
@@ -391,9 +428,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
 def main(cfg: DeployConfig | None = None) -> dict:
     """Entry point for deployment."""
     if cfg is None:
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, DeployConfig)

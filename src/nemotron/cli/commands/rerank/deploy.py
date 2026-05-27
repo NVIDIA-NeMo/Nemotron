@@ -79,7 +79,8 @@ def _execute_deploy(cfg: RecipeConfig):
     cmd = [
         sys.executable,
         str(SPEC.script_path),
-        "--config", str(train_path),
+        "--config",
+        str(train_path),
         *cfg.passthrough,
     ]
 

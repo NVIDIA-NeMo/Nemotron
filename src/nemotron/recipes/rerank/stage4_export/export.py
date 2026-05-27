@@ -74,27 +74,51 @@ class ExportConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     # Model path
-    model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned HuggingFace model checkpoint.")
+    model_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated",
+        description="Path to fine-tuned HuggingFace model checkpoint.",
+    )
 
     # Model settings
-    attn_implementation: Literal["eager", "sdpa", "flash_attention_2"] = Field(default="eager", description="Attention implementation: 'eager', 'sdpa', or 'flash_attention_2'.")
+    attn_implementation: Literal["eager", "sdpa", "flash_attention_2"] = Field(
+        default="eager", description="Attention implementation: 'eager', 'sdpa', or 'flash_attention_2'."
+    )
 
     # Quantization settings
-    quant_cfg: Literal["fp8", "int8_sq"] | None = Field(default=None, description="Quantization config: 'fp8', 'int8_sq', or None (no quantization).")
+    quant_cfg: Literal["fp8", "int8_sq"] | None = Field(
+        default=None, description="Quantization config: 'fp8', 'int8_sq', or None (no quantization)."
+    )
     calibration_batch_size: int = Field(default=64, gt=0, description="Batch size for quantization calibration.")
-    calibration_query: str = Field(default="what information is relevant to this query?", description="Query text used to format representative reranker calibration pairs.")
-    prompt_template: str = Field(default=DEFAULT_PROMPT_TEMPLATE, description="Template for formatting query-passage calibration pairs.")
+    calibration_query: str = Field(
+        default="what information is relevant to this query?",
+        description="Query text used to format representative reranker calibration pairs.",
+    )
+    prompt_template: str = Field(
+        default=DEFAULT_PROMPT_TEMPLATE, description="Template for formatting query-passage calibration pairs."
+    )
 
     # ONNX export settings
-    onnx_export_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx", description="Output path for ONNX model.")
+    onnx_export_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx",
+        description="Output path for ONNX model.",
+    )
     opset: int = Field(default=17, gt=0, description="ONNX opset version.")
-    export_dtype: Literal["fp32", "fp16"] = Field(default="fp32", description="ONNX export data precision (fp32, fp16).")
+    export_dtype: Literal["fp32", "fp16"] = Field(
+        default="fp32", description="ONNX export data precision (fp32, fp16)."
+    )
 
     # TensorRT settings
     export_to_trt: bool = Field(default=False, description="Whether to export ONNX model to TensorRT.")
-    trt_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/tensorrt", description="Output path for TensorRT .plan file.")
-    override_layernorm_precision_to_fp32: bool = Field(default=True, description="Whether to override LayerNorm precision to fp32 for stability.")
-    override_layers_to_fp32: list[str] = Field(default_factory=lambda: ["/model/norm/"], description="Layer patterns to override precision to fp32.")
+    trt_model_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/tensorrt",
+        description="Output path for TensorRT .plan file.",
+    )
+    override_layernorm_precision_to_fp32: bool = Field(
+        default=True, description="Whether to override LayerNorm precision to fp32 for stability."
+    )
+    override_layers_to_fp32: list[str] = Field(
+        default_factory=lambda: ["/model/norm/"], description="Layer patterns to override precision to fp32."
+    )
     profiling_verbosity: str = Field(default="layer_names_only", description="TensorRT profiling verbosity level.")
 
     # TensorRT input profiles (min, opt, max shapes)
@@ -112,13 +136,20 @@ class ExportConfig(RecipeSettings):
         if self.trt_opt_batch > self.trt_max_batch:
             raise ValueError(f"trt_opt_batch ({self.trt_opt_batch}) must be <= trt_max_batch ({self.trt_max_batch})")
         if self.trt_min_seq_len > self.trt_opt_seq_len:
-            raise ValueError(f"trt_min_seq_len ({self.trt_min_seq_len}) must be <= trt_opt_seq_len ({self.trt_opt_seq_len})")
+            raise ValueError(
+                f"trt_min_seq_len ({self.trt_min_seq_len}) must be <= trt_opt_seq_len ({self.trt_opt_seq_len})"
+            )
         if self.trt_opt_seq_len > self.trt_max_seq_len:
-            raise ValueError(f"trt_opt_seq_len ({self.trt_opt_seq_len}) must be <= trt_max_seq_len ({self.trt_max_seq_len})")
+            raise ValueError(
+                f"trt_opt_seq_len ({self.trt_opt_seq_len}) must be <= trt_max_seq_len ({self.trt_max_seq_len})"
+            )
         return self
 
     # Output settings
-    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export", description="Base output directory for export artifacts.")
+    output_dir: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export",
+        description="Base output directory for export artifacts.",
+    )
 
 
 def load_reranker_model(
@@ -204,7 +235,7 @@ def export_to_onnx(
     original_export = torch.onnx.export
 
     def forced_legacy_export(*args, **kwargs):
-        kwargs['dynamo'] = False
+        kwargs["dynamo"] = False
         return original_export(*args, **kwargs)
 
     # Monkeypatch create_bidirectional_mask to be ONNX-trace-friendly.
@@ -214,8 +245,6 @@ def export_to_onnx(
     # The model's custom code does `from transformers.masking_utils import
     # create_bidirectional_mask`, so we must patch it in the model's own
     # module namespace where it holds the direct reference.
-    import sys
-
     def _onnx_safe_bidirectional_mask(config=None, input_embeds=None, attention_mask=None, **kwargs):
         dtype = input_embeds.dtype
         batch_size, seq_length, _ = input_embeds.shape
@@ -229,9 +258,9 @@ def export_to_onnx(
     # Find all loaded modules that imported create_bidirectional_mask and patch them
     _patched_modules = {}
     for mod_name, mod in list(sys.modules.items()):
-        if hasattr(mod, 'create_bidirectional_mask') and callable(getattr(mod, 'create_bidirectional_mask', None)):
-            _patched_modules[mod_name] = getattr(mod, 'create_bidirectional_mask')
-            setattr(mod, 'create_bidirectional_mask', _onnx_safe_bidirectional_mask)
+        if hasattr(mod, "create_bidirectional_mask") and callable(getattr(mod, "create_bidirectional_mask", None)):
+            _patched_modules[mod_name] = getattr(mod, "create_bidirectional_mask")
+            setattr(mod, "create_bidirectional_mask", _onnx_safe_bidirectional_mask)
 
     torch.onnx.export = forced_legacy_export
     try:
@@ -248,7 +277,7 @@ def export_to_onnx(
         torch.onnx.export = original_export
         for mod_name, orig_fn in _patched_modules.items():
             if mod_name in sys.modules:
-                setattr(sys.modules[mod_name], 'create_bidirectional_mask', orig_fn)
+                setattr(sys.modules[mod_name], "create_bidirectional_mask", orig_fn)
 
     return onnx_exporter
 
@@ -263,10 +292,7 @@ def _apply_quantization(onnx_exporter: Any, cfg: ExportConfig) -> None:
 
     def forward_loop(model: Any, data: Any, tokenizer: Any) -> None:
         for inputs in tqdm(data, desc="Calibration"):
-            formatted = [
-                cfg.prompt_template.format(query=cfg.calibration_query, passage=str(text))
-                for text in inputs
-            ]
+            formatted = [cfg.prompt_template.format(query=cfg.calibration_query, passage=str(text)) for text in inputs]
             batch = tokenizer(formatted, padding=True, truncation=True, return_tensors="pt")
             batch = {k: v.to(model.device) for k, v in batch.items()}
             with torch.no_grad():
@@ -306,7 +332,7 @@ def export_onnx_to_tensorrt(onnx_exporter: Any, cfg: ExportConfig) -> None:
         }
     ]
 
-    print(f"  Converting to TensorRT...")
+    print("  Converting to TensorRT...")
     print(f"    Batch sizes: min={cfg.trt_min_batch}, opt={cfg.trt_opt_batch}, max={cfg.trt_max_batch}")
     print(f"    Seq lengths: min={cfg.trt_min_seq_len}, opt={cfg.trt_opt_seq_len}, max={cfg.trt_max_seq_len}")
 
@@ -350,8 +376,8 @@ def run_export(cfg: ExportConfig) -> dict:
     Returns:
         Dictionary with export paths.
     """
-    print(f"Reranking Model Export to ONNX/TensorRT")
-    print(f"=" * 60)
+    print("Reranking Model Export to ONNX/TensorRT")
+    print("=" * 60)
     print(f"Model path:      {cfg.model_path}")
     print(f"Attention impl:  {cfg.attn_implementation}")
     print(f"Quantization:    {cfg.quant_cfg or 'None'}")
@@ -359,7 +385,7 @@ def run_export(cfg: ExportConfig) -> dict:
     print(f"Export to TRT:   {cfg.export_to_trt}")
     if cfg.export_to_trt:
         print(f"TRT output:      {cfg.trt_model_path}")
-    print(f"=" * 60)
+    print("=" * 60)
     print()
 
     # Validate model path exists
@@ -385,11 +411,11 @@ def run_export(cfg: ExportConfig) -> dict:
         model_path=cfg.model_path,
         attn_implementation=cfg.attn_implementation,
     )
-    print(f"   Model loaded successfully")
+    print("   Model loaded successfully")
     print()
 
     # Step 2: Export to ONNX
-    print(f"Exporting to ONNX...")
+    print("Exporting to ONNX...")
     onnx_exporter = export_to_onnx(model, tokenizer, cfg)
     print(f"   ONNX model saved to: {cfg.onnx_export_path}")
     print()
@@ -404,13 +430,13 @@ def run_export(cfg: ExportConfig) -> dict:
         print("Fix the ONNX export before converting to TensorRT.", file=sys.stderr)
         sys.exit(1)
     if cfg.export_to_trt:
-        print(f"Exporting to TensorRT...")
+        print("Exporting to TensorRT...")
         export_onnx_to_tensorrt(onnx_exporter, cfg)
         results["trt_path"] = str(cfg.trt_model_path)
         print(f"   TensorRT engine saved to: {cfg.trt_model_path}")
         print()
 
-    print(f"Export complete!")
+    print("Export complete!")
     print(f"   ONNX model:     {cfg.onnx_export_path}")
     if cfg.export_to_trt:
         print(f"   TensorRT model: {cfg.trt_model_path}")
@@ -428,9 +454,7 @@ def main(cfg: ExportConfig | None = None) -> dict:
         Dictionary with export paths.
     """
     if cfg is None:
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, ExportConfig)
