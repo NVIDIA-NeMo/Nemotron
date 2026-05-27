@@ -266,6 +266,7 @@ Usage: nemotron omni3 [OPTIONS] COMMAND [ARGS]...
 
 sft.md
 rl.md
+rl/data-prep.md
 architecture.md
 inference.md
 ```
