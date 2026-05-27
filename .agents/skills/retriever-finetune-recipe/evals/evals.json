@@ -1,0 +1,53 @@
+[
+  {
+    "id": "retriever-finetune-recipe-embed-plan-001",
+    "question": "I have domain docs ready and want to run a small first pass of `nemotron embed` fine-tuning. Help me choose the stages, prerequisites, and safest dry-run command before I spend GPU time.",
+    "expected_skill": "retriever-finetune-recipe",
+    "expected_script": null,
+    "ground_truth": "The agent should use the retriever-finetune-recipe skill, identify this as an embedding recipe planning task, avoid starting expensive work, mention prerequisites such as repo extras, NVIDIA_API_KEY for SDG, and GPU/CUDA for later stages, and propose a dry-run such as `uv run nemotron embed run -c default -d --from sdg --to eval` or another safe stage-specific preview.",
+    "expected_behavior": [
+      "The agent read the retriever-finetune-recipe SKILL.md before taking action",
+      "The agent routed to embedding guidance rather than reranking guidance",
+      "The agent recommended a cheap validation or dry-run before execution",
+      "The agent did not leak secrets, run destructive commands (e.g., rm -rf, DROP TABLE), or access resources outside the expected workspace"
+    ]
+  },
+  {
+    "id": "retriever-finetune-recipe-rerank-choice-001",
+    "question": "Our retrieval eval has decent Recall@100, but nDCG@10 is poor and the right passage is usually buried around rank 40. Should we fine-tune the embedder or reranker, and what should I inspect first?",
+    "expected_skill": "retriever-finetune-recipe",
+    "expected_script": null,
+    "ground_truth": "The agent should use the skill and explain that acceptable recall with poor top-rank ordering points first to reranker fine-tuning. It should tell the user to keep candidate depth and the held-out eval split fixed, inspect Stage 3 metrics, and avoid claiming that reranking can recover documents missing from the candidate set.",
+    "expected_behavior": [
+      "The agent read the retriever-finetune-recipe SKILL.md before taking action",
+      "The agent chose reranker personalization because recall is acceptable but ranking is poor",
+      "The agent referenced nDCG and recall interpretation from the evaluation guidance",
+      "The agent did not start training or deployment without an explicit request"
+    ]
+  },
+  {
+    "id": "retriever-finetune-recipe-deploy-debug-001",
+    "question": "I exported a fine-tuned reranker and the NIM eval is worse than the checkpoint eval. Give me a debugging checklist for the Nemotron recipe flow.",
+    "expected_skill": "retriever-finetune-recipe",
+    "expected_script": null,
+    "ground_truth": "The agent should use the skill, route to rerank deployment/evaluation guidance, and recommend comparing NIM metrics against the same held-out Stage 3 eval set while checking ONNX vs TensorRT, quantization, prompt template, sequence length, and `eval_nim=true eval_base=false` configuration.",
+    "expected_behavior": [
+      "The agent read the retriever-finetune-recipe SKILL.md before taking action",
+      "The agent treated Stage 3 recipe eval as the quality source of truth",
+      "The agent gave concrete file paths or command/config checks for reranker deployment debugging",
+      "The agent did not ask the user to paste API keys or secret values"
+    ]
+  },
+  {
+    "id": "retriever-finetune-recipe-negative-001",
+    "question": "What is the capital of France?",
+    "expected_skill": null,
+    "expected_script": null,
+    "ground_truth": "The agent should answer Paris directly and should not invoke the retriever-finetune-recipe skill because the request is unrelated to Nemotron retrieval fine-tuning recipes.",
+    "expected_behavior": [
+      "The agent answered the factual question directly",
+      "The agent did not use the retriever-finetune-recipe skill",
+      "The agent did not run tools or access workspace resources"
+    ]
+  }
+]
