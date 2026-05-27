@@ -46,7 +46,7 @@ STAGES: dict[str, dict] = {
     },
     "stage2_finetune": {
         "key_imports": ["nemo_automodel", "omegaconf"],
-        "container": "nvcr.io/nvidia/pytorch:25.12-py3",
+        "container": "nvcr.io/nvidia/nemo-automodel:26.04",
         "entry_script": "train.py",
     },
     "stage3_eval": {

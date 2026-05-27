@@ -25,11 +25,9 @@ from __future__ import annotations
 
 import types
 import typing
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
-
-if TYPE_CHECKING:
-    from pydantic_settings import BaseSettings
+from typing import Any, ClassVar
 
 from rich import box
 from rich.panel import Panel
@@ -41,6 +39,15 @@ try:
     import tomllib
 except ImportError:
     import tomli as tomllib
+
+@dataclass(frozen=True)
+class LazyConfigModel:
+    """Config model loader used when importing the model has optional deps."""
+
+    load: typing.Callable[[], type[Any]]
+
+
+ConfigModelProvider = type[Any] | LazyConfigModel
 
 
 def _format_annotation(annotation: Any) -> str:
@@ -121,7 +128,7 @@ class RecipeCommand(TyperCommand):
 
     artifact_overrides: ClassVar[dict[str, str]] = {}
     config_dir: ClassVar[str | None] = None
-    config_model: ClassVar[type[BaseSettings] | None] = None
+    config_model: ClassVar[ConfigModelProvider | None] = None
 
     def format_help(self, ctx, formatter):
         """Format help with custom recipe options section."""
@@ -135,6 +142,7 @@ class RecipeCommand(TyperCommand):
         # Then add our custom panels
         console = rich_utils._get_rich_console()
         cmd_name = ctx.info_name
+        config_model = self._resolve_config_model(console)
 
         # Global options table
         options_table = Table(
@@ -175,8 +183,8 @@ class RecipeCommand(TyperCommand):
             )
 
         # Config options from Pydantic model
-        if self.config_model is not None:
-            self._format_config_options(console, cmd_name)
+        if config_model is not None:
+            self._format_config_options(console, cmd_name, config_model)
 
         # Artifact overrides (if any defined for this command)
         if self.artifact_overrides:
@@ -241,8 +249,8 @@ class RecipeCommand(TyperCommand):
 
         # Dotlist override examples
         example_override = "key.path=value"
-        if self.config_model is not None:
-            fields = list(self.config_model.model_fields.keys())
+        if config_model is not None:
+            fields = list(config_model.model_fields.keys())
             if fields:
                 example_override = f"{fields[0]}=..."
 
@@ -268,8 +276,32 @@ class RecipeCommand(TyperCommand):
             )
         )
 
+    def _resolve_config_model(self, console) -> type[Any] | None:
+        """Resolve an optional lazy config model for command help."""
+        config_model = type(self).config_model
+        if config_model is None:
+            return None
+        if isinstance(config_model, type):
+            return config_model
+        if not isinstance(config_model, LazyConfigModel):
+            return None
+        try:
+            resolved = config_model.load()
+        except ImportError as exc:
+            console.print(
+                Panel(
+                    f"{exc}\n\n[dim]The command can still run locally because the recipe "
+                    "script resolves its PEP 723 dependencies with `uv run --no-project`.[/]",
+                    title="[bold]Config Options Unavailable[/]",
+                    title_align="left",
+                    border_style=rich_utils.STYLE_OPTIONS_PANEL_BORDER,
+                )
+            )
+            return None
+        type(self).config_model = resolved
+        return resolved
 
-    def _format_config_options(self, console, cmd_name: str) -> None:
+    def _format_config_options(self, console, cmd_name: str, config_model: type[Any]) -> None:
         """Render config options panel from Pydantic model_fields."""
         from pydantic_core import PydanticUndefined
 
@@ -285,7 +317,7 @@ class RecipeCommand(TyperCommand):
         config_table.add_column("Default", no_wrap=True, max_width=35)
         config_table.add_column("Description")
 
-        for name, field_info in self.config_model.model_fields.items():
+        for name, field_info in config_model.model_fields.items():
             type_str = _format_annotation(field_info.annotation).replace("[", "\\[")
 
             if field_info.default is not PydanticUndefined:
@@ -317,7 +349,7 @@ class RecipeCommand(TyperCommand):
 def make_recipe_command(
     artifact_overrides: dict[str, str] | None = None,
     config_dir: str | None = None,
-    config_model: type[BaseSettings] | None = None,
+    config_model: ConfigModelProvider | None = None,
 ):
     """Factory function to create a RecipeCommand subclass with custom options.
 
@@ -325,7 +357,8 @@ def make_recipe_command(
         artifact_overrides: Dict mapping artifact names to descriptions.
             Example: {"data": "Data artifact", "model": "Model checkpoint"}
         config_dir: Path to config directory (relative to repo root).
-        config_model: Pydantic BaseSettings subclass for config option introspection.
+        config_model: Pydantic BaseSettings subclass, or a LazyConfigModel
+            used for config option introspection.
 
     Returns:
         A RecipeCommand subclass with the specified options.
