@@ -192,6 +192,21 @@ def _format_command(cmd: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in cmd)
 
 
+def _client_host(bind_address: str) -> str:
+    """Return the host clients should use for the configured bind address."""
+    if bind_address in {"", "0.0.0.0"}:
+        return "localhost"
+    if bind_address == "::":
+        return "[::1]"
+    if ":" in bind_address and not bind_address.startswith("["):
+        return f"[{bind_address}]"
+    return bind_address
+
+
+def _api_base_url(cfg: DeployConfig) -> str:
+    return f"http://{_client_host(cfg.bind_address)}:{cfg.host_port}"
+
+
 def build_docker_command(cfg: DeployConfig, manifest_path: Path | None) -> tuple[list[str], dict[str, str]]:
     """Build the Docker run command and environment."""
     cmd = ["docker", "run"]
@@ -248,7 +263,7 @@ def wait_for_health(cfg: DeployConfig) -> bool:
     import urllib.error
     import urllib.request
 
-    health_url = f"http://localhost:{cfg.host_port}/v1/health/ready"
+    health_url = f"{_api_base_url(cfg)}/v1/health/ready"
     start_time = time.time()
 
     print(f"   Waiting for NIM to become healthy (timeout: {cfg.health_check_timeout}s)...")
@@ -320,7 +335,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
     result = {
         "container_name": cfg.container_name,
         "host_port": cfg.host_port,
-        "api_url": f"http://localhost:{cfg.host_port}/v1/ranking",
+        "api_url": f"{_api_base_url(cfg)}/v1/ranking",
     }
     if manifest_path is not None:
         result["nim_manifest_path"] = str(manifest_path)
@@ -341,7 +356,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
             print(f"   API endpoint: {result['api_url']}")
             print()
             print("   Test with:")
-            print(f"   curl -X POST http://localhost:{cfg.host_port}/v1/ranking")
+            print(f"   curl -X POST {result['api_url']}")
             print("     -H 'Content-Type: application/json'")
             print("     -d '{\"model\": \"nvidia/llama-nemotron-rerank-1b-v2\", \"query\": {\"text\": \"what is AI?\"}, \"passages\": [{\"text\": \"AI is artificial intelligence\"}]}'")
             print()

@@ -65,6 +65,7 @@ DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
+DEFAULT_PROMPT_TEMPLATE = "question:{query} \n \n passage:{passage}"
 
 
 class ExportConfig(RecipeSettings):
@@ -81,6 +82,8 @@ class ExportConfig(RecipeSettings):
     # Quantization settings
     quant_cfg: Literal["fp8", "int8_sq"] | None = Field(default=None, description="Quantization config: 'fp8', 'int8_sq', or None (no quantization).")
     calibration_batch_size: int = Field(default=64, gt=0, description="Batch size for quantization calibration.")
+    calibration_query: str = Field(default="what information is relevant to this query?", description="Query text used to format representative reranker calibration pairs.")
+    prompt_template: str = Field(default=DEFAULT_PROMPT_TEMPLATE, description="Template for formatting query-passage calibration pairs.")
 
     # ONNX export settings
     onnx_export_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx", description="Output path for ONNX model.")
@@ -260,7 +263,11 @@ def _apply_quantization(onnx_exporter: Any, cfg: ExportConfig) -> None:
 
     def forward_loop(model: Any, data: Any, tokenizer: Any) -> None:
         for inputs in tqdm(data, desc="Calibration"):
-            batch = tokenizer(inputs, padding=True, truncation=True, return_tensors="pt")
+            formatted = [
+                cfg.prompt_template.format(query=cfg.calibration_query, passage=str(text))
+                for text in inputs
+            ]
+            batch = tokenizer(formatted, padding=True, truncation=True, return_tensors="pt")
             batch = {k: v.to(model.device) for k, v in batch.items()}
             with torch.no_grad():
                 model(**batch)

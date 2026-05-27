@@ -112,6 +112,49 @@ def _run_pipeline_local(
             raise typer.Exit(result.returncode)
 
 
+def _env_value(env, key: str):
+    if env is None:
+        return None
+    getter = getattr(env, "get", None)
+    if getter is not None:
+        return getter(key)
+    return getattr(env, key, None)
+
+
+def _validate_remote_stages(stages: list[str]) -> None:
+    """Fail fast when a pipeline includes stages that cannot run remotely."""
+    unsupported = [stage for stage in stages if stage not in STAGE_RUN_FNS]
+    if unsupported:
+        names = ", ".join(unsupported)
+        print(
+            f"Error: stage(s) {names} do not support remote execution; run them locally or stop the remote pipeline before them.",
+            file=sys.stderr,
+        )
+        raise typer.Exit(1)
+
+
+def _validate_remote_pipeline(stages: list[str], base_options: RecipeConfig) -> None:
+    _validate_remote_stages(stages)
+    if base_options.stage:
+        print(
+            "Error: --stage is not supported for rerank run; run a single stage command with --dry-run for inspection.",
+            file=sys.stderr,
+        )
+        raise typer.Exit(1)
+    if base_options.dry_run or len(stages) <= 1:
+        return
+
+    from nemo_runspec.env import parse_env
+
+    env = parse_env(base_options.ctx)
+    if not _env_value(env, "remote_job_dir"):
+        print(
+            "Error: remote rerank pipelines with multiple stages require env.remote_job_dir so stages share NEMO_RUN_DIR outputs.",
+            file=sys.stderr,
+        )
+        raise typer.Exit(1)
+
+
 def _run_pipeline_remote(
     stages: list[str],
     base_options: RecipeConfig,
@@ -119,6 +162,8 @@ def _run_pipeline_remote(
     global_overrides: list[str],
 ) -> None:
     """Run stages as tasks in a single nemo-run Experiment."""
+    _validate_remote_pipeline(stages, base_options)
+
     import nemo_run as run
     from importlib import import_module
 
@@ -126,10 +171,6 @@ def _run_pipeline_remote(
 
     with run.Experiment(experiment_name) as exp:
         for stage_name in stages:
-            if stage_name not in STAGE_RUN_FNS:
-                print(f"Warning: Stage '{stage_name}' does not support remote execution, skipping")
-                continue
-
             stage_dotlist = global_overrides + stage_overrides.get(stage_name, [])
 
             ctx = GlobalContext(
@@ -137,6 +178,7 @@ def _run_pipeline_remote(
                 run=base_options.ctx.run,
                 batch=base_options.ctx.batch,
                 dry_run=base_options.ctx.dry_run,
+                stage=base_options.ctx.stage,
                 force_squash=base_options.ctx.force_squash,
             )
             ctx.dotlist = stage_dotlist
@@ -175,6 +217,9 @@ def run(
     options = parse_recipe_config(ctx)
     stages = _resolve_stages(from_stage, to_stage)
     stage_overrides, global_overrides = _split_stage_overrides(options.dotlist)
+
+    if options.mode != "local":
+        _validate_remote_pipeline(stages, options)
 
     print(f"Rerank pipeline: {' -> '.join(stages)}")
     if options.config:

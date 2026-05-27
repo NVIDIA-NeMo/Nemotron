@@ -131,6 +131,15 @@ Fine-tune Llama-Nemotron-Embed-1B-v2 on domain-specific data with synthetic data
 **Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
 :::
 
+:::{grid-item-card} Reranking Fine-Tuning
+:link: nemotron/rerank/README
+:link-type: doc
+
+Fine-tune Llama-Nemotron-Rerank-1B-v2 cross-encoders for domain-specific reranking with synthetic data generation, evaluation, export, and NIM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+:::
+
 ::::
 
 ## Recipe Layout
@@ -153,6 +162,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
 | [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
+| [Rerank](nemotron/rerank/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 
 ## Why Nemotron?
 
@@ -275,6 +285,7 @@ Nemotron 3 Nano <nemotron/nano3/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
 Llama Nemotron Embed <nemotron/embed/README.md>
+Llama Nemotron Rerank <nemotron/rerank/README.md>
 nemotron/artifacts.md
 ```
 

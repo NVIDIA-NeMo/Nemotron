@@ -37,6 +37,7 @@ import json
 import logging
 import os
 import shlex
+import shutil
 import subprocess
 import uuid
 from collections.abc import Iterable
@@ -1623,6 +1624,92 @@ def _suspend_lepton_ray_cluster(cluster_name: str) -> None:
 # =============================================================================
 # Local Execution
 # =============================================================================
+
+
+def execute_uv_local(
+    *,
+    script_path: str | Path,
+    stage_dir: str | Path,
+    repo_root: str | Path,
+    train_path: Path,
+    passthrough: list[str],
+    extra_with: list[str] | None = None,
+    extras: list[str] | None = None,
+    pre_script_args: list[str] | None = None,
+) -> None:
+    """Execute a stage script locally with its stage-local UV project."""
+    uv_cmd = shutil.which("uv") or "uv"
+    stage_dir = Path(stage_dir)
+    repo_root = Path(repo_root)
+    script = Path(script_path)
+    if not script.is_absolute():
+        script = stage_dir / script
+
+    cmd = [uv_cmd, "run", "--with", str(repo_root)]
+    for item in extra_with or []:
+        cmd.extend(["--with", item])
+    cmd.extend(["--project", str(stage_dir)])
+    for extra in extras or []:
+        cmd.extend(["--extra", extra])
+    cmd.extend(pre_script_args or [])
+    cmd.extend([str(script), "--config", str(train_path), *passthrough])
+
+    env = os.environ.copy()
+    # Avoid leaking an ambient venv into the stage-local project environment.
+    env.pop("VIRTUAL_ENV", None)
+    src_path = str(repo_root / "src")
+    env["PYTHONPATH"] = os.pathsep.join(
+        part for part in [src_path, env.get("PYTHONPATH", "")] if part
+    )
+
+    typer.echo(f"Executing: {' '.join(cmd)}")
+    result = subprocess.run(cmd, env=env)
+    raise typer.Exit(result.returncode)
+
+
+def _repo_root_for_script(script_path: Path) -> Path:
+    """Find the source checkout root for an absolute script path."""
+    for parent in [script_path.parent, *script_path.parents]:
+        if (parent / "pyproject.toml").exists() and (parent / "src" / "nemotron").exists():
+            return parent
+    return script_path.parents[4]
+
+
+def execute_uv_local_from_spec(
+    *,
+    spec: Any,
+    train_path: Path,
+    passthrough: list[str],
+    extra_with: list[str] | None = None,
+    extras: list[str] | None = None,
+    torchrun_nproc_per_node: str | int | None = None,
+) -> None:
+    """Execute a parsed runspec locally using its launch mode and resources."""
+    script_path = Path(spec.script_path)
+    stage_dir = script_path.parent
+    repo_root = _repo_root_for_script(script_path)
+
+    pre_script_args: list[str] = []
+    if getattr(getattr(spec, "run", None), "launch", None) == "torchrun":
+        nproc = torchrun_nproc_per_node
+        if nproc is None:
+            nproc = getattr(getattr(spec, "resources", None), "gpus_per_node", None) or 1
+        pre_script_args = [
+            "-m",
+            "torch.distributed.run",
+            f"--nproc_per_node={nproc}",
+        ]
+
+    execute_uv_local(
+        script_path=str(script_path),
+        stage_dir=stage_dir,
+        repo_root=repo_root,
+        train_path=train_path,
+        passthrough=passthrough,
+        extra_with=extra_with,
+        extras=extras,
+        pre_script_args=pre_script_args,
+    )
 
 
 def execute_local(

@@ -64,7 +64,7 @@ from pathlib import Path
 os.environ.setdefault("HF_HUB_TRUST_REMOTE_CODE", "1")
 os.environ.setdefault("TRUST_REMOTE_CODE", "True")
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
@@ -73,6 +73,7 @@ DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
+DEFAULT_PROMPT_TEMPLATE = "question:{query} \n \n passage:{passage}"
 
 
 class EvalConfig(RecipeSettings):
@@ -111,7 +112,7 @@ class EvalConfig(RecipeSettings):
     eval_finetuned: bool = Field(default=True, description="Whether to evaluate the fine-tuned reranker.")
 
     # Reranker prompt template (must match training config)
-    prompt_template: str = Field(default="question:{query} \n \n passage:{passage}", description="Template for formatting query-passage pairs. Must match the template used during training.")
+    prompt_template: str = Field(default=DEFAULT_PROMPT_TEMPLATE, description="Template for formatting query-passage pairs. Must match the template used during training.")
 
     # NIM API evaluation settings
     eval_nim: bool = Field(default=False, description="Whether to evaluate a NIM API endpoint.")
@@ -119,6 +120,20 @@ class EvalConfig(RecipeSettings):
     nim_model: str = Field(default="nvidia/llama-nemotron-rerank-1b-v2", description="Model name for NIM API requests.")
     nim_batch_size: int = Field(default=32, gt=0, description="Batch size for NIM API requests.")
     nim_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for NIM API requests.")
+
+    @model_validator(mode="after")
+    def _check_eval_settings(self):
+        if self.k_values and self.top_k < max(self.k_values):
+            raise ValueError(
+                f"top_k ({self.top_k}) must be >= max(k_values) ({max(self.k_values)}) "
+                "so reported rerank metrics are computed over enough candidates"
+            )
+        if self.eval_nim and self.prompt_template != DEFAULT_PROMPT_TEMPLATE:
+            raise ValueError(
+                "eval_nim=true supports the default NIM prompt template only; "
+                "disable eval_nim or evaluate the exported endpoint with matching server-side formatting"
+            )
+        return self
 
 
 class _SentenceTransformerRetriever:

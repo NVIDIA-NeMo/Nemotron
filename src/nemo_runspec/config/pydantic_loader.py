@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -127,7 +128,26 @@ def load_config(
         cli_values = cli_source()
         _deep_merge(config_dict, cli_values)
 
+    config_dict = _resolve_oc_env_interpolations(config_dict)
+
     return model_cls(**config_dict)
+
+
+def _resolve_oc_env_interpolations(value: Any) -> Any:
+    """Resolve OmegaConf-style ${oc.env:VAR,default} strings in plain YAML data."""
+    if isinstance(value, dict):
+        return {k: _resolve_oc_env_interpolations(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_resolve_oc_env_interpolations(v) for v in value]
+    if not isinstance(value, str) or "${oc.env:" not in value:
+        return value
+
+    def repl(match: re.Match[str]) -> str:
+        var_name = match.group(1)
+        default = match.group(2) if match.group(2) is not None else ""
+        return os.environ.get(var_name, default)
+
+    return re.sub(r"\$\{oc\.env:([A-Za-z_][A-Za-z0-9_]*)(?:,([^}]*))?\}", repl, value)
 
 
 def _hydra_to_cli_args(overrides: list[str]) -> list[str]:

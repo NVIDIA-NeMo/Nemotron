@@ -186,10 +186,10 @@ def _auto_scale_hyperparams(
     Returns:
         Tuple of (global_batch_size, num_epochs, checkpoint_every_steps, val_every_steps).
     """
-    if cfg.global_batch_size == 128 and num_examples < 2000:
-        global_batch_size = max(16, min(64, num_examples // 8))
-    else:
-        global_batch_size = cfg.global_batch_size
+    # Keep the user/default global batch size intact. Automodel requires it to
+    # divide cleanly by the per-rank batch geometry; dataset-size-derived values
+    # can become invalid on multi-GPU runs.
+    global_batch_size = cfg.global_batch_size
 
     steps_per_epoch = max(1, num_examples // global_batch_size)
     num_epochs = cfg.num_epochs

@@ -80,7 +80,9 @@ def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
         raise typer.Exit(1)
 
     job_dir = generate_job_dir(SPEC.name)
-    train_config_for_script = extract_train_config(job_config, for_remote=for_remote)
+    # Preserve ${oc.env:NEMO_RUN_DIR,.}; recipe scripts resolve it from the executor's
+    # environment so remote pipeline stages can share a configured remote_job_dir.
+    train_config_for_script = extract_train_config(job_config, for_remote=False)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
     env_for_executor = job_config.run.env if hasattr(job_config.run, "env") else None

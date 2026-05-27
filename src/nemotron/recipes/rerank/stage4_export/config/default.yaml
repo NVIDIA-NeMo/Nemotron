@@ -25,6 +25,8 @@ attn_implementation: eager  # Use eager for ONNX export compatibility
 # Quantization settings (optional)
 quant_cfg: null  # Options: null, "fp8", "int8_sq"
 calibration_batch_size: 64
+calibration_query: what information is relevant to this query?
+prompt_template: "question:{query} \n \n passage:{passage}"
 
 # ONNX export settings
 onnx_export_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage4_export/onnx

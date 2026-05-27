@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Stage 0: Fine-tune cross-encoder reranking model."""
+"""Stage 2: Fine-tune cross-encoder reranking model."""
