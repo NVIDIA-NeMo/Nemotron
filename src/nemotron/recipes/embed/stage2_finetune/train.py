@@ -8,7 +8,7 @@
 # setup = "PyTorch pre-installed. Stage dependencies resolved via UV at runtime."
 #
 # [tool.runspec.run]
-# launch = "direct"
+# launch = "torchrun"
 #
 # [tool.runspec.config]
 # dir = "./config"
@@ -16,7 +16,7 @@
 #
 # [tool.runspec.resources]
 # nodes = 1
-# gpus_per_node = 1
+# gpus_per_node = "gpu"
 # ///
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -67,19 +67,34 @@ DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 
+def _is_rank_zero() -> bool:
+    """Return True for the single process that should publish shared artifacts."""
+    return os.environ.get("RANK", "0") == "0"
+
+
 class FinetuneConfig(RecipeSettings):
     """Fine-tuning configuration for embedding models."""
 
     model_config = ConfigDict(extra="forbid")
 
     # Model settings
-    base_model: str = Field(default="nvidia/llama-nemotron-embed-1b-v2", description="Base embedding model to fine-tune.")
+    base_model: str = Field(
+        default="nvidia/llama-nemotron-embed-1b-v2",
+        description="Base embedding model to fine-tune.",
+    )
 
     # Data paths
-    train_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep/train_mined.automodel_unrolled.json", description="Path to training data file.")
+    train_data_path: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE
+        / "output/embed/stage1_data_prep/train_mined.automodel_unrolled.json",
+        description="Path to training data file.",
+    )
 
     # Output settings
-    checkpoint_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage2_finetune/checkpoints", description="Directory for saving checkpoints.")
+    checkpoint_dir: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/stage2_finetune/checkpoints",
+        description="Directory for saving checkpoints.",
+    )
 
     # Training hyperparameters
     num_epochs: int = Field(default=3, gt=0, description="Number of training epochs.")
@@ -87,12 +102,22 @@ class FinetuneConfig(RecipeSettings):
     local_batch_size: int = Field(default=4, gt=0, description="Per-GPU batch size.")
     learning_rate: float = Field(default=1e-5, gt=0, description="Learning rate.")
     lr_warmup_steps: int = Field(default=1, ge=0, description="Learning rate warmup steps.")
-    lr_decay_style: Literal["cosine", "linear"] = Field(default="cosine", description="LR decay schedule (cosine, linear).")
+    lr_decay_style: Literal["cosine", "linear"] = Field(
+        default="cosine",
+        description="LR decay schedule (cosine, linear).",
+    )
     weight_decay: float = Field(default=0.01, ge=0, description="Weight decay for optimizer.")
 
     # Model architecture
-    attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(default=None, description="Attention implementation (sdpa, flash_attention_2, eager). None auto-detects.")
-    train_n_passages: int = Field(default=5, ge=2, description="Number of passages per query during training (1 pos + n-1 neg).")
+    attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(
+        default=None,
+        description="Attention implementation (sdpa, flash_attention_2, eager). None auto-detects.",
+    )
+    train_n_passages: int = Field(
+        default=5,
+        ge=2,
+        description="Number of passages per query during training (1 pos + n-1 neg).",
+    )
     pooling: Literal["avg", "cls", "last"] = Field(default="avg", description="Pooling strategy for embeddings.")
     l2_normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
     temperature: float = Field(default=0.02, gt=0, description="Temperature for contrastive loss.")
@@ -215,15 +240,18 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     total_steps = steps_per_epoch * num_epochs
 
     # Print training plan
-    print(f"Training plan:")
+    print("Training plan:")
     print(f"  Dataset:          {num_examples:,} examples")
 
     if global_batch_size != cfg.global_batch_size:
-        print(f"  Batch size:       {global_batch_size} (auto-scaled from {cfg.global_batch_size} — dataset < 2000 examples)")
+        print(
+            f"  Batch size:       {global_batch_size} "
+            f"(auto-scaled from {cfg.global_batch_size} - dataset < 2000 examples)"
+        )
     else:
         print(f"  Batch size:       {global_batch_size}")
         if num_examples < 2000 and cfg.global_batch_size != 128:
-            print(f"                    (note: auto-scaling skipped because batch size was explicitly set)")
+            print("                    (note: auto-scaling skipped because batch size was explicitly set)")
 
     if num_epochs != cfg.num_epochs:
         print(f"  Epochs:           {num_epochs} (auto-scaled from {cfg.num_epochs})")
@@ -240,7 +268,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     if total_steps < 50:
         print(f"Warning: Only ~{total_steps} total training steps. "
               f"Dataset may be too small for meaningful fine-tuning.", file=sys.stderr)
-        print(f"         Consider adding more documents to your corpus.", file=sys.stderr)
+        print("         Consider adding more documents to your corpus.", file=sys.stderr)
         print()
 
     print(f"Base model:     {cfg.base_model}")
@@ -253,8 +281,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         from nemo_automodel.components.config.loader import load_yaml_config
         from nemo_automodel.recipes.biencoder import TrainBiencoderRecipe
     except ImportError as e:
-        print(f"Error: Failed to import nemo-automodel. Is it installed?", file=sys.stderr)
-        print(f"  Install with: pip install nemo-automodel", file=sys.stderr)
+        print("Error: Failed to import nemo-automodel. Is it installed?", file=sys.stderr)
+        print("  Install with: pip install nemo-automodel", file=sys.stderr)
         print(f"  Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -315,26 +343,27 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
 
-    print(f"\nFine-tuning complete!")
+    print("\nFine-tuning complete!")
     print(f"   Checkpoint: {cfg.checkpoint_dir}")
     print(f"   Model:      {final_model_dir}")
 
     # Save artifact (registers with artifact registry if kit.init() was called)
-    try:
-        from nemotron.kit.artifacts.embed import EmbedModelArtifact
+    if _is_rank_zero():
+        try:
+            from nemotron.kit.artifacts.embed import EmbedModelArtifact
 
-        artifact = EmbedModelArtifact(
-            path=final_model_dir,
-            base_model=cfg.base_model,
-            training_examples=num_examples,
-            num_epochs=num_epochs,
-            global_batch_size=global_batch_size,
-            learning_rate=cfg.learning_rate,
-            temperature=cfg.temperature,
-        )
-        artifact.save(name="embed/model")
-    except Exception:
-        pass  # Artifact save is best-effort — don't break the pipeline
+            artifact = EmbedModelArtifact(
+                path=final_model_dir,
+                base_model=cfg.base_model,
+                training_examples=num_examples,
+                num_epochs=num_epochs,
+                global_batch_size=global_batch_size,
+                learning_rate=cfg.learning_rate,
+                temperature=cfg.temperature,
+            )
+            artifact.save(name="embed/model")
+        except Exception:
+            pass  # Artifact save is best-effort — don't break the pipeline
 
     return final_model_dir
 

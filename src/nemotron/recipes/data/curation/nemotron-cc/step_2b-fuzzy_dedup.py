@@ -36,7 +36,7 @@ import time
 
 from loguru import logger
 
-from nemo_curator.backends.experimental.ray_data import RayDataExecutor
+from nemo_curator.backends.ray_data import RayDataExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.stages.deduplication.fuzzy.workflow import FuzzyDeduplicationWorkflow
 from nemo_curator.stages.deduplication.id_generator import CURATOR_DEDUP_ID_STR

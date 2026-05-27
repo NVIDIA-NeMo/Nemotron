@@ -21,7 +21,7 @@ import numpy as np
 import tiktoken
 
 from nemo_curator.backends.base import WorkerMetadata
-from nemo_curator.backends.experimental.ray_data import RayDataExecutor
+from nemo_curator.backends.ray_data import RayDataExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.pipeline import Pipeline
 from nemo_curator.stages.base import ProcessingStage
@@ -91,6 +91,7 @@ def write_id_to_filename(input_file_paths: list[str], output_path: str) -> dict[
     input_file_list = [os.path.basename(filename) for filename in input_file_paths]
     id_to_filename = {str(i): filename for i, filename in enumerate(input_file_list)}
 
+    os.makedirs(output_path, exist_ok=True)
     with open(f"{output_path}/id_to_filename.json", "w") as fp:
         json.dump(id_to_filename, fp)
 

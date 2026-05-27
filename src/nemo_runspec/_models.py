@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -47,7 +48,7 @@ class RunspecResources:
     """Default resource requirements."""
 
     nodes: int = 1
-    gpus_per_node: int = 8
+    gpus_per_node: int | Literal["gpu"] = 8
 
 
 @dataclass(frozen=True)
