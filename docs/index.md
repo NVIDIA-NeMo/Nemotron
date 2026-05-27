@@ -279,45 +279,6 @@ nemotron/artifacts.md
 ```
 
 ```{toctree}
-:caption: Nano3 Stages
-:hidden:
-
-nemotron/nano3/pretrain.md
-nemotron/nano3/sft.md
-nemotron/nano3/rl.md
-nemotron/nano3/evaluate.md
-nemotron/nano3/import.md
-```
-
-```{toctree}
-:caption: Omni3 Stages
-:hidden:
-
-nemotron/omni3/README.md
-nemotron/omni3/sft.md
-nemotron/omni3/rl.md
-nemotron/omni3/rl/data-prep.md
-nemotron/omni3/architecture.md
-nemotron/omni3/inference.md
-```
-
-```{toctree}
-:caption: Super3 Stages
-:hidden:
-
-nemotron/super3/README.md
-nemotron/super3/pretrain.md
-nemotron/super3/sft.md
-nemotron/super3/rl/index.md
-nemotron/super3/rl/rlvr.md
-nemotron/super3/rl/swe.md
-nemotron/super3/rl/rlhf.md
-nemotron/super3/rl/data-prep.md
-nemotron/super3/evaluate.md
-nemotron/super3/quantization.md
-```
-
-```{toctree}
 :caption: Nemotron Kit
 :hidden:
 

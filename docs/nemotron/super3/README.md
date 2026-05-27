@@ -271,10 +271,6 @@ wandb login
 pretrain.md
 sft.md
 rl/index.md
-rl/rlvr.md
-rl/swe.md
-rl/rlhf.md
-rl/data-prep.md
 evaluate.md
 quantization.md
 ```
