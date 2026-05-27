@@ -8,6 +8,7 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 - When To Use Rerank
 - Commands
 - Stage Map
+- Stage Contracts
 - Important Defaults
 - Operating Patterns
 - NIM Smoke Test
@@ -65,6 +66,18 @@ uv run nemotron rerank finetune -c default --batch my-cluster
 | 5 deploy | `rerank deploy` | ONNX/TensorRT model dir | NIM on `host_port` | Requires Docker/NGC setup and `NGC_API_KEY`. |
 
 The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `rerank run` defaults to `--to eval`.
+
+
+## Stage Contracts
+
+| Stage | Required Inputs | Creates | Cheapest Check | Expensive Resource | Common Overrides |
+| --- | --- | --- | --- | --- | --- |
+| 0 SDG | Text corpus or HF URI, `NVIDIA_API_KEY` | `output/rerank/stage0_sdg` | `uv run nemotron rerank run -c default -d --from sdg --to prep` | Provider API calls | `corpus_dir`, `num_pairs`, `sentences_per_chunk`, `file_extensions`, `preview=true` |
+| 1 prep | Stage 0 output or `sdg_input_path` | `output/rerank/stage1_prep`, `eval_beir/` | `uv run nemotron rerank prep -c default -d` | Hard-negative mining on larger sets | `sdg_input_path`, `quality_threshold`, `hard_negatives_to_mine`, `mining_batch_size` |
+| 2 finetune | `train_mined.automodel_unrolled.json` | `output/rerank/stage2_finetune/checkpoints` | `uv run nemotron rerank finetune -c default -d` | GPU training | `num_epochs`, `learning_rate`, `global_batch_size`, `local_batch_size`, `train_n_passages`, `prompt_template` |
+| 3 eval | Fixed `eval_beir/`, checkpoint, first-stage retriever | `output/rerank/stage3_eval/eval_results.json` | `uv run nemotron rerank eval -c default -d` | Retrieval plus rerank inference | `model_path`, `eval_data_path`, `retrieval_model`, `top_k`, `k_values`, `eval_nim` |
+| 4 export | Fine-tuned checkpoint | `output/rerank/stage4_export/onnx` or `tensorrt` | `uv run nemotron rerank export -c default -d` | Export container/GPU for TensorRT | `model_path`, `export_to_trt`, `attn_implementation`, TensorRT profile settings |
+| 5 deploy | ONNX/TensorRT model dir, Docker, NGC access | Rerank NIM on `host_port` | `uv run nemotron rerank deploy -c default -d` | Docker, GPU, NGC image pull | `model_dir`, `use_onnx`, `host_port`, container/image fields |
 
 ## Important Defaults
 
@@ -147,4 +160,5 @@ curl -X POST http://localhost:8000/v1/ranking \
 uv run nemotron rerank --help
 uv run nemotron rerank finetune -c default -d
 uv run pytest src/nemotron/recipes/rerank/stage2_finetune/tests tests/nemo_runspec/test_execution_uv_spec.py -q
+.agents/skills/retriever-finetune-recipe/scripts/check-command-freshness.sh
 ```

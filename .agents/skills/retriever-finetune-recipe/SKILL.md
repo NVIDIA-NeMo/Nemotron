@@ -28,7 +28,7 @@ Use this skill to work with Nemotron embedding and reranking fine-tuning recipes
 - Stage 1-4 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
 - Stage 4 export: NeMo Export-Deploy container when using TensorRT.
 - Stage 5 deploy: Docker, NGC access, and `NGC_API_KEY`.
-- Remote execution: root `env.toml` profile for `--run` or `--batch`.
+- Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 
 ## First Decisions
 
@@ -63,7 +63,7 @@ Use this skill to work with Nemotron embedding and reranking fine-tuning recipes
    - Stage 1-4 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
    - Stage 4 export: the NeMo Export-Deploy container when using TensorRT.
    - Stage 5 deploy: Docker, NGC access, and `NGC_API_KEY`.
-   - Remote execution: root `env.toml` profile for `--run` or `--batch`.
+   - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 4. Use dotlist overrides instead of editing defaults unless the user asks for reusable config changes. Keep sequence length, prefixes, pooling/normalization, prompt templates, and hard-negative counts consistent across stages.
 5. Avoid launching API, GPU, Docker, Slurm, NIM, or long-running jobs unless the user explicitly asked to run them. Offer or run dry-runs, config review, and small pilots first.
 6. If the user specifies GPU IDs, scope every stage command with `CUDA_VISIBLE_DEVICES=<ids>`.
@@ -77,7 +77,17 @@ Use this skill to work with Nemotron embedding and reranking fine-tuning recipes
 - `references/embed.md`: embedding recipe stages, commands, defaults, output paths, and operating patterns.
 - `references/rerank.md`: rerank recipe stages, commands, defaults, output paths, and operating patterns.
 - `references/evaluation.md`: metric interpretation, comparison hygiene, and deployment readiness checks.
+- `references/remote.md`: remote execution profiles, batch/run mode, GPU scoping, logs, and polling.
+- `scripts/check-command-freshness.sh`: read-only CLI help and dry-run checks for documented examples.
 - `PITFALLS.md`: common failures and recovery moves for SDG, prep, training, eval, export, deploy, and CLI setup.
+
+## Available Scripts
+
+| Script | Purpose | Arguments |
+| --- | --- | --- |
+| `scripts/check-command-freshness.sh` | Runs read-only `uv run --no-sync` help and dry-run checks for documented CLI examples. | Optional repo root path; defaults to the git root or current directory. |
+
+When your runtime supports skill script helpers, use `run_script("scripts/check-command-freshness.sh", ["/path/to/repo"])`; otherwise run `.agents/skills/retriever-finetune-recipe/scripts/check-command-freshness.sh /path/to/repo` from shell.
 
 ## Example Usage
 
@@ -102,3 +112,5 @@ For failures, load `PITFALLS.md` first. Localize the failing stage, then inspect
 ## Output Style
 
 Give concrete commands and file paths. State assumptions, expected inputs, expected outputs, and the cheapest validation step that proves the next action is ready. For long-running stages, separate preview commands from execution commands so the user can choose deliberately.
+
+When reporting a dry-run or real run, include a compact run report: command, mode, config, dotlist overrides, input paths, output paths, validation signal or metric file, and next cheapest check. Include the checkout commit when it is available.

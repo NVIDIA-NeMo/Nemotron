@@ -9,8 +9,8 @@ The evaluation is functional: it checks whether agents use the skill when retrie
 ## Dataset Rules
 
 - Keep prompts realistic. Do not name the skill in user prompts.
-- Include positive cases for embedding planning, reranker selection, and deployment debugging.
-- Include at least one negative case where the skill should not activate.
+- Include positive cases for embedding planning, reranker selection, deployment debugging, stale artifact diagnosis, secret-safe setup, and prerequisite gating.
+- Include negative cases where the skill should not activate, including unrelated factual questions and generic vector database advice.
 - Keep `expected_skill`, `ground_truth`, and ordered `expected_behavior` entries explicit enough for deterministic and judge-based grading.
 - Do not commit generated `evals/results/` output; commit only reusable fixtures and summary reports.
 
@@ -20,6 +20,7 @@ Before publication, run the configured skill evaluation harness in the configure
 
 - validate the skill and eval dataset structure,
 - run static skill-quality checks,
+- run `.agents/skills/retriever-finetune-recipe/scripts/check-command-freshness.sh` when the checkout has the recipe CLI installed,
 - run live with-skill and without-skill evaluation,
 - cover both Codex and Claude Code, or document why an agent was skipped.
 

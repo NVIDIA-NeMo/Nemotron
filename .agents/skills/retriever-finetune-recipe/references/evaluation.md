@@ -22,6 +22,17 @@ Use Stage 3 metrics as the source of truth for recipe quality. Training loss is 
 - Start real datasets at 1-2 epochs unless validation and Stage 3 metrics continue improving.
 - Evaluate data saturation by running 25%, 50%, and 100% corpus sizes with the same held-out eval set.
 
+## Interpretation Patterns
+
+| Signal | Likely Meaning | Next Check |
+| --- | --- | --- |
+| Recall@100 is low before rerank | First-stage retrieval is missing relevant documents | Tune embedding, chunking, query/passage prefixes, or index settings before reranking. |
+| Recall@100 is acceptable but nDCG@10 is low | Candidates exist but ordering is poor | Tune rerank, keep `top_k` fixed, and inspect top-ranked false positives. |
+| Fine-tuned is worse than base | Data, prefixes, sequence lengths, or checkpoint path may not match | Compare Stage 1 eval split, Stage 2 training config, and Stage 3 `model_path`. |
+| Checkpoint eval is good but ONNX or TensorRT drops | Export parity or precision issue | Compare checkpoint vs ONNX first, then TensorRT; check `attn_implementation`, quantization, profiles, and layernorm settings. |
+| NIM eval is worse than exported model | Deploy config points at stale or wrong artifact | Check `model_dir`, `use_onnx`, mounted paths, port, served model name, and `eval_nim=true eval_base=false`. |
+| Small nDCG gain on tiny eval set | Possible noise | Increase eval query count or repeat with a fixed larger held-out split before deployment. |
+
 ## Deployment Checks
 
 - Evaluate the exported or served model against the same eval set.
