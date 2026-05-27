@@ -40,6 +40,8 @@ The **base model** produces free-form descriptions. After fine-tuning, it output
 | **Step 1** | Explore the CORD-v2 dataset |
 | **Step 2** | Training configuration (SFT and LoRA) |
 | **Step 3** | Launch fine-tuning |
+| **Step 4** | Run inference on the base model and the fine-tuned model |
+| **Step 5** | Compare SFT vs LoRA results |
 
 ## Hardware Requirements
 
@@ -53,7 +55,7 @@ The **base model** produces free-form descriptions. After fine-tuning, it output
 ## Step 0 — Set Up the Environment
 
 ```bash
-# Inside the NeMo AutoModel container (26.04+):
+# Inside the NeMo AutoModel container (nvcr.io/nvidia/nemo-automodel:26.04):
 cd /opt/Automodel
 
 # Or from a source checkout:
@@ -267,6 +269,10 @@ Validation:
   step 399 | val_loss 0.0566
 ```
 
+You should see a loss curve similar to this:
+
+![SFT and LoRA training loss curves on CORD-v2](../../../assets/omni3/omni_loss_curve.png)
+
 ### Checkpoints saved
 
 ```
@@ -298,3 +304,243 @@ For LoRA, the checkpoint saves adapter weights instead:
 ```
 
 > **Tip**: `LOWEST_VAL` symlink points to the checkpoint with the best validation loss.
+
+---
+
+## Step 4 — Run Inference
+
+### Baseline inference — before fine-tuning
+
+It helps to see what the **base model** produces on the validation samples
+before training, so the fine-tuning effect is visible side-by-side. Without
+fine-tuning, NemotronOmni answers with free-form prose rather than the
+structured XML-like token format the recipe trains it to emit.
+
+```python
+import json
+import torch
+from transformers import AutoModel, AutoProcessor
+from datasets import load_dataset
+
+BASE = "<path_to_nemotron_omni_v3>"
+# Placeholder-expansion metadata, not `generate()` kwargs — drop before forwarding.
+PROCESSOR_METADATA_KEYS = ("num_patches", "num_tokens", "imgs_sizes")
+
+processor = AutoProcessor.from_pretrained(BASE, trust_remote_code=True)
+model = AutoModel.from_pretrained(
+    BASE, trust_remote_code=True, dtype=torch.bfloat16,
+    device_map={"": torch.cuda.current_device()},
+)
+# RADIO non-persistent buffer; can deserialize as a meta tensor after load — reset to force re-init.
+if hasattr(model, "vision_model") and hasattr(model.vision_model, "radio_model"):
+    model.vision_model.radio_model.summary_idxs = None
+model.eval()
+
+dataset = load_dataset("naver-clova-ix/cord-v2")
+tokenizer = processor.tokenizer
+
+for i in [0, 20, 40, 60, 80]:
+    sample = dataset["validation"][i]
+    image = sample["image"].convert("RGB")
+    messages = [{"role": "user", "content": "<image>\nDescribe this image."}]
+    text = tokenizer.apply_chat_template(
+        messages, tokenize=False,
+        add_generation_prompt=True, enable_thinking=False,
+    )
+    inputs = processor(text=text, images=[image], return_tensors="pt")
+    for k in PROCESSOR_METADATA_KEYS:
+        inputs.pop(k, None)
+    inputs = {k: v.to("cuda") if isinstance(v, torch.Tensor) else v
+              for k, v in inputs.items()}
+
+    with torch.no_grad():
+        output_ids = model.generate(**inputs, max_new_tokens=512, do_sample=False)
+
+    answer = tokenizer.decode(
+        output_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True,
+    ).strip()
+    print(f"\n=== Sample {i} ===\nBase output: {answer}")
+```
+
+Example outputs from the base v3 dump (truncated):
+
+| Sample | Base model output |
+|--------|-------------------|
+| 0 (REAL GANACHE / EGG TART) | "This image shows a close-up of a receipt, which appears to be from a restaurant or food establishment. The receipt is printed on white paper and is partially visible…" |
+| 20 (JAMUR / TAHU) | "…items listed are '2 JAMUR' and '1 TAHU,' with prices of 10,000 and 5,000 respectively. The subtotal is 15,000, with a 10% PB1 tax of 1,500, resulting in a total of 16,500…" |
+| 40 (Gojek Chicken Chilli Sauce) | "This image shows a close-up of a restaurant receipt, which is partially obscured by a brown, textured surface, likely a table or counter…" |
+| 60 (VANILLA CHOCO HEART CAKE) | "…the top portion showing the item '1 VANILLA CHOCO HEART CAKE' priced at 180,000… paid by 'VISA CARD'…" |
+| 80 (Sate Padang) | "This image shows a close-up of a white paper receipt placed on a light brown wooden surface with a visible grain pattern…" |
+
+The base model can read the receipts, but it returns natural-language
+descriptions — not the `<s_total>...<s_nm>...</s_total>` token sequence the
+downstream consumer expects. That gap is what fine-tuning closes.
+
+### Full SFT inference
+
+Load the consolidated checkpoint and run inference on the same validation
+samples to spot-check structured output.
+
+```python
+import torch
+import json
+from transformers import AutoModel, AutoProcessor
+from datasets import load_dataset
+from nemo_automodel.components.datasets.vlm.utils import json2token
+
+CKPT = "<checkpoint_dir>/LOWEST_VAL/model/consolidated"
+
+# Load processor
+processor = AutoProcessor.from_pretrained(CKPT, trust_remote_code=True)
+tokenizer = processor.tokenizer
+
+# `device_map` streams weights directly to GPU; skipping the AutoModel.from_config
+# CPU-instantiation step saves ~5 min on the 30B v3 dump.
+model = AutoModel.from_pretrained(
+    CKPT, trust_remote_code=True, torch_dtype=torch.bfloat16,
+    device_map={"": torch.cuda.current_device()},
+)
+
+# RADIO non-persistent buffer; can deserialize as a meta tensor after load — reset to force re-init.
+if hasattr(model, "vision_model") and hasattr(model.vision_model, "radio_model"):
+    model.vision_model.radio_model.summary_idxs = None
+
+model.eval()
+
+dataset = load_dataset("naver-clova-ix/cord-v2")
+# Placeholder-expansion metadata, not `generate()` kwargs — drop before forwarding.
+PROCESSOR_METADATA_KEYS = ("num_patches", "num_tokens", "imgs_sizes")
+
+for i in [0, 20, 40, 60, 80]:
+    sample = dataset["validation"][i]
+    image = sample["image"].convert("RGB")
+    gt = json.loads(sample["ground_truth"])["gt_parse"]
+    gt_text = json2token(gt, sort_json_key=True)
+
+    messages = [{"role": "user", "content": "<image>\nDescribe this image."}]
+    text = tokenizer.apply_chat_template(
+        messages, tokenize=False,
+        add_generation_prompt=True, enable_thinking=False,
+    )
+    inputs = processor(text=text, images=[image], return_tensors="pt")
+    for k in PROCESSOR_METADATA_KEYS:
+        inputs.pop(k, None)
+    inputs = {k: v.to("cuda") if isinstance(v, torch.Tensor) else v
+              for k, v in inputs.items()}
+
+    with torch.no_grad():
+        output_ids = model.generate(**inputs, max_new_tokens=1024, do_sample=False)
+
+    generated = tokenizer.decode(
+        output_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True,
+    ).strip()
+
+    print(f"\n=== Sample {i} ===")
+    print(f"Ground truth: {gt_text}")
+    print(f"Prediction:   {generated}")
+```
+
+### LoRA PEFT inference
+
+NeMo Automodel saves LoRA adapters under its internal wrapper FQNs
+(e.g. `language_model.model.layers.X.mixer.in_proj`), which differ from the HF
+base model namespace (`language_model.backbone.layers.X.mixer.in_proj`).
+To apply the adapter, merge the delta weights directly into the base model with
+a small FQN translation:
+
+```python
+import json, re
+import torch
+from pathlib import Path
+from safetensors import safe_open
+from transformers import AutoModel, AutoProcessor
+
+BASE    = "<path_to_nemotron_omni_v3>"
+ADAPTER = "<ckpt_dir>/LOWEST_VAL/model"
+
+processor = AutoProcessor.from_pretrained(BASE, trust_remote_code=True)
+model = AutoModel.from_pretrained(
+    BASE, trust_remote_code=True, dtype=torch.bfloat16,
+    device_map={"": torch.cuda.current_device()},
+)
+# RADIO non-persistent buffer; can deserialize as a meta tensor after load — reset to force re-init.
+if hasattr(model, "vision_model") and hasattr(model.vision_model, "radio_model"):
+    model.vision_model.radio_model.summary_idxs = None
+
+# Wrapper -> HF base FQN translation. vision_projector.* targets are listed in
+# adapter_config.json but no tensors are saved for them, so we just skip those.
+def translate(fqn):
+    if fqn.startswith("language_model.model."):
+        return "language_model.backbone." + fqn[len("language_model.model."):]
+    return None
+
+cfg   = json.loads((Path(ADAPTER) / "adapter_config.json").read_text())
+scale = cfg["lora_alpha"] / cfg["r"]
+
+pairs = {}
+with safe_open(str(Path(ADAPTER) / "adapter_model.safetensors"), framework="pt") as f:
+    for k in f.keys():
+        m = re.match(r"^base_model\.model\.(.+)\.lora_(A|B)\.weight$", k)
+        if m:
+            pairs.setdefault(m.group(1), {})[m.group(2)] = f.get_tensor(k)
+
+modules = dict(model.named_modules())
+for wrapper_fqn, ab in pairs.items():
+    hf_fqn = translate(wrapper_fqn)
+    if hf_fqn is None or hf_fqn not in modules:
+        continue
+    W = modules[hf_fqn].weight
+    A = ab["A"].to(device=W.device, dtype=torch.float32)
+    B = ab["B"].to(device=W.device, dtype=torch.float32)
+    with torch.no_grad():
+        W.add_(((B @ A) * scale).to(W.dtype))
+
+model.eval()
+# ... then run the same generate() loop as in the SFT example above.
+```
+
+**Resources** — single GPU; ~60 GB GPU RAM for the bf16 30B base.
+**Runtime** — ~75 s base load + ~1 s LoRA merge + ~5–15 s per sample.
+
+---
+
+## Step 5 — Results Comparison
+
+### Evaluation on 5 CORD-v2 Validation Samples
+
+#### Full SFT (lr=1e-4, 400 steps, epoch_3_step_399)
+
+| Sample | Ground Truth | Prediction | Match |
+|--------|-------------|------------|-------|
+| 1 | `<s_total>...<s_nm>REAL GANACHE</s_nm>...<s_nm>EGG TART</s_nm>...<s_nm>PIZZA TOAST</s_nm>...` | Exact match | 100% |
+| 2 | `<s_total>...<s_nm>JAMUR</s_nm>...<s_nm>TAHU</s_nm>...` | Exact match | 100% |
+| 3 | `<s_total>...<s_nm>Gojek Chicken Chilli Sauce H</s_nm>...` | Correct values, slight name segmentation diff | 33% |
+| 4 | `<s_total>...<s_nm>VANILLA CHOCO HEART CAKE</s_nm>...` | Exact match | 100% |
+| 5 | `<s_total>...<s_nm>Sate Padang</s_nm>...` | Correct, extra `<s_unitprice>` field | ~0% |
+
+**3/5 exact matches. All samples produce correct structured output.**
+
+#### LoRA PEFT (rank=64, lr=1e-3, 400 steps, epoch_0_step_99)
+
+| Sample | Ground Truth | Prediction | Match |
+|--------|-------------|------------|-------|
+| 1 | `<s_total>...<s_nm>REAL GANACHE</s_nm>...` | Exact match | 100% |
+| 2 | `<s_total>...<s_nm>JAMUR</s_nm>...<s_nm>TAHU</s_nm>...` | Exact match | 100% |
+| 3 | `<s_total>...<s_nm>Gojek Chicken Chilli Sauce H</s_nm>...` | Correct values, slight name segmentation diff | 33% |
+| 4 | `<s_total>...<s_nm>VANILLA CHOCO HEART CAKE</s_nm>...` | Exact match | 100% |
+| 5 | `<s_total>...<s_nm>Sate Padang</s_nm>...` | Exact match | 100% |
+
+**4/5 exact matches. All samples produce correct structured output.**
+
+### Summary
+
+| | Full SFT | LoRA PEFT |
+|---|---|---|
+| Trainable params | 31.5B (95.63%) | 55M (0.17%) |
+| Learning rate | 1e-4 | 1e-3 |
+| GPU memory | ~49 GiB | ~30 GiB |
+| Training time (8x H100) | ~10 min | ~6 min |
+| Best val loss | 0.034 (step 199) | 0.045 (step 99) |
+| Final train loss | 0.004 | 0.017 |
+| Checkpoint size | ~64 GB | ~27 MB |
+| Exact matches (5 val) | 3/5 | 4/5 |

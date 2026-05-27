@@ -19,7 +19,7 @@ Common Crawl → Extract & Clean → Deduplicate → Quality Classify → Synthe
 | 2b | `step_2b-fuzzy_dedup.py` | MinHash + LSH fuzzy deduplication | GPU (identify), CPU (remove) |
 | 2c | `step_2c-substring_dedup/` | Exact substring deduplication using suffix arrays | CPU-only |
 | 3 | `step_3-quality_classification.py` | Ensemble quality scoring into 20 buckets | GPU (classify), CPU (ensemble) |
-| 4 | `step_4-sdg.py` | LLM-based synthetic data generation on top-quality data | CPU + LLM endpoint |
+| 4 | `step_4-sdg.py` | LLM-based synthetic data generation on top-quality data | GPU (local inference server, default) or CPU + external LLM endpoint (with `--no-serve-model`) |
 
 Steps 1–3 progressively filter and annotate the data. Step 4 generates synthetic training data (diverse QA, distillation, knowledge extraction, knowledge lists) from the highest-quality documents (buckets 18–19).
 
@@ -35,9 +35,9 @@ See the recipe README at `src/nemotron/recipes/data/curation/nemotron-cc/README.
 
 ## Prerequisites
 
-- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) installed with Ray support
+- [NeMo Curator](https://github.com/NVIDIA/NeMo-Curator) 1.2.0 (26.04 release) or newer, installed with Ray support
 - GPU(s) for steps 2a, 2b, and 3 (deduplication and classification)
-- Access to an OpenAI-compatible LLM endpoint for step 4 (NVIDIA NIM, vLLM, or cloud API)
+- For step 4, one of: GPU(s) to host a local inference server (default), an OpenAI-compatible endpoint (self-hosted vLLM/NIM or cloud, via `--no-serve-model`), or an [NVIDIA Build](https://build.nvidia.com/) API key
 
 ## After Curation
 
