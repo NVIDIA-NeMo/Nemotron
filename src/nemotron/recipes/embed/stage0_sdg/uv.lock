@@ -1455,7 +1455,7 @@ dependencies = [
 requires-dist = [
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "retriever-sdg", directory = "vendor/retriever-sdg" },
+    { name = "retriever-sdg", editable = "vendor/retriever-sdg" },
 ]
 
 [[package]]
@@ -1578,7 +1578,7 @@ wheels = [
 [[package]]
 name = "retriever-sdg"
 version = "0.1.0"
-source = { directory = "vendor/retriever-sdg" }
+source = { editable = "vendor/retriever-sdg" }
 dependencies = [
     { name = "data-designer" },
     { name = "nltk" },
@@ -1591,7 +1591,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
-    { name = "data-designer", specifier = ">=0.5.0" },
+    { name = "data-designer", specifier = ">=0.5.3" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "nltk", specifier = ">=3.9.2" },
     { name = "numpy", specifier = ">=1.24.0" },

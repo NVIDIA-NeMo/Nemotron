@@ -76,6 +76,12 @@ $ uv run nemotron nano3 pipe --run YOUR-CLUSTER
   - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)
   - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) (SFT and RL data)
 
+<!-- TODO - move whatever customization docs for Nano 3 to this section of the docs.
+```{seealso}
+For model cards, technical report chunks, and recipe summaries, see {doc}`/customize/models/nano3/index`.
+```
+-->
+
 ## Training Pipeline
 
 | Stage | Name | Purpose | Guide |
@@ -275,3 +281,13 @@ wandb login
 - [NVIDIA AI Stack](../nvidia-stack.md)
 - [CLI Framework](../cli.md)
 - [Data Preparation Module](../data-prep.md)
+
+```{toctree}
+:hidden:
+
+pretrain.md
+sft.md
+rl.md
+evaluate.md
+import.md
+```

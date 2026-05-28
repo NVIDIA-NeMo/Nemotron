@@ -22,44 +22,10 @@
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
-
-# -- Preprocessing: Replace symlinks with actual copies ---------------------
-def replace_symlinks_with_copies():
-    """Replace symlinked directories with actual copies at build time (CI only)."""
-    # Only run in CI environments to avoid disrupting local development
-    # GitHub Actions (and most CI systems) set CI=true
-    if not os.environ.get("CI"):
-        print("Skipping symlink replacement (not in CI environment)")
-        return
-
-    docs_dir = Path(__file__).parent
-    symlinks = ["usage-cookbook", "use-case-examples"]
-
-    for symlink_name in symlinks:
-        symlink_path = docs_dir / symlink_name
-
-        # Check if it's a symlink
-        if symlink_path.is_symlink():
-            # Resolve the target
-            target = symlink_path.resolve()
-
-            if target.exists():
-                print(f"Replacing symlink {symlink_name} with actual copy from {target}")
-                # Remove the symlink
-                symlink_path.unlink()
-                # Copy the actual directory
-                shutil.copytree(target, symlink_path)
-            else:
-                print(f"Warning: Symlink target {target} does not exist")
-
-
-# Run preprocessing
-print("Running docs preprocessing...")
-replace_symlinks_with_copies()
-print("Preprocessing complete!")
-
+sys.path.insert(0, os.path.abspath("_ext"))
 
 project = "Nemotron"
 copyright = "2026, NVIDIA Corporation"
@@ -79,10 +45,11 @@ extensions = [
     "sphinx_copybutton",  # For copy button in code blocks
     "sphinx_design",  # For grid cards and other design elements
     "sphinxcontrib.mermaid",  # For mermaid diagrams
+    "nemotron_customize",
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "customize"]
 
 # -- Options for MyST Parser (Markdown) --------------------------------------
 # MyST Parser settings
@@ -104,6 +71,9 @@ myst_fence_as_directive = ["mermaid"]
 # Configure mermaid diagrams
 mermaid_version = "latest"  # Use the latest version of mermaid
 
+copybutton_prompt_text = ">>> |$ |# "
+copybutton_exclude = ".linenos, .gp, .go"
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
@@ -111,6 +81,7 @@ mermaid_version = "latest"  # Use the latest version of mermaid
 html_static_path = ["_static"]
 html_css_files = [
     "css/termynal.css",
+    "customize.css",
 ]
 html_js_files = [
     "js/termynal.js",
@@ -149,4 +120,3 @@ if os.environ.get("CI", False):
         ".*github\\.com.*",
         ".*githubusercontent\\.com.*",
     ]
-

@@ -36,10 +36,42 @@
 
 ---
 
+## Use from Claude Code
+
+This repo ships a Claude Code plugin called **`nemotron-customize`** that turns the step catalog under [`src/nemotron/steps/`](./src/nemotron/steps/) into a guided, repo-native pipeline builder.
+
+Install once:
+
+```text
+/plugin marketplace add NVIDIA/Nemotron
+/plugin install nemotron-customize@nvidia-nemotron
+```
+
+Then, **start Claude Code from the repo root** and invoke the skill:
+
+```bash
+cd /path/to/Nemotron        # repo root: must contain pyproject.toml and src/nemotron/steps/
+claude
+```
+
+```text
+/nemotron-customize
+```
+
+The skill resolves all file paths against your current working directory, so it must be invoked from the Nemotron checkout root. Running it from a subdirectory will cause file reads to fail.
+
+The skill plans the step DAG, validates artifact wiring, and emits the YAML configs needed to run the requested pipeline. See [`skills/nemotron-customize/SKILL.md`](./skills/nemotron-customize/SKILL.md) for the full contract.
+
+> The marketplace installs **only** `nemotron-customize`. The other folders under [`skills/`](./skills/) (model knowledge bases, contributor add-`*` skills) stay on disk for repo browsing but are not loaded as plugins.
+
+---
+
 ## Repository Overview
 
 ```
 nemotron/
+│
+├── src/nemotron/steps/      Modular building blocks for training, eval, SDG, and more
 │
 ├── src/nemotron/recipes/    Training recipes (complete, reproducible pipelines)
 │
@@ -50,12 +82,12 @@ nemotron/
 
 ### Which section should I use?
 
-| | **Training Recipes** | **Usage Cookbooks** | **Use Case Examples** |
-|---|---|---|---|
-| **Purpose** | Reproduce full training pipelines from raw data to model | Deploy and use trained models | Build end-to-end applications |
-| **Format** | Python packages with configs, scripts, and evaluation | Jupyter notebooks with step-by-step guides | Jupyter notebooks and scripts |
-| **When to use** | You want to train, fine-tune, or understand how a model was built | You have a model and want to deploy or run inference | You want to build an application (RAG, agents, tool use) |
-| **Location** | [`src/nemotron/recipes/`](./src/nemotron/recipes/) | [`usage-cookbook/`](./usage-cookbook/) | [`use-case-examples/`](./use-case-examples/) |
+| | **Nemotron Steps** | **Training Recipes** | **Usage Cookbooks** | **Use Case Examples** |
+|---|---|---|---|---|
+| **Purpose** | Full lifecycle building blocks, chain data prep, training, eval and other steps | Reproduce full training pipelines from raw data to model | Deploy and use trained models | Build end-to-end applications |
+| **Format** | The `nemotron steps` CLI and YAML configs | Python packages with configs, scripts, and evaluation | Jupyter notebooks with step-by-step guides | Jupyter notebooks and scripts |
+| **When to use** | You want to run one stage in isolation or compose a custom pipeline | You want to train, fine-tune, or understand how a model was built | You have a model and want to deploy or run inference | You want to build an application (RAG, agents, tool use) |
+| **Location** | [`src/nemotron/steps/`](./src/nemotron/steps/) | [`src/nemotron/recipes/`](./src/nemotron/recipes/) | [`usage-cookbook/`](./usage-cookbook/) | [`use-case-examples/`](./use-case-examples/) |
 
 ---
 
@@ -70,6 +102,36 @@ nemotron/
 - **Ultra** — Multi-GPU datacenter applications
 
 Nemotron models excel at coding, math, scientific reasoning, tool calling, instruction following, and visual reasoning. Deploy across edge, single GPU, or data center environments with support for NeMo, TensorRT-LLM, vLLM, SGLang, and NIM microservices.
+
+---
+
+## Nemotron Steps
+
+A *Nemotron step* is a named, reusable unit of work that you invoke with the `nemotron steps` CLI.
+Each step packages a description of the work it performs, the artifacts it consumes and produces, and one or more named configurations that supply parameter values.
+Steps live under [`src/nemotron/steps/`](./src/nemotron/steps/), and the CLI discovers them at startup.
+
+The training recipes in the next section are composed from these steps.
+Run a step on its own when you want one stage, or chain steps together when you need a different pipeline shape than the published recipes.
+
+### Step Categories
+
+The catalog covers the full training lifecycle.
+
+- Data curation and preparation with `curate/*` and `data_prep/*`.
+- Synthetic data generation (SDG) with `sdg/*`.
+- Corpus translation with `translate/*`.
+- Bring-your-own benchmark generation with `byob/*`.
+- Pretraining, supervised fine-tuning (SFT), parameter-efficient fine-tuning (PEFT), and reinforcement learning (RL) with `pretrain/*`, `sft/*`, `peft/*`, and `rl/*`.
+- Checkpoint conversion and model optimization with `convert/*` and `optimize/*`.
+- Benchmark evaluation with `eval/*`.
+- Execution-profile setup with `env/*`.
+
+### Documentation
+
+- [About Nemotron Steps](docs/steps/index.md) is the entry point for the step model.
+- [Nemotron Steps Basics](docs/steps/basics.md) defines *step*, *configuration*, *environment profile*, and *artifact*.
+- [Getting Started With Steps](docs/steps/getting-started.md) walks through the CLI on a small example.
 
 ---
 
