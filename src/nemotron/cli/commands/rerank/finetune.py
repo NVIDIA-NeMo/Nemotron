@@ -112,7 +112,6 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
         spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
-        torchrun_nproc_per_node=1,
     )
 
 

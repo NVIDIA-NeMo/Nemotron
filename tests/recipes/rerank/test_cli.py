@@ -65,7 +65,7 @@ class TestRerankDryRun:
         assert "--stage is not supported for rerank run" in result.output
 
 
-def test_finetune_local_uses_single_torchrun_worker_by_default(monkeypatch):
+def test_finetune_local_uses_runspec_gpu_worker_default(monkeypatch):
     captured = {}
 
     def fake_execute_uv_local_from_spec(**kwargs):
@@ -78,4 +78,5 @@ def test_finetune_local_uses_single_torchrun_worker_by_default(monkeypatch):
 
     finetune_module._execute_uv_local(Path("/tmp/train.yaml"), [])
 
-    assert captured["torchrun_nproc_per_node"] == 1
+    assert "torchrun_nproc_per_node" not in captured
+    assert captured["spec"].resources.gpus_per_node == "gpu"
