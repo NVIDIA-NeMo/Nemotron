@@ -57,8 +57,6 @@ def test_execute_uv_local_uses_stage_project_lock(monkeypatch) -> None:
         "/usr/bin/uv",
         "run",
         "--with",
-        str(repo_root),
-        "--with",
         "demo-extra",
         "--project",
         str(stage_dir),
@@ -72,6 +70,7 @@ def test_execute_uv_local_uses_stage_project_lock(monkeypatch) -> None:
         str(train_path),
         "model.foo=bar",
     ]
+    assert ["--with", str(repo_root)] not in [calls[0][0][i : i + 2] for i in range(len(calls[0][0]) - 1)]
     assert "VIRTUAL_ENV" not in calls[0][1]["env"]
 
 
@@ -98,7 +97,8 @@ def test_execute_uv_local_resolves_repo_relative_script_path(monkeypatch) -> Non
             passthrough=[],
         )
 
-    assert calls[0][0][-3:] == [
+    assert calls[0][0][-4:] == [
+        "python",
         str(repo_root / script_path),
         "--config",
         str(train_path),
@@ -127,7 +127,8 @@ def test_execute_uv_local_preserves_nested_relative_script_path(monkeypatch) -> 
             passthrough=[],
         )
 
-    assert calls[0][0][-3:] == [
+    assert calls[0][0][-4:] == [
+        "python",
         str(stage_dir / "scripts" / "train.py"),
         "--config",
         str(train_path),

@@ -45,6 +45,7 @@ attn_implementation: sdpa  # Attention: sdpa, flash_attention_2, eager
 hard_negatives_to_mine: 5
 hard_neg_margin: 0.95
 mining_batch_size: 128
+mining_num_processes: 1
 
 # Tokenization settings
 query_max_length: 512

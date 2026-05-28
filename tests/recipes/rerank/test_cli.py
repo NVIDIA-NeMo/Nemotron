@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from nemotron.cli.bin.nemotron import app
+from nemotron.cli.commands.rerank import finetune as finetune_module
 
 runner = CliRunner()
 STAGE_COMMANDS = ["sdg", "prep", "finetune", "eval", "export", "deploy"]
@@ -61,3 +63,19 @@ class TestRerankDryRun:
         result = runner.invoke(app, ["rerank", "run", "--run", "missing", "--stage", "--from", "sdg", "--to", "eval"])
         assert result.exit_code == 1
         assert "--stage is not supported for rerank run" in result.output
+
+
+def test_finetune_local_uses_single_torchrun_worker_by_default(monkeypatch):
+    captured = {}
+
+    def fake_execute_uv_local_from_spec(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "nemo_runspec.execution.execute_uv_local_from_spec",
+        fake_execute_uv_local_from_spec,
+    )
+
+    finetune_module._execute_uv_local(Path("/tmp/train.yaml"), [])
+
+    assert captured["torchrun_nproc_per_node"] == 1

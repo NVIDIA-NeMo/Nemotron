@@ -125,6 +125,11 @@ class DataPrepConfig(RecipeSettings):
     hard_negatives_to_mine: int = Field(default=5, gt=0, description="Number of hard negatives to mine per query.")
     hard_neg_margin: float = Field(default=0.95, gt=0, le=1, description="Margin for hard negative selection.")
     mining_batch_size: int = Field(default=128, gt=0, description="Batch size for mining.")
+    mining_num_processes: int = Field(
+        default=1,
+        gt=0,
+        description="Number of local torchrun worker processes for hard negative mining.",
+    )
     query_max_length: int = Field(default=512, gt=0, description="Maximum query length for tokenization.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage length for tokenization.")
     query_prefix: str = Field(default="query:", description="Prefix for query inputs during mining.")
@@ -195,7 +200,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         "-m",
         "torch.distributed.run",
         "--nproc_per_node",
-        "gpu",
+        str(cfg.mining_num_processes),
         str(mining_script),
         "--config",
         str(mining_config),

@@ -101,6 +101,14 @@ class TestDataPrepConfigValidation:
         with pytest.raises(ValidationError):
             DataPrepConfig(quality_threshold=11)
 
+    def test_default_mining_process_count_matches_stage_resources(self, DataPrepConfig):
+        cfg = DataPrepConfig(sdg_input_path="/tmp/fake")
+        assert cfg.mining_num_processes == 1
+
+    def test_mining_process_count_must_be_positive(self, DataPrepConfig):
+        with pytest.raises(ValidationError):
+            DataPrepConfig(sdg_input_path="/tmp/fake", mining_num_processes=0)
+
 
 # ---------------------------------------------------------------------------
 # TestFinetuneConfigValidation

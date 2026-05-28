@@ -1646,13 +1646,16 @@ def execute_uv_local(
         repo_script = repo_root / script
         script = repo_script if repo_script.exists() else stage_dir / script
 
-    cmd = [uv_cmd, "run", "--with", str(repo_root)]
+    cmd = [uv_cmd, "run"]
     for item in extra_with or []:
         cmd.extend(["--with", item])
     cmd.extend(["--project", str(stage_dir)])
     for extra in extras or []:
         cmd.extend(["--extra", extra])
-    cmd.extend(pre_script_args or [])
+    pre_script_args = pre_script_args or []
+    cmd.extend(pre_script_args)
+    if not pre_script_args:
+        cmd.append("python")
     cmd.extend([str(script), "--config", str(train_path), *passthrough])
 
     env = os.environ.copy()
