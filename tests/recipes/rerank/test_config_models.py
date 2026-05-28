@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import urllib.request
+
 import pytest
 from pydantic import ValidationError
 
@@ -13,6 +15,7 @@ from nemotron.recipes.rerank.stage3_eval import eval as eval_module
 from nemotron.recipes.rerank.stage3_eval.eval import EvalConfig
 from nemotron.recipes.rerank.stage4_export import export as export_module
 from nemotron.recipes.rerank.stage4_export.export import ExportConfig
+from nemotron.recipes.rerank.stage5_deploy import deploy as deploy_module
 from nemotron.recipes.rerank.stage5_deploy.deploy import DeployConfig, _api_base_url, build_docker_command
 
 
@@ -87,8 +90,35 @@ def test_deploy_mounts_custom_model_dir_and_safe_replace(tmp_path, monkeypatch):
     ]
     assert f"NIM_CUSTOM_MODEL={cfg.container_model_path}" in cmd
     assert all("NIM_MANIFEST_PATH" not in item for item in cmd)
+    assert cfg.nim_image == "nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0"
     assert cfg.replace_existing is False
     assert cfg.keep_failed_container is False
+
+
+def test_deploy_health_retries_transient_socket_reset(monkeypatch):
+    cfg = DeployConfig(health_check_interval=1)
+    calls = {"count": 0}
+
+    class HealthyResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def flaky_urlopen(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise ConnectionResetError("startup reset")
+        return HealthyResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", flaky_urlopen)
+    monkeypatch.setattr(deploy_module.time, "sleep", lambda _: None)
+
+    assert deploy_module.wait_for_health(cfg) is True
+    assert calls["count"] == 2
 
 
 def test_export_failed_onnx_verification_exits_nonzero(tmp_path, monkeypatch):

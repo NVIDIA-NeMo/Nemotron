@@ -5,6 +5,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "onnx>=1.16.0,<1.20",
     "onnxruntime>=1.18.0",
+    "ml-dtypes>=0.5.0",
     "optimum>=1.20.0",
     "nemo-export-deploy>=0.3.1",
     "onnxscript>=0.5.0",

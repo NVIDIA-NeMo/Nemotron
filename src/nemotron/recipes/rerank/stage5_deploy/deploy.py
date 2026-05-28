@@ -84,7 +84,7 @@ class DeployConfig(RecipeSettings):
 
     # Container settings
     nim_image: str = Field(
-        default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.11.0",
+        default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0",
         description="NIM container image to use.",
     )
     container_name: str = Field(default="nemotron-rerank-nim", description="Name for the Docker container.")
@@ -282,7 +282,7 @@ def wait_for_health(cfg: DeployConfig) -> bool:
             with urllib.request.urlopen(health_url, timeout=5) as response:
                 if response.status == 200:
                     return True
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
             pass
 
         time.sleep(cfg.health_check_interval)

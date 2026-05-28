@@ -484,7 +484,7 @@ trt_opt_seq_len: 256           # Optimal sequence length for TRT
 
 **Stage 5: Deploy**
 ```yaml
-nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.11.0
+nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0
 model_dir: ./output/rerank/stage4_export/onnx  # ONNX or TensorRT export directory
 bind_address: 127.0.0.1        # Host interface for the NIM ranking API
 host_port: 8000                # Host port for the NIM ranking API
