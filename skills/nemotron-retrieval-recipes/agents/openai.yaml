@@ -1,4 +1,4 @@
 interface:
   display_name: "Nemotron Retrieval Recipes"
-  short_description: "Plan safe retrieval recipe runs"
+  short_description: "Tune, evaluate, and safely run Nemotron embed/rerank recipes"
   default_prompt: "Use $nemotron-retrieval-recipes to choose, dry-run, debug, and report on public Nemotron embed/rerank recipe stages."
