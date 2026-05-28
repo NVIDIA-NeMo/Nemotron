@@ -1,13 +1,8 @@
----
-name: nemotron-sdg-data-designer
-description: Configure Nemotron sdg/data_designer for NeMo Data Designer synthetic data generation. Use for SFT SDG chat or tool-call data, RL preference SDG for DPO, seed datasets, column specs, preview runs, output projections, and generated JSONL validation.
----
-
 # Data Designer SDG
 
 Use `sdg/data_designer` to generate synthetic JSONL from declarative YAML column specifications.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Modes
 
@@ -17,25 +12,50 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Custom endpoint example: see the commented `providers:` block in
   `config/customer_support_tools.yaml`.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `num_records` to the target generated count only after preview output looks correct.
-- Set `seed_dataset.path` for seed-typed columns.
-- Keep `columns` references valid and preview them before scaling.
-- Set `output_projection.type` to the downstream schema:
-  `openai_messages`, `structured_messages`, or `dpo_preference`.
-- For custom inference endpoints, add `providers:` and point each
-  `models[].provider` at a declared provider name.
-- In `providers[].api_key`, write the environment variable name such as
-  `OPENAI_API_KEY`; do not resolve the secret into YAML with `${oc.env:...}`.
-- Add post-processing or projection columns so downstream steps receive the expected schema.
-- Use SFT output with AutoModel directly only after it is projected to chat `messages`.
-- Use preference output with `rl/nemo_rl/dpo` only after prompt, chosen, and rejected fields are present.
+Start from `config/tiny.yaml` for preview and the mode-specific configs for real
+generation. In a project overlay, developers usually change:
+
+- `num_records`: keep small until preview output is correct.
+- `seed_dataset.path`: seed JSONL for the target domain or capability.
+- `providers` and `models.provider`: route generation to the intended endpoint.
+- `columns`: prompt, transform, seed, and model-generated column specs.
+- `output_projection.type`: `openai_messages`, `structured_messages`, or
+  `dpo_preference`.
+- Output path and generation parameters such as temperature or model alias.
+
+Example shape:
+
+```bash
+uv run nemotron steps run sdg/data_designer \
+  -c <project>/config/data_designer.yaml \
+  num_records=<count> \
+  seed_dataset.path=<project>/data/seeds.jsonl
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/sdg-pipeline-versioning.md` before changing SDG design or scaling generation.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/sdg/data_designer/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run sdg/data_designer -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run sdg/data_designer \
+  -c <project>/config/sdg_data_designer.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/sdg/data_designer/step.toml`
 - Runner: `src/nemotron/steps/sdg/data_designer/step.py`
 - Configs: `config/default.yaml`, `config/customer_support_tools.yaml`, `config/rl_pref.yaml`, `config/tiny.yaml`
 - Seeds: `data/sft_topic_seeds.jsonl`, `data/customer_support_tool_seeds.jsonl`, `data/rl_pref_prompt_seeds.jsonl`

@@ -1,14 +1,24 @@
----
-name: nemotron-data-prep
-description: Navigate Nemotron data preparation steps for SFT packing, pretraining bin/idx tokenization, and RL prompt or preference sharding. Use when choosing, configuring, validating, or chaining data_prep steps before pretrain, CPT, SFT, PEFT, DPO, RLVR, or RLHF training, including sovereign customizations where blend composition decides downstream behavior.
----
-
 # Nemotron Data Prep
 
 Pick a data_prep step, lock its outputs to a tokenizer, and keep the prepared
 artifact compatible with the downstream trainer. Prepared data is a
 **versioned data product** — name it after the (tokenizer, template, pack_size)
 tuple, not after the date.
+
+## Developer Journey
+
+Data prep is where raw or semi-structured training data becomes a trainer-ready
+artifact. Start here when you need to decide whether data should stay as JSONL,
+be packed into Parquet, become Megatron bin/idx shards, or be materialized into
+RL prompt/preference splits.
+
+1. Identify the downstream trainer first. The trainer decides the output format.
+2. Inspect the source data schema on a small sample before running prep.
+3. Choose the prep step that produces the artifact the trainer consumes.
+4. Run the tiny config or a small project overlay, then inspect records and
+   metadata before launching a full prep job.
+5. Treat the output as immutable once training starts. Rebuild it after tokenizer,
+   chat-template, sequence-length, split, or blend changes.
 
 ## Steps
 
@@ -29,6 +39,33 @@ Skip packing when:
 - The trainer reads chat-format JSONL directly.
 - You're still iterating on data shape and don't want to commit to a
   tokenizer / template / pack-size yet.
+
+## Data And Artifact Flow
+
+```text
+raw / curated text blend
+  -> data_prep/pretrain_prep
+  -> binidx + blend.json
+  -> pretrain/*
+```
+
+```text
+chat training_jsonl
+  -> data_prep/sft_packing
+  -> packed_parquet
+  -> sft/megatron_bridge or peft/megatron_bridge
+```
+
+```text
+prompt / preference blend
+  -> data_prep/rl_prep
+  -> sharded training_jsonl
+  -> rl/nemo_rl/{dpo,rlvr,rlhf}
+```
+
+AutoModel SFT and PEFT skip `data_prep/sft_packing` and consume chat
+`training_jsonl` directly. Megatron-Bridge paths usually require prepared data
+because sequence packing and bin/idx layout are part of the training contract.
 
 ## Workflow
 

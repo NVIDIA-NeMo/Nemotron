@@ -1,13 +1,8 @@
----
-name: nemotron-data-prep-pretrain-binidx
-description: Configure the Nemotron data_prep/pretrain_prep step that tokenizes HF or local text blends into Megatron bin/idx shards and a blend.json for pretrain/automodel or pretrain/megatron_bridge. Use when preparing pretraining or continued-pretraining data, rebuilding tokenizer-locked corpora, or validating data splits.
----
-
 # Pretrain Bin/Idx Prep
 
 Use `data_prep/pretrain_prep` when downstream pretraining expects Megatron `binidx` data.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -15,16 +10,28 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce bin/idx shards plus `blend.json` split metadata.
 - Validate tokenization and emitted `blend.json` on a small subset before full prep.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `blend_path` to the source data blend; downstream trainers should use
-  the emitted `blend.json`.
-- Set `tokenizer.model` to the downstream pretraining model tokenizer.
-- Tune `num_shards` for target filesystem and trainer throughput.
-- Keep `valid_shards`, `test_shards`, and `split_seed` explicit so validation
-  data is reproducible.
-- Leave `max_doc_tokens` unset unless the data policy requires truncation.
-- Point pretrain configs at the emitted `blend.json`.
+Start from `config/tiny.yaml` for wiring and `config/default.yaml` for the
+production-shaped example. In a project overlay, developers usually change:
+
+- `blend_path`: source text blend with local or HF-backed entries.
+- `tokenizer.model`: tokenizer used by the downstream pretraining model.
+- `num_shards`: match filesystem and trainer throughput.
+- `valid_shards`, `test_shards`, and `split_seed`: keep validation reproducible.
+- `max_doc_tokens` and `text_field`: set only when the data policy requires it.
+
+Example shape:
+
+```bash
+uv run nemotron steps run data_prep/pretrain_prep \
+  -c <project>/config/pretrain_prep.yaml \
+  blend_path=<project>/data/blend.json \
+  tokenizer.model=<model-tokenizer>
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before changing tokenization, split, or sharding behavior.
 - Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before creating production pretraining data.
 
@@ -35,9 +42,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Keep `valid_shards`, `test_shards`, and `split_seed` explicit for deterministic prep.
 - Rebuild bin/idx whenever `tokenizer.model` or `sequence_length` assumptions change.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/data_prep/pretrain_prep/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run data_prep/pretrain_prep -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run data_prep/pretrain_prep \
+  -c <project>/config/data_prep_pretrain_prep.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/data_prep/pretrain_prep/step.toml`
 - Runner: `src/nemotron/steps/data_prep/pretrain_prep/step.py`
 - Configs: `src/nemotron/steps/data_prep/pretrain_prep/config/default.yaml`, `src/nemotron/steps/data_prep/pretrain_prep/config/tiny.yaml`
 - Sample blend: `src/nemotron/steps/data_prep/pretrain_prep/data/blend_tiny.json`

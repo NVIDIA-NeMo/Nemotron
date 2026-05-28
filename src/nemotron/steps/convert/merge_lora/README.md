@@ -1,15 +1,9 @@
----
-name: nemotron-convert-merge-lora
-description: Configure convert/merge_lora to merge a LoRA adapter into its original base checkpoint and produce a standalone HF checkpoint.
----
-
 # Merge LoRA
 
 Use `convert/merge_lora` when a downstream consumer needs a standalone
 `checkpoint_hf` instead of a separate adapter artifact.
 
-Before changing configs or code, read `step.toml` for the artifact contract,
-parameters, strategies, and failure modes.
+Use this README for conversion workflow and guardrails; use `step.toml` for exact parameters, strategies, and failure modes.
 
 ## Inputs And Outputs
 
@@ -19,18 +13,51 @@ parameters, strategies, and failure modes.
 - With `backend=megatron_bridge`, consume the original dense Megatron base,
   write a merged Megatron checkpoint, then export it to HF when `export_hf=true`.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Keep `backend=auto` unless you want to force a merge path.
-- Set `backend=hf_peft` for AutoModel/HuggingFace PEFT adapters.
-- Set `backend=megatron_bridge` for Megatron-Bridge adapters.
-- Set `lora_checkpoint` to the adapter output from the PEFT run.
-- For HF PEFT, set `base_hf_path` to the exact base model used during adapter
-  training and `output_hf_path` to a fresh directory.
-- For Megatron-Bridge, set `base_megatron_path`, `hf_model_id` or
-  `hf_model_path`, `output_megatron_path`, and `output_hf_path`.
-- Use CPU merge for memory-constrained or non-training environments when
-  parallelism is 1.
+Start from `config/default.yaml`, then override adapter, base, and output paths.
+Developers usually change:
+
+- `backend`: `auto`, `hf_peft`, or `megatron_bridge`.
+- `lora_checkpoint`: adapter output from PEFT.
+- `base_hf_path` or `base_megatron_path`: exact base used for adapter training.
+- `hf_model_id` / `hf_model_path`: HF config/tokenizer source for export.
+- `output_hf_path` and, for Megatron-Bridge merges, `output_megatron_path`.
+- `cpu`, `tp`, `pp`, and `ep` for the merge/export topology.
+
+## Run It
+
+Preview the compiled merge config first; the shipped `default.yaml` is a shape
+reference, not a runnable merge against your adapter:
+
+```bash
+uv run nemotron steps run convert/merge_lora \
+  -c default \
+  lora_checkpoint=<adapter> \
+  base_hf_path=<original-base> \
+  output_hf_path=<merged-output> \
+  --dry-run
+```
+
+Then run the real merge without `--dry-run`:
+
+```bash
+uv run nemotron steps run convert/merge_lora \
+  -c default \
+  lora_checkpoint=<adapter> \
+  base_hf_path=<original-base> \
+  output_hf_path=<merged-output>
+```
+
+For Megatron-Bridge adapters, set `backend=megatron_bridge`,
+`base_megatron_path=<dense-base>`, and `output_megatron_path=<merged-megatron>`;
+add `output_hf_path` to export the merged checkpoint to HF in the same run.
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/convert/merge_lora/step.toml`
+- Runner: `src/nemotron/steps/convert/merge_lora/step.py`
+- Config: `src/nemotron/steps/convert/merge_lora/config/default.yaml`
 
 ## Guardrails
 

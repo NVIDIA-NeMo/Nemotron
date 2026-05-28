@@ -1,13 +1,8 @@
----
-name: nemotron-pretrain-automodel
-description: Configure Nemotron pretrain/automodel for pretraining or continued pretraining with NeMo AutoModel. Use for HF-native checkpoints, smaller GPU counts, direct Hugging Face ecosystem workflows, bin/idx input validation, and checkpoint_hf output.
----
-
 # AutoModel Pretrain
 
 Use `pretrain/automodel` when Hugging Face-native checkpoint output and fast iteration matter.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -15,16 +10,31 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce `checkpoint_hf`.
 - Validate data loading and checkpoint output with a short run before scaling token budget.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `model.pretrained_model_name_or_path` for continued pretraining from an HF base.
-- Set `load_weights=false` only when intentionally training from scratch.
-- Set `dataset.paths` and `validation_dataset.paths` to the
-  data_prep-emitted `blend.json`.
-- Keep `dataset.seq_length`, `validation_dataset.seq_length`, and model
-  context aligned.
-- Keep tokenizer and vocab settings aligned with the bin/idx artifact.
-- Use launcher and executor settings from the AutoModel runner for cluster moves.
+Start from `config/tiny.yaml` for launch validation and `config/default.yaml`
+for the production-shaped example. In a project overlay, developers usually
+change:
+
+- `model.pretrained_model_name_or_path`: HF base for CPT, or architecture source
+  for from-scratch runs.
+- `load_weights`: `true` for CPT, `false` for from-scratch pretraining.
+- `dataset.paths` and `validation_dataset.paths`: prep-emitted `blend.json`.
+- `dataset.seq_length` and `validation_dataset.seq_length`: keep aligned with
+  model context and the token-budget calculation.
+- Learning-rate schedule, train iterations, checkpoint cadence, and output dirs.
+
+Example shape:
+
+```bash
+uv run nemotron steps run pretrain/automodel \
+  -c <project>/config/pretrain_automodel.yaml \
+  dataset.paths=<prep-output>/blend.json \
+  validation_dataset.paths=<prep-output>/blend.json
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before changing pretraining strategy.
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before reusing bin/idx data.
 
@@ -36,9 +46,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Keep `dataloader.shuffle: false`; `MegatronPretraining` injects a `batch_sampler`.
 - Use `lr_scheduler.lr_decay_style` and `lr_scheduler.min_lr`; avoid `lr_scheduler.warmup_steps` with containers whose `OptimizerParamScheduler` does not accept it.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/pretrain/automodel/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run pretrain/automodel -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run pretrain/automodel \
+  -c <project>/config/pretrain_automodel.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/pretrain/automodel/step.toml`
 - Runner: `src/nemotron/steps/pretrain/automodel/step.py`
 - Configs: `src/nemotron/steps/pretrain/automodel/config/default.yaml`, `src/nemotron/steps/pretrain/automodel/config/tiny.yaml`
 - Shared runner: `src/nemotron/steps/_runners/automodel.py`

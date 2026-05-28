@@ -1,14 +1,23 @@
----
-name: nemotron-sdg
-description: Configure Nemotron synthetic data generation with NeMo Data Designer for SFT, tool-call, and RL preference data. Use when synthetic data should be generated declaratively before prep, SFT, DPO, RLVR, or RLHF stages, including sovereign cases where domain or language coverage is data-limited.
----
-
 # Nemotron SDG
 
 Synthetic data generation. Build a Data Designer pipeline declaratively from
 seeds, columns, models, and an output projection. SDG is most valuable for
 sovereign customizations where target-language, domain, or tool-call data is
 data-limited and must be expanded carefully.
+
+## Developer Journey
+
+SDG is a data pipeline, not just a prompt. Start from seed coverage and the
+schema required by the next training step, then choose the Data Designer config
+that projects generated records into that schema.
+
+1. Identify the downstream consumer: SFT JSONL, packed Megatron SFT data, or DPO
+   preference data.
+2. Choose seed files that cover the capabilities, languages, domains, and
+   difficulty levels you need.
+3. Preview generated records before scaling `num_records`.
+4. Validate schema, language, length, duplication, and contamination.
+5. Blend synthetic data with human or curated data before training when possible.
 
 ## Steps
 
@@ -24,7 +33,7 @@ The catalog ships one step under this category:
 | RL preference pairs (DPO) | `config/rl_pref.yaml` | `{prompt, chosen, rejected}` (`dpo_preference` projection) |
 | Smoke / preview | `config/tiny.yaml` or preview mode | small batch via `client.preview()` |
 
-## Decision tree
+## Decision Guide
 
 - Need chat-format SFT data → `default.yaml`.
 - Need tool-call SFT data (assistant tool_calls + matching tool responses) → `customer_support_tools.yaml`.
@@ -32,7 +41,7 @@ The catalog ships one step under this category:
 - Iterating on column specs / seeds → preview mode or `tiny.yaml`. **Don't
   scale to `num_records`-thousands until preview output looks right.**
 
-## Pipeline placement
+## Data And Artifact Flow
 
 ```
 sdg/data_designer (default.yaml)              → data_prep/sft_packing → sft/megatron_bridge
@@ -40,6 +49,18 @@ sdg/data_designer (default.yaml)              →                         sft/au
 sdg/data_designer (customer_support_tools.yaml) → data_prep/sft_packing → sft/* (tool-call SFT)
 sdg/data_designer (rl_pref.yaml)              → data_prep/rl_prep       → rl/nemo_rl/dpo
 ```
+
+```text
+seed records + column specs + model providers
+  -> sdg/data_designer
+  -> synthetic_jsonl projected as messages / structured_messages / dpo_preference
+  -> data_prep or training step
+```
+
+The output projection is the contract with the next step. `openai_messages`
+feeds SFT, `structured_messages` carries tool-call data, and `dpo_preference`
+feeds RL preference prep. If the projection is wrong, fix the SDG config before
+writing adapters in downstream data prep.
 
 ## Workflow
 

@@ -1,13 +1,8 @@
----
-name: nemotron-sft-automodel
-description: Configure Nemotron sft/automodel for supervised fine-tuning with NeMo AutoModel on chat-format JSONL. Use for HF-native checkpoints, smaller GPU counts, rapid iteration, full SFT, LoRA-style tuning from the AutoModel stack, or direct training_jsonl inputs.
----
-
 # AutoModel SFT
 
 Use `sft/automodel` for Hugging Face-format models that can train directly from `training_jsonl`.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -15,14 +10,28 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce `checkpoint_hf`.
 - Validate chat formatting and checkpoint output with a short run before scaling data or sequence length.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `model.pretrained_model_name_or_path` to the HF base or checkpoint.
-- Set `dataset.path_or_dataset_id` to chat-format JSONL, not packed Parquet.
-- Default `sft/automodel` is full fine-tuning (`peft=null`); use `peft/automodel` or add a LoRA `peft:` block when adapter training is intended.
-- Keep `peft=lora` for memory-constrained runs or fast adapter experiments.
-- Choose a tokenizer with chat-template support or preprocess prompts explicitly.
-- Use the AutoModel launcher and executor settings when moving from local to cluster execution.
+Start from `config/tiny.yaml` for wiring and `config/default.yaml` for the
+production-shaped example. In a project overlay, developers usually change:
+
+- `model.pretrained_model_name_or_path`: HF base or local checkpoint.
+- `dataset.path_or_dataset_id`: chat JSONL path or dataset ID.
+- `peft`: `null` for full SFT, `lora` only when using this step for adapter-style tuning.
+- `dataloader.collate_fn`: keep the chat collater unless the data is deliberately pre-tokenized.
+- Training length, batch size, output directories, and launcher settings.
+
+Example shape:
+
+```bash
+uv run nemotron steps run sft/automodel \
+  -c <project>/config/sft_automodel.yaml \
+  model.pretrained_model_name_or_path=<hf-or-local-base> \
+  dataset.path_or_dataset_id=<chat-jsonl>
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/eval-before-and-after-training.md` before comparing SFT results.
 - Check `src/nemotron/steps/patterns/sft-small-dataset-prefer-lora.md` when deciding between LoRA and full SFT.
 
@@ -32,9 +41,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Use `dataloader.collate_fn: nemo_automodel.components.datasets.utils.default_collater` for chat datasets.
 - Keep base model and backend settings aligned with PEFT AutoModel when comparing full SFT and LoRA behavior.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/sft/automodel/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run sft/automodel -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run sft/automodel \
+  -c <project>/config/sft_automodel.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/sft/automodel/step.toml`
 - Runner: `src/nemotron/steps/sft/automodel/step.py`
 - Configs: `src/nemotron/steps/sft/automodel/config/default.yaml`, `src/nemotron/steps/sft/automodel/config/tiny.yaml`
 

@@ -1,13 +1,8 @@
----
-name: nemotron-pretrain-megatron-bridge
-description: Configure Nemotron pretrain/megatron_bridge for large-scale pretraining or continued pretraining with NVIDIA Megatron-Bridge. Use for bin/idx data, Megatron checkpoint output, TP/PP/CP/EP distributed training, Nemotron recipe overrides, or HF weight initialization.
----
-
 # Megatron-Bridge Pretrain
 
 Use `pretrain/megatron_bridge` when model size, sequence length, or throughput requires Megatron distributed parallelism.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -16,13 +11,32 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce `checkpoint_megatron`.
 - Validate data loading, parallelism, and checkpoint output with a short run before scaling token budget.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Keep `seq_length` aligned with the data and token budget.
-- Set `dataset.data_paths` to the data_prep/pretrain_prep emitted `blend.json`.
-- Set `load_hf_weights` or checkpoint paths explicitly for continued pretraining.
-- Start from the closest Megatron-Bridge recipe and override only required knobs.
-- Tune tensor, pipeline, context, and expert parallelism before scaling global batch.
+Start from `config/tiny.yaml` for launch validation and `config/default.yaml`
+for the production-shaped topology. In a project overlay, developers usually
+change:
+
+- `dataset.data_paths`: prep-emitted `blend.json`, not packed Parquet.
+- `seq_length`, `recipe.seq_length`, `model.seq_length`, and dataset sequence
+  length: keep all values aligned.
+- `load_hf_weights` or checkpoint fields: set explicitly for CPT or resume.
+- `train.micro_batch_size`, `train.global_batch_size`, and TP/PP/CP/EP sizes:
+  size them against the env profile.
+- Checkpoint save directory, validation cadence, learning-rate schedule, and
+  train iterations.
+
+Example shape:
+
+```bash
+uv run nemotron steps run pretrain/megatron_bridge \
+  -c <project>/config/pretrain_megatron_bridge.yaml \
+  dataset.data_paths=<prep-output>/blend.json \
+  seq_length=<planned-seq-length>
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/pretrain-token-budget-before-scale.md` before changing distributed strategy.
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before reusing bin/idx data.
 
@@ -34,9 +48,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - If Transformer Engine userbuffers are enabled on a system without CUDA multicast support, set `run.env.env_vars.UB_SKIPMC: "1"` or default it in `step.py` before Bridge initialization.
 - Use `train.global_batch_size` as a multiple of data-parallel size; start with `train.micro_batch_size: 1` when validating a new parallelism shape.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/pretrain/megatron_bridge/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run pretrain/megatron_bridge -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run pretrain/megatron_bridge \
+  -c <project>/config/pretrain_megatron_bridge.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/pretrain/megatron_bridge/step.toml`
 - Runner: `src/nemotron/steps/pretrain/megatron_bridge/step.py`
 - Configs: `src/nemotron/steps/pretrain/megatron_bridge/config/default.yaml`, `src/nemotron/steps/pretrain/megatron_bridge/config/tiny.yaml`
 - Shared runner: `src/nemotron/steps/_runners/megatron_bridge.py`

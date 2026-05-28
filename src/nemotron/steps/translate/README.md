@@ -1,11 +1,21 @@
----
-name: nemotron-translate
-description: Translate JSONL or Parquet training corpora with NeMo Curator, including structured chat fields, hosted LLM, NMT, Google, AWS, optional FAITH scoring, and skip-already-translated input rows. Use when preparing multilingual data before data prep, SFT, CPT, or review.
----
-
 # Nemotron Translation
 
-Use this skill when a user wants to translate corpus data, chat records, or row-oriented training artifacts. The concrete step is [`translate/nemo_curator`](nemo_curator/README.md).
+Use this README when a user wants to translate corpus data, chat records, or row-oriented training artifacts. The concrete step is [`translate/nemo_curator`](nemo_curator/README.md).
+
+## Developer Journey
+
+Translation is usually an upstream data step. Decide whether the translated
+output is training-ready data, audit data with metadata, or quality-scored data
+that may be filtered before training.
+
+1. Choose one input format and schema: JSONL or Parquet, plain text or structured
+   chat.
+2. Pick the text field path to translate (`text`, `messages.*.content`, or a
+   project-specific field).
+3. Choose backend by data shape and throughput needs.
+4. Run a two-row smoke test and inspect translated fields before scaling.
+5. Send the translated output to curation review, SFT prep, pretraining prep, or
+   human audit depending on `output_mode` and FAITH settings.
 
 ## Default Workflow
 
@@ -41,6 +51,20 @@ command implies them:
 For `translation+FAITH`, add a short `FAITH handoff` section that confirms
 `faith_eval.enabled=true`, states any filter assumptions, lists expected
 FAITH-related outputs, and includes the exact run command and output path.
+
+## Data And Artifact Flow
+
+```text
+filtered_jsonl / parquet
+  -> translate/nemo_curator
+  -> translated_jsonl / translated parquet
+  -> data_prep/sft_packing, data_prep/pretrain_prep, review, or audit
+```
+
+For chat data, translate only natural-language message content and preserve
+tool-call structure. For training data, start with `output_mode=replaced` and
+FAITH filtering disabled; use `output_mode=both` when scores and raw metadata
+must be inspected before deciding what to train on.
 
 ## Backend Choice
 
@@ -146,7 +170,7 @@ uv run --no-sync nemotron steps run translate/nemo_curator \
 - Path-not-found during validation: inspect actual created paths before
   retrying; do not guess output roots.
 
-## Load More
+## Further Reading
 
 - [`guide.md`](guide.md) for detailed flow, output modes, FAITH, resume semantics, and validation.
 - [`nemo_curator/README.md`](nemo_curator/README.md) for the concrete step.

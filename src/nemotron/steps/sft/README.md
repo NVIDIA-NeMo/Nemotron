@@ -1,11 +1,21 @@
----
-name: nemotron-sft
-description: Choose between Nemotron SFT backends, AutoModel and Megatron-Bridge, and wire required input data and checkpoint formats. Use when planning, configuring, validating, or debugging supervised fine-tuning stages.
----
-
 # Nemotron SFT
 
 Pick an SFT backend and keep data and checkpoint formats compatible.
+
+## Developer Journey
+
+SFT turns instruction data into a model checkpoint. The first developer decision
+is not the trainer; it is the data shape. If your data is OpenAI-style chat JSONL
+and you want HF-native iteration, AutoModel can read it directly. If you need
+Megatron-Bridge throughput or distributed parallelism, pack the same source data
+first and train from `packed_parquet`.
+
+1. Inspect a few records from the source `training_jsonl`.
+2. Decide whether the target backend reads JSONL directly or requires packed
+   Parquet.
+3. Keep tokenizer, chat template, and sequence length fixed before packing.
+4. Run a tiny training smoke test, then inspect formatted prompts and loss masks.
+5. Evaluate before and after SFT; do not rely on training loss alone.
 
 ## Backends
 
@@ -14,7 +24,7 @@ Pick an SFT backend and keep data and checkpoint formats compatible.
 | [`sft/automodel`](automodel/README.md) | HF-native outputs, direct JSONL, smaller GPU counts, quick LoRA experiments | 4 | `training_jsonl` (no packing) | `checkpoint_hf` |
 | [`sft/megatron_bridge`](megatron_bridge/README.md) | Large distributed runs with TP/PP/CP, packed-sequence throughput, Nano3/Super3 recipe parity | 8 (Nano3), 32 (Super3) | `packed_parquet` (needs `data_prep/sft_packing`) | `checkpoint_megatron` |
 
-## Decision tree
+## Decision Guide
 
 - Need TP/PP/CP parallelism or official Nano3/Super3 recipe patterns? → **Megatron-Bridge**.
 - Fewer than 8 GPUs? → **AutoModel**.
@@ -22,17 +32,33 @@ Pick an SFT backend and keep data and checkpoint formats compatible.
 - Need the highest-throughput multi-node path? → **Megatron-Bridge**.
 - Just want SFT running fast on existing JSONL? → **AutoModel**.
 
-## Pipeline impact
+## Data And Artifact Flow
 
 **If Megatron-Bridge:**
-- Add [`data_prep/sft_packing`](../data_prep/sft_packing/README.md) upstream.
-- Output is `checkpoint_megatron`. For HF-format consumers downstream, add
-  [`convert/megatron_to_hf`](../convert/megatron_to_hf/step.toml).
+
+```text
+training_jsonl
+  -> data_prep/sft_packing
+  -> packed_parquet
+  -> sft/megatron_bridge
+  -> checkpoint_megatron
+  -> convert/megatron_to_hf when HF consumers need checkpoint_hf
+```
+
+Packing is part of the data contract. `pack_size`, packed sequence size, and
+training `seq_length` must agree.
 
 **If AutoModel:**
-- No packing step. Reads `training_jsonl` directly.
-- Output is `checkpoint_hf`.
-- LoRA / PEFT is the default starting point for small GPU counts.
+
+```text
+training_jsonl
+  -> sft/automodel
+  -> checkpoint_hf
+```
+
+No packing step is needed. For small GPU counts or narrow behavior changes,
+compare against [`../peft/README.md`](../peft/README.md) before committing to
+full SFT.
 
 ## Workflow
 

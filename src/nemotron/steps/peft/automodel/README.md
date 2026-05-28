@@ -1,13 +1,10 @@
----
-name: nemotron-peft-automodel
-description: Configure Nemotron peft/automodel for AutoModel LoRA adapter training on chat-format JSONL. Use for memory-efficient HF model adaptation, single-node experiments, adapter checkpoints, LoRA rank or alpha tuning, and later HuggingFace checkpoint merging.
----
-
 # AutoModel PEFT
 
-Use `peft/automodel` for LoRA tuning when the data is chat-format JSONL and the base model is Hugging Face-native.
+Use `peft/automodel` for LoRA tuning when the data is chat-format JSONL and the
+base model is Hugging Face-native. This is the shortest adapter path: no packing
+step, no Megatron conversion before training, and an HF PEFT adapter as output.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -15,15 +12,38 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce `checkpoint_lora`.
 - Validate with a short adapter run before scaling data, rank, or sequence length.
 
-## Configure
+```text
+chat training_jsonl + HF base model
+  -> peft/automodel
+  -> HF LoRA adapter
+  -> convert/merge_lora if deployment needs checkpoint_hf
+```
 
-- Set `model.pretrained_model_name_or_path` and keep that exact base recorded
-  with the adapter for later merge.
-- Set `dataset.path_or_dataset_id` to chat-format JSONL.
-- Start with `peft.dim=8` or `16` on tight memory, then increase for harder tasks.
-- Keep `peft.alpha` near `2 * peft.dim` unless there is a reason to tune it.
-- Use smaller base models for single-GPU experiments.
-- Merge with `convert/merge_lora` when deployment requires a standalone HF checkpoint.
+Skip `data_prep/sft_packing`; packed Parquet is for the Megatron-Bridge path.
+
+## CLI And Overlay Knobs
+
+Start from `config/tiny.yaml` for wiring and `config/default.yaml` for the
+production-shaped example. In a project overlay, the first fields developers
+usually change are:
+
+- `model.pretrained_model_name_or_path`: HF base or local checkpoint.
+- `dataset.path_or_dataset_id`: chat JSONL path or dataset ID.
+- `peft.dim`: adapter rank.
+- `peft.alpha`: adapter scaling; usually `2 * peft.dim`.
+- Training length, batch size, and output/checkpoint directories.
+
+Example shape:
+
+```bash
+uv run nemotron steps run peft/automodel \
+  -c <project>/config/peft_automodel.yaml \
+  model.pretrained_model_name_or_path=<hf-or-local-base> \
+  dataset.path_or_dataset_id=<chat-jsonl>
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/sft-small-dataset-prefer-lora.md` before choosing LoRA for small datasets.
 - Check `src/nemotron/steps/patterns/peft-adapter-merge-discipline.md` before merging adapters.
 
@@ -33,9 +53,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - For Qwen MoE runs, use `model.backend.experts: torch_mm` and `model.backend.dispatcher: torch` unless DeepEP support has been validated in the target container.
 - Prefer `distributed.activation_checkpointing: false` while dispatcher and checkpoint-recompute behavior are still being validated.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/peft/automodel/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run peft/automodel -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run peft/automodel \
+  -c <project>/config/peft_automodel.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/peft/automodel/step.toml`
 - Runner: `src/nemotron/steps/peft/automodel/step.py`
 - Configs: `src/nemotron/steps/peft/automodel/config/default.yaml`, `src/nemotron/steps/peft/automodel/config/tiny.yaml`
 
@@ -45,3 +80,5 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Reduce rank and sequence length before changing the training wrapper for OOMs.
 - Treat the adapter as a separate artifact until merge and eval have passed,
   and preserve base/tokenizer/rank/alpha provenance with it.
+- Do not merge the adapter into a newer or different base just because the model
+  name matches.

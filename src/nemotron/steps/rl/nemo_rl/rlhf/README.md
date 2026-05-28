@@ -1,13 +1,8 @@
----
-name: nemotron-rl-nemo-rl-rlhf
-description: Configure Nemotron rl/nemo_rl/rlhf for RLHF with NeMo-RL GRPO and a learned judge or generative reward model. Use when alignment depends on reward-model checkpoints, GenRM-style comparison rewards, NeMo-Gym reward serving, KL control, or reward-model validation.
----
-
 # NeMo-RL RLHF
 
 Use `rl/nemo_rl/rlhf` when rewards come from a learned judge or generative reward model rather than deterministic verification.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -17,14 +12,31 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce an RLHF-aligned `checkpoint_megatron`.
 - Smoke with `nemotron steps run rl/nemo_rl/rlhf -c tiny`.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `env.nemo_gym.genrm_model.responses_api_models.vllm_model.model` to the reward-model path.
-- Keep `env.should_use_nemo_gym=true` for GenRM comparison rewards.
-- Set `data.train.data_path` and `data.validation.data_path` to prompt JSONL
-  normalized for the NeMo-Gym Responses API path.
-- Tune `grpo.num_generations_per_prompt` based on reward variance and serving cost.
-- Increase KL penalty, lower learning rate, or clip rewards when reward hacking appears.
+Start from `config/tiny.yaml` for runner validation, then move to a project
+overlay for real GenRM / reward-model serving. Developers usually change:
+
+- `data.train.data_path` and `data.validation.data_path`: prompt JSONL prepared
+  for the Responses API path.
+- `env.nemo_gym.genrm_model.responses_api_models.vllm_model.model`: reward-model
+  checkpoint or served model path.
+- `env.nemo_gym.genrm_model.vllm`: tensor parallelism, memory, max sequence, and
+  concurrency settings for GenRM serving.
+- `grpo.num_generations_per_prompt`: reward variance versus serving cost.
+- KL, reward clipping, learning rate, and output/logging directories.
+
+Example shape:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/rlhf \
+  -c <project>/config/rlhf.yaml \
+  data.train.data_path=<rl-prep>/train.jsonl \
+  env.nemo_gym.genrm_model.responses_api_models.vllm_model.model=<reward-model>
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/rl-validate-rewards-before-scale.md` before changing RLHF reward or rollout behavior.
 
 ## Config Nuances
@@ -35,9 +47,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Keep the runner close to NeMo-RL's upstream NeMo-Gym GRPO example; avoid local rollout or actor shims unless the target image is upgraded and revalidated.
 - Keep policy, reference, GenRM, and resource-server settings explicit in YAML; hidden defaults make Ray startup failures hard to distinguish from reward-model failures.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/rl/nemo_rl/rlhf/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/rlhf -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/rlhf \
+  -c <project>/config/rl_nemo_rl_rlhf.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/rl/nemo_rl/rlhf/step.toml`
 - Runner: `src/nemotron/steps/rl/nemo_rl/rlhf/step.py`
 - Configs: `src/nemotron/steps/rl/nemo_rl/rlhf/config/default.yaml`, `src/nemotron/steps/rl/nemo_rl/rlhf/config/tiny.yaml`
 - Recipe reference: `src/nemotron/recipes/super3/stage2_rl/`

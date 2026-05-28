@@ -1,15 +1,9 @@
----
-name: nemotron-convert-hf-to-megatron
-description: Configure convert/hf_to_megatron to import a Hugging Face safetensors checkpoint into Megatron distributed checkpoint layout for Megatron-Bridge consumers.
----
-
 # HF To Megatron Conversion
 
 Use `convert/hf_to_megatron` when a downstream Megatron-Bridge step needs
 `checkpoint_megatron` but the upstream artifact is `checkpoint_hf`.
 
-Before changing configs or code, read `step.toml` for the artifact contract,
-parameters, strategies, and failure modes.
+Use this README for conversion workflow and guardrails; use `step.toml` for exact parameters, strategies, and failure modes.
 
 ## Inputs And Outputs
 
@@ -17,15 +11,44 @@ parameters, strategies, and failure modes.
 - Produce a Megatron distributed checkpoint in a fresh output directory.
 - Keep tokenizer and model config files resolvable during import.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `hf_model_id` to the HF model id or local checkpoint path.
-- Set `megatron_path` to a new output directory.
-- Keep `torch_dtype=bfloat16` for typical Nemotron/NVIDIA checkpoints unless a source
-  model requires another dtype.
-- Set `device_map` only when the installed Megatron-Bridge/Transformers stack
-  expects one for local loading.
-- Merge LoRA adapters before importing them into Megatron layout.
+Start from `config/default.yaml`, then override every source and destination
+path. Developers usually change:
+
+- `hf_model_id`: HF model ID or local clean HF checkpoint path.
+- `megatron_path`: fresh Megatron output directory.
+- `torch_dtype` / `dtype`: match the source checkpoint and target stack.
+- `device_map`: only when the installed stack requires it.
+- `trust_remote_code`: keep `true` only for trusted supported model repos.
+
+## Run It
+
+Preview the compiled conversion first; the shipped `default.yaml` documents
+the expected fields rather than a production path:
+
+```bash
+uv run nemotron steps run convert/hf_to_megatron \
+  -c default \
+  hf_model_id=<hf-model-or-path> \
+  megatron_path=<megatron-output> \
+  --dry-run
+```
+
+Then run the real conversion without `--dry-run`:
+
+```bash
+uv run nemotron steps run convert/hf_to_megatron \
+  -c default \
+  hf_model_id=<hf-model-or-path> \
+  megatron_path=<megatron-output>
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/convert/hf_to_megatron/step.toml`
+- Runner: `src/nemotron/steps/convert/hf_to_megatron/step.py`
+- Config: `src/nemotron/steps/convert/hf_to_megatron/config/default.yaml`
 
 ## Guardrails
 

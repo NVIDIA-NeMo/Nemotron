@@ -1,13 +1,8 @@
----
-name: nemotron-optimizer-distillation
-description: Configure Nemotron optimize/modelopt/distill for teacher-student distillation with NVIDIA ModelOpt and Megatron-Bridge. Use to train a smaller or optimized student, recover quality after pruning or quantization, select teacher and student checkpoints, or smoke-test distillation plumbing with mock data.
----
-
 # ModelOpt Distillation
 
 Use `optimize/modelopt/distill` when a student checkpoint should learn from a teacher checkpoint.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -15,15 +10,6 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Optionally consume `binidx` data from `data_prep/pretrain_prep`.
 - Produce `checkpoint_megatron`.
 - Validate launch and checkpoint writing before using real distillation data for quality evaluation.
-
-## Configure
-
-- Set `args.teacher_hf_path` and `args.student_hf_path`.
-- Set `args.data_paths` for real Megatron bin/idx distillation data.
-- Set `args.output_dir` away from teacher and student checkpoint roots.
-- Use `args.use_mock_data=true` only for launch validation.
-- Set `args.hf_export_path` when a Hugging Face export is needed directly.
-- Use `extra_args` for newly exposed upstream flags.
 
 ## Config Nuances
 
@@ -34,9 +20,46 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - After pruning, point `args.student_hf_path` at the pruned HF output and keep the original BF16 checkpoint as `args.teacher_hf_path` for quality recovery.
 - Use the same tokenizer/chat-template assumptions for teacher, student, and distillation data, especially after structural pruning.
 
-## Local Files
+## CLI And Overlay Knobs
 
-- Contract: `src/nemotron/steps/optimize/modelopt/distill/step.toml`
+Start from `config/tiny.yaml` with mock data for launch validation. In a project
+overlay, developers usually change:
+
+- `args.teacher_hf_path`: full-quality teacher checkpoint.
+- `args.student_hf_path`: smaller or optimized student checkpoint.
+- `args.data_paths`: real bin/idx distillation data.
+- `args.output_dir`: fresh output directory.
+- `args.use_mock_data`: `true` only for smoke runs.
+- `args.hf_export_path`, W&B fields, and `extra_args`.
+
+Example shape:
+
+```bash
+uv run nemotron steps run optimize/modelopt/distill \
+  -c <project>/config/distill.yaml \
+  args.teacher_hf_path=<teacher-hf> \
+  args.student_hf_path=<student-hf> \
+  args.data_paths=<prep-output>/blend.json
+```
+
+## Run It
+
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run optimize/modelopt/distill -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run optimize/modelopt/distill \
+  -c <project>/config/optimize_modelopt_distill.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/optimize/modelopt/distill/step.toml`
 - Runner: `src/nemotron/steps/optimize/modelopt/distill/step.py`
 - Configs: `src/nemotron/steps/optimize/modelopt/distill/config/default.yaml`, `src/nemotron/steps/optimize/modelopt/distill/config/tiny.yaml`
 

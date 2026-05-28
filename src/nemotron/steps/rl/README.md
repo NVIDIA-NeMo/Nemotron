@@ -1,13 +1,23 @@
----
-name: nemotron-rl
-description: "Choose among Nemotron NeMo-RL alignment steps: DPO, RLVR/GRPO, and RLHF with reward models. Use when planning, configuring, validating, or debugging reinforcement-learning alignment after SFT, or when reward design (verifiable, preference, or learned) decides the algorithm."
----
-
 # Nemotron RL
 
 Pick a NeMo-RL alignment step by **how reward is computed**. The catalog
 ships three algorithms — DPO, RLVR, RLHF — all under the
 [`rl/nemo_rl/`](nemo_rl/README.md) subcategory.
+
+## Developer Journey
+
+RL starts from a trained policy and a reward/data contract. Before choosing DPO,
+RLVR, or RLHF, validate the data shape and the reward path on a tiny set. Most
+RL failures are schema or reward-design failures, not optimizer failures.
+
+1. Start from a validated SFT `checkpoint_megatron`.
+2. Prepare local prompt or preference JSONL through
+   [`../data_prep/rl_prep/README.md`](../data_prep/rl_prep/README.md) when data
+   comes from blends, HF references, or needs sharding.
+3. Pick the RL step by reward source: static preference, verifiable reward, or
+   learned judge.
+4. Run a tiny rollout/reward validation before scaling rollout count or GPUs.
+5. Track held-out task metrics, reward saturation, response length, and KL.
 
 ## Steps
 
@@ -21,7 +31,7 @@ All three consume an SFT-trained `checkpoint_megatron` policy as the warm
 start. RLVR and RLHF additionally support **NeMo-Gym** mode for
 resource-server / GenRM rewards (`env.should_use_nemo_gym=true`).
 
-## Decision tree
+## Decision Guide
 
 - Have static preference pairs and no reward function → **DPO**.
 - Reward is deterministic and codifiable (regex / unit test / answer match) → **RLVR**.
@@ -40,7 +50,7 @@ resource-server / GenRM rewards (`env.should_use_nemo_gym=true`).
    [`data_prep/rl_prep`](../data_prep/rl_prep/README.md) first to resolve placeholders
    into local JSONL.
 
-## Pipeline placement
+## Data And Artifact Flow
 
 ```
 ... → sft/megatron_bridge → data_prep/rl_prep → rl/nemo_rl/dpo   → checkpoint_megatron
@@ -50,6 +60,28 @@ resource-server / GenRM rewards (`env.should_use_nemo_gym=true`).
 
 Output is Megatron-format. Add [`convert/megatron_to_hf`](../convert/megatron_to_hf/step.toml)
 when the next consumer (eval, deployment) expects HF.
+
+```text
+preference records {prompt, chosen, rejected}
+  -> data_prep/rl_prep
+  -> rl/nemo_rl/dpo
+```
+
+```text
+prompt records + verifier fields
+  -> data_prep/rl_prep
+  -> rl/nemo_rl/rlvr
+```
+
+```text
+prompt records + reward-model checkpoint_hf / GenRM service config
+  -> data_prep/rl_prep
+  -> rl/nemo_rl/rlhf
+```
+
+Keep prompt data, verifier metadata, reward-model checkpoints, and resource
+server configs separate in the project layout. They are related inputs, not the
+same artifact.
 
 ## Workflow
 

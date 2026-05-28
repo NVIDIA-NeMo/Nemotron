@@ -1,13 +1,8 @@
----
-name: nemotron-rl-nemo-rl-rlvr
-description: Configure Nemotron rl/nemo_rl/rlvr for GRPO with verifiable rewards in NeMo-RL. Use for math, code, tool, or environment tasks where rewards come from deterministic answer checks, unit tests, NeMo-Gym resource-server rewards, or explicit verifier fields.
----
-
 # NeMo-RL RLVR
 
 Use `rl/nemo_rl/rlvr` when reward signals are verifiable and can be computed programmatically.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -16,14 +11,32 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce an RLVR-aligned `checkpoint_megatron`.
 - Smoke with `nemotron steps run rl/nemo_rl/rlvr -c tiny`.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Increase `grpo.num_generations_per_prompt` when reward variance is too low.
-- Size `grpo.num_prompts_per_step`, `grpo.num_generations_per_prompt`, and
-  policy batch sizes for the active Ray worker topology.
-- Keep `grpo.normalize_rewards=true` unless debugging raw reward scale.
-- Use `config/nemo_gym.yaml` for resource-server rewards.
-- Set `data.train.data_path`, `data.validation.data_path`, and `env.nemo_gym.config_paths` explicitly for NeMo-Gym.
+Start from `config/tiny.yaml` for runner validation. Use `config/nemo_gym.yaml`
+when resource-server rewards are required. In a project overlay, developers
+usually change:
+
+- `data.train.data_path` and `data.validation.data_path`: prompt JSONL with
+  verifier fields.
+- `grpo.num_prompts_per_step` and `grpo.num_generations_per_prompt`: rollout
+  batch size and reward variance.
+- `policy.logprob_batch_size`: per-worker logprob microbatch after sharding.
+- `env.should_use_nemo_gym`: switch to the NeMo-Gym runner only with matching
+  resource-server config.
+- `env.nemo_gym.config_paths`: resource-server configs for NeMo-Gym mode.
+
+Example shape:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/rlvr \
+  -c <project>/config/rlvr.yaml \
+  data.train.data_path=<rl-prep>/train.jsonl \
+  data.validation.data_path=<rl-prep>/validation.jsonl
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/rl-validate-rewards-before-scale.md` before changing GRPO or reward strategy.
 
 ## Config Nuances
@@ -36,9 +49,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Match `checkpointing.metric_name` to the validation metrics produced by the chosen reward path, for example accuracy-style metrics for math verifiers and reward metrics for NeMo-Gym reward servers.
 - Keep distributed policy scaffolding explicit in YAML: `dtensor_cfg`, `dynamic_batching`, `sequence_packing`, optimizer `kwargs`, scheduler, generation `vllm_cfg`, and checkpoint save format. Hidden defaults make Ray actor failures hard to diagnose.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/rl/nemo_rl/rlvr/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/rlvr -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/rlvr \
+  -c <project>/config/rl_nemo_rl_rlvr.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/rl/nemo_rl/rlvr/step.toml`
 - Runner: `src/nemotron/steps/rl/nemo_rl/rlvr/step.py`
 - Configs: `src/nemotron/steps/rl/nemo_rl/rlvr/config/default.yaml`, `src/nemotron/steps/rl/nemo_rl/rlvr/config/tiny.yaml`, `src/nemotron/steps/rl/nemo_rl/rlvr/config/nemo_gym.yaml`
 

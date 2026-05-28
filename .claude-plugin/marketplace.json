@@ -11,7 +11,7 @@
       "name": "nemotron-customize",
       "source": "./skills/nemotron-customize",
       "description": "Compose runnable Nemotron model-customization pipelines from repo steps.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "ml-pipelines",
       "keywords": [
         "nvidia",

@@ -1,48 +1,45 @@
----
-name: nemotron-env-toml
-description: Create, validate, and adjust Nemotron env.toml profiles for Lepton, Slurm, DGX Cloud, Ray, NeMo-RL, NeMo-Gym, AutoModel, ModelOpt, Curator, Data Designer SDG, and functional step runs. Use when a user needs an env.toml from scratch, profile inheritance fixes, executor/resource profile advice, or debugging Ray runtime-env and placement issues.
----
-
 # Env TOML
 
 Use `env/env_toml` to generate starter env profile files and to preserve hard-earned profile conventions.
 
-Before editing profiles, read `step.toml` for the contract, then choose `config/lepton.yaml`, `config/slurm.yaml`, or `config/dgxcloud.yaml`.
+Use this README for profile workflow and site-level guardrails; use `step.toml` for generator parameters, strategies, and failure modes, then choose `config/lepton.yaml`, `config/slurm.yaml`, or `config/dgxcloud.yaml`.
 
-## Workflow
+## CLI And Overlay Knobs
 
-1. From the repository root, check whether the target env file already exists. If it does, inspect and extend the existing profiles instead of regenerating the file.
+Start from the backend config closest to your target executor. Developers
+usually change:
 
-2. When no backend env file exists, generate one:
+- `output_path`: `env.lepton.toml`, `env.slurm.toml`, or `env.dgxcloud.toml`.
+- `force`: keep `false` unless replacing an env file deliberately.
+- `sections`: generated backend base profiles and step-specific profiles.
+- Backend site fields such as account, partition, node group, mounts, PVC, image,
+  and workspace paths.
+- Environment variables for `HF_HOME`, `WANDB_PROJECT`, output roots, and Ray or
+  NeMo-RL runtime behavior.
 
-```bash
-uv run nemotron steps run env/env_toml -c lepton
-export NEMOTRON_ENV_FILE=env.lepton.toml
-```
+## Run It
 
-For Slurm:
-
-```bash
-uv run nemotron steps run env/env_toml -c slurm
-export NEMOTRON_ENV_FILE=env.slurm.toml
-```
-
-For DGX Cloud:
+From the repository root, generate the backend env file if it does not exist:
 
 ```bash
-uv run nemotron steps run env/env_toml -c dgxcloud
-export NEMOTRON_ENV_FILE=env.dgxcloud.toml
+uv run nemotron steps run env/env_toml -c lepton      # or slurm, dgxcloud
+export NEMOTRON_ENV_FILE=env.lepton.toml               # match the chosen backend
 ```
 
-The loader in `src/nemo_runspec/env.py` searches for repository-root `env.toml` by default. To use a generated backend file, set `NEMOTRON_ENV_FILE` to `env.lepton.toml`, `env.slurm.toml`, or `env.dgxcloud.toml` before running `--run` or `--batch` commands.
+The loader in `src/nemo_runspec/env.py` searches for `env.toml` by default;
+set `NEMOTRON_ENV_FILE` to point at the generated backend file before any
+`--run` or `--batch` command.
 
-3. Set site-specific values in config overrides or edit the generated file:
-   - Lepton: `node_group`, `resource_shape`, `nemo_run_dir`, mount `path`/`from`
-   - Slurm: `host`, `user`, `account`, `partition`, `remote_job_dir`, mounts
-   - DGX Cloud: `base_url`, `kube_apiserver_url`, `client_id`, `project_name`, PVC name/claim/path, `pvc_nemo_run_dir`
-   - Shared: container image, `HF_HOME`, output directories, W&B project/entity
+Then fill site-specific values directly in the generated file (or via overrides):
 
-4. Validate by compiling one small case before submitting.
+- Lepton: `node_group`, `resource_shape`, `nemo_run_dir`, mount `path`/`from`.
+- Slurm: `host`, `user`, `account`, `partition`, `remote_job_dir`, mounts.
+- DGX Cloud: `base_url`, `kube_apiserver_url`, `client_id`, `project_name`,
+  PVC name/claim/path, `pvc_nemo_run_dir`.
+- Shared: container image, `HF_HOME`, output directories, W&B project/entity.
+
+Validate the result by compiling one small step run with `--dry-run` and
+inspecting the rendered `run.env`.
 
 ## Nuances
 
@@ -61,9 +58,9 @@ The loader in `src/nemo_runspec/env.py` searches for repository-root `env.toml` 
 - For Lepton NeMo-RL profiles, keep `ray_version` on the latest workspace-supported Ray version. NeMo-RL v0.6.0 pins Ray 2.54 upstream, but some Lepton workspaces may only accept older Ray versions such as 2.48.0.
 - Keep functional runner `gpu_count` aligned with the env profile, not only the step config.
 
-## Local Files
+## Repository Layout
 
-- Contract: `src/nemotron/steps/env/env_toml/step.toml`
+- Manifest: `src/nemotron/steps/env/env_toml/step.toml`
 - Runner: `src/nemotron/steps/env/env_toml/step.py`
 - Configs: `src/nemotron/steps/env/env_toml/config/lepton.yaml`, `src/nemotron/steps/env/env_toml/config/slurm.yaml`, `src/nemotron/steps/env/env_toml/config/dgxcloud.yaml`
 - Loader behavior: `src/nemo_runspec/env.py`, `src/nemo_runspec/config/loader.py`

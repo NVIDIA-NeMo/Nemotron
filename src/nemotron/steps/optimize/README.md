@@ -1,13 +1,22 @@
----
-name: nemotron-optimizer
-description: "Choose and configure Nemotron optimization steps using NVIDIA ModelOpt and Megatron-Bridge: quantization, distillation, and pruning. Use when reducing inference cost, compressing checkpoints, recovering quality, targeting FP8 or NVFP4 hardware, or preparing optimized Megatron or HuggingFace outputs."
----
-
 # Nemotron Optimizer
 
 Pick a ModelOpt path and chain converters where checkpoint formats cross.
 Optimization is a **post-customization** stage — apply it after SFT/RL is
 proven, not before.
+
+## Developer Journey
+
+Optimization changes either checkpoint numerics, model architecture, or student
+behavior. Start from a clean checkpoint and a fixed eval baseline, then decide
+what should change and what data proves the optimized artifact is still good.
+
+1. Evaluate the source checkpoint first.
+2. Pick quantization, pruning, or distillation based on the desired deployment
+   change.
+3. Choose calibration or distillation data that matches the deployment domain.
+4. Run the tiny/mock-data smoke path only to validate the wrapper.
+5. Run representative calibration/distillation data, then re-evaluate with the
+   same benchmark used before optimization.
 
 ## Steps
 
@@ -20,7 +29,7 @@ proven, not before.
 The umbrella subcategory [`optimize/modelopt/`](modelopt/README.md) ties the
 three together.
 
-## Decision tree
+## Decision Guide
 
 - Want a smaller numeric format only (no architecture change) → **quantize**.
 - Want a smaller architecture (fewer layers / heads / FFN width) → **prune**.
@@ -31,13 +40,35 @@ three together.
 - Hardware target unknown → quantize FP8 first; NVFP4 has narrower
   serving-stack support.
 
-## Pipeline placement
+## Data And Artifact Flow
 
 ```
 sft/automodel  → optimize/modelopt/quantize → eval/model_eval        # smaller serving footprint
 sft/automodel  → optimize/modelopt/prune    → optimize/modelopt/distill → eval/model_eval   # smaller architecture + quality recovery
 data_prep/pretrain_prep → optimize/modelopt/distill → eval/model_eval     # standalone distillation
 ```
+
+```text
+checkpoint_hf + calibration samples
+  -> optimize/modelopt/quantize
+  -> checkpoint_megatron
+```
+
+```text
+checkpoint_hf
+  -> optimize/modelopt/prune
+  -> smaller checkpoint_hf
+  -> optimize/modelopt/distill with teacher + distillation data when quality recovery is needed
+```
+
+```text
+teacher checkpoint_hf + student checkpoint_hf + optional binidx data
+  -> optimize/modelopt/distill
+  -> checkpoint_megatron
+```
+
+Calibration and distillation data are quality inputs, not incidental files. Tiny
+configs and mock data prove launch only.
 
 ## Pre-conditions
 

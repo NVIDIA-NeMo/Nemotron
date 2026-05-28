@@ -1,13 +1,24 @@
----
-name: nemotron-pretrain
-description: Choose and configure Nemotron pretraining and continued-pretraining (CPT) backends — AutoModel and Megatron-Bridge. Use when planning pretraining from bin/idx data, choosing checkpoint format, selecting HF-native vs distributed Megatron execution, sizing the token budget, or scoping the data blend for sovereign CPT.
----
-
 # Nemotron Pretrain
 
 Pick a pretraining backend and lock the token budget + data blend before
 requesting cluster time. Pretraining is the highest-cost stage in the
 catalog — the budget contract decides everything downstream.
+
+## Developer Journey
+
+Pretraining and continued pretraining are data-budget decisions before they are
+training decisions. The corpus blend, tokenizer, held-out validation slices, and
+target token budget should be written down before a backend is chosen.
+
+1. Curate or assemble the source text blend.
+2. Tokenize it with the exact model tokenizer through
+   [`../data_prep/pretrain_prep/README.md`](../data_prep/pretrain_prep/README.md).
+3. Preserve the emitted `blend.json`; both pretraining backends use it as the
+   data entrypoint.
+4. Choose AutoModel for HF-native iteration or Megatron-Bridge for large
+   distributed runs.
+5. Track validation loss and downstream evals across checkpoints, especially for
+   CPT where forgetting is the main risk.
 
 ## Backends
 
@@ -24,7 +35,7 @@ uv run nemotron steps run pretrain/automodel -c default --dry-run \
   model.pretrained_model_name_or_path=<your-hf-id>
 ```
 
-## Decision tree
+## Decision Guide
 
 - HF-format output, ≤1 node, fast iteration → **AutoModel**.
 - Multi-node, TP/PP/CP/EP parallelism, or Nano3/Super3 recipe parity → **Megatron-Bridge**.
@@ -58,13 +69,26 @@ mandatory blend-with-general-data discipline.
    this includes both target-domain prompts (to measure shift) and general
    benchmarks the base model already passes (to detect forgetting).
 
-## Pipeline placement
+## Data And Artifact Flow
 
 ```
 curate/nemo_curator → data_prep/pretrain_prep → pretrain/automodel        → checkpoint_hf
                                               → pretrain/megatron_bridge → checkpoint_megatron
                                                                        (then convert/megatron_to_hf if HF needed downstream)
 ```
+
+```text
+raw / filtered text corpus
+  -> blend file with train/validation/test intent
+  -> data_prep/pretrain_prep
+  -> binidx shards + blend.json
+  -> pretrain/*
+```
+
+The `binidx` data is tokenizer-locked. If the tokenizer, model family, or
+sequence-length assumptions change, rebuild the prep output instead of reusing
+old shards. For CPT, keep target-domain validation and general-capability
+validation separate so forgetting is visible.
 
 ## Workflow
 
@@ -120,7 +144,7 @@ the pretrain step.
 - [../patterns/eval-before-and-after-training.md](../patterns/eval-before-and-after-training.md) — measure pretrain/CPT effects.
 - [../patterns/byob-benchmark-design.md](../patterns/byob-benchmark-design.md) — sovereign deployment evaluation.
 
-## Local files
+## Repository Layout
 
 - `pretrain/automodel/`: `step.toml`, `step.py`, `config/{default,tiny}.yaml`
 - `pretrain/megatron_bridge/`: `step.toml`, `step.py`, `config/{default,tiny}.yaml`

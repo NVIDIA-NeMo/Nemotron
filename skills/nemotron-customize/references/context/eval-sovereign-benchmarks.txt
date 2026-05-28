@@ -47,7 +47,7 @@ Indic language codes include `hi`, `bn`, `gu`, `kn`, `mr`, `ml`, `or`, `pa`,
 
 ## Metrics
 
-- GSM8K and chat MCQ tasks: `pass@1.correct`
+- GSM8K and chat MCQ tasks: pass-at-1 correctness metric (`pass` at sample 1)
 - MMLU-style logprob tasks: `acc`
 - ARC/BoolQ logprob tasks: `acc_norm`
 - FLORES translation: `chrf`

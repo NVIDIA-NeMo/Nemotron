@@ -1,14 +1,31 @@
----
-name: nemotron-optimizer-modelopt
-description: Navigate Nemotron optimize/modelopt steps for ModelOpt quantization, distillation, and pruning through Megatron-Bridge. Use when working under the ModelOpt optimization family, choosing compression order, setting calibration or distillation data, or validating optimized checkpoint outputs.
----
-
 # ModelOpt Optimization
 
 Use the `optimize/modelopt` family when NVIDIA Model Optimizer drives
 checkpoint compression or quality recovery. The three steps share a wrapper
 pattern (`script:` + `args:` + `torchrun:` + `extra_args`) — see the shared
 runner at [../../_runners/modelopt.py](../../_runners/modelopt.py).
+
+## Developer Journey
+
+Use this page after `../README.md` has selected ModelOpt. The category page
+chooses the optimization intent; this page explains the shared wrapper shape and
+the data/checkpoint responsibilities that all ModelOpt steps inherit.
+
+1. Start from a clean HF checkpoint and a baseline eval.
+2. Pick quantize, prune, or distill.
+3. Keep input checkpoint, output path, calibration or distillation data, and
+   torchrun shape explicit in YAML.
+4. Pass new upstream script flags through `extra_args`.
+5. Re-evaluate the optimized checkpoint against the same benchmark.
+
+## Data And Artifact Flow
+
+```text
+checkpoint_hf (+ calibration / distillation data)
+  -> optimize/modelopt/*
+  -> checkpoint_hf or checkpoint_megatron
+  -> convert/eval/deploy as needed
+```
 
 ## Steps
 
@@ -64,7 +81,7 @@ standalone for capability transfer.
 - [../../patterns/byob-benchmark-design.md](../../patterns/byob-benchmark-design.md) — for sovereign deployments, calibrate and judge against a representative held-out benchmark, not on calibration loss alone.
 - [../../patterns/peft-adapter-merge-discipline.md](../../patterns/peft-adapter-merge-discipline.md) — when the input is a LoRA-trained model, merge first.
 
-## Local files
+## Repository Layout
 
 - `optimize/modelopt/quantize/`: `step.toml`, `step.py`, `config/{default,fp8,nvfp4,tiny}.yaml`
 - `optimize/modelopt/prune/`: `step.toml`, `step.py`, `config/{default,tiny}.yaml`

@@ -1,13 +1,8 @@
----
-name: nemotron-data-prep-rl
-description: Configure the Nemotron data_prep/rl_prep step that resolves RL data blends and shards prompt, preference, or reward-model JSONL for rl/nemo_rl DPO, RLVR, and RLHF steps. Use before NeMo-RL training when data references need materialization, canonical split layout, or schema checks.
----
-
 # RL Prep
 
 Use `data_prep/rl_prep` before NeMo-RL when prompt or preference data needs HF resolution, local materialization, or split sharding.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -15,21 +10,50 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce sharded `training_jsonl` ready for `rl/nemo_rl/dpo`, `rl/nemo_rl/rlvr`, or `rl/nemo_rl/rlhf`.
 - Smoke with `nemotron steps run data_prep/rl_prep -c tiny`.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `blend_path` to the RL data blend that should be resolved and sharded.
-- Keep `resolve_hf_placeholders=true` for closed-network or production clusters.
-- Set `num_shards_per_split` to match dataset size and filesystem throughput.
-- Keep output split names aligned with the downstream RL config.
-- For DPO, ensure records include prompt, chosen, and rejected responses.
-- For RLVR, ensure each prompt carries verifier fields such as ground-truth answers.
-- For RLHF, ensure prompt data and reward-model references are handled separately.
+Start from `config/tiny.yaml` for wiring and `config/default.yaml` for the
+production-shaped example. In a project overlay, developers usually change:
+
+- `blend_path`: source prompt/preference blend.
+- `num_shards_per_split`: size shards for dataset size and filesystem behavior.
+- `resolve_hf_placeholders`: keep `true` when the training cluster cannot reach
+  the Hub.
+- `compression`: choose only if downstream readers support it.
+- `max_rows`: useful for representative smoke runs.
+
+Example shape:
+
+```bash
+uv run nemotron steps run data_prep/rl_prep \
+  -c <project>/config/rl_prep.yaml \
+  blend_path=<project>/data/rl_blend.json \
+  resolve_hf_placeholders=true
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before changing RL data layout.
 - Check `src/nemotron/steps/patterns/rl-validate-rewards-before-scale.md` before scaling RL jobs from prepared data.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/data_prep/rl_prep/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run data_prep/rl_prep -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run data_prep/rl_prep \
+  -c <project>/config/data_prep_rl_prep.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/data_prep/rl_prep/step.toml`
 - Runner: `src/nemotron/steps/data_prep/rl_prep/step.py`
 - Configs: `src/nemotron/steps/data_prep/rl_prep/config/default.yaml`, `src/nemotron/steps/data_prep/rl_prep/config/tiny.yaml`
 - Sample blend: `src/nemotron/steps/data_prep/rl_prep/data/blend_tiny.json`

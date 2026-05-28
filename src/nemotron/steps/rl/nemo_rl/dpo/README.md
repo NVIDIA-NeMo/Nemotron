@@ -1,13 +1,8 @@
----
-name: nemotron-rl-nemo-rl-dpo
-description: Configure Nemotron rl/nemo_rl/dpo for Direct Preference Optimization with NeMo-RL. Use for offline preference-pair alignment from prompt, chosen, and rejected JSONL plus an SFT Megatron checkpoint, KL tuning, and preference schema validation.
----
-
 # NeMo-RL DPO
 
 Use `rl/nemo_rl/dpo` when the training signal is static preference pairs rather than online reward functions.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -16,14 +11,32 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce a DPO-aligned `checkpoint_megatron`.
 - Smoke with `nemotron steps run rl/nemo_rl/dpo -c tiny`.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Tune `dpo.reference_policy_kl_penalty` when KL collapses or loss diverges.
-- Set train and validation preference paths explicitly in the active NeMo-RL
-  data schema.
-- Lower learning rate before making structural changes to the runner.
-- Use `data_prep/rl_prep` when preference data starts as HF references or blended local files.
-- Keep the reference policy aligned with the SFT policy.
+Start from `config/tiny.yaml` for runner validation and `config/default.yaml`
+for the production-shaped example. In a project overlay, developers usually
+change:
+
+- `data.train.prompt_file` and `data.validation.prompt_file`: sharded DPO JSONL
+  from `data_prep/rl_prep`.
+- `dpo.reference_policy_kl_penalty`: raise when KL collapses or loss diverges.
+- `policy.train_global_batch_size`: keep divisible by policy worker and micro
+  batch shape.
+- `cluster.num_nodes` and `cluster.gpus_per_node`: match the selected Ray env
+  profile.
+- Output/logging directories, ideally through environment-derived paths.
+
+Example shape:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/dpo \
+  -c <project>/config/dpo.yaml \
+  data.train.prompt_file=<rl-prep>/train.jsonl \
+  data.validation.prompt_file=<rl-prep>/validation.jsonl
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/rl-validate-rewards-before-scale.md` before trusting preference-pair training results.
 
 ## Config Nuances
@@ -33,9 +46,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Keep `cluster.num_nodes` and `cluster.gpus_per_node` aligned with the RayCluster executor shape.
 - Use environment-derived output paths such as `RL_OUTPUT_DIR` for logs and checkpoints so repeated runs do not collide.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/rl/nemo_rl/dpo/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/dpo -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run rl/nemo_rl/dpo \
+  -c <project>/config/rl_nemo_rl_dpo.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/rl/nemo_rl/dpo/step.toml`
 - Runner: `src/nemotron/steps/rl/nemo_rl/dpo/step.py`
 - Configs: `src/nemotron/steps/rl/nemo_rl/dpo/config/default.yaml`, `src/nemotron/steps/rl/nemo_rl/dpo/config/tiny.yaml`
 

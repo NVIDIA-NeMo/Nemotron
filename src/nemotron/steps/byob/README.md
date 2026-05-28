@@ -1,27 +1,67 @@
----
-name: byob
-description: Generate and translate bring-your-own MCQ benchmarks from domain documents with a modular benchmark-family runtime. Use when a user asks to create an MCQ benchmark, translate a BYOB benchmark, or extend the flow to a new benchmark family such as GSM8K.
-when_to_use: Use for requests like "create a custom benchmark from these documents", "run BYOB MCQ generation", "translate the generated benchmark", "add a GSM8K-style BYOB family", or "keep the benchmark schema intact". Do not use for ordinary training-corpus translation.
-compatibility: Install the optional `byob` extra before running this step. Generation uses Data Designer and Curator semantic deduplication; translation uses Curator experimental translation.
-metadata:
-  owner: nemotron
-  workflow-step: byob
----
-
 # BYOB
 
-Use this skill to create or translate benchmark artifacts while keeping benchmark-family logic easy for coding agents to change.
+Use this README to create or translate benchmark artifacts while keeping benchmark-family logic easy for developers to extend.
 
-## Default
+## Developer Journey
+
+BYOB turns domain source documents into benchmark artifacts. Treat the source
+corpus as evaluation data, not training data: keep it separate from SDG, SFT, and
+CPT inputs so the final benchmark remains held out.
+
+1. Organize source documents by target subject or benchmark slice.
+2. Run `prepare` to normalize and stage source data.
+3. Run `generate` to produce MCQ benchmark Parquet.
+4. Optionally run `translate` to create a target-language benchmark while
+   preserving MCQ schema and row identity.
+5. Validate row count, schema, answer indexes, and quality filters before using
+   the benchmark for model claims.
+
+## Data And Artifact Flow
+
+```text
+domain source documents
+  -> byob/mcq stage=prepare
+  -> staged benchmark source
+  -> byob/mcq stage=generate
+  -> benchmark_raw.parquet + benchmark.parquet
+  -> byob/mcq stage=translate when target-language eval is needed
+```
+
+Final benchmark rows must preserve `question_id`, `question`, `options`,
+`answer_index`, `answer`, `cot_content`, `src`, and `category`.
+
+## Quick Start
 
 1. Install BYOB runtime dependencies with `uv sync --extra byob` or `pip install ".[byob]"` in the target environment.
-2. Read [references/STEP.md](references/STEP.md) for the artifact contract.
+2. Read [references/STEP.md](references/STEP.md) for the artifact manifest.
 3. Start from [mcq/config/default.yaml](mcq/config/default.yaml) for MCQ generation or [mcq/config/translate.yaml](mcq/config/translate.yaml) for translation.
 4. Ensure generation configs include `target_source_mapping` and explicit
    `filtering_model_configs`.
 5. Run `nemotron steps run byob/mcq -c <CONFIG> stage=prepare family=mcq`.
 6. Run `nemotron steps run byob/mcq -c <CONFIG> stage=generate family=mcq`.
 7. Translate an existing benchmark with `stage=translate` and a translation config.
+
+## CLI And Config Knobs
+
+Start from `mcq/config/tiny.yaml` for a smoke run, `mcq/config/default.yaml` for
+generation, and `mcq/config/translate.yaml` for translation. Developers usually
+change:
+
+- `family`: currently `mcq`.
+- `stage`: `prepare`, `generate`, `translate`, or `all`.
+- `target_source_mapping`: target subjects mapped to source document roots.
+- `filtering_model_configs`: explicit model configs for filtering and dedup.
+- `skip_until`: resume only when the previous stage cache exists.
+- Translation backend and language settings in the translate config.
+
+Example shape:
+
+```bash
+uv run nemotron steps run byob/mcq \
+  -c src/nemotron/steps/byob/mcq/config/default.yaml \
+  stage=all \
+  family=mcq
+```
 
 ## Change Points
 
@@ -30,7 +70,7 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 - Register the family in `runtime/benchmark_families/registry.py`.
 - Keep `scripts/runtime.py` as a dispatcher only; family-specific schema, prompts, postprocessing, and export code belong in family modules.
 - Keep MCQ stage orchestration in `runtime/benchmark_families/mcq/pipeline.py`; do not recreate a top-level `runtime/pipeline.py`.
-- Use `adapter.py` only for schema bridging when composing BYOB with other skills.
+- Use `adapter.py` only for schema bridging when composing BYOB with other pipeline modules.
 - Use Curator experimental translation as the translation backend; BYOB should only flatten/reassemble benchmark-family schema around it.
 - Use Curator semantic dedup with `RayDataExecutor`, `RayActorPoolExecutor`, and package-level `SemanticDeduplicationWorkflow`.
 
@@ -52,10 +92,10 @@ Use this skill to create or translate benchmark artifacts while keeping benchmar
 - Confirm final generation outputs `benchmark_raw.parquet` and `benchmark.parquet`.
 - Confirm translated outputs preserve row count unless `remove_low_quality` is intentionally enabled.
 
-## Load More Only If Needed
+## Further Reading
 
 - [references/guide.md](references/guide.md) for orchestration details
 - [references/benchmark-schema.md](references/benchmark-schema.md) for MCQ schema rules
 - [references/new-family-checklist.md](references/new-family-checklist.md) for GSM8K-style or non-MCQ extensions
 - [references/quality-and-filtering.md](references/quality-and-filtering.md) for quality gates
-- [patterns/index.yaml](patterns/index.yaml) for skill-local routing hints
+- [patterns/index.yaml](patterns/index.yaml) for BYOB-local routing hints

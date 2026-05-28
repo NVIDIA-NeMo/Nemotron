@@ -1,13 +1,8 @@
----
-name: nemotron-sft-megatron-bridge
-description: Configure Nemotron sft/megatron_bridge for distributed supervised fine-tuning with Megatron-Bridge. Use for packed Parquet SFT, large models, TP/PP/CP parallelism, Nemotron Nano3 or Super3 recipe patterns, and Megatron checkpoint output.
----
-
 # Megatron-Bridge SFT
 
 Use `sft/megatron_bridge` when distributed training strategy and packed-sequence throughput matter more than HF-native simplicity.
 
-Before changing configs or code, read `step.toml` to understand the step flow, consumed and produced artifacts, important parameters, strategies, failure modes, and upstream references.
+Use this README for workflow and pitfalls; use `step.toml` for the exact artifact, parameter, strategy, and error manifest before editing configs or code.
 
 ## Inputs And Outputs
 
@@ -16,15 +11,33 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Produce `checkpoint_megatron`.
 - Validate packed data, parallelism, and checkpoint output with a short run before scaling.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Keep `seq_length` equal to the data_prep step's `pack_size`.
-- Point `dataset.packed_sequence_specs.packed_train_data_path` at the packed
-  `splits/train/*.parquet` glob.
-- Keep base checkpoint paths separate from `checkpoint.save`.
-- Start Nano3 plans around the existing recipe defaults; scale Super3-like plans only after short validation runs pass.
-- Tune tensor, pipeline, and context parallelism before scaling global batch.
-- The shipped 30B default uses `peft=lora` to fit the starter topology; set `recipe.peft=null` and remove the top-level `peft:` block only when full SFT fits.
+Start from `config/tiny.yaml` for launch validation and `config/default.yaml`
+for the production-shaped topology. In a project overlay, developers usually
+change:
+
+- `dataset.packed_sequence_specs.packed_train_data_path`: packed Parquet glob,
+  usually `<packed>/splits/train/*.parquet`.
+- `seq_length`, `dataset.seq_length`, and packed sequence size: keep these equal
+  to the `data_prep/sft_packing` `pack_size`.
+- `checkpoint.pretrained_checkpoint`: optional Megatron base or resume checkpoint.
+- `peft`: keep LoRA only when intentionally running adapter-style SFT; set full
+  SFT explicitly when memory allows.
+- `train.micro_batch_size`, `train.global_batch_size`, and model parallel sizes:
+  keep them compatible with the selected env profile.
+
+Example shape:
+
+```bash
+uv run nemotron steps run sft/megatron_bridge \
+  -c <project>/config/sft_megatron_bridge.yaml \
+  dataset.packed_sequence_specs.packed_train_data_path='<packed>/splits/train/*.parquet' \
+  seq_length=<pack-size>
+```
+
+Related patterns:
+
 - Check `src/nemotron/steps/patterns/prep-data-is-tokenizer-locked.md` before reusing packed data.
 - Check `src/nemotron/steps/patterns/sft-sequence-packing.md` when packing efficiency is part of the decision.
 
@@ -37,9 +50,24 @@ Before changing configs or code, read `step.toml` to understand the step flow, c
 - Inspect data_prep loss masks before trusting loss curves from a new template
   or tool-call format.
 
-## Local Files
+## Run It
 
-- Contract: `src/nemotron/steps/sft/megatron_bridge/step.toml`
+Smoke first to validate wiring, imports, data access, and output paths:
+
+```bash
+uv run nemotron steps run sft/megatron_bridge -c tiny --dry-run
+```
+
+Then run the real job from a project overlay:
+
+```bash
+uv run nemotron steps run sft/megatron_bridge \
+  -c <project>/config/sft_megatron_bridge.yaml
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/sft/megatron_bridge/step.toml`
 - Runner: `src/nemotron/steps/sft/megatron_bridge/step.py`
 - Configs: `src/nemotron/steps/sft/megatron_bridge/config/default.yaml`, `src/nemotron/steps/sft/megatron_bridge/config/tiny.yaml`
 - Recipe reference: `src/nemotron/recipes/nano3/stage1_sft/`

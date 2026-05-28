@@ -1,8 +1,3 @@
----
-name: nemotron-convert
-description: Choose between Nemotron convert steps that bridge checkpoint formats — Megatron distributed ↔ HuggingFace safetensors, and LoRA-adapter merge into base. Use when artifact wiring needs a converter to chain producer (sft/pretrain/peft) and consumer (eval/rl/optimize) types.
----
-
 # Convert (checkpoint format bridges)
 
 Pick a convert step whenever the producer and consumer in your plan disagree
@@ -10,11 +5,35 @@ on `checkpoint_*` type. The artifact graph in
 [../types.toml](../types.toml) tells you which converter to insert via the
 `convert_to` map.
 
+## Developer Journey
+
+Conversion is a checkpoint boundary, not a default stage. Insert it only when a
+producer and consumer disagree on checkpoint layout.
+
+1. Identify the checkpoint artifact produced by the previous step.
+2. Identify the exact checkpoint artifact consumed by the next step.
+3. Pick the converter only if those types differ.
+4. Convert from a clean, validated checkpoint iteration or base model.
+5. Validate the converted checkpoint loads before continuing to eval, deploy, or
+   further optimization.
+
 | Source type | Target type | Step |
 |---|---|---|
 | `checkpoint_megatron` | `checkpoint_hf` | [megatron_to_hf](megatron_to_hf/README.md) |
 | `checkpoint_hf` | `checkpoint_megatron` | [hf_to_megatron](hf_to_megatron/README.md) |
 | `checkpoint_lora` (+ original base) | `checkpoint_hf` (merged) | [merge_lora](merge_lora/README.md) |
+
+## Data And Artifact Flow
+
+```text
+checkpoint_megatron -> convert/megatron_to_hf -> checkpoint_hf
+checkpoint_hf       -> convert/hf_to_megatron -> checkpoint_megatron
+checkpoint_lora + original base -> convert/merge_lora -> checkpoint_hf
+```
+
+Keep training-state files, optimizer state, and parent run directories out of
+conversion inputs unless the converter explicitly expects them. Most conversion
+steps want a model checkpoint directory or a specific `iter_*` checkpoint.
 
 ## When to insert
 

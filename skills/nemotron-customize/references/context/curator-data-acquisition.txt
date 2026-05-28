@@ -29,7 +29,15 @@ Use this when the user names a dataset:
 - Set `dataset.repo_id`, `dataset.repo_type`, `dataset.local_dir`, and
   `allow_patterns` as needed.
 - Point `input_glob` inside `dataset.local_dir`.
+- Use only approved `dataset.repo_id` values and pinned revisions when
+  production reproducibility or supply-chain risk matters.
+- Validate checksums or snapshot metadata when available, scan downloaded
+  content before downstream processing, and restrict production outbound network
+  access to approved Hugging Face domains.
 - Ensure `HF_TOKEN` and `HF_HOME` are available in the runtime when needed.
+  Treat `HF_TOKEN` as a secret bearer token: inject it through a secrets manager
+  or environment vault, never hardcode, print, echo, or log it, scope access to
+  minimum required permissions, and rotate it after shared-environment use.
 
 ## Operational Rules
 

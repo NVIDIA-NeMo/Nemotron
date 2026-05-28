@@ -1,65 +1,68 @@
----
-name: nemotron-curate-nemo-curator
-description: Configure Nemotron curate/nemo_curator to read JSONL text, optionally hydrate a Hugging Face dataset snapshot, apply light NeMo Curator language, word-count, and domain filters, and write filtered_jsonl for translate or data_prep steps.
----
-
 # Lightweight Text Curation (NeMo Curator)
 
-Use `curate/nemo_curator` to turn JSONL text into `filtered_jsonl` that can
-feed translation, pretraining prep, or SFT prep.
+Use `curate/nemo_curator` to turn raw JSONL or a Hugging Face snapshot into
+`filtered_jsonl` that feeds translation, pretraining prep, or SFT prep. See
+`../README.md` for the broader curation journey.
 
-Read `step.toml` for the full strategy/error matrix.
+Use this README for workflow and pitfalls; use `step.toml` for the exact
+artifact, parameter, strategy, and error manifest before editing configs or code.
 
-## Current runner
+## Pipeline Shape
 
 The step is intentionally small:
 
-`JsonlReader -> optional FastText language filter -> optional WordCountFilter -> optional MultilingualDomainClassifier -> JsonlWriter`
-
-It can call `huggingface_hub.snapshot_download` before reading if `dataset` is
-set in YAML. It does not implement Common Crawl extraction, URL crawling, or
-deduplication itself; use a dedicated Curator recipe for those before this step
-or add them as a separate step.
-
-## Inputs and outputs
-
-- Consume: `raw_jsonl` files matched by `input_glob`. If `dataset` is set, the
-  Hugging Face snapshot is downloaded first and `input_glob` should point into
-  that local snapshot.
-- Produce: JSONL shards under `output_dir`. Language/domain fields appear only
-  when the corresponding filters are enabled.
-
-## Configure
-
-- Set `input_glob`, `output_dir`, and `text_field` first.
-- Set `dataset: null` for local files. Set `dataset.repo_id`,
-  `dataset.repo_type`, `dataset.local_dir`, and optional `allow_patterns` for a
-  Hugging Face snapshot.
-- Set `language_codes: []` to skip FastText language filtering. If non-empty,
-  provide `models.fasttext_langid`.
-- Set `quality_filters: {}` to skip word-count filters. If either `min_words`
-  or `max_words` is set, set both.
-- Set `domains: []` to skip domain classification. If non-empty, provide
-  `models.hf_cache_dir` when you need a persistent model cache.
-- On small CPU Lepton runs, use the Curator container as-is and set
-  `NEMOTRON_CURATOR_RAY_NUM_CPUS=4` through the env profile when the YAML does
-  not include `ray.num_cpus`.
-- Reference [src/nemotron/steps/patterns/data-quality-before-quantity.md](../../patterns/data-quality-before-quantity.md)
-  before scaling corpus size or tightening filters.
-
-## Smoke commands
-
-```bash
-uv run nemotron steps run curate/nemo_curator -c tiny -r lepton_curate
+```text
+JsonlReader -> optional FastText language filter -> optional WordCountFilter ->
+optional MultilingualDomainClassifier -> JsonlWriter
 ```
 
+If `dataset` is set, the HF snapshot is downloaded first and `input_glob`
+should point into that local snapshot. Crawling, full extraction, and
+deduplication are out of scope here — use a dedicated Curator recipe for
+those.
+
+## CLI And Overlay Knobs
+
+Start from `config/tiny.yaml` to verify the reader/writer path with no
+filters. In a project overlay, developers usually change:
+
+- `input_glob` and `output_dir`: local JSONL paths or paths inside a
+  downloaded HF snapshot.
+- `text_field`: source text column.
+- `dataset`: set `null` for local files; set repo fields for HF snapshots.
+- `language_codes` and `models.fasttext_langid`: enable language gating.
+- `quality_filters`: set both `min_words` and `max_words` together when using
+  word count.
+- `domains`, `models.hf_cache_dir`, and `ray.num_cpus`.
+
+On small CPU Lepton runs, set `NEMOTRON_CURATOR_RAY_NUM_CPUS=4` through the
+env profile when the YAML does not include `ray.num_cpus`.
+
+Related pattern: [data-quality-before-quantity.md](../../patterns/data-quality-before-quantity.md).
+
+## Run It
+
+Smoke first to validate the reader/writer path with filters disabled:
+
 ```bash
-uv run lep log get -j curate-nemo-curator-step-xxxx --limit 300
+uv run nemotron steps run curate/nemo_curator -c tiny --dry-run
 ```
 
-## Local files
+Then run the real job from a project overlay:
 
-- Contract: [step.toml](step.toml)
+```bash
+uv run nemotron steps run curate/nemo_curator \
+  -c <project>/config/curate.yaml \
+  input_glob='<project>/data/raw/*.jsonl' \
+  output_dir=<project>/data/filtered
+```
+
+For a Lepton execution profile, add `-r lepton_curate` and inspect logs with
+`uv run lep log get -j curate-nemo-curator-step-<id> --limit 300`.
+
+## Repository Layout
+
+- Manifest: [step.toml](step.toml)
 - Runner: [step.py](step.py)
 - Configs: `config/default.yaml`, `config/tiny.yaml`
 
@@ -67,7 +70,7 @@ uv run lep log get -j curate-nemo-curator-step-xxxx --limit 300
 
 - Don't enable every optional filter on the first run. Start with `tiny` or
   local JSONL plus no filters, then add language, word-count, and domain gates.
-- Inspect intermediate JSONL when output is empty or tiny — usually a filter
-  is set too aggressively.
-- Split very large input files before reading; OOMs usually come from oversized
+- Inspect intermediate JSONL when output is empty or tiny — a filter is usually
+  too aggressive.
+- Split very large input files before reading; OOMs come from oversized
   partitions.

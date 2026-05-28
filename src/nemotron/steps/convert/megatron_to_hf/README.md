@@ -1,15 +1,9 @@
----
-name: nemotron-convert-megatron-to-hf
-description: Configure convert/megatron_to_hf to export a Megatron distributed checkpoint iteration into Hugging Face safetensors layout for evaluation, deployment, optimization, or adapter merge.
----
-
 # Megatron To HF Conversion
 
 Use `convert/megatron_to_hf` when a downstream HF-native step needs
 `checkpoint_hf` but the upstream artifact is `checkpoint_megatron`.
 
-Before changing configs or code, read `step.toml` for the artifact contract,
-parameters, strategies, and failure modes.
+Use this README for conversion workflow and guardrails; use `step.toml` for exact parameters, strategies, and failure modes.
 
 ## Inputs And Outputs
 
@@ -18,15 +12,45 @@ parameters, strategies, and failure modes.
 - Produce a standalone HF safetensors checkpoint.
 - Preserve tokenizer and config expectations from the original HF model id.
 
-## Configure
+## CLI And Overlay Knobs
 
-- Set `megatron_path` to the concrete checkpoint iteration, not the parent run
-  directory.
-- Set `hf_model_id` to the original model/config source when the checkpoint
-  lacks enough HF metadata.
-- Set `hf_path` to a fresh export directory.
-- Keep `strict=true` unless you intentionally accept source/target checkpoint
-  key mismatches for a known architecture drift.
+Start from `config/default.yaml`, then override every source and destination
+path. Developers usually change:
+
+- `megatron_path`: concrete `iter_*` checkpoint, not the parent run directory.
+- `hf_model_id`: original HF model/config/tokenizer source.
+- `hf_path`: fresh HF export directory.
+- `trust_remote_code`, `show_progress`, and `strict`.
+
+## Run It
+
+Preview the compiled export first; the shipped `default.yaml` shows the shape
+but should not point at a parent training run:
+
+```bash
+uv run nemotron steps run convert/megatron_to_hf \
+  -c default \
+  megatron_path=<run>/iter_<n> \
+  hf_model_id=<original-hf-model> \
+  hf_path=<hf-export-output> \
+  --dry-run
+```
+
+Then run the real export without `--dry-run`:
+
+```bash
+uv run nemotron steps run convert/megatron_to_hf \
+  -c default \
+  megatron_path=<run>/iter_<n> \
+  hf_model_id=<original-hf-model> \
+  hf_path=<hf-export-output>
+```
+
+## Repository Layout
+
+- Manifest: `src/nemotron/steps/convert/megatron_to_hf/step.toml`
+- Runner: `src/nemotron/steps/convert/megatron_to_hf/step.py`
+- Config: `src/nemotron/steps/convert/megatron_to_hf/config/default.yaml`
 
 ## Guardrails
 

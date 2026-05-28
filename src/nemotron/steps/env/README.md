@@ -1,11 +1,27 @@
----
-name: nemotron-env
-description: Work with Nemotron execution environment profiles, especially env.toml generation, Lepton, Slurm, and DGX Cloud executor settings, RayCluster resources, mounts, container images, and profile inheritance. Use when selecting, creating, or debugging run profiles.
----
-
 # Env Steps
 
 Use this category for execution-profile setup under `src/nemotron/steps/env/`.
+
+## Developer Journey
+
+Env profiles are the bridge between a step config and the machine that runs it.
+Start here before remote submission, not after a launch fails.
+
+1. Decide the backend: local, Lepton, Slurm, or DGX Cloud.
+2. Generate or extend the repository-root env file for that backend.
+3. Keep site-level details in env TOML and step-specific runtime flags in the
+   step YAML.
+4. Compile one tiny run and inspect the rendered `run.env`.
+5. Export `NEMOTRON_ENV_FILE` when using a backend-specific env file.
+
+## Data And Artifact Flow
+
+```text
+env/env_toml config
+  -> env.<backend>.toml
+  -> NEMOTRON_ENV_FILE
+  -> --run / --batch profile used by any step
+```
 
 ## Route
 
