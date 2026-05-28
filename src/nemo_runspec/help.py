@@ -266,10 +266,10 @@ class RecipeCommand(TyperCommand):
 
         console.print(
             Panel(
-                f"[green]$ ... {cmd_name} -c default[/]                    [dim]Local execution[/]\n"
-                f"[green]$ ... {cmd_name} -c default --dry-run[/]          [dim]Preview config[/]\n"
-                f"[green]$ ... {cmd_name} -c default --run my-cluster[/]   [dim]Submit to cluster[/]\n"
-                f"[green]$ ... {cmd_name} -c default -r cluster run.env.nodes=4[/]",
+                f"[green]$ ... {cmd_name} -c tiny[/]                    [dim]Local execution[/]\n"
+                f"[green]$ ... {cmd_name} -c tiny --dry-run[/]          [dim]Preview config[/]\n"
+                f"[green]$ ... {cmd_name} -c tiny --run my-cluster[/]   [dim]Submit to cluster[/]\n"
+                f"[green]$ ... {cmd_name} -c tiny -r cluster run.env.nodes=4[/]",
                 title="[bold]Examples[/]",
                 title_align="left",
                 border_style=rich_utils.STYLE_OPTIONS_PANEL_BORDER,

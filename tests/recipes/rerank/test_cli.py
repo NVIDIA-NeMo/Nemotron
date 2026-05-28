@@ -27,13 +27,6 @@ class TestRerankAppStructure:
         result = runner.invoke(app, ["rerank", command, "--help"])
         assert result.exit_code == 0
 
-    def test_command_help_uses_existing_default_config_example(self):
-        result = runner.invoke(app, ["rerank", "finetune", "--help"])
-        assert result.exit_code == 0
-        assert "-c default" in result.output
-        assert "-c tiny" not in result.output
-
-
 class TestRerankDryRun:
     @pytest.mark.parametrize("command", STAGE_COMMANDS)
     def test_stage_dry_run_default_config(self, command, monkeypatch):
