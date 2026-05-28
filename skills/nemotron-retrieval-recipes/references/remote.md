@@ -22,6 +22,8 @@ Load this reference when the user mentions clusters, Slurm, `env.toml`, `--run`,
 1. Render the config locally with `-d`.
 2. Scope GPUs with `CUDA_VISIBLE_DEVICES=<ids>` when the user gives GPU IDs.
 3. Add dotlist overrides only after confirming the stage contract inputs and outputs.
-4. Record the command, profile, output directory, expected log path, and next poll time.
-5. Poll at human-scale intervals: roughly 60 seconds for pilots and 120-300 seconds for larger jobs.
-6. If the remote job fails before the recipe starts, inspect environment, mount paths, image, and scheduler logs before changing recipe configs.
+4. For multi-stage `rerank run --run` or `rerank run --batch`, verify the profile provides `remote_job_dir` or `env_vars.NEMO_RUN_DIR` so stage outputs share one run directory.
+5. Stop remote pipelines before `deploy`; deploy is local-only. For rerank, avoid `--stage` on `rerank run` and use the single-stage command with `--dry-run` instead.
+6. Record the command, profile, output directory, expected log path, and next poll time.
+7. Poll at human-scale intervals: roughly 60 seconds for pilots and 120-300 seconds for larger jobs.
+8. If the remote job fails before the recipe starts, inspect environment, mount paths, image, and scheduler logs before changing recipe configs.

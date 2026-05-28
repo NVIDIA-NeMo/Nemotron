@@ -1,4 +1,4 @@
-# Retriever Recipe Pitfalls
+# Retrieval Recipe Pitfalls
 
 Load this file when a recipe command fails, metrics look wrong, or the user asks for debugging help.
 

@@ -72,7 +72,7 @@ uv run nemotron embed finetune -c default --batch my-cluster
 | --- | --- | --- | --- | --- |
 | 0 SDG | `embed sdg` | Text corpus or HF URI | `output/embed/stage0_sdg` | Requires `NVIDIA_API_KEY`; generates synthetic retrieval QA data. |
 | 1 prep | `embed prep` | Stage 0 output or existing QA data | `output/embed/stage1_data_prep` | Converts to train/eval data, mines hard negatives, creates BEIR eval data. |
-| 2 finetune | `embed finetune` | `train_mined.automodel_unrolled.json` | `output/embed/stage2_finetune/checkpoints` | Automodel contrastive training. |
+| 2 finetune | `embed finetune` | `train_mined.automodel_unrolled.json` | `output/embed/stage2_finetune/checkpoints` | AutoModel contrastive training. |
 | 3 eval | `embed eval` | BEIR eval data and checkpoint | `output/embed/stage3_eval/eval_results.json` | Compare base vs fine-tuned on nDCG, Recall, Precision, and MAP. |
 | 4 export | `embed export` | Fine-tuned HF checkpoint | `output/embed/stage4_export` | Default config exports ONNX only; set `export_to_trt=true` for TensorRT. |
 | 5 deploy | `embed deploy` | ONNX/TensorRT model dir | NIM on `host_port` | Requires Docker/NGC setup and `NGC_API_KEY`. |
@@ -87,7 +87,7 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `em
 | 0 SDG | Text corpus or HF URI, `NVIDIA_API_KEY` | `output/embed/stage0_sdg` | `uv run nemotron embed run -c default -d --from sdg --to prep` | Provider API calls | `corpus_dir`, `num_pairs`, `sentences_per_chunk`, `file_extensions`, `preview=true` |
 | 1 prep | Stage 0 output or `sdg_input_path` | `output/embed/stage1_data_prep`, `eval_beir/` | `uv run nemotron embed prep -c default -d` | Hard-negative mining on larger sets | `sdg_input_path`, `quality_threshold`, `hard_negatives_to_mine`, `mining_batch_size` |
 | 2 finetune | `train_mined.automodel_unrolled.json` | `output/embed/stage2_finetune/checkpoints` | `uv run nemotron embed finetune -c default -d` | GPU training | `num_epochs`, `learning_rate`, `global_batch_size`, `local_batch_size`, `train_n_passages` |
-| 3 eval | Fixed `eval_beir/` split and checkpoint | `output/embed/stage3_eval/eval_results.json` | `uv run nemotron embed eval -c default -d` | Embedding inference over eval corpus | `model_path`, `eval_data_path`, `k_values`, `eval_base`, `eval_finetuned`, `eval_nim` |
+| 3 eval | Fixed `eval_beir/` split and checkpoint | `output/embed/stage3_eval/eval_results.json` | `uv run nemotron embed eval -c default -d` | Embedding inference over eval corpus | `finetuned_model_path`, `eval_data_path`, `k_values`, `eval_base`, `eval_finetuned`, `eval_nim` |
 | 4 export | Fine-tuned checkpoint | `output/embed/stage4_export/onnx` or `tensorrt` | `uv run nemotron embed export -c default -d` | Export container/GPU for TensorRT | `model_path`, `export_to_trt`, `attn_implementation`, sequence profile settings |
 | 5 deploy | ONNX/TensorRT model dir, Docker, NGC access | Embedding NIM on `host_port` | `uv run nemotron embed deploy -c default -d` | Docker, GPU, NGC image pull | `model_dir`, `use_onnx`, `host_port`, container/image fields |
 
@@ -95,7 +95,7 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `em
 
 Stage 0:
 
-- Sample corpus: `hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random`
+- Sample corpus: `hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random`; confirm access and license before recommending it, or use the user's `corpus_dir`.
 - Output: `./output/embed/stage0_sdg`
 - Generation model: `nvidia/nemotron-3-nano-30b-a3b`
 - SDG embedding model: `nvidia/llama-3.2-nv-embedqa-1b-v2`
@@ -139,6 +139,7 @@ Stage 5:
 - NIM image: `nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1`
 - Container: `nemotron-embed-nim`
 - Default API: `http://localhost:8000/v1/embeddings`
+- Default deploy runs in the foreground; for service handoff, add `detach=true` plus explicit container name and port overrides when needed.
 
 ## Operating Patterns
 
@@ -149,6 +150,7 @@ Stage 5:
 - Preserve `output/embed/stage1_data_prep/eval_beir/` across comparisons so metrics are not shifted by new splits.
 - Use `val_ratio=0` only for small datasets where preserving test size matters; use a validation split for larger datasets.
 - Inspect existing `output/embed/` artifacts before rerunning a stage. Ask before deleting checkpoints, cached embeddings, or generated data.
+- For deploy handoff, include the exact deploy command, `detach=true` when background service ownership is expected, container name, host port, smoke test, and stop/replace instructions.
 
 ## NIM Smoke Test
 

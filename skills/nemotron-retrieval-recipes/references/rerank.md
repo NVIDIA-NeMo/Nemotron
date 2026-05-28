@@ -60,7 +60,7 @@ uv run nemotron rerank finetune -c default --batch my-cluster
 | --- | --- | --- | --- | --- |
 | 0 SDG | `rerank sdg` | Text corpus or HF URI | `output/rerank/stage0_sdg` | Requires `NVIDIA_API_KEY`; uses the same SDG pipeline shape as embed. |
 | 1 prep | `rerank prep` | Stage 0 output or existing QA data | `output/rerank/stage1_prep` | Converts to train/eval data, mines hard negatives, creates BEIR eval data. |
-| 2 finetune | `rerank finetune` | `train_mined.automodel_unrolled.json` | `output/rerank/stage2_finetune/checkpoints` | Automodel cross-encoder classification training. |
+| 2 finetune | `rerank finetune` | `train_mined.automodel_unrolled.json` | `output/rerank/stage2_finetune/checkpoints` | AutoModel cross-encoder classification training. |
 | 3 eval | `rerank eval` | BEIR eval data and checkpoint | `output/rerank/stage3_eval/eval_results.json` | Dense retrieval, rerank top candidates, compare base vs fine-tuned nDCG. |
 | 4 export | `rerank export` | Fine-tuned HF checkpoint | `output/rerank/stage4_export` | Default config exports ONNX only; set `export_to_trt=true` for TensorRT. |
 | 5 deploy | `rerank deploy` | ONNX/TensorRT model dir | NIM on `host_port` | Requires Docker/NGC setup and `NGC_API_KEY`. |
@@ -75,7 +75,7 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `re
 | 0 SDG | Text corpus or HF URI, `NVIDIA_API_KEY` | `output/rerank/stage0_sdg` | `uv run nemotron rerank run -c default -d --from sdg --to prep` | Provider API calls | `corpus_dir`, `num_pairs`, `sentences_per_chunk`, `file_extensions`, `preview=true` |
 | 1 prep | Stage 0 output or `sdg_input_path` | `output/rerank/stage1_prep`, `eval_beir/` | `uv run nemotron rerank prep -c default -d` | Hard-negative mining on larger sets | `sdg_input_path`, `quality_threshold`, `hard_negatives_to_mine`, `mining_batch_size` |
 | 2 finetune | `train_mined.automodel_unrolled.json` | `output/rerank/stage2_finetune/checkpoints` | `uv run nemotron rerank finetune -c default -d` | GPU training | `num_epochs`, `learning_rate`, `global_batch_size`, `local_batch_size`, `train_n_passages`, `prompt_template` |
-| 3 eval | Fixed `eval_beir/`, checkpoint, first-stage retriever | `output/rerank/stage3_eval/eval_results.json` | `uv run nemotron rerank eval -c default -d` | Retrieval plus rerank inference | `model_path`, `eval_data_path`, `retrieval_model`, `top_k`, `k_values`, `eval_nim` |
+| 3 eval | Fixed `eval_beir/`, checkpoint, first-stage retriever | `output/rerank/stage3_eval/eval_results.json` | `uv run nemotron rerank eval -c default -d` | Retrieval plus rerank inference | `finetuned_model_path`, `eval_data_path`, `retrieval_model`, `top_k`, `k_values`, `eval_nim` |
 | 4 export | Fine-tuned checkpoint | `output/rerank/stage4_export/onnx` or `tensorrt` | `uv run nemotron rerank export -c default -d` | Export container/GPU for TensorRT | `model_path`, `export_to_trt`, `attn_implementation`, TensorRT profile settings |
 | 5 deploy | ONNX/TensorRT model dir, Docker, NGC access | Rerank NIM on `host_port` | `uv run nemotron rerank deploy -c default -d` | Docker, GPU, NGC image pull | `model_dir`, `use_onnx`, `host_port`, container/image fields |
 
@@ -83,7 +83,7 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `re
 
 Stage 0:
 
-- Sample corpus: `hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random`
+- Sample corpus: `hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random`; confirm access and license before recommending it, or use the user's `corpus_dir`.
 - Output: `./output/rerank/stage0_sdg`
 - Generation model: `nvidia/nemotron-3-nano-30b-a3b`
 - SDG embedding model: `nvidia/llama-3.2-nv-embedqa-1b-v2`
@@ -131,6 +131,7 @@ Stage 5:
 - NIM image: `nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0`
 - Container: `nemotron-rerank-nim`
 - Default API: `http://localhost:8000/v1/ranking`
+- Default deploy runs in the foreground; for service handoff, add `detach=true` plus explicit container name and port overrides when needed.
 
 ## Operating Patterns
 
@@ -141,6 +142,7 @@ Stage 5:
 - Start learning-rate sweeps near `1e-6`, `3e-6`, and `1e-5`.
 - Keep the Stage 2 `prompt_template` and Stage 3 eval `prompt_template` identical.
 - Inspect existing `output/rerank/` artifacts before rerunning a stage. Ask before deleting checkpoints, cached embeddings, or generated data.
+- For deploy handoff, include the exact deploy command, `detach=true` when background service ownership is expected, container name, host port, smoke test, and stop/replace instructions.
 
 ## Rerank NIM Eval Drift Checklist
 

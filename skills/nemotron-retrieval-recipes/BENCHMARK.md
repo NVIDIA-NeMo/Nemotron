@@ -26,7 +26,7 @@ Use the configured live-eval metrics for paired runs:
 - `goal_accuracy`
 - `behavior_check`
 
-Publication reporting should also include task completion rate plus agent-harness wall-clock time and token consumption when available. Those values measure evaluation cost, not expected recipe training runtime.
+Primary publication signal is paired task-quality uplift, including per-case deltas for recipe routing, checkout grounding, dry-run safety, secret handling, metric interpretation, and long-running handoff. Publication reporting should also include task completion rate plus agent-harness wall-clock time and token consumption when available. Those values measure evaluation cost, not expected recipe training runtime.
 
 ## Test Tasks
 
@@ -53,11 +53,11 @@ The dataset contains 14 realistic task cases in `evals/evals.json`:
 
 | Check | Result |
 | --- | --- |
-| Eval dataset structure | Passed for 14 cases |
-| Static skill-quality check | Passed, 100/100 |
-| Command freshness checklist | Passed in the current checkout |
+| Eval dataset structure | Local validation completed for 14 committed cases |
+| Static skill-quality check | Local preliminary check completed |
+| Command freshness checklist | Local read-only help/dry-run checks completed in the current checkout |
 
-Command freshness covered read-only help and dry-run checks for the documented `embed` and `rerank` recipe flows. Generated run artifacts should stay out of source control.
+These local checks are sanity checks, not publication evidence. Command freshness covered read-only help and dry-run checks for the documented `embed` and `rerank` recipe flows. Generated run artifacts should stay out of source control.
 
 ## Publication Gate
 

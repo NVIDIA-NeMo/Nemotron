@@ -10,9 +10,9 @@ tags:
   - embeddings
   - reranking
 tools:
-  - shell
-  - read
-  - write
+  - Read
+  - Bash
+  - Search
 description: Use when planning, debugging, tuning, evaluating, exporting, or deploying public Nemotron `embed`/`rerank` retrieval recipes.
 ---
 
@@ -23,6 +23,10 @@ description: Use when planning, debugging, tuning, evaluating, exporting, or dep
 Use this skill to work with public Nemotron embedding and reranking retrieval recipes in a source checkout or installed package. Prefer the current checkout over memory, because the recipe CLI, configs, containers, and output paths are actively changing. Treat each recipe family as available only after its recipe directory and matching CLI files are present.
 
 This is a public product skill, not contributor-only guidance. Its value over static docs is to make an agent route the user's retrieval failure to the right recipe family, reconcile docs with the current checkout, avoid accidental long-running launches, preserve secrets, and return concrete preview/execution/run-report commands.
+
+## Security Notes
+
+Use `Bash` for repo-scoped inspection, help, dry-run, and user-approved execution commands. Do not run API, GPU, Docker, Slurm, NIM, or other long-running work unless the user explicitly asks for it. Never run broad environment dumps or commands that expose secret values. Prefer dotlist overrides and config review over editing recipe defaults.
 
 ## Prerequisites
 
@@ -43,7 +47,7 @@ This is a public product skill, not contributor-only guidance. Its value over st
    - Prefer embedding fine-tuning when relevant documents are absent from the candidate set.
    - Prefer reranker fine-tuning when relevant documents are retrieved but ordered poorly near the top.
    - For production retrieval stacks, remember that these are complementary: embed first, rerank candidates second.
-3. Identify the intent: plan a run, execute a stage, debug a failure, tune hyperparameters, interpret metrics, export/deploy a model, or modify recipe code/configs.
+3. Identify the intent: plan a run, execute a stage, debug a failure, tune hyperparameters, interpret metrics, export/deploy a model, inspect configs, or propose dotlist overrides.
 4. Inspect the current public surface before acting:
    - Recipe files: `src/nemotron/recipes/<embed|rerank>/`
    - CLI files: `src/nemotron/cli/commands/<embed|rerank>/`
