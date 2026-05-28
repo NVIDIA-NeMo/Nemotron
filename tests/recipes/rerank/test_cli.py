@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,8 @@ from typer.testing import CliRunner
 
 from nemotron.cli.bin.nemotron import app
 from nemotron.cli.commands.rerank import finetune as finetune_module
+
+run_module = import_module("nemotron.cli.commands.rerank.run")
 
 runner = CliRunner()
 STAGE_COMMANDS = ["sdg", "prep", "finetune", "eval", "export", "deploy"]
@@ -56,6 +59,43 @@ class TestRerankDryRun:
         result = runner.invoke(app, ["rerank", "run", "--run", "missing", "--stage", "--from", "sdg", "--to", "eval"])
         assert result.exit_code == 1
         assert "--stage is not supported for rerank run" in result.output
+
+    def test_local_docker_run_does_not_require_remote_job_dir(self, monkeypatch, tmp_path):
+        env_file = tmp_path / "env.toml"
+        env_file.write_text('[local-docker]\nexecutor = "docker"\n')
+        monkeypatch.setenv("NEMOTRON_ENV_FILE", str(env_file))
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["nemotron", "rerank", "run", "--run", "local-docker", "--from", "prep", "--to", "eval"],
+        )
+        captured = {}
+
+        def fake_run_pipeline_remote(stages, base_options, stage_overrides, global_overrides):
+            captured["stages"] = stages
+            captured["profile"] = base_options.profile
+
+        monkeypatch.setattr(run_module, "_run_pipeline_remote", fake_run_pipeline_remote)
+
+        result = runner.invoke(app, ["rerank", "run", "--run", "local-docker", "--from", "prep", "--to", "eval"])
+
+        assert result.exit_code == 0, result.output
+        assert captured == {"stages": ["prep", "finetune", "eval"], "profile": "local-docker"}
+
+    def test_slurm_multi_stage_run_requires_shared_run_dir(self, monkeypatch, tmp_path):
+        env_file = tmp_path / "env.toml"
+        env_file.write_text('[cluster]\nexecutor = "slurm"\n')
+        monkeypatch.setenv("NEMOTRON_ENV_FILE", str(env_file))
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["nemotron", "rerank", "run", "--run", "cluster", "--from", "prep", "--to", "eval"],
+        )
+
+        result = runner.invoke(app, ["rerank", "run", "--run", "cluster", "--from", "prep", "--to", "eval"])
+
+        assert result.exit_code == 1
+        assert "remote_job_dir" in result.output
 
 
 def test_finetune_local_uses_runspec_gpu_worker_default(monkeypatch):

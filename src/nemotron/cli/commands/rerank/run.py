@@ -121,6 +121,18 @@ def _env_value(env, key: str):
     return getattr(env, key, None)
 
 
+def _executor_type(env) -> str:
+    value = _env_value(env, "executor")
+    return str(value) if value is not None else "local"
+
+
+def _has_shared_run_dir(env) -> bool:
+    if _env_value(env, "remote_job_dir"):
+        return True
+    env_vars = _env_value(env, "env_vars")
+    return bool(_env_value(env_vars, "NEMO_RUN_DIR"))
+
+
 def _validate_remote_stages(stages: list[str]) -> None:
     """Fail fast when a pipeline includes stages that cannot run remotely."""
     unsupported = [stage for stage in stages if stage not in STAGE_RUN_FNS]
@@ -149,10 +161,16 @@ def _validate_remote_pipeline(stages: list[str], base_options: RecipeConfig) -> 
     from nemo_runspec.env import parse_env
 
     env = parse_env(base_options.ctx)
-    if not _env_value(env, "remote_job_dir"):
+    # Local and Docker executors run on this machine. For Docker, nemo-run stages
+    # execute from the packaged code directory inside the container, so the
+    # default ${oc.env:NEMO_RUN_DIR,.} paths still share the mounted worktree.
+    if _executor_type(env) in {"local", "docker"}:
+        return
+
+    if not _has_shared_run_dir(env):
         print(
             "Error: remote rerank pipelines with multiple stages require env.remote_job_dir "
-            "so stages share NEMO_RUN_DIR outputs.",
+            "or env.env_vars.NEMO_RUN_DIR so stages share outputs.",
             file=sys.stderr,
         )
         raise typer.Exit(1)
