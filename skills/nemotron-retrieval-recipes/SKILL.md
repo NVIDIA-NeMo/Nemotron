@@ -18,15 +18,30 @@ description: Use when planning, debugging, tuning, evaluating, exporting, or dep
 
 # Nemotron Retrieval Recipes
 
+Invocation: `$nemotron-retrieval-recipes`.
+
 ## Purpose
 
 Use this skill to work with public Nemotron embedding and reranking retrieval recipes in a source checkout or installed package. Prefer the current checkout over memory, because the recipe CLI, configs, containers, and output paths are actively changing. Treat each recipe family as available only after its recipe directory and matching CLI files are present.
 
 This is a public product skill, not contributor-only guidance. Its value over static docs is to make an agent route the user's retrieval failure to the right recipe family, reconcile docs with the current checkout, avoid accidental long-running launches, preserve secrets, and return concrete preview/execution/run-report commands.
 
+Use it only for tasks tied to the public Nemotron `embed` or `rerank` recipe flow. If the request is unrelated retrieval theory, generic vector database selection, generic benchmark advice, or non-recipe Docker/Slurm/NIM troubleshooting, stop with a short scope note and do not inspect recipe files in that turn.
+
 ## Security Notes
 
 Use `Bash` for repo-scoped inspection, help, dry-run, and user-approved execution commands. Do not run API, GPU, Docker, Slurm, NIM, or other long-running work unless the user explicitly asks for it. Never run broad environment dumps or commands that expose secret values. Prefer dotlist overrides and config review over editing recipe defaults.
+
+## Source Priority
+
+Resolve conflicts in this order:
+
+1. Current checkout recipe, CLI, config, and source files.
+2. Bundled references in this skill.
+3. User-provided docs or saved snippets.
+4. Memory.
+
+For runnable commands, treat the current checkout as authoritative. If a required recipe directory, CLI command, config, or env profile is missing, report the blocker instead of guessing.
 
 ## Prerequisites
 
@@ -108,6 +123,8 @@ For failures, load `PITFALLS.md` first. Localize the failing stage, then inspect
 - It should not trigger for unrelated retrieval theory, generic vector database setup, or benchmark evaluation that is not tied to the public Nemotron recipe flow.
 
 ## Output Style
+
+For planning or debugging recommendations, use this shape when it helps: `Decision`, `Why`, `Required inputs`, `Preview command`, `Execution command`, `Avoid`, and `Next step`. Omit fields that are irrelevant to a short answer.
 
 Give concrete commands and file paths. State assumptions, expected inputs, expected outputs, and the cheapest validation step that proves the next action is ready. For long-running stages, separate preview commands from execution commands so the user can choose deliberately.
 
