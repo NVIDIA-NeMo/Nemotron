@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import sys
+import types
 import urllib.request
 
 import pytest
@@ -92,6 +95,60 @@ def test_eval_rejects_metrics_beyond_reranked_top_k():
 def test_eval_rejects_custom_prompt_template_for_nim_compare():
     with pytest.raises(ValidationError, match="default NIM prompt template"):
         EvalConfig(eval_nim=True, prompt_template="Q: {query} P: {passage}")
+
+
+def test_eval_nim_defaults_to_end_truncation():
+    cfg = EvalConfig(eval_nim=True)
+    assert cfg.nim_truncate == "END"
+
+
+def test_eval_nim_reranker_sends_truncate_setting(monkeypatch):
+    payloads = []
+
+    class RankingResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"rankings": [{"index": 0, "logit": 0.7}]}'
+
+    def fake_urlopen(req, *args, **kwargs):
+        payloads.append(json.loads(req.data.decode("utf-8")))
+        return RankingResponse()
+
+    class FakeEvaluateRetrieval:
+        def __init__(self, k_values):
+            self.k_values = k_values
+
+        def evaluate(self, qrels, reranked_results, k_values):
+            return ({}, {}, {}, {})
+
+    beir_module = types.ModuleType("beir")
+    retrieval_module = types.ModuleType("beir.retrieval")
+    evaluation_module = types.ModuleType("beir.retrieval.evaluation")
+    evaluation_module.EvaluateRetrieval = FakeEvaluateRetrieval
+    monkeypatch.setitem(sys.modules, "beir", beir_module)
+    monkeypatch.setitem(sys.modules, "beir.retrieval", retrieval_module)
+    monkeypatch.setitem(sys.modules, "beir.retrieval.evaluation", evaluation_module)
+    monkeypatch.setattr(eval_module.urllib.request, "urlopen", fake_urlopen)
+
+    eval_module.evaluate_nim_reranker(
+        nim_url="http://nim.example",
+        nim_model="nvidia/llama-nemotron-rerank-1b-v2",
+        corpus={"d1": {"text": "A passage about GPUs"}},
+        queries={"q1": "what is a GPU?"},
+        qrels={"q1": {"d1": 1}},
+        first_stage_results={"q1": {"d1": 0.5}},
+        top_k=1,
+        batch_size=1,
+        truncate="END",
+        k_values=[1],
+    )
+
+    assert payloads[0]["truncate"] == "END"
 
 
 def test_export_defaults_format_reranker_calibration_pairs():

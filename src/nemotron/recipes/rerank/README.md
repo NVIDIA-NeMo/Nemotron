@@ -598,7 +598,8 @@ curl -X POST http://localhost:8000/v1/ranking \
     "passages": [
       {"text": "AI is artificial intelligence"},
       {"text": "The weather is sunny today"}
-    ]
+    ],
+    "truncate": "END"
   }'
 ```
 

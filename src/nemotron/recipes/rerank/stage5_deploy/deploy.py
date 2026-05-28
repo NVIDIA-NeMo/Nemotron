@@ -361,7 +361,8 @@ def run_deploy(cfg: DeployConfig) -> dict:
             sample_payload = (
                 '{"model": "nvidia/llama-nemotron-rerank-1b-v2", '
                 '"query": {"text": "what is AI?"}, '
-                '"passages": [{"text": "AI is artificial intelligence"}]}'
+                '"passages": [{"text": "AI is artificial intelligence"}], '
+                '"truncate": "END"}'
             )
             print(f"     -d '{sample_payload}'")
             print()

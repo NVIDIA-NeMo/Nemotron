@@ -64,3 +64,4 @@ nim_url: http://localhost:8000
 nim_model: nvidia/llama-nemotron-rerank-1b-v2
 nim_batch_size: 32
 nim_timeout: 60
+nim_truncate: END

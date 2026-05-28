@@ -61,6 +61,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -150,6 +151,10 @@ class EvalConfig(RecipeSettings):
     )
     nim_batch_size: int = Field(default=32, gt=0, description="Batch size for NIM API requests.")
     nim_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for NIM API requests.")
+    nim_truncate: Literal["NONE", "START", "END"] = Field(
+        default="END",
+        description="NIM truncation strategy for over-length query-passage inputs.",
+    )
 
     @model_validator(mode="after")
     def _check_eval_settings(self):
@@ -411,6 +416,7 @@ def evaluate_nim_reranker(
     top_k: int = 100,
     batch_size: int = 32,
     timeout: int = 60,
+    truncate: str = "END",
     k_values: list[int] | None = None,
 ) -> tuple[dict, dict]:
     """Evaluate a NIM reranker endpoint on first-stage retrieval results.
@@ -425,6 +431,7 @@ def evaluate_nim_reranker(
         top_k: Number of candidates to re-rank per query.
         batch_size: Batch size for API requests.
         timeout: Request timeout in seconds.
+        truncate: NIM truncation strategy for over-length query-passage inputs.
         k_values: K values for metrics.
 
     Returns:
@@ -476,6 +483,7 @@ def evaluate_nim_reranker(
                     "model": nim_model,
                     "query": {"text": query_text},
                     "passages": batch_passages,
+                    "truncate": truncate,
                 }
             ).encode("utf-8")
 
@@ -647,6 +655,7 @@ def run_eval(cfg: EvalConfig) -> dict:
                     top_k=cfg.top_k,
                     batch_size=cfg.nim_batch_size,
                     timeout=cfg.nim_timeout,
+                    truncate=cfg.nim_truncate,
                     k_values=cfg.k_values,
                 )
                 results["nim"] = nim_metrics
