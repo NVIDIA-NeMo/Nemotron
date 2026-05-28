@@ -10,7 +10,7 @@ tags:
   - training
   - pipelines
 metadata:
-  author: NVIDIA Nemotron Team <nemotron-team@nvidia.com>
+  author: NVIDIA Nemotron Team 
   tags:
     - nemotron
     - customization
