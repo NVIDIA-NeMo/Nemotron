@@ -201,7 +201,13 @@ def _auto_scale_hyperparams(cfg: FinetuneConfig, num_examples: int) -> tuple[int
         Tuple of (global_batch_size, num_epochs, checkpoint_every_steps, val_every_steps).
     """
     if cfg.global_batch_size == 128 and num_examples < 2000:
-        global_batch_size = max(16, min(64, num_examples // 8))
+        target_batch_size = max(16, min(64, num_examples // 8))
+        world_size = int(os.environ.get("WORLD_SIZE") or os.environ.get("LOCAL_WORLD_SIZE") or "1")
+        batch_unit = cfg.local_batch_size * max(1, world_size)
+        if target_batch_size >= batch_unit:
+            global_batch_size = max(batch_unit, (target_batch_size // batch_unit) * batch_unit)
+        else:
+            global_batch_size = cfg.global_batch_size
     else:
         global_batch_size = cfg.global_batch_size
 

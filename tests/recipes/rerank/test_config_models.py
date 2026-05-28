@@ -25,6 +25,46 @@ def test_finetune_auto_scales_default_global_batch_size_for_small_dataset():
     assert global_batch_size == 64
 
 
+@pytest.mark.parametrize(
+    ("world_size", "expected_global_batch_size"),
+    [
+        (1, 60),
+        (2, 56),
+        (4, 48),
+        (8, 32),
+    ],
+)
+def test_finetune_auto_scale_rounds_to_valid_batch_geometry(
+    monkeypatch, world_size, expected_global_batch_size
+):
+    monkeypatch.setenv("WORLD_SIZE", str(world_size))
+    cfg = FinetuneConfig(
+        global_batch_size=128,
+        local_batch_size=4,
+        checkpoint_every_steps=100,
+        val_every_steps=100,
+    )
+
+    global_batch_size, *_ = _auto_scale_hyperparams(cfg, num_examples=500)
+
+    assert global_batch_size == expected_global_batch_size
+    assert global_batch_size % (cfg.local_batch_size * world_size) == 0
+
+
+def test_finetune_auto_scale_keeps_configured_batch_when_valid_smaller_batch_is_impossible(monkeypatch):
+    monkeypatch.setenv("WORLD_SIZE", "8")
+    cfg = FinetuneConfig(
+        global_batch_size=128,
+        local_batch_size=4,
+        checkpoint_every_steps=100,
+        val_every_steps=100,
+    )
+
+    global_batch_size, *_ = _auto_scale_hyperparams(cfg, num_examples=100)
+
+    assert global_batch_size == 128
+
+
 def test_finetune_rejects_untrusted_remote_code_without_opt_in():
     with pytest.raises(ValidationError, match="allow_untrusted_remote_code"):
         FinetuneConfig(base_model="example/custom-reranker")
