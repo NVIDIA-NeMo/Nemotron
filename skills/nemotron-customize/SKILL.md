@@ -1,6 +1,6 @@
 ---
 name: nemotron-customize
-description: "Use when planning Nemotron customization pipelines from repo steps — SFT, PEFT/LoRA, AutoModel vs Megatron-Bridge, alignment (DPO/RLVR/GRPO/RLHF), curate-then-translate, BYOB/MCQ prep, evaluation."
+description: "Plan Nemotron customization pipelines from repo steps: SFT, PEFT/LoRA, AutoModel vs Megatron-Bridge, DPO/RLVR/GRPO/RLHF, curate-then-translate, BYOB/MCQ benchmark prep or translation, checkpoint conversion, ModelOpt optimization, and endpoint or checkpoint evaluation."
 version: 0.1.1
 license: Apache-2.0
 author: NVIDIA Nemotron Team
@@ -9,6 +9,13 @@ tags:
   - customization
   - training
   - pipelines
+metadata:
+  author: NVIDIA Nemotron Team <nemotron-team@nvidia.com>
+  tags:
+    - nemotron
+    - customization
+    - training
+    - pipelines
 tools:
   - Read
   - Write
@@ -27,6 +34,15 @@ existing Nemotron steps or multi-step training/customization pipelines. If the
 request is a frontend, dashboard, visualization, generic ML-advice,
 billing/access, or unrelated coding task, stop with a short scope note and do
 not inspect the step catalog or edit files in that turn.
+
+## Security Notes
+
+This skill may use `Write` to create or modify YAML/README files and `Bash` to
+run repository commands. Confirm with the user before file writes or shell
+execution. Keep Bash usage scoped to repo-safe commands such as `uv run
+nemotron steps ...`, `python -m pytest ...`, `git status/diff`, and targeted
+validation commands. Never run environment dumps (`env`, `printenv`, broad
+`export`) or commands that expose secret values.
 
 ## Requirements
 
@@ -71,6 +87,13 @@ TOML for any remote profile, then emit the complete command. Do not guess
   "filter then translate", or "prep data before translating", chain
   `curate/nemo_curator` (filter raw JSONL) → `translate/nemo_curator`
   (translate curated JSONL). Do not skip the curate stage.
+- **Checkpoint conversion**: route "Megatron to HF", "HF export", "convert
+  checkpoint", or "iter_* to safetensors" to `convert/megatron_to_hf`; route
+  "HF to Megatron" imports to `convert/hf_to_megatron`. Use a concrete
+  `iter_*` source for Megatron exports.
+- **Existing endpoint or checkpoint eval**: route hosted endpoint smoke tests
+  and benchmark requests to `eval/model_eval`; use `tiny_chat` for hosted chat
+  smoke and `default` for Megatron checkpoint evaluation.
 - **No env TOML profile present**: do not invent Lepton or `--batch`
   profiles; ask the user or fall back to local execution.
 
@@ -81,6 +104,13 @@ Required inputs before finalizing configs or commands:
   evaluator key.
 - For translation commands, also collect `server.url`, target/source languages,
   and the runtime-visible input/output paths.
+- For BYOB, collect benchmark/source document path, stage (`prepare`,
+  `generate`, `translate`, or `all`), target/source languages when translating,
+  and output directory.
+- For conversion, collect source checkpoint path, output path, model/config
+  source, and whether the source is HF, Megatron `iter_*`, or LoRA adapter.
+- For eval, collect endpoint URL/model ID or checkpoint path, task IDs,
+  endpoint type, API-key environment variable name, and sample limit.
 
 Response shape for recommendations: `Decision`, `Why`, `Required inputs`,
 `Config/command`, `Avoid`, and `Next step`. Always call out the stack to avoid
