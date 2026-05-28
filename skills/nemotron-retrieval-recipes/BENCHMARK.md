@@ -1,25 +1,23 @@
 # Benchmark Report
 
-Evaluation of the `nemotron-retrieval-recipes` skill, which guides agents through public Nemotron embedding and reranking retrieval recipe work.
+Evaluation plan and current validation status for the `nemotron-retrieval-recipes` skill, which guides agents through Nemotron `embed` and `rerank` retrieval recipe work.
 
-## Conformance Status
+## Status
 
-This report follows the functional skill evaluation approach: define realistic task cases, run the agent harness with and without the skill, compare aggregate metrics, and publish only reusable fixtures plus the summary report. Generated run artifacts stay out of source control.
+This is a new skill. The committed benchmark state is intentionally limited to the current 14-case dataset and local validation checks. Final with-skill versus without-skill live results have not been published yet for this skill.
 
-Current publication status: Codex evaluation is recorded for the original task set; Claude Code with-skill live evaluation is recorded for the 12-case expanded set. Full Claude Code lift analysis is still pending because the baseline leg hit evaluation harness failures. The dataset now contains 14 cases; the two newest cases cover long-running job boundaries and docs-to-checkout reconciliation and still need live with/without runs.
+Because the underlying recipe stages can run for hours, recipe wall-clock completion is not the primary benchmark signal. The benchmark should measure whether the skill improves agent behavior: routing to the right recipe family, grounding recommendations in the current checkout, using safe dry-runs before expensive stages, preserving secrets, interpreting metrics correctly, and handing off long-running execution clearly.
 
-Because the underlying recipe stages can run for hours, recipe wall-clock completion is not the primary benchmark signal. Report wall-clock time and token consumption for the agent harness as publication metadata, but judge lift mainly by whether the skill improves routing, repo grounding, safety around expensive execution, metric interpretation, and concrete run handoff.
+## Evaluation Targets
 
-## Agents Used
+| Agent harness | Status |
+| --- | --- |
+| Codex | 14-case with/without run pending |
+| Claude Code | 14-case with/without run pending |
 
-| Agent harness | Model | Status |
-| --- | --- | --- |
-| Codex | Configured evaluation model | Evaluated on original 4-case set |
-| Claude Code | Configured evaluation model | With-skill live run recorded for 12 cases; baseline/lift run invalid due harness failures |
+## Metrics
 
-## Metrics Used
-
-Default live-eval metrics:
+Use the configured live-eval metrics for paired runs:
 
 - `security`
 - `skill_execution`
@@ -28,7 +26,7 @@ Default live-eval metrics:
 - `goal_accuracy`
 - `behavior_check`
 
-Publication reporting should also include task completion rate plus agent-harness wall-clock time and token consumption when available. Static validation also uses deterministic skill-quality checks.
+Publication reporting should also include task completion rate plus agent-harness wall-clock time and token consumption when available. Those values measure evaluation cost, not expected recipe training runtime.
 
 ## Test Tasks
 
@@ -51,32 +49,16 @@ The dataset contains 14 realistic task cases in `evals/evals.json`:
 | `nemotron-retrieval-recipes-long-running-boundary-001` | Positive: long-running execution handoff |
 | `nemotron-retrieval-recipes-docs-integration-001` | Positive: docs-to-checkout reconciliation |
 
-## Results
+## Current Checks
 
-| Metric | Num | Codex | Claude Code |
-| --- | ---: | --- | --- |
-| Eval dataset validation | 14 tasks | Passed local structure validation | Not agent-specific |
-| Static quality score | 1 skill | 100/100 after rename/layout change | Not agent-specific |
-| Command freshness checklist | 6 representative commands | Passed manually after rename/layout change in current checkout | Not agent-specific |
-| Live overall score (original set) | 4 tasks | 0.90 with skill vs 0.66 without skill (+0.24) | Baseline/lift pending |
-| Live with-skill score (expanded set) | 12 tasks | Not rerun | 0.86 |
-| Task completion | 12-task Claude run | Not rerun | 12/12 scored attempts with skill |
-| Agent wall-clock and token cost | 14-task target | Pending next full run | Pending next full run |
-| Security | 12 tasks | 1.00 on original set | 1.00 |
-| Skill execution | 12 tasks | Not rerun | 0.90 |
-| Efficiency | 12 tasks | Not rerun | 0.77 |
-| Accuracy | 12 tasks | Not rerun | 0.95 |
-| Goal accuracy | 12 tasks | Not rerun | 0.85 |
-| Behavior check | 12 tasks | Not rerun | 0.69 |
+| Check | Result |
+| --- | --- |
+| Eval dataset structure | Passed for 14 cases |
+| Static skill-quality check | Passed, 100/100 |
+| Command freshness checklist | Passed in the current checkout |
 
-## Experiential Design Iteration
+Command freshness covered read-only help and dry-run checks for the documented `embed` and `rerank` recipe flows. Generated run artifacts should stay out of source control.
 
-A follow-up design iteration used three Codex-native trace-bundle trials: one baseline rerank-selection task without the skill, one with-skill embedding first-pass planning task, and one with-skill rerank NIM deployment-debug task. Automated trajectory review was not available, so the review used saved trace bundles instead. Two trials produced partial trajectory evidence because their subagent command runner could not spawn shell processes; the deployment-debug trial produced complete trace evidence with source/config inspection, CLI help, and dry-runs. The reusable deltas from those traces were folded into the skill references and pitfalls.
+## Publication Gate
 
-## Notes
-
-The eval setup compares with-skill and without-skill performance, keeps generated `evals/results/` output out of source control, and uses task prompts that do not explicitly name the skill. The committed `evals/evals.json` file is the reusable test dataset; aggregate results are summarized here rather than committing full run directories or raw provider traces.
-
-The Claude Code with-skill live run completed 12/12 scored attempts after explicit approval for live evaluation. Full Claude Code with/without lift was attempted, but the baseline leg was invalid because two baseline attempts failed in the evaluation harness (`AgentTimeoutError` and a tool-schema API error). Do not use the partial lift scores for pass/fail or model comparison.
-
-Before publication, rerun live with/without evaluation on the 14-case dataset for both Codex and Claude Code, then update the result table with task completion, agent wall-clock time, and token consumption. Local structure validation, static evaluation, and command freshness checks passed after the rename/layout change.
+Before publication, run paired with-skill and without-skill evaluation on the 14-case dataset for both target agent harnesses, then update this report with aggregate scores, uplift, task completion rate, agent-harness wall-clock time, token consumption, and any skipped-agent limitations.
