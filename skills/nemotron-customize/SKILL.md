@@ -1,10 +1,11 @@
 ---
 name: nemotron-customize
-description: "Plan, configure, and chain repo-native Nemotron customization steps into single-step or multi-step pipelines: data curation/cleaning (curate/nemo_curator), corpus translation (translate/nemo_curator), SFT and PEFT/LoRA on AutoModel or Megatron-Bridge, pretraining/CPT, RL alignment (DPO/RLVR/GRPO/RLHF), BYOB/MCQ benchmarks, checkpoint conversion, ModelOpt optimization, env profiles, and evaluation of trained checkpoints or existing/hosted endpoints (eval/model_eval). Use when a request names a Nemotron step or workflow; asks to clean, filter, translate, train, fine-tune, align, convert, optimize, or evaluate a model; asks to evaluate an existing or hosted endpoint; or asks to compose several steps into a pipeline."
+description: "Plan, configure, and chain repo-native Nemotron customization steps into single-step or multi-step pipelines: curation, translation, SFT/PEFT (AutoModel or Megatron-Bridge), pretraining/CPT, RL alignment (DPO/RLVR/GRPO/RLHF), BYOB/MCQ benchmarks, checkpoint conversion, ModelOpt optimization, env profiles, and evaluation of trained checkpoints or existing/hosted endpoints. Use when a request names a Nemotron step or workflow, or asks to clean, translate, train, fine-tune, align, convert, optimize, evaluate, or compose these into a pipeline. Do NOT use for frontend/dashboard/visualization work, generic ML advice, billing/access, or non-Nemotron coding tasks."
+version: 0.1.1
 license: Apache-2.0
 metadata:
   version: 0.1.1
-  author: NVIDIA Nemotron Team
+  author: NVIDIA Nemotron Team <noreply@nvidia.com>
   tags:
     - nemotron
     - customization
@@ -25,6 +26,8 @@ Evaluation requests count even when no training is involved: "evaluate",
 ID, or a deployed model all route to `eval/model_eval`. Read this skill for
 those too.
 
+## Purpose
+
 Turn a model-customization request into a repo-native Nemotron step pipeline.
 Plan the DAG, validate artifact wiring, and create only the YAML/config files
 needed to run existing steps.
@@ -34,6 +37,31 @@ submitting existing Nemotron steps or multi-step training/customization
 pipelines. For frontend, dashboard, visualization, generic ML advice,
 billing/access, or unrelated coding tasks, stop with a short scope note and do
 not inspect the step catalog or edit files in that turn.
+
+## Prerequisites
+
+- A checkout of the Nemotron repo with `src/nemotron/steps/` present; run from
+  the repo root.
+- `uv` available to invoke `uv run nemotron steps ...`.
+- For remote execution: an env profile TOML (`NEMOTRON_ENV_FILE` or
+  `env*.toml`) with a section matching the selected step.
+- For hosted services (translation, hosted eval): the auth environment variable
+  expected by the step (for example `NVIDIA_API_KEY`), exported in the
+  environment — never inlined or committed.
+- User-provided concrete values (model/checkpoint, data paths, output dir,
+  hardware/GPU count) before any command is presented as runnable.
+
+## Limitations
+
+- Does not invent new catalog steps. When no existing step, runner, recipe, CLI,
+  or config can satisfy the request, it names the gap (Explorer mode) instead of
+  fabricating a step.
+- Produces YAML/config for existing steps; new Python/shell is out of scope
+  except in Explorer mode after the gap is approved.
+- Not for deployment-only/serving, frontend, dashboards, generic ML advice, or
+  non-Nemotron tasks.
+- Does not guess concrete values (paths, model IDs, GPU counts, profiles); it
+  asks or returns `Blocked` when they are missing.
 
 ## Core Rule
 
@@ -121,7 +149,12 @@ pipeline by artifact matching from the user's end goal: chain a step only when
 the next step consumes an artifact type nothing upstream already produces. Do
 not rely on fixed, named step combinations.
 
-## Workflows
+## Instructions
+
+Follow the flow that matches the request: a recommendation/plan, a single-step
+command, or a multi-step pipeline. In all cases, route from the bundled
+references first, gather required inputs, and verify the selected live step
+before presenting anything as runnable.
 
 ### Recommendation Response
 
@@ -254,6 +287,27 @@ Do not:
   `step.toml`, `step.py`, runners); only add a new config beside them.
 - Restate all per-step rules in `SKILL.md`; use bundled references and source
   fallback.
+
+## Examples
+
+**Single-step routing (LoRA on a small box).** User: "LoRA fine-tune a HF model
+on 2 GPUs." Route per `CATALOG.md` -> `peft/automodel` (HF base + small GPU
+count); do not offer Megatron-Bridge. Collect base model, JSONL data path,
+output dir, LoRA rank/alpha, then emit one `uv run nemotron steps run
+peft/automodel -c <config> --dry-run ...` command.
+
+**Multi-step pipeline (Super3 SFT).** User: "data prep + SFT for Super3." This is
+two stages, so plan first: SFT on Super3 -> Megatron-Bridge, which consumes
+`packed_parquet`, so `data_prep/sft_packing` is required upstream. Present the
+DAG (`sft_packing -> sft/megatron_bridge`), align `pack_size`/`seq_length`/
+tokenizer, wait for approval, then add new configs under
+`src/nemotron/steps/<step>/config/<name>.yaml`. Super3 needs a remote profile;
+state the env TOML prerequisite or mark `Blocked`.
+
+**Hosted-endpoint evaluation (no training).** User: "benchmark my hosted model
+endpoint." Route to `eval/model_eval` with `-c tiny_chat`. Collect endpoint URL,
+model id, task IDs, and the auth env-var name (value exported, never inlined).
+See `references/COMMANDS.md` Evaluation Examples.
 
 ## Troubleshooting
 
