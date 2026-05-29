@@ -17,6 +17,7 @@
 Supported Pipelines:
     - run_pretrain_pipeline: Tokenize to Megatron bin/idx format
     - run_sft_pipeline: Chat SFT to packed Parquet format
+    - run_sft_omni_pipeline: Multimodal video-language SFT to Energon WebDataset
 
 Usage:
     from nemotron.data_prep.api import run_pretrain_pipeline, run_sft_pipeline
@@ -45,8 +46,10 @@ Usage:
 # Re-export recipe entry points as the primary public API
 from nemotron.data_prep.recipes.pretrain import run_pretrain_pipeline
 from nemotron.data_prep.recipes.sft import run_sft_pipeline
+from nemotron.data_prep.recipes.sft_omni import run_sft_omni_pipeline
 
 __all__ = [
     "run_pretrain_pipeline",
+    "run_sft_omni_pipeline",
     "run_sft_pipeline",
 ]

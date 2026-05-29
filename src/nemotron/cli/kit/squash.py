@@ -27,7 +27,12 @@ from rich.panel import Panel
 from rich.table import Table
 
 from nemo_runspec.env import load_env_profile
-from nemo_runspec.squash import check_sqsh_exists, container_to_sqsh_name
+from nemo_runspec.squash import (
+    build_salloc_args,
+    check_sqsh_exists,
+    get_squash_path,
+    normalize_container_source,
+)
 
 console = Console()
 
@@ -39,7 +44,11 @@ def squash(
     ),
     container: str | None = typer.Argument(
         None,
-        help="Docker image to squash (e.g., 'nvcr.io/nvidian/nemo:25.11-nano-v3.rc2')",
+        help=(
+            "Container image or archive URI to squash "
+            "(e.g., 'nvcr.io/nvidian/nemo:25.11-nano-v3.rc2' or "
+            "'oci-archive:///path/to/image.tar')"
+        ),
     ),
     dry_run: bool = typer.Option(
         False,
@@ -92,8 +101,8 @@ def squash(
         raise typer.Exit(1)
 
     # Generate squash filename
-    sqsh_name = container_to_sqsh_name(container)
-    remote_path = f"{remote_job_dir}/{sqsh_name}"
+    remote_path = get_squash_path(container, remote_job_dir)
+    container_source = normalize_container_source(container)
 
     # Show configuration
     table = Table(show_header=False, box=None, padding=(0, 2))
@@ -110,7 +119,7 @@ def squash(
         console.print("[yellow]Dry-run mode - no changes will be made[/yellow]")
         console.print()
         console.print(f"Would run on {host}:")
-        console.print(f"  enroot import --output {remote_path} docker://{container}")
+        console.print(f"  enroot import --output {remote_path} {container_source}")
         return
 
     # Connect to cluster
@@ -149,24 +158,10 @@ def squash(
         tunnel.run(f"rm -f {remote_path}", hide=True)
 
     # Build salloc command to run enroot import on a compute node
-    # (login nodes don't have enough memory for enroot import)
-    account = env_config.get("account")
-    partition = env_config.get("run_partition") or env_config.get("partition")
-    time_limit = env_config.get("time", "04:00:00")
-    gpus_per_node = env_config.get("gpus_per_node")
+    # (login nodes don't have enough memory for enroot import).
+    salloc_args = build_salloc_args(env_config)
 
-    salloc_args = []
-    if account:
-        salloc_args.append(f"--account={account}")
-    if partition:
-        salloc_args.append(f"--partition={partition}")
-    salloc_args.append("--nodes=1")
-    salloc_args.append("--ntasks-per-node=1")
-    if gpus_per_node:
-        salloc_args.append(f"--gpus-per-node={gpus_per_node}")
-    salloc_args.append(f"--time={time_limit}")
-
-    enroot_cmd = f"enroot import --output {remote_path} docker://{container}"
+    enroot_cmd = f"enroot import --output {remote_path} {container_source}"
     cmd = f"salloc {' '.join(salloc_args)} srun --export=ALL {enroot_cmd}"
 
     # Run enroot import via salloc

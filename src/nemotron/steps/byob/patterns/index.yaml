@@ -1,0 +1,10 @@
+patterns:
+  - id: create-byob-mcq-from-domain-corpus
+    title: Create BYOB MCQ benchmark from domain documents
+    confidence: high
+  - id: translate-byob-mcq-benchmark
+    title: Translate an existing BYOB MCQ benchmark
+    confidence: high
+  - id: add-new-benchmark-family
+    title: Add a new BYOB benchmark family
+    confidence: high

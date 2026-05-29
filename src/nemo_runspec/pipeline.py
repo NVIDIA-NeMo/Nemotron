@@ -53,7 +53,7 @@ class PipelineConfig:
     Attributes:
         launcher: Execution backend ("local", "nemo-run", or "sbatch")
         nproc_per_node: Number of processes (GPUs) per node
-        executor: NeMo-Run executor type ("local" or "slurm")
+        executor: NeMo-Run executor type ("local", "slurm", "dgxcloud", or "lepton")
         account: Slurm account name
         partition: Slurm partition name
         nodes: Number of nodes for distributed training
@@ -81,7 +81,7 @@ class PipelineConfig:
     """Number of processes (GPUs) per node."""
 
     # Slurm settings (nemo-run and sbatch)
-    executor: Literal["local", "slurm"] = "local"
+    executor: Literal["local", "slurm", "dgxcloud", "lepton"] = "local"
     """NeMo-Run executor type."""
 
     account: str | None = None

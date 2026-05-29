@@ -19,6 +19,7 @@ Handles loading executor configurations and profile inheritance.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -70,7 +71,8 @@ def load_env_file(config_path: Path | None = None) -> dict[str, Any]:
         Dictionary with all profiles from the file.
     """
     if config_path is None:
-        config_path = find_env_file()
+        env_override = os.environ.get("NEMOTRON_ENV_FILE")
+        config_path = Path(env_override).expanduser() if env_override else find_env_file()
 
     if config_path is None:
         return {}

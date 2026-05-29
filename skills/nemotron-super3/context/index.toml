@@ -1,0 +1,165 @@
+version = 1
+model = "nemotron-super3"
+default_entry = "quick-reference"
+
+[[entries]]
+id = "quick-reference"
+topic = "overview"
+file = "quick-reference.md"
+kind = "compact"
+description = "Compact reference for identity, architecture, training stages, quantization, evaluation, and reproduction caveats."
+
+[[entries]]
+id = "model-card"
+topic = "identity"
+file = "../model-card.md"
+kind = "release"
+description = "Release metadata, variants, intended use, languages, and headline benchmark framing."
+
+[[entries]]
+id = "paper-overview"
+topic = "overview"
+file = "../paper/_overview.md"
+kind = "paper"
+description = "Abstract, positioning, contributions, and top-line numbers."
+
+[[entries]]
+id = "paper-architecture"
+topic = "architecture"
+file = "../paper/architecture.md"
+kind = "paper"
+description = "Hybrid stack, LatentMoE, MTP, and 1M-context design anchors."
+
+[[entries]]
+id = "paper-pretraining"
+topic = "pretraining"
+file = "../paper/pretraining.md"
+kind = "paper"
+description = "NVFP4 pretraining, phase 1/phase 2 curriculum, hyperparameters, long-context extension, and merge evaluation."
+
+[[entries]]
+id = "paper-data"
+topic = "data"
+file = "../paper/data.md"
+kind = "paper"
+description = "Synthetic pretraining sets, SFT domains, RL datasets, and open-data release caveats."
+
+[[entries]]
+id = "paper-sft"
+topic = "sft"
+file = "../paper/sft.md"
+kind = "paper"
+description = "Two-stage loss, SFT blend, reasoning modes, and budget-control tuning."
+
+[[entries]]
+id = "paper-rl-overview"
+topic = "rl"
+file = "../paper/rl/overview.md"
+kind = "paper"
+description = "RL pipeline map: RLVR, SWE-RL, RLHF, and MTP healing."
+
+[[entries]]
+id = "paper-rl-rlvr"
+topic = "rlvr"
+file = "../paper/rl/rlvr.md"
+kind = "paper"
+description = "Multi-environment RL from verifiable rewards."
+
+[[entries]]
+id = "paper-rl-swe"
+topic = "swe-rl"
+file = "../paper/rl/swe.md"
+kind = "paper"
+description = "SWE pivot and full SWE-bench RL stages."
+
+[[entries]]
+id = "paper-rlhf"
+topic = "rlhf"
+file = "../paper/rl/rlhf.md"
+kind = "paper"
+description = "Principle-following GenRM and the final RLHF stage."
+
+[[entries]]
+id = "paper-evaluation"
+topic = "evaluation"
+file = "../paper/evaluation.md"
+kind = "paper"
+description = "Base and post-trained evaluation methodology and headline results."
+
+[[entries]]
+id = "paper-quantization"
+topic = "quantization"
+file = "../paper/quantization.md"
+kind = "paper"
+description = "FP8 and NVFP4 PTQ, AutoQuantize, QAD, and Mamba-state quantization."
+
+[[entries]]
+id = "paper-safety"
+topic = "safety"
+file = "../paper/safety.md"
+kind = "paper"
+description = "Safety datasets, jailbreak/over-refusal environments, RLHF guardrails, and limitations."
+
+[[entries]]
+id = "recipes-overview"
+topic = "reproduction"
+file = "../recipes/overview.md"
+kind = "recipe"
+description = "Top-level released stage graph and stage handoffs."
+
+[[entries]]
+id = "recipes-stage0"
+topic = "reproduction-pretrain"
+file = "../recipes/stage0_pretrain.md"
+kind = "recipe"
+description = "Released pretraining commands, configs, artifacts, and code paths."
+
+[[entries]]
+id = "recipes-stage1"
+topic = "reproduction-sft"
+file = "../recipes/stage1_sft.md"
+kind = "recipe"
+description = "Released SFT data prep, fine-tune config, and HF export path."
+
+[[entries]]
+id = "recipes-stage2"
+topic = "reproduction-rl"
+file = "../recipes/stage2_rl.md"
+kind = "recipe"
+description = "Released RL hub with links to RLVR, SWE1, SWE2, and RLHF."
+
+[[entries]]
+id = "recipes-stage2-rlvr"
+topic = "reproduction-rlvr"
+file = "../recipes/stage2_rl_rlvr.md"
+kind = "recipe"
+description = "Released RLVR config, data path, and training entrypoint."
+
+[[entries]]
+id = "recipes-stage2-swe1"
+topic = "reproduction-swe1"
+file = "../recipes/stage2_rl_swe1.md"
+kind = "recipe"
+description = "Released SWE pivot config and infrastructure notes."
+
+[[entries]]
+id = "recipes-stage2-swe2"
+topic = "reproduction-swe2"
+file = "../recipes/stage2_rl_swe2.md"
+kind = "recipe"
+description = "Released full SWE-bench harness config and sandbox requirements."
+
+[[entries]]
+id = "recipes-stage2-rlhf"
+topic = "reproduction-rlhf"
+file = "../recipes/stage2_rl_rlhf.md"
+kind = "recipe"
+description = "Released RLHF config, GenRM plumbing, and chaining caveats."
+
+[[entries]]
+id = "recipes-stage3"
+topic = "reproduction-eval"
+file = "../recipes/stage3_eval.md"
+kind = "recipe"
+description = "Released evaluator command flow, config compilation, and deployment settings."
+

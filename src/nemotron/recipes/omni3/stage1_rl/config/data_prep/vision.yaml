@@ -1,0 +1,9 @@
+stage: vision
+dataset_name: mmpr_tiny
+source_uri: hf://OpenGVLab/MMPR-Tiny
+input_dir: ${oc.env:OMNI3_MMPR_TINY_RAW,data/mmpr_tiny/raw}
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/stage1_rl/data_prep/vision
+# meta_name is informational for the vision flavor (the GRPO loader reads
+# the parquet directly); we keep the field in the schema for parity with mpo.
+meta_name: meta_public.json
+force: false

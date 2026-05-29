@@ -112,3 +112,33 @@ git_dir = "/lustre/git-cache"
 
 Profiles are selected via `--run <profile>` or `--batch <profile>`.
 Special sections (`wandb`, `cli`, `cache`, `artifacts`) are not executor profiles.
+
+### Build-context keys
+
+For commands that compile or import container images on Slurm
+(`nemotron <family> build`, `kit squash`, etc.), profiles can set
+build-specific overrides. Each key falls back through a precedence chain
+so non-build jobs are unaffected:
+
+| Key | Purpose | Precedence |
+| --- | --- | --- |
+| `build_partition` | Slurm partition for the build job | `build_partition` > `run_partition` > `partition` |
+| `build_time` | Walltime for the build job | `build_time` > `time` > caller default |
+| `build_image` | Container image used to *run* the build (e.g. podman-in-pyxis) | `build_image` > caller default |
+| `build_cache_dir` | Host-side cache dir mounted into the build container at `/nemotron-cache` | `build_cache_dir` > caller default (`~/.cache/nemotron`) |
+
+Builds are typically CPU-only, so on training profiles whose
+`run_partition` is GPU-only you should set `build_partition` to a CPU
+partition. Likewise, on remote builds `build_cache_dir` should point at
+a cluster-visible path (typically Lustre); the laptop's `~/.cache/`
+default is not visible to compute nodes.
+
+```toml
+[dlw]
+extends = "base"
+partition = "batch"
+run_partition = "interactive"     # GPU partition, used for training
+build_partition = "cpu"            # CPU partition, used for builds
+build_cache_dir = "/lustre/fsw/portfolios/<account>/users/<user>/.cache/nemotron"
+build_image = "docker://quay.io#podman/stable:v5.3"
+```

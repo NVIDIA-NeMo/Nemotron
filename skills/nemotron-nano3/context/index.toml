@@ -1,0 +1,47 @@
+[[packs]]
+id = "identity"
+intent = "identity"
+file = "quick-reference.md"
+description = "Compact Nano3 identity, architecture, benchmark, and handoff map."
+
+[[packs]]
+id = "architecture"
+intent = "architecture"
+file = "../paper/architecture.md"
+description = "Hybrid Mamba-Transformer-MoE architecture, active parameters, and long-context notes."
+
+[[packs]]
+id = "pretraining"
+intent = "pretraining"
+file = "../paper/pretraining.md"
+description = "Two-phase 25T-token curriculum, optimization, and long-context CPT."
+
+[[packs]]
+id = "posttraining-sft"
+intent = "sft"
+file = "../paper/sft.md"
+description = "Chat template, SFT data domains, reasoning control, and hyperparameters."
+
+[[packs]]
+id = "posttraining-rl"
+intent = "rl"
+file = "../paper/rl.md"
+description = "RLVR environments, GRPO details, RLHF, and DPO-adjacent alignment notes."
+
+[[packs]]
+id = "evaluation"
+intent = "benchmarks"
+file = "../paper/evaluation.md"
+description = "Base and post-trained benchmark tables, throughput, quantization, and prompt sensitivity."
+
+[[packs]]
+id = "recipes-overview"
+intent = "reproduce"
+file = "../recipes/overview.md"
+description = "Public recipe stage map and exact public/non-public reproduction boundary."
+
+[[packs]]
+id = "customize-handoff"
+intent = "build"
+file = "quick-reference.md"
+description = "Maps Nano3 paper concepts to nemotron-customize steps or Explorer-mode fallbacks."

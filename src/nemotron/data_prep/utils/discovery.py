@@ -101,14 +101,16 @@ def fetch_hf_dataset_metadata(
         # Create request with optional authentication for gated datasets
         request = urllib.request.Request(url)
 
-        # Try to get HuggingFace token for authentication
-        # Check HF_TOKEN env var first (for remote execution), then local cache
+        # Try to get HuggingFace token for authentication.
+        # Check HF_TOKEN env var first (for remote execution), then local
+        # cache via ``get_token`` (which replaces ``HfFolder.get_token``
+        # removed in huggingface_hub 1.x).
         token = os.environ.get("HF_TOKEN")
         if not token:
             try:
-                from huggingface_hub import HfFolder
+                from huggingface_hub import get_token
 
-                token = HfFolder.get_token()
+                token = get_token()
             except Exception:
                 pass  # huggingface_hub not installed or no token
         if token:
@@ -213,13 +215,15 @@ def discover_hf_files(config: DatasetConfig) -> list[FileInfo]:
 
     hf_path = config.path[5:]  # Remove hf:// prefix
 
-    # Get token from env var (for remote execution) or local cache
+    # Get token from env var (for remote execution) or local cache.
+    # ``get_token`` replaces ``HfFolder.get_token`` (removed in
+    # huggingface_hub 1.x) and reads the same locations.
     token = os.environ.get("HF_TOKEN")
     if not token:
         try:
-            from huggingface_hub import HfFolder
+            from huggingface_hub import get_token
 
-            token = HfFolder.get_token()
+            token = get_token()
         except Exception:
             pass  # No token available
 
