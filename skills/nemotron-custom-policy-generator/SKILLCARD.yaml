@@ -1,0 +1,114 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: CC-BY-4.0
+#
+# SKILLCARD.yaml — Nemotron Custom Policy Generator
+#
+# This is a TEMPLATE. The NVCARPS pipeline auto-populates most of these
+# fields from the skill repo and pipeline outputs (identity, provenance,
+# scan results, evaluation metrics). The fields the team owns are marked
+# with `# team-owned`. Auto-generated fields are marked `# auto`.
+#
+# Contact Michael Boone (mboone@nvidia.com) for the live spec.
+
+skillcard_version: "1.0"
+
+identity:                              # team-owned
+  name: nemotron-policy-generator
+  display_name: "Nemotron Custom Policy Generator"
+  version: "1.0.0"
+  description: >-
+    Turns rough, half-baked safety notes into a deployable content-safety
+    policy for NVIDIA Nemotron safety models (Nemotron-Content-Safety-
+    Reasoning-4B and Nemotron-3-Content-Safety). Produces a Markdown
+    policy, JSON taxonomy, drop-in inference prompts, and optional .docx.
+  domain: ai-safety
+  product: nemotron-content-safety
+
+provenance:                            # auto
+  source_repo: NVIDIA/nemotron-policy-generator    # update to match your repo
+  source_path: skills/nemotron-policy-generator
+  source_commit_sha: _auto_                        # populated by NVCARPS
+  source_commit_date: _auto_
+  build_id: _auto_
+  nspect_id: _auto_                                # populated when nSpect auto-allocation ships
+
+ownership:                             # team-owned
+  team: "Nemotron Safety PM"
+  primary_contact: "Shyamala Prayaga <sprayaga@nvidia.com>"
+  slack_channel: "#nv-skills-onboarding"
+
+license:                               # team-owned (matches LICENSE in repo)
+  spdx: "Apache-2.0 AND CC-BY-4.0"
+  apache_scope: ["scripts/", "evals/"]
+  cc_by_scope: ["SKILL.md", "references/", "BENCHMARK.md", "EVAL.md"]
+
+compatibility:                         # team-owned
+  target_models:
+    - "nvidia/Nemotron-Content-Safety-Reasoning-4B"
+    - "nvidia/Nemotron-3-Content-Safety"
+  agent_harnesses:
+    - claude-code
+    - codex
+  runtimes:
+    - vllm
+    - sglang
+    - trtllm
+    - transformers
+    - nemo-guardrails
+
+intended_use:                          # team-owned
+  primary:
+    - "Generate a BYO safety policy artifact for Nemotron content-safety models"
+    - "Extend or refine an existing safety policy"
+    - "Produce a labeling rubric for trust-and-safety teams"
+  out_of_scope:
+    - "Evaluating quality of an existing deployed policy (review task)"
+    - "Benchmarking whether a model follows a policy (eval task)"
+    - "Providing legal advice on what a policy should cover (legal review)"
+
+behavioral_boundaries:                 # team-owned — required for OSRB / PLC sign-off
+  must_emit:
+    - "Markdown policy file (canonical source of truth)"
+    - "JSON taxonomy validated against assets/policy_json_schema.json"
+    - "Nemotron-formatted system prompt for the selected target_model"
+  may_emit:
+    - ".docx artifact when user mentions sign-off / legal / review"
+    - "YAML taxonomy when user mentions Helm / K8s / Ansible context"
+  must_not_emit:
+    - "Persuasive content endorsing a particular jurisdiction's policy"
+    - "Legal advice or jurisdiction-specific compliance assertions"
+
+scan_results:                          # auto — populated by NVCARPS / NV-BASE
+  nv_base:
+    status: _auto_           # pass | fail
+    timestamp: _auto_
+    findings: []
+  security:
+    prompt_injection: _auto_
+    secrets: _auto_
+    pii: _auto_
+    unsafe_patterns: _auto_
+  spec_compliance:
+    agentskills_io_spec: _auto_
+    skill_md_token_budget: _auto_
+    dependency_audit: _auto_
+
+evaluation_metrics:                    # auto — populated from BENCHMARK.md
+  dimensions:
+    security: _auto_
+    correctness: _auto_
+    discoverability: _auto_
+    effectiveness: _auto_
+    efficiency: _auto_
+  uplift_vs_baseline:
+    accuracy_delta: _auto_
+    goal_accuracy_delta: _auto_
+    behavior_check_delta: _auto_
+  trigger_accuracy:
+    positive_recall: _auto_
+    negative_precision: _auto_
+
+signing:                               # auto — populated by NVCARPS 3S pipeline
+  signed_by: _auto_                    # 3S external signing service
+  signature_file: skill.oms.sig
+  signing_timestamp: _auto_
