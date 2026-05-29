@@ -14,6 +14,7 @@ its own `SKILL.md` (frontmatter + body) and lives in a sibling directory.
 | **[/nemotron-add-step](nemotron-add-step/SKILL.md)** | A contributor wants to **add a new step** to the catalog under [src/nemotron/steps/](../src/nemotron/steps/). |
 | **[/nemotron-add-pattern](nemotron-add-pattern/SKILL.md)** | A contributor wants to **encode a cross-cutting decision rule** (tokenizer lock, eval bookends, etc.) under [src/nemotron/steps/patterns/](../src/nemotron/steps/patterns/). |
 | **[/nemotron-add-model](nemotron-add-model/SKILL.md)** | A contributor wants to **onboard a new model family** so downstream skills can route to it. |
+| **[/nemotron-custom-policy-generator](nemotron-custom-policy-generator/SKILL.md)** | A contributor wants to **generate a custom policy** for a Nemotron content safety model. |
 
 ## Layering
 
