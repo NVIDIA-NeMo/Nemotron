@@ -1,5 +1,5 @@
 ## Description: <br>
-Plan Nemotron customization pipelines from repo steps: SFT, PEFT/LoRA, AutoModel vs Megatron-Bridge, DPO/RLVR/GRPO/RLHF, curate-then-translate, BYOB/MCQ benchmark prep or translation, checkpoint conversion, ModelOpt optimization, and endpoint or checkpoint evaluation. <br>
+Plan and configure repo-native Nemotron customization workflows from existing steps: curate/nemo_curator JSONL cleaning, translate/nemo_curator corpus translation, sft/automodel, peft/automodel, sft/megatron_bridge, peft/megatron_bridge, pretrain/CPT, rl/nemo_rl alignment, byob/mcq benchmarks, convert/megatron_to_hf and other checkpoint conversion, optimize/modelopt, eval/model_eval, env/env_toml profiles, and end-to-end pipelines. <br>
 
 This skill is ready for commercial/non-commercial use. <br>
 
@@ -9,7 +9,7 @@ NVIDIA <br>
 ### License/Terms of Use: <br>
 Apache 2.0 <br>
 ## Use Case: <br>
-Developers and engineers use this skill to plan and configure Nemotron model customization pipelines, including SFT, PEFT/LoRA, alignment (DPO/RLVR/GRPO/RLHF), data curation, translation, BYOB/MCQ benchmark preparation, checkpoint conversion, ModelOpt optimization, and endpoint or checkpoint evaluation. <br>
+Developers and engineers use this skill to plan and configure repo-native Nemotron customization workflows from existing steps: curate/nemo_curator JSONL cleaning, translate/nemo_curator corpus translation, sft/automodel, peft/automodel, sft/megatron_bridge, peft/megatron_bridge, pretrain/CPT, rl/nemo_rl alignment, byob/mcq benchmarks, convert/megatron_to_hf and other checkpoint conversion, optimize/modelopt, eval/model_eval, env/env_toml profiles, and end-to-end pipelines. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
@@ -19,6 +19,11 @@ Risk: Review before execution as proposals could introduce incorrect or misleadi
 Mitigation: Review and scan skill before deployment. <br>
 
 ## Reference(s): <br>
+- [CATALOG.md](references/CATALOG.md) <br>
+- [ARTIFACTS.md](references/ARTIFACTS.md) <br>
+- [COMMANDS.md](references/COMMANDS.md) <br>
+- [HARDWARE.md](references/HARDWARE.md) <br>
+- [PATTERNS.md](references/PATTERNS.md) <br>
 - [WORKFLOW.md](references/WORKFLOW.md) <br>
 - [PROJECT.md](references/act/PROJECT.md) <br>
 - [STAGE.md](references/act/STAGE.md) <br>
@@ -69,7 +74,7 @@ Underlying evaluation signals used in this run: <br>
 | Efficiency | 8 | 58% (+31%) | 55% (+16%) |
 
 ## Skill Version(s): <br>
-0.1.1 (source: frontmatter) <br>
+0.1.1 (source: SKILL.md frontmatter metadata) <br>
 
 ## Ethical Considerations: <br>
 NVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications. When downloaded or used in accordance with our terms of service, developers should work with their internal team to ensure this skill meets requirements for the relevant industry and use case and addresses unforeseen product misuse. <br>
