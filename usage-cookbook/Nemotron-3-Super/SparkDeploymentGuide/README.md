@@ -133,18 +133,26 @@ speculative_config:
 **Serve command**
 
 ```bash
-TLLM_ALLOW_LONG_MAX_MODEL_LEN=1 \
-trtllm-serve <nvfp4_ckpt> \
-  --host 0.0.0.0 \
-  --port 8123 \
-  --max_batch_size 8 \
-  --tp_size 1 --ep_size 1 \
-  --max_num_tokens 8192 \
-  --trust_remote_code \
-  --reasoning_parser nano-v3 \
-  --tool_parser qwen3_coder \
-  --extra_llm_api_options extra-llm-api-config.yml \
-  --max_seq_len 1048576
+docker run --rm -it --gpus all \
+  -e TLLM_ALLOW_LONG_MAX_MODEL_LEN=1 \
+  -p 8000:8000 \
+  -v $(pwd)/extra-llm-api-config.yml:/app/extra-llm-api-config.yml \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc9 \
+    trtllm-serve \
+      nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 \
+      --host 0.0.0.0 \
+      --port 8000 \
+      --max_batch_size 8 \
+      --tp_size 1 \
+      --ep_size 1 \
+      --max_num_tokens 8192 \
+      --max_seq_len 1048576 \
+      --trust_remote_code \
+      --reasoning_parser nano-v3 \
+      --tool_parser qwen3_coder \
+      --extra_llm_api_options /app/extra-llm-api-config.yml
+
 ```
 
 ### Config Rationale
