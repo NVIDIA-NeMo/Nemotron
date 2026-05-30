@@ -22,6 +22,7 @@ import re
 import shlex
 import subprocess
 import sys
+import textwrap
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,86 @@ from omegaconf import OmegaConf
 from nemotron.kit.train_script import apply_hydra_overrides, load_omegaconf_yaml, parse_config_and_overrides
 
 _PEFT_ADAPTER_CONFIG = "adapter_config.json"
+_DEFAULT_DISTRIBUTED_CONVERTER_SCRIPT = "/opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py"
+# TODO: Remove this compatibility shim once the Super3 conversion image ships
+# Megatron-Bridge's duplicate pipeline-stage tensor handling.
+_DUPLICATE_PP_TENSOR_BOOTSTRAP = textwrap.dedent(
+    """
+    import inspect
+    import runpy
+    import sys
+
+    import torch
+
+    script = sys.argv[1]
+    script_args = sys.argv[2:]
+
+    def _broadcast_from_first_pp_rank(self, tensor, cache_key=None):
+        if self.pp_size == 1:
+            return tensor
+
+        if cache_key is not None and cache_key in self._tensor_spec_output_cache:
+            tensor_spec_output = self._tensor_spec_output_cache[cache_key]
+        else:
+            if tensor is not None:
+                tensor_spec = (
+                    tensor.shape,
+                    tensor.dtype,
+                    getattr(tensor, "tensor_model_parallel", None),
+                    getattr(tensor, "partition_dim", None),
+                )
+            else:
+                tensor_spec = None
+
+            tensor_spec_output = [None] * self.pp_size
+            torch.distributed.all_gather_object(tensor_spec_output, tensor_spec, group=self.pp_group)
+            if cache_key is not None:
+                self._tensor_spec_output_cache[cache_key] = tensor_spec_output
+
+        target_tensor_spec = None
+        src_rank = None
+        for rank, spec in enumerate(tensor_spec_output):
+            if spec is not None:
+                target_tensor_spec = spec
+                src_rank = rank
+                break
+
+        if target_tensor_spec is None:
+            raise ValueError(
+                "Object must exist on at least one PP rank. "
+                f"megatron_param={self.megatron_param}, hf_param={self.hf_param}, cache_key={cache_key}"
+            )
+
+        if tensor is None:
+            shape, dtype, tensor_parallel, partition_dim = target_tensor_spec
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            tensor = torch.empty(shape, dtype=dtype, device=device)
+            if tensor_parallel is not None:
+                tensor.tensor_model_parallel = tensor_parallel
+            if partition_dim is not None:
+                tensor.partition_dim = partition_dim
+
+        global_src = torch.distributed.get_global_rank(group=self.pp_group, group_rank=src_rank)
+        torch.distributed.broadcast(tensor, src=global_src, group=self.pp_group)
+        return tensor
+
+    from megatron.bridge.models.conversion.param_mapping import MegatronParamMapping
+
+    existing = getattr(MegatronParamMapping, "broadcast_from_pp_rank", None)
+    if existing is None:
+        raise RuntimeError("MegatronParamMapping.broadcast_from_pp_rank is missing; cannot apply PP duplicate policy.")
+    parameters = inspect.signature(existing).parameters
+    if "tensor" not in parameters or "cache_key" not in parameters:
+        raise RuntimeError(
+            "MegatronParamMapping.broadcast_from_pp_rank has an unexpected signature; "
+            "disable duplicate_pp_tensor_policy or update the compatibility shim."
+        )
+
+    MegatronParamMapping.broadcast_from_pp_rank = _broadcast_from_first_pp_rank
+    sys.argv = [script, *script_args]
+    runpy.run_path(script, run_name="__main__")
+    """
+).strip()
 
 
 def load_convert_config(default_config: Path) -> dict[str, Any]:
@@ -45,11 +126,21 @@ def load_convert_config(default_config: Path) -> dict[str, Any]:
 
 def run_hf_to_megatron(default_config: Path) -> None:
     cfg = load_convert_config(default_config)
+    if _use_distributed_conversion(cfg):
+        exec_distributed_conversion("import", cfg)
+        return
+    if _skip_direct_conversion_on_nonzero_rank():
+        return
     import_hf_to_megatron(cfg)
 
 
 def run_megatron_to_hf(default_config: Path) -> None:
     cfg = load_convert_config(default_config)
+    if _use_distributed_conversion(cfg):
+        exec_distributed_conversion("export", cfg)
+        return
+    if _skip_direct_conversion_on_nonzero_rank():
+        return
     export_megatron_to_hf(
         megatron_path=_required_str(cfg, "megatron_path"),
         hf_model_id=_required_str(cfg, "hf_model_id"),
@@ -226,6 +317,274 @@ def build_megatron_lora_merge_command(
     return command
 
 
+def exec_distributed_conversion(direction: str, cfg: Mapping[str, Any]) -> None:
+    """Replace the current process with the multi-GPU conversion command."""
+    command = build_distributed_conversion_command(direction, cfg)
+    _ensure_distributed_converter_script(command)
+    env = _distributed_conversion_env(cfg)
+    print(f"$ {shlex.join(command)}", flush=True)
+    os.execvpe(command[0], command, env)
+
+
+def build_distributed_conversion_command(direction: str, cfg: Mapping[str, Any]) -> list[str]:
+    """Build the torchrun command for the container-provided Megatron-Bridge converter."""
+    if direction not in {"import", "export"}:
+        raise ValueError("direction must be 'import' or 'export'")
+
+    _validate_distributed_parallelism(cfg)
+    command = _distributed_converter_invocation(cfg)
+    if _in_torchrun_world():
+        return [*command, *_distributed_conversion_args(direction, cfg)]
+
+    torchrun = _optional_mapping(cfg.get("torchrun"), "torchrun")
+    run_env = _run_env_mapping(cfg)
+    nproc = _configured_torchrun_nproc(cfg)
+    torchrun_cmd = ["torchrun", f"--nproc_per_node={nproc}"]
+    for key in ("nnodes", "node_rank", "master_addr", "master_port"):
+        run_env_key = "nodes" if key == "nnodes" else key
+        value = torchrun.get(key, cfg.get(key, run_env.get(run_env_key)))
+        if value is not None:
+            torchrun_cmd.append(f"--{key}={value}")
+    return [*torchrun_cmd, *command, *_distributed_conversion_args(direction, cfg)]
+
+
+def _distributed_converter_invocation(cfg: Mapping[str, Any]) -> list[str]:
+    script = (
+        cfg.get("distributed_script")
+        or cfg.get("upstream_script")
+        or _optional_mapping(cfg.get("script"), "script").get("path")
+        or _DEFAULT_DISTRIBUTED_CONVERTER_SCRIPT
+    )
+    if str(cfg.get("duplicate_pp_tensor_policy") or "").lower() == "first":
+        return [sys.executable, "-c", _DUPLICATE_PP_TENSOR_BOOTSTRAP, str(script)]
+    return [sys.executable, str(script)]
+
+
+def _distributed_conversion_env(cfg: Mapping[str, Any]) -> dict[str, str]:
+    env = dict(os.environ)
+    env.setdefault("PYTHONFAULTHANDLER", "1")
+    return env
+
+
+def _ensure_distributed_converter_script(command: list[str]) -> None:
+    script = _distributed_converter_script_path(command)
+    if script is None:
+        return
+    if Path(script).is_file():
+        return
+    raise FileNotFoundError(
+        f"Distributed conversion script not found: {script}. "
+        "Use a NeMo image that ships convert_checkpoints_multi_gpu.py, "
+        "or set script.path/distributed_script to a valid converter path."
+    )
+
+
+def _distributed_converter_script_path(command: list[str]) -> str | None:
+    try:
+        python_index = command.index(sys.executable)
+    except ValueError:
+        return None
+    if python_index + 1 >= len(command):
+        return None
+    if command[python_index + 1] == "-c":
+        if python_index + 3 >= len(command):
+            return None
+        return command[python_index + 3]
+    script = str(command[python_index + 1])
+    if script.startswith("-"):
+        return None
+    return script
+
+
+def _distributed_conversion_args(direction: str, cfg: Mapping[str, Any]) -> list[str]:
+    args = [direction]
+    hf_model = _required_str(cfg, "hf_model_id", fallback_keys=("hf_model",))
+    args.extend(["--hf-model", hf_model])
+
+    if direction == "import":
+        args.extend(["--megatron-path", _required_str(cfg, "megatron_path")])
+    else:
+        args.extend(
+            [
+                "--megatron-path",
+                _required_str(cfg, "megatron_path"),
+                "--hf-path",
+                _required_str(cfg, "hf_path"),
+            ]
+        )
+
+    for key in ("tp", "pp", "ep", "etp"):
+        args.extend([f"--{key}", str(int(cfg.get(key, 1)))])
+
+    dtype = cfg.get("torch_dtype") or cfg.get("dtype") or "bfloat16"
+    dtype_capability = "import_torch_dtype" if direction == "import" else "export_torch_dtype"
+    if _script_supports(cfg, dtype_capability, default=_script_supports(cfg, "torch_dtype", default=True)):
+        args.extend(["--torch-dtype", str(dtype)])
+
+    if _as_bool(cfg.get("trust_remote_code", True)) and _script_supports(cfg, "trust_remote_code", default=True):
+        args.append("--trust-remote-code")
+
+    # Some newer upstream converters accept this flag, but the 26.04 container
+    # script does not. Only forward it when explicitly configured.
+    timeout = cfg.get("distributed_timeout_minutes")
+    if timeout not in (None, ""):
+        args.extend(["--distributed-timeout-minutes", str(int(timeout))])
+
+    if direction == "export":
+        if not _as_bool(cfg.get("show_progress", True)):
+            args.append("--no-progress")
+        if not _as_bool(cfg.get("strict", True)):
+            args.append("--not-strict")
+        if _as_bool(cfg.get("distributed_save", True)) and _script_supports(cfg, "distributed_save", default=True):
+            args.append("--distributed-save")
+        save_every_n_ranks = cfg.get("save_every_n_ranks")
+        if save_every_n_ranks is not None and _script_supports(cfg, "save_every_n_ranks", default=True):
+            args.extend(["--save-every-n-ranks", str(int(save_every_n_ranks))])
+
+    args.extend(str(item) for item in (cfg.get("extra_args") or []))
+    args.extend(str(item) for item in (cfg.get("distributed_extra_args") or []))
+    return args
+
+
+def _script_supports(cfg: Mapping[str, Any], capability: str, *, default: bool) -> bool:
+    script = _optional_mapping(cfg.get("script"), "script")
+    direct_key = f"supports_{capability}"
+    if direct_key in script:
+        return _as_bool(script[direct_key])
+    capabilities = script.get("supports")
+    if isinstance(capabilities, Mapping) and capability in capabilities:
+        return _as_bool(capabilities[capability])
+    return default
+
+
+def _use_distributed_conversion(cfg: Mapping[str, Any]) -> bool:
+    setting = cfg.get("distributed", cfg.get("use_distributed", False))
+    if isinstance(setting, str):
+        normalized = setting.lower()
+        if normalized == "auto":
+            return _in_torchrun_world() or _configured_torchrun_nproc(cfg) > 1 or _parallelism_size(cfg) > 1
+        return normalized in {"1", "true", "yes", "on"}
+    if setting is None:
+        return False
+    return bool(setting)
+
+
+def _configured_torchrun_nproc(cfg: Mapping[str, Any]) -> int:
+    torchrun = _optional_mapping(cfg.get("torchrun"), "torchrun")
+    run_env = _run_env_mapping(cfg)
+    value = torchrun.get(
+        "nproc_per_node",
+        cfg.get("nproc_per_node", run_env.get("nprocs_per_node", run_env.get("gpus_per_node", 1))),
+    )
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _configured_conversion_world_size(cfg: Mapping[str, Any]) -> int:
+    if os.environ.get("WORLD_SIZE"):
+        try:
+            return int(os.environ["WORLD_SIZE"])
+        except ValueError:
+            return 1
+
+    torchrun = _optional_mapping(cfg.get("torchrun"), "torchrun")
+    run_env = _run_env_mapping(cfg)
+    nnodes = torchrun.get("nnodes", cfg.get("nnodes", run_env.get("nodes", 1)))
+    try:
+        return int(nnodes) * _configured_torchrun_nproc(cfg)
+    except (TypeError, ValueError):
+        return _configured_torchrun_nproc(cfg)
+
+
+def _run_env_mapping(cfg: Mapping[str, Any]) -> Mapping[str, Any]:
+    run = _optional_mapping(cfg.get("run"), "run")
+    return _optional_mapping(run.get("env"), "run.env")
+
+
+def _parallelism_size(cfg: Mapping[str, Any]) -> int:
+    return _dense_parallelism_size(cfg) * _expert_parallelism_size(cfg)
+
+
+def _dense_parallelism_size(cfg: Mapping[str, Any]) -> int:
+    return _parallelism_product(cfg, ("tp", "pp", "cp"), fallback_keys={"cp": ("context_parallel_size",)})
+
+
+def _expert_parallelism_size(cfg: Mapping[str, Any]) -> int:
+    return _parallelism_product(
+        cfg,
+        ("etp", "ep", "pp"),
+        fallback_keys={"etp": ("expert_tensor_parallel_size",), "ep": ("expert_model_parallel_size",)},
+    )
+
+
+def _parallelism_product(
+    cfg: Mapping[str, Any],
+    keys: tuple[str, ...],
+    *,
+    fallback_keys: Mapping[str, tuple[str, ...]] | None = None,
+) -> int:
+    size = 1
+    fallback_keys = fallback_keys or {}
+    for key in keys:
+        value = cfg.get(key)
+        if value is None:
+            for fallback_key in fallback_keys.get(key, ()):
+                value = cfg.get(fallback_key)
+                if value is not None:
+                    break
+        if value is None:
+            value = 1
+        try:
+            size *= int(value)
+        except (TypeError, ValueError):
+            return 1
+    return size
+
+
+def _validate_distributed_parallelism(cfg: Mapping[str, Any]) -> None:
+    world_size = _configured_conversion_world_size(cfg)
+    dense_size = _dense_parallelism_size(cfg)
+    expert_size = _expert_parallelism_size(cfg)
+
+    if world_size <= 1:
+        return
+    if dense_size <= 1 and expert_size <= 1:
+        raise ValueError(
+            "distributed=true is launching multiple ranks, but no model or expert parallelism was configured. "
+            "Set at least one of tp, pp, cp, ep, or etp above 1 so conversion actually shards the model "
+            "(for Nemotron MoE checkpoints the common default is tp=1 pp=1 ep=8 etp=1)."
+        )
+    if world_size % dense_size != 0:
+        raise ValueError(
+            f"distributed conversion world size ({world_size}) must be divisible by tp*pp*cp ({dense_size}). "
+            "Set the conversion rank count and checkpoint parallelism to compatible values."
+        )
+    if expert_size > 1 and world_size % expert_size != 0:
+        raise ValueError(
+            f"distributed conversion world size ({world_size}) must be divisible by etp*ep*pp ({expert_size}) "
+            "for expert-parallel checkpoints."
+        )
+
+
+def _in_torchrun_world() -> bool:
+    return bool(os.environ.get("WORLD_SIZE") and os.environ.get("RANK"))
+
+
+def _skip_direct_conversion_on_nonzero_rank() -> bool:
+    if not _in_torchrun_world():
+        return False
+    try:
+        rank = int(os.environ.get("RANK", "0"))
+    except ValueError:
+        return False
+    if rank == 0:
+        return False
+    print(f"distributed=false; rank {rank} is idle for single-process conversion", flush=True)
+    return True
+
+
 def _resolve_merge_backend(cfg: Mapping[str, Any]) -> str:
     backend = str(cfg.get("backend") or "auto").lower()
     if backend != "auto":
@@ -347,6 +706,14 @@ def _required_str(cfg: Mapping[str, Any], key: str, *, fallback_keys: tuple[str,
             return str(value)
     names = ", ".join((key, *fallback_keys))
     raise ValueError(f"Missing required config value: {names}")
+
+
+def _optional_mapping(value: Any, name: str) -> Mapping[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{name} must be a mapping when set")
+    return value
 
 
 def _as_bool(value: Any) -> bool:

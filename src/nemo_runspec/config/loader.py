@@ -247,10 +247,11 @@ def build_job_config(
         profile_mounts = profile_env.get("mounts") or []
         if existing_mounts or profile_mounts:
             merged_env["mounts"] = list(existing_mounts) + list(profile_mounts)
-        # Re-apply YAML resource keys so recipe requirements win over profile defaults.
-        # The recipe knows how many nodes/GPUs it needs; env.toml provides cluster
-        # logistics (account, partition, tunnel, mounts) the recipe doesn't know about.
-        resource_keys = ("nodes", "gpus_per_node", "ntasks_per_node", "nproc_per_node")
+        # Re-apply YAML-owned execution keys so recipe requirements win over
+        # inherited profile defaults. The recipe/config knows which image and
+        # resource shape it requires; env.toml provides cluster logistics
+        # (account, partition, tunnel, site mounts) the recipe doesn't know about.
+        resource_keys = ("container_image", "nodes", "gpus_per_node", "ntasks_per_node", "nproc_per_node")
         for key in resource_keys:
             if key in existing_env:
                 merged_env[key] = existing_env[key]
