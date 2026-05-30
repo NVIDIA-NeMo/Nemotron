@@ -84,6 +84,43 @@ Whether Megatron-Bridge should require source and target checkpoint keys to matc
 Default: `true`.
 ```
 
+```{option} distributed=<true-or-false-or-auto>
+
+Use the mounted multi-GPU converter instead of the single-process AutoBridge helper.
+Keep this enabled for large checkpoints that cannot be loaded on one GPU.
+
+Default: `true`.
+```
+
+```{option} tp=<int> pp=<int> ep=<int> etp=<int>
+
+Tensor, pipeline, expert, and expert-tensor parallel sizes used by the source Megatron checkpoint.
+These values must match the checkpoint layout.
+
+Defaults: `tp=1`, `pp=1`, `ep=8`, `etp=1`.
+```
+
+```{option} distributed_save=<true-or-false>
+
+Let ranks write assigned Hugging Face shards independently, reducing rank-0 memory pressure during export.
+
+Default: `true`.
+```
+
+```{option} torchrun.nproc_per_node=<int>
+
+Number of local conversion ranks when the step has to launch `torchrun` itself.
+When a backend already launches the step with `torchrun`, the existing distributed world is reused.
+
+Default: `NEMOTRON_CONVERT_NPROC_PER_NODE` or `8`.
+```
+
+```{option} script.path=<path>
+
+Path to Megatron-Bridge's `convert_checkpoints_multi_gpu.py`.
+Defaults to the path shipped in `nvcr.io/nvidia/nemo:26.04`: `/opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py`.
+```
+
 ## Command Examples
 
 Export a validated Megatron checkpoint iteration to Hugging Face layout:
@@ -92,7 +129,8 @@ Export a validated Megatron checkpoint iteration to Hugging Face layout:
 $ nemotron steps run convert/megatron_to_hf -c default \
     megatron_path=/path/to/megatron/iter_0000100 \
     hf_model_id=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
-    hf_path=./output/convert/sft-hf
+    hf_path=./output/convert/sft-hf \
+    tp=1 pp=1 ep=8
 ```
 
 Submit the export through a generated Lepton profile:
@@ -108,6 +146,7 @@ $ nemotron steps run convert/megatron_to_hf -c default --batch lepton_convert_mo
 
 - If export fails because the checkpoint is incomplete, wait for async checkpoint save to finish and retry from a complete `iter_*` directory.
 - If tokenizer or config reconstruction fails, set `hf_model_id` to the original base model or config source.
+- If `distributed=true` launches multiple ranks with `tp=pp=ep=etp=1`, the step fails early because that would not shard the model. Set the real source checkpoint parallelism, such as `tp=1 pp=1 ep=8 etp=1` for Nemotron MoE or `tp=8 pp=1 ep=1 etp=1` for a dense checkpoint.
 - Validate the exported Hugging Face checkpoint with a small generation or evaluation job before deployment.
 
 ## Related Documentation

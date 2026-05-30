@@ -37,6 +37,8 @@ Before conversion:
 - Keep output paths separate from input paths. A failed conversion should never overwrite the source checkpoint.
 - Keep tokenizer and chat-template provenance with the checkpoint. If the converter needs `hf_model_id`, use the original model or config source used by training.
 - For LoRA merge, use the exact base checkpoint the adapter was trained against.
+- For large Megatron checkpoints, use the default distributed conversion path. The default config runs `nvcr.io/nvidia/nemo:26.04`, which ships the multi-GPU Megatron-Bridge conversion script.
+- Keep `tp`, `pp`, `ep`, and `etp` aligned with the model or checkpoint layout. The default distributed conversion path uses `tp=1 pp=1 ep=8 etp=1` for Nemotron MoE checkpoints; dense models usually need an override such as `tp=8 pp=1 ep=1 etp=1`.
 
 ## Convert Hugging Face to Megatron
 
@@ -45,10 +47,12 @@ Use this path when a Megatron-Bridge consumer needs a Megatron distributed check
 ```console
 $ nemotron steps run convert/hf_to_megatron -c default \
     hf_model_id=/path/to/hf_checkpoint_or_model_id \
-    megatron_path=/path/to/output_megatron_checkpoint
+    megatron_path=/path/to/output_megatron_checkpoint \
+    tp=1 pp=1 ep=8
 ```
 
 For NVIDIA Nemotron checkpoints, keep `dtype=bfloat16` unless the source checkpoint requires another dtype.
+The step fails early if multiple ranks are launched but all model-parallel values are left at `1`, because that would not reduce per-GPU model memory.
 
 ## Convert Megatron to Hugging Face
 
@@ -58,10 +62,12 @@ Use this path when the next consumer is Hugging Face-native evaluation, deployme
 $ nemotron steps run convert/megatron_to_hf -c default \
     megatron_path=/path/to/megatron/iter_0000100 \
     hf_model_id=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
-    hf_path=/path/to/output_hf_checkpoint
+    hf_path=/path/to/output_hf_checkpoint \
+    tp=1 pp=1 ep=8
 ```
 
 The `hf_model_id` value supplies the model configuration and tokenizer expectations used to reconstruct the Hugging Face layout.
+Keep `tp`, `pp`, `ep`, and `etp` aligned with the source Megatron checkpoint for export.
 
 ## Merge LoRA Into a Hugging Face Base
 

@@ -21,6 +21,7 @@ from types import ModuleType
 import pytest
 from omegaconf import OmegaConf
 
+from nemo_runspec.config.resolvers import clear_git_mounts, get_git_mounts, register_auto_mount_resolver
 from nemotron.steps._runners import convert
 
 
@@ -38,6 +39,55 @@ def test_convert_steps_have_default_configs(steps_root: Path) -> None:
         config_path = steps_root / "convert" / step_id / "config" / "default.yaml"
         assert config_path.exists(), f"{config_path} is required for nemotron steps run --dry-run"
         assert isinstance(OmegaConf.to_container(OmegaConf.load(config_path), resolve=False), dict)
+
+
+@pytest.mark.parametrize("step_id", ["hf_to_megatron", "megatron_to_hf"])
+def test_distributed_convert_defaults_use_2604_container_script(steps_root: Path, step_id: str) -> None:
+    config_path = steps_root / "convert" / step_id / "config" / "default.yaml"
+    cfg = OmegaConf.to_container(OmegaConf.load(config_path), resolve=False)
+
+    assert "runtime" not in cfg
+    assert cfg["run"]["env"]["container_image"] == "nvcr.io/nvidia/nemo:26.04"
+    assert cfg["distributed"] is True
+    assert cfg["script"]["path"] == "/opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py"
+
+
+@pytest.mark.parametrize("step_id", ["hf_to_megatron", "megatron_to_hf"])
+def test_tiny_convert_config_mounts_super3_compatible_bridge_branch(steps_root: Path, step_id: str) -> None:
+    config_path = steps_root / "convert" / step_id / "config" / "tiny.yaml"
+    cfg = OmegaConf.to_container(OmegaConf.load(config_path), resolve=False)
+
+    env = cfg["run"]["env"]
+    mounts = env["mounts"]
+
+    assert env["container_image"] == "nvcr.io/nvidia/nemo:26.02.nemotron_3_super"
+    assert len(mounts) == 1
+    assert "NVIDIA-NeMo/Megatron-Bridge.git@main" in mounts[0]
+    assert mounts[0].endswith(",/opt/Megatron-Bridge-main}")
+    assert "setup_commands" not in env
+    assert cfg["script"]["path"] == "/opt/Megatron-Bridge-main/examples/conversion/convert_checkpoints_multi_gpu.py"
+    if step_id == "megatron_to_hf":
+        assert cfg["duplicate_pp_tensor_policy"] == "first"
+    else:
+        assert "duplicate_pp_tensor_policy" not in cfg
+    assert cfg["tp"] == "${oc.env:NEMOTRON_CONVERT_TP,8}"
+    assert cfg["pp"] == "${oc.env:NEMOTRON_CONVERT_PP,4}"
+    assert cfg["ep"] == "${oc.env:NEMOTRON_CONVERT_EP,8}"
+    assert cfg["etp"] == "${oc.env:NEMOTRON_CONVERT_ETP,1}"
+
+
+def test_tiny_auto_mount_registers_main_script_source(steps_root: Path) -> None:
+    clear_git_mounts()
+    register_auto_mount_resolver()
+    config_path = steps_root / "convert" / "megatron_to_hf" / "config" / "tiny.yaml"
+    cfg = OmegaConf.load(config_path)
+
+    OmegaConf.to_container(cfg.run.env.mounts, resolve=True)
+
+    mounts = get_git_mounts()
+    assert mounts["Megatron-Bridge"]["ref"] == "main"
+    assert mounts["Megatron-Bridge"]["target"] == "/opt/Megatron-Bridge-main"
+    clear_git_mounts()
 
 
 def test_hf_to_megatron_forwards_autobridge_args(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -212,3 +262,318 @@ def test_hf_peft_adapter_path_error_points_to_adapter_config(tmp_path: Path) -> 
 def test_missing_required_config_value_is_clear() -> None:
     with pytest.raises(ValueError, match="hf_model_id"):
         convert.import_hf_to_megatron({"megatron_path": "/tmp/megatron"})
+
+
+def test_distributed_hf_to_megatron_command_uses_container_script(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "import",
+        {
+            "hf_model_id": "hf-source",
+            "megatron_path": "/tmp/megatron",
+            "torch_dtype": "bfloat16",
+            "trust_remote_code": True,
+            "tp": 2,
+            "pp": 1,
+            "ep": 4,
+            "etp": 1,
+            "torchrun": {"nproc_per_node": 8},
+            "distributed_timeout_minutes": 120,
+        },
+    )
+
+    assert cmd[:2] == ["torchrun", "--nproc_per_node=8"]
+    assert cmd[2] == sys.executable
+    assert cmd[3].endswith("/examples/conversion/convert_checkpoints_multi_gpu.py")
+    assert "import" in cmd
+    assert cmd[cmd.index("--hf-model") + 1] == "hf-source"
+    assert cmd[cmd.index("--megatron-path") + 1] == "/tmp/megatron"
+    assert cmd[cmd.index("--tp") + 1] == "2"
+    assert cmd[cmd.index("--ep") + 1] == "4"
+    assert "--trust-remote-code" in cmd
+    assert cmd[cmd.index("--distributed-timeout-minutes") + 1] == "120"
+
+
+def test_distributed_command_reuses_existing_torchrun_world(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WORLD_SIZE", "8")
+    monkeypatch.setenv("RANK", "3")
+
+    cmd = convert.build_distributed_conversion_command(
+        "import",
+        {
+            "hf_model_id": "hf-source",
+            "megatron_path": "/tmp/megatron",
+            "ep": 8,
+            "torchrun": {"nproc_per_node": 8},
+        },
+    )
+
+    assert cmd[0] == sys.executable
+    assert cmd[1].endswith("/examples/conversion/convert_checkpoints_multi_gpu.py")
+    assert "torchrun" not in cmd
+    assert "--distributed-timeout-minutes" not in cmd
+
+
+def test_distributed_command_omits_timeout_by_default_for_2604_container_script(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "export",
+        {
+            "hf_model_id": "hf-config",
+            "megatron_path": "/tmp/megatron",
+            "hf_path": "/tmp/hf",
+            "ep": 8,
+            "torchrun": {"nproc_per_node": 8},
+        },
+    )
+
+    assert "--distributed-timeout-minutes" not in cmd
+
+
+def test_distributed_conversion_env_leaves_pythonpath_unchanged_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PYTHONPATH", "/existing/src")
+
+    env = convert._distributed_conversion_env({})
+
+    assert env["PYTHONPATH"] == "/existing/src"
+
+
+def test_distributed_conversion_rejects_multi_rank_without_model_parallelism(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    with pytest.raises(ValueError, match="no model or expert parallelism"):
+        convert.build_distributed_conversion_command(
+            "import",
+            {
+                "hf_model_id": "hf-source",
+                "megatron_path": "/tmp/megatron",
+                "tp": 1,
+                "pp": 1,
+                "ep": 1,
+                "etp": 1,
+                "torchrun": {"nproc_per_node": 8},
+            },
+        )
+
+
+def test_distributed_conversion_rejects_dense_world_size_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    with pytest.raises(ValueError, match=r"tp\*pp\*cp"):
+        convert.build_distributed_conversion_command(
+            "export",
+            {
+                "hf_model_id": "hf-config",
+                "megatron_path": "/tmp/megatron",
+                "hf_path": "/tmp/hf",
+                "tp": 8,
+                "pp": 4,
+                "ep": 1,
+                "etp": 1,
+                "torchrun": {"nproc_per_node": 8},
+            },
+        )
+
+
+def test_distributed_conversion_rejects_expert_world_size_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    with pytest.raises(ValueError, match=r"etp\*ep\*pp"):
+        convert.build_distributed_conversion_command(
+            "export",
+            {
+                "hf_model_id": "hf-config",
+                "megatron_path": "/tmp/megatron",
+                "hf_path": "/tmp/hf",
+                "tp": 1,
+                "pp": 4,
+                "ep": 8,
+                "etp": 1,
+                "torchrun": {"nproc_per_node": 16},
+            },
+        )
+
+
+def test_distributed_conversion_allows_super_moe_parallelism(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "export",
+        {
+            "hf_model_id": "hf-config",
+            "megatron_path": "/tmp/megatron",
+            "hf_path": "/tmp/hf",
+            "tp": 8,
+            "pp": 4,
+            "ep": 8,
+            "etp": 1,
+            "torchrun": {"nproc_per_node": 8, "nnodes": 8},
+        },
+    )
+
+    assert cmd[cmd.index("--tp") + 1] == "8"
+    assert cmd[cmd.index("--pp") + 1] == "4"
+    assert cmd[cmd.index("--ep") + 1] == "8"
+    assert "--nnodes=8" in cmd
+    assert cmd[cmd.index("--etp") + 1] == "1"
+
+
+def test_distributed_conversion_uses_run_env_nodes_for_world_size(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "export",
+        {
+            "hf_model_id": "hf-config",
+            "megatron_path": "/tmp/megatron",
+            "hf_path": "/tmp/hf",
+            "tp": 8,
+            "pp": 4,
+            "ep": 8,
+            "etp": 1,
+            "run": {"env": {"nodes": 8, "nprocs_per_node": 8}},
+            "torchrun": {"nproc_per_node": 8},
+        },
+    )
+
+    assert cmd[cmd.index("--tp") + 1] == "8"
+    assert cmd[cmd.index("--pp") + 1] == "4"
+    assert cmd[cmd.index("--ep") + 1] == "8"
+    assert "--nnodes=8" in cmd
+
+
+def test_distributed_conversion_can_patch_duplicate_pp_tensors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "export",
+        {
+            "hf_model_id": "hf-config",
+            "megatron_path": "/tmp/megatron",
+            "hf_path": "/tmp/hf",
+            "duplicate_pp_tensor_policy": "first",
+            "tp": 8,
+            "pp": 4,
+            "ep": 8,
+            "script": {"path": "/opt/Megatron-Bridge-main/examples/conversion/convert_checkpoints_multi_gpu.py"},
+            "torchrun": {"nproc_per_node": 8, "nnodes": 8},
+        },
+    )
+
+    assert cmd[:3] == ["torchrun", "--nproc_per_node=8", "--nnodes=8"]
+    python_index = cmd.index(sys.executable)
+    assert cmd[python_index : python_index + 2] == [sys.executable, "-c"]
+    assert "MegatronParamMapping.broadcast_from_pp_rank" in cmd[python_index + 2]
+    assert cmd[python_index + 3] == "/opt/Megatron-Bridge-main/examples/conversion/convert_checkpoints_multi_gpu.py"
+    assert "export" in cmd
+
+
+def test_distributed_script_path_detection_handles_bootstrap() -> None:
+    command = [
+        "torchrun",
+        "--nproc_per_node=8",
+        sys.executable,
+        "-c",
+        "bootstrap",
+        "/opt/Megatron-Bridge-main/examples/conversion/convert_checkpoints_multi_gpu.py",
+        "export",
+    ]
+
+    assert (
+        convert._distributed_converter_script_path(command)
+        == "/opt/Megatron-Bridge-main/examples/conversion/convert_checkpoints_multi_gpu.py"
+    )
+
+
+def test_distributed_megatron_to_hf_command_forwards_export_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "export",
+        {
+            "hf_model_id": "hf-config",
+            "megatron_path": "/tmp/megatron/iter_0000001",
+            "hf_path": "/tmp/hf",
+            "show_progress": False,
+            "strict": False,
+            "distributed_save": True,
+            "save_every_n_ranks": 2,
+            "ep": 4,
+            "torchrun": {"nproc_per_node": 4},
+        },
+    )
+
+    assert cmd[:2] == ["torchrun", "--nproc_per_node=4"]
+    assert "export" in cmd
+    assert cmd[cmd.index("--hf-path") + 1] == "/tmp/hf"
+    assert "--no-progress" in cmd
+    assert "--not-strict" in cmd
+    assert "--distributed-save" in cmd
+    assert cmd[cmd.index("--save-every-n-ranks") + 1] == "2"
+
+
+def test_distributed_command_honors_script_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WORLD_SIZE", raising=False)
+    monkeypatch.delenv("RANK", raising=False)
+
+    cmd = convert.build_distributed_conversion_command(
+        "export",
+        {
+            "hf_model_id": "hf-config",
+            "megatron_path": "/tmp/megatron",
+            "hf_path": "/tmp/hf",
+            "trust_remote_code": True,
+            "distributed_save": True,
+            "save_every_n_ranks": 1,
+            "tp": 8,
+            "pp": 4,
+            "ep": 8,
+            "etp": 1,
+            "script": {
+                "path": "/opt/Megatron-Bridge/examples/conversion/convert_checkpoints.py",
+                "supports_trust_remote_code": False,
+                "supports_export_torch_dtype": False,
+                "supports_distributed_save": False,
+                "supports_save_every_n_ranks": False,
+            },
+            "torchrun": {"nproc_per_node": 8, "nnodes": 8},
+        },
+    )
+
+    assert "--torch-dtype" not in cmd
+    assert "--trust-remote-code" not in cmd
+    assert "--distributed-save" not in cmd
+    assert "--save-every-n-ranks" not in cmd
+    assert cmd[cmd.index("--tp") + 1] == "8"
+    assert cmd[cmd.index("--pp") + 1] == "4"
+    assert cmd[cmd.index("--ep") + 1] == "8"
+    assert cmd[cmd.index("--etp") + 1] == "1"
+
+
+def test_run_megatron_to_hf_uses_distributed_launcher(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    cfg = {
+        "distributed": True,
+        "hf_model_id": "hf-config",
+        "megatron_path": "/tmp/megatron",
+        "hf_path": "/tmp/hf",
+    }
+    monkeypatch.setattr(convert, "load_convert_config", lambda _default_config: cfg)
+    monkeypatch.setattr(convert, "exec_distributed_conversion", lambda direction, config: calls.append((direction, dict(config))))
+
+    convert.run_megatron_to_hf(Path("unused.yaml"))
+
+    assert calls == [("export", cfg)]

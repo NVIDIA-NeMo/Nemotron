@@ -1,0 +1,54 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Nemotron-3-Super Megatron -> HuggingFace conversion.
+#
+# The SFT checkpoint was written by the 26.02 Super stack. Keep the container
+# compatible with that architecture. The container provides /opt/Megatron-Bridge
+# for imports; auto-mount main separately only to run the low-memory multi-GPU
+# converter script.
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
+    nodes: ${oc.env:NEMOTRON_CONVERT_NNODES,8}
+    gpus_per_node: ${oc.env:NEMOTRON_CONVERT_GPUS_PER_NODE,8}
+    nprocs_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}
+    ntasks_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@main,/opt/Megatron-Bridge-main}
+    env_vars:
+      PYTHONPATH: /opt/Megatron-Bridge/src:/opt/Megatron-Bridge/3rdparty/Megatron-LM:/opt/megatron-lm:${oc.env:PYTHONPATH,}
+
+megatron_path: null
+hf_model_id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16
+hf_path: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/convert}/megatron_to_hf/super3-hf
+
+script:
+  path: /opt/Megatron-Bridge-main/examples/conversion/convert_checkpoints_multi_gpu.py
+
+trust_remote_code: true
+show_progress: true
+strict: true
+
+distributed: true
+duplicate_pp_tensor_policy: first
+tp: ${oc.env:NEMOTRON_CONVERT_TP,8}
+pp: ${oc.env:NEMOTRON_CONVERT_PP,4}
+ep: ${oc.env:NEMOTRON_CONVERT_EP,8}
+etp: ${oc.env:NEMOTRON_CONVERT_ETP,1}
+distributed_save: true
+save_every_n_ranks: 1
+torchrun:
+  nproc_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}

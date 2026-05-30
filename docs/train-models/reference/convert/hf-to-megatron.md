@@ -79,6 +79,37 @@ Whether to trust Hugging Face custom model code when AutoBridge loads the source
 Default: `true`.
 ```
 
+```{option} distributed=<true-or-false-or-auto>
+
+Use the mounted multi-GPU converter instead of the single-process AutoBridge helper.
+Keep this enabled for large models that cannot be materialized on one GPU.
+
+Default: `true`.
+```
+
+```{option} tp=<int> pp=<int> ep=<int> etp=<int>
+
+Tensor, pipeline, expert, and expert-tensor parallel sizes for the Megatron checkpoint written by the converter.
+The defaults are `tp=1 pp=1 ep=8 etp=1`, matching the common Nemotron MoE conversion path.
+Override these for dense models or a different target layout.
+
+Defaults: `tp=1`, `pp=1`, `ep=8`, `etp=1`.
+```
+
+```{option} torchrun.nproc_per_node=<int>
+
+Number of local conversion ranks when the step has to launch `torchrun` itself.
+When a backend already launches the step with `torchrun`, the existing distributed world is reused.
+
+Default: `NEMOTRON_CONVERT_NPROC_PER_NODE` or `8`.
+```
+
+```{option} script.path=<path>
+
+Path to Megatron-Bridge's `convert_checkpoints_multi_gpu.py`.
+Defaults to the path shipped in `nvcr.io/nvidia/nemo:26.04`: `/opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py`.
+```
+
 ## Command Examples
 
 Convert the default NVIDIA Nemotron base model into a local Megatron output directory:
@@ -86,7 +117,8 @@ Convert the default NVIDIA Nemotron base model into a local Megatron output dire
 ```console
 $ nemotron steps run convert/hf_to_megatron -c default \
     hf_model_id=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
-    megatron_path=./output/convert/nano3-megatron
+    megatron_path=./output/convert/nano3-megatron \
+    tp=1 pp=1 ep=8
 ```
 
 Submit the conversion through a generated Lepton profile:
@@ -102,6 +134,7 @@ $ nemotron steps run convert/hf_to_megatron -c default --batch lepton_convert_mo
 - If the source came from LoRA training, merge the adapter into the original base first with `convert/merge_lora`.
 - If tokenizer or model config files are missing, use the original Hugging Face model id as `hf_model_id`.
 - If conversion fails, retry into a fresh `megatron_path` instead of reusing a partially written directory.
+- If `distributed=true` launches multiple ranks with `tp=pp=ep=etp=1`, the step fails early because that would not shard the model. Set the real target parallelism, such as `tp=1 pp=1 ep=8 etp=1` for Nemotron MoE or `tp=8 pp=1 ep=1 etp=1` for a dense model.
 
 ## Related Documentation
 
