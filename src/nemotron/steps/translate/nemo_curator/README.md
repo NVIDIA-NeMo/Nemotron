@@ -22,8 +22,15 @@ usually change:
 - For `backend=nmt`: `nmt.server_url` after verifying `/health` and `/translate`.
 - `output_mode`: `replaced` for training-ready data, `both` for audit/scoring.
 - `reconstruct_messages`: `true` for chat records, `false` for plain text.
+- `translation_prompt_path`: optional absolute path to a custom Curator prompt YAML.
+- `generation_config`: optional OpenAI-compatible translation generation settings.
+- `max_concurrent_requests`, `health_check`, `dry_run`, and `dry_run_log_count`:
+  optional translation execution controls.
 - `faith_eval.enabled` (and `faith_eval.filter_enabled` only after confirming
   rows may be dropped).
+- `faith_eval.prompt_path`, `faith_eval.generation_config`, and
+  `faith_eval.max_concurrent_requests`: optional FAITH prompt, generation, and
+  concurrency controls.
 
 Related pattern: [translate-training-corpus.md](../../patterns/translate-training-corpus.md).
 

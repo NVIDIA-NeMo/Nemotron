@@ -53,6 +53,9 @@ change:
 - `filtering_model_configs`: explicit model configs for filtering and dedup.
 - `skip_until`: resume only when the previous stage cache exists.
 - Translation backend and language settings in the translate config.
+- BYOB translation controls under `translation_model_config.stage`
+  (`translation_prompt_path`) and `translation_model_config.segment_stage`
+  (`max_concurrent_requests`, `health_check`, `dry_run`, `dry_run_log_count`).
 
 Example shape:
 
