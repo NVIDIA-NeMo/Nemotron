@@ -340,4 +340,5 @@ docs = [
     "sphinx-copybutton>=0.5.2",
     "sphinx-design>=0.6.0",
     "sphinxcontrib-mermaid",
+    "sphinx-reredirects",
 ]
