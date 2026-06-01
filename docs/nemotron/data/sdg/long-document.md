@@ -101,7 +101,7 @@ The recipe scripts live in:
 src/nemotron/recipes/data/sdg/long-document/
 ```
 
-See the [recipe README](https://github.com/NVIDIA/nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document) for full per-stage documentation, deployment-config schema, troubleshooting, and full-pipeline examples (both manual-vLLM and `--serve` styles).
+Refer to the [recipe README](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document) for full per-stage documentation, deployment-config schema, troubleshooting, and full-pipeline examples (both manual-vLLM and `--serve` styles).
 
 ## Prerequisites
 
@@ -122,8 +122,8 @@ The recipe README has copy-pasteable templates for both publish paths.
 
 ## Further Reading
 
-- [Recipe README](https://github.com/NVIDIA/nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document) — comprehensive per-stage docs, config schemas, troubleshooting.
-- [Deployment config schema](https://github.com/NVIDIA/nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document/deployment) — `--serve` deployment YAML reference.
+- [Recipe README](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document) — comprehensive per-stage docs, config schemas, troubleshooting.
+- [Deployment config schema](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/data/sdg/long-document/deployment) — `--serve` deployment YAML reference.
 - [MMLongBench-Doc paper](https://arxiv.org/abs/2407.01523) — the benchmark this dataset targets.
 - [Nemotron-CC](../curation/nemotron-cc.md) — the sibling pretraining-data curation recipe.
 - [Execution through NeMo-Run](../../../nemo_runspec/nemo-run.md) — how the `--run` / `--batch` dispatch works.
