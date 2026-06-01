@@ -170,5 +170,5 @@ Run the `nemotron-optimizer-pruning` skill with your agent.
 
 - [NVIDIA Model Optimizer Repository](https://github.com/NVIDIA/Model-Optimizer)
 - [NVIDIA Model Optimizer Documentation](https://nvidia.github.io/Model-Optimizer/)
-- [Megatron-Bridge Documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/)
-- [Megatron-Bridge Pruning Guide](https://docs.nvidia.com/nemo/megatron-bridge/latest/training/pruning.html)
+- [Megatron-Bridge Documentation](https://docs.nvidia.com/nemo/megatron-bridge/0.4.0/)
+- [Megatron-Bridge Pruning Guide](https://docs.nvidia.com/nemo/megatron-bridge/0.4.0/training/pruning.html)
