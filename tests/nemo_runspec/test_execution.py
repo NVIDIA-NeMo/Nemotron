@@ -706,7 +706,7 @@ class TestGitMountCommands:
         sha = "a" * 40
         mounts = {
             "bridge": {
-                "url": "https://github.com/NVIDIA/Megatron-Bridge.git",
+                "url": "https://github.com/NVIDIA-NeMo/Megatron-Bridge.git",
                 "ref": sha,
                 "target": "/opt/bridge",
             }
