@@ -5,7 +5,7 @@
 **Owner:** {{OWNER}}
 **Target model(s):** {{TARGET_MODELS}}
 **Intended use cases:** {{USE_CASES}}
-**Taxonomy mode:** {{TAXONOMY_MODE}}  <!-- clean_aegis | aegis_plus_custom | mostly_custom -->
+**Taxonomy mode:** {{TAXONOMY_MODE}}  <!-- clean_v2 | v2_plus_custom | mostly_custom -->
 
 ## Assumptions
 

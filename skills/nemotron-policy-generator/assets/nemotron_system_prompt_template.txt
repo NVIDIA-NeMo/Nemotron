@@ -3,24 +3,24 @@
 ### ======================================================
 ### Two models, one policy artifact. Use the section for your target model.
 ###
-### Section 1 — nvidia/Nemotron-Content-Safety-Reasoning-4B (text, English, today)
+### Section 1 — nvidia/Nemotron-Content-Safety-Reasoning-4B (text, English)
 ###   Modes: /think (reasoning on) and /no_think (low latency).
 ###   Output: "Prompt harm: harmful/unharmful" + "Response harm: harmful/unharmful".
 ###   Patterns A, B, C below use S1..Sn category labels in a text taxonomy block.
 ###
-### Section 2 — nvidia/Nemotron-3-Content-Safety (multimodal, 12 langs, BYO + reasoning at Computex 2026)
-###   Today: /categories (emit Safety Categories list) and /no_categories (binary only).
-###   At Computex 2026 (BYO + reasoning land together): adds /think (reasoning on,
-###   emits <think>...</think> trace) and /no_think (no trace, low latency). The
-###   two flag families combine — set ONE from {/think, /no_think} and ONE from
-###   {/categories, /no_categories}, e.g., "/think /categories" or "/no_think /no_categories".
+### Section 2 — nvidia/Nemotron-3-Content-Safety (multimodal, 12 langs, BYO + reasoning)
+###   Modes: /categories (emit Safety Categories list) and /no_categories (binary only);
+###   plus /think (reasoning on, emits <think>...</think> trace) and /no_think (no trace,
+###   low latency). The two flag families combine — set ONE from {/think, /no_think} and
+###   ONE from {/categories, /no_categories}, e.g., "/think /categories" or
+###   "/no_think /no_categories".
 ###   Output: "User Safety: safe/unsafe" + "Response Safety: safe/unsafe" +
 ###           optional "Safety Categories: <comma-list>" + optional <think> trace.
 ###   Patterns D, E, F below use chat-template messages with category *names*
 ###   (not Sn labels) and inject `request_categories="/categories"` or
-###   "/no_categories" via the chat-template kwarg. The reasoning flag at Computex
-###   is anticipated to ship as a second chat-template kwarg (e.g., `request_reasoning`)
-###   or as part of `request_categories`; the runtime will adapt per release notes.
+###   "/no_categories" via the chat-template kwarg. The reasoning flag ships as a
+###   second chat-template kwarg (e.g., `request_reasoning`) or as part of
+###   `request_categories`; the runtime adapts per the model's documented interface.
 ###
 ### Replace {{...}} placeholders before sending.
 ###
@@ -219,9 +219,9 @@ No taxonomy block is needed in the message body.
 
 === PATTERN E — CUSTOM POLICY (Nemotron 3, text only, /categories) ===
 
-For BYO-policy (landing at Computex 2026), the model card's anticipated format
-is to inject the custom taxonomy as a system-style message before the user turn,
-or as a leading text block in the user message. Use category NAMES — not Sn:.
+For BYO-policy, the model card's format is to inject the custom taxonomy as a
+system-style message before the user turn, or as a leading text block in the
+user message. Use category NAMES — not Sn:.
 
 ```python
 messages = [
@@ -252,9 +252,9 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-NOTE: The exact custom-policy injection format for Nemotron-3 will be finalized
-at Computex 2026. The skill should produce category-name and allow-list blocks
-that are model-agnostic; the runtime layer adapts the framing per release notes.
+NOTE: The skill should produce category-name and allow-list blocks that are
+model-agnostic; the runtime layer adapts the framing per the model's documented
+interface.
 
 
 === PATTERN F — MULTIMODAL (Nemotron 3, text + image, /categories) ===
@@ -301,7 +301,7 @@ Today (released March 2026):
     User Safety: <safe/unsafe>
     Response Safety: <safe/unsafe>                     (if response was provided)
 
-At Computex 2026 (BYO + reasoning land together) — flag families combine:
+With both flag families combined:
 
   /think + /categories:
     <think>
@@ -318,25 +318,25 @@ At Computex 2026 (BYO + reasoning land together) — flag families combine:
     User Safety: <safe/unsafe>
     Response Safety: <safe/unsafe>
 
-  /no_think + /categories:                             (today's /categories)
+  /no_think + /categories:
     User Safety: <safe/unsafe>
     Response Safety: <safe/unsafe>
     Safety Categories: <name1>, <name2>, ...
 
-  /no_think + /no_categories:                          (today's /no_categories)
+  /no_think + /no_categories:
     User Safety: <safe/unsafe>
     Response Safety: <safe/unsafe>
 
 
-=== PATTERN D2 — REASONING + CATEGORIES (Nemotron 3 at Computex 2026) ===
+=== PATTERN D2 — REASONING + CATEGORIES (Nemotron 3) ===
 
 ```python
 inputs = processor.apply_chat_template(
     messages, add_generation_prompt=True, tokenize=True,
     return_dict=True, return_tensors="pt",
     request_categories="/categories",       # categories flag family
-    request_reasoning="/think"              # ANTICIPATED reasoning flag family
-                                            # (exact kwarg name confirmed at Computex release notes)
+    request_reasoning="/think"              # reasoning flag family
+                                            # (exact kwarg name per the model's documented interface)
 )
 ```
 
@@ -349,11 +349,11 @@ and the category list (for downstream guardrail-action mapping).
 The skill's policy artifact is single-source-of-truth; runtime parsers should
 translate as follows:
 
-  Reasoning-4B output         ⇄    Nemotron-3 output (incl. Computex 2026)
+  Reasoning-4B output         ⇄    Nemotron-3 output
   ----------------------------     -----------------------------------------
   Prompt harm: harmful         =   User Safety: unsafe
   Prompt harm: unharmful       =   User Safety: safe
   Response harm: harmful       =   Response Safety: unsafe
   Response harm: unharmful     =   Response Safety: safe
   (no category in output)          Safety Categories: <name list>  (when /categories)
-  <think>...</think> trace     =   <think>...</think> trace        (when /think, post-Computex)
+  <think>...</think> trace     =   <think>...</think> trace        (when /think)

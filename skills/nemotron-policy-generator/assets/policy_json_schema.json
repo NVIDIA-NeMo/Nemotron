@@ -16,7 +16,7 @@
       "type": "array",
       "items": { "enum": ["runtime_guardrails", "training_data_labeling", "customer_byo_policy", "eval_rubric"] }
     },
-    "taxonomy_mode": { "enum": ["clean_aegis", "aegis_plus_custom", "mostly_custom"] },
+    "taxonomy_mode": { "enum": ["clean_v2", "v2_plus_custom", "mostly_custom"] },
     "severity_model": { "enum": ["binary", "graded_s0_s4"] },
     "assumptions": {
       "type": "array",

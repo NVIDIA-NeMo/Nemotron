@@ -557,8 +557,8 @@ function buildPolicyObject() {
   const customCount = cats.filter(c => c.custom).length;
   const canonicalCount = cats.length - customCount;
   let taxonomy_mode = 'mostly_custom';
-  if (canonicalCount > 0 && customCount === 0) taxonomy_mode = 'clean_aegis';
-  else if (canonicalCount >= customCount) taxonomy_mode = 'aegis_plus_custom';
+  if (canonicalCount > 0 && customCount === 0) taxonomy_mode = 'clean_v2';
+  else if (canonicalCount >= customCount) taxonomy_mode = 'v2_plus_custom';
 
   return {
     policy_name: val('policyName') || 'Untitled Policy',
