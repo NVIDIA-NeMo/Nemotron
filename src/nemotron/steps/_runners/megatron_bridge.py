@@ -97,13 +97,13 @@ def _maybe_load_hf_weights(cfg: Any, container: dict[str, Any]) -> None:
         load_hf_weights: true
         trust_remote_code: false
         hf_load:
-          # Side effects to apply when HF weights are loaded. Defaults match
-          # the prior implicit behaviour but are now explicit and overridable.
+          # Side effects to apply when HF weights are loaded. Defaults are
+          # explicit and overridable.
           clear_pretrained_checkpoint: true
           inherit_save_as_load: true
-          mirror_model_attrs: ["tensor_model_parallel_size", "pipeline_model_parallel_size",
-                               "context_parallel_size", "sequence_parallel", "seq_length",
-                               "expert_model_parallel_size", "expert_tensor_parallel_size"]
+
+    Every key under ``model:`` is re-applied onto the HF-built provider (see
+    below), so no extra knob is needed to control which overrides take effect.
     """
     hf_path = container.get("hf_model_path")
     if not hf_path:
@@ -114,20 +114,13 @@ def _maybe_load_hf_weights(cfg: Any, container: dict[str, Any]) -> None:
     bridge = AutoBridge.from_hf_pretrained(hf_path, trust_remote_code=container.get("trust_remote_code", False))
     cfg.model = bridge.to_megatron_provider(load_weights=container.get("load_hf_weights", True))
 
-    hf_load = dict(container.get("hf_load") or {})
-    mirror = hf_load.get("mirror_model_attrs") or [
-        "tensor_model_parallel_size",
-        "pipeline_model_parallel_size",
-        "context_parallel_size",
-        "sequence_parallel",
-        "seq_length",
-        "expert_model_parallel_size",
-        "expert_tensor_parallel_size",
-    ]
-    for attr in mirror:
-        value = container.get("model", {}).get(attr)
+    model_overrides = dict(container.get("model") or {})
+    model_overrides.pop("_target_", None)
+    for attr, value in model_overrides.items():
         if value is not None and hasattr(cfg.model, attr):
             setattr(cfg.model, attr, value)
+
+    hf_load = dict(container.get("hf_load") or {})
 
     if container.get("load_hf_weights", True):
         if hf_load.get("clear_pretrained_checkpoint", True):
