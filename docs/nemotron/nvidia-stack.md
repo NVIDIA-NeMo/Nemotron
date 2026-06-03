@@ -17,8 +17,8 @@ The Nemotron recipes focus on the **Pre-training & SFT** (via Megatron-Bridge) a
 | Component | Purpose | Used In |
 |-----------|---------|---------|
 | [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) | Distributed training primitives (TP, PP, DP, CP) | All stages |
-| [Megatron-Bridge](https://github.com/NVIDIA/Megatron-Bridge) | Model definitions, training loops, HF conversion | Pretrain, SFT |
-| [NeMo-RL](https://github.com/NVIDIA/NeMo-RL) | RL algorithms (GRPO, DPO), reward environments | RL stage |
+| [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) | Model definitions, training loops, HF conversion | Pretrain, SFT |
+| [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) | RL algorithms (GRPO, DPO), reward environments | RL stage |
 
 ## Megatron-Core
 
@@ -114,7 +114,7 @@ Megatron-Bridge uses a central `ConfigContainer` dataclass that combines:
 
 ### Documentation
 
-- [Megatron-Bridge GitHub](https://github.com/NVIDIA/Megatron-Bridge)
+- [Megatron-Bridge GitHub](https://github.com/NVIDIA-NeMo/Megatron-Bridge)
 - [Official Documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/)
 - [Training Entry Points](https://docs.nvidia.com/nemo/megatron-bridge/latest/training/entry-points.html)
 - [Adding New Models](https://docs.nvidia.com/nemo/megatron-bridge/latest/adding-new-models.html)
