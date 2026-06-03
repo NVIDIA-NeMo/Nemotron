@@ -28,6 +28,10 @@
 # example, args.teacher_hf_path becomes --teacher_hf_path. New upstream flags can
 # be added directly under args: or passed literally through extra_args.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.04
+
 script:
   path: null
   flag_style: underscore
@@ -75,10 +79,9 @@ args:
   hf_export_path: null
 
   # Optional W&B logging. Requires WANDB_API_KEY in the environment.
-  wandb_project: ${oc.env:WANDB_PROJECT,null}
-  wandb_entity: ${oc.env:WANDB_ENTITY,null}
-  wandb_exp_name: ${oc.env:WANDB_NAME,null}
-
+  wandb_project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  wandb_entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+  wandb_exp_name: ${oc.env:WANDB_NAME,optimize-modelopt-distill}
   trust_remote_code: true
 
 torchrun:

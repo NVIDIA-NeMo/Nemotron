@@ -94,8 +94,7 @@ env:
 logger:
   log_dir: ${oc.env:RL_OUTPUT_DIR,./output/rl}/rlhf-tiny-logs
   wandb:
-    name: ${oc.env:WANDB_NAME,rlhf-genrm-tiny}
-
+    name: ${oc.env:WANDB_NAME,rl-nemo-rl-rlhf-tiny}
 cluster:
   gpus_per_node: 8
   num_nodes: 1

@@ -16,6 +16,11 @@
 # See full recipe: src/nemotron/recipes/nano3/stage1_sft/config/data_prep/default.yaml
 # Remote executor profiles can export SFT_OUTPUT_DIR; local runs fall back below.
 
+run:
+  env:
+    env_vars:
+      WANDB_NAME: ${oc.env:WANDB_NAME,data-prep-sft-packing}
+
 blend_path: /path/to/data_blend.json
 output_dir: ${oc.env:SFT_OUTPUT_DIR,./output/packed-sft}
 num_shards: 128

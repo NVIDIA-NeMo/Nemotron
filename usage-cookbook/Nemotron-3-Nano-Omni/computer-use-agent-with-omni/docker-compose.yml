@@ -1,0 +1,37 @@
+services:
+  # Desktop environment: Ubuntu GNOME + KasmVNC + minimal desktop API
+  desktop:
+    build:
+      context: ./desktop
+      dockerfile: Dockerfile
+    expose:
+      - "6901"   # KasmVNC, reached through the FastAPI /vnc proxy
+      - "5000"   # Desktop API, reached only from the server service
+    environment:
+      - VNC_PW=${DESKTOP_PASSWORD:-password}
+      - VNC_RESOLUTION=${SCREEN_RESOLUTION:-1920x1080}
+    shm_size: "2g"
+    restart: unless-stopped
+
+  # FastAPI server: agent loop + web UI + VNC proxy
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "${DEMO_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - DESKTOP_HOST=desktop
+      - DESKTOP_API_PORT=5000
+      - DESKTOP_VNC_PORT=6901
+      - DOCKER_SOCKET=/var/run/docker.sock
+      - DESKTOP_CONTAINER_SERVICE=desktop
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - desktop
+    restart: unless-stopped

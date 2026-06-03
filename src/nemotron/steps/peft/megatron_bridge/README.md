@@ -60,7 +60,7 @@ Related patterns:
 ## Config Nuances
 
 - Set `checkpoint.pretrained_checkpoint` to a real Megatron checkpoint directory for PEFT; placeholders and parent output directories fail validation.
-- Use `load_hf_weights: false` when PEFT starts from `checkpoint.pretrained_checkpoint`; use HF loading only when deliberately bootstrapping from HF weights.
+- Keep `load_hf_weights: false` for PEFT: the frozen base must be a Megatron checkpoint (`checkpoint.pretrained_checkpoint`). PEFT cannot bootstrap from HF weights — convert HF to Megatron first (run SFT or `convert/hf_to_megatron`), then point `pretrained_checkpoint` at the result.
 - Keep `model.sequence_parallel: true` when `model.tensor_model_parallel_size > 1` and MoE is enabled.
 - When checkpoint save reliability matters more than async throughput, prefer `checkpoint.async_save: false`, `checkpoint.fully_parallel_save: false`, `checkpoint.save_optim: false`, and `checkpoint.save_rng: false`.
 - `dataset.packed_sequence_specs.packed_train_data_path` should point at `splits/train/*.parquet` produced by `data_prep/sft_packing`.

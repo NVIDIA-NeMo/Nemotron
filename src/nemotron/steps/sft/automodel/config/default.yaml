@@ -15,6 +15,10 @@
 # Starter config for AutoModel-style SFT.
 # Uses the Qwen3-30B-A3B MoE model and points at local chat JSONL.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo-automodel:26.04
+
 recipe: TrainFinetuneRecipeForNextTokenPrediction
 
 step_scheduler:
@@ -100,6 +104,6 @@ lr_scheduler:
   min_lr: 1.0e-6
 
 wandb:
-  project: ${oc.env:WANDB_PROJECT,null}
-  entity: ${oc.env:WANDB_ENTITY,null}
+  project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
   name: ${oc.env:WANDB_NAME,sft-automodel}

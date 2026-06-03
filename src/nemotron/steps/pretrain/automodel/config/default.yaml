@@ -15,6 +15,10 @@
 # AutoModel pretraining defaults.
 # Uses the Qwen3-30B-A3B MoE model for continued pretraining.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo-automodel:26.04
+
 recipe: TrainPretrainRecipeForNextTokenPrediction
 
 step_scheduler:
@@ -117,6 +121,6 @@ lr_scheduler:
   min_lr: 3.0e-5
 
 wandb:
-  project: ${oc.env:WANDB_PROJECT,null}
-  entity: ${oc.env:WANDB_ENTITY,null}
+  project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
   name: ${oc.env:WANDB_NAME,pretrain-automodel}

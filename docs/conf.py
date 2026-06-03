@@ -35,6 +35,9 @@ author = "NVIDIA Corporation"
 # Defaults to "dev" for local builds
 release = os.environ.get("DOCS_VERSION", "nightly")
 
+if release == "nightly":
+    html_meta = {"robots": "noindex, nofollow"}
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 

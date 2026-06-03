@@ -20,8 +20,10 @@ All three step.py wrappers go through the same pipeline:
     2. Build the recipe ``ConfigContainer`` from the ``recipe:`` block.
     3. Apply section overrides discovered dynamically from the recipe's
        dataclass fields (no hardcoded list).
-    4. (Optional) Replace the model provider with HF weights via AutoBridge.
-       Side-effects on ``cfg.checkpoint`` are explicit YAML knobs, not implicit.
+    4. Select the model init source by priority: resume an existing checkpoint,
+       else finetune from a Megatron ``pretrained_checkpoint``, else build from
+       HF weights via AutoBridge. Side-effects on ``cfg.checkpoint`` are explicit
+       YAML knobs, not implicit.
     5. (Optional) Apply PEFT via ``default_peft_config`` from the YAML
        ``peft:`` block.
     6. Apply ``dataset:`` either as a normal recipe override (pretrain) or
@@ -88,52 +90,92 @@ def _apply_section_overrides(cfg: Any, container: dict[str, Any], skip: set[str]
 # =============================================================================
 
 
+def _checkpoint_exists_at(path: Any) -> bool:
+    """True only if ``path`` holds a loadable Megatron checkpoint (tracker present).
+
+    Uses Megatron-Bridge's own ``checkpoint_exists`` so the runner's resume
+    detection matches the library's.
+    """
+    if not path:
+        return False
+    try:
+        from megatron.bridge.training.utils.checkpoint_utils import checkpoint_exists
+    except Exception:
+        return False
+    return bool(checkpoint_exists(str(path)))
+
+
 def _maybe_load_hf_weights(cfg: Any, container: dict[str, Any]) -> None:
-    """Replace ``cfg.model`` with an HF-derived provider when YAML opts in.
+    """Pick the model init source by priority: resume > pretrained_checkpoint > HF.
 
-    Schema (all keys optional)::
-
-        hf_model_path: <hf-id-or-path>
-        load_hf_weights: true
-        trust_remote_code: false
-        hf_load:
-          # Side effects to apply when HF weights are loaded. Defaults match
-          # the prior implicit behaviour but are now explicit and overridable.
-          clear_pretrained_checkpoint: true
-          inherit_save_as_load: true
-          mirror_model_attrs: ["tensor_model_parallel_size", "pipeline_model_parallel_size",
-                               "context_parallel_size", "sequence_parallel", "seq_length",
-                               "expert_model_parallel_size", "expert_tensor_parallel_size"]
+    Skips AutoBridge when a checkpoint already exists to resume from (``load``/``save``)
+    or an explicit ``pretrained_checkpoint`` base exists — Megatron-Bridge loads those
+    itself. Otherwise builds the base from ``hf_model_path``. A missing ``load`` is the
+    normal fresh-start case (MB just starts fresh), but an explicitly-set
+    ``pretrained_checkpoint`` that has no checkpoint raises rather than silently falling
+    back to HF. PEFT (no HF path) raises if its ``pretrained_checkpoint`` base is
+    missing. Shared by SFT, PEFT, and pretrain/CPT.
     """
     hf_path = container.get("hf_model_path")
+    hf_load = dict(container.get("hf_load") or {})
+    is_peft = bool((container.get("peft") or {}).get("type") or (container.get("peft") or {}).get("scheme"))
+    pretrained = getattr(cfg.checkpoint, "pretrained_checkpoint", None)
+
+    # A user-provided checkpoint.load (YAML/CLI) is an explicit resume target. The recipe
+    # also sets a default `load`, so only treat it as user-provided when it appears in the
+    # raw container (which holds YAML + CLI overrides, before recipe defaults).
+    user_load = (container.get("checkpoint") or {}).get("load")
+    if user_load and not _checkpoint_exists_at(user_load):
+        raise FileNotFoundError(
+            f"checkpoint.load is set to {user_load!r} but no Megatron checkpoint was found "
+            "there. Fix the path (or unset it to start fresh / let save auto-resume)."
+        )
+
+    # Inherit load = save so a re-run auto-resumes. A non-existent (recipe-default) load is
+    # the normal fresh-start case — Megatron-Bridge just starts fresh — so it is not an error.
+    if hf_load.get("inherit_save_as_load", True) and getattr(cfg.checkpoint, "load", None) is None:
+        cfg.checkpoint.load = cfg.checkpoint.save
+
+    # PEFT always needs its frozen base from pretrained_checkpoint — even when resuming
+    # an adapter run via `load` — and has no HF fallback. Validate it before launch.
+    if is_peft and not _checkpoint_exists_at(pretrained):
+        raise ValueError(
+            "PEFT requires checkpoint.pretrained_checkpoint to point at an existing Megatron "
+            f"checkpoint (set MEGATRON_PRETRAIN_PATH or pass checkpoint.pretrained_checkpoint=); "
+            f"got {pretrained!r}."
+        )
+
+    # Skip AutoBridge when a checkpoint is already available to resume from (load/save).
+    if any(_checkpoint_exists_at(getattr(cfg.checkpoint, k, None)) for k in ("load", "save")):
+        return
+    # An explicitly-set pretrained_checkpoint is an intentional base choice: load from it
+    # if it exists, else fail loudly rather than silently training from the HF base.
+    if pretrained:
+        if _checkpoint_exists_at(pretrained):
+            return
+        raise FileNotFoundError(
+            f"checkpoint.pretrained_checkpoint is set to {pretrained!r} but no Megatron "
+            "checkpoint was found there. Fix the path (or unset it to start from HF)."
+        )
+
     if not hf_path:
         return
-
     from megatron.bridge.models.conversion.auto_bridge import AutoBridge
 
     bridge = AutoBridge.from_hf_pretrained(hf_path, trust_remote_code=container.get("trust_remote_code", False))
     cfg.model = bridge.to_megatron_provider(load_weights=container.get("load_hf_weights", True))
 
-    hf_load = dict(container.get("hf_load") or {})
-    mirror = hf_load.get("mirror_model_attrs") or [
-        "tensor_model_parallel_size",
-        "pipeline_model_parallel_size",
-        "context_parallel_size",
-        "sequence_parallel",
-        "seq_length",
-        "expert_model_parallel_size",
-        "expert_tensor_parallel_size",
-    ]
-    for attr in mirror:
-        value = container.get("model", {}).get(attr)
+    # Re-apply every model: override onto the HF-built provider (AutoBridge resets them).
+    model_overrides = dict(container.get("model") or {})
+    model_overrides.pop("_target_", None)
+    for attr, value in model_overrides.items():
         if value is not None and hasattr(cfg.model, attr):
             setattr(cfg.model, attr, value)
 
-    if container.get("load_hf_weights", True):
-        if hf_load.get("clear_pretrained_checkpoint", True):
-            cfg.checkpoint.pretrained_checkpoint = None
-        if hf_load.get("inherit_save_as_load", True) and cfg.checkpoint.load is None:
-            cfg.checkpoint.load = cfg.checkpoint.save
+    # load = save inheritance is handled at the top of this function; here we only clear
+    # the (unused) pretrained_checkpoint so a stale value doesn't trigger a later load.
+    if container.get("load_hf_weights", True) and hf_load.get("clear_pretrained_checkpoint", True):
+        cfg.checkpoint.pretrained_checkpoint = None
 
 
 # =============================================================================
