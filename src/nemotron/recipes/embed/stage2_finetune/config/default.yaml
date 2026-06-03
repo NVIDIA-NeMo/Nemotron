@@ -14,10 +14,11 @@
 run:
   env:
     # Container image for remote execution (Docker/Slurm)
-    container: nvcr.io/nvidia/pytorch:25.12-py3
+    container: nvcr.io/nvidia/nemo-automodel:26.04
 
 # Base embedding model to fine-tune
 base_model: nvidia/llama-nemotron-embed-1b-v2
+trust_remote_code: true
 
 # Path to training data (output from stage1_data_prep)
 train_data_path: ./output/embed/stage1_data_prep/train_mined.automodel_unrolled.json
@@ -33,6 +34,12 @@ learning_rate: 1.0e-5
 lr_warmup_steps: 5
 lr_decay_style: cosine  # cosine maintains higher LR longer than linear
 weight_decay: 0.01
+
+# Optimizer
+# auto uses Transformer Engine FusedAdam when available in the Automodel
+# container, otherwise FlashAdamW with bf16 model parameters.
+optimizer_backend: auto
+flash_adamw_master_weight_bits: 32
 
 # Model architecture
 # attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa

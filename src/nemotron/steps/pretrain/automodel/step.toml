@@ -1,0 +1,90 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "pretrain/automodel"
+name = "Pretraining (AutoModel)"
+category = "pretrain"
+description = """\
+Causal-LM pretraining or continued pretraining (CPT) using the NeMo-AutoModel
+stack. Reads tokenized text data and trains from scratch or from an HF base."""
+tags = ["pretrain", "cpt", "automodel", "huggingface"]
+
+[[consumes]]
+type = "binidx"
+description = "Megatron bin/idx tokenized text shards (from data_prep/pretrain_prep)."
+required = true
+
+[[produces]]
+type = "checkpoint_hf"
+description = "HuggingFace-format pretrained checkpoint."
+
+[[models]]
+name = "Qwen/Qwen3-30B-A3B"
+description = "MoE HF backbone example for AutoModel continued pretraining."
+default = true
+min_gpus = 8
+
+[[parameters]]
+name = "model.pretrained_model_name_or_path"
+description = "HF base for CPT, or pass a config-only path to train from scratch."
+default = "Qwen/Qwen3-30B-A3B"
+
+[[parameters]]
+name = "load_weights"
+description = "True for continued pretraining from an HF base; false only when intentionally training from scratch."
+default = true
+
+[[parameters]]
+name = "dataset.paths"
+description = "Path to data_prep/pretrain_prep emitted blend.json for training bin/idx data."
+
+[[parameters]]
+name = "validation_dataset.paths"
+description = "Path to the validation blend.json or validation portion emitted by pretrain prep."
+
+[[parameters]]
+name = "dataset.seq_length"
+description = "Sequence length used by MegatronPretraining data loader; keep aligned with validation_dataset.seq_length and model context."
+
+[[strategies]]
+when = "Continued pretraining on a domain corpus"
+then = "Set load_weights=true and lower the learning rate (1e-5 to 5e-5)."
+
+[[strategies]]
+when = "Pretraining from scratch"
+then = "Set load_weights=false and use a warmup + cosine schedule sized to the token budget."
+
+[[errors]]
+name = "missing_blend_json"
+recovery = "Run data_prep/pretrain_prep first and set dataset.paths / validation_dataset.paths to the emitted blend.json."
+
+[[errors]]
+name = "tokenizer_or_sequence_mismatch"
+recovery = "Rebuild bin/idx if tokenizer assumptions change, and keep dataset.seq_length, validation_dataset.seq_length, and model context aligned."
+
+[[errors]]
+name = "unsupported_scheduler_kwargs"
+recovery = "Use lr_scheduler.lr_decay_style and min_lr with containers whose OptimizerParamScheduler does not accept warmup_steps."
+
+[reference]
+skill = "src/nemotron/steps/pretrain/automodel/README.md"
+repo = "https://github.com/NVIDIA-NeMo/Automodel"
+readme = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/README.md"
+docs = "https://docs.nvidia.com/nemo/automodel/latest/index.html"
+pretrain_guide = "https://docs.nvidia.com/nemo/automodel/latest/guides/llm/nanogpt-pretraining.html"
+recipes_overview = "https://docs.nvidia.com/nemo/automodel/latest/guides/overview.html"
+examples = "https://github.com/NVIDIA-NeMo/Automodel/tree/main/examples/llm_pretrain"
+recipe_script = "https://github.com/NVIDIA-NeMo/Automodel/blob/main/nemo_automodel/recipes/llm/train_ft.py"
+skills = ["skills/nemotron-customize/references/context/automodel-pretrain.txt"]

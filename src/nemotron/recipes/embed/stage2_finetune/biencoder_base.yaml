@@ -14,9 +14,13 @@
 
 # Base configuration for biencoder fine-tuning using nemo-automodel
 # This file provides defaults that will be overridden by the Nemotron CLI
-# Source: https://github.com/NVIDIA-NeMo/Automodel/blob/main/examples/biencoder/llama3_2_1b_biencoder.yaml
+# Source: https://github.com/NVIDIA-NeMo/Automodel/blob/main/examples/retrieval/bi_encoder/llama3_2_1b.yaml
+
+recipe: TrainBiEncoderRecipe
 
 seed: 42
+
+temperature: 0.02
 
 step_scheduler:
   global_batch_size: 128
@@ -30,39 +34,33 @@ dist_env:
   timeout_minutes: 1
 
 model:
-  _target_: nemo_automodel.components.models.biencoder.NeMoAutoModelBiencoder.from_pretrained
+  _target_: nemo_automodel.NeMoAutoModelBiEncoder.from_pretrained
   pretrained_model_name_or_path: meta-llama/Llama-3.2-1B
-  share_encoder: true
-  add_linear_pooler: false
-  out_dimension: 768
-  do_gradient_checkpointing: false
-  train_n_passages: 5
-  eval_negative_size: 4
   attn_implementation: sdpa  # Use PyTorch SDPA as fallback (works with/without flash-attn)
   pooling: avg
   l2_normalize: true
-  t: 0.02
   use_liger_kernel: true
   use_sdpa_patching: true
   torch_dtype: bfloat16
 
 tokenizer:
-  _target_: nemo_automodel._transformers.auto_tokenizer.NeMoAutoTokenizer.from_pretrained
+  _target_: nemo_automodel.NeMoAutoTokenizer.from_pretrained
   pretrained_model_name_or_path: meta-llama/Llama-3.2-1B
+  add_eos_token: false
 
 dataloader:
   _target_: torchdata.stateful_dataloader.StatefulDataLoader
   dataset:
     _target_: nemo_automodel.components.datasets.llm.make_retrieval_dataset
+    model_type: bi_encoder
     data_dir_list:
       - training_datasets/nqsh_shuffled_50k.json
     data_type: train
-    train_n_passages: 5
-    eval_negative_size: 4
+    n_passages: 5
     seed: 42
     do_shuffle: true
   collate_fn:
-    _target_: nemo_automodel.components.datasets.llm.RetrievalBiencoderCollator
+    _target_: nemo_automodel.components.datasets.llm.BiEncoderCollator
     q_max_len: 512
     p_max_len: 512
     query_prefix: "query:"
@@ -72,11 +70,12 @@ dataloader:
   num_workers: 0
 
 optimizer:
-  _target_: torch.optim.AdamW
+  _target_: transformer_engine.pytorch.optimizers.fused_adam.FusedAdam
   lr: 5.0e-6
   weight_decay: 0.01
-  betas: [0.9, 0.999]
-  eps: 1.0e-8
+  adam_w_mode: true
+  bias_correction: true
+  master_weights: true
 
 lr_scheduler:
   lr_warmup_steps: 1
@@ -88,6 +87,9 @@ checkpoint:
   model_save_format: safetensors
   save_consolidated: true
 
-distributed_config:
-  _target_: nemo_automodel.components.distributed.config.FSDP2Config
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
   sequence_parallel: false

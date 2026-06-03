@@ -119,7 +119,11 @@ def build_salloc_args(
     account = env_config.get("account")
     partition = resolve_build_partition(env_config)
     time_limit = resolve_build_time(env_config, default_time)
-    gpus_per_node = env_config.get("gpus_per_node") if include_gpus else None
+    gpus_per_node = (
+        env_config.get("build_gpus_per_node", env_config.get("gpus_per_node"))
+        if include_gpus
+        else None
+    )
 
     args: list[str] = []
     if account:
@@ -276,12 +280,12 @@ def ensure_squashed_image(
     # (login nodes don't have enough memory for enroot import).
     # build_salloc_args applies the canonical build-context precedence
     # (build_partition > run_partition > partition; build_time > time).
-    # ``include_gpus=False`` because enroot import is CPU-only and
-    # ``build_partition`` is typically a CPU partition; mixing
-    # ``--partition=cpu`` with ``--gpus-per-node=8`` from the
-    # training profile would be rejected by sbatch with
-    # "Requested node configuration is not available".
-    salloc_args = build_salloc_args(env_config, include_gpus=False)
+    # ``include_gpus=False`` by default because enroot import is CPU-only and
+    # ``build_partition`` is typically a CPU partition. Some sites only allow
+    # jobs on GPU partitions; those profiles can set ``build_include_gpus`` and
+    # optionally ``build_gpus_per_node`` so the import allocation is accepted.
+    include_build_gpus = bool(env_config.get("build_include_gpus", False))
+    salloc_args = build_salloc_args(env_config, include_gpus=include_build_gpus)
 
     # Set up writable enroot paths (default /raid/enroot may not be user-writable)
     enroot_runtime = f"{remote_job_dir}/.enroot"

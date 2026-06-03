@@ -37,7 +37,7 @@ from loguru import logger
 
 from nemo_curator.stages.file_partitioning import FilePartitioningStage
 from nemo_curator.tasks import EmptyTask
-from nemo_curator.backends.experimental.ray_data import RayDataExecutor
+from nemo_curator.backends.ray_data import RayDataExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.stages.deduplication.exact.workflow import ExactDeduplicationWorkflow
 from nemo_curator.stages.deduplication.id_generator import CURATOR_DEDUP_ID_STR

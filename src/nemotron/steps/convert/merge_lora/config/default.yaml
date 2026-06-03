@@ -1,0 +1,64 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Merge a LoRA adapter into its original base checkpoint.
+#
+# backend=hf_peft merges HuggingFace PEFT adapters directly to HF output.
+# backend=megatron_bridge runs Megatron-Bridge's merge_lora.py, then exports the
+# merged Megatron checkpoint to HF when export_hf=true.
+#
+# HF PEFT usage:
+#   nemotron steps run convert/merge_lora -c default \
+#     lora_checkpoint=/path/to/adapter-or-checkpoint-root \
+#     base_hf_path=/path/to/base_hf \
+#     output_hf_path=/path/to/merged_hf
+#
+# Megatron-Bridge usage:
+#   nemotron steps run convert/merge_lora -c default backend=megatron_bridge \
+#     lora_checkpoint=/path/to/lora_megatron \
+#     base_megatron_path=/path/to/base_megatron \
+#     hf_model_id=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
+#     output_megatron_path=/path/to/merged_megatron \
+#     output_hf_path=/path/to/merged_hf
+
+backend: auto
+
+lora_checkpoint: null
+base_hf_path: null
+output_hf_path: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/convert}/merge_lora/merged-hf
+
+trust_remote_code: true
+torch_dtype: auto
+device_map: null
+low_cpu_mem_usage: true
+safe_serialization: true
+save_tokenizer: true
+
+# Megatron-Bridge backend options.
+upstream_script: /opt/Megatron-Bridge/examples/peft/merge_lora.py
+hf_model_id: null
+hf_model_path: null
+base_megatron_path: null
+output_megatron_path: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/convert}/merge_lora/merged-megatron
+export_hf: true
+
+cpu: true
+tp: 1
+pp: 1
+ep: 1
+nproc_per_node: 1
+debug: false
+
+show_progress: true
+strict: true

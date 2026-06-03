@@ -10,9 +10,19 @@ dependencies = [
     "pydantic-settings>=2.0.0",
 ]
 
+# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
+# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
 [tool.uv.sources]
 # Point to vendored retriever-sdg package
 retriever-sdg = { path = "vendor/retriever-sdg", editable = true }
+torch = [
+    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.uv.extra-build-dependencies]
 # Build dependencies for vendored packages

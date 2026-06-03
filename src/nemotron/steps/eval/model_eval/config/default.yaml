@@ -1,0 +1,111 @@
+# Standard NeMo Evaluator Launcher config for Megatron checkpoint evaluation.
+#
+# This mirrors the Nano3/Super3 eval shape: the `run` section is used by
+# Nemotron for env/profile/artifact interpolation, then removed before handing
+# the config to NeMo Evaluator Launcher.
+
+dry_run: false
+output_dir: ./results
+
+run:
+  # Use a concrete Megatron Bridge iter_* checkpoint via
+  # `deployment.checkpoint_path=...`, or keep this as a W&B artifact reference
+  # consumed by `${art:model,path}`.
+  model: model:latest
+  env:
+    executor: local
+    container_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    host: ${oc.env:HOSTNAME,localhost}
+    user: ${oc.env:USER,''}
+    account: null
+    partition: null
+    remote_job_dir: ${oc.env:PWD}/.nemotron
+    time: "04:00:00"
+  wandb:
+    entity: null
+    project: null
+
+execution:
+  type: ${run.env.executor}
+  hostname: ${run.env.host}
+  username: ${run.env.user}
+  account: ${run.env.account}
+  partition: ${run.env.partition}
+  output_dir: ${output_dir}
+  walltime: ${run.env.time}
+  num_nodes: ${oc.select:run.env.nodes,1}
+  deployment:
+    n_tasks: ${execution.num_nodes}
+  auto_export:
+    destinations:
+      - wandb
+  env_vars:
+    deployment:
+      HF_HOME: ${run.env.remote_job_dir}/hf
+      HF_TOKEN: HF_TOKEN
+      NIM_CACHE_PATH: ${run.env.remote_job_dir}/nim
+      VLLM_CACHE_ROOT: ${run.env.remote_job_dir}/vllm
+    evaluation:
+      HF_HOME: ${run.env.remote_job_dir}/hf
+      HF_TOKEN: HF_TOKEN
+  mounts:
+    deployment: {}
+    evaluation: {}
+    mount_home: false
+
+deployment:
+  type: generic
+  image: ${run.env.container_image}
+  checkpoint_path: ${art:model,path}
+  multiple_instances: false
+  port: 1235
+  served_model_name: nemo-model
+  health_check_path: /v1/health
+  command: >-
+    bash -c 'export TRITON_CACHE_DIR=/tmp/triton_cache;
+    python /opt/Export-Deploy/scripts/deploy/nlp/deploy_ray_inframework.py
+    --megatron_checkpoint /checkpoint/
+    --num_gpus ${oc.select:run.env.gpus_per_node,1}
+    --tensor_model_parallel_size 1
+    --expert_model_parallel_size 1
+    --port 1235
+    --num_replicas 1'
+  endpoints:
+    chat: /v1/chat/completions/
+    completions: /v1/completions/
+    health: /v1/health
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        max_retries: 5
+        parallelism: 4
+        request_timeout: 6000
+        limit_samples: null
+        extra:
+          tokenizer: ${deployment.checkpoint_path}/tokenizer
+          tokenizer_backend: huggingface
+    target:
+      api_endpoint:
+        adapter_config:
+          output_dir: /results
+          use_progress_tracking: false
+          use_caching: true
+          caching_dir: /results/cache
+          use_response_logging: true
+          max_logged_responses: 10
+          use_request_logging: true
+          max_logged_requests: 10
+  tasks:
+    - name: adlr_mmlu
+      nemo_evaluator_config:
+        config:
+          params:
+            top_p: 0.0
+    - name: hellaswag
+
+export:
+  wandb:
+    entity: ${run.wandb.entity}
+    project: ${run.wandb.project}
