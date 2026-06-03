@@ -20,39 +20,22 @@
 # Note: dataset paths are explicit (Megatron-Bridge's vanilla schema). This
 # step is generic — recipe-specific dir shortcuts live in recipes/, not here.
 
-# Override the container's stale Megatron-Bridge with a branch that supports
-# packed-parquet specs (matches what the nano3 recipe uses).
 run:
   env:
-    mounts:
-      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bbbedbb9f53343762e4dc70abc771b813a83d817,/opt/megatron-lm}
-      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
+    container_image: nvcr.io/nvidia/nemo:26.04
 
+# Base init priority: resume > pretrained_checkpoint > HF.
+# Default: load base weights from HuggingFace via AutoBridge (no Megatron base needed).
+# To start from a Megatron checkpoint instead, uncomment pretrained_checkpoint in the
+# checkpoint block below. To resume, see the checkpoint block.
 hf_model_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
 trust_remote_code: true
 load_hf_weights: true
 
 recipe:
-  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_sft_config
   packed_sequence: true
-  # LoRA on 2 nodes — full SFT of the 30B MoE OOMs on 16×H100 even with EP=8
-  # and full activation recompute. PEFT keeps the optimizer state tiny.
-  peft: lora
   seq_length: 4096
-  tensor_model_parallel_size: 4
-  pipeline_model_parallel_size: 1
-  # EP / ETP are not recipe-level kwargs — set them on `model:` below where
-  # apply_overrides handles the merge onto the built ConfigContainer.
-
-# LoRA adapter spec applied via Megatron-Bridge's default_peft_config.
-peft:
-  type: lora
-  dim: 16
-  alpha: 32
-  dropout: 0.0
-  target_modules:
-    - linear_qkv
-    - linear_proj
 
 dataset:
   seq_length: 4096
@@ -88,11 +71,28 @@ scheduler:
 
 logger:
   log_interval: 1
-  wandb_project: ${oc.env:WANDB_PROJECT,null}
-  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  wandb_entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
   wandb_exp_name: ${oc.env:WANDB_NAME,sft-megatron-bridge}
 
 checkpoint:
+  # Where checkpoints are written.
   save: ${oc.env:SFT_OUTPUT_DIR}/sft-tiny-2node
+
+  # Base from a Megatron checkpoint instead of HF: uncomment to finetune from it.
+  # When set it takes priority over the HF base above; if set but not a real
+  # checkpoint the run fails fast (it does not silently fall back to HF).
+  # pretrained_checkpoint: ${oc.env:MEGATRON_PRETRAIN_PATH,null}
+
+  # Resume an interrupted run: point `load` at a checkpoint directory. It defaults
+  # to `save`, so re-running with the same `save` already auto-resumes. Megatron-Bridge
+  # reads the tracker file in that dir, finds the latest iteration, and loads its
+  # `iter_<N>/` subdir (optimizer + RNG included). Uncomment to set it explicitly:
+  # load: ${oc.env:SFT_OUTPUT_DIR}/sft-tiny-2node
+
+  # By default the latest iteration is loaded. To resume from a specific iteration
+  # instead, set ckpt_step to N and it loads that `iter_<N>/`. Uncomment to use:
+  # ckpt_step: 100
+
   save_interval: 5
   finetune: true

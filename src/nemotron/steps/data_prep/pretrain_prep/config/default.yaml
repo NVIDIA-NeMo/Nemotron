@@ -14,6 +14,11 @@
 
 # Pretrain bin/idx tokenisation. HF-dataset compatible via the blend file.
 
+run:
+  env:
+    env_vars:
+      WANDB_NAME: ${oc.env:WANDB_NAME,data-prep-pretrain-prep}
+
 blend_path: /path/to/pretrain_blend.json   # references HF or local datasets
 output_dir: /nemo_run/pretrain-binidx
 num_shards: 128

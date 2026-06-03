@@ -20,6 +20,11 @@
 #   nemotron steps run data_prep/sft_packing -c tiny                          # local
 #   nemotron steps run data_prep/sft_packing -c tiny --run YOUR-CLUSTER
 
+run:
+  env:
+    env_vars:
+      WANDB_NAME: ${oc.env:WANDB_NAME,data-prep-sft-packing-tiny}
+
 # blend_path is omitted on purpose — step.py defaults to the in-step
 # data/blend_tiny.json so the same config works under any source layout
 # (local checkout or remote executor working directory).

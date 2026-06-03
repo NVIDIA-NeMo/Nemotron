@@ -2,6 +2,8 @@
 #
 # Base Run:AI / DGX Cloud wiring is based on env.old.toml. Keep credentials in
 # environment variables; do not commit client secrets or access tokens.
+# Step configs remain the source of truth for image/recipe-specific requirements;
+# these profiles provide generic fallbacks plus cluster logistics.
 
 output_path: env.dgxcloud.toml
 force: false
@@ -74,7 +76,7 @@ checks:
 
 sections:
   wandb:
-    project: nemotron
+    project: ${oc.env:WANDB_PROJECT,nemotron}
     entity: ${oc.env:WANDB_ENTITY,nvidia}
 
   dgxcloud_base:
@@ -85,22 +87,35 @@ sections:
     client_secret: ${oc.env:DGXCLOUD_CLIENT_SECRET,''}
     project_name: ${oc.env:DGXCLOUD_PROJECT_NAME,masked-project-name}
     container_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
-    pvc_nemo_run_dir: ${oc.env:NEMO_RUN_DIR,/workspace/nemo_run}
+    # Single shared-storage root (the PVC mount). nemo_run dir, outputs, HF_HOME,
+    # and the staged source tree below all derive from NEMOTRON_WORKSPACE so
+    # overriding that one env var relocates them together. Each derived path
+    # anchors on the env var directly since sibling ${workspace} refs can't
+    # survive env.toml round-tripping.
+    # workspace: persistent root where the PVC is mounted inside the job; parent of all paths below.
+    workspace: ${oc.env:NEMOTRON_WORKSPACE,/workspace}
+    # pvc_nemo_run_dir: NeMo-Run staging + job metadata/logs on the mounted PVC.
+    pvc_nemo_run_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:NEMOTRON_WORKSPACE,/workspace}/nemo_run}
+    # code_src_dir: staged source tree put on PYTHONPATH so Ray/worker procs import nemotron (see prep profiles).
+    code_src_dir: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/_nemotron/src
     nodes: 1
     gpus_per_node: 0
     nprocs_per_node: 1
     distributed_framework: PyTorch
     pip_extras: [typer, rich, pydantic-settings]
     pvcs:
+      # Run:AI PVC to mount. name: PVC resource name; path: mount point (= workspace root);
+      # claimName: the backing Kubernetes PersistentVolumeClaim.
       - name: ${oc.env:DGXCLOUD_PVC_NAME,playbook-storage}
-        path: ${oc.env:DGXCLOUD_PVC_MOUNT,/workspace}
+        path: ${oc.env:DGXCLOUD_PVC_MOUNT,${oc.env:NEMOTRON_WORKSPACE,/workspace}}
         existingPvc: true
         claimName: ${oc.env:DGXCLOUD_PVC_CLAIM,masked-pvc-claim-name}
     env_vars:
       HF_TOKEN: ${oc.env:HF_TOKEN,''}
-      HF_HOME: ${oc.env:HF_HOME,/workspace/hf}
+      # HF_HOME: HuggingFace cache (models/datasets/tokenizers); on the PVC so it is reused across jobs.
+      HF_HOME: ${oc.env:HF_HOME,${oc.env:NEMOTRON_WORKSPACE,/workspace}/hf}
       WANDB_API_KEY: ${oc.env:WANDB_API_KEY,''}
-      WANDB_PROJECT: nemotron
+      WANDB_PROJECT: ${oc.env:WANDB_PROJECT,nemotron}
       RAY_DEDUP_LOGS: "0"
 
   # data_prep/*: CPU-only data prep on DGX Cloud. The step's Ray workers need the
@@ -110,25 +125,27 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages cosmos-xenna protobuf
     env_vars:
-      RAY_RUNTIME_ENV_PYTHONPATH: /workspace/_nemotron/src
+      # RAY_RUNTIME_ENV_PYTHONPATH: dir Ray prepends to each worker's PYTHONPATH so they
+      # import the staged nemotron source. Set once here; child prep profiles inherit it
+      # via `extends`. Mirrors dgxcloud_base.code_src_dir (anchored on NEMOTRON_WORKSPACE).
+      RAY_RUNTIME_ENV_PYTHONPATH: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/_nemotron/src
 
   dgxcloud_prep_sft_packing:
     extends: dgxcloud_prep_base
     env_vars:
-      SFT_OUTPUT_DIR: /workspace/output/data_prep/sft_packing
-      RAY_RUNTIME_ENV_PYTHONPATH: /workspace/_nemotron/src
+      # *_OUTPUT_DIR: per-step destination for that step's artifacts, under <workspace>/output.
+      # Override the specific env var (e.g. SFT_OUTPUT_DIR) to redirect just this step.
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/sft_packing
 
   dgxcloud_prep_pretrain_prep:
     extends: dgxcloud_prep_base
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /workspace/output/data_prep/pretrain_prep
-      RAY_RUNTIME_ENV_PYTHONPATH: /workspace/_nemotron/src
+      PRETRAIN_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/pretrain_prep
 
   dgxcloud_prep_rl_prep:
     extends: dgxcloud_prep_base
     env_vars:
-      RL_OUTPUT_DIR: /workspace/output/data_prep/rl_prep
-      RAY_RUNTIME_ENV_PYTHONPATH: /workspace/_nemotron/src
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/rl_prep
 
   # Curator-backed steps: byob/mcq, translate/nemo_curator, and curate all use the Curator
   # container and install their Python runtime through the generic curator_runtime
@@ -167,28 +184,28 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages data-designer==0.5.5
     env_vars:
-      SDG_OUTPUT_DIR: /workspace/output/sdg
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
 
   dgxcloud_sdg_data_designer_tiny:
     extends: dgxcloud_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /workspace/output/sdg/sft/tiny
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg/sft/tiny
 
   dgxcloud_sdg_data_designer_default:
     extends: dgxcloud_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /workspace/output/sdg/sft/default
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg/sft/default
 
   dgxcloud_sdg_data_designer_customer_support_tools:
     extends: dgxcloud_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /workspace/output/sdg/sft/customer_support_tools
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg/sft/customer_support_tools
 
   dgxcloud_sdg_data_designer_rl_pref:
     extends: dgxcloud_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /workspace/output/sdg/rl/rl_pref
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg/rl/rl_pref
 
   # translate/nemo_curator: uses the translate Curator runtime profile.
   dgxcloud_translate:
@@ -206,15 +223,16 @@ sections:
     env_vars:
       NEMOTRON_CURATOR_RAY_NUM_CPUS: "4"
 
-  # pretrain/megatron_bridge: GPU-backed training profile.
+  # pretrain/megatron_bridge: generic NeMo image fallback; tiny configs pin nano3.
   dgxcloud_pretrain_megatron_bridge:
     extends: dgxcloud_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     gpus_per_node: 8
     nprocs_per_node: 8
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /workspace/output/pretrain/megatron_bridge
-      PRETRAIN_BLEND_PATH: /workspace/output/data_prep/pretrain_prep/blend.json
+      PRETRAIN_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/pretrain/megatron_bridge
+      PRETRAIN_BLEND_PATH: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/pretrain_prep/blend.json
 
   # pretrain/automodel: AutoModel pretrain uses the AutoModel image/deps with
   # the same pretrain data-prep output wiring.
@@ -227,20 +245,21 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /workspace/output/pretrain/automodel
-      PRETRAIN_BLEND_PATH: /workspace/output/data_prep/pretrain_prep/blend.json
+      PRETRAIN_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/pretrain/automodel
+      PRETRAIN_BLEND_PATH: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/pretrain_prep/blend.json
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
-  # sft/megatron_bridge: GPU-backed SFT profile.
+  # sft/megatron_bridge: generic NeMo image fallback; config owns recipe target/image.
   dgxcloud_sft_megatron_bridge:
     extends: dgxcloud_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     gpus_per_node: 8
     nprocs_per_node: 8
     env_vars:
-      SFT_OUTPUT_DIR: /workspace/output/sft/megatron_bridge
-      SFT_PACKED_DIR: /workspace/output/data_prep/sft_packing/splits/train/*.parquet
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sft/megatron_bridge
+      SFT_PACKED_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/sft_packing/splits/train/*.parquet
 
   # sft/automodel: AutoModel image/deps with the same DGX Cloud logistics.
   dgxcloud_sft_automodel:
@@ -249,7 +268,7 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      SFT_OUTPUT_DIR: /workspace/output/sft/automodel
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sft/automodel
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
@@ -257,24 +276,25 @@ sections:
   dgxcloud_peft_megatron_bridge:
     extends: dgxcloud_sft_megatron_bridge
     env_vars:
-      SFT_OUTPUT_DIR: /workspace/output/peft/megatron_bridge
-      SFT_PACKED_DIR: /workspace/output/data_prep/sft_packing/splits/train/*.parquet
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/peft/megatron_bridge
+      SFT_PACKED_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/sft_packing/splits/train/*.parquet
 
   dgxcloud_peft_automodel:
     extends: dgxcloud_sft_automodel
     env_vars:
-      SFT_OUTPUT_DIR: /workspace/output/peft/automodel
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/peft/automodel
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # convert/*: one shared GPU profile for HF<->Megatron conversion and LoRA merge/export.
   dgxcloud_convert_model:
     extends: dgxcloud_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 1
     gpus_per_node: 8
     nprocs_per_node: 8
     env_vars:
-      CONVERT_OUTPUT_DIR: /workspace/output/convert
+      CONVERT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/convert
 
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   dgxcloud_rl_nemo_rl_dpo:
@@ -286,47 +306,47 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      RL_OUTPUT_DIR: /workspace/output/rl/dpo
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/rl/dpo
 
   # rl/nemo_rl/rlvr: same NeMo-RL image, with RLVR output wiring.
   dgxcloud_rl_nemo_rl_rlvr:
     extends: dgxcloud_rl_nemo_rl_dpo
     env_vars:
-      RL_OUTPUT_DIR: /workspace/output/rl/rlvr
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/rl/rlvr
 
   # rl/nemo_rl/rlhf: same RL profile, but more physical nodes for GenRM/NeMo-Gym placement.
   dgxcloud_rl_nemo_rl_rlhf:
     extends: dgxcloud_rl_nemo_rl_dpo
     nodes: 4
     env_vars:
-      RL_OUTPUT_DIR: /workspace/output/rl/rlhf
-      RL_PREP_MANIFEST: /workspace/output/data_prep/rl_prep/manifest.json
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/rl/rlhf
+      RL_PREP_MANIFEST: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/data_prep/rl_prep/manifest.json
 
   # optimize/modelopt/quantize: switch to the ModelOpt-capable NeMo image.
   dgxcloud_optimize_modelopt_quantize:
     extends: dgxcloud_base
-    container_image: nvcr.io/nvidia/nemo:26.02
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     gpus_per_node: 8
     nprocs_per_node: 8
     env_vars:
-      OPTIM_OUTPUT_DIR: /workspace/output/optimize/quantize
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/optimize/quantize
 
   # optimize/modelopt/distill: same ModelOpt-capable image with distillation output wiring.
   dgxcloud_optimize_modelopt_distill:
     extends: dgxcloud_optimize_modelopt_quantize
     env_vars:
-      OPTIM_OUTPUT_DIR: /workspace/output/optimize/distill
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/optimize/distill
 
   # optimize/modelopt/prune: pruning can run with fewer GPUs than full-node train jobs.
   dgxcloud_optimize_modelopt_prune:
     extends: dgxcloud_base
-    container_image: nvcr.io/nvidia/nemo:26.02
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 1
     gpus_per_node: 2
     nprocs_per_node: 2
     env_vars:
-      OPTIM_OUTPUT_DIR: /workspace/output/optimize/prune
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/optimize/prune
 
   # eval/model_eval: lightweight profile for model evaluation steps.
   dgxcloud_eval_model_eval:
@@ -340,4 +360,4 @@ sections:
       - pydantic-settings
       - nemo-evaluator-launcher
     env_vars:
-      EVAL_OUTPUT_DIR: /workspace/output/eval/model_eval
+      EVAL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/eval/model_eval
