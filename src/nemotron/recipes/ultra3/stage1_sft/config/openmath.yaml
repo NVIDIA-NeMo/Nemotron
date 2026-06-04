@@ -1,0 +1,62 @@
+# Ultra3 OpenMathInstruct-2 fallback SFT config.
+#
+# This intentionally omits a dataset: block so train.py leaves the
+# Megatron-Bridge recipe's default_openmathinstruct2_config(...,
+# packed_sequence=True) dataset untouched.
+
+run:
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/ultra3-sft.sqsh
+    workdir: /workspace/Megatron-Bridge
+    nodes: 24
+    gpus_per_node: 8
+    ntasks_per_node: 8
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_ultra.nemotron_3_ultra_sft_openmathinstruct2_packed_config
+  hf_path: nvidia/nemotron-ultra-rl-052726
+  seq_length: 4096
+
+model:
+  tensor_model_parallel_size: 2
+  pipeline_model_parallel_size: 6
+  expert_model_parallel_size: 32
+  expert_tensor_parallel_size: 1
+  context_parallel_size: 1
+  sequence_parallel: true
+  seq_length: 4096
+  recompute_granularity: selective
+  recompute_modules: [moe, layernorm, core_attn, moe_act]
+
+train:
+  train_iters: 1000
+  global_batch_size: 128
+  micro_batch_size: 1
+
+validation:
+  eval_interval: 50
+  eval_iters: 32
+
+optimizer:
+  lr: 5e-6
+  min_lr: 5e-7
+
+scheduler:
+  lr_warmup_iters: 250
+  lr_decay_iters: 1000
+
+logger:
+  log_interval: 1
+  wandb_entity: ${oc.env:WANDB_ENTITY,nvidia-nemo-fw-public}
+  wandb_project: ${oc.env:WANDB_PROJECT,megatron-bridge-nemotron-ultra}
+  wandb_exp_name: nemotron_3_ultra_openmath_sft_tp2_pp6_ep32
+  tensorboard_dir: /nemo_run/ultra3-sft/tb_logs
+  wandb_save_dir: /nemo_run/ultra3-sft/wandb
+
+checkpoint:
+  pretrained_checkpoint: ${oc.env:PRETRAINED_CHECKPOINT,}
+  save: /nemo_run/ultra3-sft-model-openmath
+  save_interval: 1000
+
+dist:
+  distributed_timeout_minutes: 90

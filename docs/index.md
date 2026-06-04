@@ -161,6 +161,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT |
 | [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 | [Rerank](nemotron/rerank/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 
@@ -284,6 +285,7 @@ Reference <model-eval/reference/index.md>
 Nemotron 3 Nano <nemotron/nano3/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
+Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Llama Nemotron Embed <nemotron/embed/README.md>
 Llama Nemotron Rerank <nemotron/rerank/README.md>
 nemotron/artifacts.md

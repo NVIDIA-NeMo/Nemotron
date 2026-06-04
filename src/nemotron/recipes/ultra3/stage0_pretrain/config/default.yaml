@@ -1,0 +1,81 @@
+# Ultra3 pretrain config — paper-aligned 20T-token horizon.
+#
+# Wraps the real Megatron-Bridge Ultra recipe, but overrides the inherited
+# starter/Super3 values with the Nemotron 3 Ultra paper §2.4 values below.
+# Pretraining uses NVFP4 per paper §2.2, constructed Nemotron-side from MB's
+# bf16_with_nvfp4_mixed with num_layers_at_end_in_bf16=16 because we cannot
+# register it in Megatron-Bridge; keeping first/last + final-16 layers +
+# MTP/Mamba-out/latent/QKV/embeddings in higher precision.
+# Consumes the tokenized pretrain-data artifact produced by Ultra3 data prep.
+
+run:
+  data: ultra3-pretrain-data-phase1:latest
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/ultra3-pretrain.sqsh
+    workdir: /workspace/Megatron-Bridge
+    nodes: 96
+    gpus_per_node: 8
+    ntasks_per_node: 8
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_ultra.nemotron_3_ultra_pretrain_config
+  hf_path: nvidia/nemotron-ultra-rl-052726
+  seq_length: 8192
+
+mixed_precision: nemotron_3_ultra_bf16_with_nvfp4_mixed
+
+# Dataset blend produced by data prep; train.py wires this onto cfg.dataset after recipe construction.
+data:
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+model:
+  # Runnable Ultra pretrain shape from the MB example, not a paper-stated
+  # main-phase parallelism number (the paper does not disclose that shape).
+  tensor_model_parallel_size: 2
+  pipeline_model_parallel_size: 12
+  expert_model_parallel_size: 32
+  expert_tensor_parallel_size: 1
+  context_parallel_size: 1
+  sequence_parallel: true
+  seq_length: 8192
+  mtp_loss_scaling_factor: 0.1  # Paper MTP scaling; overrides MB recipe's 0.3.
+  recompute_granularity: selective
+  recompute_modules: [moe, layernorm, core_attn, moe_act]
+
+train:
+  # 20T tokens / (8192 seq * 3072 global batch = 25,165,824 tokens/iter)
+  # = 794,728.6; the paper-aligned horizon is rounded to 794,728 iterations.
+  train_iters: 794728
+  global_batch_size: 3072
+  micro_batch_size: 1
+
+validation:
+  eval_interval: 1000
+  eval_iters: 10
+
+optimizer:
+  lr: 2.5e-4      # Paper §2.4; overrides MB recipe's 4.5e-4 starter value.
+  min_lr: 2.5e-6  # Paper §2.4; overrides MB recipe's 4.5e-6 starter value.
+
+scheduler:
+  lr_decay_style: WSD
+  lr_wsd_decay_style: minus_sqrt
+  lr_warmup_iters: 7947       # Paper: 200B-token warmup: 200e9 / 25,165,824 ≈ 7,947 iters.
+  lr_decay_iters: 794728      # Full 20T-token horizon for scheduler state.
+  lr_wsd_decay_iters: 198682  # Final 5T tokens: 5e12 / 25,165,824 ≈ 198,682 iters.
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 1
+  wandb_entity: ${oc.env:WANDB_ENTITY,nvidia-nemo-fw-public}
+  wandb_project: ${oc.env:WANDB_PROJECT,megatron-bridge-nemotron-ultra}
+  wandb_exp_name: nemotron_3_ultra_pretrain_paper_tp2_pp12_ep32
+  tensorboard_dir: /nemo_run/ultra3-pretrain/tb_logs
+  wandb_save_dir: /nemo_run/ultra3-pretrain/wandb
+
+checkpoint:
+  save: /nemo_run/ultra3-pretrain-model
+  save_interval: 1000
+
+dist:
+  distributed_timeout_minutes: 90

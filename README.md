@@ -166,9 +166,35 @@ Because these are complete systems, you can extract specific techniques with con
 
 | Model | Description | Stages | Guide |
 |-------|-------------|--------|-------|
+| **[Nemotron 3 Ultra](docs/nemotron/ultra3/README.md)** | 550B total / 55B active hybrid Mamba-Attention LatentMoE Transformer with MTP and 1M context — NVIDIA's largest Nemotron 3 model for datacenter-scale agentic reasoning | Pretrain → SFT | [Training Guide](docs/nemotron/ultra3/README.md) |
 | **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 120.6B total / 12.7B active Hybrid Mamba Latent MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
 | **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
+
+### Nemotron 3 Ultra
+
+A training recipe for NVIDIA's largest Nemotron 3 model — a 550B-A55B hybrid Mamba-Attention Mixture-of-Experts Transformer with LatentMoE and multi-token prediction (MTP), pretrained in NVFP4 and extended to 1M-token context for datacenter-scale agentic reasoning.
+
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
+
+**Model Specifications**:
+- 550B total / 55B active parameters (MoE)
+- Hybrid Mamba-Attention architecture with LatentMoE + two shared-weight MTP layers
+- 20T pretraining tokens in NVFP4, two-phase data curriculum
+- Up to 1M (1,048,576) context length
+- Full program: Pretrain → SFT → RLVR → MOPD → MTP Boosting (this recipe covers **Pretrain → SFT**)
+
+**What You Can Extract**:
+- Two-phase pretraining data mixture (tech-report Figure 4) over the open Nemotron datasets
+- Ray-based data prep: tokenize raw datasets → Megatron bin/idx (pretrain) and pack chat data → Parquet (SFT)
+- New open pretraining datasets: Specialized-v1.2 (Multiple-Choice / Generative / Fact-Seeking / Moral-Scenarios) and Legal-v1
+- Stage-local container builds (Day-0 Megatron-Bridge) for both pretrain and SFT
+- Megatron-Bridge training at Ultra scale (TP=2 / PP=12 / EP=32 pretrain, PP=6 SFT)
+
+**Resources**:
+- [Training Guide](docs/nemotron/ultra3/README.md)
+- [Usage Guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)
+- Model weights: staged release — base first, full (post-trained + NVFP4 + GenRM) release expected 1H 2026
 
 ### Nemotron 3 Super
 
