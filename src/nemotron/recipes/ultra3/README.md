@@ -17,6 +17,15 @@ prediction (MTP), pretrained in NVFP4 and extended to 1M-token context.
 
 > The full Ultra program also includes RLVR, MOPD, and MTP Boosting (see
 > `skills/nemotron-ultra/`). Only pretraining and SFT have public recipe stages here.
+>
+> **MOPD is not fully replicated.** The post-training MOPD pipeline (documented
+> separately for NeMo RL on GB200) runs **two MOPD iterations** over an evolving
+> panel of specialised teachers. The intermediate per-teacher checkpoints — and
+> the Iteration-1 MOPD checkpoint that Iteration 2 builds on — are **not part of
+> the public release**, so the full two-iteration pipeline cannot be reconstructed
+> end-to-end from open artifacts. The MOPD guide instead walks through a
+> **representative single pass** (Student RLVR → a small teacher panel → one MOPD
+> stage) to show how each step is wired, not a 1:1 reproduction of the report.
 
 ## Training Pipeline
 

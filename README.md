@@ -17,7 +17,7 @@
 
 ---
 
-> 🎉Nemotron 3 Ultra was announced at GTC San Jose 2026\. The model is open-source on [Hugging Face](https://huggingface.co/nvidia/nemotron-ultra-rl-052726), and the [training recipe](./docs/nemotron/ultra3/README.md) is now available in this repo\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)\!
+> 🎉Nemotron 3 Ultra was [announced](https://www.youtube.com/live/q_umfWm8J28?t=4568s) at GTC San Jose 2026\. The model is open-source on [Hugging Face](https://huggingface.co/nvidia/nemotron-ultra-rl-052726), and the [training recipe](./docs/nemotron/ultra3/README.md) is now available in this repo\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)\!
 >
 > 🎉**Nemotron 3 Nano Omni** is now released — a 30B-A3B hybrid Mamba-Transformer MoE with native text, image, video, and audio support, designed as a multimodal perception sub-agent for agentic AI. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/), the [training recipe](./docs/nemotron/omni3/README.md), and the [model weights](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16).
 
