@@ -96,16 +96,11 @@ branch, which **pins its Megatron-LM submodule** — so no separate Megatron-Cor
 branch is needed (pass `--build-arg MEGATRON_CORE_BRANCH=<branch>` only to
 override the pin).
 
-### Transparent (no-CLI) path
-
-For a dependency-free build, each stage also ships `build.slurm.sh` — submit it
-with bare `sbatch` on a cluster-visible checkout. It launches the same shared
-`build_container.sh` the CLI runs:
+Or build the Dockerfiles directly with Docker on any host:
 
 ```bash
-sbatch --partition=<cpu-part> --account=<acct> \
-  src/nemotron/recipes/ultra3/build.slurm.sh pretrain   # or: sft
-# BUILD_ARGS="--build-arg MEGATRON_BRIDGE_BRANCH=nemotron_3_ultra" passed via env
+docker build -t ultra3-pretrain src/nemotron/recipes/ultra3/stage0_pretrain
+docker build -t ultra3-sft     src/nemotron/recipes/ultra3/stage1_sft
 ```
 
 Training configs point at the resulting squashfs paths, for example
