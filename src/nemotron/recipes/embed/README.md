@@ -96,7 +96,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 # Clone the repository
-git clone https://github.com/NVIDIA/Nemotron.git
+git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
 # UV creates a virtual environment at .venv/ and installs all dependencies
@@ -674,7 +674,7 @@ Model: fine-tuned
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA/NeMo-Data-Designer) |
+| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA-NeMo/DataDesigner) |
 | Automodel | Embedding model training framework | [GitHub](https://github.com/NVIDIA/NeMo-Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
@@ -1084,8 +1084,8 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 
 ## Further Reading
 
-- [NeMo Data Designer Documentation](https://github.com/NVIDIA/NeMo-Data-Designer) - Synthetic data generation framework
-- [Automodel Documentation](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
+- [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) - Synthetic data generation framework
+- [Automodel](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
 - [BEIR Benchmark](https://github.com/beir-cellar/beir) - Information retrieval evaluation
 - [NVIDIA NIM Documentation](https://developer.nvidia.com/nim) - Production inference microservices
 - [Llama-Nemotron-Embed-1B-v2 Model Card](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) - Base model details
@@ -1094,6 +1094,6 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 ## Support
 
 For issues, questions, or contributions:
-- **Issues**: [GitHub Issues](https://github.com/NVIDIA/Nemotron/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/NVIDIA/Nemotron/discussions)
-- **Documentation**: [Nemotron Documentation](https://github.com/NVIDIA/Nemotron)
+- **Issues**: [GitHub Issues](https://github.com/NVIDIA-NeMo/Nemotron/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/NVIDIA-NeMo/Nemotron/discussions)
+- **Documentation**: [Nemotron Documentation](https://docs.nvidia.com/nemotron/latest)

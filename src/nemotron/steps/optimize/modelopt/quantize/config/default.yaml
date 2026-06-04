@@ -29,6 +29,10 @@
 # example, args.hf_model_id becomes --hf-model-id. New upstream flags can be
 # added directly under args: or passed literally through extra_args.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.04
+
 script:
   # Optional override for the upstream script path. Keep unset in normal containers.
   path: null
@@ -83,9 +87,9 @@ wandb_wrapper:
   # Upstream quantize.py does not expose W&B flags. This wrapper records
   # command/config/status so functional runs still show up in W&B.
   enabled: ${oc.decode:${oc.env:WANDB_ENABLED,false}}
-  project: ${oc.env:WANDB_PROJECT,null}
-  entity: ${oc.env:WANDB_ENTITY,null}
-  name: ${oc.env:WANDB_NAME,null}
+  project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+  name: ${oc.env:WANDB_NAME,optimize-modelopt-quantize}
   job_type: modelopt-quantize
 
 extra_args: []

@@ -40,8 +40,7 @@ checkpointing:
 logger:
   log_dir: ${oc.env:RL_OUTPUT_DIR,./output/rl}/rlvr-tiny-logs
   wandb:
-    name: ${oc.env:WANDB_NAME,rlvr-tiny}
-
+    name: ${oc.env:WANDB_NAME,rl-nemo-rl-rlvr-tiny}
 cluster:
   gpus_per_node: 8
   num_nodes: 2

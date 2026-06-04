@@ -19,8 +19,17 @@ path. Developers usually change:
 - `hf_model_id`: HF model ID or local clean HF checkpoint path.
 - `megatron_path`: fresh Megatron output directory.
 - `torch_dtype` / `dtype`: match the source checkpoint and target stack.
+- `tp`, `pp`, `ep`, `etp`: target Megatron parallelism. Defaults are
+  `tp=1 pp=1 ep=8 etp=1` for Nemotron MoE conversion.
+- `torchrun.nproc_per_node`: local ranks for conversion. Defaults to
+  `NEMOTRON_CONVERT_NPROC_PER_NODE` or `8`.
 - `device_map`: only when the installed stack requires it.
 - `trust_remote_code`: keep `true` only for trusted supported model repos.
+
+Distributed conversion is enabled by default. The default config uses
+`nvcr.io/nvidia/nemo:26.04`, which ships the multi-GPU converter at
+`/opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py`.
+For dense models, override the parallelism, for example `tp=8 pp=1 ep=1 etp=1`.
 
 ## Run It
 
@@ -41,7 +50,8 @@ Then run the real conversion without `--dry-run`:
 uv run nemotron steps run convert/hf_to_megatron \
   -c default \
   hf_model_id=<hf-model-or-path> \
-  megatron_path=<megatron-output>
+  megatron_path=<megatron-output> \
+  tp=<tp> pp=<pp> ep=<ep> etp=<etp>
 ```
 
 ## Repository Layout

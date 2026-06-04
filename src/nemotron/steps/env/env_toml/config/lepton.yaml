@@ -3,6 +3,8 @@
 # The intent is not to enumerate every resource shape. Keep one reusable
 # backend base, then add concrete profiles named after the steps they run.
 # Child profiles show how env profile files support `extends` and selective overrides.
+# Step configs remain the source of truth for image/recipe-specific requirements;
+# these profiles provide generic fallbacks plus cluster logistics.
 
 output_path: env.lepton.toml
 force: false
@@ -76,7 +78,7 @@ checks:
 
 sections:
   wandb:
-    project: nemotron
+    project: ${oc.env:WANDB_PROJECT,nemotron}
     entity: ${oc.env:WANDB_ENTITY,nvidia}
 
   lepton_base:
@@ -85,9 +87,18 @@ sections:
     # Replace this with your private Lepton node group in the generated file.
     node_group: lepton-node-group
     resource_shape: ${oc.env:LEPTON_GPU_SHAPE,gpu.8xa100-80gb}
-    nemo_run_dir: ${oc.env:NEMO_RUN_DIR,/mnt/lustre-shared/nemo-run}
-    remote_job_dir: ${oc.env:NEMOTRON_REMOTE_JOB_DIR,/mnt/lustre-shared/output}
+    # Single shared-storage root. Everything below derives from NEMOTRON_WORKSPACE
+    # so overriding that one env var relocates run dir, outputs, and the staged
+    # source tree together. (Sibling ${workspace} refs can't survive env.toml
+    # round-tripping, so each derived path anchors on the env var directly.)
+    # workspace: persistent shared-storage root that every job mounts; the parent of all paths below.
     workspace: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}
+    # nemo_run_dir: where NeMo-Run stages packaged code + launch scripts and writes job metadata/logs.
+    nemo_run_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/nemo-run}
+    # remote_job_dir: working dir on the cluster for a job's run outputs (checkpoints, artifacts land here).
+    remote_job_dir: ${oc.env:NEMOTRON_REMOTE_JOB_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output}
+    # code_src_dir: staged source tree put on PYTHONPATH so Ray/worker procs import nemotron (see prep profiles).
+    code_src_dir: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/_nemotron/src
     # Lepton may lag NeMo-RL's upstream Ray pin; override only after your workspace supports it.
     ray_version: "2.48.0"
     nodes: 1
@@ -96,14 +107,17 @@ sections:
     shared_memory_size: 65536
     pip_extras: [typer, rich, pydantic-settings]
     mounts:
+      # path: source on the storage backend; mount_path: where it appears inside the
+      # container (= workspace root); from: Lepton storage backend providing it.
       - path: ${oc.env:NEMOTRON_HOST_MOUNT,/path/to/shared/workspace}
         mount_path: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}
         from: ${oc.env:NEMOTRON_MOUNT_FROM,node-nfs:amlfs}
     env_vars:
       HF_TOKEN: ${oc.env:HF_TOKEN,''}
-      HF_HOME: ${oc.env:HF_HOME,/mnt/lustre-shared/hf}
+      # HF_HOME: HuggingFace cache (models/datasets/tokenizers); on shared storage so it is reused across jobs.
+      HF_HOME: ${oc.env:HF_HOME,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/hf}
       WANDB_API_KEY: ${oc.env:WANDB_API_KEY,''}
-      WANDB_PROJECT: nemotron
+      WANDB_PROJECT: ${oc.env:WANDB_PROJECT,nemotron}
       RAY_ENABLE_UV_RUN_RUNTIME_ENV: "0"
       RAY_DEDUP_LOGS: "0"
       RAY_GRAFANA_IFRAME_HOST: ""
@@ -119,25 +133,27 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages cosmos-xenna protobuf
     env_vars:
-      RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
+      # RAY_RUNTIME_ENV_PYTHONPATH: dir Ray prepends to each worker's PYTHONPATH so they
+      # import the staged nemotron source. Set once here; child prep profiles inherit it
+      # via `extends`. Mirrors lepton_base.code_src_dir (anchored on NEMOTRON_WORKSPACE).
+      RAY_RUNTIME_ENV_PYTHONPATH: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/_nemotron/src
 
   lepton_prep_sft_packing:
     extends: lepton_prep_base
     env_vars:
-      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/sft_packing}
-      RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
+      # *_OUTPUT_DIR: per-step destination for that step's artifacts, under <workspace>/output.
+      # Override the specific env var (e.g. SFT_OUTPUT_DIR) to redirect just this step.
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/sft_packing}
 
   lepton_prep_pretrain_prep:
     extends: lepton_prep_base
     env_vars:
-      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/pretrain_prep}
-      RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
+      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/pretrain_prep}
 
   lepton_prep_rl_prep:
     extends: lepton_prep_base
     env_vars:
-      RL_OUTPUT_DIR: ${oc.env:RL_OUTPUT_DIR,/mnt/lustre-shared/output/data_prep/rl_prep}
-      RAY_RUNTIME_ENV_PYTHONPATH: /mnt/lustre-shared/_nemotron/src
+      RL_OUTPUT_DIR: ${oc.env:RL_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/rl_prep}
 
   # Curator-backed steps: byob/mcq, translate/nemo_curator, and curate all use the Curator
   # container and install their Python runtime through the generic curator_runtime
@@ -184,28 +200,28 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages data-designer==0.5.5
     env_vars:
-      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg}
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg}
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
 
   lepton_sdg_data_designer_tiny:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/sft/tiny}
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg/sft/tiny}
 
   lepton_sdg_data_designer_default:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/sft/default}
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg/sft/default}
 
   lepton_sdg_data_designer_customer_support_tools:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/sft/customer_support_tools}
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg/sft/customer_support_tools}
 
   lepton_sdg_data_designer_rl_pref:
     extends: lepton_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,/mnt/lustre-shared/output/sdg/rl/rl_pref}
+      SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg/rl/rl_pref}
 
   # translate/nemo_curator: uses the translate Curator runtime profile.
   lepton_translate:
@@ -225,13 +241,14 @@ sections:
     env_vars:
       NEMOTRON_CURATOR_RAY_NUM_CPUS: "4"
 
-  # pretrain/megatron_bridge: same NeMo image as SFT, with pretrain output wiring.
+  # pretrain/megatron_bridge: generic NeMo image fallback; tiny configs pin nano3.
   lepton_pretrain_megatron_bridge:
     extends: lepton_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     env_vars:
-      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/pretrain/megatron_bridge}
-      PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,/mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json}
+      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/pretrain/megatron_bridge}
+      PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/pretrain_prep/blend.json}
 
   # pretrain/automodel: AutoModel pretrain uses the AutoModel image/deps with
   # the same pretrain data-prep output wiring.
@@ -242,18 +259,19 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,/mnt/lustre-shared/output/pretrain/automodel}
-      PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,/mnt/lustre-shared/output/data_prep/pretrain_prep/blend.json}
+      PRETRAIN_OUTPUT_DIR: ${oc.env:PRETRAIN_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/pretrain/automodel}
+      PRETRAIN_BLEND_PATH: ${oc.env:PRETRAIN_BLEND_PATH,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/pretrain_prep/blend.json}
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
-  # sft/megatron_bridge: overrides only scale and output location.
+  # sft/megatron_bridge: generic NeMo image fallback; config owns recipe target/image.
   lepton_sft_megatron_bridge:
     extends: lepton_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     env_vars:
-      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/sft/megatron_bridge}
-      SFT_PACKED_DIR: ${oc.env:SFT_PACKED_DIR,/mnt/lustre-shared/output/data_prep/sft_packing/splits/train/*.parquet}
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sft/megatron_bridge}
+      SFT_PACKED_DIR: ${oc.env:SFT_PACKED_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/sft_packing/splits/train/*.parquet}
 
   # sft/automodel: demonstrates extending an individual step profile and changing image/deps.
   lepton_sft_automodel:
@@ -262,7 +280,7 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/sft/automodel}
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sft/automodel}
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
@@ -270,22 +288,23 @@ sections:
   lepton_peft_megatron_bridge:
     extends: lepton_sft_megatron_bridge
     env_vars:
-      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/peft/megatron_bridge}
-      SFT_PACKED_DIR: ${oc.env:SFT_PACKED_DIR,/mnt/lustre-shared/output/data_prep/sft_packing/splits/train/*.parquet}
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/peft/megatron_bridge}
+      SFT_PACKED_DIR: ${oc.env:SFT_PACKED_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/sft_packing/splits/train/*.parquet}
 
   lepton_peft_automodel:
     extends: lepton_sft_automodel
     env_vars:
-      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,/mnt/lustre-shared/output/peft/automodel}
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/peft/automodel}
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # convert/*: one shared GPU profile for HF<->Megatron conversion and LoRA merge/export.
   lepton_convert_model:
     extends: lepton_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 1
     env_vars:
-      CONVERT_OUTPUT_DIR: ${oc.env:CONVERT_OUTPUT_DIR,/mnt/lustre-shared/output/convert}
+      CONVERT_OUTPUT_DIR: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/convert}
 
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   lepton_rl_nemo_rl_dpo:
@@ -295,45 +314,45 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      RL_OUTPUT_DIR: /mnt/lustre-shared/output/rl/dpo
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/rl/dpo
 
   # rl/nemo_rl/rlvr: same NeMo-RL image, with GRPO/RLVR output wiring.
   lepton_rl_nemo_rl_rlvr:
     extends: lepton_rl_nemo_rl_dpo
     env_vars:
-      RL_OUTPUT_DIR: /mnt/lustre-shared/output/rl/rlvr
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/rl/rlvr
 
   # rl/nemo_rl/rlhf: same RL profile, but more physical nodes for GenRM/NeMo-Gym placement.
   lepton_rl_nemo_rl_rlhf:
     extends: lepton_rl_nemo_rl_dpo
     nodes: 4
     env_vars:
-      RL_OUTPUT_DIR: /mnt/lustre-shared/output/rl/rlhf
-      RL_PREP_MANIFEST: /mnt/lustre-shared/output/data_prep/rl_prep/manifest.json
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/rl/rlhf
+      RL_PREP_MANIFEST: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/data_prep/rl_prep/manifest.json
 
   # optimize/modelopt/quantize: ModelOpt runs against the NeMo image where ModelOpt examples work.
   lepton_optimize_modelopt_quantize:
     extends: lepton_base
-    container_image: nvcr.io/nvidia/nemo:26.02
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     env_vars:
-      OPTIM_OUTPUT_DIR: /mnt/lustre-shared/output/optimize/quantize
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/optimize/quantize
 
   # optimize/modelopt/distill: same ModelOpt-capable image with distillation output wiring.
   lepton_optimize_modelopt_distill:
     extends: lepton_optimize_modelopt_quantize
     env_vars:
-      OPTIM_OUTPUT_DIR: /mnt/lustre-shared/output/optimize/distill
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/optimize/distill
 
   # optimize/modelopt/prune: pruning can run on a smaller 2-GPU shape.
   lepton_optimize_modelopt_prune:
     extends: lepton_base
-    container_image: nvcr.io/nvidia/nemo:26.02
+    container_image: nvcr.io/nvidia/nemo:26.04
     resource_shape: ${oc.env:LEPTON_PRUNE_GPU_SHAPE,gpu.2xa100-80gb}
     gpus_per_node: 2
     nprocs_per_node: 2
     env_vars:
-      OPTIM_OUTPUT_DIR: /mnt/lustre-shared/output/optimize/prune
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/optimize/prune
 
   # eval/model_eval: lightweight profile for model evaluation steps.
   lepton_eval_model_eval:
@@ -345,4 +364,4 @@ sections:
       - pydantic-settings
       - nemo-evaluator-launcher
     env_vars:
-      EVAL_OUTPUT_DIR: /mnt/lustre-shared/output/eval/model_eval
+      EVAL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/eval/model_eval

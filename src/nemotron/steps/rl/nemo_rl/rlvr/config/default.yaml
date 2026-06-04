@@ -20,6 +20,10 @@
 # Use config/nemo_gym.yaml for the generic NeMo-Gym path that mirrors the
 # Super3 RLVR/RLHF style: NeMo-Gym JSONL + resource-server reward configs.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo-rl:v0.6.0
+
 grpo:
   num_prompts_per_step: 12
   num_generations_per_prompt: 8
@@ -230,9 +234,9 @@ logger:
   monitor_gpus: true
   num_val_samples_to_print: 0
   wandb:
-    project: ${oc.env:WANDB_PROJECT,nemotron-rlvr-dev}
-    entity: ${oc.env:WANDB_ENTITY,null}
-    name: ${oc.env:WANDB_NAME,rlvr}
+    project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+    entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+    name: ${oc.env:WANDB_NAME,rl-nemo-rl-rlvr}
   tensorboard:
     log_dir: tb_logs-rlvr
   mlflow:

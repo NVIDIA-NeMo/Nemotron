@@ -32,6 +32,10 @@
 # example, args.prune_target_params becomes --prune_target_params. New upstream
 # flags can be added directly under args: or passed literally through extra_args.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.04
+
 script:
   path: null
   flag_style: underscore
@@ -90,9 +94,9 @@ wandb_wrapper:
   # Upstream prune_minitron.py does not expose W&B flags. This wrapper records
   # command/config/status so functional runs still show up in W&B.
   enabled: ${oc.decode:${oc.env:WANDB_ENABLED,false}}
-  project: ${oc.env:WANDB_PROJECT,null}
-  entity: ${oc.env:WANDB_ENTITY,null}
-  name: ${oc.env:WANDB_NAME,null}
+  project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+  name: ${oc.env:WANDB_NAME,optimize-modelopt-prune}
   job_type: modelopt-prune
 
 extra_args: []

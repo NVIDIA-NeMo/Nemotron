@@ -20,7 +20,7 @@
 
 run:
   env:
-    container: nvcr.io/nvidia/nemo-rl:v0.6.0
+    container_image: nvcr.io/nvidia/nemo-rl:v0.6.0
     persistent_cache: ""
     env_vars:
       NRL_WG_USE_RAY_REF: "1"
@@ -283,9 +283,9 @@ logger:
   swanlab_enabled: false
   monitor_gpus: true
   wandb:
-    project: ${oc.env:WANDB_PROJECT,nemotron-rlvr-dev}
-    entity: ${oc.env:WANDB_ENTITY,null}
-    name: ${oc.env:WANDB_NAME,rlvr-nemo-gym}
+    project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+    entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+    name: ${oc.env:WANDB_NAME,rl-nemo-rl-rlvr-nemo-gym}
   tensorboard:
     log_dir: tb_logs-rlvr-nemo-gym
   mlflow:

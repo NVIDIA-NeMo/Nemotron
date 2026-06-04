@@ -133,9 +133,9 @@ logger:
   monitor_gpus: true
   num_val_samples_to_print: 0
   wandb:
-    project: ${oc.env:WANDB_PROJECT,nemotron-dpo-dev}
-    entity: ${oc.env:WANDB_ENTITY,null}
-    name: ${oc.env:WANDB_NAME,dpo-tiny}
+    project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+    entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+    name: ${oc.env:WANDB_NAME,rl-nemo-rl-dpo-tiny}
   tensorboard:
     log_dir: tb_logs-dpo-tiny
   mlflow:

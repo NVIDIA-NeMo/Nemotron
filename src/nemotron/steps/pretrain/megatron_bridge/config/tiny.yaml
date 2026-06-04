@@ -16,6 +16,7 @@ defaults: default.yaml
 
 run:
   env:
+    container_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
     nodes: 2
     gpus_per_node: 8
     nprocs_per_node: 8
@@ -52,7 +53,6 @@ scheduler:
 logger:
   log_interval: 1
   wandb_exp_name: ${oc.env:WANDB_NAME,pretrain-megatron-bridge-tiny}
-
 checkpoint:
   save: ${oc.env:PRETRAIN_OUTPUT_DIR,./output/pretrain-megatron-bridge-tiny}
   save_interval: 5

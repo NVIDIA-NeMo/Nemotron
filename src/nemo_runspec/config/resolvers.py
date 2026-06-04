@@ -999,7 +999,7 @@ def _auto_mount_resolver(spec: str, target: str = "") -> str:
     a startup command to create a symlink after the container starts.
 
     Args:
-        spec: Git mount specification (e.g., git+https://github.com/NVIDIA/Megatron-Bridge.git@branch)
+        spec: Git mount specification (e.g., git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@branch)
         target: Optional target path in container (e.g., /opt/Megatron-Bridge)
 
     Returns:
@@ -1008,7 +1008,7 @@ def _auto_mount_resolver(spec: str, target: str = "") -> str:
 
     Example YAML:
         mounts:
-          - ${auto_mount:git+https://github.com/NVIDIA/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
+          - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
 
         This registers the repo for cloning and generates a startup command to symlink it.
     """

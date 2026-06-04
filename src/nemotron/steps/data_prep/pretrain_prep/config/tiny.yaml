@@ -20,6 +20,11 @@
 #   nemotron steps run data_prep/pretrain_prep -c tiny                          # local
 #   nemotron steps run data_prep/pretrain_prep -c tiny --run YOUR-CLUSTER
 
+run:
+  env:
+    env_vars:
+      WANDB_NAME: ${oc.env:WANDB_NAME,data-prep-pretrain-prep-tiny}
+
 # blend_path is omitted on purpose — step.py defaults to data/blend_tiny.json.
 output_dir: ${oc.env:PRETRAIN_OUTPUT_DIR,./output/data_prep/pretrain_prep/tiny}
 
