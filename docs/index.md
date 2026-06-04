@@ -44,7 +44,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 :link: deployment-guides
 :link-type: doc
 
-Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, and Hugging Face.
+Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging Face, and agent harnesses.
 :::
 
 :::{grid-item-card} Sample Applications

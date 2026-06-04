@@ -119,7 +119,7 @@ There is no Super3-style `paper/rl/` subtree in this skill.
 
 ### 3. Paper vs release tracker
 
-The paper describes the full reported training/evaluation program.  
+The paper describes the full reported training/evaluation program.
 `recipes/overview.md` is **not** a runnable implementation map; it explicitly says no public `src/nemotron/recipes/ultra/` tree exists yet.
 
 Use the paper for:
