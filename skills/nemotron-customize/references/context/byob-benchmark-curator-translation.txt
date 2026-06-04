@@ -125,4 +125,4 @@ NVIDIA-hosted OpenAI-compatible translation uses `NGC_API_KEY` or
 - Keep MCQ-only logic such as distractor expansion and answer-letter validation
   out of non-MCQ families.
 - Use `adapter.py` only for schema bridging when composing BYOB with other
-  steps.
+  steps. 
