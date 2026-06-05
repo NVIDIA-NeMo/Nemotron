@@ -1,0 +1,51 @@
+---
+title: "Configure Fields and Output"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Use this guide when you need to align text_field, output_mode, reconstruction flags, and formats with your dataset schema before or after a first run."
+slug: translation/how-to/configure-fields-and-output
+---
+
+Use this guide when you need to align `text_field`, `output_mode`, reconstruction flags, and formats with your dataset schema before or after a first run.
+
+For a guided first invocation, see [Getting Started With Translation](/translation/getting-started).
+
+## Choosing `text_field`
+
+- Chat corpora in OpenAI layout typically use `messages.*.content` so every message `content` entry is translated consistently.
+
+- Plain documents might use a single column such as `article_body`. Omit wildcards when the schema is flat.
+
+## Outputs
+
+| YAML key | Behavior |
+| --- | --- |
+| <code>output&#95;field</code> / <code>translation&#95;column</code> | Control column names used when emitting translated strings. The default is <code>translated&#95;text</code>. |
+| <code>output&#95;mode</code> | <code>replaced</code> overwrites source strings, <code>raw</code> preserves originals plus metadata, and <code>both</code> keeps audit trails. The starter default is <code>both</code>. |
+| <code>merge&#95;scores</code> | Keeps FAITH outputs adjacent to translations when scoring runs. |
+| <code>reconstruct&#95;messages</code>, <code>messages&#95;field</code>, <code>messages&#95;content&#95;field</code> | Enable faithful reconstructions of chat arrays. These default to <code>true</code> for standard <code>messages</code> and <code>content</code> layouts. |
+
+## Formats
+
+Set `input_format` when automatic probing cannot distinguish ambiguous globs. Align `output_format` with downstream packing expectations; values are `jsonl` or `parquet`.
+
+## CLI Overrides
+
+You can override any YAML key with dotlists:
+
+```bash
+uv run nemotron steps run translate/nemo_curator -c default \
+  text_field=messages.*.content \
+  output_mode=both \
+  reconstruct_messages=true \
+  input_path=/path/to/chat.jsonl \
+  output_dir=/path/to/out \
+  source_language=en \
+  target_language=fr
+```
+
+## Related Pages
+
+- Schema patterns: [Input and Output Format](/translation/reference/io-format)
+
+- Segmentation interactions: [Use Fine Segmentation](/translation/how-to/use-fine-segmentation)

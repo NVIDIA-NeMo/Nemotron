@@ -1,0 +1,48 @@
+---
+title: "Concepts"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Background on how the translation pipeline fits together, how segmentation behaves, and what FAITH measures. Use these pages when how-to steps refer to behavior you want to understand before changing "
+slug: translation/explanation
+---
+
+Background on how the translation pipeline fits together, how segmentation behaves, and what FAITH measures. Use these pages when how-to steps refer to behavior you want to understand before changing defaults.
+
+Concept-focused explanations for `nemotron steps run translate/nemo_curator` and the `translate/nemo_curator` Curator pipeline.
+
+## Pipeline Processing
+
+<CardGroup cols={2}>
+<Card href="/translation/explanation/pipeline-overview" icon="solid chart-line" iconSize={8} title="Pipeline overview">
+Reader to `TranslationStage` to writer, with an optional FAITH branch.
+
+---
+
+<Badge intent="info">architecture</Badge>
+
+</Card>
+
+<Card href="/translation/explanation/segmentation" icon="solid box" iconSize={8} title="Segmentation">
+Coarse versus fine `segmentation_mode` trade-offs.
+
+---
+
+<Badge intent="info">segmentation</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Evaluation Inside Translation
+
+<CardGroup cols={2}>
+<Card href="/translation/explanation/faith-evaluation" icon="solid list-check" iconSize={8} title="FAITH evaluation">
+What FAITH captures when `faith_eval.enabled` is true.
+
+---
+
+<Badge intent="info">faith</Badge>
+
+</Card>
+
+</CardGroup>

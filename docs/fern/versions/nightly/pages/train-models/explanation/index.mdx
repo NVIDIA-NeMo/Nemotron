@@ -1,0 +1,44 @@
+---
+title: "Training Concepts"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section provides conceptual material for training with Nemotron steps. Training Basics introduces fine-tuning approaches, tokenizers, the chat dataset format, and checkpoint layouts. For the step"
+slug: train-models/explanation
+---
+
+<Anchor id="train-models-explanation-index"></Anchor>
+
+This section provides conceptual material for training with Nemotron steps.
+[Training Basics](/train-models/explanation/basics) introduces fine-tuning approaches, tokenizers, the chat dataset format, and checkpoint layouts.
+For the step, configuration, and environment profile model that every Nemotron command shares, see [Nemotron Steps Basics](/steps/basics).
+The remaining pages explain how artifacts relate to one another and how the training libraries differ.
+
+<CardGroup cols={2}>
+<Card href="/train-models/explanation/basics" icon="regular book" iconSize={8} title="Training Basics">
+Defines supervised fine-tuning, parameter-efficient fine-tuning, reinforcement learning alignment, quantization, tokenizers, the chat dataset format, and checkpoints.
+
+---
+
+<Badge intent="info">concepts</Badge>
+
+</Card>
+
+<Card href="/train-models/explanation/artifact-graph" icon="solid diagram-project" iconSize={8} title="Artifact Graph">
+Explains how steps declare typed inputs and outputs and what common training and alignment paths look like.
+
+---
+
+<Badge intent="info">concepts</Badge>
+
+</Card>
+
+<Card href="/train-models/explanation/training-libraries" icon="solid box" iconSize={8} title="Training Libraries">
+Explains which library backs each step and how that choice determines data format, checkpoint layout, and parallelism.
+
+---
+
+<Badge intent="info">concepts</Badge>
+
+</Card>
+
+</CardGroup>

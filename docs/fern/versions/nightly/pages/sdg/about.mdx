@@ -1,0 +1,158 @@
+---
+title: "About Synthetic Data Generation"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Generate synthetic training data with NeMo Data Designer using a declarative YAML pipeline. Seed a generation run with your domain-specific topics, scenarios, or personas; define the column structure "
+slug: sdg/about
+---
+
+{/* SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */}
+
+<Anchor id="sdg-index"></Anchor>
+
+Generate synthetic training data with [NeMo Data Designer](https://nvidia-nemo.github.io/DataDesigner/) using a declarative YAML pipeline. Seed a generation run with your domain-specific topics, scenarios, or personas; define the column structure and prompts in YAML; and produce training-ready JSONL without writing Python.
+
+Three output shapes ship out of the box: SFT chat data, tool-calling SFT data, and DPO preference pairs.
+
+<Tip>
+New to SDG or new to model training? Read [Use the SDG Skill With Confidence](/sdg/using-skills) for a short guide to productive agent sessions, then start the [Generate Your First Synthetic Dataset](/sdg/getting-started) tutorial to run the bundled pipeline and produce your first dataset in 5 to 10 minutes.
+
+</Tip>
+
+## When to Use
+
+Use SDG when you need training data that does not already exist in sufficient quantity or quality for your target domain or task.
+
+- **SFT chat data** — Generate user/assistant conversation pairs grounded in domain-specific topics, scenarios, or personas. Use `default.yaml` as a starting point and adapt it to your domain.
+
+- **Tool-calling SFT data** — Generate multi-turn conversations that include assistant tool calls and tool responses in OpenAI format. Use `customer_support_tools.yaml` as a starting point.
+
+- **DPO preference data** — Generate prompt / chosen / rejected triples for preference learning. Use `rl_pref.yaml`.
+
+- **Custom domains** — Swap the seed file, category columns, and prompts to target any domain. The pipeline is fully declarative; customisation does not require editing Python.
+
+- **Cluster-scale generation** — Dispatch generation to Lepton or Slurm via env.toml profiles when local throughput is insufficient.
+
+## Pipeline at a Glance
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
+flowchart TB
+    seed["Seed file (optional)"] --> dsg
+    cat["Category samplers"] --> dsg
+    per["Person sampler (optional)"] --> dsg
+    dsg["Data Designer column graph<br/>Jinja2 prompts · LLM calls"]
+    dsg --> proj["output_projection"]
+    proj --> om["openai_messages"]
+    proj --> dpo["dpo_preference"]
+    proj --> sm["structured_messages"]
+    om --> jsonl["JSONL"]
+    dpo --> jsonl
+    sm --> jsonl
+    jsonl --> train["data_prep/sft_packing or AutoModel SFT"]
+```
+
+Each run is reproducible: the seed file, column specs, model alias, inference parameters, and projection rules are all version-controlled in a single YAML file.
+
+## Documentation
+
+<CardGroup cols={2}>
+<Card href="/sdg/getting-started" icon="solid rocket" iconSize={8} title="Getting Started">
+Run the bundled pipeline end-to-end: preview two records, generate five, inspect the output JSONL.
+
+---
+
+<Badge intent="success">5–10 min</Badge> <Badge intent="info">tutorial</Badge>
+
+</Card>
+
+<Card href="/sdg/using-skills" icon="regular heart" iconSize={8} title="Use the SDG Skill With Confidence">
+Prepare for a focused chat with a coding agent: opening brief, seed ideas, and how `SKILL.md` supports the session without memorization.
+
+---
+
+<Badge intent="success">10 min read</Badge> <Badge intent="info">newcomer</Badge>
+
+</Card>
+
+<Card href="/sdg/how-to" icon="solid list-check" iconSize={8} title="How-To Guides">
+Task-focused guides: adapt the pipeline to a domain, generate preference pairs, dispatch to a cluster.
+
+---
+
+<Badge intent="success">5 guides</Badge> <Badge intent="info">task-focused</Badge>
+
+</Card>
+
+<Card href="/sdg/reference" icon="solid list-ul" iconSize={8} title="Reference">
+YAML config schema, CLI flags, output projection shapes, and troubleshooting.
+
+---
+
+<Badge intent="success">4 references</Badge> <Badge intent="info">lookup</Badge>
+
+</Card>
+
+</CardGroup>
+
+## All Documentation
+
+<Tabs>
+  <Tab title="Getting Started">
+
+| Guide | What You’ll Do | Time |
+| --- | --- | --- |
+| [Generate Your First Synthetic Dataset](/sdg/getting-started) | Preview and generate your first synthetic SFT dataset | 5–10 min |
+| [Use the SDG Skill With Confidence](/sdg/using-skills) | Run a productive agent session: brief, seeds, plain terms, and light use of <code>SKILL.md</code> | 10 min read |
+
+  </Tab>
+  <Tab title="How-To Guides">
+
+| Guide | What You’ll Do |
+| --- | --- |
+| [Tips for the Data Generation Pipeline](/sdg/how-to/run) | Preview, generate, and customize output path and projection |
+| [Create a Domain Dataset for Airlines Customer Service](/sdg/how-to/create-domain-dataset) | Adapt the pipeline to a custom domain with a seed file and multiple category dimensions |
+| [Generate Tool-Calling Data for SFT](/sdg/how-to/tool-call-data) | Generate multi-turn tool-calling SFT data |
+| [Generate Preference Data for DPO](/sdg/how-to/preference-data) | Generate DPO preference pairs from <code>rl&#95;pref.yaml</code> |
+| [Dispatch SDG to a Cluster](/sdg/how-to/dispatch-to-cluster) | Dispatch generation to Lepton or Slurm via env.toml |
+
+  </Tab>
+  <Tab title="Reference">
+
+| Reference | What You’ll Find |
+| --- | --- |
+| [Config Schema](/sdg/reference/config-schema) | Full YAML column types, sampler parameters, and projection fields |
+| [CLI Reference](/sdg/reference/cli-reference) | <code>nemotron steps run sdg/data&#95;designer</code> flags and hydra overrides |
+| [Output Projections](/sdg/reference/output-projections) | The three projection shapes with annotated JSONL examples |
+| [Troubleshooting](/sdg/reference/troubleshooting) | Dispatch failures, image pull errors, API key issues, schema drift |
+
+  </Tab>
+
+</Tabs>
+
+## Before You Start
+
+- The `NVIDIA_API_KEY` environment variable is required for the default model, `nvidia/nemotron-3-nano-30b-a3b`, hosted on integrate.nvidia.com.
+
+## Limitations and Considerations
+
+- **Cost**: Generation calls a hosted LLM endpoint; each record incurs API cost.
+
+- **Quality**: After generating records, review them before training.
+
+- **Scale**: API rate limits apply. For large generation runs, dispatch to a cluster and consider batching across multiple nodes.
+
+- **Reproducibility**: Seed files, column specs, model aliases, and inference parameters should all be version-controlled together. Changing any one of them changes the output distribution.

@@ -1,0 +1,121 @@
+---
+title: "Deployment Guides"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Deployment guides, fine-tuning recipes, and agentic usage examples for Nemotron models. Each card links to its directory in the Nemotron GitHub repository."
+slug: deployment-guides
+---
+
+{/* Card footer badges
+
+Add a badge only when the attribute applies. Omit it (and do not substitute its opposite) when it does not.
+Absence is the signal for the simpler case.
+
+{bdg-success\}`Beginner`  — no GPU required and no fine-tuning step. Uses an API or cloud endpoint.
+                           Add when no other attribute badges apply.
+
+{bdg-success\}`Notebook`  — self-contained notebook and no environment beyond pip install.
+                           Omit for multi-file projects.
+
+{bdg-secondary\}`Local GPU` — requires a local GPU or managed hardware.
+                           Omit for API/cloud-only examples.
+
+{bdg-info\}`Fine-tuning`  — example includes a training or fine-tuning step.
+                           Omit for inference-only examples. */}
+
+<Anchor id="deployment-guides"></Anchor>
+
+Deployment guides, fine-tuning recipes, and agentic usage examples for Nemotron models. Each card links to its directory in the [Nemotron GitHub repository](https://github.com/NVIDIA-NeMo/nemotron).
+
+<CardGroup cols={2}>
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra" icon="brands github" iconSize={8} title="Nemotron 3 Ultra">
+Cookbooks for the 550B/55B-active hybrid Mamba-Transformer MoE model, including vLLM, SGLang, TensorRT-LLM, LoRA Text2SQL, RL, and agent harness setup.
+
+---
+
+<Badge intent="success">Notebook</Badge> <Badge intent="info">Local GPU</Badge> <Badge intent="info">Fine-tuning</Badge> <Badge intent="success">Jun 4, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources" icon="brands github" iconSize={8} title="Nemotron 3 Ultra on Agentic Coding">
+Use Nemotron 3 Ultra with OpenCode, OpenClaw, Kilo Code CLI, OpenHands, Hermes Agent, and Pi via config-based setup.
+
+---
+
+<Badge intent="success">Beginner</Badge> <Badge intent="success">Jun 4, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Super" icon="brands github" iconSize={8} title="Nemotron 3 Super">
+Notebooks for deploying the 120B/12B-active hybrid Mamba-Transformer MoE model with vLLM, SGLang, and TensorRT-LLM.
+
+---
+
+<Badge intent="success">Notebook</Badge> <Badge intent="info">Local GPU</Badge> <Badge intent="success">Apr 28, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Super/lora-text2sql" icon="brands github" iconSize={8} title="Nemotron 3 Super — LoRA Text2SQL">
+Supervised fine-tuning with LoRA for Text2SQL using the BIRD SQL benchmark. Includes recipes for both NeMo AutoModel and Megatron Bridge.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="info">Fine-tuning</Badge> <Badge intent="success">Apr 28, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide" icon="brands github" iconSize={8} title="Nemotron 3 Super on DGX Spark">
+Deploy on a single DGX Spark with 128 GB unified memory using vLLM (nightly) and TensorRT-LLM, including NVFP4 quantization and MTP speculative decoding.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="success">Apr 10, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra-Base" icon="brands github" iconSize={8} title="Nemotron 3 Ultra Base">
+550B total / 55B active parameter base model checkpoint announced at GTC 2026. A starting point for custom fine-tuning and RL post-training pipelines — not yet instruction-tuned.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="info">Fine-tuning</Badge> <Badge intent="success">Mar 23, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Super/grpo-dapo" icon="brands github" iconSize={8} title="Nemotron 3 Super on GRPO/DAPO RL Training">
+Full-weight RL training from a base model using the GRPO/DAPO algorithm to reproduce emergent math reasoning. Requires 5× GB200 or 3× B200 nodes.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="info">Fine-tuning</Badge> <Badge intent="success">Mar 11, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources" icon="brands github" iconSize={8} title="Nemotron 3 Super on Agentic Coding">
+Use Nemotron 3 Super with OpenCode, OpenClaw, Kilo Code CLI, and OpenHands via OpenRouter and build.nvidia.com.
+
+---
+
+<Badge intent="success">Beginner</Badge> <Badge intent="success">Mar 11, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-Nano2-VL" icon="brands github" iconSize={8} title="Nemotron Nano 2 VL">
+Notebooks for the 12B multimodal model that unifies visual and textual understanding. Covers NIM inference via build.nvidia.com and local Hugging Face deployment.
+
+---
+
+<Badge intent="success">Notebook</Badge> <Badge intent="info">Local GPU</Badge> <Badge intent="success">Oct 28, 2025</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-Parse-v1.1" icon="brands github" iconSize={8} title="Nemotron Parse v1.1">
+Notebook for the document-parsing VLM that converts PDFs and unstructured documents into structured JSON, LaTeX, and Markdown. Available via NIM at build.nvidia.com.
+
+---
+
+<Badge intent="success">Beginner</Badge> <Badge intent="success">Notebook</Badge> <Badge intent="success">Oct 28, 2025</Badge>
+
+</Card>
+
+</CardGroup>

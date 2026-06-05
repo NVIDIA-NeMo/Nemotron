@@ -1,0 +1,91 @@
+---
+title: "Application Examples"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "End-to-end applications built on Nemotron models, including agentic workflows, RAG systems, and fine-tuning pipelines. Each card links to its directory in the Nemotron GitHub repository."
+slug: application-examples
+---
+
+{/* Card footer badges
+==================
+Add a badge only when the attribute applies. Omit it (and do not substitute its opposite) when it does not.
+Absence is the signal for the simpler case.
+
+{bdg-success\}`Notebook`  — self-contained notebook; no environment beyond pip install.
+                           Omit for multi-file projects and anything that isn't a notebook.
+
+{bdg-secondary\}`Local GPU` — requires a local GPU or hardware beyond a laptop or desktop.
+                           Omit for API/cloud-only examples. Do not add an "API" badge.
+
+{bdg-info\}`Fine-tuning`  — example includes a training/fine-tuning step.
+                           Omit for inference-only examples. Do not add an "Inference" badge. */}
+
+<Anchor id="application-examples"></Anchor>
+
+End-to-end applications built on Nemotron models, including agentic workflows, RAG systems, and fine-tuning pipelines. Each card links to its directory in the [Nemotron GitHub repository](https://github.com/NVIDIA-NeMo/nemotron).
+
+<CardGroup cols={2}>
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/Nemotron-3-Super-Getting-Started-Guide" icon="brands github" iconSize={8} title="Nemotron 3 Super Getting Started Guide">
+Introductory notebook covering Nemotron 3 Super’s reasoning features: thinking, reasoning budget, low effort mode, streaming responses, tool-call streaming, and Perplexity Search integration using the OpenAI-compatible API.
+
+---
+
+<Badge intent="success">Notebook</Badge> <Badge intent="success">Mar 11, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/sql-lora-finetuning-and-deployment" icon="brands github" iconSize={8} title="SQL LoRA Fine-tuning and Deployment">
+End-to-end LoRA fine-tuning of Nemotron 3 Nano on Text2SQL (BIRD SQL) with deployment via NVIDIA NIM or vLLM using NeMo AutoModel or Megatron Bridge.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="info">Fine-tuning</Badge> <Badge intent="success">Mar 11, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/Intelligent%20Document%20Processing%20with%20Nemotron%20RAG" icon="brands github" iconSize={8} title="Intelligent Document Processing">
+IDP pipeline that extracts and queries complex enterprise documents — financial reports, charts, and tables — using NeMo Retriever and multimodal Nemotron models.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="success">Feb 09, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/nemotron-voice-rag-agent-example" icon="brands github" iconSize={8} title="Voice RAG Agent">
+End-to-end voice-driven RAG agent combining speech-to-text, multimodal retrieval, 1M-token reasoning, and safety guardrails using open Nemotron models.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="success">Jan 07, 2026</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/Simple%20Nemotron-3-Nano%20Usage%20Example" icon="brands github" iconSize={8} title="Simple Nemotron 3 Nano Usage">
+Introductory notebook covering basic inference, reasoning mode toggling, and multi-agent systems using the OpenAI-compatible API via OpenRouter and LangChain.
+
+---
+
+<Badge intent="success">Notebook</Badge> <Badge intent="success">Dec 15, 2025</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/Data%20Science%20ML%20Agent" icon="brands github" iconSize={8} title="Data Science ML Agent">
+Natural language-driven ML agent built on Nemotron Nano 9B with GPU-accelerated data exploration and model training using RAPIDS cuDF and cuML.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="success">Nov 06, 2025</Badge>
+
+</Card>
+
+<Card href="https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/RAG%20Agent%20with%20Nemotron%20RAG%20Models" icon="brands github" iconSize={8} title="RAG Agent">
+Production-ready RAG agent using local Hugging Face embedding and reranking models with NVIDIA AI Endpoints for LLM inference, built on LangGraph.
+
+---
+
+<Badge intent="info">Local GPU</Badge> <Badge intent="success">Oct 28, 2025</Badge>
+
+</Card>
+
+</CardGroup>

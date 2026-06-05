@@ -1,0 +1,61 @@
+---
+title: "Step Catalog"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This page catalogs every training step identifier registered under src/nemotron/steps/ in the sft, peft, rl, and optimize directories. Each row gives the step identifier, the on-disk manifest path, an"
+slug: train-models/reference/step-catalog
+---
+
+This page catalogs every training step identifier registered under `src/nemotron/steps/` in the `sft`, `peft`, `rl`, and `optimize` directories.
+Each row gives the step identifier, the on-disk manifest path, and the per-step reference page.
+
+Adjacent preparation and conversion steps do not appear in this catalog.
+Those step identifiers include `data_prep/sft_packing`, `data_prep/rl_prep`, and `convert/megatron_to_hf`, and they live under different directories with their own manifests.
+
+## Supervised Fine-Tuning Steps
+
+| Step Identifier | Manifest Path | Reference |
+| --- | --- | --- |
+| <code>sft/automodel</code> | <code>src/nemotron/steps/sft/automodel/step.toml</code> | [sft/automodel](/train-models/reference/sft/automodel) |
+| <code>sft/megatron&#95;bridge</code> | <code>src/nemotron/steps/sft/megatron&#95;bridge/step.toml</code> | [sft/megatron_bridge](/train-models/reference/sft/megatron-bridge) |
+
+## Parameter-Efficient Fine-Tuning Steps
+
+| Step Identifier | Manifest Path | Reference |
+| --- | --- | --- |
+| <code>peft/automodel</code> | <code>src/nemotron/steps/peft/automodel/step.toml</code> | [peft/automodel](/train-models/reference/peft/automodel) |
+| <code>peft/megatron&#95;bridge</code> | <code>src/nemotron/steps/peft/megatron&#95;bridge/step.toml</code> | [peft/megatron_bridge](/train-models/reference/peft/megatron-bridge) |
+
+## Reinforcement Learning Steps
+
+| Step Identifier | Manifest Path | Reference |
+| --- | --- | --- |
+| <code>rl/nemo&#95;rl/dpo</code> | <code>src/nemotron/steps/rl/nemo&#95;rl/dpo/step.toml</code> | [rl/nemo_rl/dpo](/train-models/reference/rl/dpo) |
+| <code>rl/nemo&#95;rl/rlvr</code> | <code>src/nemotron/steps/rl/nemo&#95;rl/rlvr/step.toml</code> | [rl/nemo_rl/rlvr](/train-models/reference/rl/rlvr) |
+| <code>rl/nemo&#95;rl/rlhf</code> | <code>src/nemotron/steps/rl/nemo&#95;rl/rlhf/step.toml</code> | [rl/nemo_rl/rlhf](/train-models/reference/rl/rlhf) |
+
+## Optimization Steps
+
+| Step Identifier | Manifest Path | Reference |
+| --- | --- | --- |
+| <code>optimize/modelopt/quantize</code> | <code>src/nemotron/steps/optimize/modelopt/quantize/step.toml</code> | [optimize/modelopt/quantize](/train-models/reference/optimize/quantize) |
+| <code>optimize/modelopt/prune</code> | <code>src/nemotron/steps/optimize/modelopt/prune/step.toml</code> | [optimize/modelopt/prune](/train-models/reference/optimize/prune) |
+| <code>optimize/modelopt/distill</code> | <code>src/nemotron/steps/optimize/modelopt/distill/step.toml</code> | [optimize/modelopt/distill](/train-models/reference/optimize/distill) |
+
+## List Steps from the Command Line
+
+This catalog covers the `sft`, `peft`, `rl`, and `optimize` step categories.
+Running `nemotron steps list` with no filter returns all registered steps, including data preparation, evaluation, conversion, environment, and other categories not listed here.
+Use the `--category`, `--consumes`, and `--produces` filters to narrow the results.
+
+```console
+nemotron steps list --category sft
+nemotron steps list --consumes training_jsonl
+nemotron steps list --produces checkpoint_megatron --json
+```
+
+## Related Documentation
+
+- [Nemotron Steps CLI Reference](/train-models/reference/cli-reference) covers the `list`, `show`, and `run` subcommands.
+
+- [Configuration Conventions](/train-models/reference/config-conventions) describes the per-step `config/` layout.

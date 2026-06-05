@@ -1,0 +1,50 @@
+---
+title: "Checkpoint Conversion Steps"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section documents the conversion steps registered under src/nemotron/steps/convert/. Use these steps to bridge checkpoint layouts between Hugging Face, Megatron distributed checkpoints, and LoRA "
+slug: train-models/reference/convert
+---
+
+This section documents the conversion steps registered under `src/nemotron/steps/convert/`.
+Use these steps to bridge checkpoint layouts between Hugging Face, Megatron distributed checkpoints, and LoRA adapter outputs.
+
+## Steps
+
+<CardGroup cols={2}>
+<Card href="/train-models/reference/convert/hf-to-megatron" title="convert/hf_to_megatron">
+Import a Hugging Face checkpoint or model id into Megatron distributed checkpoint layout.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/convert/megatron-to-hf" title="convert/megatron_to_hf">
+Export a Megatron distributed checkpoint iteration into Hugging Face safetensors layout.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/convert/merge-lora" title="convert/merge_lora">
+Merge a LoRA adapter with its original base checkpoint to produce a standalone checkpoint.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Related Documentation
+
+- [Convert Checkpoints Between Training Steps](/train-models/how-to/convert-checkpoints)
+
+- [Data and Checkpoint Formats](/train-models/how-to/data-and-checkpoint-formats)
+
+- [Step Catalog](/train-models/reference/step-catalog)

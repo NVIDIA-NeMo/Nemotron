@@ -1,0 +1,42 @@
+---
+title: "Supervised Fine-Tuning Steps"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section documents the supervised fine-tuning (SFT) steps registered under src/nemotron/steps/sft/. The two steps target different training libraries and consume different data formats. Both produ"
+slug: train-models/reference/sft
+---
+
+This section documents the supervised fine-tuning (SFT) steps registered under `src/nemotron/steps/sft/`.
+The two steps target different training libraries and consume different data formats.
+Both produce checkpoints you can use as warm-start policies for reinforcement learning alignment.
+
+## Steps
+
+<CardGroup cols={2}>
+<Card href="/train-models/reference/sft/automodel" title="sft/automodel">
+Supervised fine-tuning with the NeMo AutoModel library against Hugging Face base models and JSON Lines chat datasets.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/sft/megatron-bridge" title="sft/megatron_bridge">
+Supervised fine-tuning on top of NVIDIA Megatron-Bridge for distributed training of the Nemotron model family.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Related Documentation
+
+- [Nemotron Steps CLI Reference](/train-models/reference/cli-reference) covers the shared option set, dotlist overrides, and passthrough arguments.
+
+- [Choose an SFT Backend](/train-models/how-to/choose-sft-backend) compares `sft/automodel` and `sft/megatron_bridge`.
+
+- [Configuration Conventions](/train-models/reference/config-conventions) describes the per-step `config/` layout.

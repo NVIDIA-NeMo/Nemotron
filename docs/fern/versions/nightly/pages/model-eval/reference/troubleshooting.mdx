@@ -1,0 +1,100 @@
+---
+title: "Troubleshooting"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This page maps common eval/model_eval failures to the config fields that usually need correction. Nemotron builds a launcher config and calls NeMo Evaluator Launcher; task execution, endpoint checks, "
+slug: model-eval/reference/troubleshooting
+---
+
+<Anchor id="model-eval-troubleshooting"></Anchor>
+
+This page maps common `eval/model_eval` failures to the config fields that usually need correction.
+Nemotron builds a launcher config and calls NeMo Evaluator Launcher; task execution, endpoint checks, and result writing are owned by the launcher.
+
+## Evaluator Extra Missing
+
+Symptom:
+
+```text
+Error: nemo-evaluator-launcher is required for evaluation
+Install with: uv sync --extra evaluator
+```
+
+Recovery:
+
+```bash
+uv sync --extra evaluator
+```
+
+Then rerun the same `nemotron steps run eval/model_eval` command with `uv run --no-sync`.
+
+## Hosted Endpoint Fails
+
+Most hosted failures come from one of these fields:
+
+| Field | What To Check |
+| --- | --- |
+| <code>target.api&#95;endpoint.url</code> | Full endpoint URL, including <code>/v1/chat/completions</code> or <code>/v1/completions</code>. |
+| <code>target.api&#95;endpoint.model&#95;id</code> | Exact model id returned by the endpoint’s models API or UI. |
+| <code>target.api&#95;endpoint.api&#95;key&#95;name</code> | Environment variable name, not the secret value. |
+| <code>target.api&#95;endpoint.type</code> | <code>chat</code> for chat tasks, <code>completions</code> for completions/logprob tasks. |
+
+For hosted smoke tests, start with `tiny_chat.yaml` and `target.api_endpoint.type=chat`.
+
+## Wrong Task For Endpoint Type
+
+Chat tasks need a chat endpoint.
+Log-probability tasks generally need a completions endpoint with logprobs support and a tokenizer.
+
+If the launcher fails after endpoint setup, check:
+
+```text
+tasks
+target.api_endpoint.type
+evaluation.nemo_evaluator_config.config.params.extra.tokenizer
+```
+
+Use exact task IDs from:
+
+```bash
+nemo-evaluator-launcher ls tasks
+```
+
+## Bad Checkpoint Path
+
+When using `default.yaml`, point `deployment.checkpoint_path` at a concrete Megatron Bridge `iter_*` directory.
+Do not point it only at the parent training output directory.
+
+```bash
+deployment.checkpoint_path=/path/to/run/iter_0001000
+```
+
+For log-probability tasks, also verify:
+
+```bash
+evaluation.nemo_evaluator_config.config.params.extra.tokenizer=/path/to/run/iter_0001000/tokenizer
+```
+
+## Launcher Job State
+
+The step prints launcher follow-up commands when the launcher returns an invocation id.
+
+```text
+status_command: nemo-evaluator-launcher status \<id>
+logs_command: nemo-evaluator-launcher logs \<id>
+```
+
+Run those commands before changing config.
+The launcher logs usually distinguish endpoint/authentication failures from task-schema failures.
+
+## Related Pages
+
+- [Configuration Reference](/model-eval/reference/config-schema) for field names and config shape.
+
+- [Output Artifacts](/model-eval/reference/output-artifacts) for launcher config and result paths.
+
+- [Tokenizer Alignment](/model-eval/explanation/tokenizer-alignment) for tokenizer alignment.
+
+- [Endpoint Types And Task Families](/model-eval/explanation/endpoint-types-and-benchmarks) for endpoint/task pairing.
+
+- `src/nemotron/steps/eval/model_eval/step.toml` for the documented error names.

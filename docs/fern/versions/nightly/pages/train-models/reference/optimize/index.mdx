@@ -1,0 +1,50 @@
+---
+title: "Model Optimization Steps"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section documents the model optimization steps registered under src/nemotron/steps/optimize/modelopt/. The three steps wrap NVIDIA Model Optimizer through NVIDIA Megatron-Bridge to quantize, prun"
+slug: train-models/reference/optimize
+---
+
+This section documents the model optimization steps registered under `src/nemotron/steps/optimize/modelopt/`.
+The three steps wrap NVIDIA Model Optimizer through NVIDIA Megatron-Bridge to quantize, prune, and distill trained checkpoints.
+
+## Steps
+
+<CardGroup cols={2}>
+<Card href="/train-models/reference/optimize/quantize" title="optimize/modelopt/quantize">
+Post-training quantization with floating-point recipes such as fp8 and nvfp4, and integer recipes such as int8_sq and int4_awq.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/optimize/prune" title="optimize/modelopt/prune">
+Structured pruning by target parameter budget or explicit architecture.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/optimize/distill" title="optimize/modelopt/distill">
+Teacher-student distillation that recovers quality after pruning or quantization.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Related Documentation
+
+- [Nemotron Steps CLI Reference](/train-models/reference/cli-reference) covers the shared option set, dotlist overrides, and passthrough arguments.
+
+- [Run Post-Training Optimization](/train-models/how-to/run-optimization) explains the ordering of prune and distill, hardware targets, and quality recovery.
+
+- [Configuration Conventions](/train-models/reference/config-conventions) describes the per-step `config/` layout.

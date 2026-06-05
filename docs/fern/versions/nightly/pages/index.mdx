@@ -1,0 +1,183 @@
+---
+title: "Nemotron Training Recipes"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Open and efficient models for agentic AI. Reproducible training pipelines with transparent data, techniques, and weights."
+---
+
+**Open and efficient models for agentic AI.** Reproducible training pipelines with transparent data, techniques, and weights.
+
+<div style="text-align: center; margin: 2rem 0;">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/_y9SEtn1lU8" title="Nemotron Overview" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+## Quick Start
+
+<div class="termy">
+```console
+// Install the Nemotron training recipes
+git clone https://github.com/NVIDIA-NeMo/Nemotron
+cd Nemotron && uv sync
+
+// Run a tiny SFT job on your cluster
+uv run nemotron steps run sft/automodel -c tiny --run YOUR-CLUSTER
+
+// Run the Nano3 pipeline stage by stage
+uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
+uv run nemotron nano3 pretrain --run YOUR-CLUSTER
+uv run nemotron nano3 data prep sft --run YOUR-CLUSTER
+uv run nemotron nano3 sft --run YOUR-CLUSTER
+uv run nemotron nano3 data prep rl --run YOUR-CLUSTER
+uv run nemotron nano3 rl --run YOUR-CLUSTER
+```
+
+</div>
+> **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](/nemo-runspec/nemo-run). See [Execution through NeMo-Run](/nemo-runspec/nemo-run) for setup instructions.
+
+## Sample Deployments and Applications
+
+<CardGroup cols={2}>
+<Card href="/deployment-guides" title="Deployment Guides">
+Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging Face, and agent harnesses.
+
+</Card>
+
+<Card href="/application-examples" title="Sample Applications">
+End-to-end applications: RAG agents, ML agents, and multi-agent systems.
+
+</Card>
+
+</CardGroup>
+
+## Customization Workflows with Nemotron Steps
+
+<CardGroup cols={2}>
+<Card href="/translation" title="Translation">
+Translate JSONL or Parquet corpora with `translate/nemo_curator`, NeMo Curator
+backends, and optional FAITH quality scoring.
+
+</Card>
+
+<Card href="/build-benchmarks/about" title="Build MCQ Benchmarks">
+Generate and translate custom multiple-choice benchmarks with `byob/mcq`.
+
+</Card>
+
+<Card href="/curate/about" title="Data Curation">
+Filter JSONL text with `curate/nemo_curator` before translation or training data preparation.
+
+</Card>
+
+<Card href="/sdg/about" title="Synthetic Data Generation">
+Use `sdg/data_designer` to produce SFT, tool-use, and preference datasets.
+
+</Card>
+
+<Card href="/model-eval/about" title="Model Evaluation">
+Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
+
+</Card>
+
+</CardGroup>
+
+## Training Recipes
+
+<CardGroup cols={2}>
+<Card href="/nemotron/ultra3/readme" title="Nemotron 3 Ultra">
+550B total / 55B active parameters, 20T tokens, up to 1M context. Hybrid Mamba-Attention MoE with LatentMoE and MTP.
+
+**Stages:** Pretraining → SFT → RLVR → MOPD
+
+</Card>
+
+<Card href="/nemotron/super3/readme" title="Nemotron 3 Super">
+120.6B total / 12.7B active parameters, up to 1M context. Hybrid Mamba-Transformer with sparse Latent MoE.
+
+**Stages:** Pretraining → SFT → RL → Quantization → Eval
+
+</Card>
+
+<Card href="/nemotron/nano3/readme" title="Nemotron 3 Nano">
+31.6B total / 3.6B active parameters, 25T tokens, up to 1M context. Hybrid Mamba-Transformer with sparse MoE.
+
+**Stages:** Pretraining → SFT → RL
+
+</Card>
+
+<Card href="/nemotron/omni3/readme" title="Nemotron 3 Omni">
+GA-checkpoint multimodal post-training recipe with stage-local container builds and a three-step RL stack.
+
+**Stages:** SFT → RL MPO → RL text → RL vision → Eval
+
+</Card>
+
+<Card href="/nemotron/embed/readme" title="Embedding Fine-Tuning">
+Fine-tune Llama-Nemotron-Embed-1B-v2 on domain-specific data with synthetic data generation, evaluation, and NIM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+
+</Card>
+
+<Card href="/nemotron/rerank/readme" title="Reranking Fine-Tuning">
+Fine-tune Llama-Nemotron-Rerank-1B-v2 cross-encoders for domain-specific reranking with synthetic data generation, evaluation, export, and NIM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+
+</Card>
+
+</CardGroup>
+
+## Recipe Layout
+
+Nemotron keeps **data-producing recipes** separate from **model-family training recipes**:
+
+| Path | Purpose | Example |
+| --- | --- | --- |
+| <code>src/nemotron/recipes/data/curation/</code> | Filter, dedup, and curate existing corpora | [Nemotron-CC](/nemotron/data/curation/nemotron-cc) |
+| <code>src/nemotron/recipes/data/sdg/</code> | Generate synthetic datasets that can feed multiple families | [Long-document SDG](/nemotron/data/sdg/long-document) feeding [Omni3 SFT](/nemotron/omni3/sft) |
+| <code>src/nemotron/recipes/&lt;family&gt;/</code> | Family-specific training, RL, evaluation, and model lifecycle commands | [Nano3](/nemotron/nano3/readme), [Omni3](/nemotron/omni3/readme) |
+
+## Training Pipeline
+
+Each recipe family has its own stage layout, and all of them can be tracked through [artifact lineage](/nemotron/artifacts):
+
+| Family | Stage layout |
+| --- | --- |
+| [Nano3](/nemotron/nano3/readme) | Pretraining → SFT → RL |
+| [Omni3](/nemotron/omni3/readme) | SFT → RL MPO → RL text → RL vision → Eval |
+| [Super3](/nemotron/super3/readme) | Pretraining → SFT → RL → Quantization → Eval |
+| [Ultra3](/nemotron/ultra3/readme) | Pretraining → SFT → RLVR → MOPD |
+| [Embed](/nemotron/embed/readme) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
+| [Rerank](/nemotron/rerank/readme) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
+
+## Why Nemotron?
+
+|  |  |
+| --- | --- |
+| **Open Models** | Transparent training data, techniques, and weights for community innovation |
+| **Compute Efficiency** | Model pruning enabling higher throughput via TensorRT-LLM |
+| **High Accuracy** | Built on frontier open models with human-aligned reasoning |
+| **Flexible Deployment** | Deploy anywhere: edge, single GPU, or data center with NIM |
+
+## Features
+
+- **End-to-end pipelines** from raw data to deployment-ready models
+
+- **[Artifact lineage](/nemotron/artifacts)** via [W&B](/nemotron/wandb) from data to model
+
+- **Built on [NVIDIA’s NeMo stack](/nemotron/nvidia-stack)** (Megatron-Bridge, NeMo-RL)
+
+- **Reproducible** with versioned configs, data blends, and checkpoints
+
+## Resources
+
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf) – Nemotron 3 Nano methodology
+
+- [Model Weights](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) – pre-trained checkpoints on HuggingFace
+
+- [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) – open pre-training data
+
+- [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) – SFT and RL data
+
+- [Artifact Lineage](/nemotron/artifacts) – W&B integration guide
+
+- [Model training steps](/train-models) – SFT, PEFT, RL, and optimization with `nemotron step run`

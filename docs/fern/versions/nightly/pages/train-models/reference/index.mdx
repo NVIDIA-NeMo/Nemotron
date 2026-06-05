@@ -1,0 +1,109 @@
+---
+title: "Training Reference"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section provides lookup material for every supervised fine-tuning (SFT), parameter-efficient fine-tuning (PEFT), reinforcement learning (RL), and optimization step packaged under src/nemotron/ste"
+slug: train-models/reference
+---
+
+This section provides lookup material for every supervised fine-tuning (SFT), parameter-efficient fine-tuning (PEFT), reinforcement learning (RL), and optimization step packaged under `src/nemotron/steps/`.
+Use these pages to find the exact CLI syntax, configuration file layout, parameters, and configuration overrides for each step.
+
+## Reference Sections
+
+<CardGroup cols={2}>
+<Card href="/train-models/reference/cli-reference" icon="solid terminal" iconSize={8} title="Nemotron Steps CLI Reference">
+Shared command-line syntax, options, dotlist overrides, and passthrough arguments for the `nemotron steps` command group.
+
+---
+
+<Badge intent="success">lookup</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/env-profile-generator" icon="solid gear" iconSize={8} title="Env Profile Generator">
+The packaged `env/env_toml` step that generates the environment profile file every other training step consumes.
+
+---
+
+<Badge intent="success">setup</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/step-catalog" icon="solid list-ul" iconSize={8} title="Step Catalog">
+Every step identifier, manifest path, and per-step reference link.
+
+---
+
+<Badge intent="success">lookup</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/config-conventions" icon="regular file-code" iconSize={8} title="Configuration Conventions">
+Per-step `config/` layout, CLI configuration resolution, dotlist override rules, and environment-variable expansion.
+
+---
+
+<Badge intent="success">lookup</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Per-Category Step References
+
+<CardGroup cols={2}>
+<Card href="/train-models/reference/sft" icon="solid rocket" iconSize={8} title="Supervised Fine-Tuning Steps">
+The `sft/automodel` and `sft/megatron_bridge` references.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/peft" icon="solid screwdriver-wrench" iconSize={8} title="Parameter-Efficient Fine-Tuning Steps">
+The `peft/automodel` and `peft/megatron_bridge` references.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/rl" icon="solid flag" iconSize={8} title="Reinforcement Learning Steps">
+The `rl/nemo_rl/dpo`, `rl/nemo_rl/rlvr`, and `rl/nemo_rl/rlhf` references.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/optimize" icon="solid bolt" iconSize={8} title="Optimization Steps">
+The `optimize/modelopt/quantize`, `optimize/modelopt/prune`, and `optimize/modelopt/distill` references.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/convert" icon="solid code-compare" iconSize={8} title="Checkpoint Conversion Steps">
+The `convert/hf_to_megatron`, `convert/megatron_to_hf`, and `convert/merge_lora` references.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Related Documentation
+
+- [Getting Started With Training Steps](/train-models/getting-started) walks through a first run with the tiny configuration.
+
+- [Execution Through NeMo Run](/nemo-runspec/nemo-run) explains attached and detached execution, environment profiles, and remote job directories.
+
+- [How-To Guides](/train-models/how-to) cover backend choice, data and checkpoint formats, and environment-and-executor setup.

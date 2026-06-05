@@ -1,0 +1,25 @@
+---
+title: "Supported Hugging Face Benchmarks"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "hf_dataset in your generation YAML must be one of the strings in ALLOWED_HF_DATASETS inside src/nemotron/steps/byob/runtime/constants.py."
+slug: build-benchmarks/reference/benchmarks
+---
+
+`hf_dataset` in your generation YAML must be one of the strings in `ALLOWED_HF_DATASETS` inside `src/nemotron/steps/byob/runtime/constants.py`.
+
+If you omit `subset` in YAML, `ByobConfig.from_yaml` substitutes the default from `HF_DATASET_TO_SUBSET`.
+
+| <code>hf&#95;dataset</code> | Default <code>subset</code> when omitted |
+| --- | --- |
+| <code>cais/mmlu</code> | <code>all</code> |
+| <code>TIGER-Lab/MMLU-Pro</code> | <code>default</code> |
+| <code>ai4bharat/MILU</code> | <code>English</code> |
+| <code>CohereLabs/Global-MMLU</code> | <code>en</code> |
+| <code>CohereLabs/Global-MMLU-Lite</code> | <code>en</code> |
+| <code>LinguaLift/IndicMMLU-Pro</code> | <code>hindi</code> |
+| <code>openai/MMMLU</code> | <code>default</code> |
+| <code>sarvamai/mmlu-indic</code> | <code>en</code> |
+| <code>Idavidrein/gpqa</code> | <code>gpqa&#95;main</code> |
+
+Each identifier maps to the shared MCQ dataset implementation through `HF_DATASET_TO_MODULE`, which currently resolves every row to `nemotron.steps.byob.runtime.benchmark_families.mcq`.

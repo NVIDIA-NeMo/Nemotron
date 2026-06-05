@@ -1,0 +1,124 @@
+---
+title: "nemo_runspec Package"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "The following content is pulled from the package source for convenience. The canonical source file in the repository is src/nemo_runspec/README.md."
+slug: nemo-runspec/package-readme
+---
+
+The following content is pulled from the package source for convenience. The canonical source file in the repository is `src/nemo_runspec/README.md`.
+
+# nemo_runspec
+
+Bridge layer for PEP 723 `[tool.runspec]` metadata. Parses declarative metadata
+from recipe scripts and provides the shared CLI toolkit that Nemotron commands
+build on.
+
+## Philosophy
+
+Recipe scripts should be self-describing. Rather than scattering identity,
+container images, launch methods, and resource defaults across CLI wrappers and
+config files, each recipe script declares all of this as standard PEP 723 inline
+metadata in a `[tool.runspec]` block at the top of the file. The CLI layer reads
+this metadata and stays thin – it doesn’t encode policy about *how* to run a
+script, it just asks the script what it needs. This keeps recipes portable
+(any tool can read the same metadata), eliminates hidden coupling between CLI
+commands and the scripts they wrap, and makes it trivial to add a new recipe:
+write the script, add the `[tool.runspec]` block, and the CLI machinery picks
+it up automatically.
+
+## What it does
+
+`nemo_runspec` solves two problems:
+
+1. **Runspec parsing** – Extracts `[tool.runspec]` TOML from PEP 723 inline
+script metadata blocks, returning a frozen `Runspec` dataclass describing a
+recipe’s identity, container image, launch method, config directory, and
+resource requirements.
+
+1. **CLI toolkit** – Provides the reusable building blocks that every recipe
+command needs: config loading, env.toml profile resolution, display helpers,
+`RecipeTyper`, packaging, and nemo-run support.
+
+## Quick start
+
+```python
+from nemo_runspec import parse
+
+SPEC = parse("src/nemotron/recipes/nano3/stage0_pretrain/train.py")
+print(SPEC.name)        # "nano3/pretrain"
+print(SPEC.image)       # "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+print(SPEC.config_dir)  # Path("/abs/path/to/config")
+```
+
+## Runspec schema
+
+See [docs/runspec/v1/spec.md](/runspec/v1/spec) for the
+full `[tool.runspec]` specification – field reference, format, and usage guide.
+
+## Package modules
+
+| Module | Purpose |
+| --- | --- |
+| <code>&#95;parser</code> | PEP 723 TOML extraction and <code>[tool.runspec]</code> parsing |
+| <code>&#95;models</code> | Frozen <code>Runspec</code>, <code>RunspecRun</code>, <code>RunspecConfig</code>, <code>RunspecResources</code> dataclasses |
+| <code>config/</code> | Config loading and OmegaConf resolver package |
+| <code>config/loader</code> | Config pipeline: YAML loading, dotlist overrides, profile merging, job YAML |
+| <code>config/resolvers</code> | OmegaConf resolvers: <code>$&#123;art:...&#125;</code> artifact resolution, <code>$&#123;auto&#95;mount:...&#125;</code> git mounts |
+| <code>env</code> | <code>env.toml</code> profile loading with inheritance (<code>extends</code>), plus wandb/cache/artifacts config |
+| <code>cli&#95;context</code> | <code>GlobalContext</code> for shared CLI state (config, run, batch, dry-run) |
+| <code>recipe&#95;config</code> | <code>RecipeConfig</code> – normalizes CLI options into a typed object |
+| <code>recipe&#95;typer</code> | <code>RecipeTyper</code> – Typer subclass standardizing recipe command registration |
+| <code>help</code> | <code>RecipeCommand</code> with custom Rich help panels (configs, overrides, profiles) |
+| <code>display</code> | Rich display utilities for dry-run output and job submission summaries |
+| <code>step</code> | <code>Step</code> dataclass for pipeline step definition (module, torchrun, command builders) |
+| <code>exceptions</code> | <code>ArtifactNotFoundError</code>, <code>ArtifactVersionNotFoundError</code> |
+| <code>artifacts</code> | High-level <code>setup&#95;artifact&#95;tracking()</code> + <code>log&#95;artifact()</code> API for scripts |
+| <code>artifact&#95;registry</code> | <code>ArtifactRegistry</code> with fsspec/wandb backends, global accessors, resolver mode |
+| <code>manifest&#95;tracker</code> | <code>ManifestTracker</code> – zero-copy manifest-based artifact tracker (fsspec) |
+| <code>filesystem</code> | <code>ArtifactFileSystem</code> – fsspec filesystem for <code>art://</code> URIs |
+| <code>run</code> | nemo-run patches (Ray CPU template, rsync host key handling) |
+| <code>pipeline</code> | Pipeline orchestration: local subprocess piping, nemo-run, and sbatch launchers |
+| <code>execution</code> | Execution helpers: startup commands, env vars, executor creation, local run |
+| <code>packaging</code> | <code>SelfContainedPackager</code> and <code>CodePackager</code> for remote execution |
+| <code>squash</code> | Container squash utilities (Docker to enroot sqsh, ensure squashed on cluster) |
+| <code>templates/</code> | Custom Ray CPU Slurm template (<code>ray&#95;cpu.sub.j2</code>) |
+| <code>evaluator</code> | Evaluator helpers: task flag parsing, W&B injection, config save, image collection |
+| <code>utils</code> | Shared utilities like <code>$&#123;run.&#42;&#125;</code> template interpolation |
+
+## env.toml
+
+Environment configuration uses TOML profiles with inheritance:
+
+```toml
+[base]
+executor = "slurm"
+account = "my-account"
+remote_job_dir = "/lustre/jobs"
+
+[dev]
+extends = "base"
+partition = "dev-gpu"
+nodes = 1
+
+[prod]
+extends = "base"
+partition = "prod-gpu"
+nodes = 8
+
+[wandb]
+entity = "my-team"
+project = "nemotron"
+
+[artifacts]
+wandb = true
+
+[artifacts.manifest]
+root = "/lustre/artifacts"
+
+[cache]
+git_dir = "/lustre/git-cache"
+```
+
+Profiles are selected via `--run <profile>` or `--batch <profile>`.
+Special sections (`wandb`, `cli`, `cache`, `artifacts`) are not executor profiles.

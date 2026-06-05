@@ -1,0 +1,242 @@
+---
+title: "Config Schema"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This page provides the reference information for the YAML config file consumed by sdg/data_designer."
+slug: sdg/reference/config-schema
+---
+
+{/* SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */}
+
+<Anchor id="sdg-config-schema"></Anchor>
+
+This page provides the reference information for the YAML config file consumed by `sdg/data_designer`.
+
+## Simple Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| <code>output&#95;dir</code> | string | no | Base output directory. Supports OmegaConf env-var interpolation. Default resolves <code>$SDG&#95;OUTPUT&#95;DIR</code>, then <code>$NEMO&#95;RUN&#95;DIR/sdg</code>, then <code>./output/sdg</code>. |
+| <code>output&#95;path</code> | string | yes | Full path for the output JSONL file. Typically <code>$&#123;output&#95;dir&#125;/my-dataset.jsonl</code>. |
+| <code>num&#95;records</code> | int | yes | Number of records to generate (<code>client.create</code>) or preview (<code>client.preview</code>). |
+| <code>preview</code> | bool | no | When <code>true</code>, calls <code>client.preview()</code> instead of <code>client.create()</code>. Default: <code>false</code>. Prefer setting this as a CLI override (<code>preview=true</code>) rather than in the YAML. |
+
+## seed_dataset
+
+Optional top-level field.
+When present, Data Designer samples one row per generated record from the seed file and makes the fields available to column prompts by using Jinja2.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| <code>path</code> | string | yes | Path to a JSONL file. Each line is a JSON object. |
+| <code>strategy</code> | string | no | <code>shuffle</code> (default) or <code>ordered</code>. |
+| <code>fields</code> | list[string] | yes | Column names to expose. Must match keys in the seed JSONL objects. These become available as <code>&#123;&#123; field&#95;name &#125;&#125;</code> in prompts without being declared in <code>columns</code>. |
+
+## models
+
+A required top-level field.
+The field specifies a list of model configurations.
+Each entry defines one alias that column specs reference by name.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| <code>alias</code> | string | yes | Short name referenced by <code>model&#95;alias</code> in column specs. |
+| <code>model</code> | string | yes | Model identifier such as <code>nvidia/nemotron-3-nano-30b-a3b</code> and <code>openai/gpt-oss-20b</code>. |
+| <code>provider</code> | string | no | Provider name, such as <code>nvidia</code> or <code>anthropic</code>. |
+| <code>skip&#95;health&#95;check</code> | bool | no | Skip the startup probe against the model provider. Useful for local or offline endpoints. Default: <code>false</code>. |
+| <code>inference&#95;parameters.temperature</code> | float | no | Sampling temperature. |
+| <code>inference&#95;parameters.top&#95;p</code> | float | no | Top-p nucleus sampling. |
+| <code>inference&#95;parameters.max&#95;tokens</code> | int | no | Maximum output tokens per call. |
+
+## columns
+
+A required top-level field.
+This field is an ordered list of column specs.
+Each column has a `name`, a `type`, and type-specific fields.
+Columns can reference earlier columns and seed fields in prompts by using Jinja2 syntax like `\{\{ column_name \}\}`.
+
+### Categorical Columns
+
+Samples uniformly from a fixed list of string or numeric values like the following example.
+
+```yaml
+- name: persona
+  type: category
+  values: [teacher, engineer, student, researcher]
+```
+
+| Field | Required | Description |
+| --- | --- | --- |
+| <code>name</code> | yes | Column name. |
+| <code>values</code> | yes | List of values to sample from. |
+
+### Seed Columns
+
+Provides a named field from the seed dataset as a column.
+Use this column type when a seed field needs to appear in `metadata_fields` or must be referenced in a way that requires it to be an explicit column.
+
+```yaml
+- name: topic
+  type: seed
+```
+
+| Field | Required | Description |
+| --- | --- | --- |
+| <code>name</code> | yes | Must match a field name in <code>seed&#95;dataset.fields</code>. |
+
+Seed fields declared in `seed_dataset.fields` are available directly in prompts without this column type.
+Use `seed` only when you need the field as a named column in the output schema.
+
+### LLM Text Columns
+
+Generates free-form text using an LLM call.
+These columns can references earlier specified columns and seed fields in `prompt` by using Jinja2 syntax.
+
+```yaml
+- name: user_query
+  type: llm_text
+  model_alias: nvidia-text
+  prompt: |
+    Write a message from a {{ persona }} asking about: {{ topic }}.
+```
+
+| Field | Required | Description |
+| --- | --- | --- |
+| <code>name</code> | yes | Column name. |
+| <code>model&#95;alias</code> | no | Alias from <code>models</code>. Default: <code>nvidia-text</code>. |
+| <code>prompt</code> | yes | Jinja2 template. Reference any earlier column or seed field with <code>&#123;&#123; name &#125;&#125;</code>. |
+
+### LLM Structured Columns
+
+This column type generates structured JSON by making an LLM call.
+The column definition instructs the model to return JSON matching `output_format`.
+Use this column type for multi-turn conversations, preference judges, and any output that must conform to a schema.
+
+```yaml
+- name: conversation
+  type: llm_structured
+  model_alias: nvidia-text
+  prompt: |
+    Generate a support conversation for customer {{ customer_name }}...
+  output_format:
+    type: object
+    properties:
+      messages:
+        type: array
+        ...
+    required: [messages]
+```
+
+| Field | Required | Description |
+| --- | --- | --- |
+| <code>name</code> | yes | Column name. |
+| <code>model&#95;alias</code> | no | Alias from <code>models</code>. Default: <code>nvidia-text</code>. |
+| <code>prompt</code> | yes | Jinja2 template. |
+| <code>output&#95;format</code> | yes | JSON Schema dict describing the expected output structure. |
+
+### LLM Judge Columns
+
+This type is an alias for `llm_structured`.
+This type is typically used for columns that compare or evaluate other columns.
+
+```yaml
+- name: judge
+  type: llm_judge
+  model_alias: nvidia-text
+  prompt: |
+    Compare response A and B for: {{ prompt }}
+    A: {{ response_a }}
+    B: {{ response_b }}
+  output_format:
+    type: object
+    properties:
+      winner:
+        type: string
+        enum: [A, B]
+    required: [winner]
+```
+
+## output_projection
+
+This top-level field maps raw Data Designer records into the schema expected by downstream steps.
+Refer to [Output Projections](/sdg/reference/output-projections) for full field tables and annotated JSONL examples for each type.
+
+| <code>type</code> | Use for | Downstream |
+| --- | --- | --- |
+| <code>openai&#95;messages</code> | Single-turn SFT chat | <code>data&#95;prep/sft&#95;packing</code>, AutoModel SFT |
+| <code>dpo&#95;preference</code> | Preference pairs | <code>data&#95;prep/rl&#95;prep</code>, <code>rl/nemo&#95;rl/dpo</code> |
+| <code>structured&#95;messages</code> | Multi-turn with tool calls | <code>data&#95;prep/sft&#95;packing</code>, AutoModel SFT |
+
+## Extending the Schema: `person` and `datetime` Samplers
+
+The current `step.py` supports the column types above. To use Data Designer’s locale-aware person sampler or datetime sampler, `step.py`’s `build_columns()` function must be extended with `person` and `datetime` branches. A reference implementation showing both additions is in:
+
+```python startLine={1}
+        elif kind == "person":
+            builder.add_column(
+                dd.SamplerColumnConfig(
+                    name=name,
+                    sampler_type=dd.SamplerType.PERSON,
+                    params=dd.PersonSamplerParams(
+                        locale=spec.get("locale", "en_US"),
+                        age_range=spec.get("age_range"),
+                        with_synthetic_personas=spec.get("with_synthetic_personas", True),
+                    ),
+                )
+            )
+
+        elif kind == "datetime":
+            builder.add_column(
+                dd.SamplerColumnConfig(
+                    name=name,
+                    sampler_type=dd.SamplerType.DATETIME,
+                    params=dd.DatetimeSamplerParams(
+                        start=spec["start"],
+                        end=spec["end"],
+                    ),
+                )
+            )
+
+```
+
+Once merged, configs can declare:
+
+```yaml
+- name: traveler
+  type: person
+  locale: en_US
+  age_range: [22, 75]
+  with_synthetic_personas: true
+
+- name: booking_date
+  type: datetime
+  start: "2024-01-01"
+  end: "2025-12-31"
+```
+
+Download personas for the locale before running:
+
+```console
+data-designer download personas --locale en_US
+```
+
+## Related Information
+
+- [Output Projections](/sdg/reference/output-projections) — projection field reference and JSONL examples.
+
+- [CLI Reference](/sdg/reference/cli-reference) — flags and hydra override syntax.
+
+- [Tips for the Data Generation Pipeline](/sdg/how-to/run) — preview and generate workflow.

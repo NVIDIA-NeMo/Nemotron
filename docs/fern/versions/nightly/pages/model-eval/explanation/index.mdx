@@ -1,0 +1,47 @@
+---
+title: "Concepts"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "The pages in this section cover the design rules behind eval/model_eval. Read them when you want to understand why the how-to pages take the actions they do, before you change a configuration default "
+slug: model-eval/explanation
+---
+
+The pages in this section cover the design rules behind `eval/model_eval`.
+Read them when you want to understand why the how-to pages take the actions they do, before you change a configuration default or adapt a recipe to a new deployment.
+
+## Pipeline And Architecture
+
+<CardGroup cols={2}>
+<Card href="/model-eval/explanation/pipeline-overview" icon="solid chart-line" iconSize={8} title="Pipeline Overview">
+Artifact flow from a checkpoint or hosted endpoint, through `eval/model_eval`, into `eval_results` on disk.
+
+---
+
+<Badge intent="info">architecture</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Deployment Contract
+
+<CardGroup cols={2}>
+<Card href="/model-eval/explanation/endpoint-types-and-benchmarks" icon="solid plug" iconSize={8} title="Endpoint Types And Benchmark Families">
+Chat versus completions endpoints, and which benchmark families match each one.
+
+---
+
+<Badge intent="info">endpoint</Badge>
+
+</Card>
+
+<Card href="/model-eval/explanation/tokenizer-alignment" icon="solid box" iconSize={8} title="Tokenizer Alignment">
+Why log-probability benchmarks need a tokenizer that matches the served model.
+
+---
+
+<Badge intent="info">tokenizer</Badge>
+
+</Card>
+
+</CardGroup>
