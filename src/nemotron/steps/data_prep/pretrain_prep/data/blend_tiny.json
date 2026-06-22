@@ -1,0 +1,11 @@
+{
+  "datasets": [
+    {
+      "name": "nemotron-cc-v2.1-high-quality-dqa",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-DQA",
+      "text_field": "text",
+      "weight": 1.0
+    }
+  ]
+}

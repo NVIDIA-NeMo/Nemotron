@@ -96,7 +96,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 # Clone the repository
-git clone https://github.com/NVIDIA/Nemotron.git
+git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
 # UV creates a virtual environment at .venv/ and installs all dependencies
@@ -356,7 +356,7 @@ entity = "my-team"
 # Local Docker execution profile
 [local-docker]
 executor = "docker"
-container_image = "nvcr.io/nvidia/pytorch:25.01-py3"
+container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
 runtime = "nvidia"  # Enable GPU passthrough
 ipc_mode = "host"
 shm_size = "16g"
@@ -371,7 +371,7 @@ executor = "slurm"
 account = "my-account"
 partition = "interactive"
 batch_partition = "batch"
-container_image = "nvcr.io/nvidia/pytorch:25.01-py3"
+container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
 tunnel = "ssh"
 host = "cluster.example.com"
 user = "username"
@@ -448,9 +448,12 @@ test_ratio: 0.1                # Test split (10%)
 **Stage 2: Finetune**
 ```yaml
 base_model: nvidia/llama-nemotron-embed-1b-v2
+trust_remote_code: true
 num_epochs: 3
 global_batch_size: 128
 learning_rate: 1.0e-5
+optimizer_backend: auto        # FusedAdam in Automodel container, FlashAdamW fallback
+flash_adamw_master_weight_bits: 32
 query_max_length: 512          # Max query tokens (check your base model's max sequence length)
 passage_max_length: 512        # Max passage tokens (check your base model's max sequence length)
 # attn_implementation: null    # Auto-detects flash_attention_2 if available, else sdpa
@@ -671,7 +674,7 @@ Model: fine-tuned
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA/NeMo-Data-Designer) |
+| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA-NeMo/DataDesigner) |
 | Automodel | Embedding model training framework | [GitHub](https://github.com/NVIDIA/NeMo-Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
@@ -1081,8 +1084,8 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 
 ## Further Reading
 
-- [NeMo Data Designer Documentation](https://github.com/NVIDIA/NeMo-Data-Designer) - Synthetic data generation framework
-- [Automodel Documentation](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
+- [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) - Synthetic data generation framework
+- [Automodel](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
 - [BEIR Benchmark](https://github.com/beir-cellar/beir) - Information retrieval evaluation
 - [NVIDIA NIM Documentation](https://developer.nvidia.com/nim) - Production inference microservices
 - [Llama-Nemotron-Embed-1B-v2 Model Card](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) - Base model details
@@ -1091,6 +1094,6 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 ## Support
 
 For issues, questions, or contributions:
-- **Issues**: [GitHub Issues](https://github.com/NVIDIA/Nemotron/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/NVIDIA/Nemotron/discussions)
-- **Documentation**: [Nemotron Documentation](https://github.com/NVIDIA/Nemotron)
+- **Issues**: [GitHub Issues](https://github.com/NVIDIA-NeMo/Nemotron/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/NVIDIA-NeMo/Nemotron/discussions)
+- **Documentation**: [Nemotron Documentation](https://docs.nvidia.com/nemotron/latest)

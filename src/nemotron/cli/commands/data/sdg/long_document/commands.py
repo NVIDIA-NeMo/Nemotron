@@ -20,10 +20,11 @@ or via ``uv run`` locally.  Heavy script-level deps (PyMuPDF, datasets, vLLM
 clients) are resolved at runtime from each script's PEP 723 inline
 ``dependencies`` list.
 
-Pydantic config classes are loaded from the scripts via importlib so the
-rich ``--help`` panel can introspect every config field — the scripts cannot
-be imported by their normal dotted path because their parent directory uses
-a dash and filenames begin with digits.
+Pydantic config classes are loaded lazily from the scripts via importlib so
+the rich per-stage ``--help`` panel can introspect every config field when
+the optional recipe deps are installed — the scripts cannot be imported by
+their normal dotted path because their parent directory uses a dash and
+filenames begin with digits.
 
 Producer stages (``ocr``, ``text-qa``, ...) optionally accept ``--serve``,
 which composes a multi-task ``nemo_run.Experiment``: a serve task brings vLLM
@@ -43,6 +44,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -51,9 +53,9 @@ from nemo_runspec.config import build_job_config, generate_job_dir, parse_config
 from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
+from nemo_runspec.help import LazyConfigModel
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
-
 from nemotron.cli.commands.data.sdg.long_document._config_loader import load_config_class
 from nemotron.cli.commands.data.sdg.long_document._deployment import (
     STAGE_DEFAULT_DEPLOYMENT,
@@ -69,16 +71,26 @@ from nemotron.cli.commands.data.sdg.long_document._packager import LongDocPackag
 # Each stage is described by:
 #   - SCRIPT_*: repo-relative path to the recipe script (used by CodePackager).
 #   - SPEC_*  : runspec parsed from the script's PEP 723 [tool.runspec] block.
-#   - *_CFG   : Pydantic config class (loaded via importlib for rich --help).
+#   - *_CFG   : Lazy Pydantic config-class loader for rich per-command --help.
 #   - META_*  : RecipeMeta wired into Typer for help rendering.
 # --------------------------------------------------------------------------- #
 
 _RECIPES_ROOT = "src/nemotron/recipes/data/sdg/long-document"
 
+
+def _lazy_config_class(script_path: Path, class_name: str, module_alias: str) -> LazyConfigModel:
+    """Defer optional recipe imports until a stage command renders help."""
+
+    def _load_config_class() -> type[Any]:
+        return load_config_class(script_path, class_name, module_alias)
+
+    return LazyConfigModel(load=_load_config_class)
+
+
 # Stage 01: seed -----------------------------------------------------------------
 SCRIPT_SEED = f"{_RECIPES_ROOT}/01-seed-dataset-preparation.py"
 SPEC_SEED = parse_runspec(SCRIPT_SEED)
-SEED_CFG = load_config_class(SPEC_SEED.script_path, "SeedConfig", "_long_doc_seed_module")
+SEED_CFG = _lazy_config_class(SPEC_SEED.script_path, "SeedConfig", "_long_doc_seed_module")
 META_SEED = RecipeMeta(
     name=SPEC_SEED.name,
     script_path=SCRIPT_SEED,
@@ -92,7 +104,7 @@ META_SEED = RecipeMeta(
 # Stage 02: ocr -------------------------------------------------------------------
 SCRIPT_OCR = f"{_RECIPES_ROOT}/02-nemotron-parse-ocr-sdg.py"
 SPEC_OCR = parse_runspec(SCRIPT_OCR)
-OCR_CFG = load_config_class(SPEC_OCR.script_path, "OcrConfig", "_long_doc_ocr_module")
+OCR_CFG = _lazy_config_class(SPEC_OCR.script_path, "OcrConfig", "_long_doc_ocr_module")
 META_OCR = RecipeMeta(
     name=SPEC_OCR.name,
     script_path=SCRIPT_OCR,
@@ -106,7 +118,7 @@ META_OCR = RecipeMeta(
 # Stage 03: text-qa ---------------------------------------------------------------
 SCRIPT_TEXT_QA = f"{_RECIPES_ROOT}/03-text-qa-sdg.py"
 SPEC_TEXT_QA = parse_runspec(SCRIPT_TEXT_QA)
-TEXT_QA_CFG = load_config_class(SPEC_TEXT_QA.script_path, "TextQAConfig", "_long_doc_text_qa_module")
+TEXT_QA_CFG = _lazy_config_class(SPEC_TEXT_QA.script_path, "TextQAConfig", "_long_doc_text_qa_module")
 META_TEXT_QA = RecipeMeta(
     name=SPEC_TEXT_QA.name,
     script_path=SCRIPT_TEXT_QA,
@@ -120,7 +132,7 @@ META_TEXT_QA = RecipeMeta(
 # Stage 04: page-classification ---------------------------------------------------
 SCRIPT_PAGE_CLASSIFICATION = f"{_RECIPES_ROOT}/04-page-classification-sdg.py"
 SPEC_PAGE_CLASSIFICATION = parse_runspec(SCRIPT_PAGE_CLASSIFICATION)
-PAGE_CLASSIFICATION_CFG = load_config_class(
+PAGE_CLASSIFICATION_CFG = _lazy_config_class(
     SPEC_PAGE_CLASSIFICATION.script_path,
     "PageClassificationConfig",
     "_long_doc_page_classification_module",
@@ -138,7 +150,7 @@ META_PAGE_CLASSIFICATION = RecipeMeta(
 # Stage 05: visual-qa -------------------------------------------------------------
 SCRIPT_VISUAL_QA = f"{_RECIPES_ROOT}/05-visual-qa-sdg.py"
 SPEC_VISUAL_QA = parse_runspec(SCRIPT_VISUAL_QA)
-VISUAL_QA_CFG = load_config_class(SPEC_VISUAL_QA.script_path, "VisualQAConfig", "_long_doc_visual_qa_module")
+VISUAL_QA_CFG = _lazy_config_class(SPEC_VISUAL_QA.script_path, "VisualQAConfig", "_long_doc_visual_qa_module")
 META_VISUAL_QA = RecipeMeta(
     name=SPEC_VISUAL_QA.name,
     script_path=SCRIPT_VISUAL_QA,
@@ -152,7 +164,7 @@ META_VISUAL_QA = RecipeMeta(
 # Stage 06: single-page-qa --------------------------------------------------------
 SCRIPT_SINGLE_PAGE_QA = f"{_RECIPES_ROOT}/06-single-page-qa-sdg.py"
 SPEC_SINGLE_PAGE_QA = parse_runspec(SCRIPT_SINGLE_PAGE_QA)
-SINGLE_PAGE_QA_CFG = load_config_class(
+SINGLE_PAGE_QA_CFG = _lazy_config_class(
     SPEC_SINGLE_PAGE_QA.script_path,
     "SinglePageQAConfig",
     "_long_doc_single_page_qa_module",
@@ -170,7 +182,7 @@ META_SINGLE_PAGE_QA = RecipeMeta(
 # Stage 07: windowed-qa -----------------------------------------------------------
 SCRIPT_WINDOWED_QA = f"{_RECIPES_ROOT}/07-multi-page-windowed-qa-sdg.py"
 SPEC_WINDOWED_QA = parse_runspec(SCRIPT_WINDOWED_QA)
-WINDOWED_QA_CFG = load_config_class(
+WINDOWED_QA_CFG = _lazy_config_class(
     SPEC_WINDOWED_QA.script_path,
     "WindowedQAConfig",
     "_long_doc_windowed_qa_module",
@@ -188,7 +200,7 @@ META_WINDOWED_QA = RecipeMeta(
 # Stage 08: whole-document-qa -----------------------------------------------------
 SCRIPT_WHOLE_DOCUMENT_QA = f"{_RECIPES_ROOT}/08-whole-document-qa-sdg.py"
 SPEC_WHOLE_DOCUMENT_QA = parse_runspec(SCRIPT_WHOLE_DOCUMENT_QA)
-WHOLE_DOCUMENT_QA_CFG = load_config_class(
+WHOLE_DOCUMENT_QA_CFG = _lazy_config_class(
     SPEC_WHOLE_DOCUMENT_QA.script_path,
     "WholeDocumentQAConfig",
     "_long_doc_whole_document_qa_module",
@@ -206,7 +218,7 @@ META_WHOLE_DOCUMENT_QA = RecipeMeta(
 # Stage 09: judge -----------------------------------------------------------------
 SCRIPT_JUDGE = f"{_RECIPES_ROOT}/09-frontier-judge-sdg.py"
 SPEC_JUDGE = parse_runspec(SCRIPT_JUDGE)
-JUDGE_CFG = load_config_class(SPEC_JUDGE.script_path, "JudgeConfig", "_long_doc_judge_module")
+JUDGE_CFG = _lazy_config_class(SPEC_JUDGE.script_path, "JudgeConfig", "_long_doc_judge_module")
 META_JUDGE = RecipeMeta(
     name=SPEC_JUDGE.name,
     script_path=SCRIPT_JUDGE,

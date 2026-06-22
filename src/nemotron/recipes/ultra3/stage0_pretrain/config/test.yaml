@@ -1,0 +1,46 @@
+run:
+  train_script: src/nemotron/recipes/ultra3/stage0_pretrain/test_train.py
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/ultra3-pretrain.sqsh
+    workdir: /workspace/Megatron-Bridge
+    nodes: 1
+    gpus_per_node: 1
+    ntasks_per_node: 1
+
+# The tiny Ultra3 model provider and recipe are defined in test_train.py.
+# run.train_script above tells the CLI to use it instead of train.py.
+
+mixed_precision: bf16_mixed
+
+data:
+  mock: true
+
+train:
+  train_iters: 10
+  global_batch_size: 4
+  micro_batch_size: 1
+
+validation:
+  eval_interval: 5
+  eval_iters: 1
+
+scheduler:
+  lr_warmup_iters: 2
+  lr_decay_iters: 10
+  lr_wsd_decay_iters: 2
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 1
+  wandb_entity: ${oc.env:WANDB_ENTITY,nvidia-nemo-fw-public}
+  wandb_project: ${oc.env:WANDB_PROJECT,megatron-bridge-nemotron-ultra}
+  wandb_exp_name: nemotron_3_ultra_pretrain_test_single_gpu
+  tensorboard_dir: /nemo_run/ultra3-pretrain-test/tb_logs
+  wandb_save_dir: /nemo_run/ultra3-pretrain-test/wandb
+
+checkpoint:
+  save: /nemo_run/ultra3-pretrain-model-test
+  save_interval: 10
+
+dist:
+  distributed_timeout_minutes: 30

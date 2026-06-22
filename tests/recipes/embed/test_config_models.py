@@ -6,6 +6,7 @@ Tests validation constraints, defaults, and model validators without any I/O.
 from __future__ import annotations
 
 import importlib
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -100,6 +101,24 @@ class TestDataPrepConfigValidation:
     def test_quality_threshold_above_range(self, DataPrepConfig):
         with pytest.raises(ValidationError):
             DataPrepConfig(quality_threshold=11)
+
+
+    def test_mining_uses_visible_gpu_count_default(self, DataPrepConfig, tmp_path, monkeypatch):
+        mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")
+        captured = {}
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            return SimpleNamespace(returncode=0, stderr="")
+
+        monkeypatch.setattr(mod.subprocess, "run", fake_run)
+
+        cfg = DataPrepConfig(sdg_input_path="/tmp/fake", output_dir=tmp_path)
+        output_file = mod.run_mining(cfg, tmp_path / "train.json")
+
+        nproc_index = captured["cmd"].index("--nproc_per_node")
+        assert captured["cmd"][nproc_index + 1] == "gpu"
+        assert output_file == tmp_path / "train_mined.automodel.json"
 
 
 # ---------------------------------------------------------------------------

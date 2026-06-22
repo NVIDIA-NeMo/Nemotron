@@ -1,0 +1,66 @@
+# Tiny Ultra3 pretrain config for a functional 550B-A55B smoke test.
+#
+# This is not a convergence run. It inherits the data-artifact wiring from default.yaml
+# but shrinks sequence length, batch, schedule, and checkpoint cadence.
+#
+# Smallest defensible model-parallel smoke shape used here: 36 nodes / 288 GPUs
+# with TP=2, PP=36, EP=4, CP=1. PP=36 splits the 108 decoder layers into
+# three layers per pipeline stage; EP=4 divides 512 experts; TP=2 is kept as
+# the smallest tensor-parallel shard that is still plausible for this model.
+# Full uniform recompute is enabled to minimize activation memory.
+
+defaults:
+  - default
+
+# Portable smoke test: force BF16 so it does not require NVFP4-capable
+# Transformer Engine or hardware.
+mixed_precision: bf16_mixed
+
+run:
+  env:
+    nodes: 36
+
+recipe:
+  seq_length: 2048
+
+model:
+  tensor_model_parallel_size: 2
+  pipeline_model_parallel_size: 36
+  expert_model_parallel_size: 4
+  expert_tensor_parallel_size: 1
+  context_parallel_size: 1
+  sequence_parallel: true
+  seq_length: 2048
+  mtp_loss_scaling_factor: 0.1
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+  recompute_modules: null
+
+dataset:
+  seq_length: 2048
+
+train:
+  train_iters: 10
+  global_batch_size: 8
+  micro_batch_size: 1
+
+validation:
+  eval_interval: 5
+  eval_iters: 1
+
+scheduler:
+  lr_decay_style: WSD
+  lr_wsd_decay_style: minus_sqrt
+  lr_warmup_iters: 2
+  lr_decay_iters: 10
+  lr_wsd_decay_iters: 2
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 1
+  wandb_exp_name: nemotron_3_ultra_pretrain_tiny_tp2_pp36_ep4
+
+checkpoint:
+  save: /nemo_run/ultra3-pretrain-model-tiny
+  save_interval: 5

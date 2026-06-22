@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from nemotron.cli.commands.omni3.build import build
 from nemotron.cli.commands.omni3.data import data_app
 from nemotron.cli.commands.omni3.model import model_app
 from nemotron.cli.commands.omni3.pipe import META as PIPE_META, pipe
@@ -31,11 +30,7 @@ omni3_app = RecipeTyper(
     rich_markup_mode="rich",
 )
 
-omni3_app.command(
-    "build",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-    rich_help_panel="Infrastructure",
-)(build)
+# Container builds moved to the shared `nemotron kit slurm build` command.
 
 omni3_app.add_recipe_command(sft, meta=SFT_META, rich_help_panel="Training Stages")
 omni3_app.add_typer(data_app, name="data")

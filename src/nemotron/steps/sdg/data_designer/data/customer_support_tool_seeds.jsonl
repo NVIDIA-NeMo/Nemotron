@@ -1,0 +1,5 @@
+{"customer_name":"Priya","issue":"late delivery","order_id":"ORD-10492","product":"noise-cancelling headphones","policy_hint":"Expedited replacement is allowed when delivery is more than 48 hours late."}
+{"customer_name":"Marcus","issue":"refund for damaged item","order_id":"ORD-88310","product":"standing desk mat","policy_hint":"Refunds require damage confirmation and can be issued to the original payment method."}
+{"customer_name":"Elena","issue":"subscription billing confusion","order_id":"SUB-22918","product":"premium support plan","policy_hint":"Agents may explain renewal dates and cancel future renewal, but cannot refund consumed billing periods."}
+{"customer_name":"Noah","issue":"warranty replacement","order_id":"WRN-67021","product":"smart thermostat","policy_hint":"Warranty replacement requires serial number verification and active warranty status."}
+{"customer_name":"Aisha","issue":"address change after purchase","order_id":"ORD-55736","product":"espresso machine","policy_hint":"Address changes are allowed only before the shipment enters carrier handoff."}

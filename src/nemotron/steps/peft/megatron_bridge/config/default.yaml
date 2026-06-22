@@ -1,0 +1,111 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Megatron-Bridge LoRA defaults. Same recipe as sft/megatron_bridge but with peft block enabled.
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.04
+
+# The LoRA adapters train on top of a frozen model loaded from a Megatron checkpoint
+# (checkpoint.pretrained_checkpoint below); adapters save separately to checkpoint.save.
+# Any Megatron checkpoint works — a base, instruct, or your own SFT'd model — it just
+# becomes the frozen weights the adapters sit on. PEFT cannot load this directly from
+# HF: Megatron-Bridge's PEFT hook reads a checkpoint on disk and errors if it is
+# missing. To start from an HF model, first convert it to a Megatron checkpoint (run an
+# SFT step or convert/hf_to_megatron), then point at it via MEGATRON_PRETRAIN_PATH (or
+# the CLI override below).
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_peft_config
+  packed_sequence: true
+  peft: lora
+  seq_length: 4096
+
+dataset:
+  nano3_packed_sft_dir: ${oc.env:SFT_PACKED_DIR}
+  seq_length: 4096
+  packed_sequence_specs:
+    packed_sequence_size: 4096
+
+train:
+  train_iters: 1000
+  global_batch_size: 4
+
+model:
+  seq_length: 4096
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 1
+
+# LoRA adapter spec applied via megatron.bridge.recipes.utils.finetune_utils.default_peft_config
+peft:
+  type: lora
+  dim: 32
+  alpha: 32
+  dropout: 0.0
+  target_modules:
+    - linear_qkv
+    - linear_proj
+
+# inherit_save_as_load:false keeps checkpoint.load unset so the frozen base is read
+# from pretrained_checkpoint (not the empty adapter save dir) — set load explicitly to
+# resume an adapter run. clear_pretrained_checkpoint:false is a no-op here (kept for
+# clarity) since PEFT never takes the HF path that would clear it.
+hf_load:
+  clear_pretrained_checkpoint: false
+  inherit_save_as_load: false
+
+checkpoint_patch:
+  # Megatron-Core's torch_dist strategy uses multiprocessing.Manager().Queue()
+  # inside filesystem_async.py even for synchronous saves. On some remote
+  # filesystems this can die with EOFError while saving PEFT adapter checkpoints.
+  # Use a plain spawn-context Queue for the same rank-local write-result handoff.
+  use_spawn_queue_for_torch_dist: true
+
+logger:
+  log_interval: 10
+  wandb_project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  wandb_entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+  wandb_exp_name: ${oc.env:WANDB_NAME,peft-megatron-bridge}
+checkpoint:
+  # Where adapter checkpoints are written.
+  save: /nemo_run/peft-model
+
+  # Required: an existing Megatron checkpoint to freeze and adapt — a base, instruct,
+  # or SFT'd model, or a convert/hf_to_megatron result. Set MEGATRON_PRETRAIN_PATH, or
+  # pass it on the CLI: checkpoint.pretrained_checkpoint=/path/to/megatron-checkpoint
+  # The runner fails fast if it is unset or not a real checkpoint.
+  pretrained_checkpoint: ${oc.env:MEGATRON_PRETRAIN_PATH,null}
+
+  # Resume an interrupted adapter run: point `load` at the adapter save directory.
+  # Unlike SFT/pretrain it does NOT default to `save` (hf_load.inherit_save_as_load
+  # is false, so the frozen base still comes from pretrained_checkpoint).
+  # Megatron-Bridge reads the tracker file there, finds the latest iteration, and
+  # loads its `iter_<N>/` adapter checkpoint. Uncomment to resume:
+  # load: /nemo_run/peft-model
+
+  # By default the latest adapter iteration is loaded. To resume from a specific one,
+  # set ckpt_step to N (applies to the adapter checkpoint, not the frozen base).
+  # Uncomment to use:
+  # ckpt_step: 100
+
+  save_interval: 50
+  finetune: true
+  # PEFT saves adapter-filtered checkpoint sections. The fully-parallel
+  # distributed checkpoint writer is fragile for that sparse adapter-only state,
+  # so use the plain torch_dist writer and save only the adapter artifact.
+  fully_parallel_save: false
+  async_save: false
+  save_optim: false
+  save_rng: false

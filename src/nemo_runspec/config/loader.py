@@ -28,10 +28,10 @@ from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-from nemo_runspec.env import get_artifacts_config, get_wandb_config
 from nemo_runspec.cli_context import GlobalContext
-from nemo_runspec.utils import rewrite_paths_for_remote, resolve_run_interpolations
 from nemo_runspec.config.resolvers import _is_artifact_reference
+from nemo_runspec.env import get_artifacts_config, get_wandb_config
+from nemo_runspec.utils import resolve_run_interpolations, rewrite_paths_for_remote
 
 
 def parse_config(ctx: GlobalContext, config_dir: Path, default_config: str) -> DictConfig:
@@ -93,7 +93,7 @@ def find_config_file(config_name: str, config_dir: Path) -> Path:
     )
 
 
-def load_config(config_path: Path) -> DictConfig:
+def load_config(config_path: Path, _seen: frozenset[Path] = frozenset()) -> DictConfig:
     """Load a YAML config file.
 
     Registers custom OmegaConf resolvers before loading to support:
@@ -101,6 +101,8 @@ def load_config(config_path: Path) -> DictConfig:
 
     Args:
         config_path: Path to the YAML config file
+        _seen: Paths already being resolved on the current ``defaults:`` chain;
+            used to detect inheritance cycles.
 
     Returns:
         OmegaConf DictConfig with the loaded configuration
@@ -110,7 +112,57 @@ def load_config(config_path: Path) -> DictConfig:
     # Register resolvers before loading config (safe to call multiple times)
     register_auto_mount_resolver()
 
-    return OmegaConf.load(config_path)
+    resolved = config_path.resolve()
+    if resolved in _seen:
+        chain_str = " -> ".join(str(p) for p in (*_seen, resolved))
+        raise ValueError(f"Cyclic config inheritance detected: {chain_str}")
+
+    config = OmegaConf.load(config_path)
+    base_paths = _base_config_paths(config, config_path)
+    if not base_paths:
+        return config
+
+    next_seen = _seen | {resolved}
+    merged = OmegaConf.create()
+    for base_path in base_paths:
+        if not base_path.exists():
+            raise FileNotFoundError(
+                f"Base config '{base_path}' referenced from {config_path} does not exist"
+            )
+        merged = OmegaConf.merge(merged, load_config(base_path, next_seen))
+    override = OmegaConf.create(OmegaConf.to_container(config, resolve=False))
+    override.pop("defaults", None)
+    return OmegaConf.merge(merged, override)
+
+
+def _base_config_paths(config: DictConfig, config_path: Path) -> list[Path]:
+    """Resolve simple ``defaults: default.yaml`` style config inheritance."""
+    if "defaults" not in config:
+        return []
+
+    defaults_value = config.get("defaults")
+    if OmegaConf.is_config(defaults_value):
+        raw_defaults = OmegaConf.to_container(defaults_value, resolve=False)
+    else:
+        raw_defaults = defaults_value
+    if isinstance(raw_defaults, str):
+        raw_items = [raw_defaults]
+    elif isinstance(raw_defaults, list) and all(isinstance(item, str) for item in raw_defaults):
+        raw_items = raw_defaults
+    else:
+        return []
+
+    paths: list[Path] = []
+    for item in raw_items:
+        if item == "_self_":
+            continue
+        path = Path(item)
+        if not path.suffix:
+            path = path.with_suffix(".yaml")
+        if not path.is_absolute():
+            path = config_path.parent / path
+        paths.append(path)
+    return paths
 
 
 def apply_dotlist_overrides(config: DictConfig, dotlist: list[str]) -> DictConfig:
@@ -183,19 +235,24 @@ def build_job_config(
     # Merge env profile if provided (overlays config YAML's run.env)
     if env_profile is not None:
         profile_env = OmegaConf.to_container(env_profile, resolve=True)
-        # Config YAML is base, env.toml profile overlays it
-        # Special handling for 'mounts': concatenate lists instead of overwriting
+        # Config YAML is base, env.toml profile overlays it. Deep-merge nested
+        # env_vars/mounts so RL/Ray runtime knobs in YAML survive when the
+        # profile only adds site-specific paths.
         merged_env = {**existing_env, **profile_env}
-        if "mounts" in existing_env and "mounts" in profile_env:
-            # Combine mounts from both sources (YAML first, then profile)
-            merged_env["mounts"] = existing_env["mounts"] + profile_env["mounts"]
-        elif "mounts" in existing_env:
-            merged_env["mounts"] = existing_env["mounts"]
-        # Re-apply YAML resource keys so recipe requirements win over profile defaults.
-        # The recipe knows how many nodes/GPUs it needs; env.toml provides cluster
-        # logistics (account, partition, tunnel, mounts) the recipe doesn't know about.
-        _RESOURCE_KEYS = ("nodes", "gpus_per_node", "ntasks_per_node", "nproc_per_node")
-        for key in _RESOURCE_KEYS:
+        existing_vars = existing_env.get("env_vars") or {}
+        profile_vars = profile_env.get("env_vars") or {}
+        if existing_vars or profile_vars:
+            merged_env["env_vars"] = {**existing_vars, **profile_vars}
+        existing_mounts = existing_env.get("mounts") or []
+        profile_mounts = profile_env.get("mounts") or []
+        if existing_mounts or profile_mounts:
+            merged_env["mounts"] = list(existing_mounts) + list(profile_mounts)
+        # Re-apply YAML-owned execution keys so recipe requirements win over
+        # inherited profile defaults. The recipe/config knows which image and
+        # resource shape it requires; env.toml provides cluster logistics
+        # (account, partition, tunnel, site mounts) the recipe doesn't know about.
+        resource_keys = ("container_image", "nodes", "gpus_per_node", "ntasks_per_node", "nproc_per_node")
+        for key in resource_keys:
             if key in existing_env:
                 merged_env[key] = existing_env[key]
         run_updates["env"] = merged_env
@@ -348,5 +405,3 @@ def save_configs(
     OmegaConf.save(train_config, train_path)
 
     return job_path, train_path
-
-

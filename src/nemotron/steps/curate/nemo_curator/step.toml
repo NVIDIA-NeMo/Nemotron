@@ -1,0 +1,122 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "curate/nemo_curator"
+name = "Lightweight Text Curation (NeMo Curator)"
+category = "curate"
+description = """Read JSONL text with NeMo Curator, optionally hydrate a Hugging Face snapshot, apply light language, word-count, and domain filters, and write downstream-ready JSONL."""
+tags = ["curate", "nemo-curator", "jsonl", "ray", "huggingface"]
+
+[[consumes]]
+type = "raw_jsonl"
+description = "Raw local JSONL records, or a Hugging Face dataset snapshot materialized before Curator reads input_glob."
+
+[[produces]]
+type = "filtered_jsonl"
+description = "Filtered JSONL records suitable for downstream translation, pretraining prep, or SFT prep. Language/domain annotations are present only when those filters are enabled."
+
+[[parameters]]
+name = "input_glob"
+description = "JSONL file path or glob passed to Curator JsonlReader."
+
+[[parameters]]
+name = "output_dir"
+description = "Directory where Curator writes JSONL output shards."
+
+[[parameters]]
+name = "text_field"
+description = "Record field containing the text to curate."
+default = "text"
+
+[[parameters]]
+name = "dataset"
+description = "Optional Hugging Face snapshot_download kwargs. Set to null for local input_glob-only runs."
+default = "null"
+
+[[parameters]]
+name = "language_codes"
+description = "Uppercase language codes to keep. Set [] to skip FastText language identification and filtering."
+default = ["EN"]
+
+[[parameters]]
+name = "domains"
+description = "Domains to keep through MultilingualDomainClassifier. Set [] to skip domain classification."
+default = []
+
+[[parameters]]
+name = "quality_filters"
+description = "Optional quality settings. min_langid_score applies when language filtering is enabled; min_words and max_words enable WordCountFilter and must be provided together."
+default = { min_langid_score = 0.3, min_words = 50, max_words = 5000 }
+
+[[parameters]]
+name = "models"
+description = "Optional model/cache paths such as fasttext_langid and hf_cache_dir. fasttext_langid is required when language_codes is non-empty."
+
+[[parameters]]
+name = "ray.num_cpus"
+description = "Optional RayClient CPU count. If omitted, the Lepton curate profile can provide NEMOTRON_CURATOR_RAY_NUM_CPUS."
+
+[[strategies]]
+when = "You need a quick infrastructure smoke test"
+then = "Use config/tiny.yaml with the lepton_curate profile. It reads a packaged tiny JSONL, disables optional filters, and uses the Curator container as-is."
+
+[[strategies]]
+when = "You already have local JSONL data"
+then = "Set dataset=null, point input_glob at the JSONL files, and start with language_codes=[], domains=[], and quality_filters={} until the reader/writer path is verified."
+
+[[strategies]]
+when = "You want to pull a Hugging Face dataset snapshot first"
+then = "Set dataset.repo_id, dataset.repo_type, dataset.local_dir, and allow_patterns, then point input_glob into dataset.local_dir."
+
+[[strategies]]
+when = "You need language gating"
+then = "Set language_codes and models.fasttext_langid. Use quality_filters.min_langid_score to tune the language confidence threshold."
+
+[[strategies]]
+when = "You need a simple text quality gate"
+then = "Set both quality_filters.min_words and quality_filters.max_words to enable WordCountFilter."
+
+[[strategies]]
+when = "You need domain gating"
+then = "Set domains and optionally models.hf_cache_dir. Keep the first run small because the classifier can download/cache model assets."
+
+[[errors]]
+name = "empty_or_tiny_output"
+recovery = "Relax language/domain/word-count filters or inspect the input_glob records before continuing downstream."
+
+[[errors]]
+name = "input_glob_no_matches"
+recovery = "Check that input_glob exists inside the container. For packaged tiny data use /nemo_run/code/src/nemotron/steps/curate/nemo_curator/data/tiny.jsonl."
+
+[[errors]]
+name = "missing_language_model"
+recovery = "Set language_codes=[] to disable language filtering, or provide models.fasttext_langid pointing at the FastText lid.176 model."
+
+[[errors]]
+name = "incomplete_word_filter"
+recovery = "Set both quality_filters.min_words and quality_filters.max_words, or remove both keys to skip WordCountFilter."
+
+[[errors]]
+name = "not_enough_cpu_resources"
+recovery = "Set ray.num_cpus in YAML or NEMOTRON_CURATOR_RAY_NUM_CPUS in the env profile. The tiny Lepton profile uses 4 CPUs on cpu.medium."
+
+[[errors]]
+name = "large_file_oom"
+recovery = "Split very large JSONL files into smaller shards before reading them with Curator."
+
+[reference]
+skill = "src/nemotron/steps/curate/nemo_curator/README.md"
+script = "https://github.com/NVIDIA-NeMo/Curator/tree/main/nemo_curator/stages/text"
+docs = "https://docs.nvidia.com/nemo/curator/latest/"

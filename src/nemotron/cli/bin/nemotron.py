@@ -25,9 +25,14 @@ Usage:
 
 from __future__ import annotations
 
+import importlib
+import logging
+
 import typer
 
 from nemo_runspec.cli_context import global_callback
+
+log = logging.getLogger(__name__)
 
 # Create root app with global callback
 app = typer.Typer(
@@ -83,21 +88,46 @@ def main_callback(
 
 
 # Import and register recipe groups
-def _register_groups() -> None:
-    """Register all recipe groups with the main app."""
-    from nemotron.cli.commands.data import data_app
-    from nemotron.cli.commands.nano3 import nano3_app
-    from nemotron.cli.commands.omni3 import omni3_app
-    from nemotron.cli.commands.super3 import super3_app
-    from nemotron.cli.kit import kit_app
-    from nemotron.cli.commands.embed import embed_app
+def _safe_add_typer(module_path: str, attr_name: str, command_name: str) -> None:
+    """Register a top-level CLI group without failing the whole CLI."""
+    try:
+        module = importlib.import_module(module_path)
+        group = getattr(module, attr_name)
+    except Exception as exc:  # pragma: no cover - defensive CLI bootstrap
+        log.debug("Skipping CLI group '%s': %s", command_name, exc)
+        return
 
-    app.add_typer(data_app, name="data")
-    app.add_typer(nano3_app, name="nano3")
-    app.add_typer(omni3_app, name="omni3")
-    app.add_typer(super3_app, name="super3")
-    app.add_typer(kit_app, name="kit")
-    app.add_typer(embed_app, name="embed")
+    app.add_typer(group, name=command_name)
+
+
+def _register_groups() -> None:
+    """Register all recipe groups with the main app.
+
+    Each group is loaded independently so a broken / in-progress recipe group
+    does not take the whole CLI down. Failures surface as a one-line warning
+    via ``NEMOTRON_DEBUG_CLI=1``.
+    """
+    import os
+
+    debug = os.environ.get("NEMOTRON_DEBUG_CLI") == "1"
+    groups = (
+        ("data", "nemotron.cli.commands.data", "data_app"),
+        ("nano3", "nemotron.cli.commands.nano3", "nano3_app"),
+        ("omni3", "nemotron.cli.commands.omni3", "omni3_app"),
+        ("super3", "nemotron.cli.commands.super3", "super3_app"),
+        ("ultra3", "nemotron.cli.commands.ultra3", "ultra3_app"),
+        ("kit", "nemotron.cli.kit", "kit_app"),
+        ("embed", "nemotron.cli.commands.embed", "embed_app"),
+        ("rerank", "nemotron.cli.commands.rerank", "rerank_app"),
+        ("steps", "nemotron.cli.commands.steps", "steps_app"),
+    )
+
+    for name, module_path, attr in groups:
+        try:
+            _safe_add_typer(module_path, attr, name)
+        except Exception as exc:
+            if debug:
+                typer.echo(f"[nemotron] skipped '{name}' group: {exc}", err=True)
 
 
 # Register groups on import

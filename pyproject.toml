@@ -2,7 +2,7 @@
 name = "nemotron"
 version = "0.1.0"
 description = "Reproducible training recipes for NVIDIA Nemotron model family - transparent pipelines for data preparation, training, and evaluation across all stages"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 license = {text = "MIT"}
 authors = [
     {name = "Nemotron Contributors"}
@@ -28,12 +28,12 @@ dependencies = [
     "omegaconf>=2.3.0",
     "rich>=13.0.0",
     "textual>=0.70.0",
-    "ray[default]==2.49.2",
+    "ray[default,data]>=2.54",
     "fsspec>=2024.0.0",
     "numpy>=1.24.0",
     "pyarrow>=14.0.0",
     "xxhash>=3.4.0",
-    "transformers>=4.36.0",
+    "transformers>=4.57.6,<5.0",
     "huggingface_hub>=0.20.0",
     "datasets>=2.14.0",  # Required for ray.data.from_huggingface
     "pyyaml>=6.0",
@@ -62,9 +62,71 @@ audio = [
 # Nemotron CLI introspect each stage's Pydantic config class for rich
 # `--help` rendering; the recipe scripts themselves also work standalone via
 # `uv run --no-project` (they declare their own PEP 723 inline deps).
-data-sdg = ["data-designer>=0.5.6"]
+data-sdg = ["data-designer>=0.5.6; python_version>='3.11' and python_version<'3.14'"]
+byob = [
+    # BYOB CPU/runtime dependencies. GPU semantic-dedup/outlier dependencies live in `byob-gpu`.
+    "cosmos-xenna>=0.2,<0.3; python_version>='3.11' and python_version<'3.14'",
+    "data-designer>=0.5.6; python_version>='3.11' and python_version<'3.14'",
+    "nemo-curator[translation_all] @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
+    "datasets>=2.14.0; python_version>='3.11'",
+    "numpy>=2.2,<3; python_version>='3.11'",
+    "pandas>=2.1.0; python_version>='3.11'",
+    "pyarrow>=14.0.0; python_version>='3.11'",
+    "pyyaml>=6.0; python_version>='3.11'",
+    "pydantic>=2.0.0; python_version>='3.11'",
+    "requests>=2.0.0; python_version>='3.11'",
+    "tqdm; python_version>='3.11'",
+    "urllib3>=2.7.0,<3; python_version>='3.11'",
+    "obstore>=0.8,<0.9; python_version>='3.11'",
+    "portpicker>=1.6,<2; python_version>='3.11'",
+    "pulp>=3.3,<4; python_version>='3.11'",
+    "attrs>=25.4,<26; python_version>='3.11'",
+    "cattrs>=25.3,<26; python_version>='3.11'",
+    "jinja2>=3.1,<4; python_version>='3.11'",
+    "loguru>=0.7,<1; python_version>='3.11'",
+    "tabulate>=0.9,<1; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
+]
+byob-gpu = [
+    "torch>=2.10,<2.11; python_version>='3.11'",
+    "transformers>=4.57.6,<5.0; python_version>='3.11'",
+    "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
+    "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
+    "cupy-cuda12x>=14.0,<15; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cudf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuml-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibcugraph-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibraft-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "raft-dask-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "rapidsmpf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+]
+translate = [
+    "nemo-curator[translation_all] @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
+    "pyarrow>=14.0.0; python_version>='3.11'",
+    "pyyaml>=6.0; python_version>='3.11'",
+    "obstore>=0.8,<0.9; python_version>='3.11'",
+    "portpicker>=1.6,<2; python_version>='3.11'",
+    "pulp>=3.3,<4; python_version>='3.11'",
+    "attrs>=25.4,<26; python_version>='3.11'",
+    "cattrs>=25.3,<26; python_version>='3.11'",
+    "jinja2>=3.1,<4; python_version>='3.11'",
+    "loguru>=0.7,<1; python_version>='3.11'",
+    "tabulate>=0.9,<1; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
+]
+evaluator = ["nemo-evaluator-launcher>=0.1.0"]
+curate = [
+    "nemo-curator @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
+    "huggingface_hub>=0.20.0; python_version>='3.11'",
+    "pyyaml>=6.0; python_version>='3.11'",
+]
 dev = [
-    "pytest>=7.0.0",
+    "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
     "mypy>=1.0.0",
     "ruff>=0.1.0",
@@ -77,7 +139,23 @@ all = [
     "cosmos-xenna",
     "webdataset>=0.2.86",
     "imageio-ffmpeg>=0.5.1",
-    "data-designer>=0.5.6",
+    "data-designer>=0.5.6; python_version>='3.11' and python_version<'3.14'",
+    "nemo-curator[translation_all] @ git+https://github.com/NVIDIA-NeMo/Curator.git@main ; python_version>='3.11' and python_version<'3.14'",
+    "pandas>=2.1.0; python_version>='3.11'",
+    "sentence-transformers>=5.0.0,<6.0.0; python_version>='3.11'",
+    "scikit-learn>=1.7.0,<1.8.0; python_version>='3.11'",
+    "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
+    "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
+    "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
+    "cuda-bindings>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuda-python>=12.9,<13; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cudf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "cuml-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibcugraph-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "pylibraft-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "raft-dask-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "rapidsmpf-cu12==25.10.*; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "nemo-evaluator-launcher>=0.1.0",
 ]
 
 # Note: megatron-bridge is required for training but not listed as a dependency
@@ -114,7 +192,7 @@ markers = [
     "integration: End-to-end tests that run real stage code with synthetic data",
     "gpu: Tests that require NVIDIA GPU and nemo_automodel",
     "docker: Tests that require Docker with NVIDIA runtime",
-    ]
+]
 
 [tool.mypy]
 python_version = "3.10"
@@ -136,10 +214,119 @@ ignore = []
 
 [tool.uv]
 package = true
+constraint-dependencies = [
+    # Curator main currently keeps these constraints in its own uv config, but
+    # they are not published transitively through package metadata.
+    "transformers>=4.57.6,<5.0",
+    "python-multipart>=0.0.29",
+    "cryptography>=48.0.0",
+    "gitpython>=3.1.50",
+    "pytest>=9.0.3",
+]
+override-dependencies = [
+    # data-designer-engine declares huggingface-hub>=1.0.1, while Curator's
+    # Transformers-compatible stack requires the pre-1.0 API.
+    "huggingface-hub>=0.34,<1.0",
+    "torch==2.10.0",
+    # torchx==0.7.0 still caps urllib3<1.27 through nemo-run. Force the
+    # patched urllib3 line while we validate torchx/nemo-run compatibility.
+    "urllib3>=2.7.0,<3",
+]
+
+[tool.nemotron.runtime.byob]
+extras = ["byob"]
+venv-name = "byob"
+extra-index-urls = ["https://pypi.nvidia.com"]
+omit-packages = ["nemo-curator"]
+required-imports = [
+    "bcp47",
+    "cattrs",
+    "data_designer",
+    "datasets",
+    "jinja2",
+    "loguru",
+    "nemo_curator",
+    "numpy",
+    "obstore",
+    "pandas",
+    "portpicker",
+    "pulp",
+    "pyarrow",
+    "pydantic",
+    "requests",
+    "sacrebleu",
+    "tabulate",
+    "tqdm",
+    "yaml",
+]
+
+[tool.nemotron.runtime.byob-gpu]
+extras = ["byob", "byob-gpu"]
+venv-name = "byob-gpu"
+extra-index-urls = ["https://pypi.nvidia.com"]
+torch-backend = "cu128"
+omit-packages = ["nemo-curator"]
+required-imports = [
+    "bcp47",
+    "cattrs",
+    "data_designer",
+    "datasets",
+    "jinja2",
+    "loguru",
+    "nemo_curator",
+    "numpy",
+    "obstore",
+    "pandas",
+    "portpicker",
+    "pulp",
+    "pyarrow",
+    "pydantic",
+    "requests",
+    "sacrebleu",
+    "sentence_transformers",
+    "sklearn",
+    "tabulate",
+    "tqdm",
+    "yaml",
+]
+# RAPIDS imports can initialize CUDA libraries. Checking import specs verifies
+# wheels are present without loading CUDA libraries during bootstrap readiness.
+spec-only-imports = ["cudf", "cuml", "cupy"]
+
+[tool.nemotron.runtime.translate]
+extras = ["translate"]
+venv-name = "translate"
+extra-index-urls = ["https://pypi.nvidia.com"]
+omit-packages = ["nemo-curator"]
+required-imports = [
+    "bcp47",
+    "cattrs",
+    "jinja2",
+    "loguru",
+    "nemo_curator",
+    "obstore",
+    "portpicker",
+    "pulp",
+    "pyarrow",
+    "sacrebleu",
+    "tabulate",
+    "yaml",
+]
+
+[tool.nemotron.runtime.curate]
+extras = ["curate"]
+venv-name = "curate"
+extra-index-urls = ["https://pypi.nvidia.com"]
+omit-packages = ["nemo-curator"]
+required-imports = [
+    "huggingface_hub",
+    "nemo_curator",
+    "yaml",
+]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
+    "pytest>=9.0.3",
 ]
 run = [
     "nemo-run @ git+https://github.com/NVIDIA-NeMo/Run.git@main",
@@ -153,4 +340,5 @@ docs = [
     "sphinx-copybutton>=0.5.2",
     "sphinx-design>=0.6.0",
     "sphinxcontrib-mermaid",
+    "sphinx-reredirects",
 ]

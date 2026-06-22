@@ -58,8 +58,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -82,15 +81,30 @@ class DataPrepConfig(RecipeSettings):
     model_config = ConfigDict(extra="forbid")
 
     corpus_id: str = Field(default="my_corpus", description="Corpus identifier (used for output naming).")
-    sdg_input_path: Optional[Path] = Field(default=None, description="Path to SDG output directory (runs conversion to training format).")
-    train_input_file: Optional[Path] = Field(default=None, description="Path to pre-converted training file (skips SDG conversion).")
-    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep", description="Output directory for prepared training data.")
+    sdg_input_path: Path | None = Field(
+        default=None, description="Path to SDG output directory (runs conversion to training format)."
+    )
+    train_input_file: Path | None = Field(
+        default=None, description="Path to pre-converted training file (skips SDG conversion)."
+    )
+    output_dir: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep",
+        description="Output directory for prepared training data.",
+    )
+    artifact_recipe: Literal["embed", "rerank"] = Field(
+        default="embed",
+        description="Recipe namespace for the saved data artifact.",
+    )
 
     # Model for hard negative mining
-    base_model: str = Field(default="nvidia/llama-nemotron-embed-1b-v2", description="Base embedding model for hard negative mining.")
+    base_model: str = Field(
+        default="nvidia/llama-nemotron-embed-1b-v2", description="Base embedding model for hard negative mining."
+    )
 
     # Quality filtering
-    quality_threshold: float = Field(default=7.0, ge=0, le=10, description="Minimum quality score for Q&A pairs (0-10 scale).")
+    quality_threshold: float = Field(
+        default=7.0, ge=0, le=10, description="Minimum quality score for Q&A pairs (0-10 scale)."
+    )
 
     # Train/val/test split ratios
     train_ratio: float = Field(default=0.8, gt=0, lt=1, description="Fraction of data for training.")
@@ -105,7 +119,9 @@ class DataPrepConfig(RecipeSettings):
         return self
 
     # Hard negative mining settings
-    attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] = Field(default="sdpa", description="Attention implementation (sdpa, flash_attention_2, eager).")
+    attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] = Field(
+        default="sdpa", description="Attention implementation (sdpa, flash_attention_2, eager)."
+    )
     hard_negatives_to_mine: int = Field(default=5, gt=0, description="Number of hard negatives to mine per query.")
     hard_neg_margin: float = Field(default=0.95, gt=0, le=1, description="Margin for hard negative selection.")
     mining_batch_size: int = Field(default=128, gt=0, description="Batch size for mining.")
@@ -117,9 +133,11 @@ class DataPrepConfig(RecipeSettings):
     @model_validator(mode="after")
     def _check_input_source(self):
         if self.sdg_input_path and self.train_input_file:
-            raise ValueError("sdg_input_path and train_input_file are mutually exclusive. "
-                             "Set sdg_input_path to convert from SDG output, or "
-                             "train_input_file to use a pre-converted training file.")
+            raise ValueError(
+                "sdg_input_path and train_input_file are mutually exclusive. "
+                "Set sdg_input_path to convert from SDG output, or "
+                "train_input_file to use a pre-converted training file."
+            )
         if not self.sdg_input_path and not self.train_input_file:
             raise ValueError("One of sdg_input_path or train_input_file must be set.")
         return self
@@ -173,8 +191,11 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
     cache_dir = cfg.output_dir / "cache_embeddings"
 
     cmd = [
-        sys.executable, "-m", "torch.distributed.run",
-        "--nproc_per_node", "gpu",
+        sys.executable,
+        "-m",
+        "torch.distributed.run",
+        "--nproc_per_node",
+        "gpu",
         str(mining_script),
         "--config",
         str(mining_config),
@@ -208,7 +229,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         "false",
     ]
 
-    print(f"\n⛏️  Mining hard negatives...")
+    print("\n⛏️  Mining hard negatives...")
     print(f"   Using model: {cfg.base_model}")
 
     result = subprocess.run(cmd, stdout=None, stderr=subprocess.PIPE, text=True)
@@ -260,8 +281,8 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     Returns:
         Path to final training data file.
     """
-    print(f"📋 Data Preparation Pipeline")
-    print(f"=" * 60)
+    print("📋 Data Preparation Pipeline")
+    print("=" * 60)
     print(f"Corpus ID:      {cfg.corpus_id}")
     if cfg.sdg_input_path:
         print(f"SDG Input:      {cfg.sdg_input_path}")
@@ -269,7 +290,7 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
         print(f"Train Input:    {cfg.train_input_file}")
     print(f"Output Dir:     {cfg.output_dir}")
     print(f"Base Model:     {cfg.base_model}")
-    print(f"=" * 60)
+    print("=" * 60)
     print()
 
     # Step 1: Convert SDG output, or use pre-converted training file
@@ -301,11 +322,10 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
         with open(eval_queries_path) as f:
             eval_query_count = sum(1 for _ in f)
         if eval_query_count < 50:
-            print(f"\nWarning: Eval set has only {eval_query_count} queries (recommended: 50+).",
-                  file=sys.stderr)
-            print(f"         Small eval sets produce noisy metrics. Consider:", file=sys.stderr)
-            print(f"         - Adding more documents to your corpus", file=sys.stderr)
-            print(f"         - Increasing num_pairs in SDG config", file=sys.stderr)
+            print(f"\nWarning: Eval set has only {eval_query_count} queries (recommended: 50+).", file=sys.stderr)
+            print("         Small eval sets produce noisy metrics. Consider:", file=sys.stderr)
+            print("         - Adding more documents to your corpus", file=sys.stderr)
+            print("         - Increasing num_pairs in SDG config", file=sys.stderr)
             print(f"         - Increasing test_ratio (currently {cfg.test_ratio})", file=sys.stderr)
         else:
             print(f"\n   Eval queries: {eval_query_count}")
@@ -317,20 +337,25 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
         train_count = len(train_data.get("data", []))
         print(f"   Training examples: {train_count}")
         if train_count < 100:
-            print(f"\nWarning: Only {train_count} training examples.",
-                  file=sys.stderr)
-            print(f"         Consider adding more documents or increasing num_pairs in SDG config.",
-                  file=sys.stderr)
+            print(f"\nWarning: Only {train_count} training examples.", file=sys.stderr)
+            print("         Consider adding more documents or increasing num_pairs in SDG config.", file=sys.stderr)
 
-    print(f"\nData preparation complete!")
+    print("\nData preparation complete!")
     print(f"   Training data: {final_file}")
     print(f"   Eval data:     {cfg.output_dir / 'eval_beir'}")
 
     # Save artifact (registers with artifact registry if kit.init() was called)
     try:
-        from nemotron.kit.artifacts.embed import EmbedDataArtifact
+        if cfg.artifact_recipe == "rerank":
+            from nemotron.kit.artifacts.rerank import RerankDataArtifact as DataArtifact
 
-        artifact = EmbedDataArtifact(
+            artifact_name = "rerank/data"
+        else:
+            from nemotron.kit.artifacts.embed import EmbedDataArtifact as DataArtifact
+
+            artifact_name = "embed/data"
+
+        artifact = DataArtifact(
             path=cfg.output_dir,
             training_examples=train_count,
             eval_queries=eval_query_count,
@@ -338,7 +363,7 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
             quality_threshold=cfg.quality_threshold,
             hard_negatives_per_query=cfg.hard_negatives_to_mine,
         )
-        artifact.save(name="embed/data")
+        artifact.save(name=artifact_name)
     except Exception:
         pass  # Artifact save is best-effort — don't break the pipeline
 
@@ -356,9 +381,7 @@ def main(cfg: DataPrepConfig | None = None) -> Path:
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, DataPrepConfig)

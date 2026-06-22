@@ -1,0 +1,129 @@
+version = 1
+model = "nemotron-ultra"
+default_entry = "quick-reference"
+
+[[entries]]
+id = "quick-reference"
+topic = "overview"
+file = "quick-reference.md"
+kind = "compact"
+description = "Compact reference for identity, architecture, pretraining, long context, SFT, MOPD, evaluation, quantization, inference, and best next files."
+
+[[entries]]
+id = "skill"
+topic = "routing"
+file = "../SKILL.md"
+kind = "compact"
+description = "Reference-desk instructions, source priority, routing table, caveats, and handoff boundaries for Nemotron 3 Ultra."
+
+[[entries]]
+id = "model-card"
+topic = "identity"
+file = "../model-card.md"
+kind = "release"
+description = "Release identity, staged availability, variants, intended use, supported context, throughput framing, safety, and caveats."
+
+[[entries]]
+id = "paper-overview"
+topic = "overview"
+file = "../paper/_overview.md"
+kind = "paper"
+description = "550B/55B MoE overview, 20T pretraining, 1M context, SFT/RL/MOPD framing, throughput claims, and released checkpoints/datasets."
+
+[[entries]]
+id = "paper-architecture"
+topic = "architecture"
+file = "../paper/architecture.md"
+kind = "paper"
+description = "Hybrid Mamba-Attention MoE architecture, LatentMoE, shared-weight MTP, and Table 1 dimensions."
+
+[[entries]]
+id = "paper-pretraining"
+topic = "pretraining"
+file = "../paper/pretraining.md"
+kind = "paper"
+description = "NVFP4 pretraining recipe, WSD hyperparameters, 20T horizon, long-context extension, and training-stability diagnostics."
+
+[[entries]]
+id = "paper-data"
+topic = "data"
+file = "../paper/data.md"
+kind = "paper"
+description = "New/refreshed pretraining datasets, validation ablations, multilingual coverage, and two-phase data mixture."
+
+[[entries]]
+id = "paper-sft"
+topic = "sft"
+file = "../paper/sft.md"
+kind = "paper"
+description = "Ultra post-training stage order, SFT hyperparameters, SFT data domains, and length-aware best-fit packing."
+
+[[entries]]
+id = "paper-mopd-overview"
+topic = "mopd"
+file = "../paper/mopd/overview.md"
+kind = "paper"
+description = "Unified RLVR framing and MOPD algorithm: asynchronous on-policy multi-teacher distillation with dense token-level guidance."
+
+[[entries]]
+id = "paper-mopd-teachers"
+topic = "mopd-teachers"
+file = "../paper/mopd/teachers.md"
+kind = "paper"
+description = "Specialized MOPD teacher roster, initialization/training recipes, data sources, and General Reasoning teacher scores and blend."
+
+[[entries]]
+id = "paper-mopd-warmup-results"
+topic = "mopd-results"
+file = "../paper/mopd/warmup-results.md"
+kind = "paper"
+description = "MOPD warmup, warmup ablations, recovery-rate results, discussion, and limitations/open problems."
+
+[[entries]]
+id = "paper-mopd-mtp-reasoning"
+topic = "mtp-reasoning"
+file = "../paper/mopd/mtp-reasoning.md"
+kind = "paper"
+description = "MTP Boosting, SPEED-Bench acceptance lengths, speculative-decoding improvements, and reasoning-effort control."
+
+[[entries]]
+id = "paper-infrastructure"
+topic = "infrastructure"
+file = "../paper/infrastructure.md"
+kind = "paper"
+description = "Post-training infrastructure: MTP rollout acceleration, GB200/Slurm/Ray scaling, failure categories, and optimization impacts."
+
+[[entries]]
+id = "paper-evaluation"
+topic = "evaluation"
+file = "../paper/evaluation.md"
+kind = "paper"
+description = "Base-model evaluations, post-trained BF16 evaluations, test-time scaling, held-out gates, and harness robustness."
+
+[[entries]]
+id = "paper-quantization"
+topic = "quantization"
+file = "../paper/quantization.md"
+kind = "paper"
+description = "NVFP4 PTQ recipe, 5.03 BPE selection, FP4 scale-selection algorithms, SSM cache quantization, and W4A16/W4A4 deployment."
+
+[[entries]]
+id = "paper-inference"
+topic = "inference"
+file = "../paper/inference.md"
+kind = "paper"
+description = "Serving regimes, throughput vs frontier MoEs, MTP speculative decoding, Ultra-scale TP/EP, disaggregation, and all-to-all optimizations."
+
+[[entries]]
+id = "paper-safety"
+topic = "safety"
+file = "../paper/safety.md"
+kind = "paper"
+description = "Safety SFT blend, RLVR safety environment, Agentic Safety teacher, GenRM/RLHF alignment, and not-reported safety gaps."
+
+[[entries]]
+id = "recipes-overview"
+topic = "reproduction"
+file = "../recipes/overview.md"
+kind = "recipe"
+description = "Release tracker noting that public runnable Nemotron 3 Ultra recipe stages are not yet released."

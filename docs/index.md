@@ -16,8 +16,11 @@
 
 ```console
 // Install the Nemotron training recipes
-$ git clone https://github.com/NVIDIA/nemotron
-$ cd nemotron && uv sync
+$ git clone https://github.com/NVIDIA-NeMo/Nemotron
+$ cd Nemotron && uv sync
+
+// Run a tiny SFT job on your cluster
+$ uv run nemotron steps run sft/automodel -c tiny --run YOUR-CLUSTER
 
 // Run the Nano3 pipeline stage by stage
 $ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
@@ -41,7 +44,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 :link: deployment-guides
 :link-type: doc
 
-Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, and Hugging Face.
+Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging Face, and agent harnesses.
 :::
 
 :::{grid-item-card} Sample Applications
@@ -53,10 +56,71 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 
 ::::
 
+## Customization Workflows with Nemotron Steps
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card} Translation
+:link: translation/index
+:link-type: doc
+
+Translate JSONL or Parquet corpora with `translate/nemo_curator`, NeMo Curator
+backends, and optional FAITH quality scoring.
+:::
+
+:::{grid-item-card} Build MCQ Benchmarks
+:link: build-benchmarks/index
+:link-type: doc
+
+Generate and translate custom multiple-choice benchmarks with `byob/mcq`.
+:::
+
+:::{grid-item-card} Data Curation
+:link: curate/index
+:link-type: doc
+
+Filter JSONL text with `curate/nemo_curator` before translation or training data preparation.
+:::
+
+:::{grid-item-card} Synthetic Data Generation
+:link: sdg/index
+:link-type: doc
+
+Use `sdg/data_designer` to produce SFT, tool-use, and preference datasets.
+:::
+
+:::{grid-item-card} Model Evaluation
+:link: model-eval/index
+:link-type: doc
+
+Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
+:::
+
+::::
+
 ## Training Recipes
 
 ::::{grid} 1 2 2 2
 :gutter: 3
+
+:::{grid-item-card} Nemotron 3 Ultra
+:link: nemotron/ultra3/README
+:link-type: doc
+
+550B total / 55B active parameters, 20T tokens, up to 1M context. Hybrid Mamba-Attention MoE with LatentMoE and MTP.
+
+**Stages:** Pretraining → SFT → RLVR → MOPD
+:::
+
+:::{grid-item-card} Nemotron 3 Super
+:link: nemotron/super3/README
+:link-type: doc
+
+120.6B total / 12.7B active parameters, up to 1M context. Hybrid Mamba-Transformer with sparse Latent MoE.
+
+**Stages:** Pretraining → SFT → RL → Quantization → Eval
+:::
 
 :::{grid-item-card} Nemotron 3 Nano
 :link: nemotron/nano3/README
@@ -85,6 +149,15 @@ Fine-tune Llama-Nemotron-Embed-1B-v2 on domain-specific data with synthetic data
 **Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
 :::
 
+:::{grid-item-card} Reranking Fine-Tuning
+:link: nemotron/rerank/README
+:link-type: doc
+
+Fine-tune Llama-Nemotron-Rerank-1B-v2 cross-encoders for domain-specific reranking with synthetic data generation, evaluation, export, and NIM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+:::
+
 ::::
 
 ## Recipe Layout
@@ -106,7 +179,9 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
 | [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
+| [Rerank](nemotron/rerank/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 
 ## Why Nemotron?
 
@@ -131,6 +206,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) – open pre-training data
 - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) – SFT and RL data
 - [Artifact Lineage](nemotron/artifacts.md) – W&B integration guide
+- [Model training steps](train-models/index.md) – SFT, PEFT, RL, and optimization with `nemotron step run`
 
 ```{toctree}
 :caption: Nemotron
@@ -142,53 +218,95 @@ deployment-guides.md
 ```
 
 ```{toctree}
+:caption: Nemotron Step Basics
+:hidden:
+
+About <steps/index.md>
+Basics <steps/basics.md>
+Getting Started <steps/getting-started.md>
+Airgap Environment <steps/airgap.md>
+```
+
+```{toctree}
+:caption: Data Curation
+:hidden:
+
+About <curate/index.md>
+Getting Started <curate/getting-started.md>
+Tasks <curate/how-to/index.md>
+Reference <curate/reference/index.md>
+```
+
+```{toctree}
+:caption: Synthetic Data Generation
+:hidden:
+
+About <sdg/index>
+Getting Started <sdg/getting-started>
+Tips for Using Agents <sdg/using-skills>
+Planning <sdg/planning>
+Tasks <sdg/how-to/index>
+Reference <sdg/reference/index>
+```
+
+```{toctree}
+:caption: Translation
+:hidden:
+
+About <translation/index.md>
+Getting Started <translation/getting-started.md>
+Tips for Using Agents <translation/using-skills.md>
+translation/explanation/index.md
+Tasks <translation/how-to/index.md>
+Reference <translation/reference/index.md>
+```
+
+```{toctree}
+:caption: Build MCQ Benchmarks
+:hidden:
+
+About <build-benchmarks/index.md>
+Getting Started <build-benchmarks/getting-started.md>
+Concepts <build-benchmarks/explanation/index.md>
+Tasks <build-benchmarks/how-to/index.md>
+Reference <build-benchmarks/reference/index.md>
+```
+
+```{toctree}
+:caption: Model Training
+:hidden:
+
+About <train-models/index.md>
+Getting Started <train-models/getting-started.md>
+Tips for Using Agents <train-models/using-skill.md>
+Concepts <train-models/explanation/index.md>
+Tasks <train-models/how-to/index.md>
+Reference <train-models/reference/index.md>
+```
+
+```{toctree}
+:caption: Model Evaluation
+:hidden:
+
+About <model-eval/index.md>
+Getting Started <model-eval/getting-started.md>
+Tips for Using Agents <model-eval/using-skills.md>
+Concepts <model-eval/explanation/index.md>
+Tasks <model-eval/how-to/index.md>
+Reference <model-eval/reference/index.md>
+```
+
+```{toctree}
 :caption: Training Recipes
 :hidden:
 
-nemotron/nano3/README.md
-nemotron/omni3/README.md
-nemotron/super3/README.md
-nemotron/embed/README.md
+Nemotron 3 Nano <nemotron/nano3/README.md>
+Nemotron 3 Omni <nemotron/omni3/README.md>
+Nemotron 3 Super <nemotron/super3/README.md>
+Nemotron 3 Ultra <nemotron/ultra3/README.md>
+Llama Nemotron Embed <nemotron/embed/README.md>
+Llama Nemotron Rerank <nemotron/rerank/README.md>
 nemotron/artifacts.md
-```
-
-```{toctree}
-:caption: Nano3 Stages
-:hidden:
-
-nemotron/nano3/pretrain.md
-nemotron/nano3/sft.md
-nemotron/nano3/rl.md
-nemotron/nano3/evaluate.md
-nemotron/nano3/import.md
-```
-
-```{toctree}
-:caption: Omni3 Stages
-:hidden:
-
-nemotron/omni3/README.md
-nemotron/omni3/sft.md
-nemotron/omni3/rl.md
-nemotron/omni3/rl/data-prep.md
-nemotron/omni3/architecture.md
-nemotron/omni3/inference.md
-```
-
-```{toctree}
-:caption: Super3 Stages
-:hidden:
-
-nemotron/super3/README.md
-nemotron/super3/pretrain.md
-nemotron/super3/sft.md
-nemotron/super3/rl/index.md
-nemotron/super3/rl/rlvr.md
-nemotron/super3/rl/swe.md
-nemotron/super3/rl/rlhf.md
-nemotron/super3/rl/data-prep.md
-nemotron/super3/evaluate.md
-nemotron/super3/quantization.md
 ```
 
 ```{toctree}

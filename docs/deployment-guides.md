@@ -29,6 +29,24 @@ Deployment guides, fine-tuning recipes, and agentic usage examples for Nemotron 
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra
+:link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra
+:link-type: url
+
+Cookbooks for the 550B/55B-active hybrid Mamba-Transformer MoE model, including vLLM, SGLang, TensorRT-LLM, LoRA Text2SQL, RL, and agent harness setup.
++++
+{bdg-success}`Notebook` {bdg-secondary}`Local GPU` {bdg-info}`Fine-tuning` {bdg-muted-line}`Jun 4, 2026`
+:::
+
+:::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra on Agentic Coding
+:link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources
+:link-type: url
+
+Use Nemotron 3 Ultra with OpenCode, OpenClaw, Kilo Code CLI, OpenHands, Hermes Agent, and Pi via config-based setup.
++++
+{bdg-success}`Beginner` {bdg-muted-line}`Jun 4, 2026`
+:::
+
 :::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Super
 :link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Super
 :link-type: url

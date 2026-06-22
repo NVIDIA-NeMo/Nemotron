@@ -39,8 +39,8 @@ For the full architectural deep-dive — including why EVS drives the throughput
 
 ### Capabilities (released benchmarks)
 
-- Best-in-class on [MMlongbench-Doc](https://mmlongbench.github.io/) and [OCRBenchV2](https://github.com/Yuliang-Liu/MultimodalOCR) (document intelligence)
-- Leading on [WorldSense](https://huggingface.co/datasets/honglyhly/WorldSense), [DailyOmni](https://github.com/THUNLP-MT/DailyOmni), [VoiceBench](https://huggingface.co/datasets/hlt-lab/voicebench) (video / audio understanding)
+- Best-in-class on [MMlongbench-Doc](https://github.com/mayubo2333/MMLongBench-Doc) and [OCRBenchV2](https://github.com/Yuliang-Liu/MultimodalOCR) (document intelligence)
+- Leading on [WorldSense](https://huggingface.co/datasets/honglyhly/WorldSense), [DailyOmni](https://lliar-liar.github.io/Daily-Omni/#leaderboard), [VoiceBench](https://huggingface.co/datasets/hlt-lab/voicebench) (video / audio understanding)
 - **~9.2×** greater effective system capacity on video reasoning, **~7.4×** on multi-document workloads vs. comparable open omni models
 - "Highest throughput across every task" in MediaPerf; "lowest inference cost for video-level tagging"
 - See [`inference.md`](./inference.md) for engines, quantization paths, hardware support, and deployment
@@ -266,6 +266,7 @@ Usage: nemotron omni3 [OPTIONS] COMMAND [ARGS]...
 
 sft.md
 rl.md
+rl/data-prep.md
 architecture.md
 inference.md
 ```

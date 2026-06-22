@@ -22,44 +22,10 @@
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
-
-# -- Preprocessing: Replace symlinks with actual copies ---------------------
-def replace_symlinks_with_copies():
-    """Replace symlinked directories with actual copies at build time (CI only)."""
-    # Only run in CI environments to avoid disrupting local development
-    # GitHub Actions (and most CI systems) set CI=true
-    if not os.environ.get("CI"):
-        print("Skipping symlink replacement (not in CI environment)")
-        return
-
-    docs_dir = Path(__file__).parent
-    symlinks = ["usage-cookbook", "use-case-examples"]
-
-    for symlink_name in symlinks:
-        symlink_path = docs_dir / symlink_name
-
-        # Check if it's a symlink
-        if symlink_path.is_symlink():
-            # Resolve the target
-            target = symlink_path.resolve()
-
-            if target.exists():
-                print(f"Replacing symlink {symlink_name} with actual copy from {target}")
-                # Remove the symlink
-                symlink_path.unlink()
-                # Copy the actual directory
-                shutil.copytree(target, symlink_path)
-            else:
-                print(f"Warning: Symlink target {target} does not exist")
-
-
-# Run preprocessing
-print("Running docs preprocessing...")
-replace_symlinks_with_copies()
-print("Preprocessing complete!")
-
+sys.path.insert(0, os.path.abspath("_ext"))
 
 project = "Nemotron"
 copyright = "2026, NVIDIA Corporation"
@@ -68,6 +34,9 @@ author = "NVIDIA Corporation"
 # Version is set by CI via DOCS_VERSION env var (dev or stable)
 # Defaults to "dev" for local builds
 release = os.environ.get("DOCS_VERSION", "nightly")
+
+if release == "nightly":
+    html_meta = {"robots": "noindex, nofollow"}
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -79,10 +48,12 @@ extensions = [
     "sphinx_copybutton",  # For copy button in code blocks
     "sphinx_design",  # For grid cards and other design elements
     "sphinxcontrib.mermaid",  # For mermaid diagrams
+    "nemotron_customize",
+    "sphinx_reredirects",
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "customize"]
 
 # -- Options for MyST Parser (Markdown) --------------------------------------
 # MyST Parser settings
@@ -104,6 +75,9 @@ myst_fence_as_directive = ["mermaid"]
 # Configure mermaid diagrams
 mermaid_version = "latest"  # Use the latest version of mermaid
 
+copybutton_prompt_text = ">>> |$ |# "
+copybutton_exclude = ".linenos, .gp, .go"
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
@@ -111,6 +85,7 @@ mermaid_version = "latest"  # Use the latest version of mermaid
 html_static_path = ["_static"]
 html_css_files = [
     "css/termynal.css",
+    "customize.css",
 ]
 html_js_files = [
     "js/termynal.js",
@@ -150,3 +125,31 @@ if os.environ.get("CI", False):
         ".*githubusercontent\\.com.*",
     ]
 
+redirects = {
+    # Usage cookbook → deployment guides summary
+    "usage-cookbook/README": "../deployment-guides.html",
+    "usage-cookbook/Nemotron-Nano2-VL/README": "../../deployment-guides.html",
+    "usage-cookbook/Nemotron-Parse-v1.1/README": "../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Nano-Omni/Megatron-bridge/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Nano-Omni/automodel/automodel_training_cookbook": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Nano-Omni/doc-intelligence-with-parse/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/README": "../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/grpo-dapo/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/lora-text2sql/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README": "../../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README": "../../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Super/grpo-dapo/grpo_training_cookbook": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Ultra/README": "../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Ultra-Base/README": "../../deployment-guides.html",
+    # Use case examples → application examples summary
+    "use-case-examples/README": "../application-examples.html",
+    "use-case-examples/Simple Nemotron-3-Nano Usage Example/README": "../../application-examples.html",
+    "use-case-examples/Data Science ML Agent/README": "../../application-examples.html",
+    "use-case-examples/RAG Agent with Nemotron RAG Models/README": "../../application-examples.html",
+    "use-case-examples/Intelligent Document Processing with Nemotron RAG/README": "../../application-examples.html",
+    "use-case-examples/nemotron-voice-rag-agent-example/README": "../../application-examples.html",
+    "use-case-examples/sql-lora-finetuning-and-deployment/README": "../../application-examples.html",
+}
