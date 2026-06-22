@@ -58,8 +58,12 @@ This is the "do every step yourself" path. It's more verbose but shows you exact
 SSH into **each** node and run:
 
 ```shell
-# Pull the official vLLM image
-docker pull vllm/vllm-openai:latest
+# Pull the official vLLM image used by the launch command below.
+# DGX Spark uses an aarch64 environment. Use the nightly image here because
+# vllm/vllm-openai:latest has known OOM-at-load and NCCL library mismatch
+# issues with this Nemotron 3 Ultra deployment.
+export IMAGE="vllm/vllm-openai:nightly-aarch64"
+docker pull "$IMAGE"
 
 # Create the cache directories vLLM and friends expect
 export HF_CACHE_DIR="${HF_HOME:-$HOME/.cache/huggingface}"
@@ -108,7 +112,7 @@ export ETH_IF="enp1s0f1np1"            # your assigned CX7 ethernet interface
 export IB_IF="rocep1s0f1,roceP2p1s0f1" # BOTH matching RoCE interfaces
 export MASTER_PORT=29501
 export CONTAINER_NAME=vllm_node
-export IMAGE="vllm/vllm-openai:nightly-aarch64"
+export IMAGE="vllm/vllm-openai:nightly-aarch64" # same image pulled in step 1
 export HF_CACHE_DIR="${HF_HOME:-$HOME/.cache/huggingface}"
 ```
 
