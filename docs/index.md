@@ -44,7 +44,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 :link: deployment-guides
 :link-type: doc
 
-Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, and Hugging Face.
+Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging Face, and agent harnesses.
 :::
 
 :::{grid-item-card} Sample Applications
@@ -104,6 +104,24 @@ Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} Nemotron 3 Ultra
+:link: nemotron/ultra3/README
+:link-type: doc
+
+550B total / 55B active parameters, 20T tokens, up to 1M context. Hybrid Mamba-Attention MoE with LatentMoE and MTP.
+
+**Stages:** Pretraining → SFT → RLVR → MOPD
+:::
+
+:::{grid-item-card} Nemotron 3 Super
+:link: nemotron/super3/README
+:link-type: doc
+
+120.6B total / 12.7B active parameters, up to 1M context. Hybrid Mamba-Transformer with sparse Latent MoE.
+
+**Stages:** Pretraining → SFT → RL → Quantization → Eval
+:::
+
 :::{grid-item-card} Nemotron 3 Nano
 :link: nemotron/nano3/README
 :link-type: doc
@@ -161,6 +179,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
 | [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 | [Rerank](nemotron/rerank/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 
@@ -284,48 +303,10 @@ Reference <model-eval/reference/index.md>
 Nemotron 3 Nano <nemotron/nano3/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
+Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Llama Nemotron Embed <nemotron/embed/README.md>
 Llama Nemotron Rerank <nemotron/rerank/README.md>
 nemotron/artifacts.md
-```
-
-```{toctree}
-:caption: Nano3 Stages
-:hidden:
-
-nemotron/nano3/pretrain.md
-nemotron/nano3/sft.md
-nemotron/nano3/rl.md
-nemotron/nano3/evaluate.md
-nemotron/nano3/import.md
-```
-
-```{toctree}
-:caption: Omni3 Stages
-:hidden:
-
-nemotron/omni3/README.md
-nemotron/omni3/sft.md
-nemotron/omni3/rl.md
-nemotron/omni3/rl/data-prep.md
-nemotron/omni3/architecture.md
-nemotron/omni3/inference.md
-```
-
-```{toctree}
-:caption: Super3 Stages
-:hidden:
-
-nemotron/super3/README.md
-nemotron/super3/pretrain.md
-nemotron/super3/sft.md
-nemotron/super3/rl/index.md
-nemotron/super3/rl/rlvr.md
-nemotron/super3/rl/swe.md
-nemotron/super3/rl/rlhf.md
-nemotron/super3/rl/data-prep.md
-nemotron/super3/evaluate.md
-nemotron/super3/quantization.md
 ```
 
 ```{toctree}

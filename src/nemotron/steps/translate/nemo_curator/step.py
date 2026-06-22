@@ -180,22 +180,6 @@ def _build_generation_config(raw_config: Any) -> Any | None:
     return GenerationConfig(**generation_kwargs)
 
 
-def _configure_faith_stage(stage: Any, faith_cfg: dict[str, Any]) -> None:
-    generation_config = _build_generation_config(faith_cfg.get("generation_config"))
-    max_concurrent_requests = faith_cfg.get("max_concurrent_requests")
-
-    if generation_config is None and max_concurrent_requests is None:
-        return
-
-    for execution_stage in stage.decompose():
-        if getattr(execution_stage, "name", "") != "FaithEvalFilter":
-            continue
-        if generation_config is not None:
-            execution_stage.generation_config = generation_config
-        if max_concurrent_requests is not None:
-            execution_stage.max_concurrent_requests = int(max_concurrent_requests)
-
-
 def _text_field(value: Any) -> str | list[str]:
     if isinstance(value, list):
         return [str(item) for item in value]
@@ -222,12 +206,20 @@ def _build_translation_stage(config: dict[str, Any]) -> Any:
         client=_build_curator_client(config, enable_faith=enable_faith),
         model_name=str(server.get("model") or ""),
         generation_config=_build_generation_config(config.get("generation_config")),
+        translation_prompt_path=config.get("translation_prompt_path"),
+        max_concurrent_requests=int(config.get("max_concurrent_requests", 64)),
+        health_check=bool(config.get("health_check", True)),
+        dry_run=bool(config.get("dry_run", False)),
+        dry_run_log_count=int(config.get("dry_run_log_count", 5)),
         backend_type=str(config.get("backend", "llm")),
         backend_config=_backend_config(config),
         enable_faith_eval=enable_faith,
         faith_threshold=float(faith_cfg.get("threshold", 2.5)),
         faith_model_name=str(faith_cfg.get("model_name") or server.get("model") or ""),
         filter_enabled=bool(faith_cfg.get("filter_enabled", True)),
+        faith_generation_config=_build_generation_config(faith_cfg.get("generation_config")),
+        faith_prompt_path=faith_cfg.get("prompt_path"),
+        faith_max_concurrent_requests=int(faith_cfg.get("max_concurrent_requests", 64)),
         output_mode=str(config.get("output_mode", "both")),
         merge_scores=bool(config.get("merge_scores", True)),
         reconstruct_messages=bool(config.get("reconstruct_messages", True)),
@@ -236,8 +228,6 @@ def _build_translation_stage(config: dict[str, Any]) -> Any:
         skip_translated=bool(config.get("skip_translated", False)),
         translation_column=str(config.get("translation_column", "translated_text")),
     )
-    if enable_faith:
-        _configure_faith_stage(stage, faith_cfg)
     return stage
 
 

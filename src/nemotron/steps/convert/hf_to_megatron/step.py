@@ -3,10 +3,10 @@
 # [tool.runspec]
 # schema = "1"
 # name = "steps/convert/hf_to_megatron"
-# image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_nano"
+# image = "nvcr.io/nvidia/nemo:26.04"
 #
 # [tool.runspec.run]
-# launch = "python"
+# launch = "torchrun"
 #
 # [tool.runspec.config]
 # dir = "./config"

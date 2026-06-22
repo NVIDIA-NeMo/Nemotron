@@ -14,6 +14,10 @@
 
 # NeMo-RL DPO defaults. Mirrors speaker/configs/dpo/config.yaml — knobs, not internals.
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo-rl:v0.6.0
+
 dpo:
   max_num_epochs: 1
   max_num_steps: 500
@@ -79,6 +83,6 @@ logger:
   monitor_gpus: true
   num_val_samples_to_print: 0
   wandb:
-    project: ${oc.env:WANDB_PROJECT,nemotron-dpo-dev}
-    entity: ${oc.env:WANDB_ENTITY,null}
-    name: ${oc.env:WANDB_NAME,dpo}
+    project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+    entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+    name: ${oc.env:WANDB_NAME,rl-nemo-rl-dpo}

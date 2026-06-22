@@ -55,6 +55,36 @@ name = "trust_remote_code"
 description = "Whether to trust HF custom model code when AutoBridge loads the source model config."
 default = true
 
+[[parameters]]
+name = "distributed"
+description = "Use the mounted multi-GPU converter. Keep true for large checkpoints; set false only for legacy single-process conversion."
+default = true
+
+[[parameters]]
+name = "tp"
+description = "Tensor parallel size for the output Megatron checkpoint."
+default = 1
+
+[[parameters]]
+name = "pp"
+description = "Pipeline parallel size for the output Megatron checkpoint."
+default = 1
+
+[[parameters]]
+name = "ep"
+description = "Expert parallel size for the output Megatron checkpoint. Defaults to 8 for Nemotron MoE conversion; override for dense models or non-8-way layouts."
+default = 8
+
+[[parameters]]
+name = "etp"
+description = "Expert tensor parallel size for the output Megatron checkpoint."
+default = 1
+
+[[parameters]]
+name = "torchrun.nproc_per_node"
+description = "Number of local ranks used by the distributed converter. Defaults to NEMOTRON_CONVERT_NPROC_PER_NODE or 8."
+default = 8
+
 [[strategies]]
 when = "A Megatron-Bridge consumer needs an HF-produced checkpoint"
 then = "Insert this converter explicitly instead of changing the downstream trainer to accept HF layout."
@@ -81,5 +111,5 @@ recovery = "Keep trust_remote_code=true for supported custom HF repos, and verif
 
 [reference]
 skill = "src/nemotron/steps/convert/hf_to_megatron/README.md"
-script = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/conversion/convert_checkpoints.py"
+script = "https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/conversion/convert_checkpoints_multi_gpu.py"
 skills = ["skills/nemotron-customize/references/context/checkpoint-conversion.txt"]

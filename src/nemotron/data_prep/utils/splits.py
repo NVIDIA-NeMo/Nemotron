@@ -163,7 +163,7 @@ def realize_packed_shards_into_split_dirs(
         created_count = 0
         missing_paths = []
 
-        for shard_path in shard_paths:
+        for position, shard_path in enumerate(shard_paths):
             # Shard path is a prefix like /path/to/shard_000000
             # Actual file is shard_000000.parquet
             parquet_path_str = f"{shard_path}.parquet"
@@ -175,8 +175,13 @@ def realize_packed_shards_into_split_dirs(
                 logger.warning(f"Shard file not found: {parquet_path_str}")
                 continue
 
-            # Create symlink in split dir
-            link_path = split_dir / parquet_path.name
+            # ``{position:06d}`` preserves the shuffle (it drives the loader's sort order);
+            # ``{dataset_name}`` keeps links unique across datasets, since every dataset
+            # names its shards shard_000000.parquet... (finalize.py prefix
+            # ".../<name>/<hash>/shard"). Layout: .../datasets/<name>/<plan_hash>/shard_*.parquet
+            # -> parent.parent.name is the dataset name.
+            dataset_name = parquet_path.parent.parent.name
+            link_path = split_dir / f"{position:06d}__{dataset_name}__{parquet_path.name}"
 
             if link_path.exists() or link_path.is_symlink():
                 # Remove existing link/file to update

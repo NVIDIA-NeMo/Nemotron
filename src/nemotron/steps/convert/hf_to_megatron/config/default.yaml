@@ -19,9 +19,26 @@
 #     hf_model_id=/path/to/hf_checkpoint \
 #     megatron_path=/path/to/output_megatron_checkpoint
 
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.04
+
 hf_model_id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
 megatron_path: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/convert}/hf_to_megatron/megatron
+
+script:
+  path: /opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py
 
 torch_dtype: bfloat16
 device_map: null
 trust_remote_code: true
+
+# Distributed conversion is the default path so large checkpoints can be
+# imported without materializing the full model on one GPU.
+distributed: true
+tp: ${oc.env:NEMOTRON_CONVERT_TP,1}
+pp: ${oc.env:NEMOTRON_CONVERT_PP,1}
+ep: ${oc.env:NEMOTRON_CONVERT_EP,8}
+etp: ${oc.env:NEMOTRON_CONVERT_ETP,1}
+torchrun:
+  nproc_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}

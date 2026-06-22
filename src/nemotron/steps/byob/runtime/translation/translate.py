@@ -109,7 +109,6 @@ class CuratorTranslationModule:
         )
 
         for execution_stage in stage.decompose():
-            self._configure_execution_stage(execution_stage)
             execution_stage.setup()
             try:
                 result = execution_stage.process(batch)
@@ -159,6 +158,10 @@ class CuratorTranslationModule:
                 "BYOB translation requires Curator output_mode='both' or 'replaced' so translated text is emitted"
             )
 
+        segment_stage_config = self.translation_config.get("segment_stage", {})
+        if not isinstance(segment_stage_config, dict):
+            raise ValueError("translation_model_config.segment_stage must be a mapping when provided")
+
         return symbols.translation_stage(
             source_lang=_normalize_language_code(source_lang),
             target_lang=_normalize_language_code(target_lang),
@@ -169,6 +172,11 @@ class CuratorTranslationModule:
             client=client,
             model_name=model_name,
             generation_config=generation_config,
+            translation_prompt_path=stage_config.get("translation_prompt_path"),
+            max_concurrent_requests=int(segment_stage_config.get("max_concurrent_requests", 64)),
+            health_check=bool(segment_stage_config.get("health_check", True)),
+            dry_run=bool(segment_stage_config.get("dry_run", False)),
+            dry_run_log_count=int(segment_stage_config.get("dry_run_log_count", 5)),
             backend_type=str(backend_type),
             backend_config=backend_config,
             output_mode=output_mode,
@@ -243,17 +251,6 @@ class CuratorTranslationModule:
         if extra_kwargs:
             generation_kwargs["extra_kwargs"] = extra_kwargs
         return symbols.generation_config(**generation_kwargs)
-
-    def _configure_execution_stage(self, execution_stage: Any) -> None:
-        segment_stage_config = self.translation_config.get("segment_stage", {})
-        if not isinstance(segment_stage_config, dict):
-            raise ValueError("translation_model_config.segment_stage must be a mapping when provided")
-        if getattr(execution_stage, "name", "") != "SegmentTranslationStage":
-            return
-
-        for field_name in ("health_check", "dry_run", "dry_run_log_count", "max_concurrent_requests"):
-            if field_name in segment_stage_config:
-                setattr(execution_stage, field_name, segment_stage_config[field_name])
 
     def _get_inference_parameters(self) -> dict[str, Any]:
         inference_parameters = self.model_params.get("inference_parameters", {})

@@ -17,7 +17,7 @@
 
 ---
 
-> 🎉Nemotron 3 Ultra was announced at GTC San Jose 2026\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)\!
+> 🎉Nemotron 3 Ultra was [announced](https://www.youtube.com/live/q_umfWm8J28?t=4568s) at GTC San Jose 2026\. The model is open-source on [Hugging Face](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16), and the [training recipe](./docs/nemotron/ultra3/README.md) is now available in this repo\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra/README.md)\!
 >
 > 🎉**Nemotron 3 Nano Omni** is now released — a 30B-A3B hybrid Mamba-Transformer MoE with native text, image, video, and audio support, designed as a multimodal perception sub-agent for agentic AI. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/), the [training recipe](./docs/nemotron/omni3/README.md), and the [model weights](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16).
 
@@ -166,9 +166,35 @@ Because these are complete systems, you can extract specific techniques with con
 
 | Model | Description | Stages | Guide |
 |-------|-------------|--------|-------|
+| **[Nemotron 3 Ultra](docs/nemotron/ultra3/README.md)** | 550B total / 55B active hybrid Mamba-Attention LatentMoE Transformer with MTP and 1M context — NVIDIA's largest Nemotron 3 model for datacenter-scale agentic reasoning | Pretrain → SFT → RLVR → MOPD | [Training Guide](docs/nemotron/ultra3/README.md) |
 | **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 120.6B total / 12.7B active Hybrid Mamba Latent MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
 | **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
+
+### Nemotron 3 Ultra
+
+A training recipe for NVIDIA's largest Nemotron 3 model — a 550B-A55B hybrid Mamba-Attention Mixture-of-Experts Transformer with LatentMoE and multi-token prediction (MTP), pretrained in NVFP4 and extended to 1M-token context for datacenter-scale agentic reasoning.
+
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
+
+**Model Specifications**:
+- 550B total / 55B active parameters (MoE)
+- Hybrid Mamba-Attention architecture with LatentMoE + two shared-weight MTP layers
+- 20T pretraining tokens in NVFP4, two-phase data curriculum
+- Up to 1M (1,048,576) context length
+- Full program: Pretrain → SFT → RLVR → MOPD → MTP Boosting (this recipe covers **Pretrain → SFT**)
+
+**What You Can Extract**:
+- Two-phase pretraining data mixture (tech-report Figure 4) over the open Nemotron datasets
+- Ray-based data prep: tokenize raw datasets → Megatron bin/idx (pretrain) and pack chat data → Parquet (SFT)
+- New open pretraining datasets: Specialized-v1.2 (Multiple-Choice / Generative / Fact-Seeking / Moral-Scenarios) and Legal-v1
+- Stage-local container builds (Day-0 Megatron-Bridge) for both pretrain and SFT
+- Megatron-Bridge training at Ultra scale (TP=2 / PP=12 / EP=32 pretrain, PP=6 SFT)
+
+**Resources**:
+- [Training Guide](docs/nemotron/ultra3/README.md)
+- [Usage Guide](./usage-cookbook/Nemotron-3-Ultra/README.md)
+- [Model Weights (BF16)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16)
 
 ### Nemotron 3 Super
 
@@ -266,6 +292,7 @@ Practical deployment and model usage guides for Nemotron models.
 
 | Model | Best For | Key Features | Resources |
 |-------|----------|--------------|-----------|
+| [**Nemotron 3 Ultra 550B A55B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16) | Long-running coding, research, and enterprise agentic workflows | 1M context, 550B/55B MoE, MTP, multi-GPU deployment, agent harness configs | [Cookbooks](./usage-cookbook/Nemotron-3-Ultra) |
 | [**Nemotron 3 Super 120B A12B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) | Production deployments needing strong reasoning | 1M context, in NVFP4 single B200, RAG & tool calling | [Cookbooks](./usage-cookbook/Nemotron-3-Super) |
 | [**Nemotron 3 Nano 30B A3B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | Resource-constrained environments | 1M context, sparse MoE hybrid Mamba-2, controllable reasoning | [Cookbooks](./usage-cookbook/Nemotron-3-Nano) |
 | [**NVIDIA-Nemotron-Nano-12B-v2-VL**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL) | Document intelligence and video understanding | 12B VLM, video reasoning, Efficient Video Sampling | [Cookbooks](./usage-cookbook/Nemotron-Nano2-VL/) |

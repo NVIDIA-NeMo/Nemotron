@@ -27,7 +27,11 @@ messages_content_field: content
 
 segmentation_mode: coarse # coarse | fine
 min_segment_chars: 0
+translation_prompt_path: null # Optional absolute local YAML prompt path.
 max_concurrent_requests: 64
+health_check: true
+dry_run: false
+dry_run_log_count: 5
 generation_config: null   # Optional OpenAI-compatible translation generation settings.
 skip_translated: false
 files_per_partition: null
@@ -44,6 +48,7 @@ faith_eval:
   threshold: 2.5
   model_name: ""
   filter_enabled: true
+  prompt_path: null # Optional absolute local YAML prompt path.
   max_concurrent_requests: 64
   generation_config:
     max_tokens: 2048

@@ -14,10 +14,16 @@
 
 defaults: default.yaml
 
+run:
+  env:
+    env_vars:
+      WANDB_NAME: ${oc.env:WANDB_NAME,data-prep-rl-prep-tiny}
+
 blend_path: ${oc.env:PWD}/src/nemotron/steps/data_prep/rl_prep/data/blend_tiny.json
 output_dir: ${oc.env:RL_OUTPUT_DIR,./output/data_prep/rl_prep/tiny}
 num_shards_per_split: 1
 max_rows: 1000
+
 sample: null
 force: false
 

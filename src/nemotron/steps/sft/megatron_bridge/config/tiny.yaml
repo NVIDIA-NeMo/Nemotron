@@ -17,10 +17,10 @@
 # Megatron checkpoint is required. Uses the packed_parquet shards produced by
 # `nemotron steps run data_prep/sft_packing -c tiny --run YOUR-CLUSTER`.
 
-# Override the container's stale Megatron-Bridge with a branch that supports
-# packed-parquet specs.
 run:
   env:
+    container_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+    # Override the container's Megatron-Bridge only for the tiny nano3 smoke path.
     mounts:
       - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bbbedbb9f53343762e4dc70abc771b813a83d817,/opt/megatron-lm}
       - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@romeyn/parquet-sequence-pack,/opt/Megatron-Bridge}
@@ -32,10 +32,8 @@ load_hf_weights: true
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_finetune_config
   packed_sequence: true
-  peft: null
   seq_length: 4096
-  tensor_model_parallel_size: 4
-  pipeline_model_parallel_size: 1
+  peft: null
 
 dataset:
   seq_length: 4096
@@ -70,10 +68,9 @@ scheduler:
 
 logger:
   log_interval: 1
-  wandb_project: ${oc.env:WANDB_PROJECT,null}
-  wandb_entity: ${oc.env:WANDB_ENTITY,null}
+  wandb_project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  wandb_entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
   wandb_exp_name: ${oc.env:WANDB_NAME,sft-megatron-bridge-tiny}
-
 checkpoint:
   save: ${oc.env:SFT_OUTPUT_DIR}/sft-tiny-2node
   save_interval: 5

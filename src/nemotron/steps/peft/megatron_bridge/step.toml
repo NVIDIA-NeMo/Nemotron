@@ -53,7 +53,7 @@ description = "Megatron base checkpoint directory to adapt. Required for PEFT; k
 
 [[parameters]]
 name = "load_hf_weights"
-description = "Set false when starting PEFT from checkpoint.pretrained_checkpoint. Use HF loading only when deliberately bootstrapping from HF weights."
+description = "Keep false for PEFT. The frozen base must be a Megatron checkpoint (checkpoint.pretrained_checkpoint); PEFT cannot bootstrap from HF weights — convert HF to Megatron first (run SFT or convert/hf_to_megatron)."
 default = false
 
 [[parameters]]

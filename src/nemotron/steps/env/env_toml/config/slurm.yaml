@@ -2,6 +2,8 @@
 #
 # This mirrors the Lepton example: one backend base plus concrete profiles
 # named for individual steps. Replace host/account/paths with site values.
+# Step configs remain the source of truth for image/recipe-specific requirements;
+# these profiles provide generic fallbacks plus cluster logistics.
 
 output_path: env.slurm.toml
 force: false
@@ -71,7 +73,7 @@ checks:
 
 sections:
   wandb:
-    project: nemotron
+    project: ${oc.env:WANDB_PROJECT,nemotron}
     entity: ${oc.env:WANDB_ENTITY,nvidia}
 
   slurm_base:
@@ -82,8 +84,17 @@ sections:
     account: ${oc.env:SLURM_ACCOUNT,nemotron}
     partition: ${oc.env:SLURM_PARTITION,batch}
     container_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
-    remote_job_dir: ${oc.env:NEMO_RUN_DIR,/lustre/${oc.env:USER}/nemo-run}
+    # Single shared-storage root. remote_job_dir, outputs, and HF_HOME below all
+    # derive from NEMOTRON_WORKSPACE so overriding that one env var relocates
+    # them together. (The PYTHONPATH paths are container-internal, not on the
+    # workspace, so they stay fixed.) Each derived path anchors on the env var
+    # directly since sibling ${workspace} refs can't survive env.toml round-trip.
+    # workspace: persistent shared-storage root (per-user Lustre) that every job mounts; parent of paths below.
+    workspace: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}
+    # remote_job_dir: NeMo-Run staging + per-job run outputs (packaged code, logs, checkpoints) on Lustre.
+    remote_job_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/nemo-run}
     mounts:
+      # host_path:container_path bind mounts; Lustre is exposed at the same path inside the container.
       - /lustre:/lustre
     lustre_mount: ""
     nodes: 1
@@ -92,9 +103,11 @@ sections:
     time: "02:00:00"
     env_vars:
       HF_TOKEN: ${oc.env:HF_TOKEN,''}
-      HF_HOME: ${oc.env:HF_HOME,/lustre/${oc.env:USER}/hf}
+      # HF_HOME: HuggingFace cache (models/datasets/tokenizers); on Lustre so it is reused across jobs.
+      HF_HOME: ${oc.env:HF_HOME,${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/hf}
       WANDB_API_KEY: ${oc.env:WANDB_API_KEY,''}
-      WANDB_PROJECT: nemotron
+      WANDB_PROJECT: ${oc.env:WANDB_PROJECT,nemotron}
+      # PYTHONPATH: container-internal staged source (where NeMo-Run unpacks code), not on the workspace.
       PYTHONPATH: /nemo_run/code/src
       RAY_DEDUP_LOGS: "0"
 
@@ -113,29 +126,28 @@ sections:
     startup_commands:
       - uv pip install --python /opt/venv/bin/python --quiet cosmos-xenna protobuf
     env_vars:
+      # RAY_RUNTIME_ENV_PYTHONPATH: dir Ray prepends to each worker's PYTHONPATH (container-internal
+      # staged source). Set once here; child prep profiles inherit it via `extends`.
       RAY_RUNTIME_ENV_PYTHONPATH: /nemo_run/code/src
+      # RAY_MAX_LIMIT_FROM_API_SERVER: raises Ray's API-server response cap for large prep job graphs.
       RAY_MAX_LIMIT_FROM_API_SERVER: "100000"
 
   slurm_prep_sft_packing:
     extends: slurm_prep_base
     env_vars:
-      SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/data_prep/sft_packing
-      RAY_RUNTIME_ENV_PYTHONPATH: /nemo_run/code/src
-      RAY_MAX_LIMIT_FROM_API_SERVER: "100000"
+      # *_OUTPUT_DIR: per-step destination for that step's artifacts, under <workspace>/output.
+      # Override the specific env var (e.g. SFT_OUTPUT_DIR) to redirect just this step.
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/sft_packing
 
   slurm_prep_pretrain_prep:
     extends: slurm_prep_base
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /lustre/${oc.env:USER}/output/data_prep/pretrain_prep
-      RAY_RUNTIME_ENV_PYTHONPATH: /nemo_run/code/src
-      RAY_MAX_LIMIT_FROM_API_SERVER: "100000"
+      PRETRAIN_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/pretrain_prep
 
   slurm_prep_rl_prep:
     extends: slurm_prep_base
     env_vars:
-      RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/data_prep/rl_prep
-      RAY_RUNTIME_ENV_PYTHONPATH: /nemo_run/code/src
-      RAY_MAX_LIMIT_FROM_API_SERVER: "100000"
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/rl_prep
 
   # Curator-backed steps: byob/mcq, translate/nemo_curator, and curate all use the Curator
   # container and install their Python runtime through the generic curator_runtime
@@ -191,28 +203,28 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages data-designer==0.5.5
     env_vars:
-      SDG_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sdg
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sdg
       NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
 
   slurm_sdg_data_designer_tiny:
     extends: slurm_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sdg/sft/tiny
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sdg/sft/tiny
 
   slurm_sdg_data_designer_default:
     extends: slurm_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sdg/sft/default
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sdg/sft/default
 
   slurm_sdg_data_designer_customer_support_tools:
     extends: slurm_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sdg/sft/customer_support_tools
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sdg/sft/customer_support_tools
 
   slurm_sdg_data_designer_rl_pref:
     extends: slurm_sdg_data_designer
     env_vars:
-      SDG_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sdg/rl/rl_pref
+      SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sdg/rl/rl_pref
 
   # translate/nemo_curator: uses the translate Curator runtime profile.
   slurm_translate:
@@ -237,15 +249,16 @@ sections:
     env_vars:
       NEMOTRON_CURATOR_RAY_NUM_CPUS: "4"
 
-  # pretrain/megatron_bridge: child overrides scale/time and pretrain output path.
+  # pretrain/megatron_bridge: generic NeMo image fallback; tiny configs pin nano3.
   slurm_pretrain_megatron_bridge:
     extends: slurm_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     ntasks_per_node: 8
     time: "04:00:00"
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /lustre/${oc.env:USER}/output/pretrain/megatron_bridge
-      PRETRAIN_BLEND_PATH: /lustre/${oc.env:USER}/output/data_prep/pretrain_prep/blend.json
+      PRETRAIN_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/pretrain/megatron_bridge
+      PRETRAIN_BLEND_PATH: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/pretrain_prep/blend.json
 
   # pretrain/automodel: AutoModel pretrain uses the AutoModel image/deps with
   # the same pretrain data-prep output wiring.
@@ -258,20 +271,21 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      PRETRAIN_OUTPUT_DIR: /lustre/${oc.env:USER}/output/pretrain/automodel
-      PRETRAIN_BLEND_PATH: /lustre/${oc.env:USER}/output/data_prep/pretrain_prep/blend.json
+      PRETRAIN_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/pretrain/automodel
+      PRETRAIN_BLEND_PATH: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/pretrain_prep/blend.json
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
-  # sft/megatron_bridge: child overrides scale/time while inheriting site logistics.
+  # sft/megatron_bridge: generic NeMo image fallback; config owns recipe target/image.
   slurm_sft_megatron_bridge:
     extends: slurm_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     ntasks_per_node: 8
     time: "04:00:00"
     env_vars:
-      SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sft/megatron_bridge
-      SFT_PACKED_DIR: /lustre/${oc.env:USER}/output/data_prep/sft_packing/splits/train/*.parquet
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sft/megatron_bridge
+      SFT_PACKED_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/sft_packing/splits/train/*.parquet
 
   # sft/automodel: switches to the AutoModel image/deps.
   slurm_sft_automodel:
@@ -280,7 +294,7 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/sft/automodel
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/sft/automodel
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
@@ -288,23 +302,24 @@ sections:
   slurm_peft_megatron_bridge:
     extends: slurm_sft_megatron_bridge
     env_vars:
-      SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/peft/megatron_bridge
-      SFT_PACKED_DIR: /lustre/${oc.env:USER}/output/data_prep/sft_packing/splits/train/*.parquet
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/peft/megatron_bridge
+      SFT_PACKED_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/sft_packing/splits/train/*.parquet
 
   slurm_peft_automodel:
     extends: slurm_sft_automodel
     env_vars:
-      SFT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/peft/automodel
+      SFT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/peft/automodel
       WANDB_INIT_TIMEOUT: ${oc.env:WANDB_INIT_TIMEOUT,300}
       WANDB_HTTP_TIMEOUT: ${oc.env:WANDB_HTTP_TIMEOUT,300}
 
   # convert/*: one shared GPU profile for HF<->Megatron conversion and LoRA merge/export.
   slurm_convert_model:
     extends: slurm_base
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 1
     time: "02:00:00"
     env_vars:
-      CONVERT_OUTPUT_DIR: /lustre/${oc.env:USER}/output/convert
+      CONVERT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/convert
 
   # rl/nemo_rl/dpo: switch image for NeMo-RL while keeping tunnel/account/mounts.
   slurm_rl_nemo_rl_dpo:
@@ -315,47 +330,47 @@ sections:
     startup_commands:
       - python -m pip install --quiet --break-system-packages omegaconf
     env_vars:
-      RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/rl/dpo
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/rl/dpo
 
   # rl/nemo_rl/rlvr: same NeMo-RL image, with RLVR output wiring.
   slurm_rl_nemo_rl_rlvr:
     extends: slurm_rl_nemo_rl_dpo
     env_vars:
-      RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/rl/rlvr
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/rl/rlvr
 
   # rl/nemo_rl/rlhf: same RL profile, but more physical nodes for GenRM/NeMo-Gym placement.
   slurm_rl_nemo_rl_rlhf:
     extends: slurm_rl_nemo_rl_dpo
     nodes: 4
     env_vars:
-      RL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/rl/rlhf
-      RL_PREP_MANIFEST: /lustre/${oc.env:USER}/output/data_prep/rl_prep/manifest.json
+      RL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/rl/rlhf
+      RL_PREP_MANIFEST: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/data_prep/rl_prep/manifest.json
 
   # optimize/modelopt/quantize: switch to the ModelOpt-capable NeMo image.
   slurm_optimize_modelopt_quantize:
     extends: slurm_base
-    container_image: nvcr.io/nvidia/nemo:26.02
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 2
     time: "04:00:00"
     env_vars:
-      OPTIM_OUTPUT_DIR: /lustre/${oc.env:USER}/output/optimize/quantize
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/optimize/quantize
 
   # optimize/modelopt/distill: same ModelOpt-capable image with distillation output wiring.
   slurm_optimize_modelopt_distill:
     extends: slurm_optimize_modelopt_quantize
     env_vars:
-      OPTIM_OUTPUT_DIR: /lustre/${oc.env:USER}/output/optimize/distill
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/optimize/distill
 
   # optimize/modelopt/prune: pruning can run with fewer tasks than full-node train jobs.
   slurm_optimize_modelopt_prune:
     extends: slurm_base
-    container_image: nvcr.io/nvidia/nemo:26.02
+    container_image: nvcr.io/nvidia/nemo:26.04
     nodes: 1
     ntasks_per_node: 2
     gpus_per_node: 2
     time: "02:00:00"
     env_vars:
-      OPTIM_OUTPUT_DIR: /lustre/${oc.env:USER}/output/optimize/prune
+      OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/optimize/prune
 
   # eval/model_eval: lightweight profile for model evaluation steps.
   slurm_eval_model_eval:
@@ -363,4 +378,4 @@ sections:
     nodes: 1
     time: "02:00:00"
     env_vars:
-      EVAL_OUTPUT_DIR: /lustre/${oc.env:USER}/output/eval/model_eval
+      EVAL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/lustre/${oc.env:USER}}/output/eval/model_eval

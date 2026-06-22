@@ -35,6 +35,9 @@ author = "NVIDIA Corporation"
 # Defaults to "dev" for local builds
 release = os.environ.get("DOCS_VERSION", "nightly")
 
+if release == "nightly":
+    html_meta = {"robots": "noindex, nofollow"}
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
@@ -138,6 +141,8 @@ redirects = {
     "usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide/README": "../../../deployment-guides.html",
     "usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README": "../../../deployment-guides.html",
     "usage-cookbook/Nemotron-3-Super/grpo-dapo/grpo_training_cookbook": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Ultra/README": "../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources/README": "../../../deployment-guides.html",
     "usage-cookbook/Nemotron-3-Ultra-Base/README": "../../deployment-guides.html",
     # Use case examples → application examples summary
     "use-case-examples/README": "../application-examples.html",

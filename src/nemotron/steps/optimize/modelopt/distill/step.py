@@ -3,7 +3,7 @@
 # [tool.runspec]
 # schema = "1"
 # name = "steps/optimize/modelopt/distill"
-# image = "nvcr.io/nvidia/nemo:26.02"
+# image = "nvcr.io/nvidia/nemo:26.04"
 #
 # [tool.runspec.run]
 # launch = "python"
