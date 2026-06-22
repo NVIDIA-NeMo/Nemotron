@@ -38,6 +38,15 @@ Cookbooks for the 550B/55B-active hybrid Mamba-Transformer MoE model, including 
 {bdg-success}`Notebook` {bdg-secondary}`Local GPU` {bdg-info}`Fine-tuning` {bdg-muted-line}`Jun 4, 2026`
 :::
 
+:::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra on DGX Spark
+:link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra/SparkDeploymentGuide
+:link-type: url
+
+Deploy across a 4x DGX Spark cluster with vLLM, including tensor parallelism, RoCE networking, MTP speculative decoding, and NVIDIA AIPerf benchmarking.
++++
+{bdg-secondary}`Local GPU` {bdg-muted-line}`Jun 22, 2026`
+:::
+
 :::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra on Agentic Coding
 :link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources
 :link-type: url
