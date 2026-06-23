@@ -346,13 +346,9 @@ provider = "huggingface"
 default_model = "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4:together"
 ```
 
-Via OpenRouter:
-
-```toml
 [agent]
 provider = "openrouter"
 default_model = "nvidia/nemotron-3-ultra-550b-a55b"
-```
 
 **Run**
 
