@@ -67,7 +67,15 @@ export OCI_COMPARTMENT_ID="<your-compartment-ocid>"
 export OCI_REGION="us-phoenix-1"
 export OCI_PROFILE="DEFAULT"          # adjust to your OCI CLI profile
 export CLUSTER_NAME="nemotron-phx"
-export KUBERNETES_VERSION="v1.31.10"
+
+# OKE retires older Kubernetes minors over time, so the example below may no
+# longer be offered in your region. List the versions OKE currently supports
+# and pick one of them:
+#   oci ce cluster-options get --cluster-option-id all \
+#       --compartment-id "${OCI_COMPARTMENT_ID}" \
+#       --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+#       --query 'data."kubernetes-versions"'
+export KUBERNETES_VERSION="v1.33.1"   # must be a version OKE currently lists
 ```
 
 ## Step 2: Create VCN and networking
@@ -253,7 +261,10 @@ BASTION_ID=$(oci bastion bastion create \
 
 ## Step 5: Create node pools
 
-Find the GPU-compatible node image and create both pools:
+Find the GPU-compatible node image and create both pools. The `OKE-<ver>-`
+match is anchored with a trailing dash on purpose: a bare `OKE-1.33.1` also
+substring-matches `OKE-1.33.10` images, which would pick a node image newer
+than the control plane and be rejected for version skew.
 
 ```bash
 GPU_IMAGE_ID=$(oci ce node-pool-options get \
@@ -261,14 +272,14 @@ GPU_IMAGE_ID=$(oci ce node-pool-options get \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
     --query "data.sources[?contains(\"source-name\", 'GPU') && \
-             contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}')].\"image-id\" | [0]" \
+             contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}-')].\"image-id\" | [0]" \
     --raw-output)
 
 CPU_IMAGE_ID=$(oci ce node-pool-options get \
     --node-pool-option-id all \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
-    --query "data.sources[?contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}') && \
+    --query "data.sources[?contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}-') && \
              !contains(\"source-name\", 'GPU') && \
              contains(\"source-name\", 'aarch64')==\`false\`].\"image-id\" | [0]" \
     --raw-output)
@@ -280,7 +291,7 @@ echo "CPU image: ${CPU_IMAGE_ID}"
 # oci ce node-pool-options get --node-pool-option-id all \
 #     --compartment-id "${OCI_COMPARTMENT_ID}" \
 #     --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
-#     --query "data.sources[?contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}')].{name:\"source-name\",id:\"image-id\"}" \
+#     --query "data.sources[?contains(\"source-name\", 'OKE-${KUBERNETES_VERSION#v}-')].{name:\"source-name\",id:\"image-id\"}" \
 #     --output table
 
 # Pick an availability domain with A10 capacity.
@@ -512,6 +523,11 @@ done
 
 Expected: CPU node ~`93476416Ki` (~89 GiB), GPU node ~`198056192Ki` (~189 GiB).
 If either still shows ~`37206272Ki`, rerun the soft-reset for that node.
+
+Note: a node can report `Ready` slightly before kubelet republishes the new
+`ephemeral-storage` capacity, so the value may briefly still read
+~`37206272Ki` right after uncordon. Re-check after ~60s before concluding a
+rerun is needed.
 
 ## Step 8: Create StorageClasses
 
