@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -122,12 +123,31 @@ def load_config(
         cli_source = CliSettingsSource(
             model_cls,
             cli_parse_args=cli_args,
-            cli_ignore_unknown_args=True,
+            cli_ignore_unknown_args=False,
         )
         cli_values = cli_source()
         _deep_merge(config_dict, cli_values)
 
+    config_dict = _resolve_oc_env_interpolations(config_dict)
+
     return model_cls(**config_dict)
+
+
+def _resolve_oc_env_interpolations(value: Any) -> Any:
+    """Resolve OmegaConf-style ${oc.env:VAR,default} strings in plain YAML data."""
+    if isinstance(value, dict):
+        return {k: _resolve_oc_env_interpolations(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_resolve_oc_env_interpolations(v) for v in value]
+    if not isinstance(value, str) or "${oc.env:" not in value:
+        return value
+
+    def repl(match: re.Match[str]) -> str:
+        var_name = match.group(1)
+        default = match.group(2) if match.group(2) is not None else ""
+        return os.environ.get(var_name, default)
+
+    return re.sub(r"\$\{oc\.env:([A-Za-z_][A-Za-z0-9_]*)(?:,([^}]*))?\}", repl, value)
 
 
 def _hydra_to_cli_args(overrides: list[str]) -> list[str]:
@@ -136,7 +156,7 @@ def _hydra_to_cli_args(overrides: list[str]) -> list[str]:
     Conversions:
       - ``key=value``    → ``--key=value``
       - ``--no-flag``    → ``--flag=false``
-      - ``--key``        → ``--key`` (passed through; argparse knows the type)
+      - ``--flag``       → ``--flag=true`` when no value follows
       - ``--key value``  → passed through as-is
       - bare values      → passed through (argparse consumes them)
 
@@ -147,25 +167,31 @@ def _hydra_to_cli_args(overrides: list[str]) -> list[str]:
         Argparse-compatible CLI args for CliSettingsSource.
     """
     cli_args = []
-    for override in overrides:
+    idx = 0
+    while idx < len(overrides):
+        override = overrides[idx]
         if override.startswith("--no-"):
             # --no-flag → --flag=false
             key = override[5:].replace("-", "_")
             cli_args.append(f"--{key}=false")
         elif override.startswith("--"):
-            # Normalize dashes to underscores in key part, pass through as-is
-            # Argparse handles --key=value and --key value pairs natively
             if "=" in override:
                 key_part, _, val_part = override[2:].partition("=")
                 cli_args.append(f"--{key_part.replace('-', '_')}={val_part}")
             else:
-                cli_args.append(f"--{override[2:].replace('-', '_')}")
+                key = override[2:].replace("-", "_")
+                next_arg = overrides[idx + 1] if idx + 1 < len(overrides) else None
+                if next_arg is None or next_arg.startswith("--"):
+                    cli_args.append(f"--{key}=true")
+                else:
+                    cli_args.append(f"--{key}")
         elif "=" in override and not override.startswith("-"):
             # key=value → --key=value (Hydra-style)
             cli_args.append(f"--{override}")
         else:
             # Bare value (consumed by preceding --key), pass through
             cli_args.append(override)
+        idx += 1
     return cli_args
 
 

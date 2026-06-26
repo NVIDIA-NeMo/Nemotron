@@ -19,7 +19,7 @@ The RLVR stage consists of 3 sub-stages with different data blends. All 3 use th
 | **Safety** | Two environments: (1) mitigating overrefusals on safety-related prompts, (2) robustness against jailbreak attacks using PAIR-generated adversarial prompts. |
 | **Long Context** | Long context reasoning environment. |
 | **Agentic Tool Use** | Conversational tool use and terminal use environments. |
-| **Reasoning Gym** | Diverse reasoning tasks from [Reasoning Gym](https://github.com/reasoning-gym/reasoning-gym). |
+| **Reasoning Gym** | Diverse reasoning tasks from [Reasoning Gym](https://github.com/open-thought/reasoning-gym). |
 
 **Data Curriculum:** Prompts where the SFT model consistently provides correct answers are filtered out. Remaining samples are sorted via a difficulty-based curriculum.
 
@@ -173,8 +173,6 @@ SLURM_PARTITION=$SLURM_PARTITION \
 SLURM_ACCOUNT=$SLURM_ACCOUNT \
 bash super_launch.sh
 ```
-
-See the [upstream training guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3/examples/nemotron_3_super/README.md) for full details on environment variables.
 
 ---
 

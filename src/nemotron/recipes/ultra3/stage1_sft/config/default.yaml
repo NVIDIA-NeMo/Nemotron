@@ -1,0 +1,83 @@
+# Ultra3 packed-Parquet SFT config — paper-style packed SFT.
+#
+# Wraps the real Megatron-Bridge Ultra SFT recipe, but overrides its inherited
+# OpenMath/demo values with Nemotron 3 Ultra paper §3.1 values. This default
+# consumes Super-style packed Parquet emitted by Ultra3 data prep.
+
+run:
+  data: ultra3-sft-data:latest
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/ultra3-sft.sqsh
+    workdir: /workspace/Megatron-Bridge
+    nodes: 384
+    gpus_per_node: 8
+    ntasks_per_node: 8
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_ultra.nemotron_3_ultra_sft_openmathinstruct2_packed_config
+  hf_path: nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+  seq_length: 294912
+
+# Dataset config for packed Parquet shards from data_prep.
+# train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download.
+# Uses ultra3_packed_sft_dir for seamless config - auto-resolves to train/ and valid/.
+# Paper §3.1 packed sequence length is 294,912; the data-prep artifact must be
+# packed at 294912 to match the paper. Keep artifact path linkage below.
+dataset:
+  ultra3_packed_sft_dir: ${art:data,path}
+  seq_length: 294912
+  packed_sequence_specs:
+    packed_sequence_size: 294912
+
+model:
+  # CP-enabled long-context shape inferred for 294,912-token packed SFT; the
+  # paper states the packed length, global batch, and schedule, but not SFT
+  # parallelism. TP2/PP6/EP32 matches the MB Ultra SFT shape; CP8 reduces the
+  # per-rank sequence to 36,864 tokens.
+  tensor_model_parallel_size: 2
+  pipeline_model_parallel_size: 6
+  expert_model_parallel_size: 32
+  expert_tensor_parallel_size: 1
+  context_parallel_size: 8
+  sequence_parallel: true
+  seq_length: 294912
+  mtp_loss_scaling_factor: 0.1  # Paper MTP scaling; overrides MB recipe's 0.3.
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+  recompute_modules: null
+
+train:
+  train_iters: 3200       # 204,800 samples / global_batch_size 64.
+  global_batch_size: 64   # Paper §3.1; overrides MB recipe's 128.
+  micro_batch_size: 1
+
+validation:
+  eval_interval: 100
+  eval_iters: 8
+
+optimizer:
+  lr: 1.5e-5  # Paper §3.1; overrides MB recipe's 5e-6.
+  min_lr: 1.0e-6  # Paper §3.1; overrides MB recipe's 5e-7.
+
+scheduler:
+  lr_decay_style: cosine
+  lr_warmup_iters: 150  # 9,600 warmup samples / global_batch_size 64.
+  lr_decay_iters: 3200
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 1
+  wandb_entity: ${oc.env:WANDB_ENTITY,nvidia-nemo-fw-public}
+  wandb_project: ${oc.env:WANDB_PROJECT,megatron-bridge-nemotron-ultra}
+  wandb_exp_name: nemotron_3_ultra_packed_sft_paper_tp2_pp6_cp8_ep32
+  tensorboard_dir: /nemo_run/ultra3-sft/tb_logs
+  wandb_save_dir: /nemo_run/ultra3-sft/wandb
+
+checkpoint:
+  pretrained_checkpoint: ${oc.env:PRETRAINED_CHECKPOINT,}
+  save: /nemo_run/ultra3-sft-model
+  save_interval: 400
+
+dist:
+  distributed_timeout_minutes: 90

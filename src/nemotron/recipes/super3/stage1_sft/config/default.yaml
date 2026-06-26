@@ -46,4 +46,4 @@ checkpoint:
 # publishes it as a separate W&B artifact with -hf suffix.
 convert_to_hf:
   enabled: true
-  hf_model_id: "nvidia/Llama-3_3-Nemotron-Super-49B-v1"
+  hf_model_id: "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16"

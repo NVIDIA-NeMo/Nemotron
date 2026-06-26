@@ -1,0 +1,83 @@
+run:
+  env:
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Curator.git@d10cd6ffe9f5ac4cbb176d7b3ada698f22633aea,/opt/Curator}
+
+expt_name: byob_mcq_tiny
+random_seed: 7
+ndd_batch_size: 2
+stage: all
+
+split: test
+subset: all
+input_dir: /nemo_run/code/src/nemotron/steps/byob/data/tiny_input
+output_dir: /tmp/byob/output
+hf_dataset: cais/mmlu
+language: en-US
+metadata_file: null
+source_subjects:
+  - high_school_mathematics
+
+target_source_mapping:
+  maths:
+    subjects:
+      - high_school_mathematics
+
+few_shot_samples_per_query: 1
+queries_per_target_subject_document: 1
+num_questions_per_query: 1
+chunking_config:
+  window_size: null
+prompt_config: null
+
+generation_model_config: &tiny_model
+  alias: gpt-oss-120b
+  model: openai/gpt-oss-120b
+  provider: nvidia
+  inference_parameters:
+    max_tokens: 1024
+    max_parallel_requests: 1
+    temperature: 0.0
+    top_p: 1.0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+judge_model_config: *tiny_model
+
+semantic_deduplication_config:
+  enabled: false
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 1
+  eps: 0.07
+  remove_duplicates: false
+
+do_distractor_expansion: true
+distractor_expansion_model_config: *tiny_model
+
+do_coverage_check: false
+coverage_check_config:
+  model_identifier: null
+  window_size: null
+
+distractor_validity_model_config: *tiny_model
+
+semantic_outlier_detection_config:
+  enabled: false
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_neighbours_min: 1
+  remove_outliers: false
+
+easiness_threshold: 0.8
+hallucination_threshold: 0.5
+remove_hallucinated: false
+remove_easy: false
+filtering_model_configs:
+  # Aliases must be unique within the filter stage's model_configs list; keep
+  # them distinct from the shared `gpt-oss-120b` alias the anchor provides.
+  hallucination:
+    - alias: hal_gpt-oss-120b
+      <<: *tiny_model
+  easiness:
+    - alias: eas_gpt-oss-120b
+      <<: *tiny_model

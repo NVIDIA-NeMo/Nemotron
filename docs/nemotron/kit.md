@@ -2,7 +2,7 @@
 
 The `nemotron.kit` module provides artifact type definitions, lineage trackers, and W&B integration for Nemotron training recipes.
 
-> **Focused by Design**: Kit owns the artifact *types* (data classes like `PretrainBlendsArtifact`, `ModelArtifact`) and *tracking behavior* (W&B/file-based lineage). The underlying artifact *registry* and *resolution* (`art://` URIs, fsspec/wandb storage backends) live in [`nemo_runspec`](../nemo_runspec/package-readme). CLI, configuration, and execution also live in `nemo_runspec`. All heavy-lifting training is done by the [NVIDIA AI Stack](./nvidia-stack.md): [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) for distributed training primitives, [Megatron-Bridge](https://github.com/NVIDIA/Megatron-Bridge) for model training, and [NeMo-RL](https://github.com/NVIDIA/NeMo-RL) for reinforcement learning.
+> **Focused by Design**: Kit owns the artifact *types* (data classes like `PretrainBlendsArtifact`, `ModelArtifact`) and *tracking behavior* (W&B/file-based lineage). The underlying artifact *registry* and *resolution* (`art://` URIs, fsspec/wandb storage backends) live in [`nemo_runspec`](../nemo_runspec/package-readme). CLI, configuration, and execution also live in `nemo_runspec`. All heavy-lifting training is done by the [NVIDIA AI Stack](./nvidia-stack.md): [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) for distributed training primitives, [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) for model training, and [NeMo-RL](https://github.com/NVIDIA/NeMo-RL) for reinforcement learning.
 
 ## Overview
 

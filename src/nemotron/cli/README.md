@@ -21,6 +21,11 @@ nemotron = "nemotron.cli.bin.nemotron:main"
 
 ```
 nemotron
+├── steps                    # Generic step catalog (list / show / run / lint)
+│   ├── list                 # List discovered steps
+│   ├── show                 # Show step manifest + runspec
+│   ├── run                  # Run any step (e.g. byob/mcq, translate/nemo_curator, sft/automodel)
+│   └── lint                 # Static checks on step manifests
 ├── nano3                    # Nano3 training recipe
 │   ├── pretrain             # Stage 0: Pretraining
 │   ├── sft                  # Stage 1: Supervised fine-tuning
@@ -100,6 +105,11 @@ uv run nemotron nano3 pretrain -c tiny --dry-run
 
 # Override config values
 uv run nemotron nano3 pretrain -c tiny train.train_iters=5000
+
+# BYOB benchmark generation (via the generic step dispatcher)
+uv run nemotron steps run byob/mcq -c default stage=prepare family=mcq
+uv run nemotron steps run byob/mcq -c default stage=generate family=mcq
+uv run nemotron steps show byob/mcq        # parameters include family.choices
 
 # Data preparation
 uv run nemotron nano3 data prep pretrain --run MY-CLUSTER

@@ -150,6 +150,117 @@ class SftShardWorkItem:
 
 
 @dataclass
+class VideoExtractWorkItem:
+    """Input to AudioExtractStage — one per video to extract audio from.
+
+    Used by Omni-style video-language SFT pipelines (see
+    nemotron.data_prep.recipes.sft_omni). The youtube_id field carries the
+    bare key needed by downstream shard planning to join with QA records.
+
+    Note: this work item type is consumed by ``make_wandb_stats_hook`` (called
+    directly with hard-coded dataset_names) rather than ``pipeline_wandb_hook``
+    (which expects per-dataset/per-shard items). It deliberately does NOT
+    carry dataset_name / num_shards fields — those would be dead weight here.
+    """
+
+    video_path: str
+    audio_path: str
+    youtube_id: str
+
+    # Run context (set by driver)
+    run_hash: str
+    run_dir: str
+
+
+@dataclass
+class VlmPreferencePrepWorkItem:
+    """Input to VlmPreferencePrepStage — one per dataset prep run.
+
+    Drives the single-worker, single-stage VLM-preference cache build
+    used by Omni RL data prep. The stage extracts a media archive,
+    copies the source records (parquet), validates rows against the
+    extracted media, and writes the sentinel files NeMo-RL's response
+    datasets consume.
+
+    Note: the work item carries a coarse ``flavor`` discriminator rather
+    than a full schema-adapter callback. The current implementation
+    knows MMPR's parquet schema inline; if a second VLM preference
+    dataset arrives with a different schema, factor the row-validation
+    helpers out and replace ``flavor`` with a per-dataset adapter.
+    "Locality over DRY" until then.
+
+    Fields:
+        flavor: ``"tiny"`` (MMPR-Tiny → vision RL) or ``"mpo"`` (full MMPR
+            → MPO). Tiny runs vendored MMPR-Tiny logic; MPO defers to the
+            upstream prep script via subprocess until that logic can be
+            vendored cleanly.
+        raw_dir: Local directory holding the raw HF download
+            (``images.zip`` and ``mmpr_tiny.parquet`` for tiny).
+        output_dir: Target cache directory. Receives the extracted images,
+            the parquet copy, the preview JSONL, the summary, and the
+            ``.mmpr_ready`` sentinel.
+        meta_name: Output metadata filename (MPO flavor only; ignored for
+            tiny).
+        plan_hash: Stable hash of the prep configuration. Used by
+            ``ReceiptManager`` for resumability + cache invalidation.
+        receipts_dir: Receipt directory. MUST live outside ``output_dir``
+            so non-force resume can wipe the published cache without
+            dropping receipts.
+        builder_command: Optional shell command for the MPO flavor when
+            the vendored logic is not available (TODO: remove once
+            ``prepare_public_mmpr_for_mpo.py`` is vendored). The command
+            is formatted with ``{input_dir}``, ``{output_dir}``, and
+            ``{meta_name}`` before invocation.
+    """
+
+    flavor: Literal["tiny", "mpo"]
+    raw_dir: str
+    output_dir: str
+    meta_name: str
+    plan_hash: str
+    receipts_dir: str
+
+    # Run context
+    run_hash: str
+    run_dir: str
+
+    # MPO-only escape hatch until the upstream script can be vendored.
+    builder_command: str | None = None
+
+
+@dataclass
+class WebDatasetShardWorkItem:
+    """Input to WebDatasetShardStage — one per output Energon shard.
+
+    Each shard is independent: it owns a tuple of QA records along with the
+    resolved (video, audio) paths needed to assemble the tar. Shards are
+    grouped on the driver so that all QA pairs for a given video land in the
+    same shard — this lets the audio-extract pipeline run independently and
+    avoids any per-video work in the shard-write stage.
+
+    Fields:
+        split: "train" | "val" | "test".
+        shard_index: 0-based shard index within the split.
+        plan_hash: Stable hash of the shard plan (used by ReceiptManager).
+        output_dir: Directory where shard tar is written.
+        receipts_dir: Directory for shard receipts (lives outside output_dir
+            so cleanup of the published dataset doesn't drop the receipts).
+        records: Tuple of (video_path, audio_path, conversation_json) triples.
+    """
+
+    split: str
+    shard_index: int
+    plan_hash: str
+    output_dir: str
+    receipts_dir: str
+    records: tuple[tuple[str, str, str], ...]
+
+    # Run context
+    run_hash: str
+    run_dir: str
+
+
+@dataclass
 class JsonlDatasetWorkItem:
     """
     Input to JsonlPlanStage - one per dataset/split in a JSONL pipeline.
@@ -199,6 +310,9 @@ __all__ = [
     "ShardWorkItem",
     "SftDatasetWorkItem",
     "SftShardWorkItem",
+    "VideoExtractWorkItem",
+    "WebDatasetShardWorkItem",
     "JsonlDatasetWorkItem",
     "JsonlShardWorkItem",
+    "VlmPreferencePrepWorkItem",
 ]

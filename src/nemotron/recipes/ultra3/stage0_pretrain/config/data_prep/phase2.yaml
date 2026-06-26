@@ -1,0 +1,48 @@
+run:
+  env:
+    container: anyscale/ray:2.55.1-py312
+
+# Phase 2 (high-quality refinement bias; minus-sqrt LR decay).
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/ultra3/stage0_pretrain/config/data_prep/data_blend_raw_phase2.json
+
+# Output directory for tokenized data
+output_dir: ${oc.env:PWD}/../output/ultra3/stage0_pretrain/phase2
+
+# Number of output shards for parallel loading
+num_shards: 128
+
+# Number of shards for validation split
+valid_shards: 1
+
+# Number of shards for test split
+test_shards: 1
+
+# Tokenizer configuration (nested)
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+  add_bos: false
+  add_eos: true
+
+text_field: text
+min_doc_chars: null
+max_doc_tokens: null
+sample: null
+force: false
+config_name: phase2
+
+plan:
+  planner_cpus: 0.5
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+tokenization:
+  cpus_per_worker: 4
+observability:
+  pipeline_logging_interval_s: 30
+  wandb_log_pipeline_stats: true

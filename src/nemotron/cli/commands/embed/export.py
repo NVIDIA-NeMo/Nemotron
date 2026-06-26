@@ -102,41 +102,16 @@ def _execute_uv_local(train_path: Path, passthrough: list[str], job_config) -> N
 
     Conditionally includes TensorRT dependency based on config.
     """
-    import os
-    import shutil
-    import subprocess
+    from nemo_runspec.execution import execute_uv_local_from_spec
 
-    uv_cmd = shutil.which("uv")
-    if not uv_cmd:
-        typer.echo("Error: 'uv' command not found. Please install uv.", err=True)
-        raise typer.Exit(1)
+    extras = ["tensorrt"] if job_config.get("export_to_trt", False) else []
 
-    script_abs = SPEC.script_path
-    stage_dir = script_abs.parent
-    repo_root = SPEC.script_path.parents[len(Path(SCRIPT_PATH).parts) - 1]
-    cmd = [
-        uv_cmd, "run",
-        "--with", str(repo_root),
-        "--project", str(stage_dir),
-    ]
-
-    # Conditionally include TensorRT dependency
-    export_to_trt = job_config.get("export_to_trt", False)
-    if export_to_trt:
-        cmd += ["--extra", "tensorrt"]
-
-    cmd += [
-        "python", str(script_abs),
-        "--config", str(train_path),
-        *passthrough,
-    ]
-
-    env = os.environ.copy()
-    env.pop("VIRTUAL_ENV", None)
-
-    typer.echo(f"Executing with uv isolated environment: {' '.join(cmd)}")
-    result = subprocess.run(cmd, env=env)
-    raise typer.Exit(result.returncode)
+    execute_uv_local_from_spec(
+        spec=SPEC,
+        train_path=train_path,
+        passthrough=passthrough,
+        extras=extras,
+    )
 
 
 def _execute_remote(
@@ -155,8 +130,8 @@ def _execute_remote(
         typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
         raise typer.Exit(1)
 
-    from nemo_runspec.packaging import CodePackager
     from nemo_runspec.execution import create_executor
+    from nemo_runspec.packaging import CodePackager
     from nemo_runspec.run import (
         patch_nemo_run_ray_template_for_cpu,
         patch_nemo_run_rsync_accept_new_host_keys,

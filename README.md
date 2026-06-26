@@ -17,7 +17,9 @@
 
 ---
 
-> 🎉Nemotron 3 Ultra was announced at GTC San Jose 2026\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra-Base/README.md)\!
+> 🎉Nemotron 3 Ultra was [announced](https://www.youtube.com/live/q_umfWm8J28?t=4568s) at GTC San Jose 2026\. The model is open-source on [Hugging Face](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16), and the [training recipe](./docs/nemotron/ultra3/README.md) is now available in this repo\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra/README.md)\!
+>
+> 🎉**Nemotron 3 Nano Omni** is now released — a 30B-A3B hybrid Mamba-Transformer MoE with native text, image, video, and audio support, designed as a multimodal perception sub-agent for agentic AI. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/), the [training recipe](./docs/nemotron/omni3/README.md), and the [model weights](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16).
 
 
 ---
@@ -34,10 +36,42 @@
 
 ---
 
+## Use from Claude Code
+
+This repo ships a Claude Code plugin called **`nemotron-customize`** that turns the step catalog under [`src/nemotron/steps/`](./src/nemotron/steps/) into a guided, repo-native pipeline builder.
+
+Install once:
+
+```text
+/plugin marketplace add NVIDIA/Nemotron
+/plugin install nemotron-customize@nvidia-nemotron
+```
+
+Then, **start Claude Code from the repo root** and invoke the skill:
+
+```bash
+cd /path/to/Nemotron        # repo root: must contain pyproject.toml and src/nemotron/steps/
+claude
+```
+
+```text
+/nemotron-customize
+```
+
+The skill resolves all file paths against your current working directory, so it must be invoked from the Nemotron checkout root. Running it from a subdirectory will cause file reads to fail.
+
+The skill plans the step DAG, validates artifact wiring, and emits the YAML configs needed to run the requested pipeline. See [`skills/nemotron-customize/SKILL.md`](./skills/nemotron-customize/SKILL.md) for the full contract.
+
+> The marketplace installs **only** `nemotron-customize`. The other folders under [`skills/`](./skills/) (model knowledge bases, contributor add-`*` skills) stay on disk for repo browsing but are not loaded as plugins.
+
+---
+
 ## Repository Overview
 
 ```
 nemotron/
+│
+├── src/nemotron/steps/      Modular building blocks for training, eval, SDG, and more
 │
 ├── src/nemotron/recipes/    Training recipes (complete, reproducible pipelines)
 │
@@ -48,12 +82,12 @@ nemotron/
 
 ### Which section should I use?
 
-| | **Training Recipes** | **Usage Cookbooks** | **Use Case Examples** |
-|---|---|---|---|
-| **Purpose** | Reproduce full training pipelines from raw data to model | Deploy and use trained models | Build end-to-end applications |
-| **Format** | Python packages with configs, scripts, and evaluation | Jupyter notebooks with step-by-step guides | Jupyter notebooks and scripts |
-| **When to use** | You want to train, fine-tune, or understand how a model was built | You have a model and want to deploy or run inference | You want to build an application (RAG, agents, tool use) |
-| **Location** | [`src/nemotron/recipes/`](./src/nemotron/recipes/) | [`usage-cookbook/`](./usage-cookbook/) | [`use-case-examples/`](./use-case-examples/) |
+| | **Nemotron Steps** | **Training Recipes** | **Usage Cookbooks** | **Use Case Examples** |
+|---|---|---|---|---|
+| **Purpose** | Full lifecycle building blocks, chain data prep, training, eval and other steps | Reproduce full training pipelines from raw data to model | Deploy and use trained models | Build end-to-end applications |
+| **Format** | The `nemotron steps` CLI and YAML configs | Python packages with configs, scripts, and evaluation | Jupyter notebooks with step-by-step guides | Jupyter notebooks and scripts |
+| **When to use** | You want to run one stage in isolation or compose a custom pipeline | You want to train, fine-tune, or understand how a model was built | You have a model and want to deploy or run inference | You want to build an application (RAG, agents, tool use) |
+| **Location** | [`src/nemotron/steps/`](./src/nemotron/steps/) | [`src/nemotron/recipes/`](./src/nemotron/recipes/) | [`usage-cookbook/`](./usage-cookbook/) | [`use-case-examples/`](./use-case-examples/) |
 
 ---
 
@@ -68,6 +102,36 @@ nemotron/
 - **Ultra** — Multi-GPU datacenter applications
 
 Nemotron models excel at coding, math, scientific reasoning, tool calling, instruction following, and visual reasoning. Deploy across edge, single GPU, or data center environments with support for NeMo, TensorRT-LLM, vLLM, SGLang, and NIM microservices.
+
+---
+
+## Nemotron Steps
+
+A *Nemotron step* is a named, reusable unit of work that you invoke with the `nemotron steps` CLI.
+Each step packages a description of the work it performs, the artifacts it consumes and produces, and one or more named configurations that supply parameter values.
+Steps live under [`src/nemotron/steps/`](./src/nemotron/steps/), and the CLI discovers them at startup.
+
+The training recipes in the next section are composed from these steps.
+Run a step on its own when you want one stage, or chain steps together when you need a different pipeline shape than the published recipes.
+
+### Step Categories
+
+The catalog covers the full training lifecycle.
+
+- Data curation and preparation with `curate/*` and `data_prep/*`.
+- Synthetic data generation (SDG) with `sdg/*`.
+- Corpus translation with `translate/*`.
+- Bring-your-own benchmark generation with `byob/*`.
+- Pretraining, supervised fine-tuning (SFT), parameter-efficient fine-tuning (PEFT), and reinforcement learning (RL) with `pretrain/*`, `sft/*`, `peft/*`, and `rl/*`.
+- Checkpoint conversion and model optimization with `convert/*` and `optimize/*`.
+- Benchmark evaluation with `eval/*`.
+- Execution-profile setup with `env/*`.
+
+### Documentation
+
+- [About Nemotron Steps](docs/steps/index.md) is the entry point for the step model.
+- [Nemotron Steps Basics](docs/steps/basics.md) defines *step*, *configuration*, *environment profile*, and *artifact*.
+- [Getting Started With Steps](docs/steps/getting-started.md) walks through the CLI on a small example.
 
 ---
 
@@ -102,8 +166,35 @@ Because these are complete systems, you can extract specific techniques with con
 
 | Model | Description | Stages | Guide |
 |-------|-------------|--------|-------|
+| **[Nemotron 3 Ultra](docs/nemotron/ultra3/README.md)** | 550B total / 55B active hybrid Mamba-Attention LatentMoE Transformer with MTP and 1M context — NVIDIA's largest Nemotron 3 model for datacenter-scale agentic reasoning | Pretrain → SFT → RLVR → MOPD | [Training Guide](docs/nemotron/ultra3/README.md) |
 | **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 120.6B total / 12.7B active Hybrid Mamba Latent MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
+| **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
+
+### Nemotron 3 Ultra
+
+A training recipe for NVIDIA's largest Nemotron 3 model — a 550B-A55B hybrid Mamba-Attention Mixture-of-Experts Transformer with LatentMoE and multi-token prediction (MTP), pretrained in NVFP4 and extended to 1M-token context for datacenter-scale agentic reasoning.
+
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the tech report benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
+
+**Model Specifications**:
+- 550B total / 55B active parameters (MoE)
+- Hybrid Mamba-Attention architecture with LatentMoE + two shared-weight MTP layers
+- 20T pretraining tokens in NVFP4, two-phase data curriculum
+- Up to 1M (1,048,576) context length
+- Full program: Pretrain → SFT → RLVR → MOPD → MTP Boosting (this recipe covers **Pretrain → SFT**)
+
+**What You Can Extract**:
+- Two-phase pretraining data mixture (tech-report Figure 4) over the open Nemotron datasets
+- Ray-based data prep: tokenize raw datasets → Megatron bin/idx (pretrain) and pack chat data → Parquet (SFT)
+- New open pretraining datasets: Specialized-v1.2 (Multiple-Choice / Generative / Fact-Seeking / Moral-Scenarios) and Legal-v1
+- Stage-local container builds (Day-0 Megatron-Bridge) for both pretrain and SFT
+- Megatron-Bridge training at Ultra scale (TP=2 / PP=12 / EP=32 pretrain, PP=6 SFT)
+
+**Resources**:
+- [Training Guide](docs/nemotron/ultra3/README.md)
+- [Usage Guide](./usage-cookbook/Nemotron-3-Ultra/README.md)
+- [Model Weights (BF16)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16)
 
 ### Nemotron 3 Super
 
@@ -158,6 +249,41 @@ A complete training recipe for the open, efficient Mixture-of-Experts hybrid Mam
 - [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
 - [Model Weights (FP8)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8)
 
+### Nemotron 3 Nano Omni
+
+A multimodal training recipe for the 30B-A3B hybrid Mamba-Transformer Mixture-of-Experts model. Native support for text, image, video, and audio in a single decoder, designed as a perception sub-agent for agentic AI.
+
+![Nemotron 3 Nano Omni hybrid MoE architecture: each modality (audio via Parakeet, vision via C-RADIOv4-H + 3D convolution + Efficient Video Sampling, text via tokenizer) has its own encoder and adaptor; all streams converge on the unified 30B-A3B LLM decoder](docs/assets/omni-3.png)
+
+> **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data (e.g., CORD-v2 for SFT, public MMPR / MMPR-Tiny for RL). Results will differ from the release benchmarks, which used additional internal datasets. Use these recipes as reference implementations to apply the methodology with your own data.
+
+**Model Specifications**:
+- 30B total / 3B active parameters (A3B MoE)
+- Hybrid architecture: Mamba layers (sequence/memory efficiency) + transformer layers (reasoning), with a unified text decoder
+- Native modalities: text, image, video, audio
+- Vision encoder: C-RADIOv4-H · Audio encoder: NVIDIA Parakeet · Video pipeline: 3D convolutions + Efficient Video Sampling (EVS)
+- Context length: progressively scaled 16K → 49K → 262K
+- Best-in-class on MMlongbench-Doc, OCRBenchV2; leading on WorldSense, DailyOmni, VoiceBench
+- Up to ~9.2× greater video-reasoning system capacity, ~7.4× on multi-document workloads vs. comparable open omni models
+- License: NVIDIA Nemotron Open Model License (enterprise-friendly, on-prem and any deployment)
+
+**What You Can Extract**:
+- Multimodal SFT pipeline using Megatron-Bridge with the Valor32k recipe family (open-dataset CORD-v2 default + Valor32k variants)
+- Progressive context scaling: 16K → 49K → 262K
+- Multimodal preference optimization (MPO) on the public MMPR dataset
+- Text-only GRPO continuation of alignment via NeMo-RL
+- Vision GRPO on MMPR-Tiny
+- Inline NVIDIA stack: Megatron-Bridge for SFT, NeMo-RL (`nano-v3-omni` branch with the omni vllm fork as a submodule) for RL
+- Cookbook-style end-to-end recipe (build → data prep → SFT → RL → eval) reproducing the release training stages
+
+**Resources**:
+- [Training Guide](docs/nemotron/omni3/README.md)
+- [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/)
+- [Model Weights (BF16)](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16)
+- [Image Training Data](https://huggingface.co/datasets/nvidia/Nemotron-Image-Training-v3)
+- Upstream pre-training recipe: [`NVIDIA-NeMo/Megatron-Bridge` `nemotron_3_omni`](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/nemotron_3_omni)
+- Upstream RL recipe: [`NVIDIA-NeMo/RL` `nano-v3-omni`](https://github.com/NVIDIA-NeMo/RL/tree/nano-v3-omni)
+
 ---
 
 ## Usage Cookbooks
@@ -166,8 +292,10 @@ Practical deployment and model usage guides for Nemotron models.
 
 | Model | Best For | Key Features | Resources |
 |-------|----------|--------------|-----------|
+| [**Nemotron 3 Ultra 550B A55B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16) | Long-running coding, research, and enterprise agentic workflows | 1M context, 550B/55B MoE, MTP, multi-GPU deployment, agent harness configs | [Cookbooks](./usage-cookbook/Nemotron-3-Ultra) |
 | [**Nemotron 3 Super 120B A12B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) | Production deployments needing strong reasoning | 1M context, in NVFP4 single B200, RAG & tool calling | [Cookbooks](./usage-cookbook/Nemotron-3-Super) |
 | [**Nemotron 3 Nano 30B A3B**](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | Resource-constrained environments | 1M context, sparse MoE hybrid Mamba-2, controllable reasoning | [Cookbooks](./usage-cookbook/Nemotron-3-Nano) |
+| [**Llama-3.1-Nemotron-Nano-8B-v1**](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Nano-8B-v1) | Small-footprint OCI deployments | Validated on private OKE in Phoenix with `vLLM`, OCI Bastion service, tool calling, and OpenAI-compatible `/v1` inference; provides a reproducible OCI path comparable to common AWS GPU/Kubernetes deployment patterns | [Cookbooks](./usage-cookbook/Llama-3.1-Nemotron-Nano-8B-v1) |
 | [**NVIDIA-Nemotron-Nano-12B-v2-VL**](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL) | Document intelligence and video understanding | 12B VLM, video reasoning, Efficient Video Sampling | [Cookbooks](./usage-cookbook/Nemotron-Nano2-VL/) |
 | [**Llama-3.1-Nemotron-Safety-Guard-8B-v3**](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3) | Multilingual content moderation | 9 languages, 23 safety categories | [Cookbooks](./usage-cookbook/Llama-3.1-Nemotron-Safety-Guard-V3/) |
 | **Nemotron-Parse** | Document parsing for RAG and AI agents | Table extraction, semantic segmentation | [Cookbooks](./usage-cookbook/Nemotron-Parse-v1.1/) |

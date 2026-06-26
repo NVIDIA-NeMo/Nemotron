@@ -1,0 +1,13 @@
+# Default config for `02-nemotron-parse-ocr-sdg.py`.
+#
+# `vllm_endpoint` and `seed_path` are required; supply them on the CLI:
+#   nemotron data sdg long-document ocr --run dlw -c 02-ocr \
+#       vllm_endpoint=http://node:8000/v1 \
+#       seed_path=/lustre/.../seed_per_page.parquet \
+#       num_records=100
+
+vllm_endpoint: null
+seed_path: null
+model_alias: ocr
+num_records: 5
+artifact_path: null

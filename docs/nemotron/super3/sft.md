@@ -420,7 +420,7 @@ After SFT completes, proceed to [Stage 2: RL](./rl/index.md) for reinforcement l
 
 ## Reference
 
-- Nemotron 3 Super Tech Report (coming soon) — SFT methodology
+- [Nemotron 3 Super Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf) — SFT methodology
 - [Megatron-Bridge Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md) — MB documentation and examples
 - [NVIDIA AI Stack](../nvidia-stack.md) — Megatron-Core, Megatron-Bridge documentation
 - [Artifact Lineage](../../nemo_runspec/artifacts.md) — W&B artifact system

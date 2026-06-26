@@ -1,0 +1,8 @@
+# Default config for `04-page-classification-sdg.py`.
+# Required at runtime: vllm_endpoint, seed_path.
+vllm_endpoint: null
+seed_path: null
+model_alias: qwen-vl
+model_id: Qwen/Qwen3-VL-30B-A3B-Instruct
+num_records: 5
+artifact_path: null
