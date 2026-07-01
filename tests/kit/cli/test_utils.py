@@ -16,7 +16,7 @@
 
 import pytest
 
-from nemotron.kit.cli.utils import (
+from nemo_runspec.utils import (
     CONFIG_FILE_KEYS,
     extract_run_args,
     filter_config_file_args,
