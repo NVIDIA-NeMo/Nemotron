@@ -2,7 +2,7 @@
 
 The `nemotron.kit` module provides artifact type definitions, lineage trackers, and W&B integration for Nemotron training recipes.
 
-> **Focused by Design**: Kit owns the artifact *types* (data classes like `PretrainBlendsArtifact`, `ModelArtifact`) and *tracking behavior* (W&B/file-based lineage). The underlying artifact *registry* and *resolution* (`art://` URIs, fsspec/wandb storage backends) live in [`nemo_runspec`](../nemo_runspec/package-readme). CLI, configuration, and execution also live in `nemo_runspec`. All heavy-lifting training is done by the [NVIDIA AI Stack](./nvidia-stack.md): [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) for distributed training primitives, [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) for model training, and [NeMo-RL](https://github.com/NVIDIA/NeMo-RL) for reinforcement learning.
+> **Focused by Design**: Kit owns the artifact *types* (data classes like `PretrainBlendsArtifact`, `ModelArtifact`) and *tracking behavior* (W&B/file-based lineage). The underlying artifact *registry* and *resolution* (`art://` URIs, fsspec/wandb storage backends) live in [`nemo_runspec`](../nemo_runspec/package-readme.md). CLI, configuration, and execution also live in `nemo_runspec`. All heavy-lifting training is done by the [NVIDIA AI Stack](./nvidia-stack.md): [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) for distributed training primitives, [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) for model training, and [NeMo-RL](https://github.com/NVIDIA/NeMo-RL) for reinforcement learning.
 
 ## Overview
 
@@ -14,7 +14,7 @@ Kit handles three core responsibilities:
 | **[Lineage Tracking](./artifacts.md)** | Trackers (`WandbTracker`, `FileTracker`) | `${art:...}` OmegaConf resolvers, distributed coordination |
 | **[W&B Integration](./wandb.md)** | Init, credential handling, monkey patches, tag management | Env var injection (`build_env_vars`), `[wandb]` config loading |
 
-For CLI infrastructure, config loading, execution, and packaging, see [`nemo_runspec`](../nemo_runspec/package-readme).
+For CLI infrastructure, config loading, execution, and packaging, see [`nemo_runspec`](../nemo_runspec/package-readme.md).
 
 ## Architecture
 
@@ -185,7 +185,7 @@ src/nemotron/kit/
 
 ## Further Reading
 
-- [`nemo_runspec` Package](../nemo_runspec/package-readme) – CLI toolkit, config loading, execution, packaging
+- [`nemo_runspec` Package](../nemo_runspec/package-readme.md) – CLI toolkit, config loading, execution, packaging
 - [NVIDIA AI Stack](./nvidia-stack.md) – Megatron-Core, Megatron-Bridge, NeMo-RL
 - [OmegaConf Configuration](../nemo_runspec/omegaconf.md) – artifact interpolations and unified W&B logging
 - [Artifact Lineage](./artifacts.md) – artifact versioning and W&B lineage
