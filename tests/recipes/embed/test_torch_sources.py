@@ -71,11 +71,41 @@ def test_embed_finetune_and_export_stages_limit_python_to_312() -> None:
         assert lock_data["requires-python"] == "==3.12.*"
 
 
+def test_embed_model_stages_bound_transformers_for_nemotron_3_checkpoint() -> None:
+    expected = "transformers>=5.1,<5.6"
+
+    for stage_name in ("stage1_data_prep", "stage2_finetune", "stage3_eval"):
+        with open(EMBED_DIR / stage_name / "pyproject.toml", "rb") as f:
+            pyproject_data = tomllib.load(f)
+        assert expected in pyproject_data["project"]["dependencies"]
+
+        with open(EMBED_DIR / stage_name / "uv.lock", "rb") as f:
+            lock_data = tomllib.load(f)
+        versions = [
+            tuple(int(part) for part in package["version"].split(".")[:2])
+            for package in lock_data["package"]
+            if package["name"] == "transformers"
+        ]
+        assert len(versions) == 1
+        assert (5, 1) <= versions[0] < (5, 6)
+
+
+def test_embed_prep_uses_generic_automodel_release() -> None:
+    with open(EMBED_DIR / "stage1_data_prep" / "pyproject.toml", "rb") as f:
+        pyproject_data = tomllib.load(f)
+    assert "nemo-automodel==0.4.0" in pyproject_data["project"]["dependencies"]
+
+    with open(EMBED_DIR / "stage1_data_prep" / "uv.lock", "rb") as f:
+        lock_data = tomllib.load(f)
+    versions = [package["version"] for package in lock_data["package"] if package["name"] == "nemo-automodel"]
+    assert versions == ["0.4.0"]
+
+
 def test_embed_export_stage_matches_finetune_transformers_range() -> None:
     with open(EMBED_DIR / "stage4_export" / "pyproject.toml", "rb") as f:
         data = tomllib.load(f)
 
-    assert data["tool"]["uv"]["override-dependencies"] == ["transformers>=5.0,<5.2"]
+    assert data["tool"]["uv"]["override-dependencies"] == ["transformers>=5.1,<5.6"]
 
 
 def test_embed_export_lock_matches_finetune_transformers_range() -> None:
