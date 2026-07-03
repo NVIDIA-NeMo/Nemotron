@@ -60,3 +60,30 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
         "fused": True,
     }
     assert raw_config["model"]["torch_dtype"] == "bfloat16"
+
+
+def test_flash_adamw_disables_master_weights_for_fp32_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (False, "missing TE"))
+    monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (True, None))
+
+    cfg = train.FinetuneConfig(
+        optimizer_backend="flash_adamw",
+        flash_adamw_master_weight_bits=None,
+    )
+    raw_config, optimizer_backend = train._load_automodel_config(cfg, _as_dict)
+
+    assert optimizer_backend == "flash_adamw"
+    assert raw_config["optimizer"]["master_weight_bits"] is None
+
+
+def test_checkpoint_interval_auto_scaling_can_be_disabled() -> None:
+    cfg = train.FinetuneConfig(
+        checkpoint_every_steps=1000,
+        val_every_steps=1000,
+        auto_scale_checkpoint_intervals=False,
+    )
+
+    _, _, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+
+    assert checkpoint_every == 1000
+    assert val_every == 1000
