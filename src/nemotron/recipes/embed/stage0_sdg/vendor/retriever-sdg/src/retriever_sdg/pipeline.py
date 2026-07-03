@@ -1731,6 +1731,7 @@ def generate(
     quality_judge_provider: str = "nvidia",
     embed_model: str = "nvidia/llama-3.2-nv-embedqa-1b-v2",
     embed_provider: str = "nvidia",
+    nvidia_api_base_url: Optional[str] = None,
 ) -> None:
     """Generate synthetic queries from a directory of text files.
     
@@ -1847,8 +1848,20 @@ def generate(
     )
 
     # Initialize Data Designer
+    model_providers = None
+    if nvidia_api_base_url:
+        model_providers = [
+            dd.ModelProvider(
+                name="nvidia",
+                endpoint=nvidia_api_base_url.rstrip("/"),
+                provider_type="openai",
+                api_key="NVIDIA_API_KEY",
+            )
+        ]
+
     data_designer = DataDesigner(
         artifact_path=artifact_path,
+        model_providers=model_providers,
     )
     data_designer.set_run_config(dd.RunConfig(disable_early_shutdown=True))
 

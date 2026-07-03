@@ -20,22 +20,28 @@ fine-tuning workflow:
 - prep: Prepare training data (convert, mine, unroll)
 - finetune: Fine-tune the embedding model
 - eval: Evaluate models on retrieval metrics
-- export: Export model to ONNX/TensorRT for optimized inference
-- deploy: Deploy NIM container with custom model
+- export: Export Llama models to ONNX/TensorRT when required
+- deploy: Deploy NIM with a direct checkpoint or exported Llama model
 """
 
 from __future__ import annotations
 
 from rich.console import Console
 
-from nemotron.cli.commands.embed.sdg import META as SDG_META, sdg
-from nemotron.cli.commands.embed.prep import META as PREP_META, prep
-from nemotron.cli.commands.embed.finetune import META as FINETUNE_META, finetune
-from nemotron.cli.commands.embed.eval import META as EVAL_META, eval as eval_cmd
-from nemotron.cli.commands.embed.export import META as EXPORT_META, export
-from nemotron.cli.commands.embed.deploy import META as DEPLOY_META, deploy
-from nemotron.cli.commands.embed.run import run as run_cmd
 from nemo_runspec.recipe_typer import RecipeTyper
+from nemotron.cli.commands.embed.deploy import META as DEPLOY_META
+from nemotron.cli.commands.embed.deploy import deploy
+from nemotron.cli.commands.embed.eval import META as EVAL_META
+from nemotron.cli.commands.embed.eval import eval as eval_cmd
+from nemotron.cli.commands.embed.export import META as EXPORT_META
+from nemotron.cli.commands.embed.export import export
+from nemotron.cli.commands.embed.finetune import META as FINETUNE_META
+from nemotron.cli.commands.embed.finetune import finetune
+from nemotron.cli.commands.embed.prep import META as PREP_META
+from nemotron.cli.commands.embed.prep import prep
+from nemotron.cli.commands.embed.run import run as run_cmd
+from nemotron.cli.commands.embed.sdg import META as SDG_META
+from nemotron.cli.commands.embed.sdg import sdg
 
 console = Console()
 
@@ -59,16 +65,17 @@ def info() -> None:
     console.print("  2. [cyan]prep[/]     - Prepare training data (convert, mine, unroll)")
     console.print("  3. [cyan]finetune[/] - Fine-tune the embedding model")
     console.print("  4. [cyan]eval[/]     - Evaluate base vs fine-tuned models")
-    console.print("  5. [cyan]export[/]   - Export model to ONNX/TensorRT")
-    console.print("  6. [cyan]deploy[/]   - Deploy NIM with custom model")
+    console.print("  5. [cyan]export[/]   - Export Llama model (default skips)")
+    console.print("  6. [cyan]deploy[/]   - Deploy checkpoint or exported model with NIM")
     console.print()
     console.print("[bold]Key Components:[/bold]")
     console.print("  - retriever-sdg (synthetic data generation)")
     console.print("  - Automodel (embedding model training)")
     console.print("  - BEIR (evaluation framework)")
     console.print()
-    console.print("[bold]Base Model:[/bold]")
-    console.print("  - nvidia/llama-nemotron-embed-1b-v2")
+    console.print("[bold]Model Profiles:[/bold]")
+    console.print("  - default: nvidia/Nemotron-3-Embed-1B-BF16")
+    console.print("  - llama: nvidia/llama-nemotron-embed-1b-v2 (export path)")
 
 
 # Register stage commands
