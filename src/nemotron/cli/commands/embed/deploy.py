@@ -47,7 +47,7 @@ META = RecipeMeta(
     config_dir=str(SPEC.config_dir),
     config_model=DeployConfig,
     default_config=SPEC.config.default,
-    input_artifacts={"model": "Exported model directory (ONNX/TensorRT)"},
+    input_artifacts={"model": "Fine-tuned PyTorch checkpoint or Llama ONNX/TensorRT model directory"},
 )
 
 

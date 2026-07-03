@@ -1,3 +1,4 @@
+# Default model family: Ministral-based Nemotron 3 Embed.
 # Stage 5: Deploy Configuration
 #
 # Launches NIM embedding service with a custom fine-tuned model.
@@ -6,28 +7,42 @@
 # Usage:
 #   nemotron embed deploy -c default
 #   nemotron embed deploy -c default detach=true
-#   nemotron embed deploy -c default model_dir=/path/to/onnx
+#   nemotron embed deploy -c default model_dir=/path/to/consolidated-checkpoint
 #
 # Test the deployed service:
 #   curl -X POST http://localhost:8000/v1/embeddings \
 #     -H 'Content-Type: application/json' \
-#     -d '{"input": ["hello"], "model": "nvidia/llama-3.2-nv-embedqa-1b-v2", "input_type": "query"}'
+#     -d '{"input": ["hello"], "model": "nvidia/nemotron-3-embed-1b", "input_type": "query"}'
+
+# Root for all artifacts produced by this model profile.
+artifact_root: ./output/embed/nemotron-3-1b
 
 # NIM container image
-nim_image: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1
+nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE}
+nim_model: ${oc.env:NEMOTRON3_EMBED_NIM_MODEL,nvidia/nemotron-3-embed-1b}
 
 # Container name (for management)
 container_name: nemotron-embed-nim
 
-# Path to custom model (ONNX or TensorRT from stage4_export)
-model_dir: ./output/embed/stage4_export/onnx
+# Fine-tuned Hugging Face checkpoint mounted directly by Retriever NIM 2.x
+model_dir: ${oc.env:NEMOTRON3_EMBED_DEPLOY_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
 
-# Use ONNX instead of TensorRT
-use_onnx: true
+# Retriever Embedding NIM 2.0.0+ direct-checkpoint artifact contract.
+model_path_env: NIM_MODEL_PATH
+
+# ONNX/TensorRT conversion is not used for this model family
+use_onnx: false
+expected_model_fingerprint:
+  hidden_size: 2048
+  num_hidden_layers: 18
+  num_attention_heads: 32
+  num_key_value_heads: 8
+  intermediate_size: 5632
+  vocab_size: 131072
 
 # Container internal paths
-container_model_path: /opt/nim/custom_model
-container_cache_path: /opt/nim/.cache
+container_model_path: /model
+container_cache_path: /opt/cache
 
 # Network settings
 host_port: 8000
@@ -37,15 +52,21 @@ container_port: 8000
 gpus: all
 
 # Shared memory size
-shm_size: 2gb
+shm_size: 16gb
+
+# Model runtime settings
+max_seq_len: 512
+pipeline_id: ${oc.env:NEMOTRON3_EMBED_NIM_PIPELINE_ID,padded-naive-fp16}
 
 # Runtime settings
 detach: false  # Run in foreground by default
 remove_on_exit: true  # Remove container when stopped
 
 # Health check settings
-health_check_timeout: 120  # seconds
+health_check_timeout: 600  # seconds
 health_check_interval: 5   # seconds
 
 # Environment variable for NGC API key
 ngc_api_key_env: NGC_API_KEY
+forward_ngc_api_key: false
+allow_unhealthy_detached: false
