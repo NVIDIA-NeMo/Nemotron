@@ -1,0 +1,66 @@
+# Llama-Nemotron Embed profile.
+# Select explicitly with -c llama.
+# Stage 5: Deploy Configuration
+#
+# Launches NIM embedding service with a custom fine-tuned model.
+# The NIM provides an OpenAI-compatible embeddings API.
+#
+# Usage:
+#   nemotron embed deploy -c llama
+#   nemotron embed deploy -c llama detach=true
+#   nemotron embed deploy -c llama model_dir=/path/to/onnx
+#
+# Test the deployed service:
+#   curl -X POST http://localhost:8000/v1/embeddings \
+#     -H 'Content-Type: application/json' \
+#     -d '{"input": ["hello"], "model": "nvidia/llama-3.2-nv-embedqa-1b-v2", "input_type": "query"}'
+
+# Root for all artifacts produced by this model profile.
+artifact_root: ./output/embed
+
+# NIM container image
+nim_image: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1
+nim_model: nvidia/llama-3.2-nv-embedqa-1b-v2
+
+# Container name (for management)
+container_name: nemotron-embed-nim
+
+# Path to custom model (ONNX or TensorRT from stage4_export)
+model_dir: ${artifact_root}/stage4_export/onnx
+
+# NIM_CUSTOM_MODEL artifact contract. Retriever Embedding NIM 2.0.0+ profiles
+# override this with NIM_MODEL_PATH and mount a Hugging Face checkpoint.
+model_path_env: NIM_CUSTOM_MODEL
+
+# Use ONNX instead of TensorRT with the NIM_CUSTOM_MODEL contract
+use_onnx: true
+expected_model_fingerprint: null
+
+# Container internal paths
+container_model_path: /opt/nim/custom_model
+container_cache_path: /opt/nim/.cache
+max_seq_len: null
+pipeline_id: null
+
+# Network settings
+host_port: 8000
+container_port: 8000
+
+# GPU allocation
+gpus: all
+
+# Shared memory size
+shm_size: 2gb
+
+# Runtime settings
+detach: false  # Run in foreground by default
+remove_on_exit: true  # Remove container when stopped
+
+# Health check settings
+health_check_timeout: 120  # seconds
+health_check_interval: 5   # seconds
+
+# Environment variable for NGC API key
+ngc_api_key_env: NGC_API_KEY
+forward_ngc_api_key: true
+allow_unhealthy_detached: false
