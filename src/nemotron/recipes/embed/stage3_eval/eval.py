@@ -58,7 +58,9 @@ Usage:
 
 from __future__ import annotations
 
+import gc
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -88,6 +90,8 @@ class NIMEmbeddingModel:
         model: str = "nvidia/llama-3.2-nv-embedqa-1b-v2",
         batch_size: int = 32,
         timeout: int = 60,
+        invalid_embedding_retries: int = 3,
+        expected_dimension: int | None = None,
     ):
         """Initialize NIM embedding model.
 
@@ -96,18 +100,24 @@ class NIMEmbeddingModel:
             model: Model name for API requests.
             batch_size: Batch size for API requests.
             timeout: Request timeout in seconds.
+            invalid_embedding_retries: Retry limit for non-numeric NIM vectors.
+            expected_dimension: Required embedding dimension, if known.
         """
         self.api_url = api_url.rstrip("/")
         self.embeddings_url = f"{self.api_url}/v1/embeddings"
         self.model = model
         self.batch_size = batch_size
         self.timeout = timeout
+        self.invalid_embedding_retries = invalid_embedding_retries
+        self.expected_dimension = expected_dimension
+        self.embedding_dimension = expected_dimension
+        self.invalid_embedding_retry_requests = 0
         self._check_connection()
 
     def _check_connection(self) -> None:
         """Check if NIM API is reachable."""
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         try:
             health_url = f"{self.api_url}/v1/health/ready"
@@ -117,22 +127,26 @@ class NIMEmbeddingModel:
         except (urllib.error.URLError, TimeoutError) as e:
             print(f"Warning: Could not reach NIM at {self.api_url}: {e}")
 
-    def _encode_batch(
+    @staticmethod
+    def _embedding_is_valid(embedding: object) -> bool:
+        """Return whether an API embedding is a finite numeric vector."""
+        return (
+            isinstance(embedding, list)
+            and bool(embedding)
+            and all(
+                isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+                for value in embedding
+            )
+        )
+
+    def _request_batch(
         self,
         texts: list[str],
         input_type: str,
     ) -> list[list[float]]:
-        """Encode a batch of texts using NIM API.
-
-        Args:
-            texts: List of texts to encode.
-            input_type: Either 'query' or 'passage'.
-
-        Returns:
-            List of embedding vectors.
-        """
-        import urllib.request
+        """Send one embeddings request and return validated vectors in input order."""
         import urllib.error
+        import urllib.request
 
         payload = json.dumps({
             "input": texts,
@@ -140,28 +154,99 @@ class NIMEmbeddingModel:
             "input_type": input_type,
         }).encode("utf-8")
 
-        headers = {
-            "Content-Type": "application/json",
-        }
-
         req = urllib.request.Request(
             self.embeddings_url,
             data=payload,
-            headers=headers,
+            headers={"Content-Type": "application/json"},
             method="POST",
         )
 
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 result = json.loads(response.read().decode("utf-8"))
-                # Sort by index to ensure correct order
-                embeddings_data = sorted(result["data"], key=lambda x: x["index"])
-                return [item["embedding"] for item in embeddings_data]
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode("utf-8") if e.fp else ""
-            raise RuntimeError(f"NIM API error {e.code}: {error_body}") from e
-        except urllib.error.URLError as e:
-            raise RuntimeError(f"NIM API connection error: {e}") from e
+        except urllib.error.HTTPError as error:
+            error_body = error.read().decode("utf-8") if error.fp else ""
+            raise RuntimeError(f"NIM API error {error.code}: {error_body}") from error
+        except urllib.error.URLError as error:
+            raise RuntimeError(f"NIM API connection error: {error}") from error
+
+        served_model = result.get("model")
+        if served_model is not None and served_model != self.model:
+            raise RuntimeError(f"NIM returned model {served_model!r}; expected {self.model!r}")
+
+        embeddings_data = result.get("data")
+        if not isinstance(embeddings_data, list):
+            raise RuntimeError("NIM response is missing a data list")
+        if not all(isinstance(item, dict) for item in embeddings_data):
+            raise RuntimeError("NIM response data entries must be objects")
+
+        indices = [item.get("index") for item in embeddings_data]
+        expected_indices = list(range(len(texts)))
+        if not all(isinstance(index, int) and not isinstance(index, bool) for index in indices):
+            raise RuntimeError(f"NIM returned non-integer indices: {indices!r}")
+        if sorted(indices) != expected_indices:
+            raise RuntimeError(f"NIM returned indices {indices!r}; expected {expected_indices!r}")
+
+        return [item.get("embedding") for item in sorted(embeddings_data, key=lambda item: item["index"])]
+
+    def _validate_embedding_dimensions(self, embeddings: list[list[float]]) -> None:
+        """Require one stable embedding dimension across the full evaluation."""
+        dimensions = {len(embedding) for embedding in embeddings}
+        if len(dimensions) != 1:
+            raise RuntimeError(f"NIM returned inconsistent embedding dimensions: {sorted(dimensions)}")
+        dimension = dimensions.pop()
+        if self.embedding_dimension is None:
+            self.embedding_dimension = dimension
+        elif dimension != self.embedding_dimension:
+            raise RuntimeError(f"NIM returned embedding dimension {dimension}; expected {self.embedding_dimension}")
+
+    def _encode_batch(
+        self,
+        texts: list[str],
+        input_type: str,
+    ) -> list[list[float]]:
+        """Encode a batch, retrying transient invalid vectors independently."""
+        embeddings = self._request_batch(texts, input_type)
+        if len(embeddings) != len(texts):
+            raise RuntimeError(f"NIM returned {len(embeddings)} embeddings for {len(texts)} inputs")
+
+        for retry_number in range(self.invalid_embedding_retries + 1):
+            invalid_indices = [
+                index for index, embedding in enumerate(embeddings) if not self._embedding_is_valid(embedding)
+            ]
+            if not invalid_indices:
+                self._validate_embedding_dimensions(embeddings)
+                return embeddings
+            if retry_number == self.invalid_embedding_retries:
+                break
+
+            attempt = retry_number + 1
+            print(
+                f"Warning: NIM returned {len(invalid_indices)} invalid embedding(s); "
+                f"retrying affected inputs ({attempt}/{self.invalid_embedding_retries})."
+            )
+            for index in invalid_indices:
+                self.invalid_embedding_retry_requests += 1
+                retry_embeddings = self._request_batch([texts[index]], input_type)
+                if len(retry_embeddings) != 1:
+                    raise RuntimeError(f"NIM returned {len(retry_embeddings)} retry embeddings for 1 input")
+                embeddings[index] = retry_embeddings[0]
+
+        invalid_indices = [
+            index for index, embedding in enumerate(embeddings) if not self._embedding_is_valid(embedding)
+        ]
+        raise RuntimeError(
+            f"NIM returned invalid embeddings after {self.invalid_embedding_retries} retries "
+            f"at batch indices {invalid_indices}"
+        )
+
+    def diagnostics(self) -> dict[str, int | str | None]:
+        """Return response-validation diagnostics for result provenance."""
+        return {
+            "requested_model": self.model,
+            "embedding_dimension": self.embedding_dimension,
+            "invalid_embedding_retry_requests": self.invalid_embedding_retry_requests,
+        }
 
     def encode_queries(
         self,
@@ -189,7 +274,7 @@ class NIMEmbeddingModel:
             embeddings = self._encode_batch(batch, input_type="query")
             all_embeddings.extend(embeddings)
 
-        return np.array(all_embeddings)
+        return np.asarray(all_embeddings, dtype=np.float32)
 
     def encode_corpus(
         self,
@@ -234,7 +319,7 @@ class NIMEmbeddingModel:
             embeddings = self._encode_batch(batch, input_type="passage")
             all_embeddings.extend(embeddings)
 
-        return np.array(all_embeddings)
+        return np.asarray(all_embeddings, dtype=np.float32)
 
 
 class EvalConfig(RecipeSettings):
@@ -242,27 +327,45 @@ class EvalConfig(RecipeSettings):
 
     model_config = ConfigDict(extra="forbid")
 
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
+        description="Root directory for this model profile's pipeline artifacts.",
+    )
+
     # Model paths
-    base_model: str = Field(default="nvidia/llama-nemotron-embed-1b-v2", description="Base embedding model for comparison.")
-    finetuned_model_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated", description="Path to fine-tuned model checkpoint.")
+    base_model: str = Field(
+        default="nvidia/Nemotron-3-Embed-1B-BF16", description="Base embedding model for comparison."
+    )
+    finetuned_model_path: Path = Field(
+        default_factory=lambda data: data["artifact_root"] / "stage2_finetune/checkpoints/LATEST/model/consolidated",
+        description="Path to fine-tuned model checkpoint.",
+    )
 
     # Evaluation data
-    eval_data_path: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep/eval_beir", description="Path to BEIR-formatted evaluation data.")
+    eval_data_path: Path = Field(
+        default_factory=lambda data: data["artifact_root"] / "stage1_data_prep/eval_beir",
+        description="Path to BEIR-formatted evaluation data.",
+    )
 
     # Output settings
-    output_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage3_eval", description="Directory for saving evaluation results.")
+    output_dir: Path = Field(
+        default_factory=lambda data: data["artifact_root"] / "stage3_eval",
+        description="Directory for saving evaluation results.",
+    )
 
     # Evaluation settings
-    k_values: list[int] = Field(default_factory=lambda: [1, 5, 10, 100], description="K values for Recall@k and Precision@k metrics.")
-    batch_size: int = Field(default=128, gt=0, description="Batch size for encoding.")
+    k_values: list[int] = Field(
+        default_factory=lambda: [1, 5, 10, 100], description="K values for Recall@k and Precision@k metrics."
+    )
+    batch_size: int = Field(default=4, gt=0, description="Batch size for encoding.")
     max_length: int = Field(default=512, gt=0, description="Maximum sequence length.")
     corpus_chunk_size: int = Field(default=50000, gt=0, description="Chunk size for corpus encoding.")
 
     # Model settings
     pooling: Literal["mean", "cls", "max"] = Field(default="mean", description="Pooling strategy (BEIR naming: mean=avg, cls=cls, max=last).")
     normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
-    query_prefix: str = Field(default="query:", description="Prefix for query inputs.")
-    passage_prefix: str = Field(default="passage:", description="Prefix for passage inputs.")
+    query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
+    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
 
     # Evaluation mode
     eval_base: bool = Field(default=True, description="Whether to evaluate the base model.")
@@ -271,22 +374,46 @@ class EvalConfig(RecipeSettings):
     # NIM API evaluation settings
     eval_nim: bool = Field(default=False, description="Whether to evaluate a NIM API endpoint.")
     nim_url: str = Field(default="http://localhost:8000", description="NIM API base URL.")
-    nim_model: str = Field(default="nvidia/llama-3.2-nv-embedqa-1b-v2", description="Model name for NIM API requests.")
+    nim_model: str = Field(default="nvidia/nemotron-3-embed-1b", description="Model name for NIM API requests.")
     nim_batch_size: int = Field(default=32, gt=0, description="Batch size for NIM API requests.")
     nim_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for NIM API requests.")
+    nim_invalid_embedding_retries: int = Field(
+        default=32,
+        ge=0,
+        description="Retry limit for null or non-finite NIM embedding vectors.",
+    )
+    nim_embedding_dimension: int | None = Field(
+        default=2048,
+        gt=0,
+        description="Expected NIM embedding dimension. None learns it from the first response.",
+    )
+    nim_metric_tolerance: float = Field(
+        default=0.01,
+        ge=0,
+        description="Informational absolute metric-drift tolerance for k >= 5.",
+    )
+    nim_metric_low_k_tolerance: float = Field(
+        default=0.03,
+        ge=0,
+        description="Informational absolute metric-drift tolerance for k < 5.",
+    )
+    fail_on_nim_metric_drift: bool = Field(
+        default=False,
+        description="Fail when NIM/checkpoint metric drift exceeds configured tolerances.",
+    )
 
 
 def evaluate_model(
     model_path: str | Path,
     dataset_path: Path,
     max_length: int = 512,
-    batch_size: int = 128,
+    batch_size: int = 4,
     corpus_chunk_size: int = 50000,
     k_values: list[int] | None = None,
     pooling: str = "mean",
     normalize: bool = True,
-    query_prefix: str = "query:",
-    passage_prefix: str = "passage:",
+    query_prefix: str = "query: ",
+    passage_prefix: str = "passage: ",
 ) -> tuple[dict, dict]:
     """Evaluate an embedding model on a BEIR dataset.
 
@@ -310,7 +437,7 @@ def evaluate_model(
         from beir.retrieval import models
         from beir.retrieval.evaluation import EvaluateRetrieval
         from beir.retrieval.search.dense.exact_search import (
-            DenseRetrievalExactSearch as DRES,
+            DenseRetrievalExactSearch as DRES,  # noqa: N817
         )
     except ImportError:
         print("Error: BEIR is required for evaluation. Install with: pip install beir")
@@ -326,7 +453,7 @@ def evaluate_model(
         pooling=pooling,
         normalize=normalize,
         prompts={"query": query_prefix, "passage": passage_prefix},
-        torch_dtype="bfloat16",
+        dtype="bfloat16",
     )
 
     dres_model = DRES(
@@ -354,8 +481,10 @@ def evaluate_nim(
     dataset_path: Path,
     batch_size: int = 32,
     timeout: int = 60,
+    invalid_embedding_retries: int = 3,
+    expected_dimension: int | None = None,
     k_values: list[int] | None = None,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict[str, int | str | None]]:
     """Evaluate a NIM API endpoint on a BEIR dataset.
 
     Args:
@@ -364,16 +493,18 @@ def evaluate_nim(
         dataset_path: Path to BEIR-formatted evaluation data.
         batch_size: Batch size for API requests.
         timeout: Request timeout in seconds.
+        invalid_embedding_retries: Retry limit for invalid NIM vectors.
+        expected_dimension: Required embedding dimension, if known.
         k_values: K values for metrics.
 
     Returns:
-        Tuple of (metrics dict, results dict).
+        Tuple of (metrics dict, results dict, response diagnostics).
     """
     try:
         from beir.datasets.data_loader import GenericDataLoader
         from beir.retrieval.evaluation import EvaluateRetrieval
         from beir.retrieval.search.dense.exact_search import (
-            DenseRetrievalExactSearch as DRES,
+            DenseRetrievalExactSearch as DRES,  # noqa: N817
         )
     except ImportError:
         print("Error: BEIR is required for evaluation. Install with: pip install beir")
@@ -388,6 +519,8 @@ def evaluate_nim(
         model=nim_model,
         batch_size=batch_size,
         timeout=timeout,
+        invalid_embedding_retries=invalid_embedding_retries,
+        expected_dimension=expected_dimension,
     )
 
     # Wrap in DRES for BEIR compatibility
@@ -407,7 +540,19 @@ def evaluate_nim(
     results = retriever.retrieve(corpus, queries)
     metrics = retriever.evaluate(qrels, results, retriever.k_values)
 
-    return metrics, results
+    return metrics, results, nim_model_instance.diagnostics()
+
+
+def _release_cuda_memory() -> None:
+    """Release model references and cached CUDA allocations between eval modes."""
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
 
 
 def _print_summary_metrics(metrics: tuple, k_values: list[int]) -> None:
@@ -434,8 +579,8 @@ def run_eval(cfg: EvalConfig) -> dict:
     # Trust remote code for HuggingFace models (e.g. nvidia/llama-nemotron-embed)
     # to avoid interactive prompts during evaluation.
     os.environ.setdefault("HF_HUB_TRUST_REMOTE_CODE", "1")
-    print(f"📊 Embedding Model Evaluation")
-    print(f"=" * 60)
+    print("📊 Embedding Model Evaluation")
+    print("=" * 60)
     print(f"Eval data:       {cfg.eval_data_path}")
     print(f"Base model:      {cfg.base_model}")
     print(f"Finetuned model: {cfg.finetuned_model_path}")
@@ -443,7 +588,7 @@ def run_eval(cfg: EvalConfig) -> dict:
         print(f"NIM endpoint:    {cfg.nim_url}")
         print(f"NIM model:       {cfg.nim_model}")
     print(f"K values:        {cfg.k_values}")
-    print(f"=" * 60)
+    print("=" * 60)
     print()
 
     # Validate inputs
@@ -456,6 +601,17 @@ def run_eval(cfg: EvalConfig) -> dict:
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
 
     results = {}
+    metadata = {
+        "eval_data_path": str(cfg.eval_data_path.resolve()),
+        "k_values": cfg.k_values,
+        "base_model": cfg.base_model if cfg.eval_base else None,
+        "finetuned_model_path": (str(cfg.finetuned_model_path.resolve()) if cfg.eval_finetuned else None),
+        "nim_url": cfg.nim_url if cfg.eval_nim else None,
+        "nim_model": cfg.nim_model if cfg.eval_nim else None,
+    }
+    nim_diagnostics: dict[str, int | str | None] | None = None
+    nim_metric_comparison: dict | None = None
+    drift_failure = False
 
     # Evaluate base model
     if cfg.eval_base:
@@ -475,6 +631,7 @@ def run_eval(cfg: EvalConfig) -> dict:
         results["base"] = base_metrics
         _print_summary_metrics(base_metrics, cfg.k_values)
         print()
+        _release_cuda_memory()
 
     # Evaluate fine-tuned model
     if cfg.eval_finetuned:
@@ -498,30 +655,33 @@ def run_eval(cfg: EvalConfig) -> dict:
             results["finetuned"] = ft_metrics
             _print_summary_metrics(ft_metrics, cfg.k_values)
             print()
+            _release_cuda_memory()
 
     # Evaluate NIM endpoint
     if cfg.eval_nim:
         print(f"📈 Evaluating NIM endpoint: {cfg.nim_url}")
         try:
-            nim_metrics, _ = evaluate_nim(
+            nim_metrics, _, nim_diagnostics = evaluate_nim(
                 nim_url=cfg.nim_url,
                 nim_model=cfg.nim_model,
                 dataset_path=cfg.eval_data_path,
                 batch_size=cfg.nim_batch_size,
                 timeout=cfg.nim_timeout,
+                invalid_embedding_retries=cfg.nim_invalid_embedding_retries,
+                expected_dimension=cfg.nim_embedding_dimension,
                 k_values=cfg.k_values,
             )
             results["nim"] = nim_metrics
             _print_summary_metrics(nim_metrics, cfg.k_values)
             print()
-        except Exception as e:
-            print(f"   Error evaluating NIM: {e}")
-            print()
+        except Exception as error:
+            print(f"   Error evaluating NIM: {error}")
+            raise
 
     # Print comparison
     if "base" in results and "finetuned" in results:
-        print(f"📊 Comparison (Base -> Fine-tuned)")
-        print(f"=" * 60)
+        print("📊 Comparison (Base -> Fine-tuned)")
+        print("=" * 60)
 
         metric_names = ["NDCG", "Recall"]
         metric_indices = [0, 2]
@@ -537,32 +697,50 @@ def run_eval(cfg: EvalConfig) -> dict:
                 print(f"    {k}: {base_val:.5f} → {ft_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%)")
         print()
 
-    # Print NIM vs Fine-tuned comparison (accuracy check for export)
+    # Compare aggregate retrieval behavior. This is not a model-identity proof:
+    # local Hugging Face and NIM preprocessing/runtime paths may differ.
     if "finetuned" in results and "nim" in results:
-        print(f"📊 Comparison (Fine-tuned -> NIM)")
-        print(f"=" * 60)
-        print(f"   This verifies the exported model matches the checkpoint accuracy.")
+        print("📊 Behavioral metric comparison (Fine-tuned -> NIM)")
+        print("=" * 60)
+        print("   Informational unless fail_on_nim_metric_drift=true.")
+        print("   Artifact mount/fingerprint validation establishes deployment identity.")
         print()
 
         metric_names = ["NDCG", "Recall"]
         metric_indices = [0, 2]
+        deltas = {}
+        within_tolerance = True
 
         for name, idx in zip(metric_names, metric_indices):
             print(f"  {name}:")
-            for k in results["finetuned"][idx]:
-                ft_val = results["finetuned"][idx][k]
-                nim_val = results["nim"][idx][k]
+            deltas[name] = {}
+            for key in results["finetuned"][idx]:
+                ft_val = results["finetuned"][idx][key]
+                nim_val = results["nim"][idx][key]
                 diff = nim_val - ft_val
-                sign = "+" if diff > 0 else ""
-                # ONNX/TensorRT conversion introduces small numerical differences.
-                # Low-k metrics (e.g. @1) are noisier since a single rank swap
-                # changes the score; higher-k metrics should be more stable.
-                at_k = int(k.split("@")[1]) if "@" in k else 1
-                threshold = 0.03 if at_k < 5 else 0.01
-                status = "✓" if abs(diff) < threshold else "⚠️"
-                pct = (diff / ft_val * 100) if ft_val != 0 else float("inf")
-                print(f"    {k}: {ft_val:.5f} → {nim_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%) {status}")
+                at_k = int(key.split("@")[1]) if "@" in key else 1
+                threshold = cfg.nim_metric_low_k_tolerance if at_k < 5 else cfg.nim_metric_tolerance
+                metric_within_tolerance = abs(diff) <= threshold
+                within_tolerance = within_tolerance and metric_within_tolerance
+                deltas[name][key] = {
+                    "checkpoint": ft_val,
+                    "nim": nim_val,
+                    "delta": diff,
+                    "tolerance": threshold,
+                    "within_tolerance": metric_within_tolerance,
+                }
+                label = "within tolerance" if metric_within_tolerance else "drift"
+                print(f"    {key}: {ft_val:.5f} → {nim_val:.5f} ({diff:+.5f}) [{label}]")
         print()
+
+        nim_metric_comparison = {
+            "kind": "aggregate_behavioral_metric_drift",
+            "model_identity_proof": False,
+            "within_tolerance": within_tolerance,
+            "fail_on_drift": cfg.fail_on_nim_metric_drift,
+            "deltas": deltas,
+        }
+        drift_failure = cfg.fail_on_nim_metric_drift and not within_tolerance
 
     # Save results
     results_file = cfg.output_dir / "eval_results.json"
@@ -577,10 +755,19 @@ def run_eval(cfg: EvalConfig) -> dict:
             "Precision": metrics[3],
         }
 
+    metadata["nim_diagnostics"] = nim_diagnostics
+    metadata["nim_metric_comparison"] = nim_metric_comparison
+    serializable_results["_metadata"] = metadata
+
     with open(results_file, "w") as f:
         json.dump(serializable_results, f, indent=2)
 
-    print(f"✅ Evaluation complete!")
+    if drift_failure:
+        raise RuntimeError(
+            f"NIM behavioral metric drift exceeds the configured tolerance; details saved to {results_file}"
+        )
+
+    print("✅ Evaluation complete!")
     print(f"   Results saved to: {results_file}")
 
     # Save artifact (registers with artifact registry if kit.init() was called)
