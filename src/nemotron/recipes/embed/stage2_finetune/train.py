@@ -78,9 +78,14 @@ class FinetuneConfig(RecipeSettings):
 
     model_config = ConfigDict(extra="forbid")
 
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
+        description="Root directory for this model profile's pipeline artifacts.",
+    )
+
     # Model settings
     base_model: str = Field(
-        default="nvidia/llama-nemotron-embed-1b-v2",
+        default="nvidia/Nemotron-3-Embed-1B-BF16",
         description="Base embedding model to fine-tune.",
     )
     trust_remote_code: bool = Field(
@@ -90,14 +95,13 @@ class FinetuneConfig(RecipeSettings):
 
     # Data paths
     train_data_path: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE
-        / "output/embed/stage1_data_prep/train_mined.automodel_unrolled.json",
+        default_factory=lambda data: data["artifact_root"] / "stage1_data_prep/train_mined.automodel_unrolled.json",
         description="Path to training data file.",
     )
 
     # Output settings
     checkpoint_dir: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/embed/stage2_finetune/checkpoints",
+        default_factory=lambda data: data["artifact_root"] / "stage2_finetune/checkpoints",
         description="Directory for saving checkpoints.",
     )
 
@@ -106,7 +110,7 @@ class FinetuneConfig(RecipeSettings):
     global_batch_size: int = Field(default=128, gt=0, description="Global batch size across all GPUs.")
     local_batch_size: int = Field(default=4, gt=0, description="Per-GPU batch size.")
     learning_rate: float = Field(default=1e-5, gt=0, description="Learning rate.")
-    lr_warmup_steps: int = Field(default=1, ge=0, description="Learning rate warmup steps.")
+    lr_warmup_steps: int = Field(default=5, ge=0, description="Learning rate warmup steps.")
     lr_decay_style: Literal["cosine", "linear"] = Field(
         default="cosine",
         description="LR decay schedule (cosine, linear).",
@@ -116,9 +120,12 @@ class FinetuneConfig(RecipeSettings):
         default="auto",
         description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
     )
-    flash_adamw_master_weight_bits: Literal[24, 32] = Field(
-        default=32,
-        description="Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable.",
+    flash_adamw_master_weight_bits: Literal[24, 32] | None = Field(
+        default=None,
+        description=(
+            "Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable. "
+            "Use None when the model parameters remain FP32."
+        ),
     )
 
     # Model architecture
@@ -142,8 +149,12 @@ class FinetuneConfig(RecipeSettings):
     passage_prefix: str = Field(default="passage:", description="Prefix for passage inputs.")
 
     # Checkpointing
-    checkpoint_every_steps: int = Field(default=100, gt=0, description="Save checkpoint every N steps.")
-    val_every_steps: int = Field(default=100, gt=0, description="Run validation every N steps.")
+    checkpoint_every_steps: int = Field(default=1000, gt=0, description="Save checkpoint every N steps.")
+    val_every_steps: int = Field(default=1000, gt=0, description="Run validation every N steps.")
+    auto_scale_checkpoint_intervals: bool = Field(
+        default=False,
+        description="Reduce checkpoint/validation intervals for small datasets.",
+    )
 
 
 def _count_training_examples(train_data_path: Path) -> int:
@@ -212,13 +223,14 @@ def _auto_scale_hyperparams(
     total_steps = steps_per_epoch * num_epochs
 
     # --- Checkpoint / validation frequency ---
-    # Default is 100; cap so we get at least 3 checkpoints
-    if total_steps < cfg.checkpoint_every_steps * 3:
+    # Default is 100; cap so we get at least 3 checkpoints unless the
+    # caller explicitly chooses sparse intervals for storage-constrained runs.
+    if cfg.auto_scale_checkpoint_intervals and total_steps < cfg.checkpoint_every_steps * 3:
         checkpoint_every_steps = max(1, total_steps // 3)
     else:
         checkpoint_every_steps = cfg.checkpoint_every_steps
 
-    if total_steps < cfg.val_every_steps * 3:
+    if cfg.auto_scale_checkpoint_intervals and total_steps < cfg.val_every_steps * 3:
         val_every_steps = max(1, total_steps // 3)
     else:
         val_every_steps = cfg.val_every_steps
@@ -278,7 +290,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
                 file=sys.stderr,
             )
             sys.exit(1)
-        raw_config["optimizer"] = {
+        flash_optimizer = {
             "_target_": "flashoptim.FlashAdamW",
             "lr": raw_config.get("optimizer", {}).get("lr", cfg.learning_rate),
             "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
@@ -289,6 +301,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "master_weight_bits": cfg.flash_adamw_master_weight_bits,
             "fused": True,
         }
+        raw_config["optimizer"] = flash_optimizer
         raw_config.setdefault("model", {})["torch_dtype"] = "bfloat16"
 
     return config_node_cls(raw_config), optimizer_backend
@@ -372,10 +385,12 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg, optimizer_backend = _load_automodel_config(cfg, ConfigNode)
     optimizer_detail = optimizer_backend
     if optimizer_backend == "flash_adamw":
-        optimizer_detail = (
-            f"{optimizer_backend} "
-            f"(bf16 model, {cfg.flash_adamw_master_weight_bits}-bit master weights)"
-        )
+        if cfg.flash_adamw_master_weight_bits is None:
+            optimizer_detail = f"{optimizer_backend} (master weights disabled)"
+        else:
+            optimizer_detail = (
+                f"{optimizer_backend} (bf16 model, {cfg.flash_adamw_master_weight_bits}-bit master weights)"
+            )
     print(f"Optimizer:      {optimizer_detail}")
     print()
 

@@ -1,4 +1,5 @@
-# Default model family: Ministral-based Nemotron 3 Embed.
+# Llama-Nemotron Embed profile.
+# Select explicitly with -c llama.
 # Stage 1: Data Preparation Configuration
 #
 # Prepares training data from SDG output:
@@ -7,12 +8,12 @@
 # 3. Unroll multi-hop positives
 #
 # Usage:
-#   nemotron embed prep -c default
-#   nemotron embed prep -c default sdg_input_path=/path/to/sdg
+#   nemotron embed prep -c llama
+#   nemotron embed prep -c llama sdg_input_path=/path/to/sdg
 #
 # Remote execution (Slurm):
-#   nemotron embed prep -c default --run my-cluster
-#   nemotron embed prep -c default --batch my-cluster
+#   nemotron embed prep -c llama --run my-cluster
+#   nemotron embed prep -c llama --batch my-cluster
 
 # Execution environment configuration
 run:
@@ -21,7 +22,7 @@ run:
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
 # Root for all artifacts produced by this model profile.
-artifact_root: ./output/embed/nemotron-3-1b
+artifact_root: ./output/embed
 
 # Corpus identifier
 corpus_id: nv_pp_random
@@ -33,7 +34,7 @@ sdg_input_path: ${artifact_root}/stage0_sdg
 output_dir: ${artifact_root}/stage1_data_prep
 
 # Base embedding model for hard negative mining
-base_model: nvidia/Nemotron-3-Embed-1B-BF16
+base_model: nvidia/llama-nemotron-embed-1b-v2
 trust_remote_code: true
 
 # Quality filtering threshold (0-10 scale)

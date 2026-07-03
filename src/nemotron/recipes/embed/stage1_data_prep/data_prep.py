@@ -80,15 +80,21 @@ class DataPrepConfig(RecipeSettings):
 
     model_config = ConfigDict(extra="forbid")
 
-    corpus_id: str = Field(default="my_corpus", description="Corpus identifier (used for output naming).")
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
+        description="Root directory for this model profile's pipeline artifacts.",
+    )
+
+    corpus_id: str = Field(default="nv_pp_random", description="Corpus identifier (used for output naming).")
     sdg_input_path: Path | None = Field(
-        default=None, description="Path to SDG output directory (runs conversion to training format)."
+        default_factory=lambda data: data["artifact_root"] / "stage0_sdg",
+        description="Path to SDG output directory (runs conversion to training format).",
     )
     train_input_file: Path | None = Field(
         default=None, description="Path to pre-converted training file (skips SDG conversion)."
     )
     output_dir: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/embed/stage1_data_prep",
+        default_factory=lambda data: data["artifact_root"] / "stage1_data_prep",
         description="Output directory for prepared training data.",
     )
     artifact_recipe: Literal["embed", "rerank"] = Field(
@@ -98,7 +104,11 @@ class DataPrepConfig(RecipeSettings):
 
     # Model for hard negative mining
     base_model: str = Field(
-        default="nvidia/llama-nemotron-embed-1b-v2", description="Base embedding model for hard negative mining."
+        default="nvidia/Nemotron-3-Embed-1B-BF16", description="Base embedding model for hard negative mining."
+    )
+    trust_remote_code: bool = Field(
+        default=True,
+        description="Allow Hugging Face custom model code while loading the embedding model.",
     )
 
     # Quality filtering
@@ -108,8 +118,8 @@ class DataPrepConfig(RecipeSettings):
 
     # Train/val/test split ratios
     train_ratio: float = Field(default=0.8, gt=0, lt=1, description="Fraction of data for training.")
-    val_ratio: float = Field(default=0.1, ge=0, lt=1, description="Fraction of data for validation.")
-    test_ratio: float = Field(default=0.1, ge=0, lt=1, description="Fraction of data for testing.")
+    val_ratio: float = Field(default=0.0, ge=0, lt=1, description="Fraction of data for validation.")
+    test_ratio: float = Field(default=0.2, ge=0, lt=1, description="Fraction of data for testing.")
 
     @model_validator(mode="after")
     def _check_ratios_sum_to_one(self):
@@ -223,6 +233,8 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         str(cfg.passage_max_length),
         "--mining.attn_implementation",
         cfg.attn_implementation,
+        "--mining.trust_remote_code",
+        str(cfg.trust_remote_code).lower(),
         "--mining.add_bos_token",
         "true",
         "--mining.add_eos_token",
