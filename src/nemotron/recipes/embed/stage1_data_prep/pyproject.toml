@@ -18,6 +18,7 @@ dependencies = [
     "faiss-cpu>=1.7.4",
     # Convert script dependencies
     "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
 ]
 
 # Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
@@ -39,7 +40,6 @@ container-exclude-dependencies = [
     "torchvision",
     "flash-attn",
     "triton",
-    "pyarrow",
     "scipy",
     "opencv-python-headless",
 ]

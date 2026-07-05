@@ -101,6 +101,23 @@ def test_embed_prep_uses_generic_automodel_release() -> None:
     assert versions == ["0.4.0"]
 
 
+def test_embed_prep_installs_pyarrow_for_parquet_output() -> None:
+    with open(EMBED_DIR / "stage1_data_prep" / "pyproject.toml", "rb") as f:
+        pyproject_data = tomllib.load(f)
+
+    assert "pyarrow>=14.0.0" in pyproject_data["project"]["dependencies"]
+    assert "pyarrow" not in pyproject_data["tool"]["nemotron"]["container-exclude-dependencies"]
+
+    with open(EMBED_DIR / "stage1_data_prep" / "uv.lock", "rb") as f:
+        lock_data = tomllib.load(f)
+    runner = next(
+        package for package in lock_data["package"] if package["name"] == "recipe-runner-data-prep"
+    )
+    assert any(
+        requirement["name"] == "pyarrow" for requirement in runner["metadata"]["requires-dist"]
+    )
+
+
 def test_embed_export_stage_matches_finetune_transformers_range() -> None:
     with open(EMBED_DIR / "stage4_export" / "pyproject.toml", "rb") as f:
         data = tomllib.load(f)

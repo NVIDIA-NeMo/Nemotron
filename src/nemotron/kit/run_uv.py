@@ -104,8 +104,10 @@ def main(stage_dir: Path) -> None:
         shutil.rmtree(venv_path)
 
     print(f"[run_uv.py] Creating venv with system-site-packages at {venv_path}")
+    print(f"[run_uv.py] Base interpreter: {sys.executable}")
     result = subprocess.run([
         uv_cmd, "venv",
+        "--python", sys.executable,
         "--system-site-packages",
         "--seed",
         str(venv_path),
