@@ -39,6 +39,45 @@ def test_auto_optimizer_uses_fused_adam_when_available(monkeypatch: pytest.Monke
     assert raw_config["optimizer"]["master_weights"] is True
 
 
+def test_wandb_env_configures_automodel_native_logger(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (True, None))
+    monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (True, None))
+    monkeypatch.setenv("WANDB_ENABLED", "true")
+    monkeypatch.setenv("WANDB_PROJECT", "retriever_sdg_finetune_example")
+    monkeypatch.setenv("WANDB_ENTITY", "nvidia-merlin")
+    monkeypatch.setenv("WANDB_NAME", "embed-finetune")
+    monkeypatch.setenv("WANDB_GROUP", "nvdocs")
+    monkeypatch.setenv("WANDB_JOB_TYPE", "embed/finetune")
+    monkeypatch.setenv("WANDB_TAGS", "embed, nvdocs")
+    monkeypatch.setenv("SLURM_JOB_ID", "12345")
+
+    raw_config, _ = train._load_automodel_config(train.FinetuneConfig(), _as_dict)
+
+    assert raw_config["wandb"] == {
+        "project": "retriever_sdg_finetune_example",
+        "entity": "nvidia-merlin",
+        "name": "embed-finetune-12345",
+        "group": "nvdocs",
+        "job_type": "embed/finetune",
+        "tags": ["embed", "nvdocs"],
+    }
+
+
+def test_wandb_project_alone_does_not_enable_logging(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WANDB_ENABLED", raising=False)
+    monkeypatch.setenv("WANDB_PROJECT", "ambient-project")
+
+    assert train._wandb_config_from_env() is None
+
+
+def test_wandb_enabled_requires_project(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WANDB_ENABLED", "true")
+    monkeypatch.delenv("WANDB_PROJECT", raising=False)
+
+    with pytest.raises(ValueError, match="WANDB_PROJECT"):
+        train._wandb_config_from_env()
+
+
 def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (False, "missing TE"))
     monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (True, None))

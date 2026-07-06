@@ -878,6 +878,12 @@ project = "my-embedding-project"
 entity = "my-team"
 ```
 
+AutoModel creates one W&B run from distributed rank zero and records training
+loss, learning rate, gradient norm, memory, step timing, and validation metrics.
+Slurm run names include the Slurm job ID. Sensitive Slurm environment variables
+are delivered through a private mode-0600 file rather than being embedded in
+generated executor or sbatch files.
+
 Monitor training progress at: `https://wandb.ai/<entity>/<project>`
 
 ### Local Monitoring

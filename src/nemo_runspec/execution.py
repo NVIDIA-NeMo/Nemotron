@@ -39,6 +39,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import tempfile
 import uuid
 from collections.abc import Iterable
 from pathlib import Path
@@ -658,6 +659,95 @@ def _create_docker_executor(
 # Slurm Executor
 # =============================================================================
 
+_SENSITIVE_ENV_MARKERS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL")
+
+
+def _is_sensitive_env_name(name: str) -> bool:
+    """Return whether an environment variable name is likely to contain a secret."""
+    upper_name = name.upper()
+    return any(marker in upper_name for marker in _SENSITIVE_ENV_MARKERS)
+
+
+def _slurm_secret_cleanup_setup(remote_path: str) -> str:
+    """Build shell setup that sources a private env file without shell tracing."""
+    quoted_path = shlex.quote(remote_path)
+    return "\n".join(
+        [
+            f"_nemotron_secret_env_file={quoted_path}",
+            "set +vx",
+            'if ! . "$_nemotron_secret_env_file"; then',
+            '    echo "Error: failed to load private Slurm environment" >&2',
+            "    exit 1",
+            "fi",
+            "set -vx",
+            "trap 'status=$?; if [ \"$status\" -eq 0 ] || "
+            "[ \"${SLURM_RESTART_COUNT:-0}\" -ge \"${TORCHX_MAX_RETRIES:-0}\" ]; then "
+            "rm -f \"$_nemotron_secret_env_file\"; fi' EXIT",
+        ]
+    )
+
+
+def _prepare_slurm_secret_env(
+    env_vars: dict[str, str],
+    *,
+    tunnel: Any | None,
+    remote_job_dir: str | None,
+) -> tuple[dict[str, str], str | None]:
+    """Move sensitive Slurm variables into a private, separately uploaded file.
+
+    NeMo Run writes executor environment variables directly into generated
+    configuration and sbatch files. Its Slurm template also enables shell
+    verbose/xtrace output, so forwarding tokens there exposes them both at
+    rest and in job logs. This helper keeps non-sensitive variables on the
+    executor while uploading secrets to a mode-0600 file that the job sources
+    with tracing disabled.
+    """
+    public_env = {key: value for key, value in env_vars.items() if not _is_sensitive_env_name(key)}
+    secret_env = {key: value for key, value in env_vars.items() if _is_sensitive_env_name(key)}
+    if not secret_env:
+        return public_env, None
+    if not remote_job_dir:
+        raise ValueError("remote_job_dir is required to deliver Slurm secrets securely")
+
+    secret_dir = f"{str(remote_job_dir).rstrip('/')}/.nemotron-secrets"
+    remote_path = f"{secret_dir}/{uuid.uuid4().hex}.env"
+    payload = "".join(f"export {key}={shlex.quote(str(value))}\n" for key, value in secret_env.items())
+
+    local_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix="nemotron-slurm-env-",
+            suffix=".env",
+            delete=False,
+        ) as secret_file:
+            local_path = secret_file.name
+            secret_file.write(payload)
+        os.chmod(local_path, 0o600)
+
+        if tunnel is not None:
+            quoted_dir = shlex.quote(secret_dir)
+            quoted_remote_path = shlex.quote(remote_path)
+            tunnel.run(
+                f"umask 077; mkdir -p {quoted_dir} && chmod 700 {quoted_dir} "
+                f"&& : > {quoted_remote_path} && chmod 600 {quoted_remote_path}",
+                hide=True,
+            )
+            tunnel.put(local_path, remote_path)
+            tunnel.run(f"chmod 600 {quoted_remote_path}", hide=True)
+        else:
+            local_secret_dir = Path(secret_dir)
+            local_secret_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(local_secret_dir, 0o700)
+            shutil.copyfile(local_path, remote_path)
+            os.chmod(remote_path, 0o600)
+    finally:
+        if local_path:
+            Path(local_path).unlink(missing_ok=True)
+
+    return public_env, _slurm_secret_cleanup_setup(remote_path)
+
 
 def create_slurm_executor(
     env: Any,
@@ -737,6 +827,19 @@ def create_slurm_executor(
             tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
 
     nodes, gpus_per_node = _resolve_nodes_gpus(env, script_resources)
+    public_env_vars, secret_setup_lines = _prepare_slurm_secret_env(
+        env_vars,
+        tunnel=tunnel,
+        remote_job_dir=remote_job_dir,
+    )
+    setup_lines = _get_env(env, "setup_lines")
+    if secret_setup_lines:
+        setup_lines = "\n".join(
+            line
+            for line in (secret_setup_lines, str(setup_lines) if setup_lines else None)
+            if line
+        )
+
     executor_kwargs: dict[str, Any] = {
         "account": _get_env(env, "account"),
         "partition": partition,
@@ -750,8 +853,9 @@ def create_slurm_executor(
         "tunnel": tunnel,
         "packager": packager,
         "mem": _get_env(env, "mem"),
-        "env_vars": env_vars,
+        "env_vars": public_env_vars,
         "launcher": launcher,
+        "setup_lines": setup_lines,
     }
     if _get_env(env, "exclusive"):
         executor_kwargs["exclusive"] = True
@@ -1636,6 +1740,7 @@ def execute_uv_local(
     extra_with: list[str] | None = None,
     extras: list[str] | None = None,
     pre_script_args: list[str] | None = None,
+    env_vars: dict[str, str] | None = None,
 ) -> None:
     """Execute a stage script locally with its stage-local UV project."""
     uv_cmd = shutil.which("uv") or "uv"
@@ -1659,6 +1764,8 @@ def execute_uv_local(
     cmd.extend([str(script), "--config", str(train_path), *passthrough])
 
     env = os.environ.copy()
+    if env_vars:
+        env.update(env_vars)
     # Avoid leaking an ambient venv into the stage-local project environment.
     env.pop("VIRTUAL_ENV", None)
     src_path = str(repo_root / "src")
@@ -1687,6 +1794,7 @@ def execute_uv_local_from_spec(
     extra_with: list[str] | None = None,
     extras: list[str] | None = None,
     torchrun_nproc_per_node: str | int | None = None,
+    env_vars: dict[str, str] | None = None,
 ) -> None:
     """Execute a parsed runspec locally using its launch mode and resources."""
     script_path = Path(spec.script_path)
@@ -1713,6 +1821,7 @@ def execute_uv_local_from_spec(
         extra_with=extra_with,
         extras=extras,
         pre_script_args=pre_script_args,
+        env_vars=env_vars,
     )
 
 

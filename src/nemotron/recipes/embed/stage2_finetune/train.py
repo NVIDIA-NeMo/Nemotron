@@ -168,6 +168,40 @@ def _automodel_collator_prefix(prefix: str) -> str:
     return prefix.removesuffix(" ")
 
 
+def _wandb_config_from_env() -> dict[str, Any] | None:
+    """Build AutoModel's native W&B block from the run environment."""
+    enabled = os.environ.get("WANDB_ENABLED", "").lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return None
+
+    project = os.environ.get("WANDB_PROJECT")
+    if not project:
+        raise ValueError("WANDB_ENABLED requires WANDB_PROJECT")
+
+    config: dict[str, Any] = {"project": project}
+    optional_fields = {
+        "entity": "WANDB_ENTITY",
+        "group": "WANDB_GROUP",
+        "job_type": "WANDB_JOB_TYPE",
+        "dir": "WANDB_DIR",
+    }
+    for field, env_name in optional_fields.items():
+        value = os.environ.get(env_name)
+        if value:
+            config[field] = value
+
+    run_name = os.environ.get("WANDB_NAME")
+    slurm_job_id = os.environ.get("SLURM_JOB_ID")
+    if run_name:
+        config["name"] = f"{run_name}-{slurm_job_id}" if slurm_job_id else run_name
+
+    tags = [tag.strip() for tag in os.environ.get("WANDB_TAGS", "").split(",") if tag.strip()]
+    if tags:
+        config["tags"] = tags
+
+    return config
+
+
 def _count_training_examples(train_data_path: Path) -> int:
     """Count the number of training examples in a training data file.
 
@@ -274,6 +308,10 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     base_config_path = STAGE_PATH / "biencoder_base.yaml"
     with open(base_config_path) as f:
         raw_config = yaml.safe_load(f)
+
+    wandb_config = _wandb_config_from_env()
+    if wandb_config is not None:
+        raw_config["wandb"] = wandb_config
 
     te_available, te_error = _can_import_fused_adam()
     flash_available, flash_error = _can_import_flash_adamw()

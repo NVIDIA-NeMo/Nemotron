@@ -23,27 +23,31 @@ Also tests Ray executor helpers and the cloud Ray backend patching.
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
 import base64
 import json
 import re
+import shlex
+import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 from omegaconf import OmegaConf
 
 from nemo_runspec.execution import (
     _derive_cloud_workspace,
     _get_env,
     _git_mount_commands,
+    _parse_netrc,
+    _prepare_slurm_secret_env,
     _to_plain,
     build_env_vars,
     create_executor,
     get_executor_type,
     get_startup_commands,
-    prepend_startup_to_cmd,
-    _parse_netrc,
     materialize_podman_auth_from_enroot,
+    prepend_startup_to_cmd,
 )
 
 # ---------------------------------------------------------------------------
@@ -556,6 +560,128 @@ class TestBuildEnvVars:
         env_vars = build_env_vars(job_config, env_config)
         # Explicit env_vars should override auto-detected ones
         assert env_vars["NEMO_RUN_DIR"] == "/custom/path"
+
+
+class TestSlurmSecretEnv:
+    def test_moves_sensitive_values_out_of_executor_env(self, tmp_path):
+        secret_value = "secret value with ' quote"
+        public_env, setup_lines = _prepare_slurm_secret_env(
+            {
+                "WANDB_API_KEY": secret_value,
+                "HF_TOKEN": "hf-secret",
+                "WANDB_PROJECT": "retriever-finetune",
+            },
+            tunnel=None,
+            remote_job_dir=str(tmp_path),
+        )
+
+        assert public_env == {"WANDB_PROJECT": "retriever-finetune"}
+        assert setup_lines is not None
+        assert secret_value not in setup_lines
+        assert "hf-secret" not in setup_lines
+        assert "set +vx" in setup_lines
+        assert 'source' not in setup_lines
+        assert '. "$_nemotron_secret_env_file"' in setup_lines
+
+        secret_files = list((tmp_path / ".nemotron-secrets").glob("*.env"))
+        assert len(secret_files) == 1
+        assert secret_files[0].stat().st_mode & 0o777 == 0o600
+        payload = secret_files[0].read_text()
+        assert f"export WANDB_API_KEY={shlex.quote(secret_value)}" in payload
+        assert "export HF_TOKEN=hf-secret" in payload
+
+    def test_materialized_sbatch_contains_no_secret(self, tmp_path):
+        import nemo_run as run
+        from nemo_run.core.execution.slurm import SlurmBatchRequest
+
+        public_env, setup_lines = _prepare_slurm_secret_env(
+            {"WANDB_API_KEY": "sentinel-secret", "WANDB_PROJECT": "retriever-finetune"},
+            tunnel=None,
+            remote_job_dir=str(tmp_path),
+        )
+        executor = run.SlurmExecutor(
+            account="account",
+            partition="partition",
+            job_dir=str(tmp_path / "job"),
+            env_vars=public_env,
+            setup_lines=setup_lines,
+            launcher=None,
+        )
+        request = SlurmBatchRequest(
+            launch_cmd=["sbatch"],
+            jobs=["train"],
+            command_groups=[["python", "train.py"]],
+            executor=executor,
+            max_retries=0,
+            extra_env={},
+        )
+
+        script = request.materialize()
+
+        assert "sentinel-secret" not in script
+        assert "WANDB_API_KEY" not in script
+        assert "export WANDB_PROJECT=retriever-finetune" in script
+
+    def test_secret_source_is_not_exposed_by_shell_trace_and_cleans_up(self, tmp_path):
+        _, setup_lines = _prepare_slurm_secret_env(
+            {"WANDB_API_KEY": "trace-sentinel-secret"},
+            tunnel=None,
+            remote_job_dir=str(tmp_path),
+        )
+        secret_file = next((tmp_path / ".nemotron-secrets").glob("*.env"))
+        script = tmp_path / "job.sh"
+        script.write_text(
+            "#!/bin/bash\nset -evx\nexport TORCHX_MAX_RETRIES=0\n"
+            f"{setup_lines}\ntrue\n"
+        )
+
+        result = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+
+        combined_output = result.stdout + result.stderr
+        assert result.returncode == 0
+        assert "trace-sentinel-secret" not in combined_output
+        assert not secret_file.exists()
+
+    def test_no_sensitive_values_needs_no_secret_file(self):
+        public_env, setup_lines = _prepare_slurm_secret_env(
+            {"WANDB_PROJECT": "retriever-finetune"},
+            tunnel=None,
+            remote_job_dir=None,
+        )
+
+        assert public_env == {"WANDB_PROJECT": "retriever-finetune"}
+        assert setup_lines is None
+
+    def test_remote_secret_upload_never_embeds_value_in_setup(self):
+        class FakeTunnel:
+            def __init__(self):
+                self.commands = []
+                self.payload = None
+                self.local_path = None
+                self.remote_path = None
+
+            def run(self, command, hide=False):
+                self.commands.append((command, hide))
+
+            def put(self, local_path, remote_path):
+                self.local_path = local_path
+                self.remote_path = remote_path
+                self.payload = Path(local_path).read_text()
+
+        tunnel = FakeTunnel()
+        public_env, setup_lines = _prepare_slurm_secret_env(
+            {"NGC_API_KEY": "ngc-secret", "VISIBLE": "yes"},
+            tunnel=tunnel,
+            remote_job_dir="/lustre/jobs",
+        )
+
+        assert public_env == {"VISIBLE": "yes"}
+        assert tunnel.payload == "export NGC_API_KEY=ngc-secret\n"
+        assert tunnel.remote_path.startswith("/lustre/jobs/.nemotron-secrets/")
+        assert not Path(tunnel.local_path).exists()
+        assert "ngc-secret" not in setup_lines
+        assert all("ngc-secret" not in command for command, _ in tunnel.commands)
+        assert any("umask 077" in command and "chmod 600" in command for command, _ in tunnel.commands)
 
 
 # ---------------------------------------------------------------------------
