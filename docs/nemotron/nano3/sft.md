@@ -238,7 +238,7 @@ python examples/recipes/nemotron_3/finetune_nemotron_3_nano.py \
     --tokenizer-model /path/to/tokenizer.model
 ```
 
-See the [Megatron-Bridge Nemotron 3 documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html) for detailed configuration options.
+See the [Megatron-Bridge Nemotron 3 Nano documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/nemotron/nemotron3-nano.html) for detailed configuration options.
 
 ### Configuration
 
