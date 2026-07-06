@@ -145,8 +145,8 @@ class FinetuneConfig(RecipeSettings):
     # Tokenization
     query_max_length: int = Field(default=512, gt=0, description="Maximum query sequence length.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage sequence length.")
-    query_prefix: str = Field(default="query:", description="Prefix for query inputs.")
-    passage_prefix: str = Field(default="passage:", description="Prefix for passage inputs.")
+    query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
+    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
 
     # Checkpointing
     checkpoint_every_steps: int = Field(default=1000, gt=0, description="Save checkpoint every N steps.")
@@ -155,6 +155,17 @@ class FinetuneConfig(RecipeSettings):
         default=False,
         description="Reduce checkpoint/validation intervals for small datasets.",
     )
+
+
+def _automodel_collator_prefix(prefix: str) -> str:
+    """Adapt a complete prompt prefix for AutoModel's collator.
+
+    ``BiEncoderCollator`` inserts one ASCII space between a non-empty prefix
+    and its text. Recipe configs include that separator so mining, training,
+    and evaluation expose the same prefix contract; remove exactly that one
+    space before handing the value to the collator.
+    """
+    return prefix.removesuffix(" ")
 
 
 def _count_training_examples(train_data_path: Path) -> int:
@@ -417,8 +428,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
     automodel_cfg.dataloader.collate_fn.q_max_len = cfg.query_max_length
     automodel_cfg.dataloader.collate_fn.p_max_len = cfg.passage_max_length
-    automodel_cfg.dataloader.collate_fn.query_prefix = cfg.query_prefix
-    automodel_cfg.dataloader.collate_fn.passage_prefix = cfg.passage_prefix
+    automodel_cfg.dataloader.collate_fn.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
+    automodel_cfg.dataloader.collate_fn.passage_prefix = _automodel_collator_prefix(cfg.passage_prefix)
 
     # Training settings — use auto-scaled values
     automodel_cfg.step_scheduler.num_epochs = num_epochs

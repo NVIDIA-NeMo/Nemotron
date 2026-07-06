@@ -54,5 +54,5 @@ mining_batch_size: 128
 # Tokenization settings
 query_max_length: 512
 passage_max_length: 512
-query_prefix: "query:"
-passage_prefix: "passage:"
+query_prefix: "query: "
+passage_prefix: "passage: "

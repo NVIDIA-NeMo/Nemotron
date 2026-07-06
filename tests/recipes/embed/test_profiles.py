@@ -145,10 +145,16 @@ def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
     assert deploy.forward_ngc_api_key is False
 
 
-def test_eval_python_defaults_use_spaced_nemotron_prompts() -> None:
+def test_python_defaults_use_spaced_prompts() -> None:
+    prep = DataPrepConfig()
+    finetune = FinetuneConfig()
     evaluate = EvalConfig()
     parameters = inspect.signature(evaluate_model).parameters
 
+    assert prep.query_prefix == "query: "
+    assert prep.passage_prefix == "passage: "
+    assert finetune.query_prefix == "query: "
+    assert finetune.passage_prefix == "passage: "
     assert evaluate.batch_size == 4
     assert evaluate.query_prefix == "query: "
     assert evaluate.passage_prefix == "passage: "
@@ -221,6 +227,10 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert prep.base_model == BASE_MODEL
     assert prep.sdg_input_path == sdg.output_dir
     assert finetune.base_model == BASE_MODEL
+    assert prep.query_prefix == "query: "
+    assert prep.passage_prefix == "passage: "
+    assert finetune.query_prefix == "query: "
+    assert finetune.passage_prefix == "passage: "
     assert finetune.flash_adamw_master_weight_bits is None
     assert finetune.auto_scale_checkpoint_intervals is False
     assert evaluate.base_model == BASE_MODEL
@@ -249,12 +259,16 @@ def test_llama_profile_preserves_export_and_nim_contract() -> None:
     assert prep.base_model == "nvidia/llama-nemotron-embed-1b-v2"
     assert prep.output_dir == Path("output/embed/stage1_data_prep")
     assert finetune.base_model == prep.base_model
+    assert prep.query_prefix == "query: "
+    assert prep.passage_prefix == "passage: "
+    assert finetune.query_prefix == "query: "
+    assert finetune.passage_prefix == "passage: "
     assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.auto_scale_checkpoint_intervals is True
     assert evaluate.base_model == prep.base_model
     assert evaluate.batch_size == 128
-    assert evaluate.query_prefix == "query:"
-    assert evaluate.passage_prefix == "passage:"
+    assert evaluate.query_prefix == "query: "
+    assert evaluate.passage_prefix == "passage: "
     assert evaluate.nim_model == "nvidia/llama-3.2-nv-embedqa-1b-v2"
     assert evaluate.nim_invalid_embedding_retries == 3
     assert export.enabled is True

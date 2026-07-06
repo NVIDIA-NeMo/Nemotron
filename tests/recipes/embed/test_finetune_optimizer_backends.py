@@ -29,6 +29,8 @@ def test_auto_optimizer_uses_fused_adam_when_available(monkeypatch: pytest.Monke
     assert raw_config["dataloader"]["collate_fn"]["_target_"] == (
         "nemo_automodel.components.datasets.llm.BiEncoderCollator"
     )
+    assert raw_config["dataloader"]["collate_fn"]["query_prefix"] == "query: "
+    assert raw_config["dataloader"]["collate_fn"]["passage_prefix"] == "passage: "
     assert raw_config["distributed"]["strategy"] == "fsdp2"
     assert raw_config["optimizer"]["_target_"] == (
         "transformer_engine.pytorch.optimizers.fused_adam.FusedAdam"
@@ -74,6 +76,25 @@ def test_flash_adamw_disables_master_weights_for_fp32_models(monkeypatch: pytest
 
     assert optimizer_backend == "flash_adamw"
     assert raw_config["optimizer"]["master_weight_bits"] is None
+
+
+@pytest.mark.parametrize(
+    ("configured_prefix", "expected_collator_prefix", "expected_text"),
+    [
+        ("query: ", "query:", "query: example"),
+        ("passage: ", "passage:", "passage: example"),
+        ("custom:  ", "custom: ", "custom:  example"),
+        ("", "", "example"),
+    ],
+)
+def test_automodel_collator_preserves_configured_separator(
+    configured_prefix: str, expected_collator_prefix: str, expected_text: str
+) -> None:
+    collator_prefix = train._automodel_collator_prefix(configured_prefix)
+    effective_text = f"{collator_prefix} example" if collator_prefix else "example"
+
+    assert collator_prefix == expected_collator_prefix
+    assert effective_text == expected_text
 
 
 def test_checkpoint_interval_auto_scaling_can_be_disabled() -> None:

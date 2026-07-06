@@ -137,8 +137,8 @@ class DataPrepConfig(RecipeSettings):
     mining_batch_size: int = Field(default=128, gt=0, description="Batch size for mining.")
     query_max_length: int = Field(default=512, gt=0, description="Maximum query length for tokenization.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage length for tokenization.")
-    query_prefix: str = Field(default="query:", description="Prefix for query inputs during mining.")
-    passage_prefix: str = Field(default="passage:", description="Prefix for passage inputs during mining.")
+    query_prefix: str = Field(default="query: ", description="Prefix for query inputs during mining.")
+    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs during mining.")
 
     @model_validator(mode="after")
     def _check_input_source(self):

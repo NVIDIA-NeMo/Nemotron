@@ -53,8 +53,8 @@ corpus_chunk_size: 50000
 # Model settings
 pooling: mean
 normalize: true
-query_prefix: "query:"
-passage_prefix: "passage:"
+query_prefix: "query: "
+passage_prefix: "passage: "
 
 # Evaluation mode
 eval_base: true

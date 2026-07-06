@@ -56,8 +56,8 @@ temperature: 0.02
 # Tokenization
 query_max_length: 512
 passage_max_length: 512
-query_prefix: "query:"
-passage_prefix: "passage:"
+query_prefix: "query: "
+passage_prefix: "passage: "
 
 # Checkpointing — lower defaults so small datasets get checkpoints
 # Auto-scaled further in train.py if total steps are low
