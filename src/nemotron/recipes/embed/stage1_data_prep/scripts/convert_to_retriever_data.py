@@ -230,13 +230,16 @@ def get_corpus_id(text: str) -> str:
     return 'd_' + hex_dig[:16]
 
 
-def extract_base_filename(file_path: str) -> str:
+def normalize_file_path(file_path: str) -> str:
+    """Return a stable path key without discarding any part of the filename.
+
+    ``file_name`` values are source identifiers, not necessarily conventional
+    filenames.  In particular, values such as ``research.nvidia.com_...`` do
+    not have a file extension: using :func:`os.path.splitext` on them truncates
+    every identifier to ``research.nvidia`` and causes chunk mappings to
+    overwrite one another.
     """
-    Extract base filename from a file path.
-    """
-    base_name = os.path.basename(file_path)
-    base_name_no_ext = os.path.splitext(base_name)[0]
-    return base_name_no_ext
+    return os.path.normpath(file_path.replace("\\", "/")).replace("\\", "/")
 
 
 def normalize_file_name(file_name) -> List[str]:
@@ -264,7 +267,7 @@ def get_file_identifier(file_name_list: List[str]) -> str:
     """
     Get a canonical string identifier from a file_name list.
     
-    For single-doc (1-element list), returns the base filename.
+    For single-doc (1-element list), returns the full normalized source path.
     For multi-doc (2+ elements), returns a hash of the sorted paths.
     
     Args:
@@ -276,9 +279,10 @@ def get_file_identifier(file_name_list: List[str]) -> str:
     if not file_name_list:
         return ""
     if len(file_name_list) == 1:
-        return extract_base_filename(file_name_list[0])
+        return normalize_file_path(file_name_list[0])
     # Multi-doc: use hash of sorted paths for consistent identifier
-    return hashlib.md5("||".join(sorted(file_name_list)).encode()).hexdigest()[:16]
+    normalized_paths = sorted(normalize_file_path(path) for path in file_name_list)
+    return hashlib.md5("||".join(normalized_paths).encode()).hexdigest()[:16]
 
 
 def load_generated_json_files(input_path: str) -> pd.DataFrame:
@@ -364,10 +368,10 @@ def build_corpus_and_mappings(
     Returns:
         Tuple of:
         - corpus: Dict mapping text -> corpus_id (deduplicated by text content)
-        - chunk_mapping: Dict mapping (base_filename, chunk_id) -> text
+        - chunk_mapping: Dict mapping (file_identifier, chunk_id) -> text
     """
     corpus = {}  # text -> corpus_id
-    chunk_mapping = {}  # (base_filename, chunk_id) -> text
+    chunk_mapping = {}  # (file_identifier, chunk_id) -> text
     
     print("Building corpus and chunk mappings...")
     
@@ -481,7 +485,7 @@ def generate_training_set(
     
     Args:
         corpus: Dict mapping text -> corpus_id
-        chunk_mapping: Dict mapping (base_filename, chunk_id) -> text
+        chunk_mapping: Dict mapping (file_identifier, chunk_id) -> text
         train_df: DataFrame with QA pairs
         output_dir: Output directory path
         corpus_id: Corpus identifier
@@ -598,7 +602,7 @@ def generate_eval_set(
     
     Args:
         corpus: Dict mapping text -> corpus_id
-        chunk_mapping: Dict mapping (base_filename, chunk_id) -> text
+        chunk_mapping: Dict mapping (file_identifier, chunk_id) -> text
         eval_df: DataFrame with QA pairs
         output_dir: Output directory path
         max_pos_docs: Maximum number of positive docs per query
@@ -944,4 +948,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
