@@ -105,7 +105,7 @@ This example adds category dimensions, `traveler_segment`, `inquiry_type`, and `
 
 ## Going Further
 
-**Locale-aware persona profiles.** The current YAML schema supports category, seed, and LLM column types. To replace the static `traveler_segment` category with Census-grounded persona profiles using Data Designer's [person sampler](https://nvidia-nemo.github.io/DataDesigner/latest/concepts/person_sampling/), you can include locale, age range, and synthetic-personas integration.
+**Locale-aware persona profiles.** The current YAML schema supports category, seed, and LLM column types. To replace the static `traveler_segment` category with Census-grounded persona profiles using Data Designer's [person sampler](https://docs.nvidia.com/nemo/datadesigner/concepts/person-sampling), you can include locale, age range, and synthetic-personas integration.
 
 **Multi-turn conversations.** The example shows a single user and assistant exchange.
 For multi-turn dialogue, follow the `customer_support_tools.yaml` pattern: ask one `llm_text` column to return a JSON object with `messages` and optional `tools`, then use the `structured_messages` output projection to write training-ready JSONL.
