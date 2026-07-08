@@ -18,6 +18,7 @@ configuration, multi-GPU deployment, LoRA fine-tuning, and RL post-training.
 - **[sglang_cookbook.ipynb](sglang_cookbook.ipynb)** - Deploy Nemotron-3-Ultra with SGLang.
 - **[trtllm_cookbook.ipynb](trtllm_cookbook.ipynb)** - Deploy Nemotron-3-Ultra with TensorRT-LLM.
 - **[SparkDeploymentGuide](SparkDeploymentGuide/README.md)** - Deploy Nemotron-3-Ultra across a 4x DGX Spark cluster with vLLM, then benchmark it with NVIDIA AIPerf.
+- **[StationDeploymentGuide](StationDeploymentGuide/README.md)** - Deploy Nemotron-3-Ultra on a single GB300-based DGX Station with vLLM and selective expert offloading.
 
 ### Fine-Tuning
 
