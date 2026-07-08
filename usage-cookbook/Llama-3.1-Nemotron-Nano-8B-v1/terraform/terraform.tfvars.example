@@ -1,0 +1,12 @@
+tenancy_ocid        = "ocid1.tenancy.oc1..exampleuniqueID"
+compartment_ocid    = "ocid1.compartment.oc1..exampleuniqueID"
+config_file_profile = "API_KEY_AUTH"
+region              = "us-phoenix-1"
+cluster_name        = "nemotron-phx-private"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# Restrict Bastion session creation to your current client egress CIDR.
+bastion_client_cidrs = ["203.0.113.10/32"]
+
+# The validated deployment used Phoenix AD-2 for the A10 node pool.
+gpu_placement_ads = [2]

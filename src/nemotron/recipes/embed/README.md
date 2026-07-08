@@ -215,7 +215,7 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 - **Progress**: Built-in progress logging shows completion %, records/second, and ETA per stage
 - **Other providers**: NeMo Data Designer supports multiple providers (OpenAI, OpenRouter, etc.)
   - Customize provider settings in the config file
-  - See [default provider settings](https://nvidia-nemo.github.io/DataDesigner/latest/concepts/models/default-model-settings/) for configuration options
+  - See [default provider settings](https://docs.nvidia.com/nemo/datadesigner/concepts/models/default-model-settings) for configuration options
 
 ## Quick Start
 
