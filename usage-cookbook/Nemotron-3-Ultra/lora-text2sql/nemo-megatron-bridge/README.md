@@ -29,7 +29,7 @@ moving on.
 ## Prerequisites
 
 - A SLURM multi-node cluster with at least 48 GPUs (H100 and above) with Pyxis/enroot (`srun --container-image=...`). **This notebook was tested on GB200 nodes (4 GPUs/node).**
-- The **Nemotron-3 Ultra checkpont** downloaded to a shared path (accessible to all nodes, such as lustre) — set as `HF_MODEL_PATH`.
+- The **Nemotron-3 Ultra checkpoint** downloaded to a shared path (accessible to all nodes, such as lustre) — set as `HF_MODEL_PATH`.
 - A **Hugging Face token** placed at `${HF_HOME}/token`.
 - This notebook directory on a **shared filesystem** the compute nodes can mount.
 - A working **container image**. The notebook ships with a placeholder
