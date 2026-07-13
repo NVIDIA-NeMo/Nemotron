@@ -284,6 +284,7 @@ ds = load_dataset('nvidia/Retrieval-Synthetic-NVDocs-v1', split='train')
 ds.to_json('./output/embed/stage0_sdg/nv_docs_sdg.json')
 "
 
+# `datasets.to_json()` writes JSONL; Stage 1 accepts that file when given its directory.
 # Start from Stage 1 (data preparation) using the downloaded data
 nemotron embed prep -c default sdg_input_path=./output/embed/stage0_sdg
 
