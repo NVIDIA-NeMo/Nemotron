@@ -23,7 +23,7 @@ backend: nim
 
 # Backend container images
 # The empty fallback lets backend=vllm work without the NIM environment variable.
-nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE,}
+nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE,''}
 vllm_image: nvcr.io/nvidia/vllm:26.06-py3
 nim_model: ${oc.env:NEMOTRON3_EMBED_NIM_MODEL,nvidia/nemotron-3-embed-1b}
 

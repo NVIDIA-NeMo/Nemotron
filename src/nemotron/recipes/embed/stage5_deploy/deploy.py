@@ -178,6 +178,11 @@ class DeployConfig(RecipeSettings):
 
     @model_validator(mode="after")
     def _require_selected_backend_image(self) -> DeployConfig:
+        # ``load_pydantic_config`` preserves OmegaConf's quoted empty fallback
+        # as the literal string ``''``. Treat it as unset while leaving the raw
+        # interpolation intact for direct YAML schema validation.
+        if self.nim_image in {"", "''", '""', "null", "None"}:
+            self.nim_image = None
         if self.backend == "nim" and (self.nim_image is None or not self.nim_image.strip()):
             raise ValueError("NEMOTRON3_EMBED_NIM_IMAGE must be set when backend=nim")
         if self.backend == "vllm" and not self.vllm_image.strip():
