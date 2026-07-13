@@ -19,7 +19,9 @@ Generates synthetic Q&A pairs from document corpus using retriever-sdg.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -41,6 +43,82 @@ from nemotron.recipes.embed.stage0_sdg.data_prep import SDGConfig
 SCRIPT_PATH = "src/nemotron/recipes/embed/stage0_sdg/data_prep.py"
 SCRIPT_REMOTE = "src/nemotron/recipes/embed/stage0_sdg/run_uv.py"
 SPEC = parse_runspec(SCRIPT_PATH)
+
+_SECRET_PLACEHOLDER = "<redacted>"
+
+
+def _config_get(container: Any, key: str) -> Any:
+    if container is None:
+        return None
+    if isinstance(container, dict):
+        return container.get(key)
+    get = getattr(container, "get", None)
+    if callable(get):
+        try:
+            return get(key)
+        except Exception:  # noqa: BLE001
+            pass
+    return getattr(container, key, None)
+
+
+def _config_set(container: Any, key: str, value: Any) -> None:
+    if container is None:
+        return
+    if isinstance(container, dict):
+        container[key] = value
+        return
+    try:
+        setattr(container, key, value)
+    except Exception:  # noqa: BLE001
+        try:
+            container[key] = value
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _redact_api_key_args(args: Any) -> list[str]:
+    redacted: list[str] = []
+    redact_next = False
+    for raw_arg in list(args or []):
+        arg = str(raw_arg)
+        if redact_next:
+            redacted.append(_SECRET_PLACEHOLDER)
+            redact_next = False
+            continue
+        if arg in {"nvidia_api_key", "--nvidia_api_key", "--nvidia-api-key"}:
+            redacted.append(arg)
+            redact_next = True
+            continue
+        for prefix in ("nvidia_api_key=", "--nvidia_api_key=", "--nvidia-api-key="):
+            if arg.startswith(prefix):
+                redacted.append(f"{prefix}{_SECRET_PLACEHOLDER}")
+                break
+        else:
+            redacted.append(arg)
+    return redacted
+
+
+def _extract_and_redact_nvidia_api_key(job_config: Any, train_config_for_script: Any | None = None) -> str | None:
+    """Move SDG API keys out of persisted config and into executor env vars."""
+    secret = _config_get(job_config, "nvidia_api_key")
+    if secret:
+        _config_set(job_config, "nvidia_api_key", None)
+    if train_config_for_script is not None:
+        train_secret = _config_get(train_config_for_script, "nvidia_api_key")
+        if train_secret:
+            _config_set(train_config_for_script, "nvidia_api_key", None)
+            secret = secret or train_secret
+
+    run_config = _config_get(job_config, "run")
+    cli_config = _config_get(run_config, "cli")
+    if cli_config is not None:
+        for field in ("argv", "dotlist"):
+            values = _config_get(cli_config, field)
+            if values is not None:
+                _config_set(cli_config, field, _redact_api_key_args(values))
+
+    return str(secret) if secret else None
+
 
 META = RecipeMeta(
     name=SPEC.name,
@@ -75,6 +153,8 @@ def _execute_sdg(cfg: RecipeConfig, *, experiment=None):
         env_profile=env,
     )
 
+    secret_api_key = _extract_and_redact_nvidia_api_key(job_config)
+
     display_job_config(job_config, for_remote=False)  # code packager: always False
 
     if cfg.dry_run:
@@ -83,15 +163,21 @@ def _execute_sdg(cfg: RecipeConfig, *, experiment=None):
     # 2. Save configs and prepare execution
     job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=False)
+    train_secret_api_key = _extract_and_redact_nvidia_api_key(job_config, train_config_for_script)
+    secret_api_key = secret_api_key or train_secret_api_key or os.environ.get("NVIDIA_API_KEY")
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
 
     env_for_executor = job_config.run.env if hasattr(job_config.run, "env") else None
     env_vars = build_env_vars(job_config, env_for_executor)
+    if secret_api_key:
+        env_vars["NVIDIA_API_KEY"] = secret_api_key
 
     display_job_submission(job_path, train_path, env_vars, cfg.mode)
 
     # 3. Execute based on mode
     if cfg.mode == "local":
+        if secret_api_key:
+            os.environ["NVIDIA_API_KEY"] = secret_api_key
         _execute_uv_local(train_path, cfg.passthrough)
     else:
         _execute_remote(
