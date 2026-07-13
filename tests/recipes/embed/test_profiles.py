@@ -111,10 +111,10 @@ def test_default_sdg_uses_configured_api() -> None:
     sdg = _load_default_config("stage0_sdg", SDGConfig)
 
     assert sdg.nvidia_api_base_url == TEST_SDG_API_BASE_URL
-    assert sdg.artifact_extraction_model == "nvidia/nvidia/nemotron-3-ultra-nvfp4"
+    assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
     assert sdg.qa_generation_model == sdg.artifact_extraction_model
     assert sdg.quality_judge_model == sdg.artifact_extraction_model
-    assert sdg.embed_model == "nvidia/nvidia/llama-3.2-nv-embedqa-1b-v2"
+    assert sdg.embed_model == "nvidia/llama-3.2-nv-embedqa-1b-v2"
 
 
 def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
@@ -223,7 +223,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     deploy = _load_profile_config("default", "stage5_deploy", DeployConfig)
 
     assert sdg.output_dir == Path("output/embed/nemotron-3-1b/stage0_sdg")
-    assert sdg.artifact_extraction_model == "nvidia/nvidia/nemotron-3-ultra-nvfp4"
+    assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
     assert prep.base_model == BASE_MODEL
     assert prep.sdg_input_path == sdg.output_dir
     assert finetune.base_model == BASE_MODEL

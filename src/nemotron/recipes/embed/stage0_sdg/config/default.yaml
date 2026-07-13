@@ -121,19 +121,19 @@ max_docs_per_bundle: 3
 # ==============================================================================
 
 # Artifact extraction
-artifact_extraction_model: nvidia/nvidia/nemotron-3-ultra-nvfp4
+artifact_extraction_model: nvidia/nemotron-3-ultra-550b-a55b
 artifact_extraction_provider: nvidia
 
 # QA generation
-qa_generation_model: nvidia/nvidia/nemotron-3-ultra-nvfp4
+qa_generation_model: nvidia/nemotron-3-ultra-550b-a55b
 qa_generation_provider: nvidia
 
 # Quality judge
-quality_judge_model: nvidia/nvidia/nemotron-3-ultra-nvfp4
+quality_judge_model: nvidia/nemotron-3-ultra-550b-a55b
 quality_judge_provider: nvidia
 
 # Embedding
-embed_model: nvidia/nvidia/llama-3.2-nv-embedqa-1b-v2
+embed_model: nvidia/llama-3.2-nv-embedqa-1b-v2
 embed_provider: nvidia
 
 # Maximum parallel requests for generation models (null = library default)

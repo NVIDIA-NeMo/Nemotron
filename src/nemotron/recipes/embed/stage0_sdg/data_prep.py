@@ -109,10 +109,14 @@ class SDGConfig(RecipeSettings):
     )
 
     # --- Document processing ---------------------------------------------------
-    min_text_length: int = Field(default=50, ge=0, description="Minimum text length (characters) for documents to include.")
+    min_text_length: int = Field(
+        default=50, ge=0, description="Minimum text length (characters) for documents to include."
+    )
     sentences_per_chunk: int = Field(default=5, gt=0, description="Number of sentences per chunk for text splitting.")
     num_sections: int = Field(default=1, gt=0, description="Number of sections to divide chunks into.")
-    num_files: int | None = Field(default=None, gt=0, description="Maximum number of files to process. None means process all files.")
+    num_files: int | None = Field(
+        default=None, gt=0, description="Maximum number of files to process. None means process all files."
+    )
 
     # --- Generation parameters -------------------------------------------------
     max_artifacts_per_type: int = Field(
@@ -131,34 +135,42 @@ class SDGConfig(RecipeSettings):
 
     # --- Batch processing ------------------------------------------------------
     batch_size: int = Field(default=200, gt=0, description="Number of records to process per batch.")
-    start_batch_index: int = Field(default=0, ge=0, description="Batch index to start from (for resuming failed runs).")
+    start_batch_index: int = Field(
+        default=0, ge=0, description="Batch index to start from (for resuming failed runs)."
+    )
     end_batch_index: int = Field(default=-1, description="Batch index to end at (exclusive). -1 means all batches.")
 
     # --- Multi-document bundling -----------------------------------------------
     multi_doc: bool = Field(default=False, description="Enable multi-document bundling mode.")
     bundle_size: int = Field(default=2, gt=0, description="Number of documents per bundle in multi-doc mode.")
-    bundle_strategy: str = Field(default="sequential", description="Segment splitting strategy: 'sequential', 'doc_balanced', or 'interleaved'.")
+    bundle_strategy: str = Field(
+        default="sequential", description="Segment splitting strategy: 'sequential', 'doc_balanced', or 'interleaved'."
+    )
     max_docs_per_bundle: int = Field(default=3, gt=0, description="Maximum documents allowed per bundle.")
-    multi_doc_manifest: str | None = Field(default=None, description="Path to manifest file defining explicit bundles (JSON/YAML).")
+    multi_doc_manifest: str | None = Field(
+        default=None, description="Path to manifest file defining explicit bundles (JSON/YAML)."
+    )
 
     # --- Model configuration ---------------------------------------------------
     artifact_extraction_model: str = Field(
-        default="nvidia/nvidia/nemotron-3-ultra-nvfp4", description="Model name for artifact extraction."
+        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for artifact extraction."
     )
     artifact_extraction_provider: str = Field(default="nvidia", description="Provider for artifact extraction model.")
     qa_generation_model: str = Field(
-        default="nvidia/nvidia/nemotron-3-ultra-nvfp4", description="Model name for QA generation."
+        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for QA generation."
     )
     qa_generation_provider: str = Field(default="nvidia", description="Provider for QA generation model.")
     quality_judge_model: str = Field(
-        default="nvidia/nvidia/nemotron-3-ultra-nvfp4", description="Model name for quality judge."
+        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for quality judge."
     )
     quality_judge_provider: str = Field(default="nvidia", description="Provider for quality judge model.")
-    embed_model: str = Field(
-        default="nvidia/nvidia/llama-3.2-nv-embedqa-1b-v2", description="Model name for embeddings."
-    )
+    embed_model: str = Field(default="nvidia/llama-3.2-nv-embedqa-1b-v2", description="Model name for embeddings.")
     embed_provider: str = Field(default="nvidia", description="Provider for embedding model.")
-    max_parallel_requests_for_gen: int | None = Field(default=None, gt=0, description="Maximum parallel requests for generation models. None uses the library default.")
+    max_parallel_requests_for_gen: int | None = Field(
+        default=None,
+        gt=0,
+        description="Maximum parallel requests for generation models. None uses the library default.",
+    )
 
     # --- Runtime options -------------------------------------------------------
     artifact_path: Path = Field(
@@ -191,7 +203,7 @@ def _resolve_corpus_dir(corpus_dir: str) -> Path:
     from huggingface_hub import snapshot_download
 
     # Parse hf://org/dataset[@revision][/subdir/path]
-    rest = corpus_dir[len(_HF_PREFIX):]
+    rest = corpus_dir[len(_HF_PREFIX) :]
     parts = rest.split("/", 2)
     if len(parts) < 2:
         print(f"Error: Invalid hf:// URI: {corpus_dir}", file=sys.stderr)
@@ -296,8 +308,7 @@ def _validate_corpus(
             )
         else:
             print(
-                f"Error: All {total_scanned} files were skipped "
-                f"(below min_text_length={min_text_length}).",
+                f"Error: All {total_scanned} files were skipped (below min_text_length={min_text_length}).",
                 file=sys.stderr,
             )
         sys.exit(1)
@@ -519,9 +530,7 @@ def main(cfg: SDGConfig | None = None) -> Path:
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, SDGConfig)

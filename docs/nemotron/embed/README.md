@@ -214,7 +214,7 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA's hosted LLMs:
 
 - **Default endpoint**: Data Designer built-in, optionally overridden with `NVIDIA_API_BASE_URL`
-- **Default generation/judge model**: `nvidia/nvidia/nemotron-3-ultra-nvfp4`
+- **Default generation/judge model**: `nvidia/nemotron-3-ultra-550b-a55b`
 - **`llama` profile model**: `nvidia/nemotron-3-nano-30b-a3b` through the API Catalog defaults
 - **Usage**: ~4 API calls per document (artifact extraction, QA generation, dedup, quality eval)
 - **Access and limits**: Depend on the selected NVIDIA endpoint and credential
@@ -252,7 +252,7 @@ nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 ```
 
-Stage 0 uses `nvidia/nvidia/nemotron-3-ultra-nvfp4` through Data
+Stage 0 uses `nvidia/nemotron-3-ultra-550b-a55b` through Data
 Designer's built-in endpoint or the optional `NVIDIA_API_BASE_URL` override.
 Model-dependent artifacts are isolated
 under `output/embed/nemotron-3-1b/`. The deploy stage mounts
@@ -944,9 +944,7 @@ ls -lh output/embed/stage2_finetune/checkpoints/
 
 **How much does SDG model quality impact final embedding accuracy, and when is it worth upgrading the SDG model?**
 
-The SDG model directly determines the quality of synthetic queries and answers used to train the embedding model, so it has a first-order effect on final retrieval accuracy. The default model (`nvidia/nemotron-3-nano-30b-a3b`) is a practical starting point that balances cost, speed, and structured-generation reliability. Consider upgrading the SDG model when: (1) quality scores from the SDG quality judge are consistently low (median below 7/10), (2) you observe that generated queries are shallow or fail to capture the reasoning patterns your users need, or (3) your domain has highly specialized terminology that the default model handles poorly. You can swap SDG models per-task via config — e.g., use a stronger model for `qa_generation_model` while keeping the lighter one for `artifact_extraction_model` and `quality_judge_model` to control cost. Run a small pilot (50–100 docs) with each model and compare the downstream Stage 3 eval metrics to decide whether the upgrade is worth the added latency and API cost.
-
-As of now, we’ve seen good results with the NVIDIA Nemotron Super 49B and Nemotron Ultra 253B
+The SDG model directly determines the quality of synthetic queries and answers used to train the embedding model, so it has a first-order effect on final retrieval accuracy. The default profile uses `nvidia/nemotron-3-ultra-550b-a55b` to prioritize generation and judging quality; the `llama` profile uses `nvidia/nemotron-3-nano-30b-a3b` as a lower-cost starting point. Consider changing the SDG model when: (1) quality scores from the SDG quality judge are consistently low (median below 7/10), (2) generated queries are shallow or miss the reasoning patterns users need, or (3) cost and latency are too high for the corpus size. You can select models per task—for example, keep a stronger `qa_generation_model` while using a smaller approved model for artifact extraction and judging. Run a small pilot (50–100 docs) and compare downstream Stage 3 metrics on the same held-out set before adopting a different model.
 
 **How should SDG prompts be designed to reliably capture rare words and domain-specific identifiers (bug IDs, product IDs, versions) that matter for retrieval accuracy?**
 

@@ -897,8 +897,8 @@ class TestLeptonAutoMountFiltering:
         executor = create_executor(env=env, env_vars={}, packager=_FakePackager())
         assert executor.mounts == [{"path": "/data", "mount_path": "/data"}]
 
-    def test_pre_launch_includes_auto_mount_commands(self):
-        """Auto_mount registered repos become pre_launch git clones."""
+    def test_pre_launch_remains_user_controlled(self):
+        """Auto-mount clones belong to the ordered inline launch script."""
         env = _make_env(
             executor="lepton",
             container_image="img",
@@ -908,9 +908,7 @@ class TestLeptonAutoMountFiltering:
         mounts = {"r": {"url": "u", "ref": "main", "target": "/opt/r"}}
         with patch("nemo_runspec.config.resolvers.get_git_mounts", return_value=mounts):
             executor = create_executor(env=env, env_vars={}, packager=_FakePackager())
-        # user commands preserved + git clone appended
-        assert "echo hello" in executor.pre_launch_commands
-        assert any("clone" in c and "/opt/r" in c for c in executor.pre_launch_commands)
+        assert executor.pre_launch_commands == ["echo hello"]
 
 
 # ---------------------------------------------------------------------------

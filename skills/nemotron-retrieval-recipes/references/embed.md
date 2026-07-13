@@ -11,6 +11,7 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 - Stage Map
 - Stage Contracts
 - Model Profiles
+- Profile Selection Invariants
 - Operating Patterns
 - NIM Smoke Test
 - Tests And Checks
@@ -115,7 +116,7 @@ Default (`-c default`):
 - Uses `nvidia/Nemotron-3-Embed-1B-BF16` from Hugging Face.
 - Stage 0 uses Data Designer's built-in endpoint or the generic
   `NVIDIA_API_BASE_URL` override and
-  `nvidia/nvidia/nemotron-3-ultra-nvfp4` for generation and judging.
+  `nvidia/nemotron-3-ultra-550b-a55b` for generation and judging.
 - Model-dependent outputs are isolated below `output/embed/nemotron-3-1b/`.
 - Every stage derives its paths from `artifact_root`; a pipeline-wide override
   relocates the complete artifact chain without changing model identity.
@@ -144,6 +145,20 @@ Llama profile (`-c llama`):
 - Stage 5 uses `nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1`, mounts
   the export at `/opt/nim/custom_model`, sets `NIM_CUSTOM_MODEL`, and
   retains NGC credential forwarding.
+
+## Profile Selection Invariants
+
+- Run `uv run nemotron embed info` when model identity is unclear, then carry
+  the selected `-c` value and `artifact_root` through every stage.
+- Both profiles use approved NVIDIA checkpoint code with
+  `trust_remote_code=true`; keep Transformers in the supported `>=5.1,<5.6`
+  range across prep, finetune, eval, and export.
+- Do not copy performance overrides between profiles without a dry-run. The
+  default Nemotron 3 eval batch is `4`; the Llama profile uses `128`.
+- Preserve each profile's optimizer and checkpoint defaults. Nemotron 3 uses
+  no FlashAdamW master weights and fixed 1000-step checkpoint/validation
+  intervals; Llama uses 32-bit master weights and auto-scaled 100-step
+  intervals.
 
 ```bash
 uv run nemotron embed run -c default -d --from sdg --to eval

@@ -63,6 +63,7 @@ import json
 import math
 import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -148,11 +149,13 @@ class NIMEmbeddingModel:
         import urllib.error
         import urllib.request
 
-        payload = json.dumps({
-            "input": texts,
-            "model": self.model,
-            "input_type": input_type,
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "input": texts,
+                "model": self.model,
+                "input_type": input_type,
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             self.embeddings_url,
@@ -362,7 +365,9 @@ class EvalConfig(RecipeSettings):
     corpus_chunk_size: int = Field(default=50000, gt=0, description="Chunk size for corpus encoding.")
 
     # Model settings
-    pooling: Literal["mean", "cls", "max"] = Field(default="mean", description="Pooling strategy (BEIR naming: mean=avg, cls=cls, max=last).")
+    pooling: Literal["mean", "cls", "max"] = Field(
+        default="mean", description="Pooling strategy (BEIR naming: mean=avg, cls=cls, max=last)."
+    )
     normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
     query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
     passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
@@ -403,6 +408,30 @@ class EvalConfig(RecipeSettings):
     )
 
 
+@contextmanager
+def _allow_beir_tokenizer_remote_code(beir_huggingface_module):
+    """Make BEIR trust custom tokenizer code while constructing its wrapper.
+
+    BEIR 2.2 passes ``trust_remote_code=True`` to ``AutoModel`` but not to
+    ``AutoTokenizer``. Custom embedding checkpoints therefore prompt on a
+    non-interactive Slurm job and fail. Replace only the module-local tokenizer
+    reference while constructing the wrapper, then restore it immediately.
+    """
+    tokenizer_class = beir_huggingface_module.AutoTokenizer
+
+    class _TrustedAutoTokenizer:
+        @staticmethod
+        def from_pretrained(*args, **kwargs):
+            kwargs["trust_remote_code"] = True
+            return tokenizer_class.from_pretrained(*args, **kwargs)
+
+    beir_huggingface_module.AutoTokenizer = _TrustedAutoTokenizer
+    try:
+        yield
+    finally:
+        beir_huggingface_module.AutoTokenizer = tokenizer_class
+
+
 def evaluate_model(
     model_path: str | Path,
     dataset_path: Path,
@@ -436,6 +465,7 @@ def evaluate_model(
         from beir.datasets.data_loader import GenericDataLoader
         from beir.retrieval import models
         from beir.retrieval.evaluation import EvaluateRetrieval
+        from beir.retrieval.models import huggingface as beir_huggingface
         from beir.retrieval.search.dense.exact_search import (
             DenseRetrievalExactSearch as DRES,  # noqa: N817
         )
@@ -446,15 +476,16 @@ def evaluate_model(
     if k_values is None:
         k_values = [1, 5, 10, 100]
 
-    dense_model = models.HuggingFace(
-        model_path=str(model_path),
-        max_length=max_length,
-        append_eos_token=False,
-        pooling=pooling,
-        normalize=normalize,
-        prompts={"query": query_prefix, "passage": passage_prefix},
-        dtype="bfloat16",
-    )
+    with _allow_beir_tokenizer_remote_code(beir_huggingface):
+        dense_model = models.HuggingFace(
+            model_path=str(model_path),
+            max_length=max_length,
+            append_eos_token=False,
+            pooling=pooling,
+            normalize=normalize,
+            prompts={"query": query_prefix, "passage": passage_prefix},
+            dtype="bfloat16",
+        )
 
     dres_model = DRES(
         dense_model,
@@ -793,9 +824,7 @@ def main(cfg: EvalConfig | None = None) -> dict:
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, EvalConfig)

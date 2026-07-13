@@ -9,8 +9,8 @@ The evaluation is functional: it checks whether agents use the skill when public
 ## Dataset Rules
 
 - Keep prompts realistic. Do not name the skill in user prompts.
-- Include positive cases for embedding planning, reranker selection, deployment debugging, stale artifact diagnosis, secret-safe setup, prerequisite gating, remote execution, long-running job boundaries, docs-to-checkout reconciliation, metric interpretation, stage readiness, and export/deploy boundary debugging.
-- Include negative cases where the skill should not activate, including unrelated factual questions and generic vector database advice.
+- Include positive cases for embedding planning, embed profile selection, reranker selection, deployment debugging, stale artifact diagnosis, secret-safe setup, prerequisite gating, remote execution, long-running job boundaries, docs-to-checkout reconciliation, metric interpretation, stage readiness, and export/deploy boundary debugging.
+- Include negative cases where the skill should not activate, including unrelated factual questions, generic vector database or benchmark advice, generic retrieval theory, and non-recipe Docker/Slurm/NIM troubleshooting.
 - Keep `expected_skill`, `ground_truth`, and ordered `expected_behavior` entries explicit enough for deterministic and judge-based grading.
 - Do not commit generated `evals/results/` output; commit only reusable fixtures and summary reports.
 
@@ -21,6 +21,7 @@ Score agent usefulness above raw runtime. Strong with-skill trajectories should:
 - activate on public Nemotron `embed`/`rerank` recipe tasks and stay inactive for generic retrieval or vector database advice,
 - inspect or cite the current repo surface before relying on stale docs or memory,
 - choose `embed` vs `rerank` from the retrieval failure mode,
+- select and preserve the default Nemotron 3 or explicit Llama embed profile and its artifact contract,
 - recommend help/dry-run checks before API, GPU, Docker, Slurm, NIM, or other long-running work,
 - handle secrets through environment configuration without asking users to paste values,
 - separate preview commands, execution commands, polling cadence, and compact run reports.
@@ -43,8 +44,15 @@ Use the current checkout rather than memory. Run the smallest relevant subset of
 
 ```bash
 uv run --no-sync nemotron embed --help
+uv run --no-sync nemotron embed info
 uv run --no-sync nemotron embed run -c default -d --from sdg --to prep
 uv run --no-sync nemotron embed run -c default -d --from prep --to eval
+uv run --no-sync nemotron embed finetune -c llama -d
+uv run --no-sync nemotron embed export -c default -d
+uv run --no-sync nemotron embed export -c llama -d
+# After configuring an approved NEMOTRON3_EMBED_NIM_IMAGE:
+uv run --no-sync nemotron embed deploy -c default -d
+uv run --no-sync nemotron embed deploy -c llama -d
 uv run --no-sync nemotron rerank --help
 uv run --no-sync nemotron rerank run -c default -d --from prep --to eval
 uv run --no-sync nemotron rerank eval -c default -d eval_nim=true eval_base=false

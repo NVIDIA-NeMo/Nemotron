@@ -6,6 +6,7 @@ import ast
 import inspect
 import json
 import textwrap
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -43,6 +44,26 @@ def test_local_eval_uses_transformers_dtype_keyword() -> None:
 
     assert ast.literal_eval(keywords["dtype"]) == "bfloat16"
     assert "torch_dtype" not in keywords
+
+
+def test_beir_tokenizer_remote_code_is_trusted_and_loader_is_restored() -> None:
+    from nemotron.recipes.embed.stage3_eval import eval as eval_module
+
+    calls = []
+
+    class FakeAutoTokenizer:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            calls.append((args, kwargs))
+            return object()
+
+    beir_huggingface = SimpleNamespace(AutoTokenizer=FakeAutoTokenizer)
+
+    with eval_module._allow_beir_tokenizer_remote_code(beir_huggingface):
+        beir_huggingface.AutoTokenizer.from_pretrained("custom/model", use_fast=True)
+
+    assert calls == [(("custom/model",), {"use_fast": True, "trust_remote_code": True})]
+    assert beir_huggingface.AutoTokenizer is FakeAutoTokenizer
 
 
 def test_invalid_nim_embedding_is_retried(monkeypatch) -> None:
