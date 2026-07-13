@@ -1,7 +1,14 @@
 ---
 name: nemotron-retrieval-recipes
-description: Use when planning, debugging, tuning, evaluating, exporting, or deploying public Nemotron `embed`/`rerank` retrieval recipes, including Ministral-based Nemotron 3 Embed and Llama-Nemotron Embed profiles. Do not use for generic retrieval theory or vector database selection.
+version: "0.1.0"
+author: "NVIDIA Nemotron Team <noreply@nvidia.com>"
 license: Apache-2.0
+tags:
+  - nemotron
+  - retrieval
+  - fine-tuning
+  - embeddings
+  - reranking
 metadata:
   author: "NVIDIA Nemotron Team <noreply@nvidia.com>"
   tags:
@@ -10,6 +17,11 @@ metadata:
     - fine-tuning
     - embeddings
     - reranking
+tools:
+  - Read
+  - Bash
+  - Search
+description: Use when planning, debugging, tuning, evaluating, exporting, or deploying public Nemotron `embed`/`rerank` retrieval recipes.
 ---
 
 # Nemotron Retrieval Recipes
