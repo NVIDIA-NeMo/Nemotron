@@ -280,7 +280,9 @@ uses vLLM's `/v2/embed` endpoint and passes `input_type` (`query` or
 `passage`) without adding text prefixes itself. The evaluator retries
 null/non-finite NIM responses up to 32 times per affected input, but every
 retry warning should still be treated as a serving-reliability defect. The
-checkpoint requires Transformers 5.1 through 5.5.
+Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
+the deployable checkpoint; Stages 1 and 3 retain Transformers 5.1 through 5.5
+for the original checkpoint path.
 
 The served-endpoint evaluation commands above evaluate the fine-tuned checkpoint and the
 served endpoint in one process, records endpoint/model/dimension diagnostics,

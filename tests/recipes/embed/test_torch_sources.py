@@ -71,13 +71,17 @@ def test_embed_finetune_and_export_stages_limit_python_to_312() -> None:
         assert lock_data["requires-python"] == "==3.12.*"
 
 
-def test_embed_model_stages_bound_transformers_for_nemotron_3_checkpoint() -> None:
-    expected = "transformers>=5.1,<5.6"
+def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
+    expected_by_stage = {
+        "stage1_data_prep": "transformers>=5.1,<5.6",
+        "stage2_finetune": "transformers==5.12.1",
+        "stage3_eval": "transformers>=5.1,<5.6",
+    }
 
-    for stage_name in ("stage1_data_prep", "stage2_finetune", "stage3_eval"):
+    for stage_name, expected_dependency in expected_by_stage.items():
         with open(EMBED_DIR / stage_name / "pyproject.toml", "rb") as f:
             pyproject_data = tomllib.load(f)
-        assert expected in pyproject_data["project"]["dependencies"]
+        assert expected_dependency in pyproject_data["project"]["dependencies"]
 
         with open(EMBED_DIR / stage_name / "uv.lock", "rb") as f:
             lock_data = tomllib.load(f)
@@ -86,8 +90,26 @@ def test_embed_model_stages_bound_transformers_for_nemotron_3_checkpoint() -> No
             for package in lock_data["package"]
             if package["name"] == "transformers"
         ]
-        assert len(versions) == 1
-        assert (5, 1) <= versions[0] < (5, 6)
+        if stage_name == "stage2_finetune":
+            assert versions == [(5, 12)]
+        else:
+            assert len(versions) == 1
+            assert (5, 1) <= versions[0] < (5, 6)
+
+    automodel_archive = (
+        "https://github.com/NVIDIA-NeMo/Automodel/archive/"
+        "a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+    )
+    with open(EMBED_DIR / "stage2_finetune" / "pyproject.toml", "rb") as f:
+        finetune_project = tomllib.load(f)
+    assert finetune_project["tool"]["uv"]["sources"]["nemo-automodel"] == {"url": automodel_archive}
+
+    with open(EMBED_DIR / "stage2_finetune" / "uv.lock", "rb") as f:
+        finetune_lock = tomllib.load(f)
+    automodel = next(
+        package for package in finetune_lock["package"] if package["name"] == "nemo-automodel"
+    )
+    assert automodel["source"] == {"url": automodel_archive}
 
 
 def test_embed_prep_uses_generic_automodel_release() -> None:
@@ -118,7 +140,7 @@ def test_embed_prep_installs_pyarrow_for_parquet_output() -> None:
     )
 
 
-def test_embed_export_stage_matches_finetune_transformers_range() -> None:
+def test_embed_export_stage_keeps_its_custom_model_transformers_range() -> None:
     with open(EMBED_DIR / "stage4_export" / "pyproject.toml", "rb") as f:
         data = tomllib.load(f)
 
