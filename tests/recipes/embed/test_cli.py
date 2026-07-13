@@ -62,8 +62,8 @@ class TestEmbedAppStructure:
     def test_deploy_help_shows_direct_checkpoint_defaults(self):
         result = runner.invoke(app, ["embed", "deploy", "--help"])
         assert result.exit_code == 0
-        assert "NIM_MODEL_PATH" in result.output
-        assert "padded-naive-fp16" in result.output
+        assert "NIM_ENGINE_MODE" in result.output
+        assert "padded-naive" in result.output
         assert "16gb" in result.output
 
     def test_export_help_explains_default_no_op(self):

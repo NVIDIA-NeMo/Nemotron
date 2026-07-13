@@ -30,9 +30,9 @@
 
 """Deploy an embedding service with a custom model checkpoint.
 
-The default backend launches NVIDIA NIM. Retriever Embedding NIM 2.0.0 and
+The default backend launches NVIDIA NIM. Retriever Embedding NIM 2.1.0 and
 later consume a Hugging Face-style safetensors directory through
-``NIM_MODEL_PATH``. Older NIM images use the ``NIM_CUSTOM_MODEL`` contract for
+``NIM_ENGINE_MODEL_PATH``. Older NIM images use the ``NIM_CUSTOM_MODEL`` contract for
 exported ONNX/TensorRT artifacts. The optional vLLM backend serves the same
 Hugging Face checkpoint and is evaluated through vLLM's ``/v2/embed`` API.
 
@@ -110,11 +110,11 @@ class DeployConfig(RecipeSettings):
     )
     use_onnx: bool = Field(
         default=False,
-        description="NIM_CUSTOM_MODEL artifact selector. Ignored when model_path_env is NIM_MODEL_PATH.",
+        description="NIM_CUSTOM_MODEL artifact selector. Ignored when model_path_env selects a direct checkpoint.",
     )
-    model_path_env: Literal["NIM_CUSTOM_MODEL", "NIM_MODEL_PATH"] = Field(
-        default="NIM_MODEL_PATH",
-        description="NIM environment variable used to select the mounted model artifacts.",
+    model_path_env: Literal["NIM_CUSTOM_MODEL", "NIM_ENGINE_MODEL_PATH", "NIM_MODEL_PATH"] = Field(
+        default="NIM_ENGINE_MODEL_PATH",
+        description="NIM artifact selector; NIM_ENGINE_MODEL_PATH is the default for Retriever NIM 2.1.0+.",
     )
     expected_model_fingerprint: dict[str, int] | None = Field(
         default_factory=lambda: {
@@ -167,7 +167,7 @@ class DeployConfig(RecipeSettings):
     forward_ngc_api_key: bool = Field(
         default=False,
         description=(
-            "Forward NGC_API_KEY into the container. Local NIM_MODEL_PATH artifacts "
+            "Forward NGC_API_KEY into the container. Local NIM_ENGINE_MODEL_PATH artifacts "
             "do not require it; enable for NIM_CUSTOM_MODEL or model-download workflows when needed."
         ),
     )
@@ -281,14 +281,21 @@ def build_docker_command(cfg: DeployConfig) -> list[str]:
             print(f"Warning: {cfg.ngc_api_key_env} not set. NIM may not authenticate properly.")
 
     if cfg.backend == "nim":
-        # Custom model environment variables. NIM 2.0.0+ uses NIM_MODEL_PATH
-        # for staged Hugging Face artifacts; older NIMs use NIM_CUSTOM_MODEL.
-        if cfg.model_path_env == "NIM_MODEL_PATH":
+        # NIM 2.1.0+ uses engine-prefixed variables for Hugging Face checkpoints.
+        # Keep NIM_MODEL_PATH for existing 2.0 deployments that override this setting.
+        if cfg.model_path_env == "NIM_ENGINE_MODEL_PATH":
+            cmd.extend(["-e", f"NIM_ENGINE_MODEL_NAME={cfg.nim_model}"])
+        elif cfg.model_path_env == "NIM_MODEL_PATH":
             cmd.extend(["-e", f"NIM_MODEL_NAME={cfg.nim_model}"])
         cmd.extend(["-e", f"{cfg.model_path_env}={cfg.container_model_path}"])
 
         if cfg.max_seq_len is not None:
-            cmd.extend(["-e", f"NIM_MAX_SEQ_LEN={cfg.max_seq_len}"])
+            max_seq_len_env = (
+                "NIM_PIPELINE_MAX_SEQ_LEN"
+                if cfg.model_path_env == "NIM_ENGINE_MODEL_PATH"
+                else "NIM_MAX_SEQ_LEN"
+            )
+            cmd.extend(["-e", f"{max_seq_len_env}={cfg.max_seq_len}"])
         if cfg.pipeline_id:
             cmd.extend(["-e", f"NIM_PIPELINE_ID={cfg.pipeline_id}"])
 
@@ -339,7 +346,7 @@ def build_docker_environment(cfg: DeployConfig) -> dict[str, str]:
 
 def model_artifact_errors(cfg: DeployConfig) -> list[str]:
     """Return missing or incompatible model artifact diagnostics."""
-    if cfg.backend == "vllm" or cfg.model_path_env == "NIM_MODEL_PATH":
+    if cfg.backend == "vllm" or cfg.model_path_env in {"NIM_ENGINE_MODEL_PATH", "NIM_MODEL_PATH"}:
         errors: list[str] = []
         config_path = cfg.model_dir / "config.json"
         if not config_path.is_file():

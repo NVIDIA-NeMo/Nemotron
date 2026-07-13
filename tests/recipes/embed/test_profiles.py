@@ -136,7 +136,7 @@ def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
     assert deploy.nim_image == NIM_IMAGE
     assert deploy.vllm_image == "nvcr.io/nvidia/vllm:26.06-py3"
     assert deploy.model_dir == Path("output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated")
-    assert deploy.model_path_env == "NIM_MODEL_PATH"
+    assert deploy.model_path_env == "NIM_ENGINE_MODEL_PATH"
     assert deploy.use_onnx is False
     assert deploy.expected_model_fingerprint == {
         "hidden_size": 2048,
@@ -251,7 +251,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert export.enabled is False
     assert deploy.nim_image == NIM_IMAGE
     assert deploy.backend == "nim"
-    assert deploy.model_path_env == "NIM_MODEL_PATH"
+    assert deploy.model_path_env == "NIM_ENGINE_MODEL_PATH"
     assert deploy.use_onnx is False
     assert deploy.model_dir == finetune.checkpoint_dir / "LATEST/model/consolidated"
 

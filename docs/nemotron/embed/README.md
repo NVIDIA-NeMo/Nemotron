@@ -265,19 +265,19 @@ Model-dependent artifacts are isolated
 under `output/embed/nemotron-3-1b/`. Both deploy backends mount
 `stage2_finetune/checkpoints/LATEST/model/consolidated` read-only at `/model`
 without ONNX or TensorRT conversion. NIM selects it through
-`NIM_MODEL_PATH=/model`; vLLM runs `vllm serve /model` and detects the
+`NIM_ENGINE_MODEL_PATH=/model`; vLLM runs `vllm serve /model` and detects the
 checkpoint's embedding configuration automatically.
 Because the artifact is already local, neither path forwards `NGC_API_KEY`
 into the container.
 
 The deploy preflight requires the supported fingerprint: hidden size 2048,
-18 layers, 32 attention heads, 8 key/value heads, intermediate size 5632, and
+16 layers, 24 attention heads, 8 key/value heads, intermediate size 6144, and
 vocabulary size 131072. NIM uses a 512-token runtime limit and defaults to
 `padded-naive-fp16`; override that NIM setting with
 `NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives the checkpoint's sequence
 length, pooling, activation, and prompt behavior automatically. The evaluator
 uses vLLM's `/v2/embed` endpoint and passes `input_type` (`query` or
-`passage`) without adding text prefixes itself. The evaluator retries
+`document`) without adding text prefixes itself. The evaluator retries
 null/non-finite NIM responses up to 32 times per affected input, but every
 retry warning should still be treated as a serving-reliability defect. The
 Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
@@ -337,7 +337,7 @@ Stages are designed to run sequentially, but you can start from any stage if you
 | **Stage 5** | PyTorch checkpoint (`default`) or exported model (`llama`) | Deploy existing model |
 
 The `default` profile loads the Stage 2 Hugging Face-style
-PyTorch checkpoint directly through `NIM_MODEL_PATH`, so Stage 4 is an explicit
+PyTorch checkpoint directly through `NIM_ENGINE_MODEL_PATH`, so Stage 4 is an explicit
 no-op. The `llama` profile retains Stage 4 and the exported-model path.
 
 See individual stage READMEs for input format requirements.
@@ -531,7 +531,7 @@ enabled: false
 backend: nim  # Override with backend=vllm
 vllm_image: nvcr.io/nvidia/vllm:26.06-py3
 model_dir: ./output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated
-model_path_env: NIM_MODEL_PATH
+model_path_env: NIM_ENGINE_MODEL_PATH
 container_model_path: /model
 max_seq_len: 512  # NIM runtime setting; vLLM reads checkpoint metadata
 ```
@@ -676,7 +676,7 @@ Model: fine-tuned
 | Recipe sequence length | 512 | 512 by default; model supports longer inputs |
 | Deployment backend | Retriever NIM or NVIDIA vLLM | Retriever NIM |
 | Serving input artifact | Hugging Face PyTorch/safetensors checkpoint | ONNX or TensorRT export |
-| NIM selector | `NIM_MODEL_PATH` when using NIM | `NIM_CUSTOM_MODEL` |
+| NIM selector | `NIM_ENGINE_MODEL_PATH` when using NIM | `NIM_CUSTOM_MODEL` |
 | Stage 4 | Skipped | Enabled |
 
 ## Troubleshooting

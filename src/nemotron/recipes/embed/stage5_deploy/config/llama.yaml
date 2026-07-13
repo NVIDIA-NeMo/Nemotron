@@ -29,7 +29,7 @@ container_name: nemotron-embed-nim
 model_dir: ${artifact_root}/stage4_export/onnx
 
 # NIM_CUSTOM_MODEL artifact contract. Retriever Embedding NIM 2.0.0+ profiles
-# override this with NIM_MODEL_PATH and mount a Hugging Face checkpoint.
+# override this with NIM_ENGINE_MODEL_PATH and mount a Hugging Face checkpoint.
 model_path_env: NIM_CUSTOM_MODEL
 
 # Use ONNX instead of TensorRT with the NIM_CUSTOM_MODEL contract

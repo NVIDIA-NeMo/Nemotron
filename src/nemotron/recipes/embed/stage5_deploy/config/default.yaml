@@ -33,8 +33,8 @@ container_name: nemotron-embed-nim
 # Fine-tuned Hugging Face checkpoint mounted directly by Retriever NIM 2.x
 model_dir: ${oc.env:NEMOTRON3_EMBED_DEPLOY_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
 
-# Retriever Embedding NIM 2.0.0+ direct-checkpoint artifact contract.
-model_path_env: NIM_MODEL_PATH
+# Retriever Embedding NIM 2.1.0+ direct-checkpoint artifact contract.
+model_path_env: NIM_ENGINE_MODEL_PATH
 
 # ONNX/TensorRT conversion is not used for this model family
 use_onnx: false
