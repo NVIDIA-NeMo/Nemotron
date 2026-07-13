@@ -40,10 +40,10 @@ model_path_env: NIM_MODEL_PATH
 use_onnx: false
 expected_model_fingerprint:
   hidden_size: 2048
-  num_hidden_layers: 18
-  num_attention_heads: 32
+  num_hidden_layers: 16
+  num_attention_heads: 24
   num_key_value_heads: 8
-  intermediate_size: 5632
+  intermediate_size: 6144
   vocab_size: 131072
 
 # Container internal paths

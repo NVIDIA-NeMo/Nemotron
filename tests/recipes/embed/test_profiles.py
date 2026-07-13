@@ -140,10 +140,10 @@ def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
     assert deploy.use_onnx is False
     assert deploy.expected_model_fingerprint == {
         "hidden_size": 2048,
-        "num_hidden_layers": 18,
-        "num_attention_heads": 32,
+        "num_hidden_layers": 16,
+        "num_attention_heads": 24,
         "num_key_value_heads": 8,
-        "intermediate_size": 5632,
+        "intermediate_size": 6144,
         "vocab_size": 131072,
     }
     assert deploy.container_model_path == "/model"

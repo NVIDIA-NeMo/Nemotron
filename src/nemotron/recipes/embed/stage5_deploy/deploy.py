@@ -119,10 +119,10 @@ class DeployConfig(RecipeSettings):
     expected_model_fingerprint: dict[str, int] | None = Field(
         default_factory=lambda: {
             "hidden_size": 2048,
-            "num_hidden_layers": 18,
-            "num_attention_heads": 32,
+            "num_hidden_layers": 16,
+            "num_attention_heads": 24,
             "num_key_value_heads": 8,
-            "intermediate_size": 5632,
+            "intermediate_size": 6144,
             "vocab_size": 131072,
         },
         description="Optional architecture fingerprint required by the selected NIM image.",
