@@ -4,7 +4,7 @@ A complete 6-stage pipeline for fine-tuning and deploying embedding models on do
 
 ## Overview
 
-This recipe defaults to the Ministral-based Nemotron 3 Embed checkpoint and keeps NVIDIA's [Llama-Nemotron-Embed-1B-v2](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) available through the explicit `llama` profile. Both paths produce a domain-adapted embedding model, while each retains its NIM-compatible artifact contract.
+This recipe fine-tunes the Nemotron 3 Embed checkpoint for domain-specific retrieval and deploys the resulting checkpoint with Retriever NIM or vLLM.
 
 ### Why Fine-Tune Embedding Models?
 
@@ -58,9 +58,9 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    STAGE 4: EXPORT (LLAMA PROFILE ONLY)                     │
+│                       STAGE 4: EXPORT (WHEN REQUIRED)                       │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │          Export Llama to ONNX/TensorRT; Default Profile Skips           ││
+│  │       Export models that require a deployment artifact; otherwise skip  ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
@@ -68,7 +68,7 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                        STAGE 5: DEPLOY (NIM)                                │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │          Launch NIM with a Checkpoint or Exported Llama Model           ││
+│  │               Launch NIM or vLLM from the selected artifact             ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -79,8 +79,8 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 | [Stage 1: Data Prep](./stage1_data_prep/) | `nemotron embed prep` | Convert, mine hard negatives, unroll | Training-ready data |
 | [Stage 2: Finetune](./stage2_finetune/) | `nemotron embed finetune` | Fine-tune embedding model | Model checkpoint |
 | [Stage 3: Eval](./stage3_eval/) | `nemotron embed eval` | Evaluate on retrieval metrics | Metrics comparison |
-| [Stage 4: Export](./stage4_export/) | `nemotron embed export` | Llama profile export; default no-op | ONNX/TensorRT or skipped result |
-| [Stage 5: Deploy](./stage5_deploy/) | `nemotron embed deploy` | Deploy direct checkpoint or exported Llama model | Running inference service |
+| [Stage 4: Export](./stage4_export/) | `nemotron embed export` | Export when required by the selected profile | Exported model or skipped |
+| [Stage 5: Deploy](./stage5_deploy/) | `nemotron embed deploy` | Deploy the selected model artifact with NIM or vLLM | Running inference service |
 
 ## Installation
 
@@ -105,16 +105,9 @@ uv sync --all-extras
 
 ### 3. Get Your NVIDIA API Credential
 
-Stage 0 sends synthetic-data-generation requests to an NVIDIA-hosted API.
-Endpoint selection depends on the selected model profile:
-
-- `default` uses Data Designer's built-in NVIDIA endpoint unless the
-  generic `NVIDIA_API_BASE_URL` environment variable is set. Use the
-  credential for the selected endpoint.
-- `llama` uses the API Catalog defaults; create an API key at
-  [build.nvidia.com](https://build.nvidia.com).
-
-Expose either credential through the same environment variable:
+Stage 0 sends synthetic-data-generation requests to Data Designer's built-in
+NVIDIA endpoint unless the generic `NVIDIA_API_BASE_URL` environment variable
+is set. Use the credential for the selected endpoint:
 
 ```bash
 export NVIDIA_API_KEY=your_key_here
@@ -215,7 +208,6 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 
 - **Default endpoint**: Data Designer built-in, optionally overridden with `NVIDIA_API_BASE_URL`
 - **Default generation/judge model**: `nvidia/nemotron-3-ultra-550b-a55b`
-- **`llama` profile model**: `nvidia/nemotron-3-nano-30b-a3b` through the API Catalog defaults
 - **Usage**: ~4 API calls per document (artifact extraction, QA generation, dedup, quality eval)
 - **Access and limits**: Depend on the selected NVIDIA endpoint and credential
 - **Progress**: Built-in progress logging shows completion %, records/second, and ETA per stage
@@ -225,12 +217,12 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 
 ## Quick Start
 
-### Default: Ministral-based Nemotron 3 Embed
+### Default Profile
 
 The default profile loads `nvidia/Nemotron-3-Embed-1B-BF16` from
 Hugging Face for mining, fine-tuning, and base-model evaluation. Stage 5 can
 mount the consolidated Stage 2 checkpoint directly into Retriever NIM 2.x or
-serve it with NVIDIA's vLLM container:
+serve it with vLLM:
 
 ```bash
 export LD_LIBRARY_PATH=""
@@ -252,7 +244,7 @@ nemotron embed deploy -c default
 nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 
-# Option B: deploy with the checked-in NVIDIA vLLM backend.
+# Option B: deploy with the checked-in vLLM backend.
 nemotron embed deploy -c default backend=vllm
 nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
   embedding_api_backend=vllm \
@@ -292,26 +284,6 @@ mount/fingerprint checks establish which local artifact was selected. Set
 `fail_on_nim_metric_drift=true` only when those configured tolerances should
 gate the run.
 
-### Llama-Nemotron Embed
-
-The former default remains available as the self-contained `llama` profile.
-It retains the original model IDs, output locations, Stage 4 ONNX/TensorRT
-export, `NIM_CUSTOM_MODEL` deployment contract, and NGC credential forwarding:
-
-```bash
-nemotron embed sdg -c llama corpus_dir=/path/to/your/docs
-nemotron embed prep -c llama
-nemotron embed finetune -c llama
-nemotron embed eval -c llama
-nemotron embed export -c llama
-nemotron embed deploy -c llama
-```
-
-| Profile | Training model | Deployment artifact contract | Stage 4 |
-|---------|----------------|------------------------------|---------|
-| `default` | `nvidia/Nemotron-3-Embed-1B-BF16` from Hugging Face | PyTorch checkpoint via NIM or vLLM | Skipped |
-| `llama` | `nvidia/llama-nemotron-embed-1b-v2` | ONNX/TensorRT via `NIM_CUSTOM_MODEL` | Enabled |
-
 Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint sent
 to NIM and `NEMOTRON3_EMBED_NIM_MODEL` if the configured image advertises a
 different API model alias.
@@ -320,7 +292,6 @@ different API model alias.
 
 ```bash
 nemotron embed finetune -c default --dry-run
-nemotron embed finetune -c llama --dry-run
 ```
 
 ## Pipeline Flexibility
@@ -333,12 +304,11 @@ Stages are designed to run sequentially, but you can start from any stage if you
 | **Stage 1** | Q&A pairs (JSON) | Skip SDG if you have labeled data or use [NVIDIA's pre-generated dataset](#using-nvidias-pre-generated-dataset) |
 | **Stage 2** | Training data (Automodel format) | Skip data prep if data is ready |
 | **Stage 3** | Model checkpoint | Evaluate existing checkpoint |
-| **Stage 4** | Model checkpoint | Export existing model |
-| **Stage 5** | PyTorch checkpoint (`default`) or exported model (`llama`) | Deploy existing model |
+| **Stage 4** | Model checkpoint | Export existing model when the selected profile requires it |
+| **Stage 5** | Model checkpoint or exported artifact | Deploy existing model |
 
-The `default` profile loads the Stage 2 Hugging Face-style
-PyTorch checkpoint directly through `NIM_ENGINE_MODEL_PATH`, so Stage 4 is an explicit
-no-op. The `llama` profile retains Stage 4 and the exported-model path.
+The default profile loads the Stage 2 Hugging Face-style PyTorch checkpoint
+directly through `NIM_ENGINE_MODEL_PATH`, so Stage 4 is an explicit no-op.
 
 See individual stage READMEs for input format requirements.
 
@@ -483,28 +453,9 @@ cd /path/to/staged/files
 
 ## Configuration
 
-Each stage has the same two model-profile names in its `config/` directory:
-
-| File | Purpose |
-|------|---------|
-| `default.yaml` | Ministral-based Nemotron 3 Embed and direct-checkpoint NIM deployment |
-| `llama.yaml` | Preserved Llama-Nemotron Embed behavior, including export and `NIM_CUSTOM_MODEL` deployment |
-
-The model families use separate artifact roots so switching profiles does not
-silently consume another family's checkpoints:
-
-| Stage | `default` | `llama` |
-|-------|-----------|---------|
-| SDG | `output/embed/nemotron-3-1b/stage0_sdg` | `output/embed/stage0_sdg` |
-| Data prep | `output/embed/nemotron-3-1b/stage1_data_prep` | `output/embed/stage1_data_prep` |
-| Fine-tune | `output/embed/nemotron-3-1b/stage2_finetune` | `output/embed/stage2_finetune` |
-| Eval | `output/embed/nemotron-3-1b/stage3_eval` | `output/embed/stage3_eval` |
-| Export | Skipped | `output/embed/stage4_export` |
-
-Every stage derives its paths from the profile-wide `artifact_root`. The default
-uses `./output/embed/nemotron-3-1b`; `llama` keeps `./output/embed` so its
-established flat paths do not change. Override the root once for an entire
-pipeline run:
+Each stage's `default.yaml` config derives its paths from the profile-wide
+`artifact_root`, which defaults to `./output/embed/nemotron-3-1b`. Override it
+once for an entire pipeline run:
 
 ```bash
 nemotron embed run -c default --to eval artifact_root=./output/embed/experiments/domain-a
@@ -536,28 +487,11 @@ container_model_path: /model
 max_seq_len: 512  # NIM runtime setting; vLLM reads checkpoint metadata
 ```
 
-### Llama profile settings
-
-```yaml
-# Stage 1-3
-base_model: nvidia/llama-nemotron-embed-1b-v2
-
-# Stage 4
-enabled: true
-model_path: ./output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated
-onnx_export_path: ./output/embed/stage4_export/onnx
-
-# Stage 5
-nim_image: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1
-model_dir: ./output/embed/stage4_export/onnx
-model_path_env: NIM_CUSTOM_MODEL
-```
 
 All ordinary fields can still be overridden on the command line:
 
 ```bash
 nemotron embed finetune -c default num_epochs=1 learning_rate=2e-5
-nemotron embed finetune -c llama num_epochs=1 learning_rate=2e-5
 ```
 
 ### Sequence length
@@ -565,15 +499,7 @@ nemotron embed finetune -c llama num_epochs=1 learning_rate=2e-5
 Mining, training, evaluation, and the default NIM profile use 512 tokens. Keep
 those settings aligned. The default NIM profile intentionally fixes
 `max_seq_len: 512`; changing local training lengths alone does not expand the
-served limit. The Llama profile can use its TensorRT sequence profiles,
-for example:
-
-```bash
-nemotron embed prep -c llama query_max_length=2000 passage_max_length=2000
-nemotron embed finetune -c llama query_max_length=2000 passage_max_length=2000
-nemotron embed eval -c llama max_length=2000
-nemotron embed export -c llama trt_max_seq_len=2000 trt_opt_seq_len=512
-```
+served limit.
 
 Longer sequences increase GPU memory use substantially; reduce batch sizes when
 necessary.
@@ -581,7 +507,7 @@ necessary.
 ## CLI Commands
 
 ```bash
-# Inspect both profiles
+# Inspect the recipe
 nemotron embed info
 
 # Default direct-checkpoint path
@@ -590,13 +516,7 @@ nemotron embed deploy -c default detach=true
 nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 
-# Llama profile export path
-nemotron embed run -c llama --to export
-nemotron embed deploy -c llama detach=true
-nemotron embed eval -c llama eval_nim=true eval_base=false eval_finetuned=true \
-  output_dir=./output/embed/stage3_eval_nim_comparison
-
-# Stop either profile's default container name
+# Stop the default container
 docker stop nemotron-embed-nim
 ```
 
@@ -604,18 +524,11 @@ docker stop nemotron-embed-nim
 
 ```text
 output/embed/
-├── nemotron-3-1b/        # default profile
+└── nemotron-3-1b/
 │   ├── stage0_sdg/
 │   ├── stage1_data_prep/
 │   ├── stage2_finetune/checkpoints/LATEST/model/consolidated/
 │   └── stage3_eval/eval_results.json
-├── stage0_sdg/                    # llama profile
-├── stage1_data_prep/
-├── stage2_finetune/checkpoints/LATEST/model/consolidated/
-├── stage3_eval/eval_results.json
-└── stage4_export/                 # llama profile only
-    ├── onnx/
-    └── tensorrt/
 ```
 
 ## Evaluation Metrics
@@ -666,18 +579,18 @@ Model: fine-tuned
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
 | NVIDIA NIM | Production inference microservice with custom model support | [Developer Site](https://developer.nvidia.com/nim) |
 
-## Model Profiles
+## Default Model Profile
 
-| Property | `default` | `llama` |
-|----------|-----------|---------|
-| Architecture | Ministral-based Nemotron 3 Embed | Llama-Nemotron Embed 1B v2 |
-| Model locator | `nvidia/Nemotron-3-Embed-1B-BF16` (Hugging Face) | `nvidia/llama-nemotron-embed-1b-v2` |
-| Embedding dimension | 2048 | 2048 (Matryoshka: 384/512/768/1024/2048) |
-| Recipe sequence length | 512 | 512 by default; model supports longer inputs |
-| Deployment backend | Retriever NIM or NVIDIA vLLM | Retriever NIM |
-| Serving input artifact | Hugging Face PyTorch/safetensors checkpoint | ONNX or TensorRT export |
-| NIM selector | `NIM_ENGINE_MODEL_PATH` when using NIM | `NIM_CUSTOM_MODEL` |
-| Stage 4 | Skipped | Enabled |
+| Property | Value |
+|----------|-------|
+| Model | Nemotron 3 Embed |
+| Model locator | `nvidia/Nemotron-3-Embed-1B-BF16` (Hugging Face) |
+| Embedding dimension | 2048 |
+| Recipe sequence length | 512 |
+| Deployment backend | Retriever NIM or vLLM |
+| Serving input artifact | Hugging Face PyTorch/safetensors checkpoint |
+| NIM selector | `NIM_ENGINE_MODEL_PATH` when using NIM |
+| Stage 4 | Skipped for the default profile |
 
 ## Troubleshooting
 
@@ -704,7 +617,6 @@ uv run nemotron embed info
 **Error: `NVIDIA_API_KEY not set`**
 ```bash
 # Default profile: use the credential for the built-in endpoint or NVIDIA_API_BASE_URL.
-# Llama profile: an API Catalog key from build.nvidia.com can be used.
 export NVIDIA_API_KEY=your_key_here
 ```
 
@@ -772,16 +684,6 @@ nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
 - **Solution**: Ensure eval_beir data was created in Stage 1
 - **Solution**: Check that corpus.jsonl and queries.jsonl exist
 
-### Stage 4: Llama Export Issues
-
-**Error: TensorRT export fails**
-- **Solution**: Ensure using NGC container with TensorRT (nemo:25.07+)
-- **Solution**: Try ONNX-only export first: `export_to_trt=false`
-
-**Error: ONNX export fails**
-- **Solution**: Check model checkpoint is valid
-- **Solution**: Ensure sufficient disk space
-
 ### Stage 5: Deployment Issues
 
 **Error: NIM image is not configured**
@@ -814,7 +716,6 @@ nemotron embed deploy -c default backend=vllm host_port=8002
 - **Solution**: Let vLLM detect pooling, activation, normalization, and sequence
   length from the checkpoint. Do not add overrides unless you are deliberately
   testing a different serving contract.
-- **Solution**: For the Llama NIM profile, ensure the TensorRT/ONNX and quantization settings match.
 - **Solution**: Verify model files are complete and not corrupted
 
 ### CUDA Library Errors
@@ -976,7 +877,7 @@ ls -lh output/embed/stage2_finetune/checkpoints/
 
 **How much does SDG model quality impact final embedding accuracy, and when is it worth upgrading the SDG model?**
 
-The SDG model directly determines the quality of synthetic queries and answers used to train the embedding model, so it has a first-order effect on final retrieval accuracy. The default profile uses `nvidia/nemotron-3-ultra-550b-a55b` to prioritize generation and judging quality; the `llama` profile uses `nvidia/nemotron-3-nano-30b-a3b` as a lower-cost starting point. Consider changing the SDG model when: (1) quality scores from the SDG quality judge are consistently low (median below 7/10), (2) generated queries are shallow or miss the reasoning patterns users need, or (3) cost and latency are too high for the corpus size. You can select models per task—for example, keep a stronger `qa_generation_model` while using a smaller approved model for artifact extraction and judging. Run a small pilot (50–100 docs) and compare downstream Stage 3 metrics on the same held-out set before adopting a different model.
+The SDG model directly determines the quality of synthetic queries and answers used to train the embedding model, so it has a first-order effect on final retrieval accuracy. The recipe uses `nvidia/nemotron-3-ultra-550b-a55b` to prioritize generation and judging quality. Consider changing the SDG model when: (1) quality scores from the SDG quality judge are consistently low (median below 7/10), (2) generated queries are shallow or miss the reasoning patterns users need, or (3) cost and latency are too high for the corpus size. You can select models per task—for example, keep a stronger `qa_generation_model` while using a smaller approved model for artifact extraction and judging. Run a small pilot (50–100 docs) and compare downstream Stage 3 metrics on the same held-out set before adopting a different model.
 
 **How should SDG prompts be designed to reliably capture rare words and domain-specific identifiers (bug IDs, product IDs, versions) that matter for retrieval accuracy?**
 
@@ -1097,7 +998,6 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 - [Automodel](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
 - [BEIR Benchmark](https://github.com/beir-cellar/beir) - Information retrieval evaluation
 - [NVIDIA NIM Documentation](https://developer.nvidia.com/nim) - Production inference microservices
-- [Llama-Nemotron-Embed-1B-v2 Model Card](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) - Base model details
 - [Retrieval-Synthetic-NVDocs-v1 Dataset](https://huggingface.co/datasets/nvidia/Retrieval-Synthetic-NVDocs-v1) - Pre-generated synthetic retrieval dataset on NVIDIA content
 
 ## Support
