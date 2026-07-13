@@ -93,10 +93,52 @@ def test_invalid_nim_embedding_is_retried(monkeypatch) -> None:
         np.array([[0.25, 0.75], [0.5, 0.5]], dtype=np.float32),
     )
     assert model.diagnostics() == {
+        "api_backend": "nim",
         "requested_model": "test/model",
         "embedding_dimension": 2,
         "invalid_embedding_retry_requests": 2,
     }
+
+
+def test_vllm_requests_use_v2_embed_input_types_without_manual_prefixes(monkeypatch) -> None:
+    monkeypatch.setattr(NIMEmbeddingModel, "_check_connection", lambda self: None)
+    requests = []
+
+    def fake_urlopen(request, timeout):
+        requests.append((request.full_url, json.loads(request.data.decode())))
+        return _Response({"embeddings": {"float": [[1.0, 0.0]]}})
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    model = NIMEmbeddingModel(
+        api_url="http://vllm",
+        model="test/model",
+        api_backend="vllm",
+    )
+
+    model.encode_queries(["find this"])
+    model.encode_corpus([{"title": "", "text": "document text"}])
+
+    assert requests == [
+        (
+            "http://vllm/v2/embed",
+            {
+                "texts": ["find this"],
+                "model": "test/model",
+                "input_type": "query",
+                "embedding_types": ["float"],
+            },
+        ),
+        (
+            "http://vllm/v2/embed",
+            {
+                "texts": ["document text"],
+                "model": "test/model",
+                "input_type": "passage",
+                "embedding_types": ["float"],
+            },
+        ),
+    ]
+    assert model.diagnostics()["api_backend"] == "vllm"
 
 
 def test_persistent_invalid_nim_embedding_raises(monkeypatch) -> None:

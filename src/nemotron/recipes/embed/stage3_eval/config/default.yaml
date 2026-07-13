@@ -11,6 +11,8 @@
 #
 # Evaluate NIM endpoint:
 #   nemotron embed eval -c default eval_nim=true nim_url=http://localhost:8001
+# Evaluate vLLM endpoint:
+#   nemotron embed eval -c default eval_nim=true embedding_api_backend=vllm
 #
 # Remote execution (Slurm):
 #   nemotron embed eval -c default --run my-cluster
@@ -59,11 +61,12 @@ passage_prefix: "passage: "
 eval_base: true
 eval_finetuned: true
 
-# NIM API evaluation settings
-eval_nim: false  # Set to true to evaluate NIM endpoint
-nim_url: http://localhost:8000  # NIM API base URL
+# Served embedding API evaluation settings
+eval_nim: false  # Set to true to evaluate the selected API backend
+nim_url: http://localhost:8000  # API base URL
 nim_model: ${oc.env:NEMOTRON3_EMBED_NIM_MODEL,nvidia/nemotron-3-embed-1b}  # Model name for API requests
-nim_batch_size: 32  # Batch size for NIM API requests
+nim_batch_size: 32  # Batch size for API requests
 nim_timeout: 60  # Request timeout in seconds
+embedding_api_backend: nim  # Set to vllm to use vLLM's /v2/embed endpoint
 nim_invalid_embedding_retries: 32  # Retry null/non-finite vectors
 nim_embedding_dimension: 2048  # Reject responses from an incompatible endpoint/model

@@ -92,7 +92,7 @@ any key that may have been exposed.
 | 2 finetune | `embed finetune` | `train_mined.automodel_unrolled.json` | Profile-specific checkpoints | AutoModel contrastive training. |
 | 3 eval | `embed eval` | BEIR eval data and checkpoint | Profile-specific `eval_results.json` | Compare base, fine-tuned, and optionally NIM retrieval metrics. |
 | 4 export | `embed export` | Fine-tuned checkpoint | Skipped by default; ONNX/TensorRT for `llama` | Only the Llama profile needs this stage. |
-| 5 deploy | `embed deploy` | PyTorch checkpoint or Llama export | NIM on `host_port` | Requires Docker. Default local-artifact deployment does not forward `NGC_API_KEY`; `NIM_CUSTOM_MODEL` or model-download paths may require it. |
+| 5 deploy | `embed deploy` | PyTorch checkpoint or Llama export | NIM or vLLM on `host_port` | Requires Docker. Default local-artifact deployment does not forward `NGC_API_KEY`; `NIM_CUSTOM_MODEL` or model-download paths may require it. |
 
 The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `embed run` defaults to `--to eval`.
 
@@ -106,7 +106,7 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `em
 | 2 finetune | Unrolled Automodel JSON | `output/embed/nemotron-3-1b/stage2_finetune/checkpoints` | Llama model, Llama optimizer master-weight setting | `uv run nemotron embed finetune -c default -d` |
 | 3 eval | Fixed BEIR split and checkpoint | `output/embed/nemotron-3-1b/stage3_eval/eval_results.json` | Llama model/API identity and Llama artifact root | `uv run nemotron embed eval -c default -d` |
 | 4 export | Fine-tuned checkpoint | Explicit no-op | Exports ONNX/TensorRT and must use `-c llama` | `uv run nemotron embed export -c llama -d` |
-| 5 deploy | PyTorch checkpoint or exported Llama artifact, Docker, NGC access | Mounts safetensors through `NIM_MODEL_PATH` | Mounts ONNX/TensorRT through `NIM_CUSTOM_MODEL` | `uv run nemotron embed deploy -c default -d` |
+| 5 deploy | PyTorch checkpoint or exported Llama artifact, Docker | Default can mount safetensors through NIM `NIM_MODEL_PATH` or vLLM | Mounts ONNX/TensorRT through `NIM_CUSTOM_MODEL` | `uv run nemotron embed deploy -c default -d backend=vllm` |
 
 ## Model Profiles
 
@@ -122,15 +122,19 @@ Default (`-c default`):
   relocates the complete artifact chain without changing model identity.
 - Stage 4 has `enabled=false`; it returns a skipped result without loading or
   converting the checkpoint.
-- Stage 5 uses the compatible image configured by `NEMOTRON3_EMBED_NIM_IMAGE`,
-  mounts the Stage 2 consolidated checkpoint read-only at `/model`, and sets
-  `NIM_MODEL_PATH=/model`. It does not forward `NGC_API_KEY` because the model
-  artifact is already mounted locally.
+- Stage 5 can use a compatible NIM image configured by
+  `NEMOTRON3_EMBED_NIM_IMAGE` with `backend=nim`, mounting the Stage 2
+  consolidated checkpoint read-only at `/model` with `NIM_MODEL_PATH=/model`.
+  Or use the checked-in `nvcr.io/nvidia/vllm:26.06-py3` image with
+  `backend=vllm`; it mounts the same checkpoint at `/model` and detects its
+  embedding configuration automatically. Neither local-artifact path forwards
+  `NGC_API_KEY`.
 - Deploy preflight requires hidden size 2048, 18 layers, 32 attention heads,
   8 key/value heads, intermediate size 5632, and vocabulary size 131072.
-- The runtime limit is 512 tokens and the default pipeline is
-  `padded-naive-fp16`; override with `NEMOTRON3_EMBED_NIM_PIPELINE_ID` only when
-  the target hardware supports another pipeline.
+- NIM uses a 512-token runtime limit and the default `padded-naive-fp16`
+  pipeline; override `NEMOTRON3_EMBED_NIM_PIPELINE_ID` only when the target
+  hardware supports another pipeline. vLLM derives sequence length, pooling,
+  activation, and prompts from the checkpoint.
 - The evaluator retries null/non-finite NIM responses up to 32 times per
   affected input. Preserve retry warnings as serving-reliability evidence.
 - Keep Transformers in the supported 5.1-5.5 range.
@@ -162,6 +166,7 @@ Llama profile (`-c llama`):
 
 ```bash
 uv run nemotron embed run -c default -d --from sdg --to eval
+uv run nemotron embed deploy -c default -d backend=vllm
 uv run nemotron embed deploy -c default -d
 
 uv run nemotron embed run -c llama -d --from sdg --to export
@@ -179,7 +184,7 @@ uv run nemotron embed deploy -c llama -d
 - Inspect existing `output/embed/` artifacts before rerunning a stage. Ask before deleting checkpoints, cached embeddings, or generated data.
 - For deploy handoff, include the exact deploy command, `detach=true` when background service ownership is expected, container name, host port, smoke test, and stop/replace instructions.
 
-## NIM Smoke Test
+## Serving Smoke Tests
 
 ```bash
 # Default profile
@@ -188,15 +193,27 @@ curl -X POST http://localhost:8000/v1/embeddings \
   -d '{"input": ["hello"], "model": "nvidia/nemotron-3-embed-1b", "input_type": "query"}'
 
 # With -c llama, use model nvidia/llama-3.2-nv-embedqa-1b-v2 instead.
+
+# Default profile with backend=vllm. The checkpoint applies the prompt for
+# the input type, so do not add `query: ` or `passage: ` yourself.
+curl -X POST http://localhost:8000/v2/embed \
+  -H 'Content-Type: application/json' \
+  -d '{"texts": ["hello"], "model": "nvidia/nemotron-3-embed-1b", "input_type": "query"}'
 ```
 
-For behavioral comparison, evaluate the local checkpoint and NIM in the same
-run and write to a separate directory:
+For behavioral comparison, evaluate the local checkpoint and selected serving
+backend in the same run and write to a separate directory:
 
 ```bash
 uv run nemotron embed eval -c default eval_nim=true eval_base=false \
   eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
+
+# For backend=vllm, switch the evaluation adapter to /v2/embed. It sends
+# `input_type` and does not add query/passage prefixes itself.
+uv run nemotron embed eval -c default eval_nim=true embedding_api_backend=vllm \
+  eval_base=false eval_finetuned=true \
+  output_dir=./output/embed/nemotron-3-1b/stage3_eval_vllm_comparison
 ```
 
 This aggregate metric comparison is not proof of artifact identity. Deployment

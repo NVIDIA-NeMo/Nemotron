@@ -10,6 +10,7 @@ import pytest
 from nemotron.recipes.embed.stage5_deploy import deploy
 
 TEST_NIM_IMAGE = "example.invalid/nim:test"
+TEST_VLLM_IMAGE = "nvcr.io/nvidia/vllm:26.06-py3"
 
 
 def _deploy_config(**kwargs) -> deploy.DeployConfig:
@@ -61,6 +62,33 @@ def test_nim_model_path_mounts_huggingface_checkpoint(monkeypatch, tmp_path) -> 
     assert "NGC_API_KEY" not in command
     assert f"{model_dir.resolve()}:/model:ro" in command
     assert f"{tmp_path / 'cache' / 'nim'}:/opt/cache" in command
+
+
+def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    model_dir = tmp_path / "checkpoint"
+    model_dir.mkdir()
+
+    cfg = _deploy_config(
+        backend="vllm",
+        vllm_image=TEST_VLLM_IMAGE,
+        nim_model="nvidia/nemotron-3-embed-1b",
+        model_dir=model_dir,
+        container_model_path="/model",
+    )
+    command = deploy.build_docker_command(cfg)
+
+    image_index = command.index(TEST_VLLM_IMAGE)
+    assert command[image_index + 1 : image_index + 4] == ["vllm", "serve", "/model"]
+    assert command[command.index("--served-model-name") + 1] == "nvidia/nemotron-3-embed-1b"
+    assert "--runner" not in command
+    assert "--convert" not in command
+    assert "--pooler-config" not in command
+    assert "--max-model-len" not in command
+    assert "--trust-remote-code" not in command
+    assert not any(argument.startswith("NIM_") for argument in command)
+    assert f"{model_dir.resolve()}:/model:ro" in command
+    assert f"{tmp_path / 'cache' / 'huggingface'}:/root/.cache/huggingface" in command
 
 
 def test_huggingface_checkpoint_artifact_validation(tmp_path) -> None:
@@ -129,6 +157,29 @@ def test_health_check_retries_connection_reset(monkeypatch) -> None:
 
     assert deploy.wait_for_health(cfg) is True
     assert calls == 2
+
+
+def test_vllm_health_check_uses_health_endpoint(monkeypatch) -> None:
+    requested_urls = []
+
+    class HealthyResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+    def fake_urlopen(url, timeout):
+        requested_urls.append(url)
+        return HealthyResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    cfg = _deploy_config(backend="vllm", health_check_timeout=1)
+
+    assert deploy.wait_for_health(cfg) is True
+    assert requested_urls == ["http://localhost:8000/health"]
 
 
 def test_llama_docker_contract(monkeypatch, tmp_path) -> None:

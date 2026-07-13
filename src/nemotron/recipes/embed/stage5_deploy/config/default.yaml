@@ -1,13 +1,14 @@
 # Default model family: Ministral-based Nemotron 3 Embed.
 # Stage 5: Deploy Configuration
 #
-# Launches NIM embedding service with a custom fine-tuned model.
-# The NIM provides an OpenAI-compatible embeddings API.
+# Launches a NIM or vLLM embedding service with a custom fine-tuned model.
+# NIM exposes OpenAI-compatible embeddings; vLLM evaluation uses `/v2/embed`.
 #
 # Usage:
 #   nemotron embed deploy -c default
 #   nemotron embed deploy -c default detach=true
 #   nemotron embed deploy -c default model_dir=/path/to/consolidated-checkpoint
+#   nemotron embed deploy -c default backend=vllm
 #
 # Test the deployed service:
 #   curl -X POST http://localhost:8000/v1/embeddings \
@@ -17,8 +18,13 @@
 # Root for all artifacts produced by this model profile.
 artifact_root: ./output/embed/nemotron-3-1b
 
-# NIM container image
-nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE}
+# Serving backend. NIM remains the default; vLLM is an explicit override.
+backend: nim
+
+# Backend container images
+# The empty fallback lets backend=vllm work without the NIM environment variable.
+nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE,}
+vllm_image: nvcr.io/nvidia/vllm:26.06-py3
 nim_model: ${oc.env:NEMOTRON3_EMBED_NIM_MODEL,nvidia/nemotron-3-embed-1b}
 
 # Container name (for management)
@@ -43,6 +49,7 @@ expected_model_fingerprint:
 # Container internal paths
 container_model_path: /model
 container_cache_path: /opt/cache
+vllm_container_cache_path: /root/.cache/huggingface
 
 # Network settings
 host_port: 8000

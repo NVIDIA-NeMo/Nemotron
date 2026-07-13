@@ -71,6 +71,14 @@ def test_public_default_uses_optional_endpoint_and_requires_image_override(
             DeployConfig,
         )
 
+    vllm = load_pydantic_config(
+        CONFIG_ROOT / "stage5_deploy/config/default.yaml",
+        ["backend=vllm"],
+        DeployConfig,
+    )
+    assert vllm.backend == "vllm"
+    assert vllm.container_image == "nvcr.io/nvidia/vllm:26.06-py3"
+
 
 @pytest.mark.parametrize("stage_dir,model_cls", PROFILE_CONFIGS)
 def test_default_config_inherits_and_validates(stage_dir: str, model_cls: type) -> None:
@@ -124,7 +132,9 @@ def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
     assert evaluate.nim_model == "nvidia/nemotron-3-embed-1b"
     assert evaluate.nim_invalid_embedding_retries == 32
     assert deploy.nim_model == evaluate.nim_model
+    assert deploy.backend == "nim"
     assert deploy.nim_image == NIM_IMAGE
+    assert deploy.vllm_image == "nvcr.io/nvidia/vllm:26.06-py3"
     assert deploy.model_dir == Path("output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated")
     assert deploy.model_path_env == "NIM_MODEL_PATH"
     assert deploy.use_onnx is False
@@ -240,6 +250,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert evaluate.nim_model == "nvidia/nemotron-3-embed-1b"
     assert export.enabled is False
     assert deploy.nim_image == NIM_IMAGE
+    assert deploy.backend == "nim"
     assert deploy.model_path_env == "NIM_MODEL_PATH"
     assert deploy.use_onnx is False
     assert deploy.model_dir == finetune.checkpoint_dir / "LATEST/model/consolidated"
@@ -274,6 +285,7 @@ def test_llama_profile_preserves_export_and_nim_contract() -> None:
     assert export.enabled is True
     assert export.model_path == Path("output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated")
     assert deploy.nim_image == "nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1"
+    assert deploy.backend == "nim"
     assert deploy.model_path_env == "NIM_CUSTOM_MODEL"
     assert deploy.use_onnx is True
     assert deploy.expected_model_fingerprint is None

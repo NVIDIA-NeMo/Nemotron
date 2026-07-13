@@ -45,7 +45,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
 - Stage 0 SDG: `NVIDIA_API_KEY`; never ask users to paste secret values.
 - Stage 1-4 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
 - Stage 4 export: NeMo Export-Deploy container when using TensorRT. The default Nemotron 3 Embed profile intentionally skips export.
-- Stage 5 deploy: Docker. Default Nemotron 3 Embed requires a compatible `NEMOTRON3_EMBED_NIM_IMAGE`; Llama Embed and rerank deployment may require NGC access and `NGC_API_KEY`.
+- Stage 5 deploy: Docker. Default Nemotron 3 Embed can use the checked-in vLLM path with `backend=vllm`, or a compatible `NEMOTRON3_EMBED_NIM_IMAGE` with `backend=nim`; Llama Embed and rerank deployment may require NGC access and `NGC_API_KEY`.
 - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 
 ## Instructions
@@ -85,7 +85,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
    - Stage 0 SDG: `NVIDIA_API_KEY`.
    - Stage 1-4 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
    - Stage 4 export: the NeMo Export-Deploy container when using TensorRT. Default Nemotron 3 Embed skips this stage.
-   - Stage 5 deploy: Docker plus the selected profile's NIM image and artifact contract; load the family reference before requiring NGC credentials.
+   - Stage 5 deploy: Docker plus the selected backend's image and artifact contract; default Nemotron 3 may use the checked-in vLLM image without NIM credentials. Load the family reference before requiring NGC credentials.
    - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 4. Use dotlist overrides instead of editing defaults unless the user asks for reusable config changes. Keep the selected profile, artifact root, sequence length, prefixes, pooling/normalization, prompt templates, and hard-negative counts consistent across stages.
 5. Avoid launching API, GPU, Docker, Slurm, NIM, or long-running jobs unless the user explicitly asked to run them. Offer or run dry-runs, config review, and small pilots first.

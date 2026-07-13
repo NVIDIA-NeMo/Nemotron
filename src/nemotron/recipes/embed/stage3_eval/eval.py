@@ -79,10 +79,11 @@ _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 
 class NIMEmbeddingModel:
-    """Embedding model that uses NIM API for inference.
+    """Embedding model that uses a NIM or vLLM API for inference.
 
     Compatible with BEIR's dense retrieval framework.
-    Handles the NIM-specific `input_type` parameter for queries vs passages.
+    Both backends receive their native ``input_type`` parameter. vLLM uses its
+    Cohere-compatible ``/v2/embed`` endpoint so the checkpoint applies prompts.
     """
 
     def __init__(
@@ -93,6 +94,7 @@ class NIMEmbeddingModel:
         timeout: int = 60,
         invalid_embedding_retries: int = 3,
         expected_dimension: int | None = None,
+        api_backend: Literal["nim", "vllm"] = "nim",
     ):
         """Initialize NIM embedding model.
 
@@ -103,30 +105,35 @@ class NIMEmbeddingModel:
             timeout: Request timeout in seconds.
             invalid_embedding_retries: Retry limit for non-numeric NIM vectors.
             expected_dimension: Required embedding dimension, if known.
+            api_backend: Request and health-check conventions used by the server.
         """
         self.api_url = api_url.rstrip("/")
-        self.embeddings_url = f"{self.api_url}/v1/embeddings"
+        endpoint = "/v2/embed" if api_backend == "vllm" else "/v1/embeddings"
+        self.embeddings_url = f"{self.api_url}{endpoint}"
         self.model = model
         self.batch_size = batch_size
         self.timeout = timeout
         self.invalid_embedding_retries = invalid_embedding_retries
         self.expected_dimension = expected_dimension
+        self.api_backend = api_backend
         self.embedding_dimension = expected_dimension
         self.invalid_embedding_retry_requests = 0
         self._check_connection()
 
     def _check_connection(self) -> None:
-        """Check if NIM API is reachable."""
+        """Check whether the selected embedding API is reachable."""
         import urllib.error
         import urllib.request
 
+        service_name = "vLLM" if self.api_backend == "vllm" else "NIM"
         try:
-            health_url = f"{self.api_url}/v1/health/ready"
+            health_path = "/health" if self.api_backend == "vllm" else "/v1/health/ready"
+            health_url = f"{self.api_url}{health_path}"
             with urllib.request.urlopen(health_url, timeout=5) as response:
                 if response.status != 200:
-                    print(f"Warning: NIM health check returned status {response.status}")
+                    print(f"Warning: {service_name} health check returned status {response.status}")
         except (urllib.error.URLError, TimeoutError) as e:
-            print(f"Warning: Could not reach NIM at {self.api_url}: {e}")
+            print(f"Warning: Could not reach {service_name} at {self.api_url}: {e}")
 
     @staticmethod
     def _embedding_is_valid(embedding: object) -> bool:
@@ -149,13 +156,16 @@ class NIMEmbeddingModel:
         import urllib.error
         import urllib.request
 
-        payload = json.dumps(
-            {
-                "input": texts,
+        if self.api_backend == "vllm":
+            payload_data = {
+                "texts": texts,
                 "model": self.model,
                 "input_type": input_type,
+                "embedding_types": ["float"],
             }
-        ).encode("utf-8")
+        else:
+            payload_data = {"input": texts, "model": self.model, "input_type": input_type}
+        payload = json.dumps(payload_data).encode("utf-8")
 
         req = urllib.request.Request(
             self.embeddings_url,
@@ -169,9 +179,20 @@ class NIMEmbeddingModel:
                 result = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             error_body = error.read().decode("utf-8") if error.fp else ""
-            raise RuntimeError(f"NIM API error {error.code}: {error_body}") from error
+            service_name = "vLLM" if self.api_backend == "vllm" else "NIM"
+            raise RuntimeError(f"{service_name} API error {error.code}: {error_body}") from error
         except urllib.error.URLError as error:
-            raise RuntimeError(f"NIM API connection error: {error}") from error
+            service_name = "vLLM" if self.api_backend == "vllm" else "NIM"
+            raise RuntimeError(f"{service_name} API connection error: {error}") from error
+
+        if self.api_backend == "vllm":
+            embeddings = result.get("embeddings")
+            if not isinstance(embeddings, dict) or not isinstance(embeddings.get("float"), list):
+                raise RuntimeError("vLLM response is missing embeddings.float")
+            vectors = embeddings["float"]
+            if len(vectors) != len(texts):
+                raise RuntimeError(f"vLLM returned {len(vectors)} embeddings; expected {len(texts)}")
+            return vectors
 
         served_model = result.get("model")
         if served_model is not None and served_model != self.model:
@@ -246,6 +267,7 @@ class NIMEmbeddingModel:
     def diagnostics(self) -> dict[str, int | str | None]:
         """Return response-validation diagnostics for result provenance."""
         return {
+            "api_backend": self.api_backend,
             "requested_model": self.model,
             "embedding_dimension": self.embedding_dimension,
             "invalid_embedding_retry_requests": self.invalid_embedding_retry_requests,
@@ -382,6 +404,10 @@ class EvalConfig(RecipeSettings):
     nim_model: str = Field(default="nvidia/nemotron-3-embed-1b", description="Model name for NIM API requests.")
     nim_batch_size: int = Field(default=32, gt=0, description="Batch size for NIM API requests.")
     nim_timeout: int = Field(default=60, gt=0, description="Timeout in seconds for NIM API requests.")
+    embedding_api_backend: Literal["nim", "vllm"] = Field(
+        default="nim",
+        description="Request and health-check conventions used by the deployed embedding service.",
+    )
     nim_invalid_embedding_retries: int = Field(
         default=32,
         ge=0,
@@ -514,6 +540,7 @@ def evaluate_nim(
     timeout: int = 60,
     invalid_embedding_retries: int = 3,
     expected_dimension: int | None = None,
+    api_backend: Literal["nim", "vllm"] = "nim",
     k_values: list[int] | None = None,
 ) -> tuple[dict, dict, dict[str, int | str | None]]:
     """Evaluate a NIM API endpoint on a BEIR dataset.
@@ -526,6 +553,7 @@ def evaluate_nim(
         timeout: Request timeout in seconds.
         invalid_embedding_retries: Retry limit for invalid NIM vectors.
         expected_dimension: Required embedding dimension, if known.
+        api_backend: Request and health-check conventions used by the server.
         k_values: K values for metrics.
 
     Returns:
@@ -552,6 +580,7 @@ def evaluate_nim(
         timeout=timeout,
         invalid_embedding_retries=invalid_embedding_retries,
         expected_dimension=expected_dimension,
+        api_backend=api_backend,
     )
 
     # Wrap in DRES for BEIR compatibility
@@ -616,8 +645,9 @@ def run_eval(cfg: EvalConfig) -> dict:
     print(f"Base model:      {cfg.base_model}")
     print(f"Finetuned model: {cfg.finetuned_model_path}")
     if cfg.eval_nim:
-        print(f"NIM endpoint:    {cfg.nim_url}")
-        print(f"NIM model:       {cfg.nim_model}")
+        print(f"API backend:     {cfg.embedding_api_backend}")
+        print(f"API endpoint:    {cfg.nim_url}")
+        print(f"API model:       {cfg.nim_model}")
     print(f"K values:        {cfg.k_values}")
     print("=" * 60)
     print()
@@ -639,6 +669,7 @@ def run_eval(cfg: EvalConfig) -> dict:
         "finetuned_model_path": (str(cfg.finetuned_model_path.resolve()) if cfg.eval_finetuned else None),
         "nim_url": cfg.nim_url if cfg.eval_nim else None,
         "nim_model": cfg.nim_model if cfg.eval_nim else None,
+        "embedding_api_backend": cfg.embedding_api_backend if cfg.eval_nim else None,
     }
     nim_diagnostics: dict[str, int | str | None] | None = None
     nim_metric_comparison: dict | None = None
@@ -690,7 +721,7 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     # Evaluate NIM endpoint
     if cfg.eval_nim:
-        print(f"📈 Evaluating NIM endpoint: {cfg.nim_url}")
+        print(f"📈 Evaluating {cfg.embedding_api_backend} endpoint: {cfg.nim_url}")
         try:
             nim_metrics, _, nim_diagnostics = evaluate_nim(
                 nim_url=cfg.nim_url,
@@ -700,13 +731,14 @@ def run_eval(cfg: EvalConfig) -> dict:
                 timeout=cfg.nim_timeout,
                 invalid_embedding_retries=cfg.nim_invalid_embedding_retries,
                 expected_dimension=cfg.nim_embedding_dimension,
+                api_backend=cfg.embedding_api_backend,
                 k_values=cfg.k_values,
             )
             results["nim"] = nim_metrics
             _print_summary_metrics(nim_metrics, cfg.k_values)
             print()
         except Exception as error:
-            print(f"   Error evaluating NIM: {error}")
+            print(f"   Error evaluating embedding API: {error}")
             raise
 
     # Print comparison

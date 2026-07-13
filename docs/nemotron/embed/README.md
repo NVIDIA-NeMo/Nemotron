@@ -228,15 +228,15 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 ### Default: Ministral-based Nemotron 3 Embed
 
 The default profile loads `nvidia/Nemotron-3-Embed-1B-BF16` from
-Hugging Face for mining, fine-tuning, and base-model evaluation, then mounts
-the consolidated Stage 2 checkpoint directly into Retriever NIM 2.x:
+Hugging Face for mining, fine-tuning, and base-model evaluation. Stage 5 can
+mount the consolidated Stage 2 checkpoint directly into Retriever NIM 2.x or
+serve it with NVIDIA's vLLM container:
 
 ```bash
 export LD_LIBRARY_PATH=""
 export NVIDIA_API_KEY=your_endpoint_credential
 # Optional: override Data Designer's built-in NVIDIA endpoint.
 export NVIDIA_API_BASE_URL=https://your-authorized-endpoint.example/v1
-export NEMOTRON3_EMBED_NIM_IMAGE=nvcr.io/your-compatible-embedding-nim:tag
 
 nemotron embed sdg -c default corpus_dir=/path/to/your/docs
 nemotron embed prep -c default
@@ -246,31 +246,43 @@ nemotron embed eval -c default
 # Stage 4 is an intentional no-op for this profile.
 nemotron embed export -c default
 
-# Stage 5 mounts the Stage 2 checkpoint directly.
+# Option A: deploy with a compatible Retriever NIM image.
+export NEMOTRON3_EMBED_NIM_IMAGE=nvcr.io/your-compatible-embedding-nim:tag
 nemotron embed deploy -c default
 nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
+
+# Option B: deploy with the checked-in NVIDIA vLLM backend.
+nemotron embed deploy -c default backend=vllm
+nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+  embedding_api_backend=vllm \
+  output_dir=./output/embed/nemotron-3-1b/stage3_eval_vllm_comparison
 ```
 
 Stage 0 uses `nvidia/nemotron-3-ultra-550b-a55b` through Data
 Designer's built-in endpoint or the optional `NVIDIA_API_BASE_URL` override.
 Model-dependent artifacts are isolated
-under `output/embed/nemotron-3-1b/`. The deploy stage mounts
+under `output/embed/nemotron-3-1b/`. Both deploy backends mount
 `stage2_finetune/checkpoints/LATEST/model/consolidated` read-only at `/model`
-and sets `NIM_MODEL_PATH=/model`; no ONNX or TensorRT conversion is performed.
-Because the artifact is already local, the default profile does not forward
-`NGC_API_KEY` into the container.
+without ONNX or TensorRT conversion. NIM selects it through
+`NIM_MODEL_PATH=/model`; vLLM runs `vllm serve /model` and detects the
+checkpoint's embedding configuration automatically.
+Because the artifact is already local, neither path forwards `NGC_API_KEY`
+into the container.
 
-The deploy preflight requires the NIM-supported fingerprint: hidden size 2048,
+The deploy preflight requires the supported fingerprint: hidden size 2048,
 18 layers, 32 attention heads, 8 key/value heads, intermediate size 5632, and
-vocabulary size 131072. It uses a 512-token limit and defaults to
-`padded-naive-fp16`; override the latter with
-`NEMOTRON3_EMBED_NIM_PIPELINE_ID`. The evaluator retries null/non-finite NIM
-responses up to 32 times per affected input, but every retry warning should
-still be treated as a serving-reliability defect. The checkpoint requires
-Transformers 5.1 through 5.5.
+vocabulary size 131072. NIM uses a 512-token runtime limit and defaults to
+`padded-naive-fp16`; override that NIM setting with
+`NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives the checkpoint's sequence
+length, pooling, activation, and prompt behavior automatically. The evaluator
+uses vLLM's `/v2/embed` endpoint and passes `input_type` (`query` or
+`passage`) without adding text prefixes itself. The evaluator retries
+null/non-finite NIM responses up to 32 times per affected input, but every
+retry warning should still be treated as a serving-reliability defect. The
+checkpoint requires Transformers 5.1 through 5.5.
 
-The NIM evaluation command above evaluates the fine-tuned checkpoint and the
+The served-endpoint evaluation commands above evaluate the fine-tuned checkpoint and the
 served endpoint in one process, records endpoint/model/dimension diagnostics,
 and writes to a separate output directory. Its metric deltas compare aggregate
 retrieval behavior; they do not prove artifact identity. The deploy
@@ -293,9 +305,9 @@ nemotron embed export -c llama
 nemotron embed deploy -c llama
 ```
 
-| Profile | Training model | NIM artifact contract | Stage 4 |
-|---------|----------------|-----------------------|---------|
-| `default` | `nvidia/Nemotron-3-Embed-1B-BF16` from Hugging Face | PyTorch checkpoint via `NIM_MODEL_PATH` | Skipped |
+| Profile | Training model | Deployment artifact contract | Stage 4 |
+|---------|----------------|------------------------------|---------|
+| `default` | `nvidia/Nemotron-3-Embed-1B-BF16` from Hugging Face | PyTorch checkpoint via NIM or vLLM | Skipped |
 | `llama` | `nvidia/llama-nemotron-embed-1b-v2` | ONNX/TensorRT via `NIM_CUSTOM_MODEL` | Enabled |
 
 Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint sent
@@ -514,11 +526,12 @@ trust_remote_code: true
 enabled: false
 
 # Stage 5
-nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE}
+backend: nim  # Override with backend=vllm
+vllm_image: nvcr.io/nvidia/vllm:26.06-py3
 model_dir: ./output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated
 model_path_env: NIM_MODEL_PATH
 container_model_path: /model
-max_seq_len: 512
+max_seq_len: 512  # NIM runtime setting; vLLM reads checkpoint metadata
 ```
 
 ### Llama profile settings
@@ -659,8 +672,9 @@ Model: fine-tuned
 | Model locator | `nvidia/Nemotron-3-Embed-1B-BF16` (Hugging Face) | `nvidia/llama-nemotron-embed-1b-v2` |
 | Embedding dimension | 2048 | 2048 (Matryoshka: 384/512/768/1024/2048) |
 | Recipe sequence length | 512 | 512 by default; model supports longer inputs |
-| NIM input artifact | Hugging Face PyTorch/safetensors checkpoint | ONNX or TensorRT export |
-| NIM selector | `NIM_MODEL_PATH` | `NIM_CUSTOM_MODEL` |
+| Deployment backend | Retriever NIM or NVIDIA vLLM | Retriever NIM |
+| Serving input artifact | Hugging Face PyTorch/safetensors checkpoint | ONNX or TensorRT export |
+| NIM selector | `NIM_MODEL_PATH` when using NIM | `NIM_CUSTOM_MODEL` |
 | Stage 4 | Skipped | Enabled |
 
 ## Troubleshooting
@@ -746,7 +760,7 @@ nemotron embed finetune -c default local_batch_size=2
 **Error: Model checkpoint not found**
 ```bash
 # Check checkpoint path
-ls -la output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated/
+ls -la output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated/
 
 # Specify custom path
 nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
@@ -756,7 +770,7 @@ nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
 - **Solution**: Ensure eval_beir data was created in Stage 1
 - **Solution**: Check that corpus.jsonl and queries.jsonl exist
 
-### Stage 4: Export Issues
+### Stage 4: Llama Export Issues
 
 **Error: TensorRT export fails**
 - **Solution**: Ensure using NGC container with TensorRT (nemo:25.07+)
@@ -768,21 +782,37 @@ nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
 
 ### Stage 5: Deployment Issues
 
-**Error: NIM container fails to start**
+**Error: NIM image is not configured**
 ```bash
-# Check NGC credentials
+export NEMOTRON3_EMBED_NIM_IMAGE=nvcr.io/your-compatible-embedding-nim:tag
+nemotron embed deploy -c default
+```
+
+Alternatively, use the checked-in vLLM backend:
+```bash
+nemotron embed deploy -c default backend=vllm
+```
+
+**Error: Serving container fails to start**
+```bash
+# Authenticate to NGC when required for the selected image.
 docker login nvcr.io
 
 # Check if port is already in use
 sudo lsof -i :8000
 
 # Use different port
-nemotron embed deploy -c default host_port=8002
+nemotron embed deploy -c default backend=vllm host_port=8002
 ```
 
-**Error: NIM accuracy differs from checkpoint**
-- **Solution**: Ensure using same model format (TensorRT vs ONNX)
-- **Solution**: Check quantization settings match
+**Error: Served accuracy differs from checkpoint**
+- **Solution**: For vLLM evaluation, set `embedding_api_backend=vllm`; it uses
+  `/v2/embed` and sends `input_type=query` or `input_type=passage` without
+  manually prefixing text.
+- **Solution**: Let vLLM detect pooling, activation, normalization, and sequence
+  length from the checkpoint. Do not add overrides unless you are deliberately
+  testing a different serving contract.
+- **Solution**: For the Llama NIM profile, ensure the TensorRT/ONNX and quantization settings match.
 - **Solution**: Verify model files are complete and not corrupted
 
 ### CUDA Library Errors
