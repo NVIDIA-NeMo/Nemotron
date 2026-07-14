@@ -16,10 +16,12 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 
 ## Training Pipeline
 
+A large language model (LLM) generates synthetic question-and-answer pairs in Stage 0.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           YOUR DOCUMENT CORPUS                              │
-│                    (Text files: .txt, .md, etc.)                            │
+│              (Text files: .txt, .md, and other supported formats)           │
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
                                    ▼
@@ -66,7 +68,7 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        STAGE 5: DEPLOY (NIM)                                │
+│                             STAGE 5: DEPLOY                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │               Launch NIM or vLLM from the selected artifact             ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
@@ -84,9 +86,9 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 
 ## Installation
 
-### 1. Install UV Package Manager
+### 1. Install the uv Package Manager
 
-This project **requires [UV](https://docs.astral.sh/uv/)** as its package manager. UV automatically creates and manages a virtual environment under the repository root, and each pipeline stage uses its own isolated environment as well. **Do not use `pip install`** — the project relies on UV workspaces and per-stage dependency isolation.
+This project requires the [uv](https://docs.astral.sh/uv/) package manager. It automatically creates and manages a virtual environment under the repository root, and each pipeline stage uses an isolated environment. **Do not use `pip install`**. The project relies on uv workspaces and per-stage dependency isolation.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -99,7 +101,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
-# UV creates a virtual environment at .venv/ and installs all dependencies
+# uv creates a virtual environment at .venv/ and installs all dependencies
 uv sync --all-extras
 ```
 
@@ -113,7 +115,7 @@ is set. Use the credential for the selected endpoint:
 export NVIDIA_API_KEY=your_key_here
 ```
 
-### 4. Configure Execution Profiles (Optional)
+### 4. Optional: Configure Execution Profiles
 
 For Docker or Slurm execution, create `env.toml` in the **repository root directory**.
 
@@ -125,7 +127,7 @@ entity = "my-username"
 ```
 
 **Full configuration with Docker and Slurm support:**
-See the [Execution Profiles](#execution-profiles) section below.
+Refer to [Execution Profiles](#execution-profiles).
 
 ## Preparing Your Corpus
 
@@ -139,9 +141,9 @@ See the [Execution Profiles](#execution-profiles) section below.
 
 | Corpus Size | Documents | Expected Results |
 |-------------|-----------|------------------|
-| **Minimum** | 50-100 docs (~50K tokens) | Basic domain adaptation |
-| **Recommended** | 500+ docs | Good domain coverage |
-| **Optimal** | 1000+ docs | Best performance |
+| **Minimum** | 50–100 documents (approximately 50,000 tokens) | Basic domain adaptation |
+| **Recommended** | 500 or more documents | Good domain coverage |
+| **Optimal** | 1,000 or more documents | Best performance |
 
 ### Document Organization
 
@@ -159,7 +161,7 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 
 ### Document Quality Tips
 
-- **Length**: Aim for 200-2000 tokens per document
+- **Length**: Aim for 200–2,000 tokens per document
 - **Content**: Ensure documents are representative of your domain
 - **Diversity**: Include various document types/topics from your domain
 - **Quality**: Clean, well-formatted text yields better synthetic Q&A pairs
@@ -168,41 +170,42 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 
 ### Hardware Requirements
 
-- **GPU**: NVIDIA GPU with at least 80GB VRAM (e.g., A100, H100)
-  - Stages 0 uses NVIDIA API (no GPU required)
-  - Stage 1-5: Require GPU for model inference and training
-- **CPU**: Modern multi-core processor (16+ cores recommended)
-- **Memory**: 128GB+ RAM recommended
-- **Storage**: ~50GB free disk space for outputs, models, and containers
+- **GPU**: An NVIDIA GPU with at least 80 GB of VRAM, such as an A100 or H100
+  - Stage 0 uses the NVIDIA API and does not require a GPU.
+  - Stages 1–5 require a GPU for model inference and training.
+- **CPU**: Modern multicore processor (16 or more cores recommended)
+- **Memory**: 128 GB or more RAM recommended
+- **Storage**: Approximately 50 GB of free disk space for outputs, models, and containers
 
 ### Software Requirements
 
 - **Python**: 3.12 or later
-- **UV**: Package manager (installation instructions above)
+- **uv**: Package manager (installation instructions above)
 - **NVIDIA API Key**: Required for synthetic data generation
 - **NVIDIA GPU Drivers**: Latest drivers for your GPU
 - **Docker** (optional): For containerized execution
 - **Slurm** (optional): For cluster execution
 
-### Expected Runtime & Resources
+### Expected Runtime and Resources
 
 | Stage | GPU VRAM | CPU | Notes |
 |-------|----------|-----|-------|
-| Stage 0 (SDG) | N/A | 8+ cores | Uses API (no local GPU); runtime varies by dataset size |
-| Stage 1 (Data Prep) | 40GB | 16+ cores | Hard negative mining on GPU; runtime varies by dataset size |
-| Stage 2 (Finetune) | 80GB | 16+ cores | Runtime varies by dataset size and epochs |
-| Stage 3 (Eval) | 40GB | 8+ cores | Evaluation metrics computation; runtime varies by dataset size |
-| Stage 4 (Export) | 40GB | 8+ cores | TensorRT export requires NGC container |
-| Stage 5 (Deploy) | 40GB | 4+ cores | NIM container initialization |
+| Stage 0 (SDG) | N/A | 8 or more cores | Uses API (no local GPU); runtime varies by dataset size |
+| Stage 1 (Data Prep) | 40 GB | 16 or more cores | Hard-negative mining on GPU; runtime varies by dataset size |
+| Stage 2 (Finetune) | 80 GB | 16 or more cores | Runtime varies by dataset size and epochs |
+| Stage 3 (Eval) | 40 GB | 8 or more cores | Evaluation metrics computation; runtime varies by dataset size |
+| Stage 4 (Export) | 40 GB | 8 or more cores | TensorRT export requires NGC container |
+| Stage 5 (Deploy) | 40 GB | 4 or more cores | Inference container initialization |
 
-**Total disk space**: ~50GB for outputs, model checkpoints, and containers
+**Total disk space**: Approximately 50 GB for outputs, model checkpoints, and containers
 
-**Runtime**: Highly dependent on dataset size. Expect longer runtimes for larger corpora and more training epochs.
- - For small dataset (e.g. nv_pp_random with ~70 input files), it can take ~30 minutes for Stage 0 (SDG) with the default setup. Changing to other LLM endpoints or tune `max_parallel_requests_for_gen` can affect the runtime, rate limit failures, and generation quality. It can take 10-20 minutes for Stage 2 (Finetune) with the default setup.
- - For large dataset (e.g. 10K+ input files), it can take tens of hours or 1-2 days for Stage 0 (SDG) and 5-10 hours for Stage 2 (Finetune). Changing model endpoints, type and number of GPUs (and other fine-tune parameters) can affect the runtime.
+**Runtime**: Runtime depends on dataset size. Larger corpora and more training epochs take longer.
+
+- For a small dataset, such as `nv_pp_random` with approximately 70 input files, Stage 0 (SDG) can take about 30 minutes with the default setup. Changing LLM endpoints or tuning `max_parallel_requests_for_gen` can affect runtime, rate-limit behavior, and generation quality. Stage 2 (Finetune) can take 10–20 minutes with the default setup.
+- For a large dataset, such as 10,000 or more input files, Stage 0 (SDG) can take tens of hours or 1–2 days, and Stage 2 (Finetune) can take 5–10 hours. Changing model endpoints, GPU type and count, and other fine-tuning parameters can affect runtime.
 
 
-### LLM API Usage (Stage 0)
+### Large Language Model (LLM) API Usage (Stage 0)
 
 Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA's hosted LLMs:
 
@@ -211,7 +214,7 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 - **Usage**: ~4 API calls per document (artifact extraction, QA generation, dedup, quality eval)
 - **Access and limits**: Depend on the selected NVIDIA endpoint and credential
 - **Progress**: Built-in progress logging shows completion %, records/second, and ETA per stage
-- **Other providers**: NeMo Data Designer supports multiple providers (OpenAI, OpenRouter, etc.)
+- **Other providers**: NeMo Data Designer supports multiple providers, such as OpenAI and OpenRouter.
   - Customize provider settings in the config file
   - See [default provider settings](https://docs.nvidia.com/nemo/datadesigner/concepts/models/default-model-settings) for configuration options
 
@@ -262,27 +265,29 @@ checkpoint's embedding configuration automatically.
 Because the artifact is already local, neither path forwards `NGC_API_KEY`
 into the container.
 
-The deploy preflight requires the supported fingerprint: hidden size 2048,
-16 layers, 24 attention heads, 8 key/value heads, intermediate size 6144, and
-vocabulary size 131072. NIM uses a 512-token runtime limit and defaults to
-`padded-naive-fp16`; override that NIM setting with
-`NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives the checkpoint's sequence
-length, pooling, activation, and prompt behavior automatically. The evaluator
-uses vLLM's `/v2/embed` endpoint and passes `input_type` (`query` or
-`document`) without adding text prefixes itself. The evaluator retries
-null/non-finite NIM responses up to 32 times per affected input, but every
-retry warning should still be treated as a serving-reliability defect. The
+The deploy preflight requires a checkpoint with this supported fingerprint:
+hidden size 2,048; 16 layers; 24 attention heads; 8 key/value heads;
+intermediate size 6,144; and vocabulary size 131,072.
+
+NIM uses a 512-token runtime limit and defaults to `padded-naive-fp16`. You can
+override this NIM setting with `NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives
+the checkpoint's sequence length, pooling, activation, and prompt behavior
+automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
+`input_type` (`query` or `document`) without adding text prefixes. For null or
+nonfinite NIM responses, the evaluator retries up to 32 times per affected
+input. Treat every retry warning as a serving-reliability defect.
+
 Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
-the deployable checkpoint; Stages 1 and 3 retain Transformers 5.1 through 5.5
+the deployable checkpoint. Stages 1 and 3 retain Transformers 5.1 through 5.5
 for the original checkpoint path.
 
-The served-endpoint evaluation commands above evaluate the fine-tuned checkpoint and the
-served endpoint in one process, records endpoint/model/dimension diagnostics,
-and writes to a separate output directory. Its metric deltas compare aggregate
-retrieval behavior; they do not prove artifact identity. The deploy
-mount/fingerprint checks establish which local artifact was selected. Set
-`fail_on_nim_metric_drift=true` only when those configured tolerances should
-gate the run.
+The preceding served-endpoint evaluation commands evaluate the fine-tuned
+checkpoint and served endpoint in one process. They record endpoint, model, and
+dimension diagnostics and write results to a separate output directory. The
+reported metric deltas compare aggregate retrieval behavior; they do not prove
+artifact identity. The deploy mount and fingerprint checks establish which local
+artifact was selected. Set `fail_on_nim_metric_drift=true` only when the
+configured tolerances should gate the run.
 
 Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint sent
 to NIM and `NEMOTRON3_EMBED_NIM_MODEL` if the configured image advertises a
@@ -364,7 +369,7 @@ nemotron embed prep -c default --run local-docker
 nemotron embed eval -c default --run local-docker
 ```
 
-> **Note**: Requires `local-docker` profile in `env.toml` (see [Execution Profiles](#execution-profiles) below)
+> **Note**: Requires the `local-docker` profile in `env.toml` (refer to [Execution Profiles](#execution-profiles)).
 
 ### Slurm Batch Execution
 
@@ -465,7 +470,7 @@ Changing `artifact_root` only relocates artifacts. A future model profile such
 as `nemotron-3-8b` must also set its own base model, runtime settings, NIM
 identity and fingerprint, and any model-specific dependencies.
 
-### Default model settings
+### Default Model Settings
 
 ```yaml
 # Stage 0
@@ -536,10 +541,10 @@ The evaluation stage computes standard information retrieval metrics using the B
 
 | Metric | Description | Range |
 |--------|-------------|-------|
-| **nDCG@k** | Normalized Discounted Cumulative Gain (ranking quality) | 0.0-1.0 |
-| **Recall@k** | Fraction of relevant documents in top-k results | 0.0-1.0 |
-| **Precision@k** | Fraction of retrieved documents that are relevant | 0.0-1.0 |
-| **MAP@k** | Mean Average Precision | 0.0-1.0 |
+| **nDCG@k** | Normalized Discounted Cumulative Gain (ranking quality) | 0.0–1.0 |
+| **Recall@k** | Fraction of relevant documents in top-k results | 0.0–1.0 |
+| **Precision@k** | Fraction of retrieved documents that are relevant | 0.0–1.0 |
+| **MAP@k** | Mean Average Precision | 0.0–1.0 |
 
 Higher scores indicate better retrieval performance.
 
@@ -597,7 +602,7 @@ Model: fine-tuned
 
 **Error: `uv: command not found`**
 ```bash
-# Install UV package manager
+# Install the uv package manager
 curl -LsSf https://astral.sh/uv/install.sh | sh
 # Add to PATH
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -853,10 +858,10 @@ ls -lh output/embed/stage2_finetune/checkpoints/
 
 | Parameter | Default | Notes |
 | :---- | :---- | :---- |
-| Epochs | 3 | **Default is tuned for the small example dataset; for real-world data, 1–2 epochs is usually sufficient.** 3 epochs risks overfitting on most datasets. See [epoch guidance in FAQ](#how-many-epochs-typically-improve-accuracy-before-overfitting-becomes-a-risk-is-there-a-rule-of-thumb). |
+| Epochs | 3 | **Default is tuned for the small example dataset; for real-world data, 1–2 epochs is usually sufficient.** 3 epochs risks overfitting on most datasets. Refer to [epoch guidance in the FAQ](#how-many-epochs-typically-improve-accuracy-before-overfitting-becomes-a-risk-is-there-a-rule-of-thumb). |
 | Learning rate | 1e-5 | Try double and half of the default value |
 | Learning rate warmup steps | 5 | Set to 5-10% of total steps of finetune to have better early training stability |
-| Sequence length | 512 | Set `query_max_length` / `passage_max_length` consistently across Stages 1-3 (up to your base model's max sequence length). Increase `sentences_per_chunk` in Stage 0 accordingly. Longer sequences require reducing batch size. See [Customizing Sequence Length](#customizing-sequence-length). |
+| Sequence length | 512 | Set `query_max_length` / `passage_max_length` consistently across Stages 1–3 (up to your base model's maximum sequence length). Increase `sentences_per_chunk` in Stage 0 accordingly. Longer sequences require reducing batch size. Refer to [Sequence Length](#sequence-length). |
 
 ### Evaluation
 - Always compare against base model
@@ -880,9 +885,9 @@ The SDG model directly determines the quality of synthetic queries and answers u
 
 **How should SDG prompts be designed to reliably capture rare words and domain-specific identifiers (bug IDs, product IDs, versions) that matter for retrieval accuracy?**
 
-The built-in SDG pipeline extracts structured artifacts from each document chunk — including entities, technical terms, key concepts, and relationships — before generating QA pairs. These artifacts are injected into the QA generation prompt, which biases the LLM toward producing queries that reference specific identifiers. To improve coverage of rare tokens: (1) ensure your source documents contain the identifiers in-context (the LLM can only reference what it sees in the chunk), (2) increase `max_artifacts_per_type` (default: 2) so more entities and technical terms are extracted per chunk, and (3) increase `num_pairs` to generate more QA pairs per document, raising the chance that niche identifiers appear in at least some queries. If identifiers span multiple chunks (e.g., a bug ID mentioned in one section and its resolution in another), enable multi-document bundling (`multi_doc: true`) so the LLM sees cross-chunk context. After SDG, spot-check a sample of generated queries for identifier coverage before proceeding to training.
+The built-in SDG pipeline extracts structured artifacts from each document chunk — including entities, technical terms, key concepts, and relationships — before generating QA pairs. These artifacts are injected into the QA generation prompt, which biases the LLM toward producing queries that reference specific identifiers. To improve coverage of rare tokens: (1) ensure your source documents contain the identifiers in context (the LLM can only reference what it sees in the chunk), (2) increase `max_artifacts_per_type` (default: 2) so more entities and technical terms are extracted per chunk, and (3) increase `num_pairs` to generate more QA pairs per document, raising the chance that niche identifiers appear in at least some queries. If identifiers span multiple chunks, for example, a bug ID mentioned in one section and its resolution in another, enable multi-document bundling (`multi_doc: true`) so the LLM sees cross-chunk context. After SDG, spot-check a sample of generated queries for identifier coverage before proceeding to training.
 
-In addition, prompts can be tailored to the specific document type - bug vs ticket vs technical manual. It makes sense that prompts should be tailored to the specific document type for optimal Q/A generation.
+Tailor prompts to the document type, such as a bug report, ticket, or technical manual, to optimize Q&A generation.
 
 ### Data Volume and Saturation
 
@@ -892,33 +897,35 @@ There is no universal threshold — saturation depends on domain complexity, voc
 
 | Corpus Size | Typical Outcome |
 |-------------|-----------------|
-| 100+ docs | Basic domain adaptation |
-| 500-1000 docs | Good domain coverage for enterprise corpora |
-| 5000+ docs | Strong and reliable adaptation |
+| 100 or more documents | Basic domain adaptation |
+| 500–1,000 documents | Good domain coverage for enterprise corpora |
+| 5,000 or more documents | Strong and reliable adaptation |
 
-After SDG and quality filtering (default threshold 7.0), the effective training set is typically smaller than the raw doc count. Monitor Stage 3 eval metrics (nDCG@10, Recall@10) across runs with increasing data to find your domain's saturation point.
+After SDG and quality filtering (default threshold 7.0), the effective training set is typically smaller than the raw document count. Monitor Stage 3 eval metrics (nDCG@10, Recall@10) across runs with increasing data to find your domain's saturation point.
 
-**How can we reliably detect saturation of the embedding model as we scale data volume?**
+**How can you reliably detect saturation of the embedding model as you scale data volume?**
 
-Run the pipeline at two or three data scales (e.g., 25%, 50%, 100% of your corpus) with identical hyperparameters and compare Stage 3 eval metrics. Saturation is reached when doubling the data yields less than ~1–2 absolute points of nDCG@10 improvement. Use a fixed held-out evaluation set across all runs to ensure comparability (see the evaluation questions below).
+Run the pipeline at two or three data scales, for example, 25%, 50%, and 100% of your corpus, with identical hyperparameters and compare Stage 3 eval metrics. Saturation is reached when doubling the data yields less than approximately 1–2 absolute points of nDCG@10 improvement. Use a fixed held-out evaluation set across all runs to ensure comparability. Refer to the evaluation questions below.
 
-**Should we prioritize adding more documents or generating more queries per document to improve accuracy?**
+**Should you prioritize adding more documents or generating more queries per document to improve accuracy?**
 
-In general, more documents with diverse content have a larger impact than more queries per document, because new documents introduce new vocabulary, concepts, and retrieval patterns. More queries per document (via `num_pairs`) primarily helps the model see the same content from different query angles, which has diminishing returns once the core semantics are covered. Prioritize adding documents first; once your corpus is representative, increase `num_pairs` (default: 10) to improve query diversity for chunks that cover complex or multi-faceted topics.
+In general, more documents with diverse content have a larger impact than more queries per document because new documents introduce new vocabulary, concepts, and retrieval patterns. More queries per document (using `num_pairs`) primarily help the model see the same content from different query angles, which has diminishing returns after the core semantics are covered. Prioritize adding documents first. After your corpus is representative, increase `num_pairs` (default: 10) to improve query diversity for chunks that cover complex or multifaceted topics.
 
 ### Using Existing Vector-DB Chunks
 
 **Would using real production vector-DB chunks as positives (instead of synthetic chunks) improve embedding accuracy?**
 
-Yes, this can improve accuracy — if your production chunks reflect the actual retrieval units users will query against, training on them aligns the embedding space more closely with your deployment setup. The recipe supports this: you can skip Stage 0 entirely and start from Stage 1 by supplying your own QA pairs with real chunks as positives (see the [Pipeline Flexibility](#pipeline-flexibility) table). Format your data as JSON with query–positive-passage pairs and feed it to `nemotron embed prep`. The main risk is that real chunks without synthetic queries may lack query diversity; consider generating synthetic queries against your real chunks (see next question) to get the best of both worlds.
+Yes, this can improve accuracy. If your production chunks reflect the actual retrieval units that you query against, training on them aligns the embedding space more closely with your deployment setup. The recipe supports this: you can skip Stage 0 entirely and start from Stage 1 by supplying your own QA pairs with real chunks as positives. Refer to the [Pipeline Flexibility](#pipeline-flexibility) table. Format your data as JSON with query–positive-passage pairs and feed it to `nemotron embed prep`. The main risk is that real chunks without synthetic queries may lack query diversity. Consider generating synthetic queries against your real chunks, as described in the next question, to get the best of both approaches.
 
 **Is it recommended to generate multiple synthetic queries per real chunk to better shape the embedding space?**
 
-Yes. Generating multiple diverse queries per chunk teaches the model that many different phrasings should map to the same passage. You can do this by running Stage 0 with your real chunks as input documents and increasing `num_pairs`. The SDG pipeline will generate varied query types (factual, relational, inferential, procedural, etc.) and complexity levels against each chunk. This is especially valuable for chunks covering dense or multi-faceted content where a single query captures only one retrieval intent.
+Yes. Generating multiple diverse queries per chunk teaches the model that many different phrasings should map to the same passage. You can do this by running Stage 0 with your real chunks as input documents and increasing `num_pairs`. The SDG pipeline generates varied query types, such as factual, relational, inferential, and procedural queries, with different complexity levels for each chunk. This is especially valuable for chunks that cover dense or multifaceted content where a single query captures only one retrieval intent.
 
 **Should training-time chunking exactly match production chunking to maximize retrieval accuracy, or is approximate alignment sufficient?**
 
-Exact matching is ideal but approximate alignment is usually good enough. What matters most is that training chunks and production chunks are in the same ballpark of length and boundary style — if production chunks are ~500 tokens with sentence-boundary splitting, training on ~500-token sentence-boundary chunks will transfer well even if the exact split points differ. The embedding model learns semantic similarity at the passage level, not memorized chunk boundaries. That said, large mismatches hurt: training on 5-sentence chunks (the Stage 0 default, typically ~100–150 tokens) while deploying with 2000-token chunks creates a distribution gap where the model has never seen passages of that length during training. To close the gap, either (1) feed your real production chunks directly as positives (see above), or (2) adjust `sentences_per_chunk` in Stage 0 and `passage_max_length` in Stages 1–3 to approximate your production chunk size. Also ensure `passage_max_length` is set consistently across stages so that tokenization truncation during training and evaluation matches what happens at inference time. In practice, aligning chunk length within ~2x of production is sufficient; pixel-perfect boundary matching yields negligible additional gain.
+Exact matching is ideal, but approximate alignment is usually sufficient. Keep training and production chunks similar in length and boundary style. For example, if production chunks contain about 500 tokens and use sentence-boundary splitting, train on chunks with a similar length and boundary style. The embedding model learns semantic similarity at the passage level, not memorized chunk boundaries.
+
+Large mismatches can reduce accuracy. For example, training on five-sentence chunks (the Stage 0 default, typically about 100–150 tokens) while deploying with 2,000-token chunks creates a distribution gap. To reduce the gap, either feed your real production chunks directly as positives or adjust `sentences_per_chunk` in Stage 0 and `passage_max_length` in Stages 1–3 to approximate your production chunk size. Set `passage_max_length` consistently across stages so tokenization truncation during training and evaluation matches inference-time behavior. In practice, aligning chunk length within about a factor of two of the production length is sufficient. Exact boundary matching adds little benefit.
 
 ### Hard-Negative Mining
 
@@ -926,15 +933,15 @@ Exact matching is ideal but approximate alignment is usually good enough. What m
 
 Hard-negative mining uses a margin-based filter to exclude documents that are too similar to the positive. The key parameter is `hard_neg_margin` (default: 0.95 with `perc` margin type), which acts as an exclusion ceiling: any document scoring *above* `min_positive_score * margin` is eliminated, and the top-k highest-scoring survivors become the hard negatives. To tune:
 
-- **Raise the margin** (e.g., 0.98–1.0) to narrow the exclusion zone, allowing negatives that score closer to the positive. This produces harder negatives that improve discrimination but risks including false negatives (relevant documents mislabeled as negative), especially in corpora with near-duplicate passages.
-- **Lower the margin** (e.g., 0.85–0.90) to widen the exclusion zone, forcing negatives to be further from the positive score. This produces easier, safer negatives with less risk of false negatives, but provides weaker training signal.
+- **Raise the margin** (for example, 0.98–1.0) to narrow the exclusion zone, allowing negatives that score closer to the positive. This produces harder negatives that improve discrimination but risks including false negatives (relevant documents mislabeled as negative), especially in corpora with near-duplicate passages.
+- **Lower the margin** (for example, 0.85–0.90) to widen the exclusion zone, forcing negatives to be further from the positive score. This produces easier, safer negatives with less risk of false negatives, but provides weaker training signal.
 - **Increase `hard_negatives_to_mine`** (default: 5) to give the model more contrastive examples per query. The training stage uses `train_n_passages` (default: 5, meaning 1 positive + 4 negatives), so mine at least as many as you plan to train with.
 
 Start with defaults and only raise the margin if Stage 3 metrics plateau — aggressive hard negatives on noisy data can hurt more than help.
 
-**What is the recommended number of hard negatives for best accuracy (e.g., 5 vs 10 vs higher)?**
+**What is the recommended number of hard negatives for best accuracy, such as 5, 10, or more?**
 
-The default of 4 hard negatives per query (`train_n_passages: 5` = 1 positive + 4 negatives) is a solid baseline. Increasing to 10 negatives can improve discrimination, especially for large corpora with many similar-looking passages, but the gains taper off quickly beyond that. Two parameters must be adjusted together: `hard_negatives_to_mine` in Stage 1 (how many candidates are mined) and `train_n_passages` in Stage 2 (how many are used during training), e.g., mine 10 and train with 10.
+The default of 4 hard negatives per query (`train_n_passages: 5` = 1 positive + 4 negatives) is a solid baseline. Increasing to 10 negatives can improve discrimination, especially for large corpora with many similar-looking passages, but the gains taper off quickly beyond that. Adjust two parameters together: `hard_negatives_to_mine` in Stage 1 (how many candidates are mined) and `train_n_passages` in Stage 2 (how many are used during training). For example, mine 10 and train with 10.
 
 ### Training Hyperparameters
 
@@ -945,11 +952,11 @@ In order of typical impact:
 1. **Learning rate** (default: 1e-5) — the single most sensitive parameter. Try 5e-6 and 2e-5 as first alternatives. Too high causes instability or NaN loss; too low undertrains.
 2. **Epochs** (default: 3) — controls how many passes the model makes over the data. The default of 3 is calibrated for the small example dataset in this recipe; **for most real-world datasets, 1–2 epochs is recommended** to avoid overfitting. See the epoch table below.
 3. **Learning rate warmup** (default: 5 steps) — set to 5–10% of total training steps for better early stability.
-4. **Batch size** (default: 128) — determines the number of gradient update steps per epoch. Use smaller values for small datasets to get more updates; see the [batch size FAQ](#how-does-batch-size-affect-training-and-how-should-it-be-set) below.
+4. **Batch size** (default: 128) — determines the number of gradient update steps per epoch. Use smaller values for small datasets to get more updates. Refer to the [batch size FAQ](#how-does-batch-size-affect-training-and-how-should-it-be-set).
 
-**What learning-rate sweep strategy is recommended to maximize accuracy (e.g., halve/double defaults)?**
+**What learning-rate sweep strategy is recommended to maximize accuracy, such as halving or doubling defaults?**
 
-A simple three-point sweep around the default is the most cost-effective approach. Start with the default 1e-5, then try 5e-6 (half) and 2e-5 (double). Compare Stage 3 eval metrics (nDCG@10) across the three runs — the winner is usually obvious. If the best result is at an endpoint (e.g., 2e-5 beats both others), extend one more step in that direction (try 4e-5) to confirm you haven't undershot. Keep epochs and all other hyperparameters fixed during the sweep so that LR is the only variable.
+Use a simple three-point sweep around the default. Start with the default 1e-5, then try 5e-6 (half) and 2e-5 (double). Compare Stage 3 eval metrics (nDCG@10) across the three runs. The best result is usually clear. If the best result is at an endpoint, for example, 2e-5 beats both others, extend one more step in that direction and try 4e-5 to confirm that you have not undershot. Keep epochs and all other hyperparameters fixed during the sweep so that the learning rate is the only variable.
 
 #### How many epochs typically improve accuracy before overfitting becomes a risk? Is there a rule of thumb?
 
@@ -957,9 +964,9 @@ The default `num_epochs: 3` exists because the example dataset shipped with this
 
 | Dataset Size | Recommended Epochs | Notes |
 |--------------|--------------------|-------|
-| Small (<1K examples) | 2–3 | Use 3 only if val loss is still decreasing |
-| Medium (1K–10K examples) | 1–2 | 2 epochs is usually the upper bound |
-| Large (10K+ examples) | 1 | More than 1 epoch rarely helps and often hurts |
+| Small (fewer than 1,000 examples) | 2–3 | Use 3 only if validation loss is still decreasing |
+| Medium (1,000–10,000 examples) | 1–2 | 2 epochs is usually the upper bound |
+| Large (10,000 or more examples) | 1 | More than 1 epoch rarely helps and often hurts |
 
 #### How does batch size affect training, and how should it be set?
 
@@ -973,7 +980,7 @@ As a rule of thumb, use a **smaller `global_batch_size` for small datasets** and
 
 - **Training loss** (contrastive/InfoNCE loss) measures how well the model separates positives from negatives in each batch. A steadily decreasing training loss is expected; a very low floor (~0.0–0.01) suggests the model has learned the training set well.
 - **Validation loss** tracks the same metric on held-out data. The gap between training and validation loss is your primary overfitting indicator. If validation loss decreases alongside training loss, the model is generalizing. If validation loss plateaus or rises while training loss keeps falling, stop training or reduce epochs.
-- **Neither loss directly equals retrieval accuracy.** Always rely on Stage 3 eval metrics (nDCG@k, Recall@k) as the ground truth for actual embedding quality. Loss is a proxy — it's possible for loss to improve while retrieval metrics stagnate if the hard negatives are too easy.
+- **Neither loss directly equals retrieval accuracy.** Always rely on Stage 3 eval metrics (nDCG@k, Recall@k) as the ground truth for actual embedding quality. Loss is a proxy — it is possible for loss to improve while retrieval metrics stagnate if the hard negatives are too easy.
 
 **Are there target loss behaviors or patterns that indicate optimal embedding learning?**
 
