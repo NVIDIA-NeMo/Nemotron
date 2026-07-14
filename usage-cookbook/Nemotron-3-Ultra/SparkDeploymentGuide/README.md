@@ -18,7 +18,7 @@ A step-by-step guide to serving **NVIDIA Nemotron 3 Ultra** across four [DGX Spa
 - **NVFP4** — NVIDIA's 4-bit floating-point format. Quantizing the weights to 4 bits shrinks the memory footprint dramatically, which is the only reason a model this size has any hope of fitting on Spark-class hardware.  
 - **256K context** — the deployment below serves a `--max-model-len` of 262,144 tokens.  
 - **Hybrid architecture** — Nemotron 3 mixes Mamba (state-space) layers with attention, which is why you'll see `--mamba-cache-mode` and `--mamba_ssm_cache_dtype` flags that you wouldn't see on a pure-transformer model.  
-- **MTP (Multi-Token Prediction)** — the model ships with a speculative-decoding head. Enabling it (`--speculative-config '{"method": "nemotron_h_mtp", ...}'`) lets the model draft several tokens at once for a nice throughput boost.
+- **MTP (Multi-Token Prediction)** — the model ships with a speculative-decoding head. Enabling it (`--speculative-config '{"method":"mtp",...}'`) lets the model draft several tokens at once for a nice throughput boost.
 
 **Why four DGX Sparks?** Even compressed to 4-bit, 550B parameters plus KV cache and runtime overhead won't fit on a single Spark. So we pool four of them and split the model across all four with **tensor parallelism** (`--tensor-parallel-size 4`), one GPU per node. The nodes talk to each other over high-speed ConnectX / RoCE networking.
 
@@ -181,12 +181,12 @@ exec vllm serve nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4 \
   -cc.mode 0 \
   -cc.cudagraph_mode FULL_DECODE_ONLY \
   --cudagraph-capture-sizes 5 10 15 20 \
-  --speculative-config "{\"method\": \"nemotron_h_mtp\", \"num_speculative_tokens\": 3}" \
+  --speculative-config "{\"method\":\"mtp\",\"num_speculative_tokens\":4,\"moe_backend\":\"triton\",\"attention_backend\":\"TRITON_ATTN\"}" \
   --enable-prefix-caching \
   --enable-flashinfer-autotune \
   --reasoning-parser nemotron_v3 \
   --enable-auto-tool-choice \
-  --tool-call-parser qwen3_coder \
+  --tool-call-parser qwen3_xml \
   --nnodes 4 \
   --node-rank "$NODE_RANK" \
   --master-addr "$HEAD_IP" \
@@ -202,9 +202,9 @@ exec vllm serve nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4 \
 | `--tensor-parallel-size 4` | Splits the model across all 4 GPUs (one per node). |
 | `--kv-cache-dtype fp8` | Stores the KV cache in 8-bit to save memory and fit longer context. |
 | `--mamba-cache-mode` / `--mamba_ssm_cache_dtype` | Handle the Mamba (state-space) layers in the hybrid architecture. |
-| `--speculative-config '{"method": "nemotron_h_mtp", "num_speculative_tokens": 3}'` | Turns on Multi-Token Prediction for higher throughput. |
+| `--speculative-config '{"method":"mtp",...}'` | Turns on Multi-Token Prediction for higher throughput. |
 | `--reasoning-parser nemotron_v3` | Parses Nemotron's reasoning output format. |
-| `--enable-auto-tool-choice` / `--tool-call-parser qwen3_coder` | Enable function/tool calling. |
+| `--enable-auto-tool-choice` / `--tool-call-parser qwen3_xml` | Enable function/tool calling. |
 | `--load-format instanttensor` | Enable faster model loading. When using manual route we install it at startup time; the community Docker includes it as part of the container |
 
 Once the head node finishes loading, you'll have an OpenAI-compatible API at `http://<head-ip>:8000/v1`.
