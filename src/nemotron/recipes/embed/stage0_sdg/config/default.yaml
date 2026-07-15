@@ -1,4 +1,4 @@
-# Default model family: Ministral-based Nemotron 3 Embed.
+# Default model family: Nemotron 3 Embed.
 # Stage 0: Synthetic Data Generation Configuration
 #
 # Generates synthetic Q&A pairs from document corpus using retriever-sdg.

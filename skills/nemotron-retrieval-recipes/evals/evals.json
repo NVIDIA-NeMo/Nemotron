@@ -183,7 +183,7 @@
     },
     {
       "id": "nemotron-retrieval-recipes-nemotron3-profile-001",
-      "prompt": "I want to fine-tune the new Ministral-based Nemotron 3 Embed model on my domain data. Which recipe profile and artifact paths should I use before launching anything?",
+      "prompt": "I want to fine-tune the new Nemotron 3 Embed model on my domain data. Which recipe profile and artifact paths should I use before launching anything?",
       "expected_skill": "nemotron-retrieval-recipes",
       "expected_script": null,
       "expected_output": "The agent should use the skill, run or propose `nemotron embed info`, select `-c default`, identify `nvidia/Nemotron-3-Embed-1B-BF16`, keep all stages under `output/embed/nemotron-3-1b/` or one consistent artifact_root override, and start with a dry-run instead of launching GPU work.",
@@ -212,7 +212,7 @@
       "prompt": "My Nemotron 3 Embed fine-tuning checkpoint is ready, but NEMOTRON3_EMBED_NIM_IMAGE is unset. Should I run the export stage and deploy the ONNX directory instead?",
       "expected_skill": "nemotron-retrieval-recipes",
       "expected_script": null,
-      "expected_output": "The agent should use the skill, explain that default Nemotron 3 export is an intentional no-op, deploy the consolidated Stage 2 checkpoint directly either through a compatible NIM image and NIM_MODEL_PATH or through the checked-in vLLM backend, avoid requiring or forwarding NGC_API_KEY solely for the mounted local artifact, and recommend a deploy dry-run plus checkpoint fingerprint verification. For vLLM evaluation it should select embedding_api_backend=vllm, which uses /v2/embed and input_type instead of manually adding prefixes.",
+      "expected_output": "The agent should use the skill, explain that default Nemotron 3 export is an intentional no-op, deploy the consolidated Stage 2 checkpoint directly either through a compatible NIM image and NIM_ENGINE_MODEL_PATH or through the checked-in vLLM backend, avoid requiring or forwarding NGC_API_KEY solely for the mounted local artifact, and recommend a deploy dry-run plus checkpoint fingerprint verification. For vLLM evaluation it should select embedding_api_backend=vllm, which uses /v2/embed and input_type instead of manually adding prefixes.",
       "assertions": [
         "The agent read the nemotron-retrieval-recipes SKILL.md before taking action",
         "The agent did not redirect Nemotron 3 to the Llama ONNX export path",

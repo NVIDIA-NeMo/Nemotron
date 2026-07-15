@@ -106,13 +106,13 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `em
 | 2 finetune | Unrolled Automodel JSON | `output/embed/nemotron-3-1b/stage2_finetune/checkpoints` | Llama model, Llama optimizer master-weight setting | `uv run nemotron embed finetune -c default -d` |
 | 3 eval | Fixed BEIR split and checkpoint | `output/embed/nemotron-3-1b/stage3_eval/eval_results.json` | Llama model/API identity and Llama artifact root | `uv run nemotron embed eval -c default -d` |
 | 4 export | Fine-tuned checkpoint | Explicit no-op | Exports ONNX/TensorRT and must use `-c llama` | `uv run nemotron embed export -c llama -d` |
-| 5 deploy | PyTorch checkpoint or exported Llama artifact, Docker | Default can mount safetensors through NIM `NIM_MODEL_PATH` or vLLM | Mounts ONNX/TensorRT through `NIM_CUSTOM_MODEL` | `uv run nemotron embed deploy -c default -d backend=vllm` |
+| 5 deploy | PyTorch checkpoint or exported Llama artifact, Docker | Default can mount safetensors through NIM `NIM_ENGINE_MODEL_PATH` or vLLM | Mounts ONNX/TensorRT through `NIM_CUSTOM_MODEL` | `uv run nemotron embed deploy -c default -d backend=vllm` |
 
 ## Model Profiles
 
 Default (`-c default`):
 
-- Ministral-based Nemotron 3 Embed is the default model family.
+- Nemotron 3 Embed is the default model family.
 - Uses `nvidia/Nemotron-3-Embed-1B-BF16` from Hugging Face.
 - Stage 0 uses Data Designer's built-in endpoint or the generic
   `NVIDIA_API_BASE_URL` override and
@@ -124,20 +124,21 @@ Default (`-c default`):
   converting the checkpoint.
 - Stage 5 can use a compatible NIM image configured by
   `NEMOTRON3_EMBED_NIM_IMAGE` with `backend=nim`, mounting the Stage 2
-  consolidated checkpoint read-only at `/model` with `NIM_MODEL_PATH=/model`.
+  consolidated checkpoint read-only at `/model` with `NIM_ENGINE_MODEL_PATH=/model`.
   Or use the checked-in `nvcr.io/nvidia/vllm:26.06-py3` image with
   `backend=vllm`; it mounts the same checkpoint at `/model` and detects its
   embedding configuration automatically. Neither local-artifact path forwards
   `NGC_API_KEY`.
-- Deploy preflight requires hidden size 2048, 18 layers, 32 attention heads,
-  8 key/value heads, intermediate size 5632, and vocabulary size 131072.
+- Deploy preflight requires hidden size 2,048, 16 layers, 24 attention heads,
+  8 key/value heads, intermediate size 6,144, and vocabulary size 131,072.
 - NIM uses a 512-token runtime limit and the default `padded-naive-fp16`
   pipeline; override `NEMOTRON3_EMBED_NIM_PIPELINE_ID` only when the target
   hardware supports another pipeline. vLLM derives sequence length, pooling,
   activation, and prompts from the checkpoint.
-- The evaluator retries null/non-finite NIM responses up to 32 times per
+- The evaluator retries null/non-finite endpoint responses up to 32 times per
   affected input. Preserve retry warnings as serving-reliability evidence.
-- Keep Transformers in the supported 5.1-5.5 range.
+- Stage 2 pins Transformers 5.12.1. Stages 1 and 3 retain the supported 5.1-5.5
+  range for their checkpoint paths.
 
 Llama profile (`-c llama`):
 
@@ -155,8 +156,8 @@ Llama profile (`-c llama`):
 - Run `uv run nemotron embed info` when model identity is unclear, then carry
   the selected `-c` value and `artifact_root` through every stage.
 - Both profiles use approved NVIDIA checkpoint code with
-  `trust_remote_code=true`; keep Transformers in the supported `>=5.1,<5.6`
-  range across prep, finetune, eval, and export.
+  `trust_remote_code=true`. Preserve each stage's checked-in Transformers
+  constraint instead of imposing one range across the full pipeline.
 - Do not copy performance overrides between profiles without a dry-run. The
   default Nemotron 3 eval batch is `4`; the Llama profile uses `128`.
 - Preserve each profile's optimizer and checkpoint defaults. Nemotron 3 uses

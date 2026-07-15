@@ -1,4 +1,4 @@
-# Default model family: Ministral-based Nemotron 3 Embed.
+# Default model family: Nemotron 3 Embed.
 # Stage 3: Evaluation Configuration
 #
 # Evaluates embedding models on retrieval metrics using BEIR framework.

@@ -1,11 +1,11 @@
-# Default model family: Ministral-based Nemotron 3 Embed.
+# Default model family: Nemotron 3 Embed.
 # Stage 2: Fine-tuning Configuration
 #
 # Fine-tunes an embedding model using contrastive learning.
 #
 # Usage:
 #   nemotron embed finetune -c default
-#   nemotron embed finetune -c default base_model=/path/to/ministral-checkpoint
+#   nemotron embed finetune -c default base_model=/path/to/checkpoint
 #
 # Remote execution (Slurm):
 #   nemotron embed finetune -c default --run my-cluster

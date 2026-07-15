@@ -55,7 +55,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
 
 - Repo environment: `uv sync --all-extras` or the smallest relevant extra documented by the checkout.
 - Stage 0 SDG: `NVIDIA_API_KEY`; never ask users to paste secret values.
-- Stage 1-4 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
+- Stages 1–3 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
 - Stage 4 export: NeMo Export-Deploy container when using TensorRT. The default Nemotron 3 Embed profile intentionally skips export.
 - Stage 5 deploy: Docker. Default Nemotron 3 Embed can use the checked-in vLLM path with `backend=vllm`, or a compatible `NEMOTRON3_EMBED_NIM_IMAGE` with `backend=nim`; Llama Embed and rerank deployment may require NGC access and `NGC_API_KEY`.
 - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
@@ -68,7 +68,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
    - Use both references only when the user asks about both families or asks which family to choose.
 2. For `embed`, choose one model profile before composing stage commands.
    - Run `uv run nemotron embed info` when the requested model is unclear.
-   - Use `-c default` for Ministral-based `nvidia/Nemotron-3-Embed-1B-BF16`.
+   - Use `-c default` for `nvidia/Nemotron-3-Embed-1B-BF16`.
    - Use `-c llama` for `nvidia/llama-nemotron-embed-1b-v2` and its export path.
    - Carry the selected profile and `artifact_root` through every stage; never combine artifacts from the two profiles.
 3. Choose the model family to tune from the retrieval failure mode.
@@ -95,7 +95,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
 3. Check prerequisites for the requested stage:
    - Repo environment: `uv sync --all-extras` or the smallest relevant extra if documented by the repo.
    - Stage 0 SDG: `NVIDIA_API_KEY`.
-   - Stage 1-4 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
+   - Stages 1–3 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
    - Stage 4 export: the NeMo Export-Deploy container when using TensorRT. Default Nemotron 3 Embed skips this stage.
    - Stage 5 deploy: Docker plus the selected backend's image and artifact contract; default Nemotron 3 may use the checked-in vLLM image without NIM credentials. Load the family reference before requiring NGC credentials.
    - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
