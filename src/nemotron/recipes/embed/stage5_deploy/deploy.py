@@ -147,7 +147,7 @@ class DeployConfig(RecipeSettings):
         description="Optional NIM maximum sequence length override.",
     )
     pipeline_id: str | None = Field(
-        default="padded-naive-fp16",
+        default=None,
         description="Optional exact NIM runtime pipeline identifier.",
     )
     # Resource settings

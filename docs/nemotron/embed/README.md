@@ -272,8 +272,9 @@ The deploy preflight requires a checkpoint with this supported fingerprint:
 hidden size 2,048; 16 layers; 24 attention heads; 8 key/value heads;
 intermediate size 6,144; and vocabulary size 131,072.
 
-NIM uses a 512-token runtime limit and defaults to `padded-naive-fp16`. You can
-override this NIM setting with `NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives
+NIM uses a 512-token runtime limit and automatically selects the compatible
+pipeline for the detected GPU. To troubleshoot a specific NIM pipeline, set
+`NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives
 the checkpoint's sequence length, pooling, activation, and prompt behavior
 automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
 `input_type` (`query` or `document`) without adding text prefixes. For null or

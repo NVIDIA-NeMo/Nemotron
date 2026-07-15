@@ -63,7 +63,6 @@ class TestEmbedAppStructure:
         result = runner.invoke(app, ["embed", "deploy", "--help"])
         assert result.exit_code == 0
         assert "NIM_ENGINE_MODE" in result.output
-        assert "padded-naive" in result.output
         assert "16gb" in result.output
 
     def test_export_help_explains_default_no_op(self):

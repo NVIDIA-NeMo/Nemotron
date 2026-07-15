@@ -70,6 +70,22 @@ def test_nim_model_path_mounts_huggingface_checkpoint(monkeypatch, tmp_path) -> 
     assert f"{tmp_path / 'cache' / 'nim'}:/opt/cache" in command
 
 
+def test_nim_selects_pipeline_automatically_by_default(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    model_dir = tmp_path / "checkpoint"
+    model_dir.mkdir()
+
+    cfg = _deploy_config(
+        model_dir=model_dir,
+        model_path_env="NIM_ENGINE_MODEL_PATH",
+        container_model_path="/model",
+        container_cache_path="/opt/cache",
+    )
+    command = deploy.build_docker_command(cfg)
+
+    assert not any(argument.startswith("NIM_PIPELINE_ID=") for argument in command)
+
+
 def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     model_dir = tmp_path / "checkpoint"

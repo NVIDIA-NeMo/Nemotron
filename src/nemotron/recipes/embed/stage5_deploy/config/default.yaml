@@ -63,7 +63,9 @@ shm_size: 16gb
 
 # Model runtime settings
 max_seq_len: 512
-pipeline_id: ${oc.env:NEMOTRON3_EMBED_NIM_PIPELINE_ID,padded-naive-fp16}
+# Let NIM select the compatible pipeline for the detected GPU. Set this only
+# when troubleshooting a specific NIM runtime pipeline.
+pipeline_id: ${oc.env:NEMOTRON3_EMBED_NIM_PIPELINE_ID,null}
 
 # Runtime settings
 detach: false  # Run in foreground by default
