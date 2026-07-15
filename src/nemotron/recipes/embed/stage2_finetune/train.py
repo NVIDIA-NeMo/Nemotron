@@ -4,7 +4,7 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "embed/finetune"
-# image = "nvcr.io/nvidia/nemo-automodel:26.04"
+# image = "nvcr.io/nvidia/nemo-automodel:26.06"
 # setup = "NeMo Automodel pre-installed. Stage dependencies resolved via UV at runtime."
 #
 # [tool.runspec.run]

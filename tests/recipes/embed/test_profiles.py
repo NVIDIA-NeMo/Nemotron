@@ -21,6 +21,7 @@ from .conftest import REPO_ROOT
 BASE_MODEL = "nvidia/Nemotron-3-Embed-1B-BF16"
 TEST_SDG_API_BASE_URL = "https://example.invalid/v1"
 NIM_IMAGE = "example.invalid/nim/retriever-embed:test"
+AUTOMODEL_IMAGE = "nvcr.io/nvidia/nemo-automodel:26.06"
 CONFIG_ROOT = REPO_ROOT / "src/nemotron/recipes/embed"
 
 PROFILE_CONFIGS = [
@@ -113,6 +114,13 @@ def test_default_base_model_is_shared_across_model_stages() -> None:
         "output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated"
     )
     assert export.trust_remote_code is True
+
+@pytest.mark.parametrize("profile", ["default", "llama"])
+def test_finetune_profiles_use_current_automodel_image(profile: str) -> None:
+    config = load_config(CONFIG_ROOT / f"stage2_finetune/config/{profile}.yaml")
+
+    assert config.run.env.container == AUTOMODEL_IMAGE
+
 
 
 def test_default_sdg_uses_configured_api() -> None:

@@ -16,7 +16,7 @@
 run:
   env:
     # Container image for remote execution (Docker/Slurm)
-    container: nvcr.io/nvidia/nemo-automodel:26.04
+    container: nvcr.io/nvidia/nemo-automodel:26.06
 
 # Root for all artifacts produced by this model profile.
 artifact_root: ./output/embed
