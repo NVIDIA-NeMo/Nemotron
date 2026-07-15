@@ -183,7 +183,7 @@ uv run nemotron embed deploy -c llama -d
 - Preserve the selected profile's `stage1_data_prep/eval_beir/` across comparisons so metrics are not shifted by new splits.
 - Use `val_ratio=0` only for small datasets where preserving test size matters; use a validation split for larger datasets.
 - Inspect existing `output/embed/` artifacts before rerunning a stage. Ask before deleting checkpoints, cached embeddings, or generated data.
-- For deploy handoff, include the exact deploy command, `detach=true` when background service ownership is expected, container name, host port, smoke test, and stop/replace instructions.
+- For deploy handoff, include the exact deploy command, `detach=true` when background service ownership is expected, container name, host port, smoke test, and container stop or replacement steps.
 
 ## Serving Smoke Tests
 
