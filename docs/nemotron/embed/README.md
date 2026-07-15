@@ -1,6 +1,6 @@
 # Embedding Model Fine-Tuning Recipe
 
-A complete 6-stage pipeline for fine-tuning and deploying embedding models on domain-specific data using synthetic data generation.
+Adapt an embedding model to your domain-specific data, then evaluate and deploy it with this complete six-stage pipeline.
 
 ## Overview
 
@@ -289,9 +289,9 @@ artifact identity. The deploy mount and fingerprint checks establish which local
 artifact was selected. Set `fail_on_nim_metric_drift=true` only when the
 configured tolerances should gate the run.
 
-Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint sent
-to NIM and `NEMOTRON3_EMBED_NIM_MODEL` if the configured image advertises a
-different API model alias.
+Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint
+directory for either backend. Use `NEMOTRON3_EMBED_NIM_MODEL` to set the model
+alias advertised by NIM or passed to vLLM as `--served-model-name`.
 
 ### Dry Run
 
@@ -315,7 +315,7 @@ Stages are designed to run sequentially, but you can start from any stage if you
 The default profile loads the Stage 2 Hugging Face-style PyTorch checkpoint
 directly through `NIM_ENGINE_MODEL_PATH`, so Stage 4 is an explicit no-op.
 
-See individual stage READMEs for input format requirements.
+For stage-specific input requirements and options, run `nemotron embed <stage> --help`. In a source checkout, inspect the corresponding `config/default.yaml` file for default paths and settings.
 
 ### Using NVIDIA's Pre-Generated Dataset
 
