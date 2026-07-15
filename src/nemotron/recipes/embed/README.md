@@ -172,7 +172,8 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 
 - **GPU**: An NVIDIA GPU with at least 80 GB of VRAM, such as an A100 or H100
   - Stage 0 uses the NVIDIA API and does not require a GPU.
-  - Stages 1–5 require a GPU for model inference and training.
+  - Stages 1–3 and Stage 5 require a GPU for model inference, training, or serving.
+  - Stage 4 requires a GPU only for profiles, such as `llama`, that enable export.
 - **CPU**: Modern multicore processor (16 or more cores recommended)
 - **Memory**: 128 GB or more RAM recommended
 - **Storage**: Approximately 50 GB of free disk space for outputs, models, and containers
@@ -194,7 +195,7 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 | Stage 1 (Data Prep) | 40 GB | 16 or more cores | Hard-negative mining on GPU; runtime varies by dataset size |
 | Stage 2 (Finetune) | 80 GB | 16 or more cores | Runtime varies by dataset size and epochs |
 | Stage 3 (Eval) | 40 GB | 8 or more cores | Evaluation metrics computation; runtime varies by dataset size |
-| Stage 4 (Export) | 40 GB | 8 or more cores | TensorRT export requires NGC container |
+| Stage 4 (Export) | N/A for default; 40 GB for `llama` | 8 or more cores | Default is a no-op; TensorRT export requires an NGC container |
 | Stage 5 (Deploy) | 40 GB | 4 or more cores | Inference container initialization |
 
 **Total disk space**: Approximately 50 GB for outputs, model checkpoints, and containers
@@ -243,15 +244,17 @@ nemotron embed export -c default
 
 # Option A: deploy with a compatible Retriever NIM image.
 export NEMOTRON3_EMBED_NIM_IMAGE=nvcr.io/your-compatible-embedding-nim:tag
-nemotron embed deploy -c default
+nemotron embed deploy -c default detach=true
 nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
+docker stop nemotron-embed
 
 # Option B: deploy with the checked-in vLLM backend.
-nemotron embed deploy -c default backend=vllm
+nemotron embed deploy -c default backend=vllm detach=true
 nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
   embedding_api_backend=vllm \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_vllm_comparison
+docker stop nemotron-embed
 ```
 
 Stage 0 uses `nvidia/nemotron-3-ultra-550b-a55b` through Data
@@ -274,7 +277,7 @@ override this NIM setting with `NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives
 the checkpoint's sequence length, pooling, activation, and prompt behavior
 automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
 `input_type` (`query` or `document`) without adding text prefixes. For null or
-nonfinite NIM responses, the evaluator retries up to 32 times per affected
+nonfinite endpoint responses, the evaluator retries up to 32 times per affected
 input. Treat every retry warning as a serving-reliability defect.
 
 Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
@@ -404,7 +407,6 @@ entity = "my-team"
 # Local Docker execution profile
 [local-docker]
 executor = "docker"
-container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
 runtime = "nvidia"  # Enable GPU passthrough
 ipc_mode = "host"
 shm_size = "16g"
@@ -419,13 +421,19 @@ executor = "slurm"
 account = "my-account"
 partition = "interactive"
 batch_partition = "batch"
-container_image = "nvcr.io/nvidia/nemo-automodel:26.04"
 tunnel = "ssh"
 host = "cluster.example.com"
 user = "username"
 remote_job_dir = "/shared/path/to/jobs"
 mounts = ["/shared:/shared"]
 ```
+
+These shared profiles intentionally omit `container_image`, so each stage uses
+the compatible image in its checked-in configuration. Stage 2 defaults to the
+[NeMo Automodel 26.06
+container](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/nemo-automodel/26.06/tags)
+(`nvcr.io/nvidia/nemo-automodel:26.06`). Set `container_image` only in an
+execution profile dedicated to a stage that is compatible with that image.
 
 ### Runtime Overrides
 
@@ -522,7 +530,7 @@ nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 
 # Stop the default container
-docker stop nemotron-embed-nim
+docker stop nemotron-embed
 ```
 
 ## Output Structure
@@ -716,7 +724,7 @@ nemotron embed deploy -c default backend=vllm host_port=8002
 
 **Error: Served accuracy differs from checkpoint**
 - **Solution**: For vLLM evaluation, set `embedding_api_backend=vllm`; it uses
-  `/v2/embed` and sends `input_type=query` or `input_type=passage` without
+  `/v2/embed` and sends `input_type=query` or `input_type=document` without
   manually prefixing text.
 - **Solution**: Let vLLM detect pooling, activation, normalization, and sequence
   length from the checkpoint. Do not add overrides unless you are deliberately
