@@ -156,7 +156,7 @@ def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
     }
     assert deploy.container_model_path == "/model"
     assert deploy.container_cache_path == "/opt/cache"
-    assert deploy.max_seq_len == 512
+    assert deploy.max_seq_len is None
     assert deploy.pipeline_id is None
     assert deploy.shm_size == "16gb"
     assert deploy.health_check_timeout == 600

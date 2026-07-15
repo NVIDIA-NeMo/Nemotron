@@ -142,9 +142,9 @@ class DeployConfig(RecipeSettings):
     host_port: int = Field(default=8000, ge=1, le=65535, description="Port to expose on host.")
     container_port: int = Field(default=8000, ge=1, le=65535, description="Port inside container.")
     max_seq_len: int | None = Field(
-        default=512,
+        default=None,
         gt=0,
-        description="Optional NIM maximum sequence length override.",
+        description="Optional NIM maximum sequence length override; unset uses the image default.",
     )
     pipeline_id: str | None = Field(
         default=None,
@@ -282,10 +282,9 @@ def build_docker_command(cfg: DeployConfig) -> list[str]:
 
     if cfg.backend == "nim":
         # NIM 2.1.0+ uses engine-prefixed variables for Hugging Face checkpoints.
-        # Keep NIM_MODEL_PATH for existing 2.0 deployments that override this setting.
-        if cfg.model_path_env == "NIM_ENGINE_MODEL_PATH":
-            cmd.extend(["-e", f"NIM_ENGINE_MODEL_NAME={cfg.nim_model}"])
-        elif cfg.model_path_env == "NIM_MODEL_PATH":
+        # The compatible image supplies NIM_ENGINE_MODEL_NAME. Keep NIM_MODEL_NAME
+        # for existing 2.0 deployments that override this setting.
+        if cfg.model_path_env == "NIM_MODEL_PATH":
             cmd.extend(["-e", f"NIM_MODEL_NAME={cfg.nim_model}"])
         cmd.extend(["-e", f"{cfg.model_path_env}={cfg.container_model_path}"])
 

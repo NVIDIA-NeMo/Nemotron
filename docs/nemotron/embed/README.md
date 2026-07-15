@@ -272,8 +272,9 @@ The deploy preflight requires a checkpoint with this supported fingerprint:
 hidden size 2,048; 16 layers; 24 attention heads; 8 key/value heads;
 intermediate size 6,144; and vocabulary size 131,072.
 
-NIM uses a 512-token runtime limit and automatically selects the compatible
-pipeline for the detected GPU. To troubleshoot a specific NIM pipeline, set
+NIM uses the selected image's default runtime limit and automatically selects
+the compatible pipeline for the detected GPU. To apply a smaller serving limit,
+set `max_seq_len`; to troubleshoot a specific NIM pipeline, set
 `NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives
 the checkpoint's sequence length, pooling, activation, and prompt behavior
 automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
@@ -498,7 +499,7 @@ vllm_image: nvcr.io/nvidia/vllm:26.06-py3
 model_dir: ./output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated
 model_path_env: NIM_ENGINE_MODEL_PATH
 container_model_path: /model
-max_seq_len: 512  # NIM runtime setting; vLLM reads checkpoint metadata
+max_seq_len: null  # Use the NIM image default; vLLM reads checkpoint metadata
 ```
 
 All ordinary fields can still be overridden on the command line:
@@ -509,10 +510,9 @@ nemotron embed finetune -c default num_epochs=1 learning_rate=2e-5
 
 ### Sequence length
 
-Mining, training, evaluation, and the default NIM profile use 512 tokens. Keep
-those settings aligned. The default NIM profile intentionally fixes
-`max_seq_len: 512`; changing local training lengths alone does not expand the
-served limit.
+Mining, training, and evaluation use 512 tokens. The default NIM profile uses
+the selected image's runtime limit. Set `max_seq_len: 512` to enforce the same
+served limit; changing local training lengths alone does not expand it.
 
 Longer sequences increase GPU memory use substantially; reduce batch sizes when
 necessary.

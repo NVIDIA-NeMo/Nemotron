@@ -60,7 +60,6 @@ def test_nim_model_path_mounts_huggingface_checkpoint(monkeypatch, tmp_path) -> 
     )
     command = deploy.build_docker_command(cfg)
 
-    assert "NIM_ENGINE_MODEL_NAME=nvidia/nemotron-3-embed-1b" in command
     assert "NIM_ENGINE_MODEL_PATH=/model" in command
     assert "NIM_PIPELINE_MAX_SEQ_LEN=512" in command
     assert "NIM_PIPELINE_ID=padded-naive-fp16" in command
@@ -83,7 +82,9 @@ def test_nim_selects_pipeline_automatically_by_default(monkeypatch, tmp_path) ->
     )
     command = deploy.build_docker_command(cfg)
 
+    assert not any(argument.startswith("NIM_ENGINE_MODEL_NAME=") for argument in command)
     assert not any(argument.startswith("NIM_PIPELINE_ID=") for argument in command)
+    assert not any(argument.startswith("NIM_PIPELINE_MAX_SEQ_LEN=") for argument in command)
 
 
 def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_path) -> None:
