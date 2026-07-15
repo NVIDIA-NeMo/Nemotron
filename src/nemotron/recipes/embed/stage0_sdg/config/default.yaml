@@ -133,7 +133,7 @@ quality_judge_model: nvidia/nemotron-3-ultra-550b-a55b
 quality_judge_provider: nvidia
 
 # Embedding
-embed_model: nvidia/llama-3.2-nv-embedqa-1b-v2
+embed_model: nvidia/llama-nemotron-embed-1b-v2
 embed_provider: nvidia
 
 # Maximum parallel requests for generation models (null = library default)
