@@ -132,7 +132,7 @@ def test_default_sdg_uses_configured_api() -> None:
     assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
     assert sdg.qa_generation_model == sdg.artifact_extraction_model
     assert sdg.quality_judge_model == sdg.artifact_extraction_model
-    assert sdg.embed_model == "nvidia/llama-nemotron-embed-1b-v2"
+    assert sdg.embed_model == "nvidia/nemotron-3-embed-1b"
 
 
 def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
