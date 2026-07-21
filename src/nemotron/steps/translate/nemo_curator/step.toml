@@ -156,7 +156,7 @@ recovery = "Curator readers are file-partition oriented. For one huge file, gene
 [reference]
 skill = "src/nemotron/steps/translate/nemo_curator/README.md"
 script = "src/nemotron/steps/translate/nemo_curator/step.py"
-docs = "docs/customize/steps/translate/nemo-curator.md"
+docs = "docs/translation/getting-started.md"
 skills = [
   "skills/nemotron-customize/references/context/curator-translation-faith.txt",
 ]
