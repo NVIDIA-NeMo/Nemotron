@@ -415,13 +415,16 @@ class Artifact(BaseModel):
 
         # Set registry metadata
         artifact._name = name
-        if version is not None:
+        if isinstance(version, int):
             artifact._version = version
         else:
-            # Get latest version number
+            # Resolve alias string (or latest) to a concrete version number
             entry = registry.get(name)
-            if entry and entry.versions:
-                artifact._version = entry.versions[-1].version
+            if entry:
+                if version is not None and version in entry.aliases:
+                    artifact._version = entry.aliases[version]
+                elif entry.versions:
+                    artifact._version = entry.versions[-1].version
 
         return artifact
 
