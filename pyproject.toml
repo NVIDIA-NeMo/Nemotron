@@ -163,9 +163,9 @@ all = [
 #   pip install megatron-bridge>=0.1.0
 
 [project.urls]
-Homepage = "https://github.com/nemotron/nemotron"
-Documentation = "https://github.com/nemotron/nemotron#readme"
-Repository = "https://github.com/nemotron/nemotron"
+Homepage = "https://github.com/NVIDIA-NeMo/Nemotron"
+Documentation = "https://github.com/NVIDIA-NeMo/Nemotron#readme"
+Repository = "https://github.com/NVIDIA-NeMo/Nemotron"
 
 [project.scripts]
 nemotron = "nemotron.__main__:main"
