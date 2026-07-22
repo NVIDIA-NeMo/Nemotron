@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tarfile
 from pathlib import Path
 
@@ -109,15 +110,19 @@ def test_plan_for_lepton_chunks_source_into_env_vars(tmp_path, monkeypatch):
         repo_root=tmp_path,
     )
     assert isinstance(plan, Plan)
-    assert plan.pod_src_root == "/mnt/foo/_nemotron/src"
+    assert re.fullmatch(
+        r"/mnt/foo/_nemotron/src-[0-9a-f]{16}-[0-9a-f]{8}",
+        plan.pod_src_root,
+    )
     # Env vars populated with chunk count + at least one chunk.
     n = int(env_vars["_NEMOTRON_SRC_CHUNKS"])
     assert n >= 1
     assert "_NEMOTRON_SRC_CHUNK_0" in env_vars
+    assert env_vars["_NEMOTRON_SRC_SHA256"] in plan.pod_src_root
     # NODE_RANK gate is present so multi-pod NFS runs don't race.
     script = plan.pre_script_cmds[0]
     assert "NODE_RANK" in script and "tar -xz" in script
-    assert not plan.needs_pwd_symlinks
+    assert plan.needs_pwd_symlinks is True
 
 
 def test_plan_for_dgxcloud_chunks_source_into_env_vars(tmp_path, monkeypatch):
@@ -141,11 +146,15 @@ def test_plan_for_dgxcloud_chunks_source_into_env_vars(tmp_path, monkeypatch):
         pod_nemotron_home="/workspace/_nemotron",
         repo_root=tmp_path,
     )
-    assert plan.pod_src_root == "/workspace/_nemotron/src"
+    assert re.fullmatch(
+        r"/workspace/_nemotron/src-[0-9a-f]{16}-[0-9a-f]{8}",
+        plan.pod_src_root,
+    )
     # Env vars populated, no file-based PVC path.
     assert int(env_vars["_NEMOTRON_SRC_CHUNKS"]) >= 1
     assert "_NEMOTRON_SRC_CHUNK_0" in env_vars
-    assert not plan.needs_pwd_symlinks
+    assert env_vars["_NEMOTRON_SRC_SHA256"] in plan.pod_src_root
+    assert plan.needs_pwd_symlinks is True
 
 
 def test_plan_for_fallback_uses_native_packager_path(tmp_path, monkeypatch):

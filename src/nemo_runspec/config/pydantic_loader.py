@@ -128,6 +128,7 @@ def load_config(
         cli_values = cli_source()
         _deep_merge(config_dict, cli_values)
 
+    config_dict = _resolve_top_level_interpolations(config_dict)
     config_dict = _resolve_oc_env_interpolations(config_dict)
 
     return model_cls(**config_dict)
@@ -144,10 +145,56 @@ def _resolve_oc_env_interpolations(value: Any) -> Any:
 
     def repl(match: re.Match[str]) -> str:
         var_name = match.group(1)
-        default = match.group(2) if match.group(2) is not None else ""
-        return os.environ.get(var_name, default)
+        if var_name in os.environ:
+            return os.environ[var_name]
+        if match.group(2) is not None:
+            return match.group(2)
+        raise ValueError(f"Required environment variable {var_name} is not set")
 
     return re.sub(r"\$\{oc\.env:([A-Za-z_][A-Za-z0-9_]*)(?:,([^}]*))?\}", repl, value)
+
+
+def _resolve_top_level_interpolations(config: dict[str, Any]) -> dict[str, Any]:
+    """Resolve simple ``${field}`` references against top-level config values.
+
+    This intentionally excludes resolver expressions such as ``${oc.env:...}``,
+    artifact references, and dotted ``${run.*}`` references. CLI overrides are
+    merged before this function runs, so changing a root field also updates all
+    paths derived from it.
+    """
+
+    pattern = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+    def resolve_string(value: str, stack: frozenset[str] = frozenset()) -> str:
+        def repl(match: re.Match[str]) -> str:
+            key = match.group(1)
+            if key not in config:
+                return match.group(0)
+            if key in stack:
+                chain = " -> ".join((*stack, key))
+                raise ValueError(f"Cyclic top-level interpolation: {chain}")
+
+            replacement = config[key]
+            if isinstance(replacement, (dict, list)) or replacement is None:
+                return match.group(0)
+            if isinstance(replacement, str):
+                return resolve_string(replacement, stack | {key})
+            return str(replacement)
+
+        return pattern.sub(repl, value)
+
+    def resolve(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: resolve(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [resolve(item) for item in value]
+        if isinstance(value, str):
+            return resolve_string(value)
+        return value
+
+    resolved = resolve(config)
+    assert isinstance(resolved, dict)
+    return resolved
 
 
 def _hydra_to_cli_args(overrides: list[str]) -> list[str]:

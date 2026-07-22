@@ -1,10 +1,10 @@
 # Embedding Model Fine-Tuning Recipe
 
-A complete 6-stage pipeline for fine-tuning and deploying embedding models on domain-specific data using synthetic data generation.
+Adapt an embedding model to your domain-specific data, then evaluate and deploy it with this complete six-stage pipeline.
 
 ## Overview
 
-This recipe fine-tunes NVIDIA's [Llama-Nemotron-Embed-1B-v2](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) embedding model on your own domain data. By the end of this pipeline, you'll have a domain-adapted embedding model that excels at retrieving relevant documents from your specific corpus.
+This recipe fine-tunes the Nemotron 3 Embed checkpoint for domain-specific retrieval and deploys the resulting checkpoint with Retriever NIM or vLLM.
 
 ### Why Fine-Tune Embedding Models?
 
@@ -16,10 +16,12 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 
 ## Training Pipeline
 
+A large language model (LLM) generates synthetic question-and-answer pairs in Stage 0.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           YOUR DOCUMENT CORPUS                              │
-│                    (Text files: .txt, .md, etc.)                            │
+│              (Text files: .txt, .md, and other supported formats)           │
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
                                    ▼
@@ -58,17 +60,17 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    STAGE 4: EXPORT (ONNX/TensorRT)                          │
+│                       STAGE 4: EXPORT (WHEN REQUIRED)                       │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │     Export Model to ONNX and TensorRT for Optimized Inference           ││
+│  │       Export models that require a deployment artifact; otherwise skip  ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        STAGE 5: DEPLOY (NIM)                                │
+│                             STAGE 5: DEPLOY                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │     Launch NIM Container with Custom Model for Production Inference     ││
+│  │               Launch NIM or vLLM from the selected artifact             ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -79,14 +81,14 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 | Stage 1: Data Prep | `nemotron embed prep` | Convert, mine hard negatives, unroll | Training-ready data |
 | Stage 2: Finetune | `nemotron embed finetune` | Fine-tune embedding model | Model checkpoint |
 | Stage 3: Eval | `nemotron embed eval` | Evaluate on retrieval metrics | Metrics comparison |
-| Stage 4: Export | `nemotron embed export` | Export to ONNX/TensorRT | Optimized inference models |
-| Stage 5: Deploy | `nemotron embed deploy` | Deploy NIM with custom model | Running inference service |
+| Stage 4: Export | `nemotron embed export` | Export when required by the selected profile | Exported model or skipped |
+| Stage 5: Deploy | `nemotron embed deploy` | Deploy the selected model artifact with NIM or vLLM | Running inference service |
 
 ## Installation
 
-### 1. Install UV Package Manager
+### 1. Install the uv Package Manager
 
-This project **requires [UV](https://docs.astral.sh/uv/)** as its package manager. UV automatically creates and manages a virtual environment under the repository root, and each pipeline stage uses its own isolated environment as well. **Do not use `pip install`** — the project relies on UV workspaces and per-stage dependency isolation.
+This project requires the [uv](https://docs.astral.sh/uv/) package manager. It automatically creates and manages a virtual environment under the repository root, and each pipeline stage uses an isolated environment. **Do not use `pip install`**. The project relies on uv workspaces and per-stage dependency isolation.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -99,23 +101,21 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
-# UV creates a virtual environment at .venv/ and installs all dependencies
+# uv creates a virtual environment at .venv/ and installs all dependencies
 uv sync --all-extras
 ```
 
-### 3. Get Your NVIDIA API Key
+### 3. Get Your NVIDIA API Credential
 
-The SDG stage (Stage 0) uses NVIDIA's hosted LLM APIs for synthetic data generation.
-
-1. Sign up at [build.nvidia.com](https://build.nvidia.com)
-2. Create an API key
-3. Set the environment variable:
+Stage 0 sends synthetic-data-generation requests to Data Designer's built-in
+NVIDIA endpoint unless the generic `NVIDIA_API_BASE_URL` environment variable
+is set. Use the credential for the selected endpoint:
 
 ```bash
-export NVIDIA_API_KEY=nvapi-your_key_here
+export NVIDIA_API_KEY=your_key_here
 ```
 
-### 4. Configure Execution Profiles (Optional)
+### 4. Optional: Configure Execution Profiles
 
 For Docker or Slurm execution, create `env.toml` in the **repository root directory**.
 
@@ -127,7 +127,7 @@ entity = "my-username"
 ```
 
 **Full configuration with Docker and Slurm support:**
-See the [Execution Profiles](#execution-profiles) section below.
+Refer to [Execution Profiles](#execution-profiles).
 
 ## Preparing Your Corpus
 
@@ -141,9 +141,9 @@ See the [Execution Profiles](#execution-profiles) section below.
 
 | Corpus Size | Documents | Expected Results |
 |-------------|-----------|------------------|
-| **Minimum** | 50-100 docs (~50K tokens) | Basic domain adaptation |
-| **Recommended** | 500+ docs | Good domain coverage |
-| **Optimal** | 1000+ docs | Best performance |
+| **Minimum** | 50–100 documents (approximately 50,000 tokens) | Basic domain adaptation |
+| **Recommended** | 500 or more documents | Good domain coverage |
+| **Optimal** | 1,000 or more documents | Best performance |
 
 ### Document Organization
 
@@ -161,7 +161,7 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 
 ### Document Quality Tips
 
-- **Length**: Aim for 200-2000 tokens per document
+- **Length**: Aim for 200–2,000 tokens per document
 - **Content**: Ensure documents are representative of your domain
 - **Diversity**: Include various document types/topics from your domain
 - **Quality**: Clean, well-formatted text yields better synthetic Q&A pairs
@@ -170,88 +170,136 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 
 ### Hardware Requirements
 
-- **GPU**: NVIDIA GPU with at least 80GB VRAM (e.g., A100, H100)
-  - Stages 0 uses NVIDIA API (no GPU required)
-  - Stage 1-5: Require GPU for model inference and training
-- **CPU**: Modern multi-core processor (16+ cores recommended)
-- **Memory**: 128GB+ RAM recommended
-- **Storage**: ~50GB free disk space for outputs, models, and containers
+- **GPU**: An NVIDIA GPU with at least 80 GB of VRAM, such as an A100 or H100
+  - Stage 0 uses the NVIDIA API and does not require a GPU.
+  - Stages 1–3 and Stage 5 require a GPU for model inference, training, or serving.
+  - Stage 4 requires a GPU only for profiles, such as `llama`, that enable export.
+- **CPU**: Modern multicore processor (16 or more cores recommended)
+- **Memory**: 128 GB or more RAM recommended
+- **Storage**: Approximately 50 GB of free disk space for outputs, models, and containers
 
 ### Software Requirements
 
 - **Python**: 3.12 or later
-- **UV**: Package manager (installation instructions above)
+- **uv**: Package manager (installation instructions above)
 - **NVIDIA API Key**: Required for synthetic data generation
 - **NVIDIA GPU Drivers**: Latest drivers for your GPU
 - **Docker** (optional): For containerized execution
 - **Slurm** (optional): For cluster execution
 
-### Expected Runtime & Resources
+### Expected Runtime and Resources
 
 | Stage | GPU VRAM | CPU | Notes |
 |-------|----------|-----|-------|
-| Stage 0 (SDG) | N/A | 8+ cores | Uses API (no local GPU); runtime varies by dataset size |
-| Stage 1 (Data Prep) | 40GB | 16+ cores | Hard negative mining on GPU; runtime varies by dataset size |
-| Stage 2 (Finetune) | 80GB | 16+ cores | Runtime varies by dataset size and epochs |
-| Stage 3 (Eval) | 40GB | 8+ cores | Evaluation metrics computation; runtime varies by dataset size |
-| Stage 4 (Export) | 40GB | 8+ cores | TensorRT export requires NGC container |
-| Stage 5 (Deploy) | 40GB | 4+ cores | NIM container initialization |
+| Stage 0 (SDG) | N/A | 8 or more cores | Uses API (no local GPU); runtime varies by dataset size |
+| Stage 1 (Data Prep) | 40 GB | 16 or more cores | Hard-negative mining on GPU; runtime varies by dataset size |
+| Stage 2 (Finetune) | 80 GB | 16 or more cores | Runtime varies by dataset size and epochs |
+| Stage 3 (Eval) | 40 GB | 8 or more cores | Evaluation metrics computation; runtime varies by dataset size |
+| Stage 4 (Export) | N/A for default; 40 GB for `llama` | 8 or more cores | Default is a no-op; TensorRT export requires an NGC container |
+| Stage 5 (Deploy) | 40 GB | 4 or more cores | Inference container initialization |
 
-**Total disk space**: ~50GB for outputs, model checkpoints, and containers
+**Total disk space**: Approximately 50 GB for outputs, model checkpoints, and containers
 
-**Runtime**: Highly dependent on dataset size. Expect longer runtimes for larger corpora and more training epochs.
- - For small dataset (e.g. nv_pp_random with ~70 input files), it can take ~30 minutes for Stage 0 (SDG) with the default setup. Changing to other LLM endpoints or tune `max_parallel_requests_for_gen` can affect the runtime, rate limit failures, and generation quality. It can take 10-20 minutes for Stage 2 (Finetune) with the default setup.
- - For large dataset (e.g. 10K+ input files), it can take tens of hours or 1-2 days for Stage 0 (SDG) and 5-10 hours for Stage 2 (Finetune). Changing model endpoints, type and number of GPUs (and other fine-tune parameters) can affect the runtime.
+**Runtime**: Runtime depends on dataset size. Larger corpora and more training epochs take longer.
+
+- For a small dataset, such as `nv_pp_random` with approximately 70 input files, Stage 0 (SDG) can take about 30 minutes with the default setup. Changing LLM endpoints or tuning `max_parallel_requests_for_gen` can affect runtime, rate-limit behavior, and generation quality. Stage 2 (Finetune) can take 10–20 minutes with the default setup.
+- For a large dataset, such as 10,000 or more input files, Stage 0 (SDG) can take tens of hours or 1–2 days, and Stage 2 (Finetune) can take 5–10 hours. Changing model endpoints, GPU type and count, and other fine-tuning parameters can affect runtime.
 
 
-### LLM API Usage (Stage 0)
+### Large Language Model (LLM) API Usage (Stage 0)
 
 Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA's hosted LLMs:
 
-- **Default provider**: NVIDIA API (free tier available at [build.nvidia.com](https://build.nvidia.com))
-- **Default model**: `nvidia/nemotron-3-nano-30b-a3b` (fast, reliable for structured generation)
+- **Default endpoint**: Data Designer built-in, optionally overridden with `NVIDIA_API_BASE_URL`
+- **Default generation/judge model**: `nvidia/nemotron-3-ultra-550b-a55b`
 - **Usage**: ~4 API calls per document (artifact extraction, QA generation, dedup, quality eval)
-- **Cost**: Free tier has rate limits; contact NVIDIA for production usage
+- **Access and limits**: Depend on the selected NVIDIA endpoint and credential
 - **Progress**: Built-in progress logging shows completion %, records/second, and ETA per stage
-- **Other providers**: NeMo Data Designer supports multiple providers (OpenAI, OpenRouter, etc.)
+- **Other providers**: NeMo Data Designer supports multiple providers, such as OpenAI and OpenRouter.
   - Customize provider settings in the config file
   - See [default provider settings](https://docs.nvidia.com/nemo/datadesigner/concepts/models/default-model-settings) for configuration options
 
 ## Quick Start
 
-### Local Execution
+### Default Profile
+
+The default profile loads `nvidia/Nemotron-3-Embed-1B-BF16` from
+Hugging Face for mining, fine-tuning, and base-model evaluation. Stage 5 can
+mount the consolidated Stage 2 checkpoint directly into Retriever NIM 2.x or
+serve it with vLLM:
 
 ```bash
-# Set environment (important for CUDA compatibility)
 export LD_LIBRARY_PATH=""
-export NVIDIA_API_KEY=nvapi-your_key_here
+export NVIDIA_API_KEY=your_endpoint_credential
+# Optional: override Data Designer's built-in NVIDIA endpoint.
+export NVIDIA_API_BASE_URL=https://your-authorized-endpoint.example/v1
 
-# Stage 0: Generate synthetic Q&A pairs from your documents
 nemotron embed sdg -c default corpus_dir=/path/to/your/docs
-
-# Stage 1: Prepare training data (convert, mine hard negatives, unroll)
 nemotron embed prep -c default
-
-# Stage 2: Fine-tune the embedding model
 nemotron embed finetune -c default
-
-# Stage 3: Evaluate base vs fine-tuned model
 nemotron embed eval -c default
 
-# Stage 4: Export to ONNX/TensorRT for deployment
+# Stage 4 is an intentional no-op for this profile.
 nemotron embed export -c default
 
-# Stage 5: Deploy NIM with custom model
-nemotron embed deploy -c default
+# Option A: deploy with the default Retriever NIM 2.2 image.
+nemotron embed deploy -c default detach=true
+nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+  output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
+docker stop nemotron-embed
 
-# Optional: Verify NIM accuracy matches checkpoint
-nemotron embed eval -c default eval_nim=true eval_base=false
+# Option B: deploy with the checked-in vLLM backend.
+nemotron embed deploy -c default backend=vllm detach=true
+nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+  embedding_api_backend=vllm \
+  output_dir=./output/embed/nemotron-3-1b/stage3_eval_vllm_comparison
+docker stop nemotron-embed
 ```
 
-### Preview Commands (Dry Run)
+Stage 0 uses `nvidia/nemotron-3-ultra-550b-a55b` through Data
+Designer's built-in endpoint or the optional `NVIDIA_API_BASE_URL` override.
+Model-dependent artifacts are isolated
+under `output/embed/nemotron-3-1b/`. Both deploy backends mount
+`stage2_finetune/checkpoints/LATEST/model/consolidated` read-only at `/model`
+without ONNX or TensorRT conversion. NIM selects it through
+`NIM_MODEL_PATH=/model`; vLLM runs `vllm serve /model` and detects the
+checkpoint's embedding configuration automatically.
+Because the artifact is already local, neither path forwards `NGC_API_KEY`
+into the container.
+
+The deploy preflight requires a checkpoint with this supported fingerprint:
+hidden size 2,048; 16 layers; 24 attention heads; 8 key/value heads;
+intermediate size 6,144; and vocabulary size 131,072.
+
+NIM uses the selected image's default runtime limit and automatically selects
+the compatible pipeline for the detected GPU. To apply a smaller serving limit,
+set `max_seq_len`; to troubleshoot a specific NIM pipeline, set
+`NEMOTRON3_EMBED_NIM_PIPELINE_ID`. vLLM derives
+the checkpoint's sequence length, pooling, activation, and prompt behavior
+automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
+`input_type` (`query` or `document`) without adding text prefixes. For null or
+nonfinite endpoint responses, the evaluator retries up to 32 times per affected
+input. Treat every retry warning as a serving-reliability defect.
+
+Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
+the deployable checkpoint. Stages 1 and 3 retain Transformers 5.1 through 5.5
+for the original checkpoint path.
+
+The preceding served-endpoint evaluation commands evaluate the fine-tuned
+checkpoint and served endpoint in one process. They record endpoint, model, and
+dimension diagnostics and write results to a separate output directory. The
+reported metric deltas compare aggregate retrieval behavior; they do not prove
+artifact identity. The deploy mount and fingerprint checks establish which local
+artifact was selected. Set `fail_on_nim_metric_drift=true` only when the
+configured tolerances should gate the run.
+
+Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint
+directory for either backend. Use `NEMOTRON3_EMBED_NIM_MODEL` to set the model
+alias advertised by NIM or passed to vLLM as `--served-model-name`.
+
+### Dry Run
 
 ```bash
-# See what would be executed without running
 nemotron embed finetune -c default --dry-run
 ```
 
@@ -265,10 +313,13 @@ Stages are designed to run sequentially, but you can start from any stage if you
 | **Stage 1** | Q&A pairs (JSON) | Skip SDG if you have labeled data or use [NVIDIA's pre-generated dataset](#using-nvidias-pre-generated-dataset) |
 | **Stage 2** | Training data (Automodel format) | Skip data prep if data is ready |
 | **Stage 3** | Model checkpoint | Evaluate existing checkpoint |
-| **Stage 4** | Model checkpoint | Export existing model |
-| **Stage 5** | Exported model (ONNX/TensorRT) | Deploy existing model |
+| **Stage 4** | Model checkpoint | Export existing model when the selected profile requires it |
+| **Stage 5** | Model checkpoint or exported artifact | Deploy existing model |
 
-See individual stage READMEs for input format requirements.
+The default profile loads the Stage 2 Hugging Face-style PyTorch checkpoint
+directly through `NIM_MODEL_PATH`, so Stage 4 is an explicit no-op.
+
+For stage-specific input requirements and options, run `nemotron embed <stage> --help`. In a source checkout, inspect the corresponding `config/default.yaml` file for default paths and settings.
 
 ### Using NVIDIA's Pre-Generated Dataset
 
@@ -284,6 +335,7 @@ ds = load_dataset('nvidia/Retrieval-Synthetic-NVDocs-v1', split='train')
 ds.to_json('./output/embed/stage0_sdg/nv_docs_sdg.json')
 "
 
+# `datasets.to_json()` writes JSONL; Stage 1 accepts that file when given its directory.
 # Start from Stage 1 (data preparation) using the downloaded data
 nemotron embed prep -c default sdg_input_path=./output/embed/stage0_sdg
 
@@ -321,7 +373,7 @@ nemotron embed prep -c default --run local-docker
 nemotron embed eval -c default --run local-docker
 ```
 
-> **Note**: Requires `local-docker` profile in `env.toml` (see [Execution Profiles](#execution-profiles) below)
+> **Note**: Requires the `local-docker` profile in `env.toml` (refer to [Execution Profiles](#execution-profiles)).
 
 ### Slurm Batch Execution
 
@@ -356,7 +408,6 @@ entity = "my-team"
 # Local Docker execution profile
 [local-docker]
 executor = "docker"
-container_image = "nvcr.io/nvidia/pytorch:25.01-py3"
 runtime = "nvidia"  # Enable GPU passthrough
 ipc_mode = "host"
 shm_size = "16g"
@@ -371,13 +422,19 @@ executor = "slurm"
 account = "my-account"
 partition = "interactive"
 batch_partition = "batch"
-container_image = "nvcr.io/nvidia/pytorch:25.01-py3"
 tunnel = "ssh"
 host = "cluster.example.com"
 user = "username"
 remote_job_dir = "/shared/path/to/jobs"
 mounts = ["/shared:/shared"]
 ```
+
+These shared profiles intentionally omit `container_image`, so each stage uses
+the compatible image in its checked-in configuration. Stage 2 defaults to the
+[NeMo Automodel 26.06
+container](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/nemo-automodel/26.06/tags)
+(`nvcr.io/nvidia/nemo-automodel:26.06`). Set `container_image` only in an
+execution profile dedicated to a stage that is compatible with that image.
 
 ### Runtime Overrides
 
@@ -410,223 +467,80 @@ cd /path/to/staged/files
 
 ## Configuration
 
-Each stage has a `config/` directory with YAML configuration files.
-
-| File | Purpose |
-|------|---------|
-| `default.yaml` | Production-ready configuration |
-
-### Key Configuration Options
-
-**Stage 0: SDG**
-```yaml
-corpus_id: my_corpus           # Identifier for your corpus
-corpus_dir: ./data/corpus      # Path to your documents
-file_extensions: ".txt,.md"    # File types to process
-output_dir: ./output/embed/stage0_sdg  # Path to save the generated data
-artifact_extraction_model: nvidia/nemotron-3-nano-30b-a3b  # LLM Model name for document artifacts extraction
-qa_generation_model: nvidia/nemotron-3-nano-30b-a3b  # LLM Model name for QA generation
-quality_judge_model: nvidia/nemotron-3-nano-30b-a3b  # LLM Model name for QA quality evaluation
-max_parallel_requests_for_gen: 4  # Number of parallel requests to submit to LLMs
-```
-
-**Stage 1: Data Prep**
-```yaml
-base_model: nvidia/llama-nemotron-embed-1b-v2  # Model for hard negative mining
-quality_threshold: 7.0         # Minimum Q&A quality score (0-10)
-hard_negatives_to_mine: 5      # Number of hard negatives per query
-query_max_length: 512          # Max query tokens (check your base model's max sequence length)
-passage_max_length: 512        # Max passage tokens (check your base model's max sequence length)
-# Adjust train/val/test split ratio based on your generated data size
-# For small data (e.g. the sample data `nv_pp_random`), use 80/20 for train/test and 0 validation in order to make the most use of the limited data
-# For medium/large data, use 80/10/10 or tune for your use case
-train_ratio: 0.8               # Training data split (80%)
-val_ratio: 0.1                 # Validation split (10%)
-test_ratio: 0.1                # Test split (10%)
-```
-
-**Stage 2: Finetune**
-```yaml
-base_model: nvidia/llama-nemotron-embed-1b-v2
-num_epochs: 3
-global_batch_size: 128
-learning_rate: 1.0e-5
-query_max_length: 512          # Max query tokens (check your base model's max sequence length)
-passage_max_length: 512        # Max passage tokens (check your base model's max sequence length)
-# attn_implementation: null    # Auto-detects flash_attention_2 if available, else sdpa
-train_n_passages: 5            # 1 positive + 4 hard negatives
-```
-
-> **Warning — Overfitting risk**: The default `num_epochs: 3` is set for the small example dataset shipped with this recipe, where fewer epochs may not produce a visible training signal. For most real-world datasets, **1–2 epochs is sufficient** and 3 epochs carries a high risk of overfitting. Lower this value when working with your own data (e.g., `nemotron embed finetune -c default num_epochs=1`).
-
-**Stage 3: Eval**
-```yaml
-k_values: [1, 5, 10, 100]      # K values for Recall@k, nDCG@k
-max_length: 512                # Max sequence length (check your base model's max sequence length)
-eval_base: true                # Evaluate base model
-eval_finetuned: true           # Evaluate fine-tuned model
-eval_nim: false                # Evaluate NIM endpoint
-```
-
-**Stage 4: Export**
-```yaml
-model_path: ./output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated
-export_to_trt: true            # Export to TensorRT (requires nemo:25.07+ container)
-quant_cfg: null                # Quantization: null, "fp8", "int8_sq"
-trt_opt_batch: 16              # Optimal batch size for TRT
-trt_opt_seq_len: 128           # Optimal sequence length for TRT
-```
-
-**Stage 5: Deploy**
-```yaml
-nim_image: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1
-model_dir: ./output/embed/stage4_export/onnx  # Path to exported model
-host_port: 8000                # Port for NIM API
-detach: false                  # Run in background
-```
-
-### Customizing Sequence Length
-
-The pipeline defaults to 512-token sequences. You can change this to match your use case, up to the base model's max sequence length (e.g., 8192 for the default `nvidia/llama-nemotron-embed-1b-v2`; check your model's documentation if using a different base model).
-
-For example, to use 2000-token passages, override the sequence length consistently across stages:
+Each stage's `default.yaml` config derives its paths from the profile-wide
+`artifact_root`, which defaults to `./output/embed/nemotron-3-1b`. Override it
+once for an entire pipeline run:
 
 ```bash
-# Stage 0: Increase sentences per chunk so passages approach the new token budget
-# ~80 sentences ≈ 2000 tokens for average English text; adjust for your domain
-nemotron embed sdg -c default sentences_per_chunk=80
-
-# Stage 1: Match sequence length for hard negative mining
-nemotron embed prep -c default query_max_length=2000 passage_max_length=2000
-
-# Stage 2: Match sequence length for training
-nemotron embed finetune -c default query_max_length=2000 passage_max_length=2000
-
-# Stage 3: Match sequence length for evaluation
-nemotron embed eval -c default max_length=2000
-
-# Stage 4: Update TensorRT profile for longer sequences
-nemotron embed export -c default trt_max_seq_len=2000 trt_opt_seq_len=512
+nemotron embed run -c default --to eval artifact_root=./output/embed/experiments/domain-a
 ```
 
-> **Note**: Longer sequences increase GPU memory usage significantly (attention is quadratic in sequence length). You may need to reduce `global_batch_size` in Stage 2 to avoid out-of-memory errors. Ensure `sentences_per_chunk` in Stage 0 produces passages that actually use the longer token budget — the default of 5 sentences typically yields passages well under 512 tokens.
+Changing `artifact_root` only relocates artifacts. A future model profile such
+as `nemotron-3-8b` must also set its own base model, runtime settings, NIM
+identity and fingerprint, and any model-specific dependencies.
 
-### Overriding Configuration
+### Default Model Settings
 
-Override config values on the command line:
+```yaml
+# Stage 0
+# Set NVIDIA_API_BASE_URL to override Data Designer's built-in endpoint.
+
+# Stage 1-3
+base_model: nvidia/Nemotron-3-Embed-1B-BF16
+trust_remote_code: true
+
+# Stage 4
+enabled: false
+
+# Stage 5
+backend: nim  # Override with backend=vllm
+vllm_image: nvcr.io/nvidia/vllm:26.06-py3
+model_dir: ./output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated
+model_path_env: NIM_MODEL_PATH
+container_model_path: /model
+max_seq_len: null  # Use the NIM image default; vLLM reads checkpoint metadata
+```
+
+All ordinary fields can still be overridden on the command line:
 
 ```bash
-# Override training epochs
-nemotron embed finetune -c default num_epochs=5
-
-# Override learning rate
-nemotron embed finetune -c default learning_rate=2e-5
-
-# Override multiple values
-nemotron embed finetune -c default num_epochs=5 learning_rate=2e-5
-
-# Force specific attention implementation
-nemotron embed finetune -c default attn_implementation=flash_attention_2
+nemotron embed finetune -c default num_epochs=1 learning_rate=2e-5
 ```
+
+### Sequence length
+
+Mining, training, and evaluation use 512 tokens. The default NIM profile uses
+the selected image's runtime limit. Set `max_seq_len: 512` to enforce the same
+served limit; changing local training lengths alone does not expand it.
+
+Longer sequences increase GPU memory use substantially; reduce batch sizes when
+necessary.
 
 ## CLI Commands
 
-### Workspace Info
-
 ```bash
-# Display workflow overview
+# Inspect the recipe
 nemotron embed info
-```
 
-### Data
-
-```bash
-# Generate synthetic Q&A pairs from documents
-nemotron embed sdg -c default corpus_dir=/path/to/docs
-
-# Prepare training data (convert, mine, unroll)
-nemotron embed prep -c default sdg_input_path=/path/to/sdg
-```
-
-### Training
-
-```bash
-# Fine-tune the embedding model
-nemotron embed finetune -c default train_data_path=/path/to/data
-```
-
-### Evaluation
-
-```bash
-# Evaluate base and fine-tuned models
-nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
-```
-
-### Export
-
-```bash
-# Export model to ONNX and TensorRT
-nemotron embed export -c default model_path=/path/to/checkpoint
-
-# Export to ONNX only (skip TensorRT)
-nemotron embed export -c default export_to_trt=false
-
-# Export with FP8 quantization
-nemotron embed export -c default quant_cfg=fp8
-```
-
-### Deploy
-
-```bash
-# Deploy NIM with custom TensorRT model (foreground)
-nemotron embed deploy -c default
-
-# Deploy in background (detached mode)
+# Default direct-checkpoint path
+nemotron embed run -c default --to eval
 nemotron embed deploy -c default detach=true
+nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+  output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 
-# Deploy with ONNX model instead
-nemotron embed deploy -c default model_dir=./output/embed/stage4_export/onnx
-
-# Stop the NIM container
-docker stop nemotron-embed-nim
-```
-
-### Verify NIM Accuracy
-
-```bash
-# Evaluate NIM endpoint against fine-tuned checkpoint
-nemotron embed eval -c default eval_nim=true eval_base=false
-
-# The output will show if NIM metrics match the checkpoint
-# ✓ indicates metrics match within tolerance (0.03 for @1, 0.01 for @5+)
-# ⚠️ indicates potential accuracy loss beyond ONNX/TensorRT conversion noise
+# Stop the default container
+docker stop nemotron-embed
 ```
 
 ## Output Structure
 
-After running the full pipeline:
-
-```
+```text
 output/embed/
-├── stage0_sdg/                    # Synthetic Q&A pairs
-│   └── generated_batch*.json
-├── stage1_data_prep/              # Training-ready data
-│   ├── train.json                 # Original training data
-│   ├── train_mined.automodel.json # With hard negatives
-│   ├── train_mined.automodel_unrolled.json  # Final training file
-│   ├── val.json                   # Validation data
-│   ├── corpus/                    # Document corpus
-│   └── eval_beir/                 # BEIR-format evaluation data
-├── stage2_finetune/               # Model checkpoints
-│   └── checkpoints/
-│       └── LATEST/model/consolidated/  # Final model
-├── stage3_eval/                   # Evaluation results
-│   └── eval_results.json
-└── stage4_export/                 # Exported models
-    ├── onnx/                      # ONNX model files
-    │   └── model.onnx
-    └── tensorrt/                  # TensorRT engine
-        └── model.plan
+└── nemotron-3-1b/
+│   ├── stage0_sdg/
+│   ├── stage1_data_prep/
+│   ├── stage2_finetune/checkpoints/LATEST/model/consolidated/
+│   └── stage3_eval/eval_results.json
 ```
 
 ## Evaluation Metrics
@@ -635,10 +549,10 @@ The evaluation stage computes standard information retrieval metrics using the B
 
 | Metric | Description | Range |
 |--------|-------------|-------|
-| **nDCG@k** | Normalized Discounted Cumulative Gain (ranking quality) | 0.0-1.0 |
-| **Recall@k** | Fraction of relevant documents in top-k results | 0.0-1.0 |
-| **Precision@k** | Fraction of retrieved documents that are relevant | 0.0-1.0 |
-| **MAP@k** | Mean Average Precision | 0.0-1.0 |
+| **nDCG@k** | Normalized Discounted Cumulative Gain (ranking quality) | 0.0–1.0 |
+| **Recall@k** | Fraction of relevant documents in top-k results | 0.0–1.0 |
+| **Precision@k** | Fraction of retrieved documents that are relevant | 0.0–1.0 |
+| **MAP@k** | Mean Average Precision | 0.0–1.0 |
 
 Higher scores indicate better retrieval performance.
 
@@ -677,16 +591,18 @@ Model: fine-tuned
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
 | NVIDIA NIM | Production inference microservice with custom model support | [Developer Site](https://developer.nvidia.com/nim) |
 
-## Base Model
+## Default Model Profile
 
 | Property | Value |
 |----------|-------|
-| Model | nvidia/llama-nemotron-embed-1b-v2 |
-| Parameters | ~1B |
-| Embedding Dimension | 768 |
-| Max Sequence Length | 8192 (pipeline default: 512; see [Customizing Sequence Length](#customizing-sequence-length)) |
-| Pooling | Average |
-| HuggingFace | [Model Card](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) |
+| Model | Nemotron 3 Embed |
+| Model locator | `nvidia/Nemotron-3-Embed-1B-BF16` (Hugging Face) |
+| Embedding dimension | 2048 |
+| Recipe sequence length | 512 |
+| Deployment backend | Retriever NIM or vLLM |
+| Serving input artifact | Hugging Face PyTorch/safetensors checkpoint |
+| NIM selector | `NIM_MODEL_PATH` when using NIM |
+| Stage 4 | Skipped for the default profile |
 
 ## Troubleshooting
 
@@ -694,7 +610,7 @@ Model: fine-tuned
 
 **Error: `uv: command not found`**
 ```bash
-# Install UV package manager
+# Install the uv package manager
 curl -LsSf https://astral.sh/uv/install.sh | sh
 # Add to PATH
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -712,8 +628,8 @@ uv run nemotron embed info
 
 **Error: `NVIDIA_API_KEY not set`**
 ```bash
-# Set your API key
-export NVIDIA_API_KEY=nvapi-your_key_here
+# Use the credential for the built-in endpoint or NVIDIA_API_BASE_URL.
+export NVIDIA_API_KEY=your_key_here
 ```
 
 **Error: API rate limiting**
@@ -770,7 +686,7 @@ nemotron embed finetune -c default local_batch_size=2
 **Error: Model checkpoint not found**
 ```bash
 # Check checkpoint path
-ls -la output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated/
+ls -la output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated/
 
 # Specify custom path
 nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
@@ -780,33 +696,38 @@ nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
 - **Solution**: Ensure eval_beir data was created in Stage 1
 - **Solution**: Check that corpus.jsonl and queries.jsonl exist
 
-### Stage 4: Export Issues
-
-**Error: TensorRT export fails**
-- **Solution**: Ensure using NGC container with TensorRT (nemo:25.07+)
-- **Solution**: Try ONNX-only export first: `export_to_trt=false`
-
-**Error: ONNX export fails**
-- **Solution**: Check model checkpoint is valid
-- **Solution**: Ensure sufficient disk space
-
 ### Stage 5: Deployment Issues
 
-**Error: NIM container fails to start**
+**Override the default NIM image**
 ```bash
-# Check NGC credentials
+export NEMOTRON3_EMBED_NIM_IMAGE=nvcr.io/your-compatible-embedding-nim:tag
+nemotron embed deploy -c default
+```
+
+Alternatively, use the checked-in vLLM backend:
+```bash
+nemotron embed deploy -c default backend=vllm
+```
+
+**Error: Serving container fails to start**
+```bash
+# Authenticate to NGC when required for the selected image.
 docker login nvcr.io
 
 # Check if port is already in use
 sudo lsof -i :8000
 
 # Use different port
-nemotron embed deploy -c default host_port=8002
+nemotron embed deploy -c default backend=vllm host_port=8002
 ```
 
-**Error: NIM accuracy differs from checkpoint**
-- **Solution**: Ensure using same model format (TensorRT vs ONNX)
-- **Solution**: Check quantization settings match
+**Error: Served accuracy differs from checkpoint**
+- **Solution**: For vLLM evaluation, set `embedding_api_backend=vllm`; it uses
+  `/v2/embed` and sends `input_type=query` or `input_type=document` without
+  manually prefixing text.
+- **Solution**: Let vLLM detect pooling, activation, normalization, and sequence
+  length from the checkpoint. Do not add overrides unless you are deliberately
+  testing a different serving contract.
 - **Solution**: Verify model files are complete and not corrupted
 
 ### CUDA Library Errors
@@ -902,6 +823,12 @@ project = "my-embedding-project"
 entity = "my-team"
 ```
 
+AutoModel creates one W&B run from distributed rank zero and records training
+loss, learning rate, gradient norm, memory, step timing, and validation metrics.
+Slurm run names include the Slurm job ID. Sensitive Slurm environment variables
+are delivered through a private mode-0600 file rather than being embedded in
+generated executor or sbatch files.
+
 Monitor training progress at: `https://wandb.ai/<entity>/<project>`
 
 ### Local Monitoring
@@ -939,10 +866,10 @@ ls -lh output/embed/stage2_finetune/checkpoints/
 
 | Parameter | Default | Notes |
 | :---- | :---- | :---- |
-| Epochs | 3 | **Default is tuned for the small example dataset; for real-world data, 1–2 epochs is usually sufficient.** 3 epochs risks overfitting on most datasets. See [epoch guidance in FAQ](#how-many-epochs-typically-improve-accuracy-before-overfitting-becomes-a-risk-is-there-a-rule-of-thumb). |
+| Epochs | 3 | **Default is tuned for the small example dataset; for real-world data, 1–2 epochs is usually sufficient.** 3 epochs risks overfitting on most datasets. Refer to [epoch guidance in the FAQ](#how-many-epochs-typically-improve-accuracy-before-overfitting-becomes-a-risk-is-there-a-rule-of-thumb). |
 | Learning rate | 1e-5 | Try double and half of the default value |
 | Learning rate warmup steps | 5 | Set to 5-10% of total steps of finetune to have better early training stability |
-| Sequence length | 512 | Set `query_max_length` / `passage_max_length` consistently across Stages 1-3 (up to your base model's max sequence length). Increase `sentences_per_chunk` in Stage 0 accordingly. Longer sequences require reducing batch size. See [Customizing Sequence Length](#customizing-sequence-length). |
+| Sequence length | 512 | Set `query_max_length` / `passage_max_length` consistently across Stages 1–3 (up to your base model's maximum sequence length). Increase `sentences_per_chunk` in Stage 0 accordingly. Longer sequences require reducing batch size. Refer to [Sequence Length](#sequence-length). |
 
 ### Evaluation
 - Always compare against base model
@@ -962,15 +889,13 @@ ls -lh output/embed/stage2_finetune/checkpoints/
 
 **How much does SDG model quality impact final embedding accuracy, and when is it worth upgrading the SDG model?**
 
-The SDG model directly determines the quality of synthetic queries and answers used to train the embedding model, so it has a first-order effect on final retrieval accuracy. The default model (`nvidia/nemotron-3-nano-30b-a3b`) is a practical starting point that balances cost, speed, and structured-generation reliability. Consider upgrading the SDG model when: (1) quality scores from the SDG quality judge are consistently low (median below 7/10), (2) you observe that generated queries are shallow or fail to capture the reasoning patterns your users need, or (3) your domain has highly specialized terminology that the default model handles poorly. You can swap SDG models per-task via config — e.g., use a stronger model for `qa_generation_model` while keeping the lighter one for `artifact_extraction_model` and `quality_judge_model` to control cost. Run a small pilot (50–100 docs) with each model and compare the downstream Stage 3 eval metrics to decide whether the upgrade is worth the added latency and API cost.
-
-As of now, we’ve seen good results with the NVIDIA Nemotron Super 49B and Nemotron Ultra 253B
+The SDG model directly determines the quality of synthetic queries and answers used to train the embedding model, so it has a first-order effect on final retrieval accuracy. The recipe uses `nvidia/nemotron-3-ultra-550b-a55b` to prioritize generation and judging quality. Consider changing the SDG model when: (1) quality scores from the SDG quality judge are consistently low (median below 7/10), (2) generated queries are shallow or miss the reasoning patterns users need, or (3) cost and latency are too high for the corpus size. You can select models per task—for example, keep a stronger `qa_generation_model` while using a smaller approved model for artifact extraction and judging. Run a small pilot (50–100 docs) and compare downstream Stage 3 metrics on the same held-out set before adopting a different model.
 
 **How should SDG prompts be designed to reliably capture rare words and domain-specific identifiers (bug IDs, product IDs, versions) that matter for retrieval accuracy?**
 
-The built-in SDG pipeline extracts structured artifacts from each document chunk — including entities, technical terms, key concepts, and relationships — before generating QA pairs. These artifacts are injected into the QA generation prompt, which biases the LLM toward producing queries that reference specific identifiers. To improve coverage of rare tokens: (1) ensure your source documents contain the identifiers in-context (the LLM can only reference what it sees in the chunk), (2) increase `max_artifacts_per_type` (default: 2) so more entities and technical terms are extracted per chunk, and (3) increase `num_pairs` to generate more QA pairs per document, raising the chance that niche identifiers appear in at least some queries. If identifiers span multiple chunks (e.g., a bug ID mentioned in one section and its resolution in another), enable multi-document bundling (`multi_doc: true`) so the LLM sees cross-chunk context. After SDG, spot-check a sample of generated queries for identifier coverage before proceeding to training.
+The built-in SDG pipeline extracts structured artifacts from each document chunk — including entities, technical terms, key concepts, and relationships — before generating QA pairs. These artifacts are injected into the QA generation prompt, which biases the LLM toward producing queries that reference specific identifiers. To improve coverage of rare tokens: (1) ensure your source documents contain the identifiers in context (the LLM can only reference what it sees in the chunk), (2) increase `max_artifacts_per_type` (default: 2) so more entities and technical terms are extracted per chunk, and (3) increase `num_pairs` to generate more QA pairs per document, raising the chance that niche identifiers appear in at least some queries. If identifiers span multiple chunks, for example, a bug ID mentioned in one section and its resolution in another, enable multi-document bundling (`multi_doc: true`) so the LLM sees cross-chunk context. After SDG, spot-check a sample of generated queries for identifier coverage before proceeding to training.
 
-In addition, prompts can be tailored to the specific document type - bug vs ticket vs technical manual. It makes sense that prompts should be tailored to the specific document type for optimal Q/A generation.
+Tailor prompts to the document type, such as a bug report, ticket, or technical manual, to optimize Q&A generation.
 
 ### Data Volume and Saturation
 
@@ -980,33 +905,35 @@ There is no universal threshold — saturation depends on domain complexity, voc
 
 | Corpus Size | Typical Outcome |
 |-------------|-----------------|
-| 100+ docs | Basic domain adaptation |
-| 500-1000 docs | Good domain coverage for enterprise corpora |
-| 5000+ docs | Strong and reliable adaptation |
+| 100 or more documents | Basic domain adaptation |
+| 500–1,000 documents | Good domain coverage for enterprise corpora |
+| 5,000 or more documents | Strong and reliable adaptation |
 
-After SDG and quality filtering (default threshold 7.0), the effective training set is typically smaller than the raw doc count. Monitor Stage 3 eval metrics (nDCG@10, Recall@10) across runs with increasing data to find your domain's saturation point.
+After SDG and quality filtering (default threshold 7.0), the effective training set is typically smaller than the raw document count. Monitor Stage 3 eval metrics (nDCG@10, Recall@10) across runs with increasing data to find your domain's saturation point.
 
-**How can we reliably detect saturation of the embedding model as we scale data volume?**
+**How can you reliably detect saturation of the embedding model as you scale data volume?**
 
-Run the pipeline at two or three data scales (e.g., 25%, 50%, 100% of your corpus) with identical hyperparameters and compare Stage 3 eval metrics. Saturation is reached when doubling the data yields less than ~1–2 absolute points of nDCG@10 improvement. Use a fixed held-out evaluation set across all runs to ensure comparability (see the evaluation questions below).
+Run the pipeline at two or three data scales, for example, 25%, 50%, and 100% of your corpus, with identical hyperparameters and compare Stage 3 eval metrics. Saturation is reached when doubling the data yields less than approximately 1–2 absolute points of nDCG@10 improvement. Use a fixed held-out evaluation set across all runs to ensure comparability. Refer to the evaluation questions below.
 
-**Should we prioritize adding more documents or generating more queries per document to improve accuracy?**
+**Should you prioritize adding more documents or generating more queries per document to improve accuracy?**
 
-In general, more documents with diverse content have a larger impact than more queries per document, because new documents introduce new vocabulary, concepts, and retrieval patterns. More queries per document (via `num_pairs`) primarily helps the model see the same content from different query angles, which has diminishing returns once the core semantics are covered. Prioritize adding documents first; once your corpus is representative, increase `num_pairs` (default: 10) to improve query diversity for chunks that cover complex or multi-faceted topics.
+In general, more documents with diverse content have a larger impact than more queries per document because new documents introduce new vocabulary, concepts, and retrieval patterns. More queries per document (using `num_pairs`) primarily help the model see the same content from different query angles, which has diminishing returns after the core semantics are covered. Prioritize adding documents first. After your corpus is representative, increase `num_pairs` (default: 10) to improve query diversity for chunks that cover complex or multifaceted topics.
 
 ### Using Existing Vector-DB Chunks
 
 **Would using real production vector-DB chunks as positives (instead of synthetic chunks) improve embedding accuracy?**
 
-Yes, this can improve accuracy — if your production chunks reflect the actual retrieval units users will query against, training on them aligns the embedding space more closely with your deployment setup. The recipe supports this: you can skip Stage 0 entirely and start from Stage 1 by supplying your own QA pairs with real chunks as positives (see the [Pipeline Flexibility](#pipeline-flexibility) table). Format your data as JSON with query–positive-passage pairs and feed it to `nemotron embed prep`. The main risk is that real chunks without synthetic queries may lack query diversity; consider generating synthetic queries against your real chunks (see next question) to get the best of both worlds.
+Yes, this can improve accuracy. If your production chunks reflect the actual retrieval units that you query against, training on them aligns the embedding space more closely with your deployment setup. The recipe supports this: you can skip Stage 0 entirely and start from Stage 1 by supplying your own QA pairs with real chunks as positives. Refer to the [Pipeline Flexibility](#pipeline-flexibility) table. Format your data as JSON with query–positive-passage pairs and feed it to `nemotron embed prep`. The main risk is that real chunks without synthetic queries may lack query diversity. Consider generating synthetic queries against your real chunks, as described in the next question, to get the best of both approaches.
 
 **Is it recommended to generate multiple synthetic queries per real chunk to better shape the embedding space?**
 
-Yes. Generating multiple diverse queries per chunk teaches the model that many different phrasings should map to the same passage. You can do this by running Stage 0 with your real chunks as input documents and increasing `num_pairs`. The SDG pipeline will generate varied query types (factual, relational, inferential, procedural, etc.) and complexity levels against each chunk. This is especially valuable for chunks covering dense or multi-faceted content where a single query captures only one retrieval intent.
+Yes. Generating multiple diverse queries per chunk teaches the model that many different phrasings should map to the same passage. You can do this by running Stage 0 with your real chunks as input documents and increasing `num_pairs`. The SDG pipeline generates varied query types, such as factual, relational, inferential, and procedural queries, with different complexity levels for each chunk. This is especially valuable for chunks that cover dense or multifaceted content where a single query captures only one retrieval intent.
 
 **Should training-time chunking exactly match production chunking to maximize retrieval accuracy, or is approximate alignment sufficient?**
 
-Exact matching is ideal but approximate alignment is usually good enough. What matters most is that training chunks and production chunks are in the same ballpark of length and boundary style — if production chunks are ~500 tokens with sentence-boundary splitting, training on ~500-token sentence-boundary chunks will transfer well even if the exact split points differ. The embedding model learns semantic similarity at the passage level, not memorized chunk boundaries. That said, large mismatches hurt: training on 5-sentence chunks (the Stage 0 default, typically ~100–150 tokens) while deploying with 2000-token chunks creates a distribution gap where the model has never seen passages of that length during training. To close the gap, either (1) feed your real production chunks directly as positives (see above), or (2) adjust `sentences_per_chunk` in Stage 0 and `passage_max_length` in Stages 1–3 to approximate your production chunk size. Also ensure `passage_max_length` is set consistently across stages so that tokenization truncation during training and evaluation matches what happens at inference time. In practice, aligning chunk length within ~2x of production is sufficient; pixel-perfect boundary matching yields negligible additional gain.
+Exact matching is ideal, but approximate alignment is usually sufficient. Keep training and production chunks similar in length and boundary style. For example, if production chunks contain about 500 tokens and use sentence-boundary splitting, train on chunks with a similar length and boundary style. The embedding model learns semantic similarity at the passage level, not memorized chunk boundaries.
+
+Large mismatches can reduce accuracy. For example, training on five-sentence chunks (the Stage 0 default, typically about 100–150 tokens) while deploying with 2,000-token chunks creates a distribution gap. To reduce the gap, either feed your real production chunks directly as positives or adjust `sentences_per_chunk` in Stage 0 and `passage_max_length` in Stages 1–3 to approximate your production chunk size. Set `passage_max_length` consistently across stages so tokenization truncation during training and evaluation matches inference-time behavior. In practice, aligning chunk length within about a factor of two of the production length is sufficient. Exact boundary matching adds little benefit.
 
 ### Hard-Negative Mining
 
@@ -1014,15 +941,15 @@ Exact matching is ideal but approximate alignment is usually good enough. What m
 
 Hard-negative mining uses a margin-based filter to exclude documents that are too similar to the positive. The key parameter is `hard_neg_margin` (default: 0.95 with `perc` margin type), which acts as an exclusion ceiling: any document scoring *above* `min_positive_score * margin` is eliminated, and the top-k highest-scoring survivors become the hard negatives. To tune:
 
-- **Raise the margin** (e.g., 0.98–1.0) to narrow the exclusion zone, allowing negatives that score closer to the positive. This produces harder negatives that improve discrimination but risks including false negatives (relevant documents mislabeled as negative), especially in corpora with near-duplicate passages.
-- **Lower the margin** (e.g., 0.85–0.90) to widen the exclusion zone, forcing negatives to be further from the positive score. This produces easier, safer negatives with less risk of false negatives, but provides weaker training signal.
+- **Raise the margin** (for example, 0.98–1.0) to narrow the exclusion zone, allowing negatives that score closer to the positive. This produces harder negatives that improve discrimination but risks including false negatives (relevant documents mislabeled as negative), especially in corpora with near-duplicate passages.
+- **Lower the margin** (for example, 0.85–0.90) to widen the exclusion zone, forcing negatives to be further from the positive score. This produces easier, safer negatives with less risk of false negatives, but provides weaker training signal.
 - **Increase `hard_negatives_to_mine`** (default: 5) to give the model more contrastive examples per query. The training stage uses `train_n_passages` (default: 5, meaning 1 positive + 4 negatives), so mine at least as many as you plan to train with.
 
 Start with defaults and only raise the margin if Stage 3 metrics plateau — aggressive hard negatives on noisy data can hurt more than help.
 
-**What is the recommended number of hard negatives for best accuracy (e.g., 5 vs 10 vs higher)?**
+**What is the recommended number of hard negatives for best accuracy, such as 5, 10, or more?**
 
-The default of 4 hard negatives per query (`train_n_passages: 5` = 1 positive + 4 negatives) is a solid baseline. Increasing to 10 negatives can improve discrimination, especially for large corpora with many similar-looking passages, but the gains taper off quickly beyond that. Two parameters must be adjusted together: `hard_negatives_to_mine` in Stage 1 (how many candidates are mined) and `train_n_passages` in Stage 2 (how many are used during training), e.g., mine 10 and train with 10.
+The default of 4 hard negatives per query (`train_n_passages: 5` = 1 positive + 4 negatives) is a solid baseline. Increasing to 10 negatives can improve discrimination, especially for large corpora with many similar-looking passages, but the gains taper off quickly beyond that. Adjust two parameters together: `hard_negatives_to_mine` in Stage 1 (how many candidates are mined) and `train_n_passages` in Stage 2 (how many are used during training). For example, mine 10 and train with 10.
 
 ### Training Hyperparameters
 
@@ -1033,11 +960,11 @@ In order of typical impact:
 1. **Learning rate** (default: 1e-5) — the single most sensitive parameter. Try 5e-6 and 2e-5 as first alternatives. Too high causes instability or NaN loss; too low undertrains.
 2. **Epochs** (default: 3) — controls how many passes the model makes over the data. The default of 3 is calibrated for the small example dataset in this recipe; **for most real-world datasets, 1–2 epochs is recommended** to avoid overfitting. See the epoch table below.
 3. **Learning rate warmup** (default: 5 steps) — set to 5–10% of total training steps for better early stability.
-4. **Batch size** (default: 128) — determines the number of gradient update steps per epoch. Use smaller values for small datasets to get more updates; see the [batch size FAQ](#how-does-batch-size-affect-training-and-how-should-it-be-set) below.
+4. **Batch size** (default: 128) — determines the number of gradient update steps per epoch. Use smaller values for small datasets to get more updates. Refer to the [batch size FAQ](#how-does-batch-size-affect-training-and-how-should-it-be-set).
 
-**What learning-rate sweep strategy is recommended to maximize accuracy (e.g., halve/double defaults)?**
+**What learning-rate sweep strategy is recommended to maximize accuracy, such as halving or doubling defaults?**
 
-A simple three-point sweep around the default is the most cost-effective approach. Start with the default 1e-5, then try 5e-6 (half) and 2e-5 (double). Compare Stage 3 eval metrics (nDCG@10) across the three runs — the winner is usually obvious. If the best result is at an endpoint (e.g., 2e-5 beats both others), extend one more step in that direction (try 4e-5) to confirm you haven't undershot. Keep epochs and all other hyperparameters fixed during the sweep so that LR is the only variable.
+Use a simple three-point sweep around the default. Start with the default 1e-5, then try 5e-6 (half) and 2e-5 (double). Compare Stage 3 eval metrics (nDCG@10) across the three runs. The best result is usually clear. If the best result is at an endpoint, for example, 2e-5 beats both others, extend one more step in that direction and try 4e-5 to confirm that you have not undershot. Keep epochs and all other hyperparameters fixed during the sweep so that the learning rate is the only variable.
 
 #### How many epochs typically improve accuracy before overfitting becomes a risk? Is there a rule of thumb?
 
@@ -1045,9 +972,9 @@ The default `num_epochs: 3` exists because the example dataset shipped with this
 
 | Dataset Size | Recommended Epochs | Notes |
 |--------------|--------------------|-------|
-| Small (<1K examples) | 2–3 | Use 3 only if val loss is still decreasing |
-| Medium (1K–10K examples) | 1–2 | 2 epochs is usually the upper bound |
-| Large (10K+ examples) | 1 | More than 1 epoch rarely helps and often hurts |
+| Small (fewer than 1,000 examples) | 2–3 | Use 3 only if validation loss is still decreasing |
+| Medium (1,000–10,000 examples) | 1–2 | 2 epochs is usually the upper bound |
+| Large (10,000 or more examples) | 1 | More than 1 epoch rarely helps and often hurts |
 
 #### How does batch size affect training, and how should it be set?
 
@@ -1061,7 +988,7 @@ As a rule of thumb, use a **smaller `global_batch_size` for small datasets** and
 
 - **Training loss** (contrastive/InfoNCE loss) measures how well the model separates positives from negatives in each batch. A steadily decreasing training loss is expected; a very low floor (~0.0–0.01) suggests the model has learned the training set well.
 - **Validation loss** tracks the same metric on held-out data. The gap between training and validation loss is your primary overfitting indicator. If validation loss decreases alongside training loss, the model is generalizing. If validation loss plateaus or rises while training loss keeps falling, stop training or reduce epochs.
-- **Neither loss directly equals retrieval accuracy.** Always rely on Stage 3 eval metrics (nDCG@k, Recall@k) as the ground truth for actual embedding quality. Loss is a proxy — it's possible for loss to improve while retrieval metrics stagnate if the hard negatives are too easy.
+- **Neither loss directly equals retrieval accuracy.** Always rely on Stage 3 eval metrics (nDCG@k, Recall@k) as the ground truth for actual embedding quality. Loss is a proxy — it is possible for loss to improve while retrieval metrics stagnate if the hard negatives are too easy.
 
 **Are there target loss behaviors or patterns that indicate optimal embedding learning?**
 
@@ -1085,7 +1012,6 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 - [Automodel](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
 - [BEIR Benchmark](https://github.com/beir-cellar/beir) - Information retrieval evaluation
 - [NVIDIA NIM Documentation](https://developer.nvidia.com/nim) - Production inference microservices
-- [Llama-Nemotron-Embed-1B-v2 Model Card](https://huggingface.co/nvidia/llama-nemotron-embed-1b-v2) - Base model details
 - [Retrieval-Synthetic-NVDocs-v1 Dataset](https://huggingface.co/datasets/nvidia/Retrieval-Synthetic-NVDocs-v1) - Pre-generated synthetic retrieval dataset on NVIDIA content
 
 ## Support
