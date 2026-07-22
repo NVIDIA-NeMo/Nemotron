@@ -1,33 +1,55 @@
+# Default model family: Nemotron 3 Embed.
 # Stage 5: Deploy Configuration
 #
-# Launches NIM embedding service with a custom fine-tuned model.
-# The NIM provides an OpenAI-compatible embeddings API.
+# Launches a NIM or vLLM embedding service with a custom fine-tuned model.
+# NIM exposes OpenAI-compatible embeddings; vLLM evaluation uses `/v2/embed`.
 #
 # Usage:
 #   nemotron embed deploy -c default
 #   nemotron embed deploy -c default detach=true
-#   nemotron embed deploy -c default model_dir=/path/to/onnx
+#   nemotron embed deploy -c default model_dir=/path/to/consolidated-checkpoint
+#   nemotron embed deploy -c default backend=vllm
 #
 # Test the deployed service:
 #   curl -X POST http://localhost:8000/v1/embeddings \
 #     -H 'Content-Type: application/json' \
-#     -d '{"input": ["hello"], "model": "nvidia/llama-3.2-nv-embedqa-1b-v2", "input_type": "query"}'
+#     -d '{"input": ["hello"], "model": "nvidia/nemotron-3-embed-1b", "input_type": "query"}'
 
-# NIM container image
-nim_image: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1
+# Root for all artifacts produced by this model profile.
+artifact_root: ./output/embed/nemotron-3-1b
+
+# Serving backend. NIM remains the default; vLLM is an explicit override.
+backend: nim
+
+# Backend container images
+# Default Retriever Embedding NIM image. Set NEMOTRON3_EMBED_NIM_IMAGE to override it.
+nim_image: ${oc.env:NEMOTRON3_EMBED_NIM_IMAGE,nvcr.io/nim/nvidia/nemotron-3-embed-1b:2.2.0}
+vllm_image: nvcr.io/nvidia/vllm:26.06-py3
+nim_model: ${oc.env:NEMOTRON3_EMBED_NIM_MODEL,nvidia/nemotron-3-embed-1b}
 
 # Container name (for management)
-container_name: nemotron-embed-nim
+container_name: nemotron-embed
 
-# Path to custom model (ONNX or TensorRT from stage4_export)
-model_dir: ./output/embed/stage4_export/onnx
+# Fine-tuned Hugging Face checkpoint mounted directly by Retriever NIM 2.x
+model_dir: ${oc.env:NEMOTRON3_EMBED_DEPLOY_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
 
-# Use ONNX instead of TensorRT
-use_onnx: true
+# Retriever Embedding NIM 2.2.0+ direct-checkpoint artifact contract.
+model_path_env: NIM_MODEL_PATH
+
+# ONNX/TensorRT conversion is not used for this model family
+use_onnx: false
+expected_model_fingerprint:
+  hidden_size: 2048
+  num_hidden_layers: 16
+  num_attention_heads: 24
+  num_key_value_heads: 8
+  intermediate_size: 6144
+  vocab_size: 131072
 
 # Container internal paths
-container_model_path: /opt/nim/custom_model
-container_cache_path: /opt/nim/.cache
+container_model_path: /model
+container_cache_path: /opt/cache
+vllm_container_cache_path: /root/.cache/huggingface
 
 # Network settings
 host_port: 8000
@@ -37,15 +59,25 @@ container_port: 8000
 gpus: all
 
 # Shared memory size
-shm_size: 2gb
+shm_size: 16gb
+
+# Model runtime settings
+# Leave unset to use the selected NIM image's sequence-length default. Set an
+# explicit value only when a deployment needs a smaller serving limit.
+max_seq_len: null
+# Let NIM select the compatible pipeline for the detected GPU. Set this only
+# when troubleshooting a specific NIM runtime pipeline.
+pipeline_id: ${oc.env:NEMOTRON3_EMBED_NIM_PIPELINE_ID,null}
 
 # Runtime settings
 detach: false  # Run in foreground by default
 remove_on_exit: true  # Remove container when stopped
 
 # Health check settings
-health_check_timeout: 120  # seconds
+health_check_timeout: 600  # seconds
 health_check_interval: 5   # seconds
 
 # Environment variable for NGC API key
 ngc_api_key_env: NGC_API_KEY
+forward_ngc_api_key: false
+allow_unhealthy_detached: false

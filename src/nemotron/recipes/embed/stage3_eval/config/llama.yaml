@@ -1,4 +1,5 @@
-# Default model family: Nemotron 3 Embed.
+# Llama-Nemotron Embed profile.
+# Select explicitly with -c llama.
 # Stage 3: Evaluation Configuration
 #
 # Evaluates embedding models on retrieval metrics using BEIR framework.
@@ -6,17 +7,15 @@
 # Optionally evaluates a NIM API endpoint for accuracy verification.
 #
 # Usage:
-#   nemotron embed eval -c default
-#   nemotron embed eval -c default finetuned_model_path=/path/to/model
+#   nemotron embed eval -c llama
+#   nemotron embed eval -c llama finetuned_model_path=/path/to/model
 #
 # Evaluate NIM endpoint:
-#   nemotron embed eval -c default eval_nim=true nim_url=http://localhost:8001
-# Evaluate vLLM endpoint:
-#   nemotron embed eval -c default eval_nim=true embedding_api_backend=vllm
+#   nemotron embed eval -c llama eval_nim=true nim_url=http://localhost:8001
 #
 # Remote execution (Slurm):
-#   nemotron embed eval -c default --run my-cluster
-#   nemotron embed eval -c default --batch my-cluster
+#   nemotron embed eval -c llama --run my-cluster
+#   nemotron embed eval -c llama --batch my-cluster
 
 # Execution environment configuration
 run:
@@ -25,10 +24,10 @@ run:
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
 # Root for all artifacts produced by this model profile.
-artifact_root: ./output/embed/nemotron-3-1b
+artifact_root: ./output/embed
 
 # Base embedding model for comparison
-base_model: nvidia/Nemotron-3-Embed-1B-BF16
+base_model: nvidia/llama-nemotron-embed-1b-v2
 
 # Path to fine-tuned model checkpoint
 finetuned_model_path: ${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated
@@ -47,7 +46,7 @@ k_values:
   - 100
 
 # Encoding settings
-batch_size: 4
+batch_size: 128
 max_length: 512
 corpus_chunk_size: 50000
 
@@ -61,12 +60,11 @@ passage_prefix: "passage: "
 eval_base: true
 eval_finetuned: true
 
-# Served embedding API evaluation settings
-eval_nim: false  # Set to true to evaluate the selected API backend
-nim_url: http://localhost:8000  # API base URL
-nim_model: ${oc.env:NEMOTRON3_EMBED_NIM_MODEL,nvidia/nemotron-3-embed-1b}  # Model name for API requests
-nim_batch_size: 32  # Batch size for API requests
+# NIM API evaluation settings
+eval_nim: false  # Set to true to evaluate NIM endpoint
+nim_url: http://localhost:8000  # NIM API base URL
+nim_model: nvidia/llama-3.2-nv-embedqa-1b-v2  # Model name for API requests
+nim_batch_size: 32  # Batch size for NIM API requests
 nim_timeout: 60  # Request timeout in seconds
-embedding_api_backend: nim  # Set to vllm to use vLLM's /v2/embed endpoint
-nim_invalid_embedding_retries: 32  # Retry null/non-finite vectors
+nim_invalid_embedding_retries: 3  # Retry null/non-finite vectors
 nim_embedding_dimension: 2048  # Reject responses from an incompatible endpoint/model

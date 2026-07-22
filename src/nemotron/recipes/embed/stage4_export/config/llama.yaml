@@ -1,17 +1,18 @@
-# Default model family: Nemotron 3 Embed.
+# Llama-Nemotron Embed profile.
+# Select explicitly with -c llama.
 # Stage 4: Export Configuration
 #
-# The default NIM consumes the PyTorch checkpoint directly, so this stage is
-# intentionally skipped. Use -c llama for ONNX/TensorRT export.
+# Exports fine-tuned embedding models to ONNX and optionally TensorRT
+# for optimized inference deployment.
 #
 # Usage:
-#   nemotron embed export -c default
+#   nemotron embed export -c llama
 #   nemotron embed export -c llama export_to_trt=false
 #   nemotron embed export -c llama model_path=/path/to/model
 #
 # Remote execution (Slurm):
-#   nemotron embed export -c default --run my-cluster
-#   nemotron embed export -c default --batch my-cluster
+#   nemotron embed export -c llama --run my-cluster
+#   nemotron embed export -c llama --batch my-cluster
 
 # Execution environment configuration
 run:
@@ -21,14 +22,13 @@ run:
     container: nvcr.io/nvidia/nemo:25.07
 
 # Root for all artifacts produced by this model profile.
-artifact_root: ./output/embed/nemotron-3-1b
+artifact_root: ./output/embed
 
-# Nemotron 3 Retriever NIM loads the PyTorch checkpoint directly.
-# Keep this stage in the pipeline as an explicit no-op for this profile.
-enabled: false
+# The Llama NIM consumes an exported ONNX/TensorRT artifact.
+enabled: true
 
 # Path to fine-tuned HuggingFace model checkpoint
-model_path: ${oc.env:NEMOTRON3_EMBED_EXPORT_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
+model_path: ${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated
 
 # Model settings
 pooling_mode: avg  # Pooling method: avg, cls, last

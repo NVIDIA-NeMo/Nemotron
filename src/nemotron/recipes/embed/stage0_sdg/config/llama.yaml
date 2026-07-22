@@ -1,16 +1,17 @@
-# Default model family: Nemotron 3 Embed.
+# Llama-Nemotron Embed profile.
+# Select explicitly with -c llama.
 # Stage 0: Synthetic Data Generation Configuration
 #
 # Generates synthetic Q&A pairs from document corpus using retriever-sdg.
 # Uses NVIDIA's LLM APIs (requires NVIDIA_API_KEY environment variable).
 #
 # Usage:
-#   nemotron embed sdg -c default
-#   nemotron embed sdg -c default corpus_dir=/path/to/docs
+#   nemotron embed sdg -c llama
+#   nemotron embed sdg -c llama corpus_dir=/path/to/docs
 #
 # Remote execution (Slurm):
-#   nemotron embed sdg -c default --run my-cluster
-#   nemotron embed sdg -c default --batch my-cluster
+#   nemotron embed sdg -c llama --run my-cluster
+#   nemotron embed sdg -c llama --batch my-cluster
 
 # Execution environment configuration
 run:
@@ -19,7 +20,7 @@ run:
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
 # Root for all artifacts produced by this model profile.
-artifact_root: ./output/embed/nemotron-3-1b
+artifact_root: ./output/embed
 
 # ==============================================================================
 # Core paths
@@ -42,9 +43,8 @@ output_dir: ${artifact_root}/stage0_sdg
 # NVIDIA API key (optional, defaults to NVIDIA_API_KEY env var)
 # nvidia_api_key: null
 
-# Optional OpenAI-compatible NVIDIA API base URL.
-# Set NVIDIA_API_BASE_URL or override nvidia_api_base_url on the command line.
-# When unset, Data Designer uses its built-in NVIDIA provider endpoint.
+# OpenAI-compatible NVIDIA API base URL (null = Data Designer built-in endpoint)
+nvidia_api_base_url: null
 
 # ==============================================================================
 # Document processing
@@ -121,15 +121,15 @@ max_docs_per_bundle: 3
 # ==============================================================================
 
 # Artifact extraction
-artifact_extraction_model: nvidia/nemotron-3-ultra-550b-a55b
+artifact_extraction_model: nvidia/nemotron-3-nano-30b-a3b
 artifact_extraction_provider: nvidia
 
 # QA generation
-qa_generation_model: nvidia/nemotron-3-ultra-550b-a55b
+qa_generation_model: nvidia/nemotron-3-nano-30b-a3b
 qa_generation_provider: nvidia
 
 # Quality judge
-quality_judge_model: nvidia/nemotron-3-ultra-550b-a55b
+quality_judge_model: nvidia/nemotron-3-nano-30b-a3b
 quality_judge_provider: nvidia
 
 # Embedding

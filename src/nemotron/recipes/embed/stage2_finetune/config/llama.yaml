@@ -1,15 +1,16 @@
-# Default model family: Nemotron 3 Embed.
+# Llama-Nemotron Embed profile.
+# Select explicitly with -c llama.
 # Stage 2: Fine-tuning Configuration
 #
 # Fine-tunes an embedding model using contrastive learning.
 #
 # Usage:
-#   nemotron embed finetune -c default
-#   nemotron embed finetune -c default base_model=/path/to/checkpoint
+#   nemotron embed finetune -c llama
+#   nemotron embed finetune -c llama base_model=nvidia/llama-nemotron-embed-1b-v2
 #
 # Remote execution (Slurm):
-#   nemotron embed finetune -c default --run my-cluster
-#   nemotron embed finetune -c default --batch my-cluster
+#   nemotron embed finetune -c llama --run my-cluster
+#   nemotron embed finetune -c llama --batch my-cluster
 
 # Execution environment configuration
 run:
@@ -18,10 +19,10 @@ run:
     container: nvcr.io/nvidia/nemo-automodel:26.06
 
 # Root for all artifacts produced by this model profile.
-artifact_root: ./output/embed/nemotron-3-1b
+artifact_root: ./output/embed
 
 # Base embedding model to fine-tune
-base_model: nvidia/Nemotron-3-Embed-1B-BF16
+base_model: nvidia/llama-nemotron-embed-1b-v2
 trust_remote_code: true
 
 # Path to training data (output from stage1_data_prep)
@@ -43,7 +44,7 @@ weight_decay: 0.01
 # auto uses Transformer Engine FusedAdam when available in the Automodel
 # container, otherwise FlashAdamW with bf16 model parameters.
 optimizer_backend: auto
-flash_adamw_master_weight_bits: null
+flash_adamw_master_weight_bits: 32
 
 # Model architecture
 # attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa
@@ -60,6 +61,6 @@ passage_prefix: "passage: "
 
 # Checkpointing — lower defaults so small datasets get checkpoints
 # Auto-scaled further in train.py if total steps are low
-checkpoint_every_steps: 1000
-val_every_steps: 1000
-auto_scale_checkpoint_intervals: false
+checkpoint_every_steps: 100
+val_every_steps: 100
+auto_scale_checkpoint_intervals: true

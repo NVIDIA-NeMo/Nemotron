@@ -84,7 +84,7 @@ def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
     display_job_submission(job_path, train_path, env_vars, cfg.mode)
 
     if cfg.mode == "local":
-        _execute_uv_local(train_path, cfg.passthrough)
+        _execute_uv_local(train_path, cfg.passthrough, env_vars)
     else:
         _execute_remote(
             train_path=train_path,
@@ -97,7 +97,7 @@ def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
         )
 
 
-def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
+def _execute_uv_local(train_path: Path, passthrough: list[str], env_vars: dict[str, str]) -> None:
     """Execute finetune locally via UV isolated environment."""
     from nemo_runspec.execution import execute_uv_local_from_spec
 
@@ -105,6 +105,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
         spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
+        env_vars=env_vars,
     )
 
 
