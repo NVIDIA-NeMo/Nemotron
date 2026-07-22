@@ -6,7 +6,7 @@ This directory contains end-to-end examples demonstrating practical applications
 
 ## 📋 Overview
 
-These examples showcase **complete implementations** of agentic workflows, RAG systems, and other advanced use cases. Unlike the [usage-cookbook](../usage-cookbook/README) which focuses on deployment and basic model usage, these examples demonstrate how to build production-ready applications.
+These examples showcase **complete implementations** of agentic workflows, RAG systems, and other advanced use cases. Unlike the [usage-cookbook](../usage-cookbook/README.md) which focuses on deployment and basic model usage, these examples demonstrate how to build production-ready applications.
 
 ---
 

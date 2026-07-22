@@ -115,7 +115,7 @@ uv run nemotron super3 eval --run YOUR-CLUSTER
 uv run nemotron super3 eval --dry-run
 ```
 
-See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## Results
 
