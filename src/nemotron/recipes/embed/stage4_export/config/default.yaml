@@ -1,12 +1,13 @@
+# Default model family: Nemotron 3 Embed.
 # Stage 4: Export Configuration
 #
-# Exports fine-tuned embedding models to ONNX and optionally TensorRT
-# for optimized inference deployment.
+# The default NIM consumes the PyTorch checkpoint directly, so this stage is
+# intentionally skipped. Use -c llama for ONNX/TensorRT export.
 #
 # Usage:
 #   nemotron embed export -c default
-#   nemotron embed export -c default export_to_trt=false
-#   nemotron embed export -c default model_path=/path/to/model
+#   nemotron embed export -c llama export_to_trt=false
+#   nemotron embed export -c llama model_path=/path/to/model
 #
 # Remote execution (Slurm):
 #   nemotron embed export -c default --run my-cluster
@@ -19,27 +20,35 @@ run:
     # Use NeMo Framework container with Export-Deploy dependencies
     container: nvcr.io/nvidia/nemo:25.07
 
+# Root for all artifacts produced by this model profile.
+artifact_root: ./output/embed/nemotron-3-1b
+
+# Nemotron 3 Retriever NIM loads the PyTorch checkpoint directly.
+# Keep this stage in the pipeline as an explicit no-op for this profile.
+enabled: false
+
 # Path to fine-tuned HuggingFace model checkpoint
-model_path: ./output/embed/stage2_finetune/checkpoints/LATEST/model/consolidated
+model_path: ${oc.env:NEMOTRON3_EMBED_EXPORT_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
 
 # Model settings
 pooling_mode: avg  # Pooling method: avg, cls, last
 normalize: true    # Whether to L2 normalize embeddings
 attn_implementation: eager  # Attention: eager, sdpa, flash_attention_2 (use eager for ONNX export)
 use_dimension_arg: true  # Whether dimension is used in model forward
+trust_remote_code: true  # Required for NVIDIA checkpoints with custom AutoModel code
 
 # Quantization settings (optional)
 quant_cfg: null  # Options: null, "fp8", "int8_sq"
 calibration_batch_size: 64
 
 # ONNX export settings
-onnx_export_path: ./output/embed/stage4_export/onnx
+onnx_export_path: ${artifact_root}/stage4_export/onnx
 opset: 17  # ONNX opset version
 export_dtype: fp32  # ONNX export precision: fp32, fp16
 
 # TensorRT export settings
 export_to_trt: false  # Whether to convert ONNX to TensorRT
-trt_model_path: ./output/embed/stage4_export/tensorrt
+trt_model_path: ${artifact_root}/stage4_export/tensorrt
 
 # TensorRT precision overrides for numerical stability
 override_layernorm_precision_to_fp32: true
@@ -61,4 +70,4 @@ trt_opt_seq_len: 128
 trt_max_seq_len: 256
 
 # Base output directory
-output_dir: ./output/embed/stage4_export
+output_dir: ${artifact_root}/stage4_export

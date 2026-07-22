@@ -3,7 +3,12 @@ name = "recipe-runner"
 version = "0.0.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "nemo-automodel==0.4.0",
+  "nemo-automodel",
+  # Automodel PR #3021 writes the stock Hugging Face checkpoint consumed by vLLM.
+  # Use its commit archive rather than a git source so UV does not inherit the
+  # upstream project's cu130 source selection; this recipe remains on cu129.
+  # Its exact source revision requires Transformers 5.12.1.
+  "transformers==5.12.1",
   # Needed by Nemotron library (added via --with flag)
   "omegaconf>=2.3.0",
   "pydantic-settings>=2.0.0",
@@ -17,6 +22,7 @@ dependencies = [
 # Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
 # NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
 [tool.uv.sources]
+nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz" }
 torch = [
     { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cpu", marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },

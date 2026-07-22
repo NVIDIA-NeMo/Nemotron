@@ -1,3 +1,4 @@
+# Default model family: Nemotron 3 Embed.
 # Stage 0: Synthetic Data Generation Configuration
 #
 # Generates synthetic Q&A pairs from document corpus using retriever-sdg.
@@ -17,6 +18,9 @@ run:
     # Container image for remote execution (Docker/Slurm)
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
+# Root for all artifacts produced by this model profile.
+artifact_root: ./output/embed/nemotron-3-1b
+
 # ==============================================================================
 # Core paths
 # ==============================================================================
@@ -30,13 +34,17 @@ corpus_dir: hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b6
 
 
 # Output directory for generated synthetic data
-output_dir: ./output/embed/stage0_sdg
+output_dir: ${artifact_root}/stage0_sdg
 
 # File extensions to process (comma-separated) (optional, default: .txt, .md, .text, and no extension)
 # file_extensions: ".txt,"
 
 # NVIDIA API key (optional, defaults to NVIDIA_API_KEY env var)
 # nvidia_api_key: null
+
+# Optional OpenAI-compatible NVIDIA API base URL.
+# Set NVIDIA_API_BASE_URL or override nvidia_api_base_url on the command line.
+# When unset, Data Designer uses its built-in NVIDIA provider endpoint.
 
 # ==============================================================================
 # Document processing
@@ -113,19 +121,19 @@ max_docs_per_bundle: 3
 # ==============================================================================
 
 # Artifact extraction
-artifact_extraction_model: nvidia/nemotron-3-nano-30b-a3b
+artifact_extraction_model: nvidia/nemotron-3-ultra-550b-a55b
 artifact_extraction_provider: nvidia
 
 # QA generation
-qa_generation_model: nvidia/nemotron-3-nano-30b-a3b
+qa_generation_model: nvidia/nemotron-3-ultra-550b-a55b
 qa_generation_provider: nvidia
 
 # Quality judge
-quality_judge_model: nvidia/nemotron-3-nano-30b-a3b
+quality_judge_model: nvidia/nemotron-3-ultra-550b-a55b
 quality_judge_provider: nvidia
 
 # Embedding
-embed_model: nvidia/llama-3.2-nv-embedqa-1b-v2
+embed_model: nvidia/nemotron-3-embed-1b
 embed_provider: nvidia
 
 # Maximum parallel requests for generation models (null = library default)
@@ -136,7 +144,7 @@ embed_provider: nvidia
 # ==============================================================================
 
 # Path to store Data Designer intermediate artifacts
-artifact_path: ./output/embed/stage0_sdg/artifacts
+artifact_path: ${artifact_root}/stage0_sdg/artifacts
 
 # Preview the generation without actually running
 preview: false

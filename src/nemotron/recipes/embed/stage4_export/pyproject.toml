@@ -27,9 +27,9 @@ tensorrt = [
 # Note: exclude-dependencies injected dynamically by run_uv.py
 
 [tool.uv]
-# Match stage2 finetune: saved Automodel bidirectional checkpoints call the
-# Transformers 5.0/5.1 create_bidirectional_mask API.
-override-dependencies = ["transformers>=5.0,<5.2"]
+# Match prep, finetune, and eval. The Nemotron 3 checkpoint's custom mask calls
+# the pre-5.6 input_embeds API; Transformers 5.6+ requires inputs_embeds.
+override-dependencies = ["transformers>=5.1,<5.6"]
 exclude-dependencies = ["transformer-engine", "nvidia-pytriton"]
 
 # Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via

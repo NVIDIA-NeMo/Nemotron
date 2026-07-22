@@ -49,6 +49,7 @@ def test_execute_uv_local_uses_stage_project_lock(monkeypatch) -> None:
                 "torch.distributed.run",
                 "--nproc_per_node=gpu",
             ],
+            env_vars={"WANDB_ENABLED": "true", "WANDB_PROJECT": "retriever-finetune"},
         )
 
     assert exc_info.value.exit_code == 0
@@ -72,6 +73,8 @@ def test_execute_uv_local_uses_stage_project_lock(monkeypatch) -> None:
     ]
     assert ["--with", str(repo_root)] not in [calls[0][0][i : i + 2] for i in range(len(calls[0][0]) - 1)]
     assert "VIRTUAL_ENV" not in calls[0][1]["env"]
+    assert calls[0][1]["env"]["WANDB_ENABLED"] == "true"
+    assert calls[0][1]["env"]["WANDB_PROJECT"] == "retriever-finetune"
 
 
 def test_execute_uv_local_resolves_repo_relative_script_path(monkeypatch) -> None:
@@ -156,6 +159,7 @@ def test_execute_uv_local_from_spec_uses_torchrun_launch(monkeypatch) -> None:
         spec=spec,
         train_path=train_path,
         passthrough=["model.foo=bar"],
+        env_vars={"WANDB_ENABLED": "true"},
     )
 
     assert captured["script_path"] == str(script_path)
@@ -168,6 +172,7 @@ def test_execute_uv_local_from_spec_uses_torchrun_launch(monkeypatch) -> None:
         "torch.distributed.run",
         "--nproc_per_node=gpu",
     ]
+    assert captured["env_vars"] == {"WANDB_ENABLED": "true"}
 
 
 def test_execute_uv_local_from_spec_uses_numeric_runspec_resource(monkeypatch) -> None:

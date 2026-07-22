@@ -42,6 +42,7 @@ class TestDefaults:
     # DataPrepConfig requires sdg_input_path or train_input_file
     _REQUIRED_KWARGS = {
         "prep": {"sdg_input_path": "/tmp/fake"},
+        "deploy": {"nim_image": "example.invalid/nim:test"},
     }
 
     @pytest.mark.parametrize("name,cls", ALL_CONFIGS, ids=[c[0] for c in ALL_CONFIGS])
@@ -118,6 +119,12 @@ class TestDataPrepConfigValidation:
 
         nproc_index = captured["cmd"].index("--nproc_per_node")
         assert captured["cmd"][nproc_index + 1] == "gpu"
+        query_prefix_index = captured["cmd"].index("--mining.query_prefix")
+        assert captured["cmd"][query_prefix_index + 1] == "query: "
+        passage_prefix_index = captured["cmd"].index("--mining.passage_prefix")
+        assert captured["cmd"][passage_prefix_index + 1] == "passage: "
+        trust_index = captured["cmd"].index("--mining.trust_remote_code")
+        assert captured["cmd"][trust_index + 1] == "true"
         assert output_file == tmp_path / "train_mined.automodel.json"
 
 

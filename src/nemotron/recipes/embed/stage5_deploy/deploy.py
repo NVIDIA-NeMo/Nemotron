@@ -4,7 +4,7 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "embed/deploy"
-# setup = "Local-only Docker wrapper. Launches a NIM container for inference."
+# setup = "Local-only Docker wrapper. Launches a NIM or vLLM container for inference."
 #
 # [tool.runspec.run]
 # launch = "direct"
@@ -28,78 +28,173 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Deploy script for NIM embedding service with custom model.
+"""Deploy an embedding service with a custom model checkpoint.
 
-Launches the NVIDIA NIM container with a custom ONNX/TensorRT model
-exported from stage4_export. The NIM provides an OpenAI-compatible
-embeddings API with the custom fine-tuned model.
+The default backend launches Retriever Embedding NIM 2.2.0, which consumes a
+Hugging Face-style safetensors directory through ``NIM_MODEL_PATH``. Older NIM
+images use the ``NIM_CUSTOM_MODEL`` contract for exported ONNX/TensorRT
+artifacts. The optional vLLM backend serves the same Hugging Face checkpoint
+and is evaluated through vLLM's ``/v2/embed`` API.
 
 Usage:
     # With default config (launches NIM in foreground)
     nemotron embed deploy -c default
 
     # With custom model path
-    nemotron embed deploy -c default model_dir=/path/to/onnx
+    nemotron embed deploy -c default model_dir=/path/to/model
 
     # Detached mode (background)
     nemotron embed deploy -c default detach=true
+
+    # Serve the default checkpoint with NVIDIA's vLLM container
+    nemotron embed deploy -c default backend=vllm
 """
 
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Annotated, Literal
 
-from typing import Annotated
-
-from pydantic import BeforeValidator, ConfigDict, Field
+from pydantic import BeforeValidator, ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_NIM_IMAGE = "nvcr.io/nim/nvidia/nemotron-3-embed-1b:2.2.0"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 
 class DeployConfig(RecipeSettings):
-    """Deployment configuration for NIM embedding service."""
+    """Deployment configuration for a NIM or vLLM embedding service."""
 
     model_config = ConfigDict(extra="forbid")
 
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
+        description="Root directory for this model profile's pipeline artifacts.",
+    )
+
     # Container settings
-    nim_image: str = Field(default="nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10.1", description="NIM container image to use.")
-    container_name: str = Field(default="nemotron-embed-nim", description="Name for the Docker container.")
+    backend: Literal["nim", "vllm"] = Field(default="nim", description="Serving backend to launch.")
+    nim_image: str | None = Field(
+        default_factory=lambda: os.environ.get("NEMOTRON3_EMBED_NIM_IMAGE", DEFAULT_NIM_IMAGE),
+        description="NIM container image to use for the NIM backend.",
+    )
+    vllm_image: str = Field(
+        default="nvcr.io/nvidia/vllm:26.06-py3",
+        description="vLLM container image to use for the vLLM backend.",
+    )
+    nim_model: str = Field(
+        default="nvidia/nemotron-3-embed-1b",
+        description="Model identifier advertised by the selected embedding service.",
+    )
+    container_name: str = Field(default="nemotron-embed", description="Name for the Docker container.")
 
     # Model settings
-    model_dir: Path = Field(default_factory=lambda: _OUTPUT_BASE / "output/embed/stage4_export/onnx", description="Path to custom model directory (ONNX or TensorRT).")
-    use_onnx: bool = Field(default=True, description="Use ONNX model instead of TensorRT.")
+    model_dir: Path = Field(
+        default_factory=lambda data: Path(
+            os.environ.get(
+                "NEMOTRON3_EMBED_DEPLOY_CHECKPOINT",
+                data["artifact_root"] / "stage2_finetune/checkpoints/LATEST/model/consolidated",
+            )
+        ),
+        description="Path to custom model artifacts on the host.",
+    )
+    use_onnx: bool = Field(
+        default=False,
+        description="NIM_CUSTOM_MODEL artifact selector. Ignored when model_path_env selects a direct checkpoint.",
+    )
+    model_path_env: Literal["NIM_CUSTOM_MODEL", "NIM_ENGINE_MODEL_PATH", "NIM_MODEL_PATH"] = Field(
+        default="NIM_MODEL_PATH",
+        description="NIM artifact selector; NIM_MODEL_PATH is the default for Retriever NIM 2.2.0+.",
+    )
+    expected_model_fingerprint: dict[str, int] | None = Field(
+        default_factory=lambda: {
+            "hidden_size": 2048,
+            "num_hidden_layers": 16,
+            "num_attention_heads": 24,
+            "num_key_value_heads": 8,
+            "intermediate_size": 6144,
+            "vocab_size": 131072,
+        },
+        description="Optional architecture fingerprint required by the selected NIM image.",
+    )
 
     # Container paths
-    container_model_path: str = Field(default="/opt/nim/custom_model", description="Path inside container where model will be mounted.")
-    container_cache_path: str = Field(default="/opt/nim/.cache", description="Path inside container for NIM cache.")
+    container_model_path: str = Field(
+        default="/model", description="Path inside container where model will be mounted."
+    )
+    container_cache_path: str = Field(default="/opt/cache", description="Path inside container for NIM cache.")
+    vllm_container_cache_path: str = Field(
+        default="/root/.cache/huggingface",
+        description="Path inside the vLLM container for Hugging Face cache data.",
+    )
 
     # Network settings
     host_port: int = Field(default=8000, ge=1, le=65535, description="Port to expose on host.")
     container_port: int = Field(default=8000, ge=1, le=65535, description="Port inside container.")
-
+    max_seq_len: int | None = Field(
+        default=None,
+        gt=0,
+        description="Optional NIM maximum sequence length override; unset uses the image default.",
+    )
+    pipeline_id: str | None = Field(
+        default=None,
+        description="Optional exact NIM runtime pipeline identifier.",
+    )
     # Resource settings
-    gpus: Annotated[str, BeforeValidator(str)] = Field(default="all", description="Number of GPUs to use for the container. (e.g., 'all', 1).")
-    shm_size: str = Field(default="2gb", description="Shared memory size.")
+    gpus: Annotated[str, BeforeValidator(str)] = Field(
+        default="all", description="Number of GPUs to use for the container. (e.g., 'all', 1)."
+    )
+    shm_size: str = Field(default="16gb", description="Shared memory size.")
 
     # Runtime settings
     detach: bool = Field(default=False, description="Run container in detached mode.")
     remove_on_exit: bool = Field(default=True, description="Remove container when it exits.")
-    health_check_timeout: int = Field(default=120, gt=0, description="Timeout in seconds for health check.")
+    health_check_timeout: int = Field(default=600, gt=0, description="Timeout in seconds for health check.")
     health_check_interval: int = Field(default=5, gt=0, description="Interval in seconds between health checks.")
 
     # Environment
     ngc_api_key_env: str = Field(default="NGC_API_KEY", description="Environment variable name for NGC API key.")
+    forward_ngc_api_key: bool = Field(
+        default=False,
+        description=(
+            "Forward NGC_API_KEY into the container. Local NIM_MODEL_PATH artifacts "
+            "do not require it; enable for NIM_CUSTOM_MODEL or model-download workflows when needed."
+        ),
+    )
+    allow_unhealthy_detached: bool = Field(
+        default=False,
+        description="Return success after a detached health timeout instead of failing.",
+    )
+
+    @model_validator(mode="after")
+    def _require_selected_backend_image(self) -> DeployConfig:
+        # Treat an explicitly empty image override as unset.
+        if self.nim_image in {"", "''", '""', "null", "None"}:
+            self.nim_image = None
+        if self.backend == "nim" and (self.nim_image is None or not self.nim_image.strip()):
+            raise ValueError("nim_image must be nonempty when backend=nim")
+        if self.backend == "vllm" and not self.vllm_image.strip():
+            raise ValueError("vllm_image must be set when backend=vllm")
+        return self
+
+    @property
+    def container_image(self) -> str:
+        """Return the image selected by the serving backend."""
+        if self.backend == "vllm":
+            return self.vllm_image
+        assert self.nim_image is not None
+        return self.nim_image
 
 
 def check_docker() -> bool:
@@ -176,15 +271,25 @@ def build_docker_command(cfg: DeployConfig) -> list[str]:
     # Port mapping
     cmd.extend(["-p", f"{cfg.host_port}:{cfg.container_port}"])
 
-    # NGC API key
-    ngc_key = os.environ.get(cfg.ngc_api_key_env)
-    if ngc_key:
-        cmd.extend(["-e", f"NGC_API_KEY={ngc_key}"])
-    else:
-        print(f"Warning: {cfg.ngc_api_key_env} not set. NIM may not authenticate properly.")
+    # NGC API key is not needed when all model artifacts are already mounted.
+    if cfg.backend == "nim" and cfg.forward_ngc_api_key:
+        ngc_key = os.environ.get(cfg.ngc_api_key_env)
+        if ngc_key:
+            cmd.extend(["-e", "NGC_API_KEY"])
+        else:
+            print(f"Warning: {cfg.ngc_api_key_env} not set. NIM may not authenticate properly.")
 
-    # Custom model environment variable
-    cmd.extend(["-e", f"NIM_CUSTOM_MODEL={cfg.container_model_path}"])
+    if cfg.backend == "nim":
+        # NIM 2.2.0+ supplies its own model name and accepts staged weights here.
+        cmd.extend(["-e", f"{cfg.model_path_env}={cfg.container_model_path}"])
+
+        if cfg.max_seq_len is not None:
+            max_seq_len_env = (
+                "NIM_PIPELINE_MAX_SEQ_LEN" if cfg.model_path_env == "NIM_ENGINE_MODEL_PATH" else "NIM_MAX_SEQ_LEN"
+            )
+            cmd.extend(["-e", f"{max_seq_len_env}={cfg.max_seq_len}"])
+        if cfg.pipeline_id:
+            cmd.extend(["-e", f"NIM_PIPELINE_ID={cfg.pipeline_id}"])
 
     # Volume mounts
     # Model directory
@@ -193,18 +298,76 @@ def build_docker_command(cfg: DeployConfig) -> list[str]:
 
     # Cache directory (optional, uses host cache)
     cache_dir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
-    nim_cache = Path(cache_dir) / "nim"
-    nim_cache.mkdir(parents=True, exist_ok=True)
-    cmd.extend(["-v", f"{nim_cache}:{cfg.container_cache_path}"])
+    cache_name = "huggingface" if cfg.backend == "vllm" else "nim"
+    host_cache = Path(cache_dir) / cache_name
+    host_cache.mkdir(parents=True, exist_ok=True)
+    container_cache = cfg.vllm_container_cache_path if cfg.backend == "vllm" else cfg.container_cache_path
+    cmd.extend(["-v", f"{host_cache}:{container_cache}"])
 
     # Container image
-    cmd.append(cfg.nim_image)
+    cmd.append(cfg.container_image)
+
+    if cfg.backend == "vllm":
+        cmd.extend(
+            [
+                "vllm",
+                "serve",
+                cfg.container_model_path,
+                "--served-model-name",
+                cfg.nim_model,
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(cfg.container_port),
+            ]
+        )
 
     return cmd
 
 
+def build_docker_environment(cfg: DeployConfig) -> dict[str, str]:
+    """Build the Docker client environment without placing secrets in argv."""
+    env = os.environ.copy()
+    ngc_key = os.environ.get(cfg.ngc_api_key_env) if cfg.forward_ngc_api_key else None
+    if ngc_key:
+        # Docker receives ``-e NGC_API_KEY`` and copies this value into the
+        # container without exposing it in the command line or command log.
+        env["NGC_API_KEY"] = ngc_key
+    return env
+
+
+def model_artifact_errors(cfg: DeployConfig) -> list[str]:
+    """Return missing or incompatible model artifact diagnostics."""
+    if cfg.backend == "vllm" or cfg.model_path_env in {"NIM_ENGINE_MODEL_PATH", "NIM_MODEL_PATH"}:
+        errors: list[str] = []
+        config_path = cfg.model_dir / "config.json"
+        if not config_path.is_file():
+            errors.append("missing config.json")
+        if not any(cfg.model_dir.glob("*.safetensors")):
+            errors.append("missing *.safetensors")
+        if not any((cfg.model_dir / filename).is_file() for filename in ("tokenizer.json", "tokenizer_config.json")):
+            errors.append("missing tokenizer.json or tokenizer_config.json")
+
+        if config_path.is_file() and cfg.expected_model_fingerprint:
+            try:
+                model_config = json.loads(config_path.read_text())
+            except (OSError, json.JSONDecodeError) as error:
+                errors.append(f"cannot read config.json: {error}")
+            else:
+                for field, expected in cfg.expected_model_fingerprint.items():
+                    actual = model_config.get(field)
+                    if actual != expected:
+                        errors.append(f"config.json {field}={actual!r} (expected {expected!r})")
+        return errors
+
+    artifact_pattern = "*.onnx" if cfg.use_onnx else "*.plan"
+    if not any(cfg.model_dir.glob(artifact_pattern)):
+        return [f"missing {artifact_pattern}"]
+    return []
+
+
 def wait_for_health(cfg: DeployConfig) -> bool:
-    """Wait for NIM to become healthy.
+    """Wait for the embedding service to become healthy.
 
     Args:
         cfg: Deployment configuration.
@@ -212,20 +375,29 @@ def wait_for_health(cfg: DeployConfig) -> bool:
     Returns:
         True if healthy, False if timeout.
     """
-    import urllib.request
+    import http.client
     import urllib.error
+    import urllib.request
 
-    health_url = f"http://localhost:{cfg.host_port}/v1/health/ready"
+    health_path = "/health" if cfg.backend == "vllm" else "/v1/health/ready"
+    health_url = f"http://localhost:{cfg.host_port}{health_path}"
     start_time = time.time()
 
-    print(f"   Waiting for NIM to become healthy (timeout: {cfg.health_check_timeout}s)...")
+    print(f"   Waiting for embedding service to become healthy (timeout: {cfg.health_check_timeout}s)...")
 
     while time.time() - start_time < cfg.health_check_timeout:
         try:
             with urllib.request.urlopen(health_url, timeout=5) as response:
                 if response.status == 200:
                     return True
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            http.client.HTTPException,
+            ConnectionError,
+            OSError,
+            TimeoutError,
+        ):
             pass
 
         time.sleep(cfg.health_check_interval)
@@ -236,7 +408,7 @@ def wait_for_health(cfg: DeployConfig) -> bool:
 
 
 def run_deploy(cfg: DeployConfig) -> dict:
-    """Run NIM deployment.
+    """Run an embedding service deployment.
 
     Args:
         cfg: Deployment configuration.
@@ -244,15 +416,17 @@ def run_deploy(cfg: DeployConfig) -> dict:
     Returns:
         Dictionary with deployment info.
     """
-    print(f"🚀 NIM Embedding Service Deployment")
-    print(f"=" * 60)
-    print(f"NIM image:       {cfg.nim_image}")
+    print("🚀 Embedding Service Deployment")
+    print("=" * 60)
+    print(f"Backend:         {cfg.backend}")
+    print(f"Container image: {cfg.container_image}")
+    print(f"API model:       {cfg.nim_model}")
     print(f"Container name:  {cfg.container_name}")
     print(f"Model directory: {cfg.model_dir}")
     print(f"Host port:       {cfg.host_port}")
     print(f"GPUs:            {cfg.gpus}")
     print(f"Detached:        {cfg.detach}")
-    print(f"=" * 60)
+    print("=" * 60)
     print()
 
     # Check prerequisites
@@ -266,34 +440,43 @@ def run_deploy(cfg: DeployConfig) -> dict:
     # Validate model directory
     if not cfg.model_dir.exists():
         print(f"Error: Model directory not found: {cfg.model_dir}")
-        print("       Please run stage4_export first.")
+        print("       Set model_dir to the artifacts required by the selected backend.")
         sys.exit(1)
 
-    # Check for model files
-    model_files = list(cfg.model_dir.glob("*.onnx")) + list(cfg.model_dir.glob("*.plan"))
-    if not model_files:
-        print(f"Warning: No ONNX or TensorRT files found in {cfg.model_dir}")
+    # Check for model files expected by the selected artifact contract.
+    artifact_errors = model_artifact_errors(cfg)
+    if artifact_errors:
+        print(f"Error: Model artifacts are not compatible with the selected backend in {cfg.model_dir}:")
+        for error in artifact_errors:
+            print(f"       - {error}")
+        sys.exit(1)
 
     # Stop any existing container with same name
-    print(f"📦 Stopping existing container (if any)...")
+    print("📦 Stopping existing container (if any)...")
     stop_existing_container(cfg.container_name)
 
     # Build Docker command
     docker_cmd = build_docker_command(cfg)
-    print(f"📦 Starting NIM container...")
+    docker_env = build_docker_environment(cfg)
+    print("📦 Starting embedding service container...")
     print(f"   Command: {' '.join(docker_cmd)}")
     print()
 
     result = {
+        "backend": cfg.backend,
         "container_name": cfg.container_name,
         "host_port": cfg.host_port,
         "model_dir": str(cfg.model_dir),
-        "api_url": f"http://localhost:{cfg.host_port}/v1/embeddings",
+        "api_url": (
+            f"http://localhost:{cfg.host_port}/v2/embed"
+            if cfg.backend == "vllm"
+            else f"http://localhost:{cfg.host_port}/v1/embeddings"
+        ),
     }
 
     if cfg.detach:
         # Run in background
-        proc = subprocess.run(docker_cmd, capture_output=True, text=True)
+        proc = subprocess.run(docker_cmd, capture_output=True, text=True, env=docker_env)
         if proc.returncode != 0:
             print(f"Error starting container: {proc.stderr}")
             sys.exit(1)
@@ -305,22 +488,30 @@ def run_deploy(cfg: DeployConfig) -> dict:
         # Wait for health
         if wait_for_health(cfg):
             print()
-            print(f"✅ NIM is ready!")
+            print("✅ Embedding service is ready!")
             print(f"   API endpoint: {result['api_url']}")
             print()
-            print(f"   Test with:")
-            print(f"   curl -X POST http://localhost:{cfg.host_port}/v1/embeddings \\")
-            print(f"     -H 'Content-Type: application/json' \\")
-            print(f"     -d '{{\"input\": [\"hello world\"], \"model\": \"nvidia/llama-3.2-nv-embedqa-1b-v2\", \"input_type\": \"query\"}}'")
+            print("   Test with:")
+            print(f"   curl -X POST {result['api_url']} \\")
+            print("     -H 'Content-Type: application/json' \\")
+            if cfg.backend == "vllm":
+                print(f'     -d \'{{"texts": ["hello world"], "model": "{cfg.nim_model}", "input_type": "query"}}\'')
+            else:
+                print(f'     -d \'{{"input": ["hello world"], "model": "{cfg.nim_model}", "input_type": "query"}}\'')
             print()
             print(f"   Stop with: docker stop {cfg.container_name}")
         else:
             print()
-            print(f"⚠️  Health check timeout. Container may still be starting.")
-            print(f"   Check logs with: docker logs {cfg.container_name}")
+            message = (
+                "Health check timeout: detached embedding service did not become ready. "
+                f"Check logs with: docker logs {cfg.container_name}"
+            )
+            if not cfg.allow_unhealthy_detached:
+                raise RuntimeError(message)
+            print(f"⚠️  {message}")
     else:
         # Run in foreground (interactive)
-        print(f"   Running in foreground. Press Ctrl+C to stop.")
+        print("   Running in foreground. Press Ctrl+C to stop.")
         print()
 
         # Set up signal handler for clean shutdown
@@ -334,7 +525,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
 
         # Run interactively
         try:
-            subprocess.run(docker_cmd)
+            subprocess.run(docker_cmd, env=docker_env)
         except KeyboardInterrupt:
             pass
 
@@ -352,9 +543,7 @@ def main(cfg: DeployConfig | None = None) -> dict:
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, DeployConfig)
