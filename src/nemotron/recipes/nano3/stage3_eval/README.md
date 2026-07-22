@@ -139,7 +139,7 @@ project = "nemotron"
 entity = "YOUR-TEAM"
 ```
 
-The CLI auto-detects your local `wandb login` credentials and propagates them to the evaluation containers. See [W&B Integration](../../../../docs/nemotron/wandb.md) for setup.
+The CLI auto-detects your local `wandb login` credentials and propagates them to the evaluation containers. See [W&B Integration](../../../../../docs/nemotron/wandb.md) for setup.
 
 ## Artifact Lineage
 
