@@ -36,7 +36,7 @@ from omegaconf import OmegaConf
 
 from nemotron.kit import SplitJsonlDataArtifact
 
-from nemotron.data_prep.hf_placeholder import (
+from nemotron.data_prep.utils.hf_placeholder import (
     TARGET_DATASETS,
     HFPlaceholderResolver,
     get_nested_value,
@@ -364,7 +364,7 @@ class TestTransformIntegration:
     def test_placeholder_record_with_mock_resolver(self):
         """Test placeholder record resolution with a mock resolver."""
         from nemotron.data_prep.formats.transforms import resolve_hf_placeholders
-        from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver, PlaceholderConfig
+        from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver, PlaceholderConfig
 
         # Create a mock dataset (simple dict-based mock)
         class MockDataset:
@@ -414,7 +414,7 @@ class TestTransformIntegration:
 
     def test_skywork_template_resolution(self):
         """Test Skywork-style {question} template resolution."""
-        from nemotron.data_prep.hf_placeholder import HFPlaceholderResolver, PlaceholderConfig
+        from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver, PlaceholderConfig
 
         class MockDataset:
             def __init__(self, data):
@@ -623,7 +623,7 @@ class TestWandbArtifactIntegration:
 
         This is the key integration test for the data_prep -> train contract.
         """
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -702,7 +702,7 @@ class TestWandbArtifactIntegration:
 
     def test_wandb_artifact_resolution_for_train(self, monkeypatch, tmp_path):
         """Test ${art:data,path} resolver works with train.py config pattern."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -750,7 +750,7 @@ class TestWandbArtifactIntegration:
 
     def test_artifact_without_manifest_should_fail_gracefully(self, monkeypatch, tmp_path):
         """Test that missing manifest.json is detected early with clear error."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 

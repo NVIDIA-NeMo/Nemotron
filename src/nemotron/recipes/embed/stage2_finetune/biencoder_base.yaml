@@ -63,8 +63,8 @@ dataloader:
     _target_: nemo_automodel.components.datasets.llm.BiEncoderCollator
     q_max_len: 512
     p_max_len: 512
-    query_prefix: "query:"
-    passage_prefix: "passage:"
+    query_prefix: "query: "
+    passage_prefix: "passage: "
     pad_to_multiple_of: 8
   shuffle: true
   num_workers: 0

@@ -14,7 +14,7 @@
 
 """Deploy command implementation.
 
-Launches NIM container with custom fine-tuned model for inference.
+Launches a NIM or vLLM container with a custom fine-tuned model for inference.
 Deploy is local-only (it's just a Docker wrapper).
 """
 
@@ -47,7 +47,7 @@ META = RecipeMeta(
     config_dir=str(SPEC.config_dir),
     config_model=DeployConfig,
     default_config=SPEC.config.default,
-    input_artifacts={"model": "Exported model directory (ONNX/TensorRT)"},
+    input_artifacts={"model": "Fine-tuned PyTorch checkpoint or Llama ONNX/TensorRT model directory"},
 )
 
 
@@ -85,6 +85,6 @@ def _execute_deploy(cfg: RecipeConfig):
 
 
 def deploy(ctx: typer.Context) -> None:
-    """Deploy NIM container with custom fine-tuned model for inference."""
+    """Deploy an embedding service with a custom fine-tuned model."""
     cfg = parse_recipe_config(ctx)
     _execute_deploy(cfg)
