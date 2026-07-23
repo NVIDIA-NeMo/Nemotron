@@ -13,9 +13,15 @@ run:
 # 2. Fetching the actual data from the external HF dataset
 # 3. Applying template restoration (DAPO prefix/suffix, Skywork {question} replacement)
 #
-# Usage:
-#   nemotron super3 data prep rl
-#   nemotron super3 data prep rl sample=100 force=true
+# Standalone usage:
+#   python src/nemotron/recipes/super3/stage2_rl/data_prep.py
+#   python src/nemotron/recipes/super3/stage2_rl/data_prep.py sample=100 force=true
+#
+# Nemotron CLI subcommands:
+#   nemotron super3 data prep rl rlvr
+#   nemotron super3 data prep rl swe1
+#   nemotron super3 data prep rl swe2
+#   nemotron super3 data prep rl rlhf
 #
 # Environment variables:
 #   PWD: Current working directory (for path resolution)
