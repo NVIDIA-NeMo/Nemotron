@@ -1,0 +1,50 @@
+---
+title: "Reinforcement Learning Steps"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section documents the reinforcement learning (RL) alignment steps registered under src/nemotron/steps/rl/nemo_rl/. All three steps run on NeMo-RL, consume a supervised fine-tuning (SFT) Megatron "
+slug: train-models/reference/rl
+---
+
+This section documents the reinforcement learning (RL) alignment steps registered under `src/nemotron/steps/rl/nemo_rl/`.
+All three steps run on NeMo-RL, consume a supervised fine-tuning (SFT) Megatron checkpoint as the warm-start policy, and produce an aligned `checkpoint_megatron` artifact.
+
+## Steps
+
+<CardGroup cols={2}>
+<Card href="/train-models/reference/rl/dpo" title="rl/nemo_rl/dpo">
+Direct preference optimization with preference pairs.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/rl/rlvr" title="rl/nemo_rl/rlvr">
+Reinforcement learning with verifiable rewards via group relative policy optimization.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+<Card href="/train-models/reference/rl/rlhf" title="rl/nemo_rl/rlhf">
+Reinforcement learning from human feedback with a generative reward model judge.
+
+---
+
+<Badge intent="success">reference</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Related Documentation
+
+- [Nemotron Steps CLI Reference](/train-models/reference/cli-reference) covers the shared option set, dotlist overrides, and passthrough arguments.
+
+- [Choose an RL Alignment Step](/train-models/how-to/choose-rl-step) compares the three RL steps.
+
+- [Configuration Conventions](/train-models/reference/config-conventions) describes the per-step `config/` layout.

@@ -1,0 +1,77 @@
+---
+title: "Synthetic Data How-To Guides"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This section provides task-focused guides for common SDG workflows. For your first run, start with Generate Your First Synthetic Dataset."
+slug: sdg/how-to
+---
+
+{/* SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */}
+
+<Anchor id="sdg-how-to-index"></Anchor>
+
+This section provides task-focused guides for common SDG workflows.
+For your first run, start with [Generate Your First Synthetic Dataset](/sdg/getting-started).
+
+If you are new to model training or want a calmer on-ramp before tasks, read [Use the SDG Skill With Confidence](/sdg/using-skills) for how to run a productive session with a coding agent.
+
+<CardGroup cols={2}>
+<Card href="/sdg/how-to/run" icon="solid play" iconSize={8} title="Run the Pipeline">
+Preview, generate, and customize output path and projection.
+
+---
+
+<Badge intent="success">10 min</Badge> <Badge intent="info">intermediate</Badge>
+
+</Card>
+
+<Card href="/sdg/how-to/create-domain-dataset" icon="solid briefcase" iconSize={8} title="Create a Domain Dataset">
+Adapt the pipeline to a custom domain with a seed file and multiple category dimensions.
+
+---
+
+<Badge intent="success">20 min</Badge> <Badge intent="info">intermediate</Badge>
+
+</Card>
+
+<Card href="/sdg/how-to/tool-call-data" icon="solid screwdriver-wrench" iconSize={8} title="Generate Tool-Call Data">
+Generate multi-turn conversations with OpenAI-style tool calls for tool-use SFT.
+
+---
+
+<Badge intent="success">15 min</Badge> <Badge intent="info">intermediate</Badge>
+
+</Card>
+
+<Card href="/sdg/how-to/preference-data" icon="solid code-compare" iconSize={8} title="Generate Preference Data">
+Generate DPO preference pairs (prompt / chosen / rejected) from `rl_pref.yaml`.
+
+---
+
+<Badge intent="success">15 min</Badge> <Badge intent="info">intermediate</Badge>
+
+</Card>
+
+<Card href="/sdg/how-to/dispatch-to-cluster" icon="solid server" iconSize={8} title="Dispatch to a Cluster">
+Configure an env.toml profile and run SDG on Lepton or Slurm.
+
+---
+
+<Badge intent="success">30 min</Badge> <Badge intent="info">intermediate</Badge>
+
+</Card>
+
+</CardGroup>

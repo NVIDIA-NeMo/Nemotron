@@ -1,0 +1,29 @@
+---
+title: "Curation Troubleshooting"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Symptom"
+slug: curate/reference/troubleshooting
+---
+
+| Symptom | Likely Cause | Fix |
+| --- | --- | --- |
+| <code>input&#95;glob</code> matches no files | Path does not exist in the current host, container, or shared mount | Use an absolute path or verify the mount. For local tiny runs, override the packaged <code>/nemo&#95;run/code/...</code> path with <code>$&#123;PWD&#125;/src/nemotron/steps/curate/nemo&#95;curator/data/tiny.jsonl</code>. |
+| Missing FastText model | <code>language&#95;codes</code> is non-empty but <code>models.fasttext&#95;langid</code> is missing or invalid | Set <code>language&#95;codes=[]</code> to disable language filtering, or provide the FastText <code>lid.176.bin</code> path. |
+| <code>quality&#95;filters</code> error about <code>min&#95;words</code> and <code>max&#95;words</code> | Only one word-count bound was set | Set both <code>quality&#95;filters.min&#95;words</code> and <code>quality&#95;filters.max&#95;words</code>, or set <code>quality&#95;filters=&#123;&#125;</code>. |
+| Output is empty or much smaller than expected | Filters are too strict or applied before corpus shape is understood | Re-run with <code>language&#95;codes=[]</code>, <code>domains=[]</code>, and <code>quality&#95;filters=&#123;&#125;</code>. Add filters back one at a time. |
+| Ray worker starts a new <code>.venv</code> or cannot import dependencies | Local <code>uv run</code> and the Ray runtime environment are both attempting to manage dependency setup | Export <code>RAY&#95;ENABLE&#95;UV&#95;RUN&#95;RUNTIME&#95;ENV=0</code> and run with <code>uv run --no-sync</code> after <code>uv sync --extra curate</code>. |
+| Large local file causes memory pressure | Input shard is too large for the available Ray worker memory | Split large JSONL files into smaller shards before running Curator. |
+| Domain classifier downloads repeatedly | Hugging Face cache path is not persistent | Set <code>models.hf&#95;cache&#95;dir</code> to a persistent cache location and mount it in remote profiles. |
+
+## Debug Checklist
+
+1. Run the local tiny command with filters disabled.
+
+2. Confirm `uv sync --extra curate` completed in the same repository clone.
+
+3. Confirm the input path exists where the command runs.
+
+4. Confirm `output_dir` is writable.
+
+5. Add language, word-count, and domain filters one at a time.

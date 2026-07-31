@@ -1,0 +1,60 @@
+---
+title: "Troubleshooting"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This page lists common symptoms when you run nemotron steps run translate/nemo_curator and shows the field, flag, or environment variable to inspect first. Each table pairs a symptom with a concrete r"
+slug: translation/reference/troubleshooting
+---
+
+{/* Reference: symptom-to-remedy tables for nemotron steps run translate/nemo_curator runs across all four backends and FAITH evaluation. */}
+
+This page lists common symptoms when you run `nemotron steps run translate/nemo_curator` and shows the field, flag, or environment variable to inspect first.
+Each table pairs a symptom with a concrete remedy.
+For stage flow and design rationale, see the explanation pages linked from [Concepts](/translation/explanation).
+
+## Authentication and Credentials
+
+| Symptom | What to do |
+| --- | --- |
+| HTTP 401 or 403 from the chat-completions endpoint, or a Curator log line about a missing API key | Confirm the variable named in <code>server.api&#95;key&#95;env</code> is exported in the shell that launches the run. The starter <code>default.yaml</code> expects <code>NVIDIA&#95;API&#95;KEY</code>; export it with <code>export NVIDIA&#95;API&#95;KEY="&lt;api-key&gt;"</code> and rerun. See [Run LLM Translation](/translation/how-to/run-llm-translation). |
+| FAITH scoring fails with a credentials error even though <code>backend</code> is <code>nmt</code>, <code>google</code>, or <code>aws</code> | FAITH always uses the large language model (LLM) client under <code>server</code>. Keep <code>server.api&#95;key&#95;env</code> populated whenever <code>faith&#95;eval.enabled</code> is <code>true</code>, or set <code>faith&#95;eval.enabled=false</code> for a diagnostic run. See [Run FAITH Evaluation](/translation/how-to/run-faith-evaluation). |
+| Google backend rejects the request with a permission or project error | Confirm application default credentials are present in the environment that runs the step. Do not paste secrets into <code>default.yaml</code>. See [Run Google or AWS Translation](/translation/how-to/run-google-aws-translation). |
+
+## Model and Endpoint Configuration
+
+| Symptom | What to do |
+| --- | --- |
+| HTTP 404 or a “model not found” message from the LLM endpoint | Hosted catalogs retire identifiers frequently. List the models your tenant currently exposes and pin <code>server.model</code> to one of them before large batch jobs. See [Run LLM Translation](/translation/how-to/run-llm-translation). |
+| Google translation rejects the request because <code>project&#95;id</code> is missing | API version <code>v3</code> requires project metadata. Set both <code>google.project&#95;id</code> and <code>google.api&#95;version=v3</code>, or downgrade <code>google.api&#95;version</code> to a release that does not require the project. See [Run Google or AWS Translation](/translation/how-to/run-google-aws-translation). |
+| NMT requests time out before the service responds | Raise <code>nmt.timeout</code> to match observed server latency, lower <code>nmt.batch&#95;size</code> so each request returns sooner, and confirm <code>nmt.server&#95;url</code> resolves from the host that runs the step. See [Run NMT Translation](/translation/how-to/run-nmt-translation). |
+
+## Throttling and Concurrency
+
+| Symptom | What to do |
+| --- | --- |
+| HTTP 429 responses, bursty failures, or sustained slowdowns from a hosted LLM endpoint | Lower <code>max&#95;concurrent&#95;requests</code> in your YAML and rerun on a smaller slice of data. Confirm your tenant quota covers the planned batch size. See [Translation YAML Reference](/translation/reference/translate-config). |
+| A self-hosted NMT service returns errors under load | Reduce <code>nmt.max&#95;concurrent&#95;requests</code> and <code>nmt.batch&#95;size</code> together, then raise them only after the service reports healthy throughput. See [Run NMT Translation](/translation/how-to/run-nmt-translation). |
+
+## Inputs and Output Layout
+
+| Symptom | What to do |
+| --- | --- |
+| Reader errors about mixed file types when <code>input&#95;path</code> points at a directory containing both JSONL and Parquet files | Curator readers expect one record format per directory. Split the inputs into separate directories for JSON Lines (JSONL) and Parquet, or set <code>input&#95;path</code> to a single file. See [Input and Output Format](/translation/reference/io-format). |
+| Ray worker logs show <code>Creating virtual environment at: .venv</code> followed by <code>ModuleNotFoundError: No module named 'ray'</code> | Export <code>RAY&#95;ENABLE&#95;UV&#95;RUN&#95;RUNTIME&#95;ENV=0</code> before running local <code>uv run --no-sync nemotron steps run translate/nemo&#95;curator ...</code>. This keeps Ray workers in the synchronized Nemotron environment. |
+| Empty JSONL input fails with <code>No data read from files in task file&#95;group&#95;0</code> | The reader found no records. Treat the run as an empty-input validation failure, confirm the input path is correct, and rerun with a non-empty file or directory. |
+| Output shards do not appear under <code>output&#95;dir</code> after the run reports success | The writer emits partitioned files, not a single merged file. Inspect the shard pattern under <code>output&#95;dir</code> and confirm <code>output&#95;format</code> matches what downstream consumers expect. See [Input and Output Format](/translation/reference/io-format). |
+
+## FAITH Evaluation
+
+| Symptom | What to do |
+| --- | --- |
+| Every translated row is dropped after FAITH runs | The <code>faith&#95;eval.threshold</code> value may be too strict for the chosen scorer model. Lower the threshold, set <code>faith&#95;eval.filter&#95;enabled=false</code> while you tune, or override the scorer with <code>faith&#95;eval.model&#95;name</code>. See [Run FAITH Evaluation](/translation/how-to/run-faith-evaluation). |
+| FAITH scores look inconsistent across runs of the same data | Pin both <code>server.model</code> and <code>faith&#95;eval.model&#95;name</code> to specific identifiers so scorer drift does not move the threshold under you. See [FAITH Evaluation Inside Translation](/translation/explanation/faith-evaluation). |
+
+## Related Reference
+
+- Translation YAML fields: [Translation YAML Reference](/translation/reference/translate-config)
+
+- CLI syntax: [CLI Reference for Translation](/translation/reference/cli-translation)
+
+- Input and output shapes: [Input and Output Format](/translation/reference/io-format)

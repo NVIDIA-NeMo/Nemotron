@@ -1,0 +1,116 @@
+landing-page:
+  page: "Nemotron Training Recipes"
+  path: ./v0.1.0/pages/index.mdx
+
+navigation:
+- section: "Usage Cookbook"
+  contents:
+    - page: "Usage Cookbook"
+      path: ./v0.1.0/pages/usage-cookbook/README.mdx
+    - page: "Nemotron-Nano2-VL Notebooks"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-Nano2-VL/README.mdx
+    - page: "Nemotron-Parse-v1.1 Notebooks"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-Parse-v1.1/README.mdx
+    - page: "Nemotron-3-Super Notebooks"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/README.mdx
+    - page: "Nemotron-3-Super GRPO/DAPO Training"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/grpo-dapo/README.mdx
+    - page: "Nemotron-3-Super Text2SQL Fine-tuning"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/lora-text2sql/README.mdx
+    - page: "Nemotron-3-Super Fine-tuning with NeMo AutoModel"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README.mdx
+    - page: "Nemotron-3-Super Fine-tuning with Megatron Bridge"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README.mdx
+    - page: "Nemotron 3 Super — Advanced Deployment Guide"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.mdx
+    - page: "Nemotron 3 Super with Agentic Coding Tools"
+      path: ./v0.1.0/pages/usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.mdx
+- section: "Use Case Examples"
+  contents:
+    - page: "Nemotron Use Case Examples"
+      path: ./v0.1.0/pages/use-case-examples/README.mdx
+    - page: "NVIDIA Nemotron 3 Nano - Simple Usage Guide"
+      path: ./v0.1.0/pages/use-case-examples/Simple Nemotron-3-Nano Usage Example/README.mdx
+    - page: "Data Science ML Agent"
+      path: ./v0.1.0/pages/use-case-examples/Data Science ML Agent/README.mdx
+    - page: "RAG Agent with Nemotron RAG Models"
+      path: ./v0.1.0/pages/use-case-examples/RAG Agent with Nemotron RAG Models/README.mdx
+    - page: "📄 Intelligent Document Processing (IDP) with Nemotron RAG"
+      path: ./v0.1.0/pages/use-case-examples/Intelligent Document Processing with Nemotron RAG/README.mdx
+    - page: "🎙️ Voice-Powered RAG Agent with NVIDIA Nemotron Models"
+      path: ./v0.1.0/pages/use-case-examples/nemotron-voice-rag-agent-example/README.mdx
+    - page: "LoRA Fine-Tuning & Deployment of Nemotron 3 Nano for Text2SQL"
+      path: ./v0.1.0/pages/use-case-examples/sql-lora-finetuning-and-deployment/README.mdx
+- section: "Training Recipes"
+  contents:
+    - page: "Nemotron 3 Nano Training Recipe"
+      path: ./v0.1.0/pages/nemotron/nano3/README.mdx
+    - page: "Nemotron 3 Super Training Recipe"
+      path: ./v0.1.0/pages/nemotron/super3/README.mdx
+    - page: "Artifact Types & Lineage"
+      path: ./v0.1.0/pages/nemotron/artifacts.mdx
+- section: "Nano3 Stages"
+  contents:
+    - page: "Stage 0: Pretraining"
+      path: ./v0.1.0/pages/nemotron/nano3/pretrain.mdx
+    - page: "Stage 1: Supervised Fine-Tuning (SFT)"
+      path: ./v0.1.0/pages/nemotron/nano3/sft.mdx
+    - page: "Stage 2: Reinforcement Learning (RL)"
+      path: ./v0.1.0/pages/nemotron/nano3/rl.mdx
+    - page: "Stage 3: Evaluation"
+      path: ./v0.1.0/pages/nemotron/nano3/evaluate.mdx
+    - page: "Importing Models and Data"
+      path: ./v0.1.0/pages/nemotron/nano3/import.mdx
+- section: "Super3 Stages"
+  contents:
+    - page: "Stage 0: Pretraining"
+      path: ./v0.1.0/pages/nemotron/super3/pretrain.mdx
+    - page: "Stage 1: Supervised Fine-Tuning (SFT)"
+      path: ./v0.1.0/pages/nemotron/super3/sft.mdx
+    - section: "Stage 2: Reinforcement Learning (RL)"
+      path: ./v0.1.0/pages/nemotron/super3/rl/index.mdx
+      contents:
+        - page: "Multi-Environment RLVR (Stages 1.1–1.3)"
+          path: ./v0.1.0/pages/nemotron/super3/rl/rlvr.mdx
+        - page: "SWE-RL (Stages 2.1–2.2)"
+          path: ./v0.1.0/pages/nemotron/super3/rl/swe.mdx
+        - page: "RLHF (Stage 3)"
+          path: ./v0.1.0/pages/nemotron/super3/rl/rlhf.mdx
+        - page: "RL Data Preparation"
+          path: ./v0.1.0/pages/nemotron/super3/rl/data-prep.mdx
+    - page: "Stage 4: Evaluation"
+      path: ./v0.1.0/pages/nemotron/super3/evaluate.mdx
+    - page: "Stage 3: Quantization"
+      path: ./v0.1.0/pages/nemotron/super3/quantization.mdx
+- section: "Nemotron Kit"
+  contents:
+    - page: "Nemotron Kit"
+      path: ./v0.1.0/pages/nemotron/kit.mdx
+    - page: "NVIDIA AI Stack"
+      path: ./v0.1.0/pages/nemotron/nvidia-stack.mdx
+    - page: "nemo_runspec Package"
+      path: ./v0.1.0/pages/nemo_runspec/package-readme.mdx
+    - page: "Execution through NeMo-Run"
+      path: ./v0.1.0/pages/nemo_runspec/nemo-run.mdx
+    - page: "OmegaConf Configuration System"
+      path: ./v0.1.0/pages/nemo_runspec/omegaconf.mdx
+    - page: "Artifact Tracking"
+      path: ./v0.1.0/pages/nemo_runspec/artifacts.mdx
+    - page: "Weights & Biases Integration"
+      path: ./v0.1.0/pages/nemotron/wandb.mdx
+    - page: "CLI Framework"
+      path: ./v0.1.0/pages/nemotron/cli.mdx
+    - page: "Data Preparation Module"
+      path: ./v0.1.0/pages/nemotron/data-prep.mdx
+    - page: "Xenna Pipeline Observability"
+      path: ./v0.1.0/pages/nemotron/xenna-observability.mdx
+- section: "Architecture"
+  contents:
+    - page: "Nemotron Architecture"
+      path: ./v0.1.0/pages/architecture/README.mdx
+    - page: "Design Philosophy"
+      path: ./v0.1.0/pages/architecture/design-philosophy.mdx
+    - page: "CLI Architecture"
+      path: ./v0.1.0/pages/architecture/cli-architecture.mdx
+    - page: "Runspec: [tool.runspec] Specification"
+      path: ./v0.1.0/pages/runspec/v1/spec.mdx

@@ -1,0 +1,74 @@
+---
+title: "CLI Reference for Translation"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Syntax, global flags, and merge rules for nemotron steps run translate/nemo_curator. Pair this page with Translation YAML Reference for YAML field meanings."
+slug: translation/reference/cli-translation
+---
+
+Syntax, global flags, and merge rules for `nemotron steps run translate/nemo_curator`. Pair this page with [Translation YAML Reference](/translation/reference/translate-config) for YAML field meanings.
+
+## Synopsis
+
+```bash
+uv run nemotron steps run translate/nemo_curator [GLOBAL OPTIONS] [-c CONFIG] [DOTLIST_OVERRIDES...]
+```
+
+## Global Options
+
+These flags mirror other Nemotron commands:
+
+| Flag | Purpose |
+| --- | --- |
+| <code>-c NAME</code>, <code>--config NAME</code> | Select <code>NAME.yaml</code> inside <code>src/nemotron/steps/translate/nemo&#95;curator/config/</code> or pass an explicit <code>&#42;.yaml</code> path. |
+| <code>-d</code>, <code>--dry-run</code> | Print the merged OmegaConf YAML without executing <code>TranslationStage</code>. |
+| <code>-r</code>, <code>--run PROFILE</code> | Run attached through an environment profile such as <code>lepton&#95;translate</code> or a Slurm profile. |
+| <code>-b</code>, <code>--batch PROFILE</code> | Submit detached through an environment profile such as <code>lepton&#95;translate</code> or a Slurm profile. |
+
+Invocation without `-c` loads `default` automatically through `parse_config`.
+
+For local Curator execution through `uv run`, set:
+
+```bash
+export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
+```
+
+This keeps Ray workers on the synchronized project environment instead of
+letting Ray ask uv to create a separate worker environment.
+
+## Dotlist Overrides
+
+Anything after the global flags that matches `key=value` merges into the YAML dictionary loaded from `default.yaml`. Nested keys use dotted paths:
+
+```bash
+uv run nemotron steps run translate/nemo_curator -c default \
+  faith_eval.threshold=3.1 \
+  server.model=YOUR_MODEL \
+  input_path=/data/text.jsonl \
+  output_dir=/data/translated \
+  source_language=en \
+  target_language=ar
+```
+
+## Restrictions Specific to Translation
+
+- Passthrough arguments are not supported.
+
+- For remote execution, use a normal Nemotron env profile with `-r` or `-b`, such as `lepton_translate`.
+
+## Artifact Overrides
+
+The current translation step reads `input_path` directly from YAML and dotlist overrides.
+
+## Exit Codes
+
+| Code | Meaning |
+| --- | --- |
+| <code>0</code> | Dry-run printed or translation finished successfully. |
+| <code>1</code> | Validation failures such as missing languages, illegal backend configuration, unsupported CLI mode, or missing API keys. |
+
+## Related Pages
+
+- YAML keys: [Translation YAML Reference](/translation/reference/translate-config)
+
+- Tutorial invocation: [Getting Started With Translation](/translation/getting-started)

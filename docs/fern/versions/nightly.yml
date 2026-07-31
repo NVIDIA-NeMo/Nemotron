@@ -1,0 +1,420 @@
+landing-page:
+  page: "Nemotron Training Recipes"
+  path: ./nightly/pages/index.mdx
+
+tabs:
+  recipes:
+    display-name: "Training Recipes"
+  playbook:
+    display-name: "Sovereign AI Playbook"
+
+navigation:
+- tab: recipes
+  layout:
+    - section: "Nemotron"
+      contents:
+        - page: "Application Examples"
+          path: ./nightly/pages/application-examples.mdx
+        - page: "Deployment Guides"
+          path: ./nightly/pages/deployment-guides.mdx
+    - section: "Training Recipes"
+      contents:
+        - section: "Nemotron 3 Nano"
+          path: ./nightly/pages/nemotron/nano3/README.mdx
+          contents:
+            - page: "Stage 0: Pretraining"
+              path: ./nightly/pages/nemotron/nano3/pretrain.mdx
+            - page: "Stage 1: Supervised Fine-Tuning (SFT)"
+              path: ./nightly/pages/nemotron/nano3/sft.mdx
+            - page: "Stage 2: Reinforcement Learning (RL)"
+              path: ./nightly/pages/nemotron/nano3/rl.mdx
+            - page: "Stage 3: Evaluation"
+              path: ./nightly/pages/nemotron/nano3/evaluate.mdx
+            - page: "Importing Models and Data"
+              path: ./nightly/pages/nemotron/nano3/import.mdx
+        - section: "Nemotron 3 Omni"
+          path: ./nightly/pages/nemotron/omni3/README.mdx
+          contents:
+            - page: "Stage 0: Supervised Fine-Tuning (SFT)"
+              path: ./nightly/pages/nemotron/omni3/sft.mdx
+            - page: "Stage 1: Reinforcement Learning (RL)"
+              path: ./nightly/pages/nemotron/omni3/rl.mdx
+            - page: "RL Data Preparation"
+              path: ./nightly/pages/nemotron/omni3/rl/data-prep.mdx
+            - page: "Nemotron 3 Nano Omni — Architecture"
+              path: ./nightly/pages/nemotron/omni3/architecture.mdx
+            - page: "Nemotron 3 Nano Omni — Inference & Deployment"
+              path: ./nightly/pages/nemotron/omni3/inference.mdx
+        - section: "Nemotron 3 Super"
+          path: ./nightly/pages/nemotron/super3/README.mdx
+          contents:
+            - page: "Stage 0: Pretraining"
+              path: ./nightly/pages/nemotron/super3/pretrain.mdx
+            - page: "Stage 1: Supervised Fine-Tuning (SFT)"
+              path: ./nightly/pages/nemotron/super3/sft.mdx
+            - section: "Stage 2: Reinforcement Learning (RL)"
+              path: ./nightly/pages/nemotron/super3/rl/index.mdx
+              contents:
+                - page: "Multi-Environment RLVR (Stages 1.1–1.3)"
+                  path: ./nightly/pages/nemotron/super3/rl/rlvr.mdx
+                - page: "SWE-RL (Stages 2.1–2.2)"
+                  path: ./nightly/pages/nemotron/super3/rl/swe.mdx
+                - page: "RLHF (Stage 3)"
+                  path: ./nightly/pages/nemotron/super3/rl/rlhf.mdx
+                - page: "RL Data Preparation"
+                  path: ./nightly/pages/nemotron/super3/rl/data-prep.mdx
+            - page: "Stage 4: Evaluation"
+              path: ./nightly/pages/nemotron/super3/evaluate.mdx
+            - page: "Stage 3: Quantization"
+              path: ./nightly/pages/nemotron/super3/quantization.mdx
+        - section: "Nemotron 3 Ultra"
+          path: ./nightly/pages/nemotron/ultra3/README.mdx
+          contents:
+            - page: "Stage 0: Pretraining"
+              path: ./nightly/pages/nemotron/ultra3/pretrain.mdx
+            - page: "Stage 1: SFT"
+              path: ./nightly/pages/nemotron/ultra3/sft.mdx
+            - page: "Nemotron 3 Ultra"
+              path: ./nightly/pages/nemotron/ultra3/mopd.mdx
+            - page: "Quantization"
+              path: ./nightly/pages/nemotron/ultra3/quantization.mdx
+        - page: "Llama Nemotron Embed"
+          path: ./nightly/pages/nemotron/embed/README.mdx
+        - page: "Llama Nemotron Rerank"
+          path: ./nightly/pages/nemotron/rerank/README.mdx
+        - page: "Artifact Types & Lineage"
+          path: ./nightly/pages/nemotron/artifacts.mdx
+    - section: "Nemotron Kit"
+      contents:
+        - page: "Nemotron Kit"
+          path: ./nightly/pages/nemotron/kit.mdx
+        - page: "NVIDIA AI Stack"
+          path: ./nightly/pages/nemotron/nvidia-stack.mdx
+        - page: "nemo_runspec Package"
+          path: ./nightly/pages/nemo_runspec/package-readme.mdx
+        - page: "Execution through NeMo-Run"
+          path: ./nightly/pages/nemo_runspec/nemo-run.mdx
+        - page: "OmegaConf Configuration System"
+          path: ./nightly/pages/nemo_runspec/omegaconf.mdx
+        - page: "Artifact Tracking"
+          path: ./nightly/pages/nemo_runspec/artifacts.mdx
+        - page: "Weights & Biases Integration"
+          path: ./nightly/pages/nemotron/wandb.mdx
+        - page: "CLI Framework"
+          path: ./nightly/pages/nemotron/cli.mdx
+        - page: "Data Preparation Module"
+          path: ./nightly/pages/nemotron/data-prep.mdx
+        - page: "Xenna Pipeline Observability"
+          path: ./nightly/pages/nemotron/xenna-observability.mdx
+    - section: "Data Recipes"
+      contents:
+        - page: "Nemotron-CC Data Curation"
+          path: ./nightly/pages/nemotron/data/curation/nemotron-cc.mdx
+        - page: "Long-Document SDG"
+          path: ./nightly/pages/nemotron/data/sdg/long-document.mdx
+    - section: "Architecture"
+      contents:
+        - page: "Nemotron Architecture"
+          path: ./nightly/pages/architecture/README.mdx
+        - page: "Design Philosophy"
+          path: ./nightly/pages/architecture/design-philosophy.mdx
+        - page: "CLI Architecture"
+          path: ./nightly/pages/architecture/cli-architecture.mdx
+        - page: "Runspec: [tool.runspec] Specification"
+          path: ./nightly/pages/runspec/v1/spec.mdx
+
+- tab: playbook
+  layout:
+
+    - section: "Nemotron Step Basics"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/steps/about.mdx
+        - page: "Basics"
+          path: ./nightly/pages/steps/basics.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/steps/getting-started.mdx
+        - page: "Airgap Environment"
+          path: ./nightly/pages/steps/airgap.mdx
+
+    - section: "Data Curation"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/curate/about.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/curate/getting-started.mdx
+        - section: "Tasks"
+          path: ./nightly/pages/curate/how-to/index.mdx
+          contents:
+            - page: "Run Curation on Local JSONL"
+              path: ./nightly/pages/curate/how-to/run-local-jsonl.mdx
+            - page: "Use a Hugging Face Snapshot"
+              path: ./nightly/pages/curate/how-to/use-huggingface-snapshot.mdx
+            - page: "Enable Curation Filters"
+              path: ./nightly/pages/curate/how-to/enable-filters.mdx
+        - section: "Reference"
+          path: ./nightly/pages/curate/reference/index.mdx
+          contents:
+            - page: "curate/nemo_curator CLI"
+              path: ./nightly/pages/curate/reference/cli-curate.mdx
+            - page: "curate/nemo_curator Configuration"
+              path: ./nightly/pages/curate/reference/curate-config.mdx
+            - page: "Curation Input and Output Format"
+              path: ./nightly/pages/curate/reference/io-format.mdx
+            - page: "Curation Troubleshooting"
+              path: ./nightly/pages/curate/reference/troubleshooting.mdx
+
+    - section: "Synthetic Data Generation"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/sdg/about.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/sdg/getting-started.mdx
+        - page: "Tips for Using Agents"
+          path: ./nightly/pages/sdg/using-skills.mdx
+        - page: "Planning"
+          path: ./nightly/pages/sdg/planning.mdx
+        - section: "Tasks"
+          path: ./nightly/pages/sdg/how-to/index.mdx
+          contents:
+            - page: "Create a Domain Dataset"
+              path: ./nightly/pages/sdg/how-to/create-domain-dataset.mdx
+            - page: "Create Tool-Calling Dataset"
+              path: ./nightly/pages/sdg/how-to/tool-call-data.mdx
+            - page: "Generate Preference Data for DPO"
+              path: ./nightly/pages/sdg/how-to/preference-data.mdx
+            - page: "Dispatch SDG to a Cluster"
+              path: ./nightly/pages/sdg/how-to/dispatch-to-cluster.mdx
+            - page: "Tips for the Data Generation Pipeline"
+              path: ./nightly/pages/sdg/how-to/run.mdx
+        - section: "Reference"
+          path: ./nightly/pages/sdg/reference/index.mdx
+          contents:
+            - page: "Config Schema"
+              path: ./nightly/pages/sdg/reference/config-schema.mdx
+            - page: "CLI Reference"
+              path: ./nightly/pages/sdg/reference/cli-reference.mdx
+            - page: "Output Projections"
+              path: ./nightly/pages/sdg/reference/output-projections.mdx
+            - page: "Troubleshooting"
+              path: ./nightly/pages/sdg/reference/troubleshooting.mdx
+    - section: "Translation"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/translation/index.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/translation/getting-started.mdx
+        - page: "Tips for Using Agents"
+          path: ./nightly/pages/translation/using-skills.mdx
+        - section: "Concepts"
+          path: ./nightly/pages/translation/explanation/index.mdx
+          contents:
+            - page: "Pipeline Overview"
+              path: ./nightly/pages/translation/explanation/pipeline-overview.mdx
+            - page: "Segmentation"
+              path: ./nightly/pages/translation/explanation/segmentation.mdx
+            - page: "FAITH Evaluation Inside Translation"
+              path: ./nightly/pages/translation/explanation/faith-evaluation.mdx
+        - section: "Tasks"
+          path: ./nightly/pages/translation/how-to/index.mdx
+          contents:
+            - page: "Run LLM Translation"
+              path: ./nightly/pages/translation/how-to/run-llm-translation.mdx
+            - page: "Run NMT Translation"
+              path: ./nightly/pages/translation/how-to/run-nmt-translation.mdx
+            - page: "Run Google or AWS Translation"
+              path: ./nightly/pages/translation/how-to/run-google-aws-translation.mdx
+            - page: "Configure Fields and Output"
+              path: ./nightly/pages/translation/how-to/configure-fields-and-output.mdx
+            - page: "Use Fine Segmentation"
+              path: ./nightly/pages/translation/how-to/use-fine-segmentation.mdx
+            - page: "Run FAITH Evaluation"
+              path: ./nightly/pages/translation/how-to/run-faith-evaluation.mdx
+        - section: "Reference"
+          path: ./nightly/pages/translation/reference/index.mdx
+          contents:
+            - page: "Translation YAML Reference"
+              path: ./nightly/pages/translation/reference/translate-config.mdx
+            - page: "CLI Reference for Translation"
+              path: ./nightly/pages/translation/reference/cli-translation.mdx
+            - page: "Input and Output Format"
+              path: ./nightly/pages/translation/reference/io-format.mdx
+            - page: "Troubleshooting"
+              path: ./nightly/pages/translation/reference/troubleshooting.mdx
+    - section: "Build MCQ Benchmarks"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/build-benchmarks/about.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/build-benchmarks/getting-started.mdx
+        - section: "Concepts"
+          path: ./nightly/pages/build-benchmarks/explanation/index.mdx
+          contents:
+            - page: "Pipeline Overview"
+              path: ./nightly/pages/build-benchmarks/explanation/pipeline-overview.mdx
+            - page: "Data Preparation"
+              path: ./nightly/pages/build-benchmarks/explanation/data-preparation.mdx
+            - page: "Get the Right Questions"
+              path: ./nightly/pages/build-benchmarks/explanation/get-right-questions.mdx
+            - page: "Question Generation"
+              path: ./nightly/pages/build-benchmarks/explanation/question-generation.mdx
+            - page: "Quality Validation"
+              path: ./nightly/pages/build-benchmarks/explanation/quality-validation.mdx
+            - page: "Easiness and Hallucination Filtering"
+              path: ./nightly/pages/build-benchmarks/explanation/filtering.mdx
+            - page: "Translation"
+              path: ./nightly/pages/build-benchmarks/explanation/translation.mdx
+        - section: "Tasks"
+          path: ./nightly/pages/build-benchmarks/how-to/index.mdx
+          contents:
+            - page: "Prepare Data"
+              path: ./nightly/pages/build-benchmarks/how-to/prepare-data.mdx
+            - page: "Use Your Domain Data"
+              path: ./nightly/pages/build-benchmarks/how-to/domain-data.mdx
+            - page: "Model Endpoints"
+              path: ./nightly/pages/build-benchmarks/how-to/custom-model-endpoints.mdx
+            - page: "Tune Prompts"
+              path: ./nightly/pages/build-benchmarks/how-to/prompt-tuning.mdx
+            - page: "Skip Stages"
+              path: ./nightly/pages/build-benchmarks/how-to/skip-stages.mdx
+        - section: "Reference"
+          path: ./nightly/pages/build-benchmarks/reference/index.mdx
+          contents:
+            - page: "Supported Hugging Face Benchmarks"
+              path: ./nightly/pages/build-benchmarks/reference/benchmarks.mdx
+            - page: "Output Files"
+              path: ./nightly/pages/build-benchmarks/reference/output-files.mdx
+            - page: "Generation Configuration Reference"
+              path: ./nightly/pages/build-benchmarks/reference/generate-config.mdx
+            - page: "Translation Configuration Reference"
+              path: ./nightly/pages/build-benchmarks/reference/translation-config.mdx
+            - page: "Troubleshooting"
+              path: ./nightly/pages/build-benchmarks/reference/troubleshooting.mdx
+    - section: "Model Training"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/train-models/index.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/train-models/getting-started.mdx
+        - page: "Tips for Using Agents"
+          path: ./nightly/pages/train-models/using-skill.mdx
+        - section: "Concepts"
+          path: ./nightly/pages/train-models/explanation/index.mdx
+          contents:
+            - page: "Training Basics"
+              path: ./nightly/pages/train-models/explanation/basics.mdx
+            - page: "Artifact Graph"
+              path: ./nightly/pages/train-models/explanation/artifact-graph.mdx
+            - page: "Training Libraries"
+              path: ./nightly/pages/train-models/explanation/training-libraries.mdx
+        - section: "Tasks"
+          path: ./nightly/pages/train-models/how-to/index.mdx
+          contents:
+            - page: "Run SFT with AutoModel on Custom Data"
+              path: ./nightly/pages/train-models/how-to/run-sft-automodel.mdx
+            - page: "Choose an SFT Backend"
+              path: ./nightly/pages/train-models/how-to/choose-sft-backend.mdx
+            - page: "Choose a PEFT Backend"
+              path: ./nightly/pages/train-models/how-to/choose-peft-backend.mdx
+            - page: "Choose an RL Alignment Step"
+              path: ./nightly/pages/train-models/how-to/choose-rl-step.mdx
+            - page: "Run Post-Training Optimization"
+              path: ./nightly/pages/train-models/how-to/run-optimization.mdx
+            - page: "Environment Profiles and Executors"
+              path: ./nightly/pages/train-models/how-to/env-and-executors.mdx
+            - page: "Data and Checkpoint Formats"
+              path: ./nightly/pages/train-models/how-to/data-and-checkpoint-formats.mdx
+            - page: "Convert Checkpoints"
+              path: ./nightly/pages/train-models/how-to/convert-checkpoints.mdx
+        - section: "Reference"
+          path: ./nightly/pages/train-models/reference/index.mdx
+          contents:
+            - page: "Nemotron Steps CLI Reference"
+              path: ./nightly/pages/train-models/reference/cli-reference.mdx
+            - page: "Env Profile Generator"
+              path: ./nightly/pages/train-models/reference/env-profile-generator.mdx
+            - page: "Step Catalog"
+              path: ./nightly/pages/train-models/reference/step-catalog.mdx
+            - page: "Configuration Conventions"
+              path: ./nightly/pages/train-models/reference/config-conventions.mdx
+            - section: "SFT Steps"
+              path: ./nightly/pages/train-models/reference/sft/index.mdx
+              contents:
+                - page: "sft/automodel"
+                  path: ./nightly/pages/train-models/reference/sft/automodel.mdx
+                - page: "sft/megatron_bridge"
+                  path: ./nightly/pages/train-models/reference/sft/megatron-bridge.mdx
+            - section: "PEFT Steps"
+              path: ./nightly/pages/train-models/reference/peft/index.mdx
+              contents:
+                - page: "peft/automodel"
+                  path: ./nightly/pages/train-models/reference/peft/automodel.mdx
+                - page: "peft/megatron_bridge"
+                  path: ./nightly/pages/train-models/reference/peft/megatron-bridge.mdx
+            - section: "RL Steps"
+              path: ./nightly/pages/train-models/reference/rl/index.mdx
+              contents:
+                - page: "rl/nemo_rl/dpo"
+                  path: ./nightly/pages/train-models/reference/rl/dpo.mdx
+                - page: "rl/nemo_rl/rlvr"
+                  path: ./nightly/pages/train-models/reference/rl/rlvr.mdx
+                - page: "rl/nemo_rl/rlhf"
+                  path: ./nightly/pages/train-models/reference/rl/rlhf.mdx
+            - section: "Optimization Steps"
+              path: ./nightly/pages/train-models/reference/optimize/index.mdx
+              contents:
+                - page: "optimize/modelopt/quantize"
+                  path: ./nightly/pages/train-models/reference/optimize/quantize.mdx
+                - page: "optimize/modelopt/prune"
+                  path: ./nightly/pages/train-models/reference/optimize/prune.mdx
+                - page: "optimize/modelopt/distill"
+                  path: ./nightly/pages/train-models/reference/optimize/distill.mdx
+            - section: "Checkpoint Conversion Steps"
+              path: ./nightly/pages/train-models/reference/convert/index.mdx
+              contents:
+                - page: "convert/hf_to_megatron"
+                  path: ./nightly/pages/train-models/reference/convert/hf-to-megatron.mdx
+                - page: "convert/megatron_to_hf"
+                  path: ./nightly/pages/train-models/reference/convert/megatron-to-hf.mdx
+                - page: "convert/merge_lora"
+                  path: ./nightly/pages/train-models/reference/convert/merge-lora.mdx
+    - section: "Model Evaluation"
+      contents:
+        - page: "About"
+          path: ./nightly/pages/model-eval/about.mdx
+        - page: "Getting Started"
+          path: ./nightly/pages/model-eval/getting-started.mdx
+        - page: "Tips for Using Agents"
+          path: ./nightly/pages/model-eval/using-skills.mdx
+        - section: "Concepts"
+          path: ./nightly/pages/model-eval/explanation/index.mdx
+          contents:
+            - page: "Pipeline Overview"
+              path: ./nightly/pages/model-eval/explanation/pipeline-overview.mdx
+            - page: "Endpoint Types And Task Families"
+              path: ./nightly/pages/model-eval/explanation/endpoint-types-and-benchmarks.mdx
+            - page: "Tokenizer Alignment"
+              path: ./nightly/pages/model-eval/explanation/tokenizer-alignment.mdx
+        - section: "Tasks"
+          path: ./nightly/pages/model-eval/how-to/index.mdx
+          contents:
+            - page: "Discover The Model Evaluation Step"
+              path: ./nightly/pages/model-eval/how-to/discover-the-step.mdx
+            - page: "Run A Hosted Evaluation"
+              path: ./nightly/pages/model-eval/how-to/run-hosted-evaluation.mdx
+            - page: "Evaluate A Deployed Checkpoint"
+              path: ./nightly/pages/model-eval/how-to/evaluate-deployed-checkpoint.mdx
+        - section: "Reference"
+          path: ./nightly/pages/model-eval/reference/index.mdx
+          contents:
+            - page: "Configuration Reference"
+              path: ./nightly/pages/model-eval/reference/config-schema.mdx
+            - page: "CLI Reference"
+              path: ./nightly/pages/model-eval/reference/cli-reference.mdx
+            - page: "Output Artifacts"
+              path: ./nightly/pages/model-eval/reference/output-artifacts.mdx
+            - page: "Tasks Catalog"
+              path: ./nightly/pages/model-eval/reference/benchmarks-catalog.mdx
+            - page: "Troubleshooting"
+              path: ./nightly/pages/model-eval/reference/troubleshooting.mdx
+                

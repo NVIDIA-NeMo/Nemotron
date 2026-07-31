@@ -1,0 +1,94 @@
+---
+title: "Translation YAML Reference"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "The translate/nemo_curator step ships src/nemotron/steps/translate/nemo_curator/config/default.yaml as the canonical starter profile. This page lists top-level keys you can override with nemotron step"
+slug: translation/reference/translate-config
+---
+
+The `translate/nemo_curator` step ships `src/nemotron/steps/translate/nemo_curator/config/default.yaml` as the canonical starter profile. This page lists top-level keys you can override with `nemotron steps run translate/nemo_curator key=value` dotlists, grouped by concern, with the full baseline file inlined below.
+
+## Default Configuration File
+
+<Code src="../../../../../../../../src/nemotron/steps/translate/nemo_curator/config/default.yaml" language="yaml" />
+
+## Keys Grouped by Concern
+
+### Paths and Formats
+
+| Key | Description |
+| --- | --- |
+| <code>input&#95;path</code> | File, glob, or homogeneous directory consumed by <code>JsonlReader</code> or <code>ParquetReader</code>. |
+| <code>output&#95;dir</code> | Directory passed to <code>JsonlWriter</code> or <code>ParquetWriter</code> in overwrite mode. |
+| <code>input&#95;format</code> | <code>auto</code>, <code>jsonl</code>, or <code>parquet</code>. |
+| <code>output&#95;format</code> | <code>jsonl</code> or <code>parquet</code>. |
+
+### Languages and Backend
+
+| Key | Description |
+| --- | --- |
+| <code>source&#95;language</code> / <code>target&#95;language</code> | Required ISO 639-1 codes. Empty placeholders remind operators to set values explicitly. |
+| <code>backend</code> | <code>llm</code>, <code>nmt</code>, <code>google</code>, or <code>aws</code>. |
+
+### Translation Semantics
+
+| Key | Description |
+| --- | --- |
+| <code>text&#95;field</code> | Dot or wildcard path describing strings to translate. The default is <code>messages.&#42;.content</code>. |
+| <code>output&#95;field</code>, <code>translation&#95;column</code> | Destination columns for translated text and downstream merges. |
+| <code>output&#95;mode</code> | <code>replaced</code>, <code>raw</code>, or <code>both</code>. |
+| <code>merge&#95;scores</code> | Attach FAITH outputs adjacent to translations when enabled. |
+| <code>reconstruct&#95;messages</code>, <code>messages&#95;field</code>, <code>messages&#95;content&#95;field</code> | Chat reconstruction switches. |
+| <code>segmentation&#95;mode</code>, <code>min&#95;segment&#95;chars</code> | Segmenter behavior. Values include <code>coarse</code> and <code>fine</code>. |
+| <code>max&#95;concurrent&#95;requests</code>, <code>skip&#95;translated</code>, <code>files&#95;per&#95;partition</code>, <code>blocksize</code> | Throughput and partitioning controls surfaced to Curator readers and clients. |
+
+### LLM Fields
+
+Used whenever `backend=llm` or FAITH needs an OpenAI-compatible judge.
+
+| Key | Description |
+| --- | --- |
+| <code>server.url</code> | Chat-completions compatible base URL. |
+| <code>server.model</code> | Model identifier. Required for <code>llm</code> translation and for FAITH unless you override the scorer model. |
+| <code>server.api&#95;key&#95;env</code> | Environment variable housing the API secret. The default is <code>NVIDIA&#95;API&#95;KEY</code>. |
+| <code>server.api&#95;key</code> | Inline secret. Discouraged for shared repositories. |
+
+### FAITH Evaluation
+
+| Key | Description |
+| --- | --- |
+| <code>enabled</code> | Turns FAITH scoring on. The starter YAML sets this to <code>true</code>. |
+| <code>threshold</code> | Minimum acceptable <code>faith&#95;avg</code> on a one-to-five scale. The starter default <code>2.5</code> is a permissive noisy-data floor. See [FAITH Evaluation Inside Translation](/translation/explanation/faith-evaluation) for the full rubric. |
+| <code>model&#95;name</code> | Optional scorer-only model. Defaults to <code>server.model</code>. |
+| <code>filter&#95;enabled</code> | Drop failing rows when <code>true</code>. |
+| <code>max&#95;concurrent&#95;requests</code> | Optional scorer-side concurrency limit. |
+| <code>generation&#95;config</code> | Optional OpenAI-compatible generation settings for the scorer. |
+
+### Backend-Specific Blocks
+
+| Block | When needed |
+| --- | --- |
+| <code>nmt</code> | HTTP microservice URL, batching, timeouts. |
+| <code>google</code> | Project metadata and API version. Version <code>v3</code> requires <code>project&#95;id</code>. |
+| <code>aws</code> | Region plus concurrency limits. |
+
+## Overrides
+
+OmegaConf dotlists merge last:
+
+```bash
+uv run nemotron steps run translate/nemo_curator -c default \
+  backend=nmt \
+  nmt.server_url=http://localhost:5000 \
+  faith_eval.enabled=false \
+  input_path=/data/chat.jsonl \
+  output_dir=/data/out \
+  source_language=en \
+  target_language=hi
+```
+
+## Related Pages
+
+- CLI merge rules and flags: [CLI Reference for Translation](/translation/reference/cli-translation)
+
+- Record shapes and writers: [Input and Output Format](/translation/reference/io-format)

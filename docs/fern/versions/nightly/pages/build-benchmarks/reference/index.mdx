@@ -1,0 +1,75 @@
+---
+title: "Reference"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Specifications grounded in src/nemotron/steps/byob."
+slug: build-benchmarks/reference
+---
+
+Specifications grounded in `src/nemotron/steps/byob`.
+
+## Outputs
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/reference/output-files" icon="regular file-code" iconSize={8} title="Output files">
+Seed, stage cache, raw and final Parquet paths.
+
+---
+
+<Badge intent="info">parquet</Badge>
+
+</Card>
+
+<Card href="/build-benchmarks/reference/troubleshooting" icon="solid triangle-exclamation" iconSize={8} title="Troubleshooting">
+Common configuration errors, missing caches, filtering, and endpoint issues.
+
+---
+
+<Badge intent="info">faq</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Configuration
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/reference/generate-config" icon="solid gear" iconSize={8} title="Generation YAML">
+Required keys for `ByobConfig.from_yaml`.
+
+---
+
+<Badge intent="info">yaml</Badge>
+
+</Card>
+
+<Card href="/build-benchmarks/reference/translation-config" icon="solid globe" iconSize={8} title="Translation YAML">
+`ByobTranslationConfig.from_yaml` requirements.
+
+---
+
+<Badge intent="info">yaml</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Source benchmarks
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/reference/benchmarks" icon="solid database" iconSize={8} title="Allowed Hugging Face datasets">
+Identifiers and default subsets from `runtime/constants.py`.
+
+---
+
+<Badge intent="info">hf_dataset</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Related documentation
+
+- Tutorial: [Getting Started with Building MCQ Benchmarks](/build-benchmarks/getting-started)
+
+- Concepts: [Concepts](/build-benchmarks/explanation)

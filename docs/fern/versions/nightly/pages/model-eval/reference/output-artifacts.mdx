@@ -1,0 +1,87 @@
+---
+title: "Output Artifacts"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This page describes the artifact produced by eval/model_eval."
+slug: model-eval/reference/output-artifacts
+---
+
+<Anchor id="model-eval-output-artifacts"></Anchor>
+
+This page describes the artifact produced by `eval/model_eval`.
+
+## The `eval_results` Contract
+
+`step.toml` declares a single produced artifact.
+
+| Field | Value |
+| --- | --- |
+| <code>type</code> | <code>eval&#95;results</code> |
+| <code>description</code> | Benchmark metrics, artifacts, and evaluation summaries produced by NeMo Evaluator. |
+
+The contract is intentionally loose.
+Nemotron does not normalize evaluator outputs.
+NeMo Evaluator Launcher owns the exact file set and directory shape under the configured `output_dir`.
+
+## Launcher Config
+
+Before calling the launcher, the step saves the resolved launcher config and prints:
+
+```text
+launcher_config: \<path>
+```
+
+If the launcher returns an invocation id, the step also prints:
+
+```text
+launcher_invocation_id: \<id>
+status_command: nemo-evaluator-launcher status \<id>
+logs_command: nemo-evaluator-launcher logs \<id>
+```
+
+Those commands are the source of truth for job state and logs after submission.
+
+## Directory Layout
+
+The base output directory is `output_dir`, copied into `execution.output_dir`.
+The exact files inside that directory depend on the configured launcher tasks.
+
+For the hosted chat smoke test, inspect:
+
+```bash
+find ./output/eval-tiny-chat -maxdepth 5 -type f | sort
+```
+
+For checkpoint evaluation, inspect the output directory you supplied:
+
+```bash
+find ./output/eval-megatron -maxdepth 5 -type f | sort
+```
+
+<Anchor id="model-eval-comparing-runs"></Anchor>
+
+## Comparing Runs
+
+Evaluation results carry meaning when paired with another evaluation.
+A trained checkpoint is scored against a baseline, a new prompt format is scored against an older one, and a quantized export is scored against the unquantized weights.
+The comparison is honest when the surrounding configuration is held constant.
+
+Apply the following practices before treating any single evaluation as a result.
+
+- Run a lightweight baseline before the training, conversion, or quantization step you are measuring.
+
+- Snapshot the exact evaluation config, including config file name, `output_dir`, endpoint fields, task list, tokenizer, and generation parameters.
+
+- Place a date or run identifier in `output_dir` so baseline and post-change directories live side by side.
+
+- Keep endpoint type, task versions, tokenizer, and generation parameters identical between runs.
+
+- Rerun the baseline task set first before exploring new tasks.
+
+## Related
+
+- [Configuration Reference](/model-eval/reference/config-schema) for the YAML keys that influence what is written.
+
+- [Tasks Catalog](/model-eval/reference/benchmarks-catalog) for task identifiers.
+
+- `src/nemotron/steps/eval/model_eval/step.toml` for the full step contract.

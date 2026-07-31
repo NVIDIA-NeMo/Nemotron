@@ -1,0 +1,61 @@
+---
+title: "Run FAITH Evaluation"
+license: Apache-2.0
+copyright: "Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Use this guide when you need to tune thresholds, filtering, or scorer models for FAITH inside nemotron steps run translate/nemo_curator without a separate evaluation command."
+slug: translation/how-to/run-faith-evaluation
+---
+
+Use this guide when you need to tune thresholds, filtering, or scorer models for FAITH inside `nemotron steps run translate/nemo_curator` without a separate evaluation command.
+
+FAITH runs inside `TranslationStage` whenever `faith_eval.enabled` is `true`. The `default.yaml` starter profile ships with FAITH enabled. For how FAITH couples to non-LLM backends, see [FAITH Evaluation Inside Translation](/translation/explanation/faith-evaluation).
+
+## Essential Knobs
+
+| YAML path | Purpose |
+| --- | --- |
+| <code>faith&#95;eval.enabled</code> | Master toggle. Set <code>false</code> when you only need raw translation. |
+| <code>faith&#95;eval.threshold</code> | Average score floor. Rows failing the threshold are dropped when <code>filter&#95;enabled</code> is <code>true</code>. |
+| <code>faith&#95;eval.filter&#95;enabled</code> | Enables or disables removing low-scoring rows. |
+| <code>faith&#95;eval.model&#95;name</code> | Overrides <code>server.model</code> for scoring-only workloads. |
+| <code>faith&#95;eval.generation&#95;config</code> | Optional OpenAI-compatible generation settings for the FAITH scorer. |
+| <code>faith&#95;eval.max&#95;concurrent&#95;requests</code> | Optional scorer-side concurrency limit. |
+
+## LLM Credentials
+
+FAITH always requires the OpenAI-compatible `server` configuration. Set `NVIDIA_API_KEY` first, for example by replacing `<api-key>` below.
+
+```bash
+export NVIDIA_API_KEY="\<api-key>"
+uv run nemotron steps run translate/nemo_curator -c default \
+  faith_eval.enabled=true \
+  faith_eval.threshold=3.0 \
+  faith_eval.filter_enabled=true \
+  server.model=YOUR_LLM_MODEL_ID \
+  input_path=/path/to/chat.jsonl \
+  output_dir=/path/to/out \
+  source_language=en \
+  target_language=hi
+```
+
+FAITH scoring is part of Curator’s translation stage and is aligned to the translated segments produced by the stage. There is no separate `faith_eval.segment_level` switch in this Nemotron config.
+
+## Disable FAITH Temporarily
+
+```bash
+uv run nemotron steps run translate/nemo_curator -c default \
+  faith_eval.enabled=false \
+  input_path=/path/to/chat.jsonl \
+  output_dir=/path/to/out \
+  source_language=en \
+  target_language=hi \
+  server.model=YOUR_LLM_MODEL_ID
+```
+
+Even with FAITH off, `backend=llm` still needs `server.model` for translation itself.
+
+## Related Pages
+
+- Concept primer: [FAITH Evaluation Inside Translation](/translation/explanation/faith-evaluation)
+
+- Full YAML reference: [Translation YAML Reference](/translation/reference/translate-config)

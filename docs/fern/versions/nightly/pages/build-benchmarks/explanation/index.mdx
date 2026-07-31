@@ -1,0 +1,98 @@
+---
+title: "Concepts"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "These pages explain how the mcq family inside src/nemotron/steps/byob prepares data, runs each generation stage, and optionally translates benchmarks."
+slug: build-benchmarks/explanation
+---
+
+These pages explain how the `mcq` family inside `src/nemotron/steps/byob` prepares data, runs each generation stage, and optionally translates benchmarks.
+
+## Architecture
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/explanation/pipeline-overview" icon="solid diagram-project" iconSize={8} title="Pipeline overview">
+Prepare, generate, translate, and the Parquet stage cache.
+
+---
+
+<Badge intent="info">stages</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Core processes
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/explanation/data-preparation" icon="solid database" iconSize={8} title="Data preparation">
+Seeds from Hugging Face plus local corpus chunks.
+
+---
+
+<Badge intent="info">few-shot</Badge>
+
+</Card>
+
+<Card href="/build-benchmarks/explanation/get-right-questions" icon="solid link" iconSize={8} title="Mapping targets to sources">
+`source_subjects`, weights, and optional tags.
+
+---
+
+<Badge intent="info">target_source_mapping</Badge>
+
+</Card>
+
+<Card href="/build-benchmarks/explanation/question-generation" icon="solid wand-magic-sparkles" iconSize={8} title="Question generation">
+Data Designer batched calls from prepared seeds.
+
+---
+
+<Badge intent="info">generation</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Quality assurance
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/explanation/quality-validation" icon="solid list-check" iconSize={8} title="Validation stack">
+Judgement, deduplication, distractors, coverage, outliers.
+
+---
+
+<Badge intent="info">validation</Badge>
+
+</Card>
+
+<Card href="/build-benchmarks/explanation/filtering" icon="solid filter" iconSize={8} title="Filtering">
+Easiness and hallucination scores with removal flags.
+
+---
+
+<Badge intent="info">filtering</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Translation
+
+<CardGroup cols={2}>
+<Card href="/build-benchmarks/explanation/translation" icon="solid globe" iconSize={8} title="Translation">
+Curator translation, backtranslation, metrics, final schema.
+
+---
+
+<Badge intent="info">translate</Badge>
+
+</Card>
+
+</CardGroup>
+
+## Next steps
+
+- Hands-on first run: [Getting Started with Building MCQ Benchmarks](/build-benchmarks/getting-started)
+
+- YAML tables: [Reference](/build-benchmarks/reference)

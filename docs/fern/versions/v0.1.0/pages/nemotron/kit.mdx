@@ -1,0 +1,208 @@
+---
+title: "Nemotron Kit"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "The nemotron.kit module provides artifact type definitions, lineage trackers, and W&B integration for Nemotron training recipes."
+slug: nemotron/kit
+---
+
+The `nemotron.kit` module provides artifact type definitions, lineage trackers, and W&B integration for Nemotron training recipes.
+
+> **Focused by Design**: Kit owns the artifact *types* (data classes like `PretrainBlendsArtifact`, `ModelArtifact`) and *tracking behavior* (W&B/file-based lineage). The underlying artifact *registry* and *resolution* (`art://` URIs, fsspec/wandb storage backends) live in [`nemo_runspec`](/nemo-runspec/package-readme). CLI, configuration, and execution also live in `nemo_runspec`. All heavy-lifting training is done by the [NVIDIA AI Stack](/nemotron/nvidia-stack): [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) for distributed training primitives, [Megatron-Bridge](https://github.com/NVIDIA/Megatron-Bridge) for model training, and [NeMo-RL](https://github.com/NVIDIA/NeMo-RL) for reinforcement learning.
+
+## Overview
+
+Kit handles three core responsibilities:
+
+| Component | What kit owns | What nemo_runspec owns |
+| --- | --- | --- |
+| **[Artifacts](/nemotron/artifacts)** | Type definitions (<code>PretrainBlendsArtifact</code>, <code>ModelArtifact</code>, etc.) | Registry, <code>art://</code> resolution, fsspec/wandb storage backends |
+| **[Lineage Tracking](/nemotron/artifacts)** | Trackers (<code>WandbTracker</code>, <code>FileTracker</code>) | <code>$&#123;art:...&#125;</code> OmegaConf resolvers, distributed coordination |
+| **[W&B Integration](/nemotron/wandb)** | Init, credential handling, monkey patches, tag management | Env var injection (<code>build&#95;env&#95;vars</code>), <code>[wandb]</code> config loading |
+
+For CLI infrastructure, config loading, execution, and packaging, see [`nemo_runspec`](/nemo-runspec/package-readme).
+
+## Architecture
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'primaryTextColor': '#333333', 'clusterBkg': '#ffffff', 'clusterBorder': '#333333'}}}%%
+flowchart LR
+    subgraph cli["CLI (nemotron.cli)"]
+        direction TB
+        CMD1["nemotron ... data prep"]
+        CMD2["nemotron ... train/sft/rl"]
+    end
+
+    subgraph recipes["Recipe Scripts"]
+        direction TB
+        DataPrep["data_prep.py"]
+        Train["train.py"]
+    end
+
+    subgraph runspec["nemo_runspec"]
+        direction TB
+        Config["Config Loading"]
+        Exec["Execution"]
+        Pipeline["Pipeline"]
+        Registry["Artifact Registry"]
+    end
+
+    subgraph kit["nemotron.kit"]
+        direction TB
+        Artifact["Artifact Types"]
+        Tracker["Lineage Trackers"]
+        WandB["W&B Integration"]
+    end
+
+    subgraph tracking["Tracking Backends"]
+        direction LR
+        WandBBackend["W&B"]
+        FileBackend["File-based"]
+    end
+
+    CMD1 --> DataPrep
+    CMD2 --> Train
+    DataPrep --> kit
+    DataPrep --> runspec
+    Train --> kit
+    Train --> runspec
+    Artifact --> Registry
+    Tracker --> tracking
+
+    style cli fill:#fce4ec,stroke:#c2185b
+    style recipes fill:#e8f5e9,stroke:#388e3c
+    style runspec fill:#fff3e0,stroke:#f57c00
+    style kit fill:#e3f2fd,stroke:#1976d2
+    style tracking fill:#f3e5f5,stroke:#7b1fa2
+```
+
+## Quick Example
+
+```python
+from nemotron.kit import PretrainBlendsArtifact, ModelArtifact
+from pathlib import Path
+
+# Load data artifact
+data = PretrainBlendsArtifact.load(Path("/output/data"))
+print(f"Training on {data.total_tokens:,} tokens")
+
+# ... training code ...
+
+# Save model artifact with lineage
+model = ModelArtifact(path=Path("/output/checkpoint"), step=10000, loss=2.5)
+model.save(name="ModelArtifact-pretrain")
+```
+
+## Concepts
+
+### Artifacts
+
+Artifacts are path-centric objects with typed metadata. The core field is always `path` – the filesystem location of the data. See [Artifact Lineage](/nemotron/artifacts) for details.
+
+```python
+from nemotron.kit import PretrainBlendsArtifact
+
+# Load from semantic URI
+artifact = PretrainBlendsArtifact.from_uri("art://PretrainBlendsArtifact:latest")
+print(f"Path: {artifact.path}")
+print(f"Tokens: {artifact.total_tokens:,}")
+```
+
+### Lineage Tracking
+
+Kit tracks artifact lineage through pluggable backends. The `WandbTracker` logs to W&B; the `FileTracker` writes to local filesystem. See [W&B Integration](/nemotron/wandb) for credential handling and [Artifact Lineage](/nemotron/artifacts) for the lineage graph.
+
+```python
+from nemotron.kit import set_lineage_tracker, WandbTracker
+
+# Use W&B for tracking
+set_lineage_tracker(WandbTracker())
+```
+
+### W&B Integration
+
+```python
+from nemotron.kit import WandbConfig, init_wandb_if_configured, add_run_tags
+
+# Initialize W&B from config
+wandb_cfg = WandbConfig(entity="nvidia", project="nemotron")
+init_wandb_if_configured(wandb_cfg)
+
+# Add tags to the run
+add_run_tags(["pretrain", "nano3"])
+```
+
+## Module Structure
+
+```default
+src/nemotron/kit/
+├── __init__.py          # Public API exports + kit.init()
+├── artifact.py          # Artifact base class, ArtifactInput, display helpers
+├── artifacts/           # Artifact type definitions (base, model, data blends, etc.)
+├── trackers.py          # LineageTracker, WandbTracker, FileTracker, NoOpTracker
+├── wandb_kit.py         # WandbConfig, init_wandb_if_configured, add_run_tags, monkey patches
+├── train_script.py      # Training script utilities (init_wandb_from_env, config parsing)
+├── recipe_loader.py     # Recipe loading utilities
+└── megatron_stub.py     # Megatron stub for testing
+```
+
+## API Reference
+
+### Artifacts
+
+| Export | Description |
+| --- | --- |
+| <code>Artifact</code> | Base artifact class |
+| <code>PretrainBlendsArtifact</code> | Pretrain data with train/valid/test splits |
+| <code>PretrainDataArtifact</code> | Raw pretrain data |
+| <code>SFTDataArtifact</code> | Packed SFT sequences |
+| <code>SplitJsonlDataArtifact</code> | RL JSONL data |
+| <code>DataBlendsArtifact</code> | Generic data blends |
+| <code>ModelArtifact</code> | Model checkpoints |
+| <code>TrackingInfo</code> | Tracking metadata for artifacts |
+
+### Tracking
+
+| Export | Description |
+| --- | --- |
+| <code>LineageTracker</code> | Abstract base for lineage tracking |
+| <code>WandbTracker</code> | W&B-backed lineage tracker |
+| <code>FileTracker</code> | File-based lineage tracker |
+| <code>NoOpTracker</code> | No-op tracker (for testing) |
+| <code>set&#95;lineage&#95;tracker()</code> | Set the global lineage tracker |
+| <code>get&#95;lineage&#95;tracker()</code> | Get the current lineage tracker |
+| <code>to&#95;wandb&#95;uri()</code> | Convert artifact to W&B URI |
+| <code>tokenizer&#95;to&#95;uri()</code> | Convert tokenizer to URI |
+
+### W&B
+
+| Export | Description |
+| --- | --- |
+| <code>WandbConfig</code> | W&B configuration dataclass |
+| <code>init&#95;wandb&#95;if&#95;configured()</code> | Conditional W&B initialization |
+| <code>add&#95;run&#95;tags()</code> | Add tags to W&B runs |
+
+### Kit Initialization
+
+| Export | Description |
+| --- | --- |
+| <code>init()</code> | Initialize kit with storage backend (fsspec or wandb) |
+| <code>is&#95;initialized()</code> | Check if kit has been initialized |
+
+## Further Reading
+
+- [`nemo_runspec` Package](/nemo-runspec/package-readme) – CLI toolkit, config loading, execution, packaging
+
+- [NVIDIA AI Stack](/nemotron/nvidia-stack) – Megatron-Core, Megatron-Bridge, NeMo-RL
+
+- [OmegaConf Configuration](/nemo-runspec/omegaconf) – artifact interpolations and unified W&B logging
+
+- [Artifact Lineage](/nemotron/artifacts) – artifact versioning and W&B lineage
+
+- [W&B Integration](/nemotron/wandb) – credential handling
+
+- [Execution through NeMo-Run](/nemo-runspec/nemo-run) – execution profiles and packagers
+
+- [CLI Framework](/nemotron/cli) – building recipe CLIs
+
+- [Data Preparation](/nemotron/data-prep) – data prep module

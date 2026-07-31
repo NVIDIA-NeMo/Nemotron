@@ -1,0 +1,65 @@
+---
+title: "SDG Reference"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "Complete specifications for the SDG pipeline. For pipeline overview and when to use it, refer to About Synthetic Data Generation."
+slug: sdg/reference
+---
+
+{/* SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */}
+
+<Anchor id="sdg-reference-index"></Anchor>
+
+Complete specifications for the SDG pipeline. For pipeline overview and when to use it, refer to [About Synthetic Data Generation](/sdg/about).
+
+<CardGroup cols={2}>
+<Card href="/sdg/reference/config-schema" icon="regular file-code" iconSize={8} title="Config Schema">
+All YAML fields: top-level settings, seed dataset, model aliases, column types, and output projections.
+
+---
+
+<Badge intent="info">lookup</Badge>
+
+</Card>
+
+<Card href="/sdg/reference/cli-reference" icon="solid terminal" iconSize={8} title="CLI Reference">
+`nemotron steps run sdg/data_designer` flags and hydra override syntax.
+
+---
+
+<Badge intent="info">lookup</Badge>
+
+</Card>
+
+<Card href="/sdg/reference/output-projections" icon="solid right-left" iconSize={8} title="Output Projections">
+The three projection shapes with annotated JSONL examples.
+
+---
+
+<Badge intent="info">lookup</Badge>
+
+</Card>
+
+<Card href="/sdg/reference/troubleshooting" icon="solid triangle-exclamation" iconSize={8} title="Troubleshooting">
+Failure modes for local runs and cluster dispatch.
+
+---
+
+<Badge intent="info">lookup</Badge>
+
+</Card>
+
+</CardGroup>

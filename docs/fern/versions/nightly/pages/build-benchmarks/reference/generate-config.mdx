@@ -1,0 +1,76 @@
+---
+title: "Generation Configuration Reference"
+license: Apache-2.0
+copyright: "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+description: "This page lists the YAML keys validated inside ByobConfig.from_yaml in runtime/config.py. Optional keys show their defaults in the dataclass or in the get calls inside from_yaml."
+slug: build-benchmarks/reference/generate-config
+---
+
+This page lists the YAML keys validated inside `ByobConfig.from_yaml` in `runtime/config.py`.
+Optional keys show their defaults in the dataclass or in the `get` calls inside `from_yaml`.
+
+## Experiment layout
+
+| Key | Notes |
+| --- | --- |
+| <code>expt&#95;name</code> | Required string; builds <code>output&#95;dir/expt&#95;name/</code>. |
+| <code>output&#95;dir</code> | Required writable directory. |
+| <code>input&#95;dir</code> | Required path containing each <code>target&#95;source&#95;mapping</code> corpus. |
+| <code>random&#95;seed</code> | Optional; seeds Python and NumPy when present. |
+| <code>ndd&#95;batch&#95;size</code> | Optional positive int; defaults to <code>1000</code> in the dataclass but sample configs use smaller values. |
+
+## Dataset selection
+
+| Key | Notes |
+| --- | --- |
+| <code>hf&#95;dataset</code> | Must appear in <code>ALLOWED&#95;HF&#95;DATASETS</code>. |
+| <code>subset</code> | Optional; defaults per [Supported Hugging Face Benchmarks](/build-benchmarks/reference/benchmarks). |
+| <code>split</code> | Optional; defaults to <code>"test"</code>. |
+| <code>language</code> | Required string (for example <code>en-US</code>). |
+| <code>metadata&#95;file</code> | Optional CSV path enabling tag-aware sampling. |
+
+## Subjects and sampling
+
+| Key | Notes |
+| --- | --- |
+| <code>source&#95;subjects</code> | Required non-empty list of benchmark subject strings. |
+| <code>target&#95;source&#95;mapping</code> | Required mapping; see [Prepare Your Own Domain Data](/build-benchmarks/how-to/prepare-data). |
+| <code>few&#95;shot&#95;samples&#95;per&#95;query</code> | Required positive int. |
+| <code>queries&#95;per&#95;target&#95;subject&#95;document</code> | Required positive int. |
+| <code>num&#95;questions&#95;per&#95;query</code> | Required positive int. |
+
+## Prompts and models
+
+| Key | Notes |
+| --- | --- |
+| <code>prompt&#95;config</code> | <code>null</code> loads packaged defaults; a string path loads YAML with all required stages. |
+| <code>generation&#95;model&#95;config</code> | Required mapping for Data Designer calls. |
+| <code>judge&#95;model&#95;config</code> | Required mapping. |
+| <code>do&#95;distractor&#95;expansion</code> | Required bool. |
+| <code>distractor&#95;expansion&#95;model&#95;config</code> | Required when expansion is true. |
+| <code>distractor&#95;validity&#95;model&#95;config</code> | Required mapping. |
+| <code>filtering&#95;model&#95;configs</code> | Required dict with <code>hallucination</code> and <code>easiness</code> lists. |
+| <code>easiness&#95;threshold</code> | Required float in <code>[0, 1]</code>. |
+| <code>hallucination&#95;threshold</code> | Required float in <code>[0, 1]</code>. |
+| <code>remove&#95;hallucinated</code> | Optional bool; defaults to <code>True</code>. |
+| <code>remove&#95;easy</code> | Optional bool; defaults to <code>False</code>. |
+
+## Optional quality stages
+
+| Key | Notes |
+| --- | --- |
+| <code>semantic&#95;deduplication&#95;config</code> | Dict with <code>enabled</code>, embedding model id, clustering parameters, and <code>remove&#95;duplicates</code>. |
+| <code>semantic&#95;outlier&#95;detection&#95;config</code> | Dict with <code>enabled</code>, embedding model id, and neighbour thresholds. |
+| <code>chunking&#95;config</code> | Dict; supports <code>window&#95;size</code> (<code>null</code> keeps whole documents). |
+| <code>do&#95;coverage&#95;check</code> | Bool; defaults to <code>False</code> when omitted. |
+| <code>coverage&#95;check&#95;config</code> | Dict with <code>window&#95;size</code> and <code>model&#95;identifier</code>. |
+
+## Curator mount
+
+Sample configs include a `run.env.mounts` entry that uses `$\{auto_mount:...\}` to place NeMo Curator on `/opt/Curator`.
+Remote profiles must preserve the same mount contract your environment expects.
+
+## Stage dispatch for `nemotron steps run`
+
+The generic steps CLI accepts `family`, `stage`, and `skip_until` as dotlist overrides, and you can also place those keys directly in YAML.
+`family` defaults to `mcq` when omitted.
