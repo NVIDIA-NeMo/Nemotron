@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   pre-flight:
-    uses: NVIDIA-NeMo/FW-CI-templates/.github/workflows/_cicd_preflight.yml@d211550f7cfe04e657ed568ce28bef620457b94f # v0.64.2
+    uses: NVIDIA-NeMo/FW-CI-templates/.github/workflows/_cicd_preflight.yml@e58e3b6631161a5de373d4acc45523a8b647be5d # main
 
   lint-check:
     name: Lint check
