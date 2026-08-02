@@ -22,7 +22,7 @@ on:
 
 jobs:
   pre-flight:
-    uses: NVIDIA-NeMo/FW-CI-templates/.github/workflows/_cicd_preflight.yml@d211550f7cfe04e657ed568ce28bef620457b94f # v0.64.2
+    uses: NVIDIA-NeMo/FW-CI-templates/.github/workflows/_cicd_preflight.yml@c1a0837f362a1a696e647238ab1cf916b2a7cf4a # v1.8.6
 
   build-docs:
     needs: [pre-flight]
