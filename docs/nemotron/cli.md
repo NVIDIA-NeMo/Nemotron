@@ -1,6 +1,6 @@
 # CLI Framework
 
-The CLI framework is built on [Typer](https://typer.tiangolo.com/) and [`nemo_runspec`](../nemo_runspec/package-readme.md.md). Each command file contains its own execution logic, so you can see exactly how jobs are submitted.
+The CLI framework is built on [Typer](https://typer.tiangolo.com/) and [`nemo_runspec`](../nemo_runspec/package-readme.md). Each command file contains its own execution logic, so you can see exactly how jobs are submitted.
 
 <div class="termy">
 
