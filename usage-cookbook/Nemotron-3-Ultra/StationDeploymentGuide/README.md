@@ -33,7 +33,14 @@ hf auth login
 
 ## Launch vLLM
 
-Run the following commands on the DGX Station:
+Use `nvidia-smi` to identify the index of the GB300 GPU:
+
+```shell
+nvidia-smi --query-gpu=index,name --format=csv
+```
+
+Replace `<GB300_INDEX>` below with that index, then run the following commands
+on the DGX Station:
 
 ```shell
 export IMAGE="vllm/vllm-openai:v0.22.0"
@@ -43,7 +50,7 @@ mkdir -p "$HF_CACHE_DIR"
 docker pull "$IMAGE"
 
 docker run --rm --name nemotron-ultra-vllm \
-  --gpus all \
+  --gpus '"device=<GB300_INDEX>"' \
   --ipc=host \
   --network=host \
   --shm-size=16g \
