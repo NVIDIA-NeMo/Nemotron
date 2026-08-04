@@ -1,0 +1,44 @@
+# Four-GPU Megatron convergence test derived from the Nano 3.5 DAPO starter.
+# Uses PR #3383's validation/checkpoint cadence while retaining the viable
+# single-node Megatron topology (TP=1, EP=4) from the cookbook.
+defaults: dapo_nano_3_5_starter_megatron.yaml
+
+grpo:
+  max_num_steps: 20
+  val_at_start: true
+  val_at_end: true
+  val_period: 10
+  val_batch_size: 32
+  max_val_samples: 32
+  use_dynamic_sampling: true
+  batch_multiplier: 3
+  dynamic_sampling_max_gen_batches: 10
+  overlong_filtering: true
+  num_prompts_per_step: 4
+  num_generations_per_prompt: 4
+
+policy:
+  train_global_batch_size: 16
+  generation:
+    max_new_tokens: 2048
+    vllm_cfg:
+      # Matches the PR and avoids graph-capture-specific failures during refit.
+      enforce_eager: true
+    vllm_kwargs:
+      # CUDA-IPC refit updates canonical expert matrices.  FlashInfer's
+      # TRT-LLM backend repacks them into a four-dimensional runtime layout,
+      # which has no safe in-place per-expert update API.  Triton retains the
+      # canonical 3-D [expert, intermediate, hidden] storage used by refit.
+      moe_backend: triton
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: /shared/results/dapo_nano_3_5_convergence_4g_megatron
+  save_period: 10
+  keep_top_k: 3
+
+logger:
+  log_dir: /shared/logs/dapo_nano_3_5_convergence_4g_megatron
+  tensorboard_enabled: true
+  monitor_gpus: true
+  wandb_enabled: false

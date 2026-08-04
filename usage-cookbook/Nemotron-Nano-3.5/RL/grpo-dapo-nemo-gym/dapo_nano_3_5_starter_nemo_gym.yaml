@@ -1,0 +1,91 @@
+# Nemotron 3.5 Nano DAPO/GRPO with NeMo Gym, tested on 4x GB200 GPUs.
+#
+# This overlay inherits the parallelism shape from the adjacent direct recipe;
+# adjust that shape for other NVIDIA GPU systems.
+#
+# The policy/training layout comes from the tested Nano 3.5 DAPO overlay.
+# This overlay switches dataset, rollout, and reward routing to NeMo Gym.
+defaults: ../grpo-dapo/dapo_nano_3_5_starter.yaml
+
+grpo:
+  # NeMo Gym consumes the validation JSONL exactly as provided.
+  max_val_samples: null
+
+checkpointing:
+  checkpoint_dir: /shared/results/dapo_nano_3_5_starter_nemo_gym
+
+policy:
+  generation:
+    vllm_cfg:
+      async_engine: true
+      expose_http_server: true
+      reasoning_parser_plugin: /shared/models/nemotron-nano-3.5-ea2/ultra_v3_reasoning_parser.py
+      http_server_serving_chat_kwargs:
+        reasoning_parser: ultra_v3
+    vllm_kwargs:
+      mamba_ssm_cache_dtype: float32
+      compilation_config:
+        backend: eager
+
+data:
+  max_input_seq_length: null
+  shuffle: false
+  num_workers: 0
+  train:
+    data_path: /shared/data/dapo_nano_3_5_nemo_gym/train.jsonl
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+  validation:
+    data_path: /shared/data/dapo_nano_3_5_nemo_gym/validation.jsonl
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+  default:
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+
+env:
+  should_use_nemo_gym: true
+  should_log_nemo_gym_responses: true
+  nemo_gym:
+    nemo_gym_log_dir: /shared/logs/dapo_nano_3_5_starter_nemo_gym/nemo_gym
+    rollout_max_attempts_to_avoid_lp_nan: 1
+    skip_venv_if_present: true
+    is_trajectory_collection: false
+    port_range_low: 5000
+    port_range_high: 5999
+    config_paths:
+    - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
+    - resources_servers/math_with_judge/configs/math_with_judge.yaml
+    math_with_judge:
+      resources_servers:
+        math_with_judge:
+          judge_model_server:
+            name: policy_model
+          should_use_judge: false
+          domain: math
+          verified: false
+    policy_model:
+      responses_api_models:
+        vllm_model:
+          num_workers: 4
+          # Current NeMo RL does not register the older "add" resolver.
+          # Synchronous GRPO with max_trajectory_age_steps=1 uses two groups.
+          num_groups_nemo_rl: 2
+
+logger:
+  log_dir: /shared/logs/dapo_nano_3_5_starter_nemo_gym
+  wandb_enabled: false
+  tensorboard_enabled: true
+  monitor_gpus: true
+  wandb:
+    project: dapo-nano-3-5-nemo-gym
+    name: dapo-nano-3-5-starter-nemo-gym

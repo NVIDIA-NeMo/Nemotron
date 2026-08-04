@@ -1,0 +1,122 @@
+# Nemotron 3.5 Nano DAPO/GRPO starter tested on one node with 4x GB200 GPUs.
+#
+# For other NVIDIA GPU systems, adjust cluster.gpus_per_node,
+# cluster.num_nodes, policy.dtensor_cfg.expert_parallel_size, and
+# policy.generation.vllm_cfg.tensor_parallel_size together.
+#
+# This overlay inherits the Nano-3 AutoModel recipe shipped in the NeMo RL
+# release image. The absolute parent path is valid inside that image and keeps
+# this cookbook aligned with its installed NeMo RL schema.
+defaults: /opt/nemo-rl/examples/configs/recipes/llm/grpo-nanov3-30BA3B-2n8g-fsdp2.yaml
+
+grpo:
+  num_prompts_per_step: 2
+  num_generations_per_prompt: 8
+  max_num_steps: 100
+  use_leave_one_out_baseline: false
+  val_period: 10
+  max_val_samples: 32
+  val_batch_size: 32
+  seq_logprob_error_threshold: 2
+  reward_scaling:
+    enabled: true
+    source_min: 0.0
+    source_max: 1.0
+    target_min: -1.0
+    target_max: 1.0
+  reward_shaping:
+    enabled: true
+    overlong_buffer_length: 256
+    overlong_buffer_penalty: 1
+    max_response_length: 2048
+
+loss_fn:
+  reference_policy_kl_penalty: 0.0
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: 10.0
+  use_on_policy_kl_approximation: true
+  use_importance_sampling_correction: true
+  truncated_importance_sampling_type: tis
+  truncated_importance_sampling_ratio: 5
+  token_level_loss: true
+
+checkpointing:
+  checkpoint_dir: /shared/results/dapo_nano_3_5_starter
+  metric_name: train:reward
+  keep_top_k: 1
+  save_period: 10
+
+policy:
+  model_name: /shared/models/nemotron-nano-3.5-ea2
+  tokenizer:
+    name: ${policy.model_name}
+  train_global_batch_size: 16
+  train_micro_batch_size: 1
+  logprob_batch_size: 1
+  max_total_sequence_length: 4096
+  logprob_chunk_size: 1024
+  offload_optimizer_for_logprob: true
+  hf_config_overrides:
+    router_aux_loss_coef: 0.0
+  dtensor_cfg:
+    expert_parallel_size: 4
+    activation_checkpointing: true
+    moe_parallelizer:
+      # Keep router permutations stable when activation checkpointing recomputes
+      # MoE layers (matches the Nano v3.5 AutoModel nightly recipe).
+      ignore_router_for_ac: true
+    automodel_kwargs:
+      backend:
+        _target_: nemo_automodel.components.models.common.utils.BackendConfig
+        attn: te
+        linear: te
+        rms_norm: torch_fp32
+        experts: torch_mm
+        dispatcher: torch
+        enable_deepep: false
+        rope_fusion: false
+        enable_hf_state_dict_adapter: true
+  sequence_packing:
+    enabled: false
+  generation:
+    max_new_tokens: 2048
+    vllm_cfg:
+      tensor_parallel_size: 4
+      gpu_memory_utilization: 0.50
+      enforce_eager: true
+    vllm_kwargs:
+      mamba_ssm_cache_dtype: float32
+      compilation_config:
+        backend: eager
+
+data:
+  max_input_seq_length: 2048
+  train:
+    dataset_name: DAPOMath17K
+    split_validation_size: 0.0
+  validation:
+    dataset_name: DAPOMathAIME2024
+  default:
+    prompt_file: null
+    system_prompt_file: null
+    processor: math_hf_data_processor
+    env_name: math
+
+env:
+  math:
+    num_workers: 8
+    math_verify_impl: dapo_math_verify
+
+logger:
+  log_dir: /shared/logs/dapo_nano_3_5_starter
+  wandb_enabled: false
+  tensorboard_enabled: true
+  monitor_gpus: true
+  wandb:
+    project: dapo-nano-3-5
+    name: dapo-nano-3-5-starter
+
+cluster:
+  gpus_per_node: 4
+  num_nodes: 1
