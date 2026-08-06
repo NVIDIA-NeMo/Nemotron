@@ -1,0 +1,167 @@
+# Standalone one-node Nemotron-3.5-Lightning DAPO/GRPO recipe with NeMo Gym.
+#
+# It inherits only NeMo RL's public Nano FSDP2 GRPO base.  The one-node
+# Lightning topology and NeMo Gym routing are defined explicitly below.
+defaults: /opt/nemo-rl/examples/configs/recipes/llm/grpo-nanov3-30BA3B-2n8g-fsdp2.yaml
+
+grpo:
+  max_num_steps: 160
+  max_num_epochs: 2
+  num_prompts_per_step: 32
+  num_generations_per_prompt: 8
+  use_leave_one_out_baseline: false
+  use_dynamic_sampling: false
+  batch_multiplier: 1
+  overlong_filtering: false
+  val_at_start: true
+  val_at_end: true
+  val_period: 20
+  val_batch_size: 128
+  # NeMo Gym consumes the validation JSONL exactly as provided.
+  max_val_samples: null
+  seq_logprob_error_threshold: 2
+  reward_scaling:
+    enabled: true
+    source_min: 0.0
+    source_max: 1.0
+    target_min: -1.0
+    target_max: 1.0
+  reward_shaping:
+    enabled: false
+    max_response_length: ${policy.generation.max_new_tokens}
+
+loss_fn:
+  reference_policy_kl_penalty: 0.0
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: 10.0
+  use_on_policy_kl_approximation: true
+  use_importance_sampling_correction: true
+  truncated_importance_sampling_type: tis
+  truncated_importance_sampling_ratio: 2
+  token_level_loss: true
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: /shared/results/dapo_nemotron_3_5_lightning_nemo_gym
+  metric_name: val:accuracy
+  higher_is_better: true
+  save_period: 10
+  keep_top_k: 3
+
+policy:
+  model_name: /shared/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+  tokenizer:
+    name: ${policy.model_name}
+  train_global_batch_size: 256
+  train_micro_batch_size: 1
+  logprob_batch_size: 1
+  max_total_sequence_length: 2816
+  logprob_chunk_size: 1024
+  offload_optimizer_for_logprob: true
+  hf_config_overrides:
+    router_aux_loss_coef: 0.0
+  dtensor_cfg:
+    expert_parallel_size: 8
+    activation_checkpointing: true
+    env_vars:
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    moe_parallelizer:
+      ignore_router_for_ac: true
+    automodel_kwargs:
+      backend:
+        _target_: nemo_automodel.components.models.common.utils.BackendConfig
+        attn: te
+        linear: te
+        rms_norm: torch_fp32
+        experts: torch_mm
+        dispatcher: torch
+        enable_deepep: true
+        rope_fusion: false
+        enable_hf_state_dict_adapter: true
+  sequence_packing:
+    enabled: false
+  generation:
+    max_new_tokens: 2048
+    vllm_cfg:
+      tensor_parallel_size: 4
+      gpu_memory_utilization: 0.50
+      max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: true
+      async_engine: true
+      expose_http_server: true
+      reasoning_parser_plugin: /shared/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ultra_v3_reasoning_parser.py
+      http_server_serving_chat_kwargs:
+        reasoning_parser: ultra_v3
+    vllm_kwargs:
+      mamba_ssm_cache_dtype: float32
+      compilation_config:
+        backend: eager
+
+data:
+  max_input_seq_length: null
+  shuffle: false
+  num_workers: 0
+  train:
+    data_path: /shared/data/dapo_nano_3_5_nemo_gym/train.jsonl
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+  validation:
+    data_path: /shared/data/dapo_nano_3_5_nemo_gym/validation.jsonl
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+  default:
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+
+env:
+  should_use_nemo_gym: true
+  should_log_nemo_gym_responses: true
+  nemo_gym:
+    nemo_gym_log_dir: /shared/logs/dapo_nemotron_3_5_lightning_nemo_gym/nemo_gym
+    rollout_max_attempts_to_avoid_lp_nan: 1
+    skip_venv_if_present: true
+    is_trajectory_collection: false
+    port_range_low: 5000
+    port_range_high: 5999
+    config_paths:
+    - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
+    - resources_servers/math_with_judge/configs/math_with_judge.yaml
+    math_with_judge:
+      resources_servers:
+        math_with_judge:
+          judge_model_server:
+            name: policy_model
+          should_use_judge: false
+          domain: math
+          verified: false
+    policy_model:
+      responses_api_models:
+        vllm_model:
+          num_workers: 4
+          # Current NeMo RL does not register the older "add" resolver.
+          # Synchronous GRPO with max_trajectory_age_steps=1 uses two groups.
+          num_groups_nemo_rl: 2
+
+logger:
+  log_dir: /shared/logs/dapo_nemotron_3_5_lightning_nemo_gym
+  wandb_enabled: true
+  tensorboard_enabled: true
+  monitor_gpus: true
+  wandb:
+    project: nemo-rl
+    name: nemotron-3.5-lightning-1n8g-dapo-nemo-gym
+    log_nemo_gym_full_result_tables: false
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 1

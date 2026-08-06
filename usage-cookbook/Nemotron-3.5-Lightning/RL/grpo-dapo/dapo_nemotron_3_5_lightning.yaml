@@ -1,22 +1,24 @@
-# Nemotron 3.5 Nano DAPO/GRPO starter tested on one node with 4x GB200 GPUs.
+# Standalone one-node DAPO/GRPO convergence recipe for Nemotron-3.5-Lightning.
 #
-# For other NVIDIA GPU systems, adjust cluster.gpus_per_node,
-# cluster.num_nodes, policy.dtensor_cfg.expert_parallel_size, and
-# policy.generation.vllm_cfg.tensor_parallel_size together.
-#
-# This overlay inherits the Nano-3 AutoModel recipe shipped in the NeMo RL
-# release image. The absolute parent path is valid inside that image and keeps
-# this cookbook aligned with its installed NeMo RL schema.
+# Validated with the NeMo RL nightly image on one 8-GPU node.  It deliberately
+# keeps the PR #3383 AutoModel topology that fits on one node: FSDP2 training,
+# EP=8, colocated vLLM TP=4, and a 32 x 8 rollout batch.
 defaults: /opt/nemo-rl/examples/configs/recipes/llm/grpo-nanov3-30BA3B-2n8g-fsdp2.yaml
 
 grpo:
-  num_prompts_per_step: 2
+  max_num_steps: 160
+  max_num_epochs: 2
+  num_prompts_per_step: 32
   num_generations_per_prompt: 8
-  max_num_steps: 100
   use_leave_one_out_baseline: false
-  val_period: 10
-  max_val_samples: 32
-  val_batch_size: 32
+  use_dynamic_sampling: false
+  batch_multiplier: 1
+  overlong_filtering: false
+  val_at_start: true
+  val_at_end: true
+  val_period: 20
+  val_batch_size: 128
+  max_val_samples: 128
   seq_logprob_error_threshold: 2
   reward_scaling:
     enabled: true
@@ -25,10 +27,8 @@ grpo:
     target_min: -1.0
     target_max: 1.0
   reward_shaping:
-    enabled: true
-    overlong_buffer_length: 256
-    overlong_buffer_penalty: 1
-    max_response_length: 2048
+    enabled: false
+    max_response_length: ${policy.generation.max_new_tokens}
 
 loss_fn:
   reference_policy_kl_penalty: 0.0
@@ -38,33 +38,28 @@ loss_fn:
   use_on_policy_kl_approximation: true
   use_importance_sampling_correction: true
   truncated_importance_sampling_type: tis
-  truncated_importance_sampling_ratio: 5
+  truncated_importance_sampling_ratio: 2
   token_level_loss: true
 
-checkpointing:
-  checkpoint_dir: /shared/results/dapo_nano_3_5_starter
-  metric_name: train:reward
-  keep_top_k: 1
-  save_period: 10
-
 policy:
-  model_name: /shared/models/nemotron-nano-3.5-ea2
+  # Override this location for another mounted model cache if needed.
+  model_name: /shared/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
   tokenizer:
     name: ${policy.model_name}
-  train_global_batch_size: 16
+  train_global_batch_size: 256
   train_micro_batch_size: 1
   logprob_batch_size: 1
-  max_total_sequence_length: 4096
+  max_total_sequence_length: 2816
   logprob_chunk_size: 1024
   offload_optimizer_for_logprob: true
   hf_config_overrides:
     router_aux_loss_coef: 0.0
   dtensor_cfg:
-    expert_parallel_size: 4
+    expert_parallel_size: 8
     activation_checkpointing: true
+    env_vars:
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
     moe_parallelizer:
-      # Keep router permutations stable when activation checkpointing recomputes
-      # MoE layers (matches the Nano v3.5 AutoModel nightly recipe).
       ignore_router_for_ac: true
     automodel_kwargs:
       backend:
@@ -74,7 +69,7 @@ policy:
         rms_norm: torch_fp32
         experts: torch_mm
         dispatcher: torch
-        enable_deepep: false
+        enable_deepep: true
         rope_fusion: false
         enable_hf_state_dict_adapter: true
   sequence_packing:
@@ -84,6 +79,7 @@ policy:
     vllm_cfg:
       tensor_parallel_size: 4
       gpu_memory_utilization: 0.50
+      max_model_len: ${policy.max_total_sequence_length}
       enforce_eager: true
     vllm_kwargs:
       mamba_ssm_cache_dtype: float32
@@ -91,7 +87,7 @@ policy:
         backend: eager
 
 data:
-  max_input_seq_length: 2048
+  max_input_seq_length: 768
   train:
     dataset_name: DAPOMath17K
     split_validation_size: 0.0
@@ -108,15 +104,24 @@ env:
     num_workers: 8
     math_verify_impl: dapo_math_verify
 
+checkpointing:
+  enabled: true
+  checkpoint_dir: /shared/runs/nemotron-3.5-lightning-dapo-convergence/checkpoints
+  metric_name: val:accuracy
+  higher_is_better: true
+  save_period: 10
+  keep_top_k: 3
+
 logger:
-  log_dir: /shared/logs/dapo_nano_3_5_starter
-  wandb_enabled: false
+  log_dir: /shared/runs/nemotron-3.5-lightning-dapo-convergence/logs
+  wandb_enabled: true
   tensorboard_enabled: true
   monitor_gpus: true
   wandb:
-    project: dapo-nano-3-5
-    name: dapo-nano-3-5-starter
+    project: nemo-rl
+    name: nemotron-3.5-lightning-1n8g-dapo-convergence
+    log_nemo_gym_full_result_tables: false
 
 cluster:
-  gpus_per_node: 4
+  gpus_per_node: 8
   num_nodes: 1
