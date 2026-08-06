@@ -90,9 +90,6 @@ policy:
       enforce_eager: true
       async_engine: true
       expose_http_server: true
-      reasoning_parser_plugin: /shared/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ultra_v3_reasoning_parser.py
-      http_server_serving_chat_kwargs:
-        reasoning_parser: ultra_v3
     vllm_kwargs:
       mamba_ssm_cache_dtype: float32
       compilation_config:

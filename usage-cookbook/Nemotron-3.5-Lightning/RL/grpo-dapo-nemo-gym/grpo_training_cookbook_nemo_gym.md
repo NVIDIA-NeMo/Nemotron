@@ -156,9 +156,32 @@ cd /opt/nemo-rl
   checkpointing.enabled=false
 ```
 
-The smoke test validates wiring only; it is not convergence evidence. When
-debugging is complete, release the allocation from the login/head node with
-`scancel <jobid>`.
+The smoke test validates wiring only; it is not convergence evidence.
+
+### Run the full training recipe
+
+After the smoke test succeeds, launch the configured 160-step training run
+from the same attached allocation/container. Define the output paths in this
+shell, then load W&B credentials without printing them:
+
+```bash
+cd /opt/nemo-rl
+
+export GYM_RECIPE_CONTAINER=/shared/code/Nemotron/usage-cookbook/Nemotron-3.5-Lightning/RL/grpo-dapo-nemo-gym/dapo_nemotron_3_5_lightning_nemo_gym.yaml
+export GYM_RUN_DIR=/shared/results/dapo_nemotron_3_5_lightning_nemo_gym/interactive
+export GYM_LOG_DIR=/shared/logs/dapo_nemotron_3_5_lightning_nemo_gym/interactive
+mkdir -p "${GYM_RUN_DIR}" "${GYM_LOG_DIR}"
+
+if [ -f /shared/.env ]; then set -a && source /shared/.env && set +a; fi
+
+/opt/nemo_rl_venv/bin/python examples/nemo_gym/run_grpo_nemo_gym.py \
+  --config "${GYM_RECIPE_CONTAINER}" \
+  checkpointing.checkpoint_dir="${GYM_RUN_DIR}" \
+  logger.log_dir="${GYM_LOG_DIR}"
+```
+
+When the full run completes or you stop it, release the allocation from the
+login/head node with `scancel <jobid>`.
 
 ## NeMo RL Batch Job: Train
 
