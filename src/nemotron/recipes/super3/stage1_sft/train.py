@@ -70,8 +70,12 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 )
 from omegaconf import DictConfig, OmegaConf
 
-from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
 from nemo_runspec.artifacts import setup_artifact_tracking
+from nemotron.kit.recipe_loader import (
+    derive_pad_seq_to_mult,
+    extract_recipe_config,
+    import_recipe_function,
+)
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb_kit import (
     _get_manifest_tracker,
@@ -131,7 +135,7 @@ def convert_megatron_to_hf(
         logger.info(f"HF checkpoint already exists at {output_path}, skipping conversion")
         return str(output_path)
 
-    logger.info(f"Converting Megatron checkpoint to HuggingFace format...")
+    logger.info("Converting Megatron checkpoint to HuggingFace format...")
     logger.info(f"  Source: {megatron_path}")
     logger.info(f"  HF model ID: {hf_model_id}")
     logger.info(f"  Output: {output_path}")
@@ -205,7 +209,12 @@ def log_hf_checkpoint_artifact(
         logger.error(f"[WANDB] Failed to log HF checkpoint artifact: {e}")
 
 
-def _build_dataset_config(dataset_config: DictConfig, current_dataset: Any) -> FinetuningDatasetConfig:
+def _build_dataset_config(
+    dataset_config: DictConfig,
+    current_dataset: Any,
+    model_config: Any = None,
+    dist_config: Any = None,
+) -> FinetuningDatasetConfig:
     """Build a FinetuningDatasetConfig from YAML config.
 
     This creates a proper FinetuningDatasetConfig (not HFDatasetConfig) to avoid
@@ -247,13 +256,20 @@ def _build_dataset_config(dataset_config: DictConfig, current_dataset: Any) -> F
                 else:
                     logger.info(f"No validation data found in {valid_dir}, skipping validation split")
                     has_validation_data = False
-            logger.info(f"Resolved super3_packed_sft_dir: train={specs_dict.get('packed_train_data_path')}, valid={specs_dict.get('packed_val_data_path')}")
+            logger.info(
+                f"Resolved super3_packed_sft_dir: train={specs_dict.get('packed_train_data_path')}, valid={specs_dict.get('packed_val_data_path')}"
+            )
 
         packed_specs = PackedSequenceSpecs(
             packed_sequence_size=specs_dict.get("packed_sequence_size", -1),
             packed_train_data_path=specs_dict.get("packed_train_data_path"),
             packed_val_data_path=specs_dict.get("packed_val_data_path"),
             packed_metadata_path=specs_dict.get("packed_metadata_path"),
+            # CP/SP-aware padding options (see NVIDIA-NeMo/Megatron-Bridge#5080):
+            # forward pad_cu_seqlens and derive the sample-length multiple required
+            # by the parallel topology so CP>1 packed SFT works out of the box.
+            pad_cu_seqlens=specs_dict.get("pad_cu_seqlens", False),
+            pad_seq_to_mult=derive_pad_seq_to_mult(specs_dict.get("pad_seq_to_mult"), model_config, dist_config),
         )
 
     return FinetuningDatasetConfig(
@@ -270,7 +286,7 @@ RecipeBuilder = Callable[["DictConfig"], ConfigContainer]
 """Signature for a function that builds a ConfigContainer from a loaded config."""
 
 
-def _default_recipe_builder(config: "DictConfig") -> ConfigContainer:
+def _default_recipe_builder(config: DictConfig) -> ConfigContainer:
     """Build recipe from YAML ``recipe._target_`` (production path)."""
     recipe_target, recipe_kwargs = extract_recipe_config(
         config,
@@ -361,13 +377,20 @@ def run_finetune(
     if "dataset" in config:
         dataset_config = OmegaConf.to_container(config.dataset, resolve=True)
         dataset_config.pop("_target_", None)
-        cfg.dataset = _build_dataset_config(dataset_config, cfg.dataset)
+        cfg.dataset = _build_dataset_config(
+            dataset_config,
+            cfg.dataset,
+            model_config=cfg.model,
+            dist_config=getattr(cfg, "dist", None),
+        )
         logger.info(f"Built dataset config: {type(cfg.dataset).__name__}")
 
     logger.debug(f"checkpoint.pretrained_checkpoint = {cfg.checkpoint.pretrained_checkpoint}")
     logger.debug(f"dataset type = {type(cfg.dataset).__name__}")
     if hasattr(cfg.dataset, "packed_sequence_specs") and cfg.dataset.packed_sequence_specs:
-        logger.debug(f"packed_sequence_specs.packed_train_data_path = {cfg.dataset.packed_sequence_specs.packed_train_data_path}")
+        logger.debug(
+            f"packed_sequence_specs.packed_train_data_path = {cfg.dataset.packed_sequence_specs.packed_train_data_path}"
+        )
 
     finetune(config=cfg, forward_step_func=forward_step)
 

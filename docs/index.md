@@ -131,6 +131,15 @@ Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 **Stages:** Pretraining → SFT → RL
 :::
 
+:::{grid-item-card} Nemotron 3.5 Lightning
+:link: nemotron/lightning35/README
+:link-type: doc
+
+30B total / 3B active parameters. Hybrid Mamba-Transformer with sparse MoE and Multi-Token Prediction.
+
+**Stages:** Pretraining → SFT → RL
+:::
+
 :::{grid-item-card} Nemotron 3 Omni
 :link: nemotron/omni3/README
 :link-type: doc
@@ -177,6 +186,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | Family | Stage layout |
 |--------|--------------|
 | [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
+| [Lightning35](nemotron/lightning35/README.md) | Pretraining → SFT → RL |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
@@ -301,6 +311,7 @@ Reference <model-eval/reference/index.md>
 :hidden:
 
 Nemotron 3 Nano <nemotron/nano3/README.md>
+Nemotron 3.5 Lightning <nemotron/lightning35/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>

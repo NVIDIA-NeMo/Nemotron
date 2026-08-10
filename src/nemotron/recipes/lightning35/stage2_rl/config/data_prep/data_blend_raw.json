@@ -1,0 +1,10 @@
+{
+  "datasets": [
+    {
+      "name": "nemotron-3.5-lightning-rl-training-blend",
+      "path": "hf://nvidia/Nemotron-3.5-Lightning-RL-Training-Blend",
+      "split": "train",
+      "weight": 1.0
+    }
+  ]
+}
