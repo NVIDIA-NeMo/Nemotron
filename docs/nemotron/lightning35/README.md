@@ -330,5 +330,6 @@ pretrain.md
 sft.md
 rl.md
 evaluate.md
+quantization.md
 import.md
 ```
