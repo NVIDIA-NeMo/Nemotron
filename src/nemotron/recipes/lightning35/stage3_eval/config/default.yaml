@@ -1,0 +1,117 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Stage 3: Evaluation Configuration for Nemotron 3.5 Lightning (NeMo Gym)
+#
+# NeMo Evaluator is deprecated for the instruct-model benchmark suite in
+# favor of NeMo Gym. This stage serves the checkpoint with vLLM in-job and
+# drives `gym eval prepare` + `gym eval run` against the endpoint,
+# reproducing the Gym-native published-evaluation flow
+# (see Gym scripts/more/reproducibility.md).
+#
+# Base-model tasks (lm-evaluation-harness short-context suite, RULER long
+# context) are NOT Gym environments and still run via nemo-evaluator-launcher.
+#
+# Usage:
+#   nemotron lightning35 eval --run MY-CLUSTER
+#   nemotron lightning35 eval --run MY-CLUSTER run.model=sft-model:v2
+#   nemotron lightning35 eval --run MY-CLUSTER -t gpqa -t scicode
+#   nemotron lightning35 eval --run MY-CLUSTER gym.limit=5   # smoke run
+#   nemotron lightning35 eval --dry-run
+
+# =============================================================================
+# Nemotron run section (artifact resolution + env.toml injection)
+# =============================================================================
+run:
+  # Model artifact to evaluate (default: RL stage output, an HF checkpoint)
+  model: lightning35-rl-model:latest
+
+  env:
+    # NeMo-RL container: bundles vLLM and NeMo Gym (/opt/nemo-rl/3rdparty/Gym-workspace/Gym)
+    container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_5_lightning
+
+  # W&B config - populated from env.toml [wandb] section
+  wandb:
+    entity: null
+    project: null
+
+# =============================================================================
+# vLLM serving (Lightning 3.5 family settings)
+# =============================================================================
+serving:
+  # Resolved from W&B artifact lineage; override: serving.model_path=/your/hf/ckpt
+  model_path: ${art:model,path}
+  host: 127.0.0.1
+  port: 8000
+  # 30B-A3B MoE: TP=4 + expert parallel (matches the RL generation topology)
+  tensor_parallel_size: 4
+  data_parallel_size: 1
+  enable_expert_parallel: true
+  gpu_memory_utilization: 0.9
+  kv_cache_dtype: auto  # published runs use fp8 on GB200; auto is the safe default
+  mamba_ssm_cache_dtype: float32
+  tool_call_parser: qwen3_coder
+  reasoning_parser: nemotron_v3
+  # MTP speculative decoding (Lightning ships 5 MTP layers); set to null to disable
+  speculative_config: '{"method":"mtp","num_speculative_tokens":5}'
+  max_model_len: null
+  # Extra raw `vllm serve` args, e.g. ["--max-num-batched-tokens 8480"]
+  extra_args: []
+  startup_timeout_s: 3600
+
+# =============================================================================
+# NeMo Gym evaluation
+# =============================================================================
+gym:
+  # Gym checkout inside the container; `command` runs from this directory
+  workdir: /opt/nemo-rl/3rdparty/Gym-workspace/Gym
+  command: uv run gym
+  model_type: vllm_model
+  api_key: dummy
+
+  # Benchmarks to run (filter with -t/--task flags). Entries are either a
+  # name or {name, overrides: [...]} for per-benchmark Gym overrides,
+  # mirroring the published reference scripts (Gym scripts/more/*.sh).
+  #
+  # Default: gpqa is the only turnkey benchmark (requires HF_TOKEN for the
+  # gated dataset). The rest of the published Lightning reference suite needs
+  # extra assets, judge models, or API keys — enable once configured:
+  #   - name: scicode  # needs SciCode's ~1GB test_data.h5
+  #     overrides:
+  #       - '++scicode_benchmark_resources_server.resources_servers.scicode.test_data_fpath=/path/to/test_data.h5'
+  #   hle, aalcr, omniscience, critpt, gdpval, pinchbench  # judge models
+  #   browsecomp                                           # search API key
+  #   tau2                                                 # tool servers
+  benchmarks:
+    - gpqa
+
+  # Reference-standard overrides applied to every benchmark
+  # (from Gym scripts/more/*.sh — score-determining, do not remove lightly)
+  common_overrides:
+    - '++overwrite_metrics_conflicts=true'
+    - '++policy_model.responses_api_models.vllm_model.chat_template_kwargs={enable_thinking: true}'
+    - '++policy_model.responses_api_models.vllm_model.extra_body={skip_special_tokens: false}'
+
+  split: benchmark
+  concurrency: 128
+  # Limit rows per benchmark for smoke tests (null = full benchmark)
+  limit: null
+  # Override the benchmark's default repeat count (null = benchmark default).
+  # Note: for some benchmarks --num-repeats MULTIPLIES the config default
+  # rather than replacing it (see Gym scripts/more/scicode.sh).
+  num_repeats: null
+  output_dir: /nemo_run/lightning35-eval-results
+  # Ad-hoc Gym hydra-style overrides appended after common/per-benchmark ones,
+  # e.g. ["++global_aiohttp_connector_limit_per_host=16384"]
+  extra_overrides: []

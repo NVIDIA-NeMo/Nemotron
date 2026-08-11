@@ -66,8 +66,12 @@ from megatron.bridge.training.utils.omegaconf_utils import (
 )
 from omegaconf import DictConfig, OmegaConf
 
-from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
 from nemo_runspec.artifacts import setup_artifact_tracking
+from nemotron.kit.recipe_loader import (
+    derive_pad_seq_to_mult,
+    extract_recipe_config,
+    import_recipe_function,
+)
 from nemotron.kit.train_script import load_omegaconf_yaml, parse_config_and_overrides
 from nemotron.kit.wandb_kit import (
     patch_checkpoint_logging_both,
@@ -83,12 +87,16 @@ logger: logging.Logger = logging.getLogger(__name__)
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config" / "default.yaml"
 
 DEFAULT_RECIPE_TARGET = (
-    "megatron.bridge.recipes.nemotronh.nemotron_3_ultra."
-    "nemotron_3_ultra_sft_openmathinstruct2_packed_config"
+    "megatron.bridge.recipes.nemotronh.nemotron_3_ultra.nemotron_3_ultra_sft_openmathinstruct2_packed_config"
 )
 
 
-def _build_dataset_config(dataset_config: dict[str, Any], current_dataset: Any) -> FinetuningDatasetConfig:
+def _build_dataset_config(
+    dataset_config: dict[str, Any],
+    current_dataset: Any,
+    model_config: Any = None,
+    dist_config: Any = None,
+) -> FinetuningDatasetConfig:
     """Build a FinetuningDatasetConfig from Ultra3 packed-Parquet YAML config.
 
     This mirrors Super3's externally-packed SFT data path and avoids replacing
@@ -140,6 +148,11 @@ def _build_dataset_config(dataset_config: dict[str, Any], current_dataset: Any) 
             packed_train_data_path=specs_dict.get("packed_train_data_path"),
             packed_val_data_path=specs_dict.get("packed_val_data_path"),
             packed_metadata_path=specs_dict.get("packed_metadata_path"),
+            # CP/SP-aware padding options (see NVIDIA-NeMo/Megatron-Bridge#5080):
+            # forward pad_cu_seqlens and derive the sample-length multiple required
+            # by the parallel topology so CP>1 packed SFT works out of the box.
+            pad_cu_seqlens=specs_dict.get("pad_cu_seqlens", False),
+            pad_seq_to_mult=derive_pad_seq_to_mult(specs_dict.get("pad_seq_to_mult"), model_config, dist_config),
         )
 
     return FinetuningDatasetConfig(
@@ -228,7 +241,12 @@ def run_finetune(
     if "dataset" in config:
         dataset_config = OmegaConf.to_container(config.dataset, resolve=True)
         dataset_config.pop("_target_", None)
-        cfg.dataset = _build_dataset_config(dataset_config, cfg.dataset)
+        cfg.dataset = _build_dataset_config(
+            dataset_config,
+            cfg.dataset,
+            model_config=cfg.model,
+            dist_config=getattr(cfg, "dist", None),
+        )
         logger.info(f"Built dataset config: {type(cfg.dataset).__name__}")
 
     logger.debug(f"checkpoint.pretrained_checkpoint = {cfg.checkpoint.pretrained_checkpoint}")

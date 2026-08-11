@@ -1,0 +1,84 @@
+run:
+  data: lightning35-pretrain-data-tiny:latest
+  env:
+    # 26.08 container generation — what the Lightning verification-card runs
+    # use (MB with the nemotron_3_5_lightning_* recipes and matching
+    # Megatron-LM/transformers stack, no mounts). The public nvcr.io/nvidia/
+    # nemo:26.08 tag publishes at launch; use the internal rc until then.
+    container: nvcr.io/nvidian/nemo:26.08.rc2
+    # FlashInfer JIT cache must live on a writable mount — the container's
+    # /root/.cache overlay is tiny and import fails with ENOSPC otherwise
+    # (same fix as super3 RL's persistent cache mapping).
+    env_vars:
+      FLASHINFER_WORKSPACE_BASE: /nemo_run/cache/flashinfer_workspace
+      FLASHINFER_CUBIN_DIR: /nemo_run/cache/flashinfer_cubins
+      # Triton/Inductor JIT caches also default under /root — use node-local /tmp
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TILELANG_CACHE_DIR: /tmp/tilelang_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    # Tiny smoke fits on one node (script default is 2)
+    nodes: 1
+    # The rc container's bundled MB predates the Lightning recipes
+    # (merged 2026-07-28); mount MB main over it. MB main matches this
+    # container generation's dependency stack (transformers 5.x, etc.).
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
+      # megatron.core resolves from MB's vendored submodule path in this
+      # container; a bare MB clone leaves 3rdparty/ empty, so mount the
+      # revision MB main pins into it.
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@d12f6c8c9aff51e166d872fd70151687a8e3f375,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+# Real Lightning recipe (hybrid Mamba-Transformer MoE + MTP), shrunk to toy
+# dimensions below. This exercises the actual architecture end to end —
+# NOT a stand-in dense model.
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_pretrain_config
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+train:
+  train_iters: 1700
+  global_batch_size: 8
+  micro_batch_size: 1
+
+# ~8x shrink of the real 30B-A3B geometry. Keeps every architectural
+# feature live: Mamba (M) / attention (*) / MoE (E) hybrid layers, GQA,
+# shared expert, top-k routing, and the recipe's MTP heads
+# (mtp_num_layers=2, pattern "*E", repeated layer, 0.3 loss scaling).
+model:
+  hybrid_layer_pattern: "M*EE"
+  num_layers: 4
+  # Power-of-two toy geometry: cuDNN/TE kernel heuristics reject odd shapes
+  hidden_size: 512
+  ffn_hidden_size: 512
+  num_attention_heads: 8
+  num_query_groups: 4
+  kv_channels: 64
+  mamba_num_heads: 8
+  mamba_head_dim: 64
+  mamba_state_dim: 128
+  num_moe_experts: 8
+  moe_ffn_hidden_size: 512
+  moe_shared_expert_intermediate_size: 1024
+  moe_router_topk: 2
+  # Mirror the real recipe's CP=2; EP shrinks with the expert count
+  # (8 GPUs: TP=1, PP=1, CP=2 -> DP=4, EP=4 divides 8 experts).
+  expert_model_parallel_size: 4
+  context_parallel_size: 2
+  # HybridEP requires EP groups aligned to the 8-rank NVLink domain; the
+  # toy EP=4 layout uses the plain alltoall dispatcher instead.
+  moe_token_dispatcher_type: alltoall
+  moe_flex_dispatcher_backend: null
+
+scheduler:
+  lr_warmup_iters: 32
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+
+checkpoint:
+  save: /nemo_run/lightning35-pretrain-model-tiny
+  save_interval: 20

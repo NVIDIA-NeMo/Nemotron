@@ -1,0 +1,91 @@
+run:
+  data: lightning35-sft-data-tiny:latest
+  model: lightning35-pretrain-model-tiny:latest
+  env:
+    # 26.08 container generation (has the Lightning stack); the public
+    # nvcr.io/nvidia/nemo:26.08 tag publishes at launch — switch then.
+    container: nvcr.io/nvidian/nemo:26.08.rc2
+    # FlashInfer JIT cache must live on a writable mount — the container's
+    # /root/.cache overlay is tiny and import fails with ENOSPC otherwise
+    # (same fix as super3 RL's persistent cache mapping).
+    env_vars:
+      FLASHINFER_WORKSPACE_BASE: /nemo_run/cache/flashinfer_workspace
+      FLASHINFER_CUBIN_DIR: /nemo_run/cache/flashinfer_cubins
+      # Triton/Inductor JIT caches also default under /root — use node-local /tmp
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TILELANG_CACHE_DIR: /tmp/tilelang_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
+      # megatron.core resolves from MB's vendored submodule path in this
+      # container; a bare MB clone leaves 3rdparty/ empty, so mount the
+      # revision MB main pins into it.
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@d12f6c8c9aff51e166d872fd70151687a8e3f375,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+# Real Lightning SFT recipe (zero-arg on MB main); full SFT is its default.
+# Packed-sequence consumption is configured via the dataset section below.
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_sft_config
+
+# Dataset config for packed Parquet shards from data_prep
+# train.py builds FinetuningDatasetConfig directly (not HFDatasetConfig) to skip HF download
+# Uses lightning35_packed_sft_dir for seamless config - auto-resolves to splits/train/ and splits/valid/
+dataset:
+  lightning35_packed_sft_dir: ${art:data,path}
+  seq_length: ${art:data,pack_size}
+  packed_sequence_specs:
+    packed_sequence_size: ${art:data,pack_size}
+    # packed_train_data_path and packed_val_data_path auto-resolve from lightning35_packed_sft_dir
+    # Explicit paths can still be set to override:
+    # packed_train_data_path: /path/to/splits/train/
+    # packed_val_data_path: /path/to/splits/valid/
+
+train:
+  train_iters: 1700
+  global_batch_size: 8
+  micro_batch_size: 1
+
+# Same toy geometry as the stage0 tiny (checkpoint compatibility) — real
+# Lightning architecture: hybrid M/*/E layers, MoE, GQA, MTP heads intact.
+# CP=1 here because the tiny SFT data was packed without CP alignment.
+model:
+  seq_length: ${art:data,pack_size}
+  hybrid_layer_pattern: "M*EE"
+  num_layers: 4
+  hidden_size: 512
+  ffn_hidden_size: 512
+  num_attention_heads: 8
+  num_query_groups: 4
+  kv_channels: 64
+  mamba_num_heads: 8
+  mamba_head_dim: 64
+  mamba_state_dim: 128
+  num_moe_experts: 8
+  moe_ffn_hidden_size: 512
+  moe_shared_expert_intermediate_size: 1024
+  moe_router_topk: 2
+  tensor_model_parallel_size: 1
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 1
+  expert_model_parallel_size: 4
+  # HybridEP requires node-aligned EP groups; toy EP=4 uses plain alltoall
+  moe_token_dispatcher_type: alltoall
+  moe_flex_dispatcher_backend: null
+
+scheduler:
+  lr_warmup_iters: 32
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+  wandb_exp_name: lightning35-sft             # Experiment name shown in wandb UI
+
+checkpoint:
+  save: /nemo_run/lightning35-sft-model-tiny
+  save_interval: 20
+  pretrained_checkpoint: ${art:model,path}
+  finetune: true  # Skip loading optimizer state from pretrained checkpoint
+  # ckpt_step: ${art:model,iteration}  # Optional: set to load specific iteration from artifact

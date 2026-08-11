@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -27,28 +28,36 @@ import pyarrow.parquet as pq
 from fsspec import AbstractFileSystem
 from transformers import PreTrainedTokenizerBase
 
+from nemotron.data_prep.config import FileInfo
 from nemotron.data_prep.core.chat_template import (
     create_masked_messages,
     replace_json_args,
     split_system_user_chunks,
     validate_conversation,
 )
-from nemotron.data_prep.config import FileInfo
-from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, read_json
 from nemotron.data_prep.packing.algorithms import get_packer
 from nemotron.data_prep.packing.bin_assignment import BinAssignment
 from nemotron.data_prep.packing.materialize import materialize_bin_arrays
-from nemotron.data_prep.packing.writers import ParquetShardWriter
 from nemotron.data_prep.packing.spool import (
     SequenceSpoolPaths,
     SequenceSpoolReader,
     SequenceSpoolWriter,
 )
+from nemotron.data_prep.packing.writers import ParquetShardWriter
+from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, read_json
+
+logger = logging.getLogger(__name__)
+
+#: Chat templates bundled with the repo, resolved by name.
+_BUNDLED_CHAT_TEMPLATES = ("nano3", "lightning35")
+
+#: Cap per-shard row-level warning spam; totals surface in dataset statistics.
+_MAX_ROW_ERROR_WARNINGS = 5
 
 
 def _apply_chat_template(tokenizer: PreTrainedTokenizerBase, chat_template: str) -> None:
-    if chat_template == "nano3":
-        template_path = Path(__file__).parent.parent / "templates" / "nano3.jinja"
+    if chat_template in _BUNDLED_CHAT_TEMPLATES:
+        template_path = Path(__file__).parent.parent / "templates" / f"{chat_template}.jinja"
         with open(template_path) as f:
             tokenizer.chat_template = f.read()
     elif Path(chat_template).exists():
@@ -111,9 +120,7 @@ def _iter_jsonl_records(path: str, fs: AbstractFileSystem) -> Iterator[dict]:
                 yield json.loads(line)
 
 
-def _apply_row_filter(
-    records: Iterator[dict], modulus: int, remainder: int
-) -> Iterator[dict]:
+def _apply_row_filter(records: Iterator[dict], modulus: int, remainder: int) -> Iterator[dict]:
     """Yield only rows where row_index % modulus == remainder."""
     for idx, record in enumerate(records):
         if idx % modulus == remainder:
@@ -194,6 +201,7 @@ def process_chat_sft_spool_core(
         "num_validation_errors": 0,
         "num_truncated": 0,  # truncation due to max_doc_tokens
         "num_errors": 0,
+        "num_empty_after_masking": 0,  # rows with no trainable assistant turn
     }
 
     writer = SequenceSpoolWriter(fs=output_fs, paths=paths)
@@ -229,9 +237,22 @@ def process_chat_sft_spool_core(
 
         try:
             masked_results = create_masked_messages(messages_local, tokenizer, tools)
-        except Exception:
+        except Exception as e:
             stats["num_filtered"] += 1
             stats["num_errors"] += 1
+            if stats["num_errors"] <= _MAX_ROW_ERROR_WARNINGS:
+                logger.warning(
+                    f"Dropping row: chat-template masking failed ({type(e).__name__}: {e}). "
+                    f"Roles={[m.get('role') for m in messages_local]}. "
+                    f"Further row-level warnings suppressed after {_MAX_ROW_ERROR_WARNINGS}; "
+                    "see num_errors in the final dataset statistics."
+                )
+            return
+
+        if not masked_results:
+            # e.g. every sub-sequence was skipped (no trainable assistant turn)
+            stats["num_filtered"] += 1
+            stats["num_empty_after_masking"] += 1
             return
 
         for chunks, _ in masked_results:
@@ -258,11 +279,7 @@ def process_chat_sft_spool_core(
             break
 
         local_path = _resolve_file_path(file_info)
-        input_path = (
-            local_path
-            if file_info.hf_repo_id is not None
-            else (file_info.local_path or file_info.path)
-        )
+        input_path = local_path if file_info.hf_repo_id is not None else (file_info.local_path or file_info.path)
         input_fs, normalized = get_filesystem(input_path)
 
         # Use original filename for format detection (hf_hub_download returns blob path without extension)
@@ -271,7 +288,9 @@ def process_chat_sft_spool_core(
             format_check_path.endswith(".jsonl") or format_check_path.endswith(".json")
         )
 
-        record_iter = _iter_parquet_records(normalized, input_fs) if is_parquet else _iter_jsonl_records(normalized, input_fs)
+        record_iter = (
+            _iter_parquet_records(normalized, input_fs) if is_parquet else _iter_jsonl_records(normalized, input_fs)
+        )
 
         if file_info.row_modulus is not None and file_info.row_remainder is not None:
             record_iter = _apply_row_filter(record_iter, file_info.row_modulus, file_info.row_remainder)
@@ -381,9 +400,7 @@ def process_chat_sft_parquet_from_spool_core(
         num_bins = int(assignment.num_bins)
 
         packing_factor = round(num_sequences / num_bins, 2) if num_bins else 0.0
-        packing_efficiency = (
-            round((total_tokens / (num_bins * pack_size)) * 100, 1) if num_bins else 0.0
-        )
+        packing_efficiency = round((total_tokens / (num_bins * pack_size)) * 100, 1) if num_bins else 0.0
 
         # Best-effort cleanup of leftovers from previous failed attempts (no receipts here).
         try:
