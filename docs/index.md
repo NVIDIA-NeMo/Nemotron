@@ -135,7 +135,7 @@ Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 :link: nemotron/lightning35/README
 :link-type: doc
 
-30B total / 3B active parameters. Hybrid Mamba-Transformer with sparse MoE and Multi-Token Prediction.
+30B total / 3B active parameters. Hybrid Mamba-Transformer with sparse MoE and Multi-Token Prediction, built for the high-volume execution layer of long-running agents.
 
 **Stages:** Pretraining → SFT → RL
 :::

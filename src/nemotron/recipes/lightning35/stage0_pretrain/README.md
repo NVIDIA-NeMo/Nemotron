@@ -136,7 +136,7 @@ uv run nemotron lightning35 pretrain [options] [overrides...]
 | File | Purpose |
 |------|---------|
 | `config/default.yaml` | Production configuration |
-| `config/tiny.yaml` | Testing (small model, 1700 iterations) |
+| `config/tiny.yaml` | Testing — the real Lightning architecture (hybrid Mamba/attention/MoE + MTP) shrunk to toy dimensions |
 | `config/data_blend_raw.json` | Full dataset blend |
 | `config/data_blend_raw_small.json` | Small blend (math-only) for testing |
 
@@ -144,15 +144,24 @@ uv run nemotron lightning35 pretrain [options] [overrides...]
 
 ```yaml
 run:
-  data: DataBlendsArtifact-pretrain:latest
+  data: lightning35-pretrain-data-tiny:latest
 
+# Real Lightning recipe, shrunk to toy dimensions in the model: section —
+# exercises the actual hybrid Mamba/attention/MoE layers and MTP heads.
 recipe:
-  _target_: megatron.bridge.recipes.qwen.qwen3.qwen3_8b_pretrain_config
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_pretrain_config
   per_split_data_args_path: ${art:data,path}/blend.json
 
 train:
   train_iters: 1700
-  global_batch_size: 32
+  global_batch_size: 8
+
+model:
+  hybrid_layer_pattern: "M*EE"
+  num_layers: 4
+  hidden_size: 512
+  num_moe_experts: 8
+  # ... see config/tiny.yaml for the full toy geometry
 
 scheduler:
   lr_warmup_iters: 32

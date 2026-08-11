@@ -1,6 +1,6 @@
 # Nemotron 3.5 Lightning Training Recipe
 
-Reproducible training pipeline for Nemotron 3.5 Lightning, an open Mixture-of-Experts hybrid Mamba-Transformer model optimized for agentic reasoning.
+Reproducible training pipeline for [Nemotron 3.5 Lightning](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/), an open 30B-A3B Mixture-of-Experts hybrid Mamba-Transformer model with Multi-Token Prediction, built for fast, accurate specialized task execution in long-running agents. Weights, data, and recipes are released under OpenMDW-1.1.
 
 ## Quick Start
 
@@ -85,10 +85,21 @@ $ uv run nemotron lightning35 pipe --run YOUR-CLUSTER
 
 ## Resources
 
+- **Release Blog:** [NVIDIA Nemotron 3.5 Lightning Delivers Fast, Accurate Specialized Task Execution for Long-Running Agents](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)
+
+  > There is no separate technical report — the release blog, the
+  > [model cards](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3),
+  > and the recipe configs in this repository are the authoritative references
+  > for methodology.
+
 - **Model Weights:**
   - [NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16) (Base model)
   - [NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) (Instruct model)
   - [NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4) (NVFP4 quantized)
+  - DSpark and DFlash draft models for speculative decoding ship alongside the
+    checkpoints — see the release blog for serving guidance (MTP-based
+    speculation suits medium/high concurrency; DSpark suits DGX Spark and
+    low-concurrency serving)
 - **Model Collection:** [NVIDIA Nemotron v3 Collection](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3)
 - **Training Datasets:**
   - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)

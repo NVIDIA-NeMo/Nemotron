@@ -4,7 +4,9 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "lightning35/sft"
-# image = "nvcr.io/nvidia/nemo:25.11.nemotron_3_5_lightning"
+# image = "nvcr.io/nvidia/nemo:26.08"
+# # The public 26.08 tag ships at launch; until then the stage configs pin
+# # nvcr.io/nvidian/nemo:26.08.rc2 and mount Megatron-Bridge main (see config/).
 # setup = "NeMo and all training dependencies are pre-installed in the image."
 #
 # [tool.runspec.run]

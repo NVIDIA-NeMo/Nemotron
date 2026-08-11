@@ -2,7 +2,7 @@
 
 This stage aligns the instruction-tuned model using GRPO (Group Relative Policy Optimization) with [NeMo-RL](../nvidia-stack.md#nemo-rl).
 
-> **Open-Source Data Only**: This recipe uses exclusively open-sourced RL data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe uses the [Nemotron-3.5-Lightning-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3.5-Lightning-RL-Training-Blend) dataset. Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
+> **Open-Source Data Only**: This recipe uses exclusively open-sourced RL data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe uses the [Nemotron-3.5-Lightning-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3.5-Lightning-RL-Training-Blend) dataset. The release also includes **Nemotron-RL Agentic Terminal Pivot**, an open agentic RL dataset used to train some of the coding-agent capabilities (see the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)). Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
 
 ---
 
@@ -214,7 +214,7 @@ $ uv run nemotron lightning35 rl --run YOUR-CLUSTER
 
 ### Running in NeMo-RL Repository
 
-For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3.5 Lightning Guide](https://docs.nvidia.com/nemo/rl/nightly/guides/nemotron-3-nano.html):
+For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3.5 Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md):
 
 **1. Download and prepare the dataset:**
 
@@ -496,7 +496,7 @@ After RL completes, proceed to [Stage 3: Evaluation](./evaluate.md) to benchmark
 
 - [Instruct model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) – post-training reference
 - [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) – GRPO, DPO, environments
-- [NeMo-RL Nemotron 3.5 Lightning Guide](https://docs.nvidia.com/nemo/rl/nightly/guides/nemotron-3-nano.html) — upstream training guide
+- [NeMo-RL Nemotron 3.5 Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md) — upstream training guide
 - [NVIDIA AI Stack](../nvidia-stack.md) – NeMo-RL, Megatron-Core
 - [Artifact Lineage](../artifacts.md) – W&B artifact system
 - [Stage 0: Pretraining](./pretrain.md) – pretrain the base model

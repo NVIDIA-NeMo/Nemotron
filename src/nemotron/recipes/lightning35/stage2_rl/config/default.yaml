@@ -6,7 +6,7 @@ run:
 
 # GRPO Algorithm Configuration for training Nemotron 3.5 Lightning
 grpo:
-  num_prompts_per_step: 128
+  num_prompts_per_step: 512
   num_generations_per_prompt: 16
   num_val_generations_per_prompt: 4
   max_rollout_turns: 1 # for multi-turn rollouts. Math Environments just have 1 turn (answering the question)
@@ -63,7 +63,9 @@ loss_fn:
   use_importance_sampling_correction: True
   sequence_level_importance_ratios: False
   token_level_loss: True
-  truncated_importance_sampling_ratio: null
+  truncated_importance_sampling_ratio: 5
+  truncated_importance_sampling_ratio_min: 0.2
+  truncated_importance_sampling_type: tis
 
 checkpointing:
   enabled: true
@@ -78,11 +80,11 @@ policy:
   model_name: "/path/to/hf_checkpoint"
   tokenizer:
     name: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
-  train_global_batch_size: 2048
+  train_global_batch_size: 8192
   train_micro_batch_size: 1
   generation_batch_size: 64 # Only used when generating using HF backend
   logprob_batch_size: 1
-  max_total_sequence_length: 49152
+  max_total_sequence_length: 73728
   precision: "bfloat16"
   logprob_chunk_size: 2048
 
@@ -121,6 +123,12 @@ policy:
     moe_token_dispatcher_type: "alltoall"
     moe_aux_loss_coeff: 0.0
     moe_router_enable_expert_bias: true
+    # Multi-Token Prediction heads (Lightning ships 5 MTP layers; the
+    # published RLVR reference keeps them training during RL)
+    mtp_loss_scaling_factor: 0.3
+    mtp_use_repeated_layer: true
+    mtp_num_layers: 5
+    mtp_detach_heads: true
     #gives ~20% training perf speedup with sequence packing
     apply_rope_fusion: True
     defer_fp32_logits: True
@@ -133,8 +141,8 @@ policy:
 
     optimizer:
       optimizer: "adam"
-      lr: 3e-6
-      min_lr: 3e-6
+      lr: 4.0e-6
+      min_lr: 4.0e-6
       weight_decay: 0.0
       bf16: true
       fp16: false
@@ -164,7 +172,8 @@ policy:
       lr_decay_style: "constant"
       lr_decay_iters: null
       lr_warmup_iters: 10
-      lr_warmup_init: 0.3e-7
+      lr_warmup_init: 4e-7
+      override_opt_param_scheduler: true
 
     distributed_data_parallel_config:
       grad_reduce_in_fp32: false
@@ -193,7 +202,10 @@ policy:
 
   # makes the training sequence length divisible by the tensor parallel size
   # this is useful for sequence parallel training
-  make_sequence_length_divisible_by: ${policy.megatron_cfg.tensor_model_parallel_size}
+  # Divisible by 2*TP*CP: load-balanced CP splits each sequence into 2*CP
+  # chunks and sequence-parallel TP adds the TP factor (same alignment class
+  # as NVIDIA-NeMo/Megatron-Bridge#5080).
+  make_sequence_length_divisible_by: ${mul:${mul:${policy.megatron_cfg.tensor_model_parallel_size}, ${policy.megatron_cfg.context_parallel_size}}, 2}
   max_grad_norm: 1.0
 
   optimizer: null # remove default FSDP optimizer
