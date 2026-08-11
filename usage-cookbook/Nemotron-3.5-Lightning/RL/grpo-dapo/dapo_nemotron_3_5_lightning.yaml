@@ -1,0 +1,127 @@
+# Standalone one-node DAPO/GRPO convergence recipe for Nemotron-3.5-Lightning.
+#
+# Validated with the NeMo RL nightly image on one 8-GPU node.  It deliberately
+# keeps the PR #3383 AutoModel topology that fits on one node: FSDP2 training,
+# EP=8, colocated vLLM TP=4, and a 32 x 8 rollout batch.
+defaults: /opt/nemo-rl/examples/configs/recipes/llm/grpo-nanov3-30BA3B-2n8g-fsdp2.yaml
+
+grpo:
+  max_num_steps: 160
+  max_num_epochs: 2
+  num_prompts_per_step: 32
+  num_generations_per_prompt: 8
+  use_leave_one_out_baseline: false
+  use_dynamic_sampling: false
+  batch_multiplier: 1
+  overlong_filtering: false
+  val_at_start: true
+  val_at_end: true
+  val_period: 20
+  val_batch_size: 128
+  max_val_samples: 128
+  seq_logprob_error_threshold: 2
+  reward_scaling:
+    enabled: true
+    source_min: 0.0
+    source_max: 1.0
+    target_min: -1.0
+    target_max: 1.0
+  reward_shaping:
+    enabled: false
+    max_response_length: ${policy.generation.max_new_tokens}
+
+loss_fn:
+  reference_policy_kl_penalty: 0.0
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: 10.0
+  use_on_policy_kl_approximation: true
+  use_importance_sampling_correction: true
+  truncated_importance_sampling_type: tis
+  truncated_importance_sampling_ratio: 2
+  token_level_loss: true
+
+policy:
+  # Override this location for another mounted model cache if needed.
+  model_name: /shared/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+  tokenizer:
+    name: ${policy.model_name}
+  train_global_batch_size: 256
+  train_micro_batch_size: 1
+  logprob_batch_size: 1
+  max_total_sequence_length: 2816
+  logprob_chunk_size: 1024
+  offload_optimizer_for_logprob: true
+  hf_config_overrides:
+    router_aux_loss_coef: 0.0
+  dtensor_cfg:
+    expert_parallel_size: 8
+    activation_checkpointing: true
+    env_vars:
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    moe_parallelizer:
+      ignore_router_for_ac: true
+    automodel_kwargs:
+      backend:
+        _target_: nemo_automodel.components.models.common.utils.BackendConfig
+        attn: te
+        linear: te
+        rms_norm: torch_fp32
+        experts: torch_mm
+        dispatcher: torch
+        enable_deepep: true
+        rope_fusion: false
+        enable_hf_state_dict_adapter: true
+  sequence_packing:
+    enabled: false
+  generation:
+    max_new_tokens: 2048
+    vllm_cfg:
+      tensor_parallel_size: 4
+      gpu_memory_utilization: 0.50
+      max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: true
+    vllm_kwargs:
+      mamba_ssm_cache_dtype: float32
+      compilation_config:
+        backend: eager
+
+data:
+  max_input_seq_length: 768
+  train:
+    dataset_name: DAPOMath17K
+    split_validation_size: 0.0
+  validation:
+    dataset_name: DAPOMathAIME2024
+  default:
+    prompt_file: null
+    system_prompt_file: null
+    processor: math_hf_data_processor
+    env_name: math
+
+env:
+  math:
+    num_workers: 8
+    math_verify_impl: dapo_math_verify
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: /shared/runs/nemotron-3.5-lightning-dapo-convergence/checkpoints
+  metric_name: val:accuracy
+  higher_is_better: true
+  save_period: 10
+  keep_top_k: 3
+
+logger:
+  log_dir: /shared/runs/nemotron-3.5-lightning-dapo-convergence/logs
+  wandb_enabled: true
+  tensorboard_enabled: true
+  monitor_gpus: true
+  wandb:
+    project: nemo-rl
+    name: nemotron-3.5-lightning-1n8g-dapo-convergence
+    log_nemo_gym_full_result_tables: false
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 1
