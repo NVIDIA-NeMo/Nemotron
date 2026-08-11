@@ -178,14 +178,19 @@ Common data preparation errors and solutions:
 
 ### Hyperparameters
 
+These values mirror Megatron-Bridge main's verified packed SFT recipe
+(`nemotron_3_5_lightning_sft_openmathinstruct2_packed_config`) and match
+`config/default.yaml`:
+
 | Parameter | Value |
 |-----------|-------|
-| **Learning Rate** | 1e-5 |
+| **Learning Rate** | 5e-6 (min 0.0, 10 warmup iters) |
+| **Global Batch Size** | 128 (micro batch 1) |
 | **Sequence Length** | 4096 tokens (pack_size) |
+| **Parallelism** | TP=2 + sequence parallel, EP=8, PP=1 |
 | **Loss Masking** | Role-based (assistant tokens only) |
-| **Loss Normalization** | Per-token (`calculate_per_token_loss: true`) |
+| **Loss Normalization** | Per-token (`calculate_per_token_loss: true`, set by the recipe) |
 | **Optimizer** | AdamW |
-| **Total Samples** | 18M+ |
 
 **`calculate_per_token_loss` explained:**
 
@@ -219,24 +224,18 @@ $ uv run nemotron lightning35 sft --run YOUR-CLUSTER
 For direct execution outside this CLI, use the scripts in the [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) repository:
 
 ```bash
-# Clone the repository and checkout the nano-v3 branch
+# Clone Megatron-Bridge main (the Lightning recipes live on main)
 git clone https://github.com/NVIDIA-NeMo/Megatron-Bridge.git
 cd Megatron-Bridge
-git checkout nano-v3
 
-# Run fine-tuning (inside container on compute node)
-python examples/recipes/nemotron_3/finetune_nemotron_3_5_lightning.py \
-    --per-split-data-args-path /path/to/data_args.json \
-    --tokenizer-model /path/to/tokenizer.model
-
-# With config file overrides
-python examples/recipes/nemotron_3/finetune_nemotron_3_5_lightning.py \
-    --config-file /path/to/overrides.yaml \
-    --per-split-data-args-path /path/to/data_args.json \
-    --tokenizer-model /path/to/tokenizer.model
+# Run fine-tuning via the recipe runner (inside a 26.08-generation container)
+python scripts/training/setup_experiment.py \
+    --recipe nemotron_3_5_lightning_sft_config \
+    --account ACCOUNT --partition PARTITION --container-image IMAGE
 ```
 
-See the [Megatron-Bridge Nemotron 3.5 Lightning documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/nemotron/nemotron3-nano.html) for detailed configuration options.
+See the [Nemotron 3.5 Lightning verification card](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/model_verification_cards/nemotron-3.5-lightning/card.yaml) for the exact
+validated invocations (convergence, performance, and FSDP variants).
 
 ### Configuration
 

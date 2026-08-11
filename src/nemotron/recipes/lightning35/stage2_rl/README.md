@@ -38,7 +38,7 @@ Inside a container on a compute node (requires NeMo-RL and Ray):
 python data_prep.py --config config/data_prep.yaml
 
 # Training (Ray will be initialized internally)
-python train.py --config config/grpo_nanov3.yaml
+python train.py --config config/default.yaml
 ```
 
 ## Data Preparation
@@ -74,7 +74,7 @@ output/lightning35/stage2_rl/
 └── manifest.json        # Split paths and ratios
 ```
 
-The output is registered as a W&B Artifact (`DataBlendsArtifact-rl`) for lineage tracking.
+The output is registered as a W&B Artifact (`lightning35-rl-data (SplitJsonlDataArtifact)`) for lineage tracking.
 
 ### Configuration
 
@@ -116,8 +116,8 @@ uv run nemotron lightning35 rl [options] [overrides...]
 ### Input
 
 - **Model**: SFT checkpoint from Stage 1 (`ModelArtifact-sft`)
-- **Data**: `DataBlendsArtifact-rl` (from data prep)
-- **Config**: `config/grpo_nanov3.yaml` or `config/tiny.yaml`
+- **Data**: `lightning35-rl-data (SplitJsonlDataArtifact)` (from data prep)
+- **Config**: `config/default.yaml` or `config/tiny.yaml`
 
 ### Output
 
@@ -129,7 +129,7 @@ uv run nemotron lightning35 rl [options] [overrides...]
 
 | File | Purpose |
 |------|---------|
-| `config/grpo_nanov3.yaml` | Production GRPO configuration |
+| `config/default.yaml` | Production GRPO configuration |
 | `config/tiny.yaml` | Testing variant |
 | `config/data_blend_raw.json` | RL dataset blend (6 datasets) |
 
@@ -138,7 +138,7 @@ uv run nemotron lightning35 rl [options] [overrides...]
 ```yaml
 policy:
   model_name: "path/to/sft/checkpoint"
-  tokenizer: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+  tokenizer: "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
   generation:
     temperature: 0.7
     max_new_tokens: 1024
@@ -167,7 +167,7 @@ uv run nemotron lightning35 rl -c tiny grpo.num_iterations=200
 uv run nemotron lightning35 rl -c tiny policy.generation.temperature=0.8
 
 # Different learning rate
-uv run nemotron lightning35 rl -c tiny grpo.learning_rate=5e-7
+uv run nemotron lightning35 rl -c tiny policy.megatron_cfg.optimizer.lr=5e-7
 ```
 
 ## Running with NeMo-Run
@@ -210,7 +210,7 @@ uv run nemotron lightning35 rl -c tiny --batch YOUR-CLUSTER
 uv run nemotron lightning35 rl -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## GRPO Algorithm
 
@@ -232,7 +232,7 @@ Key features:
 flowchart TB
     prev["ModelArtifact-sft<br/>(from Stage 1)"] --> train
     rl["RL Datasets<br/>(preference/reward data)"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-rl<br/>(JSONL files)"]
+    dp --> data["lightning35-rl-data (SplitJsonlDataArtifact)<br/>(JSONL files)"]
     data --> train["train.py<br/>(GRPO with NeMo-RL)"]
     train --> model["ModelArtifact-rl<br/>(final aligned model)"]
 

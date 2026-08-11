@@ -4,6 +4,16 @@ run:
   env:
     container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_5_lightning
 
+# Initial checkpoint for finetuning (Megatron format from SFT stage)
+initial_checkpoint: ${art:model,path}
+
+# Convert Megatron checkpoint to HuggingFace format using Megatron-Bridge
+# When true: converts initial_checkpoint to HF format, uses it for both vLLM and training
+# When false (default): vLLM uses the base HF model for architecture, training
+# loads the SFT weights via fake step_0 checkpoint
+convert_initial_checkpoint_to_hf: false
+converted_checkpoint_dir: null  # Optional: specify output dir, defaults to <checkpoint>_hf
+
 # GRPO Algorithm Configuration for training Nemotron 3.5 Lightning
 grpo:
   num_prompts_per_step: 512
@@ -77,9 +87,11 @@ checkpointing:
   checkpoint_must_save_by: "00:03:40:00"
 
 policy:
-  model_name: "/path/to/hf_checkpoint"
+  # HuggingFace model for architecture (vLLM init + HF->Megatron mapping);
+  # the trained weights come from initial_checkpoint above.
+  model_name: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
   tokenizer:
-    name: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
+    name: ${policy.model_name}
   train_global_batch_size: 8192
   train_micro_batch_size: 1
   generation_batch_size: 64 # Only used when generating using HF backend
@@ -263,8 +275,8 @@ policy:
         num_nodes: null # Decides number of nodes to be dedicated to generation
 
 data:
-  train_jsonl_fpath: "/path/to/train.jsonl"
-  validation_jsonl_fpath: "/path/to/validation.jsonl"
+  train_jsonl_fpath: ${art:data,train}
+  validation_jsonl_fpath: ${art:data,val}
   shuffle: False
   num_workers: 1
 

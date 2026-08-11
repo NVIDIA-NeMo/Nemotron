@@ -151,9 +151,12 @@ The model supports:
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `num_prompts_per_step` | 128 | Prompts sampled per training step |
+| `num_prompts_per_step` | 512 | Prompts sampled per training step |
 | `num_generations_per_prompt` | 16 | Rollouts generated per prompt |
-| `max_total_sequence_length` | 49152 | Maximum sequence length (~49K tokens) |
+| `train_global_batch_size` | 8192 | = prompts x generations per step |
+| `max_total_sequence_length` | 73728 | Maximum sequence length (~72K tokens) |
+| `mtp_num_layers` | 5 | Repeated-layer MTP kept training during RL (loss scaling 0.3) |
+| `reasoning_parser` | `nano_v3` | vLLM reasoning parser (plugin shipped in NeMo-RL) |
 | `normalize_rewards` | true | Normalize rewards across batch |
 | `use_leave_one_out_baseline` | true | Variance reduction for advantage estimation |
 | `val_period` | 5 | Validation every N steps |
@@ -176,8 +179,8 @@ The model supports:
 | Parameter | Value |
 |-----------|-------|
 | `optimizer` | AdamW |
-| `lr` | 3e-6 |
-| `min_lr` | 3e-6 |
+| `lr` | 4e-6 |
+| `min_lr` | 4e-6 |
 | `weight_decay` | 0.0 |
 | `adam_beta1` | 0.9 |
 | `adam_beta2` | 0.999 |
@@ -419,10 +422,10 @@ Training uses multiple parallelism strategies for efficient scaling:
 
 | Parallelism | Value | Config Key |
 |-------------|-------|------------|
-| Tensor (TP) | 2 | `policy.megatron_cfg.tensor_model_parallel_size` |
-| Pipeline (PP) | 2 | `policy.megatron_cfg.pipeline_model_parallel_size` |
+| Tensor (TP) | 4 | `policy.megatron_cfg.tensor_model_parallel_size` |
+| Pipeline (PP) | 1 | `policy.megatron_cfg.pipeline_model_parallel_size` |
 | Context (CP) | 4 | `policy.megatron_cfg.context_parallel_size` |
-| Expert (EP) | 8 | `policy.megatron_cfg.expert_model_parallel_size` |
+| Expert (EP) | 16 | `policy.megatron_cfg.expert_model_parallel_size` |
 | Sequence (SP) | Yes | `policy.megatron_cfg.sequence_parallel` |
 
 **Generation (vLLM):**

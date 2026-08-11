@@ -10,7 +10,7 @@ This stage takes instruction-following datasets in OpenAI chat format, applies c
 
 | Component | Description |
 |-----------|-------------|
-| `data_prep.py` | Applies chat templates, tokenizes to packed .npy format |
+| `data_prep.py` | Applies chat templates, tokenizes to packed Parquet shards |
 | `train.py` | Runs supervised fine-tuning using Megatron-Bridge |
 | `config/` | Configuration files for data prep and training |
 
@@ -19,7 +19,7 @@ This stage takes instruction-following datasets in OpenAI chat format, applies c
 ### Using nemotron CLI (Recommended)
 
 ```bash
-# 1. Prepare data (apply chat templates, tokenize to .npy)
+# 1. Prepare data (apply chat templates, tokenize to packed Parquet)
 uv run nemotron lightning35 data prep sft --run YOUR-CLUSTER
 
 # 2. Run SFT
@@ -54,7 +54,7 @@ The `data_prep.py` script processes OpenAI-format chat data into packed sequence
 2. **Tokenize** → input_ids with role boundaries
 3. **Build loss_mask** → 0 for system/user tokens, 1 for assistant tokens
 4. **Pack sequences** → Efficient batching up to `pack_size` tokens
-5. **Split by ratio** → training.npy, validation.npy, test.npy
+5. **Split by ratio** → splits/train/*.parquet, splits/valid/*.parquet, splits/test/*.parquet
 
 ### CLI Command
 
@@ -101,15 +101,15 @@ Expected record format:
 
 ```
 output/stage1_sft/
-├── training.npy      # Packed training sequences
-├── validation.npy    # Packed validation sequences
-├── test.npy          # Packed test sequences
+├── splits/train/*.parquet      # Packed training sequences
+├── splits/valid/*.parquet    # Packed validation sequences
+├── splits/test/*.parquet          # Packed test sequences
 └── metadata.json     # Split statistics and packing info
 ```
 
-Each .npy file contains packed sequences with `input_ids` and `loss_mask` arrays.
+Each packed Parquet file contains packed sequences with `input_ids` and `loss_mask` arrays.
 
-The output is registered as a W&B Artifact (`DataBlendsArtifact-sft`) for lineage tracking.
+The output is registered as a W&B Artifact (`lightning35-sft-data (SFTDataArtifact)`) for lineage tracking.
 
 ### Configuration
 
@@ -118,7 +118,7 @@ The output is registered as a W&B Artifact (`DataBlendsArtifact-sft`) for lineag
 ```yaml
 blend_path: config/data_blend_raw.json
 output_dir: output/stage1_sft
-tokenizer_model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+tokenizer_model: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
 pack_size: 4096
 chat_template: lightning35
 messages_field: messages
@@ -155,7 +155,7 @@ uv run nemotron lightning35 sft [options] [overrides...]
 ### Input
 
 - **Model**: Pretrained checkpoint from Stage 0 (`ModelArtifact-pretrain`)
-- **Data**: `DataBlendsArtifact-sft` (from data prep)
+- **Data**: `lightning35-sft-data (SFTDataArtifact)` (from data prep)
 - **Config**: `config/default.yaml` or `config/tiny.yaml`
 
 ### Output
@@ -223,7 +223,7 @@ uv run nemotron lightning35 sft -c tiny --batch YOUR-CLUSTER
 uv run nemotron lightning35 sft -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## Artifact Lineage
 
@@ -231,7 +231,7 @@ See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) f
 flowchart TB
     prev["ModelArtifact-pretrain<br/>(from Stage 0)"] --> train
     inst["Instruction Datasets<br/>(OpenAI chat format)"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-sft<br/>(packed .npy files)"]
+    dp --> data["lightning35-sft-data (SFTDataArtifact)<br/>(packed Parquet shards files)"]
     data --> train["train.py"]
     train --> model["ModelArtifact-sft<br/>(fine-tuned checkpoint)"]
     model --> next["Stage 2: RL"]

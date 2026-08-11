@@ -72,7 +72,7 @@ META = RecipeMeta(
     config_dir=str(SPEC.config_dir),
     default_config=SPEC.config.default,
     input_artifacts={"data": "Conversation data (JSONL/Parquet)"},
-    output_artifacts={"data": "Packed SFT data (.npy format)"},
+    output_artifacts={"data": "Packed SFT data (Parquet shards)"},
 )
 
 

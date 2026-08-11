@@ -14,22 +14,22 @@ Nemotron 3.5 Lightning achieves better or on-par accuracy than competitive model
 
 | Property | Value |
 |----------|-------|
-| Total Parameters | 31.6B |
-| Active Parameters | 3.6B (per forward pass) |
-| Architecture | Hybrid Mamba-Transformer with sparse MoE |
-| Pretraining Tokens | 25 trillion |
-| Context Length | Up to 1M tokens |
-| Training Stages | 3 (Pretrain → SFT → RL) |
+| Total Parameters | 30B |
+| Active Parameters | 3B (per forward pass) |
+| Architecture | Hybrid Mamba-Transformer with sparse MoE + Multi-Token Prediction |
+| Training Stages | 4 (Pretrain → SFT → RL → Quantization) |
 
 ### Architecture Details
 
 | Component | Value |
 |-----------|-------|
-| Num Layers | 32 |
-| Model Dimension | 3008 |
-| Total Routable Experts | 128 |
-| Num Activated Experts | 6 |
-| Shared Experts | 2 |
+| Num Layers | 52 (hybrid Mamba/attention/MoE pattern) |
+| Hidden Size | 2688 |
+| Total Routed Experts | 128 |
+| Num Activated Experts | 6 (top-k) |
+| Shared Experts | 1 (intermediate size 3712) |
+| Attention | GQA, 32 heads / 2 KV groups |
+| MTP | Repeated-layer MTP module (depth 2 in pretraining, 5 in RL) |
 
 ### Key Capabilities
 
@@ -50,7 +50,7 @@ flowchart TB
 
     subgraph stage1["Stage 1: SFT"]
         direction LR
-        inst["Instruction Datasets"] --> dp1["data_prep.py<br/>(.npy)"] --> train1["train.py<br/>(Megatron-Bridge)"] --> instruct["Instruct Model"]
+        inst["Instruction Datasets"] --> dp1["data_prep.py<br/>(packed Parquet)"] --> train1["train.py<br/>(Megatron-Bridge)"] --> instruct["Instruct Model"]
     end
 
     subgraph stage2["Stage 2: RL"]
@@ -103,7 +103,7 @@ mounts = ["/lustre:/lustre"]
 
 > **Note**: Container images are specified in the recipe config files (e.g., `config/tiny.yaml`), not in env.toml.
 
-See [docs/nemo_runspec/nemo-run.md](../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## Quick Start
 
@@ -143,7 +143,7 @@ uv run nemotron lightning35 pretrain -c tiny --run YOUR-CLUSTER
 # Pretrain data: tokenize to Megatron bin/idx format
 uv run nemotron lightning35 data prep pretrain [--run <profile>] [--sample N] [--force]
 
-# SFT data: apply chat templates, tokenize to .npy
+# SFT data: apply chat templates, tokenize to packed Parquet
 uv run nemotron lightning35 data prep sft [--run <profile>] [--sample N] [--force]
 
 # RL data: convert to JSONL chat format
@@ -211,13 +211,13 @@ flowchart TB
     end
 
     subgraph sft["SFT"]
-        data1["DataBlendsArtifact-sft"] --> cmd1["uv run nemotron lightning35 sft"]
+        data1["lightning35-sft-data (SFTDataArtifact)"] --> cmd1["uv run nemotron lightning35 sft"]
         model0 --> cmd1
         cmd1 --> model1["ModelArtifact-sft"]
     end
 
     subgraph rl["RL"]
-        data2["DataBlendsArtifact-rl"] --> cmd2["uv run nemotron lightning35 rl"]
+        data2["lightning35-rl-data (SplitJsonlDataArtifact)"] --> cmd2["uv run nemotron lightning35 rl"]
         model1 --> cmd2
         cmd2 --> model2["ModelArtifact-rl<br/>(Final)"]
     end
@@ -264,5 +264,5 @@ torchrun --nproc_per_node=8 train.py --config config/tiny.yaml
 
 ## Further Reading
 
-- [NeMo-Run Configuration](../../../docs/nemo_runspec/nemo-run.md) - Complete guide to env.toml and execution profiles
+- [NeMo-Run Configuration](../../../../docs/nemo_runspec/nemo-run.md) - Complete guide to env.toml and execution profiles
 - [Recipes Overview](../README.md) - General information about Nemotron recipes

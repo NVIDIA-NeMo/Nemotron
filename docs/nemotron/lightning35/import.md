@@ -123,7 +123,7 @@ uv run nemotron lightning35 data import rl /path/to/rl_data --project alignment-
 uv run nemotron lightning35 eval -c default --run YOUR-CLUSTER
 ```
 
-Runs model evaluation using [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator). See `src/nemotron/cli/commands/lightning35/eval.py` for execution details and `src/nemotron/recipes/lightning35/stage3_eval/config/` for available configurations.
+Runs model evaluation using [NeMo Gym](https://github.com/NVIDIA-NeMo/Evaluator). See `src/nemotron/cli/commands/lightning35/eval.py` for execution details and `src/nemotron/recipes/lightning35/stage3_eval/config/` for available configurations.
 
 ## Using Imported Artifacts
 

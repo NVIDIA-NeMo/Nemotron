@@ -44,6 +44,14 @@ def distribute_shards_to_splits(
     Collects all shards from all datasets into a pool, then randomly selects
     shards for test and valid splits. The remaining shards go to train.
 
+    Note:
+        Shards are pooled globally before selection, so with the common
+        one-shard valid/test settings those splits usually contain a single
+        source and cannot realize a weighted mixture. Blend weights are
+        primarily honored for the train split (see
+        realize_packed_shards_into_split_dirs); size valid/test in whole
+        shards per source if a weighted mix matters there.
+
     The data_paths format is: ["weight", "prefix", "weight", "prefix", ...]
     where each prefix is a shard base path WITHOUT the index suffix.
     Example: "/path/to/runs/abc/datasets/mydata/hash/shard"
@@ -146,28 +154,48 @@ def _select_weighted_shards(
     shuffled order from distribute_shards_to_splits(), so selection is
     deterministic.
 
+    Missing shard files fail loudly here: silently renormalizing a weighted
+    blend over a partially missing dataset would quietly train on the wrong
+    mixture.
+
     Args:
         fs: Filesystem abstraction for reading shard footers.
         pairs: (weight, shard_path) tuples for one split, shard_path WITHOUT
-            the .parquet suffix. Missing files are ignored here and reported
-            by the caller's existence pass.
+            the .parquet suffix.
 
     Returns:
         (selected_pairs, per_dataset_stats) where stats map dataset name to
         {"weight", "rows_total", "rows_kept", "shards_total", "shards_kept"}.
+
+    Raises:
+        FileNotFoundError: If any shard file referenced by the blend is missing.
+        ValueError: If a dataset's shards carry inconsistent weights.
     """
     from collections import defaultdict
 
     # Group shards by source dataset (path layout: .../datasets/<name>/<hash>/shard_N)
     by_dataset: dict[str, list[tuple[str, str, int]]] = defaultdict(list)
     weights: dict[str, float] = {}
+    missing: list[str] = []
     for weight, shard_path in pairs:
         parquet_str = f"{shard_path}.parquet"
         if not fs.exists(parquet_str):
+            missing.append(parquet_str)
             continue
         dataset = Path(parquet_str).parent.parent.name
+        numeric_weight = float(weight)
         by_dataset[dataset].append((weight, shard_path, _shard_row_count(fs, parquet_str)))
-        weights[dataset] = float(weight)
+        if dataset in weights and weights[dataset] != numeric_weight:
+            raise ValueError(
+                f"Inconsistent blend weights for dataset '{dataset}': {weights[dataset]} vs {numeric_weight}"
+            )
+        weights[dataset] = numeric_weight
+
+    if missing:
+        raise FileNotFoundError(
+            f"Weighted blend realization: {len(missing)} shard file(s) missing; "
+            f"refusing to silently renormalize the blend. First few: {missing[:5]}"
+        )
 
     total_weight = sum(weights.values())
     if not by_dataset or total_weight <= 0:
@@ -248,7 +276,15 @@ def realize_packed_shards_into_split_dirs(
 
         # Honor fractional blend weights: with non-uniform weights, subsample
         # shards per source so the realized mix matches the normalized weights.
-        distinct_weights = {weight for weight, _ in pairs}
+        # Uniformity is decided numerically ("1" and "1.0" are the same weight).
+        try:
+            distinct_weights = {float(weight) for weight, _ in pairs}
+        except ValueError as e:
+            raise ValueError(f"Split '{split_name}': non-numeric blend weight: {e}") from e
+        if any(w < 0 or w != w or w == float("inf") for w in distinct_weights):
+            raise ValueError(
+                f"Split '{split_name}': blend weights must be finite and non-negative, got {sorted(distinct_weights)}"
+            )
         if len(distinct_weights) > 1:
             pairs, weight_stats = _select_weighted_shards(fs, pairs)
             for name, s in sorted(weight_stats.items()):

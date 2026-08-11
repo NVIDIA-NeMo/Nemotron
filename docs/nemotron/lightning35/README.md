@@ -115,20 +115,21 @@ For model cards and recipe summaries, see {doc}`/customize/models/lightning35/in
 
 | Stage | Name | Purpose | Guide |
 |-------|------|---------|-------|
-| 0 | [Pretraining](./pretrain.md) | Base model on 25T tokens with curriculum learning | [pretrain.md](./pretrain.md) |
+| 0 | [Pretraining](./pretrain.md) | Base model on the released pretraining recipe.md](./pretrain.md) |
 | 1 | [SFT](./sft.md) | Multi-domain instruction tuning with 12+ data sources | [sft.md](./sft.md) |
 | 2 | [RL](./rl.md) | GRPO alignment with multi-environment rewards | [rl.md](./rl.md) |
 | 3 | [Evaluation](./evaluate.md) | Benchmark evaluation with NeMo Gym | [evaluate.md](./evaluate.md) |
+| 4 | [Quantization](./quantization.md) | NVFP4 PTQ + Quantization-Aware Distillation via Model Optimizer | [quantization.md](./quantization.md) |
 
 ## Model Specifications
 
 | Specification | Value |
 |---------------|-------|
-| **Total Parameters** | 31.6B |
-| **Active Parameters** | 3.6B (per forward pass) |
-| **Pretraining Tokens** | 25 trillion |
-| **Context Length** | Up to 1M tokens |
-| **Architecture** | Hybrid Mamba-Transformer with sparse MoE |
+| **Total Parameters** | 30B |
+| **Active Parameters** | 3B (per forward pass) |
+| **Architecture** | Hybrid Mamba-Transformer with sparse MoE + Multi-Token Prediction |
+| **Layers / Hidden** | 52 / 2688 |
+| **Experts** | 128 routed (top-6) + 1 shared |
 
 > For architecture details, see the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16). There is no separate technical report for Nemotron 3.5 Lightning; the HF model cards and the recipe configs in this repository are the authoritative references.
 
@@ -136,7 +137,7 @@ For model cards and recipe summaries, see {doc}`/customize/models/lightning35/in
 
 ### Stage 0: Pretraining
 
-Two-phase curriculum on 25 trillion tokens: Phase 1 (23.5T) focuses on diversity across web, code, math, and multilingual data; Phase 2 (1.5T) emphasizes high-quality sources. Includes long-context extension to 1M tokens.
+Two-phase curriculum on the pretraining mixture from the released recipe configs.5T) focuses on diversity across web, code, math, and multilingual data; Phase 2 (1.5T) emphasizes high-quality sources. Includes long-context extension to 1M tokens.
 
 → [Pretraining Guide](./pretrain.md)
 
@@ -151,6 +152,16 @@ Multi-domain instruction tuning covering 12+ data domains including competition 
 Multi-environment RLVR training across 7 reward environments using GRPO, plus GenRM-based RLHF and DPO for reducing tool hallucination.
 
 → [RL Guide](./rl.md)
+
+### Quantization (PTQ + QAD)
+
+NVFP4 post-training quantization with four-over-six calibration, followed by
+Quantization-Aware Distillation to recover accuracy — producing the released
+NVFP4 checkpoint (22 GB from 66 GB BF16, up to 4x faster throughput). Runs
+from [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer)'s
+Megatron-Bridge examples.
+
+→ [Quantization Guide](./quantization.md)
 
 ## Execution Options
 
@@ -209,7 +220,7 @@ Native integrations with NVIDIA's NeMo ecosystem:
 | [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) | Data curation: deduplication, quality filtering, PII removal | Planned |
 | [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) | Synthetic data generation for instruction tuning and alignment | Planned |
 | [NeMo Export-Deploy](https://github.com/NVIDIA-NeMo/Export-Deploy) | Model export to TensorRT-LLM and deployment | Planned |
-| [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) | Model evaluation and benchmarking | Planned |
+| [NeMo Gym](https://github.com/NVIDIA-NeMo/Evaluator) | Model evaluation and benchmarking | Planned |
 
 These integrations will connect data curation directly to model evaluation.
 
@@ -234,7 +245,7 @@ Usage: nemotron lightning35 [OPTIONS] COMMAND [ARGS]...
 │ rl         Run reinforcement learning with NeMo-RL GRPO (stage2).        │
 ╰──────────────────────────────────────────────────────────────────────────╯
 ╭─ Evaluation ─────────────────────────────────────────────────────────────╮
-│ eval       Run model evaluation with NeMo Evaluator.                     │
+│ eval       Run model evaluation with NeMo Gym.                     │
 ╰──────────────────────────────────────────────────────────────────────────╯
 ╭─ Pipeline ───────────────────────────────────────────────────────────────╮
 │ pipe       Compose pretrain → SFT into a single nemo-run Experiment.     │
@@ -303,6 +314,7 @@ wandb login
 - [Stage 1: SFT](./sft.md)
 - [Stage 2: RL](./rl.md)
 - [Stage 3: Evaluation](./evaluate.md)
+- [Quantization (PTQ + QAD)](./quantization.md)
 - [Importing Models & Data](./import.md)
 - [Artifact Lineage](../artifacts.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)

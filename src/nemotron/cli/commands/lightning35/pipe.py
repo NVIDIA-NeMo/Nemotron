@@ -51,8 +51,29 @@ def _execute_pipe(cfg):
         typer.echo("Install with: pip install nemo-run", err=True)
         raise typer.Exit(1)
 
+    from nemo_runspec.env import parse_env
+    from nemo_runspec.execution import get_executor_type
     from nemotron.cli.commands.lightning35.pretrain import _execute_pretrain
     from nemotron.cli.commands.lightning35.sft import _execute_sft
+
+    # Dry runs display each stage's compiled config and stop — don't create
+    # (and run) an empty experiment afterwards.
+    if cfg.dry_run:
+        _execute_pretrain(cfg)
+        _execute_sft(cfg)
+        return
+
+    # Cloud executors submit immediately inside the stage helpers instead of
+    # composing into the experiment, so sequencing cannot be guaranteed there.
+    executor_type = get_executor_type(parse_env(cfg.ctx))
+    if executor_type in ("dgxcloud", "lepton"):
+        typer.echo(
+            f"Error: pipe composes stages via a Slurm nemo-run Experiment and does "
+            f"not support the '{executor_type}' executor. Run the stages "
+            "individually: `nemotron lightning35 pretrain` then `... sft`.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
     with run.Experiment("lightning35-pipe") as exp:
         _execute_pretrain(cfg, experiment=exp)

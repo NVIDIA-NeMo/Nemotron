@@ -17,7 +17,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "tiny"
+# default = "default"
 # format = "omegaconf"
 #
 # [tool.runspec.resources]

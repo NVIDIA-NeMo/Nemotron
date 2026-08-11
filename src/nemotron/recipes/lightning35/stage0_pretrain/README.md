@@ -88,7 +88,7 @@ output/lightning35/stage0_pretrain/
 └── blend.json          # Per-split data paths for Megatron-Bridge
 ```
 
-The output is registered as a W&B Artifact (`DataBlendsArtifact-pretrain`) for lineage tracking.
+The output is registered as a W&B Artifact (`lightning35-pretrain-data (PretrainBlendsArtifact)`) for lineage tracking.
 
 ### Configuration
 
@@ -98,7 +98,7 @@ The output is registered as a W&B Artifact (`DataBlendsArtifact-pretrain`) for l
 blend_path: config/data_blend_raw.json
 output_dir: output/lightning35/stage0_pretrain
 num_shards: 128
-tokenizer_model: nvidia/NVIDIA-Nemotron-Nano-9B-v2
+tokenizer_model: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
 add_bos: false
 add_eos: true
 ```
@@ -123,7 +123,7 @@ uv run nemotron lightning35 pretrain [options] [overrides...]
 
 ### Input
 
-- **Data**: `DataBlendsArtifact-pretrain` (from data prep)
+- **Data**: `lightning35-pretrain-data (PretrainBlendsArtifact)` (from data prep)
 - **Config**: `config/default.yaml` or `config/tiny.yaml`
 
 ### Output
@@ -227,14 +227,14 @@ uv run nemotron lightning35 pretrain -c tiny --batch YOUR-CLUSTER
 uv run nemotron lightning35 pretrain -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## Artifact Lineage
 
 ```mermaid
 flowchart TB
     raw["Raw Text Data"] --> dp["data_prep.py"]
-    dp --> data["DataBlendsArtifact-pretrain<br/>(bin/idx files + blend.json)"]
+    dp --> data["lightning35-pretrain-data (PretrainBlendsArtifact)<br/>(bin/idx files + blend.json)"]
     data --> train["train.py"]
     train --> model["ModelArtifact-pretrain<br/>(checkpoint)"]
     model --> next["Stage 1: SFT"]

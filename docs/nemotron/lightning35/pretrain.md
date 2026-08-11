@@ -1,6 +1,6 @@
 # Stage 0: Pretraining
 
-This stage trains the base Nemotron 3.5 Lightning model from scratch on 25 trillion tokens using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge).
+This stage trains the base Nemotron 3.5 Lightning model from scratch using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge)'s released `nemotron_3_5_lightning_pretrain_config` recipe.
 
 Nemotron 3.5 Lightning is a **hybrid Mamba-Transformer-MoE** model with 52 layers, combining state-space models for efficiency, attention for global context, and mixture-of-experts for capacity. Notable design choices include aux-loss-free MoE balancing and a two-phase data curriculum.
 
@@ -46,7 +46,7 @@ flowchart LR
 
 - **Mamba-2 layers** provide linear-time sequence processing, making long-context inference practical
 - **Attention layers** appear at regular intervals (every ~8 layers) for global information mixing
-- **MoE layers** use 128 routed experts plus 1 shared expert, with 6 experts activated per token. This keeps active parameters at ~3.5B while total parameters reach ~31.6B
+- **MoE layers** use 128 routed experts plus 1 shared expert, with 6 experts activated per token. This keeps active parameters at ~3B while total parameters reach ~30B
 
 > For implementation details, see [Megatron-Bridge Nemotron 3.5 Lightning](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/nemotron/nemotron3-nano.html).
 
@@ -88,26 +88,21 @@ Training follows a two-phase curriculum that transitions from broad coverage to 
 
 ### Hyperparameters
 
+These values come from Megatron-Bridge main's released
+`nemotron_3_5_lightning_pretrain_config` — the recipe function is the source
+of truth for anything not listed here.
+
 | Parameter | Value |
 |-----------|-------|
-| **Total Tokens** | 25 trillion |
-| **Batch Size** | 3,072 sequences |
+| **Global Batch Size** | 512 sequences |
 | **Sequence Length** | 8,192 tokens |
-| **Peak Learning Rate** | 1e-3 |
-| **Minimum Learning Rate** | 1e-5 |
-| **Optimizer** | AdamW (β₁=0.9, β₂=0.95) |
-| **Weight Decay** | 0.1 |
-| **MoE Load Balancing** | DeepSeek aux-loss-free strategy |
+| **Context Parallelism** | CP=2 (P2P comms; halves each MTP head's vocab-loss workspace per rank) |
+| **MTP** | Repeated-layer module, depth 2 (`mtp_hybrid_override_pattern: "*E"`), loss scaling 0.3 |
+| **MoE Load Balancing** | seq_aux_loss, sigmoid router score, expert bias enabled |
 
-**Learning Rate Schedule:**
-
-| Phase | Tokens | LR |
-|-------|--------|-----|
-| Warmup | 8.4B | 0 → 1e-3 |
-| Stable | 20T (80%) | 1e-3 |
-| Decay | 5T (20%) | 1e-3 → 1e-5 |
-
-The warmup is token-based (8.4B tokens), not percentage-based. The stable phase maintains peak LR for 80% of training before cosine decay.
+> Token counts and the full learning-rate schedule for the released base model
+> are documented on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16);
+> the recipe here reproduces the methodology on the open data blend.
 
 ### MoE Load Balancing
 
@@ -132,19 +127,6 @@ This achieves balanced expert utilization without interfering with the main loss
 
 > For details, see the [Auxiliary-Loss-Free Load Balancing paper](https://arxiv.org/abs/2408.15664).
 
-### Long-Context Extension
-
-The LC-Phase extends context to 1M tokens after main pretraining:
-
-| Parameter | Value |
-|-----------|-------|
-| **Duration** | 121 billion tokens |
-| **Learning Rate** | 1e-5 (constant) |
-| **Global Batch Size** | 48 |
-| **Parallelism** | 8-way context/tensor/expert, 4-way pipeline |
-
----
-
 ## Recipe Execution
 
 ### Quick Start
@@ -168,24 +150,18 @@ $ uv run nemotron lightning35 pretrain --run YOUR-CLUSTER
 For direct execution outside this CLI, use the scripts in the [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) repository:
 
 ```bash
-# Clone the repository and checkout the nano-v3 branch
+# Clone Megatron-Bridge main (the Lightning recipes live on main)
 git clone https://github.com/NVIDIA-NeMo/Megatron-Bridge.git
 cd Megatron-Bridge
-git checkout nano-v3
 
-# Run pretraining (inside container on compute node)
-python examples/recipes/nemotron_3/pretrain_nemotron_3_5_lightning.py \
-    --per-split-data-args-path /path/to/data_args.json \
-    --tokenizer-model /path/to/tokenizer.model
-
-# With config file overrides
-python examples/recipes/nemotron_3/pretrain_nemotron_3_5_lightning.py \
-    --config-file /path/to/overrides.yaml \
-    --per-split-data-args-path /path/to/data_args.json \
-    --tokenizer-model /path/to/tokenizer.model
+# Run pretraining via the recipe runner (inside a 26.08-generation container)
+python scripts/training/setup_experiment.py \
+    --recipe nemotron_3_5_lightning_pretrain_config \
+    --account ACCOUNT --partition PARTITION --container-image IMAGE
 ```
 
-See the [Megatron-Bridge Nemotron 3.5 Lightning documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/nemotron/nemotron3-nano.html) for detailed configuration options.
+See the [Nemotron 3.5 Lightning verification card](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/model_verification_cards/nemotron-3.5-lightning/card.yaml) for the exact
+validated invocations (convergence, performance, and FSDP variants).
 
 ### Configuration
 
@@ -351,20 +327,19 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 
 Pretraining uses multiple parallelism strategies for efficient scaling. The specific values differ between main pretraining and long-context extension:
 
-| Parallelism | Main Pretraining | Long-Context (LC) | Config Key |
-|-------------|------------------|-------------------|------------|
-| Tensor (TP) | 8 | 8 | `model.tensor_model_parallel_size` |
-| Pipeline (PP) | 1 | 4 | `model.pipeline_model_parallel_size` |
-| Expert (EP) | 8 | 8 | `model.expert_model_parallel_size` |
-| Context (CP) | 1 | 8 | `model.context_parallel_size` |
-| Sequence (SP) | Yes | Yes | `model.sequence_parallel` |
-| Data (DP) | Auto | Auto | Computed from world size |
+| Parallelism | Value | Config Key |
+|-------------|-------|------------|
+| Tensor (TP) | 1 | `model.tensor_model_parallel_size` |
+| Pipeline (PP) | 1 | `model.pipeline_model_parallel_size` |
+| Expert (EP) | 8 | `model.expert_model_parallel_size` |
+| Context (CP) | 2 | `model.context_parallel_size` |
+| Data (DP) | Auto | Computed from world size |
 
-**Why the difference?**
-
-- **Main pretraining** uses 4K sequences, so context parallelism (CP=1) isn't needed
-- **Long-context extension** handles up to 1M tokens, requiring CP=8 to distribute sequences across GPUs
-- **Pipeline parallelism** increases in LC phase (PP=4) to handle larger activation memory
+- **CP=2** splits the 8K sequence across two ranks so each MTP head
+  materializes only half of its vocabulary-loss workspace on an 80-GiB H100
+- **EP=8** distributes the 128 experts with HybridEP token dispatch
+  (`moe_flex_dispatcher_backend: hybridep`; EP groups must align to the
+  8-rank NVLink domain)
 
 > For parallelism concepts, see [NVIDIA AI Stack: Parallelism](../nvidia-stack.md#parallelism-strategies).
 

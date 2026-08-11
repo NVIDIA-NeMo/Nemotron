@@ -14,9 +14,10 @@ run:
 # Path to data blend JSON file
 blend_path: ${oc.env:PWD}/src/nemotron/recipes/lightning35/stage0_pretrain/config/data_prep/data_blend_raw.json
 
-# Output directory for tokenized data
-# Using fixed path to enable caching across job submissions
-output_dir: /lustre/fsw/portfolios/coreai/users/mromeijn/output/lightning35/stage0_pretrain
+# Output directory for tokenized data. Point this at stable shared storage
+# (e.g. a fixed Lustre path via a profile override) to enable receipt-based
+# caching across job submissions.
+output_dir: ${oc.env:PWD}/../output/lightning35/stage0_pretrain
 
 # Number of output shards for parallel loading
 num_shards: 128

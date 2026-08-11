@@ -121,12 +121,20 @@ def build_vllm_command(serving: dict) -> list[str]:
     return cmd
 
 
-def wait_for_endpoint(base_url: str, timeout_s: int) -> None:
-    """Poll the OpenAI-compatible /models endpoint until it responds."""
+def wait_for_endpoint(base_url: str, timeout_s: int, proc: subprocess.Popen | None = None) -> None:
+    """Poll the OpenAI-compatible /models endpoint until it responds.
+
+    Fails immediately if the serving process exits while waiting, instead of
+    burning the full startup timeout on a dead server.
+    """
     deadline = time.time() + timeout_s
     url = f"{base_url}/models"
     last_error: Exception | None = None
     while time.time() < deadline:
+        if proc is not None and proc.poll() is not None:
+            raise RuntimeError(
+                f"vLLM exited with code {proc.returncode} during startup; see vllm_serve.log in the output directory"
+            )
         try:
             with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
                 if resp.status == 200:
@@ -269,7 +277,7 @@ def main() -> None:
 
     summary: dict[str, dict | None] = {}
     try:
-        wait_for_endpoint(base_url, int(serving.get("startup_timeout_s", 3600)))
+        wait_for_endpoint(base_url, int(serving.get("startup_timeout_s", 3600)), proc=vllm_proc)
         for benchmark in benchmarks:
             name = benchmark["name"] if isinstance(benchmark, dict) else str(benchmark)
             summary[name] = run_benchmark(

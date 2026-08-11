@@ -16,7 +16,7 @@ other training stage. Inside the job it:
 1. **Serves the checkpoint** with vLLM using the Lightning family settings:
    `nemotron_v3` reasoning parser, `qwen3_coder` tool parser, fp32 Mamba SSM
    cache, expert parallelism, and optional MTP speculative decoding
-   (Lightning ships 5 MTP layers).
+   (the released checkpoint ships a repeated-layer MTP module; speculation depth is configurable).
 2. **Waits** for the OpenAI-compatible endpoint to become healthy.
 3. **Runs each benchmark** with `gym eval prepare` + `gym eval run
    --model-type vllm_model` against the endpoint.

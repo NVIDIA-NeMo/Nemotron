@@ -70,7 +70,7 @@ META = RecipeMeta(
     default_config=SPEC.config.default,
     input_artifacts={
         "model": "Base model checkpoint (from pretrain)",
-        "data": "SFT data artifact (packed .npy)",
+        "data": "SFT data artifact (packed Parquet)",
     },
     output_artifacts={"model": "Fine-tuned model checkpoint"},
 )

@@ -137,7 +137,7 @@ Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 
 30B total / 3B active parameters. Hybrid Mamba-Transformer with sparse MoE and Multi-Token Prediction, built for the high-volume execution layer of long-running agents.
 
-**Stages:** Pretraining → SFT → RL
+**Stages:** Pretraining → SFT → RL → Quantization
 :::
 
 :::{grid-item-card} Nemotron 3 Omni
@@ -186,7 +186,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | Family | Stage layout |
 |--------|--------------|
 | [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
-| [Lightning35](nemotron/lightning35/README.md) | Pretraining → SFT → RL |
+| [Lightning35](nemotron/lightning35/README.md) | Pretraining → SFT → RL → Quantization |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
