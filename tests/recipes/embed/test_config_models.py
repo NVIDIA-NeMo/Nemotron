@@ -77,6 +77,14 @@ class TestSDGConfigValidation:
         with pytest.raises(ValidationError):
             SDGConfig(batch_size=0)
 
+    def test_zero_buffer_size(self, SDGConfig):
+        with pytest.raises(ValidationError):
+            SDGConfig(buffer_size=0)
+
+    def test_manual_batch_range_is_rejected(self, SDGConfig):
+        with pytest.raises(ValidationError, match="Data Designer native resume"):
+            SDGConfig(end_batch_index=2)
+
 
 # ---------------------------------------------------------------------------
 # TestDataPrepConfigValidation
@@ -95,6 +103,10 @@ class TestDataPrepConfigValidation:
         cfg = DataPrepConfig(sdg_input_path="/tmp/fake", train_ratio=0.7, val_ratio=0.2, test_ratio=0.1)
         assert abs(cfg.train_ratio + cfg.val_ratio + cfg.test_ratio - 1.0) < 1e-6
 
+    def test_group_split_requires_group_files(self, DataPrepConfig):
+        with pytest.raises(ValidationError, match="groups_json is required"):
+            DataPrepConfig(sdg_input_path="/tmp/fake", split_strategy="dedupped")
+
     def test_quality_threshold_below_range(self, DataPrepConfig):
         with pytest.raises(ValidationError):
             DataPrepConfig(quality_threshold=-1)
@@ -102,7 +114,6 @@ class TestDataPrepConfigValidation:
     def test_quality_threshold_above_range(self, DataPrepConfig):
         with pytest.raises(ValidationError):
             DataPrepConfig(quality_threshold=11)
-
 
     def test_mining_uses_visible_gpu_count_default(self, DataPrepConfig, tmp_path, monkeypatch):
         mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")

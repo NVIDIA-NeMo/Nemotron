@@ -2,7 +2,7 @@
 # Select explicitly with -c llama.
 # Stage 0: Synthetic Data Generation Configuration
 #
-# Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+# Generates synthetic Q&A pairs from a document corpus using the retrieval SDG plugin.
 # Uses NVIDIA's LLM APIs (requires NVIDIA_API_KEY environment variable).
 #
 # Usage:
@@ -71,7 +71,13 @@ max_artifacts_per_type: 2
 
 # Number of question-answer pairs to generate per document
 # Higher values produce more training/eval data per document
-num_pairs: 10
+num_pairs: 7
+
+# Question-type counts must sum to num_pairs
+query_counts:
+  multi_hop: 3
+  structural: 2
+  contextual: 2
 
 # Minimum number of hops for multi-hop questions
 # Lower values are more reliable for LLM generation; increase for harder training data
@@ -80,22 +86,35 @@ min_hops: 1
 # Maximum number of hops for multi-hop questions
 max_hops: 3
 
+# Reasoning-type counts must sum to num_pairs
+reasoning_counts:
+  factual: 1
+  relational: 1
+  inferential: 1
+  temporal: 1
+  procedural: 1
+  causal: 1
+  visual: 1
+
 # Minimum complexity level for questions (1-5)
 # Higher values produce harder questions but increase LLM failure rate
 min_complexity: 2
 
+# Embedding cosine-similarity threshold for question deduplication
+similarity_threshold: 0.9
+
 # ==============================================================================
-# Batch processing
+# Data Designer execution
 # ==============================================================================
 
-# Number of records to process per batch
-batch_size: 200
+# Stable dataset name used for native resume and output naming
+dataset_name: nv_pp_random
 
-# Batch index to start from (for resuming failed runs)
-start_batch_index: 0
+# Checkpoint/write buffer size
+buffer_size: 200
 
-# Batch index to end at (exclusive, -1 = all batches)
-end_batch_index: -1
+# Native resume mode: never, always, or if_possible
+resume: never
 
 # ==============================================================================
 # Multi-document bundling

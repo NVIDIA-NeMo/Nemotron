@@ -69,7 +69,7 @@ def info() -> None:
     console.print("  6. [cyan]deploy[/]   - Deploy checkpoint or exported model with NIM or vLLM")
     console.print()
     console.print("[bold]Key Components:[/bold]")
-    console.print("  - retriever-sdg (synthetic data generation)")
+    console.print("  - Data Designer retrieval SDG package (generation and conversion)")
     console.print("  - Automodel (embedding model training)")
     console.print("  - BEIR (evaluation framework)")
     console.print()

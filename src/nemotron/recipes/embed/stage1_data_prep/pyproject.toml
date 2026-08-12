@@ -3,6 +3,7 @@ name = "recipe-runner-data-prep"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
+    "data-designer-retrieval-sdg==0.2.0",
     # Core dependencies
     "nemo-automodel==0.4.0",
     # Needed by Nemotron library (added via --with flag)
@@ -16,7 +17,7 @@ dependencies = [
     # Hard negative mining
     "sentence-transformers>=3.0.0",
     "faiss-cpu>=1.7.4",
-    # Convert script dependencies
+    # Data preparation dependencies
     "pandas>=2.0.0",
     "pyarrow>=14.0.0",
 ]
@@ -24,9 +25,15 @@ dependencies = [
 # Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
 # NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
 [tool.uv.sources]
+data-designer-retrieval-sdg = { index = "data-designer-plugins" }
 torch = [
     { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
 ]
+
+[[tool.uv.index]]
+name = "data-designer-plugins"
+url = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/"
+explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cu129"

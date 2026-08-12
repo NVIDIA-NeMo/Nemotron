@@ -1,8 +1,8 @@
 """CPU-tier integration tests for embed recipe stage 1 data preparation.
 
-Validates that *convert_to_retriever_data.py* and *unroll_pos_docs.py*
-produce correctly formatted outputs from synthetic SDG data, and that
-all cross-stage data contracts are satisfied.
+Validates that the public retrieval SDG converter and *unroll_pos_docs.py*
+produce correctly formatted outputs from synthetic SDG data, and that all
+cross-stage data contracts are satisfied.
 """
 
 from __future__ import annotations

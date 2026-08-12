@@ -1,7 +1,7 @@
 """Session-scoped fixtures for embed recipe integration tests.
 
-Generates synthetic SDG output, runs stage 1 convert and unroll scripts
-as subprocesses, and shares outputs across all test modules.
+Generates synthetic SDG output, runs the Stage 1 package adapter and unroll
+script, and shares outputs across all test modules.
 
 GPU-tier fixtures create isolated venvs via ``uv sync`` for each stage
 and detect Docker + NVIDIA runtime availability.
@@ -13,7 +13,6 @@ import json
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -29,7 +28,6 @@ EMBED_DIR = (
     / "embed"
 )
 SCRIPTS_DIR = EMBED_DIR / "stage1_data_prep" / "scripts"
-CONVERT_SCRIPT = SCRIPTS_DIR / "convert_to_retriever_data.py"
 UNROLL_SCRIPT = SCRIPTS_DIR / "unroll_pos_docs.py"
 
 CORPUS_ID = "test_corpus"
@@ -40,7 +38,13 @@ NUM_SYNTHETIC_FILES = 15
 # ---------------------------------------------------------------------------
 STAGES: dict[str, dict] = {
     "stage1_data_prep": {
-        "key_imports": ["nemo_automodel", "sentence_transformers", "faiss", "pandas"],
+        "key_imports": [
+            "data_designer_retrieval_sdg",
+            "nemo_automodel",
+            "sentence_transformers",
+            "faiss",
+            "pandas",
+        ],
         "container": "nvcr.io/nvidia/pytorch:25.12-py3",
         "entry_script": "data_prep.py",
     },
@@ -123,39 +127,41 @@ def _make_sdg_record(file_index: int) -> dict:
 # Session-scoped fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture(scope="session")
-def sdg_output_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Write all synthetic SDG records as ``generated_batch_0.json``."""
+def sdg_output_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Write synthetic Stage 0 records using the canonical JSONL contract."""
     d = tmp_path_factory.mktemp("sdg_output")
     records = [_make_sdg_record(i) for i in range(NUM_SYNTHETIC_FILES)]
-    (d / "generated_batch_0.json").write_text(json.dumps(records, indent=2))
-    return d
+    output_path = d / f"{CORPUS_ID}.jsonl"
+    output_path.write_text(
+        "".join(f"{json.dumps(record)}\n" for record in records),
+        encoding="utf-8",
+    )
+    return output_path
 
 
 @pytest.fixture(scope="session")
 def convert_output_dir(
-    sdg_output_dir: Path, tmp_path_factory: pytest.TempPathFactory
+    sdg_output_path: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> Path:
-    """Run *convert_to_retriever_data.py* and return its output directory."""
+    """Run the released conversion API through Nemotron's thin adapter."""
+    pytest.importorskip("data_designer_retrieval_sdg")
+
+    from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig
+    from nemotron.recipes.embed.stage1_data_prep.plugin_adapter import execute_conversion
+
     out = tmp_path_factory.mktemp("convert_output")
-    cmd = [
-        sys.executable,
-        str(CONVERT_SCRIPT),
-        str(sdg_output_dir),
-        "--corpus-id",
-        CORPUS_ID,
-        "--output-dir",
-        str(out),
-        "--seed",
-        "42",
-        "--quality-threshold",
-        "7.0",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    assert result.returncode == 0, (
-        f"convert script failed (rc={result.returncode}):\n"
-        f"--- stdout ---\n{result.stdout}\n"
-        f"--- stderr ---\n{result.stderr}"
+    config = DataPrepConfig(
+        corpus_id=CORPUS_ID,
+        sdg_input_path=sdg_output_path,
+        output_dir=out,
+        train_ratio=0.8,
+        val_ratio=0.1,
+        test_ratio=0.1,
+        conversion_seed=42,
+        quality_threshold=7.0,
     )
+    result = execute_conversion(config)
+    assert result.output_dir == out
     return out
 
 
