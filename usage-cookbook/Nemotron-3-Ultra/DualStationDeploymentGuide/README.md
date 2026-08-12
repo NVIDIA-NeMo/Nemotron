@@ -35,7 +35,7 @@ Model card:
 
 ## Prerequisites
 
-Before anything below will work,  2 DGX Stations need to be networked together. Follow [NVIDIA's Connect Two DGX Stations for Distributed Workloads](https://build.nvidia.com/station/connect-two-stations/instructions) setup guide first — this is not optional, and the later steps assume it's done:
+Before anything below will work, two DGX Stations need to be networked together. Follow [NVIDIA's Connect Two DGX Stations for Distributed Workloads](https://build.nvidia.com/station/connect-two-stations/instructions) setup guide first — this is not optional, and the later steps assume it's done:
 
 You also need:
 
@@ -44,7 +44,7 @@ You also need:
 - Docker and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) on both Stations.
 - Hugging Face access to the gated Nemotron 3 Ultra NVFP4 model.
 - `hf`, `rsync`, `jq`, `ibdev2netdev`, and `show_gids` available on the hosts.
-- Enough 350GB of storage on both Stations for a complete copy of the model cache.
+- At least 350 GB of free storage on both Stations for a complete copy of the model cache.
 - CX8 Interface should be enabled on both Stations.
 
 Throughout this guide:
@@ -119,8 +119,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 Download the model from Hugging Face:
 
->[!NOTE]
-
 ```shell
 ssh station-1
 
@@ -130,7 +128,7 @@ uvx hf download "${MODEL}"
 ```
 
 >[!NOTE]
-> This step takes more than an hour depending on the internet speed so Grab a coffee. Once it's on the head node, you can copy it to the other node rather than re-downloading. And also requires minimum storage of 350GB on both stations.
+> This step can take more than an hour depending on your internet speed. Once the model is on the head node, copy it to the other node rather than re-downloading. This requires at least 350 GB of free storage on both Stations.
 
 
 Copy the model to the other node (`station-2`):
@@ -244,12 +242,12 @@ PY
 ```
 
 >[!NOTE]
-> If you have plan to use **NVIDIA Nemotron 3 Ultra** with [NeMoClaw](https://build.nvidia.com/station/nemoclaw/instructions) add `--enable-auto-tool-choice` and `--tool-call-parser qwen3_coder` and `--reasoning-parser nemotron_v3` to vll serve command.
+> If you plan to use **NVIDIA Nemotron 3 Ultra** with [NeMoClaw](https://build.nvidia.com/station/nemoclaw/instructions) add `--enable-auto-tool-choice`, `--tool-call-parser qwen3_coder`, and `--reasoning-parser nemotron_v3` to the `vllm serve` command.
 >
 ### 2. Start the worker on station-2
 
 >[!NOTE]
-> HEAD_IP value should be fetched from station-1 [Step 3](#3-download-and-distribute-the-model-cache) and should be set to the value printed on `station-1`.
+> HEAD_IP should be set to the value printed on `station-1` in [Start the head on station-1](#1-start-the-head-on-station-1).
 
 Connect to `station-2` and discover its values:
 
