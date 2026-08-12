@@ -113,7 +113,13 @@ dataset_name: nv_pp_random
 # Checkpoint/write buffer size
 buffer_size: 200
 
-# Native resume mode: never, always, or if_possible
+# Controls whether this invocation reuses checkpoints for dataset_name.
+# Checkpoints are written in every mode.
+# - never: start fresh (default)
+# - always: require and resume a compatible prior run
+# - if_possible: resume a compatible prior run, otherwise start fresh
+# Resume compatibility checks configuration, not corpus file contents. Only resume
+# when the input corpus is unchanged, and keep buffer_size the same as the prior run.
 resume: never
 
 # ==============================================================================

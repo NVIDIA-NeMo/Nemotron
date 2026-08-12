@@ -219,6 +219,30 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
   - Customize provider settings in the config file
   - See [default provider settings](https://docs.nvidia.com/nemo/datadesigner/concepts/models/default-model-settings) for configuration options
 
+### Resuming Stage 0
+
+Data Designer writes a durable checkpoint after each `buffer_size` records in every
+resume mode. The `resume` setting controls whether a later invocation reuses checkpoints
+stored under the same `artifact_path` and `dataset_name`:
+
+| Mode | Behavior | Use when |
+|------|----------|----------|
+| `never` (default) | Start a fresh generation run. Existing artifacts are left in place and a timestamped dataset directory is used when needed. | Intentionally generating a new stochastic dataset. |
+| `always` | Require a compatible prior run and continue from its completed checkpoints. Fail if no prior dataset exists or its configuration is incompatible. | Explicitly recovering an interrupted run. |
+| `if_possible` | Continue a compatible prior run; otherwise start a fresh run. | A job may be retried automatically from either a clean or interrupted state. |
+
+To continue an interrupted run, keep `artifact_path`, `dataset_name`, and `buffer_size`
+unchanged:
+
+```bash
+nemotron embed sdg -c default corpus_dir=/path/to/your/docs resume=always
+```
+
+Resume compatibility uses Data Designer's configuration fingerprint; it does not hash
+the contents of corpus files. Use `always` or `if_possible` only when the input corpus
+has not changed in place. The default is `never` so that an ordinary repeated recipe
+invocation generates new data instead of silently reusing a completed dataset.
+
 ## Quick Start
 
 ### Default Profile
