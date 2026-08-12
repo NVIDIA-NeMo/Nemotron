@@ -109,8 +109,15 @@ def find_last_user_message_end(
     # Find the last user message index
     last_user_idx = max(i for i, msg in enumerate(messages) if msg["role"] == "user")
 
+    next_msg = messages[last_user_idx + 1] if last_user_idx + 1 < len(messages) else None
+
     # Render up to the last user message (inclusive)
-    if enable_thinking and reasoning_renders_empty(messages[last_user_idx + 1]):
+    if (
+        enable_thinking
+        and next_msg is not None
+        and next_msg["role"] == "assistant"
+        and reasoning_renders_empty(next_msg)
+    ):
         # Manual hack for empty reasoning content mismatch
         template_up_to_last_user = tokenizer.apply_chat_template(
             messages[: last_user_idx + 1],
@@ -118,6 +125,7 @@ def find_last_user_message_end(
             add_generation_prompt=False,
             tools=tools,
             chat_template_kwargs={"enable_thinking": enable_thinking},
+            enable_thinking=enable_thinking,
         )
         template_up_to_last_user += "<|im_start|>assistant\n<think></think>"
     else:
@@ -126,6 +134,7 @@ def find_last_user_message_end(
             tokenize=False,
             add_generation_prompt=True,
             chat_template_kwargs={"enable_thinking": enable_thinking},
+            enable_thinking=enable_thinking,
             tools=tools,
         )
 
@@ -168,15 +177,14 @@ def split_template_into_messages(
         add_generation_prompt=False,
         tools=tools,
         chat_template_kwargs={"enable_thinking": enable_thinking},
+        enable_thinking=enable_thinking,
     )
 
     # Get first "message": if starting from last user, this includes all prior turns
     if start_from_last_user:
         system_end = full_template.find("<|im_end|>\n") + len("<|im_end|>\n")
         last_user_idx = max(i for i, msg in enumerate(messages) if msg["role"] == "user")
-        last_user_pos = find_last_user_message_end(
-            messages, tokenizer, enable_thinking=enable_thinking, tools=tools
-        )
+        last_user_pos = find_last_user_message_end(messages, tokenizer, enable_thinking=enable_thinking, tools=tools)
         previous_pos = last_user_pos
         # First chunk: everything up to last user message, split at system boundary
         result = [
@@ -191,18 +199,21 @@ def split_template_into_messages(
 
     for i in message_range:
         # Parallel tool calls
-        if (
-            i + 1 < len(messages)
-            and messages[i]["role"] == "tool"
-            and messages[i + 1]["role"] == "tool"
-        ):
+        if i + 1 < len(messages) and messages[i]["role"] == "tool" and messages[i + 1]["role"] == "tool":
             continue
+
+        # A generation prompt ("<|im_start|>assistant\n") appears in the full
+        # template only when an assistant turn actually follows. Consecutive
+        # same-role turns (e.g. user followed by user) render back-to-back
+        # without it, so anticipating one would desync the incremental render
+        # (see NVIDIA-NeMo/Megatron-Bridge#5080 §3).
+        next_is_assistant = i + 1 < len(messages) and messages[i + 1]["role"] == "assistant"
 
         # Render up to this message
         if (
             enable_thinking
             and messages[i]["role"] != "assistant"
-            and i + 1 < len(messages)
+            and next_is_assistant
             and reasoning_renders_empty(messages[i + 1])
         ):
             # Manual hack for empty reasoning content mismatch
@@ -212,17 +223,20 @@ def split_template_into_messages(
                 add_generation_prompt=False,
                 tools=tools,
                 chat_template_kwargs={"enable_thinking": enable_thinking},
+                enable_thinking=enable_thinking,
             )
             template_up_to_here += "<|im_start|>assistant\n<think></think>"
         else:
-            # Tool and user messages need generation prompt, others don't
-            add_gen_prompt = messages[i]["role"] == "tool" or messages[i]["role"] == "user"
+            # Tool and user messages need a generation prompt, but only when
+            # an assistant turn follows (see next_is_assistant above).
+            add_gen_prompt = (messages[i]["role"] == "tool" or messages[i]["role"] == "user") and next_is_assistant
             template_up_to_here = tokenizer.apply_chat_template(
                 messages[: i + 1],
                 tokenize=False,
                 add_generation_prompt=add_gen_prompt,
                 tools=tools,
                 chat_template_kwargs={"enable_thinking": enable_thinking},
+                enable_thinking=enable_thinking,
             )
 
         current_pos = len(template_up_to_here)
@@ -230,9 +244,7 @@ def split_template_into_messages(
 
         # Verify incremental rendering matches full template
         if template_up_to_here != full_template[:current_pos]:
-            raise ValueError(
-                f"Template mismatch at message {i}: incremental rendering doesn't match full"
-            )
+            raise ValueError(f"Template mismatch at message {i}: incremental rendering doesn't match full")
 
         result.append({"role": messages[i]["role"], "content": chunk_text})
         previous_pos = current_pos
@@ -277,6 +289,13 @@ def create_masked_messages(
             else:
                 # Include messages up to but not including the next user message
                 messages_i = messages[: user_idxs[i + 1]]
+
+            # Consecutive user turns produce a sub-sequence that ends on the
+            # user turn itself with no assistant continuation — there is
+            # nothing to train on, so skip it instead of failing the row
+            # (see NVIDIA-NeMo/Megatron-Bridge#5080 §3).
+            if user_idxs[i] == len(messages_i) - 1:
+                continue
 
             chunks = split_template_into_messages(
                 messages_i,
@@ -326,10 +345,7 @@ def validate_conversation(
         isinstance(m, dict)
         and (
             (isinstance(m.get("content"), str) and "<tool_call>" in m.get("content", ""))
-            or (
-                isinstance(m.get("reasoning_content"), str)
-                and "<tool_call>" in m.get("reasoning_content", "")
-            )
+            or (isinstance(m.get("reasoning_content"), str) and "<tool_call>" in m.get("reasoning_content", ""))
         )
         for m in messages
     )
@@ -337,10 +353,7 @@ def validate_conversation(
         isinstance(m, dict)
         and (
             (isinstance(m.get("content"), str) and "# Tools" in m.get("content", ""))
-            or (
-                isinstance(m.get("reasoning_content"), str)
-                and "# Tools" in m.get("reasoning_content", "")
-            )
+            or (isinstance(m.get("reasoning_content"), str) and "# Tools" in m.get("reasoning_content", ""))
         )
         for m in messages
     )

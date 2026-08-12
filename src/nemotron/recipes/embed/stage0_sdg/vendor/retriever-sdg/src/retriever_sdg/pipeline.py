@@ -70,7 +70,7 @@ def custom_model_config(
     qa_generation_provider: str = "nvidia",
     quality_judge_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5",
     quality_judge_provider: str = "nvidia",
-    embed_model: str = "nvidia/llama-nemotron-embed-1b-v2",
+    embed_model: str = "nvidia/nemotron-3-embed-1b",
     embed_provider: str = "nvidia",
     max_parallel_requests_for_gen: Optional[int] = None,
 ) -> Tuple[List[dd.ModelConfig], Dict[str, str]]:
@@ -950,7 +950,7 @@ def build_qa_generation_pipeline(
         qa_generation_provider: str = "nvidia",
         quality_judge_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5",
         quality_judge_provider: str = "nvidia",
-        embed_model: str = "nvidia/llama-nemotron-embed-1b-v2",
+        embed_model: str = "nvidia/nemotron-3-embed-1b",
         embed_provider: str = "nvidia",
     ) -> dd.DataDesignerConfigBuilder:
     """Create a simple query generation config for text files.
@@ -1729,7 +1729,7 @@ def generate(
     qa_generation_provider: str = "nvidia",
     quality_judge_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5",
     quality_judge_provider: str = "nvidia",
-    embed_model: str = "nvidia/llama-nemotron-embed-1b-v2",
+    embed_model: str = "nvidia/nemotron-3-embed-1b",
     embed_provider: str = "nvidia",
     nvidia_api_base_url: Optional[str] = None,
 ) -> None:
@@ -1771,7 +1771,7 @@ def generate(
         qa_generation_provider: Provider for QA generation model (default: nvidia)
         quality_judge_model: Model name for quality judge (default: nvidia/llama-3.3-nemotron-super-49b-v1.5)
         quality_judge_provider: Provider for quality judge model (default: nvidia)
-        embed_model: Model name for embeddings (default: nvidia/llama-nemotron-embed-1b-v2)
+        embed_model: Model name for embeddings (default: nvidia/nemotron-3-embed-1b)
         embed_provider: Provider for embedding model (default: nvidia)
     Examples:
         # Generate from text files (processes all in batches of 200)

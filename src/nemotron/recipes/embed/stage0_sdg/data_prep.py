@@ -164,7 +164,7 @@ class SDGConfig(RecipeSettings):
         default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for quality judge."
     )
     quality_judge_provider: str = Field(default="nvidia", description="Provider for quality judge model.")
-    embed_model: str = Field(default="nvidia/llama-nemotron-embed-1b-v2", description="Model name for embeddings.")
+    embed_model: str = Field(default="nvidia/nemotron-3-embed-1b", description="Model name for embeddings.")
     embed_provider: str = Field(default="nvidia", description="Provider for embedding model.")
     max_parallel_requests_for_gen: int | None = Field(
         default=None,

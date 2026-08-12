@@ -29,6 +29,11 @@ default = true
 min_gpus = 8
 
 [[models]]
+name = "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
+description = "Nemotron 3.5 Lightning 30B-A3B (hybrid Mamba-Transformer MoE with MTP). Lightning35 path."
+min_gpus = 8
+
+[[models]]
 name = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16"
 description = "Nemotron 3 Super 120B-A12B (120.6B total / 12.7B active hybrid Mamba LatentMoE). Typically starts at 32 GPUs."
 min_gpus = 32

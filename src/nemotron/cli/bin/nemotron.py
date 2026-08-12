@@ -112,6 +112,7 @@ def _register_groups() -> None:
     debug = os.environ.get("NEMOTRON_DEBUG_CLI") == "1"
     groups = (
         ("data", "nemotron.cli.commands.data", "data_app"),
+        ("lightning35", "nemotron.cli.commands.lightning35", "lightning35_app"),
         ("nano3", "nemotron.cli.commands.nano3", "nano3_app"),
         ("omni3", "nemotron.cli.commands.omni3", "omni3_app"),
         ("super3", "nemotron.cli.commands.super3", "super3_app"),

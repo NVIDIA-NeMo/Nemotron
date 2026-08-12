@@ -1,0 +1,39 @@
+run:
+  data: lightning35-pretrain-data:latest
+  env:
+    # 26.08 container generation (has the Lightning stack); the public
+    # nvcr.io/nvidia/nemo:26.08 tag publishes at launch — switch then.
+    container: nvcr.io/nvidian/nemo:26.08.rc2
+    # FlashInfer JIT cache must live on a writable mount — the container's
+    # /root/.cache overlay is tiny and import fails with ENOSPC otherwise
+    # (same fix as super3 RL's persistent cache mapping).
+    env_vars:
+      FLASHINFER_WORKSPACE_BASE: /nemo_run/cache/flashinfer_workspace
+      FLASHINFER_CUBIN_DIR: /nemo_run/cache/flashinfer_cubins
+      # Triton/Inductor JIT caches also default under /root — use node-local /tmp
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TILELANG_CACHE_DIR: /tmp/tilelang_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    # The Lightning recipe symbols only exist on Megatron-Bridge main
+    # (post 2026-07-28); mount it over the container's older copy, with the
+    # Megatron-LM revision MB main pins (megatron.core resolves from MB's
+    # vendored submodule path in this container). Remove both mounts when
+    # the public nemo:26.08 container ships.
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@d12f6c8c9aff51e166d872fd70151687a8e3f375,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_pretrain_config
+  per_split_data_args_path: ${art:data,path}/blend.json
+
+logger:
+  log_interval: 10
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+
+checkpoint:
+  save: /nemo_run/lightning35-pretrain-model
+  save_interval: 20

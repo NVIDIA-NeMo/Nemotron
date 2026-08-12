@@ -1,0 +1,14 @@
+{
+  "datasets": [
+    {
+      "name": "science-mcq",
+      "path": "hf://nvidia/Nemotron-Science-v1",
+      "subset": "MCQ"
+    },
+    {
+      "name": "instruction-following-chat",
+      "path": "hf://nvidia/Nemotron-Instruction-Following-Chat-v1",
+      "subset": "chat_if"
+    }
+  ]
+}
