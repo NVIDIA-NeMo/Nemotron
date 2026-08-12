@@ -522,17 +522,29 @@ class VlmPreferencePrepStage(pipelines_v1.Stage[VlmPreferencePrepWorkItem, VlmPr
                 "VlmPreferencePrepWorkItem(flavor='mpo') requires a "
                 "builder_command until the upstream prep logic is vendored."
             )
-        command = item.builder_command.format(
-            input_dir=str(Path(item.raw_dir).expanduser()),
-            output_dir=str(output_dir.expanduser()),
-            meta_name=item.meta_name,
-        )
-        # Use shlex.split rather than ``bash -lc`` so the subprocess does
-        # not depend on operator shell state (.bashrc, login shell setup).
-        # The command comes from a YAML config not user input, so we don't
-        # need shell escape semantics either.
+        # Build argv without a shell. Tokenize the command template first, then
+        # substitute placeholders into individual argv elements. This ordering
+        # matters: interpolating per token (instead of formatting the whole
+        # string and re-splitting) guarantees a substituted value containing
+        # whitespace, quotes, or shell metacharacters such as ``$(...)`` stays
+        # inside a single argument -- it cannot inject extra arguments (CWE-88)
+        # or be shell-evaluated, and subprocess runs with shell=False so no shell
+        # ever interprets these values. It also fixes the correctness bug where a
+        # legitimate path containing spaces was re-split into multiple args.
+        # ``builder_command`` remains trusted operator configuration; treating the
+        # interpolated values as untrusted here is defense-in-depth for the case
+        # where ``input_dir`` is sourced from an env var or dataset path.
+        substitutions = {
+            "input_dir": str(Path(item.raw_dir).expanduser()),
+            "output_dir": str(output_dir.expanduser()),
+            "meta_name": item.meta_name,
+        }
+        command = [
+            token.format(**substitutions)
+            for token in shlex.split(item.builder_command)
+        ]
         logger.info("VlmPreferencePrepStage[mpo]: running builder command: %s", command)
-        subprocess.check_call(shlex.split(command))
+        subprocess.check_call(command)
         if not meta_path.exists():
             raise FileNotFoundError(
                 f"MPO builder command completed but {meta_path} was not produced."
