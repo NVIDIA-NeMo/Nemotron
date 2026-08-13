@@ -243,6 +243,13 @@ the contents of corpus files. Use `always` or `if_possible` only when the input 
 has not changed in place. The default is `never` so that an ordinary repeated recipe
 invocation generates new data instead of silently reusing a completed dataset.
 
+Earlier recipe versions exposed `batch_size`, `start_batch_index`, and
+`end_batch_index` for manually partitioning the corpus into independent runs. Those
+settings have been removed with the manual batching implementation. Use `buffer_size`
+to control checkpoint/write granularity; it does not partition the corpus or produce
+separate batch outputs. Manual start/end ranges have no direct replacement. Use a
+stable `dataset_name` with `resume=always` to continue an interrupted run.
+
 ## Quick Start
 
 ### Default Profile

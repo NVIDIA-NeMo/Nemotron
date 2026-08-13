@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,18 +11,6 @@ if TYPE_CHECKING:
     from nemotron.recipes.embed.stage0_sdg.data_prep import SDGConfig
 
 RETRIEVAL_SDG_SCHEMA_VERSION = 1
-
-
-def _effective_buffer_size(cfg: SDGConfig) -> int:
-    if cfg.batch_size is None:
-        return cfg.buffer_size
-
-    warnings.warn(
-        "batch_size is deprecated; use buffer_size. Data Designer now owns checkpointing and resume.",
-        FutureWarning,
-        stacklevel=2,
-    )
-    return cfg.batch_size
 
 
 def build_generation_config(cfg: SDGConfig, corpus_dir: Path) -> tuple[GenerationRunConfig, tuple[str, ...]]:
@@ -95,7 +82,7 @@ def build_generation_config(cfg: SDGConfig, corpus_dir: Path) -> tuple[Generatio
             output_dir=cfg.output_dir.resolve(),
             artifact_path=cfg.artifact_path.resolve(),
             dataset_name=cfg.dataset_name or cfg.corpus_id,
-            buffer_size=_effective_buffer_size(cfg),
+            buffer_size=cfg.buffer_size,
             resume=cfg.resume,
             model_providers=model_providers,
             pipeline=pipeline,

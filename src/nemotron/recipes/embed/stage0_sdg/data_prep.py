@@ -164,32 +164,6 @@ class SDGConfig(RecipeSettings):
         default="never",
         description="Data Designer native resume mode.",
     )
-    batch_size: int | None = Field(
-        default=None,
-        gt=0,
-        description="Deprecated alias for buffer_size.",
-    )
-    start_batch_index: int = Field(
-        default=0,
-        ge=0,
-        description="Deprecated manual range start; only 0 is accepted during migration.",
-    )
-    end_batch_index: int = Field(
-        default=-1,
-        description="Deprecated manual range end; only -1 is accepted during migration.",
-    )
-
-    @model_validator(mode="after")
-    def _check_execution_compatibility(self):
-        if self.start_batch_index != 0 or self.end_batch_index != -1:
-            raise ValueError(
-                "start_batch_index/end_batch_index are not supported by Data Designer native resume; "
-                "use dataset_name and resume instead"
-            )
-        if self.batch_size is not None and "buffer_size" in self.model_fields_set:
-            if self.batch_size != self.buffer_size:
-                raise ValueError("batch_size and buffer_size must match when both are supplied")
-        return self
 
     # --- Multi-document bundling -----------------------------------------------
     multi_doc: bool = Field(default=False, description="Enable multi-document bundling mode.")
@@ -451,7 +425,6 @@ def run_sdg(cfg: SDGConfig) -> Path:
     # don't depend on CWD and error messages show full paths.
     output_dir = cfg.output_dir.resolve()
     artifact_path = cfg.artifact_path.resolve()
-    buffer_size = cfg.batch_size if cfg.batch_size is not None else cfg.buffer_size
 
     # Validate input corpus directory
     if not corpus_dir.exists():
@@ -483,7 +456,7 @@ def run_sdg(cfg: SDGConfig) -> Path:
     print(f"   Model (QA generation): {cfg.qa_generation_model}")
     print(f"   Num pairs: {cfg.num_pairs}")
     print(f"   Dataset name: {cfg.dataset_name or cfg.corpus_id}")
-    print(f"   Buffer size: {buffer_size}")
+    print(f"   Buffer size: {cfg.buffer_size}")
     print(f"   Resume mode: {cfg.resume}")
     print()
 
@@ -493,7 +466,7 @@ def run_sdg(cfg: SDGConfig) -> Path:
         file_extensions=file_extensions,
         min_text_length=cfg.min_text_length,
         num_pairs=cfg.num_pairs,
-        buffer_size=buffer_size,
+        buffer_size=cfg.buffer_size,
         num_files=cfg.num_files,
     )
 

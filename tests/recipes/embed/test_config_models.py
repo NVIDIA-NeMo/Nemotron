@@ -73,17 +73,21 @@ class TestSDGConfigValidation:
         with pytest.raises(ValidationError):
             SDGConfig(min_complexity=6)
 
-    def test_zero_batch_size(self, SDGConfig):
-        with pytest.raises(ValidationError):
-            SDGConfig(batch_size=0)
-
     def test_zero_buffer_size(self, SDGConfig):
         with pytest.raises(ValidationError):
             SDGConfig(buffer_size=0)
 
-    def test_manual_batch_range_is_rejected(self, SDGConfig):
-        with pytest.raises(ValidationError, match="Data Designer native resume"):
-            SDGConfig(end_batch_index=2)
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("batch_size", 64),
+            ("start_batch_index", 1),
+            ("end_batch_index", 2),
+        ],
+    )
+    def test_removed_manual_batch_fields_are_rejected(self, SDGConfig, field, value):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            SDGConfig(**{field: value})
 
 
 # ---------------------------------------------------------------------------

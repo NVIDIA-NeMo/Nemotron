@@ -21,7 +21,6 @@ def test_generation_fields_have_explicit_ownership() -> None:
         "artifact_extraction_model",
         "artifact_extraction_provider",
         "artifact_path",
-        "batch_size",
         "buffer_size",
         "bundle_size",
         "bundle_strategy",
@@ -58,10 +57,8 @@ def test_generation_fields_have_explicit_ownership() -> None:
     recipe_fields = {
         "artifact_root",
         "corpus_dir",
-        "end_batch_index",
         "nvidia_api_key",
         "preview",
-        "start_batch_index",
     }
 
     assert package_fields.isdisjoint(recipe_fields)
@@ -211,20 +208,6 @@ def test_generation_adapter_maps_recipe_overrides(tmp_path: Path) -> None:
     assert config.pipeline.min_complexity == 3
     assert config.pipeline.similarity_threshold == 0.8
     assert config.pipeline.max_parallel_requests_for_gen == 5
-
-
-def test_generation_adapter_supports_legacy_batch_size_with_warning(tmp_path: Path) -> None:
-    cfg = SDGConfig(corpus_dir=str(tmp_path), batch_size=64)
-
-    with pytest.warns(FutureWarning, match="batch_size is deprecated"):
-        config, _ = build_generation_config(cfg, tmp_path)
-
-    assert config.buffer_size == 64
-
-
-def test_generation_config_rejects_manual_batch_ranges() -> None:
-    with pytest.raises(ValidationError, match="Data Designer native resume"):
-        SDGConfig(start_batch_index=1)
 
 
 def test_generation_adapter_requires_distributions_to_match_num_pairs(tmp_path: Path) -> None:
