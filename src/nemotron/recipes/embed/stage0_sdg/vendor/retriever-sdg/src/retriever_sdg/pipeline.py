@@ -1078,6 +1078,9 @@ INSTRUCTIONS:
 """,
             output_format=DocumentArtifacts,
             model_alias=role_aliases["artifact_extraction"],
+            # Capture the raw assistant message (pre-parse) so a parse failure or
+            # empty/underfilled result can still be root-caused. See issue #314.
+            with_trace=dd.TraceType.LAST_MESSAGE,
         ))
 
     # Define data models for hard question-answer generation
@@ -1294,6 +1297,9 @@ CRITICAL: "query_type" and "reasoning_type" are TWO SEPARATE FIELDS with differe
            num_pairs=num_pairs),
             output_format=QuestionAnswerPairs,
             model_alias=role_aliases["qa_generation"],
+            # Capture the raw assistant message (pre-parse) so a parse failure or
+            # empty/underfilled QA result can still be root-caused. See issue #314.
+            with_trace=dd.TraceType.LAST_MESSAGE,
         ))
 
     config_builder.add_column(
@@ -1683,6 +1689,164 @@ def filter_qa_pairs_by_quality(
     return filtered_df, skipped_files
 
 
+def _extract_pairs(qa_generation: Any) -> List[Any]:
+    """Best-effort extraction of the 'pairs' list from a qa_generation cell."""
+    if qa_generation is None:
+        return []
+    if isinstance(qa_generation, dict):
+        pairs = qa_generation.get("pairs", [])
+    else:
+        pairs = getattr(qa_generation, "pairs", [])
+    if isinstance(pairs, np.ndarray):
+        pairs = pairs.tolist()
+    if not isinstance(pairs, list):
+        return []
+    return pairs
+
+
+def _raw_trace_text(row: "pd.Series", trace_column: str) -> Optional[str]:
+    """Pull the raw assistant message text out of a `{column}__trace` cell, if present."""
+    if trace_column not in row:
+        return None
+    trace = row[trace_column]
+    if isinstance(trace, np.ndarray):
+        trace = trace.tolist()
+    if not trace:
+        return None
+    last_message = trace[-1]
+    if isinstance(last_message, dict):
+        return last_message.get("content")
+    return getattr(last_message, "content", None)
+
+
+def log_stage0_raw_responses(
+    generated_df: "pd.DataFrame",
+    num_pairs: int,
+    batch_idx: int,
+    output_dir: Path,
+    generated_columns: Tuple[str, ...] = ("document_artifacts", "qa_generation"),
+) -> Dict[str, Any]:
+    """Log every raw Stage 0 LLM response before parsing and validate QA output.
+
+    For each generated column, this inspects the parsed value and (when available)
+    the paired `{column}__trace` value captured via `with_trace=TraceType.LAST_MESSAGE`
+    on the corresponding LLMStructuredColumnConfig. It writes one JSONL record per
+    (record index, column, attempt) to `<output_dir>/stage0_raw_responses.jsonl` and
+    returns aggregate counts used for the batch completion summary. See issue #314.
+
+    Args:
+        generated_df: The batch's generated DataFrame, indexed by seed-dataset order.
+        num_pairs: The configured/target number of QA pairs per record.
+        batch_idx: Index of the current batch (used only for log entries).
+        output_dir: Directory the raw-response log file is appended to.
+        generated_columns: Names of the LLM-generated columns to inspect for
+            missing/omitted records.
+
+    Returns:
+        A dict of aggregate counts: requested_records, persisted_records,
+        omitted_by_column, empty_qa_records, underfilled_qa_records,
+        requested_qa_total, generated_qa_total.
+    """
+    log_path = output_dir / "stage0_raw_responses.jsonl"
+    omitted_by_column: Dict[str, int] = {col: 0 for col in generated_columns}
+    omitted_record_indices: set = set()
+    empty_qa_records = 0
+    underfilled_qa_records = 0
+    requested_qa_total = 0
+    generated_qa_total = 0
+    log_lines: List[str] = []
+
+    for record_index, row in generated_df.iterrows():
+        for column in generated_columns:
+            value = row.get(column) if column in row else None
+            is_missing = value is None or (isinstance(value, float) and math.isnan(value))
+
+            if is_missing:
+                omitted_by_column[column] += 1
+                omitted_record_indices.add(record_index)
+
+            # Only log an entry when there's something worth investigating:
+            # the column is missing, or (for qa_generation) the parsed
+            # result is empty/underfilled relative to num_pairs.
+            pairs: Optional[List[Any]] = None
+            is_empty_qa = False
+            is_underfilled_qa = False
+            if column == "qa_generation" and not is_missing:
+                pairs = _extract_pairs(value)
+                requested_qa_total += num_pairs
+                generated_qa_total += len(pairs)
+                if len(pairs) == 0:
+                    is_empty_qa = True
+                    empty_qa_records += 1
+                elif len(pairs) < num_pairs:
+                    is_underfilled_qa = True
+                    underfilled_qa_records += 1
+
+            if not (is_missing or is_empty_qa or is_underfilled_qa):
+                continue
+
+            log_entry = {
+                "batch_index": batch_idx,
+                "record_index": int(record_index),
+                "file_name": row.get("file_name"),
+                "column": column,
+                "attempt": 1,
+                "status": (
+                    "omitted_parse_failure" if is_missing
+                    else "empty_qa" if is_empty_qa
+                    else "underfilled_qa"
+                ),
+                "requested_qa_pairs": num_pairs if column == "qa_generation" else None,
+                "generated_qa_pairs": len(pairs) if pairs is not None else None,
+                "raw_response": _raw_trace_text(row, f"{column}__trace"),
+            }
+            log_lines.append(json.dumps(log_entry, default=str))
+
+    if log_lines:
+        with open(log_path, "a", encoding="utf-8") as log_file:
+            log_file.write("\n".join(log_lines) + "\n")
+
+    return {
+        "requested_records": len(generated_df),
+        "persisted_records": len(generated_df) - len(omitted_record_indices),
+        "omitted_by_column": omitted_by_column,
+        "empty_qa_records": empty_qa_records,
+        "underfilled_qa_records": underfilled_qa_records,
+        "requested_qa_total": requested_qa_total,
+        "generated_qa_total": generated_qa_total,
+    }
+
+
+def print_stage0_batch_summary(batch_label: Any, stats: Dict[str, Any]) -> None:
+    """Print a Stage 0 completion summary for a batch (or the overall run). See issue #314."""
+    print(f"\nStage 0 completion summary (batch {batch_label}):")
+    print(f"  Requested records: {stats['requested_records']}")
+    print(f"  Persisted records: {stats['persisted_records']}")
+    for column, count in stats["omitted_by_column"].items():
+        if count:
+            print(f"  Omitted records ({column}, parse failure): {count}")
+    print(f"  Empty QA results: {stats['empty_qa_records']}")
+    print(f"  Underfilled QA results (< requested count): {stats['underfilled_qa_records']}")
+    print(f"  Requested QA pairs: {stats['requested_qa_total']}")
+    print(f"  Generated QA pairs: {stats['generated_qa_total']}")
+    if stats["requested_qa_total"] > 0:
+        fill_rate = stats["generated_qa_total"] / stats["requested_qa_total"] * 100
+        print(f"  QA fill rate: {fill_rate:.1f}%")
+
+
+def _merge_stage0_stats(total: Dict[str, Any], batch_stats: Dict[str, Any]) -> Dict[str, Any]:
+    """Accumulate a batch's Stage 0 stats into a running total across all batches."""
+    total["requested_records"] += batch_stats["requested_records"]
+    total["persisted_records"] += batch_stats["persisted_records"]
+    for column, count in batch_stats["omitted_by_column"].items():
+        total["omitted_by_column"][column] = total["omitted_by_column"].get(column, 0) + count
+    total["empty_qa_records"] += batch_stats["empty_qa_records"]
+    total["underfilled_qa_records"] += batch_stats["underfilled_qa_records"]
+    total["requested_qa_total"] += batch_stats["requested_qa_total"]
+    total["generated_qa_total"] += batch_stats["generated_qa_total"]
+    return total
+
+
 def _format_duration(seconds: float) -> str:
     """Format a duration in seconds to a human-readable string."""
     seconds = max(0, int(seconds))
@@ -1925,6 +2089,15 @@ def generate(
     input_basename = input_dir.name
     total_batches_to_run = actual_end_batch - start_batch_index
     batch_times: list[float] = []
+    overall_stage0_stats: Dict[str, Any] = {
+        "requested_records": 0,
+        "persisted_records": 0,
+        "omitted_by_column": {},
+        "empty_qa_records": 0,
+        "underfilled_qa_records": 0,
+        "requested_qa_total": 0,
+        "generated_qa_total": 0,
+    }
 
     for batch_idx in range(start_batch_index, actual_end_batch):
         start_idx = batch_idx * batch_size
@@ -1960,6 +2133,16 @@ def generate(
 
         generated_df = result.load_dataset()
 
+        # Log every raw Stage 0 LLM response before parsing, and validate/summarize
+        # empty or underfilled QA output. See issue #314.
+        batch_stage0_stats = log_stage0_raw_responses(
+            generated_df=generated_df,
+            num_pairs=num_pairs,
+            batch_idx=batch_idx,
+            output_dir=output_dir,
+        )
+        overall_stage0_stats = _merge_stage0_stats(overall_stage0_stats, batch_stage0_stats)
+
         # Save batch output to JSON with batch info in filename
         output_filename = f"generated_batch{batch_idx}_{start_idx}_{end_idx}.json"
         generated_df.to_json(output_dir / output_filename, orient='records', indent=2)
@@ -1972,6 +2155,7 @@ def generate(
 
         print(f"Batch {batch_idx}/{num_batches - 1} done in {_format_duration(batch_elapsed)}")
         print(f"  Saved to {output_filename} ({len(generated_df)} records)")
+        print_stage0_batch_summary(batch_idx, batch_stage0_stats)
         if batches_remaining > 0:
             avg_batch_time = sum(batch_times) / len(batch_times)
             eta_seconds = avg_batch_time * batches_remaining
@@ -1983,6 +2167,8 @@ def generate(
     print(f"Total batches processed: {actual_end_batch - start_batch_index}")
     print("\nOutput files:")
     print(f"  - generated_batch{{idx}}_{{start}}_{{end}}.json: Raw generation data per batch")
+    print(f"  - stage0_raw_responses.jsonl: Raw LLM responses for omitted/empty/underfilled records")
+    print_stage0_batch_summary("all", overall_stage0_stats)
 
 
 def entrypoint():
