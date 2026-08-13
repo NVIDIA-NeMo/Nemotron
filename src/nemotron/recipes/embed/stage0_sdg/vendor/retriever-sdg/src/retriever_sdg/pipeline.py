@@ -49,7 +49,7 @@ import sys
 import yaml
 from pathlib import Path
 from collections import defaultdict, deque
-from typing import Dict, List, Tuple, Optional, Literal, Any
+from typing import Callable, Dict, List, Tuple, Optional, Literal, Any
 from tyro.extras import SubcommandApp
 from pydantic import BaseModel, Field
 import re
@@ -1078,6 +1078,9 @@ INSTRUCTIONS:
 """,
             output_format=DocumentArtifacts,
             model_alias=role_aliases["artifact_extraction"],
+            # Capture the raw assistant message (pre-parse) so a parse failure or
+            # empty/underfilled result can still be root-caused. See issue #314.
+            with_trace=dd.TraceType.LAST_MESSAGE,
         ))
 
     # Define data models for hard question-answer generation
@@ -1294,6 +1297,9 @@ CRITICAL: "query_type" and "reasoning_type" are TWO SEPARATE FIELDS with differe
            num_pairs=num_pairs),
             output_format=QuestionAnswerPairs,
             model_alias=role_aliases["qa_generation"],
+            # Capture the raw assistant message (pre-parse) so a parse failure or
+            # empty/underfilled QA result can still be root-caused. See issue #314.
+            with_trace=dd.TraceType.LAST_MESSAGE,
         ))
 
     config_builder.add_column(
@@ -1683,6 +1689,310 @@ def filter_qa_pairs_by_quality(
     return filtered_df, skipped_files
 
 
+STAGE0_GENERATED_COLUMNS: Tuple[str, ...] = ("document_artifacts", "qa_generation")
+
+
+def _extract_pairs(qa_generation: Any) -> List[Any]:
+    """Best-effort extraction of the 'pairs' list from a qa_generation cell."""
+    if qa_generation is None:
+        return []
+    if isinstance(qa_generation, dict):
+        pairs = qa_generation.get("pairs", [])
+    else:
+        pairs = getattr(qa_generation, "pairs", [])
+    if isinstance(pairs, np.ndarray):
+        pairs = pairs.tolist()
+    if not isinstance(pairs, list):
+        return []
+    return pairs
+
+
+def _raw_trace_text(row: "pd.Series", trace_column: str) -> Optional[str]:
+    """Pull the raw assistant message text out of a `{column}__trace` cell, if present."""
+    if trace_column not in row:
+        return None
+    trace = row[trace_column]
+    if isinstance(trace, np.ndarray):
+        trace = trace.tolist()
+    if not trace:
+        return None
+    last_message = trace[-1]
+    if isinstance(last_message, dict):
+        return last_message.get("content")
+    return getattr(last_message, "content", None)
+
+
+def log_stage0_raw_responses(
+    generated_df: "pd.DataFrame",
+    num_pairs: int,
+    batch_idx: int,
+    output_dir: Path,
+    generated_columns: Tuple[str, ...] = STAGE0_GENERATED_COLUMNS,
+    attempt: int = 1,
+    write_log: bool = True,
+) -> Dict[str, Any]:
+    """Log every raw Stage 0 LLM response before parsing and validate QA output.
+
+    For each generated column, this inspects the parsed value and (when available)
+    the paired `{column}__trace` value captured via `with_trace=TraceType.LAST_MESSAGE`
+    on the corresponding LLMStructuredColumnConfig. It writes one JSONL record per
+    (record index, column, attempt) to `<output_dir>/stage0_raw_responses.jsonl` and
+    returns aggregate counts used for the batch completion summary. See issue #314.
+
+    Args:
+        generated_df: The batch's generated DataFrame, indexed by seed-dataset order.
+        num_pairs: The configured/target number of QA pairs per record.
+        batch_idx: Index of the current batch (used only for log entries).
+        output_dir: Directory the raw-response log file is appended to.
+        generated_columns: Names of the LLM-generated columns to inspect for
+            missing/omitted records.
+        attempt: Generation attempt number recorded in each log entry (1 = first try).
+        write_log: If False, only compute the aggregate counts (no JSONL output).
+
+    Returns:
+        A dict of aggregate counts: requested_records, persisted_records,
+        omitted_by_column, empty_qa_records, underfilled_qa_records,
+        requested_qa_total, generated_qa_total.
+    """
+    log_path = output_dir / "stage0_raw_responses.jsonl"
+    omitted_by_column: Dict[str, int] = {col: 0 for col in generated_columns}
+    omitted_record_indices: set = set()
+    empty_qa_records = 0
+    underfilled_qa_records = 0
+    requested_qa_total = 0
+    generated_qa_total = 0
+    log_lines: List[str] = []
+
+    for record_index, row in generated_df.iterrows():
+        for column in generated_columns:
+            value = row.get(column) if column in row else None
+            is_missing = value is None or (isinstance(value, float) and math.isnan(value))
+
+            if is_missing:
+                omitted_by_column[column] += 1
+                omitted_record_indices.add(record_index)
+
+            # Only log an entry when there's something worth investigating:
+            # the column is missing, or (for qa_generation) the parsed
+            # result is empty/underfilled relative to num_pairs.
+            pairs: Optional[List[Any]] = None
+            is_empty_qa = False
+            is_underfilled_qa = False
+            if column == "qa_generation" and not is_missing:
+                pairs = _extract_pairs(value)
+                requested_qa_total += num_pairs
+                generated_qa_total += len(pairs)
+                if len(pairs) == 0:
+                    is_empty_qa = True
+                    empty_qa_records += 1
+                elif len(pairs) < num_pairs:
+                    is_underfilled_qa = True
+                    underfilled_qa_records += 1
+
+            if not (is_missing or is_empty_qa or is_underfilled_qa):
+                continue
+
+            log_entry = {
+                "batch_index": batch_idx,
+                "record_index": int(record_index),
+                "file_name": row.get("file_name"),
+                "column": column,
+                "attempt": attempt,
+                "status": (
+                    "omitted_parse_failure" if is_missing
+                    else "empty_qa" if is_empty_qa
+                    else "underfilled_qa"
+                ),
+                "requested_qa_pairs": num_pairs if column == "qa_generation" else None,
+                "generated_qa_pairs": len(pairs) if pairs is not None else None,
+                "raw_response": _raw_trace_text(row, f"{column}__trace"),
+            }
+            log_lines.append(json.dumps(log_entry, default=str))
+
+    if write_log and log_lines:
+        with open(log_path, "a", encoding="utf-8") as log_file:
+            log_file.write("\n".join(log_lines) + "\n")
+
+    return {
+        "requested_records": len(generated_df),
+        "persisted_records": len(generated_df) - len(omitted_record_indices),
+        "omitted_by_column": omitted_by_column,
+        "empty_qa_records": empty_qa_records,
+        "underfilled_qa_records": underfilled_qa_records,
+        "requested_qa_total": requested_qa_total,
+        "generated_qa_total": generated_qa_total,
+    }
+
+
+def _is_missing(value: Any) -> bool:
+    return value is None or (isinstance(value, float) and math.isnan(value))
+
+
+def _has_missing_column(row: "pd.Series", generated_columns: Tuple[str, ...]) -> bool:
+    return any(_is_missing(row.get(column)) for column in generated_columns)
+
+
+def _is_empty_qa(row: "pd.Series") -> bool:
+    """True if qa_generation parsed fine but contains zero pairs."""
+    value = row.get("qa_generation")
+    return not _is_missing(value) and len(_extract_pairs(value)) == 0
+
+
+def _append_stage0_log(output_dir: Path, entries: List[Dict[str, Any]]) -> None:
+    """Append JSONL entries to the Stage 0 raw-response log."""
+    if not entries:
+        return
+    with open(output_dir / "stage0_raw_responses.jsonl", "a", encoding="utf-8") as log_file:
+        log_file.write("\n".join(json.dumps(e, default=str) for e in entries) + "\n")
+
+
+def process_stage0_batch(
+    generated_df: "pd.DataFrame",
+    seed_file_names: List[str],
+    num_pairs: int,
+    batch_idx: int,
+    output_dir: Path,
+    regenerate: Callable[[int, int], "pd.DataFrame"],
+    max_retries: int = 2,
+    generated_columns: Tuple[str, ...] = STAGE0_GENERATED_COLUMNS,
+) -> Tuple["pd.DataFrame", Dict[str, Any]]:
+    """Log, retry, and validate one Stage 0 batch. See issue #314.
+
+    1. Logs the raw responses of the first attempt (attempt=1).
+    2. Records that are absent from the output, have a failed generated column,
+       or have an empty QA list are regenerated up to ``max_retries`` times via
+       ``regenerate(batch_local_position, attempt_number)``. Every retry is
+       logged with its attempt number.
+    3. Records whose QA list is still empty are rejected (dropped from the
+       returned DataFrame). Underfilled QA (0 < pairs < num_pairs) is accepted
+       and only reported.
+
+    Records are matched to seed rows by ``file_name``.
+
+    Returns:
+        The DataFrame to persist and the batch stats for the completion summary.
+    """
+    log_stage0_raw_responses(
+        generated_df, num_pairs, batch_idx, output_dir, generated_columns, attempt=1
+    )
+
+    rows: List[Dict[str, Any]] = generated_df.to_dict("records")
+    row_by_name: Dict[Any, int] = {}
+    for position, row in enumerate(rows):
+        row_by_name.setdefault(row.get("file_name"), position)
+
+    def _record_ok(row: Dict[str, Any]) -> bool:
+        series = pd.Series(row)
+        return not _has_missing_column(series, generated_columns) and not _is_empty_qa(series)
+
+    def _failed(name: Any) -> bool:
+        position = row_by_name.get(name)
+        return position is None or not _record_ok(rows[position])
+
+    pending = [pos for pos, name in enumerate(seed_file_names) if _failed(name)]
+    retried_records = len(pending)
+
+    for attempt in range(2, max_retries + 2):
+        if not pending:
+            break
+        still_pending: List[int] = []
+        for local_pos in pending:
+            name = seed_file_names[local_pos]
+            try:
+                retry_df = regenerate(local_pos, attempt)
+            except Exception as exc:  # a failed retry must not abort the whole run
+                print(f"  Retry {attempt - 1} for record {local_pos} failed: {exc}")
+                retry_df = None
+
+            if retry_df is None or len(retry_df) == 0:
+                _append_stage0_log(output_dir, [{
+                    "batch_index": batch_idx,
+                    "record_index": local_pos,
+                    "file_name": name,
+                    "column": None,
+                    "attempt": attempt,
+                    "status": "omitted_parse_failure",
+                    "requested_qa_pairs": num_pairs,
+                    "generated_qa_pairs": None,
+                    "raw_response": None,
+                }])
+                still_pending.append(local_pos)
+                continue
+
+            retry_df = retry_df.iloc[[0]].copy()
+            retry_df.index = [local_pos]
+            log_stage0_raw_responses(
+                retry_df, num_pairs, batch_idx, output_dir, generated_columns, attempt=attempt
+            )
+            retry_row = retry_df.iloc[0].to_dict()
+            retry_row.setdefault("file_name", name)
+            if name in row_by_name:
+                rows[row_by_name[name]] = retry_row
+            else:
+                row_by_name[name] = len(rows)
+                rows.append(retry_row)
+            if not _record_ok(retry_row):
+                still_pending.append(local_pos)
+        pending = still_pending
+
+    final_df = pd.DataFrame(rows, columns=generated_df.columns)
+
+    # Stats are computed before rejection so empty QA records are still counted.
+    stats = log_stage0_raw_responses(
+        final_df, num_pairs, batch_idx, output_dir, generated_columns, write_log=False
+    )
+
+    # Reject records whose QA list is still empty after all retries.
+    keep = [not _is_empty_qa(row) for _, row in final_df.iterrows()]
+    final_df = final_df[keep].reset_index(drop=True)
+
+    stats["requested_records"] = len(seed_file_names)
+    stats["missing_records"] = sum(1 for name in seed_file_names if name not in row_by_name)
+    stats["persisted_records"] = sum(
+        1 for _, row in final_df.iterrows() if not _has_missing_column(row, generated_columns)
+    )
+    stats["retried_records"] = retried_records
+    stats["recovered_records"] = retried_records - len(pending)
+    return final_df, stats
+
+
+def print_stage0_batch_summary(batch_label: Any, stats: Dict[str, Any]) -> None:
+    """Print a Stage 0 completion summary for a batch (or the overall run). See issue #314."""
+    print(f"\nStage 0 completion summary (batch {batch_label}):")
+    print(f"  Requested records: {stats['requested_records']}")
+    print(f"  Persisted records: {stats['persisted_records']}")
+    for column, count in stats["omitted_by_column"].items():
+        if count:
+            print(f"  Omitted records ({column}, parse failure): {count}")
+    if stats.get("missing_records"):
+        print(f"  Missing records (no output after retries): {stats['missing_records']}")
+    if stats.get("retried_records"):
+        print(f"  Retried records: {stats['retried_records']} "
+              f"(recovered: {stats.get('recovered_records', 0)})")
+    print(f"  Empty QA results (rejected, not persisted): {stats['empty_qa_records']}")
+    print(f"  Underfilled QA results (< requested count): {stats['underfilled_qa_records']}")
+    print(f"  Requested QA pairs: {stats['requested_qa_total']}")
+    print(f"  Generated QA pairs: {stats['generated_qa_total']}")
+    if stats["requested_qa_total"] > 0:
+        fill_rate = stats["generated_qa_total"] / stats["requested_qa_total"] * 100
+        print(f"  QA fill rate: {fill_rate:.1f}%")
+
+
+def _merge_stage0_stats(total: Dict[str, Any], batch_stats: Dict[str, Any]) -> Dict[str, Any]:
+    """Accumulate a batch's Stage 0 stats into a running total across all batches."""
+    total["requested_records"] += batch_stats["requested_records"]
+    total["persisted_records"] += batch_stats["persisted_records"]
+    for column, count in batch_stats["omitted_by_column"].items():
+        total["omitted_by_column"][column] = total["omitted_by_column"].get(column, 0) + count
+    total["empty_qa_records"] += batch_stats["empty_qa_records"]
+    total["underfilled_qa_records"] += batch_stats["underfilled_qa_records"]
+    total["requested_qa_total"] += batch_stats["requested_qa_total"]
+    total["generated_qa_total"] += batch_stats["generated_qa_total"]
+    for key in ("missing_records", "retried_records", "recovered_records"):
+        total[key] = total.get(key, 0) + batch_stats.get(key, 0)
+    return total
+
+
 def _format_duration(seconds: float) -> str:
     """Format a duration in seconds to a human-readable string."""
     seconds = max(0, int(seconds))
@@ -1732,6 +2042,7 @@ def generate(
     embed_model: str = "nvidia/nemotron-3-embed-1b",
     embed_provider: str = "nvidia",
     nvidia_api_base_url: Optional[str] = None,
+    max_retries: int = 2,
 ) -> None:
     """Generate synthetic queries from a directory of text files.
     
@@ -1773,6 +2084,8 @@ def generate(
         quality_judge_provider: Provider for quality judge model (default: nvidia)
         embed_model: Model name for embeddings (default: nvidia/nemotron-3-embed-1b)
         embed_provider: Provider for embedding model (default: nvidia)
+        max_retries: Times to regenerate a record whose output is missing or has an
+            empty QA list before giving up; records still empty are rejected (default: 2)
     Examples:
         # Generate from text files (processes all in batches of 200)
         retriever-sdg generate \\
@@ -1925,6 +2238,15 @@ def generate(
     input_basename = input_dir.name
     total_batches_to_run = actual_end_batch - start_batch_index
     batch_times: list[float] = []
+    overall_stage0_stats: Dict[str, Any] = {
+        "requested_records": 0,
+        "persisted_records": 0,
+        "omitted_by_column": {},
+        "empty_qa_records": 0,
+        "underfilled_qa_records": 0,
+        "requested_qa_total": 0,
+        "generated_qa_total": 0,
+    }
 
     for batch_idx in range(start_batch_index, actual_end_batch):
         start_idx = batch_idx * batch_size
@@ -1960,6 +2282,41 @@ def generate(
 
         generated_df = result.load_dataset()
 
+        def _regenerate_record(
+            local_pos: int, attempt: int, *, _start_idx=start_idx, _dataset_name=dataset_name,
+        ) -> "pd.DataFrame":
+            seed_idx = _start_idx + local_pos
+            retry_builder = build_qa_generation_pipeline(
+                seed_dataset=text_files_df,
+                start_index=seed_idx,
+                end_index=seed_idx,
+                max_artifacts_per_type=max_artifacts_per_type,
+                num_pairs=num_pairs,
+                min_hops=min_hops,
+                max_hops=max_hops,
+                min_complexity=min_complexity,
+                **model_kwargs,
+            )
+            retry_result = data_designer.create(
+                retry_builder,
+                num_records=1,
+                dataset_name=f"{_dataset_name}_rec{local_pos}_attempt{attempt}",
+            )
+            return retry_result.load_dataset()
+
+        # Log every raw Stage 0 LLM response before parsing, retry missing/empty
+        # records, reject still-empty QA, and summarize. See issue #314.
+        generated_df, batch_stage0_stats = process_stage0_batch(
+            generated_df=generated_df,
+            seed_file_names=text_files_df["file_name"].iloc[start_idx:end_idx + 1].tolist(),
+            num_pairs=num_pairs,
+            batch_idx=batch_idx,
+            output_dir=output_dir,
+            regenerate=_regenerate_record,
+            max_retries=max_retries,
+        )
+        overall_stage0_stats = _merge_stage0_stats(overall_stage0_stats, batch_stage0_stats)
+
         # Save batch output to JSON with batch info in filename
         output_filename = f"generated_batch{batch_idx}_{start_idx}_{end_idx}.json"
         generated_df.to_json(output_dir / output_filename, orient='records', indent=2)
@@ -1972,6 +2329,7 @@ def generate(
 
         print(f"Batch {batch_idx}/{num_batches - 1} done in {_format_duration(batch_elapsed)}")
         print(f"  Saved to {output_filename} ({len(generated_df)} records)")
+        print_stage0_batch_summary(batch_idx, batch_stage0_stats)
         if batches_remaining > 0:
             avg_batch_time = sum(batch_times) / len(batch_times)
             eta_seconds = avg_batch_time * batches_remaining
@@ -1983,6 +2341,8 @@ def generate(
     print(f"Total batches processed: {actual_end_batch - start_batch_index}")
     print("\nOutput files:")
     print(f"  - generated_batch{{idx}}_{{start}}_{{end}}.json: Raw generation data per batch")
+    print(f"  - stage0_raw_responses.jsonl: Raw LLM responses for omitted/empty/underfilled records")
+    print_stage0_batch_summary("all", overall_stage0_stats)
 
 
 def entrypoint():
