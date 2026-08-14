@@ -4,9 +4,11 @@ run:
 
 # Tiny config for RL data preparation (fast iteration/testing)
 #
-# Usage:
-#   nemotron super3 data prep rl --config tiny
-#   nemotron super3 data prep rl --config tiny --run prep
+# Standalone usage:
+#   python src/nemotron/recipes/super3/stage2_rl/data_prep.py --config tiny
+#
+# Nemotron CLI subcommands:
+#   nemotron super3 data prep rl rlvr --config tiny
 
 # Path to data blend JSON file
 blend_path: ${oc.env:PWD}/src/nemotron/recipes/super3/stage2_rl/config/data_prep/data_blend_raw.json

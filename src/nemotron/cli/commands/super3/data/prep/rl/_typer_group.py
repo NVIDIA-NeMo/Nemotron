@@ -12,7 +12,10 @@ from __future__ import annotations
 
 from nemo_runspec.recipe_typer import RecipeTyper
 
+from nemotron.cli.commands.super3.data.prep.rl.rlhf import META as RLHF_META, rlhf
 from nemotron.cli.commands.super3.data.prep.rl.rlvr import META as RLVR_META, rlvr
+from nemotron.cli.commands.super3.data.prep.rl.swe1 import META as SWE1_META, swe1
+from nemotron.cli.commands.super3.data.prep.rl.swe2 import META as SWE2_META, swe2
 
 rl_app = RecipeTyper(
     name="rl",
@@ -22,5 +25,6 @@ rl_app = RecipeTyper(
 )
 
 rl_app.add_recipe_command(rlvr, meta=RLVR_META, rich_help_panel="RL Sub-Stages")
-
-# TODO: Add swe1, swe2, rlhf sub-stage data prep commands as needed.
+rl_app.add_recipe_command(swe1, meta=SWE1_META, rich_help_panel="RL Sub-Stages")
+rl_app.add_recipe_command(swe2, meta=SWE2_META, rich_help_panel="RL Sub-Stages")
+rl_app.add_recipe_command(rlhf, meta=RLHF_META, rich_help_panel="RL Sub-Stages")
