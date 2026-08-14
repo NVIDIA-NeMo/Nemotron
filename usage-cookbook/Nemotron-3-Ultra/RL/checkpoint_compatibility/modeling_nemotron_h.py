@@ -176,6 +176,10 @@ class HybridMambaAttentionDynamicCache(DynamicCache):
         intermediate_size = config.mamba_num_heads * config.mamba_head_dim
         ssm_state_size = config.ssm_state_size
         conv_kernel_size = config.conv_kernel
+        self.conv_kernel_size = conv_kernel_size
+        # conv_states hold hidden_states_B_C, whose channel dim is conv_dim
+        # (see the mixer's self.conv_dim), not intermediate_size.
+        conv_dim = intermediate_size + 2 * config.n_groups * ssm_state_size
         self.conv_states = []
         self.ssm_states = []
         self.transformer_layers = []
@@ -183,7 +187,7 @@ class HybridMambaAttentionDynamicCache(DynamicCache):
             if self.hybrid_override_pattern[i] == "M":
                 # Mamba layer
                 self.conv_states += [
-                    torch.zeros(batch_size, intermediate_size, conv_kernel_size, device=device, dtype=dtype)
+                    torch.zeros(batch_size, conv_dim, conv_kernel_size, device=device, dtype=dtype)
                 ]
                 self.ssm_states += [
                     torch.zeros(batch_size, intermediate_size, ssm_state_size, device=device, dtype=dtype)
@@ -247,14 +251,16 @@ class HybridMambaAttentionDynamicCache(DynamicCache):
         self, layer_idx: int, new_conv_state: torch.Tensor, cache_init: bool = False
     ) -> torch.Tensor:
         if cache_init:
-            self.conv_states[layer_idx] = new_conv_state.to(self.conv_states.device)
+            # Keep the state on the device where the mixer produced it; moving it
+            # to the cache's init device breaks multi-GPU device_map="auto".
+            self.conv_states[layer_idx] = new_conv_state
         else:
             self.conv_states[layer_idx] = self.conv_states[layer_idx].roll(shifts=-1, dims=-1)
-            self.conv_states[layer_idx][:, :, -1] = new_conv_state[:, 0, :].to(self.conv_states.device)
+            self.conv_states[layer_idx][:, :, -1] = new_conv_state[:, 0, :].to(self.conv_states[layer_idx].device)
         return self.conv_states[layer_idx]
 
     def update_ssm_state(self, layer_idx: int, new_ssm_state: torch.Tensor):
-        self.ssm_states[layer_idx] = new_ssm_state.to(self.ssm_states.device)
+        self.ssm_states[layer_idx] = new_ssm_state
         return self.ssm_states[layer_idx]
 
     def reset(self):
