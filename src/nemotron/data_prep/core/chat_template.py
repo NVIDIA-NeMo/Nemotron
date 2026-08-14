@@ -240,12 +240,19 @@ def split_template_into_messages(
             )
 
         current_pos = len(template_up_to_here)
-        chunk_text = full_template[previous_pos:current_pos]
 
-        # Verify incremental rendering matches full template
+        # Verify incremental rendering matches full template. Some chat templates
+        # append trailing whitespace after the generation prompt that isn't at the
+        # matching position in the full template (issue #184); re-align on the
+        # stripped prefix so those rows are kept instead of dropped.
         if template_up_to_here != full_template[:current_pos]:
-            raise ValueError(f"Template mismatch at message {i}: incremental rendering doesn't match full")
+            stripped = template_up_to_here.rstrip()
+            if stripped and stripped == full_template[: len(stripped)]:
+                current_pos = len(stripped)
+            else:
+                raise ValueError(f"Template mismatch at message {i}: incremental rendering doesn't match full")
 
+        chunk_text = full_template[previous_pos:current_pos]
         result.append({"role": messages[i]["role"], "content": chunk_text})
         previous_pos = current_pos
 
