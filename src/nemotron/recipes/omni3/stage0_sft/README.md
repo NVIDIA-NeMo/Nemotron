@@ -76,7 +76,7 @@ directly at training time — no per-job `enroot import` step.
 The dispatcher also bridges enroot's `nvcr.io` credentials into the
 build container so `FROM nvcr.io/nvidian/...` lines in this Dockerfile
 resolve without a separate podman login (see
-[How container builds authenticate](../../../../docs/nemo_runspec/nemo-run.md#how-the-build-container-authenticates-with-private-registries)).
+[How container builds authenticate](../../../../../docs/nemo_runspec/nemo-run.md#how-the-build-container-authenticates-with-private-registries)).
 
 For remote (`--run`/`--batch`) builds, set the host-side cache directory
 in your env.toml profile so the mount target exists on cluster nodes:
@@ -117,7 +117,7 @@ upstream source:
 - **[Megatron-Bridge `nemotron_3_omni` README](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/nemotron_3_omni/examples/models/vlm/nemotron_3_omni/README.md)** — canonical SFT recipe, hyperparameters, and config tables
 - **[Megatron-Bridge `nemotron_3_omni` branch root](https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/nemotron_3_omni)** — full source for the `nemotron_omni_*sft_config` / `*peft_config` recipes used by `train.py`
 - **[Release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/)** — model-level positioning, benchmarks, training-data scale
-- **[Architecture deep-dive](../../../../docs/nemotron/omni3/architecture.md)** — Mamba+transformer hybrid, encoders, EVS rationale
+- **[Architecture deep-dive](../../../../../docs/nemotron/omni3/architecture.md)** — Mamba+transformer hybrid, encoders, EVS rationale
 
 The Dockerfile in this folder pins the `nemotron_3_omni` branches of
 Megatron-Bridge and Megatron-LM (the latter as a recursive submodule

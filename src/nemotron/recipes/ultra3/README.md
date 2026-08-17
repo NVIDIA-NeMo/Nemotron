@@ -77,7 +77,7 @@ mounts = ["/lustre:/lustre"]
 ```
 
 > Container images are set in the recipe config files, not in `env.toml`. See
-> [docs/nemo_runspec/nemo-run.md](../../../docs/nemo_runspec/nemo-run.md).
+> [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md).
 
 ## Container images
 
