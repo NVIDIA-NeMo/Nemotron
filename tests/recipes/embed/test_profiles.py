@@ -225,7 +225,7 @@ def test_artifact_root_override_rehomes_default_pipeline() -> None:
     assert sdg.artifact_root == artifact_root
     assert sdg.output_dir == artifact_root / "stage0_sdg"
     assert sdg.artifact_path == artifact_root / "stage0_sdg/artifacts"
-    assert prep.sdg_input_path == sdg.output_dir / "nv_pp_random.jsonl"
+    assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert prep.output_dir == artifact_root / "stage1_data_prep"
     assert finetune.train_data_path == prep.output_dir / "train_mined.automodel_unrolled.json"
     assert finetune.checkpoint_dir == artifact_root / "stage2_finetune/checkpoints"
@@ -248,7 +248,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert sdg.output_dir == Path("output/embed/nemotron-3-1b/stage0_sdg")
     assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
     assert prep.base_model == BASE_MODEL
-    assert prep.sdg_input_path == sdg.output_dir / "nv_pp_random.jsonl"
+    assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert finetune.base_model == BASE_MODEL
     assert prep.query_prefix == "query: "
     assert prep.passage_prefix == "passage: "

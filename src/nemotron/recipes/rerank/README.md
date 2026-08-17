@@ -35,7 +35,7 @@ The two models are complementary — use the embedding model to cast a wide net,
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│              STAGE 0: SYNTHETIC DATA GENERATION (retriever-sdg)             │
+│           STAGE 0: SYNTHETIC DATA GENERATION (retrieval SDG plugin)          │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌──────────────────────────┐ │
 │  │ Document Chunks │ →  │  LLM Generation │ →  │ Q&A Pairs + Evaluations  │ │
 │  │                 │    │  (NVIDIA API)   │    │                          │ │
@@ -278,16 +278,21 @@ If you want to fine-tune a reranking model on NVIDIA-related content, you can **
 python -c "
 from datasets import load_dataset
 ds = load_dataset('nvidia/Retrieval-Synthetic-NVDocs-v1', split='train')
-ds.to_json('./output/rerank/stage0_sdg/nv_docs_sdg.json')
+ds.to_json('./output/rerank/stage0_sdg/nv_docs_sdg.jsonl')
 "
 
 # Start from Stage 1 (data preparation) using the downloaded data
-nemotron rerank prep -c default sdg_input_path=./output/rerank/stage0_sdg
+nemotron rerank prep -c default sdg_input_path=./output/rerank/stage0_sdg/nv_docs_sdg.jsonl
 
 # Continue with the rest of the pipeline
 nemotron rerank finetune -c default
 nemotron rerank eval -c default
 ```
+
+For generated data, Stage 0 writes `generation_result.json` after each successful
+non-preview run. The default Stage 1 profile resolves that manifest to the exact
+JSONL returned by Stage 0, including timestamped outputs from repeated fresh runs.
+Pass an explicit `sdg_input_path` to prepare a different file or legacy directory.
 
 ## Execution Modes
 
@@ -527,7 +532,7 @@ nemotron rerank info
 nemotron rerank sdg -c default corpus_dir=/path/to/docs
 
 # Prepare training data (convert, mine, unroll)
-nemotron rerank prep -c default sdg_input_path=/path/to/sdg
+nemotron rerank prep -c default sdg_input_path=/path/to/generated.jsonl
 ```
 
 ### Training
@@ -610,7 +615,9 @@ After running the full pipeline:
 ```
 output/rerank/
 ├── stage0_sdg/                    # Synthetic Q&A pairs
-│   └── generated_batch*.json
+│   ├── generation_result.json     # Exact latest successful-run handoff
+│   ├── *.jsonl                    # Generated datasets (timestamped when needed)
+│   └── artifacts/                 # Data Designer checkpoints and provenance
 ├── stage1_prep/                   # Training-ready data
 │   ├── train.json                 # Original training data
 │   ├── train_mined.automodel.json # With hard negatives
@@ -647,7 +654,7 @@ Higher scores indicate better re-ranking performance. The key metric to watch is
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA-NeMo/DataDesigner) |
+| Retrieval SDG plugin | Released Data Designer generation and conversion plugin | [GitHub](https://github.com/NVIDIA-NeMo/DataDesignerPlugins) |
 | Automodel | Cross-encoder model training framework | [GitHub](https://github.com/NVIDIA-NeMo/Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA-NeMo/Export-Deploy) |

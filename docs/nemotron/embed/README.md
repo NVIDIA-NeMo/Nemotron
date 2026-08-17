@@ -243,6 +243,12 @@ the contents of corpus files. Use `always` or `if_possible` only when the input 
 has not changed in place. The default is `never` so that an ordinary repeated recipe
 invocation generates new data instead of silently reusing a completed dataset.
 
+After every successful non-preview run, Stage 0 writes `generation_result.json`
+next to the exported JSONL. The default Stage 1 profile reads this manifest so it
+uses the exact output returned by that run, including a timestamped output from a
+repeated `resume=never` invocation. An explicit `sdg_input_path` still takes
+precedence and is passed through unchanged.
+
 Earlier recipe versions exposed `batch_size`, `start_batch_index`, and
 `end_batch_index` for manually partitioning the corpus into independent runs. Those
 settings have been removed with the manual batching implementation. Use `buffer_size`

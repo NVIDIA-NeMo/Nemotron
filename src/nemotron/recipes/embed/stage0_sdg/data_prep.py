@@ -416,6 +416,7 @@ def run_sdg(cfg: SDGConfig) -> Path:
     Returns:
         Exact JSONL output path, or the configured output directory for preview.
     """
+    from nemotron.recipes.embed.sdg_manifest import write_generation_manifest
     from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_generation
 
     # Resolve corpus_dir (handles hf:// URIs and local paths)
@@ -524,8 +525,15 @@ def run_sdg(cfg: SDGConfig) -> Path:
         print(f"   Preview records: {result.num_preview_records}")
         return output_dir
 
+    manifest_path = write_generation_manifest(
+        output_dir=output_dir,
+        output_path=result.output_path,
+        dataset_name=result.dataset_name,
+    )
+
     print("\nSynthetic data generation complete!")
     print(f"   Output: {result.output_path}")
+    print(f"   Handoff: {manifest_path}")
     print(f"   Dataset: {result.dataset_name}")
     print(f"   Records: {result.num_records}")
     if result.resolved_config_path:
