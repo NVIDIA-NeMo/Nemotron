@@ -100,12 +100,13 @@ def test_register_resolvers_from_config_pre_init(monkeypatch, tmp_path):
             self.version = "v5"
             self.name = "nano3-pretrain-data"
             self.type = "dataset"
+            self.metadata = {}
 
         def download(self, skip_cache: bool = True):
             return str(downloaded_dir)
 
     class FakeApi:
-        def __init__(self):
+        def __init__(self, timeout: int = 30):
             self.last_ref = None
 
         def artifact(self, ref: str):
@@ -115,7 +116,7 @@ def test_register_resolvers_from_config_pre_init(monkeypatch, tmp_path):
     fake_api = FakeApi()
 
     class FakeWandb(types.SimpleNamespace):
-        def Api(self):  # noqa: N802
+        def Api(self, timeout: int = 30):  # noqa: N802
             return fake_api
 
     monkeypatch.setitem(sys.modules, "wandb", FakeWandb())
