@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from nemotron.recipes.embed.sdg_manifest import resolve_generation_input
+
 if TYPE_CHECKING:
     from data_designer_retrieval_sdg import ConversionResult, ConversionRunConfig
 
@@ -21,7 +23,7 @@ def build_conversion_config(cfg: DataPrepConfig) -> ConversionRunConfig:
 
     return ConversionRunConfig(
         schema_version=RETRIEVAL_SDG_SCHEMA_VERSION,
-        input_path=cfg.sdg_input_path.resolve(),
+        input_path=resolve_generation_input(cfg.sdg_input_path),
         corpus_id=cfg.corpus_id,
         output_dir=cfg.output_dir.resolve(),
         eval_only=False,

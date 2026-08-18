@@ -20,8 +20,8 @@ run:
 # Corpus identifier
 corpus_id: nv_pp_random
 
-# Path to SDG output directory (from rerank sdg stage)
-sdg_input_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage0_sdg
+# Stage 0 result manifest; resolves the exact JSONL produced by the latest successful run
+sdg_input_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage0_sdg/generation_result.json
 
 # Output directory for prepared training data
 output_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage1_prep

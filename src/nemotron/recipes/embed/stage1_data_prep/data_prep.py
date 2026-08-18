@@ -90,8 +90,8 @@ class DataPrepConfig(RecipeSettings):
 
     corpus_id: str = Field(default="nv_pp_random", description="Corpus identifier (used for output naming).")
     sdg_input_path: Path | None = Field(
-        default_factory=lambda data: data["artifact_root"] / "stage0_sdg/nv_pp_random.jsonl",
-        description="Exact SDG output file, or an explicit legacy input path.",
+        default_factory=lambda data: data["artifact_root"] / "stage0_sdg/generation_result.json",
+        description="Stage 0 generation-result manifest, exact SDG output file, or explicit legacy input path.",
     )
     train_input_file: Path | None = Field(
         default=None, description="Path to pre-converted training file (skips SDG conversion)."
@@ -285,10 +285,27 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     Returns:
         Path to final training data file.
     """
+    configured_sdg_input = cfg.sdg_input_path
+    if configured_sdg_input:
+        from nemotron.recipes.embed.sdg_manifest import resolve_generation_input
+
+        try:
+            resolved_sdg_input = resolve_generation_input(configured_sdg_input)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            print(
+                "       Please run stage0_sdg first, or provide an explicit sdg_input_path.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        cfg = cfg.model_copy(update={"sdg_input_path": resolved_sdg_input})
+
     print("📋 Data Preparation Pipeline")
     print("=" * 60)
     print(f"Corpus ID:      {cfg.corpus_id}")
     if cfg.sdg_input_path:
+        if configured_sdg_input != cfg.sdg_input_path:
+            print(f"SDG Handoff:    {configured_sdg_input}")
         print(f"SDG Input:      {cfg.sdg_input_path}")
     else:
         print(f"Train Input:    {cfg.train_input_file}")

@@ -243,6 +243,13 @@ the contents of corpus files. Use `always` or `if_possible` only when the input 
 has not changed in place. The default is `never` so that an ordinary repeated recipe
 invocation generates new data instead of silently reusing a completed dataset.
 
+After each successful non-preview run, Stage 0 writes `generation_result.json`
+next to the exported JSONL file. This manifest identifies the exact output from
+the run, including a timestamped file from a repeated `resume=never` invocation.
+By default, Stage 1 resolves the manifest before preparing the data. To select
+another input, set `sdg_input_path` to a data file or an existing SDG output
+directory.
+
 Earlier recipe versions exposed `batch_size`, `start_batch_index`, and
 `end_batch_index` for manually partitioning the corpus into independent runs. Those
 settings have been removed with the manual batching implementation. Use `buffer_size`
@@ -617,7 +624,7 @@ Model: fine-tuned
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| Data Designer retrieval SDG plugin | Synthetic data generation and retriever-data conversion | [GitHub](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/tree/main/plugins/data-designer-retrieval-sdg) |
+| Data Designer retrieval SDG plugin | Generate synthetic question-and-answer pairs and convert them to training data | [Plugin source](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/tree/main/plugins/data-designer-retrieval-sdg) |
 | Automodel | Embedding model training framework | [GitHub](https://github.com/NVIDIA/NeMo-Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |

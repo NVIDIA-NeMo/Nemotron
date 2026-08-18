@@ -27,8 +27,8 @@ artifact_root: ./output/embed
 # Corpus identifier
 corpus_id: nv_pp_random
 
-# Exact Stage 0 JSONL output (mutually exclusive with train_input_file)
-sdg_input_path: ${artifact_root}/stage0_sdg/nv_pp_random.jsonl
+# Stage 0 result manifest; resolves the exact JSONL produced by the latest successful run
+sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
 
 # Output directory for prepared training data
 output_dir: ${artifact_root}/stage1_data_prep

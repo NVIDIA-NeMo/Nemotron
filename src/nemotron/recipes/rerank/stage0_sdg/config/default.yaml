@@ -1,6 +1,6 @@
 # Stage 0: Synthetic Data Generation Configuration (Rerank)
 #
-# Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+# Generates synthetic Q&A pairs using the released retrieval SDG plugin.
 # Uses the same SDG pipeline as the embed recipe but outputs to rerank directory.
 #
 # Usage:
@@ -26,15 +26,30 @@ num_sections: 1
 
 # Generation parameters
 max_artifacts_per_type: 2
-num_pairs: 10
+num_pairs: 7
+query_counts:
+  multi_hop: 3
+  structural: 2
+  contextual: 2
 min_hops: 1
 max_hops: 3
+reasoning_counts:
+  factual: 1
+  relational: 1
+  inferential: 1
+  temporal: 1
+  procedural: 1
+  causal: 1
+  visual: 1
 min_complexity: 2
+similarity_threshold: 0.9
 
-# Batch processing
-batch_size: 200
-start_batch_index: 0
-end_batch_index: -1
+# Data Designer execution
+dataset_name: nv_pp_random
+buffer_size: 200
+# Start fresh by default. Use always to require a compatible checkpoint, or
+# if_possible to resume when compatible and otherwise start fresh.
+resume: never
 
 # Multi-document bundling
 multi_doc: false
