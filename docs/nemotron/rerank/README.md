@@ -289,10 +289,12 @@ nemotron rerank finetune -c default
 nemotron rerank eval -c default
 ```
 
-For generated data, Stage 0 writes `generation_result.json` after each successful
-non-preview run. The default Stage 1 profile resolves that manifest to the exact
-JSONL returned by Stage 0, including timestamped outputs from repeated fresh runs.
-Pass an explicit `sdg_input_path` to prepare a different file or legacy directory.
+After each successful non-preview run, Stage 0 writes `generation_result.json`
+next to the exported JSONL file. This manifest identifies the exact output from
+the run, including a timestamped file from a repeated `resume=never` invocation.
+By default, Stage 1 resolves the manifest before preparing the data. To select
+another input, set `sdg_input_path` to a data file or an existing SDG output
+directory.
 
 ## Execution Modes
 
@@ -615,7 +617,7 @@ After running the full pipeline:
 ```
 output/rerank/
 ├── stage0_sdg/                    # Synthetic Q&A pairs
-│   ├── generation_result.json     # Exact latest successful-run handoff
+│   ├── generation_result.json     # Latest successful Stage 0 output manifest
 │   ├── *.jsonl                    # Generated datasets (timestamped when needed)
 │   └── artifacts/                 # Data Designer checkpoints and provenance
 ├── stage1_prep/                   # Training-ready data
@@ -654,7 +656,7 @@ Higher scores indicate better re-ranking performance. The key metric to watch is
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| Retrieval SDG plugin | Released Data Designer generation and conversion plugin | [GitHub](https://github.com/NVIDIA-NeMo/DataDesignerPlugins) |
+| Data Designer retrieval SDG plugin | Generate synthetic question-and-answer pairs and convert them to training data | [Plugin source](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/tree/main/plugins/data-designer-retrieval-sdg) |
 | Automodel | Cross-encoder model training framework | [GitHub](https://github.com/NVIDIA-NeMo/Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA-NeMo/Export-Deploy) |
