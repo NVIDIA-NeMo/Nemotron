@@ -8,10 +8,10 @@ from .conftest import REPO_ROOT
 
 EMBED_DIR = REPO_ROOT / "src" / "nemotron" / "recipes" / "embed"
 PACKAGE_NAME = "data-designer-retrieval-sdg"
-PACKAGE_VERSION = "0.2.0"
+PACKAGE_VERSION = "0.2.1"
 PACKAGE_INDEX = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/"
-PACKAGE_WHEEL_HASH = "sha256:806d8ecc1775f143f3e02f15662a3c019d9f0f8320f650639e3e0e6b6d07d710"
-PACKAGE_SDIST_HASH = "sha256:9497afaa0f20a574dfa8bb97deaa4fed462ec3a75ff6d41f6f2c5c173d2ecdd7"
+PACKAGE_WHEEL_HASH = "sha256:5c2b5d7da3340ed730d03bc0163318fae96656e4e414e8907b295ab72ea6fffd"
+PACKAGE_SDIST_HASH = "sha256:cde3f8143b862eb38a01899ab2b6f7181a5ebac79c2db4f4e5c5495e5f6b076e"
 DATA_DESIGNER_VERSION = "0.9.1"
 PACKAGE_STAGES = ("stage0_sdg", "stage1_data_prep")
 

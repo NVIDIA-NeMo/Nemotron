@@ -389,7 +389,7 @@ wheels = [
 
 [[package]]
 name = "data-designer-retrieval-sdg"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/" }
 dependencies = [
     { name = "data-designer" },
@@ -400,9 +400,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "starlette" },
 ]
-sdist = { url = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins/releases/download/ddp-package-assets/data_designer_retrieval_sdg-0.2.0.tar.gz", hash = "sha256:9497afaa0f20a574dfa8bb97deaa4fed462ec3a75ff6d41f6f2c5c173d2ecdd7" }
+sdist = { url = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins/releases/download/ddp-package-assets/data_designer_retrieval_sdg-0.2.1.tar.gz", hash = "sha256:cde3f8143b862eb38a01899ab2b6f7181a5ebac79c2db4f4e5c5495e5f6b076e" }
 wheels = [
-    { url = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins/releases/download/ddp-package-assets/data_designer_retrieval_sdg-0.2.0-py3-none-any.whl", hash = "sha256:806d8ecc1775f143f3e02f15662a3c019d9f0f8320f650639e3e0e6b6d07d710" },
+    { url = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins/releases/download/ddp-package-assets/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl", hash = "sha256:5c2b5d7da3340ed730d03bc0163318fae96656e4e414e8907b295ab72ea6fffd" },
 ]
 
 [[package]]
@@ -1539,7 +1539,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "data-designer-retrieval-sdg", specifier = "==0.2.0", index = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/" },
+    { name = "data-designer-retrieval-sdg", specifier = "==0.2.1", index = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
 ]
