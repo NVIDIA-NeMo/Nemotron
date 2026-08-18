@@ -325,9 +325,12 @@ def discover_filesystem_files(
         file_paths = sorted(fs.glob(path))
     elif fs.isdir(path):
         all_files = fs.listdir(path, detail=False)
+        # fsspec listdir/ls already returns full paths (strings when detail=False,
+        # dicts with "name" when detail=True). Do not prepend `path` again, doing so
+        # doubled the path on local filesystems and raised FileNotFoundError.
         file_paths = sorted(
             [
-                f"{path.rstrip('/')}/{f}" if isinstance(f, str) else f["name"]
+                f if isinstance(f, str) else f["name"]
                 for f in all_files
                 if (isinstance(f, str) and f.endswith((".parquet", ".jsonl", ".json")))
                 or (

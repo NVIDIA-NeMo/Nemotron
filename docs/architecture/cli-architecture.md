@@ -59,7 +59,7 @@ Recipe scripts are self-describing. Each script declares its identity, container
 # ///
 ```
 
-The CLI reads this via `nemo_runspec.parse()`, returning a frozen `Runspec` dataclass. See [nemo_runspec package](../nemo_runspec/package-readme) for the full schema.
+The CLI reads this via `nemo_runspec.parse()`, returning a frozen `Runspec` dataclass. See [nemo_runspec package](../nemo_runspec/package-readme.md) for the full schema.
 
 ### RecipeConfig
 

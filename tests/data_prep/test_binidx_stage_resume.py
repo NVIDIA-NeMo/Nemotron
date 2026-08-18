@@ -32,7 +32,7 @@ from typing import Any
 
 import pytest
 
-from nemotron.data_prep.filesystem import read_json
+from nemotron.data_prep.utils.filesystem import read_json
 
 
 class MockFilesystem:

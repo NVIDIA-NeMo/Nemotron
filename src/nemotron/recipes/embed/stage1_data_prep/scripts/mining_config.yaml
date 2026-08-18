@@ -85,6 +85,9 @@ mining:
   # Attention implementation for model loading
   attn_implementation: sdpa
 
+  # Permit NVIDIA embedding checkpoints that provide a custom AutoModel class.
+  trust_remote_code: true
+
   # Maximum sequence lengths
   query_max_length: 512
   passage_max_length: 512

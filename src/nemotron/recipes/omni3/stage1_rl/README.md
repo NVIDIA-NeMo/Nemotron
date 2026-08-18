@@ -51,7 +51,7 @@ Both `vision.yaml` and `mpo.yaml` carry a `source_uri` that points at the upstre
 - **Auto-download**: otherwise the dispatcher calls `huggingface_hub.snapshot_download(...)` and proceeds.
 - **No `source_uri` and missing files**: fails fast with the missing file list and a remediation hint.
 
-For the full per-sub-stage data prep details (output cache shapes, helper scripts, parallel-submission semantics, artifact registration), see [`docs/nemotron/omni3/rl/data-prep.md`](../../../../docs/nemotron/omni3/rl/data-prep.md).
+For the full per-sub-stage data prep details (output cache shapes, helper scripts, parallel-submission semantics, artifact registration), see [`docs/nemotron/omni3/rl/data-prep.md`](../../../../../docs/nemotron/omni3/rl/data-prep.md).
 
 ## Container image
 
@@ -73,7 +73,7 @@ build_partition = "<cpu-partition>"   # CPU-only build job
 build_cache_dir = "/lustre/.../.cache/nemotron"
 ```
 
-See [`src/nemo_runspec/README.md`](../../../../src/nemo_runspec/README.md) for the full list of build-context env.toml keys, and [How container builds authenticate](../../../../docs/nemo_runspec/nemo-run.md#how-the-build-container-authenticates-with-private-registries) for the enroot → podman auth bridge that the dispatcher uses to pull `nvcr.io/nvidia/cuda-dl-base:...` during the build.
+See [`src/nemo_runspec/README.md`](../../../../../src/nemo_runspec/README.md) for the full list of build-context env.toml keys, and [How container builds authenticate](../../../../../docs/nemo_runspec/nemo-run.md#how-the-build-container-authenticates-with-private-registries) for the enroot → podman auth bridge that the dispatcher uses to pull `nvcr.io/nvidia/cuda-dl-base:...` during the build.
 
 ## Sub-stage notes
 
@@ -114,7 +114,7 @@ source:
 - **[NeMo-RL `nano-v3-omni` branch root](https://github.com/NVIDIA-NeMo/RL/tree/nano-v3-omni)** — full source for the `examples/run_vlm_mpo.py` / `examples/omni/` configs / `tools/build-custom-vllm.sh` referenced by this Dockerfile
 - **[Omni vllm fork (`aroshanghias-nvd/vllm`)](https://github.com/aroshanghias-nvd/vllm/tree/nano-v3-vl)** — pulled in via NeMo-RL's `3rdparty/vllm` submodule on the `nano-v3-vl` branch
 - **[Release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-nano-omni-powers-multimodal-agent-reasoning-in-a-single-efficient-open-model/)** — model-level positioning, RL training-data scale (20 datasets / 25 envs / 2.3M rollouts)
-- **[RL data prep deep-dive](../../../../docs/nemotron/omni3/rl/data-prep.md)** — auto-download semantics, helper scripts, output layouts
+- **[RL data prep deep-dive](../../../../../docs/nemotron/omni3/rl/data-prep.md)** — auto-download semantics, helper scripts, output layouts
 
 The Dockerfile in this folder pins the `nano-v3-omni` branch of
 NeMo-RL. Bump it when the upstream merges to a versioned tag.
