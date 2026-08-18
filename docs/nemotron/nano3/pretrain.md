@@ -50,7 +50,7 @@ flowchart LR
 
 > For architecture rationale, see [Tech Report Section 2.1](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf).
 >
-> For implementation details, see [Megatron-Bridge Nemotron 3](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html).
+> For implementation details, see [Megatron-Bridge Nemotron 3 Nano](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/nemotron/nemotron3-nano.html).
 
 ### Pretraining Data
 
@@ -195,7 +195,7 @@ python examples/recipes/nemotron_3/pretrain_nemotron_3_nano.py \
     --tokenizer-model /path/to/tokenizer.model
 ```
 
-See the [Megatron-Bridge Nemotron 3 documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/llm/nemotron3.html) for detailed configuration options.
+See the [Megatron-Bridge Nemotron 3 Nano documentation](https://docs.nvidia.com/nemo/megatron-bridge/latest/models/nemotron/nemotron3-nano.html) for detailed configuration options.
 
 ### Configuration
 

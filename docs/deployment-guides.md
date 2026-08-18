@@ -47,6 +47,15 @@ Deploy across a 4x DGX Spark cluster with vLLM, including tensor parallelism, Ro
 {bdg-secondary}`Local GPU` {bdg-muted-line}`Jun 22, 2026`
 :::
 
+:::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra on DGX Station
+:link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra/StationDeploymentGuide
+:link-type: url
+
+Deploy on a single GB300-based DGX Station with vLLM, using coherent CPU memory for selective MoE expert offloading and a FlashInfer TensorRT-LLM NVFP4 backend.
++++
+{bdg-secondary}`Local GPU` {bdg-muted-line}`Jul 6, 2026`
+:::
+
 :::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra on Agentic Coding
 :link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources
 :link-type: url

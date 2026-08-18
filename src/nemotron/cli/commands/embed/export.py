@@ -74,6 +74,10 @@ def _execute_export(cfg: RecipeConfig, *, experiment=None):
     if cfg.dry_run:
         return
 
+    if not job_config.get("enabled", True):
+        print("Export skipped: this profile deploys its PyTorch checkpoint directly.")
+        return
+
     job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=False)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
@@ -174,6 +178,6 @@ def _execute_remote(
 
 
 def export(ctx: typer.Context) -> None:
-    """Export embedding models to ONNX and TensorRT for optimized inference."""
+    """Export Llama models; direct-checkpoint profiles skip this stage."""
     cfg = parse_recipe_config(ctx)
     _execute_export(cfg)

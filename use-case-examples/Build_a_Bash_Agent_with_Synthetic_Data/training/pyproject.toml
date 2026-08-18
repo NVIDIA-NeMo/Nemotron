@@ -1,0 +1,31 @@
+[project]
+name = "nemotron-bash-agent-training"
+version = "0.1.0"
+description = "Linux CUDA environment for the Nemotron Bash Agent GRPO notebook"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "accelerate>=0.34.1,<2",
+    "datasets>=3.4.1,<4.4,!=4.0.*,!=4.1.0",
+    "einops>=0.8.1,<0.9",
+    "jupyter==1.1.1",
+    "langgraph-cli[inmem]==0.4.30",
+    "nemo-gym==0.3.0",
+    "ninja>=1.13,<2",
+    "peft>=0.18,<0.20",
+    "pydantic>=2.12,<3",
+    "requests>=2.32,<3",
+    "torch==2.10.0",
+    "torchvision==0.25.0",
+    "transformers==4.56.2",
+    "trl==0.24.0",
+    "unsloth[huggingface]==2026.6.9",
+    "unsloth-zoo>=2026.6.7",
+]
+
+[tool.uv]
+required-version = "==0.11.25"
+# CUDA training is deliberately locked only for the platform this tutorial and
+# its published Mamba wheels support. This also excludes macOS-only MLX extras.
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]

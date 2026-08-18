@@ -1,6 +1,6 @@
 # CLI Framework
 
-The CLI framework is built on [Typer](https://typer.tiangolo.com/) and [`nemo_runspec`](../nemo_runspec/package-readme). Each command file contains its own execution logic, so you can see exactly how jobs are submitted.
+The CLI framework is built on [Typer](https://typer.tiangolo.com/) and [`nemo_runspec`](../nemo_runspec/package-readme.md). Each command file contains its own execution logic, so you can see exactly how jobs are submitted.
 
 <div class="termy">
 
@@ -60,7 +60,7 @@ The CLI framework supports:
 - **[Remote execution](../nemo_runspec/nemo-run.md)** via NeMo-Run with `--run` / `--batch`
 - **Visible execution** with all submission logic in each command file
 
-For artifacts, see [Nemotron Kit](./kit.md). For execution profiles, see [Execution through NeMo-Run](../nemo_runspec/nemo-run.md). For the full `nemo_runspec` toolkit, see the [nemo_runspec package readme](../nemo_runspec/package-readme).
+For artifacts, see [Nemotron Kit](./kit.md). For execution profiles, see [Execution through NeMo-Run](../nemo_runspec/nemo-run.md). For the full `nemo_runspec` toolkit, see the [nemo_runspec package readme](../nemo_runspec/package-readme.md).
 
 ## Architecture
 
@@ -480,7 +480,7 @@ uv run nemotron myrecipe train -c tiny --run MY-CLUSTER
 ## Further Reading
 
 - [Nemotron Kit](./kit.md) – artifacts and lineage tracking
-- [`nemo_runspec` Package](../nemo_runspec/package-readme) – toolkit documentation
+- [`nemo_runspec` Package](../nemo_runspec/package-readme.md) – toolkit documentation
 - [Execution through NeMo-Run](../nemo_runspec/nemo-run.md) – execution profiles and env.toml
 - [Data Preparation](./data-prep.md) – data preparation module
 - [Artifact Lineage](./artifacts.md) – W&B artifact system and lineage tracking

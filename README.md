@@ -137,7 +137,7 @@ The catalog covers the full training lifecycle.
 
 ## Training Recipes
 
-The Nemotron respository provides reproducible training pipelines from raw data to deployment-ready models. These implementations reflect how large language models are actually trained: careful experimentation, validation gates, and systematic optimization.
+The Nemotron repository provides reproducible training pipelines from raw data to deployment-ready models. These implementations reflect how large language models are actually trained: careful experimentation, validation gates, and systematic optimization.
 
 ### Why Complete Pipelines?
 
