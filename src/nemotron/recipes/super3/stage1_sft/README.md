@@ -267,7 +267,7 @@ uv run nemotron super3 sft -c tiny --batch YOUR-CLUSTER
 uv run nemotron super3 sft -c tiny --run YOUR-CLUSTER --dry-run
 ```
 
-See [docs/nemo_runspec/nemo-run.md](../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
+See [docs/nemo_runspec/nemo-run.md](../../../../../docs/nemo_runspec/nemo-run.md) for complete configuration options.
 
 ## Artifact Lineage
 

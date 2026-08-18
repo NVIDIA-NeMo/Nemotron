@@ -167,4 +167,4 @@ Architecture, endpoint and benchmark families, and tokenizer alignment.
 
 - The full `step.toml` contract: `src/nemotron/steps/eval/model_eval/step.toml` in the repository.
 - The before-and-after evaluation framing: {ref}`model-eval-comparing-runs`.
-- Upstream NeMo Evaluator quick-start: <https://docs.nvidia.com/nemo/evaluator/latest/get-started/quickstart/launcher.html>.
+- Upstream NeMo Evaluator quick-start: <https://docs.nvidia.com/nemo/evaluator/nightly/get-started/quickstart>.

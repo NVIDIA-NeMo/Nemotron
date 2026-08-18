@@ -122,4 +122,4 @@ recovery = "Install the evaluator extra with uv sync --extra evaluator and run t
 [reference]
 skill = "src/nemotron/steps/eval/model_eval/README.md"
 script = "https://github.com/NVIDIA-NeMo/Evaluator/blob/main/packages/nemo-evaluator-launcher/examples/local_basic.yaml"
-docs = "https://docs.nvidia.com/nemo/evaluator/latest/get-started/quickstart/launcher.html"
+docs = "https://docs.nvidia.com/nemo/evaluator/nightly/get-started/quickstart"

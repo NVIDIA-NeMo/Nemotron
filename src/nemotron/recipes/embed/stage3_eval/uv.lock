@@ -1473,7 +1473,7 @@ requires-dist = [
     { name = "sentence-transformers", specifier = ">=3.0.0" },
     { name = "torch", marker = "sys_platform != 'linux'", specifier = ">=2.10.0" },
     { name = "torch", marker = "sys_platform == 'linux'", specifier = ">=2.10.0", index = "https://download.pytorch.org/whl/cu129" },
-    { name = "transformers", specifier = ">=5,<6" },
+    { name = "transformers", specifier = ">=5.1,<5.6" },
 ]
 
 [[package]]

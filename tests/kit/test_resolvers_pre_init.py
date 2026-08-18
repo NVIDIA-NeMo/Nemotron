@@ -17,7 +17,7 @@ import types
 
 from omegaconf import OmegaConf
 
-from nemotron.kit import resolvers
+from nemo_runspec.config import resolvers
 
 
 class TestGetJobId:

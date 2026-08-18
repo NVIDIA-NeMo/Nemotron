@@ -59,6 +59,30 @@ def replace_json_args(messages: list[dict]) -> list[dict]:
     return messages
 
 
+def reasoning_renders_empty(message: dict) -> bool:
+    """Whether a turn's reasoning_content renders as an empty <think></think>.
+
+    Mirrors the chat template's own rule, which keeps the reasoning only when it
+    "is defined and is string and reasoning_content | trim | length > 0". So a
+    missing key, a non-string value like None, an empty string, and a
+    whitespace-only string such as "\\n\\n" all collapse to <think></think> as
+    far as the template is concerned, and this returns True for every one of them.
+
+    The incremental-rendering consistency check used to test only the exact
+    "missing key" and "" cases, so None and whitespace-only reasoning made the
+    incremental render diverge from the full render and the row was dropped as an
+    error. Using this helper keeps the check in lock-step with the template.
+
+    Args:
+        message: An OpenAI-format message dict.
+
+    Returns:
+        True if the template would render this turn's reasoning as empty.
+    """
+    reasoning = message.get("reasoning_content")
+    return not (isinstance(reasoning, str) and reasoning.strip())
+
+
 def find_last_user_message_end(
     messages: list[dict],
     tokenizer: PreTrainedTokenizerBase,
@@ -86,10 +110,7 @@ def find_last_user_message_end(
     last_user_idx = max(i for i, msg in enumerate(messages) if msg["role"] == "user")
 
     # Render up to the last user message (inclusive)
-    if enable_thinking and (
-        "reasoning_content" not in messages[last_user_idx + 1]
-        or messages[last_user_idx + 1]["reasoning_content"] == ""
-    ):
+    if enable_thinking and reasoning_renders_empty(messages[last_user_idx + 1]):
         # Manual hack for empty reasoning content mismatch
         template_up_to_last_user = tokenizer.apply_chat_template(
             messages[: last_user_idx + 1],
@@ -182,10 +203,7 @@ def split_template_into_messages(
             enable_thinking
             and messages[i]["role"] != "assistant"
             and i + 1 < len(messages)
-            and (
-                "reasoning_content" not in messages[i + 1]
-                or messages[i + 1]["reasoning_content"] == ""
-            )
+            and reasoning_renders_empty(messages[i + 1])
         ):
             # Manual hack for empty reasoning content mismatch
             template_up_to_here = tokenizer.apply_chat_template(
@@ -373,6 +391,7 @@ def split_system_user_chunks(chunks: list[dict]) -> list[dict]:
 
 __all__ = [
     "replace_json_args",
+    "reasoning_renders_empty",
     "find_last_user_message_end",
     "split_template_into_messages",
     "create_masked_messages",

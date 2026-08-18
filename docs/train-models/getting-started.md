@@ -12,7 +12,7 @@ The goal is to validate end-to-end execution, NeMo Run, and your environment pro
   - `HF_TOKEN`
   - `WANDB_API_KEY`
   - `NVIDIA_API_KEY`
-- You ran `lep login` after syncronizing dependencies and are logged into Lepton.
+- You ran `lep login` after synchronizing dependencies and are logged into Lepton.
 
 The preceding list applies to the steps on this page.
 Refer to [](./index.md#limitations-and-restrictions) for information about supported environments.

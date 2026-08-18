@@ -260,8 +260,9 @@ class TestDockerRunUv:
     ) -> None:
         """Mount synthetic data and run the stage entry script via run_uv.py.
 
-        Validates end-to-end data flow in Docker mode.  Each stage gets
-        different args to exercise a minimal but real invocation.
+        Validates stage bootstrap and data flow in Docker mode. Data stages get
+        a minimal real invocation; training uses ``--help`` to avoid an
+        unsupported zero-epoch run or an expensive model download.
         """
         meta = STAGES[stage_name]
         image = meta["container"]
@@ -325,10 +326,7 @@ def _synthetic_data_args(
             "--corpus_id=test_corpus",
         ]
     elif stage_name == "stage2_finetune":
-        return [
-            "--train_data=/data/train.json",
-            "--num_epochs=0",
-        ]
+        return ["--help"]
     elif stage_name == "stage3_eval":
         return [
             "--eval_data=/data/eval_beir",

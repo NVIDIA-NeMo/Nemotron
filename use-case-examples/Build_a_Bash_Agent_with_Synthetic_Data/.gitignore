@@ -1,0 +1,11 @@
+.venv/
+/cache/
+/data/
+/.pytest_cache/
+/artifacts/
+/outputs/
+
+# The repository-level `data/` rule is intentionally broad; retain the small
+# Gym schema example that ships with this tutorial.
+!/resources_servers/langgraph_cli/data/
+!/resources_servers/langgraph_cli/data/example.jsonl

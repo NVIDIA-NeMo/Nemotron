@@ -55,6 +55,20 @@ class TestEmbedAppStructure:
         assert "sdg" in result.output
         assert "prep" in result.output
         assert "finetune" in result.output
+        assert "default: nvidia/Nemotron-3-Embed-1B-BF16" in result.output
+        assert "llama: nvidia/llama-nemotron-embed-1b-v2" in result.output
+        assert "with NIM or vLLM" in result.output
+
+    def test_deploy_help_shows_direct_checkpoint_defaults(self):
+        result = runner.invoke(app, ["embed", "deploy", "--help"])
+        assert result.exit_code == 0
+        assert "NIM_ENGINE_MODE" in result.output
+        assert "16gb" in result.output
+
+    def test_export_help_explains_default_no_op(self):
+        result = runner.invoke(app, ["embed", "export", "--help"])
+        assert result.exit_code == 0
+        assert "direct-checkpoint profiles skip this stage" in result.output
 
 
 class TestDryRun:
@@ -76,3 +90,11 @@ class TestDryRun:
             f"dry-run failed for '{command}': {result.output}\n{result.exception}"
         )
         assert RECIPE_NAMES[command] in result.output
+
+
+@pytest.mark.parametrize("command", STAGE_COMMANDS)
+def test_llama_profile_dry_run(command, monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["nemotron", "embed", command, "-c", "llama", "-d"])
+    result = runner.invoke(app, ["embed", command, "-c", "llama", "-d"])
+    assert result.exit_code == 0, f"Llama dry-run failed for {command!r}: {result.output}\n{result.exception}"
+    assert RECIPE_NAMES[command] in result.output
