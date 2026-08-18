@@ -144,6 +144,7 @@ redirects = {
     "usage-cookbook/Nemotron-3-Ultra/README": "../../deployment-guides.html",
     "usage-cookbook/Nemotron-3-Ultra/OpenScaffoldingResources/README": "../../../deployment-guides.html",
     "usage-cookbook/Nemotron-3-Ultra/SparkDeploymentGuide/README": "../../../deployment-guides.html",
+    "usage-cookbook/Nemotron-3-Ultra/StationDeploymentGuide/README": "../../../deployment-guides.html",
     "usage-cookbook/Nemotron-3-Ultra-Base/README": "../../deployment-guides.html",
     # Use case examples → application examples summary
     "use-case-examples/README": "../application-examples.html",

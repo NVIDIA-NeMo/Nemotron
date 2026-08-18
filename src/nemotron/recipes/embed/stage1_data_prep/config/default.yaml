@@ -1,3 +1,4 @@
+# Default model family: Nemotron 3 Embed.
 # Stage 1: Data Preparation Configuration
 #
 # Prepares training data from SDG output:
@@ -19,17 +20,21 @@ run:
     # Container image for remote execution (Docker/Slurm)
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
+# Root for all artifacts produced by this model profile.
+artifact_root: ./output/embed/nemotron-3-1b
+
 # Corpus identifier
 corpus_id: nv_pp_random
 
 # Path to SDG output directory (mutually exclusive with train_input_file)
-sdg_input_path: ./output/embed/stage0_sdg
+sdg_input_path: ${artifact_root}/stage0_sdg
 
 # Output directory for prepared training data
-output_dir: ./output/embed/stage1_data_prep
+output_dir: ${artifact_root}/stage1_data_prep
 
 # Base embedding model for hard negative mining
-base_model: nvidia/llama-nemotron-embed-1b-v2
+base_model: nvidia/Nemotron-3-Embed-1B-BF16
+trust_remote_code: true
 
 # Quality filtering threshold (0-10 scale)
 quality_threshold: 7.0
@@ -49,5 +54,5 @@ mining_batch_size: 128
 # Tokenization settings
 query_max_length: 512
 passage_max_length: 512
-query_prefix: "query:"
-passage_prefix: "passage:"
+query_prefix: "query: "
+passage_prefix: "passage: "

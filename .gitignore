@@ -113,3 +113,16 @@ docs/_build/
 # Skill eval run outputs (generated; eval definitions like evals.json stay tracked)
 skills/*/evals/results/
 skills/*/evals/tier3-reports/
+
+# Local retrieval research and visualization artifacts
+/BENCHMARK.md
+/Retrieval-Synthetic-NVDocs-v1/
+/libs/nemo-retriever-research/
+/tmp/
+/tools/sdg-explorer.html
+/tools/serve-training-explorer.py
+/tools/training-explorer.html
+/docs/nemotron/embed/content-derived-source-fingerprints-prd.md
+/spec/
+/tests/skills/
+/tools/fetch_sample_corpus.py

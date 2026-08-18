@@ -9,7 +9,7 @@ resolution-markers = [
 ]
 
 [manifest]
-overrides = [{ name = "transformers", specifier = ">=5.0,<5.2" }]
+overrides = [{ name = "transformers", specifier = ">=5.1,<5.6" }]
 excludes = [
     "nvidia-pytriton",
     "transformer-engine",
