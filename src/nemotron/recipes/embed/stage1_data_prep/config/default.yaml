@@ -26,8 +26,8 @@ artifact_root: ./output/embed/nemotron-3-1b
 # Corpus identifier
 corpus_id: nv_pp_random
 
-# Path to SDG output directory (mutually exclusive with train_input_file)
-sdg_input_path: ${artifact_root}/stage0_sdg
+# Stage 0 result manifest; resolves the exact JSONL produced by the latest successful run
+sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
 
 # Output directory for prepared training data
 output_dir: ${artifact_root}/stage1_data_prep
@@ -44,6 +44,13 @@ quality_threshold: 7.0
 train_ratio: 0.8
 val_ratio: 0
 test_ratio: 0.2
+
+# Conversion behavior
+conversion_seed: 42
+max_pos_docs: 5
+use_group_id_in_eval: false
+split_strategy: random
+groups_json: null
 
 # Hard negative mining settings
 attn_implementation: sdpa  # Attention: sdpa, flash_attention_2, eager

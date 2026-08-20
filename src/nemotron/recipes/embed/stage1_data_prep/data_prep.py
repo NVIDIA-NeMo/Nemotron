@@ -58,11 +58,14 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+
+if TYPE_CHECKING:
+    from data_designer_retrieval_sdg import ConversionResult
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -87,8 +90,8 @@ class DataPrepConfig(RecipeSettings):
 
     corpus_id: str = Field(default="nv_pp_random", description="Corpus identifier (used for output naming).")
     sdg_input_path: Path | None = Field(
-        default_factory=lambda data: data["artifact_root"] / "stage0_sdg",
-        description="Path to SDG output directory (runs conversion to training format).",
+        default_factory=lambda data: data["artifact_root"] / "stage0_sdg/generation_result.json",
+        description="Stage 0 generation-result manifest, exact SDG output file, or explicit legacy input path.",
     )
     train_input_file: Path | None = Field(
         default=None, description="Path to pre-converted training file (skips SDG conversion)."
@@ -120,12 +123,25 @@ class DataPrepConfig(RecipeSettings):
     train_ratio: float = Field(default=0.8, gt=0, lt=1, description="Fraction of data for training.")
     val_ratio: float = Field(default=0.0, ge=0, lt=1, description="Fraction of data for validation.")
     test_ratio: float = Field(default=0.2, ge=0, lt=1, description="Fraction of data for testing.")
+    conversion_seed: int = Field(default=42, description="Random seed for deterministic conversion splits.")
+    max_pos_docs: int = Field(default=5, gt=0, description="Maximum positive documents per query.")
+    use_group_id_in_eval: bool = Field(default=False, description="Use stable group IDs in BEIR evaluation qrels.")
+    split_strategy: Literal["random", "dedupped", "cluster"] = Field(
+        default="random",
+        description="Conversion split strategy.",
+    )
+    groups_json: list[Path] | None = Field(
+        default=None,
+        description="Optional deduplication-group files used by dedupped or cluster splitting.",
+    )
 
     @model_validator(mode="after")
     def _check_ratios_sum_to_one(self):
         total = self.train_ratio + self.val_ratio + self.test_ratio
         if abs(total - 1.0) > 1e-6:
             raise ValueError(f"train_ratio + val_ratio + test_ratio must equal 1.0, got {total}")
+        if self.split_strategy != "random" and not self.groups_json:
+            raise ValueError(f"groups_json is required when split_strategy={self.split_strategy}")
         return self
 
     # Hard negative mining settings
@@ -153,40 +169,16 @@ class DataPrepConfig(RecipeSettings):
         return self
 
 
-def run_convert(cfg: DataPrepConfig) -> Path:
+def run_convert(cfg: DataPrepConfig) -> ConversionResult:
     """Convert SDG output to training format.
 
     Returns:
-        Path to train_eval directory.
+        Plugin result containing generated paths and counts.
     """
-    convert_script = STAGE_PATH / "scripts" / "convert_to_retriever_data.py"
+    from nemotron.recipes.embed.stage1_data_prep.plugin_adapter import execute_conversion
 
-    cmd = [
-        sys.executable,
-        str(convert_script),
-        str(cfg.sdg_input_path),
-        "--corpus-id",
-        cfg.corpus_id,
-        "--output-dir",
-        str(cfg.output_dir),
-        "--quality-threshold",
-        str(cfg.quality_threshold),
-        "--train-ratio",
-        str(cfg.train_ratio),
-        "--val-ratio",
-        str(cfg.val_ratio),
-    ]
-
-    print("🔄 Converting SDG output to training format...")
-    result = subprocess.run(cmd, stdout=None, stderr=subprocess.PIPE, text=True)
-
-    if result.returncode != 0:
-        print(f"Error: convert script failed with return code {result.returncode}")
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
-        sys.exit(result.returncode)
-
-    return cfg.output_dir
+    print("Converting SDG output to training format...")
+    return execute_conversion(cfg)
 
 
 def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
@@ -293,10 +285,27 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     Returns:
         Path to final training data file.
     """
+    configured_sdg_input = cfg.sdg_input_path
+    if configured_sdg_input:
+        from nemotron.recipes.embed.sdg_manifest import resolve_generation_input
+
+        try:
+            resolved_sdg_input = resolve_generation_input(configured_sdg_input)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            print(
+                "       Please run stage0_sdg first, or provide an explicit sdg_input_path.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        cfg = cfg.model_copy(update={"sdg_input_path": resolved_sdg_input})
+
     print("📋 Data Preparation Pipeline")
     print("=" * 60)
     print(f"Corpus ID:      {cfg.corpus_id}")
     if cfg.sdg_input_path:
+        if configured_sdg_input != cfg.sdg_input_path:
+            print(f"SDG Handoff:    {configured_sdg_input}")
         print(f"SDG Input:      {cfg.sdg_input_path}")
     else:
         print(f"Train Input:    {cfg.train_input_file}")
@@ -314,11 +323,13 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
         print(f"⏭️  Skipping conversion (using train_input_file: {train_file})")
     else:
         if not cfg.sdg_input_path.exists():
-            print(f"Error: SDG input directory not found: {cfg.sdg_input_path}", file=sys.stderr)
+            print(f"Error: SDG input path not found: {cfg.sdg_input_path}", file=sys.stderr)
             print("       Please run stage0_sdg first, or provide train_input_file.", file=sys.stderr)
             sys.exit(1)
-        run_convert(cfg)
-        train_file = cfg.output_dir / "train.json"
+        conversion_result = run_convert(cfg)
+        if conversion_result.train_file is None:
+            raise RuntimeError("Retrieval SDG conversion did not produce a training file")
+        train_file = conversion_result.train_file
 
     # Step 2: Mine hard negatives
     run_mining(cfg, train_file)
