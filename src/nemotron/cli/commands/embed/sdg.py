@@ -14,7 +14,7 @@
 
 """Synthetic data generation command for embed.
 
-Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+Generates synthetic Q&A pairs from a document corpus using the Data Designer retrieval SDG package.
 """
 
 from __future__ import annotations
@@ -262,6 +262,6 @@ def _execute_remote(
 
 
 def sdg(ctx: typer.Context) -> None:
-    """Generate synthetic Q&A pairs from document corpus using retriever-sdg."""
+    """Generate synthetic Q&A pairs using the Data Designer retrieval SDG package."""
     cfg = parse_recipe_config(ctx)
     _execute_sdg(cfg)

@@ -35,7 +35,7 @@
 
 """Synthetic Data Generation for embedding fine-tuning.
 
-Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+Generates synthetic Q&A pairs from a document corpus using the retrieval SDG plugin.
 This step uses NVIDIA's LLM APIs to create high-quality training data.
 
 Usage:
@@ -55,6 +55,7 @@ import math
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -73,9 +74,7 @@ _HF_PREFIX = "hf://"
 class SDGConfig(RecipeSettings):
     """Synthetic Data Generation configuration.
 
-    Uses retriever-sdg to generate Q&A pairs from document corpus.
-    All CLI arguments of the ``retriever-sdg generate`` command are
-    configurable here.
+    Maps recipe settings into the installed retrieval SDG plugin's typed API.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -122,10 +121,32 @@ class SDGConfig(RecipeSettings):
     max_artifacts_per_type: int = Field(
         default=2, gt=0, description="Maximum number of artifacts to extract per type."
     )
-    num_pairs: int = Field(default=10, gt=0, description="Number of question-answer pairs to generate per document.")
+    num_pairs: int = Field(default=7, gt=0, description="Number of question-answer pairs to generate per document.")
+    query_counts: dict[str, int] = Field(
+        default_factory=lambda: {"multi_hop": 3, "structural": 2, "contextual": 2},
+        description="Question-type distribution; values must sum to num_pairs.",
+    )
     min_hops: int = Field(default=1, ge=1, description="Minimum number of hops for multi-hop questions.")
     max_hops: int = Field(default=3, ge=1, description="Maximum number of hops for multi-hop questions.")
+    reasoning_counts: dict[str, int] = Field(
+        default_factory=lambda: {
+            "factual": 1,
+            "relational": 1,
+            "inferential": 1,
+            "temporal": 1,
+            "procedural": 1,
+            "causal": 1,
+            "visual": 1,
+        },
+        description="Reasoning-type distribution; values must sum to num_pairs.",
+    )
     min_complexity: int = Field(default=2, ge=1, le=5, description="Minimum complexity level for questions (1-5).")
+    similarity_threshold: float = Field(
+        default=0.9,
+        ge=0,
+        le=1,
+        description="Embedding cosine-similarity threshold used to deduplicate generated questions.",
+    )
 
     @model_validator(mode="after")
     def _check_hops_order(self):
@@ -133,17 +154,21 @@ class SDGConfig(RecipeSettings):
             raise ValueError(f"min_hops ({self.min_hops}) must be <= max_hops ({self.max_hops})")
         return self
 
-    # --- Batch processing ------------------------------------------------------
-    batch_size: int = Field(default=200, gt=0, description="Number of records to process per batch.")
-    start_batch_index: int = Field(
-        default=0, ge=0, description="Batch index to start from (for resuming failed runs)."
+    # --- Data Designer execution -----------------------------------------------
+    dataset_name: str | None = Field(
+        default=None,
+        description="Stable Data Designer dataset name. Defaults to corpus_id.",
     )
-    end_batch_index: int = Field(default=-1, description="Batch index to end at (exclusive). -1 means all batches.")
+    buffer_size: int = Field(default=200, gt=0, description="Data Designer checkpoint/write buffer size.")
+    resume: Literal["never", "always", "if_possible"] = Field(
+        default="never",
+        description="Data Designer native resume mode.",
+    )
 
     # --- Multi-document bundling -----------------------------------------------
     multi_doc: bool = Field(default=False, description="Enable multi-document bundling mode.")
     bundle_size: int = Field(default=2, gt=0, description="Number of documents per bundle in multi-doc mode.")
-    bundle_strategy: str = Field(
+    bundle_strategy: Literal["sequential", "doc_balanced", "interleaved"] = Field(
         default="sequential", description="Segment splitting strategy: 'sequential', 'doc_balanced', or 'interleaved'."
     )
     max_docs_per_bundle: int = Field(default=3, gt=0, description="Maximum documents allowed per bundle.")
@@ -178,7 +203,9 @@ class SDGConfig(RecipeSettings):
         description="Path to store Data Designer artifacts.",
     )
     preview: bool = Field(default=False, description="Preview the generation without actually running.")
-    log_level: str = Field(default="INFO", description="Logging level: DEBUG, INFO, WARNING, or ERROR.")
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
+        default="INFO", description="Logging level: DEBUG, INFO, WARNING, or ERROR."
+    )
 
 
 def _resolve_corpus_dir(corpus_dir: str) -> Path:
@@ -240,7 +267,8 @@ def _validate_corpus(
     file_extensions: list[str] | None,
     min_text_length: int,
     num_pairs: int,
-    batch_size: int,
+    buffer_size: int,
+    num_files: int | None,
 ) -> None:
     """Validate the corpus directory and print a summary before generation.
 
@@ -248,7 +276,7 @@ def _validate_corpus(
     *min_text_length*, and prints a human-readable summary with warnings.
     Exits with an error if no usable files are found.
     """
-    # Default extensions match those used by retriever-sdg's
+    # Default extensions match the public retrieval SDG package.
     # load_text_files_from_directory when no explicit list is provided.
     if file_extensions is None:
         extensions = [".txt", ".md", ".text", ""]
@@ -257,10 +285,7 @@ def _validate_corpus(
 
     ext_display = ", ".join(repr(e) for e in extensions if e) or "(any)"
 
-    char_sizes: list[int] = []
-    skipped_short: list[Path] = []
-    empty_files: list[Path] = []
-
+    matched_files: list[Path] = []
     for file_path in sorted(corpus_dir.rglob("*")):
         if not file_path.is_file():
             continue
@@ -273,6 +298,18 @@ def _validate_corpus(
         else:
             continue
 
+        matched_files.append(file_path)
+
+    # The plugin caps its sorted, extension-filtered manifest before hydration.
+    # Mirror that order so the preflight summary describes the records it will see.
+    if num_files is not None:
+        matched_files = matched_files[:num_files]
+
+    char_sizes: list[int] = []
+    skipped_short: list[Path] = []
+    empty_files: list[Path] = []
+
+    for file_path in matched_files:
         try:
             size = file_path.stat().st_size
         except OSError:
@@ -328,7 +365,7 @@ def _validate_corpus(
 
     num_docs = len(char_sizes)
     expected_pairs = num_docs * num_pairs
-    num_batches = math.ceil(num_docs / batch_size)
+    num_buffers = math.ceil(num_docs / buffer_size)
 
     # --- Print summary --------------------------------------------------------
     print("\nCorpus summary:")
@@ -343,8 +380,8 @@ def _validate_corpus(
     print(f"  Documents:         {num_docs}")
     print(f"  QA pairs/doc:      {num_pairs}")
     print(f"  Expected QA pairs: ~{expected_pairs:,}")
-    print(f"  Batches:           {num_batches} (batch_size={batch_size})")
-    print("  API stages/batch:  4 (artifact extraction -> QA generation -> dedup -> quality eval)")
+    print(f"  Buffers:           {num_buffers} (buffer_size={buffer_size})")
+    print("  API stages/record: 4 (artifact extraction -> QA generation -> dedup -> quality eval)")
 
     # --- Warnings -------------------------------------------------------------
     warnings_printed = False
@@ -371,16 +408,16 @@ def _validate_corpus(
 
 
 def run_sdg(cfg: SDGConfig) -> Path:
-    """Run synthetic data generation using vendored retriever-sdg.
+    """Run synthetic data generation through the installed retrieval SDG plugin.
 
     Args:
         cfg: SDG configuration.
 
     Returns:
-        Path to output directory with generated data.
+        Exact JSONL output path, or the configured output directory for preview.
     """
-    # Import from vendored retriever_sdg (installed via pyproject.toml)
-    from retriever_sdg.pipeline import generate
+    from nemotron.recipes.embed.sdg_manifest import write_generation_manifest
+    from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_generation
 
     # Resolve corpus_dir (handles hf:// URIs and local paths)
     corpus_dir = _resolve_corpus_dir(cfg.corpus_dir)
@@ -419,7 +456,9 @@ def run_sdg(cfg: SDGConfig) -> Path:
     print(f"   Artifacts: {artifact_path}")
     print(f"   Model (QA generation): {cfg.qa_generation_model}")
     print(f"   Num pairs: {cfg.num_pairs}")
-    print(f"   Batch size: {cfg.batch_size}")
+    print(f"   Dataset name: {cfg.dataset_name or cfg.corpus_id}")
+    print(f"   Buffer size: {cfg.buffer_size}")
+    print(f"   Resume mode: {cfg.resume}")
     print()
 
     # Validate corpus and print summary before spending API credits
@@ -428,46 +467,13 @@ def run_sdg(cfg: SDGConfig) -> Path:
         file_extensions=file_extensions,
         min_text_length=cfg.min_text_length,
         num_pairs=cfg.num_pairs,
-        batch_size=cfg.batch_size,
+        buffer_size=cfg.buffer_size,
+        num_files=cfg.num_files,
     )
 
-    # Call generate function directly
+    # The adapter only translates recipe policy into the public plugin contract.
     try:
-        generate(
-            input_dir=corpus_dir,
-            output_dir=output_dir,
-            min_text_length=cfg.min_text_length,
-            sentences_per_chunk=cfg.sentences_per_chunk,
-            num_sections=cfg.num_sections,
-            max_artifacts_per_type=cfg.max_artifacts_per_type,
-            num_pairs=cfg.num_pairs,
-            min_hops=cfg.min_hops,
-            max_hops=cfg.max_hops,
-            min_complexity=cfg.min_complexity,
-            preview=cfg.preview,
-            file_extensions=file_extensions,
-            artifact_path=artifact_path,
-            num_files=cfg.num_files,
-            batch_size=cfg.batch_size,
-            start_batch_index=cfg.start_batch_index,
-            end_batch_index=cfg.end_batch_index,
-            multi_doc=cfg.multi_doc,
-            bundle_size=cfg.bundle_size,
-            bundle_strategy=cfg.bundle_strategy,
-            max_docs_per_bundle=cfg.max_docs_per_bundle,
-            multi_doc_manifest=cfg.multi_doc_manifest,
-            log_level=cfg.log_level,
-            max_parallel_requests_for_gen=cfg.max_parallel_requests_for_gen,
-            artifact_extraction_model=cfg.artifact_extraction_model,
-            artifact_extraction_provider=cfg.artifact_extraction_provider,
-            qa_generation_model=cfg.qa_generation_model,
-            qa_generation_provider=cfg.qa_generation_provider,
-            quality_judge_model=cfg.quality_judge_model,
-            quality_judge_provider=cfg.quality_judge_provider,
-            embed_model=cfg.embed_model,
-            embed_provider=cfg.embed_provider,
-            nvidia_api_base_url=cfg.nvidia_api_base_url,
-        )
+        result = execute_generation(cfg, corpus_dir)
     except FileNotFoundError as exc:
         print("\nError: SDG pipeline could not find an intermediate file.", file=sys.stderr)
         print(f"  Missing: {exc}", file=sys.stderr)
@@ -513,10 +519,27 @@ def run_sdg(cfg: SDGConfig) -> Path:
 
         raise
 
-    print("\n✅ Synthetic data generation complete!")
-    print(f"   Output: {output_dir}")
+    if cfg.preview:
+        print("\nSynthetic data generation preview complete!")
+        print(f"   Seed records: {result.num_seed_records}")
+        print(f"   Preview records: {result.num_preview_records}")
+        return output_dir
 
-    return output_dir
+    manifest_path = write_generation_manifest(
+        output_dir=output_dir,
+        output_path=result.output_path,
+        dataset_name=result.dataset_name,
+    )
+
+    print("\nSynthetic data generation complete!")
+    print(f"   Output: {result.output_path}")
+    print(f"   Handoff: {manifest_path}")
+    print(f"   Dataset: {result.dataset_name}")
+    print(f"   Records: {result.num_records}")
+    if result.resolved_config_path:
+        print(f"   Resolved config: {result.resolved_config_path}")
+
+    return result.output_path
 
 
 def main(cfg: SDGConfig | None = None) -> Path:
@@ -526,7 +549,7 @@ def main(cfg: SDGConfig | None = None) -> Path:
         cfg: Config from CLI framework, or None when run directly as script.
 
     Returns:
-        Path to output directory.
+        Exact JSONL output path, or the configured output directory for preview.
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
