@@ -1,0 +1,8 @@
+{
+  "name": "fern-api",
+  "version": "0.0.0-proof",
+  "private": true,
+  "bin": {
+    "fern": "cli.mjs"
+  }
+}
