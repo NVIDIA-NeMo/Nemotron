@@ -89,8 +89,12 @@ def rewrite_paths_for_remote(obj: Any, repo_root: Path | str) -> Any:
             return f"/nemo_run{suffix}"
 
         # Rewrite absolute paths under repo_root to /nemo_run/code/...
-        if obj.startswith(repo_root_str):
-            rel_path = obj[len(repo_root_str) :].lstrip("/")
+        # Match on a path boundary so a sibling path that merely shares the
+        # repo_root prefix (e.g. "<repo_root>-backup/...") is not mistaken for
+        # a path inside the repo.
+        repo_root_norm = repo_root_str.rstrip("/")
+        if obj == repo_root_norm or obj.startswith(repo_root_norm + "/"):
+            rel_path = obj[len(repo_root_norm) :].lstrip("/")
             return f"/nemo_run/code/{rel_path}"
 
     return obj
