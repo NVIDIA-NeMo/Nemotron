@@ -104,6 +104,7 @@ $ uv run nemotron lightning35 pipe --run YOUR-CLUSTER
 - **Training Datasets:**
   - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)
   - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) (SFT and RL data)
+- **Workstation Customization:** [Full-weight GRPO post-training on two DGX Station GB300 systems](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/README.md)
 
 <!-- TODO - move whatever customization docs for Lightning 3.5 to this section of the docs.
 ```{seealso}
