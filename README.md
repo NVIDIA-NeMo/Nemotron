@@ -248,6 +248,7 @@ A complete training recipe for the 30B-A3B hybrid Mamba-Transformer MoE with Mul
 - [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)
 - [Training Guide](docs/nemotron/lightning35/README.md)
 - [NeMo-RL Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md)
+- [Two-DGX Station GRPO Post-Training Guide](./usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/README.md)
 - [Quantization Guide (PTQ + QAD)](docs/nemotron/lightning35/quantization.md)
 - [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16)
 - [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16)
