@@ -12,6 +12,8 @@ uses DAPOMath17K for training plus DAPOMathAIME2024 for validation. Complete
 the container, model, and shared-storage setup in [`../README.md`](../README.md)
 first.
 
+Note on prebuilt NGC container: Nemotron-3.5-Lightning requires a NemoRL container later than [v0.7](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/nemo-rl/-/tags) which is not yet available at the time of the model release data. Follow the docker build section in [../README.md](../README.md) to build a container from source.
+
 ## Dataset and training goal
 
 The policy learns from the public `BytedTsinghua-SIA/DAPO-Math-17k` math
@@ -21,6 +23,12 @@ updates the policy with DAPO/GRPO. Validation uses the held-out
 `BytedTsinghua-SIA/AIME-2024` problems. The goal is to improve reliably
 verifiable mathematical reasoning while keeping rollout, policy, and
 distributed-training behavior stable on one DGX H100 node.
+
+> **Historical dataset caveat:** the publisher's public artifacts repeat
+> DAPO-Math-17k samples 100 times and AIME-2024 samples 32 times. This
+> cookbook does not filter either dataset. See
+> [`../README.md`](../README.md#historical-dataset-caveat) for the potential
+> training and validation impact.
 
 ## Required layout
 
@@ -33,6 +41,7 @@ direct recipe uses this layout:
 |    |____RL                    <- NeMo RL root repository
 |    |____Nemotron              <- Public repository containing this cookbook
 |____models
+|    |____NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
 |____runs
 |____.cache/huggingface
 ```
