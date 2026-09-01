@@ -9,7 +9,7 @@ This directory contains NeMo RL training guides for
   handling through [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym).
 
 For a non-Slurm, two-node workstation path, use the
-[two-DGX Station GRPO post-training guide](../dgx-station-recipes/README.md).
+[two-DGX Station GRPO post-training guide](../dgx-station-recipes/grpo.md).
 It starts Ray directly in the NeMo RL containers and includes optional NFS,
 ARC-AGI data preparation, a two-GPU configuration, and a smoke test.
 
@@ -38,7 +38,7 @@ The recipes in this directory target one DGX H100 node (eight H100 GPUs)
 managed by Slurm, with a shared filesystem visible from every node and mounted
 at `/shared` in the container, and an accessible Docker registry per your
 Slurm setup. The separate
-[DGX Station guide](../dgx-station-recipes/README.md) targets two DGX Station
+[DGX Station GRPO guide](../dgx-station-recipes/grpo.md) targets two DGX Station
 GB300 systems with one B300 GPU each.
 
 ## Clone the Repositories
