@@ -20,7 +20,7 @@ structured tool calling.
 
 ### Fine-Tuning
 
-- **[DGX Station customization](dgx-station-recipes/README.md)** - End-to-end full-weight SFT and GRPO recipes for Nemotron 3.5 Lightning on DGX Station GB300 systems.
+- **[DGX Station customization](dgx-station-recipes/README.md)** - End-to-end LoRA, full-weight SFT, and GRPO recipes for Nemotron 3.5 Lightning on one or two DGX Station GB300 systems.
 - **[RL](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/RL/README.md)** - DAPO/GRPO RL training with NeMo RL, including native math-environment and NeMo Gym variants.
 - **[lora-text2sql/nemo-megatron-bridge](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/lora-text2sql/nemo-megatron-bridge/README.md)** - LoRA fine-tuning recipe for Text2SQL using NeMo Megatron-Bridge.
 

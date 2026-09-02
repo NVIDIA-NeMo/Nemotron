@@ -8,9 +8,10 @@ subset of
 [Nemotron-SFT-Agentic-v2](https://huggingface.co/datasets/nvidia/Nemotron-SFT-Agentic-v2)
 to customize the model for multi-turn agentic tool use.
 
-For other customization workflows on this topology, see the
-[DGX Station recipe index](README.md). For reinforcement learning, go directly
-to the [two-Station GRPO recipe](grpo.md).
+For other customization workflows, see the
+[DGX Station recipe index](README.md). Use the
+[single-Station LoRA recipe](lora.md) for parameter-efficient tuning or the
+[two-Station GRPO recipe](grpo.md) for reinforcement learning.
 
 > [!NOTE]
 > The instructions use one Station as the **head** and the other as the
@@ -681,4 +682,5 @@ place.
 - [Nemotron-SFT-Agentic-v2 dataset card](https://huggingface.co/datasets/nvidia/Nemotron-SFT-Agentic-v2)
 - [DGX Station software stack](https://docs.nvidia.com/dgx/dgx-station-development-guide/porting/software-requirements.html)
 - [Connect Two DGX Stations for Distributed Workloads](https://build.nvidia.com/station/connect-two-stations/overview)
+- [Single-Station LoRA customization recipe](lora.md)
 - [Two-Station GRPO customization recipe](grpo.md)
