@@ -5,7 +5,9 @@ for rollout routing and `math_with_judge` reward verification. Use an attached
 interactive NeMo RL allocation for data preparation and a one-step validation,
 then submit the full training run through NeMo RL's `ray.sub` batch workflow.
 
-Complete the public setup in [`../README.md`](../README.md) first.
+Complete the common setup in [`../README.md`](../README.md) first.
+
+Note on prebuilt NGC container: Nemotron-3.5-Lightning requires a NemoRL container later than [v0.7](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/nemo-rl/-/tags) which is not yet available at the time of the model release data. Follow the docker build section in [../README.md](../README.md) to build a container from source.
 
 ## Dataset and training goal
 
@@ -16,6 +18,31 @@ Gym routes them to the `math_with_judge` environment, where the verifiable math
 reward scores them before DAPO/GRPO updates the policy. The goal is to improve
 verifiable mathematical reasoning while exercising NeMo Gym's HTTP rollout and
 reward-routing integration on the tested single DGX H100 node topology.
+
+> **Historical dataset caveat:** the publisher's public artifacts repeat
+> DAPO-Math-17k samples 100 times and AIME-2024 samples 32 times. This
+> cookbook does not filter either dataset during
+> conversion. See [`../README.md`](../README.md#historical-dataset-caveat) for
+> the potential training and validation impact.
+
+## Required layout
+
+Mount your shared-storage root at `/shared` in the NeMo RL container. The
+direct recipe uses this layout:
+
+```text
+/shared                         <- Mount point for </YOUR/SHARED/STORAGE>
+|____code
+|    |____RL                    <- NeMo RL root repository
+|    |____Nemotron              <- Public repository containing this cookbook
+|____models
+|    |____NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+|____runs
+|____.cache/huggingface
+```
+
+Set the shared paths in your login/head-node shell before following the rest
+of this guide.
 
 ## Assets
 
