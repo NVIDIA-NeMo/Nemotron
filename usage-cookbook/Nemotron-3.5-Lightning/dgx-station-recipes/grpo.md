@@ -7,9 +7,10 @@ two-node Ray cluster, NeMo RL, NeMo Gym, and the
 [`python_inductive`](https://huggingface.co/datasets/nvidia/Nemotron-RL-ARC-AGI-v1)
 split of the Nemotron RL ARC-AGI dataset to customize Nemotron 3.5 Lightning.
 
-For other customization workflows on this topology, see the
-[DGX Station recipe index](README.md). For supervised fine-tuning with NeMo
-AutoModel, go directly to the [two-Station SFT recipe](sft.md).
+For other customization workflows, see the
+[DGX Station recipe index](README.md). For supervised tuning with NeMo
+AutoModel, use the [single-Station LoRA recipe](lora.md) or the
+[two-Station full-weight SFT recipe](sft.md).
 
 > [!NOTE]
 > The instructions use one Station as the **head** and the other as the
@@ -652,3 +653,5 @@ revalidation.
 - [Nemotron RL ARC-AGI dataset card](https://huggingface.co/datasets/nvidia/Nemotron-RL-ARC-AGI-v1)
 - [DGX Station software stack](https://docs.nvidia.com/dgx/dgx-station-development-guide/porting/software-requirements.html)
 - [Connect Two DGX Stations for Distributed Workloads](https://build.nvidia.com/station/connect-two-stations/overview)
+- [Single-Station LoRA customization recipe](lora.md)
+- [Two-Station SFT customization recipe](sft.md)
