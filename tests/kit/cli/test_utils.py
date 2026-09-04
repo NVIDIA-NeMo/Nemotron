@@ -126,6 +126,25 @@ class TestRewritePathsForRemote:
         result = rewrite_paths_for_remote("/other/path/file.txt", "/local/repo")
         assert result == "/other/path/file.txt"
 
+    def test_preserve_sibling_path_sharing_prefix(self):
+        """A sibling path that only shares the repo_root prefix is preserved.
+
+        ``/local/repo-backup`` is not inside ``/local/repo`` and must not be
+        rewritten just because it starts with the same characters.
+        """
+        result = rewrite_paths_for_remote("/local/repo-backup/config.yaml", "/local/repo")
+        assert result == "/local/repo-backup/config.yaml"
+
+    def test_rewrite_repo_root_exact_match(self):
+        """The repo root itself maps to the remote code root."""
+        result = rewrite_paths_for_remote("/local/repo", "/local/repo")
+        assert result == "/nemo_run/code/"
+
+    def test_rewrite_ignores_trailing_slash_on_repo_root(self):
+        """A trailing slash on repo_root does not change matching behavior."""
+        result = rewrite_paths_for_remote("/local/repo/src/config.yaml", "/local/repo/")
+        assert result == "/nemo_run/code/src/config.yaml"
+
     def test_rewrite_in_dict(self):
         """Test rewriting paths in a dict."""
         obj = {
