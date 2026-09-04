@@ -3,7 +3,7 @@
 Nemotron 3 Ultra is a 550B total / 55B active-parameter mixture-of-experts
 model built for long-running agentic workflows. This guide covers config-based
 setup for **OpenCode**, **OpenClaw**, **Kilo Code CLI**, **OpenHands CLI**,
-**Hermes Agent**, and **Pi**.
+**Hermes Agent**, **Pi**, and **VT Code**.
 
 The hosted model ID is:
 
@@ -318,4 +318,41 @@ Create or edit `~/.pi/agent/settings.json`:
 ```bash
 cd /path/to/project
 pi
+```
+
+## VT Code
+
+[VT Code](https://github.com/vinhnx/vtcode) is a Rust-native terminal coding
+agent with safe workspace tools and multi-provider LLM support. Configure it
+via `vtcode.toml` in your project root.
+
+**Install**
+
+```bash
+cargo install vtcode
+```
+
+**Configure**
+
+Via HuggingFace:
+
+```bash
+export HF_TOKEN="hf_..."
+```
+
+```toml
+[agent]
+provider = "huggingface"
+default_model = "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4:together"
+```
+
+[agent]
+provider = "openrouter"
+default_model = "nvidia/nemotron-3-ultra-550b-a55b"
+
+**Run**
+
+```bash
+cd /path/to/project
+vtcode
 ```
