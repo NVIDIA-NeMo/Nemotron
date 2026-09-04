@@ -28,6 +28,12 @@ from nemotron.steps.byob.runtime.hf_utils import get_subjects
 logger = logging.getLogger(__name__)
 
 
+def _require(condition: bool, message: str) -> None:
+    """Raise ``ValueError`` for invalid BYOB runtime configuration."""
+    if not condition:
+        raise ValueError(message)
+
+
 @dataclass
 class ByobConfig:
     """Configuration for BYOB (Bring Your Own Benchmark) MCQ generation pipeline.
@@ -138,14 +144,13 @@ class ByobConfig:
             ByobConfig: Validated configuration object.
 
         Raises:
-            AssertionError: If any required field is missing or validation fails.
-            ValueError: If dataset is not supported or paths don't exist.
+            ValueError: If any required field is missing or validation fails.
             PermissionError: If output directories are not writable.
         """
         with open(path) as f:
             config = yaml.safe_load(f)
 
-        assert "hf_dataset" in config, "Field `hf_dataset` is required in the configuration file"
+        _require("hf_dataset" in config, "Field `hf_dataset` is required in the configuration file")
         if config["hf_dataset"] not in ALLOWED_HF_DATASETS:
             raise ValueError(
                 f"Invalid Hugging Face dataset: {config['hf_dataset']}. "
@@ -163,130 +168,174 @@ class ByobConfig:
         )
         config["prompt_config"] = config.get("prompt_config", None)
 
-        assert "expt_name" in config, "Field `expt_name` is required in the configuration file"
-        assert "output_dir" in config, "Field `output_dir` is required in the configuration file"
-        assert "language" in config, "Field `language` is required in the configuration file"
-        assert "source_subjects" in config, "Field `source_subjects` is required in the configuration file"
-        assert "target_source_mapping" in config, "Field `target_source_mapping` is required in the configuration file"
-        assert "input_dir" in config, "Field `input_dir` is required in the configuration file"
-        assert "few_shot_samples_per_query" in config, (
-            "Field `few_shot_samples_per_query` is required in the configuration file"
+        _require("expt_name" in config, "Field `expt_name` is required in the configuration file")
+        _require("output_dir" in config, "Field `output_dir` is required in the configuration file")
+        _require("language" in config, "Field `language` is required in the configuration file")
+        _require("source_subjects" in config, "Field `source_subjects` is required in the configuration file")
+        _require(
+            "target_source_mapping" in config, "Field `target_source_mapping` is required in the configuration file"
         )
-        assert config["few_shot_samples_per_query"] > 0, "Field `few_shot_samples_per_query` must be greater than 0"
-        assert "queries_per_target_subject_document" in config, (
-            "Field `queries_per_target_subject_document` is required in the configuration file"
+        _require("input_dir" in config, "Field `input_dir` is required in the configuration file")
+        _require(
+            "few_shot_samples_per_query" in config,
+            ("Field `few_shot_samples_per_query` is required in the configuration file"),
         )
-        assert config["queries_per_target_subject_document"] > 0, (
-            "Field `queries_per_target_subject_document` must be greater than 0"
+        _require(
+            config["few_shot_samples_per_query"] > 0,
+            "Field `few_shot_samples_per_query` must be greater than 0",
         )
-        assert "num_questions_per_query" in config, (
-            "Field `num_questions_per_query` is required in the configuration file"
+        _require(
+            "queries_per_target_subject_document" in config,
+            ("Field `queries_per_target_subject_document` is required in the configuration file"),
         )
-        assert config["num_questions_per_query"] > 0, "Field `num_questions_per_query` must be greater than 0"
-        assert "generation_model_config" in config, (
-            "Field `generation_model_config` is required in the configuration file"
+        _require(
+            config["queries_per_target_subject_document"] > 0,
+            ("Field `queries_per_target_subject_document` must be greater than 0"),
         )
-        assert "judge_model_config" in config, "Field `judge_model_config` is required in the configuration file"
-        assert "do_distractor_expansion" in config, (
-            "Field `do_distractor_expansion` is required in the configuration file"
+        _require(
+            "num_questions_per_query" in config,
+            ("Field `num_questions_per_query` is required in the configuration file"),
         )
-        assert "distractor_expansion_model_config" in config, (
-            "Field `distractor_expansion_model_config` is required in the configuration file"
+        _require(config["num_questions_per_query"] > 0, "Field `num_questions_per_query` must be greater than 0")
+        _require(
+            "generation_model_config" in config,
+            ("Field `generation_model_config` is required in the configuration file"),
         )
-        assert "distractor_validity_model_config" in config, (
-            "Field `distractor_validity_model_config` is required in the configuration file"
+        _require("judge_model_config" in config, "Field `judge_model_config` is required in the configuration file")
+        _require(
+            "do_distractor_expansion" in config,
+            ("Field `do_distractor_expansion` is required in the configuration file"),
         )
-        assert "filtering_model_configs" in config, (
-            "Field `filtering_model_configs` is required in the configuration file"
+        _require(
+            "distractor_expansion_model_config" in config,
+            ("Field `distractor_expansion_model_config` is required in the configuration file"),
         )
-        assert "easiness" in config["filtering_model_configs"], (
-            "Field `easiness` is required in the filtering model configurations"
+        _require(
+            "distractor_validity_model_config" in config,
+            ("Field `distractor_validity_model_config` is required in the configuration file"),
         )
-        assert "hallucination" in config["filtering_model_configs"], (
-            "Field `hallucination` is required in the filtering model configurations"
+        _require(
+            "filtering_model_configs" in config,
+            ("Field `filtering_model_configs` is required in the configuration file"),
         )
-        assert len(config["filtering_model_configs"]["easiness"]) > 0, (
-            "At least one easiness filtering model is required"
+        _require(
+            "easiness" in config["filtering_model_configs"],
+            ("Field `easiness` is required in the filtering model configurations"),
         )
-        assert len(config["filtering_model_configs"]["hallucination"]) > 0, (
-            "At least one hallucination filtering model is required"
+        _require(
+            "hallucination" in config["filtering_model_configs"],
+            ("Field `hallucination` is required in the filtering model configurations"),
         )
-        assert "easiness_threshold" in config, "Field `easiness_threshold` is required in the configuration file"
-        assert config["easiness_threshold"] > 0 and config["easiness_threshold"] < 1, (
-            "Field `easiness_threshold` must be between 0 and 1"
+        _require(
+            len(config["filtering_model_configs"]["easiness"]) > 0,
+            ("At least one easiness filtering model is required"),
         )
-        assert "hallucination_threshold" in config, (
-            "Field `hallucination_threshold` is required in the configuration file"
+        _require(
+            len(config["filtering_model_configs"]["hallucination"]) > 0,
+            ("At least one hallucination filtering model is required"),
         )
-        assert config["hallucination_threshold"] > 0 and config["hallucination_threshold"] < 1, (
-            "Field `hallucination_threshold` must be between 0 and 1"
+        _require("easiness_threshold" in config, "Field `easiness_threshold` is required in the configuration file")
+        _require(
+            config["easiness_threshold"] > 0 and config["easiness_threshold"] < 1,
+            ("Field `easiness_threshold` must be between 0 and 1"),
         )
-        assert "semantic_deduplication_config" in config, (
-            "Field `semantic_deduplication_config` is required in the configuration file"
+        _require(
+            "hallucination_threshold" in config,
+            ("Field `hallucination_threshold` is required in the configuration file"),
         )
-        assert "model_identifier" in config["semantic_deduplication_config"], (
-            "Field `model_identifier` is required in the semantic deduplication configuration"
+        _require(
+            config["hallucination_threshold"] > 0 and config["hallucination_threshold"] < 1,
+            ("Field `hallucination_threshold` must be between 0 and 1"),
         )
-        assert "n_clusters" in config["semantic_deduplication_config"], (
-            "Field `n_clusters` is required in the semantic deduplication configuration"
+        _require(
+            "semantic_deduplication_config" in config,
+            ("Field `semantic_deduplication_config` is required in the configuration file"),
         )
-        assert "eps" in config["semantic_deduplication_config"], (
-            "Field `eps` is required in the semantic deduplication configuration"
+        _require(
+            "model_identifier" in config["semantic_deduplication_config"],
+            ("Field `model_identifier` is required in the semantic deduplication configuration"),
         )
-        assert config["semantic_deduplication_config"]["n_clusters"] > 0, "Field `n_clusters` must be greater than 0"
-        assert (
-            config["semantic_deduplication_config"]["eps"] > 0 and config["semantic_deduplication_config"]["eps"] < 1
-        ), "Field `eps` must be between 0 and 1"
-        assert "remove_duplicates" in config["semantic_deduplication_config"], (
-            "Field `remove_duplicates` is required in the semantic deduplication configuration"
+        _require(
+            "n_clusters" in config["semantic_deduplication_config"],
+            ("Field `n_clusters` is required in the semantic deduplication configuration"),
         )
-        assert isinstance(config["semantic_deduplication_config"]["remove_duplicates"], bool), (
-            "Field `remove_duplicates` must be a boolean"
+        _require(
+            "eps" in config["semantic_deduplication_config"],
+            ("Field `eps` is required in the semantic deduplication configuration"),
+        )
+        _require(
+            config["semantic_deduplication_config"]["n_clusters"] > 0,
+            "Field `n_clusters` must be greater than 0",
+        )
+        _require(
+            config["semantic_deduplication_config"]["eps"] > 0 and config["semantic_deduplication_config"]["eps"] < 1,
+            "Field `eps` must be between 0 and 1",
+        )
+        _require(
+            "remove_duplicates" in config["semantic_deduplication_config"],
+            ("Field `remove_duplicates` is required in the semantic deduplication configuration"),
+        )
+        _require(
+            isinstance(config["semantic_deduplication_config"]["remove_duplicates"], bool),
+            ("Field `remove_duplicates` must be a boolean"),
         )
         if "enabled" in config["semantic_deduplication_config"]:
-            assert isinstance(config["semantic_deduplication_config"]["enabled"], bool), (
-                "Field `enabled` must be a boolean in the semantic deduplication configuration"
+            _require(
+                isinstance(config["semantic_deduplication_config"]["enabled"], bool),
+                ("Field `enabled` must be a boolean in the semantic deduplication configuration"),
             )
-        assert "window_size" in config["chunking_config"], (
-            "Field `window_size` is required in the chunking configuration"
+        _require(
+            "window_size" in config["chunking_config"],
+            ("Field `window_size` is required in the chunking configuration"),
         )
-        assert config["chunking_config"]["window_size"] is None or config["chunking_config"]["window_size"] > 0, (
-            "Field `window_size` must be greater than 0 or None"
+        _require(
+            config["chunking_config"]["window_size"] is None or config["chunking_config"]["window_size"] > 0,
+            ("Field `window_size` must be greater than 0 or None"),
         )
 
         if config["do_coverage_check"]:
-            assert "window_size" in config["coverage_check_config"], (
-                "Field `window_size` is required in the coverage check configuration"
+            _require(
+                "window_size" in config["coverage_check_config"],
+                ("Field `window_size` is required in the coverage check configuration"),
             )
-            assert (
+            _require(
                 config["coverage_check_config"]["window_size"] is not None
-                and config["coverage_check_config"]["window_size"] > 0
-            ), "Field `window_size` must be greater than 0 when coverage check is enabled"
-            assert "model_identifier" in config["coverage_check_config"], (
-                "Field `model_identifier` is required in the coverage check configuration"
+                and config["coverage_check_config"]["window_size"] > 0,
+                "Field `window_size` must be greater than 0 when coverage check is enabled",
+            )
+            _require(
+                "model_identifier" in config["coverage_check_config"],
+                ("Field `model_identifier` is required in the coverage check configuration"),
             )
 
-        assert "semantic_outlier_detection_config" in config, (
-            "Field `semantic_outlier_detection_config` is required in the configuration file"
+        _require(
+            "semantic_outlier_detection_config" in config,
+            ("Field `semantic_outlier_detection_config` is required in the configuration file"),
         )
-        assert "model_identifier" in config["semantic_outlier_detection_config"], (
-            "Field `model_identifier` is required in the semantic outlier detection configuration"
+        _require(
+            "model_identifier" in config["semantic_outlier_detection_config"],
+            ("Field `model_identifier` is required in the semantic outlier detection configuration"),
         )
-        assert "n_neighbours_min" in config["semantic_outlier_detection_config"], (
-            "Field `n_neighbours_min` is required in the semantic outlier detection configuration"
+        _require(
+            "n_neighbours_min" in config["semantic_outlier_detection_config"],
+            ("Field `n_neighbours_min` is required in the semantic outlier detection configuration"),
         )
-        assert config["semantic_outlier_detection_config"]["n_neighbours_min"] > 0, (
-            "Field `n_neighbours_min` must be greater than 0"
+        _require(
+            config["semantic_outlier_detection_config"]["n_neighbours_min"] > 0,
+            ("Field `n_neighbours_min` must be greater than 0"),
         )
-        assert "remove_outliers" in config["semantic_outlier_detection_config"], (
-            "Field `remove_outliers` is required in the semantic outlier detection configuration"
+        _require(
+            "remove_outliers" in config["semantic_outlier_detection_config"],
+            ("Field `remove_outliers` is required in the semantic outlier detection configuration"),
         )
-        assert isinstance(config["semantic_outlier_detection_config"]["remove_outliers"], bool), (
-            "Field `remove_outliers` must be a boolean"
+        _require(
+            isinstance(config["semantic_outlier_detection_config"]["remove_outliers"], bool),
+            ("Field `remove_outliers` must be a boolean"),
         )
         if "enabled" in config["semantic_outlier_detection_config"]:
-            assert isinstance(config["semantic_outlier_detection_config"]["enabled"], bool), (
-                "Field `enabled` must be a boolean in the semantic outlier detection configuration"
+            _require(
+                isinstance(config["semantic_outlier_detection_config"]["enabled"], bool),
+                ("Field `enabled` must be a boolean in the semantic outlier detection configuration"),
             )
 
         if config["prompt_config"] is not None:
@@ -300,18 +349,22 @@ class ByobConfig:
                 "distractor_expansion",
                 "distractor_validity",
             ]:
-                assert stage in config["prompt_config"], f"Field `{stage}` is required in the prompt configuration"
-                assert "system_prompt" in config["prompt_config"][stage], (
-                    f"Field `system_prompt` is required in the prompt configuration for stage {stage}"
+                _require(stage in config["prompt_config"], f"Field `{stage}` is required in the prompt configuration")
+                _require(
+                    "system_prompt" in config["prompt_config"][stage],
+                    (f"Field `system_prompt` is required in the prompt configuration for stage {stage}"),
                 )
-                assert "prompt" in config["prompt_config"][stage], (
-                    f"Field `prompt` is required in the prompt configuration for stage {stage}"
+                _require(
+                    "prompt" in config["prompt_config"][stage],
+                    (f"Field `prompt` is required in the prompt configuration for stage {stage}"),
                 )
-                assert isinstance(config["prompt_config"][stage]["system_prompt"], str), (
-                    f"Field `system_prompt` must be a string for stage {stage}"
+                _require(
+                    isinstance(config["prompt_config"][stage]["system_prompt"], str),
+                    (f"Field `system_prompt` must be a string for stage {stage}"),
                 )
-                assert isinstance(config["prompt_config"][stage]["prompt"], str), (
-                    f"Field `prompt` must be a string for stage {stage}"
+                _require(
+                    isinstance(config["prompt_config"][stage]["prompt"], str),
+                    (f"Field `prompt` must be a string for stage {stage}"),
                 )
         else:
             from nemotron.steps.byob.runtime.benchmark_families.mcq.prompts.utils import get_prompts
@@ -349,21 +402,28 @@ class ByobConfig:
         for subject in config["target_source_mapping"]:
             # Check for directory or parquet file
             subject_path = os.path.join(config["input_dir"], subject)
-            assert (os.path.exists(subject_path) and os.path.isdir(subject_path)) or os.path.exists(
-                subject_path + ".parquet"
-            ), f"Input data path {subject_path} does not exist or is not a directory or parquet file"
+            _require(
+                (os.path.exists(subject_path) and os.path.isdir(subject_path))
+                or os.path.exists(subject_path + ".parquet"),
+                f"Input data path {subject_path} does not exist or is not a directory or parquet file",
+            )
             if os.path.isdir(subject_path):
                 if os.path.exists(subject_path + ".parquet"):
                     logger.warning(f"Both {subject_path} and {subject_path + '.parquet'} exist. Using {subject_path}")
                 subject_files = glob.glob(os.path.join(subject_path, "*.txt"))
-                assert len(subject_files) > 0, f"Input data directory {subject_path} does not contain any text files"
+                _require(
+                    len(subject_files) > 0, f"Input data directory {subject_path} does not contain any text files"
+                )
 
         for target_subject in config["target_source_mapping"]:
             if isinstance(config["target_source_mapping"][target_subject]["subjects"], list):
                 for source_subject in config["target_source_mapping"][target_subject]["subjects"]:
-                    assert source_subject in config["source_subjects"], (
-                        f"Source subject '{source_subject}' in `target_source_mapping` "
-                        f"is not in source subjects ({config['source_subjects']})"
+                    _require(
+                        source_subject in config["source_subjects"],
+                        (
+                            f"Source subject '{source_subject}' in `target_source_mapping` "
+                            f"is not in source subjects ({config['source_subjects']})"
+                        ),
                     )
                 # Use all source subjects if not specified
                 if config["target_source_mapping"][target_subject]["subjects"] == []:
@@ -375,23 +435,29 @@ class ByobConfig:
                 labels = list(config["target_source_mapping"][target_subject]["subjects"].keys())
                 weights = np.array(list(config["target_source_mapping"][target_subject]["subjects"].values()))
                 for source_subject in labels:
-                    assert source_subject in config["source_subjects"], (
-                        f"Source subject '{source_subject}' in `target_source_mapping` "
-                        f"is not in source subjects ({config['source_subjects']})"
+                    _require(
+                        source_subject in config["source_subjects"],
+                        (
+                            f"Source subject '{source_subject}' in `target_source_mapping` "
+                            f"is not in source subjects ({config['source_subjects']})"
+                        ),
                     )
-                assert np.all(weights >= 0), (
-                    f"Source weights for target subject '{target_subject}' must be non-negative"
+                _require(
+                    np.all(weights >= 0),
+                    (f"Source weights for target subject '{target_subject}' must be non-negative"),
                 )
-                assert np.sum(weights) > 0, (
-                    f"Source weights for target subject '{target_subject}' must sum to a positive value"
+                _require(
+                    np.sum(weights) > 0,
+                    (f"Source weights for target subject '{target_subject}' must sum to a positive value"),
                 )
                 weights = weights / np.sum(weights)
             else:
                 raise ValueError(f"Invalid type for `target_source_mapping` for target subject '{target_subject}'")
 
             if config.get("metadata_file") is None:
-                assert "tags" not in config["target_source_mapping"][target_subject], (
-                    "`tags` should not be specified if `metadata_file` is not specified"
+                _require(
+                    "tags" not in config["target_source_mapping"][target_subject],
+                    ("`tags` should not be specified if `metadata_file` is not specified"),
                 )
             tags = config["target_source_mapping"][target_subject].get("tags", [""])
             if isinstance(tags, list):
@@ -414,11 +480,13 @@ class ByobConfig:
         _seen_aliases = set()
         for filter_type in ["easiness", "hallucination"]:
             for filtering_model_config in config["filtering_model_configs"][filter_type]:
-                assert "alias" in filtering_model_config, (
-                    "Field `alias` is required in the filtering model configuration"
+                _require(
+                    "alias" in filtering_model_config,
+                    ("Field `alias` is required in the filtering model configuration"),
                 )
-                assert filtering_model_config["alias"] not in _seen_aliases, (
-                    f"Alias {filtering_model_config['alias']} is already used in the filtering model configurations"
+                _require(
+                    filtering_model_config["alias"] not in _seen_aliases,
+                    (f"Alias {filtering_model_config['alias']} is already used in the filtering model configurations"),
                 )
                 _seen_aliases.add(filtering_model_config["alias"])
 
@@ -497,37 +565,49 @@ class ByobTranslationConfig:
             ByobTranslationConfig: Validated configuration object.
 
         Raises:
-            AssertionError: If any required field is missing or validation fails.
+            ValueError: If any required field is missing or validation fails.
         """
         with open(path) as f:
             config = yaml.safe_load(f)
 
-        assert "translation_model_config" in config, (
-            "Field `translation_model_config` is required in the configuration file"
+        _require(
+            "translation_model_config" in config,
+            ("Field `translation_model_config` is required in the configuration file"),
         )
-        assert isinstance(config["translation_model_config"], dict), (
-            "Field `translation_model_config` must be a mapping"
+        _require(
+            isinstance(config["translation_model_config"], dict),
+            ("Field `translation_model_config` must be a mapping"),
         )
         config["translation_model_config"]["params"] = config["translation_model_config"].get("params", {})
         translation_stage_config = config["translation_model_config"].get("stage", {})
-        assert not translation_stage_config.get("enable_faith_eval", False), (
-            "BYOB translation uses backtranslation quality metrics; FAITH evaluation is not part of this flow"
+        _require(
+            not translation_stage_config.get("enable_faith_eval", False),
+            ("BYOB translation uses backtranslation quality metrics; FAITH evaluation is not part of this flow"),
         )
-        assert "backtranslation_quality_metrics" in config, (
-            "Field `backtranslation_quality_metrics` is required in the configuration file"
+        _require(
+            "backtranslation_quality_metrics" in config,
+            ("Field `backtranslation_quality_metrics` is required in the configuration file"),
         )
         for quality_metric in config["backtranslation_quality_metrics"]:
-            assert "type" in quality_metric, (
-                "Field `type` is required in the backtranslation quality metric configuration"
+            _require(
+                "type" in quality_metric,
+                ("Field `type` is required in the backtranslation quality metric configuration"),
             )
-            assert quality_metric["type"] in AVAILABLE_QUALITY_METRICS, (
-                f"Invalid backtranslation quality metric type: {quality_metric['type']}. "
-                f"Choose one of the following: {AVAILABLE_QUALITY_METRICS}"
+            _require(
+                quality_metric["type"] in AVAILABLE_QUALITY_METRICS,
+                (
+                    f"Invalid backtranslation quality metric type: {quality_metric['type']}. "
+                    f"Choose one of the following: {AVAILABLE_QUALITY_METRICS}"
+                ),
             )
-            assert "threshold" in quality_metric, (
-                "Field `threshold` is required in the backtranslation quality metric configuration"
+            _require(
+                "threshold" in quality_metric,
+                ("Field `threshold` is required in the backtranslation quality metric configuration"),
             )
-            assert quality_metric["threshold"] >= 0, "Field `threshold` must be greater than or equal to 0"
+            _require(
+                quality_metric["threshold"] >= 0,
+                "Field `threshold` must be greater than or equal to 0",
+            )
 
         return ByobTranslationConfig(
             expt_name=config["expt_name"],
