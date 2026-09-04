@@ -80,6 +80,14 @@ Use the customize skill with a YAML-first plan: repo steps, then configs, then c
 `Workflow`
 :::
 
+:::{grid-item-card} Training FAQ
+:link: faq/index
+:link-type: doc
+Answers from the Nemotron team to the questions asked most about how the models are trained and how to fine-tune or adapt them.
++++
+`Reference`
+:::
+
 ::::
 
 ## Quick Links
@@ -88,3 +96,4 @@ Use the customize skill with a YAML-first plan: repo steps, then configs, then c
 - [Getting Started](getting-started.md) describes how to verify the CLI and run a tiny configuration.
 - [Execution through NeMo Run](../nemo_runspec/nemo-run.md) describes profiles, attached and detached runs, and clusters.
 - [Nemotron CLI Overview](../nemotron/cli.md) describes how the wider CLI relates to configuration and overrides.
+- [Nemotron Training FAQ](faq/index.md) answers common questions about how Nemotron models are trained and how to fine-tune or adapt them.
