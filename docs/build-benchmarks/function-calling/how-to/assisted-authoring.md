@@ -205,8 +205,20 @@ python -m nemotron.steps.byob.scripts.bfcl_author authorize \
 python -m nemotron.steps.byob.scripts.bfcl_author approve \
   --workspace /srv/bfcl/authoring/warehouse \
   --boundary evidence \
-  --approved-by reviewer@example.test
+  --approved-by reviewer@example.test \
+  --source-bundle-digest <SOURCE_EVIDENCE_BUNDLE_DIGEST> \
+  --normalized-bundle-digest <NORMALIZED_EVIDENCE_BUNDLE_DIGEST> \
+  --output /srv/bfcl/authoring/warehouse/evidence_approval.json
 ```
+
+Read each digest from the `bundle_digest` field of the corresponding verified
+evidence-bundle artifact; do not substitute a filesystem checksum. For a normal
+non-migration intake, the source and normalized bundle are the same artifact, so both
+arguments use the `bundle_digest` from `intake/evidence_bundle.json`. For a migrated
+intake they can differ: `--source-bundle-digest` names the original source evidence,
+while `--normalized-bundle-digest` names the normalized evidence approved for drafting.
+The `--output` path stores the immutable approval record that the later `draft` command
+must bind.
 
 :::{important}
 Evidence approval and release approval are different decisions, and the first cannot be replaced by the second. Evidence approval says a reviewer inspected this exact source and normalized evidence and considers it fit to draft from. Release approval, later, says a reviewer inspected the finished pack and its fresh validation and considers it fit to publish. Approving the release does not retroactively authorize the model exposure that already happened, so the command sequence requires both in order.
