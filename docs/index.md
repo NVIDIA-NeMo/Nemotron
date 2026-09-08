@@ -104,6 +104,13 @@ Use `sdg/data_designer` to produce SFT, tool-use, and preference datasets.
 Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 :::
 
+:::{grid-item-card} Tokenizer Extension
+:link: tokenizer-extension/index
+:link-type: doc
+
+Add target-language tokens to a base tokenizer and initialize their embeddings with `tokenizer_extension/*` before continued pretraining.
+:::
+
 ::::
 
 ## Training Recipes
@@ -298,6 +305,18 @@ Getting Started <build-benchmarks/function-calling/getting-started.md>
 Concepts <build-benchmarks/function-calling/explanation/index.md>
 Tasks <build-benchmarks/function-calling/how-to/index.md>
 Reference <build-benchmarks/function-calling/reference/index.md>
+```
+
+```{toctree}
+:caption: Tokenizer Extension
+:hidden:
+
+About <tokenizer-extension/index.md>
+Prerequisites <tokenizer-extension/prerequisites.md>
+Getting Started <tokenizer-extension/getting-started.md>
+Concepts <tokenizer-extension/explanation/index.md>
+Tasks <tokenizer-extension/how-to/index.md>
+Reference <tokenizer-extension/reference/index.md>
 ```
 
 ```{toctree}
