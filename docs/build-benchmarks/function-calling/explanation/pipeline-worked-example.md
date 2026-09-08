@@ -373,5 +373,5 @@ flowchart LR
   S -->|"final_output"| O
 ```
 
-For the complete stage contracts, see {doc}`pipeline-overview`. For every artifact
-path, see {doc}`../reference/output-files`.
+For the complete stage contracts, refer to {doc}`pipeline-overview`. For every artifact
+path, refer to {doc}`../reference/output-files`.

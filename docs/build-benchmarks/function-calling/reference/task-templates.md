@@ -72,7 +72,7 @@ fresh whole-pack validation still runs before review and publication.
 | `intent` | Recommended; required by intent-based analysis | Semantic capability this task exercises. It is carried into published metadata. |
 | `category` | Optional | Publication-budget group. When omitted, expansion uses `template_id` as the category, giving that template its own budget. |
 | `difficulty` | Optional; required when balancing targets it | Pack-defined difficulty label carried into reporting and optional balancing. |
-| `turn_policy` | Yes | Claim about the required conversation shape. See [Turn policies](#turn-policies). |
+| `turn_policy` | Yes | Claim about the required conversation shape. Refer to [Turn policies](#turn-policies). |
 | `mutates` | For state-changing tasks | Declares that the conversation is expected to change oracle state. |
 | `call_order` | Optional | `strict`, `any`, or `prefix`; defaults to `strict`. |
 | `required_tools` | Yes in practice | Tool names the gold trajectory calls. Use an empty list for no-call policies. |
@@ -303,7 +303,7 @@ milestone or ending with anything other than `decline` violates the policy shape
 | `missing_assistant_turn_templates` | Add wording in the pack manifest or template for each text milestone used. |
 | Required tool not exposed | Add the name to `tools_present`, or omit `tools_present` to expose the full catalog. |
 
-See {doc}`troubleshooting` for the complete failure taxonomy.
+Refer to {doc}`troubleshooting` for the complete failure taxonomy.
 
 ## Related Information
 
@@ -314,4 +314,4 @@ See {doc}`troubleshooting` for the complete failure taxonomy.
 - {doc}`assertions` for `success_assertions`.
 - {doc}`validation-cases` for direct oracle probes.
 - {doc}`../explanation/pipeline-worked-example` for how one template becomes a row.
-- {doc}`../how-to/author-a-pack` for validation and smoke-run commands.
+- {doc}`../how-to/author-a-pack` for validation and verification-run commands.

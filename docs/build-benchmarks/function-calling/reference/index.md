@@ -162,7 +162,7 @@ Every number in the example files is a worked example for the pack that file poi
 
 | File | Purpose |
 | --- | --- |
-| `tiny.yaml` | Plumbing smoke run against the bundled tiny pack. Not publication-eligible. |
+| `tiny.yaml` | Pipeline verification run against the bundled `tiny_oracle_pack`. Not publication-eligible. |
 | `default.yaml` | Annotated template. Its pack path is a placeholder, so it cannot publish an example domain by omission. |
 | `smoke.example.yaml` | Domain-sized smoke run. Copy it and repoint it at your own pack. |
 | `publication.example.yaml` | Publication-scale, template-only Gold profile with a worked budget and balancing targets. |
@@ -178,9 +178,9 @@ Those configurations drive generation, which starts only once a reviewed pack ex
 
 | File | Used by | Purpose |
 | --- | --- | --- |
-| `bfcl-domain-brief.example.txt` | `--brief` | The reviewed statement of what a source is for, sanitized and bound into the evidence. See {doc}`domain-brief`. |
+| `bfcl-domain-brief.example.txt` | `--brief` | The reviewed statement of what a source is for, sanitized and bound into the evidence. Refer to {doc}`domain-brief`. |
 | `bfcl-domain-brief.skeleton.txt` | copy, complete, then pass to `--brief` | The same thing with the domain taken out: an instruction header to delete, then seven bracketed blocks to replace, each naming what it feeds downstream. Intake rejects any remaining `BFCL-SKELETON` block, so do not pass this file itself. Start with {doc}`domain-brief` rather than editing the banking example. |
-| `bfcl-probe-plan.example.json` | `--probe-plan` | A complete plan for certification tier A2: a success per published tool, a state-changing case per mutating tool, structured errors naming their codes, and the required timeout case. Its `fixtures` block is abridged to the records its own cases reach. See {doc}`probe-plan`. |
+| `bfcl-probe-plan.example.json` | `--probe-plan` | A complete plan for certification tier A2: a success per published tool, a state-changing case per mutating tool, structured errors naming their codes, and the required timeout case. Its `fixtures` block is abridged to the records its own cases reach. Refer to {doc}`probe-plan`. |
 | `bfcl-authoring-policy.example.yaml` | policy | Organizational defaults a guided session should not ask for twice. |
 | `bfcl-endpoint-config.example.yaml` | `endpoint_config.yaml` | A complete endpoint-backed pack declaration, with credentials referenced by environment-variable name only. |
 
@@ -203,7 +203,7 @@ The helper commands under `nemotron.steps.byob.scripts` — the pack validator, 
 
 The distinction between `1` and `2` is what makes these commands safe to automate: retry on `1`, because a crash may be transient; never retry on `2`, because the verdict will not change until a human changes the inputs.
 
-The evaluator is the exception. `nemotron steps run byob/bfcl` with `stage=eval` publishes a wider taxonomy — `2` through `7` — because an operator needs to know whether to edit a config, fix a candidate endpoint, or investigate a contamination finding. See {doc}`../how-to/run-evaluation`.
+The evaluator is the exception. `nemotron steps run byob/bfcl` with `stage=eval` publishes a wider taxonomy — `2` through `7` — because an operator needs to know whether to edit a config, fix a candidate endpoint, or investigate a contamination finding. Refer to {doc}`../how-to/run-evaluation`.
 
 ## Normative Contracts
 

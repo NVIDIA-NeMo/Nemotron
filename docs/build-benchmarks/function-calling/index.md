@@ -18,7 +18,7 @@ A task that the oracle cannot reproduce twice does not reach the benchmark.
 That difference is the point of the design. The pack, not a model, is the source of truth about what a correct tool call looks like, so the benchmark can state why each expected answer is correct.
 
 :::{tip}
-New to this flow? Follow {doc}`getting-started` once with the bundled tiny pack, then use the grids below to jump to a task guide, a concept, or a field reference.
+New to this flow? Follow {doc}`getting-started` once with the bundled `tiny_oracle_pack`, then use the grids below to jump to a task guide, a concept, or a field reference.
 :::
 
 ## When to Use
@@ -39,7 +39,7 @@ At a high level, the step performs the following work.
 3. **Translate**, optional: localize a published benchmark and write a new `benchmark.parquet`.
 4. **Evaluate**, a separate run: score candidate models against a published benchmark and write a report.
 
-See {doc}`explanation/pipeline-overview` for the stage-by-stage account.
+Refer to {doc}`explanation/pipeline-overview` for the stage-by-stage account.
 
 ## Choose A Way To Get A Pack
 
@@ -65,7 +65,7 @@ In the assisted flows a model may propose pack semantics, but it can never award
 :::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Tutorial
 :link: getting-started
 :link-type: doc
-Install the `byob` extra, run the bundled tiny pack end to end, and inspect the benchmark and manifest it writes.
+Install the `byob` extra, run the bundled `tiny_oracle_pack` end to end, and inspect the benchmark and manifest it writes.
 +++
 {bdg-secondary}`hands-on`
 :::
@@ -188,4 +188,4 @@ artifacts, and the symptom-to-fix index.
   {doc}`explanation/oracle-pack` and {doc}`how-to/publish-a-release`.
 - **Pack code executes.** The pipeline imports and runs your backend and assertions. It does so in a separate process with a sanitized environment and enforced timeouts, and Gold requires that isolation, but the pack is still code you are choosing to trust.
 - **Model roles are opt-in and pinned.** Enabling a model-authored surface role requires a pinned, unambiguous model identity, because a benchmark whose wording came from an unrecorded model cannot be reproduced.
-- **The MCP transport is experimental.** Only Mode A is implemented, and it is disabled unless you opt in. See {doc}`how-to/mcp-server`.
+- **The MCP transport is experimental.** Only Mode A is implemented, and it is disabled unless you opt in. Refer to {doc}`how-to/mcp-server`.

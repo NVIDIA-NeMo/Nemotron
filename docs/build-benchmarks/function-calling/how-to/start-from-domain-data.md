@@ -223,11 +223,11 @@ uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
 Exit code `0` means Gold-eligible, `2` means validation reached a non-Gold verdict,
 and `1` means no verdict could be produced. Read the failed checks rather than editing
 the generated report. The same report is what `stage=prepare` writes if you prefer to
-stay on the pipeline CLI. See {doc}`author-a-pack` for how to read the named checks.
+stay on the pipeline CLI. Refer to {doc}`author-a-pack` for how to read the named checks.
 
-### 4. Generate A Smoke Benchmark
+### 4. Generate a Verification Benchmark
 
-Once preparation is Gold-eligible, copy the smoke configuration rather than using the
+After preparation is Gold-eligible, copy the verification configuration (`smoke.example.yaml`) rather than using the
 scaffolded `validate.yaml` as a generation run. Relative paths in a BFCL configuration
 resolve from `src/nemotron/steps/byob/`, not from the shell working directory; use
 absolute paths for an external pack and keep `output_dir` outside the pack root.
@@ -261,7 +261,7 @@ uv run nemotron steps run byob/bfcl \
 ```
 
 Verify `benchmark_raw.parquet`, `benchmark.parquet`, `run_manifest.json`, and the
-adjacent `stage_cache/` tables. A smoke run still writes those files, but records
+adjacent `stage_cache/` tables. A verification run still writes those files, but records
 `gold_eligible: false` in the manifest even when the pack itself is Gold. That proves
 plumbing; it is not a publication-eligible evaluation source. Follow
 {doc}`publish-a-release` to choose a reviewed publication budget, then
@@ -301,7 +301,7 @@ Prepare these operator-owned inputs before starting intake:
 | --- | --- |
 | Reviewed `tools.json` | Defines the exact public functions and JSON parameter schemas a candidate may see. |
 | Executable source | For `local_python`: `backend.py`, `dependency-lock.json`, and optional `fixtures.json`. For HTTP: `endpoint_config.yaml`. Prefer an existing domain-owned implementation over scaffolding. |
-| Domain brief | Describes the domain, supported reads and mutations, confirmation and refusal behavior, identifier shapes, and language. It supplies drafting context, not oracle truth. See {doc}`../reference/domain-brief`. |
+| Domain brief | Describes the domain, supported reads and mutations, confirmation and refusal behavior, identifier shapes, and language. It supplies drafting context, not oracle truth. Refer to {doc}`../reference/domain-brief`. |
 | Probe plan | Names the calls intake may execute to measure coverage, errors, reset, isolation, confirmation safety, and timeout cleanup. A Gold release requires A2, including a timeout case. |
 | Held-out decision | Supplies either a reviewed held-out policy or a reason held-out data does not apply. |
 | Certification key | An Ed25519 private key that signs the measured source evidence under a chosen key id. |
@@ -413,7 +413,7 @@ vocabulary, and state transitions, which can bias task coverage or favor familia
 conventions. Gold validation catches inconsistency and nondeterminism, not semantic
 representativeness. Use independent records and tests to review every suggestion, and
 avoid using the same model as the sole author of both oracle behavior and benchmark
-tasks. See {doc}`../reference/python-backend` for the full recommendation.
+tasks. Refer to {doc}`../reference/python-backend` for the full recommendation.
 
 ### 3. Check The Source Before Intake
 
@@ -446,7 +446,7 @@ the source has error codes, confirmation safety for mutations, reset isolation, 
 case the tool cannot finish inside its deadline. Without that timeout case,
 certification cannot reach A2. Copy the structure from
 `src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`, then replace its
-banking tools, fixture ids, and cases. See {doc}`../reference/probe-plan` for the A2
+banking tools, fixture ids, and cases. Refer to {doc}`../reference/probe-plan` for the A2
 coverage contract, including the timeout case. Check the plan without executing probes:
 
 ```bash
@@ -632,9 +632,9 @@ Check pack validation and publication separately. They answer different question
 
 - `stage_cache/oracle_validation_report.json` reports the pack's own `tier` and
   `gold_eligible`. A Gold pack is required before you spend a publication budget.
-- A smoke configuration with `lineage.policy: smoke_no_publication` still writes
+- A verification configuration with `lineage.policy: smoke_no_publication` still writes
   `run_manifest.json`, but records `gold_eligible: false` even when the pack itself
-  is Gold. That is the point of a smoke run: it proves plumbing without claiming a
+  is Gold. That is the point of a verification run: it confirms the pipeline path without claiming a
   releasable lineage.
 - Every row that reaches the raw table passed deterministic executable replay and its
   declared assertions.

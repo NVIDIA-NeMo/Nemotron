@@ -25,7 +25,7 @@ cp src/nemotron/steps/byob/references/bfcl-probe-plan.example.json \
 
 Do not pass the example unchanged to a library or warehouse source. An optional
 model-drafted plan is produced by `draft_probe_plan`; review that draft the same way
-you would review a handwritten plan. See {doc}`../how-to/assisted-authoring`.
+you would review a handwritten plan. Refer to {doc}`../how-to/assisted-authoring`.
 
 A `local_python` source may omit `fixtures` when the reviewed `fixtures.json` already
 supplies reset state. A session-based HTTP or MCP plan must carry `fixtures`, because

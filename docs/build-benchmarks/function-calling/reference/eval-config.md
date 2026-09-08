@@ -9,7 +9,7 @@ Evaluation is a separate run over a benchmark that was already published. This p
 the keys of the resolved scoring config, as validated by `load_eval_config` in
 `src/nemotron/steps/byob/runtime/benchmark_families/bfcl/eval/config.py` and typed by the
 models in the sibling `eval/schemas.py`. For what the numbers mean, see
-{doc}`../explanation/evaluation`; to run one, see {doc}`../how-to/run-evaluation`.
+{doc}`../explanation/evaluation`; to run one, refer to {doc}`../how-to/run-evaluation`.
 
 ## The Three Files
 
@@ -178,5 +178,5 @@ reports each weakened field in `non_publication_reasons`.
 evaluation into different directories ran the same evaluation. Which artifacts get written
 is in the hash, because a run that skipped its per-task results cannot be audited.
 
-For the resulting artifacts see {doc}`output-files`, for generation fields see
-{doc}`generate-config`, and for error codes see {doc}`troubleshooting`.
+For the resulting artifacts refer to {doc}`output-files`, for generation fields see
+{doc}`generate-config`, and for error codes refer to {doc}`troubleshooting`.

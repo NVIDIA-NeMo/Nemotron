@@ -19,7 +19,7 @@ During supplement and candidate-pack review, use the artifact index in
 tool catalog and fixtures, backend or endpoint, templates, assertions, validation
 cases, and held-out policy with the same create-contract-example-validate structure.
 
-This page is the walkthrough. `src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md` is the matching command-level reference: it lists every subcommand and refusal code, and its invocations are executed as smoke cases by the test suite, so consult it when you need exact arguments rather than the shape of the flow.
+This page is the walkthrough. `src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md` is the matching command-level reference: it lists every subcommand and refusal code, and its invocations are executed as verification cases by the test suite, so consult it when you need exact arguments rather than the shape of the flow.
 
 :::{tip}
 To watch the whole flow run before you prepare a source of your own, use the
@@ -42,9 +42,9 @@ non-normative walkthrough rather than a production launcher. Pass
 ## Before You Start
 
 - Install the BYOB dependencies with `uv sync --extra byob`, and prepare a source package in one of the two supported layouts below.
-- Prepare a domain brief, a reviewed statement of what the source is for, which is sanitized and bound into the evidence. Copy `src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt` and replace every bracketed `BFCL-SKELETON` block; intake rejects the copy while even one remains. `bfcl-domain-brief.example.txt` is the same form filled in, being the brief a published release was authored from. Prefer the skeleton for a new source, since copying the example tends to carry its banking framing across with it. See {doc}`../reference/domain-brief` for its content and safety contract.
+- Prepare a domain brief, a reviewed statement of what the source is for, which is sanitized and bound into the evidence. Copy `src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt` and replace every bracketed `BFCL-SKELETON` block; intake rejects the copy while even one remains. `bfcl-domain-brief.example.txt` is the same form filled in, being the brief a published release was authored from. Prefer the skeleton for a new source, since copying the example tends to carry its banking framing across with it. Refer to {doc}`../reference/domain-brief` for its content and safety contract.
 - Prepare a probe plan, which you need for certification tier A1 or A2 and therefore
-  for a Gold release. See {doc}`../reference/probe-plan`.
+  for a Gold release. Refer to {doc}`../reference/probe-plan`.
   `src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`
   is a complete A2-shaped banking example: copy its structure, then replace its tools,
   fixture ids, cases, and domain assumptions.

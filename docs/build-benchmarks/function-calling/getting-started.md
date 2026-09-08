@@ -46,7 +46,7 @@ Run the `tiny` BFCL configuration from my Nemotron clone, then show me the bench
 - The configuration reads the pack at `src/nemotron/steps/byob/data/tiny_oracle_pack` and writes outputs under `/tmp/bfcl/tiny_out`.
 
 :::{note}
-Paths in a BFCL configuration resolve relative to the BYOB skill root, not your shell's working directory, unless they are absolute. See {doc}`reference/generate-config`.
+Paths in a BFCL configuration resolve relative to the BYOB skill root, not your shell's working directory, unless they are absolute. Refer to {doc}`reference/generate-config`.
 :::
 
 ## Prerequisites
@@ -68,7 +68,7 @@ Paths in a BFCL configuration resolve relative to the BYOB skill root, not your 
    uv sync --extra byob
    ```
 
-1. Run every stage against the bundled tiny pack:
+1. Run every stage against the bundled `tiny_oracle_pack`:
 
    ```console
    uv run nemotron steps run byob/bfcl \
@@ -112,7 +112,7 @@ Paths in a BFCL configuration resolve relative to the BYOB skill root, not your 
    "
    ```
 
-   The tiny pack declares four templates in one category and the configuration budgets four tasks per category, so this run publishes four rows. Each row carries the rendered conversation in `messages`, the tool catalog the candidate is allowed to see in `tools`, and the calls the oracle proved correct in `expected_tool_calls`.
+   The `tiny_oracle_pack` declares four templates in one category and the configuration budgets four tasks per category, so this run publishes four rows. Each row carries the rendered conversation in `messages`, the tool catalog the candidate is allowed to see in `tools`, and the calls the oracle proved correct in `expected_tool_calls`.
 
 1. Read the commit marker:
 

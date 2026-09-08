@@ -14,7 +14,7 @@ If one file described both the benchmark and the model under test, then swapping
 The configuration names a `source_run_manifest`, never a bare Parquet file, because `run_manifest.json` is the publication commit marker and it already states which table was published, whether the run was gold-eligible, and which oracle kind produced it.
 Nothing in the file defaults. Every scoring gate, runtime limit, and decoding parameter is stated, because each one changes what the resulting number means — a model cut off at two turns did not answer the same question as one given ten — and quoted booleans and numbers are refused rather than coerced, since a `"false"` that became `true` would silently switch off a correctness gate.
 Resolution ends in one `eval_config_hash` taken over the configuration's meaning: referenced files enter as content hashes, and absolute paths, output locations, and secret values are absent.
-See {doc}`../reference/eval-config` for every key.
+Refer to {doc}`../reference/eval-config` for every key.
 
 ## Two Modes
 
@@ -95,7 +95,7 @@ Structural matching proves that the candidate respected the text-versus-call sha
 does not by itself judge whether a clarification asked for the semantically correct
 slot or used domain-appropriate wording. Executable assertions can add domain behavior
 checks; any stronger language-quality judgment must be declared separately rather than
-reported as exact match. See {doc}`pipeline-worked-example` for a missing-slot
+reported as exact match. Refer to {doc}`pipeline-worked-example` for a missing-slot
 conversation and {doc}`../reference/eval-config` for the scoring fields.
 
 ## Artifacts

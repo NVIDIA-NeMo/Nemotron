@@ -21,9 +21,9 @@ Gold-eligible Oracle Pack
 
 ## Before You Start
 
-- A pack that validates as Gold-eligible, and a completed smoke run against it. Generation refuses a pack that is not Gold-eligible; see {doc}`author-a-pack`.
+- A pack that validates as Gold-eligible, and a completed verification run against it. Generation refuses a pack that is not Gold-eligible; refer to {doc}`author-a-pack`.
 - A fresh `output_dir` and a unique `expt_name`, which is a single directory name rather than a path. `output_dir/expt_name` must sit outside the pack root.
-- A decision about whether the release needs model-authored wording. See [Choose a Profile](#choose-a-profile).
+- A decision about whether the release needs model-authored wording. Refer to [Choose a Profile](#choose-a-profile).
 
 :::{warning}
 Do not edit the pack between validation and publication. The pack fingerprint is checked before validation, after validation, and again before final output, and any drift aborts publication rather than stamping a report and a benchmark that came from different bytes.

@@ -26,7 +26,7 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
 
 The generated URL and digests are placeholders. Replace them with metadata from a
 deployed, versioned service before validation. A missing conformance attestation may be
-useful for smoke diagnostics but cannot reach Gold.
+useful for verification diagnostics but cannot reach Gold.
 
 For MCP-backed authoring, the gateway artifact emitter can produce endpoint identity,
 attestation, and an optional CA bundle. Do not manually invent those values.

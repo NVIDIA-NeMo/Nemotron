@@ -5,7 +5,7 @@
 
 # Hand-Author an Oracle Pack
 
-Use this guide to write an Oracle Pack yourself, validate it, and smoke-run it before you spend a publication budget on it. This is the manual authoring flow: you supply the tools, the executable oracle, the fixtures, the conversation templates, and the assertions, and no model participates in authoring. The two model-assisted alternatives are {doc}`assisted-authoring` and {doc}`mcp-server`.
+Use this guide to write an Oracle Pack yourself, validate it, and complete a verification run before you spend a publication budget on it. This is the manual authoring flow: you supply the tools, the executable oracle, the fixtures, the conversation templates, and the assertions, and no model participates in authoring. The two model-assisted alternatives are {doc}`assisted-authoring` and {doc}`mcp-server`.
 
 If you have domain records and behavior but have not chosen an authoring route yet,
 start with {doc}`start-from-domain-data`, which follows a compact example through the
@@ -49,7 +49,7 @@ Declaring both transports is refused. An endpoint pack stores only credential
 references, never secret values. Replace the scaffold's identity placeholders with
 reviewed values from `GET /v1/metadata`, and pin the conformance digest from
 `GET /v1/conformance`; a Gold endpoint pack requires both identity and attestation.
-See {doc}`../reference/endpoint-config`.
+Refer to {doc}`../reference/endpoint-config`.
 :::
 
 ## Step 2: Fill In Each Pack File
@@ -128,9 +128,9 @@ Gold requires every check to pass. Two rules surprise people most often:
 
 `stage=generate` derives the verdict from the individual checks rather than from the summary flag, and never trusts a report written by an earlier run, so editing the report on disk accomplishes nothing.
 
-## Step 6: Smoke-Run the Pack
+## Step 6: Run a Verification Generation
 
-Once the pack is Gold-eligible, copy `smoke.example.yaml` and repoint it. The smoke profile generates every declared category at a small budget, so a pack defect surfaces in minutes rather than hours.
+Once the pack is Gold-eligible, copy `smoke.example.yaml` and repoint it. This verification profile generates every declared category at a small budget, so a pack defect surfaces in minutes rather than hours.
 
 ```bash
 mkdir -p /srv/bfcl/runs && \
@@ -167,7 +167,7 @@ The smoke profile pins `lineage.policy: smoke_no_publication`, which makes its o
 
 ## Verify Success
 
-A successful smoke run leaves these files under `output_dir/expt_name/`:
+A successful verification run leaves these files under `output_dir/expt_name/`:
 
 - `benchmark_raw.parquet` and `benchmark.parquet`.
 - `run_manifest.json`, written last as the publication commit marker. If it is absent, treat the Parquet files beside it as unpublished.

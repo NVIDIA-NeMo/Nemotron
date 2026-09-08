@@ -312,5 +312,5 @@ interface.
 - {doc}`task-templates` for how a conversation names backend tools.
 - {doc}`assertions` for predicates that inspect final state and trace.
 - {doc}`validation-cases` for direct executable probes.
-- {doc}`../how-to/author-a-pack` for validation and smoke-run commands.
+- {doc}`../how-to/author-a-pack` for validation and verification-run commands.
 - {doc}`troubleshooting` for backend/schema, confirmation, and replay failures.

@@ -20,7 +20,7 @@ that contract disagree, the normative contract is authoritative.
 2. **Oracle Pack inputs** define executable domain truth. Stage 1 loads and fingerprints
    them.
 3. **Run configuration** selects stages, pack paths, budgets, optional model roles, and
-   publication policy. See {doc}`generate-config`.
+   publication policy. Refer to {doc}`generate-config`.
 
 `manifest.yaml` and `task_templates.yaml` are pack declarations, not run
 configuration. Editing any file inside a published pack changes its fingerprint.
@@ -184,6 +184,6 @@ Only the public name must match. Private backend helpers are implementation deta
 ## Where To Go Next
 
 - Follow the artifact references above while filling each file.
-- Use {doc}`../how-to/author-a-pack` for the manual scaffold-to-smoke sequence.
+- Use {doc}`../how-to/author-a-pack` for the manual scaffold-to-verification sequence.
 - Use {doc}`../how-to/start-from-domain-data` to choose an authoring route.
 - Use {doc}`troubleshooting` to map a refusal to the responsible artifact.

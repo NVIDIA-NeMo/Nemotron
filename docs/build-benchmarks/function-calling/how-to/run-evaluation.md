@@ -322,7 +322,7 @@ Then run the following sequence.
    uv pip install <FRAMEWORK_PACKAGE_PRINTED_BY_STEP_1>
    ```
 
-   If Launcher uses an evaluation container, bake that package into the image
+   If Launcher uses an evaluation container, install that package in the image
    instead. Also configure identity `launcher.evaluation_mounts` as described in
    Step 5 so the container can access all absolute paths.
 

@@ -104,7 +104,7 @@ verifies that both records identify the same source run.
 | Script or guard refusal | Set `localization.validation.required_script` when the target subtag cannot infer the script, and review `forbidden_patterns`. |
 | Protected value appeared in output | A tool name, argument, or other protected token leaked through a placeholder. Do not patch the table; fix the translator or guards and rerun. |
 
-See {doc}`../reference/troubleshooting` for `bfcl_translation_invalid` and
+Refer to {doc}`../reference/troubleshooting` for `bfcl_translation_invalid` and
 {doc}`../explanation/pipeline-overview` for what translation may and may not change.
 
 ## Next Steps
