@@ -12,7 +12,7 @@ generation. It is optional and is referenced by top-level `manifest.held_out`, n
 Held-out ids are real records withheld from generated rows. They are different from
 `manifest.absent_ids`, which are guaranteed not to exist.
 
-## Create A Held-Out Policy
+## Create a Held-Out Policy
 
 Generate a complete starter shape with:
 
@@ -95,7 +95,7 @@ secrets from hostile pack code; review the pack and run it in an appropriately i
 environment.
 :::
 
-## Validate The Policy
+## Validate the Policy
 
 There is no standalone held-out validator. Run whole-pack preparation:
 

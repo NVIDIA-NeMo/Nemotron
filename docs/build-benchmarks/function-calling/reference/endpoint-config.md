@@ -11,7 +11,7 @@ must never declare both.
 
 The configuration stores identity and credential references, not secret values.
 
-## Create An Endpoint Configuration
+## Create an Endpoint Configuration
 
 Create the complete endpoint-backed pack shape with:
 
@@ -75,7 +75,7 @@ three authorization commitments when auth is present.
 Live metadata and every newly created session must report the pinned identity exactly.
 A changed id, version, content digest, or authorization context stops the run.
 
-## Authentication And TLS
+## Authentication and TLS
 
 Reference a bearer token by environment-variable name:
 
@@ -174,7 +174,7 @@ The service implements:
 Creating a session resets an isolated episode with frozen context and fixtures. Each
 replay uses a new opaque session id.
 
-## Validate The Endpoint
+## Validate the Endpoint
 
 There is no standalone endpoint-config validator. Run whole-pack preparation:
 

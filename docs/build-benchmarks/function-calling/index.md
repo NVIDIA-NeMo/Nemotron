@@ -41,7 +41,7 @@ At a high level, the step performs the following work.
 
 Refer to {doc}`explanation/pipeline-overview` for the stage-by-stage account.
 
-## Choose A Way To Get A Pack
+## Choose a Way to Get a Pack
 
 The pack is the hard part. If you have a tool interface, records, and behavior but have
 not chosen a route yet, start at {doc}`how-to/start-from-domain-data`. The three flows

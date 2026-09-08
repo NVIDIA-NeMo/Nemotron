@@ -30,7 +30,7 @@ Library names in the short snippets come from the bundled English reference pack
 They illustrate dispatch and state handling only; the four-function interface is
 domain- and language-independent.
 
-## Create A Backend Skeleton
+## Create a Backend Skeleton
 
 Prefer an existing domain-owned implementation, or a backend written from independently
 reviewed specifications and records. That keeps benchmark truth anchored in the domain
@@ -106,7 +106,7 @@ validation prove determinism and cross-file consistency; they do not prove domai
 fidelity, representativeness, or absence of benchmark-construction bias.
 :::
 
-## Validate A Backend
+## Validate a Backend
 
 Before source intake, run the static source-package check:
 

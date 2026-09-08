@@ -32,7 +32,7 @@ For the NeMo Evaluator Launcher backend, also install its optional dependency:
 uv sync --extra byob --extra evaluator
 ```
 
-## Import The Generated Benchmark
+## Import the Generated Benchmark
 
 In BFCL, importing a benchmark means pointing evaluation at an intact generation
 publication. There is no upload or Parquet-ingestion command. The required handoff is:
@@ -411,7 +411,7 @@ Replace the example path with the exact `outputs.output_dir` from `eval.yaml`.
 For audit or publication, retain the entire artifact directory and treat
 `eval_manifest.json`, not the printed summary, as the completion marker.
 
-## Step 8: Export The Benchmark And Results
+## Step 8: Export the Benchmark and Results
 
 To hand off a reproducible result, export the publication and evaluation together.
 Do not send only `eval_report.json`, because it does not contain the source and cache

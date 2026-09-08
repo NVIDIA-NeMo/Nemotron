@@ -14,7 +14,7 @@ The plan is not oracle truth and is not a pack file. Generation never reads it.
 `tools.json` names the public interface; the plan names which situations intake is
 allowed to observe.
 
-## Create A Probe Plan
+## Create a Probe Plan
 
 Copy the A2-shaped banking example, then replace its tools, fixture ids, and cases:
 

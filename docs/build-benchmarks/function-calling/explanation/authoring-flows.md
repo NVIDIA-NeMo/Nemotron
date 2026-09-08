@@ -68,7 +68,7 @@ There is no intake phase, because there is nothing to certify about a source the
 This is the shortest path when the domain already has a deterministic implementation, or when the pack's conversation shapes need judgment that no automated intake could supply.
 Refer to {doc}`../how-to/author-a-pack` and, for the complete lifecycle including endpoint identity pins, `src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md`.
 
-## Assisted Authoring From A Conventional Source
+## Assisted Authoring From a Conventional Source
 
 The assisted flows start from a source that is *not* a pack and cannot carry certification, approval, or publication fields.
 A `local_python` source is a tree: a `backend.py` import-closure root, a reviewed `tools.json` catalog, a canonical dependency lock, and optional fixtures. Its Python is parsed rather than imported, so identity is established without executing anything.
@@ -89,7 +89,7 @@ Certification is derived by the pipeline, never by the transport code that gathe
 Without a probe plan a source certifies `A0`, whatever transport it uses, because nothing else can supply observed outcomes.
 Lower tiers may be drafted and reviewed, but freezing a pack as gold requires `A2`.
 
-## Assisted Authoring From An MCP Server
+## Assisted Authoring From an MCP Server
 
 The MCP flow reaches the same intake through a gateway.
 Discovery reads the server's implementation identity and complete paginated tool catalog and pins a catalog digest; the gateway then exposes BFCL Oracle HTTP v1 so that generation stays entirely unaware that MCP was involved.
@@ -141,7 +141,7 @@ to accept it and the granular human-review path remains available. That fallback
 not compare the identities on its records and does not require two people; an
 organization may still impose separation of duties.
 
-## What Assisted Authoring May And May Not Do
+## What Assisted Authoring May and May Not Do
 
 An authoring model may propose a tool coverage plan, validation cases, task-template plans, and declarative assertion specifications.
 It may not change the backend, the endpoint's behavior, the tool schemas, or the fixtures. It cannot certify its own output, invent fixture bindings or hidden business truth, approve model exposure or release, bypass executable gold validation, or use target-model answers to select or repair benchmark rows.

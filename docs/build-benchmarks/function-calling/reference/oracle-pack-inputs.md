@@ -76,7 +76,7 @@ Each artifact constrains the next:
 
 Run validation throughout authoring; do not wait until every file appears complete.
 
-## Create A Complete Starter
+## Create a Complete Starter
 
 ```bash
 python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
@@ -94,7 +94,7 @@ The starter is runnable plumbing, not domain truth. Replace its `get_record` nam
 fixture values, behavior, tasks, assertions, and cases with independently reviewed
 domain content.
 
-## Create And Validate Each Artifact
+## Create and Validate Each Artifact
 
 | File | Supported creation path | Earliest useful check |
 | --- | --- | --- |
@@ -112,7 +112,7 @@ Where no standalone validator exists, the file is still checked in context. A te
 tool name is meaningful only relative to `tools.json`, and an assertion name only
 relative to `assertions.py`.
 
-## Validate The Complete Pack
+## Validate the Complete Pack
 
 ```bash
 python -m nemotron.steps.byob.scripts.validate_oracle_pack \
@@ -181,7 +181,7 @@ assertions.py
 
 Only the public name must match. Private backend helpers are implementation details.
 
-## Where To Go Next
+## Where to Go Next
 
 - Follow the artifact references above while filling each file.
 - Use {doc}`../how-to/author-a-pack` for the manual scaffold-to-verification sequence.

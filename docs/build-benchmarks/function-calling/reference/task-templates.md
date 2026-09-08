@@ -17,7 +17,7 @@ Examples use either the bundled English library pack or the neutral `get_record`
 starter emitted by the scaffolder. Their names and business behavior illustrate the
 contract; they are not framework defaults.
 
-## Create A Template Skeleton
+## Create a Template Skeleton
 
 The manual pack scaffolder writes runnable `single_turn`, structured-error, and
 `irrelevant` starter templates:

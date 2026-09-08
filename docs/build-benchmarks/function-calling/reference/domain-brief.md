@@ -16,7 +16,7 @@ interface, and measured probes establish source behavior and certification tier.
 claim in the brief cannot add a tool, change a schema, or make an unobserved behavior
 Gold-eligible.
 
-## Create A Brief
+## Create a Brief
 
 Copy the domain-neutral skeleton rather than the banking example:
 
@@ -72,7 +72,7 @@ The benchmark is authored and answered in English.
 The brief does not need to enumerate fixtures, JSON fields, expected responses, or
 probe cases. Those belong in the source package, `tools.json`, and the probe plan.
 
-## Safety And Validation
+## Safety and Validation
 
 A finished brief must:
 

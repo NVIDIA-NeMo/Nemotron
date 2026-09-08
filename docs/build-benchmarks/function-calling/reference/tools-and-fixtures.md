@@ -3,14 +3,14 @@
   SPDX-License-Identifier: Apache-2.0
 -->
 
-# Tool Catalog And Fixtures
+# Tool Catalog and Fixtures
 
 `tools.json` is the public function interface shown to a candidate model.
 `fixtures.json` supplies deterministic reset records and values that task slots can
 bind. The catalog states what may be called; fixtures do not define what a call means.
 Behavior belongs in `backend.py` or the pinned endpoint.
 
-## Create The Files
+## Create the Files
 
 `scaffold_oracle_pack` writes a matching catalog and fixture collection:
 
@@ -113,7 +113,7 @@ Author-declared absent ids belong under `manifest.absent_ids`; review them again
 fixture primary keys because the loader does not prove absence. Existing ids reserved
 from normal generation belong in `held_out.yaml`. They are different contracts.
 
-## Validate The Files
+## Validate the Files
 
 For a conventional local source, run the static pre-check:
 

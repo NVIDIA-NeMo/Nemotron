@@ -35,7 +35,7 @@ Two files carry more weight than their size suggests.
 `validation_cases.yaml` is what turns "the backend seems to work" into observed evidence, because every tool needs at least one success probe and one negative probe before the pack can be certified.
 `assertions.py` is what turns "the trace ran" into "the trace was right": a template with no success assertion has no statement of what success means, so replay could only confirm that its calls executed.
 
-## Certification Tiers And The Gold Gate
+## Certification Tiers and the Gold Gate
 
 `stage=prepare` normalizes the pack and writes `oracle_validation_report.json` containing a tier, the gold-eligibility verdict, the pack fingerprint, per-check failures, and pack statistics.
 The checks cover template tool references, slot sources, backend and schema alignment, assertion importability, the declared validation probes, confirmation policy, and a representative generation contract that expands, renders, replays, and asserts the first deterministic instance of every template.
@@ -60,7 +60,7 @@ Gold eligibility requires `oracle_runtime.worker: process`.
 A run may configure `worker: thread` as a debugging aid, but such a run can never reach gold.
 :::
 
-## Pack Code Runs In A Separate Process
+## Pack Code Runs in a Separate Process
 
 Pack code is executed through a process worker, never inside the process that scores a candidate.
 That boundary exists for three separate reasons, and none of them is redundant.
@@ -70,7 +70,7 @@ And during evaluation it keeps the pack's Python out of the evaluator entirely: 
 
 Errors follow the same logic. A tool returns a failure as data — a structured `{"error": {"code": ...}}` envelope — rather than raising, because a domain rejection is a legitimate outcome the benchmark wants to score, and an exception would be indistinguishable from infrastructure breaking.
 
-## The Fingerprint Pins A Benchmark To Its Source
+## The Fingerprint Pins a Benchmark to Its Source
 
 Generation records a pack fingerprint covering every file in the pack tree, along with a per-file hash map, and the fingerprint is verified before validation, after validation, and again before final output.
 Evaluation recomputes it before spending a candidate token and refuses to score if it moved.

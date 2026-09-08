@@ -19,7 +19,7 @@ own onboarding guide.
   scaffolds the selected transport.
 - Read {doc}`../explanation/oracle-pack` for what each file means. The normative contract, including every validation rule, lives at `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
 
-## Step 1: Choose The Oracle Transport And Scaffold
+## Step 1: Choose the Oracle Transport and Scaffold
 
 A pack declares exactly one executable oracle. Choose the transport before scaffolding,
 because the command writes a transport-specific file and manifest path.
@@ -52,7 +52,7 @@ reviewed values from `GET /v1/metadata`, and pin the conformance digest from
 Refer to {doc}`../reference/endpoint-config`.
 :::
 
-## Step 2: Fill In Each Pack File
+## Step 2: Fill in Each Pack File
 
 Work through the files in this order, because each one constrains the next.
 {doc}`../reference/oracle-pack-inputs` is the inventory and links to one standardized

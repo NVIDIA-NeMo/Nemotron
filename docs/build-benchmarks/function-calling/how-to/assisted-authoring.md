@@ -134,7 +134,7 @@ The check reports static coverage gaps that would block A2. Intake remains
 authoritative because only it executes the probes and observes reset, isolation,
 confirmation, timeout cleanup, and result behavior.
 
-### Optionally Scaffold A Local Source
+### Optionally Scaffold a Local Source
 
 If no independently implemented local source exists, generate the mechanical
 four-function interface and fill its domain decisions manually:

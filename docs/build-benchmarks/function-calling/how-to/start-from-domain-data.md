@@ -3,7 +3,7 @@
   SPDX-License-Identifier: Apache-2.0
 -->
 
-# From Domain Assets To An Oracle Pack
+# From Domain Assets to an Oracle Pack
 
 Use this guide when you have some combination of a tool interface, representative
 records, an existing implementation, or documented business behavior but do not yet
@@ -21,7 +21,7 @@ After the pack is Gold-eligible, continue with {doc}`publish-a-release`, optiona
 {doc}`translate`, and {doc}`run-evaluation`. Model assistance never earns a weaker
 validation standard.
 
-## Understand The End-To-End Process
+## Understand the End-To-End Process
 
 Use the three guides as separate phases with explicit handoffs:
 
@@ -38,7 +38,7 @@ Use the three guides as separate phases with explicit handoffs:
 Do not combine the phase outputs manually. In particular, do not edit generated
 Parquet files, synthesize a manifest, or add files to the NeMo Evaluator bundle.
 
-## Identify The Required Domain Inputs
+## Identify the Required Domain Inputs
 
 Documents, schemas, and records can help author a pack, but they are not collectively
 treated as a special "domain data" format. Interface documentation alone cannot
@@ -86,7 +86,7 @@ Those names, ids, and files live in
 `src/nemotron/steps/byob/data/tiny_oracle_pack/`. Later snippets in this guide use the
 same catalog rather than a second invented library.
 
-## Choose A Path
+## Choose a Path
 
 ```mermaid
 flowchart TB
@@ -158,12 +158,12 @@ human-gate simulations, publication, and evaluation. It demonstrates the boundar
 does not prepare or validate your domain inputs. Use `--author-model live` only after
 the scripted path works and a configured model endpoint is available.
 
-## Path A: Author The Pack Manually
+## Path A: Author the Pack Manually
 
 In this path, the files you review are the files generation reads. No authoring model
 participates.
 
-### 1. Scaffold A Runnable Pack
+### 1. Scaffold a Runnable Pack
 
 Choose a new target directory; the scaffolder never overwrites one:
 
@@ -270,7 +270,7 @@ plumbing; it is not a publication-eligible evaluation source. Follow
 For every manual pack field and validation rule, continue with
 {doc}`author-a-pack`.
 
-## Path B: Author From An Executable Source With Model Assistance
+## Path B: Author From an Executable Source With Model Assistance
 
 This path starts one step before an Oracle Pack. You supply a conventional source
 package whose behavior can be fingerprinted and probed; the authoring pipeline
@@ -346,7 +346,7 @@ openssl pkey -in /srv/bfcl/keys/certification-private.pem \
 `--certification-key-id` is the identifier you pass with that private key, such as
 `library-authoring`. Keep the private key outside the source tree.
 
-### 1. Prepare A Reviewed Tool Catalog
+### 1. Prepare a Reviewed Tool Catalog
 
 Start from the public interface you want a candidate model to see. Each entry in
 `tools.json` needs a stable name, description, and JSON parameter schema. Mark
@@ -367,7 +367,7 @@ For your own domain, write `tools.json` from the real interface instead of copyi
 library catalog. The catalog cannot decide what a call returns or how state changes.
 You supply that truth in the next step.
 
-### 2. Provide Or Scaffold The Source Package
+### 2. Provide or Scaffold the Source Package
 
 If a reviewed `backend.py`, `fixtures.json`, and `dependency-lock.json` already exist,
 place the catalog beside them and continue at the static check. Do not scaffold over a
@@ -415,7 +415,7 @@ representativeness. Use independent records and tests to review every suggestion
 avoid using the same model as the sole author of both oracle behavior and benchmark
 tasks. Refer to {doc}`../reference/python-backend` for the full recommendation.
 
-### 3. Check The Source Before Intake
+### 3. Check the Source Before Intake
 
 ```bash
 uv run python -m nemotron.steps.byob.scripts.check_source_package \
@@ -426,7 +426,7 @@ Proceed only when the command exits `0`. A passing static check means the source
 with its catalog and contains no review marker; it does not certify that the behavior
 is correct.
 
-### 4. Supply The Human-Owned Authoring Inputs
+### 4. Supply the Human-Owned Authoring Inputs
 
 Copy and complete the domain brief:
 
@@ -460,7 +460,7 @@ authoritative because only it executes the probes. An optional model-drafted pla
 documented in {doc}`assisted-authoring`; review that draft the same way you would
 review a handwritten plan.
 
-### 5. Start Intake And Certification
+### 5. Start Intake and Certification
 
 Enable live inspection of a local Python source:
 
@@ -491,7 +491,7 @@ Intake writes fingerprinted, transport-neutral evidence and derives A0, A1, or A
 from observations. A Gold release needs A2. Neither a reviewer nor a model can promote
 an under-certified source.
 
-### 6. Cross The Two Human Boundaries
+### 6. Cross the Two Human Boundaries
 
 Continue with the commands that `bfcl_author` reports for the current session:
 
@@ -519,7 +519,7 @@ people. The same named person may act at multiple gates unless organizational po
 requires separation of duties; exposure may also be authorized by an organizational
 policy digest. Editing an upstream artifact invalidates downstream approvals.
 
-### 7. Review The Semantic Supplement And Assemble
+### 7. Review the Semantic Supplement and Assemble
 
 The authoring model cannot infer fixture-column bindings, final turn policies,
 per-language user turns, or certification validation cases merely from a tool
@@ -579,7 +579,7 @@ The CLI binds the session's evidence, drafts, and source automatically. Assembly
 refuses any supplement tool or assertion that cannot be traced back to certified
 evidence and compiled drafts.
 
-### 8. Review, Freeze, And Publish
+### 8. Review, Freeze, and Publish
 
 The remaining guided commands build a deterministic review packet from independently
 verified certification, fresh validation, answered questions, and the complete
@@ -650,7 +650,7 @@ If a run fails, use {doc}`../reference/output-files` to find the first adjacent 
 artifact that lost the task, then use {doc}`../reference/troubleshooting` to map the
 reported refusal to its source fix.
 
-## Follow-Up: Evaluation And Next Steps
+## Follow-Up: Evaluation and Next Steps
 
 Evaluation is a separate run over a **published** benchmark, with its own configuration
 and output directory. A smoke run with `lineage.policy: smoke_no_publication` can write

@@ -50,7 +50,7 @@ That is what turns the sequence into a guarantee instead of a convention: "the r
 Contamination policy only ever narrows. Refusing the run is the locked publication setting; dropping just the exposed rows and keeping per-candidate task sets are debug behaviors that report what was actually scored and are not publishable.
 :::
 
-## What The Metrics Say
+## What the Metrics Say
 
 A trace score names every gate the scoring contract defines, says whether that gate applied to the row, and, when a gate failed, which assistant turn to look at.
 A gate that does not apply is reported as such rather than omitted, because a report that silently dropped the ordering gate on single-call rows could not be told apart from one where ordering was checked.
@@ -65,7 +65,7 @@ It declares `tool_selection` and `arguments`, and `call_ordering` only when some
 It does not declare `results` or `task_success`, because both would require the pack's tools to be re-executed against oracle state, and no file in a dataset bundle provides that.
 A recorded oracle result is provenance, not an answer key: scoring against a snapshot of one backend revision would measure agreement with that snapshot instead of whether the call worked.
 
-## Calls And Text Use Different Matching Rules
+## Calls and Text Use Different Matching Rules
 
 There is no single exact-match rule for a conversation:
 
@@ -116,7 +116,7 @@ The caches are replay evidence, not an optimization. A committed completion repl
 Executable episodes are cached whole rather than per call: skipping one mutating call would not reproduce the state that dependent calls, final state, and assertions depend on.
 The output directory must sit outside the generation publication tree, so an evaluation run cannot overwrite `run_manifest.json` or the benchmark it scores.
 
-## Two Boundaries The Evaluator Does Not Cross
+## Two Boundaries the Evaluator Does Not Cross
 
 **Pack Python never enters the evaluator process.** Both the local-backend and endpoint adapters keep reset, ordered calls, state reads, and assertions inside one task-local process worker, and endpoint sessions are deleted on every normal and exceptional exit.
 Keeping the pack out of the evaluator is what makes assertion and oracle failures separable from candidate failures: an assertion that could not be imported or executed is recorded as an infrastructure outcome, never counted as a pass or a failure for the model.
