@@ -23,8 +23,9 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --version 0.1.0
 ```
 
-Treat `tools.json` as a human-reviewed public contract. Keep fixture records and
-backend behavior aligned with the reviewed function names and schemas.
+For assisted authoring, place a human-reviewed `tools.json` in the source directory
+before running `scaffold_source_package`. That command reads but does not create or copy
+the catalog. It creates a backend and fixture skeleton around the reviewed names.
 
 The optional `--draft-with-model` lane may propose fixture values before source
 certification. It does not rewrite `tools.json`. Prefer domain-owned records and an

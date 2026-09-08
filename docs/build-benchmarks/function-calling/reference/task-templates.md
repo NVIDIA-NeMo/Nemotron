@@ -39,8 +39,10 @@ shape from a bundled pack over starting from an empty mapping:
 - `banking_vn_oracle_pack` covers every supported turn policy in a larger localized
   domain.
 
-Review slot bindings, policy, language, and validation semantics before adding a
-template to the pack.
+In assisted authoring, `bfcl_author draft` may propose template plans from certified
+evidence. Drafts are written outside the pack and are not authoritative. A human
+reviews slot bindings, policy, language, and validation semantics in the candidate
+supplement before assembly.
 
 ## Validate Templates
 
@@ -58,7 +60,9 @@ python -m nemotron.steps.byob.scripts.validate_oracle_pack \
 
 This checks tool references and slot sources, then the representative-generation
 contract expands, plans, renders, schema-validates, replays, and asserts one
-deterministic instance from every template.
+deterministic instance from every template. In assisted authoring, assembly first
+checks that supplement templates name only certified tools and compiled assertions;
+fresh whole-pack validation still runs before review and publication.
 
 ## Core Fields
 

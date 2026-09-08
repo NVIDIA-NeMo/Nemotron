@@ -61,6 +61,12 @@ from nemotron.steps.byob.runtime.benchmark_families.bfcl.stages.expected_trace i
 from nemotron.steps.byob.runtime.benchmark_families.bfcl.stages.held_out import (
     held_out_policy,
 )
+from nemotron.steps.byob.runtime.benchmark_families.bfcl.stages.mcp_target_probes import (
+    assess_gateway_timeout_report,
+    build_target_probe_report,
+    load_gateway_conformance_report,
+    run_endpoint_isolation_probe,
+)
 from nemotron.steps.byob.runtime.benchmark_families.bfcl.stages.render import (
     render_task,
     resolve_render_contract,
@@ -568,6 +574,7 @@ def run_oracle_validation(config: BfclConfig, pack: LoadedPack) -> dict[str, Any
     case_by_id = {str(case.get("id")): case for case in pack.validation_cases}
     observed_calls: list[dict[str, Any]] = []
     observed_state_deltas: list[dict[str, Any]] = []
+    expected_observation_count = 0
     # Which tools were seen to change state, and in which probe. Compared against the
     # tools.json claim once every case has run.
     observed_mutations: dict[str, list[str]] = {}
@@ -627,6 +634,7 @@ def run_oracle_validation(config: BfclConfig, pack: LoadedPack) -> dict[str, Any
                 current_group.append(case)
         if current_group:
             groups.append(current_group)
+        expected_observation_count = sum(len(group) for group in groups)
         for group in groups:
             for index, case in enumerate(group):
                 case_prefixes[str(case.get("id"))] = group[: index + 1]
@@ -1188,12 +1196,103 @@ def run_oracle_validation(config: BfclConfig, pack: LoadedPack) -> dict[str, Any
         }
     )
 
-    # MCP-specific target probes are layered on in the MCP integration change.
-    # Core HTTPS endpoints still fetch and verify their pinned conformance document;
-    # without external probe evidence the verifier fails closed below Gold.
     mcp_observations: dict[str, Any] | None = None
     mcp_probe_report: dict[str, Any] | None = None
     gateway_conformance_report: dict[str, Any] | None = None
+    if endpoint_config is not None and endpoint_config.attestation is not None:
+        mutating_names = {
+            str((tool.get("function") or {}).get("name"))
+            for tool in pack.tools
+            if tool.get("x-mutates")
+        }
+        mutation_case = next(
+            (
+                case
+                for case in pack.validation_cases
+                if str(case.get("id")) in successful_case_ids
+                and str(case.get("tool")) in mutating_names
+                and str(case.get("id"))
+                in set(observed_mutations.get(str(case.get("tool"))) or [])
+            ),
+            None,
+        )
+        activity_case = mutation_case or next(
+            (
+                case
+                for case in pack.validation_cases
+                if str(case.get("id")) in successful_case_ids
+            ),
+            None,
+        )
+        if activity_case is None:
+            extras.append(
+                {
+                    "id": "MP6",
+                    "name": "mcp_episode_isolation",
+                    "status": "fail",
+                    "failures": [{"reason": "no_success_case_for_isolation_probe"}],
+                }
+            )
+        else:
+            extras.append(
+                run_endpoint_isolation_probe(
+                    endpoint_config,
+                    fixtures=copy.deepcopy(runtime_fixtures),
+                    clock_iso=clock_iso,
+                    seed=seed,
+                    timeout_s=config.oracle_runtime.tool_timeout_s,
+                    activity_case=activity_case,
+                    expect_state_change=mutation_case is not None,
+                )
+            )
+        try:
+            gateway_conformance_report = load_gateway_conformance_report(
+                pack.paths.pack_root
+            )
+            extras.append(
+                assess_gateway_timeout_report(gateway_conformance_report)
+            )
+        except (OSError, UnicodeError, ValueError) as exc:
+            extras.append(
+                {
+                    "id": "MP9",
+                    "name": "mcp_gateway_timeout_conformance",
+                    "status": "fail",
+                    "failures": [
+                        {
+                            "reason": "gateway_conformance_report_invalid",
+                            "detail": f"{type(exc).__name__}: {exc}",
+                        }
+                    ],
+                }
+            )
+        observations_complete = (
+            skipped_5 is None
+            and len(observed_calls) == expected_observation_count
+            and len(observed_state_deltas) == expected_observation_count
+        )
+        mcp_observations = {
+            "calls_complete": observations_complete,
+            "calls": observed_calls,
+            "state_deltas_complete": observations_complete,
+            "state_deltas": observed_state_deltas,
+        }
+        mcp_probe_report = build_target_probe_report(
+            checks=checks,
+            extra_checks=extras,
+            endpoint_metadata=endpoint_metadata,
+            observations=mcp_observations,
+            tool_names=tool_names,
+            confirmation_tool_names={
+                str((tool.get("function") or {}).get("name"))
+                for tool in pack.tools
+                if tool.get("x-requires-confirmation")
+            },
+            structured_error_declared=any(
+                (case.get("expect") or {}).get("result_class") == "structured_error"
+                for case in pack.validation_cases
+            ),
+        )
 
     conformance_check = run_endpoint_conformance_check(
         endpoint_config,

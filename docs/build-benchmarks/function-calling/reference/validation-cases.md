@@ -26,8 +26,10 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --version 0.1.0
 ```
 
-Add enough human-reviewed cases to cover every public tool. Whole-pack validation
-checks their tool references and executes them against the isolated oracle.
+Add enough reviewed cases to cover every public tool. In assisted authoring, model
+drafts are proposals with a planning schema, not final pack YAML. A human supplies the
+final pack-format cases through the reviewed supplement; assembly checks their tool
+references before whole-pack validation executes them.
 
 ## Case Field Contract
 

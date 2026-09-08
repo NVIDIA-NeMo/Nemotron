@@ -33,8 +33,8 @@ Then wire the file from the manifest:
 held_out: held_out.yaml
 ```
 
-Do not put `held_out` under `paths`. Held-out applicability and reserved identities
-are reviewed human decisions.
+Do not put `held_out` under `paths`. In assisted source intake, held-out applicability
+is a reviewed human decision; model drafting does not invent the policy.
 
 ## Field Contract
 

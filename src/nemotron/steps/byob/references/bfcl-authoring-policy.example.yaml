@@ -1,0 +1,18 @@
+# Reviewed organizational defaults for guided BFCL authoring.
+schema_version: bfcl-authoring-policy-v1
+
+# pack_id is only a candidate. A human or CI invocation must still confirm it.
+pack_id: example-domain
+
+# A policy version is authoritative; server metadata and prose are never used.
+pack_version: "0.1.0"
+
+# Gold freeze still requires A2 even when early drafting policy permits A0.
+required_certification_tier: A0
+
+# Live authoring is disabled unless policy or an explicit environment override enables
+# the selected adapter. Offline review and freeze remain available.
+adapter_rollout:
+  local_python: false
+  http_package: false
+  mcp_mode_a: false

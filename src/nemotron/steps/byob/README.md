@@ -5,6 +5,10 @@ Use this README to create benchmark artifacts while keeping benchmark-family log
 For function-calling generation, begin with
 [bfcl/README.md](bfcl/README.md) and the
 [Oracle Pack contract](references/bfcl-oracle-pack.md).
+For assisted authoring, conventional source intake, and MCP onboarding, see the
+[assisted authoring guide](../../../../docs/build-benchmarks/function-calling/how-to/assisted-authoring.md),
+[domain-source guide](../../../../docs/build-benchmarks/function-calling/how-to/start-from-domain-data.md),
+and [MCP guide](../../../../docs/build-benchmarks/function-calling/how-to/mcp-server.md).
 
 ## Developer Journey
 

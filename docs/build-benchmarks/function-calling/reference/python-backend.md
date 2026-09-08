@@ -51,7 +51,71 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
 The generated backend implements all four functions with one runnable `get_record`
 tool. Replace the domain names and behavior while preserving the interface.
 
+For model-assisted authoring, first place a reviewed `tools.json` inside a new source
+directory, then create a source-package skeleton:
+
+```bash
+python -m nemotron.steps.byob.scripts.scaffold_source_package \
+  --tools /srv/sources/my-domain/tools.json \
+  --output /srv/sources/my-domain \
+  --collection records \
+  --dependency-lock
+```
+
+This command writes `backend.py`, `fixtures.json`, and optionally
+`dependency-lock.json`; it does not copy `tools.json`. The mechanical backend carries
+`BFCL-TODO` at behavior the catalog cannot decide. Intake refuses the source until
+those markers are resolved and reviewed.
+
+An opt-in `--draft-with-model` mode can propose fixture data and behavior in a bounded
+declarative schema. The pipeline compiles that declaration into Python; it does not
+accept arbitrary Python written by the model. The mode requires a human-authored domain
+brief and pinned model identity arguments, never overwrites an existing backend or
+fixtures file, and still requires static checks and executable certification probes.
+Its command shape is:
+
+```text
+python -m nemotron.steps.byob.scripts.scaffold_source_package \
+  --tools /srv/sources/my-domain/tools.json \
+  --output /srv/sources/my-domain \
+  --draft-with-model \
+  --domain-brief /srv/sources/my-domain-brief.txt \
+  --model-alias <ROUTE_ALIAS> \
+  --model-provider <PROVIDER> \
+  --model <MODEL_NAME> \
+  --model-canonical-id <IMMUTABLE_MODEL_ID> \
+  --dependency-lock
+```
+
+The model chooses only values representable by the fixed declarative vocabulary.
+Review the compiled source, remove no marker without implementing its decision, then
+run the same static and executable checks below. See
+{doc}`../how-to/assisted-authoring` for provider setup and certification.
+
+:::{caution}
+Model-assisted backend drafting is optional and is not the preferred source of oracle
+semantics. Use it only when no suitable independently implemented source exists, and
+review every proposed behavior against specifications, domain records, and tests that
+were not produced by the same model.
+
+An authoring model can import its own priors into fixture values, wording, error shapes,
+and state transitions. That can skew task coverage and may favor conventions familiar
+to the authoring model or its model family. Static checks, executable replay, and Gold
+validation prove determinism and cross-file consistency; they do not prove domain
+fidelity, representativeness, or absence of benchmark-construction bias.
+:::
+
 ## Validate A Backend
+
+Before source intake, run the static source-package check:
+
+```bash
+python -m nemotron.steps.byob.scripts.check_source_package \
+  --source /srv/sources/my-domain
+```
+
+It catches missing required functions, unresolved `BFCL-TODO` markers, catalog names
+the backend does not expose, and invalid fixture shape. It cannot prove behavior.
 
 For a complete Oracle Pack, run executable Gold validation:
 

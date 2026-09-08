@@ -5,7 +5,12 @@
 
 # Hand-Author an Oracle Pack
 
-Use this guide to write an Oracle Pack yourself, validate it, and smoke-run it before you spend a publication budget on it. You supply the tools, the executable oracle, the fixtures, the conversation templates, and the assertions; no model participates in authoring.
+Use this guide to write an Oracle Pack yourself, validate it, and smoke-run it before you spend a publication budget on it. This is the manual authoring flow: you supply the tools, the executable oracle, the fixtures, the conversation templates, and the assertions, and no model participates in authoring. The two model-assisted alternatives are {doc}`assisted-authoring` and {doc}`mcp-server`.
+
+If you have domain records and behavior but have not chosen an authoring route yet,
+start with {doc}`start-from-domain-data`, which follows a compact example through the
+manual and model-assisted conventional-source paths and redirects MCP sources to their
+own onboarding guide.
 
 ## Before You Start
 
@@ -181,4 +186,4 @@ A successful smoke run leaves these files under `output_dir/expt_name/`:
 
 ## Next Steps
 
-- Copy a publication config, set budgets for your reviewed pack, and archive the completed release with `archive_bfcl_release`.
+- Take the validated pack to publication scale with {doc}`publish-a-release`.

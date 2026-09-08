@@ -98,13 +98,13 @@ domain content.
 
 | File | Supported creation path | Earliest useful check |
 | --- | --- | --- |
-| `manifest.yaml` | Pack scaffold, then manual review against sibling artifacts. | Whole-pack load and validation; no standalone manifest CLI. |
-| `tools.json` | Pack scaffold or a human-reviewed existing catalog. | Whole-pack catalog/backend alignment is authoritative. |
-| `backend.py` | Pack scaffold, then reviewed domain implementation. | Whole-pack isolated import, reset, and executable probes. |
-| `fixtures.json` | Pack scaffold, then reviewed deterministic records. | Whole-pack reset and slot validation. |
-| `task_templates.yaml` | Pack scaffold, then reviewed conversation plans. | Representative whole-pack generation. |
-| `assertions.py` | Pack scaffold, then manual executable predicates. | `assertions_importable` and replay. |
-| `validation_cases.yaml` | Pack scaffold, then reviewed success and rejection cases. | Whole-pack execution; there is no standalone case validator. |
+| `manifest.yaml` | Pack scaffold; assisted assembly derives it from certified evidence and the reviewed supplement. | Whole-pack load and validation; no standalone manifest CLI. |
+| `tools.json` | Pack scaffold or a human-reviewed existing catalog. Assisted drafting does not rewrite it. | `check_source_package` checks local catalog/backend alignment; whole-pack validation is authoritative. |
+| `backend.py` | Pack scaffold or `scaffold_source_package` from a reviewed catalog. | `check_source_package`, source-intake probes, then whole-pack validation. |
+| `fixtures.json` | Pack or source-package scaffold; reviewed manual records; optional pre-certification model proposal. | Static source pre-check, then whole-pack reset and slot validation. |
+| `task_templates.yaml` | Pack scaffold; assisted drafting may propose plans outside the pack. | Assembly reference checks, then representative whole-pack generation. |
+| `assertions.py` | Pack scaffold; manual predicates; bounded assisted specs compiled to trace-path assertions. | Draft compilation when used, then `assertions_importable` and replay. |
+| `validation_cases.yaml` | Pack scaffold; reviewed manual or supplement cases. | Whole-pack execution; there is no standalone case validator. |
 | `endpoint_config.yaml` | Endpoint pack scaffold, then reviewed identity and conformance pins. | Whole-pack endpoint loading and conformance; there is no standalone config validator. |
 | `held_out.yaml` | `scaffold_oracle_pack --include-held-out`, then reviewed reservations. | Whole-pack load and generation leak checks. |
 
@@ -136,6 +136,27 @@ Whole-pack validation checks schema alignment, slot sources, assertion import an
 execution, direct cases, confirmation, mutation declaration, deterministic reset,
 timeouts, isolation, held-out bindings, endpoint conformance when applicable, and
 representative replay.
+
+## Model-Assisted Boundaries
+
+Model assistance is opt-in and artifact-specific:
+
+- `backend.py` and `fixtures.json`: the optional
+  `scaffold_source_package --draft-with-model` lane accepts a bounded declarative
+  proposal and compiles it. It does not accept arbitrary model-written Python.
+- `task_templates.yaml` and `validation_cases.yaml`: drafting writes proposals outside
+  the pack; reviewed supplement semantics determine the assembled files.
+- `assertions.py`: only supported declarative trace-path predicates are compiled.
+- `manifest.yaml`, `tools.json`, `endpoint_config.yaml`, `held_out.yaml`, and the
+  candidate supplement are not free-form model outputs.
+
+Prefer a domain-owned executable source and independently reviewed records. An
+authoring model can introduce its priors into fixtures, errors, transitions,
+vocabulary, and task coverage. Gold proves deterministic consistency, not domain
+representativeness or absence of benchmark-construction bias.
+
+No model-generated proposal can certify itself, approve exposure or release, or bypass
+whole-pack validation.
 
 ## Cross-File Tool Lineage
 
