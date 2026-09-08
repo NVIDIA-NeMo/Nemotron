@@ -46,7 +46,7 @@ The tier is derived from those individual checks rather than read from a summary
 | --- | --- |
 | `gold` | Every check passed and the pack has an oracle, templates, and assertions. Gold-eligible. |
 | `silver` | The pack has templates and tools but at least one check did not pass. Not gold-eligible. |
-| `prototype` | The pack does not yet reach silver. Not gold-eligible. |
+| `prototype` | The pack does not reach silver. Not gold-eligible. |
 
 `stage=generate` refuses a pack that is not gold-eligible.
 A check whose preconditions failed is recorded as `skipped`, never as a pass, so an unrun check keeps a pack below gold instead of letting it inherit one.

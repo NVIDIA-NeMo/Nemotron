@@ -117,7 +117,7 @@ validation cases. For this example it establishes that:
 The main verdict lands in `stage_cache/oracle_validation_report.json`. There is still
 no task instance or conversation row at this point.
 
-Preparation checks that the declarations are individually well formed. It does not yet
+Preparation checks that the declarations are individually well formed. It does not
 check that the milestones produce a conversation the `missing_slot` policy allows;
 Stage 5 does that once the turns are ordered.
 
