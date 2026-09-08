@@ -147,7 +147,11 @@ A task that appears in `expected_traces.parquet` but not in `replay_validated_ta
 ## Next Steps
 
 - Read {doc}`explanation/oracle-pack` before authoring a pack of your own. The file layout and the tier rules are the parts worth understanding first.
-- Follow {doc}`how-to/author-a-pack` to scaffold and validate your own pack.
+- If you are starting with your own tool interface, records, and business behavior,
+  follow {doc}`how-to/start-from-domain-data` to choose between the manual and
+  model-assisted developer paths.
+- Follow {doc}`how-to/author-a-pack` to scaffold and validate your own pack, or {doc}`how-to/assisted-authoring` to draft one from an existing Python package or HTTP service.
 - Run a domain-sized generation by copying `src/nemotron/steps/byob/bfcl/config/smoke.example.yaml` and repointing `oracle_pack.manifest_path` at your pack.
-- When you have a benchmark you trust, archive its immutable release artifacts.
+- When you have a benchmark you trust, evaluate a candidate model against it with {doc}`how-to/run-evaluation`.
+- To localize a completed, verified generation run, follow {doc}`how-to/translate`.
 - If a run fails, start at {doc}`reference/troubleshooting`.

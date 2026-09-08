@@ -186,4 +186,4 @@ A successful smoke run leaves these files under `output_dir/expt_name/`:
 
 ## Next Steps
 
-- Take the validated pack to publication scale with {doc}`publish-a-release`.
+- Take the validated pack to publication scale with {doc}`publish-a-release`, then score a candidate model against it with {doc}`run-evaluation`.

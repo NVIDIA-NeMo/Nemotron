@@ -17,6 +17,7 @@ Pipeline Overview <pipeline-overview>
 Pipeline Worked Example <pipeline-worked-example>
 The Oracle Pack <oracle-pack>
 Authoring Flows <authoring-flows>
+Evaluation <evaluation>
 ```
 
 ::::{grid} 1 1 2 2
@@ -55,10 +56,18 @@ Three ways to obtain a pack, one generation pipeline, and the two human authoriz
 {bdg-secondary}`lineage`
 :::
 
+:::{grid-item-card} {octicon}`check-circle;1.5em;sd-mr-1` Evaluation
+:link: evaluation
+:link-type: doc
+Trace and executable scoring, the gates that run before any inference, and why the evaluator never sees the gold trace as a prompt.
++++
+{bdg-secondary}`eval`
+:::
+
 ::::
 
 ## Where to Go Next
 
 - To do something rather than understand it, see {doc}`../how-to/index`.
 - For field-level detail on configuration and artifacts, see {doc}`../reference/index`.
-- The normative Oracle Pack contract lives at `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+- The normative contracts live in the source tree next to the code they govern: `src/nemotron/steps/byob/references/bfcl-oracle-pack.md` for the pack, and `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md` for scoring.

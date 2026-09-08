@@ -6,7 +6,9 @@
 # Output Files
 
 Every path on this page is relative to `output_dir/expt_name` from the generation
-config. The groups appear in the order a run produces them. For the stages behind each group, see
+config, except the evaluation artifacts, which land in `outputs.output_dir` from the
+eval config and must sit outside the generation tree. The groups appear in the order a
+run produces them. For the stages behind each group, see
 {doc}`../explanation/pipeline-overview`. To see representative values change across
 these files, follow the transfer-fee task in
 {doc}`../explanation/pipeline-worked-example`.
@@ -130,8 +132,52 @@ Each export is content-addressed as a tree hash over its complete file set, reco
 the manifest's `exports` section. The bundle is verified by exact file set, so one extra
 file in that directory fails the next verification. Never repair one file in place.
 
+## Translation Artifacts
+
+`stage=translate` is a later run over a completed, verified generation tree. It writes
+a new experiment directory and does not modify the source `run_manifest.json`. See
+{doc}`../how-to/translate`.
+
+| File | Description |
+| --- | --- |
+| `benchmark.<target-language>.parquet` | Localized published rows, for example `benchmark.vi.parquet`. The task set and order match the source, and oracle truth fields are unchanged. |
+| `translation_manifest.json` | Commit marker for the localized release: source binding, translator identity, contamination scope, and artifact hashes. |
+| `stage_cache/translation_units.parquet` | Forward-translation evidence. |
+| `stage_cache/backtranslation_units.parquet` | Backtranslation evidence. |
+| `stage_cache/quality_metrics.parquet` | Recomputed quality-metric evidence. |
+
+A localized Parquet file without the adjacent translation manifest is not a localized
+release.
+
+## Evaluation Artifacts
+
+These land in `outputs.output_dir` from the eval config, which may not overlap the
+generation publication tree.
+
+| File | Description | Content-addressed |
+| --- | --- | --- |
+| `source_verification_report.json` | Evidence that the evaluated source is the committed publication: manifest hash, both table hashes, publication semantics, the task index, and for executable mode the oracle pack fingerprint. `source_verification_failure.json` is written instead when the source is refused. | Records hashes rather than carrying one. |
+| `contamination_report.json` | Which models read which published rows, which candidates could not be separated from them, and the task set each candidate is authorized to answer. `contamination_failure.json` is written instead on refusal. | Records the authorization plan. |
+| `candidate_io_cache.jsonl` | Append-only, hash-verified native function-calling requests, HTTP attempts, and completion markers for replayable provider completions. Provider/transport failures remain retryable and are recorded in executable episode evidence instead; therefore this file is validly empty when no request completed. Written when `cache_candidate_responses` is true. | Yes, hashed per record and in `eval_manifest.json`. |
+| `tool_trace_cache.jsonl` | Append-only, hash-verified complete executable episodes for oracle-free replay. Written when `cache_tool_results` is true and only for executable modes. | Yes, hashed per record and in `eval_manifest.json`. |
+| `eval_report.json` | The candidate aggregates and per-metric results. | Yes, hashed into `eval_manifest.json`. |
+| `eval_task_results.parquet` | One row per authorized task, with the episode- and gate-layer failure records. Written when `write_task_results` is true. | Yes, hashed into `eval_manifest.json`. |
+| `eval_manifest.json` | Binds the verified source, the authorization plan, the candidate aggregates, the result hashes, and both replay caches into one artifact set. Written when `write_eval_manifest` is true. | It is the record. |
+| `resolved_eval_config.json` | Optional audit view of the resolved eval config, with resolved paths kept outside the hashed payload. It may only be written below `outputs.output_dir`. | Yes, its own content hash is returned by the writer. |
+
+A trace-only run publishes the same three artifacts stamped `eval_scope: trace`, with
+the oracle, assertion, milestone, and final-answer columns left null, and it persists no
+tool-trace cache. A trace-only artifact set never stands in for an executable one.
+
+:::{note}
+An interrupted cache is evidence, not a failure to clean up. A claimed request without a
+completion marker is preserved deliberately so an interruption is never replayed as the
+model's answer. Resume into a new output directory rather than repairing the file.
+:::
+
 ## Related Pages
 
 - Generation YAML fields: {doc}`generate-config`
-- Stage order: {doc}`../explanation/pipeline-overview`
-- Troubleshooting: {doc}`troubleshooting`
+- Evaluation YAML fields: {doc}`eval-config`
+- Missing or refused artifacts: {doc}`troubleshooting`
+- Publishing a release: {doc}`../how-to/publish-a-release`

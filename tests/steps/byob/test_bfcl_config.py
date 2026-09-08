@@ -60,6 +60,7 @@ def test_all_bfcl_configs_pin_family() -> None:
     for name in (
         "tiny.yaml",
         "default.yaml",
+        "translate.yaml",
         "smoke.example.yaml",
         "publication.example.yaml",
         "publication.paraphrase.example.yaml",

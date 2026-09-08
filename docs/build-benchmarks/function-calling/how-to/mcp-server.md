@@ -164,5 +164,5 @@ Do not convert a working Oracle HTTP pack merely to label it MCP-backed. MCP pro
 
 ## Next Steps
 
-- Take the frozen pack to publication scale: {doc}`publish-a-release`.
+- Take the frozen pack to publication scale: {doc}`publish-a-release`, then score a model against it with {doc}`run-evaluation`.
 - Compare the three authoring flows: {doc}`../explanation/authoring-flows`.

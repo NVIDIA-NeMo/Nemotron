@@ -15,20 +15,25 @@ assets to one reviewed pack:
   model, let it propose only the permitted declarative artifacts, and review those
   proposals before release.
 
-Both paths finish with the same reviewed Oracle Pack and the same Gold gate. Generation
-and publication are later runs over that pack, not extra authoring stages. After the pack
-is Gold-eligible, continue with {doc}`publish-a-release`. Model assistance never earns a
-weaker validation standard.
+Both paths finish with the same reviewed Oracle Pack and the same Gold gate. Generation,
+publication, and evaluation are later runs over that pack, not extra authoring stages.
+After the pack is Gold-eligible, continue with {doc}`publish-a-release`, optionally
+{doc}`translate`, and {doc}`run-evaluation`. Model assistance never earns a weaker
+validation standard.
 
 ## Understand The End-To-End Process
 
-Use the authoring and publication guides as separate phases with an explicit handoff:
+Use the three guides as separate phases with explicit handoffs:
 
 1. **Author and validate the domain:** follow this guide until you have a reviewed,
    Gold-eligible Oracle Pack.
 2. **Generate and publish the benchmark:** follow {doc}`publish-a-release` until one
    unchanged directory contains `benchmark.parquet`, `benchmark_raw.parquet`, and
-   the `run_manifest.json` commit marker.
+   the `run_manifest.json` commit marker. Enable the NeMo Evaluator bundle during
+   this phase if the Launcher backend will be used.
+3. **Import and evaluate:** follow {doc}`run-evaluation`. Point `eval.yaml` at
+   `run_manifest.json`, run either the direct or NeMo Evaluator Launcher backend,
+   then read and export the evaluation artifacts.
 
 Do not combine the phase outputs manually. In particular, do not edit generated
 Parquet files, synthesize a manifest, or add files to the NeMo Evaluator bundle.
@@ -51,8 +56,9 @@ each function does. Identify these four inputs before choosing an authoring path
 
 The compact walkthrough below uses the bundled English `tiny_oracle_pack` only to keep
 the snippets short. Language, geography, industry, and library behavior are not
-framework defaults. Warehouse command paths in {doc}`assisted-authoring` and
-{doc}`publish-a-release` are a second worked example. The Vietnamese `banking_vn_oracle_pack` and
+framework defaults. Warehouse command paths in {doc}`assisted-authoring`,
+{doc}`publish-a-release`, {doc}`translate`, and {doc}`run-evaluation` are a second
+worked example. The Vietnamese `banking_vn_oracle_pack` and
 {doc}`../explanation/pipeline-worked-example` demonstrate a larger localized pack.
 Do not mix fixture ids or tool names across those examples.
 
@@ -258,7 +264,8 @@ Verify `benchmark_raw.parquet`, `benchmark.parquet`, `run_manifest.json`, and th
 adjacent `stage_cache/` tables. A smoke run still writes those files, but records
 `gold_eligible: false` in the manifest even when the pack itself is Gold. That proves
 plumbing; it is not a publication-eligible evaluation source. Follow
-{doc}`publish-a-release` to choose a reviewed publication budget.
+{doc}`publish-a-release` to choose a reviewed publication budget, then
+{doc}`run-evaluation` to score a candidate.
 
 For every manual pack field and validation rule, continue with
 {doc}`author-a-pack`.
@@ -643,9 +650,40 @@ If a run fails, use {doc}`../reference/output-files` to find the first adjacent 
 artifact that lost the task, then use {doc}`../reference/troubleshooting` to map the
 reported refusal to its source fix.
 
-## Follow-Up
+## Follow-Up: Evaluation And Next Steps
 
-Produce a publication run with {doc}`publish-a-release`, or use Path B `publish` after
-freeze, so the manifest can record `gold_eligible: true`. Keep the exact Oracle Pack and
-the publication tree containing `run_manifest.json`, `benchmark.parquet`, and
-`benchmark_raw.parquet` unchanged for downstream consumers.
+Evaluation is a separate run over a **published** benchmark, with its own configuration
+and output directory. A smoke run with `lineage.policy: smoke_no_publication` can write
+`run_manifest.json`, `benchmark.parquet`, and `benchmark_raw.parquet` while still
+recording `gold_eligible: false`. That output is not a publication-eligible evaluation
+source.
+
+Before scoring a candidate:
+
+1. Produce a publication run with {doc}`publish-a-release`, or Path B `publish` after
+   freeze, so the manifest can record `gold_eligible: true`.
+2. Confirm the publication tree still contains `run_manifest.json`,
+   `benchmark.parquet`, and `benchmark_raw.parquet`.
+3. For executable mode, keep the exact Oracle Pack whose fingerprint the publication
+   recorded.
+
+Connect the publication to the evaluator through its manifest, not by importing the
+Parquet file directly:
+
+```yaml
+source_run_manifest: /srv/bfcl/runs/library-gold/run_manifest.json
+```
+
+The manifest locates and authenticates the adjacent `benchmark.parquet` and
+`benchmark_raw.parquet`. Direct evaluation needs no compatibility export. If you will
+submit through the NeMo Evaluator Launcher, enable
+`exports.nemo_evaluator_bundle: true` in the publication configuration first.
+
+Then follow {doc}`run-evaluation` for candidate endpoint configuration, preflight,
+execution, and result inspection. Use {doc}`../reference/eval-config` for every
+configuration field and {doc}`../explanation/evaluation` for scoring modes, gates,
+artifacts, and metric semantics.
+
+To localize a completed, verified generation run without changing oracle truth, follow
+{doc}`translate`. Translation is a separate run and writes its own
+`translation_manifest.json`.

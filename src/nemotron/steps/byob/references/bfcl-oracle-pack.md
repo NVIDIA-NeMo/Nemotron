@@ -1035,3 +1035,211 @@ Recovery is fail-closed:
 - **Interrupted publication:** if `run_manifest.json` is absent, rerun
   `stage=generate`. Startup removes abandoned `.stage12-*` directories and stale
   final payloads before the next attempt.
+
+## Evaluating a Published Benchmark
+
+Evaluation reads a published run; it never re-derives one. Its input is
+`eval_config.yaml` (schema `1.1`), templated at
+`bfcl/config/eval.default.yaml` and validated by
+`runtime/benchmark_families/bfcl/eval/`. What a resulting score means is defined by
+[`bfcl-eval-scoring-contract.md`](bfcl-eval-scoring-contract.md), which the config
+references and content-hashes.
+
+The config contract holds these rules:
+
+- **Source is a manifest.** `source_run_manifest` names `run_manifest.json`, not a
+  parquet. The published table, its declared content hash, the gold-eligibility
+  verdict, and oracle kind are read from the manifest, so the config cannot claim
+  something the run did not publish. Executable mode also requires
+  `source_oracle.pack_manifest` and `source_oracle.resource`: the latter is the
+  concrete `backend.py` or endpoint config. Their kind and pack id/version must
+  match the source run, and both files are content-hashed. A
+  `translation_manifest`, when present, must reference the same source run.
+- **Nothing defaults.** Modes, scoring gates, runtime limits, decoding parameters,
+  contamination policy, and output flags are all stated. Unknown keys, quoted
+  booleans, quoted numbers, and leftover `REPLACE_ME_*` values are refused.
+- **Candidate identity is weight identity.** `provider`/`model`/`base_url` name the
+  serving route; `model_identity` must pin an immutable `revision` or
+  `weights_digest`. Refs such as `main`, `latest`, or `refs/heads/*` are refused,
+  and a revision without a digest must be a full 40–64 hexadecimal commit id.
+  Model/revision case is preserved for case-sensitive registries. Two candidates
+  may not share an alias or the same canonical weights.
+- **Secrets stay in the environment.** `api.api_key_env` names a variable. A
+  literal credential anywhere in the config is refused, and error messages redact
+  values rather than echoing them. A variable that is not exported yet is an
+  execution failure, not a parse failure.
+- **Publication is gated.** `publication.requested: true` requires
+  `schema_then_canonical` argument matching, call order and grouping respected, no
+  LLM repair, `all_applicable_gates` task success, contamination enforced with
+  `fail_run` over a `common_intersection`, and every eval artifact written.
+  Executable publication also requires a gold-eligible source run. Relaxations are
+  legal only for debug runs, which report every weakened field in
+  `non_publication_reasons`.
+- **Outputs stay out of the publication tree.** `outputs.output_dir` may not be,
+  contain, or sit inside the generation run's directory, and may not point at
+  another published tree or an existing regular file. The resolved-config writer
+  only accepts targets below that output directory, including when its caller
+  supplies a relative path.
+- **One hash stands for the evaluation.** `eval_config_hash` covers referenced
+  bytes, not paths: moving a checkout preserves it, while changing a candidate,
+  revision, inference parameter, limit, scoring contract, or source run changes it.
+  Eval inputs are excluded from generation lineage hashes, so scoring a new
+  candidate never changes the identity of the benchmark.
+
+A valid config only says what an operator named. `verify_eval_source()` then reads
+that source back from disk and holds it to the record, before any candidate is
+contacted, and returns the handle a runner must be given — there is no way to
+obtain one without verification:
+
+- **The manifest is still the manifest.** `run_manifest.json` is re-read, checked
+  for every publication field and a schema this build can decode, and held to the
+  hash the config resolved. Structure is reported before drift, because a file
+  that is not a manifest and a manifest that changed need different fixes.
+- **The tables are the published bytes.** Both `benchmark_raw.parquet` and
+  `benchmark.parquet` are hashed and compared against every declaration the
+  manifest makes about them, in the `publication` section, the `artifacts`
+  section, and the resolved config. A symlink is refused: it can be re-pointed at
+  another benchmark without changing anything the manifest records.
+- **Publication semantics hold on disk.** `publication_contract` (`1.0`) is
+  replayed over both files: the published table selects raw rows without
+  rewriting truth, in the declared order, and ships no held-out row.
+- **Every row is addressable.** The published rows decode under this build's
+  benchmark schema into a unique task index in publication order. A row that
+  cannot be decoded aborts verification rather than being skipped, since skipping
+  it would change the task set. Task ids must work as a path component and a log
+  token; non-ASCII letters are allowed, path separators, whitespace, control
+  characters, and reserved names are not.
+- **The oracle is the certified one.** For `executable` mode the pack fingerprint
+  is recomputed across every file in the tree — a helper module the backend
+  imports changes what the oracle does — and must equal the manifest's
+  `pack.content_hash`. The resource that will run must be the one the pack's own
+  `manifest.yaml` selects; no eval-side override is honored, because an override
+  is indistinguishable from a substitution. A Python backend is imported in a
+  throwaway process worker, under the eval config's own timeouts, to confirm it
+  exposes `list_tools`, `reset`, `call_tool`, and `get_state`. An endpoint pack's
+  pinned identity must equal the `endpoint_metadata` the source run recorded, and
+  its declared CA bundle must be present. No live endpoint is contacted and no
+  task is replayed: reachability is an execution-time question, and replay is the
+  runner's work.
+- **A translation preserves truth.** A translated benchmark must derive from this
+  run, declare its language, table, and task-id hash, match its declared bytes,
+  carry exactly the source task ids in publication order, and leave every field a
+  scorer reads byte-identical under canonical JSON. Conversation text, intent,
+  localized metadata, and `tools[].function.description` may change; tool names
+  and complete parameter schemas may not. Translation manifests require a
+  `model` block plus complete contamination scope and self-hash their semantic
+  body; an unidentified translator is refused rather than treated as clean.
+- **Every model that read a row is named.** The `models.*` roles the manifest
+  records — `profile`, `paraphrase`, `surface_judge` — are read together with the
+  rows each one touched: rows carrying a `profile_hash`, rows attributed to the
+  paraphraser's canonical id, and the whole published surface for a judge that
+  ran. A manifest that omits the block, names a role this build does not read,
+  enables a role without naming a model, contradicts its own rows about
+  `profile_influenced_surface`, or ships a paraphrased row no role claims is
+  refused: a gap in this inventory would read as "no contamination found".
+- **The evidence is written down.** A pass writes
+  `source_verification_report.json` into `outputs.output_dir`, atomically, listing
+  the checks that actually passed; a failure writes
+  `source_verification_failure.json` under a different name so a diagnosis cannot
+  be mistaken for a pass. The report's `verification_identity` hashes hashes, row
+  counts, task ids, and pack fingerprints, and no path or timestamp: an intact
+  tree keeps its identity when moved, and loses it when one byte changes.
+- **The source is pinned twice.** `assert_source_unchanged()` recomputes every
+  recorded hash, the pack fingerprint included, immediately before execution.
+  Verification and use are separated in time, and that gap is where a source gets
+  replaced — a regeneration into the same directory, a pack edited to make a
+  failing task pass.
+
+None of those checks is a reimplementation. Publication semantics come from
+`publication_contract`, row decoding from `export_projection`, the pack file set
+and fingerprint from `pack_loader`, and endpoint identity from `endpoint`. A
+verifier that re-derived any of them could disagree with the pipeline that wrote
+the artifact, and then the disagreement itself would be the defect.
+
+A verified source says which benchmark is being scored. `evaluate_contamination()`
+then decides who may answer which rows of it, and returns the second handle a
+runner is given:
+
+- **A collision is evidence, not a flag.** Each candidate is compared against each
+  exposure, and the result is recorded with the role, the model, and the exact
+  task ids. Comparison weighs the strongest available evidence first: two weights
+  digests settle it either way, then an equal operator canonical id, then an equal
+  serving route, then a normalized model name plus revision. Names are compared
+  case-insensitively with the registry prefix and punctuation removed, so a
+  registry naming difference cannot be mistaken for a different model.
+- **An unprovable separation is never guessed.** When neither side pinned enough
+  to decide, the comparison is `unknown`. It does not exclude rows on suspicion
+  and does not abort a debug run, but it always blocks publication — and when
+  `publication.requested` is true it is refused here rather than producing a
+  number that cannot be published.
+- **The policy only narrows.** `fail_run` refuses the run on a match;
+  `exclude_row` drops exactly the rows that exposure covered. If exclusion empties
+  a candidate's set, or leaves no row every candidate can answer, the run stops:
+  a benchmark whose surface models are the candidates cannot be salvaged by
+  scoring zero rows.
+- **The comparable set is decided here.** Under `common_intersection` every
+  candidate answers the rows all of them may answer, in publication order, so two
+  numbers are comparable by construction; `per_candidate` keeps each candidate's
+  own set and is debug-only. `plan_identity` hashes the whole decision with
+  candidates ordered by alias, and no path or timestamp.
+- **The decision is written down and re-pinned.** A pass writes
+  `contamination_report.json` into `outputs.output_dir` and removes any stale
+  `contamination_failure.json`, and the other way round.
+  `assert_plan_unchanged()` re-pins the source and re-derives the decision
+  immediately before the first request, so a plan widened after authorization
+  cannot be the plan a runner acts on.
+
+The native candidate client transports one authorized assistant turn. It sends
+only model-facing messages and OpenAI-compatible tools, preserves ordered
+`message.tool_calls` and raw arguments without repair, retries only transient
+transport failures, and writes a hash-verified request/attempt/completion
+sequence to `candidate_io_cache.jsonl`. Completed calls replay without network
+or credentials; an interrupted sequence fails closed. The client does not choose
+what to ask next.
+
+The conversation driver selects the row and call-group plan from a
+canonical projection whose hash, row count, and complete task sequence match the
+verified source, then replays the episode the pack's turn policy described. The
+model is asked one assistant turn at a time, and a tool result your pack's replay
+recorded is handed back only after a type=`function` call with a unique id matches
+the trace, addressed to that candidate id. Where the trace has an intermediate
+text turn, the candidate must answer in words that say something, rather than
+call a tool or return nothing, before the next user request is released; it is
+not required to reproduce the published sentence, which is only one phrasing of
+that behavior. This fail-closed rule is what makes a `missing_slot` or
+`ask_confirm` policy safe: a
+model that calls straight through or emits unrelated prose never receives the
+slot value it failed to ask for. Nothing else from the row enters a prompt. The
+driver releases recorded results only; it executes no tool and derives no score.
+
+Executable evaluation uses a separate live driver. It first projects an
+`ExecutableTaskSpec` that binds the published row, candidate authorization,
+source clock, pack fingerprint, oracle resource, template milestones, fixture
+references, assertions, and pack-local mutation flags. The Python and endpoint
+adapters then keep one reset/call/state/assertion session inside a task-local
+process worker. Local `backend.py` and `assertions.py` are never imported into
+the evaluator process; endpoint sessions are deleted on every normal and
+exceptional exit. Calls execute once in candidate order, and only canonical live
+results are returned under the candidate's call IDs. Recorded replay results,
+expected calls, assertion metadata, and fixture values have no operation that
+can add them to the live model-facing conversation. A timed-out mutating call is
+never retried because its commit state is unknown. A returned mutating result is
+classified as committed only when canonical state snapshots before and after the
+call differ; equal snapshots prove no commit, and a missing snapshot remains
+unknown. The runner reconstructs assertion `slots`, `slots_initial`, and
+`slot_updates` from verified template metadata and published evidence: the
+verbatim opening turn, the expected trace, the cited fixture rows, and typed
+fixture, literal, enum, range, and absent-id values from the verified pack.
+Because the opening turn renders pre-correction values, it selects the typed
+candidate used for `slots_initial`, including values no tool argument names. A
+paraphrased surface is never read back. A final slot no channel settles is
+listed in `unresolved_slots`; unknown pre-correction and correction values are
+listed separately in `unresolved_slots_initial` and `unresolved_slot_updates`
+instead of being inferred from another phase. The isolated assertion runner
+tracks reads of all three so an assertion that needs a missing value fails as
+infrastructure rather than as a candidate error, while an unrelated assertion
+runs normally.
+
+`stage=generate` refuses `eval_config_path` and inline `eval` blocks because
+generation does not consume evaluation settings. Candidate execution belongs to
+the evaluation runtime, not to benchmark publication.

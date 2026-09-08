@@ -11,8 +11,10 @@ Generation is therefore closer to deterministic assembly than to synthesis, whic
 
 ## From Source Assets To A Published Benchmark
 
-Manual authoring produces the reviewed Oracle Pack that generation consumes.
-Generation turns that pack into a verified benchmark.
+There are three layers in the end-to-end workflow. Authoring produces the reviewed
+oracle pack that generation consumes. Generation turns that pack into a verified
+benchmark. Translation and evaluation are later runs over the published benchmark;
+they are not generation stages.
 
 ```mermaid
 flowchart LR
@@ -25,8 +27,9 @@ flowchart LR
   SELECT["Optional quality,<br/>dedup, and balancing"]
   PUBLISH["Atomic publication"]
   OUT["benchmark.parquet<br/>run_manifest.json"]
+  LATER["Separate runs:<br/>translate or eval"]
 
-  SOURCE --> AUTHOR --> PACK --> PREP --> BUILD --> VERIFY --> SELECT --> PUBLISH --> OUT
+  SOURCE --> AUTHOR --> PACK --> PREP --> BUILD --> VERIFY --> SELECT --> PUBLISH --> OUT --> LATER
 ```
 
 The operator does not hand-edit the output of each internal stage. The normal
@@ -39,17 +42,19 @@ interaction is:
    pack or configuration rather than editing the cache.
 5. Treat the output as published only after `run_manifest.json` exists.
 
-{doc}`../how-to/author-a-pack` explains how to create the reviewed pack at the
-left of this diagram. {doc}`pipeline-worked-example` follows one concrete task
-through every generation stage.
+{doc}`authoring-flows` explains how a manual, assisted, or MCP-backed source becomes
+the reviewed pack at the left of this diagram. {doc}`pipeline-worked-example` follows
+one concrete task through every generation stage.
 
-`nemotron steps run byob/bfcl` supports three generation values for `stage`:
+`nemotron steps run byob/bfcl` accepts five values for `stage`:
 
 | `stage` | What the run does |
 | --- | --- |
 | `prepare` | Normalize and validate the oracle pack, then write `oracle_validation_report.json`. No benchmark rows are produced. |
 | `generate` | Require a gold-eligible pack, generate tasks, replay them against the oracle, and publish artifacts. |
-| `all` | Run `prepare` followed by `generate`. |
+| `translate` | Localize an already published benchmark without changing oracle truth. |
+| `eval` | Score candidate models using a separate evaluation configuration. |
+| `all` | Run `prepare` followed by `generate`. It does not implicitly translate or evaluate. |
 
 ## The Twelve Stages
 
@@ -308,8 +313,24 @@ A key no stage reads is also, in practice, usually a typo for one that matters.
 The same principle governs publication. `run_manifest.json` is written last as the commit marker, so a Parquet file without an adjacent manifest is unpublished bytes whatever its name says.
 Troubleshooting for individual refusals is collected in {doc}`../reference/troubleshooting`.
 
+## Translation And Evaluation Are Separate Runs
+
+`translate` and `eval` are runs over a benchmark that was already published, not stages of generation.
+Translation starts from the source release's `run_manifest.json`, verifies the published table hashes and schema, and localizes only approved model-facing text while leaving tool names, parameter schemas, slot values, expected calls, assertions, ordering, held-out state, and lineage unchanged.
+Protection is mechanical rather than editorial: the translator addresses text through stable field paths, and each protected occurrence is swapped for one placeholder before the request and restored afterwards, so a protected value cannot be localized even when it reads like ordinary prose.
+Function descriptions may be localized when that is enabled, but function names and parameter schemas stay exact, because those are the fields a score compares.
+
+Forward translation, backtranslation, and quality evidence are written beside a content-addressed `translation_manifest.json` that records the translator's identity and its contamination scope, which is what lets the contamination gate treat a translator like any other model that read published rows.
+Deterministic normalization, configurable response guards, a no-op translation gate that refuses output identical to its input, and Unicode-script checks — inferred from the target language or configured explicitly — all run before publication, and an evaluation recomputes those claims and every metric verdict from the evidence rather than trusting the manifest.
+Two consequences are worth planning for: translation never filters rows, so a localized release has exactly the task set of its source, and it does not support `skip_until`, so a failed translation is rerun from the start.
+
+Evaluation reads its own configuration, described in {doc}`evaluation`, and is deliberately excluded from the generation lineage hashes: scoring a new candidate must not change the identity of the benchmark it was scored on.
+
 ## Related Information
 
 - {doc}`oracle-pack` for the pack contract the whole pipeline reads from.
+- {doc}`authoring-flows` for the three ways to obtain a pack before Stage 1.
+- {doc}`../how-to/translate` for localizing a completed generation run.
+- {doc}`evaluation` for what happens after a benchmark is published.
 - {doc}`../reference/generate-config` for every generation YAML key.
-- {doc}`../reference/output-files` for artifact names and locations.
+- {doc}`../reference/output-files` for the exact artifact names and locations.

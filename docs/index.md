@@ -69,12 +69,18 @@ Translate JSONL or Parquet corpora with `translate/nemo_curator`, NeMo Curator
 backends, and optional FAITH quality scoring.
 :::
 
-:::{grid-item-card} Build Benchmarks
+:::{grid-item-card} Build MCQ Benchmarks
 :link: build-benchmarks/index
 :link-type: doc
 
-Generate custom multiple-choice benchmarks with `byob/mcq`, or build
-function-calling benchmarks from executable Oracle Packs with `byob/bfcl`.
+Generate and translate custom multiple-choice benchmarks with `byob/mcq`.
+:::
+
+:::{grid-item-card} Build Function-Calling Benchmarks
+:link: build-benchmarks/function-calling/index
+:link-type: doc
+
+Generate and evaluate custom function-calling benchmarks from an executable oracle pack with `byob/bfcl`.
 :::
 
 :::{grid-item-card} Data Curation
@@ -281,6 +287,17 @@ Getting Started <build-benchmarks/getting-started.md>
 Concepts <build-benchmarks/explanation/index.md>
 Tasks <build-benchmarks/how-to/index.md>
 Reference <build-benchmarks/reference/index.md>
+```
+
+```{toctree}
+:caption: Build Function-Calling Benchmarks
+:hidden:
+
+About <build-benchmarks/function-calling/index.md>
+Getting Started <build-benchmarks/function-calling/getting-started.md>
+Concepts <build-benchmarks/function-calling/explanation/index.md>
+Tasks <build-benchmarks/function-calling/how-to/index.md>
+Reference <build-benchmarks/function-calling/reference/index.md>
 ```
 
 ```{toctree}

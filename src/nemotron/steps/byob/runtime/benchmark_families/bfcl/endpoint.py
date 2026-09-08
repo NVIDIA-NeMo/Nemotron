@@ -31,13 +31,13 @@ from typing import Any
 
 import yaml
 
-from nemotron.steps.byob.runtime.benchmark_families.bfcl.conformance import (
-    ATTESTATION_KIND,
-)
-from nemotron.steps.byob.runtime.benchmark_families.bfcl.credentials import (
+from nemotron.steps.byob.runtime.authoring_workflow.credentials import (
     CredentialReference,
     CredentialResolver,
     build_authorization_context,
+)
+from nemotron.steps.byob.runtime.benchmark_families.bfcl.conformance import (
+    ATTESTATION_KIND,
 )
 from nemotron.steps.byob.runtime.benchmark_families.bfcl.isolation import (
     assert_pack_allowed,

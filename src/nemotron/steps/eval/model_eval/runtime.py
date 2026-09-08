@@ -46,6 +46,7 @@ import shutil
 import subprocess
 import sys
 import urllib.parse
+from dataclasses import dataclass
 from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
@@ -76,6 +77,21 @@ _STEP_ONLY_KEYS = {
 }
 
 
+class ModelEvalDependencyError(RuntimeError):
+    """The launcher this step delegates to is not importable.
+
+    Raised instead of exiting the process, so a caller that embeds this launch
+    boundary can map the failure into its own error contract; `run_model_eval`
+    turns it back into a process exit for direct CLI use.
+    """
+
+
+@dataclass(frozen=True)
+class ModelEvalLaunchResult:
+    launcher_config_path: Path
+    invocation_id: str | None
+
+
 def run_model_eval(*, default_config: Path) -> None:
     config_path, cfg, overrides = _load_config(default_config)
     passthrough = _passthrough_args(overrides)
@@ -85,23 +101,55 @@ def run_model_eval(*, default_config: Path) -> None:
         run_direct(cfg, task_filters=parse_task_flags(passthrough))
         return
 
+    task_filters = parse_task_flags(passthrough) or None
+    try:
+        result = launch_model_eval_config(
+            config_path=config_path,
+            cfg=cfg,
+            task_filters=task_filters,
+        )
+    except ModelEvalDependencyError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        print("Install with: uv sync --extra evaluator", file=sys.stderr)
+        raise SystemExit(1) from exc
+    print(f"launcher_config: {result.launcher_config_path}")
+    if result.invocation_id:
+        print(f"launcher_invocation_id: {result.invocation_id}")
+        print(f"status_command: nemo-evaluator-launcher status {result.invocation_id}")
+        print(f"logs_command: nemo-evaluator-launcher logs {result.invocation_id}")
+
+
+def launch_model_eval_config(
+    *,
+    config_path: Path,
+    cfg: DictConfig,
+    task_filters: list[str] | None = None,
+) -> ModelEvalLaunchResult:
+    """Submit a prepared model-eval config without reparsing process arguments."""
+    # Resolve the launcher before writing anything, so a missing dependency does
+    # not leave a materialized config behind that was never submitted.
+    try:
+        from nemo_evaluator_launcher.api.functional import (  # type: ignore[import-untyped]
+            run_eval,
+        )
+    except ImportError as exc:
+        raise ModelEvalDependencyError(
+            "nemo-evaluator-launcher is required for evaluation"
+        ) from exc
+
     launcher_cfg, dry_run, configured_tasks = _build_launcher_config(cfg)
-    task_filters = parse_task_flags(passthrough) or configured_tasks
+    selected_tasks = task_filters if task_filters is not None else configured_tasks
     eval_path = _save_launcher_config(config_path, cfg, launcher_cfg)
 
-    try:
-        from nemo_evaluator_launcher.api.functional import run_eval
-    except ImportError:
-        print("Error: nemo-evaluator-launcher is required for evaluation", file=sys.stderr)
-        print("Install with: uv sync --extra evaluator", file=sys.stderr)
-        raise SystemExit(1)
-
-    invocation_id = run_eval(launcher_cfg, dry_run=dry_run, tasks=task_filters)
-    print(f"launcher_config: {eval_path}")
-    if invocation_id:
-        print(f"launcher_invocation_id: {invocation_id}")
-        print(f"status_command: nemo-evaluator-launcher status {invocation_id}")
-        print(f"logs_command: nemo-evaluator-launcher logs {invocation_id}")
+    invocation_id = run_eval(
+        launcher_cfg,
+        dry_run=dry_run,
+        tasks=selected_tasks,
+    )
+    return ModelEvalLaunchResult(
+        launcher_config_path=eval_path,
+        invocation_id=str(invocation_id) if invocation_id else None,
+    )
 
 
 def _load_config(default_config: Path) -> tuple[Path, DictConfig, list[str]]:
@@ -122,7 +170,10 @@ def _build_launcher_config(cfg: DictConfig) -> tuple[DictConfig, bool, list[str]
 
     clear_artifact_cache()
     register_resolvers_from_config(cfg, artifacts_key="run", mode="pre_init")
-    launcher_dict = dict(OmegaConf.to_container(cfg, resolve=True))
+    resolved = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(resolved, dict):
+        raise ValueError("model evaluation config must resolve to one object")
+    launcher_dict = dict(resolved)
     launcher_dict.pop("run", None)
     for key in _STEP_ONLY_KEYS:
         launcher_dict.pop(key, None)

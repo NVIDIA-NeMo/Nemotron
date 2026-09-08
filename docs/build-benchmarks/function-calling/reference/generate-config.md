@@ -41,7 +41,7 @@ cannot change the pack fingerprint, and any pack or reference file must sit unde
 | `family` | string | none, required | Must be `bfcl`. The shared dispatcher otherwise selects the MCQ family. |
 | `expt_name` | string | none, required | The run directory name under `output_dir`. Must be a single path component, so no separators, no whitespace padding, and not `.` or `..`. |
 | `output_dir` | path string | none, required | The parent directory of the run tree. |
-| `stage` | string | `all` | Which generation action to run: `prepare`, `generate`, or `all`. |
+| `stage` | string | `all` | Which stage to run: `prepare`, `generate`, `translate`, `eval`, or `all`. |
 | `random_seed` | integer | `null` | Seeds every deterministic binding. Recorded in the manifest as `seeds.global`, where an absent seed is stored as `0`. |
 | `ndd_batch_size` | integer ≥ 1 | `32` | Batch size for model-facing generation calls. |
 | `schema_version` | string | `null` | The benchmark row schema the run promises to write. This build writes only `"1.1"`; any other value is refused. |

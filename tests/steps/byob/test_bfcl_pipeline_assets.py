@@ -18,6 +18,12 @@ from nemotron.steps.byob.runtime.benchmark_families.bfcl.bfcl_json_export import
     read_bfcl_json,
     write_bfcl_json,
 )
+from nemotron.steps.byob.runtime.benchmark_families.bfcl.eval import (
+    EVAL_CONFIG_SCHEMA_VERSION,
+    evaluate_contamination,
+    load_eval_config,
+    verify_eval_source,
+)
 from nemotron.steps.byob.runtime.benchmark_families.bfcl.export_contract import (
     BfclJsonRecord,
     NemoEvaluatorRecord,
@@ -324,6 +330,99 @@ def _row(rows: list[dict[str, Any]], template_id: str) -> dict[str, Any]:
     return matches[0]
 
 
+def test_a_real_published_run_verifies_and_gates_a_candidate(
+    tiny_run: tuple[list[dict[str, Any]], Path],
+    tmp_path: Path,
+) -> None:
+    """The eval contracts are checked against the manifest the pipeline writes.
+
+    Every other eval test builds its own publication tree, which can only prove
+    the verifier is self-consistent. This one reads what Stage 12 actually wrote,
+    so a manifest field the eval side expects and the pipeline stopped writing
+    fails here rather than in production.
+    """
+    rows, output_dir = tiny_run
+    eval_config = tmp_path / "eval_config.yaml"
+    eval_config.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": EVAL_CONFIG_SCHEMA_VERSION,
+                "config_status": "resolved",
+                "source_run_manifest": str(output_dir / "run_manifest.json"),
+                "source_oracle": None,
+                "translation_manifest": None,
+                "eval": {"mode": ["trace"]},
+                "scoring": {
+                    "contract": str(BYOB_ROOT / "references" / "bfcl-eval-scoring-contract.md"),
+                    "argument_matching": "schema_then_canonical",
+                    "insert_declared_defaults": True,
+                    "respect_call_order": True,
+                    "respect_call_group": True,
+                    "allow_llm_repair": False,
+                    "task_success": "all_applicable_gates",
+                },
+                "limits": {
+                    "max_turns": 6,
+                    "tool_timeout_s": 30.0,
+                    "candidate_timeout_s": 60.0,
+                    "episode_timeout_s": 120.0,
+                    "max_parallel_tasks": 1,
+                    "max_retries": 2,
+                },
+                "candidates": [
+                    {
+                        "alias": "candidate_a",
+                        "model": "candidate-route",
+                        "provider": "nvidia",
+                        "provider_api_version": "v1",
+                        "api": {
+                            "base_url": "https://integrate.example.com/v1",
+                            "api_key_env": "NVIDIA_API_KEY",
+                        },
+                        "model_identity": {
+                            "source": "huggingface",
+                            "model": "org/candidate",
+                            "revision": "a" * 40,
+                            "weights_digest": None,
+                        },
+                        "inference": {
+                            "temperature": 0.0,
+                            "top_p": 1.0,
+                            "max_tokens": 1024,
+                            "seed": 42,
+                            "tool_choice": "auto",
+                        },
+                    }
+                ],
+                "contamination": {
+                    "enforce": True,
+                    "on_violation": "fail_run",
+                    "comparison_set": "common_intersection",
+                },
+                "publication": {"requested": True, "require_same_task_ids": True},
+                "outputs": {
+                    "output_dir": str(tmp_path / "eval_out"),
+                    "write_task_results": True,
+                    "write_eval_manifest": True,
+                    "cache_candidate_responses": True,
+                    "cache_tool_results": True,
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_eval_config(eval_config)
+    source = verify_eval_source(config)
+    plan = evaluate_contamination(config, source)
+
+    assert source.task_ids == tuple(row["task_id"] for row in rows)
+    # The tiny pack calls no model, so nothing read the rows it published.
+    assert source.exposures == ()
+    assert plan.common.task_ids == source.task_ids
+    assert plan.evaluation_task_ids("candidate_a") == source.task_ids
+    assert plan.publication_allowed is True
 
 
 def test_non_bundled_oracle_pack_runs_end_to_end(third_pack_run) -> None:
