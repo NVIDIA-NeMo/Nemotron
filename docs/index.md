@@ -61,6 +61,13 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} Adapting Nemotron to a New Language
+:link: sovereign-ai
+:link-type: doc
+
+How tokenizer extension, curation, continued pretraining, synthetic SFT data, fine-tuning, and evaluation connect into one workflow.
+:::
+
 :::{grid-item-card} Translation
 :link: translation/index
 :link-type: doc
@@ -239,6 +246,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 Home <self>
 application-examples.md
 deployment-guides.md
+Adapting Nemotron to a New Language <sovereign-ai.md>
 ```
 
 ```{toctree}
