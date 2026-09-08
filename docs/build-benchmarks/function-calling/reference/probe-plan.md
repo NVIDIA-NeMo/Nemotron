@@ -131,7 +131,7 @@ Clock values must be ISO-8601 with an explicit timezone. The banking example use
 Check the plan against a local Python source without executing probes:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_probe_plan \
+uv run python -m nemotron.steps.byob.scripts.check_probe_plan \
   --source /srv/sources/library \
   --probe-plan /srv/sources/library-probe-plan.json
 ```

@@ -89,7 +89,7 @@ invalidates downstream digest-bound approvals.
 Use the completed file when intake starts:
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author \
   --ci author \
   --workspace /srv/bfcl/authoring/my-domain \
   --source /srv/sources/my-domain \

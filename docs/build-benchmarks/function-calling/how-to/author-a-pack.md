@@ -34,7 +34,7 @@ tool. The command below selects local Python; replace `python` with `endpoint` w
 that is the reviewed transport choice.
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain warehouse_assets \
   --target /srv/bfcl/packs/warehouse_assets \
   --transport python \
@@ -93,7 +93,7 @@ Difficulty, conversation turns, and tool-call depth are independent dimensions. 
 Run the standalone validator for a fast authoring loop. It normalizes the pack, executes the validation cases, checks reset and replay behavior, and derives the tier, all without producing benchmark rows.
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/warehouse_assets/validate.yaml \
   --output-dir /tmp/bfcl-warehouse-validation
 ```

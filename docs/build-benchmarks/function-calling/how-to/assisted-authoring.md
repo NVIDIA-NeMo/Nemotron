@@ -112,7 +112,7 @@ A probe plan may be written from the reviewed source contract or drafted by a mo
 for human review:
 
 ```text
-python -m nemotron.steps.byob.scripts.draft_probe_plan \
+uv run python -m nemotron.steps.byob.scripts.draft_probe_plan \
   --source /srv/sources/warehouse-package \
   --domain-brief /srv/sources/domain-brief.txt \
   --output /srv/sources/probe-plan.json \
@@ -125,7 +125,7 @@ It does not certify the plan or its source. Check the reviewed plan without exec
 probes:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_probe_plan \
+uv run python -m nemotron.steps.byob.scripts.check_probe_plan \
   --source /srv/sources/warehouse-package \
   --probe-plan /srv/sources/probe-plan.json
 ```
@@ -140,7 +140,7 @@ If no independently implemented local source exists, generate the mechanical
 four-function interface and fill its domain decisions manually:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_source_package \
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
   --tools /srv/sources/warehouse-package/tools.json \
   --output /srv/sources/warehouse-package \
   --collection assets \
@@ -170,7 +170,7 @@ semantics.
 Check the result against its own catalogue before spending an intake run on it:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_source_package \
+uv run python -m nemotron.steps.byob.scripts.check_source_package \
   --source /srv/sources/warehouse-package
 ```
 
@@ -235,7 +235,7 @@ model-exposure subject. **Human check:** confirm the measured tier is A2 and res
 every open question before model exposure.
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author \
   --ci author \
   --workspace /srv/bfcl/authoring/warehouse \
   --source /srv/sources/warehouse-package \
@@ -269,7 +269,7 @@ the answers describe existing source truth rather than inventing behavior to sat
 the benchmark.
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author answer \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author answer \
   --workspace /srv/bfcl/authoring/warehouse \
   --evidence <EVIDENCE_BUNDLE_JSON> \
   --questions <OPEN_QUESTIONS_JSON> \
@@ -318,12 +318,12 @@ bound to the new digests.
 The manual fallback remains:
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author authorize \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author authorize \
   --workspace /srv/bfcl/authoring/warehouse \
   --subject <MODEL_EXPOSURE_SUBJECT_JSON> \
   --authorized-by reviewer@example.test
 
-python -m nemotron.steps.byob.scripts.bfcl_author approve \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author approve \
   --workspace /srv/bfcl/authoring/warehouse \
   --boundary evidence \
   --approved-by reviewer@example.test \
@@ -353,7 +353,7 @@ compiled assertions, model I/O cache, and provenance. **Human check:** inspect
 grounding, direct tool coverage, compilation refusals, and unresolved blockers.
 
 ```text
-python -m nemotron.steps.byob.scripts.bfcl_author draft \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author draft \
   --workspace /srv/bfcl/authoring/warehouse \
   <artifact, certification, approval, key, output, and model arguments>
 ```
@@ -368,7 +368,7 @@ the candidate pack and `candidate_pack_provenance.json`. **Human check:** valida
 candidate at Gold and reassemble to a new path after any supplement correction.
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author assemble \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author assemble \
   --workspace /srv/bfcl/authoring/warehouse \
   --supplement /srv/bfcl/authoring/warehouse/reviewed-supplement.yaml \
   --output /srv/bfcl/authoring/warehouse/candidate-pack
@@ -389,7 +389,7 @@ packet and freeze inputs. **Human check:** inspect domain semantics, validation
 evidence, assumptions, and every finding before release approval.
 
 ```text
-python -m nemotron.steps.byob.scripts.bfcl_author review \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author review \
   --workspace /srv/bfcl/authoring/warehouse \
   --adapter-kind local_python \
   <review-packet input and output arguments>
@@ -407,7 +407,7 @@ packet and confirm its semantics, descriptions, assumptions, held-out treatment,
 reported risks once.
 
 ```text
-python -m nemotron.steps.byob.scripts.bfcl_author release \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author release \
   --workspace /srv/bfcl/authoring/warehouse \
   --approved-by reviewer@example.test \
   --freeze-inputs /srv/bfcl/authoring/warehouse/freeze_inputs.json \

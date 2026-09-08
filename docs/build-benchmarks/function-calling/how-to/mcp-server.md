@@ -39,7 +39,7 @@ For a Streamable HTTP transport, use HTTPS outside explicit loopback debugging, 
 Discovery reads the server's identity and its complete paginated tool catalog and writes a deterministic report.
 
 ```bash
-python -m nemotron.steps.byob.scripts.discover_mcp_oracle \
+uv run python -m nemotron.steps.byob.scripts.discover_mcp_oracle \
   --config mcp_oracle.yaml \
   --output mcp_discovery_report.json \
   --bootstrap-catalog-digest
@@ -58,7 +58,7 @@ Never overwrite an expected catalog digest automatically. Compare the complete n
 The gateway is the only MCP execution boundary. It maps the MCP server onto the BFCL Oracle HTTP v1 contract, so that the generation pipeline drives sessions, calls, and state through the same routes it uses for any endpoint-backed pack and stays entirely unaware of MCP. A running gateway process is part of the fingerprinted execution environment.
 
 ```bash
-python -m nemotron.steps.byob.scripts.run_mcp_gateway \
+uv run python -m nemotron.steps.byob.scripts.run_mcp_gateway \
   --config mcp_oracle.yaml \
   --gateway-artifact-digest sha256:<digest> \
   --host 127.0.0.1 \
@@ -75,7 +75,7 @@ A gateway attests only what it has evidence for, and human approval never raises
 The first gateway starts at `L0`. Use it to validate the provisional pack and retain `mcp_probe_report` from the resulting `oracle_validation_report.json`. The controlled-timeout suite is a separate artifact: it is produced by running the `P9` conformance helper, `run_gateway_timeout_conformance` in `src/nemotron/steps/byob/runtime/mcp/gateway/conformance.py`, against a controlled hanging fixture, and its returned document is what you write to `gateway_suite.json`. No CLI wraps that helper yet, so this step is driven through the Python API. Then restart the same pinned gateway artifact with both files supplied:
 
 ```bash
-python -m nemotron.steps.byob.scripts.run_mcp_gateway \
+uv run python -m nemotron.steps.byob.scripts.run_mcp_gateway \
   --config mcp_oracle.yaml \
   --gateway-artifact-digest sha256:<digest> \
   --probe-report mcp_probe_report.json \
@@ -92,7 +92,7 @@ Fetch `/v1/conformance`, `/v1/conformance/probe-report`, and `/v1/conformance/ga
 Intake turns the discovery evidence into a sanitized evidence bundle, a pack draft, and a signed certification report.
 
 ```bash
-python -m nemotron.steps.byob.scripts.build_mcp_intake \
+uv run python -m nemotron.steps.byob.scripts.build_mcp_intake \
   --intake mcp_intake.yaml \
   --domain-brief /srv/sources/domain-brief.txt \
   --held-out-not-applicable-reason "The catalog is public reference data." \
@@ -112,7 +112,7 @@ session for you. For the one-approval path, use the reviewed policy described in
 {doc}`assisted-authoring`:
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author \
   --ci author \
   --workspace /srv/bfcl/authoring/warehouse \
   --source <REVIEWED_MCP_INTAKE> \

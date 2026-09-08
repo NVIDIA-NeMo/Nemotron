@@ -40,7 +40,7 @@ For a manual Oracle Pack, scaffold the complete pack rather than creating
 `backend.py` in isolation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -55,7 +55,7 @@ For model-assisted authoring, first place a reviewed `tools.json` inside a new s
 directory, then create a source-package skeleton:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_source_package \
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
   --tools /srv/sources/my-domain/tools.json \
   --output /srv/sources/my-domain \
   --collection records \
@@ -75,7 +75,7 @@ fixtures file, and still requires static checks and executable certification pro
 Its command shape is:
 
 ```text
-python -m nemotron.steps.byob.scripts.scaffold_source_package \
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
   --tools /srv/sources/my-domain/tools.json \
   --output /srv/sources/my-domain \
   --draft-with-model \
@@ -111,7 +111,7 @@ fidelity, representativeness, or absence of benchmark-construction bias.
 Before source intake, run the static source-package check:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_source_package \
+uv run python -m nemotron.steps.byob.scripts.check_source_package \
   --source /srv/sources/my-domain
 ```
 
@@ -121,7 +121,7 @@ the backend does not expose, and invalid fixture shape. It cannot prove behavior
 For a complete Oracle Pack, run executable Gold validation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```
@@ -293,7 +293,7 @@ backend with:
 To generate a smaller starter:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \

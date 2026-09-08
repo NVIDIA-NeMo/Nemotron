@@ -16,7 +16,7 @@ The configuration stores identity and credential references, not secret values.
 Create the complete endpoint-backed pack shape with:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport endpoint \
@@ -179,7 +179,7 @@ replay uses a new opaque session id.
 There is no standalone endpoint-config validator. Run whole-pack preparation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```

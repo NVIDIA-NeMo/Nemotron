@@ -15,7 +15,7 @@ Behavior belongs in `backend.py` or the pinned endpoint.
 `scaffold_oracle_pack` writes a matching catalog and fixture collection:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -118,7 +118,7 @@ from normal generation belong in `held_out.yaml`. They are different contracts.
 For a conventional local source, run the static pre-check:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_source_package \
+uv run python -m nemotron.steps.byob.scripts.check_source_package \
   --source /srv/sources/my-domain
 ```
 
@@ -128,7 +128,7 @@ It checks catalog/backend name alignment, fixture root shape, and unresolved
 Run whole-pack validation after catalog, fixture, backend, or template changes:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```

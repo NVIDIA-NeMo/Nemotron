@@ -23,7 +23,7 @@ The manual pack scaffolder writes runnable `single_turn`, structured-error, and
 `irrelevant` starter templates:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -53,7 +53,7 @@ and assertion names resolve in `assertions.py`.
 Run whole-pack preparation during each authoring iteration:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```
