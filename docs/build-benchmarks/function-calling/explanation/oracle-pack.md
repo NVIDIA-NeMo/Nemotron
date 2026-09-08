@@ -92,7 +92,7 @@ Anything a pack imports from outside its own tree is invisible to the fingerprin
 
 Two packs ship under `src/nemotron/steps/byob/data/` and serve different purposes.
 
-`tiny_oracle_pack` is the smallest end-to-end example. It covers single-turn, confirmation, parallel call-group, and irrelevant shapes with no model calls, which makes it the right pack for checking that plumbing, isolation, and output paths work before a real pack exists.
+`tiny_oracle_pack` is the smallest end-to-end example. It covers single-turn, confirmation, parallel call-group, and irrelevant shapes with no model calls, which makes it the right pack for checking that the pipeline, isolation, and output paths work before a real pack exists.
 
 `banking_vn_oracle_pack` is the domain-scale reference. It is worth reading before authoring your own, because it declares a template for every conversation shape the pipeline supports — `single_turn`, `missing_slot`, `confirmation`, `correction`, `multi_tool`, `dependent_call`, `negative_path`, `clarify_only`, and `irrelevant` — and no template narrows `tools_present`, so every row must select its calls out of the full tool catalog.
 Read it as a worked example of the pack contract rather than as a default: its inventory, scale, and mix are properties of that pack, not of the framework.

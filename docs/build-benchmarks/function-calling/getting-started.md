@@ -13,7 +13,7 @@
 :::{grid-item-card}
 :columns: 8
 
-**What You'll Build**: A small function-calling benchmark generated from the bundled `tiny_oracle_pack`, an executable library-catalog pack that exists to exercise the pipeline quickly.
+**What You Will Build**: A small function-calling benchmark generated from the bundled `tiny_oracle_pack`, an executable library-catalog pack that exists to exercise the pipeline quickly.
 
 ^^^
 

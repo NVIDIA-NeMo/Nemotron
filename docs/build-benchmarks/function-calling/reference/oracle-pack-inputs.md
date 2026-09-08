@@ -90,7 +90,7 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
 Use `--transport endpoint` to emit `endpoint_config.yaml`. Add
 `--include-held-out` to emit a held-out example. The target must not already exist.
 
-The starter is runnable plumbing, not domain truth. Replace its `get_record` names,
+The starter is a runnable scaffold, not domain truth. Replace its `get_record` names,
 fixture values, behavior, tasks, assertions, and cases with independently reviewed
 domain content.
 

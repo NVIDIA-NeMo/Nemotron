@@ -162,7 +162,7 @@ artifacts, and the symptom-to-fix index.
 ## What You Need
 
 - A Nemotron clone with dependencies installed, including the `byob` extra from `uv sync --extra byob`.
-- An Oracle Pack. To learn the flow first, use the bundled `src/nemotron/steps/byob/data/tiny_oracle_pack`, which exists to exercise the plumbing quickly.
+- An Oracle Pack. To learn the flow first, use the bundled `src/nemotron/steps/byob/data/tiny_oracle_pack`, which exists to exercise the pipeline quickly.
 - For evaluation, a candidate model endpoint and its credentials. Generation itself calls no model unless you explicitly enable a model-authored surface role.
 - For the assisted authoring flows, a model endpoint for drafting and the corresponding feature flag, as described in {doc}`how-to/assisted-authoring`.
 
@@ -184,7 +184,7 @@ artifacts, and the symptom-to-fix index.
 - **Pack admission and publication are separate gates.** Generation refuses a pack
   that is not Gold-eligible. A Gold pack may still run under
   `lineage.policy: smoke_no_publication`; that run writes benchmark artifacts for
-  plumbing checks but records that its lineage is not eligible for release. See
+  pipeline verification but records that its lineage is not eligible for release. See
   {doc}`explanation/oracle-pack` and {doc}`how-to/publish-a-release`.
 - **Pack code executes.** The pipeline imports and runs your backend and assertions. It does so in a separate process with a sanitized environment and enforced timeouts, and Gold requires that isolation, but the pack is still code you are choosing to trust.
 - **Model roles are opt-in and pinned.** Enabling a model-authored surface role requires a pinned, unambiguous model identity, because a benchmark whose wording came from an unrecorded model cannot be reproduced.

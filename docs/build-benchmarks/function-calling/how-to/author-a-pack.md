@@ -163,7 +163,7 @@ nemotron steps run byob/bfcl \
 Use absolute paths for an external pack. A relative path in a generation config resolves from the checked-in `src/nemotron/steps/byob/` root, not from your shell working directory or from the config file's own directory. Pack code must also sit under an `oracle_runtime.allowed_roots` entry, and `output_dir` must stay outside the pack root so generated artifacts cannot become pack inputs.
 :::
 
-The smoke profile pins `lineage.policy: smoke_no_publication`, which makes its output deliberately unpublishable: rows keep the pack's validation tier but carry `gold_eligible: false`. That is the point of a smoke run. Move to {doc}`publish-a-release` when you want a releasable benchmark.
+The smoke profile pins `lineage.policy: smoke_no_publication`, which makes its output deliberately unpublishable: rows keep the pack's validation tier but carry `gold_eligible: false`. That is the purpose of a verification run. Move to {doc}`publish-a-release` when you want a releasable benchmark.
 
 ## Verify Success
 

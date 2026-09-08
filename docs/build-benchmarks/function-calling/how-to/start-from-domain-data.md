@@ -262,8 +262,8 @@ uv run nemotron steps run byob/bfcl \
 
 Verify `benchmark_raw.parquet`, `benchmark.parquet`, `run_manifest.json`, and the
 adjacent `stage_cache/` tables. A verification run still writes those files, but records
-`gold_eligible: false` in the manifest even when the pack itself is Gold. That proves
-plumbing; it is not a publication-eligible evaluation source. Follow
+`gold_eligible: false` in the manifest even when the pack itself is Gold. That verifies
+the pipeline; it is not a publication-eligible evaluation source. Follow
 {doc}`publish-a-release` to choose a reviewed publication budget, then
 {doc}`run-evaluation` to score a candidate.
 
@@ -653,7 +653,7 @@ reported refusal to its source fix.
 ## Follow-Up: Evaluation and Next Steps
 
 Evaluation is a separate run over a **published** benchmark, with its own configuration
-and output directory. A smoke run with `lineage.policy: smoke_no_publication` can write
+and output directory. A verification run with `lineage.policy: smoke_no_publication` can write
 `run_manifest.json`, `benchmark.parquet`, and `benchmark_raw.parquet` while still
 recording `gold_eligible: false`. That output is not a publication-eligible evaluation
 source.

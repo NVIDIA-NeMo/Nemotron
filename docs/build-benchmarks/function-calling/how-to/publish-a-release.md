@@ -97,7 +97,7 @@ task_generation:
      negative_path: 0.07, clarify_only: 0.1033, irrelevant: 0.1667}
 ```
 
-`policy_mix` keys are `turn_policy` values, which makes it the knob that states how much of the release must exercise clarification, correction, confirmation, and documented-failure behavior instead of plain lookups. Conversation policy is the axis a candidate is most likely to fail on, so a release is better off declaring it than letting inventory decide.
+`policy_mix` keys are `turn_policy` values, which makes it the parameter that states how much of the release must exercise clarification, correction, confirmation, and documented-failure behavior instead of plain lookups. Conversation policy is the axis a candidate is most likely to fail on, so a release is better off declaring it than letting inventory decide.
 
 Keep the dimensions conceptually separate. `turn_class` is derived from the number of rendered user turns and `tool_call_count` from the executable plan, so a dependent two-call chain remains a single-turn task. Weight `tool_call_count_mix` toward multi-call paths only when the domain has real tool chains; a catalog of independent lookups is better served by a flatter mix.
 

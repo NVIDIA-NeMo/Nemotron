@@ -164,7 +164,7 @@ Every number in the example files is a worked example for the pack that file poi
 | --- | --- |
 | `tiny.yaml` | Pipeline verification run against the bundled `tiny_oracle_pack`. Not publication-eligible. |
 | `default.yaml` | Annotated template. Its pack path is a placeholder, so it cannot publish an example domain by omission. |
-| `smoke.example.yaml` | Domain-sized smoke run. Copy it and repoint it at your own pack. |
+| `smoke.example.yaml` | Domain-sized verification run. Copy it and repoint it at your own pack. |
 | `publication.example.yaml` | Publication-scale, template-only Gold profile with a worked budget and balancing targets. |
 | `publication.paraphrase.example.yaml` | The same executable cases with an opt-in model-authored surface role. |
 | `eval.default.yaml` | Annotated evaluation template to resolve into your own config. |

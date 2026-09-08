@@ -37,7 +37,7 @@ Replaying against an oracle that changed since generation cannot confirm the gol
 Each step below produces a handle that the next step needs, and there is no way to obtain a later handle without passing the earlier gate.
 That is what turns the sequence into a guarantee instead of a convention: "the runner scored an unpublished table" is not a reachable state, because the only way a runner receives paths is from a verified source, and the only task list it has is the one on an authorized plan.
 
-1. **Load the configuration.** Parsing, resolution, and hashing happen before any candidate is contacted, so an invalid configuration fails before a single token is paid for. Validation is also the one place that does not stop at the first refusal: the sections constrain unrelated things and no request is sent, so every independent violation is reported in one pass.
+1. **Load the configuration.** Parsing, resolution, and hashing happen before any candidate is contacted, so an invalid configuration fails before any model request is issued. Validation is also the one place that does not stop at the first refusal: the sections constrain unrelated things and no request is sent, so every independent violation is reported in one pass.
 2. **Verify the source.** The manifest is re-read and held to the hash the configuration resolved, both tables are hashed against every declaration the manifest makes about them, the publication relationship between the raw and published tables is replayed on disk, and the published rows are decoded into a unique addressable task index. A row the evaluator cannot decode aborts verification rather than being skipped, because skipping it would change the task set. For executable mode the pack fingerprint is recomputed and the backend is probed in a throwaway process worker.
 3. **Check contamination.** Every model that read a published row while it was being built is named in the manifest together with the rows it read. Each candidate is compared against each exposure, strongest evidence first. A match is a violation; a comparison that cannot settle the question is recorded as unresolved and never guessed either way. The result is the eligible task plan.
 4. **Re-assert the source and the plan.** Both are recomputed immediately before the first request. Verification and use are separated in time, and that gap is exactly where a source gets replaced — a regeneration into the same directory, a pack edited to make a failing task pass, a plan widened after it was authorized.
@@ -47,7 +47,7 @@ That is what turns the sequence into a guarantee instead of a convention: "the r
 8. **Write artifacts.** The report, task table, manifest, and required caches are published as one immutable set.
 
 :::{note}
-Contamination policy only ever narrows. Refusing the run is the locked publication setting; dropping just the exposed rows and keeping per-candidate task sets are debug behaviors that report what was actually scored and are not publishable.
+Contamination policy only ever narrows. Refusing the run is the locked publication setting; dropping only the exposed rows and keeping per-candidate task sets are debug behaviors that report what was actually scored and are not publishable.
 :::
 
 ## What the Metrics Say
