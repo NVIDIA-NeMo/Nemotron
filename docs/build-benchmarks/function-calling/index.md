@@ -11,7 +11,7 @@
 This section describes how to build a custom function-calling benchmark as Apache Parquet files with the `nemotron steps run byob/bfcl` command, and how to evaluate a candidate model against the result.
 
 Unlike the multiple-choice flow in {doc}`../index`, generation here does not ask a model to invent content.
-You supply an **Oracle Pack**: a tool catalog, conversation templates, an executable backend or an HTTP endpoint, fixtures, and assertions.
+You supply an *Oracle Pack*: a tool catalog, conversation templates, an executable backend or an HTTP endpoint, fixtures, and assertions.
 The pipeline renders conversations from your templates, derives the expected tool calls, then replays every task against the real backend and checks the assertions.
 A task that the oracle cannot reproduce twice does not reach the benchmark.
 
@@ -34,7 +34,7 @@ The `nemotron steps run byob/bfcl` command enables the following outcomes.
 
 At a high level, the step performs the following work.
 
-1. **Prepare**: normalize the configuration, load and fingerprint the pack, then validate it. Validation awards a certification tier, and a publication-eligible run requires the Gold tier.
+1. **Prepare**: normalize the configuration, load and fingerprint the pack, then validate it. Validation awards a *certification tier* (`gold`, `silver`, or `prototype`), and a publication-eligible run requires the *Gold* tier.
 2. **Generate**: expand templates into task instances, plan conversations, render turns, derive expected traces, validate against the tool schemas, and replay each task against the oracle. Optional stages add surface-quality checks and deduplication or balancing before publication.
 3. **Translate**, optional: localize a published benchmark and write a new `benchmark.parquet`.
 4. **Evaluate**, a separate run: score candidate models against a published benchmark and write a report.
@@ -184,7 +184,8 @@ artifacts, and the symptom-to-fix index.
 - **Pack admission and publication are separate gates.** Generation refuses a pack
   that is not Gold-eligible. A Gold pack may still run under
   `lineage.policy: smoke_no_publication`; that run writes benchmark artifacts for
-  pipeline verification but records that its lineage is not eligible for release. See
+  pipeline verification but records that its *lineage* — the run's declaration of which
+  model roles influenced the benchmark and whether it may be published — is not eligible for release. See
   {doc}`explanation/oracle-pack` and {doc}`how-to/publish-a-release`.
 - **Pack code executes.** The pipeline imports and runs your backend and assertions. It does so in a separate process with a sanitized environment and enforced timeouts, and Gold requires that isolation, but the pack is still code you are choosing to trust.
 - **Model roles are opt-in and pinned.** Enabling a model-authored surface role requires a pinned, unambiguous model identity, because a benchmark whose wording came from an unrecorded model cannot be reproduced.

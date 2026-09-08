@@ -117,7 +117,7 @@ rather than by editing the cache.
 - **Input:** the oracle pack and resolved generation configuration.
 - **Transformation:** load and normalize the manifest, tool schemas, fixtures,
   templates, validation cases, held-out policy, and oracle declaration; run all pack
-  validation checks. The checks judge each declaration on its own — known turn policy,
+  validation checks. The checks judge each declaration on its own — known *turn policy* (the template's declared conversation shape),
   exposed and declared tools, importable and executable-compatible assertions — while
   the conversation shape a policy implies is enforced later, in Stage 5.
 - **Output:** normalized pack files under `stage_cache/` and
@@ -310,7 +310,7 @@ An unknown export name, a balancing target whose owning stage is disabled, an ev
 The reason is that a silently dropped setting produces a benchmark whose manifest claims a guarantee no stage applied, and there is no way for a later reader to tell that apart from a benchmark where the guarantee held.
 A key no stage reads is also, in practice, usually a typo for one that matters.
 
-The same principle governs publication. `run_manifest.json` is written last as the commit marker, so a Parquet file without an adjacent manifest is unpublished bytes whatever its name says.
+The same principle governs publication. `run_manifest.json` is written last as the *commit marker*, so a Parquet file without an adjacent manifest is unpublished bytes whatever its name says.
 Troubleshooting for individual refusals is collected in {doc}`../reference/troubleshooting`.
 
 ## Translation and Evaluation Are Separate Runs

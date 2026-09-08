@@ -12,11 +12,11 @@ That convergence is the design: a pack drafted with model assistance receives ex
 | Flow | Input | Where the oracle comes from |
 | --- | --- | --- |
 | Manual | A domain source plus a local backend or an HTTPS endpoint | Hand-authored by the operator. |
-| Assisted from a conventional source | A source declaration, a domain brief, and a probe plan | A `local_python` package's own files, or a pinned `http_package` endpoint. |
+| Assisted from a conventional source | A source declaration, a *domain brief* (the human-reviewed description of what the source is for), and a *probe plan* (the human-reviewed list of calls intake may execute against the source) | A `local_python` package's own files, or a pinned `http_package` endpoint. |
 | Assisted from an MCP server | An MCP server, a domain brief, and a probe plan | The certified MCP server, reached through a gateway that exposes BFCL Oracle HTTP v1. |
 
 Read the diagram left of `Reviewed oracle pack` as the part that differs per flow, and everything right of it as the part that does not.
-The manual flow reaches the pack directly because there is no source to certify; the two assisted flows share one intake spine, one certification ladder, and one review-and-freeze boundary, and the MCP flow joins that spine behind a gateway.
+The manual flow reaches the pack directly because there is no source to certify; the two assisted flows share one source-intake stage, one certification ladder, and one review-and-freeze boundary, and the MCP flow joins that intake stage behind a gateway.
 
 ```mermaid
 flowchart TB
@@ -110,8 +110,10 @@ Both assisted flows run through one stateful guided command that prints the next
    evidence records from the reviewed organizational policy. Exceptional evidence uses
    the granular `authorize` and `approve --boundary evidence` commands instead.
 4. `draft` — run bounded, cached, structured model calls.
-5. `assemble` — bind those drafts into a loadable candidate pack.
-6. `review` — assemble independently verified certification, fresh validation, answered questions, and the complete candidate pack.
+5. `assemble` — bind those drafts into a loadable *candidate pack*, a pack assembled
+   from drafts that has not yet been reviewed, approved, or frozen.
+6. `review` — assemble the *review packet*: independently verified certification,
+   fresh validation, answered questions, and the complete candidate pack.
 7. `release` — load that exact packet, ask for one semantic/risk confirmation, then
    record approval, freeze, and publish while committing each phase separately.
 

@@ -10,7 +10,7 @@ shape; `expand` binds its slots into concrete task instances, and later stages t
 milestones into rendered turns and expected tool calls.
 
 This page covers the fields a new pack normally fills. The complete normative contract,
-including correction, dependent calls, edge signatures, and surface-generation guards,
+including correction, dependent calls, edge signatures, and paraphrase guards,
 is [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
 Examples use either the bundled English library pack or the neutral `get_record`
@@ -83,7 +83,7 @@ fresh whole-pack validation still runs before review and publication.
 | `assistant_milestones` | Yes | Ordered assistant text and tool-call steps. |
 | `user_simulator_turns` | When the assistant expects another user turn | Deterministic user replies after clarification, confirmation, or correction. |
 | `assistant_turn_templates` | When overriding pack-wide text | Per-template wording for text milestones. Normally declared once in `manifest.yaml`. |
-| `paraphrase` | Optional | Template-level surface-generation guards and variant limit. |
+| `paraphrase` | Optional | Template-level paraphrase guards and variant limit. |
 
 ## Slot Fields
 

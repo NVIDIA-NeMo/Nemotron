@@ -22,7 +22,7 @@
 1. Install Python dependencies.
 2. Run the `tiny` configuration from the repository root.
 3. Read the oracle validation report to see which certification tier the pack earned.
-4. Inspect `benchmark.parquet` and the `run_manifest.json` commit marker.
+4. Inspect `benchmark.parquet` and the `run_manifest.json` *commit marker*, the file whose presence marks a publication as complete.
 
 {octicon}`clock;1.5em;sd-mr-1` This tutorial requires about 5 minutes to complete.
 :::
@@ -34,7 +34,7 @@
 
 ^^^
 
-Run the `tiny` BFCL configuration from my Nemotron clone, then show me the benchmark rows it produced and which oracle tier the pack was awarded.
+Run the `tiny` BFCL configuration from my Nemotron clone, then show me the benchmark rows it produced and which certification tier the pack was awarded.
 
 :::
 ::::
@@ -46,7 +46,7 @@ Run the `tiny` BFCL configuration from my Nemotron clone, then show me the bench
 - The configuration reads the pack at `src/nemotron/steps/byob/data/tiny_oracle_pack` and writes outputs under `/tmp/bfcl/tiny_out`.
 
 :::{note}
-Paths in a BFCL configuration resolve relative to the BYOB skill root, not your shell's working directory, unless they are absolute. Refer to {doc}`reference/generate-config`.
+Paths in a BFCL configuration resolve relative to the BYOB step directory, `src/nemotron/steps/byob/`, not your shell's working directory, unless they are absolute. Refer to {doc}`reference/generate-config`.
 :::
 
 ## Prerequisites
