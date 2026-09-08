@@ -454,4 +454,4 @@ fix in the eval config rather than in the output tree.
 ## Next Steps
 
 - Field-by-field details: {doc}`../reference/eval-config`, and symptom-to-fix entries in {doc}`../reference/troubleshooting`.
-- What each gate and metric means: {doc}`../explanation/evaluation`, with the normative contract at `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`.
+- What each gate and metric means: {doc}`../explanation/evaluation`, with the normative contract at [`src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md).

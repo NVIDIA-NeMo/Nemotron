@@ -8,7 +8,7 @@
 A local Oracle Pack uses `backend.py` as the executable source of domain truth. This
 page describes the four functions the pipeline calls and the invariants validation
 enforces. The normative source of truth is
-`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+[`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
 Use an HTTPS `endpoint_config.yaml` instead when the oracle already runs as a service.
 A pack declares exactly one of the two transports.

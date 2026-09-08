@@ -10,7 +10,7 @@ linked artifact references for field definitions, examples, validation behavior,
 common failures.
 
 The complete normative contract is
-`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`. When an operator guide and
+[`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md). When an operator guide and
 that contract disagree, the normative contract is authoritative.
 
 ## Keep Three Input Layers Separate

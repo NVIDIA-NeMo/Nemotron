@@ -445,7 +445,7 @@ Prepare a probe plan covering every published tool, at least one structured erro
 the source has error codes, confirmation safety for mutations, reset isolation, and a
 case the tool cannot finish inside its deadline. Without that timeout case,
 certification cannot reach A2. Copy the structure from
-`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`, then replace its
+[`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-probe-plan.example.json), then replace its
 banking tools, fixture ids, and cases. Refer to {doc}`../reference/probe-plan` for the A2
 coverage contract, including the timeout case. Check the plan without executing probes:
 
@@ -588,7 +588,7 @@ pack and sidecars. `publish` reruns fresh Gold validation and the ordinary
 `stage=all` generation pipeline rather than trusting an earlier verdict.
 
 Follow {doc}`assisted-authoring` for the remaining command-level sequence and
-`src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md` for every required
+[`src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md) for every required
 argument and refusal code. Those pages are the sources of truth for authorize, draft,
 review, freeze, and publish. The `_demo.py` walkthrough above is not a production
 launcher.

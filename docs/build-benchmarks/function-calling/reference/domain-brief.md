@@ -30,9 +30,9 @@ top. Intake refuses a file while any marker remains.
 
 The shipped files serve different purposes:
 
-- `src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt` is the form to
+- [`src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt) is the form to
   complete for a new domain.
-- `src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt` is a completed
+- [`src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt) is a completed
   Vietnamese banking example. Use it to understand the expected level of detail, not
   as a template for another domain.
 

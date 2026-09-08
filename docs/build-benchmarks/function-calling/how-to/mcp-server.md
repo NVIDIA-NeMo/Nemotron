@@ -8,10 +8,10 @@
 Use this guide when the domain you want to benchmark is already exposed as a Model Context Protocol (MCP) server. The server becomes the executable oracle: BFCL discovers its tool catalog, exposes it through a gateway that speaks the BFCL Oracle HTTP v1 contract, certifies it from observed probes, and then carries a reviewed frozen pack into the same generation pipeline every other flow uses.
 
 :::{warning}
-This transport is experimental and disabled by default. Only Mode A, in which the server itself implements the reviewed describe, reset, state, and end controls, is implemented. Mode B and Mode C declarations are inert discovery records with no execution path. Read `src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md` before you point BFCL at a server you do not control; it states the trust boundaries this flow assumes.
+This transport is experimental and disabled by default. Only Mode A, in which the server itself implements the reviewed describe, reset, state, and end controls, is implemented. Mode B and Mode C declarations are inert discovery records with no execution path. Read [`src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md) before you point BFCL at a server you do not control; it states the trust boundaries this flow assumes.
 :::
 
-This page is the walkthrough. `src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md` is the matching command-level reference, with every invocation executed as a verification case by the test suite; use it when you need exact arguments and refusal codes.
+This page is the walkthrough. [`src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md) is the matching command-level reference, with every invocation executed as a verification case by the test suite; use it when you need exact arguments and refusal codes.
 
 ## Before You Start
 
@@ -28,7 +28,7 @@ export BFCL_ENABLE_MCP_MODE_A=1
 
 ## Step 1: Write `mcp_oracle.yaml`
 
-Start from the normative schema in `src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md`. In that file you select business tools explicitly under `tools.include` and alias them to stable BFCL names where the server's own names are unsuitable, declare mutation and confirmation behavior in the reviewed profile because BFCL never infers either from a tool name or a live result, and keep the control tools out of `tools.include`.
+Start from the normative schema in [`src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md). In that file you select business tools explicitly under `tools.include` and alias them to stable BFCL names where the server's own names are unsuitable, declare mutation and confirmation behavior in the reviewed profile because BFCL never infers either from a tool name or a live result, and keep the control tools out of `tools.include`.
 
 For a stdio transport, also create a host-owned trusted-executable policy that pins the executable's absolute path, its SHA-256, the exact allowed argument vectors, and the allowed working-directory roots. A server-supplied configuration cannot weaken that policy, and `PATH` lookup is not an authorization mechanism.
 

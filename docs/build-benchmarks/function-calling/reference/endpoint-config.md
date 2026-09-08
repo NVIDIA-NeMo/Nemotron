@@ -211,7 +211,7 @@ consult the relevant transport support matrix.
 
 ## Complete Example
 
-See `src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml`. Replace
+See [`src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml). Replace
 every digest placeholder and add a valid conformance attestation for Gold.
 
 ## Related Information

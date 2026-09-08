@@ -132,5 +132,5 @@ Nothing repairs a candidate's output, either — no model, including a judge, ma
 - {doc}`../how-to/run-evaluation` for running an evaluation end to end.
 - {doc}`../reference/eval-config` for every evaluation YAML key.
 - {doc}`../reference/output-files` for artifact locations.
-- `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md` for the normative definition of what a score means.
+- [`src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md) for the normative definition of what a score means.
 - {doc}`pipeline-overview` and {doc}`oracle-pack` for how the benchmark and its oracle were built.

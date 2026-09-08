@@ -17,7 +17,7 @@ own onboarding guide.
 - Install the BYOB dependencies with `uv sync --extra byob`.
 - Decide whether the pack will use a local Python backend or an HTTPS service; Step 1
   scaffolds the selected transport.
-- Read {doc}`../explanation/oracle-pack` for what each file means. The normative contract, including every validation rule, lives at `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+- Read {doc}`../explanation/oracle-pack` for what each file means. The normative contract, including every validation rule, lives at [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
 ## Step 1: Choose the Oracle Transport and Scaffold
 

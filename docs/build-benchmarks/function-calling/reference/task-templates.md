@@ -11,7 +11,7 @@ milestones into rendered turns and expected tool calls.
 
 This page covers the fields a new pack normally fills. The complete normative contract,
 including correction, dependent calls, edge signatures, and surface-generation guards,
-is `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+is [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
 Examples use either the bundled English library pack or the neutral `get_record`
 starter emitted by the scaffolder. Their names and business behavior illustrate the

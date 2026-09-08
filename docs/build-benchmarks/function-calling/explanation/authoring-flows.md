@@ -66,7 +66,7 @@ inside that pack changes as it passes through Stages 1–12.
 In the manual flow the operator supplies the executable oracle and every declarative file beside it.
 There is no intake phase, because there is nothing to certify about a source the operator wrote: validation runs directly over the pack, and the gold gate is the first and only certification boundary.
 This is the shortest path when the domain already has a deterministic implementation, or when the pack's conversation shapes need judgment that no automated intake could supply.
-Refer to {doc}`../how-to/author-a-pack` and, for the complete lifecycle including endpoint identity pins, `src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md`.
+Refer to {doc}`../how-to/author-a-pack` and, for the complete lifecycle including endpoint identity pins, [`src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md).
 
 ## Assisted Authoring From a Conventional Source
 
@@ -98,7 +98,7 @@ Mode B and Mode C declarations are inert discovery records; their execution is n
 
 A cooperative server has to return a stable identity and catalog, JSON-object structured content for its selected tools, deterministic describe/reset/state/end controls, isolated episodes, stable structured error codes, and unchanged state when a confirmation-gated mutation is not confirmed.
 Control tools must not appear in the selected business catalog.
-Refer to {doc}`../how-to/mcp-server` and `src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md`.
+Refer to {doc}`../how-to/mcp-server` and [`src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md).
 
 ## The Guided Command Sequence
 
@@ -177,4 +177,4 @@ MCP Mode B and Mode C are not implemented.
 - {doc}`../how-to/mcp-server` for onboarding an MCP server.
 - {doc}`../how-to/publish-a-release` for freezing and publishing.
 - {doc}`oracle-pack` for the contract every flow must satisfy.
-- `src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md`, `bfcl-transport-neutral-intake.md`, and `bfcl-assisted-authoring-runbook.md` for the normative authoring contracts.
+- [`src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md), `bfcl-transport-neutral-intake.md`, and `bfcl-assisted-authoring-runbook.md` for the normative authoring contracts.

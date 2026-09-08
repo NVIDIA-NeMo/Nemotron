@@ -186,5 +186,5 @@ under-certified source.
 - {doc}`domain-brief` for the drafting context that accompanies the plan.
 - {doc}`oracle-pack-inputs` for the distinction between authoring inputs and Oracle
   Pack files.
-- `src/nemotron/steps/byob/references/bfcl-probe-plan.example.json` for a complete
+- [`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-probe-plan.example.json) for a complete
   A2-shaped banking example.

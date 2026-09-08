@@ -211,23 +211,23 @@ These pages describe the operator-facing surface. The normative contracts live i
 
 | Contract | File |
 | --- | --- |
-| Oracle Pack layout, tiers, and Gold rules | `src/nemotron/steps/byob/references/bfcl-oracle-pack.md` |
-| Evaluation scoring | `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md` |
-| Bias audit dimensions | `src/nemotron/steps/byob/references/bfcl-bias-audit-contract.md` |
-| MCP oracle profile | `src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md` |
-| MCP trust boundaries | `src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md` |
-| Supported, experimental, and refused capabilities | `src/nemotron/steps/byob/references/bfcl-authoring-support-matrix.md` |
-| Supported, experimental, and refused MCP transports | `src/nemotron/steps/byob/references/bfcl-mcp-support-matrix.md` |
-| Shared source-intake spine and evidence envelope | `src/nemotron/steps/byob/references/bfcl-transport-neutral-intake.md` |
-| Review, approval, and freeze record shapes | `src/nemotron/steps/byob/references/bfcl-authoring-release-v2.md` |
-| Adapter enablement policy and `BFCL_ENABLE_*` variables | `src/nemotron/steps/byob/references/bfcl-authoring-rollout.md` |
-| End-to-end manual pack lifecycle, including endpoint pins | `src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md` |
-| Source package layouts and the dependency-lock format | `src/nemotron/steps/byob/references/bfcl-conventional-source-packages.md` |
-| Certification tiers and the stable refusal-code registry | `src/nemotron/steps/byob/references/bfcl-source-adapter-certification-profiles.md` |
-| Credential-reference lifecycle and authorization digests | `src/nemotron/steps/byob/references/bfcl-authoring-credentials.md` |
-| Authoring event-log payload allowlist | `src/nemotron/steps/byob/references/bfcl-authoring-events.md` |
-| Release revocation registry | `src/nemotron/steps/byob/references/bfcl-authoring-revocation.md` |
-| Cache retention and the `purge-cache` audit record | `src/nemotron/steps/byob/references/bfcl-authoring-cache-retention.md` |
-| Why MCP reaches the pipeline through a gateway | `src/nemotron/steps/byob/references/bfcl-mcp-architecture-decision.md` |
+| Oracle Pack layout, tiers, and Gold rules | [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md) |
+| Evaluation scoring | [`src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md) |
+| Bias audit dimensions | [`src/nemotron/steps/byob/references/bfcl-bias-audit-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-bias-audit-contract.md) |
+| MCP oracle profile | [`src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md) |
+| MCP trust boundaries | [`src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md) |
+| Supported, experimental, and refused capabilities | [`src/nemotron/steps/byob/references/bfcl-authoring-support-matrix.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-support-matrix.md) |
+| Supported, experimental, and refused MCP transports | [`src/nemotron/steps/byob/references/bfcl-mcp-support-matrix.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-support-matrix.md) |
+| Shared source-intake spine and evidence envelope | [`src/nemotron/steps/byob/references/bfcl-transport-neutral-intake.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-transport-neutral-intake.md) |
+| Review, approval, and freeze record shapes | [`src/nemotron/steps/byob/references/bfcl-authoring-release-v2.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-release-v2.md) |
+| Adapter enablement policy and `BFCL_ENABLE_*` variables | [`src/nemotron/steps/byob/references/bfcl-authoring-rollout.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-rollout.md) |
+| End-to-end manual pack lifecycle, including endpoint pins | [`src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md) |
+| Source package layouts and the dependency-lock format | [`src/nemotron/steps/byob/references/bfcl-conventional-source-packages.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-conventional-source-packages.md) |
+| Certification tiers and the stable refusal-code registry | [`src/nemotron/steps/byob/references/bfcl-source-adapter-certification-profiles.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-source-adapter-certification-profiles.md) |
+| Credential-reference lifecycle and authorization digests | [`src/nemotron/steps/byob/references/bfcl-authoring-credentials.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-credentials.md) |
+| Authoring event-log payload allowlist | [`src/nemotron/steps/byob/references/bfcl-authoring-events.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-events.md) |
+| Release revocation registry | [`src/nemotron/steps/byob/references/bfcl-authoring-revocation.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-revocation.md) |
+| Cache retention and the `purge-cache` audit record | [`src/nemotron/steps/byob/references/bfcl-authoring-cache-retention.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-cache-retention.md) |
+| Why MCP reaches the pipeline through a gateway | [`src/nemotron/steps/byob/references/bfcl-mcp-architecture-decision.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-architecture-decision.md) |
 
 The step's own declared inputs, outputs, and error taxonomy are in `src/nemotron/steps/byob/bfcl/step.toml`.

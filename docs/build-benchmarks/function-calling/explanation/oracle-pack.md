@@ -108,7 +108,7 @@ Read it as a worked example of the pack contract rather than as a default: its i
   executable and conversation contracts.
 - {doc}`../reference/endpoint-config` and {doc}`../reference/held-out-policy` for
   remote-oracle and reservation fields.
-- `src/nemotron/steps/byob/references/bfcl-oracle-pack.md` for the complete normative pack contract, including slot sources, turn policies, and every validation rule.
+- [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md) for the complete normative pack contract, including slot sources, turn policies, and every validation rule.
 - {doc}`../how-to/author-a-pack` for the hands-on authoring sequence.
 - {doc}`pipeline-overview` for how the pipeline consumes a validated pack.
 - {doc}`evaluation` for how the pack is used again at scoring time.
