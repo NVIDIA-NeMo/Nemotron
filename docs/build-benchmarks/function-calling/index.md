@@ -10,7 +10,7 @@
 
 This section describes how to build a custom function-calling benchmark as Apache Parquet files with the `nemotron steps run byob/bfcl` command, and how to evaluate a candidate model against the result.
 
-Unlike the multiple-choice flow, generation here does not ask a model to invent content.
+Unlike the multiple-choice flow in {doc}`../index`, generation here does not ask a model to invent content.
 You supply an **Oracle Pack**: a tool catalog, conversation templates, an executable backend or an HTTP endpoint, fixtures, and assertions.
 The pipeline renders conversations from your templates, derives the expected tool calls, then replays every task against the real backend and checks the assertions.
 A task that the oracle cannot reproduce twice does not reach the benchmark.
@@ -53,7 +53,7 @@ trust story does not depend on how the pack was written.
 | Choose a route | Domain assets, no pack yet | {doc}`how-to/start-from-domain-data` |
 | Manual | Your own knowledge of the domain and its tools | {doc}`how-to/author-a-pack` |
 | Assisted, conventional source | A Python package or a reviewed HTTP service | {doc}`how-to/assisted-authoring` |
-| Assisted, MCP source | A running MCP server | {doc}`how-to/mcp-server` |
+| Assisted, MCP source (experimental) | A running MCP server | {doc}`how-to/mcp-server` |
 
 In the assisted flows a model may propose pack semantics, but it can never award a certification tier, approve its own output, or bypass executable replay. {doc}`explanation/authoring-flows` explains where the human decisions sit and why they are separate.
 
