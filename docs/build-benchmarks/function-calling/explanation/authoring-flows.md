@@ -106,18 +106,20 @@ Both assisted flows run through one stateful guided command that prints the next
 
 1. `author` — resolve the source declaration and produce transport-neutral evidence and certification.
 2. `answer` — apply any digest-bound open questions the evidence raised.
-3. `authorize` — grant model exposure for that exact evidence subject.
-4. `approve --boundary evidence` — separately approve the evidence for drafting.
-5. `draft` — run bounded, cached, structured model calls.
-6. `assemble` — bind those drafts into a loadable candidate pack.
-7. `review` — assemble independently verified certification, fresh validation, answered questions, and the complete candidate pack.
-8. `approve --boundary release` — approve that exact review packet.
-9. `freeze` — seal the pack and every reviewed sidecar.
-10. `publish` — rerun fresh gold validation and `stage=all`.
+3. `apply-policy` — for clean native-v2 evidence, produce separate model-exposure and
+   evidence records from the reviewed organizational policy. Exceptional evidence uses
+   the granular `authorize` and `approve --boundary evidence` commands instead.
+4. `draft` — run bounded, cached, structured model calls.
+5. `assemble` — bind those drafts into a loadable candidate pack.
+6. `review` — assemble independently verified certification, fresh validation, answered questions, and the complete candidate pack.
+7. `release` — load that exact packet, ask for one semantic/risk confirmation, then
+   record approval, freeze, and publish while committing each phase separately.
 
-Two decisions are demanded at the first command rather than deferred.
-A held-out decision must be stated before any evidence exists, because evidence that has already been collected cannot be retroactively declared clean.
-A source that is meant to reach `A1` or `A2` needs its probe plan at that point too, since those tiers are earned from observed outcomes and nothing later can supply them.
+Held-out status and the probe plan are settled at the first command rather than
+deferred. A reviewed policy may supply the held-out decision; otherwise the operator
+states it explicitly. A source meant to reach `A1` or `A2` needs its probe plan at that
+point too, since those tiers are earned from observed outcomes and nothing later can
+supply them.
 
 ## Two Trust Boundaries, Not Two Reviewers
 
@@ -126,17 +128,18 @@ The most important structural point in the assisted flows is that letting a mode
 taken at different times against different digest-bound subjects. These are boundaries
 in the workflow, not a requirement for two different reviewers.
 
-The pre-model side uses two records: exposure authorization, supplied by a named human
-or organizational policy digest, and evidence approval. The release side uses a third
-record approving a specific review packet with fresh validation evidence.
+The pre-model side uses two records: exposure authorization and evidence approval.
+For clean evidence, one reviewed organizational policy may produce both records without
+a per-run human approval. The release side uses a human record approving a specific
+review packet with fresh validation evidence.
 Pre-model authorization cannot be replaced by final release approval, and approving a release does not retroactively legitimize a model request that was never authorized.
 Editing any upstream artifact invalidates the downstream packet and its approval, so an approval always refers to bytes that still exist unchanged.
 
-The implementation does not compare the identities on these records. One person may
-act at multiple gates, while an organization that requires separation of duties may
-assign a source owner, evidence reviewer, and release reviewer according to its own
-policy. The examples use different role names to make the decisions visible, not to
-impose a head-count requirement.
+The normal policy-backed flow therefore asks the developer to approve once, at release.
+If evidence has unresolved gaps, migration records, or advisory findings, policy refuses
+to accept it and the granular human-review path remains available. That fallback does
+not compare the identities on its records and does not require two people; an
+organization may still impose separation of duties.
 
 ## What Assisted Authoring May And May Not Do
 

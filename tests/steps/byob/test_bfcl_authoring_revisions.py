@@ -71,8 +71,7 @@ def _committed_session(
         {
             "approval_version": "bfcl-authoring-approval-v1",
             "approved_by": "reviewer",
-            "bundle_digest": approval_evidence_digest
-            or observed_evidence.bundle_digest,
+            "bundle_digest": approval_evidence_digest or observed_evidence.bundle_digest,
             "acknowledged_findings": [],
             "note": None,
         },
@@ -313,11 +312,7 @@ def test_manifest_rejects_duplicate_json_keys(tmp_path: Path) -> None:
     (target / MANIFEST_FILE_NAME).write_text(
         '{"schema_version":"bfcl-revision-manifest-v1",'
         f'"content_address":"{ADDRESS}",'
-        '"artifacts":[],"manifest_digest":"sha256:'
-        + "b" * 64
-        + '","manifest_digest":"sha256:'
-        + "c" * 64
-        + '"}\n',
+        '"artifacts":[],"manifest_digest":"sha256:' + "b" * 64 + '","manifest_digest":"sha256:' + "c" * 64 + '"}\n',
         encoding="utf-8",
     )
 
@@ -464,11 +459,7 @@ def test_resume_refuses_unverified_content_addressed_revision(
 
 def test_tampered_immutable_session_is_not_resumed(tmp_path: Path) -> None:
     _workspace, gate, session_digest, _paths = _committed_session(tmp_path)
-    session_path = (
-        gate.session_store.root
-        / session_digest.removeprefix("sha256:")
-        / "session.json"
-    )
+    session_path = gate.session_store.root / session_digest.removeprefix("sha256:") / "session.json"
     session_path.write_text('{"tampered":true}\n', encoding="utf-8")
 
     with pytest.raises(AuthoringResumeError) as refused:
@@ -492,6 +483,7 @@ def test_resume_command_matrix_is_closed_for_every_phase() -> None:
         "initialized": ("intake",),
         "intake_complete": (
             "answer",
+            "apply_policy",
             "authorize_exposure",
         ),
         "questions_open": ("answer",),

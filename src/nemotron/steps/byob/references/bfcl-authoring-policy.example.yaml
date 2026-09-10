@@ -16,3 +16,25 @@ adapter_rollout:
   local_python: false
   http_package: false
   mcp_mode_a: false
+
+# Set both decisions to organizational_policy to remove the two per-run pre-model
+# approvals for clean, native-v2 evidence. The policy itself is reviewed once and its
+# canonical digest is bound to every generated authorization record.
+pre_model:
+  exposure_authorization: manual
+  clean_evidence_approval: manual
+
+# A reviewed held-out decision may also be reused instead of restating it at every
+# intake. Use policy_path (and optional content_path) instead for reserved data.
+held_out:
+  not_applicable_reason: The example catalog uses public synthetic fixtures.
+  reviewed_by: policy-owner@example.test
+
+# Optional release defaults keep non-secret signing identity in reviewed policy. A
+# secret manager should mount the private key and set the named environment variable;
+# never put private-key bytes in this file.
+# release:
+#   signing_key_env: BFCL_RELEASE_SIGNING_KEY
+#   signing_key_id: example-release
+#   seal_issuer: benchmark-release-team
+#   seal_public_key: keys/release-public.pem

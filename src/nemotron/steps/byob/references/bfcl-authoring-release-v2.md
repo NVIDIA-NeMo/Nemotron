@@ -13,7 +13,8 @@ handoff. A registered adapter owns only the typed operations in
 ## Versioned records
 
 - `bfcl-authoring-review-packet-v2`
-- `bfcl-authoring-review-approval-v2`
+- `bfcl-authoring-review-approval-v2` for granular manual approval
+- `bfcl-authoring-review-approval-v3` for guided machine/human decision provenance
 - `bfcl-authoring-frozen-release-v2`
 
 The packet binds the adapter kind, independently verified certification tier, source
@@ -22,8 +23,10 @@ stable risks. Approval binds one exact packet and exactly its risk IDs. Freeze r
 A2, rejects blockers, copies without following symbolic links, and seals every pack file,
 source record, review record, approval, and adapter sidecar.
 
-The v2 approval checklist separately acknowledges independently verified certification,
-pre-model authorization, and answered questions. Review assembly verifies the signed
+Both approval versions carry the same complete boolean checklist. The v3 record also
+binds `checklist_sources`, identifying validation, certification, pre-model
+authorization, and question state as `machine`, and semantics, descriptions, held-out
+treatment, and assumptions as `human`. Review assembly verifies the signed
 certification and exact exposure authorization rather than accepting release approval as
 a substitute. Revised evidence must replay against its parent, open-question artifact,
 and answer set; all three files enter `source_digests`.
@@ -34,9 +37,9 @@ cannot appear after approval without invalidating the packet.
 
 ## Compatibility
 
-Existing `bfcl-mcp-*-v1` records remain loadable through the version-dispatching v2
-loaders and through their original `runtime/mcp/release/` imports. New v2 records are not
-byte-identical to v1 records. Compatibility means equivalent candidate-pack semantics,
+Existing approval v2 and `bfcl-mcp-*-v1` records remain loadable through the
+version-dispatching loaders and through their original `runtime/mcp/release/` imports.
+New records are not byte-identical to v1 records. Compatibility means equivalent candidate-pack semantics,
 stable legacy API behavior, and continued verification of sealed v1 releases.
 
 `build_authoring_review.py`, `approve_authoring_review.py`, and

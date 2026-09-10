@@ -19,6 +19,7 @@ from typing import Literal
 
 REVIEW_PACKET_VERSION_V2: Literal["bfcl-authoring-review-packet-v2"] = "bfcl-authoring-review-packet-v2"
 REVIEW_APPROVAL_VERSION_V2: Literal["bfcl-authoring-review-approval-v2"] = "bfcl-authoring-review-approval-v2"
+REVIEW_APPROVAL_VERSION_V3: Literal["bfcl-authoring-review-approval-v3"] = "bfcl-authoring-review-approval-v3"
 FREEZE_MANIFEST_VERSION_V2: Literal["bfcl-authoring-frozen-release-v2"] = "bfcl-authoring-frozen-release-v2"
 FREEZE_MANIFEST_VERSION_V3: Literal["bfcl-authoring-frozen-release-v3"] = "bfcl-authoring-frozen-release-v3"
 

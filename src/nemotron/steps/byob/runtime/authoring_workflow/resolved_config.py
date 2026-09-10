@@ -25,7 +25,15 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictStr,
+    field_validator,
+    model_validator,
+)
 
 from nemotron.steps.byob.runtime.authoring_workflow.rollout import (
     resolve_adapter_rollout,
@@ -131,12 +139,64 @@ class ResolvedConfirmations(_StrictModel):
     pack_version_confirmed: ResolvedBool
 
 
+class PreModelPolicy(_StrictModel):
+    """Reusable organizational decisions that replace per-run human approvals."""
+
+    exposure_authorization: Literal["manual", "organizational_policy"] = "manual"
+    clean_evidence_approval: Literal["manual", "organizational_policy"] = "manual"
+
+
+class HeldOutPolicyDefaults(_StrictModel):
+    reviewed_by: StrictStr
+    policy_path: StrictStr | None = None
+    not_applicable_reason: StrictStr | None = None
+    content_path: StrictStr | None = None
+
+    @model_validator(mode="after")
+    def _decision_shape(self) -> HeldOutPolicyDefaults:
+        if bool(self.policy_path) == bool(self.not_applicable_reason):
+            raise ValueError(
+                "held_out requires exactly one of policy_path or not_applicable_reason"
+            )
+        if not self.reviewed_by.strip():
+            raise ValueError("held_out.reviewed_by must be non-empty")
+        if self.not_applicable_reason is not None and not self.not_applicable_reason.strip():
+            raise ValueError("held_out.not_applicable_reason must be non-empty")
+        if self.content_path is not None and self.policy_path is None:
+            raise ValueError("held_out.content_path requires held_out.policy_path")
+        return self
+
+
+class ReleasePolicyDefaults(_StrictModel):
+    """Non-secret release identity plus a secure-store environment reference."""
+
+    signing_key_env: StrictStr = "BFCL_RELEASE_SIGNING_KEY"
+    signing_key_id: StrictStr
+    seal_issuer: StrictStr
+    seal_public_key: StrictStr
+
+    @model_validator(mode="after")
+    def _non_empty(self) -> ReleasePolicyDefaults:
+        for name in (
+            "signing_key_env",
+            "signing_key_id",
+            "seal_issuer",
+            "seal_public_key",
+        ):
+            if not getattr(self, name).strip():
+                raise ValueError(f"release.{name} must be non-empty")
+        return self
+
+
 class AuthoringPolicy(_StrictModel):
     schema_version: Literal["bfcl-authoring-policy-v1"]
     pack_id: StrictStr | None = None
     pack_version: StrictStr | None = None
     required_certification_tier: Literal["A0", "A1", "A2"] = "A0"
     adapter_rollout: dict[StrictStr, StrictBool] = Field(default_factory=dict)
+    pre_model: PreModelPolicy = Field(default_factory=PreModelPolicy)
+    held_out: HeldOutPolicyDefaults | None = None
+    release: ReleasePolicyDefaults | None = None
 
     @field_validator("pack_id")
     @classmethod
@@ -225,9 +285,9 @@ def slug_pack_id_candidate(value: str) -> str:
     return slug
 
 
-def _load_policy(path: Path | None) -> tuple[AuthoringPolicy | None, str | None]:
-    if path is None:
-        return None, None
+def load_authoring_policy(path: Path) -> tuple[AuthoringPolicy, str]:
+    """Load one strict reviewed policy and return its canonical document digest."""
+
     source = path.resolve()
     document = load_unique_yaml_mapping(source, "authoring policy")
     try:
@@ -239,6 +299,12 @@ def _load_policy(path: Path | None) -> tuple[AuthoringPolicy | None, str | None]
             recovery="repair the reviewed authoring policy",
         ) from exc
     return policy, sha256_json(document)
+
+
+def _load_policy(path: Path | None) -> tuple[AuthoringPolicy | None, str | None]:
+    if path is None:
+        return None, None
+    return load_authoring_policy(path)
 
 
 def _confirmed_value(

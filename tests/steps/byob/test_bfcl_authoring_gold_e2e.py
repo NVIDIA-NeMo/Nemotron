@@ -1,4 +1,4 @@
-"""One authoring run from a source declaration and a domain brief to a Gold-eligible pack.
+"""One policy-backed authoring run from source inputs to a Gold publication.
 
 Everything here is the real thing except the authoring model, which cannot be real in a
 test: intake executes bounded probes against the source and earns A2 from them, drafting
@@ -24,10 +24,6 @@ from nemotron.steps.byob.runtime.benchmark_families.bfcl.pipeline import prepare
 from nemotron.steps.byob.runtime.benchmark_families.bfcl.stages.oracle_validation import (
     derive_pack_tier,
 )
-from nemotron.steps.byob.runtime.pack_authoring.bundle import load_evidence_bundle
-from nemotron.steps.byob.runtime.source_adapters.certification import (
-    load_trusted_certification_key,
-)
 from nemotron.steps.byob.scripts import assemble_candidate_pack, bfcl_author
 
 TINY = BYOB_ROOT / "data" / "tiny_oracle_pack"
@@ -37,7 +33,7 @@ PACK_VERSION = "0.1.0"
 
 # A full reindex is the one operation this domain cannot bound, which is what lets the
 # probe plan observe timeout cleanup and therefore reach A2.
-_INDEX_TOOL = '''
+_INDEX_TOOL = """
 
 def _rebuild_catalog_index(arguments: dict) -> dict:
     full = arguments.get("full", False)
@@ -54,7 +50,7 @@ def _rebuild_catalog_index(arguments: dict) -> dict:
     if full:
         time.sleep(3600)
     return {"status": "succeeded", "indexed": len(_STATE.get("books", []))}
-'''
+"""
 
 
 def _source_package(root: Path) -> Path:
@@ -95,9 +91,7 @@ def _source_package(root: Path) -> Path:
     )
     (package / "tools.json").write_text(json.dumps(tools, indent=2), encoding="utf-8")
     (package / "dependency-lock.json").write_text(
-        json.dumps(
-            {"schema_version": "bfcl-python-dependency-lock-v1", "dependencies": []}
-        ),
+        json.dumps({"schema_version": "bfcl-python-dependency-lock-v1", "dependencies": []}),
         encoding="utf-8",
     )
     return package
@@ -110,9 +104,7 @@ def _probe_plan(path: Path) -> Path:
                 "schema_version": "bfcl-local-probe-plan-v1",
                 "clock": "2026-03-02T09:00:00+07:00",
                 "seed": 7,
-                "fixtures": json.loads(
-                    (TINY / "fixtures.json").read_text(encoding="utf-8")
-                ),
+                "fixtures": json.loads((TINY / "fixtures.json").read_text(encoding="utf-8")),
                 "cases": [
                     {
                         "case_id": "a_status_available",
@@ -246,9 +238,7 @@ _DRAFT_RESPONSES: dict[str, dict[str, Any]] = {
                 "tool": "rebuild_catalog_index",
                 "kind": "success",
                 "intent": "Refresh the index without walking every shelf.",
-                "arguments": [
-                    {"name": "full", "source": "literal", "literal": "false"}
-                ],
+                "arguments": [{"name": "full", "source": "literal", "literal": "false"}],
                 "expectation": "The index is refreshed and reports how many books it saw.",
                 "blocked_on": [],
             },
@@ -449,7 +439,7 @@ def _run(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
     bfcl_author.main()
 
 
-def test_a_source_declaration_and_a_domain_brief_reach_a_gold_eligible_pack(
+def test_policy_backed_authoring_uses_one_human_approval_and_publishes_gold(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -457,13 +447,38 @@ def test_a_source_declaration_and_a_domain_brief_reach_a_gold_eligible_pack(
     package = _source_package(tmp_path)
     brief = tmp_path / "domain-brief.txt"
     brief.write_text(
-        "Benchmark deterministic library circulation: look a book up, and lend it only "
-        "after the patron confirms.",
+        "Benchmark deterministic library circulation: look a book up, and lend it only after the patron confirms.",
         encoding="utf-8",
     )
     private_key, public_key = _keys(tmp_path)
     workspace = tmp_path / "workspace"
-    monkeypatch.setenv("BFCL_ENABLE_LOCAL_PYTHON", "1")
+    policy = tmp_path / "authoring-policy.yaml"
+    policy.write_text(
+        "\n".join(
+            (
+                "schema_version: bfcl-authoring-policy-v1",
+                f"pack_id: {PACK_ID}",
+                f'pack_version: "{PACK_VERSION}"',
+                "required_certification_tier: A2",
+                "adapter_rollout:",
+                "  local_python: true",
+                "pre_model:",
+                "  exposure_authorization: organizational_policy",
+                "  clean_evidence_approval: organizational_policy",
+                "held_out:",
+                "  not_applicable_reason: The catalogue is public reference data.",
+                "  reviewed_by: policy-owner@example.test",
+                "release:",
+                "  signing_key_env: TEST_RELEASE_SIGNING_KEY",
+                f"  signing_key_id: {KEY_ID}",
+                "  seal_issuer: bfcl-e2e",
+                f"  seal_public_key: {public_key}",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TEST_RELEASE_SIGNING_KEY", str(private_key))
     caller = _StubbedAuthoringModel()
     monkeypatch.setattr(
         "nemotron.steps.byob.runtime.pack_authoring.model_client._default_caller",
@@ -481,16 +496,14 @@ def test_a_source_declaration_and_a_domain_brief_reach_a_gold_eligible_pack(
             str(package),
             "--brief",
             str(brief),
+            "--policy",
+            str(policy),
             "--pack-id",
             PACK_ID,
             "--pack-version",
             PACK_VERSION,
             "--required-tier",
             "A2",
-            "--held-out-not-applicable-reason",
-            "The catalogue is public reference data.",
-            "--held-out-reviewed-by",
-            "reviewer@example.test",
             "--certification-private-key",
             str(private_key),
             "--certification-key-id",
@@ -500,60 +513,23 @@ def test_a_source_declaration_and_a_domain_brief_reach_a_gold_eligible_pack(
         ],
     )
     intake = workspace / "intake"
-    certification = json.loads(
-        (intake / "adapter_certification.json").read_text(encoding="utf-8")
-    )
+    certification = json.loads((intake / "adapter_certification.json").read_text(encoding="utf-8"))
     assert certification["attained_tier"] == "A2"
-
-    evidence = load_evidence_bundle(
-        intake / "evidence_bundle.json",
-        certification_report_path=intake / "adapter_certification.json",
-        trusted_certification_keys=load_trusted_certification_key(
-            public_key,
-            key_id=KEY_ID,
-        ),
-        domain_brief_source_path=intake / "domain_brief.source.txt",
-        domain_brief_report_path=intake / "domain_brief_redaction.json",
-        held_out_redaction_report_path=intake / "held_out_redaction.json",
-        source_observations_path=intake / "source_observations.json",
-    )
+    capsys.readouterr()
 
     _run(
         monkeypatch,
         [
             "--ci",
-            "authorize",
+            "apply-policy",
             "--workspace",
             str(workspace),
-            "--subject",
-            str(intake / "model_exposure_subject.json"),
-            "--authorized-by",
-            "owner@example.test",
         ],
     )
-    capsys.readouterr()
-
+    policy_result = json.loads(capsys.readouterr().out)
+    policy_digest = policy_result["organizational_policy_digest"]
     approval = workspace / "evidence_approval.json"
-    _run(
-        monkeypatch,
-        [
-            "--ci",
-            "approve",
-            "--workspace",
-            str(workspace),
-            "--boundary",
-            "evidence",
-            "--approved-by",
-            "reviewer@example.test",
-            "--source-bundle-digest",
-            str(evidence.source_digest),
-            "--normalized-bundle-digest",
-            evidence.digest,
-            "--output",
-            str(approval),
-        ],
-    )
-    capsys.readouterr()
+    assert json.loads(approval.read_text(encoding="utf-8"))["mode"] == ("organizational_policy")
 
     drafting = workspace / "drafting"
     _run(
@@ -626,18 +602,14 @@ def test_a_source_declaration_and_a_domain_brief_reach_a_gold_eligible_pack(
     assert assembled["status"] == "assembled"
     pack_root = Path(assembled["pack"])
 
-    manifest = yaml.safe_load(
-        (pack_root / "manifest.yaml").read_text(encoding="utf-8")
-    )
+    manifest = yaml.safe_load((pack_root / "manifest.yaml").read_text(encoding="utf-8"))
     assert manifest["pack_id"] == PACK_ID
     assert manifest["version"] == PACK_VERSION
     # The oracle files are the certified source's own, not a copy a human retyped.
     for name in ("backend.py", "tools.json", "fixtures.json"):
         assert (pack_root / name).read_bytes() == (package / name).read_bytes()
 
-    config_document = yaml.safe_load(
-        (BYOB_ROOT / "bfcl" / "config" / "tiny.yaml").read_text(encoding="utf-8")
-    )
+    config_document = yaml.safe_load((BYOB_ROOT / "bfcl" / "config" / "tiny.yaml").read_text(encoding="utf-8"))
     config_document["expt_name"] = "authoring-gold-e2e"
     config_document["output_dir"] = str(tmp_path / "generated")
     config_document["oracle_pack"] = {"manifest_path": str(pack_root / "manifest.yaml")}
@@ -645,8 +617,101 @@ def test_a_source_declaration_and_a_domain_brief_reach_a_gold_eligible_pack(
     config = tmp_path / "candidate.yaml"
     config.write_text(yaml.safe_dump(config_document), encoding="utf-8")
 
-    report = json.loads(prepare_bfcl(config).read_text(encoding="utf-8"))
+    report_path = prepare_bfcl(config)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["pack_id"] == PACK_ID
     assert report["tier"] == "gold"
     assert report["gold_eligible"] is True
     assert derive_pack_tier(report) == (True, "gold")
+
+    review_packet = workspace / "review_packet.json"
+    freeze_inputs = workspace / "freeze_inputs.json"
+    _run(
+        monkeypatch,
+        [
+            "--ci",
+            "review",
+            "--workspace",
+            str(workspace),
+            "--adapter-kind",
+            "local_python",
+            "--pack",
+            str(pack_root),
+            "--evidence",
+            str(intake / "evidence_bundle.json"),
+            "--certification-report",
+            str(intake / "adapter_certification.json"),
+            "--certification-public-key",
+            str(public_key),
+            "--certification-key-id",
+            KEY_ID,
+            "--domain-brief-source",
+            str(intake / "domain_brief.source.txt"),
+            "--domain-brief-report",
+            str(intake / "domain_brief_redaction.json"),
+            "--held-out-redaction-report",
+            str(intake / "held_out_redaction.json"),
+            "--source-observations",
+            str(intake / "source_observations.json"),
+            "--intake-provenance",
+            str(intake / "intake_provenance.json"),
+            "--draft-provenance",
+            str(drafting / "draft_provenance.json"),
+            "--validation-report",
+            str(report_path),
+            "--validation-config",
+            str(config),
+            "--resolved-authoring-config",
+            str(workspace / "resolved_authoring_config.json"),
+            "--exposure-authorization",
+            str(workspace / "exposure_authorization.json"),
+            "--organizational-policy-digest",
+            policy_digest,
+            "--evidence-approval",
+            str(approval),
+            "--output",
+            str(review_packet),
+            "--freeze-inputs-output",
+            str(freeze_inputs),
+        ],
+    )
+    capsys.readouterr()
+
+    release = workspace / "release"
+    publication_document = yaml.safe_load(config.read_text(encoding="utf-8"))
+    publication_document["expt_name"] = "authoring-policy-publication-e2e"
+    publication_document["output_dir"] = str(workspace / "published")
+    publication_document["oracle_pack"]["manifest_path"] = str(release / "pack" / "manifest.yaml")
+    publication_document["oracle_runtime"]["allowed_roots"] = [str(release / "pack")]
+    publication_document["lineage"]["policy"] = "strict_separation"
+    publication_config = tmp_path / "publication.yaml"
+    publication_config.write_text(
+        yaml.safe_dump(publication_document),
+        encoding="utf-8",
+    )
+    _run(
+        monkeypatch,
+        [
+            "--ci",
+            "release",
+            "--workspace",
+            str(workspace),
+            "--approved-by",
+            "release-reviewer@example.test",
+            "--confirm-reviewed-content",
+            "--freeze-inputs",
+            str(freeze_inputs),
+            "--release-output",
+            str(release),
+            "--config",
+            str(publication_config),
+        ],
+    )
+    publication = json.loads(capsys.readouterr().out)
+    assert publication["status"] == "published"
+    assert publication["approval"]["status"] == "release_approved"
+    assert publication["approval"]["approval_schema_version"] == (
+        "bfcl-authoring-review-approval-v3"
+    )
+    assert publication["freeze"]["status"] == "frozen"
+    assert publication["publication"]["status"] == "published"

@@ -24,9 +24,12 @@ import sys
 from pathlib import Path
 
 from nemotron.steps.byob.runtime.authoring_release.review import (
+    HUMAN_CHECKLIST_V2,
+    MACHINE_CHECKLIST_V2,
     REQUIRED_CHECKLIST_V2,
     ReviewPacketV2,
     build_review_approval,
+    derive_machine_checklist,
     load_review_packet,
     write_review_approval,
 )
@@ -40,6 +43,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--acknowledge-risk", action="append", default=[])
     parser.add_argument("--note")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--guided-decision-sources",
+        action="store_true",
+        help="Record machine/human checklist provenance after deriving machine checks",
+    )
     for name in sorted(REQUIRED_CHECKLIST_V2):
         parser.add_argument(
             f"--accept-{name.replace('_', '-')}",
@@ -55,16 +63,24 @@ def main() -> None:
         packet = load_review_packet(args.packet)
         if not isinstance(packet, ReviewPacketV2):
             raise ValueError("adapter-neutral approval requires a v2 review packet")
+        checklist = {name: bool(getattr(args, f"accept_{name}")) for name in REQUIRED_CHECKLIST_V2}
+        checklist_sources = None
+        if args.guided_decision_sources:
+            # Machine-owned entries come from the packet itself, so the recorded
+            # provenance describes where each value actually came from.
+            checklist.update(derive_machine_checklist(packet))
+            checklist_sources = {
+                **{name: "machine" for name in MACHINE_CHECKLIST_V2},
+                **{name: "human" for name in HUMAN_CHECKLIST_V2},
+            }
         approval = build_review_approval(
             packet,
             approved_by=args.approved_by,
             reviewed_at=args.reviewed_at,
-            checklist={
-                name: bool(getattr(args, f"accept_{name}"))
-                for name in REQUIRED_CHECKLIST_V2
-            },
+            checklist=checklist,
             acknowledged_risks=args.acknowledge_risk,
             note=args.note,
+            checklist_sources=checklist_sources,
         )
         path = write_review_approval(approval, args.output)
     except (OSError, ValueError) as exc:
@@ -91,6 +107,7 @@ def main() -> None:
             {
                 "status": "release_approved",
                 "approval_digest": approval.digest,
+                "approval_schema_version": approval.document["schema_version"],
                 "review_packet_digest": packet.digest,
                 "output": str(path),
                 "note": "Final release approval is not model-exposure authorization.",

@@ -193,17 +193,21 @@ workspace/intake/
 Stop if `adapter_certification.json` does not report `attained_tier: A2`.
 Approval cannot raise a certification tier.
 
-## 7. Steps 2–3 — authorization and evidence approval
+## 7. Steps 2–3 — policy-backed pre-model records
 
-These are distinct trust boundaries:
+The production default uses `bfcl_author apply-policy` with a reviewed policy whose
+`pre_model` decisions are both `organizational_policy`. It writes two distinct,
+digest-bound records:
 
-1. the source owner authorizes the exact redacted evidence subject for model
-   exposure;
-2. a reviewer approves the exact source and normalized evidence digests for
-   drafting.
+1. authorization for the exact redacted evidence subject to reach the model;
+2. approval of clean source and normalized evidence for drafting.
 
-The demo prints both as `[simulated human review]`. In a real run, the named
-people must inspect the artifacts before supplying their identities.
+This removes both per-run human actions. The later release approval remains the one
+per-run human approval. `apply-policy` refuses unresolved gaps, migrations, advisory
+findings, or a changed policy; those cases retain the two granular review commands.
+
+The credential-free demo intentionally exercises the granular path and prints both as
+`[simulated human review]`, so tests continue to cover those fallback gates.
 
 Outputs:
 
@@ -272,8 +276,9 @@ uv run python scripts/bfcl_assisted_authoring_demo.py \
 `--model-canonical-id` identifies the authoring model in provenance and must not
 be a moving alias.
 
-The demo still simulates the four human decisions. A live model does not turn
-those decisions into automatic approvals.
+The demo still simulates the granular human decisions. A live model does not authorize
+itself; use `apply-policy` only when a separately reviewed project policy covers the
+model and evidence scope.
 
 ## 10. Steps 5–8 — assemble, validate, review, freeze, publish
 

@@ -30,6 +30,7 @@ from nemotron.steps.byob.runtime.authoring_release.versions import (
     MCP_REVIEW_APPROVAL_VERSION_V1,
     MCP_REVIEW_PACKET_VERSION_V1,
     REVIEW_APPROVAL_VERSION_V2,
+    REVIEW_APPROVAL_VERSION_V3,
     REVIEW_PACKET_VERSION_V2,
 )
 from nemotron.steps.byob.runtime.pack_authoring.artifacts import (
@@ -49,6 +50,17 @@ REQUIRED_CHECKLIST_V2 = frozenset(
         "answered_questions",
     }
 )
+# Items a machine can decide from the packet itself, so a reviewer is asked only about
+# meaning and risk. The complement stays with the human.
+MACHINE_CHECKLIST_V2 = frozenset(
+    {
+        "validation_evidence",
+        "independently_verified_certification",
+        "pre_model_authorization",
+        "answered_questions",
+    }
+)
+HUMAN_CHECKLIST_V2 = REQUIRED_CHECKLIST_V2 - MACHINE_CHECKLIST_V2
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PACKET_KEYS = frozenset(
     {
@@ -64,7 +76,7 @@ _PACKET_KEYS = frozenset(
         "record_digest",
     }
 )
-_APPROVAL_KEYS = frozenset(
+_APPROVAL_KEYS_V2 = frozenset(
     {
         "schema_version",
         "review_packet_digest",
@@ -76,6 +88,7 @@ _APPROVAL_KEYS = frozenset(
         "approval_digest",
     }
 )
+_APPROVAL_KEYS_V3 = _APPROVAL_KEYS_V2 | {"checklist_sources"}
 
 
 class AuthoringReviewError(ValueError):
@@ -281,76 +294,104 @@ class ReviewApprovalV2:
         return str(self.document["approval_digest"])
 
     def verify(self) -> None:
-        if self.document.get("schema_version") != REVIEW_APPROVAL_VERSION_V2:
-            raise AuthoringReviewError(
-                "review_approval_version_unsupported",
-                "review approval is not bfcl-authoring-review-approval-v2",
-                recovery="use a supported versioned loader",
-            )
-        if set(self.document) != _APPROVAL_KEYS:
-            raise AuthoringReviewError(
-                "release_record_invalid",
-                "review approval fields do not match the v2 contract",
-                recovery="rebuild approval from the exact packet",
-            )
-        _validate_digest(
-            self.document["review_packet_digest"],
-            "review_packet_digest",
-        )
-        if (
-            not isinstance(self.document["approved_by"], str)
-            or not self.document["approved_by"].strip()
-        ):
-            raise AuthoringReviewError(
-                "reviewer_missing",
-                "approval must name its reviewer",
-                recovery="record a stable reviewer identity",
-            )
-        try:
-            datetime.fromisoformat(
-                str(self.document["reviewed_at"]).replace("Z", "+00:00")
-            )
-        except ValueError as exc:
-            raise AuthoringReviewError(
-                "review_timestamp_invalid",
-                "approval reviewed_at is not ISO-8601",
-                recovery="record the explicit review time",
-            ) from exc
-        checklist = self.document["checklist"]
-        if (
-            not isinstance(checklist, Mapping)
-            or set(checklist) != REQUIRED_CHECKLIST_V2
-            or not all(value is True for value in checklist.values())
-        ):
-            raise AuthoringReviewError(
-                "review_checklist_incomplete",
-                "approval checklist is incomplete",
-                recovery="review and accept each named checklist item",
-            )
-        acknowledged = self.document["acknowledged_risks"]
-        if (
-            not isinstance(acknowledged, list)
-            or not all(isinstance(value, str) for value in acknowledged)
-            or acknowledged != sorted(set(acknowledged))
-        ):
-            raise AuthoringReviewError(
-                "release_record_invalid",
-                "acknowledged risks must be sorted unique strings",
-                recovery="rebuild approval from current risk IDs",
-            )
-        if self.document["note"] is not None and not isinstance(
-            self.document["note"], str
-        ):
-            raise AuthoringReviewError(
-                "release_record_invalid",
-                "approval note must be text or null",
-                recovery="rebuild approval with a textual note",
-            )
-        _verify_record_digest(
+        _verify_approval_document(
             self.document,
-            field="approval_digest",
-            label="review approval",
+            version=REVIEW_APPROVAL_VERSION_V2,
+            expected_keys=_APPROVAL_KEYS_V2,
         )
+
+
+@dataclass(frozen=True)
+class ReviewApprovalV3:
+    """Approval that records which checks were derived and which were human."""
+
+    document: dict[str, Any]
+
+    @property
+    def digest(self) -> str:
+        return str(self.document["approval_digest"])
+
+    def verify(self) -> None:
+        _verify_approval_document(
+            self.document,
+            version=REVIEW_APPROVAL_VERSION_V3,
+            expected_keys=_APPROVAL_KEYS_V3,
+        )
+        sources = self.document["checklist_sources"]
+        expected = {
+            **{name: "machine" for name in MACHINE_CHECKLIST_V2},
+            **{name: "human" for name in HUMAN_CHECKLIST_V2},
+        }
+        if not isinstance(sources, Mapping) or dict(sources) != expected:
+            raise AuthoringReviewError(
+                "review_checklist_sources_invalid",
+                "v3 checklist sources must identify the fixed machine and human decisions",
+                recovery="rebuild approval with the versioned guided release flow",
+            )
+
+
+def _verify_approval_document(
+    document: Mapping[str, Any],
+    *,
+    version: str,
+    expected_keys: frozenset[str],
+) -> None:
+    if document.get("schema_version") != version:
+        raise AuthoringReviewError(
+            "review_approval_version_unsupported",
+            f"review approval is not {version}",
+            recovery="use a supported versioned loader",
+        )
+    if set(document) != expected_keys:
+        raise AuthoringReviewError(
+            "release_record_invalid",
+            f"review approval fields do not match the {version} contract",
+            recovery="rebuild approval from the exact packet",
+        )
+    _validate_digest(document["review_packet_digest"], "review_packet_digest")
+    if not isinstance(document["approved_by"], str) or not document["approved_by"].strip():
+        raise AuthoringReviewError(
+            "reviewer_missing",
+            "approval must name its reviewer",
+            recovery="record a stable reviewer identity",
+        )
+    try:
+        datetime.fromisoformat(str(document["reviewed_at"]).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise AuthoringReviewError(
+            "review_timestamp_invalid",
+            "approval reviewed_at is not ISO-8601",
+            recovery="record the explicit review time",
+        ) from exc
+    checklist = document["checklist"]
+    if (
+        not isinstance(checklist, Mapping)
+        or set(checklist) != REQUIRED_CHECKLIST_V2
+        or not all(value is True for value in checklist.values())
+    ):
+        raise AuthoringReviewError(
+            "review_checklist_incomplete",
+            "approval checklist is incomplete",
+            recovery="review and accept each named checklist item",
+        )
+    acknowledged = document["acknowledged_risks"]
+    if (
+        not isinstance(acknowledged, list)
+        or not all(isinstance(value, str) for value in acknowledged)
+        or acknowledged != sorted(set(acknowledged))
+    ):
+        raise AuthoringReviewError(
+            "release_record_invalid",
+            "acknowledged risks must be sorted unique strings",
+            recovery="rebuild approval from current risk IDs",
+        )
+    if document["note"] is not None and not isinstance(document["note"], str):
+        raise AuthoringReviewError(
+            "release_record_invalid",
+            "approval note must be text or null",
+            recovery="rebuild approval with a textual note",
+        )
+    _verify_record_digest(document, field="approval_digest", label="review approval")
 
 
 def build_review_packet(
@@ -427,6 +468,74 @@ def load_review_packet(path: Path) -> Any:
     )
 
 
+def derive_machine_checklist(packet: ReviewPacketV2) -> dict[str, bool]:
+    """Decide the checklist items that need no human judgment, or refuse."""
+
+    packet.verify()
+    adapter_review = packet.document["adapter_review"]
+    validation = adapter_review.get("validation")
+    if (
+        not isinstance(validation, Mapping)
+        or validation.get("gold") is not True
+        or validation.get("tier") != "gold"
+    ):
+        raise AuthoringReviewError(
+            "gold_validation_missing",
+            "a derived checklist requires fresh Gold validation in the packet",
+            recovery="validate the candidate at Gold and rebuild the review packet",
+        )
+    certification = adapter_review.get("certification")
+    if (
+        not isinstance(certification, Mapping)
+        or not isinstance(certification.get("report_digest"), str)
+        or "certification_report" not in packet.document["source_digests"]
+    ):
+        raise AuthoringReviewError(
+            "independent_certification_missing",
+            "a derived checklist requires the independently verified certification record",
+            recovery="rebuild review from verified certification evidence",
+        )
+    if packet.document["certification_tier"] != "A2":
+        raise AuthoringReviewError(
+            "adapter_under_certified",
+            "a derived checklist requires independently verified A2 certification",
+            recovery="complete A2 probes and build a new review packet",
+        )
+    authoring = adapter_review.get("authoring")
+    if (
+        not isinstance(authoring, Mapping)
+        or not isinstance(
+            authoring.get("model_exposure_authorization_digest"),
+            str,
+        )
+        or "model_exposure_authorization"
+        not in packet.document["source_digests"]
+    ):
+        raise AuthoringReviewError(
+            "pre_model_authorization_missing",
+            "a derived checklist cannot substitute for pre-model authorization",
+            recovery="authorize model exposure, redraft, and rebuild review",
+        )
+    questions_status = authoring.get("questions_status")
+    if questions_status not in {"answered", "not_required"}:
+        raise AuthoringReviewError(
+            "answered_questions_missing",
+            "review does not establish the question/answer state",
+            recovery="replay answered evidence or record that no questions were required",
+        )
+    if questions_status == "answered" and not {
+        "parent_evidence",
+        "open_questions",
+        "answer_set",
+    }.issubset(packet.document["source_digests"]):
+        raise AuthoringReviewError(
+            "answered_questions_missing",
+            "answered revision artifacts are not all digest-bound",
+            recovery="bind parent evidence, open questions, and answer set",
+        )
+    return {name: True for name in sorted(MACHINE_CHECKLIST_V2)}
+
+
 def build_review_approval(
     packet: ReviewPacketV2,
     *,
@@ -435,7 +544,8 @@ def build_review_approval(
     checklist: Mapping[str, bool],
     acknowledged_risks: list[str] | tuple[str, ...] = (),
     note: str | None = None,
-) -> ReviewApprovalV2:
+    checklist_sources: Mapping[str, str] | None = None,
+) -> ReviewApprovalV2 | ReviewApprovalV3:
     packet.verify()
     adapter_review = packet.document["adapter_review"]
     authoring = adapter_review.get("authoring")
@@ -516,7 +626,11 @@ def build_review_approval(
             recovery="acknowledge every stable risk ID and no stale IDs",
         )
     document: dict[str, Any] = {
-        "schema_version": REVIEW_APPROVAL_VERSION_V2,
+        "schema_version": (
+            REVIEW_APPROVAL_VERSION_V3
+            if checklist_sources is not None
+            else REVIEW_APPROVAL_VERSION_V2
+        ),
         "review_packet_digest": packet.digest,
         "approved_by": approved_by.strip(),
         "reviewed_at": reviewed_at,
@@ -524,13 +638,22 @@ def build_review_approval(
         "acknowledged_risks": sorted(acknowledged),
         "note": note,
     }
+    if checklist_sources is not None:
+        document["checklist_sources"] = dict(sorted(checklist_sources.items()))
     document["approval_digest"] = sha256_json(document)
-    approval = ReviewApprovalV2(document)
+    approval: ReviewApprovalV2 | ReviewApprovalV3
+    if checklist_sources is None:
+        approval = ReviewApprovalV2(document)
+    else:
+        approval = ReviewApprovalV3(document)
     approval.verify()
     return approval
 
 
-def write_review_approval(approval: ReviewApprovalV2, path: Path) -> Path:
+def write_review_approval(
+    approval: ReviewApprovalV2 | ReviewApprovalV3,
+    path: Path,
+) -> Path:
     approval.verify()
     return write_canonical_json(approval.document, path)
 
@@ -540,6 +663,10 @@ def load_review_approval(path: Path) -> Any:
     version = document.get("schema_version")
     if version == REVIEW_APPROVAL_VERSION_V2:
         approval = ReviewApprovalV2(document)
+        approval.verify()
+        return approval
+    if version == REVIEW_APPROVAL_VERSION_V3:
+        approval = ReviewApprovalV3(document)
         approval.verify()
         return approval
     if version == MCP_REVIEW_APPROVAL_VERSION_V1:
@@ -555,5 +682,5 @@ def load_review_approval(path: Path) -> Any:
     raise AuthoringReviewError(
         "review_approval_version_unsupported",
         f"unsupported review approval version {version!r}",
-        recovery="use a v1 MCP or v2 authoring review approval",
+        recovery="use a v1 MCP, v2 manual, or v3 guided authoring review approval",
     )

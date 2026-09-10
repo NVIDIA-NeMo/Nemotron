@@ -30,12 +30,11 @@ python -m nemotron.steps.byob.scripts.bfcl_author --help
 local Python source package, reviewed HTTP package, or MCP Mode A intake. Pack ID and
 version come from policy or explicit confirmation; CI never guesses or prompts.
 
-Two decisions are required at this first command rather than deferred. A held-out
-decision — either `--held-out-policy` or `--held-out-not-applicable-reason`, with
-`--held-out-reviewed-by` — must be stated before any evidence exists, because evidence
-that has already been collected cannot be retroactively declared clean. A source reaching
-A1 or A2 also needs `--probe-plan`, since those tiers are earned from observed probe
-outcomes and nothing else can supply them.
+Held-out status and the probe plan must be settled at this first command rather than
+deferred. A reviewed policy may supply `held_out`; otherwise pass either
+`--held-out-policy` or `--held-out-not-applicable-reason` with
+`--held-out-reviewed-by`. A source reaching A1 or A2 also needs `--probe-plan`, since
+those tiers are earned from observed probe outcomes and nothing else can supply them.
 
 The probe plan is one document for every transport. It names a case per published tool,
 at least one structured error if the source has error codes, and a case the tool cannot
@@ -55,6 +54,9 @@ requires; its `fixtures` block is abridged to the records its own cases reach.
 [`bfcl-domain-brief.example.txt`](bfcl-domain-brief.example.txt) is the matching `--brief`.
 Organizational defaults that policy should supply rather than each invocation are shown in
 [`bfcl-authoring-policy.example.yaml`](bfcl-authoring-policy.example.yaml).
+Set both `pre_model.exposure_authorization` and
+`pre_model.clean_evidence_approval` to `organizational_policy` to use the streamlined
+path. The policy is reviewed once; each intake binds its canonical digest.
 
 <!-- doc-smoke: bfcl-author-author-help -->
 ```shell
@@ -67,24 +69,34 @@ Source layouts are defined in
 the policy described in [bfcl-authoring-rollout.md](bfcl-authoring-rollout.md)
 ([`test_bfcl_authoring_rollout_policy.py`](../../../../../tests/steps/byob/test_bfcl_authoring_rollout_policy.py)).
 
-## The two authorization boundaries
+## One Per-Run Approval
 
-The normal command sequence is:
+For clean native-v2 evidence, the normal command sequence is:
 
 1. `author` creates transport-neutral evidence.
 2. `answer` applies any digest-bound open questions.
-3. `authorize` grants model exposure for the exact evidence subject.
-4. `approve --boundary evidence` separately approves that evidence for drafting.
-5. `draft` runs bounded, cached structured model calls.
-6. `assemble` binds those drafts into a loadable pack.
-7. `review` assembles independently verified certification, fresh validation, answered
+3. `apply-policy` produces separate exposure and evidence records from the reviewed
+   organizational policy.
+4. `draft` runs bounded, cached structured model calls.
+5. `assemble` binds those drafts into a loadable pack.
+6. `review` assembles independently verified certification, fresh validation, answered
    questions, and the complete candidate pack.
-8. `approve --boundary release` approves the exact review packet.
-9. `freeze` seals the pack and all reviewed sidecars.
-10. `publish` reruns fresh Gold validation and `stage=all`.
+7. `release` asks for the one per-run semantic/risk confirmation, records the
+   digest-bound approval, seals the reviewed bytes, and reruns fresh Gold validation
+   plus `stage=all`. Approval, freeze, and publication remain separate audit phases.
 
-Pre-model authorization cannot be replaced by final release approval. Session ordering
-and stale-binding refusal are exercised by
+`apply-policy` is fail-closed: it rejects a changed policy, unresolved gaps, migrated
+evidence, and domain-brief advisory findings. Those cases use the granular `authorize`
+and `approve --boundary evidence` commands after human review. This fallback requires
+two decisions at different times because pre-model authorization cannot be replaced
+retroactively by final release approval.
+
+<!-- doc-smoke: bfcl-author-apply-policy-help -->
+```shell
+python -m nemotron.steps.byob.scripts.bfcl_author apply-policy --help
+```
+
+Session ordering and stale-binding refusal are exercised by
 [`test_bfcl_authoring_cli.py`](../../../../../tests/steps/byob/test_bfcl_authoring_cli.py)
 and
 [`test_bfcl_authoring_e2e.py`](../../../../../tests/steps/byob/test_bfcl_authoring_e2e.py).
@@ -99,6 +111,11 @@ python -m nemotron.steps.byob.scripts.bfcl_author review --help
 <!-- doc-smoke: bfcl-author-publish-help -->
 ```shell
 python -m nemotron.steps.byob.scripts.bfcl_author publish --help
+```
+
+<!-- doc-smoke: bfcl-author-release-help -->
+```shell
+python -m nemotron.steps.byob.scripts.bfcl_author release --help
 ```
 
 ## Assembling the candidate pack

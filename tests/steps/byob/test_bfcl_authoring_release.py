@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -23,12 +24,16 @@ from nemotron.steps.byob.runtime.authoring_release.publication import (
     BfclPublicationAdapter,
 )
 from nemotron.steps.byob.runtime.authoring_release.review import (
+    HUMAN_CHECKLIST_V2,
+    MACHINE_CHECKLIST_V2,
     REQUIRED_CHECKLIST_V2,
     AuthoringReviewError,
     ReviewApprovalV2,
+    ReviewApprovalV3,
     ReviewPacketV2,
     build_review_approval,
     build_review_packet,
+    derive_machine_checklist,
     load_review_approval,
     load_review_packet,
     write_review_approval,
@@ -59,7 +64,9 @@ from nemotron.steps.byob.runtime.mcp.release.review import (
 from nemotron.steps.byob.runtime.mcp.release.review import (
     load_review_packet as load_mcp_review_v1,
 )
+from nemotron.steps.byob.runtime.pack_authoring.artifacts import sha256_json
 from nemotron.steps.byob.runtime.release_seal import ReleaseSealAuthority
+from nemotron.steps.byob.scripts import approve_authoring_review
 from tests.steps.byob.test_bfcl_mcp_release_review import (
     SHA_A,
     _approved_freeze_inputs,
@@ -133,6 +140,148 @@ def _approved_v2(
         tmp_path / "review_approval.v2.json",
     )
     return paths, packet, approval, packet_path, approval_path
+
+
+def test_guided_release_derives_only_machine_verifiable_checks(
+    tmp_path: Path,
+) -> None:
+    paths = _inputs(tmp_path)
+    packet = build_review_packet(
+        adapter=_adapter(),
+        pack_root=paths["pack"],
+        source_digests={
+            "certification_report": _file_digest(paths["evidence"]),
+            "evidence": _file_digest(paths["evidence"]),
+            "model_exposure_authorization": _file_digest(paths["evidence"]),
+        },
+    )
+    document = json.loads(json.dumps(packet.document))
+    document["certification_tier"] = "A2"
+    document["adapter_review"]["validation"] = {"gold": True, "tier": "gold"}
+    document["record_digest"] = sha256_json({key: value for key, value in document.items() if key != "record_digest"})
+    gold_packet = ReviewPacketV2(document)
+
+    derived = derive_machine_checklist(gold_packet)
+
+    assert derived == {name: True for name in MACHINE_CHECKLIST_V2}
+    assert HUMAN_CHECKLIST_V2 == {
+        "semantics",
+        "descriptions_and_snapshots",
+        "held_out_policy",
+        "assumptions",
+    }
+    sources = {
+        **{name: "machine" for name in MACHINE_CHECKLIST_V2},
+        **{name: "human" for name in HUMAN_CHECKLIST_V2},
+    }
+    approval = build_review_approval(
+        gold_packet,
+        approved_by="release-reviewer",
+        reviewed_at="2026-09-10T12:00:00Z",
+        checklist={**derived, **{name: True for name in HUMAN_CHECKLIST_V2}},
+        checklist_sources=sources,
+    )
+
+    assert isinstance(approval, ReviewApprovalV3)
+    assert approval.document["checklist"] == {name: True for name in REQUIRED_CHECKLIST_V2}
+    assert approval.document["checklist_sources"] == dict(sorted(sources.items()))
+    approval_path = write_review_approval(approval, tmp_path / "approval.v3.json")
+    assert isinstance(load_review_approval(approval_path), ReviewApprovalV3)
+
+    invalid = json.loads(json.dumps(approval.document))
+    invalid["checklist_sources"]["semantics"] = "machine"
+    invalid["approval_digest"] = sha256_json(
+        {key: value for key, value in invalid.items() if key != "approval_digest"}
+    )
+    with pytest.raises(AuthoringReviewError) as raised:
+        ReviewApprovalV3(invalid).verify()
+    assert raised.value.code == "review_checklist_sources_invalid"
+
+
+def test_recording_decision_sources_gates_on_the_derivation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths = _inputs(tmp_path)
+    packet = build_review_packet(
+        adapter=_adapter(),
+        pack_root=paths["pack"],
+        source_digests={
+            "certification_report": _file_digest(paths["evidence"]),
+            "evidence": _file_digest(paths["evidence"]),
+            "model_exposure_authorization": _file_digest(paths["evidence"]),
+        },
+    )
+    # This packet carries no Gold validation, so only the manual path may approve it.
+    packet_path = write_review_packet(packet, tmp_path / "packet.json")
+    accepts = [f"--accept-{name.replace('_', '-')}" for name in sorted(REQUIRED_CHECKLIST_V2)]
+    base = [
+        "approve_authoring_review.py",
+        "--packet",
+        str(packet_path),
+        "--approved-by",
+        "release-reviewer",
+        "--reviewed-at",
+        "2026-09-10T12:00:00Z",
+        *accepts,
+    ]
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*base, "--output", str(tmp_path / "manual.json"), "--guided-decision-sources"],
+    )
+    with pytest.raises(SystemExit):
+        approve_authoring_review.main()
+    assert "gold_validation_missing" in capsys.readouterr().err
+
+    monkeypatch.setattr(sys, "argv", [*base, "--output", str(tmp_path / "manual.json")])
+    approve_authoring_review.main()
+
+    verdict = json.loads(capsys.readouterr().out)
+    assert verdict["approval_schema_version"] == "bfcl-authoring-review-approval-v2"
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected_code"),
+    [
+        ({"validation": {"gold": False, "tier": "gold"}}, "gold_validation_missing"),
+        ({"validation": {"gold": True, "tier": "silver"}}, "gold_validation_missing"),
+        ({"certification_tier": "A1"}, "adapter_under_certified"),
+        ({"questions_status": "open"}, "answered_questions_missing"),
+    ],
+)
+def test_a_derived_checklist_refuses_unmet_machine_conditions(
+    tmp_path: Path,
+    mutation: dict,
+    expected_code: str,
+) -> None:
+    paths = _inputs(tmp_path)
+    packet = build_review_packet(
+        adapter=_adapter(),
+        pack_root=paths["pack"],
+        source_digests={
+            "certification_report": _file_digest(paths["evidence"]),
+            "evidence": _file_digest(paths["evidence"]),
+            "model_exposure_authorization": _file_digest(paths["evidence"]),
+        },
+    )
+    document = json.loads(json.dumps(packet.document))
+    document["certification_tier"] = "A2"
+    document["adapter_review"]["validation"] = {"gold": True, "tier": "gold"}
+    if "certification_tier" in mutation:
+        document["certification_tier"] = mutation["certification_tier"]
+    if "validation" in mutation:
+        document["adapter_review"]["validation"] = mutation["validation"]
+    if "questions_status" in mutation:
+        document["adapter_review"]["authoring"]["questions_status"] = mutation["questions_status"]
+    document["record_digest"] = sha256_json({key: value for key, value in document.items() if key != "record_digest"})
+
+    with pytest.raises(AuthoringReviewError) as raised:
+        derive_machine_checklist(ReviewPacketV2(document))
+
+    assert raised.value.code == expected_code
 
 
 def test_mcp_v1_public_api_remains_import_compatible(tmp_path: Path) -> None:

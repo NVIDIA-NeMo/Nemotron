@@ -71,6 +71,7 @@ AuthoringPhase = Literal[
 AuthoringCommand = Literal[
     "intake",
     "answer",
+    "apply_policy",
     "authorize_exposure",
     "approve_evidence",
     "draft",
@@ -84,7 +85,7 @@ AuthoringCommand = Literal[
 
 RESUMABILITY_MATRIX: Mapping[AuthoringPhase, tuple[AuthoringCommand, ...]] = {
     "initialized": ("intake",),
-    "intake_complete": ("answer", "authorize_exposure"),
+    "intake_complete": ("answer", "apply_policy", "authorize_exposure"),
     "questions_open": ("answer",),
     "evidence_revised": (
         "answer",
@@ -223,8 +224,7 @@ class AuthoringSessionState(_StrictModel):
         }
         if (
             self.schema_version == SESSION_VERSION
-            and
-            self.phase in {"exposure_authorized"}
+            and self.phase in {"exposure_authorized"}
             and self.bindings.exposure_authorization is None
         ):
             raise ValueError("exposure_authorized phase requires exposure authorization")
@@ -234,10 +234,7 @@ class AuthoringSessionState(_StrictModel):
         if self.phase in drafted_phases and self.bindings.draft_root is None:
             raise ValueError(f"phase {self.phase!r} requires a declared draft root")
         completed_draft_phases = drafted_phases
-        if (
-            self.phase in completed_draft_phases
-            and self.bindings.draft_provenance is None
-        ):
+        if self.phase in completed_draft_phases and self.bindings.draft_provenance is None:
             raise ValueError(f"phase {self.phase!r} requires draft provenance")
         if (
             self.schema_version == SESSION_VERSION
@@ -407,11 +404,7 @@ def bind_artifact(
             recovery="write the complete artifact before committing session state",
         )
     payload = candidate.read_bytes()
-    digest = (
-        _canonical_json_digest(payload, relative)
-        if digest_kind == "canonical_json"
-        else _digest_bytes(payload)
-    )
+    digest = _canonical_json_digest(payload, relative) if digest_kind == "canonical_json" else _digest_bytes(payload)
     return ArtifactBinding(path=relative, digest=digest, digest_kind=digest_kind)
 
 
@@ -445,9 +438,7 @@ def build_session_state(
         "bindings": bindings.model_dump(mode="json"),
         "parent_session_digest": parent_session_digest,
     }
-    return AuthoringSessionState.model_validate(
-        {**unsigned, "session_digest": sha256_json(unsigned)}
-    )
+    return AuthoringSessionState.model_validate({**unsigned, "session_digest": sha256_json(unsigned)})
 
 
 def _approval_evidence_digest(path: Path) -> str:
@@ -546,11 +537,7 @@ class AuthoringResumeGate:
                 "session revision must contain only session.json",
                 recovery="resume from the last session with a closed manifest",
             )
-        path = (
-            self.session_store.root
-            / session_digest.removeprefix("sha256:")
-            / SESSION_FILE_NAME
-        )
+        path = self.session_store.root / session_digest.removeprefix("sha256:") / SESSION_FILE_NAME
         try:
             document = json.loads(
                 path.read_text(encoding="utf-8"),
@@ -623,9 +610,7 @@ class AuthoringResumeGate:
                     recovery="commit a session against the matching revised evidence",
                 )
             try:
-                revision_manifest = self.revision_store.verify(
-                    bindings.revision_content_address
-                )
+                revision_manifest = self.revision_store.verify(bindings.revision_content_address)
             except RevisionStoreError as exc:
                 raise AuthoringResumeError(
                     "revision_unverified",
@@ -687,11 +672,7 @@ class AuthoringResumeGate:
                 self._verify_artifact(artifact)
 
     def _verify_workspace_shape(self, state: AuthoringSessionState) -> None:
-        staging = [
-            path
-            for path in self.workspace.rglob(".*.staging-*")
-            if path.is_dir()
-        ]
+        staging = [path for path in self.workspace.rglob(".*.staging-*") if path.is_dir()]
         if staging:
             raise AuthoringResumeError(
                 "partial_workspace_write",
@@ -778,11 +759,7 @@ class AuthoringResumeGate:
                 recovery_reason=recovery_reason,
             )
         except WorkspaceLockError as exc:
-            code = (
-                "concurrent_run_refused"
-                if exc.code == "workspace_locked"
-                else "workspace_lock_refused"
-            )
+            code = "concurrent_run_refused" if exc.code == "workspace_locked" else "workspace_lock_refused"
             raise AuthoringResumeError(
                 code,
                 exc.detail,
@@ -803,11 +780,7 @@ class AuthoringResumeGate:
                 raise AuthoringResumeError(
                     "resume_command_not_permitted",
                     f"{command!r} is not permitted from phase {state.phase!r}",
-                    recovery=(
-                        "run one of: " + ", ".join(permitted)
-                        if permitted
-                        else "start a new session revision"
-                    ),
+                    recovery=("run one of: " + ", ".join(permitted) if permitted else "start a new session revision"),
                 )
             verdict = ResumeVerdict(
                 session_digest=state.session_digest,

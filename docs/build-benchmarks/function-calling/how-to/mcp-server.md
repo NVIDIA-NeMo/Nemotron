@@ -107,7 +107,9 @@ python -m nemotron.steps.byob.scripts.build_mcp_intake \
 
 `--probe-plan` is optional, and omitting it certifies A0 only, exactly as for the other transports. Supply it to reach A1 or A2. The plan is accepted for Mode A alone, because Mode A is the only mode whose reset and state are control tools. A session-based plan must carry `fixtures`, since a session is handed its world when it opens rather than reading it from a reviewed file. The certification tiers are the same A0, A1, and A2 tiers described in {doc}`assisted-authoring`, and a Gold freeze requires A2.
 
-Intake can also be delegated through the guided CLI, which binds its output into a session for you:
+Intake can also be delegated through the guided CLI, which binds its output into a
+session for you. For the one-approval path, use the reviewed policy described in
+{doc}`assisted-authoring`:
 
 ```bash
 python -m nemotron.steps.byob.scripts.bfcl_author \
@@ -116,9 +118,8 @@ python -m nemotron.steps.byob.scripts.bfcl_author \
   --source <REVIEWED_MCP_INTAKE> \
   --brief /srv/sources/domain-brief.txt \
   --adapter mcp_mode_a \
-  --required-tier A2 \
-  --held-out-not-applicable-reason "The catalog is public reference data." \
-  --held-out-reviewed-by reviewer@example.test
+  --policy /srv/bfcl/policies/warehouse-authoring.yaml \
+  --required-tier A2
 ```
 
 Adapter-specific flags supplied after the guided flags are delegated to the intake command.
@@ -128,10 +129,14 @@ Adapter-specific flags supplied after the guided flags are delegated to the inta
 From here the flow is identical to the conventional-source flow, and {doc}`assisted-authoring` documents each command in detail:
 
 1. `answer` applies any digest-bound open questions.
-2. `authorize` grants model exposure for the exact evidence subject, and `approve --boundary evidence` separately approves that evidence for drafting.
+2. For clean evidence, `apply-policy` derives model-exposure and evidence records from
+   the reviewed policy; otherwise use the granular `authorize` and
+   `approve --boundary evidence` fallback.
 3. `draft` runs bounded, cached structured model calls, and `assemble` binds those drafts and the reviewed supplement into a candidate pack.
-4. `review` builds the deterministic review packet, and `approve --boundary release` approves that exact packet.
-5. `freeze` seals the pack and its reviewed sidecars, and `publish` reruns fresh Gold validation and the generation pipeline.
+4. `review` builds the deterministic review packet.
+5. `release` asks for the normal flow's one per-run semantic/risk confirmation, then
+   records approval, seals the reviewed bytes, and reruns fresh Gold validation plus
+   the generation pipeline.
 
 `review` and `publish` accept `--adapter-kind`, which already defaults to `mcp_mode_a`. For an MCP source, the assembled pack names the certified endpoint, pinned to the identity and TLS bundle intake verified, and takes its fixtures from the reviewed probe plan its sessions were opened with. There is no backend file to copy, because a session-based source has no tree.
 

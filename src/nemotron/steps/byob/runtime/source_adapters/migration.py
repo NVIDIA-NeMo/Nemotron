@@ -260,7 +260,9 @@ class NormalizedSourceEvidence(_StrictModel):
 
 class NormalizedEvidenceApproval(_StrictModel):
     approval_version: Literal["bfcl-source-evidence-approval-v2"]
-    approved_by: StrictStr
+    mode: Literal["named_human", "organizational_policy"] = "named_human"
+    approved_by: StrictStr | None = None
+    organizational_policy_digest: StrictStr | None = None
     source_bundle_digest: StrictStr
     normalized_bundle_digest: StrictStr
     migration_record_digest: StrictStr | None
@@ -270,12 +272,15 @@ class NormalizedEvidenceApproval(_StrictModel):
 
     @field_validator("approved_by")
     @classmethod
-    def _approved_by(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("approval must name its reviewer")
-        return value.strip()
+    def _approved_by(cls, value: str | None) -> str | None:
+        if value is not None:
+            if not value.strip():
+                raise ValueError("approval reviewer must be non-empty")
+            return value.strip()
+        return None
 
     @field_validator(
+        "organizational_policy_digest",
         "source_bundle_digest",
         "normalized_bundle_digest",
         "migration_record_digest",
@@ -292,6 +297,15 @@ class NormalizedEvidenceApproval(_StrictModel):
         if len(value) != len(set(value)) or tuple(sorted(value)) != value:
             raise ValueError("acknowledged warnings must be unique and sorted")
         return value
+
+    @model_validator(mode="after")
+    def _authority(self) -> NormalizedEvidenceApproval:
+        if self.mode == "named_human":
+            if self.approved_by is None or self.organizational_policy_digest is not None:
+                raise ValueError("named-human evidence approval requires only approved_by")
+        elif self.approved_by is not None or self.organizational_policy_digest is None:
+            raise ValueError("organizational evidence approval requires only its policy digest")
+        return self
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:

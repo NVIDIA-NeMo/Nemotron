@@ -7,6 +7,7 @@ import pytest
 
 from nemotron.steps.byob.runtime.authoring_workflow.resolved_config import (
     ResolvedConfigError,
+    load_authoring_policy,
     load_resolved_authoring_config,
     resolve_authoring_config,
     slug_pack_id_candidate,
@@ -65,9 +66,7 @@ def test_resolution_is_canonical_deterministic_and_records_every_origin(
     )
 
     assert first == second
-    assert first.resolved_authoring_config_digest == (
-        second.resolved_authoring_config_digest
-    )
+    assert first.resolved_authoring_config_digest == (second.resolved_authoring_config_digest)
     assert first.semantic_payload.pack_id_candidates.value == ("customer-inventory",)
     for section in (
         first.inputs,
@@ -165,6 +164,41 @@ def test_policy_version_is_authoritative_but_pack_id_still_confirmed(
     assert resolved.semantic_payload.pack_version.origin == "policy"
     assert resolved.confirmations.pack_version_confirmed.value is False
     assert resolved.semantic_payload.required_certification_tier.value == "A1"
+
+
+def test_policy_can_replace_per_run_pre_model_approvals(tmp_path: Path) -> None:
+    policy_path = tmp_path / "policy.yaml"
+    policy_path.write_text(
+        "\n".join(
+            (
+                "schema_version: bfcl-authoring-policy-v1",
+                "pre_model:",
+                "  exposure_authorization: organizational_policy",
+                "  clean_evidence_approval: organizational_policy",
+                "held_out:",
+                "  not_applicable_reason: Public synthetic fixtures.",
+                "  reviewed_by: policy-owner@example.test",
+                "release:",
+                "  signing_key_env: TEST_RELEASE_SIGNING_KEY",
+                "  signing_key_id: release-key",
+                "  seal_issuer: release-team",
+                "  seal_public_key: keys/release-public.pem",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    policy, digest = load_authoring_policy(policy_path)
+
+    assert policy.pre_model.exposure_authorization == "organizational_policy"
+    assert policy.pre_model.clean_evidence_approval == "organizational_policy"
+    assert policy.held_out is not None
+    assert policy.held_out.reviewed_by == "policy-owner@example.test"
+    assert policy.release is not None
+    assert policy.release.signing_key_env == "TEST_RELEASE_SIGNING_KEY"
+    assert policy.release.signing_key_id == "release-key"
+    assert digest.startswith("sha256:")
 
 
 def test_server_prose_never_supplies_pack_version(tmp_path: Path) -> None:

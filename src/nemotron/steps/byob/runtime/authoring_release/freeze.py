@@ -35,6 +35,7 @@ from nemotron.steps.byob.runtime.authoring_release.contracts import (
 )
 from nemotron.steps.byob.runtime.authoring_release.review import (
     ReviewApprovalV2,
+    ReviewApprovalV3,
     ReviewPacketV2,
     load_json_mapping,
     load_review_approval,
@@ -124,7 +125,7 @@ def _digest_bytes(value: bytes) -> str:
 def _install_authoring_lineage(
     pack_root: Path,
     packet: ReviewPacketV2,
-    approval: ReviewApprovalV2,
+    approval: ReviewApprovalV2 | ReviewApprovalV3,
 ) -> None:
     provenance = pack_root / PROVENANCE_DIRECTORY_NAME
     packet_path = pack_root / REVIEW_PACKET_PATH
@@ -285,10 +286,13 @@ def freeze_canonical_pack(
         )
     packet = load_review_packet(inputs.review_packet_path)
     approval = load_review_approval(inputs.review_approval_path)
-    if not isinstance(packet, ReviewPacketV2) or not isinstance(approval, ReviewApprovalV2):
+    if not isinstance(packet, ReviewPacketV2) or not isinstance(
+        approval,
+        (ReviewApprovalV2, ReviewApprovalV3),
+    ):
         raise AuthoringFreezeError(
             "release_version_mismatch",
-            "v2 freeze requires a v2 review packet and approval",
+            "v2 freeze requires a v2 review packet and compatible approval",
             recovery="use the MCP compatibility freeze for v1 records",
         )
     packet.verify()
@@ -556,10 +560,13 @@ def load_frozen_release(
         )
     packet = load_review_packet(release_root / REVIEW_PACKET_PATH)
     approval = load_review_approval(release_root / REVIEW_APPROVAL_PATH)
-    if not isinstance(packet, ReviewPacketV2) or not isinstance(approval, ReviewApprovalV2):
+    if not isinstance(packet, ReviewPacketV2) or not isinstance(
+        approval,
+        (ReviewApprovalV2, ReviewApprovalV3),
+    ):
         raise AuthoringFreezeError(
             "release_version_mismatch",
-            "v2 manifest sealed non-v2 review records",
+            "v2 manifest sealed incompatible review records",
             recovery="restore the version-consistent frozen release",
         )
     if manifest.get("adapter_kind") != packet.document["adapter_kind"]:
