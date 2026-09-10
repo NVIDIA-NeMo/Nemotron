@@ -54,6 +54,35 @@ proving cleanup. Timeout cases must not set `expected_state_change` or
 Success cases require `expected_state_change` and must not set an error code.
 Structured-error cases require `expected_error_code` and cannot claim a mutation.
 
+## Ground Model-Drafted Arguments
+
+`draft_probe_plan` first asks the model where each argument comes from, then
+materializes a concrete reviewed plan. A fixture-owned date, identifier, free-form
+reason, email, or phone must use a fixture binding during that draft. A model cannot
+select one as a literal unless the parameter schema itself pins the accepted set.
+
+Use literal bindings only for schema-pinned enums and booleans. Use
+`invalid_literal` only when an enum, boolean, or numeric schema itself proves the
+value invalid. Do not infer a string format from prose, invent an undeclared
+argument, or use a plausible value that the evidence never observed.
+
+For example, this intermediate draft is ungrounded when `item_id` has only an
+unconstrained string schema:
+
+```json
+{"name": "item_id", "source": "literal", "literal": "ITEM-42"}
+```
+
+Bind it to reviewed fixture state:
+
+```json
+{"name": "item_id", "source": "fixture", "literal": null}
+```
+
+The structured draft schema represents boolean and numeric literals as strings:
+write `"true"`, `"false"`, or `"2"`, not JSON `true`, `false`, or `2`. The final
+`probe-plan.json` contains materialized arguments, not these binding descriptors.
+
 ## Example
 
 This compact library fragment matches the `tiny_oracle_pack` catalog used in
@@ -116,6 +145,25 @@ python -m nemotron.steps.byob.scripts.check_probe_plan \
 Intake remains authoritative: only it executes the probes and observes reset,
 isolation, confirmation, timeout cleanup, and result behavior.
 
+## A2 Readiness Checklist
+
+Before intake, verify:
+
+- the source static check passes with no placeholder or unimplemented handler;
+- every published tool has a successful probe;
+- every mutating tool has an observed state-changing success case;
+- every confirmation-gated tool can prove pending calls do not mutate and confirmed
+  calls do;
+- structured error codes have representative negative probes;
+- repeated reset and call cases can demonstrate determinism and isolation;
+- one real blocking tool has the single timeout case required for cleanup evidence;
+- fixture values satisfy the tool schema and source preconditions;
+- `check_probe_plan` reports `attainable_tier: A2`.
+
+This checklist predicts attainable coverage. It does not confer certification. Only
+intake execution can record A2, and neither a model nor an approval can promote an
+under-certified source.
+
 ## Common Failures
 
 | Symptom | What it means |
@@ -126,6 +174,8 @@ isolation, confirmation, timeout cleanup, and result behavior.
 | Timeout case with an outcome field | Remove `expected_state_change` and `expected_error_code` from the timeout case. |
 | More than one timeout case | Keep a single timeout probe. |
 | Clock without a timezone | Use an ISO-8601 value with an explicit offset or `Z`. |
+| Literal is not grounded | Bind the argument to reviewed fixture state unless its schema pins an enum or boolean. |
+| Undeclared argument | Remove it; every drafted argument name must appear in that tool's parameter schema. |
 
 ## Related Information
 

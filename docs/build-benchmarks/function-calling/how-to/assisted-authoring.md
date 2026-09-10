@@ -50,6 +50,39 @@ non-normative walkthrough rather than a production launcher. Pass
   fixture ids, cases, and domain assumptions.
 - Have a certification key pair and its allowlisted key identifier available.
 - Organizational defaults that should not be retyped per session belong in a reviewed policy file; see `src/nemotron/steps/byob/references/bfcl-authoring-policy.example.yaml`.
+- Configure the authoring model through NeMo Data Designer. See
+  {doc}`../reference/data-designer-provider` for creating `DATA_DESIGNER_HOME`,
+  registering a provider, referencing credentials, and pinning model identity.
+
+### Inputs, Outputs, and Ownership by Step
+
+Use this map to decide what an operator must supply and what the pipeline writes:
+
+1. **Prepare the source.** The operator supplies `tools.json`, a domain brief, and
+   either a reviewed executable source or enough independently reviewed behavior and
+   state to complete a scaffold. Scaffolding may write `backend.py`, `fixtures.json`,
+   and `dependency-lock.json`; the operator owns the resulting behavior.
+2. **Prepare probes.** The operator reviews `probe-plan.json`.
+   `check_probe_plan` writes a readiness verdict; it does not certify A2.
+3. **Run intake.** `author` reads the reviewed source, brief, probe plan, held-out
+   decision, and certification key. It writes fingerprinted observations,
+   certification, sanitized evidence, and a model-exposure subject.
+4. **Cross the pre-model boundary.** A human or organizational policy authorizes
+   exposure, then a human approves the exact evidence used for drafting.
+5. **Draft proposals.** `draft` writes bounded coverage, validation-case,
+   task-template, and assertion proposals with model-call provenance. A human reviews
+   grounding, coverage, compilation, and unresolved blockers.
+6. **Assemble and validate.** The operator supplies `reviewed-supplement.yaml`.
+   `assemble` writes a candidate Oracle Pack and provenance; candidate validation
+   writes a Gold or non-Gold verdict.
+7. **Review, approve, and freeze.** `review` writes a packet for the exact candidate
+   and current validation. A reviewer approves that packet; `freeze` seals its bytes.
+8. **Publish.** `publish` reruns Gold validation and writes `benchmark.parquet`,
+   `benchmark_raw.parquet`, and `run_manifest.json`.
+
+Generated evidence, provenance, reports, frozen bytes, Parquet tables, and manifests
+are pipeline-owned. Correct the upstream operator-owned source, plan, supplement, or
+configuration and rerun its gate; do not patch generated outputs.
 
 ### Source layouts
 
@@ -310,7 +343,110 @@ Publication reruns fresh Gold validation against the frozen pack and then runs t
 
 The certification report records the tier you required, `A2` for a Gold release, and the exposure authorization and both approvals reference current digests. Assembly wrote `candidate_pack_provenance.json` recording the digest of every input and every file it produced. Fresh validation of the candidate pack reports `gold_eligible: true`, and publication wrote `run_manifest.json` beside `benchmark.parquet` and `benchmark_raw.parquet`.
 
+## End-to-End Example: From Two Inputs to a Gold Publication
+
+This compact example starts with a tool catalog and domain brief and uses the optional
+model-assisted scaffold. Replace the model variables with a route registered according
+to {doc}`../reference/data-designer-provider`.
+
+```bash
+export SOURCE=/srv/sources/warehouse-package
+export BRIEF=/srv/sources/domain-brief.txt
+export PROBE_PLAN=/srv/sources/probe-plan.json
+export AUTHOR_PROVIDER=nvidia_inference_api
+export AUTHOR_MODEL="<served model identifier>"
+export AUTHOR_MODEL_CANONICAL="<immutable or reviewed provider-managed identity>"
+
+mkdir -p "$SOURCE"
+```
+
+The operator places the two reviewed inputs:
+
+```text
+/srv/sources/
+├── warehouse-package/
+│   └── tools.json
+└── domain-brief.txt
+```
+
+Generate the source proposal:
+
+```bash
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
+  --tools "$SOURCE/tools.json" \
+  --output "$SOURCE" \
+  --dependency-lock \
+  --draft-with-model \
+  --domain-brief "$BRIEF" \
+  --model-alias author \
+  --model-provider "$AUTHOR_PROVIDER" \
+  --model "$AUTHOR_MODEL" \
+  --model-canonical-id "$AUTHOR_MODEL_CANONICAL" \
+  --seed 7 \
+  --temperature 0 \
+  --request-timeout 600
+```
+
+The pipeline adds `backend.py`, `fixtures.json`, `dependency-lock.json`, and
+`source-draft.json`. The operator completes and reviews the executable behavior and
+fixture state, then checks the source:
+
+```bash
+uv run python -m nemotron.steps.byob.scripts.check_source_package \
+  --source "$SOURCE"
+```
+
+Draft a probe-plan proposal, review it, and statically check the result:
+
+```bash
+uv run python -m nemotron.steps.byob.scripts.draft_probe_plan \
+  --source "$SOURCE" \
+  --domain-brief "$BRIEF" \
+  --output "$PROBE_PLAN" \
+  --clock 2026-03-02T02:00:00Z \
+  --model-alias author \
+  --model-provider "$AUTHOR_PROVIDER" \
+  --model "$AUTHOR_MODEL" \
+  --model-canonical-id "$AUTHOR_MODEL_CANONICAL" \
+  --seed 7 \
+  --temperature 0 \
+  --request-timeout 600
+
+uv run python -m nemotron.steps.byob.scripts.check_probe_plan \
+  --source "$SOURCE" \
+  --probe-plan "$PROBE_PLAN"
+```
+
+Continue only when the static check reports `attainable_tier: A2`; intake must still
+execute the probes to earn A2. Create the certification key and held-out decision
+described above before starting intake.
+
+```text
+reviewed source + brief + probe plan + held-out decision + certification key
+  → author: A2 certification and sanitized evidence
+  → authorize + evidence approval: pre-model boundary
+  → draft: bounded model proposals and compiled assertions
+  → operator: reviewed-supplement.yaml
+  → assemble + candidate validation: Gold candidate
+  → review + release approval + freeze: immutable release
+  → publish: benchmark.parquet + benchmark_raw.parquet + run_manifest.json
+```
+
+The two initial files are enough to enter the scaffold lane, not enough to bypass
+source, probe, supplement, or release review.
+
 ## Common Failures
+
+Model-drafted arguments must remain grounded in the certified schema and fixture
+evidence. Bind unconstrained strings such as identifiers and dates to reviewed
+fixtures; reserve `literal` for schema-pinned enums and booleans. Encode boolean and
+numeric literal fields as strings such as `"true"` and `"2"`, and never add an
+argument absent from the tool's parameter schema.
+
+The assertion compiler prefixes exported callables with `assert_`. For example,
+assertion id `tool_called_lookup` compiles as `assert_tool_called_lookup`. If a
+supplement uses the unprefixed id, correct it and assemble a new candidate path rather
+than editing the generated candidate.
 
 | Reported code | What to do |
 | --- | --- |

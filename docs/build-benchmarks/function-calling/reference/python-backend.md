@@ -90,7 +90,8 @@ python -m nemotron.steps.byob.scripts.scaffold_source_package \
 The model chooses only values representable by the fixed declarative vocabulary.
 Review the compiled source, remove no marker without implementing its decision, then
 run the same static and executable checks below. See
-{doc}`../how-to/assisted-authoring` for provider setup and certification.
+{doc}`data-designer-provider` for provider setup and
+{doc}`../how-to/assisted-authoring` for certification.
 
 :::{caution}
 Model-assisted backend drafting is optional and is not the preferred source of oracle

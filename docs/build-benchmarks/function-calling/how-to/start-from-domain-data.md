@@ -304,6 +304,28 @@ call interface, while the brief explains which capabilities and business behavio
 matter together. Command-level intake, drafting, and freeze details are in
 {doc}`assisted-authoring`.
 
+### Know Which Files The Operator Owns
+
+An operator may enter the optional scaffold lane with only a reviewed `tools.json`
+and `domain-brief.txt`, but those two files do not contain executable domain truth.
+The scaffold writes proposals for `backend.py` and `fixtures.json`; the operator must
+complete and review them before intake. The operator also reviews or supplies the
+probe plan, held-out decision, semantic supplement, and run configurations.
+
+The pipeline owns evidence bundles, model-draft and candidate-pack provenance,
+validation reports, approval records, frozen releases, Parquet tables, and manifests.
+Correct an operator-owned input and rerun its gate instead of editing a generated
+downstream artifact.
+
+```text
+operator: tools.json + domain-brief.txt
+  → pipeline: source scaffold proposal
+  → operator: reviewed backend.py + fixtures.json + probe-plan.json
+  → pipeline: certified evidence + bounded model drafts
+  → operator: reviewed-supplement.yaml + release approval
+  → pipeline: candidate pack + Gold validation + frozen publication
+```
+
 Create a certification key before intake:
 
 ```bash

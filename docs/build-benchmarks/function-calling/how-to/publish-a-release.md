@@ -37,7 +37,13 @@ Two bundled examples run as written against the bundled reference pack. Copy the
 | `publication.example.yaml` | A template-only Gold run. Every published surface is rendered from the pack's own templates. |
 | `publication.paraphrase.example.yaml` | The same run with one difference: a model rewords the prompts under deterministic guards, preserving the same executable cases. |
 
-The paraphrase profile is the only one that calls a model during generation, and those calls are routed by NeMo Data Designer. Choosing it therefore adds a dependency: the provider named by the enabled role must exist in your Data Designer installation, and the model identity must be pinned. Template-only generation has no such prerequisite.
+The paraphrase profile is the only one that calls a model during generation, and those
+calls are routed by NeMo Data Designer. Choosing it therefore adds a dependency: the
+provider named by the enabled role must exist in your Data Designer installation, and
+the model identity must be pinned. Template-only generation has no such prerequisite.
+See {doc}`../reference/data-designer-provider` for the provider registry, endpoint,
+model identity, and credential environment-variable setup shared by paraphrasing and
+assisted authoring.
 
 ```bash
 mkdir -p /srv/bfcl/runs && \
