@@ -133,6 +133,9 @@ def test_default_sdg_uses_configured_api() -> None:
     assert sdg.qa_generation_model == sdg.artifact_extraction_model
     assert sdg.quality_judge_model == sdg.artifact_extraction_model
     assert sdg.embed_model == "nvidia/nemotron-3-embed-1b"
+    assert sdg.num_pairs == 7
+    assert sum(sdg.query_counts.values()) == sdg.num_pairs
+    assert sum(sdg.reasoning_counts.values()) == sdg.num_pairs
 
 
 def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
@@ -222,7 +225,7 @@ def test_artifact_root_override_rehomes_default_pipeline() -> None:
     assert sdg.artifact_root == artifact_root
     assert sdg.output_dir == artifact_root / "stage0_sdg"
     assert sdg.artifact_path == artifact_root / "stage0_sdg/artifacts"
-    assert prep.sdg_input_path == sdg.output_dir
+    assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert prep.output_dir == artifact_root / "stage1_data_prep"
     assert finetune.train_data_path == prep.output_dir / "train_mined.automodel_unrolled.json"
     assert finetune.checkpoint_dir == artifact_root / "stage2_finetune/checkpoints"
@@ -245,7 +248,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert sdg.output_dir == Path("output/embed/nemotron-3-1b/stage0_sdg")
     assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
     assert prep.base_model == BASE_MODEL
-    assert prep.sdg_input_path == sdg.output_dir
+    assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert finetune.base_model == BASE_MODEL
     assert prep.query_prefix == "query: "
     assert prep.passage_prefix == "passage: "
@@ -277,6 +280,9 @@ def test_llama_profile_preserves_export_and_nim_contract() -> None:
     assert sdg.output_dir == Path("output/embed/stage0_sdg")
     assert sdg.nvidia_api_base_url is None
     assert sdg.artifact_extraction_model == "nvidia/nemotron-3-nano-30b-a3b"
+    assert sdg.num_pairs == 7
+    assert sum(sdg.query_counts.values()) == sdg.num_pairs
+    assert sum(sdg.reasoning_counts.values()) == sdg.num_pairs
     assert prep.base_model == "nvidia/llama-nemotron-embed-1b-v2"
     assert prep.output_dir == Path("output/embed/stage1_data_prep")
     assert finetune.base_model == prep.base_model

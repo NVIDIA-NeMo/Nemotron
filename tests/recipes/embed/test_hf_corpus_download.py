@@ -2,16 +2,34 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from nemotron.recipes.embed.stage0_sdg.data_prep import _resolve_corpus_dir
+from nemotron.recipes.embed.stage0_sdg.data_prep import _resolve_corpus_dir, _validate_corpus
 
 # Patch target: the function does `from huggingface_hub import snapshot_download`
 # inside the function body, so we patch it on the huggingface_hub module.
 _PATCH_TARGET = "huggingface_hub.snapshot_download"
+
+
+def test_validate_corpus_applies_num_files_before_reporting(tmp_path, capsys):
+    (tmp_path / "a.txt").write_text("A sufficiently long first document.")
+    (tmp_path / "b.txt").write_text("A sufficiently long second document.")
+
+    _validate_corpus(
+        corpus_dir=tmp_path,
+        file_extensions=[".txt"],
+        min_text_length=10,
+        num_pairs=2,
+        buffer_size=1,
+        num_files=1,
+    )
+
+    output = capsys.readouterr().out
+    assert "Files found:       1" in output
+    assert "Expected QA pairs: ~2" in output
+    assert "Buffers:           1 (buffer_size=1)" in output
 
 
 class TestResolveCorpusDirLocal:

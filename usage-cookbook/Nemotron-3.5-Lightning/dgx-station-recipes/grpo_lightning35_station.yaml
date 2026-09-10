@@ -1,0 +1,306 @@
+grpo:
+  num_prompts_per_step: 16
+  num_generations_per_prompt: 16
+  val_num_generations_per_prompt: 4
+  max_rollout_turns: 1
+  max_num_epochs: 1
+  max_num_steps: 1000000
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  val_period: 5
+  val_start_at: -1
+  val_at_start: false
+  val_at_end: false
+  overlong_filtering: true
+  advantage_clip_low: null
+  advantage_clip_high: null
+  max_val_samples: null
+  stop_at_validation_metric: null
+  stop_at_validation_threshold: null
+  val_batch_size: 256
+  seed: 42
+  async_grpo:
+    enabled: false
+    max_trajectory_age_steps: 1
+    max_generation_failures: 0
+
+  batch_multiplier: 1
+  use_dynamic_sampling: false
+  reward_shaping:
+    enabled: false
+  reward_scaling:
+    enabled: false
+
+  seq_logprob_error_threshold: 2
+  invalid_tool_call_advantage: null
+  malformed_thinking_advantage: null
+
+loss_fn:
+  reference_policy_kl_penalty: 0
+  reference_policy_kl_type: k3
+  kl_input_clamp_value: null
+  kl_output_clamp_value: null
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: null
+  use_on_policy_kl_approximation: true
+  use_importance_sampling_correction: true
+  sequence_level_importance_ratios: false
+  token_level_loss: true
+  truncated_importance_sampling_ratio: null
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: "/shared/results/grpo"
+  metric_name: "val:total_reward/mean"
+  higher_is_better: true
+  keep_top_k: 1000000
+  save_period: 10
+  checkpoint_must_save_by: "99:03:40:00"
+  save_optimizer: true
+
+policy:
+  model_name: "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
+  tokenizer:
+    name: ${policy.model_name}
+  train_global_batch_size: 256
+  train_micro_batch_size: 1
+  generation_batch_size: 64
+  logprob_batch_size: 1
+  max_total_sequence_length: 16384
+  precision: "bfloat16"
+  logprob_chunk_size: 2048
+
+  dtensor_cfg:
+    _v2: true
+    enabled: false
+    cpu_offload: false
+    sequence_parallel: false
+    activation_checkpointing: false
+    tensor_parallel_size: 1
+    context_parallel_size: 1
+    custom_parallel_plan: null
+
+  megatron_cfg:
+    enabled: true
+    checkpoint:
+      async_save: true
+    empty_unused_memory_level: 1
+    activation_checkpointing: true
+    bias_activation_fusion: false
+    tensor_model_parallel_size: 1
+    expert_tensor_parallel_size: 1
+    expert_model_parallel_size: 2
+    pipeline_model_parallel_size: 1
+    num_layers_in_first_pipeline_stage: null
+    num_layers_in_last_pipeline_stage: null
+    context_parallel_size: 1
+    pipeline_dtype: ${policy.precision}
+    sequence_parallel: true
+    freeze_moe_router: true
+    moe_router_dtype: "fp32"
+    moe_router_load_balancing_type: "none"
+    moe_router_bias_update_rate: 1e-3
+    moe_permute_fusion: true
+    moe_enable_deepep: false
+    moe_token_dispatcher_type: "alltoall"
+    moe_aux_loss_coeff: 0.0
+    moe_router_enable_expert_bias: true
+    apply_rope_fusion: true
+    defer_fp32_logits: true
+    track_moe_metrics: true
+    moe_per_layer_logging: true
+    moe_shared_expert_overlap: false
+    gradient_accumulation_fusion: false
+    use_fused_weighted_squared_relu: false
+    env_vars:
+      NCCL_SHM_DISABLE: "1"
+
+    optimizer:
+      optimizer: "adam"
+      lr: 3e-6
+      min_lr: 3e-6
+      weight_decay: 0.0
+      bf16: true
+      fp16: false
+      params_dtype: "float32"
+      adam_beta1: 0.9
+      adam_beta2: 0.999
+      adam_eps: 1e-8
+      sgd_momentum: 0.9
+      clip_grad: ${policy.max_grad_norm}
+      use_distributed_optimizer: true
+      use_precision_aware_optimizer: true
+      optimizer_cpu_offload: true
+      optimizer_offload_fraction: 0.75
+      overlap_cpu_optimizer_d2h_h2d: false
+
+    scheduler:
+      start_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      end_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      weight_decay_incr_style: "constant"
+      lr_decay_style: "constant"
+      lr_decay_iters: null
+      lr_warmup_iters: 10
+      lr_warmup_init: 3.0e-7
+
+    distributed_data_parallel_config:
+      grad_reduce_in_fp32: false
+      overlap_grad_reduce: true
+      overlap_param_gather: true
+      average_in_collective: false
+      use_custom_fsdp: false
+      data_parallel_sharding_strategy: "optim_grads_params"
+
+  draft:
+    enabled: false
+    model_name: null
+    loss_weight: 0.1
+    num_layers: null
+    aux_layer_indices: null
+
+  dynamic_batching:
+    enabled: false
+    train_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.train_micro_batch_size}}
+    logprob_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.logprob_batch_size}}
+    sequence_length_round: 64
+
+  sequence_packing:
+    enabled: true
+    train_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.train_micro_batch_size}}
+    logprob_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.logprob_batch_size}}
+    algorithm: "modified_first_fit_decreasing"
+    microbatch_order: "largest_first"
+    sequence_length_round: 64
+
+  make_sequence_length_divisible_by: ${mul:${mul:${policy.megatron_cfg.tensor_model_parallel_size}, ${policy.megatron_cfg.context_parallel_size}}, 2}
+  max_grad_norm: 1.0
+  optimizer: null
+  scheduler: null
+  offload_optimizer_for_logprob: false
+
+  generation:
+    port_range_low: 11001
+    port_range_high: 15000
+    backend: "vllm"
+    max_new_tokens: ${policy.max_total_sequence_length}
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    val_temperature: ${.temperature}
+    val_top_p: ${.top_p}
+    val_top_k: ${.top_k}
+    stop_token_ids: null
+    stop_strings: null
+    mcore_generation_config:
+      max_model_len: ${policy.max_total_sequence_length}
+      transformer_impl: "inference_optimized"
+      cuda_graph_impl: "local"
+      inference_cuda_graph_scope: "block"
+      activation_checkpointing: false
+      mamba_inference_ssm_states_dtype: "float32"
+      inference_moe_token_dispatcher_type: "nccl"
+      inference_grouped_gemm_backend: "vllm"
+      moe_router_num_groups: null
+      moe_router_group_topk: null
+      pipeline_model_parallel_size: 1
+      expert_tensor_parallel_size: 1
+      expert_model_parallel_size: 8
+      sequence_parallel: true
+      context_parallel_size: 1
+      tensor_model_parallel_size: 2
+      buffer_size_gb: 20
+      num_cuda_graphs: -1
+      block_size_tokens: 256
+      use_cuda_graphs_for_non_decode_steps: true
+      enable_chunked_prefill: true
+      max_tokens: 16384
+      kv_cache_management_mode: "persist"
+      materialize_only_last_token_logits: true
+      num_speculative_tokens: 0
+      refit_backend: "nccl"
+      expose_http_server: true
+      enable_prefix_caching: true
+      parsers:
+        - deepseek-r1-reasoning
+        - qwen3-coder-tool
+    vllm_cfg:
+      async_engine: true
+      kv_cache_dtype: auto
+      precision: ${policy.precision}
+      tensor_parallel_size: 1
+      pipeline_parallel_size: 1
+      expert_parallel_size: 1
+      gpu_memory_utilization: 0.60
+      max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: false
+      use_deep_gemm: false
+      num_last_layers_in_bf16: 0
+      num_first_layers_in_bf16: 0
+      expose_http_server: true
+      reasoning_parser_plugin: nemo_rl/models/generation/vllm/reasoning_parsers/nano_v3_reasoning_parser.py
+      http_server_serving_chat_kwargs:
+        enable_auto_tools: true
+        tool_parser: qwen3_coder
+        reasoning_parser: nano_v3
+
+    vllm_kwargs:
+      mamba_ssm_cache_dtype: "float32"
+      moe_backend: triton
+      compilation_config:
+        backend: eager
+    colocated:
+      enabled: true
+      resources:
+        gpus_per_node: null
+        num_nodes: null
+
+data:
+  max_input_seq_length: null
+  shuffle: false
+  num_workers: 1
+  use_multiple_dataloader: false
+  train:
+    data_path: "/shared/data/train.jsonl"
+  validation:
+    data_path: "/shared/data/validation.jsonl"
+  default:
+    dataset_name: NemoGymDataset
+    env_name: "nemo_gym"
+    prompt_file: null
+    system_prompt_file: null
+    processor: "nemo_gym_data_processor"
+
+env:
+  should_use_nemo_gym: true
+  should_log_nemo_gym_responses: true
+  should_mask_flagged_samples: true
+  nemo_gym:
+    port_range_low: 15001
+    port_range_high: 20000
+    config_paths:
+      - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
+      - resources_servers/nvarc/configs/inductive.yaml
+
+logger:
+  log_dir: "/shared/logs"
+  num_val_samples_to_print: 0
+  wandb_enabled: true
+  tensorboard_enabled: false
+  mlflow_enabled: false
+  monitor_gpus: true
+  swanlab_enabled: false
+  wandb:
+    project: "nemotron-station"
+    name: "lightning-grpo"
+  tensorboard: {}
+  mlflow:
+    experiment_name: "grpo-dev"
+    run_name: "grpo-dev-logger"
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+
+cluster:
+  gpus_per_node: 1
+  num_nodes: 2

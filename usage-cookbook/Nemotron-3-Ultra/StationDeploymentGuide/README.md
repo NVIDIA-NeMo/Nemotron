@@ -1,4 +1,4 @@
-# Deploying Nemotron 3 Ultra on DGX Station
+# Deploying Nemotron 3 Ultra on a Single DGX Station
 
 This guide serves **NVIDIA Nemotron 3 Ultra** on a single GB300-based
 [DGX Station](https://www.nvidia.com/en-us/products/workstations/dgx-station/)
@@ -9,6 +9,9 @@ port 8000.
 Unlike the [four-node DGX Spark deployment](../SparkDeploymentGuide/README.md),
 this configuration uses one GPU and offloads selected Mixture-of-Experts (MoE)
 weights into the DGX Station's coherent CPU memory.
+
+To distribute the model across two GB300-based DGX Stations instead, see the
+[Dual-DGX Station deployment guide](../DualStationDeploymentGuide/README.md).
 
 ## Prerequisites
 

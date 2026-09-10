@@ -14,5 +14,5 @@
 
 """Stage 0: Synthetic Data Generation.
 
-Generates synthetic Q&A pairs from document corpus using retriever-sdg.
+Generates synthetic Q&A pairs from a document corpus using the retrieval SDG plugin.
 """

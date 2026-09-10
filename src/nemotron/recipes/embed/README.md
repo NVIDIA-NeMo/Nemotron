@@ -26,7 +26,7 @@ A large language model (LLM) generates synthetic question-and-answer pairs in St
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│              STAGE 0: SYNTHETIC DATA GENERATION (retriever-sdg)             │
+│          STAGE 0: SYNTHETIC DATA GENERATION (retrieval SDG plugin)           │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌──────────────────────────┐ │
 │  │ Document Chunks │ →  │  LLM Generation │ →  │ Q&A Pairs + Evaluations  │ │
 │  │                 │    │  (NVIDIA API)   │    │                          │ │
@@ -219,6 +219,44 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
   - Customize provider settings in the config file
   - See [default provider settings](https://docs.nvidia.com/nemo/datadesigner/concepts/models/default-model-settings) for configuration options
 
+### Resuming Stage 0
+
+Data Designer writes a durable checkpoint after each `buffer_size` records in every
+resume mode. The `resume` setting controls whether a later invocation reuses checkpoints
+stored under the same `artifact_path` and `dataset_name`:
+
+| Mode | Behavior | Use when |
+|------|----------|----------|
+| `never` (default) | Start a fresh generation run. Existing artifacts are left in place and a timestamped dataset directory is used when needed. | Intentionally generating a new stochastic dataset. |
+| `always` | Require a compatible prior run and continue from its completed checkpoints. Fail if no prior dataset exists or its configuration is incompatible. | Explicitly recovering an interrupted run. |
+| `if_possible` | Continue a compatible prior run; otherwise start a fresh run. | A job may be retried automatically from either a clean or interrupted state. |
+
+To continue an interrupted run, keep `artifact_path`, `dataset_name`, and `buffer_size`
+unchanged:
+
+```bash
+nemotron embed sdg -c default corpus_dir=/path/to/your/docs resume=always
+```
+
+Resume compatibility uses Data Designer's configuration fingerprint; it does not hash
+the contents of corpus files. Use `always` or `if_possible` only when the input corpus
+has not changed in place. The default is `never` so that an ordinary repeated recipe
+invocation generates new data instead of silently reusing a completed dataset.
+
+After each successful non-preview run, Stage 0 writes `generation_result.json`
+next to the exported JSONL file. This manifest identifies the exact output from
+the run, including a timestamped file from a repeated `resume=never` invocation.
+By default, Stage 1 resolves the manifest before preparing the data. To select
+another input, set `sdg_input_path` to a data file or an existing SDG output
+directory.
+
+Earlier recipe versions exposed `batch_size`, `start_batch_index`, and
+`end_batch_index` for manually partitioning the corpus into independent runs. Those
+settings have been removed with the manual batching implementation. Use `buffer_size`
+to control checkpoint/write granularity; it does not partition the corpus or produce
+separate batch outputs. Manual start/end ranges have no direct replacement. Use a
+stable `dataset_name` with `resume=always` to continue an interrupted run.
+
 ## Quick Start
 
 ### Default Profile
@@ -310,7 +348,7 @@ Stages are designed to run sequentially, but you can start from any stage if you
 | Start From | Requirement | Use Case |
 |------------|-------------|----------|
 | **Stage 0** | Document corpus | Full pipeline from scratch |
-| **Stage 1** | Q&A pairs (JSON) | Skip SDG if you have labeled data or use [NVIDIA's pre-generated dataset](#using-nvidias-pre-generated-dataset) |
+| **Stage 1** | Q&A pairs (JSON/JSONL/Parquet) | Skip SDG if you have labeled data or use [NVIDIA's pre-generated dataset](#using-nvidias-pre-generated-dataset) |
 | **Stage 2** | Training data (Automodel format) | Skip data prep if data is ready |
 | **Stage 3** | Model checkpoint | Evaluate existing checkpoint |
 | **Stage 4** | Model checkpoint | Export existing model when the selected profile requires it |
@@ -332,12 +370,12 @@ If you want to fine-tune an embedding model on NVIDIA-related content, you can *
 python -c "
 from datasets import load_dataset
 ds = load_dataset('nvidia/Retrieval-Synthetic-NVDocs-v1', split='train')
-ds.to_json('./output/embed/stage0_sdg/nv_docs_sdg.json')
+ds.to_json('./output/embed/stage0_sdg/nv_docs_sdg.jsonl')
 "
 
-# `datasets.to_json()` writes JSONL; Stage 1 accepts that file when given its directory.
+# `datasets.to_json()` writes JSONL; pass the exact file to avoid mixed-directory ambiguity.
 # Start from Stage 1 (data preparation) using the downloaded data
-nemotron embed prep -c default sdg_input_path=./output/embed/stage0_sdg
+nemotron embed prep -c default sdg_input_path=./output/embed/stage0_sdg/nv_docs_sdg.jsonl
 
 # Continue with the rest of the pipeline
 nemotron embed finetune -c default
@@ -586,7 +624,7 @@ Model: fine-tuned
 
 | Component | Purpose | Repository |
 |-----------|---------|------------|
-| retriever-sdg | Synthetic data generation using NeMo Data Designer | [GitHub](https://github.com/NVIDIA-NeMo/DataDesigner) |
+| Data Designer retrieval SDG plugin | Generate synthetic question-and-answer pairs and convert them to training data | [Plugin source](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/tree/main/plugins/data-designer-retrieval-sdg) |
 | Automodel | Embedding model training framework | [GitHub](https://github.com/NVIDIA/NeMo-Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
@@ -918,7 +956,7 @@ Run the pipeline at two or three data scales, for example, 25%, 50%, and 100% of
 
 **Should you prioritize adding more documents or generating more queries per document to improve accuracy?**
 
-In general, more documents with diverse content have a larger impact than more queries per document because new documents introduce new vocabulary, concepts, and retrieval patterns. More queries per document (using `num_pairs`) primarily help the model see the same content from different query angles, which has diminishing returns after the core semantics are covered. Prioritize adding documents first. After your corpus is representative, increase `num_pairs` (default: 10) to improve query diversity for chunks that cover complex or multifaceted topics.
+In general, more documents with diverse content have a larger impact than more queries per document because new documents introduce new vocabulary, concepts, and retrieval patterns. More queries per document (using `num_pairs`) primarily help the model see the same content from different query angles, which has diminishing returns after the core semantics are covered. Prioritize adding documents first. After your corpus is representative, increase `num_pairs` (default: 7) to improve query diversity for chunks that cover complex or multifaceted topics.
 
 ### Using Existing Vector-DB Chunks
 
