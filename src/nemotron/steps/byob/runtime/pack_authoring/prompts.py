@@ -47,7 +47,7 @@ COVERAGE_PROMPT_VERSION = "2.1.0"
 # Bumped again where a value the tool must reject got its own source. Every earlier draft
 # spelled one as `unresolved`, which reads exactly like a value nobody has observed, so
 # neither the reviewer nor grounding could tell a deliberate refusal probe from an open gap.
-VALIDATION_CASE_PROMPT_VERSION = "2.3.0"
+VALIDATION_CASE_PROMPT_VERSION = "2.5.0"
 # Bumped where the task prompt began stating that a task needs a tool. The schema now
 # refuses a toolless task outright, but providers differ on whether they honour an array
 # minimum, so the instruction is stated as well as constrained.
@@ -55,7 +55,7 @@ TASK_TEMPLATE_PROMPT_VERSION = "2.3.0"
 # Bumped once more where the assertion task stopped inviting the two predicate subjects
 # the compiler cannot emit. Compilation is all-or-nothing, so drafting one of those cost
 # the pack every assertion it had.
-ASSERTION_PROMPT_VERSION = "2.3.0"
+ASSERTION_PROMPT_VERSION = "2.4.0"
 
 AUTHORING_SYSTEM_PROMPT = """\
 You are drafting part of a function-calling benchmark specification for human review.
@@ -98,7 +98,15 @@ When an error probe has to send a value the tool must reject, use "invalid_liter
 that value in `literal`; the parameter's own schema has to be what refuses it, so this works
 only where that schema pins an enum, a boolean, or a numeric type. Use "unresolved" when
 none of those fit, and say in that argument's note what value the case still needs. Include
-every required parameter.
+every required parameter. The `literal` field itself is always a JSON string or null:
+encode booleans as the strings "true" or "false" and numeric values as strings rather than
+emitting JSON booleans or numbers.
+
+Every argument name must appear in that tool's parameter schema; never invent an extra
+argument to test `additionalProperties`. A plain string schema without an enum does not
+prove that an email, phone number, identifier spelling, or other string value is invalid,
+even when prose or observed backend behavior rejects one. Do not use `invalid_literal` for
+such strings; choose a grounded fixture or absent identifier case instead.
 
 Each kind of probe rests on a particular observation: a success probe on
 observed_result_shapes, an error probe on observed_error_codes, a confirmation probe on
@@ -139,6 +147,10 @@ Evidence:
 ASSERTION_TASK = """\
 Draft the declarative predicates a successful task must satisfy. Give each a stable
 lowercase identifier and a rationale.
+
+Produce at least one `tool_called` predicate for every published tool, even when you also
+produce order predicates involving that tool. This direct coverage lets a reviewed task
+template require any one published capability without depending on an unrelated workflow.
 
 Use only predicates over the call trace: tool_called, tool_not_called, tool_called_after.
 These read the benchmark's own record of which tools an episode called, and they are the
