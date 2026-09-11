@@ -409,7 +409,16 @@ nemotron rerank finetune -c default --run my-cluster --dry-run
 nemotron rerank eval -c default --batch my-cluster --dry-run
 ```
 
-Rerank cluster execution requires a profile with `remote_job_dir` or `env_vars.NEMO_RUN_DIR` for multi-stage `rerank run` pipelines so stage outputs share the same run directory. Local Docker execution does not require `remote_job_dir`; it uses the Docker work directory and declared mounts. `deploy` is local-only, and `--stage` is rejected for rerank commands until staged-file execution is implemented.
+Rerank cluster execution requires a profile with `remote_job_dir` or `env_vars.NEMO_RUN_DIR` for multi-stage `rerank run` pipelines so stage outputs share the same run directory. Local Docker execution does not require `remote_job_dir`; it uses the Docker work directory and declared mounts. `deploy` is local-only.
+
+Prep and finetune support `--stage` with a Slurm SSH profile that defines `host`,
+`user`, and `remote_job_dir`. Staging transfers the prepared NeMo Run metadata,
+scheduler script, packaged source, and resolved training configuration without
+submitting a workload. The command prints the exact remote directory and a
+`./run.sh` invocation for use from a compatible Slurm allocation. The launcher
+uses the prepared Slurm execution script, including its container and
+distributed launcher settings.
+Other rerank commands continue to reject `--stage`.
 
 ## Configuration
 
