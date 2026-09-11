@@ -60,6 +60,71 @@ def test_stage_dry_run_returns_before_validation(recipe, command, module_name, m
 
 
 @pytest.mark.parametrize(("recipe", "command", "module_name"), COMMAND_MODULES)
+def test_stage_cli_reaches_staging_without_running(recipe, command, module_name, monkeypatch, tmp_path) -> None:
+    env_file = tmp_path / "env.toml"
+    env_file.write_text(
+        "\n".join(
+            [
+                "[cluster]",
+                'executor = "slurm"',
+                'tunnel = "ssh"',
+                'host = "cluster.example.com"',
+                'user = "tester"',
+                'remote_job_dir = "/remote/jobs"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("NEMOTRON_ENV_FILE", str(env_file))
+    module = import_module(module_name)
+    executor = object()
+    experiments = []
+    selected_paths = []
+
+    class FakeExperiment:
+        def __init__(self, name: str) -> None:
+            self.name = name
+            self.add_calls = []
+            self.run_calls = []
+            experiments.append(self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def add(self, script, *, executor, name: str):
+            self.add_calls.append((script, executor, name))
+
+        def run(self, **kwargs) -> None:
+            self.run_calls.append(kwargs)
+
+    monkeypatch.setattr(nemo_run, "Experiment", FakeExperiment)
+    monkeypatch.setattr(module, "generate_job_dir", lambda _name: tmp_path / "job")
+    monkeypatch.setattr(module, "build_env_vars", lambda *_args: {})
+    monkeypatch.setattr("nemo_runspec.execution.create_executor", lambda **_kwargs: executor)
+    monkeypatch.setattr("nemo_runspec.run.patch_nemo_run_rsync_accept_new_host_keys", lambda: None)
+    monkeypatch.setattr("nemo_runspec.run.patch_nemo_run_ray_template_for_cpu", lambda: None)
+    monkeypatch.setattr(
+        module,
+        "run_or_stage_experiment",
+        lambda experiment, *, stage, attached: selected_paths.append((experiment, stage, attached)),
+    )
+    argv = ["nemotron", recipe, command, "--run", "cluster", "--stage"]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    result = runner.invoke(app, argv[1:])
+
+    assert result.exit_code == 0, result.output
+    assert len(experiments) == 1
+    experiment = experiments[0]
+    assert len(experiment.add_calls) == 1
+    assert experiment.run_calls == []
+    assert selected_paths == [(experiment, True, True)]
+
+
+@pytest.mark.parametrize(("recipe", "command", "module_name"), COMMAND_MODULES)
 def test_remote_stage_uses_staging_path(recipe, command, module_name, monkeypatch, tmp_path) -> None:
     del recipe, command
     module = import_module(module_name)
