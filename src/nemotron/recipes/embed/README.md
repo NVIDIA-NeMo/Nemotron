@@ -491,17 +491,27 @@ nemotron embed finetune -c default --batch my-cluster run.env.time=08:00:00
 
 ### Interactive Debugging
 
-Stage files to the cluster for interactive debugging:
+Prep and finetune can stage files to a Slurm cluster for interactive debugging.
+The selected execution profile must use an SSH tunnel and define `host`, `user`,
+and `remote_job_dir`:
 
 ```bash
 # Stage files without executing
 nemotron embed finetune -c default --run my-cluster --stage
 
-# Then SSH to cluster and run manually
-ssh cluster.example.com
-cd /path/to/staged/files
-./run.sh
+# The command prints the exact remote directory and manual invocation:
+# cd /shared/path/to/jobs/embed-finetune/<experiment-id>/embed-finetune/code
+# ./run.sh
 ```
+
+Run the printed command from a compatible Slurm allocation. The launcher uses
+the prepared Slurm execution script, including its container and distributed
+launcher settings.
+Staging prepares and transfers the NeMo Run metadata, scheduler script, packaged
+source, resolved training configuration, and a manual `run.sh` launcher, but
+does not submit the workload.
+Combining `--stage` with `--dry-run` only displays the compiled configuration and
+does not transfer files.
 
 ## Configuration
 
