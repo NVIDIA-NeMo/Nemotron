@@ -225,6 +225,7 @@ def _execute_remote(
         attached=attached,
         force_squash=force_squash,
         default_image=SPEC.image,
+        script_resources=SPEC.resources,
     )
 
     # Build Script and Run
