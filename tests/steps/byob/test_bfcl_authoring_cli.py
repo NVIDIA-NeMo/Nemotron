@@ -8,6 +8,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+    PublicFormat,
+)
 
 from nemotron.steps.byob.runtime.authoring_workflow.resume import AuthoringResumeError
 from nemotron.steps.byob.runtime.pack_authoring.artifacts import write_canonical_json
@@ -127,6 +134,125 @@ def test_release_signing_refuses_policy_changed_after_intake(
     assert raised.value.code == "authoring_policy_changed"
 
 
+def _write_release_key_pair(root: Path, name: str) -> tuple[Path, Path]:
+    private_key = Ed25519PrivateKey.generate()
+    private_path = root / f"{name}-private.pem"
+    public_path = root / f"{name}-public.pem"
+    private_path.write_bytes(
+        private_key.private_bytes(
+            Encoding.PEM,
+            PrivateFormat.PKCS8,
+            NoEncryption(),
+        )
+    )
+    public_path.write_bytes(
+        private_key.public_key().public_bytes(
+            Encoding.PEM,
+            PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    return private_path, public_path
+
+
+def test_release_preflight_refuses_unsafe_issuer(tmp_path: Path) -> None:
+    signing_key, seal_public_key = _write_release_key_pair(tmp_path, "release")
+    publication_config = tmp_path / "publication.yaml"
+    publication_config.write_text("family: bfcl\n", encoding="utf-8")
+
+    with pytest.raises(bfcl_author.GuidedCliError) as raised:
+        bfcl_author._preflight_release_inputs(
+            signing_key=signing_key,
+            signing_key_id="release-key",
+            seal_issuer="reviewer@example.test",
+            seal_public_key=seal_public_key,
+            publication_config=publication_config,
+        )
+
+    assert raised.value.code == "release_preflight_failed"
+    assert "safe identifier" in raised.value.detail
+
+
+def test_release_preflight_refuses_mismatched_keys(tmp_path: Path) -> None:
+    signing_key, _matching_public_key = _write_release_key_pair(tmp_path, "signing")
+    _other_private_key, seal_public_key = _write_release_key_pair(tmp_path, "trusted")
+    publication_config = tmp_path / "publication.yaml"
+    publication_config.write_text("family: bfcl\n", encoding="utf-8")
+
+    with pytest.raises(bfcl_author.GuidedCliError) as raised:
+        bfcl_author._preflight_release_inputs(
+            signing_key=signing_key,
+            signing_key_id="release-key",
+            seal_issuer="release-team",
+            seal_public_key=seal_public_key,
+            publication_config=publication_config,
+        )
+
+    assert raised.value.code == "release_preflight_failed"
+    assert "signature is invalid" in raised.value.detail
+
+
+def test_release_preflight_runs_before_approval_session(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    freeze_inputs = tmp_path / "freeze_inputs.json"
+    publication_config = tmp_path / "publication.yaml"
+    signing_key = tmp_path / "release-private.pem"
+    seal_public_key = tmp_path / "release-public.pem"
+    for path in (freeze_inputs, publication_config, signing_key, seal_public_key):
+        path.write_text("present\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        bfcl_author,
+        "_release_signing_arguments",
+        lambda _args: (
+            signing_key,
+            "release-key",
+            "release-team",
+            seal_public_key,
+        ),
+    )
+    monkeypatch.setattr(
+        bfcl_author,
+        "_preflight_release_inputs",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            bfcl_author.GuidedCliError(
+                "release_preflight_failed",
+                "invalid release inputs",
+                recovery="repair release inputs",
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        bfcl_author,
+        "_current_session",
+        lambda *_args, **_kwargs: pytest.fail("approval session must not open before release preflight passes"),
+    )
+    monkeypatch.setattr(bfcl_author, "_emit_cli_refusal", lambda *_args: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "bfcl_author.py",
+            "--ci",
+            "release",
+            "--workspace",
+            str(tmp_path),
+            "--approved-by",
+            "reviewer@example.test",
+            "--freeze-inputs",
+            str(freeze_inputs),
+            "--config",
+            str(publication_config),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as raised:
+        bfcl_author.main()
+
+    assert raised.value.code == 1
+
+
 def test_delegated_verdict_survives_progress_output_and_stays_visible(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -199,9 +325,7 @@ def test_explicit_release_confirmation_replaces_the_interactive_prompt(
     )
     gate = SimpleNamespace(
         load_state=lambda _digest: SimpleNamespace(
-            bindings=SimpleNamespace(
-                review_packet=SimpleNamespace(path="review_packet.json")
-            )
+            bindings=SimpleNamespace(review_packet=SimpleNamespace(path="review_packet.json"))
         )
     )
     args = SimpleNamespace(

@@ -105,6 +105,12 @@ from nemotron.steps.byob.runtime.pack_authoring.questions import (
     load_open_questions,
     write_evidence_revision,
 )
+from nemotron.steps.byob.runtime.release_seal import (
+    load_release_seal_authority,
+    load_trusted_release_seal_key,
+    sign_release_digest,
+    verify_release_digest,
+)
 from nemotron.steps.byob.runtime.source_adapters.certification import AdapterTier
 from nemotron.steps.byob.runtime.source_adapters.domain_brief import (
     DomainBriefRedactionReport,
@@ -1438,6 +1444,47 @@ def _release_signing_arguments(
     )
 
 
+def _preflight_release_inputs(
+    *,
+    signing_key: Path,
+    signing_key_id: str,
+    seal_issuer: str,
+    seal_public_key: Path,
+    publication_config: Path,
+) -> None:
+    """Validate release inputs that must not fail after human approval."""
+
+    probe_digest = "sha256:" + "0" * 64
+    try:
+        authority = load_release_seal_authority(
+            signing_key,
+            issuer=seal_issuer,
+            key_id=signing_key_id,
+        )
+        trusted_keys = load_trusted_release_seal_key(
+            seal_public_key,
+            key_id=signing_key_id,
+        )
+        verify_release_digest(
+            issuer=seal_issuer,
+            expected_issuer=seal_issuer,
+            key_id=signing_key_id,
+            digest=probe_digest,
+            signature=sign_release_digest(authority, probe_digest),
+            trusted_public_keys=trusted_keys,
+        )
+        BfclConfig.from_yaml(publication_config)
+    except (OSError, ValueError) as exc:
+        raise GuidedCliError(
+            "release_preflight_failed",
+            f"release inputs failed validation: {exc}",
+            recovery=(
+                "repair the release signing identity, matching Ed25519 keys, "
+                "or publication config before recording approval"
+            ),
+        ) from exc
+
+
 def main() -> None:
     parser = _parser()
     args, remainder = parser.parse_known_args()
@@ -1671,6 +1718,13 @@ def main() -> None:
                     "missing required release input(s): " + ", ".join(missing_inputs),
                     recovery="restore the reviewed release inputs before approval",
                 )
+            _preflight_release_inputs(
+                signing_key=signing_key,
+                signing_key_id=signing_key_id,
+                seal_issuer=seal_issuer,
+                seal_public_key=seal_public_key,
+                publication_config=publication_config,
+            )
 
             gate, resumed = _current_session(args, "approve_release")
             with resumed:
