@@ -1,0 +1,60 @@
+# MILU (chat) -- the generative variant of MILU, posed over
+# /v1/chat/completions and scored by extracting the letter from \boxed{X}.
+#
+#   MILU_LANG=english uv run nemotron steps run eval/model_eval -c milu_chat --batch <profile>
+#
+# This is NOT the same benchmark as `-c milu`. That config runs the upstream
+# lm-eval `milu_<Language>` tasks, which are `output_type: multiple_choice`,
+# scored by loglikelihood, and declare `supported_endpoint_types: [completions]`
+# -- they cannot run against a chat endpoint at all. The `milu_<lang>_chat`
+# tasks here are BYOB tasks (`/opt/sovereign/byob/milu/benchmark.py`) that
+# prompt the model normally and parse its answer. Use this one for an instruct
+# / reasoning model served behind /v1/chat/completions.
+#
+# Note the case difference, which is not a typo: the lm-eval tasks are
+# registered capitalised (`milu_English`), the BYOB ones lowercase
+# (`milu_english_chat`).
+#
+# REQUIREMENTS BEYOND direct.yaml
+#   * A harness image that actually ships the BYOB MILU tasks. The public
+#     nvcr.io/nvidia/eval-factory/sovereign:26.05 does NOT -- it has only the
+#     loglikelihood tasks. Point EVAL_HARNESS_IMAGE at an image that does.
+#   * HF_TOKEN. ai4bharat/MILU is gated ("auto"), and the BYOB task streams the
+#     split from the Hub at run time rather than reading a baked-in cache, so
+#     an unauthenticated job fails on the dataset load, not on the eval.
+#   * EVAL_ENDPOINT_URL must be the full chat route, ending /v1/chat/completions.
+defaults: direct.yaml
+
+harness_image: ${oc.env:EVAL_HARNESS_IMAGE,nvcr.io/nvidia/eval-factory/sovereign:latest}
+
+target:
+  api_endpoint:
+    # A chat task will not run against a completions endpoint; pin it here
+    # rather than relying on the direct.yaml default of `completions`.
+    type: chat
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        # The task's own default is 512, which is wrong for a reasoning model:
+        # it spends its budget in the reasoning block, never emits \boxed{},
+        # and the run does not error -- it just scores near zero. Measured on
+        # Nemotron-3-Nano-30B, 20 samples: 20% of responses parsed at 512
+        # against 95% at 16384.
+        max_new_tokens: ${oc.decode:${oc.env:EVAL_MAX_NEW_TOKENS,16384}}
+        # Reasoning-on decoding, matching the SFT guidebook's evaluation table.
+        temperature: ${oc.decode:${oc.env:EVAL_TEMPERATURE,1.0}}
+        top_p: ${oc.decode:${oc.env:EVAL_TOP_P,1.0}}
+        parallelism: ${oc.decode:${oc.env:EVAL_PARALLELISM,64}}
+        # Long reasoning generations at high parallelism outlive the 3600s
+        # default only rarely, but a timeout here loses the whole task.
+        request_timeout: ${oc.decode:${oc.env:EVAL_REQUEST_TIMEOUT,3600}}
+        extra:
+          # Server-side generative scoring: no client-side tokenisation, so
+          # direct.yaml's completions-only tokenizer requirement does not apply.
+          tokenizer: null
+
+  tasks:
+    # Lowercase language name, unlike the lm-eval `milu_English` spelling.
+    - name: milu_${oc.env:MILU_LANG,hindi}_chat
