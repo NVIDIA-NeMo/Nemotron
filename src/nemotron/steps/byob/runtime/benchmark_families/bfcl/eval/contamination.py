@@ -48,7 +48,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -411,7 +411,7 @@ def contamination_report(
     decided_at: datetime | None = None,
 ) -> ContaminationReport:
     """Wrap a plan into the artifact a score can cite."""
-    moment = decided_at or datetime.now(timezone.utc)
+    moment = decided_at or datetime.now(UTC)
     return ContaminationReport(decided_at=moment.isoformat(), plan=plan)
 
 
@@ -436,7 +436,7 @@ def write_contamination_failure(config: BfclEvalConfig, error: Exception) -> tup
     document: dict[str, Any] = {
         "schema_version": CONTAMINATION_CONTRACT_VERSION,
         "status": "failed",
-        "diagnosed_at": datetime.now(timezone.utc).isoformat(),
+        "diagnosed_at": datetime.now(UTC).isoformat(),
         "eval_config_hash": config.eval_config_hash,
         "source_run_id": config.source.run_id,
         "error": (

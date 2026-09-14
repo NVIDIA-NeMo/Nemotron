@@ -58,7 +58,7 @@ import math
 import re
 import unicodedata
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final, cast
 
@@ -2621,7 +2621,7 @@ def source_verification_report(
     verified_at: datetime | None = None,
 ) -> SourceVerificationReport:
     """Wrap a verified source into the artifact a later stage can cite."""
-    moment = verified_at or datetime.now(timezone.utc)
+    moment = verified_at or datetime.now(UTC)
     return SourceVerificationReport(verified_at=moment.isoformat(), source=source)
 
 
@@ -2654,7 +2654,7 @@ def write_source_failure_diagnostic(
     document: dict[str, Any] = {
         "schema_version": SOURCE_VERIFICATION_CONTRACT_VERSION,
         "status": "failed",
-        "diagnosed_at": datetime.now(timezone.utc).isoformat(),
+        "diagnosed_at": datetime.now(UTC).isoformat(),
         "eval_config_hash": config.eval_config_hash,
         "source_run_id": config.source.run_id,
         "error": (

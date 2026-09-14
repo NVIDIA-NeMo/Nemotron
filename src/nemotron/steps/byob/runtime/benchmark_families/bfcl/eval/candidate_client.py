@@ -23,7 +23,7 @@ import json
 import os
 import time
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -683,15 +683,15 @@ def _retry_after(headers: httpx.Headers) -> float | None:
         try:
             moment = parsedate_to_datetime(value)
             if moment.tzinfo is None:
-                moment = moment.replace(tzinfo=timezone.utc)
-            seconds = (moment - datetime.now(timezone.utc)).total_seconds()
+                moment = moment.replace(tzinfo=UTC)
+            seconds = (moment - datetime.now(UTC)).total_seconds()
         except (TypeError, ValueError, OverflowError):
             return None
     return max(0.0, seconds)
 
 
 def _observed_at() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 __all__ = [

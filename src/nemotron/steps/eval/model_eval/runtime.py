@@ -775,7 +775,7 @@ def _run_manifest(
     image = image or None
     return {
         "schema_version": _MANIFEST_SCHEMA_VERSION,
-        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+        "generated_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
         "mode": "direct",
         "dry_run": dry_run,
         "model": {
@@ -830,7 +830,7 @@ def _describe_claim(lock: Path) -> str:
     try:
         held = json.loads(raw)
         started = _dt.datetime.fromisoformat(str(held["started_at"]))
-        age = _dt.datetime.now(_dt.timezone.utc) - started
+        age = _dt.datetime.now(_dt.UTC) - started
         hours = age.total_seconds() / 3600
         note = " -- likely stale, no eval runs this long" if hours >= 24 else ""
         return f"pid {held.get('pid')} on {held.get('host')}, started {started.isoformat()} ({hours:.1f}h ago){note}"
@@ -858,7 +858,7 @@ def _claim_output_dir(out_root: Path, *, dry_run: bool, overwrite: bool) -> Path
         {
             "pid": os.getpid(),
             "host": os.uname().nodename,
-            "started_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+            "started_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
         }
     )
     try:

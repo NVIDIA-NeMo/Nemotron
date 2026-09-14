@@ -37,7 +37,7 @@ import tempfile
 import uuid
 from collections.abc import Callable, Coroutine, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
@@ -270,7 +270,7 @@ def _resolve_eval_run_id(
         return existing
     if requested is not None:
         return requested
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     return f"bfcl-eval-{timestamp}-{uuid.uuid4().hex}"
 
 

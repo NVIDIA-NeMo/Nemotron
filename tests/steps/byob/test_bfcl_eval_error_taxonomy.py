@@ -9,11 +9,11 @@ the hash claim a coverage it no longer has.
 from __future__ import annotations
 
 import ast
+import tomllib
 from pathlib import Path
 from typing import Any, get_args
 
 import pytest
-import tomllib
 
 from nemotron.steps.byob.runtime.benchmark_families import bfcl as bfcl_family
 from nemotron.steps.byob.runtime.benchmark_families.bfcl.eval.conversation_contract import (
