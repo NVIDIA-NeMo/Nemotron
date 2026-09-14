@@ -12,6 +12,9 @@ This section describes how to build a custom multiple-choice question (MCQ) benc
 You supply domain text files under `input_dir`, and the pipeline samples few-shot exemplars from a Hugging Face benchmark named in your configuration, such as `cais/mmlu`.
 The configuration specifies subject filters such as `high_school_mathematics`.
 
+To build function-calling benchmarks from an executable local or HTTPS Oracle
+Pack, use the {doc}`function-calling/index` documentation for `byob/bfcl`.
+
 The benchmark step prepares seed rows, generates and judges questions, runs optional deduplication and distractor stages, and writes `benchmark.parquet`.
 An optional translation stage reads an existing benchmark and writes another `benchmark.parquet` with the same column layout.
 

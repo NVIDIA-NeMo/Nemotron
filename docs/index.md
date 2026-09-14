@@ -69,11 +69,12 @@ Translate JSONL or Parquet corpora with `translate/nemo_curator`, NeMo Curator
 backends, and optional FAITH quality scoring.
 :::
 
-:::{grid-item-card} Build MCQ Benchmarks
+:::{grid-item-card} Build Benchmarks
 :link: build-benchmarks/index
 :link-type: doc
 
-Generate and translate custom multiple-choice benchmarks with `byob/mcq`.
+Generate custom multiple-choice benchmarks with `byob/mcq`, or build
+function-calling benchmarks from executable Oracle Packs with `byob/bfcl`.
 :::
 
 :::{grid-item-card} Data Curation

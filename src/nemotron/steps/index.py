@@ -48,6 +48,7 @@ class ArtifactRef:
     type: str
     description: str = ""
     required: bool = True
+    stages: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -281,6 +282,7 @@ def _parse_artifacts(raw_entries: object, *, default_required: bool) -> tuple[Ar
             type=str(entry.get("type", "")),
             description=str(entry.get("description", "")),
             required=bool(entry.get("required", default_required)),
+            stages=_as_str_tuple(entry.get("stages")),
         )
         for entry in _table_list(raw_entries)
     )

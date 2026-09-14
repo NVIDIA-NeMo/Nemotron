@@ -54,6 +54,28 @@ def test_discovered_steps_have_runners(steps_root: Path) -> None:
     assert not missing_runners, f"Discovered steps without step.py runners: {missing_runners}"
 
 
+def test_bfcl_artifacts_are_optional_and_bound_to_emitting_stages(
+    steps_root: Path,
+) -> None:
+    bfcl = next(step for step in discover_steps(steps_root) if step.id == "byob/bfcl")
+    outputs = {artifact.type: artifact for artifact in bfcl.produces}
+
+    assert set(outputs) == {
+        "bfcl_benchmark_parquet",
+        "bfcl_run_manifest",
+        "bfcl_stage_cache",
+        "bfcl_compatibility_exports",
+        "bfcl_export_validation_report",
+    }
+    assert all(not artifact.required for artifact in outputs.values())
+    assert outputs["bfcl_benchmark_parquet"].stages == ("generate", "all")
+    assert all(artifact.stages for artifact in outputs.values())
+
+    (oracle_pack,) = bfcl.consumes
+    assert not oracle_pack.required
+    assert oracle_pack.stages == ("prepare", "generate", "all")
+
+
 def test_legacy_grpo_step_is_not_discoverable(steps_root: Path) -> None:
     discovered_step_ids = {step.id for step in discover_steps(steps_root)}
     legacy_step_id = "/".join(("rl", "nemo_rl_" + "grpo"))

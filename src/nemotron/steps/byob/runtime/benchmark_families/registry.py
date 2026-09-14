@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from .base import BenchmarkFamilySpec
+from .bfcl.family import SPEC as BFCL_SPEC
 from .mcq.family import SPEC as MCQ_SPEC
 
 _REGISTRY: dict[str, BenchmarkFamilySpec] = {
+    BFCL_SPEC.name: BFCL_SPEC,
     MCQ_SPEC.name: MCQ_SPEC,
 }
 

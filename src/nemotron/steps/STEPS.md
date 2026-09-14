@@ -4,6 +4,7 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
+| [byob/bfcl](byob/bfcl/) | Generate function-calling benchmark parquet artifacts from an executable Oracle Pack with process-worker isolation. | oracle_pack (optional) | bfcl_benchmark_parquet (optional), bfcl_run_manifest (optional), bfcl_stage_cache (optional), bfcl_compatibility_exports (optional), bfcl_export_validation_report (optional) |
 | [byob/mcq](byob/mcq/) | Generate and translate BYOB MCQ benchmark parquet artifacts from domain documents with an extensible benchmark-family runtime. | benchmark_source_corpus, benchmark_parquet (optional) | mcq_benchmark_parquet, translated_mcq_benchmark_parquet (optional) |
 
 ## convert — Conversion

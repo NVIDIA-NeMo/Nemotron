@@ -30,7 +30,6 @@ FAMILY_REQUIRED_FILES = (
     "step.py",
     "config/default.yaml",
     "config/tiny.yaml",
-    "config/translate.yaml",
 )
 
 FAMILY_RUNTIME_REQUIRED_FILES = (
@@ -55,6 +54,8 @@ def validate_skill_dir(skill_dir: Path) -> list[str]:
             rel_path = f"{family}/{family_path}"
             if not (skill_dir / rel_path).exists():
                 errors.append(f"missing required file: {rel_path}")
+        if family == "mcq" and not (skill_dir / family / "config" / "translate.yaml").exists():
+            errors.append(f"missing required file: {family}/config/translate.yaml")
 
         for runtime_path in FAMILY_RUNTIME_REQUIRED_FILES:
             rel_path = f"runtime/benchmark_families/{family}/{runtime_path}"

@@ -1,0 +1,127 @@
+# Example: a publication-scale, template-only Gold run. This is the file to copy
+# when the goal is a releasable benchmark rather than a smoke check, and it runs
+# as written against the bundled reference pack.
+#
+# Every number below is a worked example, not a requirement. The one that drives
+# the rest is the size target. Here it is chosen to sit near BFCL V1's ~1,390
+# samples: the pack declares six categories, so the closest uniform budget is
+# 6 * 232 = 1,392. Pick your own target, divide it by your category count, and
+# the mixes further down stay meaningful.
+#
+# `tasks_per_category` is a maximum, not a replication instruction: every row
+# still has a unique deterministic binding. Stage 4 over-generates candidates and
+# Stage 11 selects the declared challenge mix without copying rows or counting
+# paraphrases as new task semantics.
+
+schema_version: "1.1"
+config_status: resolved
+family: bfcl
+expt_name: bfcl_gold_publication_example
+stage: all
+random_seed: 42
+
+output_dir: /tmp/bfcl/gold_publication_example
+
+oracle_pack:
+  manifest_path: data/banking_vn_oracle_pack/manifest.yaml
+
+oracle_runtime:
+  clock: "2026-03-02T09:00:00+07:00"
+  tool_timeout_s: 5.0
+  assertion_timeout_s: 5.0
+  import_timeout_s: 10.0
+  reset_timeout_s: 5.0
+  episode_timeout_s: 60.0
+  worker: process
+  allowed_roots:
+    - data
+
+lineage:
+  policy: strict_separation
+  profile_influenced_surface: false
+  judge_advisory: null
+  roles:
+    # Template-only generation remains Gold-eligible. Model roles can be
+    # enabled later only with pinned, mutually distinct canonical identities.
+    profile: {enabled: false, model_config: null}
+    paraphrase: {enabled: false, model_config: null}
+    surface_judge: {enabled: false, model_config: null}
+
+surface_generation:
+  # The language the pack's templates are written in.
+  language: vi
+  model_paraphrase_enabled: false
+  paraphrases_per_template: 0
+  preserve_slot_values: true
+  prevent_tool_name_leakage: true
+
+surface_quality_validation:
+  contract_version: "1.1"
+  enabled: true
+  # Deterministic guards run without delegating publication authority to an LLM.
+  drop_authority: false
+
+task_generation:
+  # Stage 4 over-generates a deterministic candidate pool so Stage 11 can
+  # select a challenge mix instead of retaining every easy lookup.
+  candidate_tasks_per_category: 480
+  # Six categories * 232 = 1,392 published canonical task samples.
+  tasks_per_category: 232
+  # Declaring the total lets Stage 11 abort instead of quietly publishing short.
+  target_published_tasks: 1392
+  difficulty_mix: {easy: 0.25, medium: 0.30, hard: 0.45}
+  # Dependent multi-call tasks remain single-user-turn by definition; the
+  # separate turn mix therefore targets the available scripted dialogue
+  # inventory without misclassifying tool-chain depth as multiturn.
+  turn_mix: {single_turn: 0.70, multi_turn: 0.30}
+  # Weight this toward multi-call paths when the domain has real tool chains to
+  # exercise; a catalog of independent lookups is better served by a flatter mix.
+  # The bias audit checks the published mix against this one (dimension B5).
+  tool_call_count_mix: {"1": 0.60, "2": 0.30, "3+": 0.10}
+  # The within-category intent target. The bias audit (dimension B15) allows five
+  # percentage points of post-selection drift against it; the stricter per-intent
+  # row cap under semantic_deduplication_config remains the operational bound.
+  max_intent_share: 0.50
+  # Conversation policy is the axis a candidate is most likely to fail on, so the
+  # release declares it rather than letting inventory decide. `irrelevant` is
+  # pinned at one sixth because the out_of_scope category owes 232 rows and
+  # declares no other policy.
+  policy_mix:
+    single_turn: 0.19
+    missing_slot: 0.10
+    dependent_call: 0.15
+    multi_tool: 0.07
+    confirmation: 0.07
+    correction: 0.08
+    negative_path: 0.07
+    clarify_only: 0.1033
+    irrelevant: 0.1667
+
+semantic_deduplication_config:
+  contract_version: "1.0"
+  enabled: true
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 64
+  eps: 0.08
+  # Keep distinct fixture-bound evaluation cases even when their masked surface
+  # forms cluster together. Stage 11 still records those clusters for the bias
+  # audit's post-dedup edge coverage check (dimension B11); dropping the rows
+  # would collapse BFCL-style argument and state coverage back to roughly one row
+  # per template.
+  remove_duplicates: false
+  # Two rows that call the same tools with the same arguments score the same model
+  # twice, so the run admits each executable case once and caps how much of the
+  # benchmark any single intent can own.
+  max_execution_case_reuse: 1
+  max_rows_per_intent: 120
+  representative_source_preference: [template, model]
+  # A publication run must not silently weaken a declared balancing target.
+  unmet_target_policy: abort
+
+# Both writers are derived from benchmark.parquet and read back for equivalence.
+# The NeMo bundle is input for a native function-calling adapter, not a Launcher
+# run config.
+
+exports:
+  bfcl_json: true
+  nemo_evaluator_bundle: true

@@ -1,6 +1,10 @@
 # BYOB
 
-Use this README to create or translate benchmark artifacts while keeping benchmark-family logic easy for developers to extend.
+Use this README to create benchmark artifacts while keeping benchmark-family logic easy for developers to extend. MCQ starts from domain documents; BFCL starts from an executable Oracle Pack.
+
+For function-calling generation, begin with
+[bfcl/README.md](bfcl/README.md) and the
+[Oracle Pack contract](references/bfcl-oracle-pack.md).
 
 ## Developer Journey
 
@@ -47,7 +51,7 @@ Start from `mcq/config/tiny.yaml` for a smoke run, `mcq/config/default.yaml` for
 generation, and `mcq/config/translate.yaml` for translation. Developers usually
 change:
 
-- `family`: currently `mcq`.
+- `family`: `mcq` or `bfcl`.
 - `stage`: `prepare`, `generate`, `translate`, or `all`.
 - `target_source_mapping`: target subjects mapped to source document roots.
 - `filtering_model_configs`: explicit model configs for filtering and dedup.

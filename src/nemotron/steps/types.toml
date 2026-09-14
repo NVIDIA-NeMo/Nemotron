@@ -94,3 +94,25 @@ is_a = ["benchmark_parquet"]
 [translated_mcq_benchmark_parquet]
 description = "Translated multiple-choice BYOB benchmark parquet"
 is_a = ["mcq_benchmark_parquet"]
+
+[oracle_pack]
+description = "Executable function-calling oracle: tools, fixtures, templates, assertions, and validation cases"
+
+[bfcl_benchmark_parquet]
+description = "Function-calling BYOB benchmark parquet with expected tool calls and provenance"
+is_a = ["benchmark_parquet"]
+
+[bfcl_run_manifest]
+description = "Function-calling generation lineage: oracle clock, generation mode, and publication hashes"
+
+[bfcl_stage_cache]
+description = "Per-stage function-calling generation parquets, reference samples, and rejection reports"
+
+[bfcl_compatibility_exports]
+description = "Optional BFCL JSONL and Evaluator bundles derived from the published function-calling parquet"
+
+[bfcl_export_validation_report]
+description = "Proof that enabled function-calling exports match the published parquet row for row"
+
+[bfcl_bias_audit_reports]
+description = "Recomputed bias audit over frozen function-calling release evidence"

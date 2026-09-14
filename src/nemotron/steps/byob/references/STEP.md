@@ -66,3 +66,11 @@ for orchestration.
 The translation path reads an existing benchmark parquet, flattens MCQ text for Curator experimental
 translation, writes translation and quality cache files, then writes translated `benchmark_raw.parquet`
 and `benchmark.parquet`.
+
+## BFCL generation contract
+
+The registered `bfcl` family consumes an executable Oracle Pack and supports
+`prepare`, `generate`, and `all`. Its normative pack, isolation, generation,
+checkpoint, publication, and compatibility-export rules are defined in
+[`bfcl-oracle-pack.md`](bfcl-oracle-pack.md). The manual operator flow is
+[`bfcl-manual-oracle-pack-flow.md`](bfcl-manual-oracle-pack-flow.md).
