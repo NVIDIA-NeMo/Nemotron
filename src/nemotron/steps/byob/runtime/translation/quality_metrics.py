@@ -16,8 +16,37 @@
 
 import pandas as pd
 
-from nemotron.steps.byob.runtime.benchmark_families.mcq.utils import format_qa
 from nemotron.steps.byob.runtime.config import ByobTranslationConfig
+
+
+def evaluate_text_quality_metrics(
+    dataset: pd.DataFrame,
+    config: ByobTranslationConfig,
+    *,
+    reference_text_field: str,
+    hypothesis_text_field: str,
+) -> pd.DataFrame:
+    """Evaluate generic source/backtranslation text pairs with Curator."""
+    from nemo_curator.stages.text.experimental.translation import TextQualityMetricStage
+    from nemo_curator.tasks import DocumentBatch
+
+    if reference_text_field not in dataset or hypothesis_text_field not in dataset:
+        raise ValueError(
+            "translation quality input must carry "
+            f"{reference_text_field!r} and {hypothesis_text_field!r}"
+        )
+    stage = TextQualityMetricStage(
+        reference_text_field=reference_text_field,
+        hypothesis_text_field=hypothesis_text_field,
+        metrics=config.backtranslation_quality_metrics,
+        filter_enabled=False,
+    )
+    batch = DocumentBatch(
+        task_id=f"{config.expt_name}-quality",
+        dataset_name=config.expt_name,
+        data=dataset.copy(),
+    )
+    return stage.process(batch).to_pandas()
 
 
 def evaluate_quality_metrics(dataset: pd.DataFrame, config: ByobTranslationConfig):
@@ -35,8 +64,7 @@ def evaluate_quality_metrics(dataset: pd.DataFrame, config: ByobTranslationConfi
         pd.DataFrame: Original dataset augmented with score columns for each metric
                      (score_{metric}, score_{metric}_passed).
     """
-    from nemo_curator.stages.text.experimental.translation import TextQualityMetricStage
-    from nemo_curator.tasks import DocumentBatch
+    from nemotron.steps.byob.runtime.benchmark_families.mcq.utils import format_qa
 
     dataset_out = dataset.copy()
     dataset_out["_byob_reference_text"] = dataset_out[["question", "options"]].apply(
@@ -50,12 +78,10 @@ def evaluate_quality_metrics(dataset: pd.DataFrame, config: ByobTranslationConfi
         axis=1,
     )
 
-    stage = TextQualityMetricStage(
+    dataset_out = evaluate_text_quality_metrics(
+        dataset_out,
+        config,
         reference_text_field="_byob_reference_text",
         hypothesis_text_field="_byob_backtranslated_text",
-        metrics=config.backtranslation_quality_metrics,
-        filter_enabled=False,
     )
-    batch = DocumentBatch(task_id=f"{config.expt_name}-quality", dataset_name=config.expt_name, data=dataset_out)
-    dataset_out = stage.process(batch).to_pandas()
     return dataset_out.drop(columns=["_byob_reference_text", "_byob_backtranslated_text"])

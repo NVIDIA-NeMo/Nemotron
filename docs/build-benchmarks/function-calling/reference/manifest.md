@@ -27,8 +27,8 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
 ```
 
 Use `--transport endpoint` for an HTTP oracle and `--include-held-out` when the pack
-needs a held-out policy. Review the manifest against the executable oracle and pack
-artifacts before validation.
+needs a held-out policy. In model-assisted authoring, assembly derives the manifest
+from certified evidence and the reviewed supplement; it is not free-form model output.
 
 ## Field Contract
 
@@ -40,7 +40,7 @@ artifacts before validation.
 | `description` | Optional | Human-readable pack metadata; it does not configure runtime behavior. |
 | `languages` | Optional | Preferred language codes available in user and assistant surfaces. |
 | `default_language` | Optional | Preferred default rendered language. |
-| `clock` | Optional | Intended frozen time as unvalidated metadata. Execution uses `oracle_runtime.clock` from run configuration. |
+| `clock` | Optional; required by assisted assembly | Intended frozen time as unvalidated metadata. Execution uses `oracle_runtime.clock` from run configuration. |
 | `primary_keys.<collection>` | When fixture key inference is ambiguous | Field that uniquely identifies a row in one fixture collection. |
 | `absent_ids.<collection>` | When a template uses an `absent:` source | Author-declared identifiers intended not to occur in that collection. |
 | `assistant_turn_templates.<type>.<lang>` | For text milestones not overridden by a task | Shared `ask_for_slot`, `ask_confirm`, `decline`, and `final_answer` text. |

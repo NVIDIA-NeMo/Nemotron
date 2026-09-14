@@ -1,4 +1,4 @@
-# Manual BFCL flow: Oracle Pack to publication
+# Manual BFCL flow: Oracle Pack to evaluation
 
 This guide runs a hand-authored Oracle Pack through the complete BFCL path:
 
@@ -9,7 +9,9 @@ manual Oracle Pack
   -> optional guarded LLM paraphrasing
   -> optional surface quality and deduplication/balancing
   -> atomic publication
-  -> immutable release archive
+  -> evaluation source verification and contamination gate
+  -> trace and executable candidate evaluation
+  -> immutable evaluation artifacts
 ```
 
 The flow is manual because the user supplies the executable Oracle Pack. A
@@ -72,6 +74,21 @@ If LLM paraphrasing is enabled, also prepare:
 - an immutable paraphrase-model identity;
 - an environment-variable name containing its credential;
 - language-appropriate templates and reachable diversity constraints.
+
+### Evaluation inputs
+
+Prepare:
+
+- a committed generation `run_manifest.json`;
+- the exact Oracle Pack used by generation for executable mode;
+- an OpenAI-compatible candidate endpoint with tool calling;
+- the served model ID;
+- an immutable candidate revision or SHA-256 weights digest;
+- a credential environment-variable name;
+- a new evaluation output directory outside the generation tree.
+
+The candidate must not be a model exposed to benchmark rows during profiling,
+paraphrasing, judging, or translation.
 
 ## 2. Work from the repository root
 
@@ -359,25 +376,366 @@ PY
 
 Do not evaluate a bare parquet or a directory without `run_manifest.json`.
 
-## 10. Archive and recover safely
+### Evaluate an existing published benchmark
 
-Archive a completed publication with:
+If generation already completed successfully, skip Sections 4–8 and bind the
+evaluation to the existing publication directory. The directory must contain
+the original `run_manifest.json`, `benchmark.parquet`, and
+`benchmark_raw.parquet`; copying only the parquet data is insufficient.
+
+For example, to evaluate the existing Banking VN publication
+`bfcl_banking_vn_gold_v1_1392`:
 
 ```bash
-python -m nemotron.steps.byob.scripts.archive_bfcl_release \
-  --run-manifest /path/to/run_manifest.json \
-  --output /path/to/release.tar.gz
+cd /path/to/Nemotron
+export NEMOTRON_ROOT="$PWD"
+
+# Override BFCL_RUN_ROOT when the publication is on another persistent mount.
+export BFCL_RUN_ROOT="${BFCL_RUN_ROOT:-$HOME/bfcl-runs}"
+export BFCL_PUBLICATION_DIR="$BFCL_RUN_ROOT/bfcl_banking_vn_gold_v1_1392"
+export BFCL_RUN_MANIFEST="$BFCL_PUBLICATION_DIR/run_manifest.json"
+
+test -f "$BFCL_RUN_MANIFEST"
+test -f "$BFCL_PUBLICATION_DIR/benchmark.parquet"
+test -f "$BFCL_PUBLICATION_DIR/benchmark_raw.parquet"
 ```
 
-Treat `run_manifest.json` as the commit marker. Never repair one generated file
-in place. Resume only from an untouched checkpoint chain; otherwise run a fresh
-`prepare` and `generate` into a clean output tree.
+Executable evaluation also needs the exact Oracle Pack that produced the
+publication:
 
-## Completion checklist
+```bash
+export BFCL_PACK_ROOT="$NEMOTRON_ROOT/src/nemotron/steps/byob/data/banking_vn_oracle_pack"
+export BFCL_PACK_MANIFEST="$BFCL_PACK_ROOT/manifest.yaml"
 
-- Oracle validation is Gold-eligible for publication configs.
-- Local code runs only in a process worker, or HTTPS identity is pinned.
-- Every generated row passed schema validation and deterministic replay.
-- Optional surface quality, balancing, and exports have their reports.
-- `benchmark.parquet` is an unchanged selection of `benchmark_raw.parquet`.
-- `run_manifest.json` was written last and hashes every published artifact.
+test -f "$BFCL_PACK_MANIFEST"
+test -f "$BFCL_PACK_ROOT/backend.py"
+```
+
+Do not edit or regenerate any file inside the existing publication. If it was
+copied from another host, preserve the complete directory and use a checkout
+whose Oracle Pack matches the identity recorded by `run_manifest.json`.
+Source verification will fail closed if the benchmark, manifest, or Oracle
+resource has drifted.
+
+Continue with Section 10 to configure the independent candidate, then set these
+values in Section 11:
+
+```yaml
+source_run_manifest: /absolute/path/to/bfcl_banking_vn_gold_v1_1392/run_manifest.json
+
+source_oracle:
+  kind: python
+  pack_manifest: /absolute/path/to/banking_vn_oracle_pack/manifest.yaml
+  resource: /absolute/path/to/banking_vn_oracle_pack/backend.py
+```
+
+Keep the evaluation output outside
+`$BFCL_PUBLICATION_DIR`, for example
+`$BFCL_RUN_ROOT/eval/banking-vn-candidate-v1/artifacts`. Run the preflight in
+Section 12 before enabling live candidate traffic.
+
+## 10. Prepare an independent candidate endpoint
+
+The endpoint must support OpenAI-compatible chat completions and function/tool
+calling:
+
+```bash
+export BFCL_CANDIDATE_BASE_URL="https://candidate.example.com/v1"
+export BFCL_CANDIDATE_API_KEY="<secret>"
+
+curl -sS \
+  -H "Authorization: Bearer $BFCL_CANDIDATE_API_KEY" \
+  "$BFCL_CANDIDATE_BASE_URL/models"
+```
+
+Record:
+
+- the returned served model ID;
+- an immutable 40–64 character model commit or
+  `sha256:<64 hex>` weights digest;
+- the registry/source-qualified model name.
+
+Do not use moving revisions such as `main`, `master`, `latest`, branches, or
+tags.
+
+## 11. Create a resolved evaluation config
+
+Create a new directory outside the generation publication tree:
+
+```bash
+export BFCL_EVAL_ROOT="$BFCL_RUN_ROOT/eval/candidate-v1"
+mkdir -p "$BFCL_EVAL_ROOT"
+```
+
+Copy the current schema templates:
+
+```bash
+cp \
+  "$NEMOTRON_ROOT/src/nemotron/steps/byob/bfcl/config/eval.default.yaml" \
+  "$BFCL_EVAL_ROOT/eval.yaml"
+cp \
+  "$NEMOTRON_ROOT/src/nemotron/steps/byob/bfcl/config/eval.cli.yaml" \
+  "$BFCL_EVAL_ROOT/eval.cli.yaml"
+```
+
+Resolve every `REPLACE_ME_*` value in `$BFCL_EVAL_ROOT/eval.yaml`, set
+`config_status: resolved`, and use the following shape:
+
+```yaml
+schema_version: "1.1"
+config_status: resolved
+
+source_run_manifest: <BFCL_RUN_MANIFEST>
+
+# Required for executable mode. Choose exactly one resource kind.
+source_oracle:
+  kind: python
+  pack_manifest: <BFCL_PACK_MANIFEST>
+  resource: <BFCL_PACK_ROOT>/backend.py
+
+# Endpoint-backed alternative:
+# source_oracle:
+#   kind: endpoint
+#   pack_manifest: <BFCL_PACK_MANIFEST>
+#   resource: <BFCL_PACK_ROOT>/endpoint_config.yaml
+
+translation_manifest: null
+
+eval:
+  mode: [trace, executable]
+
+scoring:
+  contract: <NEMOTRON_ROOT>/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md
+  argument_matching: schema_then_canonical
+  insert_declared_defaults: true
+  respect_call_order: true
+  respect_call_group: true
+  allow_llm_repair: false
+  task_success: all_applicable_gates
+
+limits:
+  max_turns: 5
+  tool_timeout_s: 10.0
+  candidate_timeout_s: 60.0
+  episode_timeout_s: 300.0
+  max_parallel_tasks: 1
+  max_retries: 2
+
+candidates:
+  - alias: candidate_a
+    model: REPLACE_WITH_SERVED_MODEL_ID
+    provider: openai_compatible
+    provider_api_version: v1
+    api:
+      base_url: https://candidate.example.com/v1
+      api_key_env: BFCL_CANDIDATE_API_KEY
+    model_identity:
+      source: huggingface
+      model: REPLACE_WITH_REGISTRY_MODEL_NAME
+      revision: REPLACE_WITH_40_TO_64_HEX_COMMIT
+      weights_digest: null
+    inference:
+      temperature: 0.0
+      top_p: 1.0
+      max_tokens: 8192
+      seed: 42
+      tool_choice: auto
+      provider_extensions: {}
+
+contamination:
+  enforce: true
+  on_violation: fail_run
+  comparison_set: common_intersection
+
+publication:
+  requested: true
+  require_same_task_ids: true
+
+outputs:
+  output_dir: <BFCL_EVAL_ROOT>/artifacts
+  write_task_results: true
+  write_eval_manifest: true
+  cache_candidate_responses: true
+  cache_tool_results: true
+```
+
+Replace the angle-bracket values with the exported absolute paths before
+running evaluation; the eval loader does not expand shell variables.
+
+For trace-only debugging, use `eval.mode: [trace]` and
+`source_oracle: null`. Publishable executable evaluation requires a
+Gold-eligible source and the exact Oracle resource.
+
+Resolve `$BFCL_EVAL_ROOT/eval.cli.yaml` as:
+
+```yaml
+schema_version: "1.0"
+family: bfcl
+stage: eval
+eval_config_path: ./eval.yaml
+execution_backend: direct
+output_format: human
+probe_oracle: true
+dry_run: true
+```
+
+## 12. Run evaluation preflight
+
+```bash
+uv run nemotron steps run byob/bfcl \
+  -c "$BFCL_EVAL_ROOT/eval.cli.yaml"
+```
+
+Expected CLI output includes:
+
+- `status: preflight_passed`;
+- `candidate_network_used: false`;
+- the evaluation config hash;
+- authorized task counts;
+- whether the Oracle was probed.
+
+Direct CLI preflight performs no candidate inference and does not commit
+evaluation artifacts.
+
+Resolve contamination findings before proceeding. Do not weaken the gate for a
+publishable score.
+
+## 13. Run live evaluation
+
+Change the CLI envelope:
+
+```yaml
+dry_run: false
+```
+
+Run:
+
+```bash
+uv run nemotron steps run byob/bfcl \
+  -c "$BFCL_EVAL_ROOT/eval.cli.yaml"
+```
+
+The evaluator drives candidate conversations, scores proposed traces, executes
+candidate calls against task-local Oracle sessions in executable mode, runs
+pack assertions, aggregates metrics, and writes the final eval manifest last.
+
+Start with `max_parallel_tasks: 1`. Increase it only after confirming endpoint
+concurrency and rate limits; any config change produces a different
+`eval_config_hash`.
+
+## 14. Inspect evaluation artifacts
+
+A successful trace-and-executable run writes:
+
+```text
+artifacts/
+├── resolved_eval_config.json
+├── source_verification_report.json
+├── contamination_report.json
+├── candidate_io_cache.jsonl
+├── tool_trace_cache.jsonl
+├── eval_report.json
+├── eval_task_results.parquet
+└── eval_manifest.json
+```
+
+Inspect aggregate metrics:
+
+```bash
+uv run python - "$BFCL_EVAL_ROOT/artifacts/eval_report.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(json.dumps(report, indent=2, ensure_ascii=False))
+PY
+```
+
+Inspect task-level schema and row count:
+
+```bash
+uv run python - "$BFCL_EVAL_ROOT/artifacts/eval_task_results.parquet" <<'PY'
+import sys
+import pyarrow.parquet as pq
+
+table = pq.read_table(sys.argv[1])
+print(table.schema)
+print(f"rows={table.num_rows}")
+PY
+```
+
+Interpret trace and executable metrics separately. Trace success means the
+candidate proposed the expected calls. Executable success additionally means
+those calls ran against the Oracle and satisfied the pack assertions.
+
+## 15. Safe reruns and recovery
+
+- Preserve append-only paraphrase and candidate I/O caches.
+- Use generation `skip_until` only with a verified predecessor checkpoint.
+- Create a new evaluation output directory for a new candidate or changed
+  configuration.
+- Do not overwrite a committed evaluation artifact set.
+- Regenerate after schema, hash, or publication-contract failures.
+- Point `source_oracle` at the exact pack manifest and Oracle resource used by
+  generation.
+- Select another candidate if contamination is detected or unresolved.
+
+## 16. Banking VN reference example
+
+Use these files as a complete example of the generic inputs:
+
+```text
+src/nemotron/steps/byob/data/banking_vn_oracle_pack/
+├── manifest.yaml
+├── tools.json
+├── backend.py
+├── fixtures.json
+├── task_templates.yaml
+├── validation_cases.yaml
+├── assertions.py
+└── README.md
+```
+
+Reference generation profiles:
+
+```text
+src/nemotron/steps/byob/bfcl/config/smoke.example.yaml
+src/nemotron/steps/byob/bfcl/config/publication.example.yaml
+src/nemotron/steps/byob/bfcl/config/publication.paraphrase.example.yaml
+```
+
+- `smoke.example.yaml` is a small `smoke_no_publication` profile.
+- `publication.example.yaml` is the template-only Gold profile.
+- `publication.paraphrase.example.yaml` adds guarded model paraphrasing on top of
+  the same executable cases.
+
+All three run as written against the bundled reference pack. Copy the one that
+matches your intent and repoint `oracle_pack.manifest_path` at your own pack.
+
+Example paths:
+
+```bash
+export BFCL_PACK_ROOT="$NEMOTRON_ROOT/src/nemotron/steps/byob/data/banking_vn_oracle_pack"
+export BFCL_PACK_MANIFEST="$BFCL_PACK_ROOT/manifest.yaml"
+export BFCL_GEN_CONFIG="$NEMOTRON_ROOT/src/nemotron/steps/byob/bfcl/config/publication.paraphrase.example.yaml"
+```
+
+The bundled profile uses a provider named `nvidia_inference_api`, credential
+reference `NGC_API_KEY`, Vietnamese language `vi`, Stage 10, Stage 11, and
+Banking-specific balance constraints. Replace those deployment values when
+using another provider, but do not copy the Banking task counts or diversity
+limits into another pack without proving they are reachable.
+
+## 17. Completion checklist
+
+The flow is complete only when:
+
+- every required Oracle Pack file exists and exactly one Oracle kind is used;
+- fresh validation reports `gold_eligible: true`;
+- Stage 12 publishes `run_manifest.json`;
+- published row counts satisfy the current config, not another pack’s target;
+- enabled paraphrase, surface-quality, dedup, and export reports are complete;
+- evaluation source verification and contamination checks pass;
+- requested trace and executable metrics are present;
+- `eval_manifest.json` commits the immutable evaluation artifact set.

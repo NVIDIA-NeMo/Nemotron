@@ -123,7 +123,11 @@ docs/_build/
 skills/*/evals/results/
 skills/*/evals/tier3-reports/
 
-# BFCL local run output and manually assembled Oracle Packs.
+# BFCL local run output. Bundled configs write to a scratch path outside the
+# checkout, but a run driven by hand lands here: published run trees and an
+# assembled oracle pack. A benchmark committed by accident is worse than an
+# unreadable git status.
+/.docker/
 /.scratch/
 /oracle_pack/
 

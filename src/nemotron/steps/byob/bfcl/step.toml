@@ -41,6 +41,48 @@ description = "exports/export_validation_report.json proving enabled export row 
 required = false
 stages = ["generate", "all"]
 
+[[produces]]
+type = "bfcl_localized_benchmark"
+description = "A target-language BFCL benchmark preserving source task identity, executable calls, assertions, schemas, fixture values, and Oracle lineage."
+required = false
+stages = ["translate"]
+
+[[produces]]
+type = "bfcl_translation_manifest"
+description = "Content-addressed translation_manifest.json binding the localized benchmark to its published source, stable field paths, protected tokens, quality artifacts, translator identity, and contamination scope."
+required = false
+stages = ["translate"]
+
+[[produces]]
+type = "bfcl_source_verification_report"
+description = "source_verification_report.json in the eval output tree proving the evaluated source is the committed publication: manifest hash, both table hashes, publication semantics, task index, and oracle pack fingerprint."
+required = false
+stages = ["eval"]
+
+[[produces]]
+type = "bfcl_contamination_report"
+description = "contamination_report.json in the eval output tree naming which models read which published rows, which candidates could not be separated from them, and the task set each candidate is authorized to answer."
+required = false
+stages = ["eval"]
+
+[[produces]]
+type = "bfcl_candidate_io_cache"
+description = "candidate_io_cache.jsonl in the eval output tree: append-only, hash-verified native function-calling requests, every HTTP attempt, and a completion marker used for network-free replay."
+required = false
+stages = ["eval"]
+
+[[produces]]
+type = "bfcl_tool_trace_cache"
+description = "tool_trace_cache.jsonl in the eval output tree: append-only, hash-verified complete executable episodes used for oracle-free replay."
+required = false
+stages = ["eval"]
+
+[[produces]]
+type = "bfcl_eval_artifacts"
+description = "eval_report.json, eval_task_results.parquet, and eval_manifest.json binding source, plan, candidate aggregates, result hashes, and both replay caches."
+required = false
+stages = ["eval"]
+
 [[parameters]]
 name = "family"
 description = "Benchmark family implementation to run."
@@ -51,15 +93,41 @@ choices = ["bfcl"]
 name = "stage"
 description = "BYOB pipeline stage to run."
 default = "generate"
-choices = ["prepare", "generate", "all"]
+choices = ["prepare", "generate", "translate", "eval", "all"]
 
 [[parameters]]
 name = "config"
-description = "Path to a BFCL generation config."
+description = "Path to a generation config, or to a CLI orchestration config when stage=eval."
 
 [[parameters]]
 name = "skip_until"
 description = "Generation resume target. Runs the named canonical BFCL stage and all later enabled stages after recursively verifying and restoring its immediate enabled predecessor checkpoint."
+
+[[parameters]]
+name = "eval_config_path"
+description = "Resolved BFCL scoring config referenced by an eval orchestration config; kept separate so CLI choices never change eval_config_hash."
+
+[[parameters]]
+name = "execution_backend"
+description = "Evaluation backend selected by the orchestration config."
+default = "direct"
+choices = ["direct", "nemo_launcher"]
+
+[[parameters]]
+name = "output_format"
+description = "CLI result rendering. JSON is stable for automation; human prints one key-value field per line."
+default = "human"
+choices = ["human", "json"]
+
+[[parameters]]
+name = "dry_run"
+description = "For direct evaluation, verify source and contamination without candidate inference. For Launcher, materialize and submit with Launcher dry_run enabled."
+default = false
+
+[[parameters]]
+name = "probe_oracle"
+description = "Verify the oracle pack by executing it. Launcher runs pin this into the adapter config, so a declared choice is not reversed inside the evaluation container."
+default = true
 
 [[strategies]]
 when = "You need a function-calling benchmark from an executable oracle pack"
@@ -95,6 +163,76 @@ skill = "src/nemotron/steps/byob/references/bfcl-oracle-pack.md"
 when = "You need BFCL JSONL or a NeMo Evaluator input bundle beside the published parquet"
 then = "Enable exports.bfcl_json and/or exports.nemo_evaluator_bundle. Stage 12 derives both from one canonical projection, reads them back, writes exports/export_validation_report.json, and publishes run_manifest.json last. The NeMo bundle is native adapter input, not a standalone Launcher task registration."
 skill = "src/nemotron/steps/byob/references/bfcl-oracle-pack.md"
+
+[[strategies]]
+when = "You need to localize a published BFCL benchmark without changing what it scores"
+then = "Resolve config/translate.yaml, point source_run_manifest at the immutable generation run's run_manifest.json, and run stage=translate. The adapter verifies both source tables through the manifest, flattens approved message, intent, and optional function-description fields to stable paths, replaces executable tokens with ordered placeholders, uses the shared translation and backtranslation backend, restores and validates every token, then compares every localized row with its source before atomically writing benchmark.<language>.parquet and translation_manifest.json. It never accepts a bare parquet, filters a row, translates tool results, or changes tool names, parameter schemas, expected calls, assertions, held-out state, or lineage."
+skill = "src/nemotron/steps/byob/references/bfcl-oracle-pack.md"
+
+[[strategies]]
+when = "You need to evaluate candidate models against a published BFCL benchmark"
+then = "Resolve config/eval.default.yaml (schema 1.2; 1.1 configs still load and keep their stricter candidate identity rules), then point config/eval.cli.yaml at it and run stage=eval. The CLI envelope selects direct or nemo_launcher execution, output rendering, dry-run, and operational paths without changing eval_config_hash. Direct mode dispatches to run_declared_eval_sync(...) and lets the runner perform the single authoritative load of the pinned eval config. Launcher mode requires one candidate, keeps every orchestration path outside the immutable bundle, pins probe_oracle into the adapter config, requires container mounts to be identity mappings that cover every runtime path, and materializes the immutable adapter config, framework package, task entry, and merged eval/model_eval config. Managed deployments leave target URL/model id to Launcher; attached endpoints pin both. Submission follows only after the generated package is explicitly installed. Every failure leaves through one published exit status per registered taxonomy code. stage=generate still refuses eval_config_path and inline eval blocks."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to prove the benchmark you are about to score is the one that was published"
+then = "Call verify_eval_source(config) before any candidate token is spent. It re-reads run_manifest.json and holds it to the hash the eval config resolved, hashes benchmark_raw.parquet and benchmark.parquet against every declaration in the manifest, applies the publication contract to both tables, decodes the published rows under this build's benchmark schema into a unique addressable task index, and for executable mode recomputes the oracle pack fingerprint and probes the backend interface in a throwaway worker. It returns a VerifiedEvalSource handle — the only way a runner receives paths — and write_source_verification_report puts the evidence in outputs.output_dir. Call assert_source_unchanged immediately before execution: verification and use are separated in time, and that gap is where a source gets replaced."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to know whether a candidate already saw the tasks it is about to be scored on"
+then = "Call evaluate_contamination(config, source) after verification. Source verification records every model that read a published row — the profile, paraphrase, and surface_judge roles from run_manifest.json models.*, plus the translator when a translation is evaluated — together with the exact rows each one read. The gate compares each candidate against that inventory on both axes it can: weights digest, operator canonical id, serving route, then normalized model name plus revision. A match is a violation; a comparison that cannot settle the question is recorded as unresolved and is never guessed either way. fail_run refuses the run, exclude_row drops only the rows the exposure covers, and unresolved evidence blocks publication without shrinking a debug task set. The result is an EligibleEvalPlan whose common task set every candidate answers under common_intersection, plus contamination_report.json. Call assert_plan_unchanged before the first request."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to send one authorized native function-calling turn to a candidate endpoint"
+then = "Build a CandidateRequest with build_candidate_request(), then call NativeFunctionCallingClient.complete(). It sends ordered messages and OpenAI-compatible tools with pinned sampling fields, reads credentials only from api_key_env, streams the bounded response, and preserves message.tool_calls plus raw arguments without repair. Only transient endpoint failures retry. candidate_io_cache.jsonl records the request, every attempt, and one completion; a completion replays without credentials or network, while an interrupted sequence fails closed. The client transports one assistant turn; conversation advancement, tool execution, and scoring are separate responsibilities."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to run a whole multi-turn task against a candidate without leaking the answer"
+then = "Project source.evaluation_benchmark with its expected content hash and source.task_ids, then call build_conversation_script(projection, task_id, source=source) and run_candidate_episode() with the plan, client, and ContinuationGate. The builder refuses a projection whose hash, row count, or task sequence differs from the verified source; the driver also requires the candidate's canonical weights identity and the canonical gate's scoring-policy hash to equal what the contamination plan authorized. The prompt starts as the system prompts plus the first user request; only the candidate's own turns, released tool results, and scripted user requests may enter. An intermediate text turn must reproduce the published text before it unlocks a hidden user answer, and a terminal turn must contain non-empty textual content. Explicit truncation, content-filter, and max-token finish reasons never advance. A recorded result is released only to a matching type=function call with a unique non-empty id, addressed to that candidate id. Everything the model can cause — wrong tool, wrong or unparseable arguments, ambiguous call ids, an unreachable endpoint, or a spent budget — comes back as a CandidateEpisode status. The conversation driver releases recorded results only; tool execution and scoring are separate responsibilities."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need one deterministic score out of a recorded candidate episode"
+then = "Call score_trace_episode(episode=..., script=..., scoring=..., plan=...). It verifies the episode's authorization plan, candidate weights, task, source, and scoring-policy hash, then derives eval_config_hash from that plan instead of trusting a caller-provided stamp. It never contacts a provider, executes a tool, reads a clock, or re-parses provider bytes — so the same authorized evidence always reproduces the same score_hash, while human diagnostic wording does not. The result is a TraceTaskScore naming every gate the contract defines: tool_selection and arguments measure coverage of the whole gold trace; schema_valid, call_grouping, call_ordering, and text_turn measure consistency of asked turns; and trace_completion always applies. Empty terminal content and explicit truncated, filtered, or max-token provider finishes cannot succeed. Ordering is judged apart from selection. Candidate arguments must satisfy their declared schema before default insertion and canonical comparison can earn a recorded result; local refs and allOf are enforced, and invalid operational defaults are rejected during pack validation. task_success is derived from the gates, unsupported repair and assertions-only policies are refused, and continuation and scoring share one comparison kernel. Every failed gate is attributed: a failure blames the run only when the episode stopped for a reason the model did not choose and names a turn the model never answered, so an unreachable endpoint does not read as weak tool use, while a truncated answer inside a finished episode stays the model's own. Executable evaluation lifts these gates with their attribution intact, and trace_failure_records projects a score onto the same episode- and gate-layer records the task-results artifact carries. Executable evaluation adds oracle replay and pack assertions; a trace score never stands in for one."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to record what a candidate actually did against a live oracle"
+then = "Build an ExecutableTaskSpec from the complete canonical projection, VerifiedEvalSource, EligibleEvalPlan, candidate alias, and task id. Open the source-selected PythonOracleSession or EndpointOracleSession, then call run_executable_episode(...). The task projection binds source bytes, publication order, candidate authorization, source clock, verified oracle, runner-only milestones, fixture references, assertion names, mutation policy, confirmation coverage, and from_result producer/consumer coordinates while exposing only the answer-free seed and model-facing tools. It reconstructs assertion slots, initial slots, and the correction timeline from the verbatim opening surface, expected trace, cited fixture rows, and typed fixture, literal, enum, range, and absent-id values from the verified pack. Unknown final, pre-correction, and correction values are named separately in unresolved_slots, unresolved_slots_initial, and unresolved_slot_updates rather than guessed from each other; the isolated assertion runner tracks reads of all three so an assertion that needs one fails as infrastructure, never as a candidate error, while unrelated assertions retain their ordinary verdict. Both oracle adapters keep reset, ordered calls, state, and assertions in one task-local process worker; pack code never enters the evaluator process, every preflight and runtime exit closes the session, and mutating calls are never retried. A returned mutating result is committed only when bound pre-call and post-call state hashes differ; equal hashes prove no commit and a missing snapshot is unknown. A confirmation-protected call reaches the oracle only after its entire candidate batch matches the batch authorized by the user's scripted confirmation; bypass attempts remain not_executed evidence. Before a dependent consumer request, resolve its expected argument from exactly one paired successful live producer result and enforce the declared result path, JSON type, and consumer schema. Never rewrite candidate arguments or fall back to the recorded gold result. Missing, ambiguous, unavailable, or malformed dependency sources terminate with deterministic infrastructure evidence. Confirmation, correction, and missing-slot continuation messages come only from the published script. The live driver injects only candidate output, canonical live results addressed by candidate call id, and earned deterministic user turns. Its ExecutableEpisode (contract 1.2) binds task_spec_hash and keeps one ExecutedToolCall for every proposed call plus ordered dependency evidence, retaining invalid calls as not_executed and distinguishing normal results, certified {error:{code}} business rejections, malformed results, timeouts, infrastructure failures, and commit state. released_to_model is committed only when a later request actually admits the result; a terminal tool-only turn completes without falsely claiming a release. Terminal status is checked against fatal evidence in both directions, and episode_hash excludes replay and diagnostic wording while preserving semantic oracle data. Tool-trace persistence and bounded batch execution remain separate components."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to score a recorded executable BFCL episode"
+then = "Call score_executable_episode(episode=..., task=..., scoring=..., plan=...). It verifies candidate, task-spec hash, plan, source, oracle, script, eval-config, scoring-policy, dependency, and assertion identities before producing a number. The scorer performs no model, oracle, assertion, filesystem, or clock operation. It reconstructs dependent expected arguments from persisted paired live results, reuses the normalized trace gates against that resolved script, and adds oracle_execution, dependency_resolution, commit_state_known, assertions, and executable_completion. Structured business rejection is a valid oracle exchange whose correctness remains assertion-defined; dependency, commit-state, oracle, or assertion infrastructure errors set non_candidate_stop. Assertions marked not_applicable are skipped, and a fatal infrastructure stop may leave a declared assertion suffix unrun without fabricating verdicts. all_applicable_gates requires every applicable gate, while debug-only assertions_only still requires an actually passed assertion gate and blocks evidence or infrastructure failures. ExecutableTaskScore.score_hash binds the task spec, episode, policy, result hashes, dependency verdicts, commit verdicts, assertions, and stable reason codes while excluding diagnostic wording."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to aggregate executable scores for one candidate"
+then = "Call aggregate_executable_scores(scores=..., plan=..., candidate_alias=...). It requires every authorized task exactly once in publication order, refuses mixed candidate, plan, source, oracle, policy, or scoring-contract identities, sums metric numerators and denominators, preserves explicit N/A semantics, and binds every task score hash into ExecutableCandidateScore.aggregate_hash."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need executable tool traces to survive restart and replay"
+then = "Create ToolTraceCache(outputs.output_dir / TOOL_TRACE_CACHE_FILE) and pass it to run_executable_episode(..., tool_trace_cache=cache). The cache claims an identity-bound request and commits the complete ExecutableEpisode in append-only, hash-verified JSONL. A completion replays without candidate or oracle I/O; an unfinished request is crash evidence, and conflicting evidence is refused. Never cache one mutating call independently because that cannot reproduce downstream state or assertions."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to run the complete executable evaluation with bounded concurrency"
+then = "Load a resolved executable eval config and call run_bfcl_eval(...). It verifies source and contamination before inference, rechecks the plan immediately before requests, processes candidates sequentially, runs each candidate's tasks with at most limits.max_parallel_tasks active task-local oracle sessions, fails closed on raised infrastructure/setup errors, aggregates in publication order, and writes the immutable report, task table, manifest, and replay caches."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to publish a trace-only evaluation without an oracle"
+then = "Call run_bfcl_trace_eval(config, ...) for a config whose eval.mode is [trace], or run_declared_eval_sync(config_path) to let the pinned mode choose the runner. It shares the executable run's scaffolding — the same run-identity rules, source verification, contamination gate, plan recheck, sequential candidates, at most limits.max_parallel_tasks tasks in flight, and sibling cancellation on the first raised error — but opens no oracle session and persists no tool-trace cache, because a released tool result is benchmark bytes the source verification already hashed. Each task is driven with run_candidate_episode() and scored with score_trace_episode(), then aggregate_trace_scores(...) rolls one candidate's authorized set into a TraceCandidateScore whose metrics are per-task gate rates (tool_selection_pass_rate through trace_completion_pass_rate, plus task_success_rate) rather than the executable per-call rates. write_trace_eval_artifacts(...) publishes the same immutable eval_report.json, eval_task_results.parquet, and eval_manifest.json, stamped eval_scope: trace, with oracle-, assertion-, milestone-, and final-answer-only columns left null and the candidate I/O cache required to prove it left no claimed request without a completion. A trace-only artifact set never stands in for an executable one, and an executable config is refused here rather than measured with fewer gates."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
+
+[[strategies]]
+when = "You need to run this BFCL bundle as a native NeMo Evaluator Launcher task"
+then = "Create a NemoNativeAdapterConfig that binds the immutable nemo_evaluator_bundle tree hash to one resolved BFCL eval config and exactly one candidate. Build and explicitly install the package returned by install_native_framework(...), then create the client-mode task with launcher_task_entry(...) while using nemo-evaluator 0.2.8 and nemo-evaluator-launcher 0.2.6. The registered command passes the Launcher dataset mount and deployment URL to run_nemo_native_adapter(...), verifies the native rows equal the canonical BFCL projection before inference, and delegates conversations, oracle execution, scoring, N/A semantics, aggregation, concurrency, and artifacts to the authorized BFCL runner. Mount every absolute non-bundle input path and include Nemotron in the evaluation image; do not route BFCL through the generic single-turn BYOB reducer."
+skill = "src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md"
 
 [[errors]]
 name = "missing_family_pin"
@@ -211,6 +349,254 @@ recovery = "run_manifest.json is the commit marker. If it is absent, benchmark p
 [[errors]]
 name = "nemo_evaluator_adapter_required"
 recovery = "evaluator.yaml inside nemo_evaluator_bundle is a native adapter contract, not a standalone NeMo Evaluator Launcher config. Native function calling needs an installed/containerized harness with task registration plus a tool resource service; do not pass the bundle directory directly to the 0.2.x Launcher."
+
+[[errors]]
+name = "eval_config_schema_invalid"
+recovery = "eval_config.yaml must be schema_version \"1.2\" (or \"1.1\", read under its own stricter candidate identity rules) with config_status: resolved, every section closed, and every setting stated. Quoted booleans and numbers, unknown keys, missing limits, empty or repeated eval.mode entries, and leftover REPLACE_ME_* values are refused rather than defaulted. Fix the field named in the error."
+
+[[errors]]
+name = "eval_config_path_invalid"
+recovery = "source_run_manifest must name run_manifest.json from a completed stage=generate run, not a parquet: the manifest is the commit marker and names the table it published. A translation manifest must reference the same source run. Executable mode requires source_oracle paths whose kind and pack identity match the source run. outputs.output_dir must be a directory outside the generation publication tree, and resolved eval config files may only be written below it."
+
+[[errors]]
+name = "candidate_identity_invalid"
+recovery = "Each candidate needs a unique filesystem-safe alias and a distinct canonical model identity. Weight identity is model_identity (source, model, and revision or weights_digest); provider and model only name the serving route. Use one candidate per set of weights. Run resolve_bfcl_model_identity to fill the block in: registry resolves a branch or tag to the commit it names, local digests weights on disk, and provider-managed records a hosted route that publishes neither. A candidate that pins nothing must restate its own provider and model, because the route is then the only evidence of which weights answered; two such candidates on one route collide, as nothing distinguishes them. Schema 1.1 has no unpinned candidate and no scheme-qualified digest: declare schema_version 1.2 to use either."
+
+[[errors]]
+name = "candidate_revision_mutable"
+recovery = "A branch or tag such as main, master, latest, refs/heads/*, release-2026, or v1 can move and score different weights on a later run. Without a weights digest, pin a full 40–64 hexadecimal commit id; resolve_bfcl_model_identity registry turns the reference you have into that commit. Otherwise set model_identity.weights_digest to sha256:<64 hex>. A provider that publishes neither is declared by leaving both null, which records the candidate as provider_managed and makes the run non-publishable; a stated reference that can move is refused rather than downgraded, because it claims a pin it does not have."
+
+[[errors]]
+name = "secret_in_eval_config"
+recovery = "Never write a credential into eval_config.yaml or embed one in base_url. Name the environment variable with candidates[].api.api_key_env and export the value in the runner's environment. String values are redacted from config diagnostics. If a literal key reached the file, rotate it: the loader refuses the config but the file was already on disk."
+
+[[errors]]
+name = "eval_publication_policy_violation"
+recovery = "publication.requested: true requires every locked gate: argument_matching schema_then_canonical, respect_call_order, respect_call_group, allow_llm_repair false, task_success all_applicable_gates, contamination enforce/fail_run/common_intersection, and all outputs artifacts enabled. It also requires weights pinned on every candidate: a provider_managed identity names a route the provider may re-point, so candidates[<alias>].model_identity appears in non_publication_reasons and blocks publication. Restore the gate or pin the candidate, or set publication.requested: false and read non_publication_reasons."
+
+[[errors]]
+name = "eval_source_invalid"
+recovery = "Source verification refused the published run for a reason it reports in its own subject and problem fields, and it names the specific check that failed. Read that report first: this code is only used where no narrower source code applies. Fix the publication it names, or evaluate a run that verifies clean."
+
+[[errors]]
+name = "eval_source_manifest_invalid"
+recovery = "The file named by source_run_manifest is not a Stage 12 commit marker: it is absent, unreadable, not named run_manifest.json, missing a required publication field, or declares a benchmark schema this build cannot read. A parquet without its manifest is an unpublished artifact. Rerun stage=generate, or evaluate with the pipeline revision that published the run."
+
+[[errors]]
+name = "eval_source_manifest_drift"
+recovery = "run_manifest.json, its run id, or its schema version changed between eval config resolution and verification. Re-resolve the eval config against the current publication and verify again; a manifest that moves mid-run means two different benchmarks would be reported as one score."
+
+[[errors]]
+name = "eval_source_benchmark_hash_mismatch"
+recovery = "A benchmark table's bytes do not match the hash the publication declares, or the file is a symlink or missing from the publication tree. Do not repair the table: a parquet that changed after publication is a different benchmark whatever its file name says. Evaluate the tree the manifest describes, or regenerate."
+
+[[errors]]
+name = "eval_source_benchmark_schema_mismatch"
+recovery = "The parquet on disk is not written with the benchmark schema this build reads, or a row cannot be decoded by the canonical projection. Regenerate with this pipeline revision. Skipping the row is not an option because it would silently change the task set."
+
+[[errors]]
+name = "eval_source_publication_invalid"
+recovery = "benchmark_raw.parquet and benchmark.parquet do not satisfy the publication contract: the published table is not a selection of raw rows, a published row restates a truth field, a held-out row shipped, the declared row counts disagree with the tables, or the manifest contradicts itself about whether held-out was evaluated. Regenerate the benchmark; the audit table can no longer explain a score."
+
+[[errors]]
+name = "eval_source_task_index_invalid"
+recovery = "The published rows do not form an addressable task set: a duplicate task id, or an id that cannot be a path component or a log token (path separators, whitespace, control characters, a leading dash or dot, a reserved directory name). Task ids derive from pack_id and template_id, so fix those in the pack and regenerate."
+
+[[errors]]
+name = "eval_source_oracle_pack_drift"
+recovery = "The oracle pack changed after the source run was generated: the pack manifest, the execution resource, or any file in the pack tree no longer matches the fingerprint recorded in run_manifest.json. Restore the pack revision the benchmark was generated from — a helper module the backend imports changes what the oracle does, so the whole tree counts."
+
+[[errors]]
+name = "eval_source_oracle_resource_mismatch"
+recovery = "The declared oracle is not the one the source run executed: the kind disagrees with the manifest, the pack identity disagrees, the resource is not the backend or endpoint config the pack's own manifest.yaml selects, the endpoint pins a different oracle identity than endpoint_metadata records, or the backend cannot be imported or does not expose list_tools/reset/call_tool/get_state. Declare the executed resource in the pack manifest; a resource chosen only by the eval config could execute code the source run never ran."
+
+[[errors]]
+name = "eval_source_translation_lineage_invalid"
+recovery = "A localized benchmark does not satisfy the content-addressed BFCL translation contract: source or artifact hashes moved, stable translation/backtranslation/quality evidence is incomplete, translator identity or contamination scope is absent, languages disagree with row metadata, task order changed, or a protected message, tool, call, assertion, identifier, or lineage field changed. Regenerate with BFCLTranslationAdapter and restore the complete translation output as one immutable tree."
+
+[[errors]]
+name = "eval_source_changed_during_eval"
+recovery = "The source moved after it was verified, so the run would score two benchmarks. Stop writing into the publication tree during an evaluation — a re-run of generation into the same directory is the usual cause — then verify again from a clean tree."
+
+[[errors]]
+name = "eval_source_model_exposure_invalid"
+recovery = "The publication cannot say which models read its rows: run_manifest.json omits the models block, declares a role this build does not read, enables a role without naming any model, disagrees with its own rows about profile_influenced_surface, or ships a row whose paraphrase_model_canonical or profile_hash no enabled role accounts for. A gap here reads as \"no contamination found\", so it is refused. Regenerate the benchmark with lineage.roles configured, or evaluate with the pipeline revision that published the run."
+
+[[errors]]
+name = "eval_contamination_candidate_exposed"
+recovery = "One or more candidates are the same model that profiled, paraphrased, judged, or translated rows they would be scored on, so the score would measure recall of their own output. The subject names every contaminated candidate, so fix them together rather than re-running per candidate. Evaluate a different candidate, regenerate the benchmark with surface models that are not under evaluation, or set contamination.on_violation: exclude_row and accept a score over the remaining rows (which is not publishable)."
+
+[[errors]]
+name = "eval_contamination_unresolved"
+recovery = "A candidate and an exposed model cannot be told apart from what either side pinned, and publication.requested is true. Pin candidates[].model_identity.weights_digest and record the same identity for the generation role, or pin an immutable revision on both sides. A bfcl-weight-manifest-v1 digest settles only when both sides recorded the identical directory: it covers every file served beside the weights, so unequal manifests stay unresolved rather than counting as different weights. Otherwise set publication.requested: false: the run then proceeds with the unresolved evidence recorded in contamination_report.json and non_publication_reasons."
+
+[[errors]]
+name = "eval_contamination_empty_task_set"
+recovery = "Excluding what a candidate already read leaves nothing to score, or no published row is answerable by every candidate. This is a benchmark-and-candidate mismatch, not a tuning problem: evaluate the candidate against a benchmark it did not help build, regenerate with a different surface model, or fall back to contamination.comparison_set: per_candidate with publication.requested: false and read the per-candidate task sets."
+
+[[errors]]
+name = "eval_contamination_task_set_inconsistent"
+recovery = "The gated task sets cannot form a comparable plan: eligible and excluded rows overlap, a candidate does not carry the common set in publication order, or two candidates share an alias. Re-verify the source and re-run the gate; a hand-edited plan is not an authorization."
+
+[[errors]]
+name = "eval_contamination_plan_drift"
+recovery = "The eligible-task plan is not the one the run was authorized with: it was gated against another eval config or another verified source, it no longer resolves to the decision the config and source produce, or it is a plan the gate would refuse to produce at all. Verify the source and gate the candidates together, immediately before execution. Scoring under a changed plan reports one number for two different task sets."
+
+[[errors]]
+name = "eval_candidate_credentials_missing"
+recovery = "The candidate api_key_env does not resolve to a non-empty credential. Export that environment variable in the eval runner environment. Do not put the key in eval_config.yaml; replay from a completed candidate cache intentionally needs no credential."
+
+[[errors]]
+name = "eval_candidate_authentication_failed"
+recovery = "The endpoint answered HTTP 401/403. Every task presents the same credential, so this is a configuration fault rather than evidence about a task, and the run stops on the first rejection instead of recording one refusal per task. No completion is cached for the rejected call, so the attempt survives as evidence and a later run re-contacts the endpoint. Check that api_key_env holds a key that endpoint accepts, then re-run into a new output directory."
+
+[[errors]]
+name = "eval_candidate_request_invalid"
+recovery = "The native request is empty, belongs to another candidate/endpoint, or contains a provider extension that replaces a pinned standard field. Rebuild it from the same EvalCandidate, authorized task, ordered model-facing messages, and model-facing tools."
+
+[[errors]]
+name = "eval_candidate_response_invalid"
+recovery = "HTTP 200 did not contain one OpenAI-compatible chat completion choice. This is recorded as malformed model output and is not retried or repaired. Fix the endpoint compatibility; malformed function argument JSON is preserved separately for deterministic scoring."
+
+[[errors]]
+name = "eval_candidate_cache_invalid"
+recovery = "candidate_io_cache.jsonl is truncated, hash-invalid, conflicting, or holds an unfinished request without a completion marker. A cancelled call leaves exactly that state on purpose, so an interruption is never replayed as the model's answer. Preserve the file as evidence and use a new eval output directory, or restore the cache from the eval artifact that committed it. Never skip or replace an immutable observation."
+
+[[errors]]
+name = "eval_candidate_retry_exhausted"
+recovery = "Every allowed transient attempt failed before the candidate deadline. Check endpoint health and rate limits, then start or resume under the cache policy. Authentication and malformed model output do not retry."
+
+[[errors]]
+name = "eval_conversation_script_invalid"
+recovery = "A published row is not a conversation this driver can replay: it does not open with system prompts and a user request, a recorded tool result answers a call other than the one it follows, the messages and expected_tool_calls do not account for each other, or the conversation and its call-group plan disagree about turns. Do not edit the parquet — regenerate from a pipeline run whose stage 7 replay produced the conversation."
+
+[[errors]]
+name = "eval_conversation_unauthorized"
+recovery = "An episode was driven outside its authorization: the task is not one the contamination gate assigned this candidate, the alias now names different weights, or the canonical projection's hash, row count, or task sequence differs from the VerifiedEvalSource. Re-project source.evaluation_benchmark under its expected hash and source.task_ids, build the script with source=source, and drive the exact EvalCandidate contract passed to the gate."
+
+[[errors]]
+name = "eval_conversation_answer_key_leak"
+recovery = "A prompt held an assistant or tool message that the candidate did not produce and the driver did not release. This is unrecoverable for the run: numbers from a model that was shown the answer are not measurements. Discard the run's episodes and add prompt material only through append_candidate_turn, append_tool_results, or append_user_turn."
+
+[[errors]]
+name = "eval_conversation_transition_invalid"
+recovery = "The driver was asked for a move its own state forbids: echoing a tool call whose id is absent or ambiguous, whose type is not function, or whose name or argument string is missing; releasing a recorded result with no call to answer; or injecting a non-user message as the next request. End the episode with the matching status instead of repairing the model's output."
+
+[[errors]]
+name = "eval_executable_projection_invalid"
+recovery = "The published row cannot be bound to the verified executable source: the source clock, pack tool policy, template milestones, complete projection identity, or oracle lineage is missing or inconsistent. Restore the verified publication and pack; do not reconstruct runner metadata from an unrelated row or pack."
+
+[[errors]]
+name = "eval_executable_unauthorized"
+recovery = "The ExecutableTaskSpec does not match the candidate, EligibleEvalPlan, VerifiedEvalSource, scoring policy, or VerifiedOracleSource being driven. Rebuild it from the exact canonical projection and handles produced by source verification and contamination gating."
+
+[[errors]]
+name = "eval_oracle_session_failed"
+recovery = "The task-local Python worker or endpoint session could not be opened or closed cleanly. Discard the episode, verify the source resource again, and inspect worker or endpoint cleanup before retrying the complete task."
+
+[[errors]]
+name = "eval_oracle_reset_failed"
+recovery = "The verified oracle failed to establish a clean state for this task. Do not continue or reuse a prior session; inspect fixtures and reset behavior, then rerun the whole task with a new session."
+
+[[errors]]
+name = "eval_oracle_call_failed"
+recovery = "A declared schema-valid tool call failed outside the structured business-result contract. Record the infrastructure outcome. Never retry a mutating call in the same episode because its commit state may be unknown."
+
+[[errors]]
+name = "eval_oracle_state_failed"
+recovery = "The live oracle could not return a canonical JSON object for final state. Retain the earlier call evidence, classify the episode as an oracle-state failure, and rerun only after fixing the verified oracle."
+
+[[errors]]
+name = "eval_assertion_infrastructure_failed"
+recovery = "A pack assertion could not be imported or executed. This is not an assertion verdict and must not be counted as a candidate failure or pass. Fix the assertion infrastructure and rerun the complete executable task."
+
+[[errors]]
+name = "eval_trace_evidence_mismatch"
+recovery = "An episode was scored against a script it did not answer: a different task id, or a script hash that identifies a different conversation. Score each episode against the script the driver was given for that task; a re-projected row is a different question, so re-drive it rather than re-pairing the evidence."
+
+[[errors]]
+name = "eval_trace_scoring_policy_unsupported"
+recovery = "scoring asks for a verdict a trace score cannot produce: allow_llm_repair would make the number a property of the repairer, and assertions_only needs an oracle to evaluate the pack's assertions. Score with allow_llm_repair: false and task_success: all_applicable_gates, or run executable evaluation."
+
+[[errors]]
+name = "unsupported_eval_mode"
+recovery = "eval.mode is a non-empty list drawn from [trace, executable, held_out_eval] with no repeats; the canonical order is trace then executable. Executable mode needs a source run whose manifest declares an oracle. held_out_eval is the private generalization path and must be paired with an eval.held_out_eval block, which is refused when the mode is absent."
+
+[[errors]]
+name = "eval_candidate_provider_extension_invalid"
+recovery = "Provider extensions must live under the exact provider and API-version namespace and may not replace standard request fields. Remove unknown namespaces or conflicting keys."
+
+[[errors]]
+name = "eval_candidate_cache_conflict"
+recovery = "The same immutable candidate request key has different persisted evidence. Preserve the cache for diagnosis and start the evaluation in a new output directory; never overwrite an observation."
+
+[[errors]]
+name = "eval_tool_trace_cache_invalid"
+recovery = "tool_trace_cache.jsonl is incomplete, truncated, hash-invalid, or contains an episode that does not belong to its request. Preserve it as crash evidence and resume into a new output directory."
+
+[[errors]]
+name = "eval_tool_trace_cache_conflict"
+recovery = "The same executable trace key has different immutable episode evidence. Do not replace either observation; investigate the source, plan, task-spec, or oracle identity and use a new output directory."
+
+[[errors]]
+name = "eval_executable_evidence_mismatch"
+recovery = "The episode, executable task spec, candidate, source, and plan do not identify one evaluation. Rebuild and score the task under the exact handles that drove it."
+
+[[errors]]
+name = "eval_executable_scoring_policy_unsupported"
+recovery = "The executable scoring policy requests behavior this deterministic scorer cannot provide. Restore the frozen scoring contract and disable repair or unsupported task-success semantics."
+
+[[errors]]
+name = "eval_executable_aggregation_invalid"
+recovery = "Candidate task scores are missing, duplicated, reordered, or cross an identity boundary. Score every authorized task once in plan order before aggregation."
+
+[[errors]]
+name = "eval_trace_aggregation_invalid"
+recovery = "Trace task scores are missing, duplicated, reordered, or cross a candidate, plan, policy, or scoring-contract boundary. Score every authorized task once in plan order before aggregation."
+
+[[errors]]
+name = "eval_artifact_invalid"
+recovery = "The final report, task table, manifest, aggregate hashes, or required caches do not form one immutable artifact set. Preserve existing evidence and resume into a new output directory."
+
+[[errors]]
+name = "eval_runner_invalid"
+recovery = "The batch runner requires one verified configuration, complete authorized task sets, and a non-empty run id. Fix the named precondition and restart before candidate inference."
+
+[[errors]]
+name = "eval_runner_mode_unsupported"
+recovery = "Each batch runner publishes one measurement: run_bfcl_eval executes [trace, executable] and run_bfcl_trace_eval drives [trace]. Call the runner the pinned eval.mode declares, or run_declared_eval_sync to let the config choose."
+
+[[errors]]
+name = "eval_nemo_adapter_invalid"
+recovery = "Pin nemo-evaluator 0.2.8 in the evaluation image and nemo-evaluator-launcher 0.2.6 on the control plane, restore the exact six-file bundle tree and canonical BFCL source, use one candidate with the same model id, pass the mounted bundle path, and keep bundle, BFCL output, and native output trees disjoint."
+
+[[errors]]
+name = "eval_cli_invalid"
+recovery = "Start from config/eval.cli.yaml or config/eval.launcher.yaml, keep stage=eval and family=bfcl, and point eval_config_path at one resolved schema-1.1 or schema-1.2 BFCL eval config."
+
+[[errors]]
+name = "eval_cli_runtime_failed"
+recovery = "Inspect the chained BFCL exception and immutable source/contamination diagnostics; the CLI maps unknown runtime exceptions to this code rather than inventing a candidate score."
+
+[[errors]]
+name = "eval_cli_artifact_conflict"
+recovery = "Use a fresh orchestration output path or restore the byte-identical generated adapter, task, framework, and Launcher config. The CLI never overwrites conflicting evidence, and no orchestration path may sit inside the immutable bundle whose exact file set is re-verified every run."
+
+[[errors]]
+name = "eval_cli_framework_not_installed"
+recovery = "Install the exact package path printed as framework_package into the NeMo Launcher environment, then rerun the same immutable orchestration config with launcher.submit=true."
+
+[[errors]]
+name = "eval_cli_framework_version_mismatch"
+recovery = "Remove the stale generated BFCL framework distribution and install the package whose version matches the native adapter contract before submitting."
+
+[[errors]]
+name = "byob_stage_unsupported"
+recovery = "Choose a stage implemented by the selected benchmark family. BFCL supports prepare, generate, translate, eval, and all; translate and eval do not accept generation resume controls."
+
+[[errors]]
+name = "bfcl_translation_invalid"
+recovery = "Start from config/translate.yaml, set config_status: resolved, and name the source release's run_manifest.json rather than benchmark.parquet. Keep the source tree immutable, use a distinct empty output directory, preserve every protected placeholder through forward and backtranslation, and never enable remove_low_quality because BFCL task identity and publication order cannot change."
 
 [reference]
 skill = "src/nemotron/steps/byob/references/bfcl-oracle-pack.md"

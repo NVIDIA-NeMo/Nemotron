@@ -102,6 +102,13 @@ description = "Executable function-calling oracle: tools, fixtures, templates, a
 description = "Function-calling BYOB benchmark parquet with expected tool calls and provenance"
 is_a = ["benchmark_parquet"]
 
+[bfcl_localized_benchmark]
+description = "Target-language function-calling benchmark preserving executable calls and task identity"
+is_a = ["bfcl_benchmark_parquet"]
+
+[bfcl_translation_manifest]
+description = "Content-addressed binding from a localized function-calling benchmark to its published source"
+
 [bfcl_run_manifest]
 description = "Function-calling generation lineage: oracle clock, generation mode, and publication hashes"
 
@@ -114,5 +121,21 @@ description = "Optional BFCL JSONL and Evaluator bundles derived from the publis
 [bfcl_export_validation_report]
 description = "Proof that enabled function-calling exports match the published parquet row for row"
 
+[bfcl_source_verification_report]
+description = "Proof that the evaluated function-calling source is the committed publication"
+
+[bfcl_contamination_report]
+description = "Which models read which published function-calling rows, and what each candidate may answer"
+
+[bfcl_candidate_io_cache]
+description = "Append-only, hash-verified candidate requests for network-free function-calling replay"
+
+[bfcl_tool_trace_cache]
+description = "Append-only, hash-verified executable episodes for oracle-free function-calling replay"
+
+[bfcl_eval_artifacts]
+description = "Function-calling evaluation report, per-task results, and the manifest binding them"
+is_a = ["eval_results"]
+
 [bfcl_bias_audit_reports]
-description = "Recomputed bias audit over frozen function-calling release evidence"
+description = "Recomputed bias audit over frozen function-calling release and evaluation evidence"

@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""One runnable walk of the BFCL LLM-generated authoring lane, end to end.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""One runnable walk of the BFCL assisted authoring flow, end to end.
 
 This drives the shipped guided CLI rather than reimplementing it: a reviewed source
 package is certified by live probes, an authoring model drafts the plans that source can
 support, the drafts plus reviewed semantics are bound into a candidate pack, and the pack
-is validated, reviewed, frozen, and published into a benchmark.
+is validated, reviewed, frozen, and published into a benchmark. The benchmark is then
+scored by a real evaluation run against a candidate served on loopback.
 
 Two things here stand in for people, and both say so when they run. The authoring model is
 scripted by default, because a demo that needs credentials is not one most readers can run;
@@ -14,9 +28,17 @@ pass --author-model live to send the same prompts to a real endpoint. The human 
 steps — exposure authorization, evidence approval, the reviewed semantics supplement, and
 the release checklist — are answered from the constants below, and each prints what a
 reviewer would have been deciding. Nothing else is faked: intake probes a real package,
-and validation runs unmocked and derives its own tier.
+validation runs unmocked and derives its own tier, and evaluation replays the published
+benchmark through the real scorer.
 
     uv run python scripts/bfcl_assisted_authoring_demo.py --workdir /tmp/bfcl-demo
+
+The candidate answers from the benchmark's own recorded turns, so a clean run should score
+1.0 and prove the flow produces a benchmark a model can pass. To watch the scorer fail a
+model instead, re-score the published benchmark with one task sabotaged:
+
+    uv run python scripts/bfcl_assisted_authoring_demo.py --workdir /tmp/bfcl-demo \
+        --stage eval --wrong-answer-task <task_id>
 """
 
 from __future__ import annotations
@@ -646,7 +668,8 @@ def write_eval_config(
     base_url: str,
 ) -> Path:
     document = {
-        "schema_version": "1.1",
+        # 1.2, because the candidate below pins no weights.
+        "schema_version": "1.2",
         "config_status": "resolved",
         "source_run_manifest": str(run_manifest),
         "source_oracle": None,
@@ -679,10 +702,16 @@ def write_eval_config(
                     "base_url": base_url,
                     "api_key_env": "BFCL_DEMO_CANDIDATE_KEY",
                 },
+                # The candidate is a scripted loopback server, so no registry
+                # commit and no weight bytes exist to point at. It is recorded
+                # unpinned rather than given a plausible-looking commit: the run
+                # then reports itself as non-publishable, which is exactly what a
+                # score against an unpinnable endpoint is worth. With no pin, the
+                # route is the identity, so these two restate provider and model.
                 "model_identity": {
-                    "source": "huggingface",
-                    "model": "bfcl-demo/loopback-candidate",
-                    "revision": "0" * 40,
+                    "source": "nvidia",
+                    "model": "bfcl-demo-candidate",
+                    "revision": None,
                     "weights_digest": None,
                 },
                 "inference": {
@@ -700,7 +729,7 @@ def write_eval_config(
             "on_violation": "fail_run",
             "comparison_set": "common_intersection",
         },
-        "publication": {"requested": True, "require_same_task_ids": True},
+        "publication": {"requested": False, "require_same_task_ids": True},
         "outputs": {
             "output_dir": str(output_dir),
             "write_task_results": True,
@@ -722,6 +751,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workdir", type=Path, required=True)
     parser.add_argument(
+        "--stage",
+        choices=("all", "eval"),
+        default="all",
+        help="eval reuses the benchmark an earlier --stage all run published here",
+    )
+    parser.add_argument(
         "--author-model",
         choices=("scripted", "live"),
         default="scripted",
@@ -730,11 +765,24 @@ def main() -> None:
     parser.add_argument("--model-provider", default="test")
     parser.add_argument("--model", default="stub")
     parser.add_argument("--model-canonical-id", default="test/stub@1")
+    parser.add_argument(
+        "--wrong-answer-task",
+        action="append",
+        default=[],
+        help="task id the demo candidate should answer with text instead of a call",
+    )
     args = parser.parse_args()
 
     work = args.workdir.resolve()
     os.environ["BFCL_ENABLE_LOCAL_PYTHON"] = "1"
+    os.environ.setdefault("BFCL_DEMO_CANDIDATE_KEY", "demo-key")
     workspace = work / "workspace"
+    if args.stage == "eval":
+        published = workspace / "generated" / "bfcl-demo"
+        if not (published / "run_manifest.json").is_file():
+            raise SystemExit(f"no published benchmark under {published}")
+        evaluate(work, published, wrong_answer_tasks=args.wrong_answer_task)
+        return
     if work.exists():
         raise SystemExit(f"workdir already exists, pick a fresh one: {work}")
     work.mkdir(parents=True)
@@ -754,7 +802,7 @@ def main() -> None:
     )
     private_key, public_key = write_certification_keys(work)
 
-    _banner("1/8", "Intake: certify the reviewed source by probing it")
+    _banner("1/9", "Intake: certify the reviewed source by probing it")
     run_guided(
         [
             "--ci",
@@ -787,7 +835,7 @@ def main() -> None:
     certification = json.loads((intake / "adapter_certification.json").read_text(encoding="utf-8"))
     _note(f"attained certification tier: {certification['attained_tier']}")
 
-    _banner("2/8", "Authorize model exposure")
+    _banner("2/9", "Authorize model exposure")
     _simulated(
         "model exposure",
         "an owner accepts that this redacted brief and tool surface may reach a model",
@@ -805,7 +853,7 @@ def main() -> None:
         ]
     )
 
-    _banner("3/8", "Approve the evidence bundle")
+    _banner("3/9", "Approve the evidence bundle")
     evidence = load_evidence_bundle(
         intake / "evidence_bundle.json",
         certification_report_path=intake / "adapter_certification.json",
@@ -842,7 +890,7 @@ def main() -> None:
         ]
     )
 
-    _banner("4/8", "Draft: the model proposes what this source can support")
+    _banner("4/9", "Draft: the model proposes what this source can support")
     drafting = workspace / "drafting"
     run_guided(
         [
@@ -885,7 +933,7 @@ def main() -> None:
     if caller is not None:
         _note(f"drafting stages answered: {', '.join(caller.stages)}")
 
-    _banner("5/8", "Assemble: bind drafts and reviewed semantics into a candidate pack")
+    _banner("5/9", "Assemble: bind drafts and reviewed semantics into a candidate pack")
     _simulated(
         "reviewed semantics",
         "a human supplies slot bindings, turn policies, and per-language user turns, "
@@ -909,7 +957,7 @@ def main() -> None:
     pack_root = candidate_root / "pack"
     _note(f"candidate pack: {pack_root}")
 
-    _banner("6/8", "Validate the candidate pack and derive its tier")
+    _banner("6/9", "Validate the candidate pack and derive its tier")
     validation_config = write_generation_config(
         work / "candidate-validation.yaml",
         pack_manifest=pack_root / "manifest.yaml",
@@ -924,7 +972,7 @@ def main() -> None:
     if not report["gold_eligible"]:
         raise SystemExit("candidate pack is not gold-eligible; nothing to publish")
 
-    _banner("7/8", "Review, approve, and freeze the release")
+    _banner("7/9", "Review, approve, and freeze the release")
     packet = workspace / "review_packet.json"
     freeze_inputs = work / "freeze-inputs.json"
     run_guided(
@@ -1021,7 +1069,7 @@ def main() -> None:
         ]
     )
 
-    _banner("8/8", "Publish: fresh validation, then generate the benchmark")
+    _banner("8/9", "Publish: fresh validation, then generate the benchmark")
     publication_config = write_generation_config(
         work / "publication.yaml",
         pack_manifest=release_root / "pack" / "manifest.yaml",
@@ -1048,6 +1096,8 @@ def main() -> None:
     manifest = json.loads((published / "run_manifest.json").read_text(encoding="utf-8"))
     _note(f"benchmark: {published / 'benchmark.parquet'}")
     _note(f"tier={manifest['tier']} gold_eligible={manifest['gold_eligible']}")
+
+    evaluate(work, published, wrong_answer_tasks=args.wrong_answer_task)
 
 
 def evaluate(

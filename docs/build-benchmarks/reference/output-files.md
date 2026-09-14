@@ -86,3 +86,17 @@ The following intermediate files are created in the `staged_cache` directory.
 | `quality_metrics.parquet` | QUALITY_METRICS |
 
 Intermediate translation Parquet files can include additional columns such as `question_translated`, `options_translated`, backtranslation fields, and metric scores.
+
+### BFCL Translation
+
+BFCL writes `benchmark.<target_language>.parquet` and
+`translation_manifest.json` in the experiment root. The manifest is the commit
+and lineage record; it names the immutable source release, localized benchmark
+hash, task-set hash, translator identity, contamination scope, field policy, and
+protected-token totals. It also records deterministic text fixes, changed-field
+fraction, response guards, target-script validation, and executable truth
+projection/read-back replay.
+
+Its `stage_cache` contains `translation_units.parquet`,
+`backtranslation_units.parquet`, and `quality_metrics.parquet`. BFCL retains all
+source rows regardless of quality scores.

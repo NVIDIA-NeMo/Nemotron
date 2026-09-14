@@ -7,14 +7,16 @@
 
 Use this guide to take a Gold-eligible Oracle Pack to a publication-scale benchmark:
 choose the size target, declare the challenge mix, run the full pipeline, and produce
-an immutable publication.
+the immutable publication consumed by evaluation.
 
-The publication flow is:
+The handoff between generation and evaluation is:
 
 ```text
 Gold-eligible Oracle Pack
   → publication configuration
   → benchmark.parquet + benchmark_raw.parquet + run_manifest.json
+  → run-evaluation.md
+  → eval_report.json + eval_task_results.parquet + eval_manifest.json
 ```
 
 ## Before You Start
@@ -166,8 +168,8 @@ The commit marker is `run_manifest.json`; BFCL does not produce a
 not by loading `benchmark.parquet` as an unverified standalone table.
 
 The bundle is verified adapter input, not a standalone Launcher configuration. Keep
-it beside the publication it came from. Do not add files inside the bundle: its exact
-file set is hashed.
+it beside the publication it came from and follow {doc}`run-evaluation` to create the
+Launcher envelope. Do not add files inside the bundle: its exact file set is hashed.
 
 ## Step 6: Run the Full Pipeline
 
@@ -178,7 +180,7 @@ uv run nemotron steps run byob/bfcl \
   family=bfcl
 ```
 
-`stage=all` runs prepare followed by generate.
+`stage=all` runs prepare followed by generate; it does not translate or evaluate, because those are separate post-publication runs.
 
 If a stage fails, preserve the experiment directory and resume with `skip_until=<stage>` only when the predecessor checkpoint is intact and the pack, configuration, and pipeline identities have not changed. Resume recursively verifies that chain and fails closed on any drift, and restoration keeps the append-only model input/output caches so a re-run stage replays recorded responses instead of paying for new ones that would render different surfaces. Never patch a generated Parquet file, export, manifest, or cache record.
 
@@ -199,8 +201,19 @@ Then read these fields from the manifest: `tier` and `gold_eligible` to confirm 
 
 When exports are enabled, `exports/bfcl_json/` holds the question and answer JSONL pair, and `exports/nemo_evaluator_bundle/` holds the six-file native adapter input bundle. The bundle is adapter input, not a standalone NeMo Evaluator Launcher run configuration; it declares that an adapter must supply a registered environment, a candidate endpoint, and a tool resource service.
 
-Keep the verified publication directory and the exact Oracle Pack unchanged for
-downstream consumers.
+This verified publication directory is the evaluation input. Keep it unchanged and
+set the following field in the separate evaluation configuration:
+
+```yaml
+source_run_manifest: /srv/bfcl/runs/warehouse-gold-output/bfcl_warehouse_gold/run_manifest.json
+```
+
+For direct trace evaluation, the three top-level publication files are the complete
+benchmark handoff. Executable mode additionally requires the exact Oracle Pack. For
+NeMo Evaluator Launcher, the publication must also contain the
+`exports/nemo_evaluator_bundle/` tree shown in Step 5. Continue with
+{doc}`run-evaluation` for import checks, candidate configuration, execution, result
+inspection, and result export.
 
 ## Step 8: Audit the Release
 
@@ -241,4 +254,6 @@ uv run python -m nemotron.steps.byob.scripts.archive_bfcl_release \
 
 ## Next Steps
 
+- Score a model against the release: {doc}`run-evaluation`.
+- Localize approved model-facing text: {doc}`translate`.
 - Look up any field you changed in {doc}`../reference/generate-config`, or any artifact it wrote in {doc}`../reference/output-files`.
