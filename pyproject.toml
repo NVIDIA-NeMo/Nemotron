@@ -99,6 +99,18 @@ byob = [
     "sacrebleu>=2.6.0,<3.0.0; python_version>='3.11'",
     "iso639-lang>=2.6.0,<3.0.0; python_version>='3.11'",
     "bcp47>=0.1.0; python_version>='3.11' and python_version<'3.14'",
+    "httpx",
+]
+bfcl-mcp = [
+    # The 2026 protocol requires MCP Python SDK v2. Data Designer currently pins
+    # mcp<2, so the gateway/discovery runtime must live in a separate environment
+    # from the model-authoring `byob` extra.
+    "jsonschema>=4.0; python_version>='3.11'",
+    "mcp>=2,<3; python_version>='3.11' and python_version<'3.14'",
+    "pyyaml>=6.0; python_version>='3.11'",
+    "pydantic>=2.0.0; python_version>='3.11'",
+    "starlette>=0.50.0; python_version>='3.11'",
+    "uvicorn>=0.38.0; python_version>='3.11'",
 ]
 byob-gpu = [
     "torch>=2.10,<2.11; python_version>='3.11'",
@@ -224,6 +236,19 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 
+[[tool.mypy.overrides]]
+# These modules import PyYAML and jsonschema, neither of which ships inline types, and
+# whose stub packages are not in the pinned dev environment. The note carries nothing
+# beyond that fact, and left on it crowds out real findings in the BFCL MCP package.
+module = [
+    "nemotron.steps.byob.runtime.mcp.config",
+    "nemotron.steps.byob.runtime.mcp.gateway.result_mapping",
+    "nemotron.steps.byob.runtime.mcp.authoring.pack_artifacts",
+    "nemotron.steps.byob.runtime.pack_authoring.pack_assembly",
+    "nemotron.steps.byob.runtime.pack_authoring.runner",
+]
+disable_error_code = ["import-untyped"]
+
 [tool.ruff]
 line-length = 119
 target-version = "py311"
@@ -238,6 +263,13 @@ ignore = []
 
 [tool.uv]
 package = true
+conflicts = [
+    # Data Designer requires MCP SDK v1 while the 2026 BFCL gateway uses v2.
+    # They communicate across the documented gateway process boundary.
+    [{extra = "byob"}, {extra = "bfcl-mcp"}],
+    [{extra = "data-sdg"}, {extra = "bfcl-mcp"}],
+    [{extra = "all"}, {extra = "bfcl-mcp"}],
+]
 constraint-dependencies = [
     # Curator main currently keeps these constraints in its own uv config, but
     # they are not published transitively through package metadata.
@@ -292,6 +324,15 @@ required-imports = [
     "sacrebleu",
     "tabulate",
     "tqdm",
+    "yaml",
+]
+
+[tool.nemotron.runtime.bfcl-mcp]
+extras = ["bfcl-mcp"]
+venv-name = "bfcl-mcp"
+required-imports = [
+    "mcp",
+    "pydantic",
     "yaml",
 ]
 

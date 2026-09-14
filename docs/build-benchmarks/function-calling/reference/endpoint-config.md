@@ -28,8 +28,8 @@ The generated URL and digests are placeholders. Replace them with metadata from 
 deployed, versioned service before validation. A missing conformance attestation may be
 useful for smoke diagnostics but cannot reach Gold.
 
-Obtain endpoint identity, attestation, and an optional CA bundle from reviewed
-deployment evidence. Do not manually invent those values.
+For MCP-backed authoring, the gateway artifact emitter can produce endpoint identity,
+attestation, and an optional CA bundle. Do not manually invent those values.
 
 ## Top-Level Fields
 
@@ -202,6 +202,13 @@ and verifies the pinned conformance attestation.
   never in the pack.
 - **Missing CA bundle:** restore the fingerprinted file under an allowed root.
 
+## Assisted-Authoring Limitation
+
+An `http_package` source can currently reach intake, drafting, review, and freeze.
+Publication is deliberately refused until an independently verified publication
+adapter exists. This limitation does not apply automatically to every MCP gateway;
+consult the relevant transport support matrix.
+
 ## Complete Example
 
 See `src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml`. Replace
@@ -211,4 +218,5 @@ every digest placeholder and add a valid conformance attestation for Gold.
 
 - {doc}`manifest` for selecting the endpoint transport.
 - {doc}`tools-and-fixtures` for the catalog and reset records.
-- {doc}`../how-to/author-a-pack` for the manual endpoint-backed pack flow.
+- {doc}`../how-to/mcp-server` for MCP gateway onboarding.
+- {doc}`../how-to/assisted-authoring` for HTTP source support limits.

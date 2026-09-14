@@ -53,7 +53,7 @@ A check whose preconditions failed is recorded as `skipped`, never as a pass, so
 The report on disk is a human-readable artifact, not a signed attestation, so generation never trusts one written by an earlier run: it reuses a verdict only when the same process produced it for the same pack and configuration fingerprints.
 
 Because the gold gate is what a released benchmark's credibility rests on, it is worth saying what it is *not*: it certifies that the pack generates and that its own claims hold under execution. It says nothing about whether the domain modeling is a good benchmark of anything.
-That judgment stays with the reviewer; {doc}`../how-to/author-a-pack` describes the manual review boundary.
+That judgment stays with the reviewer, and {doc}`authoring-flows` describes where the review boundaries sit.
 
 :::{important}
 Gold eligibility requires `oracle_runtime.worker: process`.
@@ -66,16 +66,18 @@ Pack code is executed through a process worker, never inside the process that sc
 That boundary exists for three separate reasons, and none of them is redundant.
 A separate process is the only place a hanging tool can be stopped on a hard deadline.
 It is also what sanitizes the environment, so a backend cannot read the caller's environment or wall-clock time and must instead take the frozen clock, seed, timeout, and task id the pipeline hands it.
+And during evaluation it keeps the pack's Python out of the evaluator entirely: `backend.py` and `assertions.py` are never imported into the evaluator process, so a pack cannot observe or influence the scoring of the model it is being used to measure.
 
 Errors follow the same logic. A tool returns a failure as data — a structured `{"error": {"code": ...}}` envelope — rather than raising, because a domain rejection is a legitimate outcome the benchmark wants to score, and an exception would be indistinguishable from infrastructure breaking.
 
 ## The Fingerprint Pins A Benchmark To Its Source
 
-Generation records a pack fingerprint covering every file in the pack tree, along with a per-file hash map, and verifies it before validation, after validation, and again before final output.
+Generation records a pack fingerprint covering every file in the pack tree, along with a per-file hash map, and the fingerprint is verified before validation, after validation, and again before final output.
+Evaluation recomputes it before spending a candidate token and refuses to score if it moved.
 
 The whole tree counts, including files that look inert. A helper module the backend imports changes what the oracle does, and there is no read sandbox that would make a Markdown file provably unreadable to a backend that can open its own directory.
-The consequence is worth planning for: publishing a benchmark freezes the pack directory.
-Keep operational notes outside the pack, and publish a new release rather than editing a frozen pack.
+The consequence is worth planning for: publishing a benchmark freezes the pack directory, and any later edit — a comment, a README line — makes every evaluation of that benchmark fail preflight until the bytes are restored.
+Keep operational notes about a pack outside the pack, and publish a new release rather than editing a pack that is still being scored.
 
 The aggregate fingerprint proves only that something moved; the per-file map is what lets a drift report name the file and say whether any declared oracle input was involved.
 Its versioned serialization length-prefixes each logical path and hashes a fixed-width
@@ -109,4 +111,5 @@ Read it as a worked example of the pack contract rather than as a default: its i
 - `src/nemotron/steps/byob/references/bfcl-oracle-pack.md` for the complete normative pack contract, including slot sources, turn policies, and every validation rule.
 - {doc}`../how-to/author-a-pack` for the hands-on authoring sequence.
 - {doc}`pipeline-overview` for how the pipeline consumes a validated pack.
+- {doc}`evaluation` for how the pack is used again at scoring time.
 - {doc}`../getting-started` for a first run against a bundled pack.

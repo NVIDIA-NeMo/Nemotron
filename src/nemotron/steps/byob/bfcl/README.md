@@ -66,7 +66,12 @@ their canonical identities and routes are recorded in the run lineage.
 
 - [Getting started](../../../../../docs/build-benchmarks/function-calling/getting-started.md)
 - [Hand-author an Oracle Pack](../../../../../docs/build-benchmarks/function-calling/how-to/author-a-pack.md)
+- [Use assisted authoring](../../../../../docs/build-benchmarks/function-calling/how-to/assisted-authoring.md)
+- [Start from domain assets](../../../../../docs/build-benchmarks/function-calling/how-to/start-from-domain-data.md)
+- [Onboard an MCP server](../../../../../docs/build-benchmarks/function-calling/how-to/mcp-server.md)
+- [Publish a reviewed release](../../../../../docs/build-benchmarks/function-calling/how-to/publish-a-release.md)
 - [Oracle Pack explanation](../../../../../docs/build-benchmarks/function-calling/explanation/oracle-pack.md)
+- [Authoring flows](../../../../../docs/build-benchmarks/function-calling/explanation/authoring-flows.md)
 - [Pipeline overview](../../../../../docs/build-benchmarks/function-calling/explanation/pipeline-overview.md)
 - [Worked pipeline example](../../../../../docs/build-benchmarks/function-calling/explanation/pipeline-worked-example.md)
 - [Generation configuration](../../../../../docs/build-benchmarks/function-calling/reference/generate-config.md)

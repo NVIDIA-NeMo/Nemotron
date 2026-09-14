@@ -18,6 +18,8 @@ from nemotron.steps.byob.scripts.scaffold_oracle_pack import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REFERENCE = REPO_ROOT / "docs" / "build-benchmarks" / "function-calling" / "reference"
+HOW_TO = REPO_ROOT / "docs" / "build-benchmarks" / "function-calling" / "how-to"
+EXPLANATION = REPO_ROOT / "docs" / "build-benchmarks" / "function-calling" / "explanation"
 
 
 def _read(name: str) -> str:
@@ -74,9 +76,36 @@ def test_oracle_pack_input_reference_links_the_field_guides() -> None:
 
     for supported_command in (
         "scaffold_oracle_pack",
+        "scaffold_source_package",
+        "check_source_package",
         "validate_oracle_pack",
     ):
         assert supported_command in text
+
+
+def test_model_assisted_backend_guidance_preserves_oracle_boundary() -> None:
+    text = _read("python-backend.md")
+    normalized = " ".join(text.split())
+
+    assert "--draft-with-model" in text
+    assert re.search(r"does not accept arbitrary .*Python", normalized)
+    assert re.search(r"optional .*not the preferred source of oracle semantics", normalized)
+    assert all(term in normalized for term in ("domain fidelity", "executable checks"))
+
+
+def test_authoring_docs_do_not_require_distinct_reviewer_identities() -> None:
+    flow = (EXPLANATION / "authoring-flows.md").read_text(encoding="utf-8")
+    assisted = (HOW_TO / "assisted-authoring.md").read_text(encoding="utf-8")
+
+    normalized = " ".join(f"{flow} {assisted}".split()).casefold()
+    assert all(
+        term in normalized
+        for term in (
+            "not a requirement for two different reviewers",
+            "does not compare the identities",
+            "does not require two people",
+        )
+    )
 
 
 def test_artifact_references_follow_the_standard_operator_structure() -> None:
