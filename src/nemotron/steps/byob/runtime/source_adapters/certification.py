@@ -22,7 +22,7 @@ import re
 from base64 import b64decode, b64encode
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
@@ -129,7 +129,7 @@ def load_trusted_certification_key(
     return {key_id: key}
 
 
-class AdapterTier(str, Enum):
+class AdapterTier(StrEnum):
     NONE = "none"
     A0 = "A0"
     A1 = "A1"
@@ -144,7 +144,7 @@ _TIER_ORDER = {
 }
 
 
-class CertificationProbe(str, Enum):
+class CertificationProbe(StrEnum):
     IDENTITY_INTEGRITY = "identity_integrity"
     CATALOG_INTEGRITY = "catalog_integrity"
     EXECUTABLE_OBSERVATION = "executable_observation"
@@ -157,7 +157,7 @@ class CertificationProbe(str, Enum):
     RESULT_SHAPE_COVERAGE = "result_shape_coverage"
 
 
-class CertificationRefusalCode(str, Enum):
+class CertificationRefusalCode(StrEnum):
     """Stable machine-readable reasons emitted by BFCL certification."""
 
     ADAPTER_UNDER_CERTIFIED = "adapter_under_certified"

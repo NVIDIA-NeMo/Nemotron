@@ -21,7 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from nemotron.steps.byob.runtime.authoring_release.revocation import (
@@ -58,7 +58,7 @@ def main() -> None:
             issuer=args.issuer,
             key_id=args.key_id,
         )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with exclusive_revocation_registry(args.registry):
             if args.registry.exists():
                 current = load_revocation_registry(

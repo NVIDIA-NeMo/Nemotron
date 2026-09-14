@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -69,7 +69,7 @@ _FORBIDDEN_CODES = frozenset(
 )
 
 
-class RefusalClassification(str, Enum):
+class RefusalClassification(StrEnum):
     DETERMINISTIC_MATERIALIZATION = "deterministic_materialization"
     MODEL_OWNED_PROPOSAL = "model_owned_proposal"
     USER_OWNED_SOURCE_CONTRACT = "user_owned_source_contract"
@@ -77,7 +77,7 @@ class RefusalClassification(str, Enum):
     OPERATIONAL_INFRASTRUCTURE = "operational_infrastructure"
 
 
-class RevisionAction(str, Enum):
+class RevisionAction(StrEnum):
     RERUN_DETERMINISTIC = "rerun_deterministic"
     REVISE_PROPOSAL = "revise_proposal"
     AMEND_SOURCE_CONTRACT = "amend_source_contract"
@@ -218,7 +218,7 @@ def _json_datetime(value: datetime) -> str:
             "timestamp_invalid",
             "refusal timestamps must be timezone-aware",
         )
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _validate_digest(value: str, field: str) -> None:

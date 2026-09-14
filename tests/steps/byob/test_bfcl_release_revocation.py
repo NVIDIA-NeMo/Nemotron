@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from base64 import b64encode
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -32,7 +32,7 @@ from nemotron.steps.byob.scripts import publish_authoring_release as publish_scr
 SHA_A = "sha256:" + "a" * 64
 SHA_B = "sha256:" + "b" * 64
 SHA_C = "sha256:" + "c" * 64
-NOW = datetime(2026, 8, 29, 16, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 29, 16, 0, tzinfo=UTC)
 
 
 def _authority(
@@ -240,7 +240,7 @@ def test_wrong_signing_key_and_registry_rollback_fail_closed(tmp_path: Path) -> 
 
 def _live_registry(authority: RevocationAuthority) -> Any:
     """Build a registry valid under the wall clock the publish CLI actually uses."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     record = build_revocation_record(
         _target(),
         authority=authority,

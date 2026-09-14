@@ -33,7 +33,7 @@ import os
 import sys
 import urllib.parse
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -1325,7 +1325,7 @@ def _streamlined_release_approval_arguments(
             recovery="use the granular approval flow for legacy packets",
         )
     risks = tuple(str(item["risk_id"]) for item in packet.document["risks"])
-    reviewed_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    reviewed_at = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     checklist = derive_machine_checklist(packet)
     checklist.update({name: True for name in HUMAN_CHECKLIST_V2})
     # Build the approval here and discard it, so a packet the kernel would reject is

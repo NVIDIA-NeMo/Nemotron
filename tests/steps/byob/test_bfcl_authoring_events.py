@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -34,7 +34,7 @@ from nemotron.steps.byob.runtime.authoring_workflow.workspace_lock import Worksp
 SHA_A = "sha256:" + "a" * 64
 SHA_B = "sha256:" + "b" * 64
 SHA_C = "sha256:" + "c" * 64
-NOW = datetime(2026, 8, 29, 13, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 29, 13, 0, tzinfo=UTC)
 
 
 def _payloads() -> tuple[tuple[str, object], ...]:

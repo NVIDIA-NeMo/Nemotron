@@ -27,7 +27,7 @@ import stat
 import threading
 import uuid
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Literal
@@ -152,7 +152,7 @@ def _validate_identifier(value: str, field: str) -> None:
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _normalized_now(clock: Clock) -> datetime:
@@ -162,11 +162,11 @@ def _normalized_now(clock: Clock) -> datetime:
             "clock_invalid",
             "workspace lock clock must return a timezone-aware datetime",
         )
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def _json_datetime(value: datetime) -> str:
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _read_descriptor(descriptor: int) -> bytes:

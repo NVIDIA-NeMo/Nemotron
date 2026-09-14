@@ -26,7 +26,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -93,7 +93,7 @@ class RevocationRegistryVerifier:
     policy: Literal["reject", "warn"] = "reject"
     minimum_generation: int = 1
     clock: Callable[[], datetime] = field(
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         repr=False,
         compare=False,
     )
@@ -499,7 +499,7 @@ def verify_release_revocation(
             replacement_frozen_pack_fingerprint=None,
             warnings=(),
         )
-    current = _aware_utc(now or datetime.now(timezone.utc))
+    current = _aware_utc(now or datetime.now(UTC))
     if _require_timestamp(record.effective_at, "effective_at") > current:
         return RevocationVerdict(
             policy=policy,
@@ -597,7 +597,7 @@ def _timestamp(value: datetime) -> str:
 def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("release revocation timestamp must be timezone-aware")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def _require_timestamp(value: str, label: str) -> datetime:

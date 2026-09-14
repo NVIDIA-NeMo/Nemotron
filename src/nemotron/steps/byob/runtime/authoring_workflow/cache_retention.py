@@ -23,7 +23,7 @@ import json
 import os
 import re
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -587,7 +587,7 @@ def _build_audit(
         "run_id": run_id,
         "actor": actor,
         "reason_code": reason_code,
-        "executed_at": datetime.now(timezone.utc).isoformat(),
+        "executed_at": datetime.now(UTC).isoformat(),
         "dry_run": dry_run,
         "plan_digest": plan.plan_digest,
         "cache_content_hash_before": plan.cache_content_hash_before,

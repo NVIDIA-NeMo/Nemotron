@@ -22,7 +22,7 @@ import json
 import os
 import re
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
@@ -276,7 +276,7 @@ def build_authoring_event(
         raise AuthoringEventError(
             f"payload type {type(payload).__name__} does not match {event_type}"
         )
-    timestamp = emitted_at or datetime.now(timezone.utc)
+    timestamp = emitted_at or datetime.now(UTC)
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         raise AuthoringEventError("event timestamp must be timezone-aware")
     unsigned = {

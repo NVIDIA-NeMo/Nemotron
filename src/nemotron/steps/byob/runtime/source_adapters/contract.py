@@ -24,7 +24,7 @@ itself publication authority.
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, StrictBool, StrictFloat, StrictInt, StrictStr, field_validator
@@ -47,7 +47,7 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class AdapterCapability(str, Enum):
+class AdapterCapability(StrEnum):
     """Operations an adapter may offer to BFCL-owned orchestration."""
 
     DESCRIBE_TOOLS = "describe_tools"
@@ -58,7 +58,7 @@ class AdapterCapability(str, Enum):
     GET_STATE = "get_state"
 
 
-class FixtureAccessKind(str, Enum):
+class FixtureAccessKind(StrEnum):
     """How reviewed fixture data can cross the source boundary."""
 
     NONE = "none"
@@ -67,7 +67,7 @@ class FixtureAccessKind(str, Enum):
     SNAPSHOT = "snapshot"
 
 
-class ProbeSafetyKind(str, Enum):
+class ProbeSafetyKind(StrEnum):
     """Maximum observation authority declared by the adapter."""
 
     IDENTITY_ONLY = "identity_only"
@@ -75,7 +75,7 @@ class ProbeSafetyKind(str, Enum):
     RESET_ISOLATED = "reset_isolated"
 
 
-class CleanupKind(str, Enum):
+class CleanupKind(StrEnum):
     """Resource boundary BFCL must close after an observation."""
 
     NONE = "none"
