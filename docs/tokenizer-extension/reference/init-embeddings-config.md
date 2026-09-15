@@ -64,7 +64,7 @@ This page lists the keys you can override with `nemotron steps run tokenizer_ext
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `focus.fasttext_model` | `null` | Path to a fastText `.bin`; required for `method: focus`. |
+| `focus.fasttext_model` | `null` | Path to a fastText `.bin` file for the target language. Optional. When the path is unset, the step downloads the `cc.<code>.300.bin` vectors for the resolved `language` into `FASTTEXT_CACHE_DIR` on first use. Later runs reuse the downloaded vectors. |
 | `focus.candidate_pool` | `target` | `target` restricts neighbors to the base model's target-script rows; `all` uses every base row. `hindi` is accepted as an alias for `target`. |
 | `focus.sparsemax_temperature` | `0.05` | Divisor applied to cosine similarities before Sparsemax. |
 | `focus.num_samples` | `10` | Number of new tokens reported in the log. |

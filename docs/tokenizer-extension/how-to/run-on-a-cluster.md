@@ -26,6 +26,8 @@ $ export NEMOTRON_ENV_FILE=env.slurm.toml
 
 Substitute `-c lepton` or `-c dgxcloud` for the other targets.
 Replace the site-specific values in the generated file before use.
+On Lepton, the profiles read credentials from platform secrets.
+Create the `HF_TOKEN` and `WANDB_API_KEY` secrets before the first submission. Refer to {doc}`../prerequisites`.
 
 ## Profiles
 
@@ -36,10 +38,13 @@ The generated profiles follow the pattern `<target>_tokenizer_<step>`.
 | `_tokenizer_extend` | `extend` | CPU only, 1 node | `indic-nlp-library` |
 | `_tokenizer_init_embeddings` | `init_embeddings` | 1 GPU, 1 node | `fasttext-wheel`, `indic-nlp-library` |
 | `_tokenizer_evaluate` | `evaluate` | CPU only, 1 node | none |
-| `_tokenizer_eval_init` | `eval_init` | GPU, 1 node | none |
+| `_tokenizer_eval_init` | `eval_init` | 1 GPU, 1 node | `accelerate` |
 
 The CPU profiles select a CPU partition or CPU resource shape; the `extend` trainer holds the whole word-count table in memory, so choose a large-memory shape for a large corpus.
-The `init_embeddings` profile requests a single GPU, which is enough for every engine except `subword.gemma_weighted` on a large Gemma model.
+The `init_embeddings` profile and the `eval_init` profile each request one GPU.
+One GPU is enough for every engine except `subword.gemma_weighted` on a large Gemma model.
+On Lepton, `LEPTON_INIT_SHAPE` sets the GPU shape for `init_embeddings` and `LEPTON_BPB_SHAPE` sets the GPU shape for `eval_init`.
+A profile's `pip_extras` list replaces the base profile's list. It does not extend the base list. When you edit a `pip_extras` list, restate the base packages.
 
 Each profile also sets `TOKEXT_OUTPUT_DIR` to a shared workspace path.
 The `init_embeddings` profile sets `FASTTEXT_CACHE_DIR`, the directory where `focus` caches downloaded `cc.<code>.300.bin` vectors so that a second run reuses them.

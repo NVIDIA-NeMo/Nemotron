@@ -49,16 +49,16 @@ The corpus block accepts either a Hugging Face dataset or a local path; the `cor
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `corpus.hf_dataset` | `ai4bharat/sangraha` | Dataset identifier passed as `path` to `load_dataset`. Set `null` to use `corpus.path`. |
+| `corpus.hf_dataset` | `ai4bharat/sangraha` | Dataset identifier passed as `path` to `load_dataset`. Set `null` to use `corpus.path`. Setting both keys is an error. |
 | `corpus.hf_name` | `verified` | Dataset configuration or subset passed as `name`. |
 | `corpus.hf_split` | `hin` | Split to read. |
 | `corpus.hf_data_dir` | `null` | Optional `data_dir` argument. |
 | `corpus.hf_data_files` | `null` | Optional `data_files` argument. |
 | `corpus.hf_revision` | `null` | Optional dataset revision. |
 | `corpus.streaming` | `false` | `false` downloads and caches the dataset so later jobs reuse it; `true` streams. |
-| `corpus.path` | `null` | Local Parquet directory or glob, or a JSON Lines path. Leave `corpus.hf_dataset` null when set. |
+| `corpus.path` | `null` | Local Parquet directory or glob, or a JSON Lines path. `corpus.hf_dataset` must be `null` when this is set. |
 | `corpus.glob` | `"*.parquet"` | File pattern applied when `corpus.path` is a directory. |
-| `corpus.text_field` | `text` | Column that holds the document text. |
+| `corpus.text_field` | `text` | Column that holds the document text. The column must exist in the corpus. When the column does not exist, the step raises an error that lists the available columns. The step never reads a different column. |
 | `corpus.samples` | `1000000` | Maximum documents used for training. |
 | `corpus.max_doc_chars` | `20000` | Documents are truncated to this many characters. Lower it on a memory-limited node. |
 | `corpus.min_frequency` | `0` | Minimum word frequency for a merge; `0` keeps every merge. |

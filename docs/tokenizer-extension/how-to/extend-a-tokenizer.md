@@ -87,6 +87,7 @@ Open `output_dir/<method>/summary.json` and compare `tokens_spliced` with `exten
 
 - Equal values mean the requested budget was reached.
 - A smaller `tokens_spliced` means the corpus was too small for the budget; widen the corpus or lower `extension_size`. The step logs a warning because fertility and BPB comparisons between arms are valid only at a matched `tokens_spliced`.
+- A `tokens_spliced` value of `0` never reaches this file. The step raises an error and writes nothing, because the tokenizer would equal the base tokenizer. The step also raises an error when `corpus.text_field` is not a column of the corpus, and when both `corpus.hf_dataset` and `corpus.path` are set. Refer to {doc}`../reference/troubleshooting`.
 
 The `replace/` directory also contains `id_remap.json`, which the `init_embeddings` step needs for `arm=replace`.
 

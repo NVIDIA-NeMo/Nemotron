@@ -19,7 +19,7 @@ The step needs a GPU node.
 
 - Finish {doc}`extend-a-tokenizer`; you need the `output_dir/<method>/` directory it wrote.
 - Confirm that `base_model` shares the tokenizer that `extend` started from. The `row_count_mismatch` error means the model's embedding rows do not equal the base tokenizer size.
-- For `method: focus`, install `fasttext-wheel` and download a fastText `.bin` for the language.
+- For `method: focus`, install `fasttext-wheel`. The step downloads the `cc.<code>.300.bin` vectors for the language into `FASTTEXT_CACHE_DIR` on first use. The vectors are several gigabytes, so set `FASTTEXT_CACHE_DIR` to durable shared storage before a local run. The generated cluster profiles set `FASTTEXT_CACHE_DIR` for you. Set `focus.fasttext_model` only to use a file you already have.
 
 ## Match `arm` to the Extension Method
 
@@ -74,8 +74,12 @@ FOCUS:
 
 ```console
 $ uv run nemotron steps run tokenizer_extension/init_embeddings -c default \
-    language=<lang> arm=add method=focus focus.fasttext_model=<path/to/cc.xx.300.bin>
+    language=<lang> arm=add method=focus
 ```
+
+When `FASTTEXT_CACHE_DIR` is unset, the step caches the vectors under `/tmp/fasttext`.
+The step also warns that every fresh worker downloads the vectors again.
+To reuse a file you already have, add `focus.fasttext_model=<path/to/cc.xx.300.bin>`.
 
 Not every engine is available for `arm=replace`; see the support table in {doc}`../explanation/embedding-initialization`.
 An unsupported combination fails with an explicit message rather than substituting another engine.

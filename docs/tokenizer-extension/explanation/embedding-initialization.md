@@ -58,7 +58,9 @@ Cosine similarities are divided by `focus.sparsemax_temperature` before Sparsema
 
 fastText tokenizes on whitespace, so it suits languages with space-separated words.
 For a syllable-spaced language such as Vietnamese, the `cc.vi.300` vectors are largely syllable vectors, and `LANGUAGES.md` notes that tokens spanning several syllables fall back to subword composition.
-This engine requires `fasttext-wheel` and a `focus.fasttext_model` file.
+This engine requires `fasttext-wheel`.
+The step downloads the fastText vectors into `FASTTEXT_CACHE_DIR` on first use.
+Set `focus.fasttext_model` to use a local file instead.
 
 ## Norm Correction
 

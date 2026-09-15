@@ -150,7 +150,7 @@ YAML parameters for each step, CLI syntax, output files, and troubleshooting.
 ## Limitations and Considerations
 
 - Scope: the `evaluate` step measures tokenizer-level fertility only. Model and downstream evaluation after CPT belongs to the `eval` step catalog; see {doc}`../model-eval/index`.
-- Optional dependencies: `indic-nlp-library` and `fasttext-wheel` are declared as the `tokenizer-extension` extra in `pyproject.toml` and are not part of the base install. A run that needs one of them and cannot import it fails with the install command rather than producing a quietly different tokenizer.
+- Optional dependencies: `indic-nlp-library`, `fasttext-wheel`, and `accelerate` are declared as the `tokenizer-extension` extra in `pyproject.toml`. The base install does not include these packages. A run that needs one of them and cannot import it fails with the install command rather than producing a quietly different tokenizer.
 - Learning-rate policy: the guidebook reports differential learning-rate results that were measured outside this repository. The `pretrain/megatron_bridge` step does not ship a differential learning-rate option.
 - Remote execution: use `--run <profile>` or `--batch <profile>` with the `*_tokenizer_extend`, `*_tokenizer_init_embeddings`, `*_tokenizer_evaluate`, and `*_tokenizer_eval_init` profiles that `env/env_toml` generates.
 

@@ -32,13 +32,18 @@ Writes `output_dir/<method>/`, where `<method>` is `add`, `replace`, or `expand`
 |-------|---------|
 | `model_id` | Base tokenizer identifier. |
 | `method` | `add`, `replace`, or `expand`. |
+| `language` | The `language` key as configured, lower-cased, or `null` when it was not set. |
+| `language_source` | `config` when `language` was set. `legacy-devanagari-default` when the run used the Devanagari defaults. |
+| `script_normalizer`, `remove_script` | The values the run acted on, after any override. |
+| `language_overrides` | Whether `script_normalizer` and `remove_script` were set explicitly rather than taken from the language profile. |
+| `language_profile_defaults` | The `script_normalizer`, `remove_script`, `fasttext`, and `encoder` values from the language profile. Compare these values with an override to see what the override changed. The value is `null` when no profile matched. |
 | `extension_size` | Requested budget. |
 | `corpus` | The `corpus` block as configured. |
 | `base_vocab_size` | Token count of the base tokenizer. |
 | `final_vocab_size` | Token count of the written tokenizer. |
 | `new_candidates` | Novel tokens produced by BPE training before the splice. |
 | `tokens_requested` | Same value as `extension_size`. |
-| `tokens_spliced` | Tokens actually added. Constructive merging may add intermediate tokens, so this may differ from `tokens_requested`; compare arms only at equal `tokens_spliced`. |
+| `tokens_spliced` | Tokens actually added. Constructive merging may add intermediate tokens, so this value can differ from `tokens_requested`. Compare arms only at equal `tokens_spliced`. A value of `0` is an error. The step writes no directory. |
 | `removed` | `replace` only: number of pruned tokens. |
 | `output` | Output directory. |
 | `timings_sec` | `train`, `build`, and `total` wall-clock seconds. |

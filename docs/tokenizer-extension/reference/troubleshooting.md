@@ -26,6 +26,16 @@ The steps raise hard errors rather than substituting a fallback, so a run that c
 A `language` value that is not registered raises a `ValueError` listing the registered names.
 A Devanagari-normalized language raises an `ImportError` when `indic-nlp-library` is not installed.
 
+Three corpus conditions also raise a `ValueError` before the step writes anything.
+Each condition would otherwise save a tokenizer that looks like a correct tokenizer.
+The following table lists the conditions:
+
+| Condition | Recovery |
+|-----------|----------|
+| Both `corpus.hf_dataset` and `corpus.path` are set. | Set exactly one key. Set `corpus.hf_dataset=null` to clear the default dataset. |
+| `corpus.text_field` is not a column of the first record. The error message lists the available columns. | Set the actual column, such as `tgt` for Samanantar or `text` for Sangraha. The step never reads a different column. |
+| `tokens_spliced` is `0`. BPE training produced no token that survived the splice, so the output tokenizer would equal the base tokenizer. | Widen the corpus. Check `corpus.text_field`, check `corpus.samples`, and confirm that documents pass the 50-character minimum. Alternatively, lower `corpus.min_frequency`. |
+
 ## `init_embeddings`
 
 | Error | Cause | Recovery |
@@ -33,7 +43,7 @@ A Devanagari-normalized language raises an `ImportError` when `indic-nlp-library
 | `unknown_method` | `method` is not `baseline`, `subword`, or `focus`. | Set one of the three values. |
 | `replace_tokenizer_rejected` | `extended_tokenizer` contains `id_remap.json`, so it is a Replace tokenizer, but `arm=add` was set. | Set `arm=replace`. Use `arm=add` only for an `add/` or `expand/` tokenizer. |
 | `row_count_mismatch` | The model's embedding row count differs from the base tokenizer size. | Confirm that `base_model` is the checkpoint whose tokenizer was extended. |
-| `missing_fasttext` | `method=focus` without `focus.fasttext_model`, or the `fasttext` package is not installed. | Set `focus.fasttext_model` to a fastText `.bin` and install the `tokenizer-extension` extra. |
+| `missing_fasttext` | `method=focus` is set and the `fasttext` package is not installed. | Install the `tokenizer-extension` extra. The `focus.fasttext_model` key is optional. When the key is unset, the step downloads the vectors for the resolved `language` into `FASTTEXT_CACHE_DIR`. Set the key to use a file you already have. |
 
 Unsupported method and arm combinations, such as `baseline.mode=mean_target` or `subword.*_averaging=gemma_weighted` with `arm=replace`, also fail explicitly.
 See the support table in {doc}`../explanation/embedding-initialization`.
