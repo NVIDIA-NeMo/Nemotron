@@ -68,12 +68,6 @@ def split_visible_reasoning(
     return rationale, f"{answer_label}: {letter}"
 
 
-def _done_ids(path: Path) -> set[str]:
-    if not path.exists():
-        return set()
-    return {str(record["query_id"]) for record in read_jsonl(path) if record.get("query_id")}
-
-
 async def _request(
     client: Any,
     record: dict[str, Any],
@@ -141,7 +135,9 @@ async def generate_answers(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     failure_path.parent.mkdir(parents=True, exist_ok=True)
-    done = _done_ids(output_path) if resume else set()
+    existing_answers = read_jsonl(output_path) if resume and output_path.exists() else []
+    existing_failures = read_jsonl(failure_path) if resume and failure_path.exists() else []
+    done = {str(record["query_id"]) for record in existing_answers if record.get("query_id")}
     pending = [record for record in records if str(record["query_id"]) not in done]
     semaphore = asyncio.Semaphore(max_parallel)
     key_name = model.get("api_key_env", "NVIDIA_API_KEY")
@@ -149,7 +145,12 @@ async def generate_answers(
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     limits = httpx.Limits(max_connections=max_parallel + 20, max_keepalive_connections=max_parallel)
     lock = asyncio.Lock()
-    stats = {"pending": len(pending), "answered": 0, "failed": 0, "unparsed": 0}
+    stats = {
+        "pending": len(pending),
+        "answered": len(existing_answers),
+        "failed": len(existing_failures),
+        "unparsed": sum(record.get("parsed_letter") is None for record in existing_answers),
+    }
 
     async with httpx.AsyncClient(
         base_url=model["endpoint"].rstrip("/") + "/",
