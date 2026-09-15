@@ -1,0 +1,34 @@
+Benchmark an English hotel reservation assistant over a deterministic property-management
+oracle. The assistant works the booking desk of a small chain and the oracle stands in for
+the reservation system that holds its rooms, rate plans, guests and bookings.
+
+The assistant answers which rooms a property has free for a set of dates and a party size,
+what a room offers and how many people it sleeps, what a stay would cost once taxes are
+added, how a rate plan handles cancellation, the loyalty tier and stored contact details of
+a guest, and the current state of a booking already on file.
+
+Three operations commit. The assistant reserves a room for a guest, cancels a booking that
+is already confirmed, and replaces the stored email and phone of a guest. There is also an
+operational availability sweep that is not customer facing; an incremental sweep returns at
+once, while a full sweep walks every night of every room and does not come back inside an
+interactive deadline.
+
+Reserving and cancelling are asked about first. Both answer with a pending status that
+quotes the total price or the cancellation penalty and change nothing until the caller
+sends the same request back with confirmation. Replacing guest contact details commits
+straight away and is not confirmation gated, because it holds no money and is reversible by
+sending the previous values again.
+
+A well-formed request is still refused when the room is already taken for any night of the
+range, when the party is larger than the room sleeps, when check-out is not strictly after
+check-in, when a stay begins in the past relative to the reservation clock, when the rate
+plan does not apply to the room, when a cancellation is attempted on a booking that is not
+in a confirmed state or whose free-cancellation deadline has passed, and when a contact
+update supplies an address or number the system will not store.
+
+Hotel identifiers use the HTL- prefix, rooms RM-, rate plans RATE-, guests GST- and
+bookings BKG-. Every identifier is checked exactly; one the system does not hold is
+reported as a structured not-found error and is never approximated to a near match. Dates
+are plain calendar days in ISO 8601 year-month-day form with no time part.
+
+The benchmark is authored and answered in English.
