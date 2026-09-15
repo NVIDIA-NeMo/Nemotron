@@ -424,7 +424,13 @@ sections:
   slurm_tokenizer_eval_init:
     extends: slurm_base
     nodes: 1
+    ntasks_per_node: 1
+    gpus_per_node: 1
     time: "02:00:00"
+    # bpb.py loads each model with device_map="auto" when CUDA is visible, which
+    # transformers refuses without accelerate.
+    startup_commands:
+      - uv pip install --python /opt/venv/bin/python --quiet accelerate
   # rl/nemo_rl/dpo: switch image for NeMo-RL while keeping tunnel/account/mounts.
   slurm_rl_nemo_rl_dpo:
     extends: slurm_base

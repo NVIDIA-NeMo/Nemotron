@@ -171,8 +171,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                 "cc.<code>.300 vectors can be resolved and fetched"
             )
         # ensure_fasttext() downloads --fasttext-url here if the file is absent.
-        cache = os.environ.get("FASTTEXT_CACHE_DIR", "/tmp")
-        args.fasttext_model = os.path.join(cache, os.path.basename(args.fasttext_url).replace(".gz", ""))
+        # The path comes from the shared resolver so the focus path finds the
+        # same file instead of fetching its own copy.
+        from focus_init import fasttext_cache_path
+
+        args.fasttext_model = str(fasttext_cache_path(args.fasttext_url))
     return args
 
 

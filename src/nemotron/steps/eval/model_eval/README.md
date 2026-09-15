@@ -35,6 +35,11 @@ a config file.
 - `EVAL_ENDPOINT_URL`: OpenAI-compatible URL, e.g. `https://host/v1/completions`.
 - `EVAL_MODEL_HANDLE`: must equal the server's `--served-model-name`, or every
   request 404s.
+> **Backend support differs by mode.** Launcher-managed Lepton deployment is
+> experimental and there is no launcher Run:ai executor; direct mode works on
+> every backend because you host the endpoint. See
+> [REFERENCE.md](REFERENCE.md) before choosing a backend.
+
 - `EVAL_TOKENIZER`: HF repo id or local path. **Required** — the harness
   tokenizes client-side for chat and completions alike, and otherwise tries to
   load your served-model-name as an HF repo and 404s.

@@ -29,7 +29,7 @@ description = "Resized HF checkpoint (weights + tokenizer) for pretrain/megatron
 name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16"
 description = "Nemotron 3 Nano 30B-A3B base. Loads with device_map='auto'."
 default = true
-min_gpus = 8
+min_gpus = 1
 
 [[parameters]]
 name = "arm"
@@ -73,7 +73,7 @@ choices = ["target", "all", "hindi"]
 
 [[parameters]]
 name = "focus.fasttext_model"
-description = "focus: path to a fastText binary for the target language, e.g. cc.<code>.300.bin (cc.hi.300.bin for Hindi, cc.vi.300.bin for Vietnamese). Required for method=focus."
+description = "focus: path to a fastText binary for the target language, e.g. cc.<code>.300.bin (cc.hi.300.bin for Hindi, cc.vi.300.bin for Vietnamese). Optional: left unset, the file for the resolved language is downloaded from the fastText URL into FASTTEXT_CACHE_DIR and reused by later runs. The vectors are multi-GB, so point FASTTEXT_CACHE_DIR at durable shared storage rather than re-fetching per job."
 
 [[parameters]]
 name = "extended_tokenizer"
@@ -109,7 +109,7 @@ recovery = "Model embedding rows must equal the base tokenizer size before resiz
 
 [[errors]]
 name = "missing_fasttext"
-recovery = "method=focus needs focus.fasttext_model set to a fastText .bin and the `fasttext` package installed"
+recovery = "method=focus needs the `fasttext` package installed. focus.fasttext_model is optional: unset, the vectors for the resolved language are downloaded into FASTTEXT_CACHE_DIR and reused; set it to use a file you already have."
 
 [reference]
 readme = "src/nemotron/steps/tokenizer_extension/init_embeddings/README.md"

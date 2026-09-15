@@ -642,8 +642,8 @@ def local_jsonl_text_stream(
     devanagari_norm: Any,
     pbar: tqdm | None,
 ) -> Iterator[str]:
-    fields = (text_field, "text", "content", "response", "prompt")
     yielded = 0
+    checked = False
     for path in paths:
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -654,12 +654,15 @@ def local_jsonl_text_stream(
                     ex = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                raw = ""
-                for fld in fields:
-                    v = ex.get(fld)
-                    if isinstance(v, str) and v.strip():
-                        raw = v
-                        break
+                if not checked:
+                    if text_field not in ex:
+                        raise ValueError(
+                            f"corpus.text_field={text_field!r} is not a column of {path}. "
+                            f"Available: {sorted(ex.keys())}."
+                        )
+                    checked = True
+                value = ex.get(text_field)
+                raw = value if isinstance(value, str) else ""
                 if not raw:
                     continue
                 cleaned = clean_text(raw, devanagari_norm)

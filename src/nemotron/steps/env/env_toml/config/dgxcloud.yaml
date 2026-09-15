@@ -374,6 +374,14 @@ sections:
   dgxcloud_tokenizer_eval_init:
     extends: dgxcloud_base
     nodes: 1
+    # dgxcloud_base allocates no GPU, and eval_init runs the model, so it asks
+    # for one here rather than inheriting a CPU-only shape.
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    # bpb.py loads each model with device_map="auto" when CUDA is visible, which
+    # transformers refuses without accelerate.
+    startup_commands:
+      - python -m pip install --quiet --break-system-packages accelerate
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   dgxcloud_rl_nemo_rl_dpo:
     extends: dgxcloud_base

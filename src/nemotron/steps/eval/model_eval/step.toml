@@ -98,7 +98,7 @@ skill = "src/nemotron/steps/eval/README.md"
 
 [[strategies]]
 when = "You are choosing which benchmark suite to run"
-then = "Start from a shipped suite rather than writing a config: `-c base_en` (ARC-C, HellaSwag, GSM8K), `-c mmlu_prox` or `-c mmlu_prox_chat` (one language per run via MMLU_PROX_LANG), `-c milu` (Indic, sovereign image), `-c instruct_en` (IFEval, MMLU, GSM8K-CoT, HumanEval). Completions suites are for base models and need EVAL_TOKENIZER; chat suites are for instruct models and do not. Add or drop tasks with `-t`."
+then = "Start from a shipped suite rather than writing a config: `-c base_en` (ARC-C, HellaSwag, GSM8K), `-c mmlu_prox` or `-c mmlu_prox_chat` (one language per run via MMLU_PROX_LANG), `-c milu` (Indic, sovereign image), `-c instruct_en` (IFEval, MMLU, GSM8K-CoT, HumanEval). Completions suites are for base models, chat suites for instruct models. BOTH need EVAL_TOKENIZER: lm-evaluation-harness builds a client-side tokenizer either way, and without one it falls back to the served-model name and fails looking for it on the Hub. Add or drop tasks with `-t`."
 skill = "src/nemotron/steps/eval/model_eval/README.md"
 
 [[strategies]]
@@ -144,7 +144,7 @@ skill = "src/nemotron/steps/eval/model_eval/README.md"
 
 [[strategies]]
 when = "You need to give the eval job an endpoint token without putting it in the job spec"
-then = "Store it as a platform secret (`lep secret create -n <name> -v <token>`) and map it in the profile with `secret_vars = { ENDPOINT_TOKEN = \"<name>\" }`. Values in `env_vars` are stored verbatim in the submitted job spec and are readable by anyone who can read the job. `EVAL_API_KEY_NAME` still names the variable; only the source of its value changes."
+then = "The generated Lepton profiles already map this through `secret_vars`, so create the secret once with `lep secret create -n ENDPOINT_TOKEN -v <token>` and the profile picks it up; override the secret's name with NEMOTRON_ENDPOINT_TOKEN_SECRET if yours differs. An endpoint that needs no token needs no secret -- set `target.api_endpoint.api_key_name=null`. Values in `env_vars` are stored verbatim in the submitted job spec and are readable by anyone who can read the job. `EVAL_API_KEY_NAME` still names the variable; only the source of its value changes."
 skill = "src/nemotron/steps/eval/model_eval/REFERENCE.md"
 
 [[strategies]]

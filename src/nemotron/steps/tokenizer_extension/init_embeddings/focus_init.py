@@ -64,6 +64,57 @@ DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch
 RULE = "=" * 60
 
 
+#: Where the cc.<lang>.300 vectors live when FASTTEXT_CACHE_DIR is unset. The
+#: two init paths used to disagree (/tmp vs /tmp/fasttext), so a file staged by
+#: one was invisible to the other and got fetched twice.
+FASTTEXT_CACHE_DEFAULT = "/tmp/fasttext"
+
+
+def fasttext_cache_dir() -> Path:
+    """The one directory the vectors are cached in."""
+    import os
+
+    return Path(os.environ.get("FASTTEXT_CACHE_DIR") or FASTTEXT_CACHE_DEFAULT)
+
+
+def fasttext_cache_path(url: str) -> Path:
+    """Where the asset behind ``url`` is cached, by its own filename."""
+    import os
+
+    return fasttext_cache_dir() / os.path.basename(url).replace(".gz", "")
+
+
+def _announce_fasttext(url: str, dest: Path) -> None:
+    """Say what is about to be transferred, and where it lands.
+
+    These files are multi-GB. A download that starts with no size and no
+    destination looks like a hang, and on an ephemeral cache it silently
+    repeats on every worker.
+    """
+    import os
+    import urllib.request
+
+    size = None
+    try:
+        with urllib.request.urlopen(
+            urllib.request.Request(url, method="HEAD"), timeout=30
+        ) as resp:
+            length = resp.headers.get("Content-Length")
+            size = int(length) if length else None
+    except Exception:  # noqa: BLE001 - the size is a courtesy, not a gate
+        pass
+    human = f"{size / 1e9:.2f} GB compressed" if size else "size unknown"
+    print(f"  Staging fastText ({human})")
+    print(f"    from: {url}")
+    print(f"    to:   {dest}")
+    if not os.environ.get("FASTTEXT_CACHE_DIR"):
+        print(
+            f"    NOTE: FASTTEXT_CACHE_DIR is unset, so this caches under "
+            f"{FASTTEXT_CACHE_DEFAULT} and is re-fetched on every fresh worker. "
+            "Point it at durable shared storage to stage it once."
+        )
+
+
 def ensure_fasttext(path: str, url: str | None) -> str:
     """Config-driven staging: if the fastText .bin isn't at `path`, download it from
     `url` (on the compute node) and .gz-decompress. Idempotent — a second focus cell
@@ -83,7 +134,7 @@ def ensure_fasttext(path: str, url: str | None) -> str:
 
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(p.suffix + ".downloading")
-    print(f"  Staging fastText: {url} -> {p} ...")
+    _announce_fasttext(url, p)
     with tempfile.NamedTemporaryFile(delete=False, dir=str(p.parent)) as raw:
         urllib.request.urlretrieve(url, raw.name)
         src = raw.name
@@ -198,14 +249,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         if args.fasttext_url is None:
             args.fasttext_url = _fu(args.language)
         if args.fasttext_model is None:
-            # Cache under FASTTEXT_CACHE_DIR so a second focus cell reuses the
-            # ~7 GB download instead of re-fetching it (ensure_fasttext is
-            # idempotent and writes atomically).
-            import os
-
-            cache = os.environ.get("FASTTEXT_CACHE_DIR") or "/tmp/fasttext"
-            os.makedirs(cache, exist_ok=True)
-            args.fasttext_model = str(Path(cache) / f"cc.{_prof.fasttext}.300.bin")
+            # One cache shared with the replace path, so a file staged by either
+            # is reused by the other. ensure_fasttext is idempotent and writes
+            # atomically, so a crashed download never lands here.
+            cache = fasttext_cache_dir()
+            cache.mkdir(parents=True, exist_ok=True)
+            args.fasttext_model = str(cache / f"cc.{_prof.fasttext}.300.bin")
     # Legacy path: no --language at all keeps the original Hindi default, so
     # every pre-existing Hindi config behaves exactly as before.
     if args.fasttext_url is None:

@@ -150,3 +150,38 @@ def resolve(cfg: dict) -> tuple[str, str]:
         return fallback if val is None else str(val)
 
     return (_override("script_normalizer", norm).lower(), _override("remove_script", script))
+
+
+def describe(cfg: dict) -> dict:
+    """The resolved language settings, and where each value came from.
+
+    ``resolve`` returns the two values a run acts on but not their provenance,
+    and a summary recording only model, method and budgets cannot say which
+    language a tokenizer was built for, nor whether an override was in effect.
+    Two tokenizers built from one corpus under different scripts are otherwise
+    indistinguishable after the fact.
+    """
+    raw = cfg.get("language")
+    key = str(raw).strip().lower() if raw is not None else None
+    normalizer, script = resolve(cfg)
+    profile = LANGUAGES.get(key) if key else None
+    return {
+        "language": key,
+        "language_source": "config" if key else "legacy-devanagari-default",
+        "script_normalizer": normalizer,
+        "remove_script": script,
+        "overrides": {
+            "script_normalizer": cfg.get("script_normalizer") is not None,
+            "remove_script": cfg.get("remove_script") is not None,
+        },
+        "profile_defaults": (
+            {
+                "script_normalizer": profile.normalizer,
+                "remove_script": profile.script,
+                "fasttext": profile.fasttext,
+                "encoder": profile.encoder,
+            }
+            if profile is not None
+            else None
+        ),
+    }

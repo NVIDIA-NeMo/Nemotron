@@ -46,6 +46,7 @@ from continued_bpe import (
     find_rank_dead_tokens,
 )
 from languages import get_normalizer
+from languages import describe as describe_language
 from languages import resolve as resolve_language
 from replace_bpe import (
     identify_script_tokens,
@@ -61,9 +62,33 @@ log = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 # Corpus reader (HF dataset name OR local parquet dir OR local jsonl)
 # --------------------------------------------------------------------------- #
+def _require_text_field(example: Any, text_field: str, where: str) -> None:
+    """Refuse a corpus whose records do not carry the configured text column.
+
+    Reading a different column trains a different tokenizer, and the result is
+    indistinguishable from the one that was asked for, so the column is checked
+    rather than guessed.
+    """
+    try:
+        keys = sorted(example.keys())
+    except AttributeError:
+        return
+    if text_field in keys:
+        return
+    raise ValueError(
+        f"corpus.text_field={text_field!r} is not a column of {where}. Available: {keys}."
+    )
+
+
 def corpus_stream(corpus: dict, normalizer: Any) -> Iterator[str]:
     text_field = corpus.get("text_field", "text")
-    fields = (text_field, "text", "content", "response", "prompt", "tgt")
+    if corpus.get("hf_dataset") and corpus.get("path"):
+        raise ValueError(
+            f"corpus: set either `hf_dataset` or `path`, not both "
+            f"(hf_dataset={corpus['hf_dataset']!r}, path={corpus['path']!r}). "
+            "Two sources cannot be read as one corpus, and silently picking one "
+            "trains on data the config does not name."
+        )
     max_samples = int(corpus.get("samples", 1_000_000))
     max_doc_chars = int(corpus.get("max_doc_chars", 0))
 
@@ -122,9 +147,13 @@ def corpus_stream(corpus: dict, normalizer: Any) -> Iterator[str]:
                 f"{ds.num_rows:,}" if hasattr(ds, "num_rows") else "?",
                 f"{max_samples:,}",
             )
+        checked = False
         for ex in ds:
-            raw = next((ex[f] for f in fields if isinstance(ex.get(f), str) and ex[f].strip()), "")
-            c = emit(raw)
+            if not checked:
+                _require_text_field(ex, text_field, f"HF dataset {corpus['hf_dataset']!r}")
+                checked = True
+            value = ex.get(text_field)
+            c = emit(value if isinstance(value, str) else "")
             if c is not None:
                 yield c
                 yielded += 1
@@ -169,6 +198,7 @@ def corpus_stream(corpus: dict, normalizer: Any) -> Iterator[str]:
                 if taken >= per_shard:
                     break
     else:  # jsonl
+        checked = False
         for fpath in files:
             with open(fpath, encoding="utf-8") as fh:
                 for line in fh:
@@ -179,8 +209,11 @@ def corpus_stream(corpus: dict, normalizer: Any) -> Iterator[str]:
                         ex = json.loads(line)
                     except json.JSONDecodeError:
                         continue
-                    raw = next((ex[f] for f in fields if isinstance(ex.get(f), str) and ex[f].strip()), "")
-                    c = emit(raw)
+                    if not checked:
+                        _require_text_field(ex, text_field, fpath)
+                        checked = True
+                    value = ex.get(text_field)
+                    c = emit(value if isinstance(value, str) else "")
                     if c is None:
                         continue
                     yield c
@@ -238,6 +271,7 @@ def run_extension(cfg: dict) -> dict:
     # `language:` resolves the normalizer and the prune script together;
     # `script_normalizer:` / `remove_script:` still override either one.
     script_norm, remove_script = resolve_language(cfg)
+    language_resolution = describe_language(cfg)
     normalizer = get_normalizer(script_norm)
     log.info(
         "language=%s -> script_normalizer=%s remove_script=%s",
@@ -272,6 +306,12 @@ def run_extension(cfg: dict) -> dict:
     summary: dict[str, Any] = {
         "model_id": cfg.get("model_id"),
         "method": method,
+        "language": language_resolution["language"],
+        "language_source": language_resolution["language_source"],
+        "script_normalizer": language_resolution["script_normalizer"],
+        "remove_script": language_resolution["remove_script"],
+        "language_overrides": language_resolution["overrides"],
+        "language_profile_defaults": language_resolution["profile_defaults"],
         "extension_size": ext_size,
         "corpus": corpus,
         "base_vocab_size": base_size,
@@ -282,7 +322,6 @@ def run_extension(cfg: dict) -> dict:
     t_build = time.time()
     if method == "add":
         arm_tok, cand, spliced = _build_arm(base_tok, trained_tok, base_tok, ext_size)
-        arm_tok.save_pretrained(out_dir)
     elif method == "expand":
         # Naive expansion: decode the novel BPE tokens to Unicode and add_tokens()
         # them ATOMICALLY (no merge rules) — the baseline arm.
@@ -334,17 +373,29 @@ def run_extension(cfg: dict) -> dict:
                 cand,
             )
         arm_tok = base_tok
-        arm_tok.save_pretrained(out_dir)
     else:  # replace
         ranges = resolve_ranges([s for s in remove_script.split(",") if s.strip()])
         remove_tokens = identify_script_tokens(base_tok, ranges)
         pruned_backend, old2new, removed_ids, removed_list = prune_backend(base_tok.backend_tokenizer, remove_tokens)
         pruned_base = wrap_fast(pruned_backend, base_tok)
         arm_tok, cand, spliced = _build_arm(pruned_base, trained_tok, base_tok, ext_size)
-        arm_tok.save_pretrained(out_dir)
+        summary["removed"] = len(removed_ids)
+    # Nothing was added, so the output would be the base tokenizer under another
+    # name. Saved, it is indistinguishable from a successful build and every
+    # comparison made against it is a comparison with the base.
+    if spliced == 0:
+        raise ValueError(
+            f"method={method} spliced 0 tokens from {cand} candidate(s): the result would be "
+            f"identical to the base tokenizer, so nothing was written to {out_dir}. Widen the "
+            "corpus (check corpus.text_field, corpus.samples, and that documents survive the "
+            "50-character minimum), or lower min_frequency."
+        )
+
+    arm_tok.save_pretrained(out_dir)
+    if method == "replace":
         (out_dir / "id_remap.json").write_text(json.dumps({str(k): v for k, v in old2new.items()}))
         (out_dir / "removed_tokens.txt").write_text("\n".join(removed_list))
-        summary["removed"] = len(removed_ids)
+
     summary.update(
         {
             "final_vocab_size": len(arm_tok),
