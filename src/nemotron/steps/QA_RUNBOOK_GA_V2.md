@@ -1,10 +1,10 @@
 # QA Runbook: GA_v2 Feature Validation
 
 This runbook defines how the features introduced on `GA_v2` are validated before
-release signoff. It covers text curation, evaluation, Persona MCQ synthetic data
-generation, long-context chat SDG, and tokenizer extension, together with the
-supporting `nemo_runspec`, environment-template, step-catalog, and conversion
-changes those features depend on.
+release signoff. It covers text curation, evaluation, BFCL benchmark creation,
+Persona MCQ synthetic data generation, long-context chat SDG, and tokenizer
+extension, together with the supporting `nemo_runspec`, environment-template,
+step-catalog, and conversion changes those features depend on.
 
 ## Contents
 
@@ -41,6 +41,8 @@ changes those features depend on.
   - [EVAL-009 Backend Profile Matrix](#eval-009-backend-profile-matrix)
   - [EVAL-010 Tokenizer-Extended Checkpoint Integration](#eval-010-tokenizer-extended-checkpoint-integration)
   - [EVAL-011 Agent-Driven Evaluation Workflow](#eval-011-agent-driven-evaluation-workflow)
+- [BFCL Benchmark Creation](#bfcl-benchmark-creation)
+  - [BFCL-001 Hotel-Domain Assisted Authoring, Publication, And Evaluation](#bfcl-001-hotel-domain-assisted-authoring-publication-and-evaluation)
 - [Persona MCQ SDG For SFT](#persona-mcq-sdg-for-sft)
   - [PMC-001 Discover Step, Plugin, And Dependencies](#pmc-001-discover-step-plugin-and-dependencies)
   - [PMC-002 Persona Asset Staging And Secret Safety](#pmc-002-persona-asset-staging-and-secret-safety)
@@ -128,7 +130,7 @@ git log --oneline --no-merges origin/main..origin/GA_v2
 The reference comparison is:
 
 - `main`: `f8f332a51879b1440ca823bd2d68bba0788346f5`
-- `GA_v2`: `6f32ca5ef3ef7d79fa25c79fbd783f293d01c4aa`
+- `GA_v2`: `0748d20507049160c6700d56273d5567385c649b`
 - Merge base: `f8f332a51879b1440ca823bd2d68bba0788346f5`
 
 Record the actual SHAs for every QA pass. If either branch advances, regenerate
@@ -151,6 +153,12 @@ In-scope feature groups:
   - base, instruct, MMLU-ProX, and MILU suites;
   - durable artifacts, provenance, credential redaction, output safety, failure
     diagnostics, and preemption behavior.
+- BFCL benchmark creation:
+  - `byob/bfcl` discovery and the local-Python, model-assisted authoring flow;
+  - source scaffolding from a reviewed tool catalog and domain brief, followed
+    by human completion of executable behavior, fixtures, probes, and semantics;
+  - measured A2 intake certification, Gold validation, publication, and direct
+    benchmark evaluation from the published run manifest.
 - SDG for SFT:
   - `sdg/persona_mcq` discovery and local/remote execution;
   - persona asset staging, multilingual question generation, deduplication,
@@ -169,7 +177,7 @@ In-scope feature groups:
   - language profiles, conversion handoff, remote profiles, and failure guards.
 
 Supporting changes to `nemo_runspec`, environment templates, the step catalog,
-and conversion runner are in scope wherever the five feature groups depend on
+and conversion runner are in scope wherever the six feature groups depend on
 them.
 
 Out of scope:
@@ -196,6 +204,7 @@ Out of scope:
 | --- | --- |
 | `src/nemotron/steps/curate/**`, Curator runtime packaging, and curation artifact types | `CUR-001` through `CUR-005` |
 | `src/nemotron/steps/eval/model_eval/**`, `src/nemo_runspec/**`, eval profiles | `EVAL-001` through `EVAL-011` |
+| `src/nemotron/steps/byob/bfcl/**`, BFCL runtime, assisted-authoring scripts, and function-calling guides | `BFCL-001` |
 | `src/nemotron/steps/sdg/persona_mcq/**`, Persona plugin and profiles | `PMC-001` through `PMC-011` |
 | `use-case-examples/long-context-chat-sdg/**` | `LCSDG-001` through `LCSDG-011` |
 | Super3 128K/256K SFT configs and metadata | `LCSFT-001` through `LCSFT-003` |
@@ -279,13 +288,16 @@ git status --short --branch > "$QA_ROOT/metadata/git-status.txt"
 Credential and service variables used later:
 
 ```bash
-export NVIDIA_API_KEY="${NVIDIA_API_KEY:-}"
-export NGC_API_KEY="${NGC_API_KEY:-$NVIDIA_API_KEY}"
+export LEPTON_API_TOKEN="${LEPTON_API_TOKEN:-}"
+export NVIDIA_API_KEY="${NVIDIA_API_KEY:-$LEPTON_API_TOKEN}"
+export NGC_API_KEY="${NGC_API_KEY:-}"
 export HF_TOKEN="${HF_TOKEN:-}"
 
-export QWEN_API_BASE="${QWEN_API_BASE:-}"
-export OSS_API_BASE="${OSS_API_BASE:-}"
-export GEMMA_API_BASE="${GEMMA_API_BASE:-}"
+export QWEN_API_BASE="${QWEN_API_BASE:-https://xtcr3jss-rkalani-qwen-3-5-122b-sdg-gcp.xenon.lepton.run/v1}"
+export OSS_API_BASE="${OSS_API_BASE:-https://xtcr3jss-gpt-oss-120b-rkalani-az.xenon.lepton.run/v1}"
+export GEMMA_API_BASE="${GEMMA_API_BASE:-https://xtcr3jss-gemma-4-31b-it-vllm-ravirajj-az-32k.xenon.lepton.run/v1}"
+export NANO_API_BASE="${NANO_API_BASE:-https://xtcr3jss-nano-30b-chat.xenon.lepton.run/v1}"
+export SUPER_API_BASE="${SUPER_API_BASE:-https://xtcr3jss-super-120b-sdg.xenon.lepton.run/v1}"
 
 export EVAL_ENDPOINT_URL="${EVAL_ENDPOINT_URL:-}"
 export EVAL_MODEL_HANDLE="${EVAL_MODEL_HANDLE:-}"
@@ -300,14 +312,35 @@ export EVAL_RESULTS_ROOT="${EVAL_RESULTS_ROOT:-$QA_ROOT/artifacts/eval}"
 export QA_BACKEND="${QA_BACKEND:-lepton}"
 export QA_ENV_FILE="${QA_ENV_FILE:-$QA_ROOT/configs/env.$QA_BACKEND.toml}"
 
-export ASSISTANT_ENDPOINT="${ASSISTANT_ENDPOINT:-}"
-export USER_MODEL_ENDPOINT="${USER_MODEL_ENDPOINT:-}"
+export ASSISTANT_ENDPOINT="${ASSISTANT_ENDPOINT:-$OSS_API_BASE}"
+export USER_MODEL_ENDPOINT="${USER_MODEL_ENDPOINT:-$GEMMA_API_BASE}"
 export EMBEDDING_ENDPOINT="${EMBEDDING_ENDPOINT:-}"
 export RETRIEVAL_ENDPOINT="${RETRIEVAL_ENDPOINT:-}"
-export ASSISTANT_API_KEY="${ASSISTANT_API_KEY:-}"
-export USER_MODEL_API_KEY="${USER_MODEL_API_KEY:-}"
+export ASSISTANT_API_KEY="${ASSISTANT_API_KEY:-$LEPTON_API_TOKEN}"
+export USER_MODEL_API_KEY="${USER_MODEL_API_KEY:-$LEPTON_API_TOKEN}"
 export EMBEDDING_API_KEY="${EMBEDDING_API_KEY:-}"
 ```
+
+`NVIDIA_API_KEY` is the credential variable name consumed by the checked-in
+Persona MCQ model configs; for these Lepton routes it carries the same value as
+`LEPTON_API_TOKEN`. `NGC_API_KEY` remains separate because it authorizes persona
+asset downloads, not the Lepton model deployments.
+
+Lepton model route snapshot used by this runbook on 2026-09-15:
+
+| Role/name | OpenAI-compatible API root | Served model id |
+| --- | --- | --- |
+| Qwen author/teacher | `https://xtcr3jss-rkalani-qwen-3-5-122b-sdg-gcp.xenon.lepton.run/v1` | `Qwen/Qwen3.5-122B-A10B` |
+| GPT-OSS teacher/assistant | `https://xtcr3jss-gpt-oss-120b-rkalani-az.xenon.lepton.run/v1` | `openai/gpt-oss-120b` |
+| Gemma teacher/user simulator and BFCL candidate | `https://xtcr3jss-gemma-4-31b-it-vllm-ravirajj-az-32k.xenon.lepton.run/v1` | `google/gemma-4-31B-it` |
+| Nemotron Nano alternate | `https://xtcr3jss-nano-30b-chat.xenon.lepton.run/v1` | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16` |
+| Nemotron Super alternate | `https://xtcr3jss-super-120b-sdg.xenon.lepton.run/v1` | `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16` |
+
+These are mutable deployment routes, not weight pins. Before any live case,
+query `<API root>/models` with `LEPTON_API_TOKEN` and require the exact served
+id in the third column. A route that returns `401`/`403`, times out, or reports a
+different id is not ready for spend. Append no `/chat/completions` suffix to
+these variables; Data Designer and the BFCL candidate client add it.
 
 ### Cluster Wiring
 
@@ -449,6 +482,7 @@ uv run nemotron steps --help > "$QA_ROOT/metadata/steps-help.txt"
 uv run nemotron steps list > "$QA_ROOT/metadata/steps-list.txt"
 
 for STEP in \
+  byob/bfcl \
   eval/model_eval \
   sdg/persona_mcq \
   sft/megatron_bridge \
@@ -467,7 +501,9 @@ Success criteria:
 - Every command exits 0 without a model credential.
 - All three backend environment files generate without overwriting a user-owned
   `env.toml`.
-- All seven step IDs are discoverable and metadata output is valid JSON.
+- All eight step IDs are discoverable and metadata output is valid JSON.
+- `byob/bfcl` advertises the Oracle Pack, benchmark Parquet, run-manifest, and
+  evaluation artifact contracts used by `BFCL-001`.
 - `sdg/qasynth` is absent and `sdg/persona_mcq` is present.
 - The tokenizer category exposes all four steps.
 - `sft/megatron_bridge` advertises the long-context reference profiles as
@@ -483,6 +519,11 @@ uv run pytest -q \
   tests/nemo_runspec/test_lepton_log_collection.py \
   tests/steps/test_model_eval_direct.py \
   tests/steps/test_model_eval_integration_contracts.py \
+  tests/steps/byob/test_bfcl_authoring_gold_e2e.py \
+  tests/steps/byob/test_bfcl_authoring_release.py \
+  tests/steps/byob/test_bfcl_eval_cli_orchestration.py \
+  tests/steps/byob/test_bfcl_input_contract_docs.py \
+  tests/steps/byob/test_bfcl_pipeline_assets.py \
   tests/steps/sdg/test_persona_mcq.py \
   tests/steps/tokenizer_extension/test_extend_budget.py \
   tests/steps/test_convert_tokenizer_config.py \
@@ -1485,6 +1526,330 @@ Success criteria:
 
 Evidence to collect: agent transcript, generated command/config, job ID, and
 artifact assessment.
+
+## BFCL Benchmark Creation
+
+### BFCL-001 Hotel-Domain Assisted Authoring, Publication, And Evaluation
+
+Objective: verify that an SQA engineer can start with only a reviewed domain
+brief and tool catalog, follow the published local-Python model-assisted BFCL
+flow, publish a Gold benchmark, and evaluate a candidate. This is an end-to-end
+acceptance test of the pipeline and its documentation. Detailed component and
+negative testing remains in the BFCL automated suites.
+
+The checked-in starting inputs are deliberately not an executable source
+package or an Oracle Pack:
+
+- `src/nemotron/steps/byob/data/sqa_hotel_booking/domain-brief.txt`
+- `src/nemotron/steps/byob/data/sqa_hotel_booking/tools.json`
+
+The domain is an English hotel-reservation assistant with ten tools covering
+room search and pricing, bookings, guests, confirmation-gated mutations, an
+immediate contact mutation, structured refusals, and a real timeout path. SQA
+must generate, review, complete, or configure every remaining artifact. Do not
+add a prebuilt backend, fixtures, probe plan, supplement, Oracle Pack, or
+publication config to the input directory; doing so would invalidate the
+acceptance test.
+
+Prerequisites:
+
+- `SETUP-001`, `SETUP-002`, and the BFCL offline test suites have passed.
+- The QA owner has approved execution of the reviewed model-proposed Python
+  source for this case.
+- The named Lepton authoring and candidate deployments below are reachable with
+  `LEPTON_API_TOKEN`. If a deployment has been replaced, update its URL and
+  served model id together from `/v1/models`; do not point a new URL at the old
+  model name.
+- SQA can create an Ed25519 certification key and make the public key/key id
+  available to the BFCL trust policy. Keep private keys and provider
+  credentials outside the repository and generated configs.
+
+Follow these operator guides in order, without implementation guidance from the
+pipeline developers:
+
+1. `docs/build-benchmarks/function-calling/how-to/start-from-domain-data.md`,
+   using **Path B: Author From An Executable Source With Model Assistance** and
+   beginning with the optional model-assisted source scaffold.
+2. `docs/build-benchmarks/function-calling/how-to/assisted-authoring.md` for
+   intake, certification, authorization, drafting, assembly, review, and
+   freeze.
+3. `docs/build-benchmarks/function-calling/how-to/publish-a-release.md`, using
+   a real publication configuration rather than a smoke-only configuration.
+4. `docs/build-benchmarks/function-calling/how-to/run-evaluation.md`, consuming
+   the publication through its `run_manifest.json`.
+
+Set up a fresh run and verify that only the two intended inputs are staged:
+
+```bash
+export BFCL_INPUT_ROOT="$(pwd)/src/nemotron/steps/byob/data/sqa_hotel_booking"
+export BFCL_RUN="$QA_ROOT/artifacts/bfcl-hotel"
+export BFCL_SOURCE="$BFCL_RUN/source"
+export BFCL_WORKSPACE="$BFCL_RUN/workspace"
+export DATA_DESIGNER_HOME="$BFCL_RUN/data-designer"
+
+# Model-assisted source/probe/pack authoring. This model is exposed to the
+# benchmark evidence and therefore must not be the evaluation candidate.
+export BFCL_AUTHOR_PROVIDER="lepton_qwen"
+export BFCL_AUTHOR_API_BASE="https://xtcr3jss-rkalani-qwen-3-5-122b-sdg-gcp.xenon.lepton.run/v1"
+export BFCL_AUTHOR_MODEL="Qwen/Qwen3.5-122B-A10B"
+export BFCL_AUTHOR_MODEL_CANONICAL="lepton:Qwen/Qwen3.5-122B-A10B@provider_managed"
+
+# Independent BFCL evaluation candidate.
+export BFCL_CANDIDATE_PROVIDER="lepton"
+export BFCL_CANDIDATE_API_BASE="https://xtcr3jss-gemma-4-31b-it-vllm-ravirajj-az-32k.xenon.lepton.run/v1"
+export BFCL_CANDIDATE_MODEL="google/gemma-4-31B-it"
+export BFCL_CANDIDATE_CANONICAL="lepton:google/gemma-4-31B-it@provider_managed"
+export BFCL_CANDIDATE_TOKENIZER="google/gemma-4-31B-it"
+
+: "${LEPTON_API_TOKEN:?Export the Lepton endpoint token in the shell only}"
+
+mkdir -p \
+  "$BFCL_SOURCE" "$BFCL_RUN/configs" "$BFCL_RUN/keys" \
+  "$DATA_DESIGNER_HOME" "$BFCL_RUN/metadata"
+cp "$BFCL_INPUT_ROOT/tools.json" "$BFCL_SOURCE/tools.json"
+cp "$BFCL_INPUT_ROOT/domain-brief.txt" "$BFCL_RUN/domain-brief.txt"
+
+cat > "$DATA_DESIGNER_HOME/model_providers.yaml" <<'YAML'
+providers:
+  - name: lepton_qwen
+    endpoint: https://xtcr3jss-rkalani-qwen-3-5-122b-sdg-gcp.xenon.lepton.run/v1
+    provider_type: openai
+    api_key: LEPTON_API_TOKEN
+YAML
+
+curl -fsS \
+  -H "Authorization: Bearer $LEPTON_API_TOKEN" \
+  "$BFCL_AUTHOR_API_BASE/models" \
+  > "$BFCL_RUN/metadata/author-models.json"
+curl -fsS \
+  -H "Authorization: Bearer $LEPTON_API_TOKEN" \
+  "$BFCL_CANDIDATE_API_BASE/models" \
+  > "$BFCL_RUN/metadata/candidate-models.json"
+
+python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["BFCL_INPUT_ROOT"])
+assert sorted(path.name for path in root.iterdir()) == ["domain-brief.txt", "tools.json"]
+tools = json.loads((root / "tools.json").read_text(encoding="utf-8"))
+assert len(tools) == 10
+assert sum(bool(tool.get("x-mutates")) for tool in tools) == 3
+assert sum(bool(tool.get("x-requires-confirmation")) for tool in tools) == 2
+assert {tool["function"]["name"] for tool in tools} >= {
+    "create_booking", "cancel_booking", "rebuild_availability_index"
+}
+
+run = Path(os.environ["BFCL_RUN"])
+author_ids = {
+    item["id"] for item in json.loads(
+        (run / "metadata/author-models.json").read_text(encoding="utf-8")
+    )["data"]
+}
+candidate_ids = {
+    item["id"] for item in json.loads(
+        (run / "metadata/candidate-models.json").read_text(encoding="utf-8")
+    )["data"]
+}
+assert os.environ["BFCL_AUTHOR_MODEL"] in author_ids, author_ids
+assert os.environ["BFCL_CANDIDATE_MODEL"] in candidate_ids, candidate_ids
+assert os.environ["BFCL_AUTHOR_MODEL"] != os.environ["BFCL_CANDIDATE_MODEL"]
+PY
+```
+
+The listed routes and served ids come from the current Lepton-backed QA
+deployment inventory. The `/models` checks are mandatory because deployments
+are mutable. A `401` or `403` means the token is missing or not authorized; a
+missing expected id means the route and model name no longer form a valid pair.
+The provider file contains only the credential variable name.
+
+First discover the step and scaffold the conventional source package. Use seed
+`7`, temperature `0`, and the explicit reviewed provider-managed identity so
+the authoring route is recorded without pretending its weights are pinned:
+
+```bash
+uv run nemotron steps show byob/bfcl
+
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
+  --tools "$BFCL_SOURCE/tools.json" \
+  --output "$BFCL_SOURCE" \
+  --dependency-lock \
+  --draft-with-model \
+  --domain-brief "$BFCL_RUN/domain-brief.txt" \
+  --model-alias author \
+  --model-provider "$BFCL_AUTHOR_PROVIDER" \
+  --model "$BFCL_AUTHOR_MODEL" \
+  --model-canonical-id "$BFCL_AUTHOR_MODEL_CANONICAL" \
+  --seed 7 \
+  --temperature 0 \
+  --request-timeout 600
+```
+
+The generated `backend.py` and `fixtures.json` are proposals, not certified
+domain truth. SQA must review and finish availability, occupancy, pricing, date,
+confirmation, mutation, cancellation, contact-validation, structured-error,
+reset/isolation, and blocking timeout behavior. Replace placeholder fixtures
+with deterministic records. Do not weaken `tools.json` to make a generated
+backend pass. Then run:
+
+```bash
+uv run python -m nemotron.steps.byob.scripts.check_source_package \
+  --source "$BFCL_SOURCE"
+
+! rg -n 'BFCL-TODO|NotImplementedError' \
+  "$BFCL_SOURCE/backend.py" "$BFCL_SOURCE/fixtures.json"
+```
+
+Extract the reviewed error vocabulary, draft a probe plan, correct any
+ungrounded model literals to fixture-backed values, and check A2 readiness:
+
+```bash
+uv run python -m nemotron.steps.byob.scripts.extract_error_vocabulary \
+  --source "$BFCL_SOURCE" \
+  --output "$BFCL_RUN/configs/error-vocabulary.json"
+
+uv run python -m nemotron.steps.byob.scripts.draft_probe_plan \
+  --source "$BFCL_SOURCE" \
+  --domain-brief "$BFCL_RUN/domain-brief.txt" \
+  --output "$BFCL_RUN/configs/probe-plan.json" \
+  --clock 2026-06-01T09:00:00+00:00 \
+  --error-vocabulary "$BFCL_RUN/configs/error-vocabulary.json" \
+  --model-alias author \
+  --model-provider "$BFCL_AUTHOR_PROVIDER" \
+  --model "$BFCL_AUTHOR_MODEL" \
+  --model-canonical-id "$BFCL_AUTHOR_MODEL_CANONICAL" \
+  --seed 7 \
+  --temperature 0 \
+  --request-timeout 600
+
+uv run python -m nemotron.steps.byob.scripts.check_probe_plan \
+  --source "$BFCL_SOURCE" \
+  --probe-plan "$BFCL_RUN/configs/probe-plan.json"
+```
+
+In particular, a date such as `2030-08-10` or a reason such as
+`change_of_plans` is not trusted merely because a model emitted it. Unless its
+parameter schema pins that literal, bind it to reviewed fixture data. The
+reviewed plan must exercise successful calls for all ten tools, structured
+errors, all three mutations, both confirmation gates, reset/isolation, and the
+full availability-index timeout. `attainable_tier: A2` is only a static
+readiness result; intake must execute the probes to earn A2.
+
+Continue through the guides with the following stage sequence. Copy all example
+policies and configs to `$BFCL_RUN/configs` before editing them. Human-owned
+artifacts are `backend.py`, `fixtures.json`, `probe-plan.json`,
+`reviewed-supplement.yaml`, policy/config choices, and approvals. Generated
+evidence, drafts, packs, reports, Parquet files, and manifests must be corrected
+upstream and regenerated rather than edited in place.
+
+```text
+bfcl_author --ci author
+  -> execute intake probes and earn certification tier A2
+bfcl_author --ci apply-policy
+  -> bind reviewed exposure and clean-evidence policy
+bfcl_author --ci draft
+  -> produce bounded coverage, assertion, template, and validation proposals
+bfcl_author --ci assemble
+  -> combine reviewed proposals with reviewed-supplement.yaml
+nemotron steps run byob/bfcl ... stage=prepare family=bfcl
+  -> independently validate the candidate at Gold
+bfcl_author --ci review
+  -> bind the exact source, certification, draft, candidate, and Gold report
+bfcl_author --ci release
+  -> record approval, freeze exact bytes, revalidate, and publish
+nemotron steps run byob/bfcl -c "$BFCL_RUN/configs/eval.cli.yaml"
+  -> preflight and then evaluate from the published run_manifest.json
+```
+
+Use the exact command lines and required arguments from the four guides, and
+capture each invocation in the evidence bundle. The case fails as a
+documentation defect if an SQA engineer cannot determine a required artifact,
+argument, review decision, or recovery action from those guides.
+
+Resolve the evaluation config with this independent Lepton candidate. Its
+endpoint does not publish an immutable weights digest or revision, so schema
+1.2 must record the identity honestly as provider-managed and
+`publication.requested` must remain `false`. The evaluation still produces the
+required SQA artifacts; do not invent a digest from the model name. If the
+deployment owner supplies a verified immutable revision or weights digest,
+replace the two nulls and only then request publication of the score.
+Do not enable Gemma as a profiling, paraphrasing, judging, or translation role
+while building this BFCL publication; that would expose the benchmark to its
+evaluation candidate and the contamination gate must refuse the run.
+
+```yaml
+schema_version: "1.2"
+config_status: resolved
+
+candidates:
+  - alias: gemma_4_31b_it
+    model: google/gemma-4-31B-it
+    provider: lepton
+    provider_api_version: v1
+    api:
+      base_url: https://xtcr3jss-gemma-4-31b-it-vllm-ravirajj-az-32k.xenon.lepton.run/v1
+      api_key_env: LEPTON_API_TOKEN
+    model_identity:
+      source: lepton
+      model: google/gemma-4-31B-it
+      revision: null
+      weights_digest: null
+    inference:
+      temperature: 0.0
+      top_p: 1.0
+      max_tokens: 8192
+      seed: 42
+      tool_choice: auto
+      provider_extensions: {}
+
+publication:
+  requested: false
+  require_same_task_ids: true
+```
+
+The matching tokenizer/checkpoint reference is `google/gemma-4-31B-it`. BFCL
+evaluation sends chat tool
+schemas directly and does not need a client-side tokenizer, but record this
+reference beside the endpoint identity so the served deployment can be audited.
+
+Success criteria:
+
+- The step is discoverable as `byob/bfcl`, and SQA completes the flow from only
+  the two checked-in inputs without pipeline-developer implementation guidance.
+- SQA reviews and completes the executable source, deterministic fixtures, A2
+  probe plan, semantic supplement, policy, and publication/evaluation configs;
+  all model-generated source markers are removed through implementation rather
+  than schema weakening.
+- Intake executes the probes and records certification tier `A2`, including
+  reset/isolation, mutation, confirmation, timeout cleanup, structured error,
+  and success evidence.
+- The assembled candidate Oracle Pack passes fresh independent validation with
+  `tier: gold` and `gold_eligible: true`.
+- Release freezes the reviewed pack, reruns Gold validation, and produces one
+  immutable publication directory containing `benchmark.parquet`,
+  `benchmark_raw.parquet`, and `run_manifest.json`.
+- The published `run_manifest.json` records `gold_eligible: true`; an output
+  marked `smoke_no_publication` does not satisfy this case.
+- Evaluation reads the publication through `run_manifest.json` and completes
+  with `eval_report.json`, `eval_task_results.parquet`, `eval_manifest.json`,
+  and per-task results, without a fatal setup or infrastructure failure.
+- Credentials and private keys do not appear in source, configs, commands,
+  logs, manifests, reports, or Git status.
+- Every instruction that cannot be completed from the linked guides is filed
+  as a documentation defect with the failing step and missing information.
+
+Benchmark domain quality is not an acceptance criterion. The intent is to
+verify that the documented LLM-assisted BFCL pipeline can be operated from the
+two initial domain inputs through publication and evaluation.
+
+Evidence to collect: repository/base/head SHAs; input checksums; authoring and
+candidate model identities; redacted commands/configs/logs; reviewed source,
+fixtures, probe plan, supplement, and policy digests; A2 certification and
+intake evidence; draft and assembly provenance; candidate and frozen-pack Gold
+reports; review/freeze/release records; publication Parquet and manifest
+checksums; evaluation report, manifest, per-task results, and caches; and any
+documentation defect IDs.
 
 ## Persona MCQ SDG For SFT
 
@@ -2691,6 +3056,11 @@ GA_v2 feature signoff requires:
   durable summary/manifest/log artifacts and no credential leak.
 - Both a base/completions and instruct/chat evaluation path are validated; each
   uses the matching client-side tokenizer.
+- `BFCL-001` completes from only the checked-in hotel domain brief and tool
+  catalog: intake earns A2, the assembled and frozen packs pass Gold, a real
+  publication writes both Parquet files plus a Gold-eligible run manifest, and
+  candidate evaluation completes from that manifest. Any missing operator
+  instruction is tracked as a documentation defect.
 - Persona MCQ completes one tiny end-to-end live run, validates all three
   shipped languages, resumes safely, and produces a usable downstream blend.
 - Long-context SDG completes a five-row generation and objective export. The
