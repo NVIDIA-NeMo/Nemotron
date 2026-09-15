@@ -234,9 +234,13 @@ def run_query_prep(cfg: Dict[str, Any], base: Path, limit: Optional[int]) -> Pat
     # DD Person sampler may fill it at generate time.
     tools_json = json.dumps(cfg["tools"], ensure_ascii=False)
     seeds: List[Dict[str, Any]] = [
-        {"query": str(r.get(field, "")), "cluster_id": r.get("cluster_id", ""),
-         "kind": r.get("kind", ""),   # -> planner opening kind (vague => clarify)
-         "tools": tools_json}
+        {
+            **r,
+            "query": str(r.get(field, "")),
+            "cluster_id": r.get("cluster_id", ""),
+            "kind": r.get("kind", ""),  # -> planner opening kind (vague => clarify)
+            "tools": tools_json,
+        }
         for r in picked
     ]
     pcfg = cfg.get("persona", {}) or {}
