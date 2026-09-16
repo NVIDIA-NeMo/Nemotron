@@ -42,14 +42,14 @@ non-normative walkthrough rather than a production launcher. Pass
 ## Before You Start
 
 - Install the BYOB dependencies with `uv sync --extra byob`, and prepare a source package in one of the two supported layouts below.
-- Prepare a domain brief, a reviewed statement of what the source is for, which is sanitized and bound into the evidence. Copy [`src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt) and replace every bracketed `BFCL-SKELETON` block; intake rejects the copy while even one remains. `bfcl-domain-brief.example.txt` is the same form filled in, being the brief a published release was authored from. Prefer the skeleton for a new source, since copying the example tends to carry its banking framing across with it. Refer to {doc}`../reference/domain-brief` for its content and safety contract.
+- Prepare a domain brief, a reviewed statement of what the source is for, which is sanitized and bound into the evidence. Copy [`src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt) and replace every bracketed `BFCL-SKELETON` block; intake rejects the copy while even one remains. [`src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt) is the same form filled in, being the brief a published release was authored from. Prefer the skeleton for a new source, since copying the example tends to carry its banking framing across with it. Refer to {doc}`../reference/domain-brief` for its content and safety contract.
 - Prepare a probe plan, which you need for certification tier A1 or A2 and therefore
   for a Gold release. Refer to {doc}`../reference/probe-plan`.
   [`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-probe-plan.example.json)
   is a complete A2-shaped banking example: copy its structure, then replace its tools,
   fixture ids, cases, and domain assumptions.
 - Have a certification key pair and its allowlisted key identifier available.
-- Organizational defaults that should not be retyped per session belong in a reviewed policy file; see `src/nemotron/steps/byob/references/bfcl-authoring-policy.example.yaml`.
+- Organizational defaults that should not be retyped per session belong in a reviewed policy file; see [`src/nemotron/steps/byob/references/bfcl-authoring-policy.example.yaml`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-policy.example.yaml).
 - Configure the authoring model through NeMo Data Designer. See
   {doc}`../reference/data-designer-provider` for creating `DATA_DESIGNER_HOME`,
   registering a provider, referencing credentials, and pinning model identity.
@@ -286,7 +286,7 @@ use the policy path only for clean evidence within its reviewed scope; exception
 findings require the explicit fallback below.
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author apply-policy \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author apply-policy \
   --workspace /srv/bfcl/authoring/warehouse
 ```
 
@@ -596,7 +596,7 @@ an assertion id `tool_called_lookup` compiles as `assert_tool_called_lookup`. If
 supplement names the wrong form, correct it and assemble to a new candidate path:
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author assemble \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author assemble \
   --workspace /srv/bfcl/authoring/warehouse \
   --supplement /srv/bfcl/authoring/warehouse/reviewed-supplement.yaml \
   --output /srv/bfcl/authoring/warehouse/candidate-pack-v2
