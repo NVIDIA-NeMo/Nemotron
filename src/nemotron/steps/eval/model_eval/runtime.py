@@ -114,7 +114,16 @@ def run_model_eval(*, default_config: Path) -> None:
         raise SystemExit(1) from exc
     print(f"launcher_config: {result.launcher_config_path}")
     if result.invocation_id:
+        # Launcher mode submits and returns. Both the zero exit and the
+        # launcher's own "SUCCESS" describe the submission, not the evaluation.
         print(f"launcher_invocation_id: {result.invocation_id}")
+        print("nemotron_step_status: SUBMITTED")
+        print(
+            "NOTE: submitted, not finished. This exit code reports whether the job "
+            "was accepted, not whether the evaluation passed. Do not gate on it -- "
+            "poll the status command below until it reaches a terminal state and "
+            "check the artifacts."
+        )
         print(f"status_command: nemo-evaluator-launcher status {result.invocation_id}")
         print(f"logs_command: nemo-evaluator-launcher logs {result.invocation_id}")
 

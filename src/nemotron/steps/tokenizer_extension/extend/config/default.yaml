@@ -1,6 +1,6 @@
 # Tokenizer extension — ONE arm per job (add OR replace). CPU-only. Production starter.
 
-model_id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+model_id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
 trust_remote_code: true
 
 method: replace                  # add | replace  (run the two as separate jobs)

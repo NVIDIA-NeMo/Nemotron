@@ -176,7 +176,10 @@ def _detect_wandb_api_key(env_vars: dict[str, str]) -> str | None:
     except Exception as e:
         err_str = str(e)
         err_type = type(e).__name__
-        if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
+        # wandb raises AuthenticationError for an unreachable server too, and
+        # re-logging in cannot fix a network fault.
+        unreachable = any(m in err_str.lower() for m in ("unable to connect", "connection refused", "timed out"))
+        if not unreachable and ("401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type):
             raise RuntimeError(
                 "WANDB_API_KEY is set but authentication failed (401 Unauthorized). "
                 "Artifact resolution will fail inside the container. "

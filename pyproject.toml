@@ -58,6 +58,12 @@ tokenizer-extension = [
     "fasttext-wheel>=0.9.2",
     "indic-nlp-library>=0.91",
 ]
+# The default base_model is a Mamba-hybrid and will not load without these.
+# Separate from `tokenizer-extension` because `extend` is CPU-only.
+tokenizer-extension-gpu = [
+    "mamba-ssm>=2.2; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+    "causal-conv1d>=1.4; python_version>='3.11' and platform_system=='Linux' and platform_machine=='x86_64'",
+]
 # Audio/video data prep (e.g. omni3 Valor32k SFT). imageio-ffmpeg ships a static
 # ffmpeg binary as a wheel so we don't need apt-get on the data-prep worker image.
 audio = [

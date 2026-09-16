@@ -35,7 +35,7 @@ default = [{ name = "adlr_mmlu" }, { name = "hellaswag" }]
 
 [[parameters]]
 name = "mode"
-description = "`launcher` (default) hands the run to NeMo Evaluator Launcher and its executors. `direct` runs the harness in this step's own job against an endpoint you host — use it for backends the launcher has no executor for, or for a harness image whose tasks the launcher registry does not route."
+description = "`launcher` (default) hands the run to NeMo Evaluator Launcher and its executors, and returns once the job is ACCEPTED — the step prints `nemotron_step_status: SUBMITTED` and exits 0 whether or not the evaluation later passes, so never gate CI on that exit code; poll `nemo-evaluator-launcher status <invocation_id>` until it reaches a terminal state and check the artifacts. `direct` runs the harness in this step's own job against an endpoint you host and does block until it finishes — use it for backends the launcher has no executor for, or for a harness image whose tasks the launcher registry does not route."
 default = "launcher"
 
 [[parameters]]

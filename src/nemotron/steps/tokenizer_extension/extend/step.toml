@@ -22,7 +22,7 @@ type = "tokenizer"
 description = "Extended tokenizer directory: output_dir/<method>/ (add/, replace/ or expand/)"
 
 [[models]]
-name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
+name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16"
 description = "Nemotron 3 Nano 30B-A3B. Tokenizer is shared across the Nano3 family."
 default = true
 min_gpus = 0

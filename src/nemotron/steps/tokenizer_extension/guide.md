@@ -35,13 +35,14 @@ The splice is *constructive* (rank-dead-safe): every added token is emittable by
 
 ## Dependencies
 
-Two packages are **not** in the base install and are declared as an extra
-(`pyproject.toml` → `[project.optional-dependencies] tokenizer-extension`):
+These packages are **not** in the base install and are declared as extras
+(`pyproject.toml` → `[project.optional-dependencies]`):
 
 | Package | Needed by | If missing |
 |---|---|---|
 | `indic-nlp-library` | `extend` with `script_normalizer: devanagari` (i.e. `language:` hindi/marathi/nepali/sanskrit) | **hard error** — it used to fall back to NFKC-only, which silently trained a *different* tokenizer |
 | `fasttext-wheel` | `init_embeddings` with `method: focus` | **hard error** at the point of use (import is lazy, so other methods are unaffected) |
+| `mamba-ssm`, `causal-conv1d` (extra `tokenizer-extension-gpu`) | the **default** `base_model`, which is a Mamba-hybrid | **hard error** while loading the model |
 
 Local install:
 ```bash

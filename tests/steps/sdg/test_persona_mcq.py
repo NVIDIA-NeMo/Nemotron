@@ -651,12 +651,18 @@ def test_environment_templates_wire_persona_mcq(target: str, profile: str) -> No
         "NEMOTRON_RUN_DIR",
         "DATA_DESIGNER_HOME",
         "DATA_DESIGNER_MANAGED_ASSETS_PATH",
-        "NVIDIA_API_KEY",
-        "NGC_API_KEY",
         "QWEN_API_BASE",
         "OSS_API_BASE",
         "GEMMA_API_BASE",
     }
+    # Credentials must reach the worker as platform secret references, never as
+    # env_vars, whose values are stored verbatim in the submitted job spec. Only
+    # Lepton offers secrets; the other backends still pass them through env_vars.
+    credentials = {"NVIDIA_API_KEY", "NGC_API_KEY"}
+    carrier = "secret_vars" if target == "lepton" else "env_vars"
+    assert credentials <= set(sections[profile][carrier])
+    if target == "lepton":
+        assert not (credentials & set(sections[profile]["env_vars"]))
 
 
 def test_cli_stage_list_string_is_normalized(tmp_path) -> None:
