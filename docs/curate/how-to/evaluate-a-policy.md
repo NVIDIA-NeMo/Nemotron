@@ -20,9 +20,14 @@ The script runs without NeMo Curator, so it works in CI and on a workstation.
 
 ## Prerequisites
 
-- An `approved_policy.yaml` that `curate/nemo_curator` would accept. A policy the filter step would refuse is refused here as well, because a rate for a policy that cannot run describes nothing.
+- An `approved_policy.yaml` that passes the approval schema checks, including the required approval fields and valid thresholds.
 - The language pack the policy was calibrated against. The policy records the pack identity but not the pack location, so `--langpack-dir` is required unless the policy's `langpack` block names one.
 - A labelled set in JSONL.
+
+Evaluation checks the policy's structure, not whether it is compatible with a particular run.
+When `curate/nemo_curator` applies the policy, it compares `signals_impl_version` with the installed scorer implementation.
+It also compares `corpus.fingerprint` with the input corpus.
+A policy can pass the schema check and still fail either compatibility check during application.
 
 ## Write the Labelled Set
 

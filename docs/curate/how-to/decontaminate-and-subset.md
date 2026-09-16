@@ -18,7 +18,7 @@ The flow orders the steps and wires the paths automatically; this guide covers r
 
 ## Prerequisites
 
-- A filtered corpus in JSONL with a stable `id` field on every document. The decontamination report names every document it removed and the holdout document that justified the removal, which needs identifiers on both sides.
+- A filtered JSONL corpus with a stable `id` field so the report can identify matches from both splits.
 - The held-out split in JSONL, with the same `id_field` and `text_field`.
 - For the MinHash/LSH similarity pass, one GPU and `uv sync --extra curate-gpu`. Without a GPU, set `skip_similarity: true` and run the exact identity pass only.
 - For token-counted tiers, network access to the tokenizer on the Hugging Face Hub, or a warm `token_cache`.
@@ -32,7 +32,7 @@ It does not detect a short benchmark question embedded inside a long training do
 
 | Setting | Meaning | Default |
 | --- | --- | --- |
-| `threshold` | Exact Jaccard similarity required for removal, after MinHash/LSH candidate generation | `0.8` |
+| `threshold` | Minimum exact Jaccard similarity that removes a candidate during the similarity pass | `0.8` |
 | `shingle_kind` | Shingle unit for the exact verification; must match the MinHash generator | `char` |
 | `normalization` | Text normalization applied before shingling and recorded in the report | NFC, case folding, whitespace collapse, punctuation stripping |
 | `minhash.char_ngrams` | Shingle width for MinHash and for the exact verification | `24` |
@@ -40,6 +40,10 @@ It does not detect a short benchmark question embedded inside a long training do
 | `shared_id_space` | Treat an equal `id` in both splits as the same document | `true` |
 
 Set `shared_id_space: false` only when the two splits were built separately and both number from zero, so that an equal `id` is a collision rather than a match.
+The step uses two independent removal rules:
+
+- **Source-identity match**: The step removes the training document regardless of `threshold`.
+- **Similarity match**: The step removes the training document only when its exact Jaccard similarity is at least `threshold`.
 
 ### Run the Step
 
@@ -56,7 +60,14 @@ The report then states that near-duplicate overlap was not measured, rather than
 
 ### Read the Report
 
-`<output_dir>/decontamination_report.json` records the normalization applied, the MinHash parameters, every removed training document with the holdout document that matched it, and whether the similarity pass ran.
+`<output_dir>/decontamination_report.json` records the normalization, MinHash parameters, removal counts, limited evidence lists, and similarity pass status.
+The aggregate counts include every detected match and removal.
+The detailed evidence lists have these limits:
+
+- Up to 50 shared source-identity groups.
+- Up to 200 removed pairs with the highest similarity.
+- Up to 50 candidate pairs that the step could not verify.
+
 The decontaminated corpus is `<output_dir>/train_decontaminated.jsonl`.
 The holdout is never modified.
 

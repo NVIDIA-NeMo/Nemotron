@@ -27,12 +27,15 @@ A corpus can parse cleanly and still be missing rows, and a filter is expected t
 
 ## Choose a Mode
 
+The audit modes are not cumulative.
+In particular, `containment` does not include a digest.
+
 | `mode` | Checks | Requires |
 | --- | --- | --- |
 | `integrity` | Every shard is readable; row counts; manifest reconciliation when a manifest is supplied | Nothing beyond the shards |
 | `digest` | `integrity` plus a content digest that is independent of file enumeration order | Nothing beyond the shards |
-| `containment` | `digest` plus a check that every target record is present in the reference corpus | `reference_glob` and `comparison_fields` |
-| `all` | Every check above | `reference_glob` and `comparison_fields` |
+| `containment` | `integrity` plus containment, without a digest | `reference_glob` and `comparison_fields` |
+| `all` | `integrity`, digest, and containment checks | `reference_glob` and `comparison_fields` |
 
 Set `comparison_fields` explicitly for containment.
 The pipeline adds language and domain columns, so an implicit "all common fields" comparison would report differences that are the pipeline working as intended.
@@ -72,6 +75,14 @@ uv run --no-sync nemotron steps run curate/audit -c default \
   mode=digest
 ```
 
+The command uses these exit codes:
+
+- `0`: The audit completes without findings.
+- `1`: The audit completes with findings and writes `audit_report.json`.
+- `2`: The audit rejects the configuration.
+
+Exit code `1` reports a finding, not a crash.
+
 ## Read the Report
 
 Open `<output_dir>/audit_report.json`.
@@ -79,10 +90,13 @@ Open `<output_dir>/audit_report.json`.
 | Section | What it states |
 | --- | --- |
 | Readability | Per-shard readability and row counts |
-| Completeness | Whether the units on disk match the producer's declared manifest. A manifest without `completed_at` is reported as `manifest_incomplete` rather than compared. |
+| Completeness | File and row count comparison, plus a `manifest_incomplete` finding when the manifest has no `completed_at` |
 | Attribution | `filtered_by_reason`, the per-gate removal counts from the ledger, and `unexplained`, the records that left the pipeline for a reason no stage recorded |
-| Digest | The content digest, when `mode` is `digest` or higher |
+| Digest | The content digest, when `mode` is `digest` or `all` |
 | Containment | Target records absent from the reference, when `mode` is `containment` or `all` |
+
+A manifest without `completed_at` still participates in the file and row count comparison.
+The `manifest_incomplete` finding prevents the audit from passing, even when those counts match.
 
 Every record figure in a loss report is a floor: a shard truncated by a terminated job reports zero rows, so the audit counts units rather than trusting record counts alone.
 Any non-zero `unexplained` figure is a finding.

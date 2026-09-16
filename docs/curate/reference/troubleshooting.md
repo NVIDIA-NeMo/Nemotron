@@ -53,7 +53,7 @@ Refer to {doc}`flow-config`.
 | Identifier | Likely cause | Fix |
 | --- | --- | --- |
 | `approve_before_profile` | `approve.from` points at a `candidate_policies.yaml` that does not exist | Run once with `steps.profile` enabled. There is nothing to approve until the corpus has been measured. |
-| `profile_enabled_during_approval` | `approve.from` names a candidate file that does not exist and `steps.profile` is enabled in the same configuration | Disable `steps.profile` in the approval run. Re-profiling while applying an approval could replace the candidate measurements with data nobody reviewed. |
+| `profile_enabled_during_approval` | `approve` is set while `steps.profile` is enabled, even when the candidate file exists | Disable `steps.profile` to avoid replacing reviewed candidate measurements. |
 | `approval_corpus_mismatch` | The candidate policy's corpus fingerprint differs from the corpus present now | Re-profile, or set `approve.verify_corpus: false` if you accept that the approval describes different data. |
 | `conflicting_approved_policy` | `approve` promotes one policy while `steps.filter.heuristic_filters.approved_policy` names another | Remove the per-step path and let the flow wire the policy it promoted. |
 | `score_column_never_written` | `steps.subset.quality_score_field` names a `__<signal>` column but `steps.filter.mode` is `filter` | Set `mode` to `annotate` or `both`, or unset `quality_score_field`. |
@@ -61,7 +61,6 @@ Refer to {doc}`flow-config`.
 | `stale_filter_output` | `filtered_jsonl/` already holds corpus shards | Delete the directory or choose a new `output_root`. The step appends rather than replaces. |
 | `ingest_source_field_unmapped` | `corpus.source_field` is set but ingestion has no column or constant to write into it | Set `corpus.source_field_in_source` or `corpus.source_value`. |
 | `decontamination_needs_a_holdout` | `steps.decontamination` is enabled without `holdout` | Set `steps.decontamination.holdout`. The protected split cannot be guessed. |
-| `no_gpu_available` | The decontamination similarity pass needs a GPU | Provide a GPU, or set `steps.decontamination.skip_similarity: true` to run the exact source-identity pass on CPU. |
 | `no_steps_enabled` | Every `steps.<name>.enabled` is `false` | Enable at least one step. |
 | `unknown_step` | A key under `steps` is not one of `ingest`, `profile`, `filter`, `audit`, `subset`, or `decontamination` | Correct the spelling. Unknown steps are refused rather than ignored. |
 
@@ -69,6 +68,7 @@ Refer to {doc}`flow-config`.
 
 | Identifier or symptom | Likely cause | Fix |
 | --- | --- | --- |
+| `no_gpu_available` or the decontamination similarity pass fails to start | Flow preflight warns about missing GPU dependencies or resources, but `curate/decontamination` fails when the similarity pass starts | Run `uv sync --extra curate-gpu` and provide a GPU, or set `steps.decontamination.skip_similarity: true` to run only the exact source-identity pass. |
 | `not_enough_cpu_resources` | Ray cannot schedule the requested CPUs | Set `ray.num_cpus` in YAML or `NEMOTRON_CURATOR_RAY_NUM_CPUS` in the environment profile. |
 | Ray worker starts a new `.venv` or cannot import dependencies | Local `uv run` and the Ray runtime environment are both attempting to manage dependency setup | Export `RAY_ENABLE_UV_RUN_RUNTIME_ENV=0` and run with `uv run --no-sync` after `uv sync --extra curate`. |
 | `ModuleNotFoundError: No module named 'cosmos_xenna'` inside a Ray worker | The flow was started without the `xenna` extra | Run the flow with `uv run --extra curate --extra xenna`. |

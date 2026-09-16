@@ -48,7 +48,14 @@ The step ships two configuration files under `src/nemotron/steps/curate/nemo_cur
 | --- | --- | --- |
 | Consumes | `filtered_jsonl` | The training split to decontaminate and the held-out split to protect. Both carry a stable document identifier. |
 | Produces | `decontaminated_jsonl` | `train_decontaminated.jsonl`: the training split with overlapping documents removed. |
-| Produces | `decontamination_report` | `decontamination_report.json`: every removed document with the holdout document and exact similarity that justified it, the normalization and shingling used, and the candidate pairs that could not be verified. |
+| Produces | `decontamination_report` | `decontamination_report.json`: removal counts, normalization and shingling settings, and limited evidence lists. |
+
+The aggregate counts include every detected match and removal.
+The detailed evidence lists have these limits:
+
+- Up to 50 shared source-identity groups.
+- Up to 200 removed pairs with the highest similarity.
+- Up to 50 candidate pairs that the step could not verify.
 
 ## Parameters
 
@@ -83,7 +90,9 @@ Default: `text`.
 
 ```{option} threshold
 
-Exact Jaccard similarity required for removal.
+The minimum exact Jaccard similarity that removes a MinHash/LSH candidate.
+This threshold does not apply to source-identity matches.
+The step removes source-identity matches regardless of text similarity.
 
 Default: `0.8`.
 ```

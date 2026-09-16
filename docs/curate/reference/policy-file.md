@@ -40,7 +40,6 @@ signals_impl_version: <string>
 profile_digest: sha256:<hex>
 candidates:
   - signal: unicode_alpha_numeric
-    kind: threshold
     direction: max
     units: ratio
     bands: [...]
@@ -58,10 +57,18 @@ candidates:
 | `langpack` | Identifier, BCP-47 tag, version, and content hash of the language pack the signals were measured with. |
 | `signals_impl_version` | Version of the signal implementations. |
 | `profile_digest` | Content hash of `profile_report.json`, excluding its producer block, that links the policy to the report it came from. |
-| `candidates` | One entry per profiled signal. A `threshold` entry lists retention-stable bands for a one-sided gate; an `interval` entry lists the axes of the retention surface for a two-sided gate. |
+| `candidates` | One entry per profiled signal in one of the two emitted shapes described below |
 
 The candidate entries describe what each threshold would remove.
-They do not establish that what it removes is low quality; that judgement is the approval.
+They do not establish that the removed content is low quality.
+The approval makes that judgment.
+
+`curate/profile` emits these candidate shapes:
+
+- **One-sided gate**: The entry contains `signal`, `direction`, `units`, `bands`, and `note`.
+- **Two-sided gate**: The entry contains `signal`, `kind: interval`, `surface_axes`, and `note`.
+
+Only a two-sided entry contains `kind`.
 
 ## Approved Policy
 
@@ -134,9 +141,17 @@ heuristic_filters:
   allow_unvalidated_policy: true
 ```
 
-With `allow_unvalidated_policy: true`, `curate/nemo_curator` executes a policy that does not meet the approval contract, logs a warning that names the unmet rules on every run, and records `policy.status: override_unvalidated` in `run_manifest.json`.
-The flow report then carries `policy_status: override_unvalidated`.
-The override records that a policy was applied without approval; it does not make the policy approved.
+`allow_unvalidated_policy: true` lets `curate/nemo_curator` run a policy that fails the approval contract.
+Each run logs a warning that identifies the failed rules.
+The `run_manifest.json` file records `policy.status: override_unvalidated`.
+The flow report records `policy_status: override_unvalidated`.
+The override records that the policy ran without approval.
+It does not make the policy approved.
+Approval checks and apply-time compatibility checks are separate.
+The override can bypass approval failures such as a missing `profile_digest`.
+It cannot bypass apply-time compatibility checks.
+The `signals_impl_version` value must match the installed scorer implementation.
+The `corpus.fingerprint` value must match the current input corpus.
 
 ## Policy Status in the Manifest
 

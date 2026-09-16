@@ -118,9 +118,13 @@ Open `<output_root>/flow_report.json` and check:
 | --- | --- |
 | `status` | `ok` |
 | `policy_status` | `approved` |
-| `policy_applied` | The path of `approved_policy.yaml` |
+| `policy_applied` | `true` |
+| `artifacts.approved_policy` | The path of `approved_policy.yaml` |
 | `audit_passed` | `true` |
 | `warnings` | Empty, or warnings you have read and accepted |
+
+`policy_applied` reports whether the filter applied policy thresholds.
+`artifacts.approved_policy` identifies the policy file that the flow produced.
 
 `<output_root>/filtered_jsonl/run_manifest.json` records the policy digest and approver, and `<output_root>/audit/audit_report.json` records completeness and gate attribution.
 Refer to {doc}`../explanation/pipeline-artifacts` for what each file proves.
