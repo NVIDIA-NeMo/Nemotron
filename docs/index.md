@@ -287,6 +287,7 @@ Reference <build-benchmarks/reference/index.md>
 :hidden:
 
 About <train-models/index.md>
+Sizing Calculator <train-models/sizing-calculator.md>
 Getting Started <train-models/getting-started.md>
 Tips for Using Agents <train-models/using-skill.md>
 Concepts <train-models/explanation/index.md>
