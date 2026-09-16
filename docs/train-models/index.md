@@ -40,6 +40,14 @@ This page defines supervised fine-tuning, parameter-efficient fine-tuning, reinf
 `Beginner Level`
 :::
 
+:::{grid-item-card} Sizing and Compute Cost
+:link: sizing-calculator
+:link-type: doc
+Estimate the GPU count, verified training settings, runtime, and compute cost for Nemotron SFT, LoRA, and GRPO workloads.
++++
+`Planning Tool`
+:::
+
 :::{grid-item-card} Getting Started
 :link: getting-started
 :link-type: doc
@@ -84,6 +92,7 @@ Use the customize skill with a YAML-first plan: repo steps, then configs, then c
 
 ## Quick Links
 
+- [Nemotron Post-training Calculator](sizing-calculator.md) provides directional GPU sizing, runtime, and compute-cost estimates for SFT, LoRA, and GRPO.
 - [Model Training with Agents](using-skill.md) describes how to work with the `nemotron-customize` skill for multi-stage training plans and YAML-first deliverables.
 - [Getting Started](getting-started.md) describes how to verify the CLI and run a tiny configuration.
 - [Execution through NeMo Run](../nemo_runspec/nemo-run.md) describes profiles, attached and detached runs, and clusters.
