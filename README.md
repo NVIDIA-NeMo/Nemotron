@@ -625,6 +625,7 @@ Your feedback helps shape the future of Nemotron models!
 
 - [Nemotron 3 Super Training Guide](docs/nemotron/super3/README.md) – frontier model training recipe
 - [Nemotron 3 Nano Training Guide](docs/nemotron/nano3/README.md) – efficient model training recipe
+- [Nemotron Training FAQ](docs/train-models/faq/index.md) – answers to common questions about training and fine-tuning Nemotron models
 - [NeMo-Run Configuration](docs/nemo_runspec/nemo-run.md) – execution profiles and job orchestration
 - [Data Preparation](docs/nemotron/data-prep.md) – data preparation module
 - [Contributing Guidelines](CONTRIBUTING.md) – how to contribute

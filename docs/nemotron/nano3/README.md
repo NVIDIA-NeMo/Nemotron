@@ -270,6 +270,7 @@ wandb login
 
 ## Further Reading
 
+- [Training FAQ](../../train-models/faq/index.md) – common questions about training and fine-tuning Nemotron models
 - [Stage 0: Pretraining](./pretrain.md)
 - [Stage 1: SFT](./sft.md)
 - [Stage 2: RL](./rl.md)
