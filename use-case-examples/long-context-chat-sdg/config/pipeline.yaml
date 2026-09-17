@@ -86,8 +86,9 @@ providers:
     endpoint: ${oc.env:USER_MODEL_ENDPOINT,http://localhost:8000/v1}
     api_key: USER_MODEL_API_KEY
 
-# gpt-oss-120b is a reasoning model (spends tokens before the answer) on a 64k-ctx
-# endpoint; Gemma is 32k-ctx. Size max_tokens so prompt + max_tokens fits the window.
+# Context capacity is deployment-specific. Check the endpoint's /v1/models
+# response or deployment configuration. Ensure prompt tokens + max_tokens
+# fit within the endpoint's advertised maximum context length.
 models:
   - alias: assistant_model                        # research agent — gpt-oss-120b
     model: openai/gpt-oss-120b
