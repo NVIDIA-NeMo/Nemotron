@@ -43,7 +43,7 @@ The BYOB configs declare Curator through the normal step config mount path:
 run:
   env:
     mounts:
-      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Curator.git@d10cd6ffe9f5ac4cbb176d7b3ada698f22633aea,/opt/Curator}
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Curator.git@6b956ce8965820de1b638fedf6de0cbcf0cc46ba,/opt/Curator}
 ```
 
 Remote profiles should make `/opt/Curator` visible through `PYTHONPATH` or an

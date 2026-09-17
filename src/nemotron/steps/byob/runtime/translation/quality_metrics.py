@@ -42,7 +42,6 @@ def evaluate_text_quality_metrics(
         filter_enabled=False,
     )
     batch = DocumentBatch(
-        task_id=f"{config.expt_name}-quality",
         dataset_name=config.expt_name,
         data=dataset.copy(),
     )
