@@ -1,0 +1,26 @@
+-- allium: 3
+-- Scope: Shared embedding API client used by evaluation and negative mining.
+-- Includes: vLLM mixed text/image request serialization and retry integrity.
+-- Excludes: Model inference correctness, image decoding and NIM multimodal support.
+
+contract RetrievalMixedEmbeddingBatches {
+    encode_corpus: (records: List<Any>) -> List<Any>
+
+    @invariant HomogeneousRequestItems
+        -- A vLLM batch containing an image uses the inputs request field, with
+        -- every item a content object. Wrap text-only items in one text content
+        -- part; preserve image-bearing content objects without modification.
+        -- Preserve input order, source text, image bytes and source records.
+        -- Never invent image content or text for an image-only record.
+
+    @invariant TextBackendPreservation
+        -- All-text vLLM requests continue to use texts, not inputs. Preserve
+        -- query/document input_type conventions without adding manual prefixes.
+        -- NIM text requests and its rejection of image inputs remain unchanged.
+
+    @invariant IndependentRetryIntegrity
+        -- Retrying an invalid embedding sends only that original item: a
+        -- text-only retry uses texts, while an image-bearing retry uses inputs.
+        -- Restore the returned embedding to its original position and preserve
+        -- the existing finite-vector, dimension and bounded-retry checks.
+}

@@ -41,11 +41,13 @@ Output:
 
 Usage:
     python scripts/unroll_pos_docs.py data/nv_pp_dd_sdg_train_eval/train.json
-    python scripts/unroll_pos_docs.py data/nv_pp_dd_sdg_train_eval/train.json --output data/nv_pp_dd_sdg_train_eval/train_unrolled.json
+    python scripts/unroll_pos_docs.py data/nv_pp_dd_sdg_train_eval/train.json \
+        --output data/nv_pp_dd_sdg_train_eval/train_unrolled.json
     python scripts/unroll_pos_docs.py data/nv_pp_dd_sdg_train_eval/train.json --suffix _unrolled
 """
 
 import argparse
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -74,13 +76,9 @@ def unroll_training_data(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
             base_question_id = record["question_id"]
 
             for idx, pos_doc in enumerate(pos_docs):
-                new_record = {
-                    "question_id": f"{base_question_id}_{idx}",
-                    "question": record["question"],
-                    "corpus_id": record["corpus_id"],
-                    "pos_doc": [pos_doc],
-                    "neg_doc": record.get("neg_doc", []),
-                }
+                new_record = copy.deepcopy(record)
+                new_record["question_id"] = f"{base_question_id}_{idx}"
+                new_record["pos_doc"] = [copy.deepcopy(pos_doc)]
                 unrolled.append(new_record)
 
     return unrolled
@@ -121,7 +119,7 @@ def main():
 
     print(f"Reading input: {input_path}")
 
-    with open(input_path, "r") as f:
+    with open(input_path) as f:
         training_data = json.load(f)
 
     # Extract corpus info and data
@@ -142,8 +140,10 @@ def main():
     print(f"Unrolled records: {unrolled_count:,}")
     print(f"Expansion ratio: {unrolled_count / original_count:.2f}x")
 
-    # Create output structure
-    output_data = {"corpus": corpus_info, "data": unrolled_data}
+    # Preserve top-level conversion/mining provenance and replace only the rows.
+    output_data = copy.deepcopy(training_data)
+    output_data["corpus"] = corpus_info
+    output_data["data"] = unrolled_data
 
     print(f"Writing output: {output_path}")
 

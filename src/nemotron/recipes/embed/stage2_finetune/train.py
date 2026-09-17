@@ -46,6 +46,9 @@ Usage:
 
     # With CLI overrides
     nemotron embed finetune -c default model.pretrained_model_name_or_path=...
+
+    # With an exact optimizer-step target
+    nemotron embed finetune -c default num_epochs=null max_steps=1000
 """
 
 from __future__ import annotations
@@ -57,9 +60,16 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from nemotron.recipes.embed.stage2_finetune.peft import (
+    PeftConfig,
+    merge_peft_checkpoint,
+    validate_peft_base,
+    validate_peft_runtime,
+)
+from nemotron.recipes.retrieval_vl import validate_vl_training_data
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -92,6 +102,18 @@ class FinetuneConfig(RecipeSettings):
         default=True,
         description="Allow Hugging Face custom model code. Required by the default Nemotron Embed model.",
     )
+    tokenizer_force_default: bool = Field(
+        default=False,
+        description="Use AutoModel's Hugging Face tokenizer wrapper instead of model-type registry dispatch.",
+    )
+    model_family: Literal["text", "mistral3_vl"] = Field(
+        default="text",
+        description="AutoModel integration family. Use mistral3_vl for Mistral 3 vision-language retrieval models.",
+    )
+    peft: PeftConfig | None = Field(
+        default=None,
+        description="Optional native LoRA settings. Requires a local base with matching retrieval metadata.",
+    )
 
     # Data paths
     train_data_path: Path = Field(
@@ -106,7 +128,27 @@ class FinetuneConfig(RecipeSettings):
     )
 
     # Training hyperparameters
-    num_epochs: int = Field(default=3, gt=0, description="Number of training epochs.")
+    seed: int = Field(
+        default=42,
+        ge=0,
+        le=4294967295,
+        strict=True,
+        description="Random seed for model training and dataset sampling (unsigned 32-bit integer).",
+    )
+    num_epochs: int | None = Field(
+        default=3,
+        gt=0,
+        description="Number of training epochs. Set to null when max_steps is used.",
+    )
+    max_steps: int | None = Field(
+        default=None,
+        gt=0,
+        strict=True,
+        description=(
+            "Absolute optimizer-step target. On resume, training completes the remaining steps. "
+            "Requires num_epochs=null."
+        ),
+    )
     global_batch_size: int = Field(default=128, gt=0, description="Global batch size across all GPUs.")
     local_batch_size: int = Field(default=4, gt=0, description="Per-GPU batch size.")
     learning_rate: float = Field(default=1e-5, gt=0, description="Learning rate.")
@@ -121,10 +163,10 @@ class FinetuneConfig(RecipeSettings):
         description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
     )
     flash_adamw_master_weight_bits: Literal[24, 32] | None = Field(
-        default=None,
+        default=32,
         description=(
             "Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable. "
-            "Use None when the model parameters remain FP32."
+            "Set to None only to explicitly disable master-weight correction."
         ),
     )
 
@@ -141,12 +183,33 @@ class FinetuneConfig(RecipeSettings):
     pooling: Literal["avg", "cls", "last"] = Field(default="avg", description="Pooling strategy for embeddings.")
     l2_normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
     temperature: float = Field(default=0.02, gt=0, description="Temperature for contrastive loss.")
+    is_causal: bool = Field(default=False, description="Whether attention is causal in the retrieval encoder.")
+    do_distributed_inbatch_negative: bool = Field(
+        default=False,
+        description="Gather passages from every data-parallel rank as in-batch negatives.",
+    )
+    detach_distributed_inbatch_negatives: bool = Field(
+        default=True,
+        description="Detach gathered embeddings from remote ranks.",
+    )
 
     # Tokenization
     query_max_length: int = Field(default=512, gt=0, description="Maximum query sequence length.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage sequence length.")
-    query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
-    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
+    query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs.")
+    passage_prefix: str | None = Field(default="passage: ", description="Prefix for passage inputs.")
+    image_longest_edge: int | None = Field(
+        default=1284, gt=0, description="Longest image edge presented to the processor."
+    )
+    pad_to_multiple_of: int = Field(default=8, gt=0, description="Pad sequence lengths to this multiple.")
+    use_text_in_document: bool = Field(
+        default=False,
+        description="Include a document's text alongside its image when both are available.",
+    )
+    require_mined_negatives: bool = Field(
+        default=False,
+        description="Require hard-negative mining provenance and a finite score for every selected negative.",
+    )
 
     # Checkpointing
     checkpoint_every_steps: int = Field(default=1000, gt=0, description="Save checkpoint every N steps.")
@@ -155,6 +218,52 @@ class FinetuneConfig(RecipeSettings):
         default=False,
         description="Reduce checkpoint/validation intervals for small datasets.",
     )
+
+    @field_validator("seed", mode="before")
+    @classmethod
+    def parse_seed_override(cls, value: Any) -> Any:
+        """Parse CLI integer strings while retaining strict seed validation.
+
+        Args:
+            value: Seed supplied by configuration or a dotlist override.
+
+        Returns:
+            Parsed integer for a string, otherwise the unchanged value.
+
+        Raises:
+            ValueError: If a string does not represent an integer.
+        """
+        return int(value) if isinstance(value, str) else value
+
+    @field_validator("max_steps", mode="before")
+    @classmethod
+    def parse_max_steps_override(cls, value: Any) -> Any:
+        """Parse CLI integer strings while retaining strict integer validation.
+
+        Args:
+            value: Maximum step target supplied by configuration or a dotlist override.
+
+        Returns:
+            Parsed integer for a string, otherwise the unchanged value.
+
+        Raises:
+            ValueError: If a string does not represent an integer.
+        """
+        return int(value) if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def validate_training_budget(self) -> FinetuneConfig:
+        """Require exactly one epoch-based or step-based training budget.
+
+        Returns:
+            Validated configuration.
+
+        Raises:
+            ValueError: If both or neither training budget is configured.
+        """
+        if (self.num_epochs is None) == (self.max_steps is None):
+            raise ValueError("Exactly one of num_epochs and max_steps must be set")
+        return self
 
 
 def _automodel_collator_prefix(prefix: str) -> str:
@@ -166,6 +275,48 @@ def _automodel_collator_prefix(prefix: str) -> str:
     space before handing the value to the collator.
     """
     return prefix.removesuffix(" ")
+
+
+def _repair_vllm_sentence_transformers_metadata(model_dir: Path, cfg: FinetuneConfig) -> None:
+    """Write metadata that vLLM can use for the same pooling/prompt contract as training."""
+    modules_path = model_dir / "modules.json"
+    modules = json.loads(modules_path.read_text())
+    module_types = {
+        "": "sentence_transformers.models.Transformer",
+        "1_Pooling": "sentence_transformers.models.Pooling",
+        "2_Normalize": "sentence_transformers.models.Normalize",
+    }
+    for module in modules:
+        path = module.get("path")
+        if path in module_types:
+            module["type"] = module_types[path]
+    modules_path.write_text(json.dumps(modules, indent=2) + "\n")
+
+    model_config = json.loads((model_dir / "config.json").read_text())
+    text_config = model_config.get("text_config", {})
+    embedding_dimension = text_config.get("hidden_size", model_config.get("hidden_size"))
+    pooling_config = {
+        "word_embedding_dimension": embedding_dimension,
+        "pooling_mode_cls_token": cfg.pooling == "cls",
+        "pooling_mode_max_tokens": False,
+        "pooling_mode_mean_tokens": cfg.pooling == "avg",
+        "pooling_mode_mean_sqrt_len_tokens": False,
+        "pooling_mode_weightedmean_tokens": False,
+        "pooling_mode_lasttoken": cfg.pooling == "last",
+        "include_prompt": True,
+    }
+    pooling_path = model_dir / "1_Pooling" / "config.json"
+    pooling_path.parent.mkdir(parents=True, exist_ok=True)
+    pooling_path.write_text(json.dumps(pooling_config, indent=2) + "\n")
+
+    sentence_transformers_path = model_dir / "config_sentence_transformers.json"
+    sentence_transformers_config = json.loads(sentence_transformers_path.read_text())
+    prompts = sentence_transformers_config.setdefault("prompts", {})
+    if cfg.query_prefix is not None:
+        prompts["query"] = _automodel_collator_prefix(cfg.query_prefix)
+    if cfg.passage_prefix is not None:
+        prompts["document"] = _automodel_collator_prefix(cfg.passage_prefix)
+    sentence_transformers_path.write_text(json.dumps(sentence_transformers_config, indent=2) + "\n")
 
 
 def _wandb_config_from_env() -> dict[str, Any] | None:
@@ -237,9 +388,7 @@ def _warn_if_negatives_sparse(train_data_path: Path, train_n_passages: int) -> N
         print()
 
 
-def _auto_scale_hyperparams(
-    cfg: FinetuneConfig, num_examples: int
-) -> tuple[int, int, int, int]:
+def _auto_scale_hyperparams(cfg: FinetuneConfig, num_examples: int) -> tuple[int, int | None, int | None, int, int]:
     """Auto-scale training hyperparameters based on dataset size.
 
     Adjusts batch size, epochs, checkpoint frequency, and validation
@@ -251,7 +400,8 @@ def _auto_scale_hyperparams(
         num_examples: Number of training examples.
 
     Returns:
-        Tuple of (global_batch_size, num_epochs, checkpoint_every_steps, val_every_steps).
+        Tuple of (global_batch_size, num_epochs, max_steps, checkpoint_every_steps,
+        val_every_steps).
     """
     # --- Batch size ---
     # Default is 128; auto-scale down for small datasets so we get more steps
@@ -261,11 +411,7 @@ def _auto_scale_hyperparams(
         global_batch_size = cfg.global_batch_size
 
     steps_per_epoch = max(1, num_examples // global_batch_size)
-
-    # --- Epochs ---
-    num_epochs = cfg.num_epochs
-
-    total_steps = steps_per_epoch * num_epochs
+    total_steps = cfg.max_steps if cfg.max_steps is not None else steps_per_epoch * cfg.num_epochs
 
     # --- Checkpoint / validation frequency ---
     # Default is 100; cap so we get at least 3 checkpoints unless the
@@ -280,7 +426,7 @@ def _auto_scale_hyperparams(
     else:
         val_every_steps = cfg.val_every_steps
 
-    return global_batch_size, num_epochs, checkpoint_every_steps, val_every_steps
+    return global_batch_size, cfg.num_epochs, cfg.max_steps, checkpoint_every_steps, val_every_steps
 
 
 def _can_import_fused_adam() -> tuple[bool, str | None]:
@@ -305,9 +451,26 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     """Load Automodel YAML after choosing an optimizer that is importable here."""
     import yaml
 
-    base_config_path = STAGE_PATH / "biencoder_base.yaml"
+    base_config_name = (
+        "mistral3_vl_biencoder_base.yaml" if cfg.model_family == "mistral3_vl" else "biencoder_base.yaml"
+    )
+    base_config_path = STAGE_PATH / base_config_name
     with open(base_config_path) as f:
         raw_config = yaml.safe_load(f)
+
+    raw_config["seed"] = cfg.seed
+    if cfg.model_family == "text" and cfg.tokenizer_force_default:
+        raw_config["tokenizer"]["force_default"] = True
+    if cfg.peft is not None:
+        raw_config["peft"] = {
+            "_target_": "nemo_automodel.components._peft.lora.PeftConfig",
+            **cfg.peft.model_dump(),
+            "use_memory_efficient_lora": False,
+            "use_triton": False,
+        }
+        raw_config["checkpoint"]["save_consolidated"] = False
+    dataset = raw_config["dataset"] if cfg.model_family == "mistral3_vl" else raw_config["dataloader"]["dataset"]
+    dataset["seed"] = cfg.seed
 
     wandb_config = _wandb_config_from_env()
     if wandb_config is not None:
@@ -345,7 +508,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
             "betas": [0.9, 0.999],
             "eps": 1.0e-8,
-            "quantize": False,
+            "quantize": True,
             "compress_state_dict": False,
             "master_weight_bits": cfg.flash_adamw_master_weight_bits,
             "fused": True,
@@ -366,21 +529,32 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         Path to final checkpoint directory.
     """
     # Validate inputs
+    if cfg.peft is not None:
+        validate_peft_runtime()
+        validate_peft_base(cfg)
+        export_path = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
+        if export_path.exists() or export_path.is_symlink():
+            raise FileExistsError(f"PEFT export already exists: {export_path}")
     if not cfg.train_data_path.exists():
         print(f"Error: Training data not found: {cfg.train_data_path}", file=sys.stderr)
         print("       Please run stage1_data_prep first.", file=sys.stderr)
         sys.exit(1)
 
+    if cfg.model_family == "mistral3_vl":
+        validate_vl_training_data(
+            cfg.train_data_path,
+            required_negatives=cfg.train_n_passages - 1,
+            require_mined_negatives=cfg.require_mined_negatives,
+        )
+
     # Count training examples and check negative passage availability
     num_examples = _count_training_examples(cfg.train_data_path)
     _warn_if_negatives_sparse(cfg.train_data_path, cfg.train_n_passages)
 
-    global_batch_size, num_epochs, ckpt_every, val_every = _auto_scale_hyperparams(
-        cfg, num_examples
-    )
+    global_batch_size, num_epochs, max_steps, ckpt_every, val_every = _auto_scale_hyperparams(cfg, num_examples)
 
     steps_per_epoch = max(1, num_examples // global_batch_size)
-    total_steps = steps_per_epoch * num_epochs
+    total_steps = max_steps if max_steps is not None else steps_per_epoch * num_epochs
 
     # Print training plan
     print("Training plan:")
@@ -396,21 +570,26 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         if num_examples < 2000 and cfg.global_batch_size != 128:
             print("                    (note: auto-scaling skipped because batch size was explicitly set)")
 
-    if num_epochs != cfg.num_epochs:
-        print(f"  Epochs:           {num_epochs} (auto-scaled from {cfg.num_epochs})")
+    if max_steps is not None:
+        print("  Epochs:           derived from exact step budget")
+        print(f"  Max steps:        {max_steps}")
     else:
         print(f"  Epochs:           {num_epochs}")
 
     print(f"  Steps/epoch:      ~{steps_per_epoch}")
-    print(f"  Total steps:      ~{total_steps}")
+    total_steps_prefix = "" if max_steps is not None else "~"
+    print(f"  Total steps:      {total_steps_prefix}{total_steps}")
     print(f"  LR schedule:      {cfg.lr_decay_style}, warmup={cfg.lr_warmup_steps}, peak={cfg.learning_rate}")
     print(f"  Checkpoint every: {ckpt_every} steps")
     print(f"  Validate every:   {val_every} steps")
     print()
 
     if total_steps < 50:
-        print(f"Warning: Only ~{total_steps} total training steps. "
-              f"Dataset may be too small for meaningful fine-tuning.", file=sys.stderr)
+        print(
+            f"Warning: Only {total_steps_prefix}{total_steps} total training steps. "
+            "Dataset may be too small for meaningful fine-tuning.",
+            file=sys.stderr,
+        )
         print("         Consider adding more documents to your corpus.", file=sys.stderr)
         print()
 
@@ -447,14 +626,16 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Model settings
     automodel_cfg.model.pretrained_model_name_or_path = cfg.base_model
     automodel_cfg.tokenizer.pretrained_model_name_or_path = cfg.base_model
-    automodel_cfg.model.trust_remote_code = cfg.trust_remote_code
-    automodel_cfg.tokenizer.trust_remote_code = cfg.trust_remote_code
+    if cfg.model_family == "text":
+        automodel_cfg.model.trust_remote_code = cfg.trust_remote_code
+        automodel_cfg.tokenizer.trust_remote_code = cfg.trust_remote_code
     # Auto-detect attention implementation if not explicitly set
     if cfg.attn_implementation is not None:
         attn_impl = cfg.attn_implementation
     else:
         try:
             import flash_attn  # noqa: F401
+
             attn_impl = "flash_attention_2"
         except ImportError:
             attn_impl = "sdpa"
@@ -462,15 +643,30 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.model.attn_implementation = attn_impl
 
     # Data settings
-    automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
-    automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
-    automodel_cfg.dataloader.collate_fn.q_max_len = cfg.query_max_length
-    automodel_cfg.dataloader.collate_fn.p_max_len = cfg.passage_max_length
-    automodel_cfg.dataloader.collate_fn.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
-    automodel_cfg.dataloader.collate_fn.passage_prefix = _automodel_collator_prefix(cfg.passage_prefix)
+    if cfg.model_family == "mistral3_vl":
+        automodel_cfg.dataset.data_dir_list = [str(cfg.train_data_path)]
+        automodel_cfg.dataset.n_passages = cfg.train_n_passages
+        automodel_cfg.dataset.use_text_in_document = cfg.use_text_in_document
+        automodel_cfg.tokenizer.q_max_length = cfg.query_max_length
+        automodel_cfg.tokenizer.p_max_length = cfg.passage_max_length
+        if cfg.query_prefix is not None:
+            automodel_cfg.tokenizer.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
+        if cfg.passage_prefix is not None:
+            automodel_cfg.tokenizer.passage_prefix = _automodel_collator_prefix(cfg.passage_prefix)
+        automodel_cfg.tokenizer.pad_to_multiple_of = cfg.pad_to_multiple_of
+        if cfg.image_longest_edge is not None:
+            automodel_cfg.tokenizer.image_longest_edge = cfg.image_longest_edge
+    else:
+        automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
+        automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
+        automodel_cfg.dataloader.collate_fn.q_max_len = cfg.query_max_length
+        automodel_cfg.dataloader.collate_fn.p_max_len = cfg.passage_max_length
+        automodel_cfg.dataloader.collate_fn.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
+        automodel_cfg.dataloader.collate_fn.passage_prefix = _automodel_collator_prefix(cfg.passage_prefix)
 
     # Training settings — use auto-scaled values
     automodel_cfg.step_scheduler.num_epochs = num_epochs
+    automodel_cfg.step_scheduler.max_steps = max_steps
     automodel_cfg.step_scheduler.global_batch_size = global_batch_size
     automodel_cfg.step_scheduler.local_batch_size = cfg.local_batch_size
     automodel_cfg.step_scheduler.ckpt_every_steps = ckpt_every
@@ -485,6 +681,10 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Model architecture
     automodel_cfg.model.pooling = cfg.pooling
     automodel_cfg.model.l2_normalize = cfg.l2_normalize
+    if cfg.model_family == "mistral3_vl":
+        automodel_cfg.model.is_causal = cfg.is_causal
+        automodel_cfg.model.do_distributed_inbatch_negative = cfg.do_distributed_inbatch_negative
+        automodel_cfg.model.detach_distributed_inbatch_negatives = cfg.detach_distributed_inbatch_negatives
     automodel_cfg.temperature = cfg.temperature
 
     # Checkpoint settings
@@ -497,6 +697,10 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
+    if _is_rank_zero() and cfg.peft is not None:
+        merge_peft_checkpoint(cfg, final_model_dir)
+    elif _is_rank_zero() and cfg.model_family == "mistral3_vl":
+        _repair_vllm_sentence_transformers_metadata(final_model_dir, cfg)
 
     print("\nFine-tuning complete!")
     print(f"   Checkpoint: {cfg.checkpoint_dir}")
@@ -512,6 +716,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
                 base_model=cfg.base_model,
                 training_examples=num_examples,
                 num_epochs=num_epochs,
+                max_steps=max_steps,
                 global_batch_size=global_batch_size,
                 learning_rate=cfg.learning_rate,
                 temperature=cfg.temperature,
@@ -534,9 +739,7 @@ def main(cfg: FinetuneConfig | None = None) -> Path:
     """
     if cfg is None:
         # Called directly as script - parse config ourselves
-        config_path, cli_overrides = parse_config_and_overrides(
-            default_config=DEFAULT_CONFIG_PATH
-        )
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
 
         try:
             cfg = load_config(config_path, cli_overrides, FinetuneConfig)

@@ -90,6 +90,24 @@ class SDGConfig(RecipeSettings):
         default="hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random",
         description="Local path or hf:// URI to directory containing document files (.txt, .md, etc.).",
     )
+    sources_file: Path | None = Field(
+        default=None,
+        description=(
+            "Canonical RetrievalSource JSONL with optional page images. When set, replaces corpus_dir "
+            "and bypasses text chunking; relative image paths resolve against the source file."
+        ),
+    )
+    portable_export: bool = Field(
+        default=False, description="Export all text/image views and bind them to the handoff."
+    )
+    export_train_ratio: float = Field(
+        default=0.8, ge=0, le=1, description="Portable source-document training fraction."
+    )
+    export_validation_ratio: float = Field(default=0.0, ge=0, le=1, description="Portable validation fraction.")
+    export_seed: int = Field(default=42, description="Portable source-document split seed.")
+    strict_visual: bool = Field(
+        default=False, description="Require accepted image-grounded candidates in portable export."
+    )
     output_dir: Path = Field(
         default_factory=lambda data: data["artifact_root"] / "stage0_sdg",
         description="Output directory for generated synthetic data.",
@@ -152,6 +170,10 @@ class SDGConfig(RecipeSettings):
     def _check_hops_order(self):
         if self.min_hops > self.max_hops:
             raise ValueError(f"min_hops ({self.min_hops}) must be <= max_hops ({self.max_hops})")
+        if self.export_train_ratio + self.export_validation_ratio > 1:
+            raise ValueError("Portable training and validation fractions must sum to at most one")
+        if self.strict_visual and not self.portable_export:
+            raise ValueError("strict_visual requires portable_export")
         return self
 
     # --- Data Designer execution -----------------------------------------------
@@ -419,8 +441,8 @@ def run_sdg(cfg: SDGConfig) -> Path:
     from nemotron.recipes.embed.sdg_manifest import write_generation_manifest
     from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_generation
 
-    # Resolve corpus_dir (handles hf:// URIs and local paths)
-    corpus_dir = _resolve_corpus_dir(cfg.corpus_dir)
+    # Canonical input takes precedence without downloading the default text corpus.
+    corpus_dir = cfg.sources_file.resolve() if cfg.sources_file is not None else _resolve_corpus_dir(cfg.corpus_dir)
 
     # Resolve remaining Path fields to absolute so downstream libraries
     # don't depend on CWD and error messages show full paths.
@@ -428,10 +450,14 @@ def run_sdg(cfg: SDGConfig) -> Path:
     artifact_path = cfg.artifact_path.resolve()
 
     # Validate input corpus directory
-    if not corpus_dir.exists():
+    if cfg.sources_file is not None:
+        from data_designer_retrieval_sdg import load_retrieval_sources
+
+        load_retrieval_sources(corpus_dir)
+    elif not corpus_dir.exists():
         print(f"Error: Corpus directory not found: {corpus_dir}", file=sys.stderr)
         sys.exit(1)
-    if not any(corpus_dir.iterdir()):
+    elif not any(corpus_dir.iterdir()):
         print(f"Error: Corpus directory is empty: {corpus_dir}", file=sys.stderr)
         sys.exit(1)
 
@@ -462,14 +488,15 @@ def run_sdg(cfg: SDGConfig) -> Path:
     print()
 
     # Validate corpus and print summary before spending API credits
-    _validate_corpus(
-        corpus_dir=corpus_dir,
-        file_extensions=file_extensions,
-        min_text_length=cfg.min_text_length,
-        num_pairs=cfg.num_pairs,
-        buffer_size=cfg.buffer_size,
-        num_files=cfg.num_files,
-    )
+    if cfg.sources_file is None:
+        _validate_corpus(
+            corpus_dir=corpus_dir,
+            file_extensions=file_extensions,
+            min_text_length=cfg.min_text_length,
+            num_pairs=cfg.num_pairs,
+            buffer_size=cfg.buffer_size,
+            num_files=cfg.num_files,
+        )
 
     # The adapter only translates recipe policy into the public plugin contract.
     try:
@@ -525,10 +552,38 @@ def run_sdg(cfg: SDGConfig) -> Path:
         print(f"   Preview records: {result.num_preview_records}")
         return output_dir
 
+    portable_bundle = None
+    if cfg.portable_export:
+        from data_designer_retrieval_sdg import SplitRatios, export_retrieval_data
+
+        if result.num_records != result.requested_num_records:
+            raise ValueError("Incomplete generation cannot publish a portable handoff")
+        portable_bundle = output_dir / f"{result.dataset_name}.bundle"
+        export_summary = export_retrieval_data(
+            result.output_path,
+            portable_bundle,
+            dataset_id=cfg.corpus_id,
+            ratios=SplitRatios(
+                train=cfg.export_train_ratio,
+                validation=cfg.export_validation_ratio,
+                evaluation=1 - cfg.export_train_ratio - cfg.export_validation_ratio,
+            ),
+            seed=cfg.export_seed,
+            strict_visual=cfg.strict_visual,
+            generator_model=cfg.qa_generation_model,
+            judge_model=cfg.quality_judge_model,
+        )
+        print(f"   Portable bundle: {portable_bundle}")
+        print(f"   Accepted candidates: {export_summary.accepted_candidate_count}")
+        print(f"   Rejected candidates: {export_summary.rejected_candidate_count}")
+        for warning in export_summary.warnings:
+            print(f"   Export warning: {warning}")
+
     manifest_path = write_generation_manifest(
         output_dir=output_dir,
         output_path=result.output_path,
         dataset_name=result.dataset_name,
+        portable_bundle=portable_bundle,
     )
 
     print("\nSynthetic data generation complete!")
