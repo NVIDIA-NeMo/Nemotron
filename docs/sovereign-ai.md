@@ -2,8 +2,8 @@
 license: Apache-2.0
 copyright: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 description: "How the Nemotron step categories combine into a language-adaptation workflow: tokenizer extension, curation, continued pretraining, synthetic SFT data, fine-tuning, benchmarks, and evaluation."
-topics: ["Sovereign AI", "Continued Pretraining", "Multilingual"]
-tags: ["Sovereign AI", "Documentation"]
+topics: ["Continued Pretraining", "Multilingual"]
+tags: ["Documentation"]
 content:
   type: "Explanation"
   difficulty: "Beginner"
@@ -20,13 +20,16 @@ Each stage is documented in its own section; this page explains how the stages c
 
 ```{mermaid}
 flowchart LR
-    tok["tokenizer_extension/*<br/>resized HF checkpoint"] --> cpt
+    tok["tokenizer_extension/*<br/>checkpoint_hf"] --> cpt
     cur["curate/nemo_curator<br/>filtered_jsonl"] --> prep["data_prep/pretrain_prep<br/>binidx"]
     prep --> cpt["pretrain/megatron_bridge<br/>checkpoint_megatron"]
-    cpt --> sft["sft/megatron_bridge or sft/automodel<br/>fine-tuned checkpoint"]
-    sdg["sdg/persona_mcq<br/>training_jsonl"] --> sft
-    sft --> ev["eval/model_eval<br/>eval_results"]
-    byob["byob/mcq, translate/nemo_curator<br/>target-language benchmarks"] --> ev
+    cpt --> sft_mb["sft/megatron_bridge<br/>checkpoint_megatron"]
+    sdg["sdg/persona_mcq<br/>training_jsonl"] --> pack["data_prep/sft_packing<br/>packed_parquet"]
+    pack --> sft_mb
+    sdg --> sft_auto["sft/automodel<br/>checkpoint_hf"]
+    sft_auto --> convert["convert/hf_to_megatron<br/>checkpoint_megatron"]
+    sft_mb --> ev["eval/model_eval<br/>eval_results"]
+    convert --> ev
 ```
 
 Steps communicate through typed artifacts declared in each `step.toml`; the label under each node is the artifact the step produces.
@@ -40,10 +43,14 @@ A stage can be skipped when its input already exists: for example, start at `pre
 | Curate the corpus | `curate/nemo_curator` | JSONL text or a Hugging Face dataset snapshot | `filtered_jsonl` | {doc}`curate/index` |
 | Prepare pretraining data | `data_prep/pretrain_prep` | `filtered_jsonl` | `binidx` | {doc}`nemotron/data-prep` |
 | Continue pretraining | `pretrain/megatron_bridge` | `binidx`, resized checkpoint as `hf_model_path` | `checkpoint_megatron` | {doc}`train-models/index` |
-| Generate SFT data | `sdg/persona_mcq`, `sdg/data_designer` | Persona locales and teacher-model endpoints | Aligned `train.jsonl` and `blend.json` per teacher | {doc}`sdg/how-to/persona-mcq-data`, {doc}`sdg/index` |
-| Fine-tune | `sft/megatron_bridge`, `sft/automodel` | `training_jsonl` or a packed blend, the continued-pretraining checkpoint | Fine-tuned checkpoint | {doc}`train-models/how-to/choose-sft-backend`, {doc}`train-models/how-to/run-sft-automodel` |
-| Build benchmarks | `byob/mcq`, `translate/nemo_curator` | Source corpus or an existing benchmark | Target-language MCQ benchmarks | {doc}`build-benchmarks/index`, {doc}`translation/index` |
-| Evaluate | `eval/model_eval` | Checkpoint or hosted endpoint, benchmark tasks | `eval_results` | {doc}`model-eval/index` |
+| Generate SFT data | `sdg/persona_mcq`, `sdg/data_designer` | Persona locales and teacher-model endpoints | `training_jsonl` and blend manifests | {doc}`sdg/how-to/persona-mcq-data`, {doc}`sdg/index` |
+| Pack SFT data | `data_prep/sft_packing` | `training_jsonl` | `packed_parquet` | {doc}`nemotron/data-prep` |
+| Fine-tune with Megatron Bridge | `sft/megatron_bridge` | `packed_parquet`, `checkpoint_megatron` | `checkpoint_megatron` | {doc}`train-models/how-to/choose-sft-backend` |
+| Fine-tune with AutoModel | `sft/automodel` | `training_jsonl` | `checkpoint_hf` | {doc}`train-models/how-to/run-sft-automodel` |
+| Convert an AutoModel checkpoint | `convert/hf_to_megatron` | `checkpoint_hf` | `checkpoint_megatron` | {doc}`train-models/how-to/convert-checkpoints` |
+| Build benchmarks | `byob/mcq` | Source corpus or an existing benchmark | `mcq_benchmark_parquet` | {doc}`build-benchmarks/index` |
+| Translate a corpus | `translate/nemo_curator` | `filtered_jsonl` | `translated_jsonl` | {doc}`translation/index` |
+| Evaluate | `eval/model_eval` | `checkpoint_megatron` or a hosted endpoint, benchmark tasks | `eval_results` | {doc}`model-eval/index` |
 
 ## How the Stages Connect
 
@@ -60,10 +67,11 @@ A stage can be skipped when its input already exists: for example, start at `pre
 `sdg/persona_mcq` authors multiple-choice questions grounded in regional personas, deduplicates them lexically and semantically, and keeps only questions on which a panel of three or more teacher models agrees.
 Agreement is a consistency filter, not factual verification; validate a sample before training.
 The step writes one aligned `train.jsonl` and `blend.json` per teacher, which `sft/automodel` reads directly and `data_prep/sft_packing` packs for `sft/megatron_bridge`.
+`sft/megatron_bridge` produces `checkpoint_megatron` directly; convert the `checkpoint_hf` produced by `sft/automodel` with `convert/hf_to_megatron` before checkpoint-based evaluation.
 
 **Benchmarks are built independently of training.**
 `byob/mcq` generates multiple-choice benchmarks from a source corpus and can translate existing benchmarks; `translate/nemo_curator` translates JSONL or Parquet corpora with NeMo Curator backends.
-Keep benchmark sources disjoint from the SFT data so that `eval/model_eval` measures generalization rather than memorization.
+Keep benchmark sources disjoint from the SFT data so that benchmark results measure generalization rather than memorization.
 
 ## Choosing an Entry Point
 
@@ -72,7 +80,8 @@ Keep benchmark sources disjoint from the SFT data so that `eval/model_eval` meas
 | The base tokenizer produces high fertility on the target language | {doc}`tokenizer-extension/getting-started` |
 | The tokenizer is adequate but the model lacks target-language knowledge | {doc}`curate/index`, then {doc}`train-models/index` |
 | A continued-pretraining checkpoint exists and needs instruction data | {doc}`sdg/how-to/persona-mcq-data` |
-| A fine-tuned model needs target-language evaluation | {doc}`build-benchmarks/index`, then {doc}`model-eval/index` |
+| A target-language benchmark needs to be generated | {doc}`build-benchmarks/index` |
+| A fine-tuned model needs target-language evaluation | {doc}`model-eval/index` |
 
 ## Limitations
 
