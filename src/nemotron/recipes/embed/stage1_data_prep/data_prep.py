@@ -54,6 +54,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import sys
@@ -246,6 +247,30 @@ def _rebase_mined_corpus_path(train_file: Path, output_file: Path) -> None:
     temporary_file.replace(output_file)
 
 
+def _record_native_vl_mining(output_file: Path, cfg: DataPrepConfig) -> None:
+    """Record successful native mining without promoting candidates to judgements."""
+    payload = json.loads(output_file.read_text())
+    for index, record in enumerate(payload["data"]):
+        negatives = record.get("neg_doc", [])
+        if len(negatives) < cfg.hard_negatives_to_mine:
+            raise ValueError(f"Native mining record {index} has too few negatives")
+        for negative in negatives:
+            score = negative.get("score")
+            if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score):
+                raise ValueError(f"Native mining record {index} has no finite negative score")
+        record["negative_mining_performed"] = True
+    payload["mining"] = {
+        "backend": "automodel",
+        "model": cfg.base_model,
+        "hard_negatives_to_mine": cfg.hard_negatives_to_mine,
+        "hard_neg_margin": cfg.hard_neg_margin,
+        "relevance_semantics": "retrieval-mined candidates remain unjudged",
+    }
+    temporary_file = output_file.with_suffix(f"{output_file.suffix}.tmp")
+    temporary_file.write_text(json.dumps(payload, indent=2) + "\n")
+    temporary_file.replace(output_file)
+
+
 def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
     """Mine hard negatives using base embedding model.
 
@@ -353,6 +378,8 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         sys.exit(result.returncode)
 
     _rebase_mined_corpus_path(train_file, output_file)
+    if cfg.model_family == "mistral3_vl":
+        _record_native_vl_mining(output_file, cfg)
     return output_file
 
 
