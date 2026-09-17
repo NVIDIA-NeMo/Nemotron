@@ -296,8 +296,8 @@ wheels = [
 
 [[package]]
 name = "data-designer"
-version = "0.9.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.9.1+barejson.1"
+source = { path = "../runtimes/wheels/data_designer-0.9.1+barejson.1-py3-none-any.whl" }
 dependencies = [
     { name = "data-designer-config" },
     { name = "data-designer-engine" },
@@ -315,15 +315,33 @@ dependencies = [
     { name = "rich" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e7/aa/fb60615233d3e23044ce9cd52a98ebdbdbb19ab0fcc57a0fd7fb19bf581e/data_designer-0.9.1.tar.gz", hash = "sha256:ce6d4bc9fcd2c10fb59c28fe8f495cfb5fa39952b17b3d0b159b7dfc7fd724c1", size = 233997, upload-time = "2026-08-11T20:24:20.853Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/0d/2bb0d06e554e50d7e3affb41c853fdd31e08413255506e2c87ab02f10362/data_designer-0.9.1-py3-none-any.whl", hash = "sha256:c1b02b11baddd89a9ebdc6105bfdd84ec970dce0cb7079767c53d6995e08475c", size = 158442, upload-time = "2026-08-11T20:24:19.495Z" },
+    { filename = "data_designer-0.9.1+barejson.1-py3-none-any.whl", hash = "sha256:cfd363729978e698bd622656e9a4596388aa1b6f714d42ebb4614e4e993afe71" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "data-designer-config", specifier = "==0.9.1+barejson.1" },
+    { name = "data-designer-engine", specifier = "==0.9.1+barejson.1" },
+    { name = "huggingface-hub", specifier = ">=1.0.1,<2" },
+    { name = "opentelemetry-api", specifier = ">=1.43,<1.44" },
+    { name = "opentelemetry-exporter-prometheus", specifier = ">=0.64b0,<0.65" },
+    { name = "opentelemetry-sdk", specifier = ">=1.43,<1.44" },
+    { name = "packaging", specifier = ">=25,<27" },
+    { name = "pandas", specifier = ">=2.3.3,<3" },
+    { name = "prometheus-client", specifier = ">=0.24,<1" },
+    { name = "prompt-toolkit", specifier = ">=3.0.0,<4" },
+    { name = "pyarrow", specifier = ">=24,<25" },
+    { name = "pydantic", specifier = ">=2.9.2,<3" },
+    { name = "pyyaml", specifier = ">=6.0.1,<7" },
+    { name = "rich", specifier = ">=13.7.1,<15" },
+    { name = "typer", specifier = ">=0.12.0,<1" },
 ]
 
 [[package]]
 name = "data-designer-config"
-version = "0.9.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.9.1+barejson.1"
+source = { path = "../runtimes/wheels/data_designer_config-0.9.1+barejson.1-py3-none-any.whl" }
 dependencies = [
     { name = "httpx" },
     { name = "idna" },
@@ -340,15 +358,32 @@ dependencies = [
     { name = "rich" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/4c/fb3791f43b5b0abd054ed55f1a4e13e10187090ee43eaf6801cfc8e713b9/data_designer_config-0.9.1.tar.gz", hash = "sha256:d4aca73a5b21284729e6f5b05ed1eba7c6e1b7c77d591c6e4e2f330b508d5c39", size = 151409, upload-time = "2026-08-11T20:24:14.236Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/f8/a12b44092eaabb2fa431474eef069885c6d4aed576677d7c344095051733/data_designer_config-0.9.1-py3-none-any.whl", hash = "sha256:8944578a74f28980b7b06b5b12c5e866da313af3fe6b5cc5d446bedf5756744e", size = 128696, upload-time = "2026-08-11T20:24:12.669Z" },
+    { filename = "data_designer_config-0.9.1+barejson.1-py3-none-any.whl", hash = "sha256:d292867f131315d5f2859dcaa5dc5ea5b0b056c3190cec278deeb64c7b7762c7" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27.2,<1" },
+    { name = "idna", specifier = ">=3.18,<4" },
+    { name = "jinja2", specifier = ">=3.1.6,<4" },
+    { name = "numpy", specifier = ">=1.23.5,<3" },
+    { name = "pandas", specifier = ">=2.3.3,<3" },
+    { name = "pillow", specifier = ">=12.3.0,<13" },
+    { name = "pyarrow", specifier = ">=24,<25" },
+    { name = "pydantic", specifier = ">=2.9.2,<3" },
+    { name = "pygments", specifier = ">=2.20,<3" },
+    { name = "python-json-logger", specifier = ">=3,<4" },
+    { name = "pyyaml", specifier = ">=6.0.1,<7" },
+    { name = "requests", specifier = ">=2.33,<3" },
+    { name = "rich", specifier = ">=13.7.1,<15" },
+    { name = "urllib3", specifier = ">=2.7.0,<3" },
 ]
 
 [[package]]
 name = "data-designer-engine"
-version = "0.9.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.9.1+barejson.1"
+source = { path = "../runtimes/wheels/data_designer_engine-0.9.1+barejson.1-py3-none-any.whl" }
 dependencies = [
     { name = "anyascii" },
     { name = "asciichartpy" },
@@ -382,15 +417,49 @@ dependencies = [
     { name = "tiktoken" },
     { name = "wcwidth" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/a4/9f8f74d0512698ed2013ba3728e92ed7750e231974b4aadb24c46b7bb30e/data_designer_engine-0.9.1.tar.gz", hash = "sha256:d86822d227335980fb70a993327e1e754216c8181b474c5c58590ac8e465dbdf", size = 918436, upload-time = "2026-08-11T20:24:17.621Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/2b/58240f5eec8d73b47eb204f381f4302447ea1c73b988582caf10a22ad907/data_designer_engine-0.9.1-py3-none-any.whl", hash = "sha256:df6017f4623d696d8075b33fd3ab5b76dfda0e4cd623c109b8497ae46abfb918", size = 706028, upload-time = "2026-08-11T20:24:16.171Z" },
+    { filename = "data_designer_engine-0.9.1+barejson.1-py3-none-any.whl", hash = "sha256:bb5b7bafdf1fa8e2f070e35055ec98f75b418241f113409cd0a9b6766e58b329" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyascii", specifier = ">=0.3.3,<1" },
+    { name = "asciichartpy", specifier = ">=1.5.25,<2" },
+    { name = "chardet", specifier = ">=3.0.2,<6" },
+    { name = "cryptography", specifier = ">=48.0.1,<=49" },
+    { name = "data-designer-config", specifier = "==0.9.1+barejson.1" },
+    { name = "duckdb", specifier = ">=1.5.0,<2" },
+    { name = "faker", specifier = ">=20.1.0,<21" },
+    { name = "fsspec", specifier = ">=2025.3.0,<2026" },
+    { name = "httpx", specifier = ">=0.27.2,<1" },
+    { name = "httpx-retries", specifier = ">=0.4.2,<1" },
+    { name = "huggingface-hub", specifier = ">=1.0.1,<2" },
+    { name = "jinja2", specifier = ">=3.1.6,<4" },
+    { name = "json-repair", specifier = ">=0.48.0,<1" },
+    { name = "jsonpath-rust-bindings", specifier = ">=1.0,<2" },
+    { name = "jsonschema", specifier = ">=4.0.0,<5" },
+    { name = "lxml", specifier = ">=6.1.0,<7" },
+    { name = "marko", specifier = ">=2.1.2,<3" },
+    { name = "mcp", specifier = ">=1.29.0,<2" },
+    { name = "networkx", specifier = ">=3.0,<4" },
+    { name = "numpy", specifier = ">=1.23.5,<3" },
+    { name = "pandas", specifier = ">=2.3.3,<3" },
+    { name = "pyarrow", specifier = ">=24,<25" },
+    { name = "pydantic", specifier = ">=2.9.2,<3" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.13.0,<3" },
+    { name = "python-multipart", specifier = ">=0.0.32,<1" },
+    { name = "ruff", specifier = ">=0.14.10,<1" },
+    { name = "scipy", specifier = ">=1.11.0,<2" },
+    { name = "sqlfluff", specifier = ">=4.1.0,<5" },
+    { name = "starlette", specifier = ">=1.2.0,<2" },
+    { name = "tiktoken", specifier = ">=0.8.0,<1" },
+    { name = "wcwidth", specifier = ">=0.2.13,<1" },
 ]
 
 [[package]]
 name = "data-designer-retrieval-sdg"
 version = "0.2.1"
-source = { registry = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/" }
+source = { path = "../runtimes/wheels/plugin-aa6c9652/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl" }
 dependencies = [
     { name = "data-designer" },
     { name = "mcp" },
@@ -400,9 +469,19 @@ dependencies = [
     { name = "pyyaml" },
     { name = "starlette" },
 ]
-sdist = { url = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins/releases/download/ddp-package-assets/data_designer_retrieval_sdg-0.2.1.tar.gz", hash = "sha256:cde3f8143b862eb38a01899ab2b6f7181a5ebac79c2db4f4e5c5495e5f6b076e" }
 wheels = [
-    { url = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins/releases/download/ddp-package-assets/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl", hash = "sha256:5c2b5d7da3340ed730d03bc0163318fae96656e4e414e8907b295ab72ea6fffd" },
+    { filename = "data_designer_retrieval_sdg-0.2.1-py3-none-any.whl", hash = "sha256:4c8e92653ddd2c8ff84539d6fb7e212fc2a28da8337ed54b907f4a7364a675b5" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "data-designer", specifier = ">=0.9.1" },
+    { name = "mcp", specifier = ">=1.29.0,<2" },
+    { name = "nltk", specifier = ">=3.10.2,<3.11" },
+    { name = "pyarrow", specifier = ">=24.0.0,<25" },
+    { name = "pydantic-settings", specifier = ">=2.14,<3" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "starlette", specifier = ">=1.4.1,<2" },
 ]
 
 [[package]]
@@ -1532,6 +1611,9 @@ name = "recipe-runner-sdg"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "data-designer" },
+    { name = "data-designer-config" },
+    { name = "data-designer-engine" },
     { name = "data-designer-retrieval-sdg" },
     { name = "omegaconf" },
     { name = "pydantic-settings" },
@@ -1539,7 +1621,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "data-designer-retrieval-sdg", specifier = "==0.2.1", index = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/" },
+    { name = "data-designer", path = "../runtimes/wheels/data_designer-0.9.1+barejson.1-py3-none-any.whl" },
+    { name = "data-designer-config", path = "../runtimes/wheels/data_designer_config-0.9.1+barejson.1-py3-none-any.whl" },
+    { name = "data-designer-engine", path = "../runtimes/wheels/data_designer_engine-0.9.1+barejson.1-py3-none-any.whl" },
+    { name = "data-designer-retrieval-sdg", path = "../runtimes/wheels/plugin-aa6c9652/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
 ]

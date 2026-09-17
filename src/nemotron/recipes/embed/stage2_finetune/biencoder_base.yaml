@@ -86,6 +86,8 @@ checkpoint:
   checkpoint_dir: ./output/llama3_2_1b_biencoder/checkpoints
   model_save_format: safetensors
   save_consolidated: true
+  # Bound retained native checkpoints for full and adapter fine-tuning.
+  max_recent_checkpoints: 1
 
 distributed:
   strategy: fsdp2

@@ -115,6 +115,33 @@ def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_pat
     assert f"{tmp_path / 'cache' / 'huggingface'}:/root/.cache/huggingface" in command
 
 
+def test_vl_vllm_docker_contract_includes_validated_runtime_overrides(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    model_dir = tmp_path / "checkpoint"
+    model_dir.mkdir()
+
+    cfg = _deploy_config(
+        model_family="mistral3_vl",
+        backend="vllm",
+        vllm_image=TEST_VLLM_IMAGE,
+        nim_model="example-org/mistral3-vl-embed",
+        model_dir=model_dir,
+        vllm_runner="pooling",
+        vllm_max_model_len=8192,
+        vllm_hf_overrides={"vision_config": {"image_size": 1120}},
+    )
+    command = deploy.build_docker_command(cfg)
+
+    assert command[command.index("--runner") + 1] == "pooling"
+    assert command[command.index("--max-model-len") + 1] == "8192"
+    assert json.loads(command[command.index("--hf-overrides") + 1]) == {"vision_config": {"image_size": 1120}}
+
+
+def test_vl_deployment_rejects_nim_backend() -> None:
+    with pytest.raises(ValueError, match="supports backend=vllm only"):
+        _deploy_config(model_family="mistral3_vl", backend="nim")
+
+
 def test_huggingface_checkpoint_artifact_validation(tmp_path) -> None:
     model_dir = tmp_path / "checkpoint"
     model_dir.mkdir()

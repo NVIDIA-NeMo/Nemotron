@@ -1,0 +1,45 @@
+# Preview local-checkpoint evaluation profile for Mistral3 VL embedding.
+# This default uses the held-out synthetic view from Stage 0. It is useful for a
+# pipeline smoke test, but it is not an independent model-quality evaluation.
+
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:26.06-py3
+
+artifact_root: ./output/embed/mistral3-vl-preview
+base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+finetuned_model_path: ${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated
+sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
+retrieval_view: image_and_text
+# Resolved from sdg_input_path at runtime; never use an assumed bundle name.
+eval_data_path: ${artifact_root}/stage0_sdg/RESOLVED_FROM_GENERATION_MANIFEST
+image_root: null
+output_dir: ${artifact_root}/stage3_eval
+
+k_values: [1, 5, 10, 100]
+batch_size: 1
+max_length: 8192
+corpus_chunk_size: 50000
+pooling: mean
+normalize: true
+query_prefix: "query: "
+passage_prefix: "passage: "
+model_family: mistral3_vl
+local_backend: automodel
+query_max_length: 512
+passage_max_length: 8192
+image_longest_edge: 1120
+use_text_in_document: true
+ignore_identical_ids: false
+
+# Endpoint evaluation remains available through explicit overrides.
+eval_base: false
+eval_finetuned: true
+eval_nim: false
+embedding_api_backend: vllm
+nim_url: ${oc.env:MISTRAL3_VL_EMBED_URL,http://localhost:8000}
+nim_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+nim_batch_size: 4
+nim_timeout: 300
+nim_invalid_embedding_retries: 3
+nim_embedding_dimension: 2048

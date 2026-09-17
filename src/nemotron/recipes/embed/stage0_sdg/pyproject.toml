@@ -4,28 +4,21 @@ version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "data-designer-retrieval-sdg==0.2.1",
+    "data-designer==0.9.1+barejson.1",
+    "data-designer-config==0.9.1+barejson.1",
+    "data-designer-engine==0.9.1+barejson.1",
     # Needed by Nemotron library (added via --with flag)
     "omegaconf>=2.3.0",
     "pydantic-settings>=2.0.0",
 ]
 
-# Pin Linux torch installs to cu129. CUDA 13 drivers can run cu12.x wheels via
-# NVIDIA driver backward compatibility, while CUDA 12.9 hosts cannot run cu130.
+# Use the reviewed plugin and explicitly patched core, not an ambient editable
+# installation or the older released plugin with the same package version.
 [tool.uv.sources]
-data-designer-retrieval-sdg = { index = "data-designer-plugins" }
-torch = [
-    { index = "pytorch-cu129", marker = "sys_platform == 'linux'" },
-]
-
-[[tool.uv.index]]
-name = "data-designer-plugins"
-url = "https://nvidia-nemo.github.io/DataDesignerPlugins/simple/"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cu129"
-url = "https://download.pytorch.org/whl/cu129"
-explicit = true
+data-designer-retrieval-sdg = { path = "../runtimes/wheels/plugin-aa6c9652/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl" }
+data-designer = { path = "../runtimes/wheels/data_designer-0.9.1+barejson.1-py3-none-any.whl" }
+data-designer-config = { path = "../runtimes/wheels/data_designer_config-0.9.1+barejson.1-py3-none-any.whl" }
+data-designer-engine = { path = "../runtimes/wheels/data_designer_engine-0.9.1+barejson.1-py3-none-any.whl" }
 
 # Note: exclude-dependencies are injected dynamically by run_uv.py for Docker/Slurm
 # This base config works for local mode where all packages need to be installed

@@ -1,0 +1,41 @@
+# Preview data-preparation profile shared with Mistral3 VL embedding.
+# Hard negatives are mined with the embedding checkpoint and consumed by
+# both the bi-encoder and cross-encoder fine-tuning stages.
+
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:26.06-py3
+
+artifact_root: ./output/rerank/mistral3-vl-preview
+corpus_id: multimodal_retrieval
+sdg_input_path: null
+train_input_file: ${oc.env:MISTRAL3_VL_SDG_TRAIN,${artifact_root}/stage0_sdg/views/text_image/train.json}
+output_dir: ${artifact_root}/stage1_prep
+artifact_recipe: rerank
+
+base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+trust_remote_code: false
+quality_threshold: 7.0
+
+train_ratio: 0.8
+val_ratio: 0
+test_ratio: 0.2
+conversion_seed: 42
+max_pos_docs: 5
+use_group_id_in_eval: false
+split_strategy: random
+groups_json: null
+
+mining_backend: vllm
+mining_api_url: ${oc.env:MISTRAL3_VL_EMBED_VLLM_URL,http://127.0.0.1:8000}
+mining_api_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+mining_embedding_dimension: 2048
+mining_use_images: true
+attn_implementation: sdpa
+hard_negatives_to_mine: 5
+hard_neg_margin: 0.95
+mining_batch_size: 4
+query_max_length: 512
+passage_max_length: 8192
+query_prefix: "query: "
+passage_prefix: "passage: "

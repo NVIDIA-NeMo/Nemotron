@@ -37,9 +37,7 @@ def test_finetune_auto_scales_default_global_batch_size_for_small_dataset():
         (8, 32),
     ],
 )
-def test_finetune_auto_scale_rounds_to_valid_batch_geometry(
-    monkeypatch, world_size, expected_global_batch_size
-):
+def test_finetune_auto_scale_rounds_to_valid_batch_geometry(monkeypatch, world_size, expected_global_batch_size):
     monkeypatch.setenv("WORLD_SIZE", str(world_size))
     cfg = FinetuneConfig(
         global_batch_size=128,
@@ -151,6 +149,64 @@ def test_eval_nim_reranker_sends_truncate_setting(monkeypatch):
     assert payloads[0]["truncate"] == "END"
 
 
+def test_eval_vllm_reranker_sends_multimodal_documents(monkeypatch, tmp_path):
+    payloads = []
+    dataset_path = tmp_path / "gold_eval" / "text_image"
+    dataset_path.mkdir(parents=True)
+    image_path = tmp_path / "assets" / "pages" / "page.png"
+    image_path.parent.mkdir(parents=True)
+    image_path.write_bytes(b"preview-image")
+
+    class RankingResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"results": [{"index": 0, "relevance_score": 0.7}]}'
+
+    def fake_urlopen(req, *args, **kwargs):
+        payloads.append(json.loads(req.data.decode("utf-8")))
+        return RankingResponse()
+
+    class FakeEvaluateRetrieval:
+        def __init__(self, k_values):
+            self.k = k_values
+
+        def evaluate(self, qrels, reranked_results, k_values):
+            return ({}, {}, {}, {})
+
+    evaluation_module = types.ModuleType("beir.retrieval.evaluation")
+    evaluation_module.EvaluateRetrieval = FakeEvaluateRetrieval
+    monkeypatch.setitem(sys.modules, "beir", types.ModuleType("beir"))
+    monkeypatch.setitem(sys.modules, "beir.retrieval", types.ModuleType("beir.retrieval"))
+    monkeypatch.setitem(sys.modules, "beir.retrieval.evaluation", evaluation_module)
+    monkeypatch.setattr(eval_module.urllib.request, "urlopen", fake_urlopen)
+
+    eval_module.evaluate_nim_reranker(
+        nim_url="http://vllm.example",
+        nim_model="example-org/mistral3-vl-rerank",
+        corpus={"d1": {"text": "GPU page", "image_path": "assets/pages/page.png"}},
+        queries={"q1": "what is a GPU?"},
+        qrels={"q1": {"d1": 1}},
+        first_stage_results={"q1": {"d1": 0.5}},
+        top_k=1,
+        batch_size=1,
+        api_backend="vllm",
+        dataset_path=dataset_path,
+        k_values=[1],
+    )
+
+    payload = payloads[0]
+    assert payload["query"] == "what is a GPU?"
+    assert payload["top_n"] == 1
+    assert "passages" not in payload
+    assert payload["documents"][0]["content"][0]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert payload["documents"][0]["content"][1] == {"type": "text", "text": "GPU page"}
+
+
 def test_export_defaults_format_reranker_calibration_pairs():
     cfg = ExportConfig()
     text = cfg.prompt_template.format(query=cfg.calibration_query, passage="A passage about GPUs")
@@ -182,14 +238,40 @@ def test_deploy_mounts_custom_model_dir_and_safe_replace(tmp_path, monkeypatch):
 
     cmd, _ = build_docker_command(cfg)
 
-    assert ["-v", f"{tmp_path.resolve()}:{cfg.container_model_path}:ro"] == cmd[
-        cmd.index("-v") : cmd.index("-v") + 2
-    ]
+    assert ["-v", f"{tmp_path.resolve()}:{cfg.container_model_path}:ro"] == cmd[cmd.index("-v") : cmd.index("-v") + 2]
     assert f"NIM_CUSTOM_MODEL={cfg.container_model_path}" in cmd
     assert all("NIM_MANIFEST_PATH" not in item for item in cmd)
     assert cfg.nim_image == "nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0"
     assert cfg.replace_existing is False
     assert cfg.keep_failed_container is False
+
+
+def test_vl_rerank_deploy_uses_vllm_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    cfg = DeployConfig(
+        model_family="mistral3_vl",
+        backend="vllm",
+        model_dir=tmp_path,
+        container_model_path="/model",
+        served_model_name="example-org/mistral3-vl-rerank",
+        vllm_max_model_len=8192,
+        vllm_trust_remote_code=True,
+        vllm_enforce_eager=True,
+    )
+
+    command, _ = build_docker_command(cfg)
+
+    assert command[command.index("--served-model-name") + 1] == "example-org/mistral3-vl-rerank"
+    assert command[command.index("--runner") + 1] == "pooling"
+    assert command[command.index("--max-model-len") + 1] == "8192"
+    assert "--trust-remote-code" in command
+    assert "--enforce-eager" in command
+    assert not any(argument.startswith("NIM_") for argument in command)
+
+
+def test_vl_rerank_deploy_rejects_nim() -> None:
+    with pytest.raises(ValidationError, match="supports backend=vllm only"):
+        DeployConfig(model_family="mistral3_vl", backend="nim")
 
 
 def test_deploy_health_retries_transient_socket_reset(monkeypatch):

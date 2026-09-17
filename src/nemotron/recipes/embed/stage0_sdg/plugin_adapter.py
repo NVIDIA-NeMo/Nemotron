@@ -19,6 +19,7 @@ def build_generation_config(cfg: SDGConfig, corpus_dir: Path) -> tuple[Generatio
         DocumentChunkerSeedSource,
         GenerationPipelineConfig,
         GenerationRunConfig,
+        RetrievalSourcesFile,
         build_model_providers,
     )
 
@@ -27,20 +28,24 @@ def build_generation_config(cfg: SDGConfig, corpus_dir: Path) -> tuple[Generatio
         if cfg.file_extensions
         else [".txt", ".md", ".text", ""]
     )
-    seed_source = DocumentChunkerSeedSource(
-        path=str(corpus_dir),
-        file_pattern="*",
-        recursive=True,
-        file_extensions=file_extensions,
-        min_text_length=cfg.min_text_length,
-        sentences_per_chunk=cfg.sentences_per_chunk,
-        num_sections=cfg.num_sections,
-        num_files=cfg.num_files,
-        multi_doc=cfg.multi_doc,
-        bundle_size=cfg.bundle_size,
-        bundle_strategy=cfg.bundle_strategy,
-        max_docs_per_bundle=cfg.max_docs_per_bundle,
-        multi_doc_manifest=cfg.multi_doc_manifest,
+    seed_source = (
+        RetrievalSourcesFile(path=corpus_dir)
+        if cfg.sources_file is not None
+        else DocumentChunkerSeedSource(
+            path=str(corpus_dir),
+            file_pattern="*",
+            recursive=True,
+            file_extensions=file_extensions,
+            min_text_length=cfg.min_text_length,
+            sentences_per_chunk=cfg.sentences_per_chunk,
+            num_sections=cfg.num_sections,
+            num_files=cfg.num_files,
+            multi_doc=cfg.multi_doc,
+            bundle_size=cfg.bundle_size,
+            bundle_strategy=cfg.bundle_strategy,
+            max_docs_per_bundle=cfg.max_docs_per_bundle,
+            multi_doc_manifest=cfg.multi_doc_manifest,
+        )
     )
     pipeline = GenerationPipelineConfig(
         max_artifacts_per_type=cfg.max_artifacts_per_type,

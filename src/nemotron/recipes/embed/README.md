@@ -319,6 +319,23 @@ automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
 nonfinite endpoint responses, the evaluator retries up to 32 times per affected
 input. Treat every retry warning as a serving-reliability defect.
 
+To request rejection of overlength inputs instead of server-side truncation,
+set the optional Cohere truncation policy to `NONE` for vLLM mining and evaluation:
+
+```bash
+nemotron embed prep -c default mining_backend=vllm mining_api_truncate=NONE
+nemotron embed eval -c default eval_base=false eval_finetuned=false \
+  eval_nim=true embedding_api_backend=vllm embedding_api_truncate=NONE
+```
+
+Both settings also accept `START` and `END`. The default, `null`, omits the
+request field and preserves the server default. Explicit policies require the
+vLLM backend and are recorded in mining or evaluation diagnostics.
+These settings do not change the server's token limit. The local tokenizer
+settings `query_max_length`, `passage_max_length`, and `max_length` do not
+configure endpoint limits. Prepare inputs to fit the served model's budget,
+including image tokens, before selecting `NONE`.
+
 Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
 the deployable checkpoint. Stages 1 and 3 retain Transformers 5.1 through 5.5
 for the original checkpoint path.
@@ -334,6 +351,130 @@ configured tolerances should gate the run.
 Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint
 directory for either backend. Use `NEMOTRON3_EMBED_NIM_MODEL` to set the model
 alias advertised by NIM or passed to vLLM as `--served-model-name`.
+
+### Text/Image Source-to-Evaluation Preview
+
+The `mistral3-vl` preview profile connects one canonical JSONL source to a
+portable `image_and_text` training view, native hard-negative mining, training,
+checkpoint reload, and a fresh retrieval evaluation. Each source line follows
+the public `RetrievalSource` contract; image paths are relative to the JSONL:
+
+```json
+{"unit_id":"page-001","document_id":"manual-a","text":"Public source text for page 1.","images":["pages/page-001.png"],"page_number":1}
+```
+
+Prepare the five reviewed wheels first by following
+[`runtimes/README.md`](./runtimes/README.md). The Data Designer core wheels apply
+the included parser patch to the public 0.9.1 release base. The companion
+[AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915) and
+[DataDesignerPlugins PR](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/89)
+still require this additional patched-core build. No private script or private
+package index is used.
+
+Set `MISTRAL3_VL_EMBED_MODEL` to a checkpoint available to your Hugging Face
+credentials, provide a source file with enough distinct documents for both the
+80% training and 20% evaluation splits, and run locally. The `nemotron`
+executable must be installed from this same reviewed checkout; use
+`uv run --no-sync nemotron` in place of `nemotron` below if needed:
+
+The generic reranking profile also requires `MISTRAL3_VL_RERANK_MODEL`.
+Remote model code is disabled by default. If a non-NVIDIA checkpoint requires
+remote code, review that repository and opt in with the stage-specific
+`allow_untrusted_remote_code=true` or `vllm_trust_remote_code=true` override.
+
+```bash
+export NVIDIA_API_KEY=your_endpoint_credential
+export NVIDIA_API_BASE_URL=https://your-authorized-openai-compatible-endpoint.example/v1
+export MISTRAL3_SDG_ARTIFACT_MODEL=your-image-capable-artifact-model
+export MISTRAL3_SDG_QA_MODEL=your-image-capable-generation-model
+export MISTRAL3_SDG_JUDGE_MODEL=your-image-capable-judge-model
+export MISTRAL3_SDG_EMBED_MODEL=your-text-dedup-embedding-model
+export MISTRAL3_VL_EMBED_MODEL=your-org/your-multimodal-embedding-checkpoint
+
+nemotron embed sdg -c mistral3-vl sources_file=/absolute/path/to/sources.jsonl
+nemotron embed prep -c mistral3-vl
+nemotron embed finetune -c mistral3-vl \
+  num_epochs=null max_steps=2 global_batch_size=2 local_batch_size=1 \
+  train_n_passages=2 lr_warmup_steps=0 \
+  attn_implementation=sdpa optimizer_backend=flash_adamw
+test -f output/embed/mistral3-vl-preview/stage2_finetune/checkpoints/LATEST/model/consolidated/config.json
+nemotron embed eval -c mistral3-vl eval_base=true eval_finetuned=true eval_nim=false
+python -c 'import json; p="output/embed/mistral3-vl-preview/stage3_eval/eval_results.json"; r=json.load(open(p)); assert {"base","finetuned"} <= r.keys()'
+```
+
+The artifact, QA, and judge model endpoints must accept the recipe's image
+inputs. `MISTRAL3_SDG_EMBED_MODEL` is the text embedding model used for query
+deduplication. The preview profile deliberately has no implicit hosted model
+fallback for these four roles.
+
+The default evaluation above uses the held-out split from the same synthetic
+generation run. It is a pipeline smoke test, not independent model-quality
+evidence. For the latter, point the evaluator at a separately sourced BEIR
+dataset and its portable image root:
+
+```bash
+nemotron embed eval -c mistral3-vl \
+  sdg_input_path=null retrieval_view=null \
+  eval_data_path=/absolute/path/to/independent-beir \
+  image_root=/absolute/path/to/independent-bundle \
+  output_dir=./output/embed/mistral3-vl-preview/stage3_eval_independent \
+  eval_base=true eval_finetuned=true eval_nim=false
+```
+
+Stage 0 and multimodal Stages 1-3 currently require local execution. Their exact
+reviewed wheels are ignored by Git, so Docker and Slurm invocations fail before
+submission instead of silently selecting different dependencies. CPU tests cover
+configuration, handoff integrity, dependency selection, and refusal behavior;
+GPU mining, training, checkpoint reload, and evaluation remain to be validated.
+
+### Optional LoRA Fine-Tuning
+
+Stage 2 defaults to full fine-tuning. To use native low-rank adaptation (LoRA),
+provide a local base checkpoint and an explicit `peft` configuration:
+
+Install the optional merge dependency in the training environment first:
+
+```bash
+python -m pip install 'peft>=0.18.1'
+```
+
+The recipe checks this dependency before adapter training. Full fine-tuning
+does not require it.
+
+```bash
+nemotron embed finetune -c default base_model=/path/to/local/model \
+  'peft={"dim":16,"alpha":32,"target_modules":["*.q_proj","*.v_proj"]}'
+```
+
+Choose selectors for the model you are adapting. For image-capable models,
+include vision and projector layers explicitly when those layers should adapt.
+Selectors that match only attention projections do not necessarily include the
+multimodal projector. The recipe uses plain native LoRA, without quantization,
+DoRA, or fused LoRA kernels.
+
+The local base must contain full safetensors weights and matching retrieval
+metadata: tokenizer files, `modules.json`, `1_Pooling/config.json`,
+`sentence_bert_config.json`, and `config_sentence_transformers.json`.
+The supported module layout is a root Transformer followed by `1_Pooling` and,
+when normalization is enabled, `2_Normalize`; additional learned modules are
+not exported by this adapter path.
+Image-capable bases also require processor metadata. Pooling, normalization,
+attention policy, and query/document prompts must match your training settings.
+Text-only bases do not require an image processor.
+
+Native adapter and optimizer checkpoints remain available for resumption.
+After training, Stage 2 merges the selected adapter on CPU with Hugging Face PEFT
+and writes full weights to `checkpoints/LATEST/model/consolidated`, preserving
+the existing evaluation and deployment handoff. Required auxiliary files are
+copied from the base without tokenizer or processor reserialization.
+Exported weights use BF16, matching native training, including when the base was
+stored in FP32. This precision conversion is explicit; other model configuration
+changes are rejected.
+Keep the original base checkpoint alongside resumable adapter checkpoints.
+
+Missing or conflicting metadata, a failed merge, or an existing export directory
+stops the handoff. Partial exports are retained and never silently overwritten.
+Resumption does not guarantee bitwise-identical results across executions.
 
 ### Dry Run
 

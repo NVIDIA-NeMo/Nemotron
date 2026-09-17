@@ -32,9 +32,7 @@ def test_auto_optimizer_uses_fused_adam_when_available(monkeypatch: pytest.Monke
     assert raw_config["dataloader"]["collate_fn"]["query_prefix"] == "query: "
     assert raw_config["dataloader"]["collate_fn"]["passage_prefix"] == "passage: "
     assert raw_config["distributed"]["strategy"] == "fsdp2"
-    assert raw_config["optimizer"]["_target_"] == (
-        "transformer_engine.pytorch.optimizers.fused_adam.FusedAdam"
-    )
+    assert raw_config["optimizer"]["_target_"] == ("transformer_engine.pytorch.optimizers.fused_adam.FusedAdam")
     assert raw_config["optimizer"]["adam_w_mode"] is True
     assert raw_config["optimizer"]["master_weights"] is True
 
@@ -95,7 +93,7 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
         "weight_decay": 0.01,
         "betas": [0.9, 0.999],
         "eps": 1.0e-8,
-        "quantize": False,
+        "quantize": True,
         "compress_state_dict": False,
         "master_weight_bits": 24,
         "fused": True,
@@ -103,7 +101,7 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
     assert raw_config["model"]["torch_dtype"] == "bfloat16"
 
 
-def test_flash_adamw_disables_master_weights_for_fp32_models(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_flash_adamw_disables_master_weights_when_explicitly_requested(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (False, "missing TE"))
     monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (True, None))
 
@@ -143,7 +141,41 @@ def test_checkpoint_interval_auto_scaling_can_be_disabled() -> None:
         auto_scale_checkpoint_intervals=False,
     )
 
-    _, _, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+    _, _, _, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
 
     assert checkpoint_every == 1000
     assert val_every == 1000
+
+
+def test_checkpoint_interval_auto_scaling_uses_exact_step_budget() -> None:
+    cfg = train.FinetuneConfig(
+        num_epochs=None,
+        max_steps=7,
+        checkpoint_every_steps=1000,
+        val_every_steps=1000,
+        auto_scale_checkpoint_intervals=True,
+    )
+
+    _, num_epochs, max_steps, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+
+    assert num_epochs is None
+    assert max_steps == 7
+    assert checkpoint_every == 2
+    assert val_every == 2
+
+
+def test_epoch_interval_auto_scaling_keeps_legacy_floor_estimate() -> None:
+    cfg = train.FinetuneConfig(
+        num_epochs=3,
+        global_batch_size=32,
+        checkpoint_every_steps=1000,
+        val_every_steps=1000,
+        auto_scale_checkpoint_intervals=True,
+    )
+
+    _, num_epochs, max_steps, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+
+    assert num_epochs == 3
+    assert max_steps is None
+    assert checkpoint_every == 35
+    assert val_every == 35

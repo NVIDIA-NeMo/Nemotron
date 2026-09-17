@@ -1,0 +1,85 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Requires AutoModel revision 4c50ab3c4c033f9e3f43b494b20bd88fe51b6b7f.
+
+recipe: TrainCrossEncoderRecipe
+seed: 42
+temperature: 1.0
+
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 1
+  ckpt_every_steps: 500
+  val_every_steps: 500
+  num_epochs: 1
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelCrossEncoder.from_pretrained
+  pretrained_model_name_or_path: mistralai/Ministral-3-3B-Instruct-2512-BF16
+  num_labels: 1
+  temperature: 0.02
+  pooling: avg
+  is_causal: false
+  use_liger_kernel: true
+  use_sdpa_patching: true
+  torch_dtype: bfloat16
+  attn_implementation: flash_attention_2
+
+tokenizer:
+  _target_: nemo_automodel.components.models.ministral_bidirectional.processor.Mistral3BiEncoderProcessor.from_pretrained
+  pretrained_model_name_or_path: mistralai/Ministral-3-3B-Instruct-2512-BF16
+  rerank_max_length: 4096
+  use_prompt_template: true
+  export_as_stock_processor: false
+  pad_to_multiple_of: 8
+  image_longest_edge: 1284
+
+dataset:
+  _target_: nemotron.recipes.retrieval_vl.DataDesignerRetrievalDatasetConfig
+  model_type: cross_encoder
+  data_dir_list:
+    - training_datasets/train.json
+  data_type: train
+  n_passages: 4
+  seed: 42
+  use_text_in_document: false
+
+dataloader:
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.llm.ProcessorMethodCollator
+    collator_fn_name: process_queries_documents_crossencoder
+  shuffle: true
+  num_workers: 4
+  pin_memory: true
+
+optimizer:
+  _target_: transformer_engine.pytorch.optimizers.fused_adam.FusedAdam
+  lr: 2.0e-6
+  weight_decay: 0.01
+  adam_w_mode: true
+  bias_correction: true
+  master_weights: true
+
+lr_scheduler:
+  lr_warmup_steps: 100
+  lr_decay_style: linear
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: ./output/mistral3_vl_reranker/checkpoints
+  model_save_format: safetensors
+  save_consolidated: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  activation_checkpointing: true
+  activation_checkpointing_scope: all

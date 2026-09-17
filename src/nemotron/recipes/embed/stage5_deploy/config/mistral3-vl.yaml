@@ -1,0 +1,39 @@
+# Preview deployment profile for Mistral3 VL embedding.
+# There is no NIM for this checkpoint; vLLM is the only supported backend.
+
+artifact_root: ./output/embed/mistral3-vl-preview
+model_family: mistral3_vl
+backend: vllm
+
+nim_image: null
+vllm_image: nvcr.io/nvidia/vllm:26.06-py3
+nim_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+vllm_runner: pooling
+vllm_max_model_len: 8192
+# The RC processor resizes to 1120 while config.json currently advertises 1540.
+# Keep these aligned to avoid image-token/placeholder shape mismatches.
+vllm_hf_overrides:
+  vision_config:
+    image_size: 1120
+vllm_trust_remote_code: false
+
+container_name: mistral3-vl-embed
+model_dir: ${oc.env:MISTRAL3_VL_EMBED_DEPLOY_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
+expected_model_fingerprint: null
+
+container_model_path: /model
+container_cache_path: /opt/cache
+vllm_container_cache_path: /root/.cache/huggingface
+
+host_port: 8000
+container_port: 8000
+gpus: all
+shm_size: 16gb
+
+detach: false
+remove_on_exit: true
+health_check_timeout: 600
+health_check_interval: 5
+ngc_api_key_env: NGC_API_KEY
+forward_ngc_api_key: false
+allow_unhealthy_detached: false

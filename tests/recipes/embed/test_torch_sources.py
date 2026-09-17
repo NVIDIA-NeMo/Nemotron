@@ -9,7 +9,6 @@ import tomllib
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EMBED_DIR = REPO_ROOT / "src" / "nemotron" / "recipes" / "embed"
 TORCH_STAGE_NAMES = [
-    "stage0_sdg",
     "stage1_data_prep",
     "stage2_finetune",
     "stage3_eval",
@@ -17,15 +16,17 @@ TORCH_STAGE_NAMES = [
 ]
 
 
-def test_embed_torch_stages_pin_linux_torch_to_cu129() -> None:
+def test_embed_torch_stages_pin_compatible_linux_cuda_indexes() -> None:
     cu129_source = {"index": "pytorch-cu129", "marker": "sys_platform == 'linux'"}
+    cu130_source = {"index": "pytorch-cu130", "marker": "sys_platform == 'linux'"}
 
     for stage_name in TORCH_STAGE_NAMES:
         with open(EMBED_DIR / stage_name / "pyproject.toml", "rb") as f:
             data = tomllib.load(f)
 
+        expected_source = cu130_source if stage_name == "stage2_finetune" else cu129_source
         torch_sources = data["tool"]["uv"]["sources"]["torch"]
-        assert cu129_source in torch_sources
+        assert expected_source in torch_sources
 
         if stage_name == "stage2_finetune":
             assert {
@@ -37,21 +38,18 @@ def test_embed_torch_stages_pin_linux_torch_to_cu129() -> None:
             assert data["tool"]["uv"]["sources"]["torchvision"] == [cu129_source]
 
         indexes = {entry["name"]: entry["url"] for entry in data["tool"]["uv"]["index"]}
-        assert indexes["pytorch-cu129"] == "https://download.pytorch.org/whl/cu129"
+        expected_index = expected_source["index"]
+        expected_cuda = "cu130" if stage_name == "stage2_finetune" else "cu129"
+        assert indexes[expected_index] == f"https://download.pytorch.org/whl/{expected_cuda}"
         if stage_name == "stage2_finetune":
             assert indexes["pytorch-cpu"] == "https://download.pytorch.org/whl/cpu"
-        assert "pytorch-cu130" not in indexes
 
 
 def test_embed_export_lock_pins_linux_torchvision_to_cu129() -> None:
     with open(EMBED_DIR / "stage4_export" / "uv.lock", "rb") as f:
         data = tomllib.load(f)
 
-    torchvision_packages = [
-        package
-        for package in data["package"]
-        if package["name"] == "torchvision"
-    ]
+    torchvision_packages = [package for package in data["package"] if package["name"] == "torchvision"]
 
     assert any(
         package["version"].endswith("+cu129")
@@ -96,20 +94,13 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
             assert len(versions) == 1
             assert (5, 1) <= versions[0] < (5, 6)
 
-    automodel_archive = (
-        "https://github.com/NVIDIA-NeMo/Automodel/archive/"
-        "a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
-    )
     with open(EMBED_DIR / "stage2_finetune" / "pyproject.toml", "rb") as f:
         finetune_project = tomllib.load(f)
-    assert finetune_project["tool"]["uv"]["sources"]["nemo-automodel"] == {"url": automodel_archive}
-
-    with open(EMBED_DIR / "stage2_finetune" / "uv.lock", "rb") as f:
-        finetune_lock = tomllib.load(f)
-    automodel = next(
-        package for package in finetune_lock["package"] if package["name"] == "nemo-automodel"
-    )
-    assert automodel["source"] == {"url": automodel_archive}
+    automodel_source = finetune_project["tool"]["uv"]["sources"]["nemo-automodel"]
+    assert automodel_source == {
+        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+    }
+    assert "nemo-automodel" not in finetune_project["tool"]["nemotron"]["container-exclude-dependencies"]
 
 
 def test_embed_prep_uses_generic_automodel_release() -> None:
@@ -132,12 +123,8 @@ def test_embed_prep_installs_pyarrow_for_parquet_output() -> None:
 
     with open(EMBED_DIR / "stage1_data_prep" / "uv.lock", "rb") as f:
         lock_data = tomllib.load(f)
-    runner = next(
-        package for package in lock_data["package"] if package["name"] == "recipe-runner-data-prep"
-    )
-    assert any(
-        requirement["name"] == "pyarrow" for requirement in runner["metadata"]["requires-dist"]
-    )
+    runner = next(package for package in lock_data["package"] if package["name"] == "recipe-runner-data-prep")
+    assert any(requirement["name"] == "pyarrow" for requirement in runner["metadata"]["requires-dist"])
 
 
 def test_embed_export_stage_keeps_its_custom_model_transformers_range() -> None:
@@ -153,15 +140,9 @@ def test_embed_export_lock_matches_finetune_transformers_range() -> None:
 
     assert data["requires-python"] == "==3.12.*"
 
-    transformer_packages = [
-        package
-        for package in data["package"]
-        if package["name"] == "transformers"
-    ]
+    transformer_packages = [package for package in data["package"] if package["name"] == "transformers"]
     assert [package["version"] for package in transformer_packages] == ["5.1.0"]
 
     assert not any(
-        package["name"] == "nvidia-resiliency-ext"
-        and package["version"] == "0.5.0"
-        for package in data["package"]
+        package["name"] == "nvidia-resiliency-ext" and package["version"] == "0.5.0" for package in data["package"]
     )

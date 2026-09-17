@@ -1,0 +1,22 @@
+-- allium: 3
+-- Scope: bounded image materialization and configurable endpoint evaluation chunks.
+-- Excludes: embedding persistence, ranking implementation, and server scheduling.
+
+contract RetrievalEvaluationBatching {
+    encode_corpus: (documents: List<Any>, batch_size: Integer) -> List<Any>
+    evaluate: (corpus_chunk_size: Integer) -> Any
+
+    @invariant BoundedImageMaterialization
+        -- Preparing a request may load images only for its current document
+        -- batch, not future batches. Complete that batch, including bounded
+        -- retries, before preparing the next. Preserve document content and
+        -- order for text-only, image-only and mixed documents.
+
+    @invariant ChunkConfigurationReachesSearch
+        -- Endpoint evaluation must pass the configured corpus chunk size to
+        -- retrieval search. If unspecified, preserve the existing default.
+
+    @invariant NoNewCacheSemantics
+        -- Batching must not introduce persistent embeddings, indexes or reuse
+        -- across checkpoint evaluations.
+}

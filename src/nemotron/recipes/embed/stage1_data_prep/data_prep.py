@@ -59,6 +59,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
+from urllib.parse import urlparse
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -96,6 +97,12 @@ class DataPrepConfig(RecipeSettings):
     train_input_file: Path | None = Field(
         default=None, description="Path to pre-converted training file (skips SDG conversion)."
     )
+    retrieval_view: Literal["text", "image", "image_and_text"] | None = Field(
+        default=None,
+        description=(
+            "Select a portable Stage 0 view, preserving its splits and quality decisions; skips legacy conversion."
+        ),
+    )
     output_dir: Path = Field(
         default_factory=lambda data: data["artifact_root"] / "stage1_data_prep",
         description="Output directory for prepared training data.",
@@ -109,9 +116,22 @@ class DataPrepConfig(RecipeSettings):
     base_model: str = Field(
         default="nvidia/Nemotron-3-Embed-1B-BF16", description="Base embedding model for hard negative mining."
     )
+    model_family: Literal["text", "mistral3_vl"] = Field(
+        default="text", description="Native mining processor family; match the fine-tuning model family."
+    )
+    image_longest_edge: int = Field(
+        default=1284, gt=0, description="Longest image edge for native multimodal mining; match fine-tuning."
+    )
+    use_text_in_document: bool = Field(
+        default=True, description="Include source text in native multimodal document inputs."
+    )
     trust_remote_code: bool = Field(
         default=True,
         description="Allow Hugging Face custom model code while loading the embedding model.",
+    )
+    tokenizer_force_default: bool = Field(
+        default=False,
+        description="Use AutoModel's Hugging Face tokenizer wrapper instead of model-type registry dispatch.",
     )
 
     # Quality filtering
@@ -155,9 +175,30 @@ class DataPrepConfig(RecipeSettings):
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage length for tokenization.")
     query_prefix: str = Field(default="query: ", description="Prefix for query inputs during mining.")
     passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs during mining.")
+    mining_backend: Literal["automodel", "vllm"] = Field(
+        default="automodel", description="Hard-negative mining implementation."
+    )
+    mining_api_url: str = Field(default="http://127.0.0.1:8000", description="vLLM server URL for mining.")
+    mining_api_model: str | None = Field(default=None, description="Served vLLM model name; defaults to base_model.")
+    mining_api_truncate: Literal["NONE", "START", "END"] | None = Field(
+        default=None,
+        description="Optional Cohere truncation policy for vLLM; None preserves the server default.",
+    )
+    mining_embedding_dimension: int | None = Field(default=None, gt=0, description="Expected endpoint vector size.")
+    mining_use_images: bool = Field(
+        default=True, description="Include corpus images when mining multimodal documents."
+    )
+
+    @model_validator(mode="after")
+    def _check_api_truncation(self):
+        if self.mining_api_truncate is not None and self.mining_backend != "vllm":
+            raise ValueError("mining_api_truncate requires mining_backend=vllm")
+        return self
 
     @model_validator(mode="after")
     def _check_input_source(self):
+        if self.retrieval_view is not None and self.train_input_file is not None:
+            raise ValueError("retrieval_view applies to an SDG manifest, not train_input_file")
         if self.sdg_input_path and self.train_input_file:
             raise ValueError(
                 "sdg_input_path and train_input_file are mutually exclusive. "
@@ -181,6 +222,30 @@ def run_convert(cfg: DataPrepConfig) -> ConversionResult:
     return execute_conversion(cfg)
 
 
+def _rebase_mined_corpus_path(train_file: Path, output_file: Path) -> None:
+    """Keep a mined output's relative corpus reference anchored to its input.
+
+    Args:
+        train_file: Input training JSON whose directory owns the original reference.
+        output_file: Mined training JSON written into a potentially different directory.
+    """
+    payload = json.loads(output_file.read_text())
+    corpus = payload.get("corpus")
+    corpus_path = corpus.get("path") if isinstance(corpus, dict) else None
+    if (
+        not isinstance(corpus_path, str)
+        or not corpus_path
+        or Path(corpus_path).is_absolute()
+        or urlparse(corpus_path).scheme
+    ):
+        return
+
+    corpus["path"] = os.path.relpath(train_file.parent / corpus_path, output_file.parent)
+    temporary_file = output_file.with_suffix(f"{output_file.suffix}.tmp")
+    temporary_file.write_text(json.dumps(payload, indent=2) + "\n")
+    temporary_file.replace(output_file)
+
+
 def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
     """Mine hard negatives using base embedding model.
 
@@ -190,12 +255,29 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
     mining_script = STAGE_PATH / "scripts" / "mine_hard_negatives.py"
     mining_config = STAGE_PATH / "scripts" / "mining_config.yaml"
     output_file = cfg.output_dir / "train_mined.automodel.json"
+    if cfg.mining_backend == "vllm":
+        from nemotron.recipes.retrieval_vl import mine_vllm_hard_negatives
+
+        print("\nMining multimodal hard negatives through vLLM...")
+        return mine_vllm_hard_negatives(
+            train_file,
+            output_file,
+            api_url=cfg.mining_api_url,
+            model=cfg.mining_api_model or cfg.base_model,
+            batch_size=cfg.mining_batch_size,
+            hard_negatives_to_mine=cfg.hard_negatives_to_mine,
+            hard_neg_margin=cfg.hard_neg_margin,
+            expected_dimension=cfg.mining_embedding_dimension,
+            use_images=cfg.mining_use_images,
+            api_truncate=cfg.mining_api_truncate,
+        )
     cache_dir = cfg.output_dir / "cache_embeddings"
 
     cmd = [
         sys.executable,
         "-m",
         "torch.distributed.run",
+        "--standalone",
         "--nproc_per_node",
         "gpu",
         str(mining_script),
@@ -227,11 +309,37 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         cfg.attn_implementation,
         "--mining.trust_remote_code",
         str(cfg.trust_remote_code).lower(),
+        "--mining.tokenizer_force_default",
+        str(cfg.tokenizer_force_default).lower(),
         "--mining.add_bos_token",
         "true",
         "--mining.add_eos_token",
         "false",
     ]
+
+    if cfg.model_family == "mistral3_vl":
+        cmd.extend(
+            [
+                "--mining.multimodal_encoder._target_",
+                "nemo_automodel.components.models.ministral_bidirectional.mining.Mistral3MultimodalMiningEncoderConfig",
+                "--mining.multimodal_encoder.processor_name_or_path",
+                cfg.base_model,
+                "--mining.multimodal_encoder.q_max_length",
+                str(cfg.query_max_length),
+                "--mining.multimodal_encoder.p_max_length",
+                str(cfg.passage_max_length),
+                "--mining.multimodal_encoder.query_prefix",
+                cfg.query_prefix.removesuffix(" "),
+                "--mining.multimodal_encoder.passage_prefix",
+                cfg.passage_prefix.removesuffix(" "),
+                "--mining.multimodal_encoder.image_longest_edge",
+                str(cfg.image_longest_edge),
+                "--mining.multimodal_encoder.use_images",
+                str(cfg.mining_use_images).lower(),
+                "--mining.multimodal_encoder.use_text_in_document",
+                str(cfg.use_text_in_document).lower(),
+            ]
+        )
 
     print("\n⛏️  Mining hard negatives...")
     print(f"   Using model: {cfg.base_model}")
@@ -244,6 +352,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
             print(result.stderr, file=sys.stderr)
         sys.exit(result.returncode)
 
+    _rebase_mined_corpus_path(train_file, output_file)
     return output_file
 
 
@@ -286,7 +395,14 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
         Path to final training data file.
     """
     configured_sdg_input = cfg.sdg_input_path
-    if configured_sdg_input:
+    evaluation_dir = cfg.output_dir / "eval_beir"
+    if configured_sdg_input and cfg.retrieval_view is not None:
+        from nemotron.recipes.embed.sdg_manifest import resolve_portable_training_input
+
+        train_input = resolve_portable_training_input(configured_sdg_input, cfg.retrieval_view)
+        evaluation_dir = train_input.parents[2] / "synthetic_eval" / cfg.retrieval_view
+        cfg = cfg.model_copy(update={"sdg_input_path": None, "train_input_file": train_input})
+    elif configured_sdg_input:
         from nemotron.recipes.embed.sdg_manifest import resolve_generation_input
 
         try:
@@ -340,7 +456,7 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     # Check eval set size (defaults for artifact metadata)
     eval_query_count = 0
     train_count = 0
-    eval_queries_path = cfg.output_dir / "eval_beir" / "queries.jsonl"
+    eval_queries_path = evaluation_dir / "queries.jsonl"
     if eval_queries_path.exists():
         with open(eval_queries_path) as f:
             eval_query_count = sum(1 for _ in f)
@@ -365,7 +481,7 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
 
     print("\nData preparation complete!")
     print(f"   Training data: {final_file}")
-    print(f"   Eval data:     {cfg.output_dir / 'eval_beir'}")
+    print(f"   Eval data:     {evaluation_dir}")
 
     # Save artifact (registers with artifact registry if kit.init() was called)
     try:

@@ -1,0 +1,46 @@
+# Preview profile for Mistral3 VL embedding.
+# Requires the reviewed AutoModel wheel described in ../runtimes/README.md.
+# MISTRAL3_VL_TRAIN_DATA points to the scored hard-negative output from Stage 1.
+
+run:
+  env:
+    container: nvcr.io/nvidia/nemo-automodel:26.06
+
+artifact_root: ./output/embed/mistral3-vl-preview
+model_family: mistral3_vl
+base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+trust_remote_code: false
+train_data_path: ${oc.env:MISTRAL3_VL_TRAIN_DATA,${artifact_root}/stage1_data_prep/train_mined.automodel_unrolled.json}
+checkpoint_dir: ${artifact_root}/stage2_finetune/checkpoints
+
+num_epochs: 1
+global_batch_size: 8
+local_batch_size: 1
+learning_rate: 2.0e-6
+lr_warmup_steps: 100
+lr_decay_style: linear
+weight_decay: 0.01
+optimizer_backend: flash_adamw
+flash_adamw_master_weight_bits: 32
+
+attn_implementation: sdpa
+train_n_passages: 4
+pooling: avg
+l2_normalize: true
+temperature: 0.02
+is_causal: false
+do_distributed_inbatch_negative: true
+detach_distributed_inbatch_negatives: false
+
+query_max_length: 512
+passage_max_length: 4096
+query_prefix: "query: "
+passage_prefix: "passage: "
+image_longest_edge: 1120
+pad_to_multiple_of: 8
+use_text_in_document: true
+require_mined_negatives: true
+
+checkpoint_every_steps: 500
+val_every_steps: 500
+auto_scale_checkpoint_intervals: false

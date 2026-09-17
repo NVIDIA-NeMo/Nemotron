@@ -680,9 +680,9 @@ def _slurm_secret_cleanup_setup(remote_path: str) -> str:
             "    exit 1",
             "fi",
             "set -vx",
-            "trap 'status=$?; if [ \"$status\" -eq 0 ] || "
-            "[ \"${SLURM_RESTART_COUNT:-0}\" -ge \"${TORCHX_MAX_RETRIES:-0}\" ]; then "
-            "rm -f \"$_nemotron_secret_env_file\"; fi' EXIT",
+            'trap \'status=$?; if [ "$status" -eq 0 ] || '
+            '[ "${SLURM_RESTART_COUNT:-0}" -ge "${TORCHX_MAX_RETRIES:-0}" ]; then '
+            'rm -f "$_nemotron_secret_env_file"; fi\' EXIT',
         ]
     )
 
@@ -835,9 +835,7 @@ def create_slurm_executor(
     setup_lines = _get_env(env, "setup_lines")
     if secret_setup_lines:
         setup_lines = "\n".join(
-            line
-            for line in (secret_setup_lines, str(setup_lines) if setup_lines else None)
-            if line
+            line for line in (secret_setup_lines, str(setup_lines) if setup_lines else None) if line
         )
 
     executor_kwargs: dict[str, Any] = {
@@ -1650,10 +1648,7 @@ def execute_cloud_ray(
                     else:
                         cluster.stop()
                 except Exception as exc:  # noqa: BLE001
-                    typer.echo(
-                        f"[ray] failed to stop RayCluster {cluster_name} "
-                        f"({type(exc).__name__}: {exc})"
-                    )
+                    typer.echo(f"[ray] failed to stop RayCluster {cluster_name} ({type(exc).__name__}: {exc})")
         if final_state in {"FAILED", "STOPPED", "CANCELLED", "TIMEOUT", "NOT_FOUND"}:
             raise RuntimeError(f"Ray job {job_name} ended in {final_state}")
 
@@ -1685,12 +1680,7 @@ def _wait_for_ray_job(ray_job: Any, *, poll_seconds: int = 30) -> str:
 def _ray_job_status_state(status: Any) -> str:
     """Normalize nemo-run Ray status return shapes."""
     if isinstance(status, dict):
-        return str(
-            status.get("state")
-            or status.get("status")
-            or status.get("job_status")
-            or "UNKNOWN"
-        )
+        return str(status.get("state") or status.get("status") or status.get("job_status") or "UNKNOWN")
     return str(getattr(status, "value", status))
 
 
@@ -1741,8 +1731,9 @@ def execute_uv_local(
     extras: list[str] | None = None,
     pre_script_args: list[str] | None = None,
     env_vars: dict[str, str] | None = None,
+    project_dir: Path | None = None,
 ) -> None:
-    """Execute a stage script locally with its stage-local UV project."""
+    """Execute a stage script with its stage-local or explicitly selected UV project."""
     uv_cmd = shutil.which("uv") or "uv"
     stage_dir = Path(stage_dir)
     repo_root = Path(repo_root)
@@ -1754,7 +1745,7 @@ def execute_uv_local(
     cmd = [uv_cmd, "run"]
     for item in extra_with or []:
         cmd.extend(["--with", item])
-    cmd.extend(["--project", str(stage_dir)])
+    cmd.extend(["--project", str(project_dir if project_dir is not None else stage_dir)])
     for extra in extras or []:
         cmd.extend(["--extra", extra])
     pre_script_args = pre_script_args or []
@@ -1769,9 +1760,7 @@ def execute_uv_local(
     # Avoid leaking an ambient venv into the stage-local project environment.
     env.pop("VIRTUAL_ENV", None)
     src_path = str(repo_root / "src")
-    env["PYTHONPATH"] = os.pathsep.join(
-        part for part in [src_path, env.get("PYTHONPATH", "")] if part
-    )
+    env["PYTHONPATH"] = os.pathsep.join(part for part in [src_path, env.get("PYTHONPATH", "")] if part)
 
     typer.echo(f"Executing: {' '.join(cmd)}")
     result = subprocess.run(cmd, env=env)
@@ -1795,6 +1784,7 @@ def execute_uv_local_from_spec(
     extras: list[str] | None = None,
     torchrun_nproc_per_node: str | int | None = None,
     env_vars: dict[str, str] | None = None,
+    project_dir: Path | None = None,
 ) -> None:
     """Execute a parsed runspec locally using its launch mode and resources."""
     script_path = Path(spec.script_path)
@@ -1822,6 +1812,7 @@ def execute_uv_local_from_spec(
         extras=extras,
         pre_script_args=pre_script_args,
         env_vars=env_vars,
+        project_dir=project_dir,
     )
 
 
