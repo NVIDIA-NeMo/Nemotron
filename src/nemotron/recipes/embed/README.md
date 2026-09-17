@@ -365,25 +365,24 @@ the public `RetrievalSource` contract; image paths are relative to the JSONL:
 
 Each stage declares dependencies in its own `pyproject.toml`. The CLI selects
 the `vl` extra for this profile and the `text` extra for existing text profiles.
-These extras preserve their different Transformers requirements. AutoModel and
-the retrieval-SDG plugin use commit-pinned Git sources from the companion
-[AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915) and
+These extras preserve their different Transformers requirements. AutoModel uses
+immutable commit archives from the companion
+[AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915); archive URLs
+prevent AutoModel's repository-local uv index policy from replacing the recipe's
+CUDA 12.9 Torch source. The retrieval-SDG plugin uses a commit-pinned Git source
+from the companion
 [DataDesignerPlugins PR](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/89).
 No manually built wheels, private scripts, or private package index are required.
+The checked-in locks resolve both mutually exclusive extras from those public
+sources.
 
-The new AutoModel pin must be published before a clean checkout can resolve the
-VL extras. Regenerate the prep, finetuning, and evaluation lockfiles after
-publication; their old locks no longer match the stage extras. The Stage 0
-lockfile resolves the public plugin Git pin and released core.
-
-Stage 0 uses released Data Designer 0.9.1, without the experimental core patch.
-Its structured-column parser requires a JSON Markdown code fence. Valid bare
-JSON responses can therefore fail parsing despite the prompts requesting fences.
-The earlier successful SDG run used a local core fix and is not evidence that
-this unpatched generation path works with the same hosted models. A plugin-level
-text-output and schema-validation path is an alternative to a core fix, but has
-not yet been integrated or validated end to end. Do not bypass schema checks or
-quality gates to compensate for parsing failures.
+Stage 0 and Stage 1 use released Data Designer 0.9.1, without the experimental
+core patch. The plugin's `retrieval-structured` column accepts one complete bare
+or JSON-fenced object, rejects malformed or ambiguous JSON, and delegates schema
+validation and bounded correction retries to Data Designer's native structured
+generation path. It does not extract JSON from prose, repair values, prune
+fields, or turn negative judge decisions into passes. Do not bypass schema
+checks or quality gates to compensate for parsing failures.
 
 For direct stage invocation, select the same extra, for example:
 
@@ -448,8 +447,9 @@ selection remains unvalidated, so Docker and Slurm invocations fail before
 submission. Text containers select the `text` extra; use a fresh container for
 each stage because the shared wrapper does not track dependency changes in its
 environment-ready marker. CPU configuration tests do not establish GPU or
-container execution compatibility. The stage-local Git dependency installation
-and a fresh end-to-end run remain to be validated.
+container execution compatibility. Lock generation establishes resolver
+compatibility only; stage-local dependency installation and a fresh end-to-end
+run remain to be validated.
 
 ### Optional LoRA Fine-Tuning
 

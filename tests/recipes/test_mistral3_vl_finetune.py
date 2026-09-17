@@ -374,9 +374,15 @@ def test_vl_stages_pin_their_selected_automodel_runtime() -> None:
     assert "transformers==5.12.1" in extras["text"]
     assert "transformers==5.15.1" in extras["vl"]
     sources = embed_project["tool"]["uv"]["sources"]["nemo-automodel"]
-    assert {entry["extra"]: entry["rev"] for entry in sources} == {
-        "text": "a9f4423819c513fd08083324fe1f738746ac6e54",
-        "vl": "aa6245acfcf129b22d83e815817e1560b10064c7",
+    assert {entry["extra"]: entry["url"] for entry in sources} == {
+        "text": (
+            "https://github.com/NVIDIA-NeMo/Automodel/archive/"
+            "a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+        ),
+        "vl": (
+            "https://github.com/NVIDIA-NeMo/Automodel/archive/"
+            "aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz"
+        ),
     }
 
 

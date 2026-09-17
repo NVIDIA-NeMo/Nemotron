@@ -19,8 +19,8 @@ conflicts = [[{ extra = "text" }, { extra = "vl" }]]
 
 [tool.uv.sources]
 nemo-automodel = [
-    { git = "https://github.com/NVIDIA-NeMo/Automodel.git", rev = "a9f4423819c513fd08083324fe1f738746ac6e54", extra = "text" },
-    { git = "https://github.com/NVIDIA-NeMo/Automodel.git", rev = "aa6245acfcf129b22d83e815817e1560b10064c7", extra = "vl" },
+    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz", extra = "text" },
+    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz", extra = "vl" },
 ]
 torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }

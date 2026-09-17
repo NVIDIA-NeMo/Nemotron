@@ -20,7 +20,7 @@ vl = ["nemo-automodel", "transformers==5.15.1", "torchvision>=0.25,<0.26"]
 conflicts = [[{ extra = "text" }, { extra = "vl" }]]
 
 [tool.uv.sources]
-nemo-automodel = { git = "https://github.com/NVIDIA-NeMo/Automodel.git", rev = "aa6245acfcf129b22d83e815817e1560b10064c7", extra = "vl" }
+nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz", extra = "vl" }
 torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 

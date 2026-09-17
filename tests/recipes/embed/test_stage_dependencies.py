@@ -14,6 +14,7 @@ from nemo_runspec._pyproject import _write_temp_pyproject
 EMBED = Path(__file__).resolve().parents[3] / "src/nemotron/recipes/embed"
 STAGES = ("stage1_data_prep", "stage2_finetune", "stage3_eval")
 AUTOMODEL_REV = "aa6245acfcf129b22d83e815817e1560b10064c7"
+AUTOMODEL_URL = f"https://github.com/NVIDIA-NeMo/Automodel/archive/{AUTOMODEL_REV}.tar.gz"
 
 
 @pytest.mark.parametrize("stage", STAGES)
@@ -30,8 +31,7 @@ def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None
     if isinstance(model_sources, dict):
         model_sources = [model_sources]
     assert next(source for source in model_sources if source["extra"] == "vl") == {
-        "git": "https://github.com/NVIDIA-NeMo/Automodel.git",
-        "rev": AUTOMODEL_REV,
+        "url": AUTOMODEL_URL,
         "extra": "vl",
     }
     assert sources["torch"]["index"] == sources["torchvision"]["index"] == "pytorch-cu129"
@@ -39,8 +39,9 @@ def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None
     assert config["tool"]["nemotron"]["container-extras"] == ["text"]
     if stage == "stage2_finetune":
         assert "wandb>=0.21,<1" in config["project"]["dependencies"]
-        assert next(source for source in model_sources if source["extra"] == "text")["rev"] == (
-            "a9f4423819c513fd08083324fe1f738746ac6e54"
+        assert next(source for source in model_sources if source["extra"] == "text")["url"] == (
+            "https://github.com/NVIDIA-NeMo/Automodel/archive/"
+            "a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
         )
     elif stage == "stage1_data_prep":
         assert "nemo-automodel==0.4.0" in extras["text"]
@@ -52,7 +53,7 @@ def test_generation_and_conversion_use_same_plugin_git_pin_and_released_core() -
         assert "data-designer==0.9.1" in config["project"]["dependencies"]
         assert config["tool"]["uv"]["sources"]["data-designer-retrieval-sdg"] == {
             "git": "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git",
-            "rev": "aa6c9652e6e66ee0a6d721a10d66d58bf9e2c7ab",
+            "rev": "c2871e19b668f2d9c2f8d5e9eadbc76f582b288e",
             "subdirectory": "plugins/data-designer-retrieval-sdg",
         }
 
