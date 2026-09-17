@@ -363,13 +363,35 @@ the public `RetrievalSource` contract; image paths are relative to the JSONL:
 {"unit_id":"page-001","document_id":"manual-a","text":"Public source text for page 1.","images":["pages/page-001.png"],"page_number":1}
 ```
 
-Prepare the five reviewed wheels first by following
-[`runtimes/README.md`](./runtimes/README.md). The Data Designer core wheels apply
-the included parser patch to the public 0.9.1 release base. The companion
+Each stage declares dependencies in its own `pyproject.toml`. The CLI selects
+the `vl` extra for this profile and the `text` extra for existing text profiles.
+These extras preserve their different Transformers requirements. AutoModel and
+the retrieval-SDG plugin use commit-pinned Git sources from the companion
 [AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915) and
-[DataDesignerPlugins PR](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/89)
-still require this additional patched-core build. No private script or private
-package index is used.
+[DataDesignerPlugins PR](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/89).
+No manually built wheels, private scripts, or private package index are required.
+
+The new AutoModel pin must be published before a clean checkout can resolve the
+VL extras. Regenerate the prep, finetuning, and evaluation lockfiles after
+publication; their old locks no longer match the stage extras. The Stage 0
+lockfile resolves the public plugin Git pin and released core.
+
+Stage 0 uses released Data Designer 0.9.1, without the experimental core patch.
+Its structured-column parser requires a JSON Markdown code fence. Valid bare
+JSON responses can therefore fail parsing despite the prompts requesting fences.
+The earlier successful SDG run used a local core fix and is not evidence that
+this unpatched generation path works with the same hosted models. A plugin-level
+text-output and schema-validation path is an alternative to a core fix, but has
+not yet been integrated or validated end to end. Do not bypass schema checks or
+quality gates to compensate for parsing failures.
+
+For direct stage invocation, select the same extra, for example:
+
+```bash
+uv run --project src/nemotron/recipes/embed/stage1_data_prep --extra vl \
+  python src/nemotron/recipes/embed/stage1_data_prep/data_prep.py \
+  --config src/nemotron/recipes/embed/stage1_data_prep/config/mistral3-vl.yaml
+```
 
 Set `MISTRAL3_VL_EMBED_MODEL` to a checkpoint available to your Hugging Face
 credentials, provide a source file with enough distinct documents for both the
@@ -421,11 +443,13 @@ nemotron embed eval -c mistral3-vl \
   eval_base=true eval_finetuned=true eval_nim=false
 ```
 
-Stage 0 and multimodal Stages 1-3 currently require local execution. Their exact
-reviewed wheels are ignored by Git, so Docker and Slurm invocations fail before
-submission instead of silently selecting different dependencies. CPU tests cover
-configuration, handoff integrity, dependency selection, and refusal behavior;
-GPU mining, training, checkpoint reload, and evaluation remain to be validated.
+Multimodal Stages 1-3 currently require local execution. Container dependency
+selection remains unvalidated, so Docker and Slurm invocations fail before
+submission. Text containers select the `text` extra; use a fresh container for
+each stage because the shared wrapper does not track dependency changes in its
+environment-ready marker. CPU configuration tests do not establish GPU or
+container execution compatibility. The stage-local Git dependency installation
+and a fresh end-to-end run remain to be validated.
 
 ### Optional LoRA Fine-Tuning
 

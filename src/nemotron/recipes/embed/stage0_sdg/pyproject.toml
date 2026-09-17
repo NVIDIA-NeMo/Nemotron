@@ -3,34 +3,18 @@ name = "recipe-runner-sdg"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
-    "data-designer-retrieval-sdg==0.2.1",
-    "data-designer==0.9.1+barejson.1",
-    "data-designer-config==0.9.1+barejson.1",
-    "data-designer-engine==0.9.1+barejson.1",
-    # Needed by Nemotron library (added via --with flag)
+    "data-designer-retrieval-sdg",
+    # Released core only: bare-JSON response parsing remains a documented blocker.
+    "data-designer==0.9.1",
     "omegaconf>=2.3.0",
     "pydantic-settings>=2.0.0",
 ]
 
-# Use the reviewed plugin and explicitly patched core, not an ambient editable
-# installation or the older released plugin with the same package version.
 [tool.uv.sources]
-data-designer-retrieval-sdg = { path = "../runtimes/wheels/plugin-aa6c9652/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl" }
-data-designer = { path = "../runtimes/wheels/data_designer-0.9.1+barejson.1-py3-none-any.whl" }
-data-designer-config = { path = "../runtimes/wheels/data_designer_config-0.9.1+barejson.1-py3-none-any.whl" }
-data-designer-engine = { path = "../runtimes/wheels/data_designer_engine-0.9.1+barejson.1-py3-none-any.whl" }
-
-# Note: exclude-dependencies are injected dynamically by run_uv.py for Docker/Slurm
-# This base config works for local mode where all packages need to be installed
+data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "aa6c9652e6e66ee0a6d721a10d66d58bf9e2c7ab", subdirectory = "plugins/data-designer-retrieval-sdg" }
 
 [tool.nemotron]
 entry-point = "data_prep.py"
 container-exclude-dependencies = [
-    "torch",
-    "torchvision",
-    "flash-attn",
-    "triton",
-    "pyarrow",
-    "scipy",
-    "opencv-python-headless",
+    "torch", "torchvision", "flash-attn", "triton", "pyarrow", "scipy", "opencv-python-headless",
 ]

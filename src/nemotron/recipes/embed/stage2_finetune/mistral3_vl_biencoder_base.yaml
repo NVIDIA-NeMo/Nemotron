@@ -6,7 +6,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Runtime source: the reviewed AutoModel wheel described in ../runtimes/README.md.
+# Runtime source: the commit-pinned AutoModel dependency in pyproject.toml's vl extra.
 
 recipe: TrainBiEncoderRecipe
 seed: 42

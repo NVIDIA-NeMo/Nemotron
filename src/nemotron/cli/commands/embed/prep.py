@@ -102,7 +102,6 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
     """Execute data prep locally via UV isolated environment."""
     from nemo_runspec.config.pydantic_loader import load_config
     from nemo_runspec.execution import execute_uv_local_from_spec
-    from nemotron.recipes.embed.runtime import runtime_project
 
     model_family = load_config(train_path, passthrough, DataPrepConfig).model_family
 
@@ -110,7 +109,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
         spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
-        project_dir=runtime_project(Path(SPEC.script_path).parent, model_family),
+        extras=["vl" if model_family == "mistral3_vl" else "text"],
     )
 
 
@@ -125,10 +124,10 @@ def _execute_remote(
 ):
     """Execute data prep via nemo-run with remote backend."""
     from nemo_runspec.config.pydantic_loader import load_config
-    from nemotron.recipes.embed.runtime import require_remote_runtime
 
     model_family = load_config(train_path, passthrough, DataPrepConfig).model_family
-    require_remote_runtime("stage1_data_prep", model_family)
+    if model_family == "mistral3_vl":
+        raise RuntimeError("VL container dependency selection is not validated; run this stage locally.")
     try:
         import nemo_run as run
     except ImportError:

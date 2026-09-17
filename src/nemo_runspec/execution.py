@@ -1731,9 +1731,8 @@ def execute_uv_local(
     extras: list[str] | None = None,
     pre_script_args: list[str] | None = None,
     env_vars: dict[str, str] | None = None,
-    project_dir: Path | None = None,
 ) -> None:
-    """Execute a stage script with its stage-local or explicitly selected UV project."""
+    """Execute a stage script with its stage-local UV project."""
     uv_cmd = shutil.which("uv") or "uv"
     stage_dir = Path(stage_dir)
     repo_root = Path(repo_root)
@@ -1745,7 +1744,7 @@ def execute_uv_local(
     cmd = [uv_cmd, "run"]
     for item in extra_with or []:
         cmd.extend(["--with", item])
-    cmd.extend(["--project", str(project_dir if project_dir is not None else stage_dir)])
+    cmd.extend(["--project", str(stage_dir)])
     for extra in extras or []:
         cmd.extend(["--extra", extra])
     pre_script_args = pre_script_args or []
@@ -1784,7 +1783,6 @@ def execute_uv_local_from_spec(
     extras: list[str] | None = None,
     torchrun_nproc_per_node: str | int | None = None,
     env_vars: dict[str, str] | None = None,
-    project_dir: Path | None = None,
 ) -> None:
     """Execute a parsed runspec locally using its launch mode and resources."""
     script_path = Path(spec.script_path)
@@ -1812,7 +1810,6 @@ def execute_uv_local_from_spec(
         extras=extras,
         pre_script_args=pre_script_args,
         env_vars=env_vars,
-        project_dir=project_dir,
     )
 
 

@@ -212,9 +212,6 @@ def _execute_remote(
     experiment=None,
 ):
     """Execute SDG via nemo-run with remote backend."""
-    from nemotron.recipes.embed.runtime import require_remote_runtime
-
-    require_remote_runtime("stage0_sdg")
     try:
         import nemo_run as run
     except ImportError:

@@ -1,5 +1,5 @@
 # Preview profile for Mistral3 VL embedding.
-# Requires the reviewed AutoModel wheel described in ../runtimes/README.md.
+# Uses the commit-pinned AutoModel dependency in the stage's vl extra.
 # MISTRAL3_VL_TRAIN_DATA points to the scored hard-negative output from Stage 1.
 
 run:

@@ -368,20 +368,15 @@ def test_vl_stages_pin_their_selected_automodel_runtime() -> None:
     assert "torchvision>=0.25.0,<0.26.0" in rerank_project["project"]["dependencies"]
     assert rerank_project["tool"]["uv"]["sources"]["nemo-automodel"] == source
 
-    embed_root = Path(embed_train.__file__).parents[1]
-    with (embed_root / "runtimes/native/pyproject.toml").open("rb") as stream:
-        native_project = tomllib.load(stream)
-    assert "nemo-automodel==0.7.0+aa6245ac" in native_project["project"]["dependencies"]
-    assert "transformers==5.15.1" in native_project["project"]["dependencies"]
-    assert native_project["tool"]["uv"]["sources"]["nemo-automodel"]["path"].endswith(
-        "nemo_automodel-0.7.0+aa6245ac-py3-none-any.whl"
-    )
-
     with (Path(embed_train.__file__).parent / "pyproject.toml").open("rb") as stream:
-        legacy_project = tomllib.load(stream)
-    assert "transformers==5.12.1" in legacy_project["project"]["dependencies"]
-    assert legacy_project["tool"]["uv"]["sources"]["nemo-automodel"] == {
-        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+        embed_project = tomllib.load(stream)
+    extras = embed_project["project"]["optional-dependencies"]
+    assert "transformers==5.12.1" in extras["text"]
+    assert "transformers==5.15.1" in extras["vl"]
+    sources = embed_project["tool"]["uv"]["sources"]["nemo-automodel"]
+    assert {entry["extra"]: entry["rev"] for entry in sources} == {
+        "text": "a9f4423819c513fd08083324fe1f738746ac6e54",
+        "vl": "aa6245acfcf129b22d83e815817e1560b10064c7",
     }
 
 
