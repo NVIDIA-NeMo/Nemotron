@@ -207,7 +207,9 @@ The evaluator is the exception. `nemotron steps run byob/bfcl` with `stage=eval`
 
 ## Normative Contracts
 
-These pages describe the operator-facing surface. The normative contracts live in the source tree, beside the code that enforces them:
+These pages describe the operator-facing surface. The normative contracts ship with the repository
+beside the code that enforces them. Each link displays a path relative to the repository root.
+Use the path as the value for configuration fields such as `scoring.contract`.
 
 | Contract | File |
 | --- | --- |
