@@ -411,7 +411,10 @@ def build_distributed_conversion_command(direction: str, cfg: Mapping[str, Any])
     torchrun = _optional_mapping(cfg.get("torchrun"), "torchrun")
     run_env = _run_env_mapping(cfg)
     nproc = _configured_torchrun_nproc(cfg)
-    torchrun_cmd = ["torchrun", f"--nproc_per_node={nproc}"]
+    # --no-python: the command below already starts with the interpreter.
+    # Without it torchrun prepends its own python and runs the interpreter
+    # binary as a script.
+    torchrun_cmd = ["torchrun", "--no-python", f"--nproc_per_node={nproc}"]
     for key in ("nnodes", "node_rank", "master_addr", "master_port"):
         run_env_key = "nodes" if key == "nnodes" else key
         value = torchrun.get(key, cfg.get(key, run_env.get(run_env_key)))
@@ -442,8 +445,13 @@ def _ensure_distributed_converter_script(command: list[str]) -> None:
     script = _distributed_converter_script_path(command)
     if script is None:
         return
-    if Path(script).is_file():
-        return
+    try:
+        if Path(script).is_file():
+            return
+    except OSError:
+        # An unreadable parent directory raises rather than returning False, and
+        # the guidance below is what the caller needs either way.
+        pass
     raise FileNotFoundError(
         f"Distributed conversion script not found: {script}. "
         "Use a NeMo image that ships convert_checkpoints_multi_gpu.py, "

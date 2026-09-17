@@ -93,16 +93,21 @@ startup_commands = [
 
 ::::{dropdown} `NVIDIA_API_KEY` not available inside the container
 
-**Cause**: `NVIDIA_API_KEY` is not automatically forwarded to the job environment the way `HF_TOKEN` and `WANDB_API_KEY` are.
+**Cause**: Lepton jobs receive `NVIDIA_API_KEY` from a platform secret. Exporting
+the credential in the submitting shell does not create that secret.
 
 **Solution**: Declare it explicitly in the env.toml profile:
 
 ```toml
-[lepton_sdg_data_designer.env_vars]
-NVIDIA_API_KEY = "${oc.env:NVIDIA_API_KEY}"
+[lepton_sdg_data_designer.secret_vars]
+NVIDIA_API_KEY = "${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}"
 ```
 
-And set it in your shell before submitting: `export NVIDIA_API_KEY="..."`.
+Create the default secret once with
+`lep secret create -n NVIDIA_API_KEY -v <value>`. If it already exists under a
+different name, set
+`NEMOTRON_NVIDIA_API_KEY_SECRET="<secret-name>"` before submitting. This
+variable contains the secret's name, not its value.
 ::::
 
 ## Related

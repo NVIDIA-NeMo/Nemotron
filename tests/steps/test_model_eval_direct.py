@@ -14,6 +14,7 @@ from omegaconf import OmegaConf
 
 from nemotron.steps.eval.model_eval.runtime import (
     _direct_overrides,
+    _ensure_visible_chat_content,
     _is_digest_pinned,
     _is_set,
     _override_value,
@@ -74,6 +75,28 @@ def test_extra_params_are_namespaced():
     out = _direct_overrides({"extra": {"tokenizer": "/t", "tokenizer_backend": "huggingface"}})
     assert "config.params.extra.tokenizer=/t" in out
     assert "config.params.extra.tokenizer_backend=huggingface" in out
+
+
+def test_nested_adapter_params_are_forwarded_as_top_level_payload_overrides():
+    out = _direct_overrides(
+        {},
+        {"params_to_add": {"chat_template_kwargs": {"enable_thinking": False}}},
+    )
+    assert (
+        "target.api_endpoint.adapter_config.params_to_add."
+        "chat_template_kwargs.enable_thinking=false"
+    ) in out
+
+
+def test_chat_defaults_to_visible_content_via_payload_modifier():
+    config = {
+        "target": {"api_endpoint": {"type": "chat"}},
+        "evaluation": {"nemo_evaluator_config": {}},
+    }
+    _ensure_visible_chat_content(config)
+    adapter = config["evaluation"]["nemo_evaluator_config"]["target"]["api_endpoint"]["adapter_config"]
+    assert adapter["params_to_add"]["chat_template_kwargs"]["enable_thinking"] is False
+    assert "extra_body" not in adapter["params_to_add"]
 
 
 def test_unset_params_are_omitted():

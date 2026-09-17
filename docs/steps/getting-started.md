@@ -120,7 +120,7 @@ $ uv run nemotron steps list --consumes training_jsonl
 The output lists the fine-tuning and reinforcement-learning (RL) steps that take training JSONL as input.
 
 Together, the two queries show you which steps you can chain.
-For example, the `sdg/data_designer` step produces `training_jsonl`, and the `sft/automodel` step consumes `training_jsonl`, so you can pipe the synthetic dataset directly into supervised fine-tuning without an intermediate conversion.
+For example, the `sdg/data_designer` step consumes `training_jsonl` as seed examples and produces `synthetic_jsonl`. `sft/automodel` consumes `training_jsonl`, so the generated data needs converting to that shape before it can be fine-tuned on — nothing currently consumes `synthetic_jsonl` directly.
 
 The same pattern works for other artifact types, such as `packed_parquet`, `binidx`, `checkpoint_hf`, `checkpoint_megatron`, `checkpoint_lora`, `synthetic_jsonl`, `eval_results`, and `mcq_benchmark_parquet`.
 

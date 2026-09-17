@@ -45,7 +45,7 @@ This repo ships a Claude Code plugin called **`nemotron-customize`** that turns 
 Install once:
 
 ```text
-/plugin marketplace add NVIDIA/Nemotron
+/plugin marketplace add NVIDIA-NeMo/Nemotron
 /plugin install nemotron-customize@nvidia-nemotron
 ```
 

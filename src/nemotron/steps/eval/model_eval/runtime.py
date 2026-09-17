@@ -46,6 +46,7 @@ import shutil
 import subprocess
 import sys
 import urllib.parse
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -184,6 +185,7 @@ def _build_launcher_config(cfg: DictConfig) -> tuple[DictConfig, bool, list[str]
         raise ValueError("model evaluation config must resolve to one object")
     launcher_dict = dict(resolved)
     launcher_dict.pop("run", None)
+    _ensure_visible_chat_content(launcher_dict)
     for key in _STEP_ONLY_KEYS:
         launcher_dict.pop(key, None)
 
@@ -310,6 +312,7 @@ def run_direct(cfg: DictConfig, *, task_filters: list[str] | None = None) -> Non
     model_type = str(endpoint.get("type", "completions"))
     if model_type not in {"chat", "completions"}:
         raise SystemExit(f"target.api_endpoint.type must be 'chat' or 'completions', got {model_type!r}")
+    _ensure_visible_chat_content(plain)
     api_key_name = endpoint.get("api_key_name") if _is_set(endpoint.get("api_key_name")) else None
 
     # Keep the whole task entry, not just its name: a task may carry its own
@@ -962,6 +965,23 @@ def _merged_adapter(global_adapter: dict, task_entry: dict | None) -> dict:
     return merged
 
 
+def _ensure_visible_chat_content(config: dict) -> None:
+    """Disable reasoning by default so task stop strings cannot hide chat content."""
+    endpoint = (config.get("target") or {}).get("api_endpoint") or {}
+    if str(endpoint.get("type", "completions")) != "chat":
+        return
+    adapter = (
+        config.setdefault("evaluation", {})
+        .setdefault("nemo_evaluator_config", {})
+        .setdefault("target", {})
+        .setdefault("api_endpoint", {})
+        .setdefault("adapter_config", {})
+    )
+    adapter.setdefault("params_to_add", {}).setdefault("chat_template_kwargs", {}).setdefault(
+        "enable_thinking", False
+    )
+
+
 def _merged_params(global_params: dict, task_entry: dict | None) -> dict:
     """Global params with the task's own nemo_evaluator_config layered on top.
 
@@ -1043,10 +1063,20 @@ def _direct_overrides(params: dict, adapter: dict | None = None) -> str:
     # Not allowlisted: the adapter's interceptor set is open-ended and version
     # dependent, and an unknown key here is inert rather than silently changing
     # how the model is scored.
-    for key, val in (adapter or {}).items():
+    for dotted, val in _flatten_mapping("target.api_endpoint.adapter_config", adapter or {}):
         if _is_set(val):
-            pairs.append(f"target.api_endpoint.adapter_config.{key}={_override_value(val)}")
+            pairs.append(f"{dotted}={_override_value(val)}")
     return ",".join(pairs)
+
+
+def _flatten_mapping(prefix: str, values: dict) -> Iterator[tuple[str, object]]:
+    """Yield leaf values as dotted OmegaConf override paths."""
+    for key, value in values.items():
+        dotted = f"{prefix}.{key}"
+        if isinstance(value, dict):
+            yield from _flatten_mapping(dotted, value)
+        else:
+            yield dotted, value
 
 
 def _override_value(val: object) -> str:

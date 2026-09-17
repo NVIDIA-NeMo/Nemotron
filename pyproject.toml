@@ -270,6 +270,10 @@ ignore = []
 
 [tool.uv]
 package = true
+# mamba-ssm and causal-conv1d ship as sdists and import torch in setup.py
+# without declaring it as a build dependency, so a build-isolated install
+# fails with ModuleNotFoundError: No module named 'torch'.
+extra-build-dependencies = { mamba-ssm = [{ requirement = "torch", match-runtime = true }], causal-conv1d = [{ requirement = "torch", match-runtime = true }] }
 conflicts = [
     # Data Designer requires MCP SDK v1 while the 2026 BFCL gateway uses v2.
     # They communicate across the documented gateway process boundary.
