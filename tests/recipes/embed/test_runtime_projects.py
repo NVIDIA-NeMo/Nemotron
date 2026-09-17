@@ -40,7 +40,7 @@ def test_native_runtime_pins_wheels_and_scopes_torch_index() -> None:
     assert "wandb>=0.21,<1" in config["project"]["dependencies"]
     sources = config["tool"]["uv"]["sources"]
     assert sources["torch"]["index"] == sources["torchvision"]["index"] == "pytorch-cu129"
-    assert sources["nemo-automodel"]["path"].endswith("0.7.0+4c50ab3c-py3-none-any.whl")
+    assert sources["nemo-automodel"]["path"].endswith("0.7.0+aa6245ac-py3-none-any.whl")
     assert "plugin-aa6c9652" in sources["data-designer-retrieval-sdg"]["path"]
     assert sources["data-designer-engine"]["path"].endswith("0.9.1+barejson.1-py3-none-any.whl")
     assert config["tool"]["uv"]["index"][0]["explicit"] is True

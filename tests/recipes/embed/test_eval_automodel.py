@@ -185,8 +185,18 @@ def test_multimodal_encoder_uses_native_mining_loader_and_preserves_images(
     )
 
 
-def test_evaluate_model_builds_exact_multimodal_processor_config(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    """The local checkpoint is also the processor source with the requested limits."""
+@pytest.mark.parametrize(
+    ("query_prefix", "passage_prefix", "expected_prefixes"),
+    [(None, None, {}), ("", "", {"query_prefix": "", "passage_prefix": ""})],
+)
+def test_evaluate_model_builds_exact_multimodal_processor_config(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    query_prefix: str | None,
+    passage_prefix: str | None,
+    expected_prefixes: dict[str, str],
+) -> None:
+    """Checkpoint defaults are omitted while explicit empty prefixes are preserved."""
     captured = {}
 
     class Native:
@@ -217,6 +227,14 @@ def test_evaluate_model_builds_exact_multimodal_processor_config(monkeypatch: py
         module.__dict__.update(attributes)
         monkeypatch.setitem(sys.modules, name, module)
 
+    class CheckpointMiningEncoderConfig:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    mining_module = ModuleType("nemo_automodel._transformers.mining")
+    mining_module.CheckpointMiningEncoderConfig = CheckpointMiningEncoderConfig
+    monkeypatch.setitem(sys.modules, "nemo_automodel._transformers.mining", mining_module)
+
     with pytest.raises(StopSearchError):
         evaluation.evaluate_model(
             "merged-checkpoint",
@@ -225,15 +243,18 @@ def test_evaluate_model_builds_exact_multimodal_processor_config(monkeypatch: py
             model_family="mistral3_vl",
             query_max_length=512,
             passage_max_length=8192,
-            image_longest_edge=1120,
+            query_prefix=query_prefix,
+            passage_prefix=passage_prefix,
         )
 
     config = captured["multimodal_config"]
-    assert config.processor_name_or_path == "merged-checkpoint"
-    assert (config.q_max_length, config.p_max_length, config.image_longest_edge) == (512, 8192, 1120)
-    assert (config.query_prefix, config.passage_prefix) == ("query:", "passage:")
-    assert config.use_images is True
-    assert config.use_text_in_document is True
+    assert config.kwargs == {
+        "q_max_length": 512,
+        "p_max_length": 8192,
+        "use_images": True,
+        "use_text_in_document": True,
+        **expected_prefixes,
+    }
 
 
 def test_restore_multimodal_images_after_portable_bundle_move(tmp_path) -> None:
@@ -410,6 +431,6 @@ def test_multimodal_eval_config_requires_native_limits_and_backend() -> None:
         local_backend="automodel",
         query_max_length=512,
         passage_max_length=8192,
-        image_longest_edge=1120,
     )
+    assert config.image_longest_edge is None
     assert config.use_text_in_document is True

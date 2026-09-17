@@ -120,7 +120,7 @@ class DataPrepConfig(RecipeSettings):
     model_family: Literal["text", "mistral3_vl"] = Field(
         default="text", description="Native mining processor family; match the fine-tuning model family."
     )
-    image_longest_edge: int = Field(
+    image_longest_edge: int | None = Field(
         default=1284, gt=0, description="Longest image edge for native multimodal mining; match fine-tuning."
     )
     use_text_in_document: bool = Field(
@@ -174,8 +174,8 @@ class DataPrepConfig(RecipeSettings):
     mining_batch_size: int = Field(default=128, gt=0, description="Batch size for mining.")
     query_max_length: int = Field(default=512, gt=0, description="Maximum query length for tokenization.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage length for tokenization.")
-    query_prefix: str = Field(default="query: ", description="Prefix for query inputs during mining.")
-    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs during mining.")
+    query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs during mining.")
+    passage_prefix: str | None = Field(default="passage: ", description="Prefix for passage inputs during mining.")
     mining_backend: Literal["automodel", "vllm"] = Field(
         default="automodel", description="Hard-negative mining implementation."
     )
@@ -322,10 +322,6 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         str(cfg.hard_negatives_to_mine),
         "--mining.mining_batch_size",
         str(cfg.mining_batch_size),
-        "--mining.query_prefix",
-        cfg.query_prefix,
-        "--mining.passage_prefix",
-        cfg.passage_prefix,
         "--mining.query_max_length",
         str(cfg.query_max_length),
         "--mining.passage_max_length",
@@ -342,29 +338,25 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         "false",
     ]
 
+    for field, value in (("query_prefix", cfg.query_prefix), ("passage_prefix", cfg.passage_prefix)):
+        if value is not None:
+            cmd.extend([f"--mining.{field}", value])
+
     if cfg.model_family == "mistral3_vl":
-        cmd.extend(
-            [
-                "--mining.multimodal_encoder._target_",
-                "nemo_automodel.components.models.ministral_bidirectional.mining.Mistral3MultimodalMiningEncoderConfig",
-                "--mining.multimodal_encoder.processor_name_or_path",
-                cfg.base_model,
-                "--mining.multimodal_encoder.q_max_length",
-                str(cfg.query_max_length),
-                "--mining.multimodal_encoder.p_max_length",
-                str(cfg.passage_max_length),
-                "--mining.multimodal_encoder.query_prefix",
-                cfg.query_prefix.removesuffix(" "),
-                "--mining.multimodal_encoder.passage_prefix",
-                cfg.passage_prefix.removesuffix(" "),
-                "--mining.multimodal_encoder.image_longest_edge",
-                str(cfg.image_longest_edge),
-                "--mining.multimodal_encoder.use_images",
-                str(cfg.mining_use_images).lower(),
-                "--mining.multimodal_encoder.use_text_in_document",
-                str(cfg.use_text_in_document).lower(),
-            ]
-        )
+        multimodal_options: list[tuple[str, str | int | bool | None]] = [
+            ("_target_", "nemo_automodel._transformers.mining.CheckpointMiningEncoderConfig"),
+            ("q_max_length", cfg.query_max_length),
+            ("p_max_length", cfg.passage_max_length),
+            ("query_prefix", None if cfg.query_prefix is None else cfg.query_prefix.removesuffix(" ")),
+            ("passage_prefix", None if cfg.passage_prefix is None else cfg.passage_prefix.removesuffix(" ")),
+            ("image_longest_edge", cfg.image_longest_edge),
+            ("use_images", cfg.mining_use_images),
+            ("use_text_in_document", cfg.use_text_in_document),
+        ]
+        for field, value in multimodal_options:
+            if value is not None:
+                rendered_value = str(value).lower() if isinstance(value, bool) else str(value)
+                cmd.extend([f"--mining.multimodal_encoder.{field}", rendered_value])
 
     print("\n⛏️  Mining hard negatives...")
     print(f"   Using model: {cfg.base_model}")

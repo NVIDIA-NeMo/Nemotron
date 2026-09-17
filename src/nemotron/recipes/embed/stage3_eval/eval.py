@@ -456,8 +456,8 @@ class EvalConfig(RecipeSettings):
         default="mean", description="Pooling strategy (BEIR naming: mean=avg, cls=cls, max=last)."
     )
     normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
-    query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
-    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
+    query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs.")
+    passage_prefix: str | None = Field(default="passage: ", description="Prefix for passage inputs.")
     model_family: Literal["text", "mistral3_vl"] = Field(default="text", description="Local evaluation model family.")
     query_max_length: int | None = Field(default=None, gt=0, description="Multimodal query sequence limit.")
     passage_max_length: int | None = Field(default=None, gt=0, description="Multimodal document sequence limit.")
@@ -533,8 +533,8 @@ class EvalConfig(RecipeSettings):
             return self
         if (self.eval_base or self.eval_finetuned) and self.local_backend != "automodel":
             raise ValueError("model_family=mistral3_vl local evaluation requires local_backend=automodel")
-        if any(value is None for value in (self.query_max_length, self.passage_max_length, self.image_longest_edge)):
-            raise ValueError("model_family=mistral3_vl requires query, passage, and image limits")
+        if any(value is None for value in (self.query_max_length, self.passage_max_length)):
+            raise ValueError("model_family=mistral3_vl requires query and passage limits")
         return self
 
     @model_validator(mode="after")
@@ -579,8 +579,8 @@ def evaluate_model(
     k_values: list[int] | None = None,
     pooling: str = "mean",
     normalize: bool = True,
-    query_prefix: str = "query: ",
-    passage_prefix: str = "passage: ",
+    query_prefix: str | None = "query: ",
+    passage_prefix: str | None = "passage: ",
     local_backend: Literal["huggingface", "automodel"] = "huggingface",
     tokenizer_force_default: bool = False,
     model_family: Literal["text", "mistral3_vl"] = "text",
@@ -637,21 +637,21 @@ def evaluate_model(
             raise ValueError("local_backend=automodel requires pooling=mean and normalize=true")
         multimodal_config = None
         if model_family == "mistral3_vl":
-            if query_max_length is None or passage_max_length is None or image_longest_edge is None:
-                raise ValueError("mistral3_vl evaluation requires query, passage, and image limits")
-            from nemo_automodel.components.models.ministral_bidirectional.mining import (
-                Mistral3MultimodalMiningEncoderConfig,
-            )
+            if query_max_length is None or passage_max_length is None:
+                raise ValueError("mistral3_vl evaluation requires query and passage limits")
+            from nemo_automodel._transformers.mining import CheckpointMiningEncoderConfig
 
-            multimodal_config = Mistral3MultimodalMiningEncoderConfig(
-                processor_name_or_path=str(model_path),
-                q_max_length=query_max_length,
-                p_max_length=passage_max_length,
-                query_prefix=query_prefix.removesuffix(" "),
-                passage_prefix=passage_prefix.removesuffix(" "),
-                image_longest_edge=image_longest_edge,
-                use_text_in_document=use_text_in_document,
-                use_images=True,
+            processor_overrides = {
+                "q_max_length": query_max_length,
+                "p_max_length": passage_max_length,
+                "query_prefix": None if query_prefix is None else query_prefix.removesuffix(" "),
+                "passage_prefix": None if passage_prefix is None else passage_prefix.removesuffix(" "),
+                "image_longest_edge": image_longest_edge,
+                "use_text_in_document": use_text_in_document,
+                "use_images": True,
+            }
+            multimodal_config = CheckpointMiningEncoderConfig(
+                **{name: value for name, value in processor_overrides.items() if value is not None}
             )
         dense_model = AutoModelBEIREncoder(
             model_path=model_path,

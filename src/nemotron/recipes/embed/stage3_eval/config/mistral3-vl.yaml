@@ -22,13 +22,13 @@ max_length: 8192
 corpus_chunk_size: 50000
 pooling: mean
 normalize: true
-query_prefix: "query: "
-passage_prefix: "passage: "
+query_prefix: null
+passage_prefix: null
 model_family: mistral3_vl
 local_backend: automodel
 query_max_length: 512
 passage_max_length: 8192
-image_longest_edge: 1120
+image_longest_edge: null
 use_text_in_document: true
 ignore_identical_ids: false
 

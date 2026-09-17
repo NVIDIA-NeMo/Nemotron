@@ -69,10 +69,7 @@ def test_native_vl_mining_forwards_training_processor_policy(tmp_path, monkeypat
     assert data_prep.run_mining(cfg, cfg.train_input_file) == output
     cmd = run.call_args.args[0]
     expected = {
-        "_target_": (
-            "nemo_automodel.components.models.ministral_bidirectional.mining.Mistral3MultimodalMiningEncoderConfig"
-        ),
-        "processor_name_or_path": "/pinned-vl-model",
+        "_target_": "nemo_automodel._transformers.mining.CheckpointMiningEncoderConfig",
         "q_max_length": "256",
         "p_max_length": "8192",
         "query_prefix": "query:",
@@ -135,9 +132,36 @@ def test_vl_profile_native_override_preserves_image_processing(
     assert cfg.model_family == "mistral3_vl"
     assert data_prep.run_mining(cfg, tmp_path / "train.json") == output
     cmd = run.call_args.args[0]
-    assert cmd[cmd.index("--mining.multimodal_encoder._target_") + 1].endswith(
-        ".Mistral3MultimodalMiningEncoderConfig"
+    assert cmd[cmd.index("--mining.multimodal_encoder._target_") + 1] == (
+        "nemo_automodel._transformers.mining.CheckpointMiningEncoderConfig"
     )
     assert cmd[cmd.index("--mining.multimodal_encoder.use_images") + 1] == "true"
-    assert cmd[cmd.index("--mining.multimodal_encoder.image_longest_edge") + 1] == "1120"
+    assert "--mining.multimodal_encoder.processor_name_or_path" not in cmd
+    assert "--mining.multimodal_encoder.query_prefix" not in cmd
+    assert "--mining.multimodal_encoder.passage_prefix" not in cmd
+    assert "--mining.multimodal_encoder.image_longest_edge" not in cmd
+    assert "--mining.query_prefix" not in cmd
+    assert "--mining.passage_prefix" not in cmd
+    assert cmd[cmd.index("--mining.multimodal_encoder.q_max_length") + 1] == "512"
+    assert cmd[cmd.index("--mining.multimodal_encoder.p_max_length") + 1] == "8192"
     assert cmd[cmd.index("--mining.tokenizer_force_default") + 1] == "true"
+
+
+def test_native_vl_mining_preserves_explicit_empty_prefixes(tmp_path, monkeypatch):
+    """An empty prompt is an explicit processor override, not an omitted value."""
+    run = Mock(return_value=SimpleNamespace(returncode=0, stderr=""))
+    monkeypatch.setattr(data_prep.subprocess, "run", run)
+    output = tmp_path / "train_mined.automodel.json"
+    output.write_text('{"corpus": {"path": "/corpus"}, "data": []}')
+    cfg = data_prep.DataPrepConfig(
+        output_dir=tmp_path,
+        model_family="mistral3_vl",
+        query_prefix="",
+        passage_prefix="",
+    )
+
+    data_prep.run_mining(cfg, tmp_path / "train.json")
+
+    cmd = run.call_args.args[0]
+    assert cmd[cmd.index("--mining.multimodal_encoder.query_prefix") + 1] == ""
+    assert cmd[cmd.index("--mining.multimodal_encoder.passage_prefix") + 1] == ""

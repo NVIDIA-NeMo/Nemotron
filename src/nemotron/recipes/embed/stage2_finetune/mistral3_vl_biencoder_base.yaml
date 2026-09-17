@@ -37,10 +37,7 @@ tokenizer:
   pretrained_model_name_or_path: mistralai/Ministral-3-3B-Instruct-2512-BF16
   q_max_length: 512
   p_max_length: 4096
-  query_prefix: "query:"
-  passage_prefix: "passage:"
   pad_to_multiple_of: 8
-  image_longest_edge: 1284
 
 dataset:
   _target_: nemotron.recipes.retrieval_vl.DataDesignerRetrievalDatasetConfig

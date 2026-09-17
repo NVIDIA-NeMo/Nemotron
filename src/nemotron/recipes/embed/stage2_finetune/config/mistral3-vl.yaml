@@ -34,9 +34,9 @@ detach_distributed_inbatch_negatives: false
 
 query_max_length: 512
 passage_max_length: 4096
-query_prefix: "query: "
-passage_prefix: "passage: "
-image_longest_edge: 1120
+query_prefix: null
+passage_prefix: null
+image_longest_edge: null
 pad_to_multiple_of: 8
 use_text_in_document: true
 require_mined_negatives: true

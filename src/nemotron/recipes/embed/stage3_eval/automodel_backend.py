@@ -9,9 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from nemo_automodel.components.models.ministral_bidirectional.mining import (
-        Mistral3MultimodalMiningEncoderConfig,
-    )
+    from nemo_automodel._transformers.mining import CheckpointMiningEncoderConfig
 
 
 class AutoModelBEIREncoder:
@@ -24,7 +22,7 @@ class AutoModelBEIREncoder:
         query_prefix: str = "query: ",
         passage_prefix: str = "passage: ",
         tokenizer_force_default: bool = False,
-        multimodal_config: Mistral3MultimodalMiningEncoderConfig | None = None,
+        multimodal_config: CheckpointMiningEncoderConfig | None = None,
     ) -> None:
         import torch
         from nemo_automodel._transformers.auto_model import NeMoAutoModelBiEncoder

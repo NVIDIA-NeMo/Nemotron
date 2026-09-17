@@ -1105,8 +1105,8 @@ wheels = [
 
 [[package]]
 name = "nemo-automodel"
-version = "0.7.0+4c50ab3c"
-source = { path = "../wheels/nemo_automodel-0.7.0+4c50ab3c-py3-none-any.whl" }
+version = "0.7.0+aa6245ac"
+source = { path = "../wheels/nemo_automodel-0.7.0+aa6245ac-py3-none-any.whl" }
 dependencies = [
     { name = "datasets" },
     { name = "flashoptim" },
@@ -1122,7 +1122,7 @@ dependencies = [
     { name = "transformers" },
 ]
 wheels = [
-    { filename = "nemo_automodel-0.7.0+4c50ab3c-py3-none-any.whl", hash = "sha256:b8a0f445306bcb8743fceef4a28e44cd2147f935e5d2b86d209f340070547a52" },
+    { filename = "nemo_automodel-0.7.0+aa6245ac-py3-none-any.whl", hash = "sha256:d11c9d6be3b6a3363ca60e50e6045779fdc415b8e1d2a02f31071b6c0e69571d" },
 ]
 
 [package.metadata]
@@ -1993,7 +1993,7 @@ requires-dist = [
     { name = "data-designer-engine", path = "../wheels/data_designer_engine-0.9.1+barejson.1-py3-none-any.whl" },
     { name = "data-designer-retrieval-sdg", path = "../wheels/plugin-aa6c9652/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl" },
     { name = "faiss-cpu", specifier = ">=1.7.4" },
-    { name = "nemo-automodel", path = "../wheels/nemo_automodel-0.7.0+4c50ab3c-py3-none-any.whl" },
+    { name = "nemo-automodel", path = "../wheels/nemo_automodel-0.7.0+aa6245ac-py3-none-any.whl" },
     { name = "omegaconf", specifier = ">=2.3" },
     { name = "pydantic-settings", specifier = ">=2" },
     { name = "sentence-transformers", specifier = ">=3" },

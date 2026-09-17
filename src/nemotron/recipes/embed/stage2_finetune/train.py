@@ -196,9 +196,11 @@ class FinetuneConfig(RecipeSettings):
     # Tokenization
     query_max_length: int = Field(default=512, gt=0, description="Maximum query sequence length.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage sequence length.")
-    query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
-    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
-    image_longest_edge: int = Field(default=1284, gt=0, description="Longest image edge presented to the processor.")
+    query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs.")
+    passage_prefix: str | None = Field(default="passage: ", description="Prefix for passage inputs.")
+    image_longest_edge: int | None = Field(
+        default=1284, gt=0, description="Longest image edge presented to the processor."
+    )
     pad_to_multiple_of: int = Field(default=8, gt=0, description="Pad sequence lengths to this multiple.")
     use_text_in_document: bool = Field(
         default=False,
@@ -309,10 +311,11 @@ def _repair_vllm_sentence_transformers_metadata(model_dir: Path, cfg: FinetuneCo
 
     sentence_transformers_path = model_dir / "config_sentence_transformers.json"
     sentence_transformers_config = json.loads(sentence_transformers_path.read_text())
-    sentence_transformers_config["prompts"] = {
-        "query": _automodel_collator_prefix(cfg.query_prefix),
-        "document": _automodel_collator_prefix(cfg.passage_prefix),
-    }
+    prompts = sentence_transformers_config.setdefault("prompts", {})
+    if cfg.query_prefix is not None:
+        prompts["query"] = _automodel_collator_prefix(cfg.query_prefix)
+    if cfg.passage_prefix is not None:
+        prompts["document"] = _automodel_collator_prefix(cfg.passage_prefix)
     sentence_transformers_path.write_text(json.dumps(sentence_transformers_config, indent=2) + "\n")
 
 
@@ -646,10 +649,13 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         automodel_cfg.dataset.use_text_in_document = cfg.use_text_in_document
         automodel_cfg.tokenizer.q_max_length = cfg.query_max_length
         automodel_cfg.tokenizer.p_max_length = cfg.passage_max_length
-        automodel_cfg.tokenizer.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
-        automodel_cfg.tokenizer.passage_prefix = _automodel_collator_prefix(cfg.passage_prefix)
+        if cfg.query_prefix is not None:
+            automodel_cfg.tokenizer.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
+        if cfg.passage_prefix is not None:
+            automodel_cfg.tokenizer.passage_prefix = _automodel_collator_prefix(cfg.passage_prefix)
         automodel_cfg.tokenizer.pad_to_multiple_of = cfg.pad_to_multiple_of
-        automodel_cfg.tokenizer.image_longest_edge = cfg.image_longest_edge
+        if cfg.image_longest_edge is not None:
+            automodel_cfg.tokenizer.image_longest_edge = cfg.image_longest_edge
     else:
         automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
         automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages

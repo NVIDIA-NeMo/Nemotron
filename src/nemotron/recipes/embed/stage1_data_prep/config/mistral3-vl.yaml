@@ -17,7 +17,7 @@ base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
 model_family: mistral3_vl
 trust_remote_code: false
 tokenizer_force_default: true
-image_longest_edge: 1120
+image_longest_edge: null
 use_text_in_document: true
 quality_threshold: 7.0
 
@@ -41,5 +41,5 @@ hard_neg_margin: 0.95
 mining_batch_size: 4
 query_max_length: 512
 passage_max_length: 8192
-query_prefix: "query: "
-passage_prefix: "passage: "
+query_prefix: null
+passage_prefix: null

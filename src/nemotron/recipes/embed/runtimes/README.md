@@ -26,6 +26,14 @@ The pinned AutoModel dependency cannot resolve with the Torch 2.10 CUDA 13 wheel
 because their CUDA Python binding requirements conflict. Dependency resolution
 alone does not establish hardware compatibility.
 
+The native VL profiles leave query and document prompts and image resizing to
+the checkpoint. Prompts are read from `config_sentence_transformers.json`;
+image settings come from the saved processor. A `null` profile value inherits
+these settings, while an explicit empty prefix disables that prompt. Query and
+passage token limits remain explicit runtime budgets. Mining selects the
+retrieval processor through the loaded backbone rather than a separate
+processor path or model-specific mining configuration.
+
 ## Prepare Reviewed Wheels
 
 Use reviewed checkouts at the following revisions. The separate DataDesigner
@@ -34,7 +42,7 @@ installed engine at runtime.
 
 | Checkout | Revision |
 |---|---|
-| AutoModel | `4c50ab3c4c033f9e3f43b494b20bd88fe51b6b7f` |
+| AutoModel | `aa6245acfcf129b22d83e815817e1560b10064c7` |
 | DataDesignerPlugins | `aa6c9652e6e66ee0a6d721a10d66d58bf9e2c7ab` |
 | DataDesigner 0.9.1 | `27acf141170eceb1e8242c132d56b49107462fce` plus the included patch |
 
@@ -70,7 +78,7 @@ wheel_dir="$PWD/src/nemotron/recipes/embed/runtimes/wheels"
 plugin_wheel_dir="$wheel_dir/plugin-aa6c9652"
 
 git clone https://github.com/NVIDIA-NeMo/Automodel.git "$automodel_source"
-git -C "$automodel_source" checkout --detach 4c50ab3c4c033f9e3f43b494b20bd88fe51b6b7f
+git -C "$automodel_source" checkout --detach aa6245acfcf129b22d83e815817e1560b10064c7
 git clone https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git "$plugin_source"
 git -C "$plugin_source" checkout --detach aa6c9652e6e66ee0a6d721a10d66d58bf9e2c7ab
 uv build "$automodel_source" --wheel --out-dir "$wheel_dir"

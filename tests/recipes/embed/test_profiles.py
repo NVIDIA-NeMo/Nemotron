@@ -295,6 +295,9 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     assert finetune.train_data_path == prep.output_dir / "train_mined.automodel_unrolled.json"
     assert finetune.attn_implementation == "sdpa"
     assert finetune.optimizer_backend == "flash_adamw"
+    assert (prep.query_prefix, prep.passage_prefix, prep.image_longest_edge) == (None, None, None)
+    assert (finetune.query_prefix, finetune.passage_prefix, finetune.image_longest_edge) == (None, None, None)
+    assert (evaluate.query_prefix, evaluate.passage_prefix, evaluate.image_longest_edge) == (None, None, None)
     assert evaluate.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert evaluate.retrieval_view == "image_and_text"
     assert evaluate.eval_data_path == sdg.output_dir / "RESOLVED_FROM_GENERATION_MANIFEST"

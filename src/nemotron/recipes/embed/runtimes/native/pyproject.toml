@@ -3,7 +3,7 @@ name = "recipe-runner-embed-native"
 version = "0.0.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "nemo-automodel==0.7.0+4c50ab3c",
+    "nemo-automodel==0.7.0+aa6245ac",
     "transformers==5.15.1",
     "torch>=2.10,<2.11",
     "torchvision>=0.25,<0.26",
@@ -22,7 +22,7 @@ dependencies = [
 # Draft source builds are explicit artifacts, never ambient editable installs.
 # Build the wheels from the reviewed checkouts before syncing this project.
 [tool.uv.sources]
-nemo-automodel = { path = "../wheels/nemo_automodel-0.7.0+4c50ab3c-py3-none-any.whl" }
+nemo-automodel = { path = "../wheels/nemo_automodel-0.7.0+aa6245ac-py3-none-any.whl" }
 data-designer-retrieval-sdg = { path = "../wheels/plugin-aa6c9652/data_designer_retrieval_sdg-0.2.1-py3-none-any.whl" }
 data-designer = { path = "../wheels/data_designer-0.9.1+barejson.1-py3-none-any.whl" }
 data-designer-config = { path = "../wheels/data_designer_config-0.9.1+barejson.1-py3-none-any.whl" }

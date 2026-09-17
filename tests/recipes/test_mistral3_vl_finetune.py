@@ -107,6 +107,9 @@ def test_embed_vl_base_matches_automodel_mr(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert backend == "fused_adam"
     assert raw["tokenizer"]["_target_"].endswith("Mistral3BiEncoderProcessor.from_pretrained")
+    assert "query_prefix" not in raw["tokenizer"]
+    assert "passage_prefix" not in raw["tokenizer"]
+    assert "image_longest_edge" not in raw["tokenizer"]
     assert raw["dataset"]["_target_"].endswith("DataDesignerRetrievalDatasetConfig")
     assert raw["dataloader"]["collate_fn"]["collator_fn_name"] == "process_queries_documents_biencoder"
 
@@ -221,6 +224,36 @@ def test_embed_vl_runtime_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert automodel.tokenizer.query_prefix == "query:"
     assert automodel.model.do_distributed_inbatch_negative is True
     assert automodel.dataloader.collate_fn.__dict__ == {}
+
+
+def test_embed_vl_runtime_omits_checkpoint_owned_processor_overrides(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, Any] = {}
+    base = _namespace_config()
+    _install_recipe(monkeypatch, recipe_name="TrainBiEncoderRecipe", captured=captured)
+    monkeypatch.setattr(embed_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
+    monkeypatch.setattr(embed_train, "_repair_vllm_sentence_transformers_metadata", lambda model_dir, cfg: None)
+    cfg = embed_train.FinetuneConfig(
+        model_family="mistral3_vl",
+        train_data_path=_mined_training_file(tmp_path),
+        checkpoint_dir=tmp_path / "checkpoints",
+        train_n_passages=4,
+        global_batch_size=8,
+        local_batch_size=1,
+        num_epochs=1,
+        query_prefix=None,
+        passage_prefix=None,
+        image_longest_edge=None,
+        require_mined_negatives=True,
+    )
+
+    embed_train.run_finetune(cfg)
+
+    tokenizer = captured["config"].tokenizer
+    assert "query_prefix" not in tokenizer.__dict__
+    assert "passage_prefix" not in tokenizer.__dict__
+    assert "image_longest_edge" not in tokenizer.__dict__
 
 
 @pytest.mark.parametrize("profile", ["default", "mistral3-vl"])
@@ -338,10 +371,10 @@ def test_vl_stages_pin_their_selected_automodel_runtime() -> None:
     embed_root = Path(embed_train.__file__).parents[1]
     with (embed_root / "runtimes/native/pyproject.toml").open("rb") as stream:
         native_project = tomllib.load(stream)
-    assert "nemo-automodel==0.7.0+4c50ab3c" in native_project["project"]["dependencies"]
+    assert "nemo-automodel==0.7.0+aa6245ac" in native_project["project"]["dependencies"]
     assert "transformers==5.15.1" in native_project["project"]["dependencies"]
     assert native_project["tool"]["uv"]["sources"]["nemo-automodel"]["path"].endswith(
-        "nemo_automodel-0.7.0+4c50ab3c-py3-none-any.whl"
+        "nemo_automodel-0.7.0+aa6245ac-py3-none-any.whl"
     )
 
     with (Path(embed_train.__file__).parent / "pyproject.toml").open("rb") as stream:
