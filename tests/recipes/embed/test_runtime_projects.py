@@ -36,6 +36,8 @@ def test_native_runtime_pins_wheels_and_scopes_torch_index() -> None:
     project = runtime_project(EMBED / "stage2_finetune", "mistral3_vl")
     config = tomllib.loads((project / "pyproject.toml").read_text())
     assert "transformers==5.15.1" in config["project"]["dependencies"]
+    # AutoModel's metric logger imports wandb even when remote logging is disabled.
+    assert "wandb>=0.21,<1" in config["project"]["dependencies"]
     sources = config["tool"]["uv"]["sources"]
     assert sources["torch"]["index"] == sources["torchvision"]["index"] == "pytorch-cu129"
     assert sources["nemo-automodel"]["path"].endswith("0.7.0+4c50ab3c-py3-none-any.whl")
