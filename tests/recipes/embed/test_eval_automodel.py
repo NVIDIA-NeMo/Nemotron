@@ -360,18 +360,19 @@ def test_native_text_evaluation_rejects_declared_images(monkeypatch: pytest.Monk
         evaluation.evaluate_model("checkpoint", dataset, local_backend="automodel")
 
 
+@pytest.mark.parametrize("title_fields", [{}, {"title": None}, {"title": ""}, {"title": "Document"}])
 def test_real_beir_preserves_legitimate_query_document_id_collisions(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path, title_fields: dict
 ) -> None:
-    """The ViDoRe mode retains relevant pages whose IDs equal their query IDs."""
+    """Real BEIR supports optional titles and legitimate query/document ID collisions."""
     torch = pytest.importorskip("torch")
     dataset = tmp_path / "eval"
     (dataset / "qrels").mkdir(parents=True)
     (dataset / "corpus.jsonl").write_text(
         "\n".join(
             [
-                json.dumps({"_id": "1", "title": "", "text": "alpha"}),
-                json.dumps({"_id": "2", "title": "", "text": "beta"}),
+                json.dumps({"_id": "1", "text": "alpha", **title_fields}),
+                json.dumps({"_id": "2", "text": "beta", **title_fields}),
             ]
         )
         + "\n"
@@ -415,6 +416,11 @@ def test_real_beir_preserves_legitimate_query_document_id_collisions(
     assert results["1"] == {"1": 1.0}
     assert results["2"] == {"2": 1.0}
     assert metrics[0]["NDCG@1"] == 1.0
+    assert json.loads((dataset / "corpus.jsonl").read_text().splitlines()[0]) == {
+        "_id": "1",
+        "text": "alpha",
+        **title_fields,
+    }
 
 
 def test_multimodal_eval_config_requires_native_limits_and_backend() -> None:
