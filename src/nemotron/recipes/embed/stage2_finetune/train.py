@@ -158,9 +158,12 @@ class FinetuneConfig(RecipeSettings):
         description="LR decay schedule (cosine, linear).",
     )
     weight_decay: float = Field(default=0.01, ge=0, description="Weight decay for optimizer.")
-    optimizer_backend: Literal["auto", "fused_adam", "flash_adamw"] = Field(
+    optimizer_backend: Literal["auto", "fused_adam", "flash_adamw", "torch_adamw"] = Field(
         default="auto",
-        description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
+        description=(
+            "Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW. "
+            "'torch_adamw' explicitly uses native AdamW with FP32 parameters, compute, and moments."
+        ),
     )
     flash_adamw_master_weight_bits: Literal[24, 32] | None = Field(
         default=32,
@@ -447,6 +450,36 @@ def _can_import_flash_adamw() -> tuple[bool, str | None]:
     return True, None
 
 
+def _assert_optimizer_metadata_fp32(checkpoint_dir: Path) -> dict[str, int]:
+    """Verify both Adam moments in a checkpoint produced by this training run.
+
+    Args:
+        checkpoint_dir: Trusted local checkpoint written by the current recipe.
+
+    Returns:
+        Number of FP32 tensors for each Adam moment.
+
+    Raises:
+        AssertionError: A moment is missing or has a non-FP32 dtype.
+    """
+    import torch
+    from torch.distributed.checkpoint import FileSystemReader
+
+    metadata = FileSystemReader(checkpoint_dir / "optim").read_metadata()
+    counts = {"exp_avg": 0, "exp_avg_sq": 0}
+    for key, value in metadata.state_dict_metadata.items():
+        prefix, _, name = str(key).rpartition(".")
+        if not prefix.startswith("optim.state.") or name not in counts:
+            continue
+        dtype = getattr(getattr(value, "properties", None), "dtype", None)
+        if dtype != torch.float32:
+            raise AssertionError(f"Expected FP32 Adam moment {key}, got {dtype}")
+        counts[name] += 1
+    if not all(counts.values()):
+        raise AssertionError(f"Missing Adam moment tensors: {counts}")
+    return counts
+
+
 def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[Any, str]:
     """Load Automodel YAML after choosing an optimizer that is importable here."""
     import yaml
@@ -476,9 +509,11 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     if wandb_config is not None:
         raw_config["wandb"] = wandb_config
 
-    te_available, te_error = _can_import_fused_adam()
-    flash_available, flash_error = _can_import_flash_adamw()
     optimizer_backend = cfg.optimizer_backend
+    te_available, te_error = (False, None)
+    flash_available, flash_error = (False, None)
+    if optimizer_backend in {"auto", "fused_adam"}:
+        te_available, te_error = _can_import_fused_adam()
     if optimizer_backend == "auto":
         optimizer_backend = "fused_adam" if te_available else "flash_adamw"
 
@@ -493,6 +528,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             )
             sys.exit(1)
     elif optimizer_backend == "flash_adamw":
+        flash_available, flash_error = _can_import_flash_adamw()
         if not flash_available:
             print("Error: optimizer_backend=flash_adamw requires flashoptim.", file=sys.stderr)
             if flash_error:
@@ -515,6 +551,22 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
         }
         raw_config["optimizer"] = flash_optimizer
         raw_config.setdefault("model", {})["torch_dtype"] = "bfloat16"
+    elif optimizer_backend == "torch_adamw":
+        raw_config["optimizer"] = {
+            "_target_": "torch.optim.AdamW",
+            "lr": cfg.learning_rate,
+            "weight_decay": cfg.weight_decay,
+            "betas": [0.9, 0.999],
+            "eps": 1.0e-8,
+            "fused": True,
+        }
+        raw_config.setdefault("model", {})["torch_dtype"] = "float32"
+        raw_config.setdefault("distributed", {})["mp_policy"] = {
+            "_target_": "torch.distributed.fsdp.MixedPrecisionPolicy",
+            "param_dtype": "float32",
+            "reduce_dtype": "float32",
+            "output_dtype": "float32",
+        }
 
     return config_node_cls(raw_config), optimizer_backend
 
@@ -693,7 +745,14 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Create and run the bi-encoder recipe
     recipe = TrainBiEncoderRecipe(automodel_cfg)
     recipe.setup()
+    if optimizer_backend == "torch_adamw":
+        for model_part in recipe.model_parts:
+            model_part.float()
     recipe.run_train_validation_loop()
+
+    if _is_rank_zero() and optimizer_backend == "torch_adamw":
+        counts = _assert_optimizer_metadata_fp32(cfg.checkpoint_dir / "LATEST")
+        print(f"Verified optimizer checkpoint Adam moments are FP32: {counts}")
 
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"

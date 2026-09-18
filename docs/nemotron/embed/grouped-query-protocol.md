@@ -66,3 +66,12 @@ VLM. Producers must explicitly implement this export. It does not retrofit
 previous preconverted-input experiments, and it does not assert that synthetic
 qrels are independent gold labels. Keep a separate independent-query evaluation
 when measuring generalization beyond synthetic-query style.
+
+## Explicit optimizer precision for controlled experiments
+
+`nemotron embed finetune optimizer_backend=torch_adamw` opts into native fused
+AdamW with FP32 parameters, computation, reductions and optimizer moments.
+This is more expensive than BF16/quantized FlashAdamW and is not merely an FP32
+checkpoint format. The recipe verifies saved Adam moment dtypes at completion.
+The default `auto` selection is unchanged; choose precision explicitly and do
+not compare runs as if different optimizer/compute modes were equivalent.
