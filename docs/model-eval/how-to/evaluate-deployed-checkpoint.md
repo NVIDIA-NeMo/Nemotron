@@ -66,7 +66,8 @@ On Lepton, serve the model yourself and use direct mode.
 The endpoint type must match the task family.
 Chat and instruction tasks need `target.api_endpoint.type=chat`.
 Log-probability tasks such as HellaSwag need a completions endpoint with logprobs support.
-Both families need a tokenizer that matches the served model.
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, set the evaluator to use the generated tokenizer.
 For the matching rule, refer to {doc}`../explanation/endpoint-types-and-benchmarks`.
 
 ## What To Check After Submission

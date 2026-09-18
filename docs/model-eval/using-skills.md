@@ -18,10 +18,12 @@ For the hosted chat verification run, provide:
 - The API key environment variable name, usually `NVIDIA_API_KEY`.
 - The output directory to use.
 
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically. If you used Tokenizer Extension, use the generated tokenizer.
+
 For checkpoint evaluation with `default.yaml`, also provide:
 
 - The concrete Megatron Bridge `iter_*` checkpoint path.
-- The tokenizer path or Hugging Face tokenizer id if the selected task needs logprobs.
+- The generated tokenizer, if you used Tokenizer Extension.
 
 ## Recommended First Run
 
@@ -47,7 +49,7 @@ Endpoint URL: [full URL with path, or "I do not have this yet, please ask"]
 Model identifier: [as the endpoint advertises it]
 API key environment variable: [name only, for example NVIDIA_API_KEY]
 Checkpoint path: [only if using default.yaml launcher deployment]
-Tokenizer: [only if using log-probability tasks]
+Tokenizer: [for a model alias, custom tokenizer path, or Tokenizer Extension]
 Hard limits: [for example, do not change endpoint type, do not fabricate values]
 Please: Use `eval/model_eval` defaults from the repo unless something blocks that.
 ```

@@ -81,7 +81,8 @@ They suit base models, including continued-pretraining checkpoints.
 | `mmlu_prox_completions` | `mmlu_prox` | Multilingual MMLU-ProX; multi-subset, pin one language. |
 | `milu_<Language>`, `milu_English` | `milu` | MILU Indic benchmark; exists only in the sovereign image. |
 
-Both families load a client-side tokenizer, configured under:
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, set the generated tokenizer under:
 
 ```text
 evaluation.nemo_evaluator_config.config.params.extra.tokenizer

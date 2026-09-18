@@ -19,7 +19,7 @@ This guide shows how to find `eval/model_eval` in the step catalog, how to read 
 uv run --no-sync nemotron steps list --category eval --json
 ```
 
-The response includes `eval/model_eval`, the step that wraps NeMo Evaluator Launcher.
+The response includes `eval/model_eval`, which supports launcher-managed and direct execution.
 
 ## Inspect The Step Contract
 
@@ -40,7 +40,12 @@ The response contains the fields declared in `src/nemotron/steps/eval/model_eval
 
 ## Read The Sample Files
 
-The step provides two config files under `src/nemotron/steps/eval/model_eval/config/`.
+The step provides eight config files under `src/nemotron/steps/eval/model_eval/config/`.
+
+| Mode | Purpose | Configs |
+| --- | --- | --- |
+| Launcher | Hosted verification or launcher-managed checkpoint deployment. | `tiny_chat.yaml`, `default.yaml` |
+| Direct | Run the harness in a Nemotron job against an endpoint you host. | `direct.yaml`, `base_en.yaml`, `mmlu_prox.yaml`, `milu.yaml`, `instruct_en.yaml`, `mmlu_prox_chat.yaml` |
 
 ```{literalinclude} ../../../src/nemotron/steps/eval/model_eval/config/tiny_chat.yaml
 :language: yaml
@@ -56,15 +61,18 @@ It sets `deployment.type: none`, reads `target.api_endpoint.*` from environment 
 `default.yaml` is the Megatron Bridge checkpoint evaluation config.
 It uses NeMo Evaluator Launcher deployment and evaluates the configured `tasks` entries.
 
+`direct.yaml` is the base for the direct-mode suites.
+The remaining direct configs select task families, endpoint types, and harness images; {doc}`../reference/config-schema` summarizes each one.
+
 ## Decide Whether It Applies
 
 `eval/model_eval` applies when the following statements are true.
 
 - The model is already available as an OpenAI-compatible endpoint, or NeMo Evaluator Launcher can deploy the checkpoint from the selected config.
-- The tasks you need are implemented by the installed NeMo Evaluator Launcher stack.
+- In launcher mode, the tasks you need are in the installed NeMo Evaluator Launcher registry; in direct mode, they are in the selected harness image.
 - The endpoint type matches the selected task family.
 
-`eval/model_eval` is not the right step when the evaluation needs a custom scorer that NeMo Evaluator Launcher does not implement.
+`eval/model_eval` is not the right step when the evaluation needs a custom scorer that neither the launcher registry nor the selected harness image provides.
 Write a dedicated evaluation step in that case, modeled on the contract layout under `src/nemotron/steps/`.
 
 ## Related

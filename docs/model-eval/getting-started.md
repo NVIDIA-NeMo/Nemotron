@@ -45,6 +45,8 @@ Run a one-sample hosted chat evaluation with `eval/model_eval` and `tiny_chat.ya
 - A model identifier advertised by that endpoint.
 - A bearer token exported as the environment variable referenced by `target.api_endpoint.api_key_name`.
 
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically. If you used Tokenizer Extension, use the generated tokenizer.
+
 ## About The Sample Configuration
 
 The hosted chat sample file is at `src/nemotron/steps/eval/model_eval/config/tiny_chat.yaml`.
@@ -105,6 +107,7 @@ It sets `deployment.type: none`, points NeMo Evaluator Launcher at `target.api_e
 
    To inspect the merged Nemotron job config without invoking the launcher, add `--dry-run`.
    To pass NeMo Evaluator Launcher's own dry-run flag, use the config override `dry_run=true`.
+   If you used Tokenizer Extension, also pass `evaluation.nemo_evaluator_config.config.params.extra.tokenizer="<generated-tokenizer>"`.
 
 1. List the files written under the output directory after the launcher job
    reaches a terminal status.

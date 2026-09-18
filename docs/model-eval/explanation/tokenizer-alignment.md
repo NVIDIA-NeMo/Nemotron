@@ -1,7 +1,7 @@
 ---
 license: Apache-2.0
 copyright: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-description: "Why every eval/model_eval run requires a client-side tokenizer that matches the served model."
+description: "When to set an explicit tokenizer for eval/model_eval and why tokenizer-extended models must use the generated tokenizer."
 topics: ["Model Evaluation", "Tokenizer"]
 tags: ["Explanation", "Model Evaluation"]
 content:
@@ -13,8 +13,8 @@ content:
 (model-eval-tokenizer-alignment)=
 # Tokenizer Alignment
 
-lm-evaluation-harness loads a tokenizer on the client side for both completions and chat endpoints.
-The tokenizer must therefore be configured for every run, and it must be the tokenizer of the model that the endpoint serves.
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, use the generated tokenizer.
 
 ## Where The Tokenizer Lives
 
@@ -30,11 +30,13 @@ The `default.yaml` config sets the tokenizer to `${deployment.checkpoint_path}/t
 The `direct.yaml` config, and every suite that inherits from it, reads the tokenizer from the `EVAL_TOKENIZER` environment variable and sets `tokenizer_backend: huggingface` and `tokenized_requests: false`.
 Direct mode prints a warning before the first task if no tokenizer is configured.
 
-## Why It Is Required
+## When To Set It Explicitly
 
-With `extra.tokenizer` unset, the harness falls back to the `model=` value, which is the endpoint's served-model-name.
-It then attempts to load that name as a Hugging Face repository and fails with `RepositoryNotFoundError`, an error that names your served-model-name as a missing repository.
-A chat endpoint does not exempt a run from this requirement: `ifeval`, `mmlu_instruct`, and `gsm8k_cot_instruct` all load a tokenizer.
+With `extra.tokenizer` unset, the harness falls back to the endpoint's served model name.
+That works when the name identifies the unmodified model and its tokenizer.
+Set an explicit tokenizer when the served model name is an alias, when the tokenizer is stored at a custom path, or when you used Tokenizer Extension.
+Otherwise, the harness can fail with `RepositoryNotFoundError` while trying to load the served model name as a Hugging Face repository.
+Some chat tasks also load a tokenizer, so the same guidance applies to chat endpoints.
 
 ## Why It Must Match
 
@@ -42,12 +44,12 @@ Log-probability tasks ask the endpoint to score candidate token sequences that t
 If the evaluator tokenizes candidates differently from the served model, the model scores the wrong token ids and the metric is not meaningful.
 
 A tokenizer-extended checkpoint must use its own extended tokenizer, not the base model's.
-The base tokenizer would tokenize every prompt differently from the served model, and the run would complete with scores that are silently wrong.
+The base tokenizer can tokenize affected text differently from the served model, and the run can complete with scores that are silently wrong.
 The `tokenizer_extension` step category produces such checkpoints together with their extended tokenizer.
 
 ## Accepted Shapes
 
-Use one of these tokenizer values when a selected task requires local tokenization:
+When you set a tokenizer explicitly, use one of these values:
 
 - A Hugging Face model id.
 - A filesystem path containing tokenizer files.
@@ -57,8 +59,8 @@ Use `huggingface` for `evaluation.nemo_evaluator_config.config.params.extra.toke
 
 ## Tokenizer Exports From Tokenizer Extension
 
-Hugging Face exports produced by the tokenizer-extension pipeline declare `"tokenizer_class": "TokenizersBackend"`, which stock `transformers` cannot import.
-lm-evaluation-harness then fails with `Tokenizer class TokenizersBackend does not exist`.
+Current `convert/megatron_to_hf` exports normalize supported internal tokenizer class names to `PreTrainedTokenizerFast` automatically when `tokenizer.json` is present.
+If an older or externally produced export still declares `"tokenizer_class": "TokenizersBackend"`, lm-evaluation-harness fails with `Tokenizer class TokenizersBackend does not exist`.
 Copy `tokenizer.json`, `tokenizer_config.json`, and `special_tokens_map.json` to a side directory, set `tokenizer_class` to `PreTrainedTokenizerFast`, remove `auto_map`, and point `EVAL_TOKENIZER` at that directory.
 The vocabulary is unchanged; only the loader class differs.
 

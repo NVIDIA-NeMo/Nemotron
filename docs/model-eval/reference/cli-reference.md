@@ -38,13 +38,14 @@ Invoking the command without `-c` resolves the runspec default, `default.yaml`.
 ## Direct-Mode Environment Variables
 
 `direct.yaml` and the suite configs read these variables with `${oc.env:...}` when the config is resolved inside the job.
-The `*_eval_direct` profiles forward the `EVAL_*` variables and `ENDPOINT_TOKEN` from the submitting shell into the job.
+The `*_eval_direct` profiles forward the endpoint, tokenizer, result, limit, and credential variables plus `ENDPOINT_TOKEN` from the submitting shell into the job.
+`direct.yaml` resolves and forwards `EVAL_HARNESS_IMAGE` itself.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `EVAL_ENDPOINT_URL` | yes | Full OpenAI-compatible URL, `.../v1/completions` or `.../v1/chat/completions`. |
 | `EVAL_MODEL_HANDLE` | yes | Model id; must equal the server's `--served-model-name`. |
-| `EVAL_TOKENIZER` | yes | Hugging Face repo id or local path of the served model's tokenizer. |
+| `EVAL_TOKENIZER` | when the model name is an alias, the tokenizer is at a custom path, or Tokenizer Extension was used | Hugging Face repo id or local path. Tokenizer Extension must use the generated tokenizer. |
 | `EVAL_RESULTS_DIR` | yes | Durable output root; becomes `output_dir`. |
 | `EVAL_API_KEY_NAME` | no; default `ENDPOINT_TOKEN` | Name of the variable that holds the bearer token, not the token. `null` disables authentication. |
 | `ENDPOINT_TOKEN` | when the endpoint is authenticated | The token, under the default `EVAL_API_KEY_NAME`. |
@@ -70,7 +71,7 @@ The `*_eval_direct` profiles forward the `EVAL_*` variables and `ENDPOINT_TOKEN`
 | `evaluation.nemo_evaluator_config.config.params.limit_samples=<int>` | Per-task sample cap for verification runs. |
 | `evaluation.nemo_evaluator_config.config.params.parallelism=<int>` | Concurrent requests issued by the evaluator where supported. |
 | `evaluation.nemo_evaluator_config.config.params.request_timeout=<int>` | Per-request timeout in seconds. |
-| `evaluation.nemo_evaluator_config.config.params.extra.tokenizer=<path-or-id>` | Client-side tokenizer; required for chat and completions tasks alike. |
+| `evaluation.nemo_evaluator_config.config.params.extra.tokenizer=<path-or-id>` | Explicit tokenizer for a model alias, custom tokenizer path, or tokenizer-extended model. |
 | `harness_image=<image>` | Direct mode only. Harness image; overrides `EVAL_HARNESS_IMAGE`. |
 | `deployment.checkpoint_path=<iter_* path>` | Megatron Bridge checkpoint path used by `default.yaml` launcher deployment. |
 | `deployment.image=<container>` | Container image used by the launcher deployment in `default.yaml`. |
@@ -91,7 +92,6 @@ uv run --no-sync nemotron steps show eval/model_eval --json
 ```bash
 : "${EVAL_ENDPOINT_URL:?Set the completions endpoint URL}"
 : "${EVAL_MODEL_HANDLE:?Set the served model name}"
-: "${EVAL_TOKENIZER:?Set the tokenizer repo id or path}"
 : "${EVAL_RESULTS_DIR:?Set a durable results directory}"
 : "${ENDPOINT_TOKEN:?Set the endpoint token}"
 

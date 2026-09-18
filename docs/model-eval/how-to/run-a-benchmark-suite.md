@@ -11,7 +11,8 @@ Every shipped suite inherits from `direct.yaml`, so the endpoint, tokenizer, and
 
 ## Prerequisites
 
-- The direct-mode environment variables are exported: `EVAL_ENDPOINT_URL`, `EVAL_MODEL_HANDLE`, `EVAL_TOKENIZER`, `EVAL_RESULTS_DIR`, and the credential named by `EVAL_API_KEY_NAME`.
+- The required direct-mode environment variables are exported: `EVAL_ENDPOINT_URL`, `EVAL_MODEL_HANDLE`, `EVAL_RESULTS_DIR`, and, if the endpoint requires authentication, the credential named by `EVAL_API_KEY_NAME`.
+- `EVAL_TOKENIZER` is set if the served model name is an alias, the tokenizer is at a custom path, or you used Tokenizer Extension.
 - The `<backend>_eval_direct` profile is present in `env.toml`.
 - You know whether the served model is a base model or an instruct model.
 
@@ -58,7 +59,8 @@ MILU_LANG=Punjabi uv run nemotron steps run eval/model_eval \
 
 Give each language its own `EVAL_RESULTS_DIR`; direct mode refuses to write into a task directory that already holds results.
 
-Direct mode resolves `${oc.env:...}` inside the job, and the shipped `*_eval_direct` profiles forward the `EVAL_*` variables and `ENDPOINT_TOKEN` but not `MMLU_PROX_LANG` or `MILU_LANG`.
+Direct mode resolves `${oc.env:...}` inside the job, and the shipped `*_eval_direct` profiles forward the endpoint, tokenizer, result, limit, and credential variables plus `ENDPOINT_TOKEN`.
+They intentionally omit `EVAL_HARNESS_IMAGE` because `direct.yaml` resolves and forwards the selected image itself; they also omit `MMLU_PROX_LANG` and `MILU_LANG`.
 If your profile does not forward the language variable, pin the subset with a dotlist override instead, which travels with the config: `evaluation.nemo_evaluator_config.config.params.task=mmlu_prox_hi` for the `mmlu_prox*` suites, or `-t milu_Punjabi -t milu_English` for `milu`.
 Confirm the resolved task in `run_manifest.json` before relying on a run.
 

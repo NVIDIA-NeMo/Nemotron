@@ -47,7 +47,8 @@ In direct mode these fields are set from `EVAL_ENDPOINT_URL`, `EVAL_MODEL_HANDLE
 
 Chat tasks need a chat endpoint.
 Completions tasks need a completions endpoint, with logprobs support for multiple-choice tasks.
-Both families load a client-side tokenizer.
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, use the generated tokenizer.
 
 If the harness fails after endpoint setup, check:
 
@@ -113,15 +114,15 @@ Fix: set both from one variable.
 
 Symptom: a Hugging Face Hub traceback reports that a repository named after your served model does not exist, and the step printed `Warning: no tokenizer configured`.
 
-Cause: `EVAL_TOKENIZER` is unset, so lm-evaluation-harness falls back to loading the served model name as a Hugging Face repository.
-This applies to chat tasks as well as completions tasks.
+Cause: `EVAL_TOKENIZER` is unset, so lm-evaluation-harness falls back to loading the served model name as a Hugging Face repository, but that name does not resolve.
 Fix: set `EVAL_TOKENIZER` to the served model's tokenizer repository id or a local snapshot path.
 A tokenizer-extended checkpoint must use its own tokenizer, not the base model's.
 
 ### `Tokenizer class TokenizersBackend does not exist`
 
-Cause: Hugging Face exports produced by the tokenizer-extension pipeline declare `"tokenizer_class": "TokenizersBackend"`, which stock `transformers` cannot import.
-Fix: copy `tokenizer.json`, `tokenizer_config.json`, and `special_tokens_map.json` to a side directory, set `tokenizer_class` to `PreTrainedTokenizerFast`, remove `auto_map`, and point `EVAL_TOKENIZER` at that directory.
+Current `convert/megatron_to_hf` exports normalize supported internal tokenizer class names to `PreTrainedTokenizerFast` automatically when `tokenizer.json` is present.
+If an older or externally produced export still declares `"tokenizer_class": "TokenizersBackend"`, stock `transformers` cannot import it.
+Copy `tokenizer.json`, `tokenizer_config.json`, and `special_tokens_map.json` to a side directory, set `tokenizer_class` to `PreTrainedTokenizerFast`, remove `auto_map`, and point `EVAL_TOKENIZER` at that directory.
 Refer to {doc}`../explanation/tokenizer-alignment`.
 
 ### Every Request Returns 401
@@ -166,7 +167,17 @@ Fix: move harness-specific arguments under `extra:`.
 ### `--batch` Profile Not Found
 
 Cause: `env.toml` is generated and then ignored by Git, so a file created before the `*_eval_direct` profiles were added does not contain them.
-Fix: copy the profile from `src/nemotron/steps/env/env_toml/config/<backend>.yaml` into your `env.toml`, preserving your site-specific values.
+Fix: generate a separate TOML file for your backend, then copy its generated `[<backend>_eval_direct]` table into your existing `env.toml`, preserving your site-specific values.
+
+```console
+$ profile_tmp_dir="$(mktemp -d)"
+$ uv run nemotron steps run env/env_toml -c slurm \
+    output_path="$profile_tmp_dir/env.slurm.toml"
+```
+
+Replace `slurm` with `lepton` or `dgxcloud` as needed, then copy the generated `[<backend>_eval_direct]` table up to, but not including, the next table header (or through end of file).
+Do not copy the YAML template directly; it is generator input, not a runtime profile.
+Confirm the result with `grep '^\[<backend>_eval_direct\]' env.toml`, replacing `<backend>` with the selected backend.
 A CPU-only profile that inherits a GPU base may also inherit a shared-memory request that no CPU shape can satisfy, and the scheduler rejects the submission before a job exists; neither config generation nor `--dry-run` catches that.
 
 ### Output Directory Is Claimed Or Not Empty

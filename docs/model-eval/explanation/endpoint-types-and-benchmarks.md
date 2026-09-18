@@ -48,8 +48,8 @@ The chat suites, `instruct_en` and `mmlu_prox_chat`, set `target.api_endpoint.ty
 - Log-probability tasks need a completions endpoint with logprobs support.
   They suit base models, including continued-pretraining checkpoints, and use few-shot prompts.
 
-Both families require a client-side tokenizer.
-lm-evaluation-harness loads a tokenizer for chat and completions endpoints alike, so `EVAL_TOKENIZER` (direct mode) or `extra.tokenizer` (launcher mode) is required for every suite.
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, set the evaluator to use the generated tokenizer.
 {doc}`tokenizer-alignment` explains why.
 
 ## Decision Table
@@ -58,7 +58,7 @@ lm-evaluation-harness loads a tokenizer for chat and completions endpoints alike
 | --- | --- | --- | --- |
 | Hosted chat verification | `chat` | `tiny_chat` (launcher mode) | A chat-completions URL and a valid API key. |
 | Instruction/chat tasks | `chat` | `instruct_en`, `mmlu_prox_chat` | Generation parameters appropriate for the model and task; a reasoning parser on the server for reasoning models. |
-| Log-probability tasks | `completions` | `base_en`, `mmlu_prox`, `milu` | A completions endpoint with logprobs support and a tokenizer that matches the served model. |
+| Log-probability tasks | `completions` | `base_en`, `mmlu_prox`, `milu` | A completions endpoint with logprobs support. If you used Tokenizer Extension, use the generated tokenizer. |
 
 The repository verification config, `tiny_chat.yaml`, uses `mmlu_instruct` with `target.api_endpoint.type=chat`.
 The launcher checkpoint config, `default.yaml`, includes `adlr_mmlu` and `hellaswag` for Megatron checkpoint evaluation; verify endpoint and tokenizer requirements before changing those tasks.

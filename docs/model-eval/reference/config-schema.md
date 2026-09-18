@@ -104,6 +104,7 @@ Each config reads these values from a different set of environment variables.
 
 Direct mode resolves `${oc.env:...}` inside the job, so the `*_eval_direct` profile must forward every variable the config reads.
 The shipped profiles forward `EVAL_ENDPOINT_URL`, `EVAL_MODEL_HANDLE`, `EVAL_RESULTS_DIR`, `EVAL_ENDPOINT_TYPE`, `EVAL_API_KEY_NAME`, `EVAL_TOKENIZER`, `EVAL_LIMIT_SAMPLES`, and `ENDPOINT_TOKEN`.
+`EVAL_HARNESS_IMAGE` is the exception: `direct.yaml` resolves it into `run.env.container_image` and forwards the resolved value itself, so the profiles intentionally omit it.
 
 ## Evaluation Params
 
@@ -123,7 +124,7 @@ evaluation.nemo_evaluator_config.config.params
 | `parallelism` | `16` | Request concurrency where supported. |
 | `request_timeout` | `3600` | Per-request timeout in seconds. |
 | `limit_samples` | `${oc.decode:${oc.env:EVAL_LIMIT_SAMPLES,null}}` | Deterministic first-N sample cap. A limited run is a subset, not a full-split score. |
-| `extra.tokenizer` | `${oc.env:EVAL_TOKENIZER,null}` | Tokenizer path or Hugging Face id. Required for chat and completions tasks alike. |
+| `extra.tokenizer` | `${oc.env:EVAL_TOKENIZER,null}` | Loaded automatically when the served model name is its Hugging Face model ID. Set it for an alias, a custom tokenizer path, or Tokenizer Extension; use the generated tokenizer for Tokenizer Extension. |
 | `extra.tokenizer_backend` | `huggingface` | Tokenizer backend. |
 | `extra.tokenized_requests` | `false` | Passed through to the lm-evaluation-harness `tokenized_requests` option. Every shipped config sets `false`. |
 | `extra.args` | unset | Harness-specific command-line arguments, for example `'--confirm_run_unsafe_code'` for code benchmarks. |

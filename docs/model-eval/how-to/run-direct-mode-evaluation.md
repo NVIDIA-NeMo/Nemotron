@@ -16,11 +16,26 @@ For the decision between the two modes, refer to {ref}`model-eval-choose-a-mode`
 - The Nemotron repository is synced with `uv sync --extra evaluator`.
 - A running OpenAI-compatible endpoint that exposes `/v1/completions` or `/v1/chat/completions`, is reachable from the cluster where the evaluation job runs, and has a context length at least as long as the longest few-shot prompt a task builds.
 - The value that the server was started with as `--served-model-name`.
-- The tokenizer of the served model, as a Hugging Face repository id or a path on storage that the job can read.
+- An explicit tokenizer ID, or a local tokenizer path visible inside the evaluation job, if the served model name is an alias, the tokenizer is at a custom path, or you used Tokenizer Extension.
 - A directory on shared storage for results.
 - An `env.toml` that contains the `<backend>_eval_direct` profile for your backend: `slurm_eval_direct`, `lepton_eval_direct`, or `dgxcloud_eval_direct`.
-  Check with `grep '^\[slurm_eval_direct\]' env.toml`; if the profile is missing, copy it from `src/nemotron/steps/env/env_toml/config/<backend>.yaml`.
-  Regenerating `env.toml` with `force=true` rewrites the whole file and discards site-specific values.
+  For Slurm, check with `grep '^\[slurm_eval_direct\]' env.toml`; substitute your backend elsewhere in this example.
+  If the profile is missing, generate a separate TOML file:
+
+  ```console
+  $ profile_tmp_dir="$(mktemp -d)"
+  $ uv run nemotron steps run env/env_toml -c slurm \
+      output_path="$profile_tmp_dir/env.slurm.toml"
+  ```
+
+  Replace `slurm` with `lepton` or `dgxcloud` as needed, then copy the generated `[<backend>_eval_direct]` table up to, but not including, the next table header (or through end of file) into your existing `env.toml`, preserving its site-specific values.
+  Do not copy the YAML template directly; it is generator input, not a runtime profile.
+  Confirm the result, for example:
+
+  ```console
+  $ grep '^\[slurm_eval_direct\]' env.toml
+  [slurm_eval_direct]
+  ```
 
 ## Set The Endpoint Values
 
@@ -30,17 +45,23 @@ Exporting a variable in your shell affects submission only; the profile is what 
 ```bash
 export EVAL_ENDPOINT_URL="https://<host>/v1/completions"
 export EVAL_MODEL_HANDLE="<served-model-name>"
-export EVAL_TOKENIZER="<hf-repo-id-or-path>"
 export EVAL_RESULTS_DIR="/mnt/shared/eval/<run-name>"
 export EVAL_API_KEY_NAME=ENDPOINT_TOKEN
 export ENDPOINT_TOKEN="<endpoint-token>"
+```
+
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, use the generated tokenizer:
+
+```bash
+export EVAL_TOKENIZER="<generated-tokenizer-repo-id-or-path>"
 ```
 
 | Variable | Requirement |
 | --- | --- |
 | `EVAL_ENDPOINT_URL` | Required. The full URL, including the `/v1/completions` or `/v1/chat/completions` path. |
 | `EVAL_MODEL_HANDLE` | Required. Must equal the server's `--served-model-name`; otherwise every request returns HTTP 404. |
-| `EVAL_TOKENIZER` | Required. The harness tokenizes on the client side for chat and completions endpoints alike. Without it, the harness treats the served-model-name as a Hugging Face repository and fails with `RepositoryNotFoundError`. |
+| `EVAL_TOKENIZER` | Loaded automatically when the served model name is its Hugging Face model ID. Set it for an alias, a custom tokenizer path, or Tokenizer Extension; use the generated tokenizer for Tokenizer Extension. |
 | `EVAL_RESULTS_DIR` | Required. Storage that outlives the job, not container disk. |
 | `EVAL_API_KEY_NAME` | The *name* of the variable that holds the token, never the token itself. Defaults to `ENDPOINT_TOKEN`. NeMo Evaluator fails if the named variable is unset, so for an endpoint without authentication set `EVAL_API_KEY_NAME=null` explicitly. |
 | `EVAL_ENDPOINT_TYPE` | `completions` (default) or `chat`. The chat suites set `chat` in their config, so this variable is needed only with `-c direct`. |
@@ -48,7 +69,9 @@ export ENDPOINT_TOKEN="<endpoint-token>"
 ## Select The Harness Image
 
 The harness image decides which tasks exist.
+Set `EVAL_HARNESS_IMAGE` in the submitting shell; do not add it to the `*_eval_direct` profile.
 `direct.yaml` defaults `EVAL_HARNESS_IMAGE` to `nvcr.io/nvidia/eval-factory/lm-evaluation-harness:26.03`; the `milu` suite overrides it with the sovereign image.
+`direct.yaml` resolves the selected image into `run.env.container_image` and forwards that resolved value into the job, so the `*_eval_direct` profiles intentionally omit `EVAL_HARNESS_IMAGE`.
 Task sets differ between tags of the same image family, so list the tasks in the image you intend to use.
 
 ```bash
@@ -65,7 +88,7 @@ export EVAL_HARNESS_IMAGE="<image>@sha256:<digest>"
 
 ## Run A Verification Run
 
-Confirm the endpoint, credential, model handle, and tokenizer on a small sample before a full run.
+Confirm the endpoint, credential, model handle, and any explicit tokenizer on a small sample before a full run.
 `EVAL_LIMIT_SAMPLES` selects a deterministic first-N subset.
 
 ```bash
@@ -91,6 +114,7 @@ export EVAL_HARNESS_IMAGE="nvcr.io/nvidia/eval-factory/lm-evaluation-harness@sha
 export EVAL_ENDPOINT_TYPE=completions
 export EVAL_API_KEY_NAME=ENDPOINT_TOKEN
 export ENDPOINT_TOKEN="<endpoint-token>"
+# Required here because run-a and run-b are served-model aliases.
 export EVAL_TOKENIZER="<hf-repo-id-or-path>"
 
 for CKPT in run-a run-b; do
@@ -127,6 +151,6 @@ For the full layout, refer to {doc}`../reference/output-artifacts`.
 
 - {doc}`run-a-benchmark-suite` for choosing among the shipped suites.
 - {doc}`run-hosted-evaluation` for the launcher-mode hosted flow.
-- {doc}`../explanation/tokenizer-alignment` for why `EVAL_TOKENIZER` is required.
+- {doc}`../explanation/tokenizer-alignment` for when to set `EVAL_TOKENIZER`.
 - {doc}`../reference/cli-reference` for the environment-variable table and flag surface.
 - {doc}`../reference/troubleshooting` for HTTP 404, 401, and tokenizer failures.

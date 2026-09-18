@@ -99,7 +99,7 @@ The cost is that direct mode does not serve the model: you host the endpoint and
 
 - {ref}`model-eval-choose-a-mode` for the decision table between the two modes.
 - {doc}`endpoint-types-and-benchmarks` for endpoint/task pairing.
-- {doc}`tokenizer-alignment` for why every run needs a matching client-side tokenizer.
+- {doc}`tokenizer-alignment` for when to set an explicit tokenizer.
 - {doc}`../how-to/run-direct-mode-evaluation` for the direct-mode procedure.
 - {doc}`../reference/output-artifacts` for result inspection.
 - {doc}`../how-to/discover-the-step` for reading the step contract before configuring a run.

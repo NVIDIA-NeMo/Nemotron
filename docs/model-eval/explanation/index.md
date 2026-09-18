@@ -55,7 +55,7 @@ Chat versus completions endpoints, which shipped suites and benchmark families m
 :::{grid-item-card} {octicon}`package;1.5em;sd-mr-1` Tokenizer Alignment
 :link: tokenizer-alignment
 :link-type: doc
-Why every run needs a client-side tokenizer that matches the served model, including tokenizer-extended checkpoints.
+When to set an explicit tokenizer, including the generated tokenizer for tokenizer-extended checkpoints.
 +++
 {bdg-secondary}`tokenizer`
 :::

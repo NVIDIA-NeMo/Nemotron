@@ -79,7 +79,8 @@ It then branches on the `mode` key.
 The endpoint type must match the benchmark family.
 Chat and instruction benchmarks need a *chat* endpoint.
 *Log-probability* tasks, such as HellaSwag, need a *completions* endpoint with `logprobs` support.
-In both cases the harness tokenizes on the client side, so a tokenizer that matches the served model is required.
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically.
+If you used Tokenizer Extension, set the evaluator to use the generated tokenizer.
 
 The hosted verification config is `tiny_chat.yaml`.
 The launcher checkpoint-evaluation config is `default.yaml`.
@@ -179,7 +180,7 @@ Architecture, endpoint and benchmark families, and tokenizer alignment.
 | {doc}`explanation/index` | Map of the concept pages and how they relate |
 | {doc}`explanation/pipeline-overview` | Artifact flow through `eval/model_eval` in launcher mode and direct mode |
 | {doc}`explanation/endpoint-types-and-benchmarks` | Chat versus completions endpoints, and which suites and benchmark families match each one |
-| {doc}`explanation/tokenizer-alignment` | Why every run needs a client-side tokenizer that matches the served model |
+| {doc}`explanation/tokenizer-alignment` | When to set an explicit tokenizer and why tokenizer-extended models need the generated tokenizer |
 
 ```
 
@@ -192,8 +193,8 @@ Architecture, endpoint and benchmark families, and tokenizer alignment.
   Hosted verification runs usually use `NVIDIA_API_KEY`; direct mode defaults to `ENDPOINT_TOKEN`.
 - A reachable evaluation endpoint URL and a model identifier the endpoint advertises.
   In direct mode the identifier must equal the server's `--served-model-name`.
-- A tokenizer that matches the served model.
-  Direct mode requires `EVAL_TOKENIZER` for chat and completions suites alike.
+- An explicit tokenizer if the served model name is an alias, the tokenizer is at a custom path, or you used Tokenizer Extension.
+  Tokenizer Extension must use the generated tokenizer.
 - For direct mode on a cluster, an `env.toml` that contains the `<backend>_eval_direct` profile.
   Refer to {ref}`model-eval-troubleshooting-profile-not-found` if the profile is missing.
 
