@@ -186,15 +186,37 @@ All paths are relative to `<output_root>/<experiment_name>/`.
 
 Records with `reasoning_mode: "off"` omit `reasoning_content`.
 
+(sdg-persona-mcq-persona-cache)=
+## Persona Asset Cache
+
+The `personas` stage looks for each configured `languages.<key>.locale` at:
+
+```text
+<managed-assets>/datasets/<locale>.parquet
+```
+
+`DATA_DESIGNER_MANAGED_ASSETS_PATH` sets `<managed-assets>` directly. If it is unset, the path defaults to `${DATA_DESIGNER_HOME:-~/.data-designer}/managed-assets`.
+To populate the cache without giving the pipeline an NGC key, set the same paths in the downloading shell and download every configured locale before running:
+
+```console
+$ export DATA_DESIGNER_HOME="<shared-cache-root>"
+$ export DATA_DESIGNER_MANAGED_ASSETS_PATH="$DATA_DESIGNER_HOME/managed-assets"
+$ uv run data-designer download personas --locale en_US
+```
+
+Repeat the download for each configured locale, then make the cache visible to the pipeline job at the same path.
+The shipped `*_sdg_persona_mcq` profiles forward both variables.
+
 ## Errors
 
 | Error | Cause | Recovery |
 |---|---|---|
 | `experiment_config_mismatch` | The experiment directory was created with a different configuration (`config_hash` differs). | Choose a new `pipeline.experiment_name`, or set `pipeline.overwrite=true` intentionally. Never combine artifacts from incompatible configurations. |
-| `persona_assets_missing` | A configured locale has no cached persona asset and `NGC_API_KEY` is unset or the NGC CLI is not on `PATH`. | Export `NGC_API_KEY` and install the NGC CLI, or download personas for every locale with the Data Designer CLI before running. |
+| `persona_assets_missing` | A configured locale has no cached persona asset and `NGC_API_KEY` is unset or the NGC CLI is not on `PATH`. | Export `NGC_API_KEY` and install the NGC CLI, or pre-download every locale as described in {ref}`sdg-persona-mcq-persona-cache`. |
 | `teacher_intersection_too_small` | Fewer questions survived every response teacher's gates than `sampling.per_language` requests. | Inspect the `build_sft` rejection reasons in `summary.json`; reduce `sampling.per_language`, relax `sft.agreement`, or resume the `answers` stage to retry failed rows. |
 
-Configuration validation also rejects fewer than three `answer_models`, response teachers absent from `answer_models`, unknown stage names, invalid `script_pattern` values, script-fraction ranges outside `0 <= min <= max <= 1`, and `permutations` not divisible by `bands`.
+Configuration validation also rejects fewer than three `answer_models`, response teachers absent from `answer_models`, unknown stage names, invalid `script_pattern` values, and script-fraction ranges outside `0 <= min <= max <= 1`.
+The `lexical_dedup` stage separately rejects `permutations` values that are not divisible by `bands` when that stage runs; check the pair before a full run because initial configuration validation does not inspect it.
 
 ## Related
 

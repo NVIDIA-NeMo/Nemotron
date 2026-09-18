@@ -70,7 +70,7 @@ Voting is a consistency gate, not factual verification. With `sft.agreement: una
 
    `tiny` authors 8 questions per language from one question model, answers with three teachers, and samples one record per language. Artifacts are written under `${NEMOTRON_RUN_DIR:-./outputs}/persona_mcq/my-verification/`.
 
-2. Inspect `summary.json` in the experiment directory. Confirm that the `answers` entries report `unparsed: 0` for every teacher and language, and review the rejection reasons under `build_sft` (`no_agreement`, `teacher_dissents`, `truncated`, `answer_language_impurity`, `reasoning_language_impurity`) before scaling.
+2. Inspect `summary.json` in the experiment directory. Confirm that the `answers` entries report `unparsed: 0` for every teacher and language, and review the rejection reasons under `build_sft` (`no_agreement`, `teacher_dissents`, `truncated`, `empty_answer`, `answer_language_impurity`, `empty_reasoning`, `reasoning_language_impurity`) before scaling.
 
 3. Run the production-shaped defaults:
 
