@@ -69,9 +69,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 
-from pydantic import ConfigDict, Field, model_validator
-
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from pydantic import ConfigDict, Field, model_validator
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -432,6 +431,10 @@ class EvalConfig(RecipeSettings):
         default=None,
         description="Portable evaluation view selected from sdg_input_path.",
     )
+    retrieval_split_protocol: Literal["document_disjoint", "grouped_query_disjoint"] | None = Field(
+        default=None,
+        description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
+    )
     ignore_identical_ids: bool = Field(
         default=True,
         description="Preserve BEIR's legacy query/corpus identical-ID exclusion when true.",
@@ -519,6 +522,8 @@ class EvalConfig(RecipeSettings):
     def _validate_portable_evaluation_source(self):
         if (self.sdg_input_path is None) != (self.retrieval_view is None):
             raise ValueError("sdg_input_path and retrieval_view must be set together for portable evaluation")
+        if self.retrieval_split_protocol is not None and self.sdg_input_path is None:
+            raise ValueError("retrieval_split_protocol requires sdg_input_path and retrieval_view")
         return self
 
     @model_validator(mode="after")
@@ -914,7 +919,9 @@ def run_eval(cfg: EvalConfig) -> dict:
     if cfg.sdg_input_path is not None:
         from nemotron.recipes.embed.sdg_manifest import resolve_portable_evaluation_input
 
-        evaluation_dir, image_root = resolve_portable_evaluation_input(cfg.sdg_input_path, cfg.retrieval_view)
+        evaluation_dir, image_root = resolve_portable_evaluation_input(
+            cfg.sdg_input_path, cfg.retrieval_view, cfg.retrieval_split_protocol
+        )
         cfg = cfg.model_copy(update={"eval_data_path": evaluation_dir, "image_root": image_root})
 
     print("📊 Embedding Model Evaluation")
@@ -941,6 +948,8 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     results = {}
     metadata = {
+        "retrieval_split_protocol_requested": cfg.retrieval_split_protocol,
+        "sdg_input_path": str(cfg.sdg_input_path.resolve()) if cfg.sdg_input_path else None,
         "eval_data_path": str(cfg.eval_data_path.resolve()),
         "image_root": str((cfg.image_root or cfg.eval_data_path).resolve()),
         "ignore_identical_ids": cfg.ignore_identical_ids,

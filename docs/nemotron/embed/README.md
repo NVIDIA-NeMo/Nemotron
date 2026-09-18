@@ -16,6 +16,9 @@ Pre-trained embedding models work well for general-purpose retrieval, but may un
 
 ## Training Pipeline
 
+For in-domain multimodal retrieval over a fixed collection, see the
+[grouped query-disjoint bundle contract](grouped-query-protocol.md).
+
 A large language model (LLM) generates synthetic question-and-answer pairs in Stage 0.
 
 ```

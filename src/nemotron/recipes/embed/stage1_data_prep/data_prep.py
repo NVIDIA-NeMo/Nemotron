@@ -62,9 +62,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
 
-from pydantic import ConfigDict, Field, model_validator
-
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from pydantic import ConfigDict, Field, model_validator
 
 if TYPE_CHECKING:
     from data_designer_retrieval_sdg import ConversionResult
@@ -107,6 +106,10 @@ class DataPrepConfig(RecipeSettings):
     output_dir: Path = Field(
         default_factory=lambda data: data["artifact_root"] / "stage1_data_prep",
         description="Output directory for prepared training data.",
+    )
+    retrieval_split_protocol: Literal["document_disjoint", "grouped_query_disjoint"] | None = Field(
+        default=None,
+        description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
     )
     artifact_recipe: Literal["embed", "rerank"] = Field(
         default="embed",
@@ -200,6 +203,8 @@ class DataPrepConfig(RecipeSettings):
     def _check_input_source(self):
         if self.retrieval_view is not None and self.train_input_file is not None:
             raise ValueError("retrieval_view applies to an SDG manifest, not train_input_file")
+        if self.retrieval_split_protocol is not None and self.retrieval_view is None:
+            raise ValueError("retrieval_split_protocol requires retrieval_view and a portable manifest")
         if self.sdg_input_path and self.train_input_file:
             raise ValueError(
                 "sdg_input_path and train_input_file are mutually exclusive. "
@@ -418,7 +423,9 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     if configured_sdg_input and cfg.retrieval_view is not None:
         from nemotron.recipes.embed.sdg_manifest import resolve_portable_training_input
 
-        train_input = resolve_portable_training_input(configured_sdg_input, cfg.retrieval_view)
+        train_input = resolve_portable_training_input(
+            configured_sdg_input, cfg.retrieval_view, cfg.retrieval_split_protocol
+        )
         evaluation_dir = train_input.parents[2] / "synthetic_eval" / cfg.retrieval_view
         cfg = cfg.model_copy(update={"sdg_input_path": None, "train_input_file": train_input})
     elif configured_sdg_input:

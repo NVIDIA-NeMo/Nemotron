@@ -100,7 +100,7 @@ def resolve_generation_input(input_path: Path, *, allow_portable: bool = False) 
     return output_path
 
 
-def resolve_portable_training_input(input_path: Path, view: str) -> Path:
+def resolve_portable_training_input(input_path: Path, view: str, split_protocol: str | None = None) -> Path:
     """Resolve and verify an explicitly selected portable training view.
 
     Args:
@@ -130,6 +130,12 @@ def resolve_portable_training_input(input_path: Path, view: str) -> Path:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != 2:
         raise ValueError("Unsupported portable bundle schema")
+    _check_split_protocol(manifest, split_protocol)
+    if manifest.get("split_protocol") == "grouped_query_disjoint":
+        paths = _grouped_bundle_paths(manifest_path, view)
+        if not json.loads(paths.train.read_text())["data"]:
+            raise ValueError(f"Portable view {view} has no accepted training examples; no fallback is allowed")
+        return paths.train
     root = manifest_path.parent
     train_file = root / "views" / view / "train.json"
     required = {
@@ -152,7 +158,9 @@ def resolve_portable_training_input(input_path: Path, view: str) -> Path:
     return train_file
 
 
-def resolve_portable_evaluation_input(input_path: Path, view: str) -> tuple[Path, Path]:
+def resolve_portable_evaluation_input(
+    input_path: Path, view: str, split_protocol: str | None = None
+) -> tuple[Path, Path]:
     """Resolve and verify one portable synthetic-evaluation view.
 
     Args:
@@ -178,6 +186,10 @@ def resolve_portable_evaluation_input(input_path: Path, view: str) -> tuple[Path
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != 2:
         raise ValueError("Unsupported portable bundle schema")
+    _check_split_protocol(manifest, split_protocol)
+    if manifest.get("split_protocol") == "grouped_query_disjoint":
+        paths = _grouped_bundle_paths(manifest_path, view)
+        return paths.synthetic_eval, paths.root
     root = manifest_path.parent
     evaluation_dir = root / "synthetic_eval" / view
     required = {
@@ -220,6 +232,25 @@ def resolve_portable_evaluation_input(input_path: Path, view: str) -> tuple[Path
         if _file_sha256(resolved) != artifacts[artifact_path]["sha256"]:
             raise ValueError(f"Portable bundle artifact changed: {artifact_path}")
     return evaluation_dir, root
+
+
+def _check_split_protocol(manifest: dict, expected: str | None) -> None:
+    """Require explicit shared-corpus opt-in without changing legacy bundles."""
+    actual = manifest.get("split_protocol", "document_disjoint")
+    if actual not in {"document_disjoint", "grouped_query_disjoint"}:
+        raise ValueError(f"Unsupported split protocol: {actual}")
+    if expected is not None and expected != actual:
+        raise ValueError(f"Requested split protocol {expected} differs from bundle {actual}")
+    scope = "full_collection" if actual == "grouped_query_disjoint" else "partition"
+    if manifest.get("corpus_scope", "partition") != scope:
+        raise ValueError(f"Split protocol {actual} requires corpus_scope={scope}")
+
+
+def _grouped_bundle_paths(manifest_path: Path, view: str):
+    """Use complete semantic and artifact validation on the new protocol path."""
+    from nemotron.recipes.retrieval_vl import inspect_vl_bundle
+
+    return inspect_vl_bundle(manifest_path, view="text_image" if view == "image_and_text" else view)
 
 
 def _file_sha256(path: Path) -> str:
