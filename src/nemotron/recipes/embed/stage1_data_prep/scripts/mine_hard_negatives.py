@@ -31,10 +31,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from nemo_automodel._transformers.auto_model import NeMoAutoModelBiEncoder
 from nemo_automodel._transformers.auto_tokenizer import NeMoAutoTokenizer
 from nemo_automodel.components.config._arg_parser import parse_args_and_load_config
 from nemo_automodel.recipes.retrieval import mine_hard_negatives as automodel_mining
+
+from nemotron.recipes.embed.stage1_data_prep.mining_provenance import restore_mining_provenance
 
 
 class MineHardNegativesRecipe(automodel_mining.MineHardNegativesRecipe):
@@ -118,6 +122,8 @@ def main(default_config_path="examples/biencoder/mining_config.yaml"):
     recipe = MineHardNegativesRecipe(cfg)
     recipe.setup()
     recipe.run()
+    if recipe.dist_env.is_main:
+        restore_mining_provenance(Path(recipe.train_qa_file_path), Path(recipe.train_file_output_path))
 
 
 if __name__ == "__main__":
