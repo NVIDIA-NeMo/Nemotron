@@ -811,13 +811,30 @@ def _retrieve_and_evaluate(
         for document_id, document in corpus.items()
     }
     if ignore_identical_ids:
-        results = retriever.retrieve(corpus, queries)
+        results = _retrieve_rankings(retriever, corpus, queries)
         return retriever.evaluate(qrels, results, retriever.k_values), results
     retrieval_queries, aliases = _alias_query_ids(queries, corpus)
-    aliased_results = retriever.retrieve(corpus, retrieval_queries)
+    aliased_results = _retrieve_rankings(retriever, corpus, retrieval_queries)
     results = {aliases[alias]: ranking for alias, ranking in aliased_results.items()}
     metrics = retriever.evaluate(qrels, results, retriever.k_values, ignore_identical_ids=False)
     return metrics, results
+
+
+def _retrieve_rankings(retriever, corpus: dict, queries: dict[str, str]) -> dict:
+    """Support one-query inputs with BEIR versions that index the second score row.
+
+    Pad only the retrieval request with an identical query under a fresh ID,
+    then discard that internal row before scoring or persisting rankings. This
+    keeps the real query, qrels, corpus, and identical-ID exclusion unchanged.
+    """
+    if len(queries) != 1:
+        return retriever.retrieve(corpus, queries)
+    query_id, text = next(iter(queries.items()))
+    padding_id = "__nemotron_single_query_padding__"
+    while padding_id in corpus or padding_id in queries:
+        padding_id = f"_{padding_id}"
+    rankings = retriever.retrieve(corpus, {**queries, padding_id: text})
+    return {query_id: rankings[query_id]}
 
 
 def _alias_query_ids(
