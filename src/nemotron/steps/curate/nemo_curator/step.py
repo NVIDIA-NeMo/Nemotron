@@ -39,6 +39,12 @@ from typing import Any, cast
 
 import yaml
 from huggingface_hub import snapshot_download
+
+# Ray otherwise replays the outer ``uv run`` command for every worker. Its
+# packaged working directory excludes ``.venv``, so ``uv --no-sync`` creates an
+# empty worker environment and then fails to import Ray itself.
+os.environ.setdefault("RAY_ENABLE_UV_RUN_RUNTIME_ENV", "0")
+
 from nemo_curator.core.client import RayClient
 from nemo_curator.pipeline import Pipeline
 from nemo_curator.stages.text.io.reader import JsonlReader
@@ -47,6 +53,7 @@ from nemo_curator.stages.text.io.writer import JsonlWriter
 from nemotron.steps.curate.nemo_curator.runtime import integrity as _integrity
 from nemotron.steps.curate.nemo_curator.runtime import manifest as run_manifest
 from nemotron.steps.curate.nemo_curator.runtime import registry as _registry
+from nemotron.steps.curate.nemo_curator.runtime.language import validate_language_codes
 
 DEFAULT_CONFIG = Path(__file__).parent / "config" / "default.yaml"
 
@@ -713,6 +720,20 @@ def _reset_artifact_paths(*paths: str | None) -> None:
         path.unlink(missing_ok=True)
 
 
+def refuse_empty_language_output(cfg: dict, input_files: list[str]) -> None:
+    """Make a total language-gate drop a failed run, never a silent success."""
+    if not cfg.get("language_codes"):
+        return
+    input_rows = run_manifest.count_jsonl(input_files)["row_count"]
+    output_files = sorted(str(path) for path in Path(cfg["output_dir"]).rglob("*.jsonl"))
+    output_rows = run_manifest.count_jsonl(output_files)["row_count"]
+    if input_rows > 0 and output_rows == 0:
+        raise ValueError(
+            f"the language-filtered run kept 0 of {input_rows} documents. Check language_codes, "
+            "the FastText model, and min_langid_score; set language_codes to [] to disable the gate"
+        )
+
+
 def run(cfg: dict) -> dict[str, Any]:
     """Curate the corpus and return a report describing what the run did."""
     mode = cfg.get("mode", "filter")
@@ -758,6 +779,10 @@ def run(cfg: dict) -> dict[str, Any]:
                 f"step can read. curate/nemo_curator reads {' or '.join(READER_EXTENSIONS)}."
             )
 
+        # Against the model, before Ray starts. Comparing two user-supplied
+        # strings cannot catch a label the model never emits.
+        validate_language_codes(cfg)
+
         # Curator's writer names shards by content hash, so a second run into the
         # same directory adds to it instead of replacing the previous corpus.
         existing = sorted(Path(cfg["output_dir"]).rglob("*.jsonl")) if cfg.get("output_dir") else []
@@ -786,6 +811,8 @@ def run(cfg: dict) -> dict[str, Any]:
         finally:
             if ray_started:
                 ray_client.stop()
+
+        refuse_empty_language_output(cfg, input_files)
 
         stage_counts = collect_stage_counts(tasks or [])
         stage_names = [getattr(stage, "name", "") for stage in getattr(pipeline, "stages", [])]

@@ -124,6 +124,10 @@ env profile when the YAML does not include `ray.num_cpus`.
 
 Related pattern: [data-quality-before-quantity.md](../../patterns/data-quality-before-quantity.md).
 
+In run manifests, `source:sha256:...` fingerprints only this step's
+`nemo_curator` source and config tree. CLI submissions still prefer the injected
+Git revision, which maps the run back to the full repository.
+
 ## Run It
 
 Smoke first to validate the reader/writer path with filters disabled:

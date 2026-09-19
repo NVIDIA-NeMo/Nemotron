@@ -178,7 +178,7 @@ sections:
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   lepton_curator_base:
     extends: lepton_base
-    container_image: nvcr.io/nvidia/nemo-curator:26.02
+    container_image: nvcr.io/nvidia/nemo-curator:26.07
     resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
     nodes: 1
     gpus_per_node: 0

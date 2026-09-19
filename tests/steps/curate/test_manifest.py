@@ -254,6 +254,40 @@ def test_an_injected_tool_revision_takes_precedence(monkeypatch) -> None:
     assert m.tool_revision() == "git:0123456789abcdef"
 
 
+def test_source_staging_without_distribution_metadata_uses_content_revision(monkeypatch, tmp_path) -> None:
+    """Source hashing must precede the always-importable static version."""
+    from nemotron import __version__
+
+    assert __version__
+    source = tmp_path / "nemo_curator" / "runtime" / "manifest.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("revision = 1\n", encoding="utf-8")
+    config = source.parents[1] / "config.yaml"
+    config.write_text("mode: filter\n", encoding="utf-8")
+    monkeypatch.delenv("NEMOTRON_TOOL_REVISION", raising=False)
+    monkeypatch.setattr(m.Path, "resolve", lambda _self: source)
+    monkeypatch.setattr("importlib.metadata.version", lambda _name: (_ for _ in ()).throw(LookupError()))
+
+    first = m.tool_revision()
+    config.write_text("mode: annotate\n", encoding="utf-8")
+    second = m.tool_revision()
+
+    assert first.startswith("source:sha256:")
+    assert second.startswith("source:sha256:")
+    assert first != second
+
+
+def test_static_version_is_used_when_source_cannot_be_read(monkeypatch) -> None:
+    from nemotron import __version__
+
+    monkeypatch.delenv("NEMOTRON_TOOL_REVISION", raising=False)
+    monkeypatch.setattr(m.Path, "resolve", lambda _self: m.Path("/staged/src/nemotron/runtime/manifest.py"))
+    monkeypatch.setattr("importlib.metadata.version", lambda _name: (_ for _ in ()).throw(LookupError()))
+    monkeypatch.setattr(m, "_source_tree_revision", lambda _source: None)
+
+    assert m.tool_revision() == f"nemotron {__version__}"
+
+
 def test_runtime_dependencies_include_an_exact_vcs_commit(monkeypatch) -> None:
     class FakeDistribution:
         version = "0.10.0+a8425c9"

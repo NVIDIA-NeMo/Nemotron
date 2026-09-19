@@ -61,7 +61,7 @@ steps:
     heuristic_filters: null
     dataset: null
     models:
-      fasttext_langid: ${oc.env:FASTTEXT_LANGID_MODEL,null}
+      fasttext_langid: null
 
   audit:
     enabled: true

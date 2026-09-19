@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import os
 import tomllib
 
 import pytest
@@ -58,6 +59,16 @@ def test_f1_defaults_are_neutral() -> None:
     assert config["source_field"] is None
     assert config["heuristic_filters"] is None, "default must not filter on an unreviewed policy"
     assert config["mode"] == "filter", "default must keep the historical column set"
+
+
+def test_tiny_config_uses_a_local_and_container_portable_fixture() -> None:
+    """The documented local smoke must not depend on the container mount path."""
+    config = yaml.safe_load((STEP_DIR / "config" / "tiny.yaml").read_text(encoding="utf-8"))
+    repo_root = STEP_DIR.parents[4]
+
+    assert config["input_glob"] == "./src/nemotron/steps/curate/nemo_curator/data/tiny.jsonl"
+    assert (repo_root / config["input_glob"]).is_file()
+    assert config["emit_manifest"] is None
 
 
 def test_manifest_defaults_use_native_toml_types() -> None:
@@ -112,6 +123,15 @@ def _stub_curator(monkeypatch):
     module = importlib.import_module("nemotron.steps.curate.nemo_curator.step")
     monkeypatch.delitem(sys.modules, "nemotron.steps.curate.nemo_curator.step", raising=False)
     return module
+
+
+def test_uv_run_does_not_repackage_ray_workers(monkeypatch) -> None:
+    """Workers must reuse the installed env instead of creating an empty one."""
+    monkeypatch.delenv("RAY_ENABLE_UV_RUN_RUNTIME_ENV", raising=False)
+
+    _stub_curator(monkeypatch)
+
+    assert os.environ["RAY_ENABLE_UV_RUN_RUNTIME_ENV"] == "0"
 
 
 def _corpus(tmp_path, n_in: int, n_out: int):
@@ -322,6 +342,33 @@ def test_the_langid_fallback_matches_curator(monkeypatch) -> None:
     step = _stub_curator(monkeypatch)
 
     assert step.DEFAULT_LANGID_SCORE == 0.3, "a fallback below Curator's own default silently weakens the gate"
+
+
+def test_language_codes_are_validated_against_the_configured_model(tmp_path, monkeypatch) -> None:
+    import sys
+    import types
+
+    step = _stub_curator(monkeypatch)
+    model_path = tmp_path / "lid.176.bin"
+    model_path.write_bytes(b"model")
+
+    model = types.SimpleNamespace(get_labels=lambda: ["__label__en", "__label__hi", "__label__zh_Hans"])
+    fasttext = types.ModuleType("fasttext")
+    fasttext.load_model = lambda _path: model
+    monkeypatch.setitem(sys.modules, "fasttext", fasttext)
+
+    step.validate_language_codes({"language_codes": ["HI", "zh"], "models": {"fasttext_langid": str(model_path)}})
+    with pytest.raises(ValueError, match=r"HIN.*emits none"):
+        step.validate_language_codes({"language_codes": ["HIN"], "models": {"fasttext_langid": str(model_path)}})
+
+
+def test_a_total_language_drop_is_a_failure(tmp_path, monkeypatch) -> None:
+    step = _stub_curator(monkeypatch)
+    cfg = _corpus(tmp_path, 3, 0)
+    cfg["language_codes"] = ["HI"]
+
+    with pytest.raises(ValueError, match="kept 0 of 3"):
+        step.refuse_empty_language_output(cfg, [str(tmp_path / "in" / "a.jsonl")])
 
 
 def test_a_zero_input_glob_is_refused_before_ray_starts(tmp_path, monkeypatch) -> None:

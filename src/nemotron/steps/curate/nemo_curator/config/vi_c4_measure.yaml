@@ -69,12 +69,11 @@ steps:
       min_keep_rate: 0.80
       max_keep_rate: 0.995
     models:
-      # 126 MB, downloaded separately and pointed at with
-      # FASTTEXT_LANGID_MODEL. Unset, the language-composition table is null
-      # rather than guessed.
+      # 126 MB, downloaded separately. Set an absolute path to measure the
+      # language breakdown; left null the table is null rather than guessed.
       #   https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
       #   sha256:7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e
-      fasttext_langid: ${oc.env:FASTTEXT_LANGID_MODEL,null}
+      fasttext_langid: null
       # Optional, and enables the token_count signal. The revision is required
       # because counts from two revisions are not comparable.
       tokenizer:
@@ -101,7 +100,7 @@ steps:
     heuristic_filters: null
     dataset: null
     models:
-      fasttext_langid: ${oc.env:FASTTEXT_LANGID_MODEL,null}
+      fasttext_langid: null
 
   audit:
     enabled: true

@@ -279,6 +279,8 @@ def test_a_config_with_every_filter_enabled_also_matches(pipeline_log, tmp_path,
     cfg["domains"] = ["News"]
     cfg["models"] = {"fasttext_langid": "/models/lid.176.bin", "hf_cache_dir": "/cache/hf"}
     cfg["quality_filters"] = {"min_langid_score": 0.3, "min_words": 50, "max_words": 5000}
+    # Pipeline construction only; label validation is tested separately.
+    monkeypatch.setattr(step, "validate_language_codes", lambda _cfg: None)
     _run(step, cfg, tmp_path, monkeypatch)
 
     expected = json.loads(GOLDEN_FILTERS_ON.read_text(encoding="utf-8"))

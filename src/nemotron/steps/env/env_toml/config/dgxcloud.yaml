@@ -162,7 +162,7 @@ sections:
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   dgxcloud_curator_base:
     extends: dgxcloud_base
-    container_image: nvcr.io/nvidia/nemo-curator:26.02
+    container_image: nvcr.io/nvidia/nemo-curator:26.07
     nodes: 1
     gpus_per_node: 0
     nprocs_per_node: 1

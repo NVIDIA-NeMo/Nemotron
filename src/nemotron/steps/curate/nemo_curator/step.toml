@@ -177,7 +177,11 @@ recovery = "A field named in metadata_fields is missing from some records. What 
 
 [[errors]]
 name = "language_filter_removed_everything"
-recovery = "language_codes are matched case-insensitively against the label FastText emits (lid.176 emits lowercase ISO codes), including the part before a script suffix. If a run still keeps nothing, check that models.fasttext_langid points at the model you expect and lower min_langid_score."
+recovery = "The run is refused rather than publishing an empty corpus. language_codes are validated against the configured model's labels and matched case-insensitively, including the part before a script suffix. Check that models.fasttext_langid is the model you expect, correct the keep-list, or lower min_langid_score."
+
+[[errors]]
+name = "unknown_language_code"
+recovery = "Use a label exposed by models.fasttext_langid (lid.176 uses two-letter labels such as hi, not HIN), or set language_codes=[] to disable language filtering."
 
 [[errors]]
 name = "empty_or_tiny_output"

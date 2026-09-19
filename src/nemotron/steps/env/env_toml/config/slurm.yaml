@@ -164,7 +164,7 @@ sections:
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   slurm_curator_base:
     extends: slurm_base
-    container_image: nvcr.io/nvidia/nemo-curator:26.02
+    container_image: nvcr.io/nvidia/nemo-curator:26.07
     partition: ${oc.env:SLURM_CPU_PARTITION,cpu}
     build_partition: ${oc.env:SLURM_CPU_PARTITION,cpu}
     build_include_gpus: false

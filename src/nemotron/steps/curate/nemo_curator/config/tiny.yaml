@@ -6,17 +6,16 @@ language_codes: []
 
 domains: []
 text_field: text
-input_glob: /nemo_run/code/src/nemotron/steps/curate/nemo_curator/data/tiny.jsonl
+input_glob: ./src/nemotron/steps/curate/nemo_curator/data/tiny.jsonl
 output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_nemo_curator_tiny
 
 dataset: null
 
-# Exercises the manifest path in the smoke run. The packaged tiny JSONL has no
-# id/source columns, so both stay null and the manifest carries counts only.
+# The packaged tiny JSONL has no id/source columns, so both stay null.
 metadata_fields: []
 id_field: null
 source_field: null
-emit_manifest: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_nemo_curator_tiny/run_manifest.json
+emit_manifest: null
 
 models: {}
 

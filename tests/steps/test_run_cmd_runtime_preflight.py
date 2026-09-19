@@ -139,3 +139,10 @@ def test_source_revision_records_commit_and_dirty_state(monkeypatch, tmp_path: P
     )
 
     assert run_cmd._source_tool_revision(script_path) == "git:0123456789abcdef+dirty"  # noqa: SLF001
+
+
+def test_source_revision_uses_installed_version_without_git(monkeypatch, tmp_path: Path) -> None:
+    script_path = _write_step_tree(tmp_path)
+    monkeypatch.setattr(run_cmd, "_installed_tool_revision", lambda: "nemotron 1.2.3")
+
+    assert run_cmd._source_tool_revision(script_path) == "nemotron 1.2.3"  # noqa: SLF001

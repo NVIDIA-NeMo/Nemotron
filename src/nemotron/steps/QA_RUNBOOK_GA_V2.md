@@ -653,7 +653,7 @@ though the driver process itself imports fine. `ingest`, `profile`, `audit`,
 `decontamination`, and `subset` are plain CPU steps with no Ray dependency and
 are unaffected. Run `curate/nemo_curator` (and any `run_flow` invocation with
 `filter` enabled, e.g. `CUR-003`/`CUR-005`) inside
-`nvcr.io/nvidia/nemo-curator:26.02` — the same container the `lepton_curate`
+`nvcr.io/nvidia/nemo-curator:26.07` (NeMo Curator 1.3.0) — the same container the `lepton_curate`
 profile in `steps/env/env_toml/config/lepton.yaml` uses for production — where
 dependencies are system site-packages outside the packaged working directory,
 not a gitignored local venv Ray can silently drop.

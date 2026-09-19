@@ -479,6 +479,38 @@ def test_an_approval_nothing_applies_is_warned(tmp_path) -> None:
     assert any("nothing applies it" in w for w in warnings)
 
 
+def test_language_keep_list_warns_when_corpus_language_is_absent() -> None:
+    warnings = run_flow._language_keep_list_warnings(  # noqa: SLF001 - focused preflight contract
+        {"steps": {"filter": {"language_codes": ["HI"]}}}
+    )
+
+    assert any("corpus.language is unset" in warning for warning in warnings)
+
+
+def test_invalid_language_code_is_refused_during_flow_preflight(tmp_path, monkeypatch) -> None:
+    import sys
+    import types
+
+    model_path = tmp_path / "lid.176.bin"
+    model_path.write_bytes(b"model")
+    model = types.SimpleNamespace(get_labels=lambda: ["__label__en", "__label__hi"])
+    fasttext = types.ModuleType("fasttext")
+    fasttext.load_model = lambda _path: model
+    monkeypatch.setitem(sys.modules, "fasttext", fasttext)
+
+    cfg = config(tmp_path)
+    cfg["steps"]["profile"]["enabled"] = False
+    cfg["steps"]["filter"] = {
+        "enabled": True,
+        "language_codes": ["HIN"],
+        "models": {"fasttext_langid": str(model_path)},
+    }
+    resolved, paths = run_flow.derive(cfg)
+
+    with pytest.raises(run_flow.FlowConfigError, match=r"HIN.*emits none"):
+        run_flow.preflight(cfg, resolved, paths)
+
+
 def test_the_flow_is_not_a_second_approver() -> None:
     """runtime/policy.py::promote must remain the only one.
 
@@ -508,17 +540,33 @@ def test_a_run_writes_a_plan_and_a_report(tmp_path) -> None:
     assert report["step_id"] == "curate/flow"
 
 
-def test_a_failed_rerun_does_not_leave_the_previous_success_report(tmp_path) -> None:
+def test_a_preflight_refusal_preserves_the_previous_plan_and_report(tmp_path) -> None:
     cfg = config(tmp_path)
     run_flow.run(cfg)
     root = Path(cfg["output_root"])
+    old_plan = (root / "flow_plan.json").read_bytes()
+    old_report = (root / "flow_report.json").read_bytes()
     cfg["steps"]["profile"]["enabled"] = False
 
     with pytest.raises(run_flow.FlowConfigError, match="no steps are enabled"):
         run_flow.run(cfg)
 
-    assert not (root / "flow_plan.json").exists()
-    assert not (root / "flow_report.json").exists()
+    assert (root / "flow_plan.json").read_bytes() == old_plan
+    assert (root / "flow_report.json").read_bytes() == old_report
+
+
+def test_an_approval_refusal_preserves_the_previous_plan_and_report(tmp_path) -> None:
+    cfg = profiled(tmp_path)
+    root = Path(cfg["output_root"])
+    old_plan = (root / "flow_plan.json").read_bytes()
+    old_report = (root / "flow_report.json").read_bytes()
+    cfg["approve"] = approve_block(thresholds=[])
+
+    with pytest.raises(run_flow.FlowConfigError, match="gates nothing"):
+        run_flow.run(cfg)
+
+    assert (root / "flow_plan.json").read_bytes() == old_plan
+    assert (root / "flow_report.json").read_bytes() == old_report
 
 
 def test_the_plan_records_every_derived_config_before_anything_runs(tmp_path) -> None:

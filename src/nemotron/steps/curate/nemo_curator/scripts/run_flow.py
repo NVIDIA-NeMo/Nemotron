@@ -59,6 +59,7 @@ from typing import Any, cast
 import yaml
 
 from nemotron.steps.curate.nemo_curator.runtime import integrity, langpack
+from nemotron.steps.curate.nemo_curator.runtime import language as language_validation
 from nemotron.steps.curate.nemo_curator.runtime import manifest as run_manifest
 from nemotron.steps.curate.nemo_curator.runtime import policy as policy_module
 from nemotron.steps.curate.nemo_curator.runtime import registry as signal_registry
@@ -455,8 +456,15 @@ def _language_keep_list_warnings(cfg: dict) -> list[str]:
     """
     language = str((cfg.get("corpus") or {}).get("language") or "").strip()
     codes = ((cfg.get("steps") or {}).get("filter") or {}).get("language_codes")
-    if not language or not codes:
+    if not codes:
         return []
+    if not language:
+        return [
+            "steps.filter.language_codes is enabled but corpus.language is unset, so the flow "
+            "cannot compare the keep-list with the language pack before execution. The filter "
+            "will still validate every code against the configured FastText model; set "
+            "corpus.language as well when this is intended to be a single-language corpus."
+        ]
     subtags = {part for part in language.casefold().split("-") if part}
     kept = {str(code).casefold() for code in codes}
     if subtags & kept:
@@ -788,6 +796,13 @@ def preflight(cfg: dict, resolved: list[Resolved], paths: dict[str, str]) -> lis
                 "the report then says overlap was NOT measured rather than reporting none."
             )
 
+    filter_cfg = next((r for r in resolved if r.plan.key == "filter" and r.enabled), None)
+    if filter_cfg:
+        try:
+            language_validation.validate_language_codes(filter_cfg.config)
+        except ValueError as exc:
+            problems.append(str(exc))
+
     warnings.extend(_language_keep_list_warnings(cfg))
 
     if problems:
@@ -984,11 +999,12 @@ def plan(cfg: dict, *, dry_run: bool = False) -> tuple[list[Resolved], dict[str,
     """
     root = Path(cfg.get("output_root") or "./output/curate")
     plan_path = root / "flow_plan.json"
-    plan_path.unlink(missing_ok=True)
-    plan_path.with_name(f".{plan_path.name}.tmp").unlink(missing_ok=True)
 
+    # Refuse before deleting: a refusal that ran first would leave neither a
+    # new artifact nor the one being retried against.
     resolved, paths = derive(cfg)
     warnings = preflight(cfg, resolved, paths)
+
     enabled = {step.plan.key for step in resolved if step.enabled}
     defer_verification = bool(cfg.get("approve") and {"ingest", "filter"} <= enabled)
     warnings += materialise_policy(
@@ -1032,9 +1048,11 @@ def run(cfg: dict) -> dict[str, Any]:
     root = Path(cfg.get("output_root") or "./output/curate")
     root.mkdir(parents=True, exist_ok=True)
     report_path = root / "flow_report.json"
+
+    resolved, paths, warnings = plan(cfg)
+
     report_path.unlink(missing_ok=True)
     report_path.with_name(f".{report_path.name}.tmp").unlink(missing_ok=True)
-    resolved, paths, warnings = plan(cfg)
 
     for warning in warnings:
         logger.warning(warning)
@@ -1105,6 +1123,7 @@ def run(cfg: dict) -> dict[str, Any]:
     # one this flow promoted, and reporting false there tells a reader the corpus
     # was never gated when thousands of documents were removed by thresholds.
     policy_applied = bool(filter_result and filter_result["status"] == "ok" and _thresholds_applied(paths["manifest"]))
+
     report = {
         "schema_version": SCHEMA_VERSION,
         "step_id": "curate/flow",

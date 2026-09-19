@@ -222,10 +222,20 @@ def _find_source_checkout_root(path: Path) -> Path | None:
     return None
 
 
+def _installed_tool_revision() -> str | None:
+    """Package version for a submission source that has no Git metadata."""
+    try:
+        from importlib.metadata import version
+
+        return f"nemotron {version('nemotron')}"
+    except Exception:  # noqa: BLE001 - provenance must never fail a submission
+        return None
+
+
 def _source_tool_revision(path: Path) -> str | None:
     root = _find_source_checkout_root(path)
     if root is None or not (root / ".git").exists():
-        return None
+        return _installed_tool_revision()
     try:
         revision = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
@@ -240,5 +250,5 @@ def _source_tool_revision(path: Path) -> str | None:
             text=True,
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
-        return None
+        return _installed_tool_revision()
     return f"git:{revision}{'+dirty' if dirty else ''}"
