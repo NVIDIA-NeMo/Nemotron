@@ -100,7 +100,7 @@ def resolve_generation_input(input_path: Path, *, allow_portable: bool = False) 
     return output_path
 
 
-def resolve_portable_training_input(input_path: Path, view: str) -> Path:
+def resolve_portable_training_input(input_path: Path, view: str, split_protocol: str | None = None) -> Path:
     """Resolve and verify an explicitly selected portable training view.
 
     Args:
@@ -130,29 +130,16 @@ def resolve_portable_training_input(input_path: Path, view: str) -> Path:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != 2:
         raise ValueError("Unsupported portable bundle schema")
-    root = manifest_path.parent
-    train_file = root / "views" / view / "train.json"
-    required = {
-        f"views/{view}/train.json",
-        f"views/{view}/corpus/train/merlin_metadata.json",
-        f"views/{view}/corpus/train/part-00000.parquet",
-    }
-    artifacts = {item["path"]: item for item in manifest["artifacts"]}
-    for relative_path in sorted(required):
-        if relative_path not in artifacts:
-            raise ValueError(f"Portable bundle has no integrity record for {relative_path}")
-        actual = _file_sha256(root / relative_path)
-        if actual != artifacts[relative_path]["sha256"]:
-            raise ValueError(f"Portable bundle artifact changed: {relative_path}")
-    training = json.loads(train_file.read_text(encoding="utf-8"))
-    if not isinstance(training.get("data"), list) or not training["data"]:
+    _check_split_protocol(manifest, split_protocol)
+    paths = _grouped_bundle_paths(manifest_path, view)
+    if not json.loads(paths.train.read_text())["data"]:
         raise ValueError(f"Portable view {view} has no accepted training examples; no fallback is allowed")
-    if training.get("corpus", {}).get("path") != "corpus/train":
-        raise ValueError("Portable training corpus reference does not match the verified corpus")
-    return train_file
+    return paths.train
 
 
-def resolve_portable_evaluation_input(input_path: Path, view: str) -> tuple[Path, Path]:
+def resolve_portable_evaluation_input(
+    input_path: Path, view: str, split_protocol: str | None = None
+) -> tuple[Path, Path]:
     """Resolve and verify one portable synthetic-evaluation view.
 
     Args:
@@ -178,48 +165,28 @@ def resolve_portable_evaluation_input(input_path: Path, view: str) -> tuple[Path
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != 2:
         raise ValueError("Unsupported portable bundle schema")
-    root = manifest_path.parent
-    evaluation_dir = root / "synthetic_eval" / view
-    required = {
-        f"synthetic_eval/{view}/queries.jsonl",
-        f"synthetic_eval/{view}/corpus.jsonl",
-        f"synthetic_eval/{view}/qrels/test.tsv",
-    }
-    artifacts = {item["path"]: item for item in manifest["artifacts"]}
-    for relative_path in sorted(required):
-        if relative_path not in artifacts:
-            raise ValueError(f"Portable bundle has no integrity record for {relative_path}")
-        if _file_sha256(root / relative_path) != artifacts[relative_path]["sha256"]:
-            raise ValueError(f"Portable bundle artifact changed: {relative_path}")
-    corpus_path = evaluation_dir / "corpus.jsonl"
-    for line_number, line in enumerate(corpus_path.read_text(encoding="utf-8").splitlines(), start=1):
-        if not line.strip():
-            continue
-        document = json.loads(line)
-        image_path = document.get("image_path")
-        if image_path is None:
-            continue
-        if not isinstance(image_path, str) or not image_path:
-            raise ValueError(f"Invalid corpus image_path at line {line_number}")
-        relative = Path(image_path)
-        if relative.is_absolute() or ".." in relative.parts:
-            raise ValueError(f"Corpus image_path must be portable and relative: {image_path!r}")
-        candidate = root / relative
-        if not candidate.exists():
-            raise FileNotFoundError(f"Could not resolve corpus image {image_path!r} within {root}")
-        resolved = candidate.resolve(strict=True)
-        try:
-            resolved.relative_to(root.resolve(strict=True))
-        except ValueError as error:
-            raise ValueError(f"Corpus image_path escapes its configured image root: {image_path!r}") from error
-        if not resolved.is_file():
-            raise ValueError(f"Corpus image_path is not a regular file: {image_path!r}")
-        artifact_path = relative.as_posix()
-        if artifact_path not in artifacts:
-            raise ValueError(f"Portable bundle has no integrity record for {artifact_path}")
-        if _file_sha256(resolved) != artifacts[artifact_path]["sha256"]:
-            raise ValueError(f"Portable bundle artifact changed: {artifact_path}")
-    return evaluation_dir, root
+    _check_split_protocol(manifest, split_protocol)
+    paths = _grouped_bundle_paths(manifest_path, view)
+    return paths.synthetic_eval, paths.root
+
+
+def _check_split_protocol(manifest: dict, expected: str | None) -> None:
+    """Reject obsolete document-partition exports instead of reinterpreting them."""
+    actual = manifest.get("split_protocol")
+    if actual != "grouped_query_disjoint":
+        raise ValueError(f"Portable input requires grouped_query_disjoint; re-export bundle with protocol {actual!r}")
+    if expected is not None and expected != actual:
+        raise ValueError(f"Requested split protocol {expected} differs from bundle {actual}")
+    scope = "full_collection"
+    if manifest.get("corpus_scope") != scope:
+        raise ValueError(f"Split protocol {actual} requires corpus_scope={scope}")
+
+
+def _grouped_bundle_paths(manifest_path: Path, view: str):
+    """Use complete semantic and artifact validation on the new protocol path."""
+    from nemotron.recipes.retrieval_vl import inspect_vl_bundle
+
+    return inspect_vl_bundle(manifest_path, view="text_image" if view == "image_and_text" else view)
 
 
 def _file_sha256(path: Path) -> str:
