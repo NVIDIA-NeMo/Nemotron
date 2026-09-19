@@ -145,6 +145,33 @@ def test_vl_profile_native_override_preserves_image_processing(
     assert cmd[cmd.index("--mining.multimodal_encoder.q_max_length") + 1] == "512"
     assert cmd[cmd.index("--mining.multimodal_encoder.p_max_length") + 1] == "8192"
     assert cmd[cmd.index("--mining.tokenizer_force_default") + 1] == "true"
+    assert cmd[cmd.index("--mining.query_embedding_batch_size") + 1] == "1"
+    assert cmd[cmd.index("--mining.document_embedding_batch_size") + 1] == "1"
+
+
+@pytest.mark.parametrize("query_batch,document_batch", [(1, 1), (8, 2), (16, 16)])
+def test_native_mining_forwards_independent_encoder_batches(tmp_path, monkeypatch, query_batch, document_batch):
+    run = Mock(return_value=SimpleNamespace(returncode=0, stderr=""))
+    monkeypatch.setattr(data_prep.subprocess, "run", run)
+    (tmp_path / "train_mined.automodel.json").write_text('{"data": []}')
+    cfg = data_prep.DataPrepConfig(
+        output_dir=tmp_path,
+        mining_batch_size=7,
+        query_embedding_batch_size=query_batch,
+        document_embedding_batch_size=document_batch,
+    )
+    data_prep.run_mining(cfg, tmp_path / "train.json")
+    cmd = run.call_args.args[0]
+    assert cmd[cmd.index("--mining.query_embedding_batch_size") + 1] == str(query_batch)
+    assert cmd[cmd.index("--mining.document_embedding_batch_size") + 1] == str(document_batch)
+    assert cmd[cmd.index("--mining.mining_batch_size") + 1] == "7"
+
+
+@pytest.mark.parametrize("field", ["query_embedding_batch_size", "document_embedding_batch_size"])
+@pytest.mark.parametrize("value", [0, -1])
+def test_nonpositive_encoder_batches_rejected(field, value):
+    with pytest.raises(ValidationError):
+        data_prep.DataPrepConfig(**{field: value})
 
 
 def test_native_vl_mining_preserves_explicit_empty_prefixes(tmp_path, monkeypatch):

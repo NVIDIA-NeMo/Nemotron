@@ -62,8 +62,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
 
-from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 from pydantic import ConfigDict, Field, model_validator
+
+from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 if TYPE_CHECKING:
     from data_designer_retrieval_sdg import ConversionResult
@@ -175,6 +176,12 @@ class DataPrepConfig(RecipeSettings):
     hard_negatives_to_mine: int = Field(default=5, gt=0, description="Number of hard negatives to mine per query.")
     hard_neg_margin: float = Field(default=0.95, gt=0, le=1, description="Margin for hard negative selection.")
     mining_batch_size: int = Field(default=128, gt=0, description="Batch size for mining.")
+    query_embedding_batch_size: int = Field(
+        default=16, gt=0, description="Native mining query-encoding batch size, independent of similarity search."
+    )
+    document_embedding_batch_size: int = Field(
+        default=16, gt=0, description="Native mining document-encoding batch size; bound image encoder memory."
+    )
     query_max_length: int = Field(default=512, gt=0, description="Maximum query length for tokenization.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage length for tokenization.")
     query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs during mining.")
@@ -327,6 +334,10 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         str(cfg.hard_negatives_to_mine),
         "--mining.mining_batch_size",
         str(cfg.mining_batch_size),
+        "--mining.query_embedding_batch_size",
+        str(cfg.query_embedding_batch_size),
+        "--mining.document_embedding_batch_size",
+        str(cfg.document_embedding_batch_size),
         "--mining.query_max_length",
         str(cfg.query_max_length),
         "--mining.passage_max_length",
