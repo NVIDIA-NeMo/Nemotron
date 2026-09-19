@@ -107,7 +107,7 @@ class DataPrepConfig(RecipeSettings):
         default_factory=lambda data: data["artifact_root"] / "stage1_data_prep",
         description="Output directory for prepared training data.",
     )
-    retrieval_split_protocol: Literal["document_disjoint", "grouped_query_disjoint"] | None = Field(
+    retrieval_split_protocol: Literal["grouped_query_disjoint"] | None = Field(
         default=None,
         description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
     )

@@ -431,7 +431,7 @@ class EvalConfig(RecipeSettings):
         default=None,
         description="Portable evaluation view selected from sdg_input_path.",
     )
-    retrieval_split_protocol: Literal["document_disjoint", "grouped_query_disjoint"] | None = Field(
+    retrieval_split_protocol: Literal["grouped_query_disjoint"] | None = Field(
         default=None,
         description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
     )

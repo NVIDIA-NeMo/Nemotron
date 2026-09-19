@@ -27,7 +27,11 @@ def validate_grouped_query_bundle(paths: VLBundlePaths, units: dict, corpus: set
         raise RetrievalVLBundleError("Grouped query protocol must not claim document-disjoint assignments")
     # A view may exclude units with an unavailable modality, but never omit an
     # eligible page merely because it has no training or held-out positive.
-    eligible = {key for key, unit in units.items() if view == "text" or len(unit["images"]) == 1}
+    eligible = {
+        key
+        for key, unit in units.items()
+        if (bool(unit["text"].strip()) if view == "text" else len(unit["images"]) == 1)
+    }
     if corpus != eligible:
         raise RetrievalVLBundleError("Shared corpus must contain every view-eligible retrieval unit")
     by_view = manifest.get("query_assignments")

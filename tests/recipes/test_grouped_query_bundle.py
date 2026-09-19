@@ -7,14 +7,14 @@ import json
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+
 from nemotron.recipes import retrieval_vl
 from nemotron.recipes.embed.sdg_manifest import (
     resolve_portable_evaluation_input,
     resolve_portable_training_input,
     write_generation_manifest,
 )
-
-from tests.recipes.test_retrieval_bundle_v2 import _bundle, _inventory, _json, _jsonl
+from tests.recipes.test_retrieval_bundle_v2 import _document_bundle, _inventory, _json, _jsonl
 
 
 def _seal(root):
@@ -26,7 +26,7 @@ def _seal(root):
 
 
 def _grouped(root, view="image_and_text", validation=False):
-    _bundle(root, view)
+    _document_bundle(root, view)
     units = [json.loads(line) for line in (root / "retrieval_units.jsonl").read_text().splitlines()]
     rows = []
     for split in ("train", "validation", "evaluation"):
@@ -178,3 +178,13 @@ def test_recipe_protocol_assertion_requires_portable_input():
             retrieval_split_protocol="grouped_query_disjoint",
         )
         assert resolved.retrieval_split_protocol == "grouped_query_disjoint"
+
+
+@pytest.mark.parametrize("protocol", [None, "document_disjoint"])
+def test_obsolete_document_partition_protocol_is_rejected(tmp_path, protocol):
+    manifest = _grouped(tmp_path)
+    payload = json.loads(manifest.read_text())
+    payload["split_protocol"] = protocol
+    _json(manifest, payload)
+    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="grouped_query_disjoint"):
+        retrieval_vl.inspect_vl_bundle(manifest)

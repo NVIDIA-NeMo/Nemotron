@@ -104,7 +104,7 @@ class SDGConfig(RecipeSettings):
         default=0.8, ge=0, le=1, description="Portable source-document training fraction."
     )
     export_validation_ratio: float = Field(default=0.0, ge=0, le=1, description="Portable validation fraction.")
-    export_seed: int = Field(default=42, description="Portable source-document split seed.")
+    export_seed: int = Field(default=42, description="Portable query-group split seed.")
     strict_visual: bool = Field(
         default=False, description="Require accepted image-grounded candidates in portable export."
     )

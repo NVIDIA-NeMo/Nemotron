@@ -82,20 +82,12 @@ def _asset(root: Path, value: str, artifacts: dict) -> Path:
     return path
 
 
-def _units(root: Path, artifacts: dict, *, shared: bool = False) -> dict[str, dict[str, Any]]:
-    """Validate source-document assignments and source asset references."""
+def _units(root: Path, artifacts: dict) -> dict[str, dict[str, Any]]:
+    """Validate shared retrieval units and source asset references."""
     units = _jsonl(root / "retrieval_units.jsonl", "unit_id")
-    assignments = _load_json(root / "split_manifest.json").get("assignments")
-    if not shared and not isinstance(assignments, dict):
-        raise RetrievalVLBundleError("Split manifest requires document assignments")
     for unit in units.values():
         split = unit.get("split")
-        if shared:
-            valid_split = split == "shared" and isinstance(unit.get("document_id"), str) and bool(unit["document_id"])
-        else:
-            valid_split = (
-                split in {"train", "validation", "evaluation"} and assignments.get(unit.get("document_id")) == split
-            )
+        valid_split = split == "shared" and isinstance(unit.get("document_id"), str) and bool(unit["document_id"])
         if not valid_split:
             raise RetrievalVLBundleError(f"Source document split mismatch for {unit['unit_id']}")
         images = unit.get("images")
@@ -197,7 +189,7 @@ def _evaluation(
     if query_ids.intersection(queries):
         raise RetrievalVLBundleError("Duplicate query identifier across partitions")
     if set(documents) != corpus:
-        raise RetrievalVLBundleError("Synthetic evaluation corpus differs from evaluation partition")
+        raise RetrievalVLBundleError("Synthetic evaluation corpus differs from shared full collection")
     for identifier, row in documents.items():
         unit = units[identifier]
         if row.get("metadata", {}).get("source_document_id") != unit["document_id"]:
@@ -244,12 +236,13 @@ def inspect_unified_bundle(
     """Resolve v2 paths; local mode always checks inventory, hashes and identities."""
     root = manifest_path.parent
     producer_view = "image_and_text" if view == "text_image" else view
-    protocol = manifest.get("split_protocol", "document_disjoint")
-    if protocol not in {"document_disjoint", "grouped_query_disjoint"}:
-        raise RetrievalVLBundleError(f"Unknown split protocol: {protocol!r}")
-    shared = protocol == "grouped_query_disjoint"
-    scope = "full_collection" if shared else "partition"
-    if manifest.get("corpus_scope", "partition") != scope:
+    protocol = manifest.get("split_protocol")
+    if protocol != "grouped_query_disjoint":
+        raise RetrievalVLBundleError(
+            "Portable v2 requires grouped_query_disjoint; re-export document-partition bundles"
+        )
+    scope = "full_collection"
+    if manifest.get("corpus_scope") != scope:
         raise RetrievalVLBundleError(f"Split protocol {protocol} requires corpus_scope={scope}")
     optional_claims = {
         "status": "completed",
@@ -277,7 +270,7 @@ def inspect_unified_bundle(
         f"synthetic_eval/{producer_view}/corpus.jsonl",
         f"synthetic_eval/{producer_view}/qrels/test.tsv",
     ]
-    corpus_splits = ("shared",) * 3 if shared else ("train", "validation", "evaluation")
+    corpus_splits = ("shared",) * 3
     corpus_paths = [root / f"views/{producer_view}/corpus/{split}" for split in corpus_splits]
     for directory in corpus_paths:
         prefix = directory.relative_to(root).as_posix() + "/"
@@ -301,21 +294,14 @@ def inspect_unified_bundle(
         scope,
     )
     if verify:
-        corpus_ids = [_corpus_identity(directory, producer_view) for directory in corpus_paths]
-        units = _units(root, artifacts, shared=shared)
-        if shared:
-            corpora = [_corpus(root, corpus_paths[0], producer_view, "shared", units, artifacts)] * 3
-        else:
-            corpora = [
-                _corpus(root, directory, producer_view, split, units, artifacts)
-                for directory, split in zip(corpus_paths, corpus_splits, strict=True)
-            ]
+        corpus_id = _corpus_identity(paths.train_corpus, producer_view)
+        units = _units(root, artifacts)
+        corpus = _corpus(root, paths.train_corpus, producer_view, "shared", units, artifacts)
         query_ids: set[str] = set()
-        _training(paths.train, corpora[0], units, query_ids, corpus_splits[0], corpus_ids[0])
-        _training(paths.validation, corpora[1], units, query_ids, corpus_splits[1], corpus_ids[1])
-        _evaluation(root, paths.synthetic_eval, corpora[2], units, artifacts, query_ids, producer_view)
-        if shared:
-            from nemotron.recipes.retrieval_query_split import validate_grouped_query_bundle
+        _training(paths.train, corpus, units, query_ids, "shared", corpus_id)
+        _training(paths.validation, corpus, units, query_ids, "shared", corpus_id)
+        _evaluation(root, paths.synthetic_eval, corpus, units, artifacts, query_ids, producer_view)
+        from nemotron.recipes.retrieval_query_split import validate_grouped_query_bundle
 
-            validate_grouped_query_bundle(paths, units, corpora[0], producer_view)
+        validate_grouped_query_bundle(paths, units, corpus, producer_view)
     return paths
