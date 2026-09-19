@@ -69,8 +69,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 
-from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 from pydantic import ConfigDict, Field, model_validator
+
+from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -801,6 +802,14 @@ def _retrieve_and_evaluate(
     ignore_identical_ids: bool,
 ) -> tuple[dict, dict]:
     """Retrieve and score while optionally preserving legitimate ID collisions."""
+    # BEIR's loader represents an omitted optional title as None. Its dense
+    # search sorts by title + text before calling our encoder, so normalize
+    # absence at this shared boundary for both local and API evaluation.
+    # Copy records to preserve the loaded inputs and all multimodal metadata.
+    corpus = {
+        document_id: {**document, "title": "" if document.get("title") is None else document["title"]}
+        for document_id, document in corpus.items()
+    }
     if ignore_identical_ids:
         results = retriever.retrieve(corpus, queries)
         return retriever.evaluate(qrels, results, retriever.k_values), results
