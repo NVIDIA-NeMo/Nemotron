@@ -1,0 +1,273 @@
+# Multimodal Embedding Fine-Tuning EA Guide
+
+The `mistral3-vl` preview profile connects one canonical JSONL source to a
+portable `image_and_text` training view, native hard-negative mining, training,
+checkpoint reload, and a fresh retrieval evaluation.
+
+## Prepare your input
+
+Stage 0 expects a **UTF-8 JSONL file plus local page images**, not a PDF directory
+or pre-generated questions. Write one JSON object per line for each independently
+retrievable unit, usually one page. Render PDFs and extract/OCR their text before
+running the recipe; use your preferred parser. There is no dataset-specific
+ingestion or automatic PDF parsing in this profile.
+
+For example, prepare this directory:
+
+```text
+my-corpus/
+  sources.jsonl
+  pages/
+    manual-a-001.png
+    manual-a-002.png
+  contexts.jsonl       # optional explicit generation contexts
+```
+
+`sources.jsonl` follows the public `RetrievalSource` contract:
+
+```json
+{"unit_id":"manual-a-p1","document_id":"manual-a","text":"The pump operates between 10 and 30 degrees Celsius.","images":["pages/manual-a-001.png"],"page_number":1,"language":"en"}
+{"unit_id":"manual-a-p2","document_id":"manual-a","text":"The pressure chart shows the operating range.","images":["pages/manual-a-002.png"],"page_number":2,"language":"en"}
+```
+
+| Field | Required | Format and meaning |
+|---|---|---|
+| `unit_id` | Yes | Nonempty string, unique across the entire input file. Use a stable ID for each page or other retrievable unit; do not include tabs or line breaks. |
+| `document_id` | Yes | Nonempty string identifying the source document. Pages from the same document share this ID; use distinct IDs for different documents. This is not a train/test split assignment. |
+| `text` | Conditional | String containing the unit's extracted text or OCR, not a generated summary. Defaults to `""`; may be empty when an image is supplied. |
+| `images` | Conditional | List containing zero or one local image path. Defaults to `[]`. Use PNG, JPEG, or WebP. Relative paths resolve from the directory containing `sources.jsonl`, not the working directory; absolute paths also work. |
+| `page_number` | No | Integer starting at 1 for paginated documents. It records provenance; it does not reorder the input. |
+| `language` | No | Nonempty language string, such as `"en"`. Defaults to `"source"` to preserve the source language. |
+| `source_uri` | No | String recording the original source location, or `null`. This is provenance only: the recipe does not download this URI. |
+
+At least one of nonblank `text` or a local image is required. The source contract
+also accepts image-only and text-only units, for example:
+
+```json
+{"unit_id":"chart-b-p1","document_id":"chart-b","images":["pages/chart-b-001.png"]}
+{"unit_id":"notes-c-s1","document_id":"notes-c","text":"Store replacement parts in a dry location."}
+```
+
+These are alternative examples; create the referenced chart image if you use
+that row. For the recipe's `image_and_text` path, supply each page image with its
+matching extracted text where available. Image-only/text-only inputs are valid
+sources, but usable training records depend on the selected export view and
+the evidence supporting each generated query.
+
+Keep units in document reading order. The profile's automatic document-context
+planner preserves input order within each document/language; it does not sort by
+`page_number`. Escape embedded newlines in JSON strings as `\n` rather than
+splitting a record across lines. Do not wrap the file in a JSON array.
+
+The input loader rejects empty files, malformed records, unknown fields,
+duplicate `unit_id` values, units without content, more than one image per unit,
+and missing image files. Images must be accessible locally to the process running
+Stage 0; HTTP image URLs are not downloaded. Do not add benchmark labels,
+questions, answers, negatives, or split assignments to source rows: SDG and the
+subsequent preparation stages produce the training artifacts.
+
+Optionally, `contexts.jsonl` can specify which units should be considered together
+when generating questions:
+
+```json
+{"context_id":"manual-a-operating-limits","unit_ids":["manual-a-p1","manual-a-p2"],"language":"en"}
+```
+
+Each context needs a unique nonempty `context_id` and a nonempty `unit_ids` list
+referencing existing sources; `language` is optional and defaults to `"source"`.
+Explicit contexts replace automatic document grouping and can span documents.
+They still undergo the unit/character bounds described below. The profile also
+proposes related cross-document contexts by default, including when an explicit
+contexts file is supplied. To generate only from your supplied memberships, keep
+each context within both bounds and set
+`sdg_options.related_contexts_per_context=0`.
+They control generation evidence, **not query split groups**. Units not selected
+by a context remain in the exported eligible corpus.
+
+After configuring the model endpoints and credentials in the following section,
+run with your source file:
+
+```bash
+nemotron embed sdg -c mistral3-vl sources_file=/absolute/path/to/my-corpus/sources.jsonl
+# Optional explicit contexts:
+nemotron embed sdg -c mistral3-vl \
+  sources_file=/absolute/path/to/my-corpus/sources.jsonl \
+  contexts_file=/absolute/path/to/my-corpus/contexts.jsonl
+```
+
+Choose one invocation, not both for the same output directory. No example corpus
+is downloaded automatically by this profile.
+
+## Configure and run the preview
+
+Each stage declares dependencies in its own `pyproject.toml`. The CLI selects
+the `vl` extra for this profile and the `text` extra for existing text profiles.
+These extras preserve their different Transformers requirements. AutoModel uses
+immutable commit archives from the companion
+[AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915); archive URLs
+prevent AutoModel's repository-local uv index policy from replacing the recipe's
+CUDA 12.9 Torch source. The retrieval-SDG plugin uses a commit-pinned Git source
+from the consolidated public [DataDesignerPlugins multimodal SDG EA candidate](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/92)
+(the exact reviewed commit is pinned in the Stage 0 project).
+No manually built wheels, private scripts, or private package index are required.
+The checked-in locks resolve both mutually exclusive extras from those public
+sources.
+
+Stage 0 and Stage 1 use released Data Designer 0.9.1, without the experimental
+core patch. The plugin's `retrieval-structured` column accepts one complete bare
+or JSON-fenced object, rejects malformed or ambiguous JSON, and delegates schema
+validation and bounded correction retries to Data Designer's native structured
+generation path. It does not extract JSON from prose, repair values, prune
+fields, or turn negative judge decisions into passes. Do not bypass schema
+checks or quality gates to compensate for parsing failures.
+
+For direct stage invocation, select the same extra, for example:
+
+```bash
+uv run --project src/nemotron/recipes/embed/stage1_data_prep --extra vl \
+  python src/nemotron/recipes/embed/stage1_data_prep/data_prep.py \
+  --config src/nemotron/recipes/embed/stage1_data_prep/config/mistral3-vl.yaml
+```
+
+Set `MISTRAL3_VL_EMBED_MODEL` to a checkpoint available to your Hugging Face
+credentials, provide sources producing enough independent query groups for both
+the 80% training and 20% evaluation splits, and run locally. Documents intentionally
+remain shared across query partitions. The `nemotron`
+executable must be installed from this same reviewed checkout; use
+`uv run --no-sync nemotron` in place of `nemotron` below if needed:
+
+The EA recipe supports embedding fine-tuning; multimodal reranking is deferred.
+In-batch negatives are disabled because unrolled queries can share positives.
+Keep `do_distributed_inbatch_negative=false` until positive-ID masking is supported;
+training uses each query's mined negatives. The positive-ID unrolling changes are
+deferred. Mining, training, and local evaluation use the same 512-token query
+and 4096-token passage limits. Remote model code is disabled by default.
+
+```bash
+export NVIDIA_API_KEY=your_endpoint_credential
+export NVIDIA_API_BASE_URL=https://your-authorized-openai-compatible-endpoint.example/v1
+export MISTRAL3_SDG_QA_MODEL=your-image-capable-generation-model
+export MISTRAL3_SDG_JUDGE_MODEL=your-image-capable-judge-model
+export MISTRAL3_VL_EMBED_MODEL=your-org/your-multimodal-embedding-checkpoint
+
+nemotron embed sdg -c mistral3-vl sources_file=/absolute/path/to/sources.jsonl
+nemotron embed prep -c mistral3-vl
+nemotron embed finetune -c mistral3-vl \
+  num_epochs=null max_steps=2 global_batch_size=2 local_batch_size=1 \
+  train_n_passages=2 lr_warmup_steps=0 \
+  attn_implementation=sdpa optimizer_backend=flash_adamw
+test -f output/embed/mistral3-vl-preview/stage2_finetune/checkpoints/LATEST/model/consolidated/config.json
+nemotron embed eval -c mistral3-vl eval_base=true eval_finetuned=true eval_nim=false
+python -c 'import json; p="output/embed/mistral3-vl-preview/stage3_eval/eval_results.json"; r=json.load(open(p)); assert {"base","finetuned"} <= r.keys()'
+```
+
+The generator and judge endpoints must accept images. There are two explicit
+hosted model roles, no implicit fallback and no SDG embedding-model requirement.
+The `mistral3-vl` SDG profile selects `sdg_workflow=retrieval_first`: context
+summaries, direct image/text queries, query-only standalone/leak checks,
+source-reading relevance and graded positive localization. Requested style is
+diagnostic. No generated answers, dataset loaders, benchmark-specific repairs,
+or preconverted handoff bypasses are involved. Existing text profiles retain
+`legacy_qa` and their prior behavior.
+
+For explicit multi-page or cross-document questions pass
+`contexts_file=/absolute/path/to/contexts.jsonl`, whose rows have `context_id`,
+`unit_ids`, and optional `language`. Memberships are partitioned into at most
+`sdg_max_units_per_context` units (default 8), never truncated. A single unit
+over the character bound must be preprocessed by the caller. Context membership
+does not imply query grouping.
+The complete eligible corpus, including unselected distractors, is exported.
+
+The producer writes immutable state under `<output_dir>/multimodal`, which is
+`stage0_sdg/multimodal` in the profile. `corpus_id` supplies the dataset identity
+and `sdg_batch_size` controls request batching; legacy QA settings `artifact_path`,
+`dataset_name`, and `buffer_size` do not control this workflow. Stage 0 owns the
+exported train/evaluation split. Stage 1 validates and mines that existing split;
+its legacy conversion ratios and quality filter do not apply to portable input.
+The profile uses local native AutoModel mining, so endpoint-only mining settings
+are omitted.
+
+Inspect failure/attempt evidence before explicitly choosing `resume=always`. Changed
+sources, settings or code cannot reuse the run. Stage 0 validates the full
+portable bundle before publishing its top-level `generation_result.json`;
+Stage 1 performs the same full validation before native AutoModel mining.
+No HNM ranking/negative selection or training optimizer behavior changes here.
+
+`sdg_options` forwards the public producer's generic controls, with validation by
+the same public config model. For example:
+
+```yaml
+sdg_options:
+  context_strategy: document
+  max_context_chars: 100000
+  related_contexts_per_context: 1
+  judge_summaries: true
+  summary_fraction: 0.5  # or summary_count; never both
+  group_near_duplicates: true
+  relevance_threshold: 4
+  self_sufficiency_threshold: 4
+  require_verbatim_quotes: false  # quote fidelity remains diagnostic
+  missing_response_attempts: 3  # only missing rows, never raised runtime failures
+  instructions_per_context: 1
+  instructions:
+    - name: operating-limits
+      instruction: Ask about substantive operating limits in the evidence.
+      query_type: comparison
+      format: question
+      persona: maintenance engineer
+      modality: text_and_image
+      answerability: evidence may span multiple units
+sdg_generator_options:
+  temperature: 0.6
+  max_tokens: 8192
+sdg_judge_options:
+  temperature: 0.0
+  max_tokens: 4096
+```
+
+Model option mappings accept the public `ModelSettings` fields, including
+independent endpoint, credential **environment-variable name**, timeout and
+`extra_body`. Both credentials are checked before generation; never put secrets
+in model option dictionaries. Unknown fields fail. Recipe-owned paths, corpus ID,
+execution bounds, seed, split ratios, resume and model-role objects cannot be
+overridden in `sdg_options`; use their named recipe settings. No producer settings
+are silently discarded. These option mappings require `sdg_workflow=retrieval_first`;
+nonempty mappings are rejected in `legacy_qa`.
+
+Exact source-membership/language summary deduplication is always enabled.
+Optional `summary_near_duplicate_threshold` is useful only with larger bounded
+contexts: its 90% source-unit Jaccard guard cannot match distinct memberships
+at the default eight-unit limit (their maximum overlap is 7/8). For example,
+nine units contained in ten can meet the guard if both the unit and character
+bounds preserve those contexts. The default-bound example therefore omits the
+near-summary setting. `group_near_duplicates` is a separate query-grouping
+control applied before train/evaluation splitting.
+
+This is an unreleased EA candidate. CPU contract tests and mocked inference do
+not qualify hosted-model quality or the full GPU path. Before an EA package
+release, record a bounded authorized inference smoke test and native mining,
+BF16 checkpoint/resume, and matched fresh base/final evaluation. Previous
+internal experiment results are not validation of this consolidated producer.
+
+The default evaluation above uses the held-out split from the same synthetic
+generation run. It is a pipeline smoke test, not independent model-quality
+evidence. For the latter, point the evaluator at a separately sourced BEIR
+dataset and its portable image root:
+
+```bash
+nemotron embed eval -c mistral3-vl \
+  sdg_input_path=null retrieval_view=null \
+  eval_data_path=/absolute/path/to/independent-beir \
+  image_root=/absolute/path/to/independent-bundle \
+  output_dir=./output/embed/mistral3-vl-preview/stage3_eval_independent \
+  eval_base=true eval_finetuned=true eval_nim=false
+```
+
+Multimodal Stages 1-3 currently require local execution. Container dependency
+selection remains unvalidated, so Docker and Slurm invocations fail before
+submission. Text containers select the `text` extra; use a fresh container for
+each stage because the shared wrapper does not track dependency changes in its
+environment-ready marker. CPU configuration tests do not establish GPU or
+container execution compatibility. Lock generation establishes resolver
+compatibility only; stage-local dependency installation and a fresh end-to-end
+run remain to be validated.

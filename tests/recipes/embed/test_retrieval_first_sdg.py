@@ -31,6 +31,12 @@ def config(tmp_path: Path, **updates) -> SDGConfig:
     )
 
 
+@pytest.mark.parametrize("field", ["sdg_options", "sdg_generator_options", "sdg_judge_options"])
+def test_retrieval_first_options_are_rejected_by_legacy_workflow(field):
+    with pytest.raises(ValidationError, match="require sdg_workflow='retrieval_first'"):
+        SDGConfig(**{field: {"temperature": 0.5}})
+
+
 def test_generic_configuration_mapping(tmp_path):
     mapped = build_retrieval_first_config(config(tmp_path, max_parallel_requests_for_gen=16, resume="always"))
     assert mapped.generator.model == "configured-generator"

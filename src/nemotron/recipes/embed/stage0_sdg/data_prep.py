@@ -203,6 +203,10 @@ class SDGConfig(RecipeSettings):
                 raise ValueError(
                     "retrieval_first uses an explicit bounded source/context input, not preview or strict_visual"
                 )
+        elif self.sdg_options or self.sdg_generator_options or self.sdg_judge_options:
+            raise ValueError(
+                "sdg_options, sdg_generator_options, and sdg_judge_options require sdg_workflow='retrieval_first'"
+            )
         return self
 
     # --- Data Designer execution -----------------------------------------------

@@ -2,6 +2,9 @@
 
 Adapt an embedding model to your domain-specific data, then evaluate and deploy it with this complete six-stage pipeline.
 
+For text/image retrieval with the `mistral3-vl` profile, follow the
+[multimodal embedding EA guide](multimodal-ea.md).
+
 ## Overview
 
 This recipe fine-tunes the Nemotron 3 Embed checkpoint for domain-specific retrieval and deploys the resulting checkpoint with Retriever NIM or vLLM.

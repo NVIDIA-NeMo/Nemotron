@@ -19,21 +19,8 @@ trust_remote_code: false
 tokenizer_force_default: true
 image_longest_edge: null
 use_text_in_document: true
-quality_threshold: 7.0
-
-train_ratio: 0.8
-val_ratio: 0
-test_ratio: 0.2
-conversion_seed: 42
-max_pos_docs: 5
-use_group_id_in_eval: false
-split_strategy: random
-groups_json: null
 
 mining_backend: automodel
-mining_api_url: http://127.0.0.1:8000
-mining_api_model: null
-mining_embedding_dimension: 2048
 mining_use_images: true
 attn_implementation: sdpa
 hard_negatives_to_mine: 5

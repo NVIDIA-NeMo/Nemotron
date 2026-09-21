@@ -30,8 +30,6 @@ export_validation_ratio: 0.0
 export_seed: 42
 strict_visual: false
 output_dir: ${artifact_root}/stage0_sdg
-artifact_path: ${artifact_root}/stage0_sdg/artifacts
-dataset_name: multimodal_retrieval
 resume: never
 preview: false
 

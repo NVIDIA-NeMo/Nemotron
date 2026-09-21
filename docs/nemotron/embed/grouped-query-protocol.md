@@ -1,8 +1,8 @@
 # Grouped query-disjoint retrieval over a fixed collection
 
-Stacked on the multimodal recipe implementation. This consumer extension lets
-a producer hold out query groups while keeping the searchable collection
-fixed. Documents may appear in training positives and evaluation positives;
+The multimodal recipe and its retrieval-SDG producer hold out query groups
+while keeping the searchable collection fixed. Documents may appear in training
+positives and evaluation positives;
 that is intentional for in-domain adaptation, not an unseen-document claim.
 
 ## Recipe configuration
@@ -73,17 +73,18 @@ cannot be guaranteed. Sharing a document, page, summary or generation context
 does not automatically join queries. Dataset-specific grouping belongs in
 experiment adapters, not this consumer or the general producer.
 
-This PR adds the **consumer contract**, not a new SDG generator or a default
-VLM. Producers must explicitly implement this export. It does not retrofit
-previous preconverted-input experiments, and it does not assert that synthetic
-qrels are independent gold labels. Keep a separate independent-query evaluation
-when measuring generalization beyond synthetic-query style.
+The public DataDesignerPlugins retrieval-first producer emits this contract;
+see the [multimodal embedding EA guide](multimodal-ea.md) for the integrated
+source-to-evaluation workflow. Other producers must implement the same export
+and validation rules. Synthetic qrels are not independent gold labels. Keep a
+separate independent-query evaluation when measuring generalization beyond
+synthetic-query style.
 
 ## Precision and mining
 
 This protocol does not change the training optimizer or checkpoint dtype.
-The existing VL configuration uses BF16 model parameters and Transformer
-Engine FusedAdam with FP32 master weights and FP32 first/second moments.
+The default VL configuration uses BF16 model parameters and FlashAdamW with
+quantized optimizer states and 32-bit master weights.
 The exported model remains BF16; resumable training checkpoints additionally
 contain optimizer state. Full-FP32 model training is not required by this feature.
 
