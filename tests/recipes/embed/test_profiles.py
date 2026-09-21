@@ -272,22 +272,24 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
 def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("MISTRAL3_SDG_ARTIFACT_MODEL", "public/image-artifact-model")
+    monkeypatch.delenv("MISTRAL3_SDG_ARTIFACT_MODEL", raising=False)
     monkeypatch.setenv("MISTRAL3_SDG_QA_MODEL", "public/image-qa-model")
     monkeypatch.setenv("MISTRAL3_SDG_JUDGE_MODEL", "public/image-judge-model")
-    monkeypatch.setenv("MISTRAL3_SDG_EMBED_MODEL", "public/text-embedding-model")
+    monkeypatch.delenv("MISTRAL3_SDG_EMBED_MODEL", raising=False)
     monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "nvidia/test-mistral3-vl-embed")
-    sdg = _load_profile_config("mistral3-vl", "stage0_sdg", SDGConfig)
+    raw_sdg = OmegaConf.to_container(load_config(CONFIG_ROOT / "stage0_sdg/config/mistral3-vl.yaml"), resolve=True)
+    raw_sdg.pop("run", None)
+    raw_sdg["sources_file"] = "/operator/sources.jsonl"
+    sdg = SDGConfig.model_validate(raw_sdg)
     prep = _load_profile_config("mistral3-vl", "stage1_data_prep", DataPrepConfig)
     finetune = _load_profile_config("mistral3-vl", "stage2_finetune", FinetuneConfig)
     evaluate = _load_profile_config("mistral3-vl", "stage3_eval", EvalConfig)
 
-    assert sdg.sources_file is None
+    assert sdg.sources_file == Path("/operator/sources.jsonl")
+    assert sdg.sdg_workflow == "retrieval_first"
     assert sdg.portable_export is True
-    assert sdg.artifact_extraction_model == "public/image-artifact-model"
     assert sdg.qa_generation_model == "public/image-qa-model"
     assert sdg.quality_judge_model == "public/image-judge-model"
-    assert sdg.embed_model == "public/text-embedding-model"
     assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert prep.train_input_file is None
     assert prep.retrieval_view == "image_and_text"

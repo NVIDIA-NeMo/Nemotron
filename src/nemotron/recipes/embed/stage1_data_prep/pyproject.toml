@@ -23,7 +23,7 @@ vl = ["nemo-automodel", "transformers==5.15.1", "torchvision>=0.25,<0.26"]
 conflicts = [[{ extra = "text" }, { extra = "vl" }]]
 
 [tool.uv.sources]
-data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "c2871e19b668f2d9c2f8d5e9eadbc76f582b288e", subdirectory = "plugins/data-designer-retrieval-sdg" }
+data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "c786eb3699a14d35b077066b93d694bc59ab8791", subdirectory = "plugins/data-designer-retrieval-sdg" }
 nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz", extra = "vl" }
 torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }

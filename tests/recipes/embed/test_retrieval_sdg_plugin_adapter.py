@@ -55,6 +55,11 @@ def test_generation_fields_have_explicit_ownership() -> None:
         "similarity_threshold",
     }
     recipe_fields = {
+        "sdg_workflow",
+        "contexts_file",
+        "sdg_max_units_per_context",
+        "sdg_batch_size",
+        "sdg_credential_env",
         "artifact_root",
         "corpus_dir",
         "sources_file",
@@ -94,6 +99,9 @@ def test_conversion_fields_have_explicit_ownership() -> None:
         "hard_neg_margin",
         "hard_negatives_to_mine",
         "mining_batch_size",
+        "query_embedding_batch_size",
+        "document_embedding_batch_size",
+        "retrieval_split_protocol",
         "model_family",
         "image_longest_edge",
         "use_text_in_document",
