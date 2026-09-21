@@ -1,6 +1,6 @@
 ---
 name: nemotron-customize
-description: "Configure and chain repo-native Nemotron steps for curation/translation, tokenizer extension, SDG/BYOB, training/alignment, conversion, optimization, and evaluation. Use for Nemotron step or pipeline requests."
+description: "Configure and chain repo-native Nemotron steps for curation, tokenizer extension, SDG/BYOB, training, conversion, optimization, and evaluation."
 license: Apache-2.0
 metadata:
   version: 0.1.1
@@ -38,20 +38,35 @@ pipelines. For frontend, dashboard, visualization, generic ML advice,
 billing/access, or unrelated coding tasks, stop with a short scope note and do
 not inspect the step catalog or edit files in that turn.
 
+## Inputs
+
+Required:
+
+- The requested outcome and enough concrete values to run the selected steps:
+  input data, model/checkpoint or endpoint, and output location.
+
+Optional when the selected route needs them:
+
+- Language, backend, hardware/GPU count, metrics, task IDs, tokenizer, and
+  step/config preferences.
+- Auth environment-variable names for hosted services. Accept names only;
+  never request, inline, or commit secret values.
+
+Resolve omitted values by consulting, in order: selected state/config files,
+explicit invocation arguments, established agent context, then the current user
+prompt. An explicit user correction overrides an older source. If a required
+value remains unknown, ask for it or return `Blocked`; do not guess it.
+
 ## Prerequisites
 
 - A checkout of the Nemotron repo with `src/nemotron/steps/` present; run from
-  the repo root.
-- `uv` available to invoke `uv run nemotron steps ...`.
-- For remote execution: an env profile TOML (`NEMOTRON_ENV_FILE` or
+  the repo root with `uv` available.
+- For remote execution, an env profile TOML (`NEMOTRON_ENV_FILE` or
   `env*.toml`) with a section matching the selected step.
-- For hosted services (translation, hosted eval): the auth environment variable
-  expected by the step (for example `NVIDIA_API_KEY`), exported in the
-  environment — never inlined or committed.
-- Persona MCQ also needs its configured model endpoint variables and may need
+- Hosted-service credentials must already be exported through the environment
+  variable expected by the selected step.
+- Persona MCQ also needs its configured endpoint variables and may require
   `NGC_API_KEY` for managed persona assets and `HF_TOKEN` for gated models.
-- User-provided concrete values (model/checkpoint, data paths, output dir,
-  hardware/GPU count) before any command is presented as runnable.
 
 ## Limitations
 
