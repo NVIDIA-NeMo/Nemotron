@@ -356,12 +356,99 @@ alias advertised by NIM or passed to vLLM as `--served-model-name`.
 
 The `mistral3-vl` preview profile connects one canonical JSONL source to a
 portable `image_and_text` training view, native hard-negative mining, training,
-checkpoint reload, and a fresh retrieval evaluation. Each source line follows
-the public `RetrievalSource` contract; image paths are relative to the JSONL:
+checkpoint reload, and a fresh retrieval evaluation.
+
+#### Prepare your input
+
+Stage 0 expects a **UTF-8 JSONL file plus local page images**, not a PDF directory
+or pre-generated questions. Write one JSON object per line for each independently
+retrievable unit, usually one page. Render PDFs and extract/OCR their text before
+running the recipe; use your preferred parser. There is no dataset-specific
+ingestion or automatic PDF parsing in this profile.
+
+For example, prepare this directory:
+
+```text
+my-corpus/
+  sources.jsonl
+  pages/
+    manual-a-001.png
+    manual-a-002.png
+  contexts.jsonl       # optional explicit generation contexts
+```
+
+`sources.jsonl` follows the public `RetrievalSource` contract:
 
 ```json
-{"unit_id":"page-001","document_id":"manual-a","text":"Public source text for page 1.","images":["pages/page-001.png"],"page_number":1}
+{"unit_id":"manual-a-p1","document_id":"manual-a","text":"The pump operates between 10 and 30 degrees Celsius.","images":["pages/manual-a-001.png"],"page_number":1,"language":"en"}
+{"unit_id":"manual-a-p2","document_id":"manual-a","text":"The pressure chart shows the operating range.","images":["pages/manual-a-002.png"],"page_number":2,"language":"en"}
 ```
+
+| Field | Required | Format and meaning |
+|---|---|---|
+| `unit_id` | Yes | Nonempty string, unique across the entire input file. Use a stable ID for each page or other retrievable unit; do not include tabs or line breaks. |
+| `document_id` | Yes | Nonempty string identifying the source document. Pages from the same document share this ID; use distinct IDs for different documents. This is not a train/test split assignment. |
+| `text` | Conditional | String containing the unit's extracted text or OCR, not a generated summary. Defaults to `""`; may be empty when an image is supplied. |
+| `images` | Conditional | List containing zero or one local image path. Defaults to `[]`. Use PNG, JPEG, or WebP. Relative paths resolve from the directory containing `sources.jsonl`, not the working directory; absolute paths also work. |
+| `page_number` | No | Integer starting at 1 for paginated documents. It records provenance; it does not reorder the input. |
+| `language` | No | Nonempty language string, such as `"en"`. Defaults to `"source"` to preserve the source language. |
+| `source_uri` | No | String recording the original source location, or `null`. This is provenance only: the recipe does not download this URI. |
+
+At least one of nonblank `text` or a local image is required. The source contract
+also accepts image-only and text-only units, for example:
+
+```json
+{"unit_id":"chart-b-p1","document_id":"chart-b","images":["pages/chart-b-001.png"]}
+{"unit_id":"notes-c-s1","document_id":"notes-c","text":"Store replacement parts in a dry location."}
+```
+
+These are alternative examples; create the referenced chart image if you use
+that row. For the recipe's `image_and_text` path, supply each page image with its
+matching extracted text where available. Image-only/text-only inputs are valid
+sources, but usable training records depend on the selected export view and
+the evidence supporting each generated query.
+
+Keep units in document reading order. The profile's automatic document-context
+planner preserves input order within each document/language; it does not sort by
+`page_number`. Escape embedded newlines in JSON strings as `\n` rather than
+splitting a record across lines. Do not wrap the file in a JSON array.
+
+The input loader rejects empty files, malformed records, unknown fields,
+duplicate `unit_id` values, units without content, more than one image per unit,
+and missing image files. Images must be accessible locally to the process running
+Stage 0; HTTP image URLs are not downloaded. Do not add benchmark labels,
+questions, answers, negatives, or split assignments to source rows: SDG and the
+subsequent preparation stages produce the training artifacts.
+
+Optionally, `contexts.jsonl` can specify which units should be considered together
+when generating questions:
+
+```json
+{"context_id":"manual-a-operating-limits","unit_ids":["manual-a-p1","manual-a-p2"],"language":"en"}
+```
+
+Each context needs a unique nonempty `context_id` and a nonempty `unit_ids` list
+referencing existing sources; `language` is optional and defaults to `"source"`.
+Explicit contexts override automatic document contexts and can span documents.
+They control generation evidence, **not query split groups**. Units not selected
+by a context remain in the exported eligible corpus. The bounds and partitioning
+behavior are described below.
+
+After configuring the model endpoints and credentials in the following section,
+run with your source file:
+
+```bash
+nemotron embed sdg -c mistral3-vl sources_file=/absolute/path/to/my-corpus/sources.jsonl
+# Optional explicit contexts:
+nemotron embed sdg -c mistral3-vl \
+  sources_file=/absolute/path/to/my-corpus/sources.jsonl \
+  contexts_file=/absolute/path/to/my-corpus/contexts.jsonl
+```
+
+Choose one invocation, not both for the same output directory. No example corpus
+is downloaded automatically by this profile.
+
+#### Configure and run the preview
 
 Each stage declares dependencies in its own `pyproject.toml`. The CLI selects
 the `vl` extra for this profile and the `text` extra for existing text profiles.
