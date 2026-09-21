@@ -54,7 +54,7 @@ matching extracted text where available. Image-only/text-only inputs are valid
 sources, but usable training records depend on the selected export view and
 the evidence supporting each generated query.
 
-Keep units in document reading order. The profile's automatic document-context
+Keep units in document reading order. The profile's automatic section
 planner preserves input order within each document/language; it does not sort by
 `page_number`. Escape embedded newlines in JSON strings as `\n` rather than
 splitting a record across lines. Do not wrap the file in a JSON array.
@@ -75,12 +75,12 @@ when generating questions:
 
 Each context needs a unique nonempty `context_id` and a nonempty `unit_ids` list
 referencing existing sources; `language` is optional and defaults to `"source"`.
-Explicit contexts replace automatic document grouping and can span documents.
+Explicit contexts replace automatic section grouping and can span documents.
 They still undergo the unit/character bounds described below. The profile also
-proposes related cross-document contexts by default, including when an explicit
+proposes semantic summary combinations by default, including when an explicit
 contexts file is supplied. To generate only from your supplied memberships, keep
 each context within both bounds and set
-`sdg_options.related_contexts_per_context=0`.
+`sdg_options.combination_iterations=0`.
 They control generation evidence, **not query split groups**. Units not selected
 by a context remain in the exported eligible corpus.
 
@@ -162,10 +162,20 @@ python -c 'import json; p="output/embed/mistral3-vl-preview/stage3_eval/eval_res
 ```
 
 The generator and judge endpoints must accept images. There are two explicit
-hosted model roles, no implicit fallback and no SDG embedding-model requirement.
-The `mistral3-vl` SDG profile selects `sdg_workflow=retrieval_first`: context
-summaries, direct image/text queries, query-only standalone/leak checks,
-source-reading relevance and graded positive localization. Requested style is
+hosted model roles and no implicit fallback. Semantic summary combinations also
+use the local, revision-pinned `Qwen/Qwen3-Embedding-0.6B` model (CPU by default),
+installed through the plugin's `multimodal` extra. Model weights use the Hugging
+Face cache; `sdg_options.summary_embedding_device` can select a local GPU.
+The `mistral3-vl` profile selects `sdg_workflow=retrieval_first`: separate visual
+enrichment, document/corpus descriptions, five-unit section summaries, 20 seeded
+semantic clustering iterations, summary grading/selection, then bounded queries.
+Sections preserve whole generic units in input order; no page identifiers or
+benchmark delimiters are parsed. Language groups with fewer than twelve summaries
+skip semantic combinations. Detailed standalone-query templates and weighted
+text/figure/table instructions follow the adapted reference behavior.
+Self-sufficiency sees the original source text. Answer leakage and observed
+query labels are judged separately using only the query. Relevance and positive
+localization see the original source text/images. Requested style is
 diagnostic. No generated answers, dataset loaders, benchmark-specific repairs,
 or preconverted handoff bypasses are involved. Existing text profiles retain
 `legacy_qa` and their prior behavior.
@@ -198,31 +208,26 @@ the same public config model. For example:
 
 ```yaml
 sdg_options:
-  context_strategy: document
+  context_strategy: sections
+  section_size: 5
+  combination_iterations: 20
+  summary_embedding_model: Qwen/Qwen3-Embedding-0.6B
+  summary_embedding_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  summary_embedding_device: cpu
   max_context_chars: 100000
-  related_contexts_per_context: 1
   judge_summaries: true
-  summary_fraction: 0.5  # or summary_count; never both
+  summary_count: 400  # or clear this and set summary_fraction; never both
   group_near_duplicates: true
   relevance_threshold: 4
   self_sufficiency_threshold: 4
   require_verbatim_quotes: false  # quote fidelity remains diagnostic
   missing_response_attempts: 3  # only missing rows, never raised runtime failures
-  instructions_per_context: 1
-  instructions:
-    - name: operating-limits
-      instruction: Ask about substantive operating limits in the evidence.
-      query_type: comparison
-      format: question
-      persona: maintenance engineer
-      modality: text_and_image
-      answerability: evidence may span multiple units
 sdg_generator_options:
   temperature: 0.6
   max_tokens: 8192
 sdg_judge_options:
-  temperature: 0.0
-  max_tokens: 4096
+  temperature: 0.6
+  max_tokens: 8192
 ```
 
 Model option mappings accept the public `ModelSettings` fields, including
@@ -234,14 +239,26 @@ overridden in `sdg_options`; use their named recipe settings. No producer settin
 are silently discarded. These option mappings require `sdg_workflow=retrieval_first`;
 nonempty mappings are rejected in `legacy_qa`.
 
-Exact source-membership/language summary deduplication is always enabled.
-Optional `summary_near_duplicate_threshold` is useful only with larger bounded
-contexts: its 90% source-unit Jaccard guard cannot match distinct memberships
-at the default eight-unit limit (their maximum overlap is 7/8). For example,
-nine units contained in ten can meet the guard if both the unit and character
-bounds preserve those contexts. The default-bound example therefore omits the
-near-summary setting. `group_near_duplicates` is a separate query-grouping
-control applied before train/evaluation splitting.
+All four summary grades (information richness, persona relevance,
+query-generation potential and conceptual clarity) must reach 4 by default.
+Exact membership/language deduplication is always enabled. Optional
+`summary_near_duplicate_threshold` requires at least 90% source overlap, matching
+document sets and protected numeric/negation tokens. Distinct eight-unit contexts
+cannot meet the overlap guard in the simpler `unit`/`document` modes. The new
+`sections` mode deduplicates before generation bounding, allowing larger combined
+summaries to qualify; character bounds still apply. The example omits this
+optional setting. `group_near_duplicates` independently groups equivalent
+queries before splitting.
+
+The templates/sampling policy are adapted from the MIT-licensed ViDoRe v3
+implementation, with attribution packaged by the plugin. All inputs, IDs and
+outputs remain generic; no dataset loader or benchmark-specific schema is used.
+Context-aware self-sufficiency reproduces the reference judging policy rather
+than measuring query-only standalone quality. Do not interpret matching thresholds
+as proof of matching retention. For a controlled Qwen run, explicitly set both
+roles to temperature 0.6, max_tokens 8192, and the provider-supported
+`extra_body: {chat_template_kwargs: {enable_thinking: false}}`. Keep these
+provider-specific flags out of configurations for endpoints that do not support them.
 
 This is an unreleased EA candidate. CPU contract tests and mocked inference do
 not qualify hosted-model quality or the full GPU path. Before an EA package

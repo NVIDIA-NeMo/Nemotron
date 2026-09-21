@@ -161,3 +161,20 @@ def test_recipe_validates_bundle_and_publishes_single_stage_handoff(tmp_path, mo
     top = json.loads((tmp_path / "output/generation_result.json").read_text())
     assert top["portable_bundle_manifest"] == "multimodal/bundle/run_manifest.json"
     assert top["portable_bundle_sha256"]
+
+
+def test_generic_semantic_planning_controls_are_forwarded(tmp_path):
+    options = {
+        "context_strategy": "sections",
+        "section_size": 5,
+        "combination_iterations": 20,
+        "summary_embedding_model": "operator/summary-embedding",
+        "summary_embedding_revision": "a" * 40,
+        "summary_embedding_device": "cpu",
+        "summary_count": 400,
+        "persona": "A reader comparing maintenance procedures.",
+    }
+    mapped = build_retrieval_first_config(config(tmp_path, sdg_options=options))
+    assert all(getattr(mapped, key) == value for key, value in options.items())
+    assert mapped.sources_file == tmp_path / "sources.jsonl"
+    assert mapped.contexts_file == tmp_path / "contexts.jsonl"

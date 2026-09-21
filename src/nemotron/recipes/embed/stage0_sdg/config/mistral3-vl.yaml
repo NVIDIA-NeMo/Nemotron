@@ -14,11 +14,15 @@ sdg_max_units_per_context: 8
 sdg_batch_size: 30
 sdg_credential_env: NVIDIA_API_KEY
 sdg_options:
-  context_strategy: document
+  context_strategy: sections
+  section_size: 5
+  combination_iterations: 20
+  summary_embedding_model: Qwen/Qwen3-Embedding-0.6B
+  summary_embedding_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  summary_embedding_device: cpu
+  summary_count: 400
   max_context_chars: 100000
   judge_summaries: true
-  related_contexts_per_context: 1
-  related_summary_similarity: 0.2
   group_near_duplicates: true
   require_verbatim_quotes: false
   missing_response_attempts: 3

@@ -19,7 +19,8 @@ def test_generation_and_conversion_pin_the_same_source_package() -> None:
         stage_dir = EMBED_DIR / stage_name
         project = tomllib.loads((stage_dir / "pyproject.toml").read_text())
         lock = tomllib.loads((stage_dir / "uv.lock").read_text())
-        assert PACKAGE_NAME in project["project"]["dependencies"]
+        requirement = PACKAGE_NAME + ("[multimodal]" if stage_name == "stage0_sdg" else "")
+        assert requirement in project["project"]["dependencies"]
         assert f"data-designer=={DATA_DESIGNER_VERSION}" in project["project"]["dependencies"]
         source = project["tool"]["uv"]["sources"][PACKAGE_NAME]
         assert source["git"] == "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git"

@@ -3,7 +3,7 @@ name = "recipe-runner-sdg"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
-    "data-designer-retrieval-sdg",
+    "data-designer-retrieval-sdg[multimodal]",
     # Released core; the public plugin owns strict structured-response parsing.
     "data-designer==0.9.1",
     "omegaconf>=2.3.0",
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "07974b64a9472763b732247344397a10285c1d4f", subdirectory = "plugins/data-designer-retrieval-sdg" }
+data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "01d0955e2e0d00a3f167d0b64de5f7b7856d360b", subdirectory = "plugins/data-designer-retrieval-sdg" }
 
 [tool.nemotron]
 entry-point = "data_prep.py"
