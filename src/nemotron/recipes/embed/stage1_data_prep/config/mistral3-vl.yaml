@@ -43,6 +43,6 @@ mining_batch_size: 4
 query_embedding_batch_size: 1
 document_embedding_batch_size: 1
 query_max_length: 512
-passage_max_length: 8192
+passage_max_length: 4096
 query_prefix: null
 passage_prefix: null

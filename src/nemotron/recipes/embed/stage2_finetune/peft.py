@@ -134,7 +134,7 @@ def validate_peft_base(cfg: FinetuneConfig) -> tuple[str, ...]:
         raise ValueError("PEFT prompt metadata must contain a prompts object")
     prompts = sentence_config["prompts"]
     for name, prefix in (("query", cfg.query_prefix), ("document", cfg.passage_prefix)):
-        if prompts.get(name) not in {prefix, prefix.removesuffix(" ")}:
+        if prefix is not None and prompts.get(name) not in {prefix, prefix.removesuffix(" ")}:
             raise ValueError(f"PEFT {name} prompt metadata conflicts with training settings")
     text_config = config.get("text_config", config)
     if "is_causal" in text_config and text_config["is_causal"] != cfg.is_causal:

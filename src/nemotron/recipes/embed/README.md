@@ -399,10 +399,12 @@ remain shared across query partitions. The `nemotron`
 executable must be installed from this same reviewed checkout; use
 `uv run --no-sync nemotron` in place of `nemotron` below if needed:
 
-The generic reranking profile also requires `MISTRAL3_VL_RERANK_MODEL`.
-Remote model code is disabled by default. If a non-NVIDIA checkpoint requires
-remote code, review that repository and opt in with the stage-specific
-`allow_untrusted_remote_code=true` or `vllm_trust_remote_code=true` override.
+The EA recipe supports embedding fine-tuning; multimodal reranking is deferred.
+In-batch negatives are disabled because unrolled queries can share positives.
+Keep `do_distributed_inbatch_negative=false` until positive-ID masking is supported;
+training uses each query's mined negatives. The positive-ID unrolling changes are
+deferred. Mining, training, and local evaluation use the same 512-token query
+and 4096-token passage limits. Remote model code is disabled by default.
 
 ```bash
 export NVIDIA_API_KEY=your_endpoint_credential

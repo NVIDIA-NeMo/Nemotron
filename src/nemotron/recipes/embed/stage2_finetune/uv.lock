@@ -1239,7 +1239,7 @@ provides-extras = ["diffusion", "diffusion-kernels", "cuda", "cuda-source", "ext
 [[package]]
 name = "nemo-automodel"
 version = "0.7.0"
-source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz" }
+source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz" }
 resolution-markers = [
     "sys_platform == 'linux'",
     "sys_platform == 'win32'",
@@ -1261,7 +1261,7 @@ dependencies = [
     { name = "torchdata" },
     { name = "transformers", version = "5.15.1", source = { registry = "https://pypi.org/simple" } },
 ]
-sdist = { hash = "sha256:71d59fb2408bbc41a0640ef7499c5b6e5637799695ae7fc033bdbc58b001a581" }
+sdist = { hash = "sha256:14204483bbd211e20018501622930ab24255d9d217b22df8c65dd695bf3d7105" }
 
 [package.metadata]
 requires-dist = [
@@ -2051,7 +2051,7 @@ text = [
     { name = "transformers", version = "5.12.1", source = { registry = "https://pypi.org/simple" } },
 ]
 vl = [
-    { name = "nemo-automodel", version = "0.7.0", source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz" } },
+    { name = "nemo-automodel", version = "0.7.0", source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz" } },
     { name = "torchvision", version = "0.25.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and extra == 'extra-13-recipe-runner-vl') or (extra == 'extra-13-recipe-runner-text' and extra == 'extra-13-recipe-runner-vl')" },
     { name = "torchvision", version = "0.25.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(sys_platform == 'linux' and extra == 'extra-13-recipe-runner-vl') or (extra == 'extra-13-recipe-runner-text' and extra == 'extra-13-recipe-runner-vl')" },
     { name = "transformers", version = "5.15.1", source = { registry = "https://pypi.org/simple" } },
@@ -2060,7 +2060,7 @@ vl = [
 [package.metadata]
 requires-dist = [
     { name = "nemo-automodel", marker = "extra == 'text'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz" },
-    { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz" },
+    { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "torch", marker = "sys_platform != 'linux'", specifier = ">=2.10.0,<2.11.0" },

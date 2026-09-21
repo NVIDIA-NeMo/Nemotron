@@ -29,7 +29,7 @@ pooling: avg
 l2_normalize: true
 temperature: 0.02
 is_causal: false
-do_distributed_inbatch_negative: true
+do_distributed_inbatch_negative: false  # EA: unrolled positives are not masked across queries.
 detach_distributed_inbatch_negatives: false
 
 query_max_length: 512

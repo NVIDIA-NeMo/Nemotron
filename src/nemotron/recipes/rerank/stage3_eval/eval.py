@@ -40,7 +40,7 @@ then re-ranking with the cross-encoder and measuring nDCG@k improvement.
 
 Supports evaluation of:
 - Local HuggingFace models (base and fine-tuned)
-- NIM and vLLM API endpoints
+- NIM API endpoints
 
 Usage:
     # With default config
@@ -51,16 +51,11 @@ Usage:
 
     # Evaluate NIM endpoint
     nemotron rerank eval -c default eval_nim=true nim_url=http://localhost:8000
-
-    # Evaluate Nemotron 3.5 VL through vLLM using saved embed candidates
-    nemotron rerank eval -c mistral3-vl
 """
 
 from __future__ import annotations
 
-import base64
 import json
-import mimetypes
 import os
 import sys
 import urllib.error
@@ -103,10 +98,6 @@ class EvalConfig(RecipeSettings):
     retrieval_model: str = Field(
         default="nvidia/llama-nemotron-embed-1b-v2",
         description="Dense retrieval model for first-stage candidate generation.",
-    )
-    first_stage_results_path: Path | None = Field(
-        default=None,
-        description="Optional saved embed retrieval scores keyed by query and document ID.",
     )
 
     # Evaluation data
@@ -164,10 +155,6 @@ class EvalConfig(RecipeSettings):
         default="END",
         description="NIM truncation strategy for over-length query-passage inputs.",
     )
-    rerank_api_backend: Literal["nim", "vllm"] = Field(
-        default="nim",
-        description="Request and health-check schema used by the reranking endpoint.",
-    )
 
     @model_validator(mode="after")
     def _check_eval_settings(self):
@@ -180,7 +167,7 @@ class EvalConfig(RecipeSettings):
                 f"top_k ({self.top_k}) must be >= max(k_values) ({max(self.k_values)}) "
                 "so reported rerank metrics are computed over enough candidates"
             )
-        if self.eval_nim and self.rerank_api_backend == "nim" and self.prompt_template != DEFAULT_PROMPT_TEMPLATE:
+        if self.eval_nim and self.prompt_template != DEFAULT_PROMPT_TEMPLATE:
             raise ValueError(
                 "eval_nim=true supports the default NIM prompt template only; "
                 "disable eval_nim or evaluate the exported endpoint with matching server-side formatting"
@@ -430,8 +417,6 @@ def evaluate_nim_reranker(
     batch_size: int = 32,
     timeout: int = 60,
     truncate: str = "END",
-    api_backend: Literal["nim", "vllm"] = "nim",
-    dataset_path: Path | None = None,
     k_values: list[int] | None = None,
 ) -> tuple[dict, dict]:
     """Evaluate a NIM reranker endpoint on first-stage retrieval results.
@@ -461,8 +446,7 @@ def evaluate_nim_reranker(
     if k_values is None:
         k_values = [1, 5, 10, 100]
 
-    ranking_path = "/v1/rerank" if api_backend == "vllm" else "/v1/ranking"
-    ranking_url = f"{nim_url.rstrip('/')}{ranking_path}"
+    ranking_url = f"{nim_url.rstrip('/')}/v1/ranking"
     reranked_results: dict[str, dict[str, float]] = {}
 
     query_ids = list(queries.keys())
@@ -482,53 +466,26 @@ def evaluate_nim_reranker(
 
         # Build passages list
         doc_ids = [did for did, _ in candidate_ids]
-        passages: list[dict] = []
+        passages = []
         for did in doc_ids:
             doc = corpus[did]
             title = doc.get("title", "")
             text = doc.get("text", "")
-            document_text = f"{title} {text}".strip()
-            image_path = doc.get("image_path")
-            if api_backend == "vllm" and image_path:
-                if dataset_path is None:
-                    raise ValueError("dataset_path is required to resolve multimodal rerank documents")
-                image = _resolve_image_path(dataset_path, str(image_path))
-                mime_type = mimetypes.guess_type(image.name)[0] or "image/png"
-                image_data = base64.b64encode(image.read_bytes()).decode("ascii")
-                content: list[dict] = [
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime_type};base64,{image_data}"},
-                    }
-                ]
-                if document_text:
-                    content.append({"type": "text", "text": document_text})
-                passages.append({"content": content})
-            elif api_backend == "vllm":
-                passages.append({"content": [{"type": "text", "text": document_text}]})
-            else:
-                passages.append({"text": document_text})
+            passages.append({"text": f"{title} {text}".strip() if title else text})
 
         # Score in batches
         all_scores = []
         for batch_start in range(0, len(passages), batch_size):
             batch_passages = passages[batch_start : batch_start + batch_size]
 
-            if api_backend == "vllm":
-                payload_data = {
-                    "model": nim_model,
-                    "query": query_text,
-                    "documents": batch_passages,
-                    "top_n": len(batch_passages),
-                }
-            else:
-                payload_data = {
+            payload = json.dumps(
+                {
                     "model": nim_model,
                     "query": {"text": query_text},
                     "passages": batch_passages,
                     "truncate": truncate,
                 }
-            payload = json.dumps(payload_data).encode("utf-8")
+            ).encode("utf-8")
 
             req = urllib.request.Request(
                 ranking_url,
@@ -540,20 +497,14 @@ def evaluate_nim_reranker(
             try:
                 with urllib.request.urlopen(req, timeout=timeout) as response:
                     result = json.loads(response.read().decode("utf-8"))
-                    result_key = "results" if api_backend == "vllm" else "rankings"
-                    score_key = "relevance_score" if api_backend == "vllm" else "logit"
-                    rankings = sorted(result[result_key], key=lambda x: x["index"])
-                    all_scores.extend([r[score_key] for r in rankings])
+                    rankings = sorted(result["rankings"], key=lambda x: x["index"])
+                    all_scores.extend([r["logit"] for r in rankings])
             except urllib.error.HTTPError as e:
                 error_body = e.read().decode("utf-8") if e.fp else ""
-                service = "vLLM" if api_backend == "vllm" else "NIM"
-                raise RuntimeError(f"{service} API error {e.code}: {error_body}") from e
+                raise RuntimeError(f"NIM API error {e.code}: {error_body}") from e
 
         if len(all_scores) != len(doc_ids):
-            service = "vLLM" if api_backend == "vllm" else "NIM"
-            raise RuntimeError(
-                f"{service} returned {len(all_scores)} scores for {len(doc_ids)} passages for query {qid!r}"
-            )
+            raise RuntimeError(f"NIM returned {len(all_scores)} scores for {len(doc_ids)} passages for query {qid!r}")
         reranked_results[qid] = {did: score for did, score in zip(doc_ids, all_scores)}
 
         if (i + 1) % 50 == 0:
@@ -564,25 +515,6 @@ def evaluate_nim_reranker(
     metrics = evaluator.evaluate(qrels, reranked_results, k_values)
 
     return metrics, reranked_results
-
-
-def _resolve_image_path(dataset_path: Path, relative_path: str) -> Path:
-    for root in (dataset_path, *dataset_path.parents):
-        candidate = root / relative_path
-        if candidate.is_file():
-            return candidate
-    raise FileNotFoundError(f"Could not resolve corpus image {relative_path!r} from {dataset_path}")
-
-
-def _restore_corpus_image_paths(corpus: dict, dataset_path: Path) -> None:
-    """Restore image_path fields dropped by BEIR's GenericDataLoader."""
-    with (dataset_path / "corpus.jsonl").open() as file:
-        for line in file:
-            raw_document = json.loads(line)
-            document_id = raw_document.get("_id")
-            image_path = raw_document.get("image_path")
-            if document_id in corpus and image_path:
-                corpus[document_id]["image_path"] = image_path
 
 
 def _print_summary_metrics(metrics: tuple, k_values: list[int]) -> None:
@@ -628,29 +560,20 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     results = {}
 
-    # Step 1: Run first-stage dense retrieval or consume saved embed scores.
-    if cfg.first_stage_results_path is not None:
-        from beir.datasets.data_loader import GenericDataLoader
-
-        print(f"Loading first-stage retrieval scores: {cfg.first_stage_results_path}")
-        corpus, queries, qrels = GenericDataLoader(str(cfg.eval_data_path)).load(split="test")
-        _restore_corpus_image_paths(corpus, cfg.eval_data_path)
-        with cfg.first_stage_results_path.open() as file:
-            first_stage_results = json.load(file)
-    else:
-        print(f"Running first-stage retrieval with: {cfg.retrieval_model}")
-        retrieval_k_values = sorted({*cfg.k_values, cfg.top_k})
-        corpus, queries, qrels, first_stage_results = _get_first_stage_results(
-            retrieval_model=cfg.retrieval_model,
-            dataset_path=cfg.eval_data_path,
-            batch_size=cfg.retrieval_batch_size,
-            corpus_chunk_size=cfg.corpus_chunk_size,
-            k_values=retrieval_k_values,
-            query_prefix=cfg.query_prefix,
-            passage_prefix=cfg.passage_prefix,
-            normalize_embeddings=cfg.retrieval_normalize,
-            trust_remote_code=True,
-        )
+    # Step 1: Run first-stage dense retrieval
+    print(f"Running first-stage retrieval with: {cfg.retrieval_model}")
+    retrieval_k_values = sorted({*cfg.k_values, cfg.top_k})
+    corpus, queries, qrels, first_stage_results = _get_first_stage_results(
+        retrieval_model=cfg.retrieval_model,
+        dataset_path=cfg.eval_data_path,
+        batch_size=cfg.retrieval_batch_size,
+        corpus_chunk_size=cfg.corpus_chunk_size,
+        k_values=retrieval_k_values,
+        query_prefix=cfg.query_prefix,
+        passage_prefix=cfg.passage_prefix,
+        normalize_embeddings=cfg.retrieval_normalize,
+        trust_remote_code=True,
+    )
     print(f"   Retrieved candidates for {len(queries)} queries")
     print()
 
@@ -706,21 +629,19 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     # Step 4: Evaluate NIM reranker endpoint
     if cfg.eval_nim:
-        service_name = "vLLM" if cfg.rerank_api_backend == "vllm" else "NIM"
-        print(f"Evaluating {service_name} reranker endpoint: {cfg.nim_url}")
+        print(f"Evaluating NIM reranker endpoint: {cfg.nim_url}")
 
         nim_healthy = False
         try:
-            health_path = "/health" if cfg.rerank_api_backend == "vllm" else "/v1/health/ready"
-            health_url = f"{cfg.nim_url.rstrip('/')}{health_path}"
+            health_url = f"{cfg.nim_url.rstrip('/')}/v1/health/ready"
             with urllib.request.urlopen(health_url, timeout=10) as response:
                 nim_healthy = response.status == 200
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
             pass
 
         if not nim_healthy:
-            print(f"   Error: {service_name} endpoint is not reachable at {cfg.nim_url}", file=sys.stderr)
-            print(f"   Ensure the {service_name} service is running and healthy before evaluating.", file=sys.stderr)
+            print(f"   Error: NIM endpoint is not reachable at {cfg.nim_url}", file=sys.stderr)
+            print("   Ensure the NIM service is running and healthy before evaluating.", file=sys.stderr)
             sys.exit(1)
         else:
             try:
@@ -735,15 +656,13 @@ def run_eval(cfg: EvalConfig) -> dict:
                     batch_size=cfg.nim_batch_size,
                     timeout=cfg.nim_timeout,
                     truncate=cfg.nim_truncate,
-                    api_backend=cfg.rerank_api_backend,
-                    dataset_path=cfg.eval_data_path,
                     k_values=cfg.k_values,
                 )
-                results[cfg.rerank_api_backend] = nim_metrics
+                results["nim"] = nim_metrics
                 _print_summary_metrics(nim_metrics, cfg.k_values)
                 print()
             except Exception as e:
-                print(f"   Error evaluating {service_name}: {e}", file=sys.stderr)
+                print(f"   Error evaluating NIM: {e}", file=sys.stderr)
                 sys.exit(1)
 
     # Print comparison
@@ -765,11 +684,9 @@ def run_eval(cfg: EvalConfig) -> dict:
                 print(f"    {k}: {base_val:.5f} -> {ft_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%)")
         print()
 
-    # Print deployed endpoint vs fine-tuned comparison.
-    endpoint_key = cfg.rerank_api_backend
-    endpoint_name = "vLLM" if endpoint_key == "vllm" else "NIM"
-    if "finetuned" in results and endpoint_key in results:
-        print(f"Comparison (Fine-tuned -> {endpoint_name})")
+    # Print NIM vs Fine-tuned comparison (accuracy check for export)
+    if "finetuned" in results and "nim" in results:
+        print("Comparison (Fine-tuned -> NIM)")
         print("=" * 60)
         print("   This verifies the exported model matches the checkpoint accuracy.")
         print()
@@ -782,8 +699,8 @@ def run_eval(cfg: EvalConfig) -> dict:
             print(f"  {name}:")
             for k in results["finetuned"][idx]:
                 ft_val = results["finetuned"][idx][k]
-                endpoint_val = results[endpoint_key][idx][k]
-                diff = endpoint_val - ft_val
+                nim_val = results["nim"][idx][k]
+                diff = nim_val - ft_val
                 sign = "+" if diff > 0 else ""
                 at_k = int(k.split("@")[1]) if "@" in k else 1
                 threshold = 0.03 if at_k < 5 else 0.01
@@ -791,13 +708,10 @@ def run_eval(cfg: EvalConfig) -> dict:
                 status = "ok" if matched else "MISMATCH"
                 nim_mismatch = nim_mismatch or not matched
                 pct = (diff / ft_val * 100) if ft_val != 0 else float("inf")
-                print(f"    {k}: {ft_val:.5f} -> {endpoint_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%) {status}")
+                print(f"    {k}: {ft_val:.5f} -> {nim_val:.5f} ({sign}{diff:.5f}, {sign}{pct:.1f}%) {status}")
         print()
         if nim_mismatch:
-            print(
-                f"Error: {endpoint_name} metrics differ from the fine-tuned checkpoint beyond tolerance.",
-                file=sys.stderr,
-            )
+            print("Error: NIM metrics differ from the fine-tuned checkpoint beyond tolerance.", file=sys.stderr)
             sys.exit(1)
 
     # Save results

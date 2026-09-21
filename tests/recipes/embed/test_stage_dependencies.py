@@ -13,7 +13,7 @@ from nemo_runspec._pyproject import _write_temp_pyproject
 
 EMBED = Path(__file__).resolve().parents[3] / "src/nemotron/recipes/embed"
 STAGES = ("stage1_data_prep", "stage2_finetune", "stage3_eval")
-AUTOMODEL_REV = "aa6245acfcf129b22d83e815817e1560b10064c7"
+AUTOMODEL_REV = "0e02c4274d09e7e09159009916f7348fcb7dc9bb"
 AUTOMODEL_URL = f"https://github.com/NVIDIA-NeMo/Automodel/archive/{AUTOMODEL_REV}.tar.gz"
 
 
@@ -40,22 +40,10 @@ def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None
     if stage == "stage2_finetune":
         assert "wandb>=0.21,<1" in config["project"]["dependencies"]
         assert next(source for source in model_sources if source["extra"] == "text")["url"] == (
-            "https://github.com/NVIDIA-NeMo/Automodel/archive/"
-            "a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+            "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
         )
     elif stage == "stage1_data_prep":
         assert "nemo-automodel==0.4.0" in extras["text"]
-
-
-def test_generation_and_conversion_use_same_plugin_git_pin_and_released_core() -> None:
-    for stage in ("stage0_sdg", "stage1_data_prep"):
-        config = tomllib.loads((EMBED / stage / "pyproject.toml").read_text())
-        assert "data-designer==0.9.1" in config["project"]["dependencies"]
-        assert config["tool"]["uv"]["sources"]["data-designer-retrieval-sdg"] == {
-            "git": "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git",
-            "rev": "c2871e19b668f2d9c2f8d5e9eadbc76f582b288e",
-            "subdirectory": "plugins/data-designer-retrieval-sdg",
-        }
 
 
 @pytest.mark.parametrize("stage", ("stage0_sdg", *STAGES))

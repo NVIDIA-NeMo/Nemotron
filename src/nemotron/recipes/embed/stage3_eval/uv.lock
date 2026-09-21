@@ -666,7 +666,7 @@ wheels = [
 [[package]]
 name = "nemo-automodel"
 version = "0.7.0"
-source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz" }
+source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz" }
 dependencies = [
     { name = "datasets" },
     { name = "flashoptim" },
@@ -682,7 +682,7 @@ dependencies = [
     { name = "torchdata" },
     { name = "transformers", version = "5.15.1", source = { registry = "https://pypi.org/simple" } },
 ]
-sdist = { hash = "sha256:71d59fb2408bbc41a0640ef7499c5b6e5637799695ae7fc033bdbc58b001a581" }
+sdist = { hash = "sha256:14204483bbd211e20018501622930ab24255d9d217b22df8c65dd695bf3d7105" }
 
 [package.metadata]
 requires-dist = [
@@ -1356,7 +1356,7 @@ vl = [
 [package.metadata]
 requires-dist = [
     { name = "beir", specifier = ">=2.0.0" },
-    { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz" },
+    { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "requests", specifier = ">=2.32.0" },
@@ -1882,15 +1882,15 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "huggingface-hub" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pyyaml" },
-    { name = "regex" },
-    { name = "safetensors" },
-    { name = "tokenizers" },
-    { name = "tqdm" },
-    { name = "typer" },
+    { name = "huggingface-hub", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "numpy", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "packaging", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "pyyaml", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "regex", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "safetensors", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "tokenizers", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "tqdm", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "typer", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2a/92/c50c61da7046bbb59a4d011291aeadcfb4d7980ab36fdb31e93823a3fb93/transformers-5.15.1.tar.gz", hash = "sha256:27c996bd9075ddc82d40f8590dfdc81ea45f611bfca477e0db5d7fd257a482f7", size = 9378434, upload-time = "2026-08-19T11:28:20.33Z" }
 wheels = [

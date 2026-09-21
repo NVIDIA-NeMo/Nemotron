@@ -20,7 +20,7 @@ conflicts = [[{ extra = "text" }, { extra = "vl" }]]
 [tool.uv.sources]
 nemo-automodel = [
     { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz", extra = "text" },
-    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/aa6245acfcf129b22d83e815817e1560b10064c7.tar.gz", extra = "vl" },
+    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz", extra = "vl" },
 ]
 torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }

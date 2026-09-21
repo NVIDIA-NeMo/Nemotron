@@ -18,7 +18,7 @@ output_dir: ${artifact_root}/stage3_eval
 
 k_values: [1, 5, 10, 100]
 batch_size: 1
-max_length: 8192
+max_length: 4096
 corpus_chunk_size: 50000
 pooling: mean
 normalize: true
@@ -27,7 +27,7 @@ passage_prefix: null
 model_family: mistral3_vl
 local_backend: automodel
 query_max_length: 512
-passage_max_length: 8192
+passage_max_length: 4096
 image_longest_edge: null
 use_text_in_document: true
 ignore_identical_ids: false

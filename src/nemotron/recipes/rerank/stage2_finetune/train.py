@@ -61,7 +61,6 @@ from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 from nemotron.recipes.rerank._trust import validate_trust_remote_code
-from nemotron.recipes.retrieval_vl import validate_vl_training_data
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -88,10 +87,6 @@ class FinetuneConfig(RecipeSettings):
     allow_untrusted_remote_code: bool = Field(
         default=False,
         description="Allow trust_remote_code for non-NVIDIA remote model refs.",
-    )
-    model_family: Literal["text", "mistral3_vl"] = Field(
-        default="text",
-        description="AutoModel integration family. Use mistral3_vl for Mistral 3 vision-language retrieval models.",
     )
 
     # Data paths
@@ -140,14 +135,8 @@ class FinetuneConfig(RecipeSettings):
         default=1,
         description="Rerank eval/export/deploy expects a single scalar relevance logit.",
     )
-    temperature: float = Field(default=1.0, gt=0, description="Model score temperature.")
-    recipe_temperature: float | None = Field(
-        default=None,
-        gt=0,
-        description="Optional recipe-level score temperature. At most one temperature may be non-unit.",
-    )
+    temperature: float = Field(default=1.0, gt=0, description="Temperature for cross-entropy loss.")
     pooling: Literal["avg", "cls", "last"] = Field(default="avg", description="Pooling strategy.")
-    is_causal: bool = Field(default=False, description="Whether attention is causal in the retrieval encoder.")
 
     # Tokenization
     rerank_max_length: int = Field(
@@ -158,21 +147,6 @@ class FinetuneConfig(RecipeSettings):
     prompt_template: str = Field(
         default="question:{query} \n \n passage:{passage}",
         description="Template for formatting query-passage pairs.",
-    )
-    use_prompt_template: bool = Field(default=False, description="Use the processor's retrieval prompt template.")
-    export_as_stock_processor: bool = Field(
-        default=True,
-        description="Export the stock processor class when saving a checkpoint.",
-    )
-    image_longest_edge: int = Field(default=1284, gt=0, description="Longest image edge presented to the processor.")
-    pad_to_multiple_of: int = Field(default=8, gt=0, description="Pad sequence lengths to this multiple.")
-    use_text_in_document: bool = Field(
-        default=False,
-        description="Include a document's text alongside its image when both are available.",
-    )
-    require_mined_negatives: bool = Field(
-        default=False,
-        description="Require hard-negative mining provenance and a finite score for every selected negative.",
     )
 
     # Checkpointing
@@ -185,8 +159,6 @@ class FinetuneConfig(RecipeSettings):
             [self.base_model],
             allow_untrusted_remote_code=self.allow_untrusted_remote_code,
         )
-        if self.recipe_temperature not in (None, 1.0) and self.temperature != 1.0:
-            raise ValueError("At most one of temperature and recipe_temperature may be non-unit")
         return self
 
 
@@ -338,10 +310,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     """Load Automodel YAML after choosing an optimizer that is importable here."""
     import yaml
 
-    base_config_name = (
-        "mistral3_vl_crossencoder_base.yaml" if cfg.model_family == "mistral3_vl" else "crossencoder_base.yaml"
-    )
-    base_config_path = STAGE_PATH / base_config_name
+    base_config_path = STAGE_PATH / "crossencoder_base.yaml"
     with open(base_config_path) as f:
         raw_config = yaml.safe_load(f)
 
@@ -374,7 +343,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
             "betas": [0.9, 0.999],
             "eps": 1.0e-8,
-            "quantize": True,
+            "quantize": False,
             "compress_state_dict": False,
             "master_weight_bits": cfg.flash_adamw_master_weight_bits,
             "fused": True,
@@ -399,13 +368,6 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         print(f"Error: Training data not found: {cfg.train_data_path}", file=sys.stderr)
         print("       Please run 'nemotron rerank prep' first.", file=sys.stderr)
         sys.exit(1)
-
-    if cfg.model_family == "mistral3_vl":
-        validate_vl_training_data(
-            cfg.train_data_path,
-            required_negatives=cfg.train_n_passages - 1,
-            require_mined_negatives=cfg.require_mined_negatives,
-        )
 
     # Count training examples and check negative passage availability
     num_examples = _count_training_examples(cfg.train_data_path)
@@ -477,10 +439,6 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.model.num_labels = cfg.num_labels
     automodel_cfg.model.temperature = cfg.temperature
     automodel_cfg.model.pooling = cfg.pooling
-    if cfg.model_family == "mistral3_vl":
-        automodel_cfg.model.is_causal = cfg.is_causal
-    if cfg.recipe_temperature is not None:
-        automodel_cfg.temperature = cfg.recipe_temperature
 
     # Auto-detect attention implementation if not explicitly set
     if cfg.attn_implementation is not None:
@@ -496,20 +454,10 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.model.attn_implementation = attn_impl
 
     # Data settings
-    if cfg.model_family == "mistral3_vl":
-        automodel_cfg.dataset.data_dir_list = [str(cfg.train_data_path)]
-        automodel_cfg.dataset.n_passages = cfg.train_n_passages
-        automodel_cfg.dataset.use_text_in_document = cfg.use_text_in_document
-        automodel_cfg.tokenizer.rerank_max_length = cfg.rerank_max_length
-        automodel_cfg.tokenizer.use_prompt_template = cfg.use_prompt_template
-        automodel_cfg.tokenizer.export_as_stock_processor = cfg.export_as_stock_processor
-        automodel_cfg.tokenizer.pad_to_multiple_of = cfg.pad_to_multiple_of
-        automodel_cfg.tokenizer.image_longest_edge = cfg.image_longest_edge
-    else:
-        automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
-        automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
-        automodel_cfg.dataloader.collate_fn.rerank_max_length = cfg.rerank_max_length
-        automodel_cfg.dataloader.collate_fn.prompt_template = cfg.prompt_template
+    automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
+    automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
+    automodel_cfg.dataloader.collate_fn.rerank_max_length = cfg.rerank_max_length
+    automodel_cfg.dataloader.collate_fn.prompt_template = cfg.prompt_template
 
     # Training settings — use auto-scaled values
     automodel_cfg.step_scheduler.num_epochs = num_epochs

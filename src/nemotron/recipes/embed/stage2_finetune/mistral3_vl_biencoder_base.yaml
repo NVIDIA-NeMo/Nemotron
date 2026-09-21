@@ -29,7 +29,7 @@ model:
   use_sdpa_patching: true
   torch_dtype: bfloat16
   attn_implementation: flash_attention_2
-  do_distributed_inbatch_negative: true
+  do_distributed_inbatch_negative: false  # EA: unrolled positives are not masked across queries.
   detach_distributed_inbatch_negatives: false
 
 tokenizer:

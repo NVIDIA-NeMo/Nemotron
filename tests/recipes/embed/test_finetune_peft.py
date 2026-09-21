@@ -13,7 +13,7 @@ import pytest
 from pydantic import ValidationError
 
 from nemotron.recipes.embed.stage2_finetune import train
-from nemotron.recipes.embed.stage2_finetune.peft import merge_peft_checkpoint
+from nemotron.recipes.embed.stage2_finetune.peft import merge_peft_checkpoint, validate_peft_base
 
 
 class NativeConfig(SimpleNamespace):
@@ -401,3 +401,17 @@ def test_real_cpu_float32_base_exports_intentional_bfloat16(
     assert reloaded.dtype == torch.bfloat16
     assert next(reloaded.parameters()).device.type == "cpu"
     assert (base / "model.safetensors").read_bytes() == original
+
+
+@pytest.mark.parametrize("prefixes", [(None, None), (None, "passage:"), ("query:", None)])
+def test_peft_inherits_checkpoint_prompts(tmp_path: Path, base: Path, prefixes: tuple) -> None:
+    cfg = settings(tmp_path, base).model_copy(
+        update={"model_family": "mistral3_vl", "query_prefix": prefixes[0], "passage_prefix": prefixes[1]}
+    )
+    assert "config_sentence_transformers.json" in validate_peft_base(cfg)
+
+
+def test_peft_still_rejects_explicit_prompt_override(tmp_path: Path, base: Path) -> None:
+    cfg = settings(tmp_path, base).model_copy(update={"query_prefix": "different:", "passage_prefix": None})
+    with pytest.raises(ValueError, match="query prompt metadata conflicts"):
+        validate_peft_base(cfg)

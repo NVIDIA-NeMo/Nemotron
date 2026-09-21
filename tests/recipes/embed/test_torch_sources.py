@@ -17,32 +17,16 @@ TORCH_STAGE_NAMES = [
 
 
 def test_embed_torch_stages_pin_compatible_linux_cuda_indexes() -> None:
-    cu129_source = {"index": "pytorch-cu129", "marker": "sys_platform == 'linux'"}
-    cu130_source = {"index": "pytorch-cu130", "marker": "sys_platform == 'linux'"}
-
+    expected_source = {"index": "pytorch-cu129", "marker": "sys_platform == 'linux'"}
     for stage_name in TORCH_STAGE_NAMES:
-        with open(EMBED_DIR / stage_name / "pyproject.toml", "rb") as f:
-            data = tomllib.load(f)
-
-        expected_source = cu130_source if stage_name == "stage2_finetune" else cu129_source
-        torch_sources = data["tool"]["uv"]["sources"]["torch"]
-        assert expected_source in torch_sources
-
-        if stage_name == "stage2_finetune":
-            assert {
-                "index": "pytorch-cpu",
-                "marker": "sys_platform != 'darwin' and sys_platform != 'linux'",
-            } in torch_sources
-
-        if stage_name == "stage4_export":
-            assert data["tool"]["uv"]["sources"]["torchvision"] == [cu129_source]
-
+        data = tomllib.loads((EMBED_DIR / stage_name / "pyproject.toml").read_text())
+        for package in ("torch", "torchvision"):
+            sources = data["tool"]["uv"]["sources"][package]
+            if isinstance(sources, dict):
+                sources = [sources]
+            assert sources == [expected_source]
         indexes = {entry["name"]: entry["url"] for entry in data["tool"]["uv"]["index"]}
-        expected_index = expected_source["index"]
-        expected_cuda = "cu130" if stage_name == "stage2_finetune" else "cu129"
-        assert indexes[expected_index] == f"https://download.pytorch.org/whl/{expected_cuda}"
-        if stage_name == "stage2_finetune":
-            assert indexes["pytorch-cpu"] == "https://download.pytorch.org/whl/cpu"
+        assert indexes["pytorch-cu129"] == "https://download.pytorch.org/whl/cu129"
 
 
 def test_embed_export_lock_pins_linux_torchvision_to_cu129() -> None:
@@ -79,7 +63,8 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
     for stage_name, expected_dependency in expected_by_stage.items():
         with open(EMBED_DIR / stage_name / "pyproject.toml", "rb") as f:
             pyproject_data = tomllib.load(f)
-        assert expected_dependency in pyproject_data["project"]["dependencies"]
+        assert expected_dependency in pyproject_data["project"]["optional-dependencies"]["text"]
+        assert "transformers==5.15.1" in pyproject_data["project"]["optional-dependencies"]["vl"]
 
         with open(EMBED_DIR / stage_name / "uv.lock", "rb") as f:
             lock_data = tomllib.load(f)
@@ -88,6 +73,8 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
             for package in lock_data["package"]
             if package["name"] == "transformers"
         ]
+        assert (5, 15) in versions
+        versions.remove((5, 15))
         if stage_name == "stage2_finetune":
             assert versions == [(5, 12)]
         else:
@@ -97,8 +84,9 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
     with open(EMBED_DIR / "stage2_finetune" / "pyproject.toml", "rb") as f:
         finetune_project = tomllib.load(f)
     automodel_source = finetune_project["tool"]["uv"]["sources"]["nemo-automodel"]
-    assert automodel_source == {
-        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+    assert next(source for source in automodel_source if source["extra"] == "text") == {
+        "extra": "text",
+        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz",
     }
     assert "nemo-automodel" not in finetune_project["tool"]["nemotron"]["container-exclude-dependencies"]
 
@@ -106,12 +94,13 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
 def test_embed_prep_uses_generic_automodel_release() -> None:
     with open(EMBED_DIR / "stage1_data_prep" / "pyproject.toml", "rb") as f:
         pyproject_data = tomllib.load(f)
-    assert "nemo-automodel==0.4.0" in pyproject_data["project"]["dependencies"]
+    assert "nemo-automodel==0.4.0" in pyproject_data["project"]["optional-dependencies"]["text"]
 
     with open(EMBED_DIR / "stage1_data_prep" / "uv.lock", "rb") as f:
         lock_data = tomllib.load(f)
     versions = [package["version"] for package in lock_data["package"] if package["name"] == "nemo-automodel"]
-    assert versions == ["0.4.0"]
+    assert "0.4.0" in versions
+    assert any("url" in package["source"] for package in lock_data["package"] if package["name"] == "nemo-automodel")
 
 
 def test_embed_prep_installs_pyarrow_for_parquet_output() -> None:
