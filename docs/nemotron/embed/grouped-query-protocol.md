@@ -84,7 +84,7 @@ synthetic-query style.
 
 This protocol does not change the training optimizer or checkpoint dtype.
 The default VL configuration uses BF16 model parameters and FlashAdamW with
-quantized optimizer states and 32-bit master weights.
+FP32 optimizer states and 32-bit master weights.
 The exported model remains BF16; resumable training checkpoints additionally
 contain optimizer state. Full-FP32 model training is not required by this feature.
 

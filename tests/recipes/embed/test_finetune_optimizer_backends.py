@@ -93,7 +93,7 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
         "weight_decay": 0.01,
         "betas": [0.9, 0.999],
         "eps": 1.0e-8,
-        "quantize": True,
+        "quantize": False,
         "compress_state_dict": False,
         "master_weight_bits": 24,
         "fused": True,

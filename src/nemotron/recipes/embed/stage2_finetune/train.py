@@ -508,7 +508,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
             "betas": [0.9, 0.999],
             "eps": 1.0e-8,
-            "quantize": True,
+            "quantize": False,
             "compress_state_dict": False,
             "master_weight_bits": cfg.flash_adamw_master_weight_bits,
             "fused": True,
@@ -614,10 +614,11 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     optimizer_detail = optimizer_backend
     if optimizer_backend == "flash_adamw":
         if cfg.flash_adamw_master_weight_bits is None:
-            optimizer_detail = f"{optimizer_backend} (master weights disabled)"
+            optimizer_detail = f"{optimizer_backend} (fp32 optimizer states, master weights disabled)"
         else:
             optimizer_detail = (
-                f"{optimizer_backend} (bf16 model, {cfg.flash_adamw_master_weight_bits}-bit master weights)"
+                f"{optimizer_backend} (bf16 model, fp32 optimizer states, "
+                f"{cfg.flash_adamw_master_weight_bits}-bit master weights)"
             )
     print(f"Optimizer:      {optimizer_detail}")
     print()
