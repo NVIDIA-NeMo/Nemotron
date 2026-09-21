@@ -62,10 +62,10 @@ In the assisted flows a model may propose pack semantics, but it can never award
 ::::{grid} 1 2 2 2
 :gutter: 1 1 1 2
 
-:::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Tutorial
-:link: getting-started
+:::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Tutorials
+:link: tutorials/index
 :link-type: doc
-Install the `byob` extra, run the bundled `tiny_oracle_pack` end to end, and inspect the benchmark and manifest it writes.
+Follow complete journeys for a first benchmark, assisted authoring, and a manual pack lifecycle through evaluation.
 +++
 {bdg-secondary}`hands-on`
 :::
@@ -112,11 +112,13 @@ contract as authoritative.
 
 ````{tab-set}
 
-```{tab-item} Tutorial
+```{tab-item} Tutorials
 
 | Guide | What you will do |
 | --- | --- |
 | {doc}`./getting-started` | Run `nemotron steps run byob/bfcl` with `tiny.yaml` and inspect the outputs |
+| {doc}`tutorials/assisted-authoring-demo` | Run source intake, assisted drafting, review, Gold publication, and evaluation without credentials |
+| {doc}`tutorials/manual-pack-lifecycle` | Validate, publish, and evaluate a reviewed manual Oracle Pack |
 
 ```
 
