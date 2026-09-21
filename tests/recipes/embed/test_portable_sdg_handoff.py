@@ -199,7 +199,7 @@ def test_modified_referenced_evaluation_image_fails_before_model_call(
         eval_nim=False,
     )
 
-    with pytest.raises(ValueError, match="Portable bundle artifact changed: assets/units/"):
+    with pytest.raises(ValueError, match="Size mismatch for assets/units/"):
         evaluation.run_eval(cfg)
     evaluate_model.assert_not_called()
 
@@ -210,9 +210,9 @@ def test_portable_handoff_cannot_fall_back_to_legacy_conversion(portable_handoff
 
 
 def test_modified_corpus_fails_before_mining(portable_handoff: Path) -> None:
-    corpus = portable_handoff.parent / "generated.bundle/views/image/corpus/train/part-00000.parquet"
+    corpus = portable_handoff.parent / "generated.bundle/views/image/corpus/shared/part-00000.parquet"
     corpus.write_bytes(b"changed")
-    with pytest.raises(ValueError, match="artifact changed"):
+    with pytest.raises(ValueError, match="Size mismatch"):
         resolve_portable_training_input(portable_handoff, "image")
 
 

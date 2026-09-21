@@ -370,8 +370,8 @@ immutable commit archives from the companion
 [AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915); archive URLs
 prevent AutoModel's repository-local uv index policy from replacing the recipe's
 CUDA 12.9 Torch source. The retrieval-SDG plugin uses a commit-pinned Git source
-from the companion
-[DataDesignerPlugins PR](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/89).
+from the consolidated public [DataDesignerPlugins multimodal SDG EA candidate](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/92)
+(the exact reviewed commit is pinned in the Stage 0 project).
 No manually built wheels, private scripts, or private package index are required.
 The checked-in locks resolve both mutually exclusive extras from those public
 sources.
@@ -393,8 +393,9 @@ uv run --project src/nemotron/recipes/embed/stage1_data_prep --extra vl \
 ```
 
 Set `MISTRAL3_VL_EMBED_MODEL` to a checkpoint available to your Hugging Face
-credentials, provide a source file with enough distinct documents for both the
-80% training and 20% evaluation splits, and run locally. The `nemotron`
+credentials, provide sources producing enough independent query groups for both
+the 80% training and 20% evaluation splits, and run locally. Documents intentionally
+remain shared across query partitions. The `nemotron`
 executable must be installed from this same reviewed checkout; use
 `uv run --no-sync nemotron` in place of `nemotron` below if needed:
 
@@ -406,10 +407,8 @@ remote code, review that repository and opt in with the stage-specific
 ```bash
 export NVIDIA_API_KEY=your_endpoint_credential
 export NVIDIA_API_BASE_URL=https://your-authorized-openai-compatible-endpoint.example/v1
-export MISTRAL3_SDG_ARTIFACT_MODEL=your-image-capable-artifact-model
 export MISTRAL3_SDG_QA_MODEL=your-image-capable-generation-model
 export MISTRAL3_SDG_JUDGE_MODEL=your-image-capable-judge-model
-export MISTRAL3_SDG_EMBED_MODEL=your-text-dedup-embedding-model
 export MISTRAL3_VL_EMBED_MODEL=your-org/your-multimodal-embedding-checkpoint
 
 nemotron embed sdg -c mistral3-vl sources_file=/absolute/path/to/sources.jsonl
@@ -423,10 +422,34 @@ nemotron embed eval -c mistral3-vl eval_base=true eval_finetuned=true eval_nim=f
 python -c 'import json; p="output/embed/mistral3-vl-preview/stage3_eval/eval_results.json"; r=json.load(open(p)); assert {"base","finetuned"} <= r.keys()'
 ```
 
-The artifact, QA, and judge model endpoints must accept the recipe's image
-inputs. `MISTRAL3_SDG_EMBED_MODEL` is the text embedding model used for query
-deduplication. The preview profile deliberately has no implicit hosted model
-fallback for these four roles.
+The generator and judge endpoints must accept images. There are two explicit
+hosted model roles, no implicit fallback and no SDG embedding-model requirement.
+The `mistral3-vl` SDG profile selects `sdg_workflow=retrieval_first`: context
+summaries, direct image/text queries, query-only standalone/leak checks,
+source-reading relevance and graded positive localization. Requested style is
+diagnostic. No generated answers, dataset loaders, benchmark-specific repairs,
+or preconverted handoff bypasses are involved. Existing text profiles retain
+`legacy_qa` and their prior behavior.
+
+By default each source unit is a context. For multi-page or cross-document
+questions pass `contexts_file=/absolute/path/to/contexts.jsonl`, whose rows have
+`context_id`, `unit_ids`, and optional `language`. Contexts may contain at most
+`sdg_max_units_per_context` units (default 8); the producer fails rather than
+truncates oversized evidence. Context membership does not imply query grouping.
+The complete eligible corpus, including unselected distractors, is exported.
+
+The producer writes immutable state under `stage0_sdg/multimodal`. Inspect
+failure/attempt evidence before explicitly choosing `resume=always`. Changed
+sources, settings or code cannot reuse the run. Stage 0 validates the full
+portable bundle before publishing its top-level `generation_result.json`;
+Stage 1 performs the same full validation before native AutoModel mining.
+No HNM ranking/negative selection or training optimizer behavior changes here.
+
+This is an unreleased EA candidate. CPU contract tests and mocked inference do
+not qualify hosted-model quality or the full GPU path. Before an EA package
+release, record a bounded authorized inference smoke test and native mining,
+BF16 checkpoint/resume, and matched fresh base/final evaluation. Previous
+internal experiment results are not validation of this consolidated producer.
 
 The default evaluation above uses the held-out split from the same synthetic
 generation run. It is a pipeline smoke test, not independent model-quality

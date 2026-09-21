@@ -1,6 +1,5 @@
-# Preview synthetic-data profile for canonical text/image retrieval sources.
-# The reviewed plugin and Data Designer core patch are supplied by the local
-# Stage 0 wheel project; remote execution fails before submission.
+# Generic retrieval-first SDG EA profile. No dataset-specific adapters.
+# Uses the public plugin's structured parser with released Data Designer.
 
 run:
   env:
@@ -9,6 +8,11 @@ run:
 artifact_root: ./output/embed/mistral3-vl-preview
 corpus_id: multimodal_retrieval
 sources_file: null
+sdg_workflow: retrieval_first
+contexts_file: null
+sdg_max_units_per_context: 8
+sdg_batch_size: 30
+sdg_credential_env: NVIDIA_API_KEY
 portable_export: true
 export_train_ratio: 0.8
 export_validation_ratio: 0.0
@@ -21,7 +25,5 @@ resume: never
 preview: false
 
 # Explicit hosted model identities are required for the multimodal path.
-artifact_extraction_model: ${oc.env:MISTRAL3_SDG_ARTIFACT_MODEL}
 qa_generation_model: ${oc.env:MISTRAL3_SDG_QA_MODEL}
 quality_judge_model: ${oc.env:MISTRAL3_SDG_JUDGE_MODEL}
-embed_model: ${oc.env:MISTRAL3_SDG_EMBED_MODEL}

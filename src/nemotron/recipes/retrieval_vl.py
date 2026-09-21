@@ -48,6 +48,8 @@ class VLBundlePaths:
     synthetic_eval: Path
     gold_eval: Path | None
     local_artifacts_verified: bool = False
+    split_protocol: str = "document_disjoint"
+    corpus_scope: str = "partition"
 
 
 def _decode_document_image(document: dict[str, Any]) -> dict[str, Any]:

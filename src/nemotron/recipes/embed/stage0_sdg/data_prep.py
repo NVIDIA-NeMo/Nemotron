@@ -97,14 +97,21 @@ class SDGConfig(RecipeSettings):
             "and bypasses text chunking; relative image paths resolve against the source file."
         ),
     )
+    sdg_workflow: Literal["legacy_qa", "retrieval_first"] = Field(
+        default="legacy_qa", description="Use retrieval_first for the generic multimodal SDG EA workflow."
+    )
+    contexts_file: Path | None = Field(
+        default=None, description="Optional generic multi-unit generation contexts JSONL."
+    )
+    sdg_max_units_per_context: int = Field(default=8, ge=1)
+    sdg_batch_size: int = Field(default=30, ge=1, le=128)
+    sdg_credential_env: str = Field(default="NVIDIA_API_KEY", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
     portable_export: bool = Field(
         default=False, description="Export all text/image views and bind them to the handoff."
     )
-    export_train_ratio: float = Field(
-        default=0.8, ge=0, le=1, description="Portable source-document training fraction."
-    )
+    export_train_ratio: float = Field(default=0.8, ge=0, le=1, description="Portable query-group training fraction.")
     export_validation_ratio: float = Field(default=0.0, ge=0, le=1, description="Portable validation fraction.")
-    export_seed: int = Field(default=42, description="Portable source-document split seed.")
+    export_seed: int = Field(default=42, description="Portable query-group split seed.")
     strict_visual: bool = Field(
         default=False, description="Require accepted image-grounded candidates in portable export."
     )
@@ -174,6 +181,13 @@ class SDGConfig(RecipeSettings):
             raise ValueError("Portable training and validation fractions must sum to at most one")
         if self.strict_visual and not self.portable_export:
             raise ValueError("strict_visual requires portable_export")
+        if self.sdg_workflow == "retrieval_first":
+            if self.sources_file is None or not self.portable_export:
+                raise ValueError("retrieval_first requires canonical sources_file and portable_export=true")
+            if self.preview or self.strict_visual:
+                raise ValueError(
+                    "retrieval_first uses an explicit bounded source/context input, not preview or strict_visual"
+                )
         return self
 
     # --- Data Designer execution -----------------------------------------------
@@ -440,6 +454,11 @@ def run_sdg(cfg: SDGConfig) -> Path:
     """
     from nemotron.recipes.embed.sdg_manifest import write_generation_manifest
     from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_generation
+
+    if cfg.sdg_workflow == "retrieval_first":
+        from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_retrieval_first
+
+        return execute_retrieval_first(cfg)
 
     # Canonical input takes precedence without downloading the default text corpus.
     corpus_dir = cfg.sources_file.resolve() if cfg.sources_file is not None else _resolve_corpus_dir(cfg.corpus_dir)

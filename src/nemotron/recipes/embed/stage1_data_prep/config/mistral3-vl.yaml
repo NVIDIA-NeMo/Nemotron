@@ -39,6 +39,9 @@ attn_implementation: sdpa
 hard_negatives_to_mine: 5
 hard_neg_margin: 0.95
 mining_batch_size: 4
+# Separate encoder batches control activation memory, not negative selection.
+query_embedding_batch_size: 1
+document_embedding_batch_size: 1
 query_max_length: 512
 passage_max_length: 8192
 query_prefix: null

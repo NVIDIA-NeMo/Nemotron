@@ -360,18 +360,20 @@ def test_native_text_evaluation_rejects_declared_images(monkeypatch: pytest.Monk
         evaluation.evaluate_model("checkpoint", dataset, local_backend="automodel")
 
 
+@pytest.mark.parametrize("title_fields", [{}, {"title": None}, {"title": ""}, {"title": "Document"}])
+@pytest.mark.parametrize("query_count", [1, 2])
 def test_real_beir_preserves_legitimate_query_document_id_collisions(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path, title_fields: dict, query_count: int
 ) -> None:
-    """The ViDoRe mode retains relevant pages whose IDs equal their query IDs."""
+    """Real BEIR supports optional titles and legitimate query/document ID collisions."""
     torch = pytest.importorskip("torch")
     dataset = tmp_path / "eval"
     (dataset / "qrels").mkdir(parents=True)
     (dataset / "corpus.jsonl").write_text(
         "\n".join(
             [
-                json.dumps({"_id": "1", "title": "", "text": "alpha"}),
-                json.dumps({"_id": "2", "title": "", "text": "beta"}),
+                json.dumps({"_id": "1", "text": "alpha", **title_fields}),
+                json.dumps({"_id": "2", "text": "beta", **title_fields}),
             ]
         )
         + "\n"
@@ -381,11 +383,13 @@ def test_real_beir_preserves_legitimate_query_document_id_collisions(
             [
                 json.dumps({"_id": "1", "text": "alpha"}),
                 json.dumps({"_id": "2", "text": "beta"}),
-            ]
+            ][:query_count]
         )
         + "\n"
     )
-    (dataset / "qrels/test.tsv").write_text("query-id\tcorpus-id\tscore\n1\t1\t2\n2\t2\t2\n")
+    (dataset / "qrels/test.tsv").write_text(
+        "query-id\tcorpus-id\tscore\n1\t1\t2\n" + ("2\t2\t2\n" if query_count == 2 else "")
+    )
 
     class Native:
         def __init__(self, **kwargs):
@@ -413,8 +417,15 @@ def test_real_beir_preserves_legitimate_query_document_id_collisions(
     )
 
     assert results["1"] == {"1": 1.0}
-    assert results["2"] == {"2": 1.0}
+    assert set(results) == {str(i + 1) for i in range(query_count)}
+    if query_count == 2:
+        assert results["2"] == {"2": 1.0}
     assert metrics[0]["NDCG@1"] == 1.0
+    assert json.loads((dataset / "corpus.jsonl").read_text().splitlines()[0]) == {
+        "_id": "1",
+        "text": "alpha",
+        **title_fields,
+    }
 
 
 def test_multimodal_eval_config_requires_native_limits_and_backend() -> None:

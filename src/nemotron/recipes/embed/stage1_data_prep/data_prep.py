@@ -108,6 +108,10 @@ class DataPrepConfig(RecipeSettings):
         default_factory=lambda data: data["artifact_root"] / "stage1_data_prep",
         description="Output directory for prepared training data.",
     )
+    retrieval_split_protocol: Literal["grouped_query_disjoint"] | None = Field(
+        default=None,
+        description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
+    )
     artifact_recipe: Literal["embed", "rerank"] = Field(
         default="embed",
         description="Recipe namespace for the saved data artifact.",
@@ -172,6 +176,12 @@ class DataPrepConfig(RecipeSettings):
     hard_negatives_to_mine: int = Field(default=5, gt=0, description="Number of hard negatives to mine per query.")
     hard_neg_margin: float = Field(default=0.95, gt=0, le=1, description="Margin for hard negative selection.")
     mining_batch_size: int = Field(default=128, gt=0, description="Batch size for mining.")
+    query_embedding_batch_size: int = Field(
+        default=16, gt=0, description="Native mining query-encoding batch size, independent of similarity search."
+    )
+    document_embedding_batch_size: int = Field(
+        default=16, gt=0, description="Native mining document-encoding batch size; bound image encoder memory."
+    )
     query_max_length: int = Field(default=512, gt=0, description="Maximum query length for tokenization.")
     passage_max_length: int = Field(default=512, gt=0, description="Maximum passage length for tokenization.")
     query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs during mining.")
@@ -200,6 +210,8 @@ class DataPrepConfig(RecipeSettings):
     def _check_input_source(self):
         if self.retrieval_view is not None and self.train_input_file is not None:
             raise ValueError("retrieval_view applies to an SDG manifest, not train_input_file")
+        if self.retrieval_split_protocol is not None and self.retrieval_view is None:
+            raise ValueError("retrieval_split_protocol requires retrieval_view and a portable manifest")
         if self.sdg_input_path and self.train_input_file:
             raise ValueError(
                 "sdg_input_path and train_input_file are mutually exclusive. "
@@ -322,6 +334,10 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         str(cfg.hard_negatives_to_mine),
         "--mining.mining_batch_size",
         str(cfg.mining_batch_size),
+        "--mining.query_embedding_batch_size",
+        str(cfg.query_embedding_batch_size),
+        "--mining.document_embedding_batch_size",
+        str(cfg.document_embedding_batch_size),
         "--mining.query_max_length",
         str(cfg.query_max_length),
         "--mining.passage_max_length",
@@ -418,7 +434,9 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     if configured_sdg_input and cfg.retrieval_view is not None:
         from nemotron.recipes.embed.sdg_manifest import resolve_portable_training_input
 
-        train_input = resolve_portable_training_input(configured_sdg_input, cfg.retrieval_view)
+        train_input = resolve_portable_training_input(
+            configured_sdg_input, cfg.retrieval_view, cfg.retrieval_split_protocol
+        )
         evaluation_dir = train_input.parents[2] / "synthetic_eval" / cfg.retrieval_view
         cfg = cfg.model_copy(update={"sdg_input_path": None, "train_input_file": train_input})
     elif configured_sdg_input:

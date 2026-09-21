@@ -39,11 +39,20 @@ def _inventory(root: Path) -> Path:
         if path.is_file() and path.name != "run_manifest.json"
     ]
     manifest = root / "run_manifest.json"
-    _json(manifest, {"schema_version": 2, "dataset_id": "fixture", "artifacts": artifacts})
+    _json(
+        manifest,
+        {
+            "schema_version": 2,
+            "dataset_id": "fixture",
+            "artifacts": artifacts,
+            "split_protocol": "grouped_query_disjoint",
+            "corpus_scope": "full_collection",
+        },
+    )
     return manifest
 
 
-def _bundle(root: Path, view: str = "image_and_text") -> Path:
+def _document_bundle(root: Path, view: str = "image_and_text") -> Path:
     buffer = BytesIO()
     Image.new("RGB", (2, 3), "blue").save(buffer, format="PNG")
     units = []
@@ -116,6 +125,12 @@ def _bundle(root: Path, view: str = "image_and_text") -> Path:
     return _inventory(root)
 
 
+def _bundle(root: Path, view: str = "image_and_text") -> Path:
+    from tests.recipes.test_grouped_query_bundle import _grouped
+
+    return _grouped(root, view, validation=True)
+
+
 @pytest.mark.parametrize(
     "view,producer_view", [("text", "text"), ("image", "image"), ("text_image", "image_and_text")]
 )
@@ -175,7 +190,7 @@ def test_unified_bundle_rejects_corruption_and_semantic_drift(tmp_path, mutation
         if mutation == "duplicate-unit":
             units.append(units[0])
         else:
-            units[1]["document_id"] = units[0]["document_id"]
+            units[1]["split"] = "evaluation"
         _jsonl(root / "retrieval_units.jsonl", units)
         _inventory(root)
     elif mutation in {"duplicate-query", "dangling-positive"}:
@@ -192,7 +207,7 @@ def test_unified_bundle_rejects_corruption_and_semantic_drift(tmp_path, mutation
         )
         _inventory(root)
     else:
-        corpus = root / "views/image_and_text/corpus/train"
+        corpus = root / "views/image_and_text/corpus/shared"
         shard = corpus / ("extra.parquet" if mutation == "undeclared-shard" else "part-00000.parquet")
         table = pq.read_table(corpus / "part-00000.parquet")
         if mutation == "evidence-as-text":
@@ -228,7 +243,7 @@ def test_structural_only_inspection_never_attests_local_integrity(tmp_path):
 )
 def test_unified_bundle_rejects_unloadable_corpus_metadata(tmp_path, view, field, value):
     manifest = _bundle(tmp_path, view)
-    path = tmp_path / f"views/{view}/corpus/train/merlin_metadata.json"
+    path = tmp_path / f"views/{view}/corpus/shared/merlin_metadata.json"
     metadata = json.loads(path.read_text())
     if value is None:
         del metadata[field]
@@ -320,7 +335,7 @@ def test_unsupported_version_and_missing_view_are_not_fabricated(tmp_path):
 
 
 def test_legacy_checksum_mode_includes_corpus_artifacts(tmp_path):
-    manifest = _bundle(tmp_path, "text")
+    manifest = _document_bundle(tmp_path, "text")
     payload = json.loads(manifest.read_text())
     payload.update(
         schema_version=3,
@@ -357,8 +372,9 @@ class _MiningClient:
         return np.array([[1.0, 0.0] for _ in queries], dtype=np.float32)
 
     def _encode_batch(self, documents, *, input_type):
+        start = len(self.document_inputs)
         self.document_inputs.extend(documents)
-        return [[1.0, 0.0], [0.2, 0.8]][: len(documents)]
+        return [[1.0, 0.0] if start + index == 0 else [0.2, 0.8] for index, _ in enumerate(documents)]
 
 
 @pytest.mark.parametrize(
@@ -373,7 +389,7 @@ def test_prepared_view_reaches_actual_recipe_miner(tmp_path, monkeypatch, view, 
     from nemotron.recipes.embed.stage3_eval import eval as eval_module
 
     manifest = _bundle(tmp_path / "bundle", producer_view)
-    corpus_path = manifest.parent / f"views/{producer_view}/corpus/train/part-00000.parquet"
+    corpus_path = manifest.parent / f"views/{producer_view}/corpus/shared/part-00000.parquet"
     rows = pq.read_table(corpus_path).to_pylist()
     id_key = {"text": "id", "image": "image_filename", "text_image": "docid"}[view]
     distractor = dict(rows[0], **{id_key: "page-distractor"})
@@ -382,6 +398,10 @@ def test_prepared_view_reaches_actual_recipe_miner(tmp_path, monkeypatch, view, 
     units = [json.loads(line) for line in units_path.read_text().splitlines()]
     units.append(dict(units[0], unit_id="page-distractor"))
     _jsonl(units_path, units)
+    eval_path = manifest.parent / f"synthetic_eval/{producer_view}/corpus.jsonl"
+    eval_rows = [json.loads(line) for line in eval_path.read_text().splitlines()]
+    eval_rows.append(dict(eval_rows[0], _id="page-distractor"))
+    _jsonl(eval_path, eval_rows)
     _inventory(manifest.parent)
     train = retrieval_vl.prepare_vl_training_data(manifest, output_dir=tmp_path / "prepared", view=view)
     _MiningClient.document_inputs = []
@@ -397,7 +417,7 @@ def test_prepared_view_reaches_actual_recipe_miner(tmp_path, monkeypatch, view, 
         use_images=use_images,
     )
     row = json.loads(result.read_text())["data"][0]
-    assert row["neg_doc"][0]["id"] == "page-distractor"
+    assert row["neg_doc"][0]["id"] != row["pos_doc"][0]["id"]
     assert row["negative_mining_performed"] is True
     assert row["unlisted_document_disposition"] == "unjudged"
     assert row["relevance_judgements_complete"] is False
