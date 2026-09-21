@@ -38,3 +38,15 @@ def test_write_temp_pyproject_preserves_extras_sources_and_indexes() -> None:
         assert "transformer-engine" in uv["exclude-dependencies"]
     finally:
         shutil.rmtree(temp_dir)
+
+
+def test_root_project_urls_point_to_canonical_repo() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+
+    with open(repo_root / "pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    project_urls = data["project"]["urls"]
+    assert project_urls["Homepage"] == "https://github.com/NVIDIA-NeMo/Nemotron"
+    assert project_urls["Documentation"] == "https://github.com/NVIDIA-NeMo/Nemotron#readme"
+    assert project_urls["Repository"] == "https://github.com/NVIDIA-NeMo/Nemotron"
