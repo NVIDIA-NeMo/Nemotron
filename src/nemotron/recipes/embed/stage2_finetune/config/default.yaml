@@ -45,7 +45,6 @@ weight_decay: 0.01
 # container, otherwise FlashAdamW with fp32 parameters and optimizer states.
 # FSDP2 forward/backward compute remains bf16.
 optimizer_backend: auto
-flash_adamw_master_weight_bits: 32
 
 # Model architecture
 # attn_implementation: null  # Auto-detects: flash_attention_2 if available, else sdpa

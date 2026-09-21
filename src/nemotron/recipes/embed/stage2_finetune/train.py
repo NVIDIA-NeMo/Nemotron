@@ -162,13 +162,6 @@ class FinetuneConfig(RecipeSettings):
         default="auto",
         description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
     )
-    flash_adamw_master_weight_bits: Literal[24, 32] | None = Field(
-        default=32,
-        description=(
-            "Master-weight correction precision for low-precision FlashAdamW parameters. "
-            "The recipe stores FlashAdamW parameters in FP32, so no correction is needed."
-        ),
-    )
 
     # Model architecture
     attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(
@@ -510,7 +503,8 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "eps": 1.0e-8,
             "quantize": False,
             "compress_state_dict": False,
-            "master_weight_bits": cfg.flash_adamw_master_weight_bits,
+            # FP32 parameters already serve as master weights.
+            "master_weight_bits": None,
             "fused": True,
         }
         raw_config["optimizer"] = flash_optimizer

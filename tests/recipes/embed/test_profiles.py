@@ -100,7 +100,6 @@ def test_default_base_model_is_shared_across_model_stages() -> None:
     assert prep.output_dir == Path("output/embed/nemotron-3-1b/stage1_data_prep")
     assert finetune.base_model == BASE_MODEL
     assert finetune.trust_remote_code is True
-    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.train_data_path == Path(
         "output/embed/nemotron-3-1b/stage1_data_prep/train_mined.automodel_unrolled.json"
     )
@@ -254,7 +253,6 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert prep.passage_prefix == "passage: "
     assert finetune.query_prefix == "query: "
     assert finetune.passage_prefix == "passage: "
-    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.auto_scale_checkpoint_intervals is False
     assert evaluate.base_model == BASE_MODEL
     assert evaluate.batch_size == 4
@@ -329,7 +327,6 @@ def test_llama_profile_preserves_export_and_nim_contract() -> None:
     assert prep.passage_prefix == "passage: "
     assert finetune.query_prefix == "query: "
     assert finetune.passage_prefix == "passage: "
-    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.auto_scale_checkpoint_intervals is True
     assert evaluate.base_model == prep.base_model
     assert evaluate.batch_size == 128

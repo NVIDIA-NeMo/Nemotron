@@ -82,7 +82,6 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
 
     cfg = train.FinetuneConfig(
         optimizer_backend="flash_adamw",
-        flash_adamw_master_weight_bits=24,
     )
     raw_config, optimizer_backend = train._load_automodel_config(cfg, _as_dict)
 
@@ -95,24 +94,25 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
         "eps": 1.0e-8,
         "quantize": False,
         "compress_state_dict": False,
-        "master_weight_bits": 24,
+        "master_weight_bits": None,
         "fused": True,
     }
     assert raw_config["model"]["torch_dtype"] == "float32"
 
 
-def test_flash_adamw_disables_master_weights_when_explicitly_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_auto_flash_adamw_fallback_keeps_fp32_parameters(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (False, "missing TE"))
     monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (True, None))
 
     cfg = train.FinetuneConfig(
-        optimizer_backend="flash_adamw",
-        flash_adamw_master_weight_bits=None,
+        optimizer_backend="auto",
     )
     raw_config, optimizer_backend = train._load_automodel_config(cfg, _as_dict)
 
     assert optimizer_backend == "flash_adamw"
     assert raw_config["optimizer"]["master_weight_bits"] is None
+    assert raw_config["optimizer"]["quantize"] is False
+    assert raw_config["model"]["torch_dtype"] == "float32"
 
 
 @pytest.mark.parametrize(

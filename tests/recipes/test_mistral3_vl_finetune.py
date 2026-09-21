@@ -123,7 +123,7 @@ def test_vl_flash_adamw_uses_fp32_states_and_full_master_weights(
     assert backend == "flash_adamw"
     assert raw["optimizer"]["quantize"] is False
     assert raw["optimizer"]["compress_state_dict"] is False
-    assert raw["optimizer"]["master_weight_bits"] == 32
+    assert raw["optimizer"]["master_weight_bits"] is None
     assert raw["model"]["torch_dtype"] == "float32"
 
 
@@ -312,7 +312,6 @@ def test_public_profiles_declare_dependency_and_safe_data_contract() -> None:
     assert raw["do_distributed_inbatch_negative"] is False
     assert raw["require_mined_negatives"] is True
     assert raw["use_text_in_document"] is True
-    assert raw["flash_adamw_master_weight_bits"] == 32
     assert "MISTRAL3_VL_TRAIN_DATA" in raw["train_data_path"]
     assert raw["base_model"] == "${oc.env:MISTRAL3_VL_EMBED_MODEL}"
 
