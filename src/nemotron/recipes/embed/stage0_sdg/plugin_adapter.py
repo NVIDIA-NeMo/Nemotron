@@ -21,15 +21,45 @@ def build_retrieval_first_config(cfg: SDGConfig):
     if cfg.sources_file is None or not cfg.portable_export:
         raise ValueError("retrieval_first requires sources_file and portable_export")
     endpoint = cfg.nvidia_api_base_url or "https://integrate.api.nvidia.com/v1"
+    reserved = {
+        "sources_file",
+        "contexts_file",
+        "output_dir",
+        "dataset_id",
+        "generator",
+        "judge",
+        "concurrency",
+        "batch_size",
+        "max_units_per_context",
+        "seed",
+        "ratios",
+        "resume",
+    }
+    if reserved.intersection(cfg.sdg_options):
+        raise ValueError(
+            f"sdg_options cannot override recipe-owned fields: {sorted(reserved.intersection(cfg.sdg_options))}"
+        )
     return MultimodalSDGConfig(
         sources_file=cfg.sources_file.resolve(),
         contexts_file=cfg.contexts_file.resolve() if cfg.contexts_file else None,
         output_dir=cfg.output_dir.resolve() / "multimodal",
         dataset_id=cfg.corpus_id,
-        generator=ModelSettings(
-            model=cfg.qa_generation_model, endpoint=endpoint, credential_env=cfg.sdg_credential_env
+        generator=ModelSettings.model_validate(
+            {
+                "model": cfg.qa_generation_model,
+                "endpoint": endpoint,
+                "credential_env": cfg.sdg_credential_env,
+                **cfg.sdg_generator_options,
+            }
         ),
-        judge=ModelSettings(model=cfg.quality_judge_model, endpoint=endpoint, credential_env=cfg.sdg_credential_env),
+        judge=ModelSettings.model_validate(
+            {
+                "model": cfg.quality_judge_model,
+                "endpoint": endpoint,
+                "credential_env": cfg.sdg_credential_env,
+                **cfg.sdg_judge_options,
+            }
+        ),
         concurrency=cfg.max_parallel_requests_for_gen or 8,
         batch_size=cfg.sdg_batch_size,
         max_units_per_context=cfg.sdg_max_units_per_context,
@@ -40,6 +70,7 @@ def build_retrieval_first_config(cfg: SDGConfig):
             evaluation=1 - cfg.export_train_ratio - cfg.export_validation_ratio,
         ),
         resume=cfg.resume != "never",
+        **cfg.sdg_options,
     )
 
 
@@ -56,8 +87,9 @@ def execute_retrieval_first(cfg: SDGConfig) -> Path:
     config = build_retrieval_first_config(cfg)
     if cfg.nvidia_api_key is not None:
         raise ValueError("retrieval_first accepts credentials through sdg_credential_env only, not inline config")
-    if not os.environ.get(config.generator.credential_env):
-        raise ValueError(f"Set the credential environment variable {config.generator.credential_env}")
+    for model in (config.generator, config.judge):
+        if not os.environ.get(model.credential_env):
+            raise ValueError(f"Set the credential environment variable {model.credential_env}")
     handoff = run_multimodal_sdg(config)
     bundle = handoff.parent
     manifest = json.loads((bundle / "run_manifest.json").read_text())

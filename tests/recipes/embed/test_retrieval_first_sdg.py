@@ -43,6 +43,70 @@ def test_generic_configuration_mapping(tmp_path):
     assert mapped.ratios.train == 0.8 and mapped.ratios.validation == 0
 
 
+def test_all_generic_producer_controls_and_model_settings_are_forwarded(tmp_path):
+    options = {
+        "context_strategy": "document",
+        "max_context_chars": 40000,
+        "related_contexts_per_context": 2,
+        "related_summary_similarity": 0.4,
+        "judge_summaries": True,
+        "summary_quality_threshold": 3,
+        "summary_count": 50,
+        "summary_near_duplicate_threshold": 0.95,
+        "instructions_per_context": 1,
+        "missing_response_attempts": 2,
+        "require_verbatim_quotes": True,
+        "relevance_threshold": 5,
+        "self_sufficiency_threshold": 3,
+        "group_near_duplicates": True,
+        "instructions": [
+            {
+                "name": "comparison",
+                "instruction": "Compare operating limits",
+                "query_type": "comparison",
+                "format": "question",
+                "persona": "technician",
+                "answerability": "multi-unit",
+                "modality": "text_and_image",
+            }
+        ],
+    }
+    mapped = build_retrieval_first_config(
+        config(
+            tmp_path,
+            sdg_options=options,
+            sdg_generator_options={"temperature": 0.2, "max_tokens": 2048, "timeout": 90, "extra_body": {"top_k": 20}},
+            sdg_judge_options={
+                "temperature": 0,
+                "credential_env": "JUDGE_KEY",
+                "endpoint": "https://judge.invalid/v1",
+            },
+        )
+    )
+    serialized = mapped.model_dump(mode="json")
+    for name, value in options.items():
+        assert serialized[name] == value
+    assert mapped.generator.temperature == 0.2 and mapped.generator.max_tokens == 2048
+    assert mapped.generator.timeout == 90 and mapped.generator.extra_body == {"top_k": 20}
+    assert mapped.judge.temperature == 0 and mapped.judge.credential_env == "JUDGE_KEY"
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{"output_dir": "elsewhere"}, {"seed": 7}, {"unknown": True}, {"summary_count": 2, "summary_fraction": 0.5}],
+)
+def test_producer_options_cannot_hide_errors_or_override_recipe_identity(tmp_path, options):
+    with pytest.raises(ValueError):
+        build_retrieval_first_config(config(tmp_path, sdg_options=options))
+
+
+def test_independent_judge_credential_is_checked_before_inference(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_SDG_KEY", "placeholder")
+    monkeypatch.delenv("JUDGE_KEY", raising=False)
+    with pytest.raises(ValueError, match="JUDGE_KEY"):
+        run_sdg(config(tmp_path, sdg_judge_options={"credential_env": "JUDGE_KEY"}))
+
+
 @pytest.mark.parametrize("updates", [{"preview": True}, {"strict_visual": True}])
 def test_unsupported_legacy_modes_do_not_silently_change_ea_run(tmp_path, updates):
     with pytest.raises(ValidationError):

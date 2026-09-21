@@ -143,7 +143,7 @@ def test_vl_profile_native_override_preserves_image_processing(
     assert "--mining.query_prefix" not in cmd
     assert "--mining.passage_prefix" not in cmd
     assert cmd[cmd.index("--mining.multimodal_encoder.q_max_length") + 1] == "512"
-    assert cmd[cmd.index("--mining.multimodal_encoder.p_max_length") + 1] == "8192"
+    assert cmd[cmd.index("--mining.multimodal_encoder.p_max_length") + 1] == str(cfg.passage_max_length)
     assert cmd[cmd.index("--mining.tokenizer_force_default") + 1] == "true"
     assert cmd[cmd.index("--mining.query_embedding_batch_size") + 1] == "1"
     assert cmd[cmd.index("--mining.document_embedding_batch_size") + 1] == "1"

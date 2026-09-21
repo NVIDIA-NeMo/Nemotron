@@ -13,6 +13,17 @@ contexts_file: null
 sdg_max_units_per_context: 8
 sdg_batch_size: 30
 sdg_credential_env: NVIDIA_API_KEY
+sdg_options:
+  context_strategy: document
+  max_context_chars: 100000
+  judge_summaries: true
+  related_contexts_per_context: 1
+  related_summary_similarity: 0.2
+  group_near_duplicates: true
+  require_verbatim_quotes: false
+  missing_response_attempts: 3
+sdg_generator_options: {}
+sdg_judge_options: {}
 portable_export: true
 export_train_ratio: 0.8
 export_validation_ratio: 0.0

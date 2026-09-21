@@ -55,7 +55,7 @@ import math
 import os
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -106,6 +106,21 @@ class SDGConfig(RecipeSettings):
     sdg_max_units_per_context: int = Field(default=8, ge=1)
     sdg_batch_size: int = Field(default=30, ge=1, le=128)
     sdg_credential_env: str = Field(default="NVIDIA_API_KEY", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    sdg_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Generic producer options (context planning, summary selection, profiles, gates, grouping). "
+            "Validated by the public plugin; recipe paths and execution fields cannot be overridden."
+        ),
+    )
+    sdg_generator_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Public generator ModelSettings overrides. No inline secrets.",
+    )
+    sdg_judge_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Independent public ModelSettings overrides for the judge. No inline secrets.",
+    )
     portable_export: bool = Field(
         default=False, description="Export all text/image views and bind them to the handoff."
     )

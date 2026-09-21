@@ -433,11 +433,12 @@ diagnostic. No generated answers, dataset loaders, benchmark-specific repairs,
 or preconverted handoff bypasses are involved. Existing text profiles retain
 `legacy_qa` and their prior behavior.
 
-By default each source unit is a context. For multi-page or cross-document
-questions pass `contexts_file=/absolute/path/to/contexts.jsonl`, whose rows have
-`context_id`, `unit_ids`, and optional `language`. Contexts may contain at most
-`sdg_max_units_per_context` units (default 8); the producer fails rather than
-truncates oversized evidence. Context membership does not imply query grouping.
+For explicit multi-page or cross-document questions pass
+`contexts_file=/absolute/path/to/contexts.jsonl`, whose rows have `context_id`,
+`unit_ids`, and optional `language`. Memberships are partitioned into at most
+`sdg_max_units_per_context` units (default 8), never truncated. A single unit
+over the character bound must be preprocessed by the caller. Context membership
+does not imply query grouping.
 The complete eligible corpus, including unselected distractors, is exported.
 
 The producer writes immutable state under `stage0_sdg/multimodal`. Inspect
@@ -446,6 +447,52 @@ sources, settings or code cannot reuse the run. Stage 0 validates the full
 portable bundle before publishing its top-level `generation_result.json`;
 Stage 1 performs the same full validation before native AutoModel mining.
 No HNM ranking/negative selection or training optimizer behavior changes here.
+
+The profile uses bounded document sections and optional lexical-summary-related
+cross-document contexts. It preserves every canonical unit without text truncation.
+Use `contexts_file` to supply explicit memberships instead of automatic document
+sections. These contexts are not query split groups.
+
+`sdg_options` forwards the public producer's generic controls, with validation by
+the same public config model. For example:
+
+```yaml
+sdg_options:
+  context_strategy: document
+  max_context_chars: 100000
+  related_contexts_per_context: 1
+  judge_summaries: true
+  summary_fraction: 0.5  # or summary_count; never both
+  summary_near_duplicate_threshold: 0.95
+  group_near_duplicates: true
+  relevance_threshold: 4
+  self_sufficiency_threshold: 4
+  require_verbatim_quotes: false  # quote fidelity remains diagnostic
+  missing_response_attempts: 3  # only missing rows, never raised runtime failures
+  instructions_per_context: 1
+  instructions:
+    - name: operating-limits
+      instruction: Ask about substantive operating limits in the evidence.
+      query_type: comparison
+      format: question
+      persona: maintenance engineer
+      modality: text_and_image
+      answerability: evidence may span multiple units
+sdg_generator_options:
+  temperature: 0.6
+  max_tokens: 8192
+sdg_judge_options:
+  temperature: 0.0
+  max_tokens: 4096
+```
+
+Model option mappings accept the public `ModelSettings` fields, including
+independent endpoint, credential **environment-variable name**, timeout and
+`extra_body`. Both credentials are checked before generation; never put secrets
+in model option dictionaries. Unknown fields fail. Recipe-owned paths, corpus ID,
+execution bounds, seed, split ratios, resume and model-role objects cannot be
+overridden in `sdg_options`; use their named recipe settings. No producer settings
+are silently discarded. AutoModel mining/training behavior is unchanged.
 
 This is an unreleased EA candidate. CPU contract tests and mocked inference do
 not qualify hosted-model quality or the full GPU path. Before an EA package
