@@ -83,10 +83,12 @@ synthetic-query style.
 ## Precision and mining
 
 This protocol does not change the training optimizer or checkpoint dtype.
-The default VL configuration uses BF16 model parameters and FlashAdamW with
-FP32 optimizer states and 32-bit master weights.
-The exported model remains BF16; resumable training checkpoints additionally
-contain optimizer state. Full-FP32 model training is not required by this feature.
+The default VL configuration uses FP32 resident parameters and FlashAdamW
+optimizer states, with BF16 forward/backward computation under FSDP2.
+FlashAdamW stores unquantized states in the parameter dtype, so FP32 parameter
+storage is required to keep the moments in FP32. Resumable training checkpoints
+retain FP32 parameters and optimizer states; consolidated model exports remain
+BF16 for BF16 source models.
 
 Mining continues to use AutoModel's own positive exclusion and negative selection.
 No post-mining annotation-restoration layer is required: retain the source bundle

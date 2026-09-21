@@ -98,7 +98,7 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
         "master_weight_bits": 24,
         "fused": True,
     }
-    assert raw_config["model"]["torch_dtype"] == "bfloat16"
+    assert raw_config["model"]["torch_dtype"] == "float32"
 
 
 def test_flash_adamw_disables_master_weights_when_explicitly_requested(monkeypatch: pytest.MonkeyPatch) -> None:

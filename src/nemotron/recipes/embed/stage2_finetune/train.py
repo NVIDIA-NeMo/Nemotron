@@ -165,8 +165,8 @@ class FinetuneConfig(RecipeSettings):
     flash_adamw_master_weight_bits: Literal[24, 32] | None = Field(
         default=32,
         description=(
-            "Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable. "
-            "Set to None only to explicitly disable master-weight correction."
+            "Master-weight correction precision for low-precision FlashAdamW parameters. "
+            "The recipe stores FlashAdamW parameters in FP32, so no correction is needed."
         ),
     )
 
@@ -514,7 +514,9 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "fused": True,
         }
         raw_config["optimizer"] = flash_optimizer
-        raw_config.setdefault("model", {})["torch_dtype"] = "bfloat16"
+        # FlashOptim 0.1.4 stores unquantized moments in the parameter dtype.
+        # Keep resident parameters/states FP32; FSDP2 still computes in BF16.
+        raw_config.setdefault("model", {})["torch_dtype"] = "float32"
 
     return config_node_cls(raw_config), optimizer_backend
 
@@ -613,13 +615,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg, optimizer_backend = _load_automodel_config(cfg, ConfigNode)
     optimizer_detail = optimizer_backend
     if optimizer_backend == "flash_adamw":
-        if cfg.flash_adamw_master_weight_bits is None:
-            optimizer_detail = f"{optimizer_backend} (fp32 optimizer states, master weights disabled)"
-        else:
-            optimizer_detail = (
-                f"{optimizer_backend} (bf16 model, fp32 optimizer states, "
-                f"{cfg.flash_adamw_master_weight_bits}-bit master weights)"
-            )
+        optimizer_detail = f"{optimizer_backend} (fp32 parameters and optimizer states, bf16 FSDP2 compute)"
     print(f"Optimizer:      {optimizer_detail}")
     print()
 

@@ -20,7 +20,7 @@ learning_rate: 2.0e-6
 lr_warmup_steps: 100
 lr_decay_style: linear
 weight_decay: 0.01
-# BF16 model parameters, FP32 optimizer states, and 32-bit master-weight precision.
+# FP32 resident parameters and optimizer states; BF16 FSDP2 compute and model export.
 optimizer_backend: flash_adamw
 flash_adamw_master_weight_bits: 32
 

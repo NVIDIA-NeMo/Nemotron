@@ -124,7 +124,7 @@ def test_vl_flash_adamw_uses_fp32_states_and_full_master_weights(
     assert raw["optimizer"]["quantize"] is False
     assert raw["optimizer"]["compress_state_dict"] is False
     assert raw["optimizer"]["master_weight_bits"] == 32
-    assert raw["model"]["torch_dtype"] == "bfloat16"
+    assert raw["model"]["torch_dtype"] == "float32"
 
 
 def test_embed_vl_export_metadata_is_vllm_compatible(tmp_path: Path) -> None:

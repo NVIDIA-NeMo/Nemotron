@@ -42,8 +42,8 @@ weight_decay: 0.01
 
 # Optimizer
 # auto uses Transformer Engine FusedAdam when available in the Automodel
-# container, otherwise FlashAdamW with fp32 optimizer states, bf16 model
-# parameters, and 32-bit effective master weights.
+# container, otherwise FlashAdamW with fp32 parameters and optimizer states.
+# FSDP2 forward/backward compute remains bf16.
 optimizer_backend: auto
 flash_adamw_master_weight_bits: 32
 
