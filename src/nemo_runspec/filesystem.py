@@ -112,12 +112,27 @@ class ArtifactFileSystem(AbstractFileSystem):
                 break
         else:
             # No version specifier found - entire path could be artifact name or name/file
-            # Heuristic: if there's no version, assume no file path (user wants artifact root)
-            artifact_ref = path
-            file_path = ""
+            # art://name/path/to/file implies latest, so split off the first segment as
+            # the artifact name when it exists in the local registry; otherwise keep the
+            # whole path as the artifact reference (e.g. W&B entity/project/name).
+            first, sep, rest = path.partition("/")
+            if sep and rest and self._is_local_artifact(first):
+                artifact_ref = first
+                file_path = rest
+            else:
+                artifact_ref = path
+                file_path = ""
             version = None
 
         return artifact_ref, version, file_path
+
+    @staticmethod
+    def _is_local_artifact(name: str) -> bool:
+        """Check whether name exists in the local artifact registry."""
+        try:
+            return get_artifact_registry().get(name) is not None
+        except Exception:
+            return False
 
     def _resolve(self, path: str) -> tuple[Path, str]:
         """Resolve art:// path to local filesystem path.
