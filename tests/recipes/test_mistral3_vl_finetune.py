@@ -111,7 +111,7 @@ def test_embed_vl_base_matches_automodel_mr(monkeypatch: pytest.MonkeyPatch) -> 
     assert raw["dataloader"]["collate_fn"]["collator_fn_name"] == "process_queries_documents_biencoder"
 
 
-def test_vl_flash_adamw_uses_fp32_states_and_full_master_weights(
+def test_vl_flash_adamw_uses_quantized_states_and_full_master_weights(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(embed_train, "_can_import_fused_adam", lambda: (False, "not installed"))
@@ -121,10 +121,10 @@ def test_vl_flash_adamw_uses_fp32_states_and_full_master_weights(
     raw, backend = embed_train._load_automodel_config(cfg, lambda value: value)
 
     assert backend == "flash_adamw"
-    assert raw["optimizer"]["quantize"] is False
+    assert raw["optimizer"]["quantize"] is True
     assert raw["optimizer"]["compress_state_dict"] is False
-    assert raw["optimizer"]["master_weight_bits"] is None
-    assert raw["model"]["torch_dtype"] == "float32"
+    assert raw["optimizer"]["master_weight_bits"] == 32
+    assert raw["model"]["torch_dtype"] == "bfloat16"
 
 
 def test_embed_vl_export_metadata_is_vllm_compatible(tmp_path: Path) -> None:
@@ -312,6 +312,7 @@ def test_public_profiles_declare_dependency_and_safe_data_contract() -> None:
     assert raw["do_distributed_inbatch_negative"] is False
     assert raw["require_mined_negatives"] is True
     assert raw["use_text_in_document"] is True
+    assert raw["flash_adamw_master_weight_bits"] == 32
     assert "MISTRAL3_VL_TRAIN_DATA" in raw["train_data_path"]
     assert raw["base_model"] == "${oc.env:MISTRAL3_VL_EMBED_MODEL}"
 

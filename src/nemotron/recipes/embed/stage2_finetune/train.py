@@ -162,6 +162,13 @@ class FinetuneConfig(RecipeSettings):
         default="auto",
         description="Optimizer backend. 'auto' uses FusedAdam when available, otherwise FlashAdamW.",
     )
+    flash_adamw_master_weight_bits: Literal[24, 32] | None = Field(
+        default=32,
+        description=(
+            "Effective master-weight precision for FlashAdamW when Transformer Engine is unavailable. "
+            "Set to None only to explicitly disable master-weight correction."
+        ),
+    )
 
     # Model architecture
     attn_implementation: Literal["sdpa", "flash_attention_2", "eager"] | None = Field(
@@ -501,16 +508,13 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "weight_decay": raw_config.get("optimizer", {}).get("weight_decay", cfg.weight_decay),
             "betas": [0.9, 0.999],
             "eps": 1.0e-8,
-            "quantize": False,
+            "quantize": True,
             "compress_state_dict": False,
-            # FP32 parameters already serve as master weights.
-            "master_weight_bits": None,
+            "master_weight_bits": cfg.flash_adamw_master_weight_bits,
             "fused": True,
         }
         raw_config["optimizer"] = flash_optimizer
-        # FlashOptim 0.1.4 stores unquantized moments in the parameter dtype.
-        # Keep resident parameters/states FP32; FSDP2 still computes in BF16.
-        raw_config.setdefault("model", {})["torch_dtype"] = "float32"
+        raw_config.setdefault("model", {})["torch_dtype"] = "bfloat16"
 
     return config_node_cls(raw_config), optimizer_backend
 
@@ -609,7 +613,12 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg, optimizer_backend = _load_automodel_config(cfg, ConfigNode)
     optimizer_detail = optimizer_backend
     if optimizer_backend == "flash_adamw":
-        optimizer_detail = f"{optimizer_backend} (fp32 parameters and optimizer states, bf16 FSDP2 compute)"
+        if cfg.flash_adamw_master_weight_bits is None:
+            optimizer_detail = f"{optimizer_backend} (master weights disabled)"
+        else:
+            optimizer_detail = (
+                f"{optimizer_backend} (bf16 model, {cfg.flash_adamw_master_weight_bits}-bit master weights)"
+            )
     print(f"Optimizer:      {optimizer_detail}")
     print()
 

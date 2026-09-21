@@ -143,12 +143,6 @@ training uses each query's mined negatives. The positive-ID unrolling changes ar
 deferred. Mining, training, and local evaluation use the same 512-token query
 and 4096-token passage limits. Remote model code is disabled by default.
 
-Training uses FP32 resident parameters and FlashAdamW momentum/variance states,
-with BF16 forward/backward computation under FSDP2. FlashAdamW stores unquantized
-states in the parameter dtype, so disabling quantization also requires FP32
-parameter storage. Resumable training checkpoints retain FP32 parameters and
-optimizer states; consolidated model exports remain BF16 for BF16 source models.
-
 ```bash
 export NVIDIA_API_KEY=your_endpoint_credential
 export NVIDIA_API_BASE_URL=https://your-authorized-openai-compatible-endpoint.example/v1
