@@ -97,6 +97,17 @@ artifacts, and the symptom-to-fix index.
 
 ::::
 
+## Source-Tree Documentation
+
+The rendered pages above are the operator-facing guides. The repository also ships
+developer documentation and normative contracts beside the BFCL implementation. Start
+with the [`byob/bfcl` source README](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/bfcl/README.md) for a source-oriented map of the pipeline,
+then use the [`byob/references` directory](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/steps/byob/references) for the Oracle Pack, evaluation, assisted-authoring, MCP, and audit contracts.
+
+Some source-tree contracts are runtime inputs and are content-hashed into published
+artifacts. When an operator guide and a normative contract differ, treat the source-tree
+contract as authoritative.
+
 ## All Documentation
 
 ````{tab-set}
