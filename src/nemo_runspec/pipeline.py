@@ -298,7 +298,7 @@ def run_nemo_run(
             launcher="torchrun",
             env_vars=env_vars,
         )
-    else:  # slurm
+    elif config.executor == "slurm":
         # Validate required args
         if not config.account:
             _log_error("--account required for Slurm executor")
@@ -335,6 +335,12 @@ def run_nemo_run(
             tunnel=tunnel,
             env_vars=env_vars,
         )
+    else:
+        _log_error(
+            f"Executor {config.executor!r} is not supported by the nemo-run pipeline launcher "
+            "(supported: 'local', 'slurm')"
+        )
+        return 1
 
     # Build and run experiment
     with run.Experiment(config.job_name) as exp:
