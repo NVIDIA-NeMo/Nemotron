@@ -112,6 +112,41 @@ class TestJsonlDatasetWorkItem:
         assert item.subset is None
 
 
+class TestSetupRlRun:
+    """Tests for RL run setup and Hugging Face split discovery."""
+
+    def test_passes_subset_as_hf_config_name(self, tmp_path: Path) -> None:
+        from nemotron.data_prep.blend import DataBlend, Dataset
+        from nemotron.data_prep.recipes.rl import setup_rl_run
+
+        blend = DataBlend.from_datasets(
+            Dataset(
+                name="arc-agi",
+                path="hf://nvidia/Nemotron-RL-ARC-AGI-v1",
+                split="train",
+                subset="transductive",
+            )
+        )
+
+        with patch("datasets.get_dataset_split_names", return_value=["train"]) as get_splits:
+            items, _, _, _, available_splits = setup_rl_run(
+                blend=blend,
+                output_dir=tmp_path,
+                sample=None,
+                force=False,
+                compression="none",
+                num_shards_per_split=1,
+                resolve_hf_placeholders=False,
+            )
+
+        get_splits.assert_called_once_with(
+            "nvidia/Nemotron-RL-ARC-AGI-v1",
+            config_name="transductive",
+        )
+        assert available_splits == ["train"]
+        assert items[0].subset == "transductive"
+
+
 class TestJsonlShardWorkItem:
     """Tests for JsonlShardWorkItem (with plan_hash field)."""
 
