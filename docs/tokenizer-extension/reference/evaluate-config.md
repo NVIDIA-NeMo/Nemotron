@@ -46,7 +46,7 @@ Keep the evaluation corpus distinct from the corpus that trained the extension.
 | `corpus.hf_split` | `train` | Split to read. |
 | `corpus.path` | `null` | Local Parquet directory or glob, or JSON Lines path. |
 | `corpus.glob` | `"*.parquet"` | File pattern applied when `corpus.path` is a directory. |
-| `corpus.text_field` | `tgt` | Text column. The `wrong_text_field` error names the correct column for common datasets: `tgt` for Samanantar, `text` for Sangraha. |
+| `corpus.text_field` | `tgt` | Text column. The `wrong_text_field` error names the correct column for common datasets: `tgt` for Samanantar, `text` for Sangraha. For local Parquet, a missing column raises `IndexError: index out of bounds`. |
 | `corpus.num_docs` | `0` | Documents to score; `0` scores the full corpus. |
 | `corpus.skip_docs` | `0` | Leading documents to skip, to avoid overlap with the training slice when both share a source. |
 

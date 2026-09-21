@@ -33,7 +33,7 @@ The following table lists the conditions:
 | Condition | Recovery |
 |-----------|----------|
 | Both `corpus.hf_dataset` and `corpus.path` are set. | Set exactly one key. Set `corpus.hf_dataset=null` to clear the default dataset. |
-| `corpus.text_field` is not a column of the first record. The error message lists the available columns. | Set the actual column, such as `tgt` for Samanantar or `text` for Sangraha. The step never reads a different column. |
+| `corpus.text_field` is not a column of the first record. For a Hugging Face dataset or JSON Lines input, the error message lists the available columns; for local Parquet, this surfaces as `IndexError: index out of bounds`. | Set the actual column, such as `tgt` for Samanantar or `text` for Sangraha. The step never reads a different column. |
 | `tokens_spliced` is `0`. BPE training produced no token that survived the splice, so the output tokenizer would equal the base tokenizer. | Widen the corpus. Check `corpus.text_field`, check `corpus.samples`, and confirm that documents pass the 50-character minimum. Alternatively, lower `corpus.min_frequency`. |
 
 ## `init_embeddings`
@@ -53,7 +53,7 @@ See the support table in {doc}`../explanation/embedding-initialization`.
 | Error | Cause | Recovery |
 |-------|-------|----------|
 | `corpus_source_unset` | Neither `corpus.hf_dataset` nor `corpus.path` is set. | Set one of them. |
-| `wrong_text_field` | `corpus.text_field` does not name the text column. | Set the actual column: `tgt` for Samanantar, `text` for Wikipedia or Sangraha. |
+| `wrong_text_field` | `corpus.text_field` does not name the text column. Local Parquet reports `IndexError: index out of bounds`. | Set the actual column: `tgt` for Samanantar, `text` for Wikipedia or Sangraha. |
 
 A corpus that yields no documents raises a `RuntimeError` rather than reporting a fertility of `0.0`.
 

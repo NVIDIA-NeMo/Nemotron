@@ -43,13 +43,14 @@ Nested keys use dotted paths, and list values use bracket syntax:
 ```bash
 uv run nemotron steps run tokenizer_extension/extend -c default \
     language=vietnamese method=replace extension_size=30000 \
-    corpus.hf_dataset=null corpus.path=./data/vi corpus.glob='*.parquet'
+    corpus.hf_dataset=null corpus.path=./data/vi corpus.glob="'*.parquet'"
 
 uv run nemotron steps run tokenizer_extension/eval_init -c default \
     models=[./output/resized_checkpoint,./output/resized_checkpoint_replace] max_docs=2000
 ```
 
 Setting a key to `null` clears the default; `extend` and `evaluate` require exactly one of `corpus.hf_dataset` or `corpus.path` to be set.
+Use inner quotes for a glob override: `corpus.glob="'*.parquet'"`. The default is `*.parquet`; omit the key when it is unchanged.
 
 ## Step-Specific Notes
 

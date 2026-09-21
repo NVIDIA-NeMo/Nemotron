@@ -43,7 +43,7 @@ Writes `output_dir/<method>/`, where `<method>` is `add`, `replace`, or `expand`
 | `final_vocab_size` | Token count of the written tokenizer. |
 | `new_candidates` | Novel tokens produced by BPE training before the splice. |
 | `tokens_requested` | Same value as `extension_size`. |
-| `tokens_spliced` | Tokens actually added. Constructive merging may add intermediate tokens, so this value can differ from `tokens_requested`. Compare arms only at equal `tokens_spliced`. A value of `0` is an error. The step writes no directory. |
+| `tokens_spliced` | Tokens actually added. Constructive merging may add intermediate tokens, so this value can differ from `tokens_requested`. Compare arms only at equal `tokens_spliced`. A value of `0` is an error. The step writes no tokenizer, though an empty `output_dir/<method>/` may remain. |
 | `removed` | `replace` only: number of pruned tokens. |
 | `output` | Output directory. |
 | `timings_sec` | `train`, `build`, and `total` wall-clock seconds. |

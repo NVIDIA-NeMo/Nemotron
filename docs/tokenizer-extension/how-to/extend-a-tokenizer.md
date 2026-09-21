@@ -48,11 +48,12 @@ Local Parquet or JSON Lines:
 ```console
 $ uv run nemotron steps run tokenizer_extension/extend -c default \
     language=vietnamese method=add extension_size=30000 \
-    corpus.hf_dataset=null corpus.path=<dir-or-glob> corpus.glob='*.parquet' \
+    corpus.hf_dataset=null corpus.path=<dir-or-glob> corpus.glob="'*.parquet'" \
     corpus.text_field=text
 ```
 
 Leave `corpus.hf_dataset` null when `corpus.path` is set.
+Use inner quotes for a glob override: `corpus.glob="'*.parquet'"`. The default is `*.parquet`; omit the key when it is unchanged.
 For a local directory, keep `corpus.diversify: true` so that sampling covers every shard.
 
 ## Choose the Method
@@ -87,7 +88,7 @@ Open `output_dir/<method>/summary.json` and compare `tokens_spliced` with `exten
 
 - Equal values mean the requested budget was reached.
 - A smaller `tokens_spliced` means the corpus was too small for the budget; widen the corpus or lower `extension_size`. The step logs a warning because fertility and BPB comparisons between arms are valid only at a matched `tokens_spliced`.
-- A `tokens_spliced` value of `0` never reaches this file. The step raises an error and writes nothing, because the tokenizer would equal the base tokenizer. The step also raises an error when `corpus.text_field` is not a column of the corpus, and when both `corpus.hf_dataset` and `corpus.path` are set. Refer to {doc}`../reference/troubleshooting`.
+- A `tokens_spliced` value of `0` never reaches this file. The step raises an error and writes no tokenizer. A `corpus.text_field` that does not name a corpus column also raises an error: Hugging Face and JSON Lines inputs report the missing column, and local Parquet reports `IndexError: index out of bounds`. Setting both `corpus.hf_dataset` and `corpus.path` is also an error. Refer to {doc}`../reference/troubleshooting`.
 
 The `replace/` directory also contains `id_remap.json`, which the `init_embeddings` step needs for `arm=replace`.
 

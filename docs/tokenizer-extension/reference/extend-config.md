@@ -58,7 +58,7 @@ The corpus block accepts either a Hugging Face dataset or a local path; the `cor
 | `corpus.streaming` | `false` | `false` downloads and caches the dataset so later jobs reuse it; `true` streams. |
 | `corpus.path` | `null` | Local Parquet directory or glob, or a JSON Lines path. `corpus.hf_dataset` must be `null` when this is set. |
 | `corpus.glob` | `"*.parquet"` | File pattern applied when `corpus.path` is a directory. |
-| `corpus.text_field` | `text` | Column that holds the document text. The column must exist in the corpus. When the column does not exist, the step raises an error that lists the available columns. The step never reads a different column. |
+| `corpus.text_field` | `text` | Column that holds the document text. For a Hugging Face dataset or JSON Lines input, a missing column raises an error listing the available columns. For local Parquet, it raises `IndexError: index out of bounds`. The step never reads a different column. |
 | `corpus.samples` | `1000000` | Maximum documents used for training. |
 | `corpus.max_doc_chars` | `20000` | Documents are truncated to this many characters. Lower it on a memory-limited node. |
 | `corpus.min_frequency` | `0` | Minimum word frequency for a merge; `0` keeps every merge. |

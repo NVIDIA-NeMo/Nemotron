@@ -46,7 +46,7 @@ One GPU is enough for every engine except `subword.gemma_weighted` on a large Ge
 On Lepton, `LEPTON_INIT_SHAPE` sets the GPU shape for `init_embeddings` and `LEPTON_BPB_SHAPE` sets the GPU shape for `eval_init`.
 A profile's `pip_extras` list replaces the base profile's list. It does not extend the base list. When you edit a `pip_extras` list, restate the base packages.
 
-Each profile also sets `TOKEXT_OUTPUT_DIR` to a shared workspace path.
+The `extend` and `init_embeddings` profiles set `TOKEXT_OUTPUT_DIR` to a shared workspace path on all three targets, and `lepton_tokenizer_eval_init` sets it as well. The `evaluate` profiles do not set it. Pass the tokenizer path explicitly with those profiles.
 The `init_embeddings` profile sets `FASTTEXT_CACHE_DIR`, the directory where `focus` caches downloaded `cc.<code>.300.bin` vectors so that a second run reuses them.
 
 ## Run the Pipeline Detached
@@ -55,7 +55,7 @@ The following commands use the Slurm profile names; replace the `slurm_` prefix 
 
 ```console
 $ L=hindi
-$ OUT=$TOKEXT_OUTPUT_DIR
+$ OUT=/lustre/$USER/output/tokenizer_extension   # shared Slurm output path
 
 $ uv run nemotron steps run tokenizer_extension/extend \
     -b slurm_tokenizer_extend -c default \
@@ -76,6 +76,7 @@ $ uv run nemotron steps run tokenizer_extension/eval_init \
 
 Paths passed as overrides must be visible to the compute node.
 Use the shared workspace that the profile's `TOKEXT_OUTPUT_DIR` points at rather than a path on the submitting host.
+In the submitting shell, set `OUT` to the same shared path as the profile's `TOKEXT_OUTPUT_DIR`.
 
 ## Confirm the Merged Configuration First
 
