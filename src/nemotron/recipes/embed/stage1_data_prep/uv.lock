@@ -498,7 +498,7 @@ wheels = [
 [[package]]
 name = "data-designer-retrieval-sdg"
 version = "0.3.0a1"
-source = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=01d0955e2e0d00a3f167d0b64de5f7b7856d360b#01d0955e2e0d00a3f167d0b64de5f7b7856d360b" }
+source = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=c0ea96cc39e14c152a7f1ef49240275213b0a457#c0ea96cc39e14c152a7f1ef49240275213b0a457" }
 dependencies = [
     { name = "data-designer" },
     { name = "filelock" },
@@ -2449,7 +2449,7 @@ vl = [
 [package.metadata]
 requires-dist = [
     { name = "data-designer", specifier = "==0.9.1" },
-    { name = "data-designer-retrieval-sdg", git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=01d0955e2e0d00a3f167d0b64de5f7b7856d360b" },
+    { name = "data-designer-retrieval-sdg", git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=c0ea96cc39e14c152a7f1ef49240275213b0a457" },
     { name = "faiss-cpu", specifier = ">=1.7.4" },
     { name = "nemo-automodel", marker = "extra == 'text'", specifier = "==0.4.0" },
     { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz" },
