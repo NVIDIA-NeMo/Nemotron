@@ -55,11 +55,14 @@ Uses the cosmos-xenna multi-stage pipeline pattern:
 
 For simple copy/passthrough (no placeholder resolution), use data_prep_copy.py instead.
 
-CLI:
-    nemotron super3 data prep rl                       # local execution
-    nemotron super3 data prep rl --run ray --sample 10000  # submit to cluster
+Nemotron CLI:
+    nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+    nemotron super3 data prep rl swe1 --run YOUR-CLUSTER
+    nemotron super3 data prep rl swe2 --run YOUR-CLUSTER
+    nemotron super3 data prep rl rlhf --run YOUR-CLUSTER
 
-Execution logic: src/nemotron/cli/commands/super3/data/prep/rl.py
+This aggregate script remains directly runnable when you want to prepare all
+RL blends in one pass outside the stage-specific CLI subcommands.
 
 Direct usage:
     python data_prep.py
