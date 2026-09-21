@@ -53,7 +53,7 @@ Voting is a consistency gate, not factual verification. With `sft.agreement: una
 
 - Install the SDG extra: `uv sync --extra data-sdg`. It provides `data-designer`, `sentence-transformers`, and `torch`.
 - The [NGC CLI](https://org.ngc.nvidia.com/setup/installers/cli) on `PATH` and `NGC_API_KEY` exported. The `personas` stage downloads missing persona assets with it; cached runs do not need the key.
-- Three OpenAI-compatible endpoints and one API key, exported as `QWEN_API_BASE`, `OSS_API_BASE`, `GEMMA_API_BASE`, and `NVIDIA_API_KEY`. The shipped configurations resolve endpoints from these variables and read the key from the environment at request time; neither is written to run metadata.
+- Three OpenAI-compatible endpoints and one API key, exported as `QWEN_API_BASE`, `OSS_API_BASE`, `GEMMA_API_BASE`, and `NVIDIA_API_KEY`. The shipped configurations retain the resolved endpoint URLs in `run.json` for provenance. API-key values are read from the environment at request time and are not written to run metadata.
 - `HF_TOKEN` when the embedding model is gated or anonymous Hugging Face Hub rate limits are a concern.
 - A GPU for production semantic deduplication (`semantic_dedup.device: cuda` in `default.yaml`). The `tiny` configuration uses `cpu`.
 
@@ -128,7 +128,10 @@ $ uv run nemotron steps run data_prep/sft_packing \
     blend_path=<output_root>/<experiment_name>/training/gemma/english_malayalam/blend.json
 ```
 
-The `sample` entry of `summary.json` lists every teacher/view combination with per-language record and reasoning-off counts, so orchestration does not need to infer filenames.
+The `sample` entry of `summary.json` records global per-language selection and
+reasoning-off counts. Each teacher/view entry records its aggregate row count and
+the paths to `train.jsonl` and `blend.json`, so orchestration does not need to
+infer filenames.
 
 ## Next Steps
 

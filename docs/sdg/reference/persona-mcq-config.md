@@ -35,7 +35,17 @@ Overrides use OmegaConf dotlist syntax. List values are passed in brackets and q
 :class: scrollable
 ```
 
-`tiny.yaml` differs from `default.yaml` in `pipeline.experiment_name` (`persona-mcq-smoke`), `question_models` (`[oss]`), reduced inference parallelism and token limits, `question_generation.num_records: 8`, `semantic_dedup.device: cpu`, `answer_generation.max_retries: 3`, and `sampling.per_language: 1`.
+Key differences in `tiny.yaml` include `pipeline.experiment_name`
+(`persona-mcq-smoke`), `question_models` (`[oss]`), reduced record, buffer,
+parallelism, token, MinHash, and semantic-dedup sizes,
+`semantic_dedup.device: cpu`, `answer_generation.max_retries: 3`, and
+`sampling.per_language: 1`. Refer to the complete configuration when exact
+smoke-test values matter:
+
+```{literalinclude} ../../../src/nemotron/steps/sdg/persona_mcq/config/tiny.yaml
+:language: yaml
+:class: scrollable
+```
 
 ## Fields
 
@@ -46,7 +56,7 @@ Overrides use OmegaConf dotlist syntax. List values are passed in brackets and q
 | `experiment_name` | `persona-mcq` | Required. Artifact directory name under `output_root`; also identifies the configuration for resume checks. |
 | `output_root` | `${NEMOTRON_RUN_DIR:-./outputs}/persona_mcq` | Parent directory for experiments. |
 | `stages` | `[all]` | `[all]` or an ordered subset of `personas`, `questions`, `lexical_dedup`, `semantic_dedup`, `answer_seed`, `answers`, `build_sft`, `sample`. `all` cannot be combined with named stages. |
-| `seed` | `42` | Seed for question authoring and answer-seed option shuffles. |
+| `seed` | `42` | Pipeline seed used by question authoring. Answer option shuffles are content-deterministic from `query_id` and do not change with this value. |
 | `resume` | `true` | Skip completed question outputs and answered rows; reload the existing `summary.json`. |
 | `overwrite` | `false` | Delete the experiment directory before running. Required to reuse an experiment name with a different configuration. |
 
@@ -143,9 +153,10 @@ All paths are relative to `<output_root>/<experiment_name>/`.
 
 | Path | Content |
 |---|---|
-| `run.json` | Redacted configuration, `config_hash`, `data_designer_version`, and `nemotron_commit`. |
+| `run.json` | Redacted configuration, including resolved endpoint URLs but not API-key values, plus `config_hash`, `data_designer_version`, and `nemotron_commit`. |
 | `summary.json` | Per-stage statistics: cached and downloaded locales, question counts, deduplication drop reasons, answer counts, `build_sft` rejection reasons, and sample views. Rewritten after every stage. |
-| `questions/<model>/<language>/records.jsonl` | Authored question records and Data Designer artifacts. |
+| `questions/<model>/<language>/records.jsonl` | Authored question records. |
+| `questions/<model>/<language>/artifacts/` | Data Designer run artifacts for question authoring. |
 | `lexical/<language>.jsonl` | Pooled, lexically deduplicated questions with `query_id`, `question`, `choices`, and provenance `metadata`. |
 | `semantic/<language>.jsonl` | Semantically deduplicated questions. |
 | `answer_seed/<language>.jsonl` | Shuffled options with `original_choices` and `shuffle_permutation`. |
