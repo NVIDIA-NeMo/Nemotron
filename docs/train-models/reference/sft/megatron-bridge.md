@@ -33,12 +33,13 @@ See the [Nemotron Steps CLI Reference](../cli-reference.md) for the shared flag 
 
 ## Configuration Files
 
-The step ships four configuration files under `src/nemotron/steps/sft/megatron_bridge/config/`.
+The step ships five configuration files under `src/nemotron/steps/sft/megatron_bridge/config/`.
 
 | File | Purpose |
 | --- | --- |
 | `default.yaml` | Generic Nano3 example for a remote cluster profile. Loads base weights from Hugging Face via AutoBridge, trains for 10 iterations at `seq_length: 4096` on packed shards, and inherits the recipe's LoRA default. This is the programmatic default loaded when no `-c` flag is specified. |
 | `tiny.yaml` | Short full-SFT validation run (`peft: null`) against packed Parquet shards. |
+| `lightning35.yaml` | Overlay on `default.yaml` (`defaults: default.yaml`) for Nemotron 3.5 Lightning 30B-A3B packed SFT at 4096 tokens in the `nemo:26.08` container: `nemotron_3_5_lightning_sft_config` recipe, TP 2, selective recomputation, 100 iterations at `train.global_batch_size: 128`. It does not load Hugging Face weights; refer to [Nemotron 3.5 Lightning](#nemotron-35-lightning). |
 | `super3_128k.yaml` | Experimental topology reference for full-parameter Nemotron 3 Super SFT at 131,072 tokens: 64 ranks (8 nodes × 8 GPUs), TP 8, PP 1, CP 8, EP 64. Not runnable with the stock step; refer to [Long-Context Topology References](#long-context-topology-references). |
 | `super3_256k.yaml` | Experimental topology reference for full-parameter Nemotron 3 Super SFT at 262,144 tokens: 128 ranks (16 nodes × 8 GPUs), TP 8, PP 2, CP 8, EP 8. Not runnable with the stock step. |
 
@@ -48,6 +49,19 @@ Pass the configuration name with `-c`:
 $ uv run nemotron steps run sft/megatron_bridge -c tiny
 $ uv run nemotron steps run sft/megatron_bridge -c default
 ```
+
+### Nemotron 3.5 Lightning
+
+`lightning35.yaml` sets `hf_model_path: null` and `load_hf_weights: false`, so the base weights must already exist as a Megatron checkpoint.
+Convert them first with [`convert/hf_to_megatron -c lightning35`](../convert/hf-to-megatron.md), then set the following environment variables in the shell or the `env.toml` profile:
+
+| Variable | Consumed as |
+| --- | --- |
+| `L35_PRETRAINED_CHECKPOINT` | `checkpoint.pretrained_checkpoint` (`${L35_PRETRAINED_CHECKPOINT}/iter_0000000`) |
+| `L35_PACKED_DIR` | `dataset.packed_sequence_specs.packed_train_data_path` and `packed_val_data_path` (`${L35_PACKED_DIR}/splits/{train,valid}`) |
+| `L35_OUTPUT_DIR` | `checkpoint.save` (`${L35_OUTPUT_DIR}/sft-4k-tp2-ep8`) |
+
+The Lightning recipe callable takes no arguments, so the overlay sets `recipe.packed_sequence` and `recipe.seq_length` to `null`; the sequence length is governed by the inherited `dataset.*` and `model.seq_length` fields, which remain 4096.
 
 ### Long-Context Topology References
 
@@ -212,6 +226,7 @@ The manifest records the following operator strategies for `sft/megatron_bridge`
 
 - When the dataset has fewer than ten thousand records, lower `train.global_batch_size` and raise the number of training iterations to keep optimizer steps useful.
 - When consuming packed Parquet, set `recipe.packed_sequence=true` and keep `dataset.seq_length`, `dataset.packed_sequence_specs.packed_sequence_size`, `model.seq_length`, and the `data_prep/sft_packing` pack size identical.
+- When the operator selects Nemotron 3.5 Lightning, convert the base model with `convert/hf_to_megatron -c lightning35` first and run `-c lightning35`; the overlay does not load Hugging Face weights.
 - When the operator wants LoRA tuning, set `recipe.peft=lora` to lower the GPU requirement and shrink the checkpoint footprint.
 - When the operator selects the Super3 model at 32K context or shorter, start from a 32-GPU plan with `tp=8`, `pp=4`, `cp=1`, and verify cluster topology before scaling further.
 - When the sequence length exceeds 32K, use a `config/super3_*` long-context YAML for `--dry-run` planning only, then add and verify packing-alignment and mixed-precision support before launch.
@@ -298,6 +313,15 @@ $ uv run nemotron steps run sft/megatron_bridge -c default -r lepton_sft_megatro
     hf_model_path=nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16 \
     recipe.tensor_model_parallel_size=8 \
     recipe.pipeline_model_parallel_size=4
+```
+
+Submit a detached Nemotron 3.5 Lightning SFT run from a converted Megatron checkpoint:
+
+```console
+$ L35_PRETRAINED_CHECKPOINT=/lustre/checkpoints/lightning35-megatron \
+    L35_PACKED_DIR=/lustre/packed/lightning35 \
+    L35_OUTPUT_DIR=/lustre/runs/lightning35 \
+    uv run nemotron steps run sft/megatron_bridge -c lightning35 -b <batch-profile>
 ```
 
 Inspect the compiled 128K Super3 topology without submitting it:
