@@ -14,8 +14,11 @@ Use this README for workflow and pitfalls; use `step.toml` for the exact artifac
 ## CLI And Overlay Knobs
 
 Start from `config/tiny.yaml` for launch validation and `config/default.yaml`
-for the generic Nano example. Use a named profile or project overlay for a
-different model or distributed shape. Developers usually change:
+for the generic Nano example. `config/lightning35.yaml` is a `defaults: default.yaml`
+overlay for Nemotron 3.5 Lightning 30B-A3B packed SFT at 4k: it swaps the recipe
+target, TP/recompute, and `L35_*` data/checkpoint paths, and nulls Nano HF load.
+Use a named profile or project overlay for a different model or distributed
+shape. Developers usually change:
 
 - `dataset.packed_sequence_specs.packed_train_data_path`: packed Parquet glob,
   usually `<packed>/splits/train/*.parquet`.
@@ -42,7 +45,9 @@ Related patterns:
 
 ## Config Nuances
 
-- Set `recipe.packed_sequence: true` when consuming packed Parquet.
+- Set `recipe.packed_sequence: true` when consuming packed Parquet. Lightning
+  overlays null inherited Nano recipe kwargs (`packed_sequence`, `seq_length`)
+  because `nemotron_3_5_lightning_sft_config` is zero-arg.
 - Keep `dataset.seq_length`, `dataset.packed_sequence_specs.packed_sequence_size`, and `model.seq_length` equal.
 - Use `model.sequence_parallel: true` for MoE plus tensor parallelism.
 - Start with `train.micro_batch_size: 1` when validating a new distributed shape and choose `train.global_batch_size` as a multiple of the resulting data-parallel size.
@@ -78,11 +83,16 @@ Smoke first to validate wiring, imports, data access, and output paths:
 uv run nemotron steps run sft/megatron_bridge -c tiny --dry-run
 ```
 
-Then run the real job from a project overlay:
+Then run the real job from a project overlay. Lightning SFT (`-c lightning35`)
+does not AutoBridge Hugging Face weights: convert the base model with
+`convert/hf_to_megatron` first, then point `checkpoint.pretrained_checkpoint`
+at that Megatron checkpoint.
 
 ```bash
 uv run nemotron steps run sft/megatron_bridge \
   -c <project>/config/sft_megatron_bridge.yaml
+
+uv run nemotron steps run sft/megatron_bridge -c lightning35 --batch <profile>
 ```
 
 ## Repository Layout
@@ -92,12 +102,15 @@ uv run nemotron steps run sft/megatron_bridge \
 - Configs:
   - `src/nemotron/steps/sft/megatron_bridge/config/default.yaml`
   - `src/nemotron/steps/sft/megatron_bridge/config/tiny.yaml`
+  - `src/nemotron/steps/sft/megatron_bridge/config/lightning35.yaml` (`defaults: default.yaml` overlay)
   - `src/nemotron/steps/sft/megatron_bridge/config/super3_128k.yaml`
   - `src/nemotron/steps/sft/megatron_bridge/config/super3_256k.yaml`
-- Recipe reference: `src/nemotron/recipes/nano3/stage1_sft/`
+- Recipe reference: `src/nemotron/recipes/nano3/stage1_sft/`, `src/nemotron/recipes/lightning35/stage1_sft/`
 
 ## Guardrails
 
 - Run `data_prep/sft_packing` first unless a compatible packed dataset already exists.
 - Repack data after tokenizer, template, or sequence length changes.
+- Convert Hugging Face weights to Megatron with `convert/hf_to_megatron` before
+  `-c lightning35`; that overlay does not load from Hugging Face.
 - Convert Megatron checkpoints to HF format before HF-native evaluation or deployment.

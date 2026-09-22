@@ -1,0 +1,47 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# HuggingFace -> Megatron conversion for Nemotron 3.5 Lightning 30B-A3B.
+# Match packed SFT parallelism (TP=2, PP=1, EP=8, ETP=1) so
+# sft/megatron_bridge -c lightning35 can load the result as
+# checkpoint.pretrained_checkpoint without a second reshard.
+#
+# World size: 2 nodes × 8 GPUs = 16 = TP×PP×EP.
+#
+# Example:
+#   nemotron steps run convert/hf_to_megatron -c lightning35
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.08
+    nodes: ${oc.env:NEMOTRON_CONVERT_NNODES,2}
+    gpus_per_node: ${oc.env:NEMOTRON_CONVERT_GPUS_PER_NODE,8}
+    nprocs_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}
+    ntasks_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}
+    env_vars:
+      PYTHONPATH: /opt/Megatron-Bridge/src:/opt/Megatron-Bridge/3rdparty/Megatron-LM:/opt/megatron-lm:${oc.env:PYTHONPATH,}
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@d12f6c8c9aff51e166d872fd70151687a8e3f375,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+executor: local
+device: cpu
+hf_model_id: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
+megatron_path: ${oc.env:L35_PRETRAINED_CHECKPOINT}
+
+script:
+  path: /opt/Megatron-Bridge/scripts/conversion/convert.sh
+
+torch_dtype: bfloat16
+

@@ -1,0 +1,78 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Overlay on default.yaml: Nemotron 3.5 Lightning 30B-A3B packed SFT at 4k.
+# Inherits dataset/logger/seq_length plumbing; only Lightning deltas live here.
+#
+# Required env (env.toml profile or shell):
+#   L35_PACKED_DIR, L35_OUTPUT_DIR, L35_PRETRAINED_CHECKPOINT
+# Optional: WANDB_PROJECT, WANDB_ENTITY, WANDB_NAME
+#
+#   nemotron steps run sft/megatron_bridge -c lightning35 --batch lepton_lightning35_sft
+
+defaults: default.yaml
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.08
+    env_vars:
+      FLASHINFER_WORKSPACE_BASE: /nemo_run/cache/flashinfer_workspace
+      FLASHINFER_CUBIN_DIR: /nemo_run/cache/flashinfer_cubins
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TILELANG_CACHE_DIR: /tmp/tilelang_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@d12f6c8c9aff51e166d872fd70151687a8e3f375,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+# Do not AutoBridge the Nano HF id inherited from default.yaml.
+hf_model_path: null
+load_hf_weights: false
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_sft_config
+  packed_sequence: null
+  seq_length: null
+
+dataset:
+  packed_sequence_specs:
+    packed_train_data_path: ${oc.env:L35_PACKED_DIR}/splits/train
+    packed_val_data_path: ${oc.env:L35_PACKED_DIR}/splits/valid
+
+train:
+  train_iters: 100
+  global_batch_size: 128
+
+model:
+  tensor_model_parallel_size: 2
+  recompute_granularity: selective
+  recompute_method: null
+  recompute_num_layers: null
+  recompute_modules: [moe, layernorm, core_attn, mlp]
+
+optimizer:
+  lr: 5.0e-6
+  min_lr: 0.0
+
+scheduler:
+  lr_warmup_iters: 10
+  lr_decay_iters: 100
+
+checkpoint:
+  save: ${oc.env:L35_OUTPUT_DIR}/sft-4k-tp2-ep8
+  pretrained_checkpoint: ${oc.env:L35_PRETRAINED_CHECKPOINT}/iter_0000000
+  save_interval: 20
+
