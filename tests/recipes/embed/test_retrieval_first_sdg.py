@@ -193,3 +193,47 @@ def test_summary_embedding_endpoint_is_independent_of_chat_provider(tmp_path):
     assert all(getattr(mapped, key) == value for key, value in options.items())
     assert mapped.generator.endpoint == "https://example.invalid/v1"
     assert mapped.generator.credential_env == "TEST_SDG_KEY"
+
+
+@pytest.mark.parametrize("entrypoint", ["recipe_cli", "direct_script"])
+def test_local_embedding_override_clears_hosted_defaults(tmp_path, monkeypatch, entrypoint):
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
+    from nemo_runspec.config.pydantic_loader import load_config as load_script_config
+
+    monkeypatch.setenv("MISTRAL3_SDG_QA_MODEL", "operator/generator")
+    monkeypatch.setenv("MISTRAL3_SDG_JUDGE_MODEL", "operator/judge")
+    path = Path(__file__).parents[3] / "src/nemotron/recipes/embed/stage0_sdg/config/mistral3-vl.yaml"
+    changes = {
+        "summary_embedding_endpoint": None,
+        "summary_embedding_extra_body": None,
+        "summary_embedding_model": "operator/local-embedding",
+    }
+    if entrypoint == "recipe_cli":
+        raw = apply_dotlist_overrides(
+            load_config(path),
+            [
+                f"sources_file={tmp_path / 'sources.jsonl'}",
+                "sdg_options.summary_embedding_endpoint=null",
+                "sdg_options.summary_embedding_extra_body=null",
+                "sdg_options.summary_embedding_model=operator/local-embedding",
+            ],
+        )
+        values = OmegaConf.to_container(raw, resolve=True)
+        values.pop("run", None)
+        cfg = SDGConfig.model_validate(values)
+    else:
+        cfg = load_script_config(
+            path,
+            [
+                f"sources_file={tmp_path / 'sources.jsonl'}",
+                "sdg_options=" + json.dumps(changes),
+            ],
+            SDGConfig,
+        )
+    mapped = build_retrieval_first_config(cfg)
+    assert mapped.summary_embedding_endpoint is None
+    assert mapped.summary_embedding_extra_body == {}
+    assert mapped.summary_embedding_model == "operator/local-embedding"
+    assert mapped.combination_iterations == 20  # Unrelated profile settings survive.

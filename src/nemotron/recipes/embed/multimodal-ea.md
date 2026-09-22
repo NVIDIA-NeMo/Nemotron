@@ -119,7 +119,9 @@ or JSON-fenced object, rejects malformed or ambiguous JSON, and delegates schema
 validation and bounded correction retries to Data Designer's native structured
 generation path. It does not extract JSON from prose, repair values, prune
 fields, or turn negative judge decisions into passes. Do not bypass schema
-checks or quality gates to compensate for parsing failures.
+checks or quality gates to compensate for parsing failures. Query generation
+also validates the exact requested slot membership within native correction,
+before caching; missing, duplicate or extra slots cannot become successful cache entries.
 
 For direct stage invocation, select the same extra, for example:
 
@@ -187,13 +189,27 @@ embedding endpoint receives section-summary text, not images, using the plugin's
 required by the default model; `truncate: NONE` rejects oversized inputs.
 Embedding responses are validated and cached for resume. For local Sentence
 Transformers inference, set `summary_embedding_endpoint: null` and
-`summary_embedding_extra_body: {}`, supply a Hugging Face model ID or local path,
+`summary_embedding_extra_body: null`, supply a Hugging Face model ID or local path,
 and optionally set `summary_embedding_revision` and `summary_embedding_device`
 (CPU by default). The default summary model is text-only; it is not the
 multimodal checkpoint being fine-tuned.
 
+Use `null` to clear inherited request options. An empty mapping (`{}`) is merged
+with the profile defaults and does not remove them. For example, with the public CLI:
+
+```bash
+nemotron embed sdg -c mistral3-vl sources_file=/absolute/path/to/sources.jsonl \
+  sdg_options.summary_embedding_endpoint=null \
+  sdg_options.summary_embedding_extra_body=null \
+  sdg_options.summary_embedding_model=your-org/your-local-summary-embedder
+```
+
+For direct `data_prep.py` invocation, pass dictionary overrides as a quoted JSON
+mapping, for example
+`'sdg_options={"summary_embedding_endpoint":null,"summary_embedding_extra_body":null,"summary_embedding_model":"your-org/your-local-summary-embedder"}'`.
+
 The `mistral3-vl` profile selects `sdg_workflow=retrieval_first`: separate visual
-enrichment, document/corpus descriptions, five-unit section summaries, 20 seeded
+enrichment, document descriptions, five-unit section summaries, 20 seeded
 semantic clustering iterations, summary grading/selection, then bounded queries.
 Sections preserve whole generic units in input order; no page identifiers or
 benchmark delimiters are parsed. Language groups with fewer than twelve summaries
@@ -289,11 +305,16 @@ roles to temperature 0.6, max_tokens 8192, and the provider-supported
 `extra_body: {chat_template_kwargs: {enable_thinking: false}}`. Keep these
 provider-specific flags out of configurations for endpoints that do not support them.
 
-This is an unreleased EA candidate. CPU contract tests and mocked inference do
-not qualify hosted-model quality or the full GPU path. Before an EA package
-release, record a bounded authorized inference smoke test and native mining,
-BF16 checkpoint/resume, and matched fresh base/final evaluation. Previous
-internal experiment results are not validation of this consolidated producer.
+This is an unreleased EA candidate. A prior bounded run qualified generic-source
+SDG, stage-local dependency installation, native mining, two-GPU BF16 training,
+checkpoint resume and fresh base/final evaluation. That run used the previous
+Qwen summary embedder and operator-configured generator/judge models. The public
+Nemotron summary embedding default has a separate live synthetic-passage test
+covering API integration, clustering and cached replay. It changes context
+selection, so the prior run's retention and retrieval results do not qualify the
+new default. Before freezing the EA snapshot, repeat a bounded authorized corpus
+run using the final configuration and record its quality/coverage, portable
+handoff, training/resume and fresh evaluation evidence.
 
 The default evaluation above uses the held-out split from the same synthetic
 generation run. It is a pipeline smoke test, not independent model-quality
@@ -314,6 +335,25 @@ selection remains unvalidated, so Docker and Slurm invocations fail before
 submission. Text containers select the `text` extra; use a fresh container for
 each stage because the shared wrapper does not track dependency changes in its
 environment-ready marker. CPU configuration tests do not establish GPU or
-container execution compatibility. Lock generation establishes resolver
-compatibility only; stage-local dependency installation and a fresh end-to-end
-run remain to be validated.
+container execution compatibility. The prior local-stage qualification ran inside
+a manually prepared GPU container; it did not exercise the recipe's Docker/Slurm
+launcher. The remaining final-default qualification is described above.
+
+
+## Optional deployment overrides
+
+The `mistral3-vl` deployment profile uses vLLM and preserves the checkpoint's
+saved model and processor settings by default (`vllm_hf_overrides: null`).
+Deployment is outside the Stage 0–3 qualification described above.
+Only supply a config override when you have verified that the selected
+checkpoint requires it. For a checkpoint with a confirmed image-size mismatch,
+for example:
+
+```bash
+nemotron embed deploy -c mistral3-vl \
+  'vllm_hf_overrides={"vision_config":{"image_size":1120}}'
+```
+
+The value `1120` is an example for that specific mismatch, not a requirement for
+all compatible checkpoints. Omit the override for checkpoints whose settings
+already agree; verify serving separately against the local evaluation path.

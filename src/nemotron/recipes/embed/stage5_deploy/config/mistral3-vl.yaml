@@ -10,11 +10,8 @@ vllm_image: nvcr.io/nvidia/vllm:26.06-py3
 nim_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
 vllm_runner: pooling
 vllm_max_model_len: 8192
-# The RC processor resizes to 1120 while config.json currently advertises 1540.
-# Keep these aligned to avoid image-token/placeholder shape mismatches.
-vllm_hf_overrides:
-  vision_config:
-    image_size: 1120
+# Preserve checkpoint settings; opt in to overrides only for a verified mismatch.
+vllm_hf_overrides: null
 vllm_trust_remote_code: false
 
 container_name: mistral3-vl-embed

@@ -347,4 +347,4 @@ def test_preview_eval_and_deploy_profiles_are_vllm_only(monkeypatch: pytest.Monk
     assert embed_deploy.backend == "vllm"
     assert embed_deploy.vllm_runner == "pooling"
     assert embed_deploy.vllm_max_model_len == 8192
-    assert embed_deploy.vllm_hf_overrides == {"vision_config": {"image_size": 1120}}
+    assert embed_deploy.vllm_hf_overrides is None

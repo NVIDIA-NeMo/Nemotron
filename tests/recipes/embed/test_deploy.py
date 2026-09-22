@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import urllib.request
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -336,3 +337,24 @@ def test_detached_success_prints_valid_smoke_payload(monkeypatch, tmp_path, caps
         "model": cfg.nim_model,
         "input_type": "query",
     }
+
+
+@pytest.mark.parametrize("opt_in", [False, True])
+def test_vl_profile_preserves_checkpoint_config_unless_override_is_requested(tmp_path, monkeypatch, opt_in):
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
+
+    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "operator/generic-vl-checkpoint")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    path = Path(deploy.__file__).parent / "config/mistral3-vl.yaml"
+    raw = load_config(path)
+    if opt_in:
+        raw = apply_dotlist_overrides(raw, ['vllm_hf_overrides={"vision_config":{"image_size":1120}}'])
+    cfg = deploy.DeployConfig.model_validate(OmegaConf.to_container(raw, resolve=True))
+    command = deploy.build_docker_command(cfg)
+    if opt_in:
+        assert json.loads(command[command.index("--hf-overrides") + 1]) == {"vision_config": {"image_size": 1120}}
+    else:
+        assert cfg.vllm_hf_overrides is None
+        assert "--hf-overrides" not in command
