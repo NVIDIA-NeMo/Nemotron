@@ -32,7 +32,7 @@ For the NeMo Evaluator Launcher backend, also install its optional dependency:
 uv sync --extra byob --extra evaluator
 ```
 
-## Import The Generated Benchmark
+## Import the Generated Benchmark
 
 In BFCL, importing a benchmark means pointing evaluation at an intact generation
 publication. There is no upload or Parquet-ingestion command. The required handoff is:
@@ -322,7 +322,7 @@ Then run the following sequence.
    uv pip install <FRAMEWORK_PACKAGE_PRINTED_BY_STEP_1>
    ```
 
-   If Launcher uses an evaluation container, bake that package into the image
+   If Launcher uses an evaluation container, install that package in the image
    instead. Also configure identity `launcher.evaluation_mounts` as described in
    Step 5 so the container can access all absolute paths.
 
@@ -411,7 +411,7 @@ Replace the example path with the exact `outputs.output_dir` from `eval.yaml`.
 For audit or publication, retain the entire artifact directory and treat
 `eval_manifest.json`, not the printed summary, as the completion marker.
 
-## Step 8: Export The Benchmark And Results
+## Step 8: Export the Benchmark and Results
 
 To hand off a reproducible result, export the publication and evaluation together.
 Do not send only `eval_report.json`, because it does not contain the source and cache
@@ -454,4 +454,4 @@ fix in the eval config rather than in the output tree.
 ## Next Steps
 
 - Field-by-field details: {doc}`../reference/eval-config`, and symptom-to-fix entries in {doc}`../reference/troubleshooting`.
-- What each gate and metric means: {doc}`../explanation/evaluation`, with the normative contract at `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`.
+- What each gate and metric means: {doc}`../explanation/evaluation`, with the normative contract at [`src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md).

@@ -35,7 +35,7 @@ Two files carry more weight than their size suggests.
 `validation_cases.yaml` is what turns "the backend seems to work" into observed evidence, because every tool needs at least one success probe and one negative probe before the pack can be certified.
 `assertions.py` is what turns "the trace ran" into "the trace was right": a template with no success assertion has no statement of what success means, so replay could only confirm that its calls executed.
 
-## Certification Tiers And The Gold Gate
+## Certification Tiers and the Gold Gate
 
 `stage=prepare` normalizes the pack and writes `oracle_validation_report.json` containing a tier, the gold-eligibility verdict, the pack fingerprint, per-check failures, and pack statistics.
 The checks cover template tool references, slot sources, backend and schema alignment, assertion importability, the declared validation probes, confirmation policy, and a representative generation contract that expands, renders, replays, and asserts the first deterministic instance of every template.
@@ -46,7 +46,7 @@ The tier is derived from those individual checks rather than read from a summary
 | --- | --- |
 | `gold` | Every check passed and the pack has an oracle, templates, and assertions. Gold-eligible. |
 | `silver` | The pack has templates and tools but at least one check did not pass. Not gold-eligible. |
-| `prototype` | The pack does not yet reach silver. Not gold-eligible. |
+| `prototype` | The pack does not reach silver. Not gold-eligible. |
 
 `stage=generate` refuses a pack that is not gold-eligible.
 A check whose preconditions failed is recorded as `skipped`, never as a pass, so an unrun check keeps a pack below gold instead of letting it inherit one.
@@ -60,7 +60,7 @@ Gold eligibility requires `oracle_runtime.worker: process`.
 A run may configure `worker: thread` as a debugging aid, but such a run can never reach gold.
 :::
 
-## Pack Code Runs In A Separate Process
+## Pack Code Runs in a Separate Process
 
 Pack code is executed through a process worker, never inside the process that scores a candidate.
 That boundary exists for three separate reasons, and none of them is redundant.
@@ -70,7 +70,7 @@ And during evaluation it keeps the pack's Python out of the evaluator entirely: 
 
 Errors follow the same logic. A tool returns a failure as data — a structured `{"error": {"code": ...}}` envelope — rather than raising, because a domain rejection is a legitimate outcome the benchmark wants to score, and an exception would be indistinguishable from infrastructure breaking.
 
-## The Fingerprint Pins A Benchmark To Its Source
+## The Fingerprint Pins a Benchmark to Its Source
 
 Generation records a pack fingerprint covering every file in the pack tree, along with a per-file hash map, and the fingerprint is verified before validation, after validation, and again before final output.
 Evaluation recomputes it before spending a candidate token and refuses to score if it moved.
@@ -92,7 +92,7 @@ Anything a pack imports from outside its own tree is invisible to the fingerprin
 
 Two packs ship under `src/nemotron/steps/byob/data/` and serve different purposes.
 
-`tiny_oracle_pack` is the smallest end-to-end example. It covers single-turn, confirmation, parallel call-group, and irrelevant shapes with no model calls, which makes it the right pack for checking that plumbing, isolation, and output paths work before a real pack exists.
+`tiny_oracle_pack` is the smallest end-to-end example. It covers single-turn, confirmation, parallel call-group, and irrelevant shapes with no model calls, which makes it the right pack for checking that the pipeline, isolation, and output paths work before a real pack exists.
 
 `banking_vn_oracle_pack` is the domain-scale reference. It is worth reading before authoring your own, because it declares a template for every conversation shape the pipeline supports — `single_turn`, `missing_slot`, `confirmation`, `correction`, `multi_tool`, `dependent_call`, `negative_path`, `clarify_only`, and `irrelevant` — and no template narrows `tools_present`, so every row must select its calls out of the full tool catalog.
 Read it as a worked example of the pack contract rather than as a default: its inventory, scale, and mix are properties of that pack, not of the framework.
@@ -108,7 +108,7 @@ Read it as a worked example of the pack contract rather than as a default: its i
   executable and conversation contracts.
 - {doc}`../reference/endpoint-config` and {doc}`../reference/held-out-policy` for
   remote-oracle and reservation fields.
-- `src/nemotron/steps/byob/references/bfcl-oracle-pack.md` for the complete normative pack contract, including slot sources, turn policies, and every validation rule.
+- [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md) for the complete normative pack contract, including slot sources, turn policies, and every validation rule.
 - {doc}`../how-to/author-a-pack` for the hands-on authoring sequence.
 - {doc}`pipeline-overview` for how the pipeline consumes a validated pack.
 - {doc}`evaluation` for how the pack is used again at scoring time.

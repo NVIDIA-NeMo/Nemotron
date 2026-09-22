@@ -23,7 +23,7 @@ retry the same command.
 | Code | Likely cause | Fix |
 | --- | --- | --- |
 | `missing_family_pin` | The config omits `family`. | Set `family: bfcl`. Without it the shared dispatcher defaults to the MCQ family. |
-| `unsupported_config_feature` | The config asks for work no stage performs: an unknown export name, balancing controls with deduplication disabled, eval or translation orchestration keys, leftover shared model fields, or an unrecognized `surface_generation` key. | Disable or remove the listed setting, or register its owning stage. See {doc}`generate-config`. |
+| `unsupported_config_feature` | The config asks for work no stage performs: an unknown export name, balancing controls with deduplication disabled, eval or translation orchestration keys, leftover shared model fields, or an unrecognized `surface_generation` key. | Disable or remove the listed setting, or register its owning stage. Refer to {doc}`generate-config`. |
 | `pack_outside_allowlist` | The oracle pack sits outside every trust root. | Move the pack under an `oracle_runtime.allowed_roots` entry, or extend `allowed_roots` explicitly. |
 | `model_lineage_invalid` | An enabled `profile`, `paraphrase`, or `surface_judge` role has no canonical identity, or two enabled roles collide under `strict_separation`. | Give every enabled role a non-secret `canonical_id`, keep enabled identities pairwise distinct, and supply credentials through the provider environment. |
 | `reference_benchmark_invalid` | The reference JSONL is outside the allowlist, its hash does not match, or a sample carries oracle truth. | Place it under an allowed root, pin its exact `sha256` `content_hash`, and keep the samples style-only. |
@@ -83,7 +83,7 @@ Balancing that cannot meet a declared target is governed by
 | `candidate_identity_invalid` | Two candidates share an alias or resolve to the same weights, or a candidate declares no serving route. | Give each candidate a unique filesystem-safe alias and a distinct canonical identity, one candidate per set of weights. Run `resolve_bfcl_model_identity` to fill the block in. |
 | `candidate_revision_mutable` | The revision names a moving pointer such as `main`, a tag, or `refs/heads/*`. | Pin a full 40 to 64 character commit id, or set `model_identity.weights_digest`. A provider that publishes neither is declared by leaving both null, which records the candidate as `provider_managed` and makes the run non-publishable. |
 | `secret_in_eval_config` | A literal credential was written into the config or embedded in `base_url`. | Name the environment variable with `candidates[].api.api_key_env` and export the value in the runner environment. Rotate the key that reached the file. |
-| `eval_publication_policy_violation` | Publication was requested with a weakened gate or an unpinned candidate. | Restore every locked gate and pin each candidate, or set `publication.requested: false` and read `non_publication_reasons`. See {doc}`eval-config`. |
+| `eval_publication_policy_violation` | Publication was requested with a weakened gate or an unpinned candidate. | Restore every locked gate and pin each candidate, or set `publication.requested: false` and read `non_publication_reasons`. Refer to {doc}`eval-config`. |
 | `unsupported_eval_mode` | `eval.mode` is empty, repeated, or names an unknown mode. | Write a non-empty list with no repeats. Executable modes additionally need a source run whose manifest declares an oracle. |
 | `eval_cli_invalid` | The envelope changed a value the runner owns. | Start from `bfcl/config/eval.cli.yaml` or `bfcl/config/eval.launcher.yaml`, keep `stage: eval` and `family: bfcl`, and point `eval_config_path` at one resolved eval config. |
 
@@ -164,7 +164,7 @@ model under test.
 A metric that had nothing applicable to measure reports a `metric.*` not-applicable
 code rather than a zero, so an absent gate never reads as a failed one. Setup failures
 appear with `fatal_setup` attribution and one of the codes tabulated above. For how the
-gates themselves are defined, see {doc}`../explanation/evaluation`.
+gates themselves are defined, refer to {doc}`../explanation/evaluation`.
 
 ## Related Pages
 

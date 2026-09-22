@@ -11,12 +11,12 @@ must never declare both.
 
 The configuration stores identity and credential references, not secret values.
 
-## Create An Endpoint Configuration
+## Create an Endpoint Configuration
 
 Create the complete endpoint-backed pack shape with:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport endpoint \
@@ -26,7 +26,7 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
 
 The generated URL and digests are placeholders. Replace them with metadata from a
 deployed, versioned service before validation. A missing conformance attestation may be
-useful for smoke diagnostics but cannot reach Gold.
+useful for verification diagnostics but cannot reach Gold.
 
 For MCP-backed authoring, the gateway artifact emitter can produce endpoint identity,
 attestation, and an optional CA bundle. Do not manually invent those values.
@@ -75,7 +75,7 @@ three authorization commitments when auth is present.
 Live metadata and every newly created session must report the pinned identity exactly.
 A changed id, version, content digest, or authorization context stops the run.
 
-## Authentication And TLS
+## Authentication and TLS
 
 Reference a bearer token by environment-variable name:
 
@@ -174,12 +174,12 @@ The service implements:
 Creating a session resets an isolated episode with frozen context and fixtures. Each
 replay uses a new opaque session id.
 
-## Validate The Endpoint
+## Validate the Endpoint
 
 There is no standalone endpoint-config validator. Run whole-pack preparation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```
@@ -211,7 +211,7 @@ consult the relevant transport support matrix.
 
 ## Complete Example
 
-See `src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml`. Replace
+See [`src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-endpoint-config.example.yaml). Replace
 every digest placeholder and add a valid conformance attestation for Gold.
 
 ## Related Information

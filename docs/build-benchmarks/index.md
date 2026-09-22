@@ -19,6 +19,17 @@ An optional translation stage reads an existing benchmark and writes another `be
 New to this flow? Follow {doc}`getting-started` once, then use the grids and tables below to jump to how-to guides, concepts, or reference pages.
 :::
 
+## Choose a Benchmark Type
+
+The bring your own benchmark (BYOB) family provides two steps. Choose the step that matches the capability you want to measure.
+
+| Step | Measures | Generation source | Section |
+| --- | --- | --- | --- |
+| `byob/mcq` | Knowledge recall as multiple-choice questions | A model generates and judges questions from your documents and public few-shot exemplars | This section |
+| `byob/bfcl` | Tool use as expected function calls | An executable Oracle Pack that you author; every expected call is replayed against the oracle | {doc}`function-calling/index` |
+
+Both steps write `benchmark.parquet` and support an optional translation stage.
+
 ## When to Use
 
 The `nemotron steps run byob/mcq` command enables the following outcomes.

@@ -9,7 +9,7 @@ The `bfcl` benchmark family builds function-calling benchmark artifacts from an 
 Unlike the multiple-choice-question family, it does not ask a model to invent questions: the pack's templates define the conversation, and the pack's oracle and assertions establish what the correct tool behavior is.
 Generation is therefore closer to deterministic assembly than to synthesis, which is what makes a published row traceable back to the exact pack bytes it came from.
 
-## From Source Assets To A Published Benchmark
+## From Source Assets to a Published Benchmark
 
 There are three layers in the end-to-end workflow. Authoring produces the reviewed
 oracle pack that generation consumes. Generation turns that pack into a verified
@@ -103,7 +103,7 @@ flowchart TB
 
 Stages 10 and 11 are bypassed when disabled rather than run as no-ops, so a disabled stage leaves no artifact a later reader could mistake for a verdict it never reached.
 
-## What Enters And Leaves Each Stage
+## What Enters and Leaves Each Stage
 
 Each item below separates pipeline work from operator work. The files under
 `stage_cache/` are how a run is diagnosed, but they are also what later stages read
@@ -117,7 +117,7 @@ rather than by editing the cache.
 - **Input:** the oracle pack and resolved generation configuration.
 - **Transformation:** load and normalize the manifest, tool schemas, fixtures,
   templates, validation cases, held-out policy, and oracle declaration; run all pack
-  validation checks. The checks judge each declaration on its own — known turn policy,
+  validation checks. The checks judge each declaration on its own — known *turn policy* (the template's declared conversation shape),
   exposed and declared tools, importable and executable-compatible assertions — while
   the conversation shape a policy implies is enforced later, in Stage 5.
 - **Output:** normalized pack files under `stage_cache/` and
@@ -256,7 +256,7 @@ rather than by editing the cache.
   exports in the manifest. Parquet files without the adjacent manifest are not a
   published benchmark.
 
-## Finding The Stage To Fix
+## Finding the Stage to Fix
 
 Every canonical table is keyed by `task_id`. Compare adjacent artifacts to locate the
 first transformation that rejected or changed a task:
@@ -278,7 +278,7 @@ first transformation that rejected or changed a task:
 The exact paths and sidecar reports are indexed in
 {doc}`../reference/output-files`.
 
-## Generation Calls No Model By Default
+## Generation Calls No Model by Default
 
 Every assistant and user turn is rendered from the pack's own templates, so a default run contacts no model at all.
 That is not a cost optimization; it is what keeps oracle truth and model output on opposite sides of the pipeline.
@@ -288,7 +288,7 @@ Three model roles are optional and disabled in the shipped configuration templat
 When all three are disabled the run records `generation_mode: template_only`, and that does not affect gold eligibility.
 Even when they are enabled, none of them may touch a task's calls, arguments, or assertions.
 
-## Stages Are Checkpointed And Resumable
+## Stages Are Checkpointed and Resumable
 
 Each generation stage writes one artifact under `stage_cache/`, keyed by `task_id` with one row per task, and a checkpoint holding a canonical state snapshot plus immutable copies of the stage's mutable artifacts.
 Because every table carries the same `task_id` set, joining them shows exactly which stage dropped a task instead of leaving a shortfall unexplained.
@@ -310,10 +310,10 @@ An unknown export name, a balancing target whose owning stage is disabled, an ev
 The reason is that a silently dropped setting produces a benchmark whose manifest claims a guarantee no stage applied, and there is no way for a later reader to tell that apart from a benchmark where the guarantee held.
 A key no stage reads is also, in practice, usually a typo for one that matters.
 
-The same principle governs publication. `run_manifest.json` is written last as the commit marker, so a Parquet file without an adjacent manifest is unpublished bytes whatever its name says.
+The same principle governs publication. `run_manifest.json` is written last as the *commit marker*, so a Parquet file without an adjacent manifest is unpublished bytes whatever its name says.
 Troubleshooting for individual refusals is collected in {doc}`../reference/troubleshooting`.
 
-## Translation And Evaluation Are Separate Runs
+## Translation and Evaluation Are Separate Runs
 
 `translate` and `eval` are runs over a benchmark that was already published, not stages of generation.
 Translation starts from the source release's `run_manifest.json`, verifies the published table hashes and schema, and localizes only approved model-facing text while leaving tool names, parameter schemas, slot values, expected calls, assertions, ordering, held-out state, and lineage unchanged.

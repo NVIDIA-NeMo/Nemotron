@@ -16,7 +16,7 @@ Every Gold template names at least one assertion in `success_assertions`.
 The manual pack scaffold writes working result, state, and no-call assertions:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -138,7 +138,7 @@ Export both and declare capabilities that match what each predicate actually rea
 There is no standalone assertion validator. Run:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```

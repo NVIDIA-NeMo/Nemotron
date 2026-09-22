@@ -24,7 +24,7 @@ Run an Evaluation <run-evaluation>
 
 ## Get a Pack
 
-Everything downstream depends on the pack, so start by choosing how you will produce one. All three routes end at the same generation pipeline and the same Gold gate; see {doc}`../explanation/authoring-flows` for the trade-offs.
+Everything downstream depends on the pack, so start by choosing how you will produce one. All three routes end at the same generation pipeline and the same Gold gate; refer to {doc}`../explanation/authoring-flows` for the trade-offs.
 
 :::{admonition} Starting with existing domain assets?
 :class: tip

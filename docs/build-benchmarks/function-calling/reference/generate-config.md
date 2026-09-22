@@ -12,7 +12,7 @@ configurations named below all live in `src/nemotron/steps/byob/bfcl/config/`. S
 `default.yaml`, which carries the same keys with inline commentary, or from `tiny.yaml`,
 `smoke.example.yaml`, `publication.example.yaml`, or `publication.paraphrase.example.yaml`
 for worked examples at different scales.
-For how the fields fit together, see {doc}`../explanation/pipeline-overview`.
+For how the fields fit together, refer to {doc}`../explanation/pipeline-overview`.
 
 :::{important}
 Every section is closed, and the pipeline refuses a config it will not honor rather

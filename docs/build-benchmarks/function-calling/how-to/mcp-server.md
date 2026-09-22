@@ -8,10 +8,10 @@
 Use this guide when the domain you want to benchmark is already exposed as a Model Context Protocol (MCP) server. The server becomes the executable oracle: BFCL discovers its tool catalog, exposes it through a gateway that speaks the BFCL Oracle HTTP v1 contract, certifies it from observed probes, and then carries a reviewed frozen pack into the same generation pipeline every other flow uses.
 
 :::{warning}
-This transport is experimental and disabled by default. Only Mode A, in which the server itself implements the reviewed describe, reset, state, and end controls, is implemented. Mode B and Mode C declarations are inert discovery records with no execution path. Read `src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md` before you point BFCL at a server you do not control; it states the trust boundaries this flow assumes.
+This transport is experimental and disabled by default. Only Mode A, in which the server itself implements the reviewed describe, reset, state, and end controls, is implemented. Mode B and Mode C declarations are inert discovery records with no execution path. Read [`src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-threat-model.md) before you point BFCL at a server you do not control; it states the trust boundaries this flow assumes.
 :::
 
-This page is the walkthrough. `src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md` is the matching command-level reference, with every invocation executed as a smoke case by the test suite; use it when you need exact arguments and refusal codes.
+This page is the walkthrough. [`src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md) is the matching command-level reference, with every invocation executed as a verification case by the test suite; use it when you need exact arguments and refusal codes.
 
 ## Before You Start
 
@@ -28,7 +28,7 @@ export BFCL_ENABLE_MCP_MODE_A=1
 
 ## Step 1: Write `mcp_oracle.yaml`
 
-Start from the normative schema in `src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md`. In that file you select business tools explicitly under `tools.include` and alias them to stable BFCL names where the server's own names are unsuitable, declare mutation and confirmation behavior in the reviewed profile because BFCL never infers either from a tool name or a live result, and keep the control tools out of `tools.include`.
+Start from the normative schema in [`src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-oracle-contract.md). In that file you select business tools explicitly under `tools.include` and alias them to stable BFCL names where the server's own names are unsuitable, declare mutation and confirmation behavior in the reviewed profile because BFCL never infers either from a tool name or a live result, and keep the control tools out of `tools.include`.
 
 For a stdio transport, also create a host-owned trusted-executable policy that pins the executable's absolute path, its SHA-256, the exact allowed argument vectors, and the allowed working-directory roots. A server-supplied configuration cannot weaken that policy, and `PATH` lookup is not an authorization mechanism.
 
@@ -39,7 +39,7 @@ For a Streamable HTTP transport, use HTTPS outside explicit loopback debugging, 
 Discovery reads the server's identity and its complete paginated tool catalog and writes a deterministic report.
 
 ```bash
-python -m nemotron.steps.byob.scripts.discover_mcp_oracle \
+uv run python -m nemotron.steps.byob.scripts.discover_mcp_oracle \
   --config mcp_oracle.yaml \
   --output mcp_discovery_report.json \
   --bootstrap-catalog-digest
@@ -58,7 +58,7 @@ Never overwrite an expected catalog digest automatically. Compare the complete n
 The gateway is the only MCP execution boundary. It maps the MCP server onto the BFCL Oracle HTTP v1 contract, so that the generation pipeline drives sessions, calls, and state through the same routes it uses for any endpoint-backed pack and stays entirely unaware of MCP. A running gateway process is part of the fingerprinted execution environment.
 
 ```bash
-python -m nemotron.steps.byob.scripts.run_mcp_gateway \
+uv run python -m nemotron.steps.byob.scripts.run_mcp_gateway \
   --config mcp_oracle.yaml \
   --gateway-artifact-digest sha256:<digest> \
   --host 127.0.0.1 \
@@ -72,10 +72,10 @@ python -m nemotron.steps.byob.scripts.run_mcp_gateway \
 
 A gateway attests only what it has evidence for, and human approval never raises the attained level. `L0` is discovery only: the identity and catalog were verified and nothing was proven about execution behavior. `L1` adds a working control plane and a total result mapping, so episodes can be reset, called, and read; it is executable but not certifiable, which means it runs under `lineage.policy: smoke_no_publication` and cannot publish. `L2` requires a Mode A gateway with a complete ordered probe report and a passing build suite, and publication on top of that still requires the final BFCL validation to reproduce the target report.
 
-The first gateway starts at `L0`. Use it to validate the provisional pack and retain `mcp_probe_report` from the resulting `oracle_validation_report.json`. The controlled-timeout suite is a separate artifact: it is produced by running the `P9` conformance helper, `run_gateway_timeout_conformance` in `src/nemotron/steps/byob/runtime/mcp/gateway/conformance.py`, against a controlled hanging fixture, and its returned document is what you write to `gateway_suite.json`. No CLI wraps that helper yet, so this step is driven through the Python API. Then restart the same pinned gateway artifact with both files supplied:
+The first gateway starts at `L0`. Use it to validate the provisional pack and retain `mcp_probe_report` from the resulting `oracle_validation_report.json`. The gateway timeout conformance suite is a separate artifact: it is produced by running the `P9` conformance helper, `run_gateway_timeout_conformance` in `src/nemotron/steps/byob/runtime/mcp/gateway/conformance.py`, against a controlled hanging fixture, and its returned document is what you write to `gateway_suite.json`. No CLI wraps that helper, so this step is driven through the Python API. Then restart the same pinned gateway artifact with both files supplied:
 
 ```bash
-python -m nemotron.steps.byob.scripts.run_mcp_gateway \
+uv run python -m nemotron.steps.byob.scripts.run_mcp_gateway \
   --config mcp_oracle.yaml \
   --gateway-artifact-digest sha256:<digest> \
   --probe-report mcp_probe_report.json \
@@ -92,7 +92,7 @@ Fetch `/v1/conformance`, `/v1/conformance/probe-report`, and `/v1/conformance/ga
 Intake turns the discovery evidence into a sanitized evidence bundle, a pack draft, and a signed certification report.
 
 ```bash
-python -m nemotron.steps.byob.scripts.build_mcp_intake \
+uv run python -m nemotron.steps.byob.scripts.build_mcp_intake \
   --intake mcp_intake.yaml \
   --domain-brief /srv/sources/domain-brief.txt \
   --held-out-not-applicable-reason "The catalog is public reference data." \
@@ -112,7 +112,7 @@ session for you. For the one-approval path, use the reviewed policy described in
 {doc}`assisted-authoring`:
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author \
   --ci author \
   --workspace /srv/bfcl/authoring/warehouse \
   --source <REVIEWED_MCP_INTAKE> \

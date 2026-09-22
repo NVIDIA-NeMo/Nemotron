@@ -14,7 +14,7 @@ The plan is not oracle truth and is not a pack file. Generation never reads it.
 `tools.json` names the public interface; the plan names which situations intake is
 allowed to observe.
 
-## Create A Probe Plan
+## Create a Probe Plan
 
 Copy the A2-shaped banking example, then replace its tools, fixture ids, and cases:
 
@@ -25,7 +25,7 @@ cp src/nemotron/steps/byob/references/bfcl-probe-plan.example.json \
 
 Do not pass the example unchanged to a library or warehouse source. An optional
 model-drafted plan is produced by `draft_probe_plan`; review that draft the same way
-you would review a handwritten plan. See {doc}`../how-to/assisted-authoring`.
+you would review a handwritten plan. Refer to {doc}`../how-to/assisted-authoring`.
 
 A `local_python` source may omit `fixtures` when the reviewed `fixtures.json` already
 supplies reset state. A session-based HTTP or MCP plan must carry `fixtures`, because
@@ -131,7 +131,7 @@ Clock values must be ISO-8601 with an explicit timezone. The banking example use
 Check the plan against a local Python source without executing probes:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_probe_plan \
+uv run python -m nemotron.steps.byob.scripts.check_probe_plan \
   --source /srv/sources/library \
   --probe-plan /srv/sources/library-probe-plan.json
 ```
@@ -186,5 +186,5 @@ under-certified source.
 - {doc}`domain-brief` for the drafting context that accompanies the plan.
 - {doc}`oracle-pack-inputs` for the distinction between authoring inputs and Oracle
   Pack files.
-- `src/nemotron/steps/byob/references/bfcl-probe-plan.example.json` for a complete
+- [`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-probe-plan.example.json) for a complete
   A2-shaped banking example.

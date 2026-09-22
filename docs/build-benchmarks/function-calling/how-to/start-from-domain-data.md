@@ -3,7 +3,7 @@
   SPDX-License-Identifier: Apache-2.0
 -->
 
-# From Domain Assets To An Oracle Pack
+# From Domain Assets to an Oracle Pack
 
 Use this guide when you have some combination of a tool interface, representative
 records, an existing implementation, or documented business behavior but do not yet
@@ -21,7 +21,7 @@ After the pack is Gold-eligible, continue with {doc}`publish-a-release`, optiona
 {doc}`translate`, and {doc}`run-evaluation`. Model assistance never earns a weaker
 validation standard.
 
-## Understand The End-To-End Process
+## Understand the End-To-End Process
 
 Use the three guides as separate phases with explicit handoffs:
 
@@ -38,7 +38,7 @@ Use the three guides as separate phases with explicit handoffs:
 Do not combine the phase outputs manually. In particular, do not edit generated
 Parquet files, synthesize a manifest, or add files to the NeMo Evaluator bundle.
 
-## Identify The Required Domain Inputs
+## Identify the Required Domain Inputs
 
 Documents, schemas, and records can help author a pack, but they are not collectively
 treated as a special "domain data" format. Interface documentation alone cannot
@@ -86,7 +86,7 @@ Those names, ids, and files live in
 `src/nemotron/steps/byob/data/tiny_oracle_pack/`. Later snippets in this guide use the
 same catalog rather than a second invented library.
 
-## Choose A Path
+## Choose a Path
 
 ```mermaid
 flowchart TB
@@ -158,12 +158,12 @@ human-gate simulations, publication, and evaluation. It demonstrates the boundar
 does not prepare or validate your domain inputs. Use `--author-model live` only after
 the scripted path works and a configured model endpoint is available.
 
-## Path A: Author The Pack Manually
+## Path A: Author the Pack Manually
 
 In this path, the files you review are the files generation reads. No authoring model
 participates.
 
-### 1. Scaffold A Runnable Pack
+### 1. Scaffold a Runnable Pack
 
 Choose a new target directory; the scaffolder never overwrites one:
 
@@ -223,11 +223,11 @@ uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
 Exit code `0` means Gold-eligible, `2` means validation reached a non-Gold verdict,
 and `1` means no verdict could be produced. Read the failed checks rather than editing
 the generated report. The same report is what `stage=prepare` writes if you prefer to
-stay on the pipeline CLI. See {doc}`author-a-pack` for how to read the named checks.
+stay on the pipeline CLI. Refer to {doc}`author-a-pack` for how to read the named checks.
 
-### 4. Generate A Smoke Benchmark
+### 4. Generate a Verification Benchmark
 
-Once preparation is Gold-eligible, copy the smoke configuration rather than using the
+After preparation is Gold-eligible, copy the verification configuration (`smoke.example.yaml`) rather than using the
 scaffolded `validate.yaml` as a generation run. Relative paths in a BFCL configuration
 resolve from `src/nemotron/steps/byob/`, not from the shell working directory; use
 absolute paths for an external pack and keep `output_dir` outside the pack root.
@@ -261,16 +261,16 @@ uv run nemotron steps run byob/bfcl \
 ```
 
 Verify `benchmark_raw.parquet`, `benchmark.parquet`, `run_manifest.json`, and the
-adjacent `stage_cache/` tables. A smoke run still writes those files, but records
-`gold_eligible: false` in the manifest even when the pack itself is Gold. That proves
-plumbing; it is not a publication-eligible evaluation source. Follow
+adjacent `stage_cache/` tables. A verification run still writes those files, but records
+`gold_eligible: false` in the manifest even when the pack itself is Gold. That verifies
+the pipeline; it is not a publication-eligible evaluation source. Follow
 {doc}`publish-a-release` to choose a reviewed publication budget, then
 {doc}`run-evaluation` to score a candidate.
 
 For every manual pack field and validation rule, continue with
 {doc}`author-a-pack`.
 
-## Path B: Author From An Executable Source With Model Assistance
+## Path B: Author From an Executable Source With Model Assistance
 
 This path starts one step before an Oracle Pack. You supply a conventional source
 package whose behavior can be fingerprinted and probed; the authoring pipeline
@@ -301,7 +301,7 @@ Prepare these operator-owned inputs before starting intake:
 | --- | --- |
 | Reviewed `tools.json` | Defines the exact public functions and JSON parameter schemas a candidate may see. |
 | Executable source | For `local_python`: `backend.py`, `dependency-lock.json`, and optional `fixtures.json`. For HTTP: `endpoint_config.yaml`. Prefer an existing domain-owned implementation over scaffolding. |
-| Domain brief | Describes the domain, supported reads and mutations, confirmation and refusal behavior, identifier shapes, and language. It supplies drafting context, not oracle truth. See {doc}`../reference/domain-brief`. |
+| Domain brief | Describes the domain, supported reads and mutations, confirmation and refusal behavior, identifier shapes, and language. It supplies drafting context, not oracle truth. Refer to {doc}`../reference/domain-brief`. |
 | Probe plan | Names the calls intake may execute to measure coverage, errors, reset, isolation, confirmation safety, and timeout cleanup. A Gold release requires A2, including a timeout case. |
 | Held-out decision | Supplies either a reviewed held-out policy or a reason held-out data does not apply. |
 | Certification key | An Ed25519 private key that signs the measured source evidence under a chosen key id. |
@@ -346,7 +346,7 @@ openssl pkey -in /srv/bfcl/keys/certification-private.pem \
 `--certification-key-id` is the identifier you pass with that private key, such as
 `library-authoring`. Keep the private key outside the source tree.
 
-### 1. Prepare A Reviewed Tool Catalog
+### 1. Prepare a Reviewed Tool Catalog
 
 Start from the public interface you want a candidate model to see. Each entry in
 `tools.json` needs a stable name, description, and JSON parameter schema. Mark
@@ -367,7 +367,7 @@ For your own domain, write `tools.json` from the real interface instead of copyi
 library catalog. The catalog cannot decide what a call returns or how state changes.
 You supply that truth in the next step.
 
-### 2. Provide Or Scaffold The Source Package
+### 2. Provide or Scaffold the Source Package
 
 If a reviewed `backend.py`, `fixtures.json`, and `dependency-lock.json` already exist,
 place the catalog beside them and continue at the static check. Do not scaffold over a
@@ -413,9 +413,9 @@ vocabulary, and state transitions, which can bias task coverage or favor familia
 conventions. Gold validation catches inconsistency and nondeterminism, not semantic
 representativeness. Use independent records and tests to review every suggestion, and
 avoid using the same model as the sole author of both oracle behavior and benchmark
-tasks. See {doc}`../reference/python-backend` for the full recommendation.
+tasks. Refer to {doc}`../reference/python-backend` for the full recommendation.
 
-### 3. Check The Source Before Intake
+### 3. Check the Source Before Intake
 
 ```bash
 uv run python -m nemotron.steps.byob.scripts.check_source_package \
@@ -426,7 +426,7 @@ Proceed only when the command exits `0`. A passing static check means the source
 with its catalog and contains no review marker; it does not certify that the behavior
 is correct.
 
-### 4. Supply The Human-Owned Authoring Inputs
+### 4. Supply the Human-Owned Authoring Inputs
 
 Copy and complete the domain brief:
 
@@ -445,8 +445,8 @@ Prepare a probe plan covering every published tool, at least one structured erro
 the source has error codes, confirmation safety for mutations, reset isolation, and a
 case the tool cannot finish inside its deadline. Without that timeout case,
 certification cannot reach A2. Copy the structure from
-`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`, then replace its
-banking tools, fixture ids, and cases. See {doc}`../reference/probe-plan` for the A2
+[`src/nemotron/steps/byob/references/bfcl-probe-plan.example.json`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-probe-plan.example.json), then replace its
+banking tools, fixture ids, and cases. Refer to {doc}`../reference/probe-plan` for the A2
 coverage contract, including the timeout case. Check the plan without executing probes:
 
 ```bash
@@ -460,7 +460,7 @@ authoritative because only it executes the probes. An optional model-drafted pla
 documented in {doc}`assisted-authoring`; review that draft the same way you would
 review a handwritten plan.
 
-### 5. Start Intake And Certification
+### 5. Start Intake and Certification
 
 Enable live inspection of a local Python source:
 
@@ -491,7 +491,7 @@ Intake writes fingerprinted, transport-neutral evidence and derives A0, A1, or A
 from observations. A Gold release needs A2. Neither a reviewer nor a model can promote
 an under-certified source.
 
-### 6. Cross The Two Human Boundaries
+### 6. Cross the Two Human Boundaries
 
 Continue with the commands that `bfcl_author` reports for the current session:
 
@@ -519,7 +519,7 @@ people. The same named person may act at multiple gates unless organizational po
 requires separation of duties; exposure may also be authorized by an organizational
 policy digest. Editing an upstream artifact invalidates downstream approvals.
 
-### 7. Review The Semantic Supplement And Assemble
+### 7. Review the Semantic Supplement and Assemble
 
 The authoring model cannot infer fixture-column bindings, final turn policies,
 per-language user turns, or certification validation cases merely from a tool
@@ -579,7 +579,7 @@ The CLI binds the session's evidence, drafts, and source automatically. Assembly
 refuses any supplement tool or assertion that cannot be traced back to certified
 evidence and compiled drafts.
 
-### 8. Review, Freeze, And Publish
+### 8. Review, Freeze, and Publish
 
 The remaining guided commands build a deterministic review packet from independently
 verified certification, fresh validation, answered questions, and the complete
@@ -588,7 +588,7 @@ pack and sidecars. `publish` reruns fresh Gold validation and the ordinary
 `stage=all` generation pipeline rather than trusting an earlier verdict.
 
 Follow {doc}`assisted-authoring` for the remaining command-level sequence and
-`src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md` for every required
+[`src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md) for every required
 argument and refusal code. Those pages are the sources of truth for authorize, draft,
 review, freeze, and publish. The `_demo.py` walkthrough above is not a production
 launcher.
@@ -632,9 +632,9 @@ Check pack validation and publication separately. They answer different question
 
 - `stage_cache/oracle_validation_report.json` reports the pack's own `tier` and
   `gold_eligible`. A Gold pack is required before you spend a publication budget.
-- A smoke configuration with `lineage.policy: smoke_no_publication` still writes
+- A verification configuration with `lineage.policy: smoke_no_publication` still writes
   `run_manifest.json`, but records `gold_eligible: false` even when the pack itself
-  is Gold. That is the point of a smoke run: it proves plumbing without claiming a
+  is Gold. That is the point of a verification run: it confirms the pipeline path without claiming a
   releasable lineage.
 - Every row that reaches the raw table passed deterministic executable replay and its
   declared assertions.
@@ -650,10 +650,10 @@ If a run fails, use {doc}`../reference/output-files` to find the first adjacent 
 artifact that lost the task, then use {doc}`../reference/troubleshooting` to map the
 reported refusal to its source fix.
 
-## Follow-Up: Evaluation And Next Steps
+## Follow-Up: Evaluation and Next Steps
 
 Evaluation is a separate run over a **published** benchmark, with its own configuration
-and output directory. A smoke run with `lineage.policy: smoke_no_publication` can write
+and output directory. A verification run with `lineage.policy: smoke_no_publication` can write
 `run_manifest.json`, `benchmark.parquet`, and `benchmark_raw.parquet` while still
 recording `gold_eligible: false`. That output is not a publication-eligible evaluation
 source.

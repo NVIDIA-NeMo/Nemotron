@@ -10,20 +10,20 @@ shape; `expand` binds its slots into concrete task instances, and later stages t
 milestones into rendered turns and expected tool calls.
 
 This page covers the fields a new pack normally fills. The complete normative contract,
-including correction, dependent calls, edge signatures, and surface-generation guards,
-is `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+including correction, dependent calls, edge signatures, and paraphrase guards,
+is [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
 Examples use either the bundled English library pack or the neutral `get_record`
 starter emitted by the scaffolder. Their names and business behavior illustrate the
 contract; they are not framework defaults.
 
-## Create A Template Skeleton
+## Create a Template Skeleton
 
 The manual pack scaffolder writes runnable `single_turn`, structured-error, and
 `irrelevant` starter templates:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -53,7 +53,7 @@ and assertion names resolve in `assertions.py`.
 Run whole-pack preparation during each authoring iteration:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```
@@ -72,7 +72,7 @@ fresh whole-pack validation still runs before review and publication.
 | `intent` | Recommended; required by intent-based analysis | Semantic capability this task exercises. It is carried into published metadata. |
 | `category` | Optional | Publication-budget group. When omitted, expansion uses `template_id` as the category, giving that template its own budget. |
 | `difficulty` | Optional; required when balancing targets it | Pack-defined difficulty label carried into reporting and optional balancing. |
-| `turn_policy` | Yes | Claim about the required conversation shape. See [Turn policies](#turn-policies). |
+| `turn_policy` | Yes | Claim about the required conversation shape. Refer to [Turn policies](#turn-policies). |
 | `mutates` | For state-changing tasks | Declares that the conversation is expected to change oracle state. |
 | `call_order` | Optional | `strict`, `any`, or `prefix`; defaults to `strict`. |
 | `required_tools` | Yes in practice | Tool names the gold trajectory calls. Use an empty list for no-call policies. |
@@ -83,7 +83,7 @@ fresh whole-pack validation still runs before review and publication.
 | `assistant_milestones` | Yes | Ordered assistant text and tool-call steps. |
 | `user_simulator_turns` | When the assistant expects another user turn | Deterministic user replies after clarification, confirmation, or correction. |
 | `assistant_turn_templates` | When overriding pack-wide text | Per-template wording for text milestones. Normally declared once in `manifest.yaml`. |
-| `paraphrase` | Optional | Template-level surface-generation guards and variant limit. |
+| `paraphrase` | Optional | Template-level paraphrase guards and variant limit. |
 
 ## Slot Fields
 
@@ -303,7 +303,7 @@ milestone or ending with anything other than `decline` violates the policy shape
 | `missing_assistant_turn_templates` | Add wording in the pack manifest or template for each text milestone used. |
 | Required tool not exposed | Add the name to `tools_present`, or omit `tools_present` to expose the full catalog. |
 
-See {doc}`troubleshooting` for the complete failure taxonomy.
+Refer to {doc}`troubleshooting` for the complete failure taxonomy.
 
 ## Related Information
 
@@ -314,4 +314,4 @@ See {doc}`troubleshooting` for the complete failure taxonomy.
 - {doc}`assertions` for `success_assertions`.
 - {doc}`validation-cases` for direct oracle probes.
 - {doc}`../explanation/pipeline-worked-example` for how one template becomes a row.
-- {doc}`../how-to/author-a-pack` for validation and smoke-run commands.
+- {doc}`../how-to/author-a-pack` for validation and verification-run commands.

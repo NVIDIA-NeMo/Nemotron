@@ -16,7 +16,7 @@ interface, and measured probes establish source behavior and certification tier.
 claim in the brief cannot add a tool, change a schema, or make an unobserved behavior
 Gold-eligible.
 
-## Create A Brief
+## Create a Brief
 
 Copy the domain-neutral skeleton rather than the banking example:
 
@@ -30,9 +30,9 @@ top. Intake refuses a file while any marker remains.
 
 The shipped files serve different purposes:
 
-- `src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt` is the form to
+- [`src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.skeleton.txt) is the form to
   complete for a new domain.
-- `src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt` is a completed
+- [`src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-domain-brief.example.txt) is a completed
   Vietnamese banking example. Use it to understand the expected level of detail, not
   as a template for another domain.
 
@@ -72,7 +72,7 @@ The benchmark is authored and answered in English.
 The brief does not need to enumerate fixtures, JSON fields, expected responses, or
 probe cases. Those belong in the source package, `tools.json`, and the probe plan.
 
-## Safety And Validation
+## Safety and Validation
 
 A finished brief must:
 
@@ -89,7 +89,7 @@ invalidates downstream digest-bound approvals.
 Use the completed file when intake starts:
 
 ```bash
-python -m nemotron.steps.byob.scripts.bfcl_author \
+uv run python -m nemotron.steps.byob.scripts.bfcl_author \
   --ci author \
   --workspace /srv/bfcl/authoring/my-domain \
   --source /srv/sources/my-domain \

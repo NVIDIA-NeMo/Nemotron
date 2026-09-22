@@ -12,11 +12,11 @@ That convergence is the design: a pack drafted with model assistance receives ex
 | Flow | Input | Where the oracle comes from |
 | --- | --- | --- |
 | Manual | A domain source plus a local backend or an HTTPS endpoint | Hand-authored by the operator. |
-| Assisted from a conventional source | A source declaration, a domain brief, and a probe plan | A `local_python` package's own files, or a pinned `http_package` endpoint. |
+| Assisted from a conventional source | A source declaration, a *domain brief* (the human-reviewed description of what the source is for), and a *probe plan* (the human-reviewed list of calls intake may execute against the source) | A `local_python` package's own files, or a pinned `http_package` endpoint. |
 | Assisted from an MCP server | An MCP server, a domain brief, and a probe plan | The certified MCP server, reached through a gateway that exposes BFCL Oracle HTTP v1. |
 
 Read the diagram left of `Reviewed oracle pack` as the part that differs per flow, and everything right of it as the part that does not.
-The manual flow reaches the pack directly because there is no source to certify; the two assisted flows share one intake spine, one certification ladder, and one review-and-freeze boundary, and the MCP flow joins that spine behind a gateway.
+The manual flow reaches the pack directly because there is no source to certify; the two assisted flows share one source-intake stage, one certification ladder, and one review-and-freeze boundary, and the MCP flow joins that intake stage behind a gateway.
 
 ```mermaid
 flowchart TB
@@ -66,9 +66,9 @@ inside that pack changes as it passes through Stages 1–12.
 In the manual flow the operator supplies the executable oracle and every declarative file beside it.
 There is no intake phase, because there is nothing to certify about a source the operator wrote: validation runs directly over the pack, and the gold gate is the first and only certification boundary.
 This is the shortest path when the domain already has a deterministic implementation, or when the pack's conversation shapes need judgment that no automated intake could supply.
-See {doc}`../how-to/author-a-pack` and, for the complete lifecycle including endpoint identity pins, `src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md`.
+Refer to {doc}`../how-to/author-a-pack` and, for the complete lifecycle including endpoint identity pins, [`src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-manual-oracle-pack-flow.md).
 
-## Assisted Authoring From A Conventional Source
+## Assisted Authoring From a Conventional Source
 
 The assisted flows start from a source that is *not* a pack and cannot carry certification, approval, or publication fields.
 A `local_python` source is a tree: a `backend.py` import-closure root, a reviewed `tools.json` catalog, a canonical dependency lock, and optional fixtures. Its Python is parsed rather than imported, so identity is established without executing anything.
@@ -89,7 +89,7 @@ Certification is derived by the pipeline, never by the transport code that gathe
 Without a probe plan a source certifies `A0`, whatever transport it uses, because nothing else can supply observed outcomes.
 Lower tiers may be drafted and reviewed, but freezing a pack as gold requires `A2`.
 
-## Assisted Authoring From An MCP Server
+## Assisted Authoring From an MCP Server
 
 The MCP flow reaches the same intake through a gateway.
 Discovery reads the server's implementation identity and complete paginated tool catalog and pins a catalog digest; the gateway then exposes BFCL Oracle HTTP v1 so that generation stays entirely unaware that MCP was involved.
@@ -98,7 +98,7 @@ Mode B and Mode C declarations are inert discovery records; their execution is n
 
 A cooperative server has to return a stable identity and catalog, JSON-object structured content for its selected tools, deterministic describe/reset/state/end controls, isolated episodes, stable structured error codes, and unchanged state when a confirmation-gated mutation is not confirmed.
 Control tools must not appear in the selected business catalog.
-See {doc}`../how-to/mcp-server` and `src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md`.
+Refer to {doc}`../how-to/mcp-server` and [`src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-mcp-user-guide.md).
 
 ## The Guided Command Sequence
 
@@ -110,8 +110,10 @@ Both assisted flows run through one stateful guided command that prints the next
    evidence records from the reviewed organizational policy. Exceptional evidence uses
    the granular `authorize` and `approve --boundary evidence` commands instead.
 4. `draft` — run bounded, cached, structured model calls.
-5. `assemble` — bind those drafts into a loadable candidate pack.
-6. `review` — assemble independently verified certification, fresh validation, answered questions, and the complete candidate pack.
+5. `assemble` — bind those drafts into a loadable *candidate pack*, a pack assembled
+   from drafts that has not yet been reviewed, approved, or frozen.
+6. `review` — assemble the *review packet*: independently verified certification,
+   fresh validation, answered questions, and the complete candidate pack.
 7. `release` — load that exact packet, ask for one semantic/risk confirmation, then
    record approval, freeze, and publish while committing each phase separately.
 
@@ -141,7 +143,7 @@ to accept it and the granular human-review path remains available. That fallback
 not compare the identities on its records and does not require two people; an
 organization may still impose separation of duties.
 
-## What Assisted Authoring May And May Not Do
+## What Assisted Authoring May and May Not Do
 
 An authoring model may propose a tool coverage plan, validation cases, task-template plans, and declarative assertion specifications.
 It may not change the backend, the endpoint's behavior, the tool schemas, or the fixtures. It cannot certify its own output, invent fixture bindings or hidden business truth, approve model exposure or release, bypass executable gold validation, or use target-model answers to select or repair benchmark rows.
@@ -177,4 +179,4 @@ MCP Mode B and Mode C are not implemented.
 - {doc}`../how-to/mcp-server` for onboarding an MCP server.
 - {doc}`../how-to/publish-a-release` for freezing and publishing.
 - {doc}`oracle-pack` for the contract every flow must satisfy.
-- `src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md`, `bfcl-transport-neutral-intake.md`, and `bfcl-assisted-authoring-runbook.md` for the normative authoring contracts.
+- [`src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-authoring-user-guide.md), [`src/nemotron/steps/byob/references/bfcl-transport-neutral-intake.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-transport-neutral-intake.md), and [`src/nemotron/steps/byob/references/bfcl-assisted-authoring-runbook.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-assisted-authoring-runbook.md) for the normative authoring contracts.

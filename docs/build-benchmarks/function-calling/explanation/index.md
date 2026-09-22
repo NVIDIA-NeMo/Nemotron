@@ -68,6 +68,6 @@ Trace and executable scoring, the gates that run before any inference, and why t
 
 ## Where to Go Next
 
-- To do something rather than understand it, see {doc}`../how-to/index`.
-- For field-level detail on configuration and artifacts, see {doc}`../reference/index`.
-- The normative contracts live in the source tree next to the code they govern: `src/nemotron/steps/byob/references/bfcl-oracle-pack.md` for the pack, and `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md` for scoring.
+- To do something rather than understand it, refer to {doc}`../how-to/index`.
+- For field-level detail on configuration and artifacts, refer to {doc}`../reference/index`.
+- The normative contracts live in the source tree next to the code they govern: [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md) for the pack, and [`src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md) for scoring.

@@ -13,12 +13,12 @@ The runtime requires `pack_id` and `version` to load a manifest. Other fields be
 required only when the pack uses the behavior they configure. Prefer stable string
 values for identity even though the loader normalizes scalar identity values.
 
-## Create A Manifest
+## Create a Manifest
 
 Create a complete runnable pack, including a starter manifest, with:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -113,13 +113,13 @@ assistant_turn_templates:
 
 The example assumes matching sibling files. It is not a complete pack by itself.
 
-## Validate A Manifest
+## Validate a Manifest
 
 There is no standalone manifest validator because most claims refer to sibling files.
 Run whole-pack preparation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```

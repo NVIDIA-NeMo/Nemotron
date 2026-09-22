@@ -86,7 +86,7 @@ model-assisted command runs Data Designer's provider health check before generat
 For example:
 
 ```bash
-python -m nemotron.steps.byob.scripts.draft_probe_plan \
+uv run python -m nemotron.steps.byob.scripts.draft_probe_plan \
   --source /srv/sources/my-domain \
   --domain-brief /srv/sources/my-domain-brief.txt \
   --output /srv/sources/my-domain-probe-plan.json \

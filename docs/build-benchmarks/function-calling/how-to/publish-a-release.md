@@ -21,9 +21,9 @@ Gold-eligible Oracle Pack
 
 ## Before You Start
 
-- A pack that validates as Gold-eligible, and a completed smoke run against it. Generation refuses a pack that is not Gold-eligible; see {doc}`author-a-pack`.
+- A pack that validates as Gold-eligible, and a completed verification run against it. Generation refuses a pack that is not Gold-eligible; refer to {doc}`author-a-pack`.
 - A fresh `output_dir` and a unique `expt_name`, which is a single directory name rather than a path. `output_dir/expt_name` must sit outside the pack root.
-- A decision about whether the release needs model-authored wording. See [Choose a Profile](#choose-a-profile).
+- A decision about whether the release needs model-authored wording. Refer to [Choose a Profile](#choose-a-profile).
 
 :::{warning}
 Do not edit the pack between validation and publication. The pack fingerprint is checked before validation, after validation, and again before final output, and any drift aborts publication rather than stamping a report and a benchmark that came from different bytes.
@@ -97,7 +97,7 @@ task_generation:
      negative_path: 0.07, clarify_only: 0.1033, irrelevant: 0.1667}
 ```
 
-`policy_mix` keys are `turn_policy` values, which makes it the knob that states how much of the release must exercise clarification, correction, confirmation, and documented-failure behavior instead of plain lookups. Conversation policy is the axis a candidate is most likely to fail on, so a release is better off declaring it than letting inventory decide.
+`policy_mix` keys are `turn_policy` values, which makes it the parameter that states how much of the release must exercise clarification, correction, confirmation, and documented-failure behavior instead of plain lookups. Conversation policy is the axis a candidate is most likely to fail on, so a release is better off declaring it than letting inventory decide.
 
 Keep the dimensions conceptually separate. `turn_class` is derived from the number of rendered user turns and `tool_call_count` from the executable plan, so a dependent two-call chain remains a single-turn task. Weight `tool_call_count_mix` toward multi-call paths only when the domain has real tool chains; a catalog of independent lookups is better served by a flatter mix.
 

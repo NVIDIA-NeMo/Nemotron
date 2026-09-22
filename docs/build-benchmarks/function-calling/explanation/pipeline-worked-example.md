@@ -3,7 +3,7 @@
   SPDX-License-Identifier: Apache-2.0
 -->
 
-# Follow One Task Through The Pipeline
+# Follow One Task Through the Pipeline
 
 This example follows one real template from the bundled localized
 `banking_vn_oracle_pack`, from an abstract conversation to a published benchmark row.
@@ -19,7 +19,7 @@ The source template is
 quote but does not initially provide the destination account number, so the assistant
 must ask for that slot before calling `get_transfer_fee`.
 
-## Before Generation: What The Author Supplies
+## Before Generation: What the Author Supplies
 
 The pack already contains four kinds of truth that this task needs:
 
@@ -100,7 +100,7 @@ The author reviews these semantics before generation. The pipeline will bind, re
 and verify them, but it will not decide that asking for the destination is the right
 domain policy.
 
-## Stages 1–2: Normalize And Admit The Pack
+## Stages 1–2: Normalize and Admit the Pack
 
 ### Stage 1 — `prepare`
 
@@ -117,7 +117,7 @@ validation cases. For this example it establishes that:
 The main verdict lands in `stage_cache/oracle_validation_report.json`. There is still
 no task instance or conversation row at this point.
 
-Preparation checks that the declarations are individually well formed. It does not yet
+Preparation checks that the declarations are individually well formed. It does not
 check that the milestones produce a conversation the `missing_slot` policy allows;
 Stage 5 does that once the turns are ordered.
 
@@ -132,7 +132,7 @@ any rows are generated.
 
 **Operator action:** resolve every ineligibility reason. The stage has no override.
 
-## Stage 3: Optionally Establish A Surface Style
+## Stage 3: Optionally Establish a Surface Style
 
 `reference_profile` can derive style guidance from reviewed samples. The stage itself
 always runs; it is the `profile` model role that is optional. In a template-only run it
@@ -144,7 +144,7 @@ this example.
 **Operator action:** normally none. Enable the role only when reviewed style samples
 and model-exposure authorization exist.
 
-## Stage 4: Expand An Abstract Template
+## Stage 4: Expand an Abstract Template
 
 `expand` binds one value for each slot under the configured budget and deterministic
 seed. One illustrative instance is:
@@ -171,7 +171,7 @@ is locked into the task but remains hidden from the first user turn.
 slot filters, literals, requested budget, or held-out reservation. Do not edit the
 Parquet row.
 
-## Stage 5: Build The Conversation State Machine
+## Stage 5: Build the Conversation State Machine
 
 `state_machine` orders the milestones and inserts the deterministic simulator reply
 after the clarification:
@@ -195,7 +195,7 @@ arguments have not yet been rendered.
 **Operator action:** if the plan shape is invalid, correct `turn_policy`,
 `assistant_milestones`, `user_simulator_turns`, or call groups in the template.
 
-## Stage 6: Render The Visible Conversation
+## Stage 6: Render the Visible Conversation
 
 `render` substitutes the locked values into the Vietnamese templates while respecting
 `visible_in_first_turn`. The conversation now contains model-facing text:
@@ -243,7 +243,7 @@ candidate model.
 **Operator action:** add or repair language templates when a surface cannot render or
 fails a guard. Review `paraphrase_rejections.json` when paraphrasing is enabled.
 
-## Stage 7: Derive The Expected Tool Trace
+## Stage 7: Derive the Expected Tool Trace
 
 `expected_trace` turns the tool-call milestone into a machine-checkable call:
 
@@ -280,7 +280,7 @@ evaluation will compare.
 **Operator action:** repair unresolved argument sources or references to earlier call
 results in the source milestones.
 
-## Stage 8: Validate The Call Against The Tool Contract
+## Stage 8: Validate the Call Against the Tool Contract
 
 `schema_validation` checks the expected call against `tools_normalized.json`:
 
@@ -298,7 +298,7 @@ conforms to the public tool interface.
 **Operator action:** reconcile the template with `tools.json` if the function or
 arguments disagree.
 
-## Stage 9: Prove The Backend Reproduces The Claim
+## Stage 9: Prove the Backend Reproduces the Claim
 
 `executable_replay` replays the task twice after independent resets and runs
 `assert_transfer_fee_reported`, which requires a `get_transfer_fee` result carrying
@@ -316,7 +316,7 @@ expected answer becomes oracle-verified rather than merely well-formed.
 **Operator action:** use the recorded failure to determine whether the backend,
 fixture, expected trace, or assertion is wrong.
 
-## Stages 10–11: Decide Whether The Verified Row Is Published
+## Stages 10–11: Decide Whether the Verified Row Is Published
 
 When enabled, `surface_quality` checks that the Vietnamese surface is usable without
 changing its verified call. A rejected surface is recorded in
@@ -332,7 +332,7 @@ rewrite its conversation, expected call, or oracle evidence.
 **Operator action:** improve source surfaces for quality failures. For balancing
 shortfalls, add source diversity or relax an infeasible publication target.
 
-## Stage 12: Publish The Verified Selection
+## Stage 12: Publish the Verified Selection
 
 `final_output` places every schema-valid, replay-valid row in
 `benchmark_raw.parquet`. If this example survives the optional selection stages, the
@@ -373,5 +373,5 @@ flowchart LR
   S -->|"final_output"| O
 ```
 
-For the complete stage contracts, see {doc}`pipeline-overview`. For every artifact
-path, see {doc}`../reference/output-files`.
+For the complete stage contracts, refer to {doc}`pipeline-overview`. For every artifact
+path, refer to {doc}`../reference/output-files`.

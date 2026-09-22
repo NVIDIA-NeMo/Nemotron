@@ -12,12 +12,12 @@ generation. It is optional and is referenced by top-level `manifest.held_out`, n
 Held-out ids are real records withheld from generated rows. They are different from
 `manifest.absent_ids`, which are guaranteed not to exist.
 
-## Create A Held-Out Policy
+## Create a Held-Out Policy
 
 Generate a complete starter shape with:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -95,12 +95,12 @@ secrets from hostile pack code; review the pack and run it in an appropriately i
 environment.
 :::
 
-## Validate The Policy
+## Validate the Policy
 
 There is no standalone held-out validator. Run whole-pack preparation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```

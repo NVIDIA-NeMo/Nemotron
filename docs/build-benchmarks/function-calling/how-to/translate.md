@@ -22,7 +22,7 @@ release's identity. It does not invent tasks, rewrite oracle truth, or drop rows
 
 Translation does not support `skip_until`. A failed run is restarted from the beginning.
 
-## Step 1: Copy And Resolve The Translation Config
+## Step 1: Copy and Resolve the Translation Config
 
 ```bash
 mkdir -p /srv/bfcl/translate && \
@@ -56,7 +56,7 @@ localized. Function names, parameter schemas, slot values, expected calls,
 assertions, held-out state, and lineage stay exact, because those are the fields a
 score compares.
 
-## Step 2: Pin The Translator
+## Step 2: Pin the Translator
 
 Fill `translation_model_config` with a pinned identity. A branch-style revision such
 as `main` is refused. The translator is recorded on `translation_manifest.json` and
@@ -76,7 +76,7 @@ tokens with placeholders, translates and backtranslates the approved text fields
 restores every token, and compares each localized row with its source before writing
 the new artifacts atomically.
 
-## Step 4: Read The Artifacts
+## Step 4: Read the Artifacts
 
 A completed run writes a content-addressed localized release under
 `output_dir/expt_name/`:
@@ -104,7 +104,7 @@ verifies that both records identify the same source run.
 | Script or guard refusal | Set `localization.validation.required_script` when the target subtag cannot infer the script, and review `forbidden_patterns`. |
 | Protected value appeared in output | A tool name, argument, or other protected token leaked through a placeholder. Do not patch the table; fix the translator or guards and rerun. |
 
-See {doc}`../reference/troubleshooting` for `bfcl_translation_invalid` and
+Refer to {doc}`../reference/troubleshooting` for `bfcl_translation_invalid` and
 {doc}`../explanation/pipeline-overview` for what translation may and may not change.
 
 ## Next Steps

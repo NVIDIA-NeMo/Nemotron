@@ -5,7 +5,7 @@
 
 # Hand-Author an Oracle Pack
 
-Use this guide to write an Oracle Pack yourself, validate it, and smoke-run it before you spend a publication budget on it. This is the manual authoring flow: you supply the tools, the executable oracle, the fixtures, the conversation templates, and the assertions, and no model participates in authoring. The two model-assisted alternatives are {doc}`assisted-authoring` and {doc}`mcp-server`.
+Use this guide to write an Oracle Pack yourself, validate it, and complete a verification run before you spend a publication budget on it. This is the manual authoring flow: you supply the tools, the executable oracle, the fixtures, the conversation templates, and the assertions, and no model participates in authoring. The two model-assisted alternatives are {doc}`assisted-authoring` and {doc}`mcp-server`.
 
 If you have domain records and behavior but have not chosen an authoring route yet,
 start with {doc}`start-from-domain-data`, which follows a compact example through the
@@ -17,9 +17,9 @@ own onboarding guide.
 - Install the BYOB dependencies with `uv sync --extra byob`.
 - Decide whether the pack will use a local Python backend or an HTTPS service; Step 1
   scaffolds the selected transport.
-- Read {doc}`../explanation/oracle-pack` for what each file means. The normative contract, including every validation rule, lives at `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+- Read {doc}`../explanation/oracle-pack` for what each file means. The normative contract, including every validation rule, lives at [`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
-## Step 1: Choose The Oracle Transport And Scaffold
+## Step 1: Choose the Oracle Transport and Scaffold
 
 A pack declares exactly one executable oracle. Choose the transport before scaffolding,
 because the command writes a transport-specific file and manifest path.
@@ -34,7 +34,7 @@ tool. The command below selects local Python; replace `python` with `endpoint` w
 that is the reviewed transport choice.
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain warehouse_assets \
   --target /srv/bfcl/packs/warehouse_assets \
   --transport python \
@@ -49,10 +49,10 @@ Declaring both transports is refused. An endpoint pack stores only credential
 references, never secret values. Replace the scaffold's identity placeholders with
 reviewed values from `GET /v1/metadata`, and pin the conformance digest from
 `GET /v1/conformance`; a Gold endpoint pack requires both identity and attestation.
-See {doc}`../reference/endpoint-config`.
+Refer to {doc}`../reference/endpoint-config`.
 :::
 
-## Step 2: Fill In Each Pack File
+## Step 2: Fill in Each Pack File
 
 Work through the files in this order, because each one constrains the next.
 {doc}`../reference/oracle-pack-inputs` is the inventory and links to one standardized
@@ -93,7 +93,7 @@ Difficulty, conversation turns, and tool-call depth are independent dimensions. 
 Run the standalone validator for a fast authoring loop. It normalizes the pack, executes the validation cases, checks reset and replay behavior, and derives the tier, all without producing benchmark rows.
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/warehouse_assets/validate.yaml \
   --output-dir /tmp/bfcl-warehouse-validation
 ```
@@ -128,9 +128,9 @@ Gold requires every check to pass. Two rules surprise people most often:
 
 `stage=generate` derives the verdict from the individual checks rather than from the summary flag, and never trusts a report written by an earlier run, so editing the report on disk accomplishes nothing.
 
-## Step 6: Smoke-Run the Pack
+## Step 6: Run a Verification Generation
 
-Once the pack is Gold-eligible, copy `smoke.example.yaml` and repoint it. The smoke profile generates every declared category at a small budget, so a pack defect surfaces in minutes rather than hours.
+Once the pack is Gold-eligible, copy `smoke.example.yaml` and repoint it. This verification profile generates every declared category at a small budget, so a pack defect surfaces in minutes rather than hours.
 
 ```bash
 mkdir -p /srv/bfcl/runs && \
@@ -163,11 +163,11 @@ nemotron steps run byob/bfcl \
 Use absolute paths for an external pack. A relative path in a generation config resolves from the checked-in `src/nemotron/steps/byob/` root, not from your shell working directory or from the config file's own directory. Pack code must also sit under an `oracle_runtime.allowed_roots` entry, and `output_dir` must stay outside the pack root so generated artifacts cannot become pack inputs.
 :::
 
-The smoke profile pins `lineage.policy: smoke_no_publication`, which makes its output deliberately unpublishable: rows keep the pack's validation tier but carry `gold_eligible: false`. That is the point of a smoke run. Move to {doc}`publish-a-release` when you want a releasable benchmark.
+The smoke profile pins `lineage.policy: smoke_no_publication`, which makes its output deliberately unpublishable: rows keep the pack's validation tier but carry `gold_eligible: false`. That is the purpose of a verification run. Move to {doc}`publish-a-release` when you want a releasable benchmark.
 
 ## Verify Success
 
-A successful smoke run leaves these files under `output_dir/expt_name/`:
+A successful verification run leaves these files under `output_dir/expt_name/`:
 
 - `benchmark_raw.parquet` and `benchmark.parquet`.
 - `run_manifest.json`, written last as the publication commit marker. If it is absent, treat the Parquet files beside it as unpublished.

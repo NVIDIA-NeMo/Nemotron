@@ -10,7 +10,7 @@ linked artifact references for field definitions, examples, validation behavior,
 common failures.
 
 The complete normative contract is
-`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`. When an operator guide and
+[`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md). When an operator guide and
 that contract disagree, the normative contract is authoritative.
 
 ## Keep Three Input Layers Separate
@@ -20,7 +20,7 @@ that contract disagree, the normative contract is authoritative.
 2. **Oracle Pack inputs** define executable domain truth. Stage 1 loads and fingerprints
    them.
 3. **Run configuration** selects stages, pack paths, budgets, optional model roles, and
-   publication policy. See {doc}`generate-config`.
+   publication policy. Refer to {doc}`generate-config`.
 
 `manifest.yaml` and `task_templates.yaml` are pack declarations, not run
 configuration. Editing any file inside a published pack changes its fingerprint.
@@ -76,10 +76,10 @@ Each artifact constrains the next:
 
 Run validation throughout authoring; do not wait until every file appears complete.
 
-## Create A Complete Starter
+## Create a Complete Starter
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -90,11 +90,11 @@ python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
 Use `--transport endpoint` to emit `endpoint_config.yaml`. Add
 `--include-held-out` to emit a held-out example. The target must not already exist.
 
-The starter is runnable plumbing, not domain truth. Replace its `get_record` names,
+The starter is a runnable scaffold, not domain truth. Replace its `get_record` names,
 fixture values, behavior, tasks, assertions, and cases with independently reviewed
 domain content.
 
-## Create And Validate Each Artifact
+## Create and Validate Each Artifact
 
 | File | Supported creation path | Earliest useful check |
 | --- | --- | --- |
@@ -112,10 +112,10 @@ Where no standalone validator exists, the file is still checked in context. A te
 tool name is meaningful only relative to `tools.json`, and an assertion name only
 relative to `assertions.py`.
 
-## Validate The Complete Pack
+## Validate the Complete Pack
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```
@@ -181,9 +181,9 @@ assertions.py
 
 Only the public name must match. Private backend helpers are implementation details.
 
-## Where To Go Next
+## Where to Go Next
 
 - Follow the artifact references above while filling each file.
-- Use {doc}`../how-to/author-a-pack` for the manual scaffold-to-smoke sequence.
+- Use {doc}`../how-to/author-a-pack` for the manual scaffold-to-verification sequence.
 - Use {doc}`../how-to/start-from-domain-data` to choose an authoring route.
 - Use {doc}`troubleshooting` to map a refusal to the responsible artifact.

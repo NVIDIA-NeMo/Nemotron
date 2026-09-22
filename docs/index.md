@@ -294,7 +294,7 @@ Reference <build-benchmarks/reference/index.md>
 :hidden:
 
 About <build-benchmarks/function-calling/index.md>
-Getting Started <build-benchmarks/function-calling/getting-started.md>
+Tutorials <build-benchmarks/function-calling/tutorials/index.md>
 Concepts <build-benchmarks/function-calling/explanation/index.md>
 Tasks <build-benchmarks/function-calling/how-to/index.md>
 Reference <build-benchmarks/function-calling/reference/index.md>

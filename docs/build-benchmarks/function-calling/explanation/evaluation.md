@@ -14,7 +14,7 @@ If one file described both the benchmark and the model under test, then swapping
 The configuration names a `source_run_manifest`, never a bare Parquet file, because `run_manifest.json` is the publication commit marker and it already states which table was published, whether the run was gold-eligible, and which oracle kind produced it.
 Nothing in the file defaults. Every scoring gate, runtime limit, and decoding parameter is stated, because each one changes what the resulting number means — a model cut off at two turns did not answer the same question as one given ten — and quoted booleans and numbers are refused rather than coerced, since a `"false"` that became `true` would silently switch off a correctness gate.
 Resolution ends in one `eval_config_hash` taken over the configuration's meaning: referenced files enter as content hashes, and absolute paths, output locations, and secret values are absent.
-See {doc}`../reference/eval-config` for every key.
+Refer to {doc}`../reference/eval-config` for every key.
 
 ## Two Modes
 
@@ -37,7 +37,7 @@ Replaying against an oracle that changed since generation cannot confirm the gol
 Each step below produces a handle that the next step needs, and there is no way to obtain a later handle without passing the earlier gate.
 That is what turns the sequence into a guarantee instead of a convention: "the runner scored an unpublished table" is not a reachable state, because the only way a runner receives paths is from a verified source, and the only task list it has is the one on an authorized plan.
 
-1. **Load the configuration.** Parsing, resolution, and hashing happen before any candidate is contacted, so an invalid configuration fails before a single token is paid for. Validation is also the one place that does not stop at the first refusal: the sections constrain unrelated things and no request is sent, so every independent violation is reported in one pass.
+1. **Load the configuration.** Parsing, resolution, and hashing happen before any candidate is contacted, so an invalid configuration fails before any model request is issued. Validation is also the one place that does not stop at the first refusal: the sections constrain unrelated things and no request is sent, so every independent violation is reported in one pass.
 2. **Verify the source.** The manifest is re-read and held to the hash the configuration resolved, both tables are hashed against every declaration the manifest makes about them, the publication relationship between the raw and published tables is replayed on disk, and the published rows are decoded into a unique addressable task index. A row the evaluator cannot decode aborts verification rather than being skipped, because skipping it would change the task set. For executable mode the pack fingerprint is recomputed and the backend is probed in a throwaway process worker.
 3. **Check contamination.** Every model that read a published row while it was being built is named in the manifest together with the rows it read. Each candidate is compared against each exposure, strongest evidence first. A match is a violation; a comparison that cannot settle the question is recorded as unresolved and never guessed either way. The result is the eligible task plan.
 4. **Re-assert the source and the plan.** Both are recomputed immediately before the first request. Verification and use are separated in time, and that gap is exactly where a source gets replaced — a regeneration into the same directory, a pack edited to make a failing task pass, a plan widened after it was authorized.
@@ -47,10 +47,10 @@ That is what turns the sequence into a guarantee instead of a convention: "the r
 8. **Write artifacts.** The report, task table, manifest, and required caches are published as one immutable set.
 
 :::{note}
-Contamination policy only ever narrows. Refusing the run is the locked publication setting; dropping just the exposed rows and keeping per-candidate task sets are debug behaviors that report what was actually scored and are not publishable.
+Contamination policy only ever narrows. Refusing the run is the locked publication setting; dropping only the exposed rows and keeping per-candidate task sets are debug behaviors that report what was actually scored and are not publishable.
 :::
 
-## What The Metrics Say
+## What the Metrics Say
 
 A trace score names every gate the scoring contract defines, says whether that gate applied to the row, and, when a gate failed, which assistant turn to look at.
 A gate that does not apply is reported as such rather than omitted, because a report that silently dropped the ordering gate on single-call rows could not be told apart from one where ordering was checked.
@@ -65,7 +65,7 @@ It declares `tool_selection` and `arguments`, and `call_ordering` only when some
 It does not declare `results` or `task_success`, because both would require the pack's tools to be re-executed against oracle state, and no file in a dataset bundle provides that.
 A recorded oracle result is provenance, not an answer key: scoring against a snapshot of one backend revision would measure agreement with that snapshot instead of whether the call worked.
 
-## Calls And Text Use Different Matching Rules
+## Calls and Text Use Different Matching Rules
 
 There is no single exact-match rule for a conversation:
 
@@ -95,7 +95,7 @@ Structural matching proves that the candidate respected the text-versus-call sha
 does not by itself judge whether a clarification asked for the semantically correct
 slot or used domain-appropriate wording. Executable assertions can add domain behavior
 checks; any stronger language-quality judgment must be declared separately rather than
-reported as exact match. See {doc}`pipeline-worked-example` for a missing-slot
+reported as exact match. Refer to {doc}`pipeline-worked-example` for a missing-slot
 conversation and {doc}`../reference/eval-config` for the scoring fields.
 
 ## Artifacts
@@ -116,7 +116,7 @@ The caches are replay evidence, not an optimization. A committed completion repl
 Executable episodes are cached whole rather than per call: skipping one mutating call would not reproduce the state that dependent calls, final state, and assertions depend on.
 The output directory must sit outside the generation publication tree, so an evaluation run cannot overwrite `run_manifest.json` or the benchmark it scores.
 
-## Two Boundaries The Evaluator Does Not Cross
+## Two Boundaries the Evaluator Does Not Cross
 
 **Pack Python never enters the evaluator process.** Both the local-backend and endpoint adapters keep reset, ordered calls, state reads, and assertions inside one task-local process worker, and endpoint sessions are deleted on every normal and exceptional exit.
 Keeping the pack out of the evaluator is what makes assertion and oracle failures separable from candidate failures: an assertion that could not be imported or executed is recorded as an infrastructure outcome, never counted as a pass or a failure for the model.
@@ -132,5 +132,5 @@ Nothing repairs a candidate's output, either — no model, including a judge, ma
 - {doc}`../how-to/run-evaluation` for running an evaluation end to end.
 - {doc}`../reference/eval-config` for every evaluation YAML key.
 - {doc}`../reference/output-files` for artifact locations.
-- `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md` for the normative definition of what a score means.
+- [`src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md) for the normative definition of what a score means.
 - {doc}`pipeline-overview` and {doc}`oracle-pack` for how the benchmark and its oracle were built.

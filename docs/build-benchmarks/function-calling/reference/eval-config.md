@@ -8,8 +8,8 @@
 Evaluation is a separate run over a benchmark that was already published. This page lists
 the keys of the resolved scoring config, as validated by `load_eval_config` in
 `src/nemotron/steps/byob/runtime/benchmark_families/bfcl/eval/config.py` and typed by the
-models in the sibling `eval/schemas.py`. For what the numbers mean, see
-{doc}`../explanation/evaluation`; to run one, see {doc}`../how-to/run-evaluation`.
+models in the sibling `eval/schemas.py`. For more information about the metrics, refer to
+{doc}`../explanation/evaluation`. To run an evaluation, refer to {doc}`../how-to/run-evaluation`.
 
 ## The Three Files
 
@@ -134,8 +134,8 @@ must then restate its own `provider` and `model`, because the route is the only 
 which weights answered, and two such candidates on one route collide. Schema `1.1` has
 neither an unpinned candidate nor a scheme-qualified digest; declare `1.2` to use either.
 Aliases must be unique, and two candidates may not resolve to the same canonical identity.
-Run `python -m nemotron.steps.byob.scripts.resolve_bfcl_model_identity` to fill the block
-in rather than assembling it by hand.
+Run `uv run python -m nemotron.steps.byob.scripts.resolve_bfcl_model_identity` to populate
+the block instead of assembling it by hand.
 
 ## `contamination`
 
@@ -178,5 +178,5 @@ reports each weakened field in `non_publication_reasons`.
 evaluation into different directories ran the same evaluation. Which artifacts get written
 is in the hash, because a run that skipped its per-task results cannot be audited.
 
-For the resulting artifacts see {doc}`output-files`, for generation fields see
-{doc}`generate-config`, and for error codes see {doc}`troubleshooting`.
+For more information about result artifacts, refer to {doc}`output-files`. For generation
+fields, refer to {doc}`generate-config`. For error codes, refer to {doc}`troubleshooting`.

@@ -8,7 +8,7 @@
 A local Oracle Pack uses `backend.py` as the executable source of domain truth. This
 page describes the four functions the pipeline calls and the invariants validation
 enforces. The normative source of truth is
-`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`.
+[`src/nemotron/steps/byob/references/bfcl-oracle-pack.md`](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/references/bfcl-oracle-pack.md).
 
 Use an HTTPS `endpoint_config.yaml` instead when the oracle already runs as a service.
 A pack declares exactly one of the two transports.
@@ -30,7 +30,7 @@ Library names in the short snippets come from the bundled English reference pack
 They illustrate dispatch and state handling only; the four-function interface is
 domain- and language-independent.
 
-## Create A Backend Skeleton
+## Create a Backend Skeleton
 
 Prefer an existing domain-owned implementation, or a backend written from independently
 reviewed specifications and records. That keeps benchmark truth anchored in the domain
@@ -40,7 +40,7 @@ For a manual Oracle Pack, scaffold the complete pack rather than creating
 `backend.py` in isolation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -55,7 +55,7 @@ For model-assisted authoring, first place a reviewed `tools.json` inside a new s
 directory, then create a source-package skeleton:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_source_package \
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
   --tools /srv/sources/my-domain/tools.json \
   --output /srv/sources/my-domain \
   --collection records \
@@ -75,7 +75,7 @@ fixtures file, and still requires static checks and executable certification pro
 Its command shape is:
 
 ```text
-python -m nemotron.steps.byob.scripts.scaffold_source_package \
+uv run python -m nemotron.steps.byob.scripts.scaffold_source_package \
   --tools /srv/sources/my-domain/tools.json \
   --output /srv/sources/my-domain \
   --draft-with-model \
@@ -106,12 +106,12 @@ validation prove determinism and cross-file consistency; they do not prove domai
 fidelity, representativeness, or absence of benchmark-construction bias.
 :::
 
-## Validate A Backend
+## Validate a Backend
 
 Before source intake, run the static source-package check:
 
 ```bash
-python -m nemotron.steps.byob.scripts.check_source_package \
+uv run python -m nemotron.steps.byob.scripts.check_source_package \
   --source /srv/sources/my-domain
 ```
 
@@ -121,7 +121,7 @@ the backend does not expose, and invalid fixture shape. It cannot prove behavior
 For a complete Oracle Pack, run executable Gold validation:
 
 ```bash
-python -m nemotron.steps.byob.scripts.validate_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.validate_oracle_pack \
   --config /srv/bfcl/packs/my_domain/validate.yaml \
   --output-dir /tmp/bfcl-my-domain-validation
 ```
@@ -293,7 +293,7 @@ backend with:
 To generate a smaller starter:
 
 ```bash
-python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
+uv run python -m nemotron.steps.byob.scripts.scaffold_oracle_pack \
   --domain my_domain \
   --target /srv/bfcl/packs/my_domain \
   --transport python \
@@ -312,5 +312,5 @@ interface.
 - {doc}`task-templates` for how a conversation names backend tools.
 - {doc}`assertions` for predicates that inspect final state and trace.
 - {doc}`validation-cases` for direct executable probes.
-- {doc}`../how-to/author-a-pack` for validation and smoke-run commands.
+- {doc}`../how-to/author-a-pack` for validation and verification-run commands.
 - {doc}`troubleshooting` for backend/schema, confirmation, and replay failures.

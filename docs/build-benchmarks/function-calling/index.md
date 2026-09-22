@@ -10,15 +10,15 @@
 
 This section describes how to build a custom function-calling benchmark as Apache Parquet files with the `nemotron steps run byob/bfcl` command, and how to evaluate a candidate model against the result.
 
-Unlike the multiple-choice flow, generation here does not ask a model to invent content.
-You supply an **Oracle Pack**: a tool catalog, conversation templates, an executable backend or an HTTP endpoint, fixtures, and assertions.
+Unlike the multiple-choice flow in {doc}`../index`, generation here does not ask a model to invent content.
+You supply an *Oracle Pack*: a tool catalog, conversation templates, an executable backend or an HTTP endpoint, fixtures, and assertions.
 The pipeline renders conversations from your templates, derives the expected tool calls, then replays every task against the real backend and checks the assertions.
 A task that the oracle cannot reproduce twice does not reach the benchmark.
 
 That difference is the point of the design. The pack, not a model, is the source of truth about what a correct tool call looks like, so the benchmark can state why each expected answer is correct.
 
 :::{tip}
-New to this flow? Follow {doc}`getting-started` once with the bundled tiny pack, then use the grids below to jump to a task guide, a concept, or a field reference.
+New to this flow? Follow {doc}`getting-started` once with the bundled `tiny_oracle_pack`, then use the grids below to jump to a task guide, a concept, or a field reference.
 :::
 
 ## When to Use
@@ -34,14 +34,14 @@ The `nemotron steps run byob/bfcl` command enables the following outcomes.
 
 At a high level, the step performs the following work.
 
-1. **Prepare**: normalize the configuration, load and fingerprint the pack, then validate it. Validation awards a certification tier, and a publication-eligible run requires the Gold tier.
+1. **Prepare**: normalize the configuration, load and fingerprint the pack, then validate it. Validation awards a *certification tier* (`gold`, `silver`, or `prototype`), and a publication-eligible run requires the *Gold* tier.
 2. **Generate**: expand templates into task instances, plan conversations, render turns, derive expected traces, validate against the tool schemas, and replay each task against the oracle. Optional stages add surface-quality checks and deduplication or balancing before publication.
 3. **Translate**, optional: localize a published benchmark and write a new `benchmark.parquet`.
 4. **Evaluate**, a separate run: score candidate models against a published benchmark and write a report.
 
-See {doc}`explanation/pipeline-overview` for the stage-by-stage account.
+Refer to {doc}`explanation/pipeline-overview` for the stage-by-stage account.
 
-## Choose A Way To Get A Pack
+## Choose a Way to Get a Pack
 
 The pack is the hard part. If you have a tool interface, records, and behavior but have
 not chosen a route yet, start at {doc}`how-to/start-from-domain-data`. The three flows
@@ -53,7 +53,7 @@ trust story does not depend on how the pack was written.
 | Choose a route | Domain assets, no pack yet | {doc}`how-to/start-from-domain-data` |
 | Manual | Your own knowledge of the domain and its tools | {doc}`how-to/author-a-pack` |
 | Assisted, conventional source | A Python package or a reviewed HTTP service | {doc}`how-to/assisted-authoring` |
-| Assisted, MCP source | A running MCP server | {doc}`how-to/mcp-server` |
+| Assisted, MCP source (experimental) | A running MCP server | {doc}`how-to/mcp-server` |
 
 In the assisted flows a model may propose pack semantics, but it can never award a certification tier, approve its own output, or bypass executable replay. {doc}`explanation/authoring-flows` explains where the human decisions sit and why they are separate.
 
@@ -62,10 +62,10 @@ In the assisted flows a model may propose pack semantics, but it can never award
 ::::{grid} 1 2 2 2
 :gutter: 1 1 1 2
 
-:::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Tutorial
-:link: getting-started
+:::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Tutorials
+:link: tutorials/index
 :link-type: doc
-Install the `byob` extra, run the bundled tiny pack end to end, and inspect the benchmark and manifest it writes.
+Follow complete journeys for a first benchmark, assisted authoring, and a manual pack lifecycle through evaluation.
 +++
 {bdg-secondary}`hands-on`
 :::
@@ -97,15 +97,28 @@ artifacts, and the symptom-to-fix index.
 
 ::::
 
+## Source-Tree Documentation
+
+The rendered pages above are the operator-facing guides. The repository also ships
+developer documentation and normative contracts beside the BFCL implementation. Start
+with the [`byob/bfcl` source README](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/src/nemotron/steps/byob/bfcl/README.md) for a source-oriented map of the pipeline,
+then use the [`byob/references` directory](https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/steps/byob/references) for the Oracle Pack, evaluation, assisted-authoring, MCP, and audit contracts.
+
+Some source-tree contracts are runtime inputs and are content-hashed into published
+artifacts. When an operator guide and a normative contract differ, treat the source-tree
+contract as authoritative.
+
 ## All Documentation
 
 ````{tab-set}
 
-```{tab-item} Tutorial
+```{tab-item} Tutorials
 
 | Guide | What you will do |
 | --- | --- |
 | {doc}`./getting-started` | Run `nemotron steps run byob/bfcl` with `tiny.yaml` and inspect the outputs |
+| {doc}`tutorials/assisted-authoring-demo` | Run source intake, assisted drafting, review, Gold publication, and evaluation without credentials |
+| {doc}`tutorials/manual-pack-lifecycle` | Validate, publish, and evaluate a reviewed manual Oracle Pack |
 
 ```
 
@@ -162,7 +175,7 @@ artifacts, and the symptom-to-fix index.
 ## What You Need
 
 - A Nemotron clone with dependencies installed, including the `byob` extra from `uv sync --extra byob`.
-- An Oracle Pack. To learn the flow first, use the bundled `src/nemotron/steps/byob/data/tiny_oracle_pack`, which exists to exercise the plumbing quickly.
+- An Oracle Pack. To learn the flow first, use the bundled `src/nemotron/steps/byob/data/tiny_oracle_pack`, which exists to exercise the pipeline quickly.
 - For evaluation, a candidate model endpoint and its credentials. Generation itself calls no model unless you explicitly enable a model-authored surface role.
 - For the assisted authoring flows, a model endpoint for drafting and the corresponding feature flag, as described in {doc}`how-to/assisted-authoring`.
 
@@ -184,8 +197,9 @@ artifacts, and the symptom-to-fix index.
 - **Pack admission and publication are separate gates.** Generation refuses a pack
   that is not Gold-eligible. A Gold pack may still run under
   `lineage.policy: smoke_no_publication`; that run writes benchmark artifacts for
-  plumbing checks but records that its lineage is not eligible for release. See
+  pipeline verification but records that its *lineage* — the run's declaration of which
+  model roles influenced the benchmark and whether it may be published — is not eligible for release. See
   {doc}`explanation/oracle-pack` and {doc}`how-to/publish-a-release`.
 - **Pack code executes.** The pipeline imports and runs your backend and assertions. It does so in a separate process with a sanitized environment and enforced timeouts, and Gold requires that isolation, but the pack is still code you are choosing to trust.
 - **Model roles are opt-in and pinned.** Enabling a model-authored surface role requires a pinned, unambiguous model identity, because a benchmark whose wording came from an unrecorded model cannot be reproduced.
-- **The MCP transport is experimental.** Only Mode A is implemented, and it is disabled unless you opt in. See {doc}`how-to/mcp-server`.
+- **The MCP transport is experimental.** Only Mode A is implemented, and it is disabled unless you opt in. Refer to {doc}`how-to/mcp-server`.
