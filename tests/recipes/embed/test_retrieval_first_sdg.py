@@ -49,6 +49,17 @@ def test_generic_configuration_mapping(tmp_path):
     assert mapped.ratios.train == 0.8 and mapped.ratios.validation == 0
 
 
+@pytest.mark.parametrize(
+    "options,strict",
+    [({}, False), ({"require_verbatim_quotes": False}, False), ({"require_verbatim_quotes": True}, True)],
+)
+def test_quote_policy_forwarding_preserves_quality_thresholds(tmp_path, options, strict):
+    mapped = build_retrieval_first_config(config(tmp_path, sdg_options=options))
+    assert mapped.require_verbatim_quotes is strict
+    assert mapped.relevance_threshold == 4
+    assert mapped.self_sufficiency_threshold == 4
+
+
 def test_all_generic_producer_controls_and_model_settings_are_forwarded(tmp_path):
     options = {
         "context_strategy": "document",
