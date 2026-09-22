@@ -305,16 +305,26 @@ roles to temperature 0.6, max_tokens 8192, and the provider-supported
 `extra_body: {chat_template_kwargs: {enable_thinking: false}}`. Keep these
 provider-specific flags out of configurations for endpoints that do not support them.
 
-This is an unreleased EA candidate. A prior bounded run qualified generic-source
-SDG, stage-local dependency installation, native mining, two-GPU BF16 training,
-checkpoint resume and fresh base/final evaluation. That run used the previous
-Qwen summary embedder and operator-configured generator/judge models. The public
-Nemotron summary embedding default has a separate live synthetic-passage test
-covering API integration, clustering and cached replay. It changes context
-selection, so the prior run's retention and retrieval results do not qualify the
-new default. Before freezing the EA snapshot, repeat a bounded authorized corpus
-run using the final configuration and record its quality/coverage, portable
-handoff, training/resume and fresh evaluation evidence.
+This is an unreleased EA candidate. A bounded corpus run using the public
+Nemotron summary embedding default and operator-configured Qwen 3.6 generator/
+judge completed SDG, locked stage-local dependency installation, native mining,
+two-A100 BF16 training, checkpoint resume and fresh base/final evaluation. It
+tested recipe commit `1d1864c8eacb0e58ec450a649ea5d9498afb617e`, producer commit
+`9984b28bc89a523a07b0afcb65c9b4198bd64c69` and the pinned AutoModel dependency.
+
+The run accepted 141 of 157 candidates (89.8%), with five abstentions and
+generation coverage across all 71 input units. The combined view contained 112
+training and 29 held-out queries; mining produced 169 unrolled training examples.
+Training completed two steps, then resumed to step four. Base and fine-tuned
+NDCG@10 were both 0.95987; Recall@10 was 0.95862. Original text/image content and
+shared query-group split integrity were verified. These few-step results
+establish pipeline execution, not retrieval uplift or convergence.
+
+This run required one explicit SDG resume after inspecting a quoted-null query
+response rejected by native schema validation. Valid cached responses were
+preserved, missing responses recovered, and all quality gates remained enabled.
+The optimizer configuration was unchanged: BF16 weights, quantized FlashAdamW
+states, 32-bit master-weight correction and FP32 saved checkpoint moments.
 
 The default evaluation above uses the held-out split from the same synthetic
 generation run. It is a pipeline smoke test, not independent model-quality
@@ -335,9 +345,9 @@ selection remains unvalidated, so Docker and Slurm invocations fail before
 submission. Text containers select the `text` extra; use a fresh container for
 each stage because the shared wrapper does not track dependency changes in its
 environment-ready marker. CPU configuration tests do not establish GPU or
-container execution compatibility. The prior local-stage qualification ran inside
+container execution compatibility. The local-stage qualification above ran inside
 a manually prepared GPU container; it did not exercise the recipe's Docker/Slurm
-launcher. The remaining final-default qualification is described above.
+launcher.
 
 
 ## Optional deployment overrides
