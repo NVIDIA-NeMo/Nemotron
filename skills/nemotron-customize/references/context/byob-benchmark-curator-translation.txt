@@ -4,10 +4,12 @@ Use this context pack when generating project code around the `byob` step.
 
 ## Intent
 
-BYOB creates benchmark artifacts from user-provided domain documents. It is not a
-general training-corpus translation step. The current registered family is `mcq`,
-with a family runtime that stays easy for coding agents to extend to other
-families such as GSM8K.
+This pack covers the BYOB `mcq` family, which creates held-out benchmark
+artifacts from user-provided domain documents. It is not a general
+training-corpus translation step and must not be confused with
+`sdg/persona_mcq`, which emits SFT training data. The separate `bfcl` family has
+its own context pack because executable oracle packs, publication evidence, and
+candidate evaluation require a stricter lifecycle.
 
 ## Step Contract
 

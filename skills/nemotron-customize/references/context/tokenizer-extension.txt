@@ -1,0 +1,70 @@
+# Tokenizer Extension Context
+
+Use this pack for the `tokenizer_extension/*` pipeline.
+
+## Pipeline
+
+```text
+checkpoint_hf + target-language corpus
+  -> tokenizer_extension/extend -> tokenizer
+  -> tokenizer_extension/evaluate (optional fertility)
+  -> tokenizer_extension/init_embeddings -> resized checkpoint_hf
+  -> pretrain/* continued pretraining
+  -> tokenizer_extension/eval_init (BPB) + eval/model_eval
+```
+
+`extend` and `evaluate` are CPU-only. `init_embeddings` and `eval_init` use a
+GPU for model/auxiliary-encoder work.
+
+## Build Arms
+
+- `method=add`: keep base residual-script tokens and append merge-backed new
+  tokens. Prefer for robustness across a script family.
+- `method=replace`: prune target-script residual tokens, remap survivors, and
+  splice new merge-backed tokens. Prefer for one target language when a smaller
+  vocabulary matters.
+- `method=expand`: append decoded token surfaces with no merge rules. It is a
+  baseline, not equivalent to continued-BPE splicing.
+
+Build one arm per job. Compare arms only with the same base tokenizer, corpus
+slice, language/normalization profile, and `extension_size`. Verify
+`summary.json.tokens_spliced == extension_size`.
+
+## Embedding Initialization
+
+- `arm=add` accepts both add and expand tokenizer outputs.
+- `arm=replace` requires replace output and its `id_remap.json`.
+- Default to `method=subword` with uniform input/output averaging. It is
+  dependency-light and must be the comparison baseline for language-specific
+  encoder-weighted or FOCUS methods.
+- Replace does not support `baseline.mean_target` or
+  `subword.gemma_weighted`; do not silently substitute another method.
+- The resized HF checkpoint is ready for continued pretraining, not a completed
+  language adaptation.
+
+## Evaluation Rules
+
+- Fertility is `sum(tokens)/sum(words)` and is tokenizer-only. Use the same
+  held-out corpus and slice for every tokenizer.
+- Per-token perplexity mechanically changes with vocabulary granularity. For
+  cross-vocabulary model comparison, use bits per byte (BPB), score the same
+  bytes, and cap by `max_docs`, not `max_tokens`.
+- Use the extended checkpoint's own tokenizer for CPT and downstream eval.
+  Rebuild tokenizer-locked `binidx` or packed data after the tokenizer changes.
+
+## Dependencies And Profiles
+
+- Indic normalization needs `indic-nlp-library`; the step fails instead of
+  silently changing normalization.
+- FOCUS needs `fasttext-wheel` and durable `FASTTEXT_CACHE_DIR` storage.
+- The default Mamba-hybrid base may require the
+  `tokenizer-extension-gpu` extra (`mamba-ssm`, `causal-conv1d`).
+- Select real profile names from the active env TOML; generated backends provide
+  separate profiles for extend, init, fertility, and BPB.
+
+## Live Sources
+
+- Overview: `src/nemotron/steps/tokenizer_extension/guide.md`
+- Language registry: `src/nemotron/steps/tokenizer_extension/LANGUAGES.md`
+- Exact fields: each sub-step's `step.toml` and `config/default.yaml`
+- Method support: `init_embeddings/README.md`
