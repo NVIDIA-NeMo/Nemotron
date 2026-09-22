@@ -265,7 +265,7 @@ sdg_options:
   group_near_duplicates: true
   relevance_threshold: 4
   self_sufficiency_threshold: 4
-  require_verbatim_quotes: false  # quote fidelity remains diagnostic
+  require_verbatim_quotes: false  # missing/non-matching quotes remain diagnostic
   missing_response_attempts: 3  # only missing rows, never raised runtime failures
 sdg_generator_options:
   temperature: 0.6
@@ -305,7 +305,16 @@ roles to temperature 0.6, max_tokens 8192, and the provider-supported
 `extra_body: {chat_template_kwargs: {enable_thinking: false}}`. Keep these
 provider-specific flags out of configurations for endpoints that do not support them.
 
-This is an unreleased EA candidate. A bounded corpus run using the public
+The development producer treats quotes as optional diagnostics for every modality
+when `require_verbatim_quotes: false`. Setting it to `true` requires a present,
+source-matching quote for text and text+image supports; image-only supports still
+need no text quote. Source text, images, visual explanations, source identities,
+relevance, self-sufficiency and answer-leak checks retain their existing rules.
+This policy update is on the development branch paired with PR #351, not the
+frozen `preview/multimodal-embed-finetune-recipe` EA branch.
+
+The following qualification describes the frozen EA candidate, not a new run of
+the updated quote policy. A bounded corpus run using the public
 Nemotron summary embedding default and operator-configured Qwen 3.6 generator/
 judge completed SDG, locked stage-local dependency installation, native mining,
 two-A100 BF16 training, checkpoint resume and fresh base/final evaluation. It

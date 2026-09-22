@@ -508,7 +508,7 @@ wheels = [
 [[package]]
 name = "data-designer-retrieval-sdg"
 version = "0.3.0a1"
-source = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=9984b28bc89a523a07b0afcb65c9b4198bd64c69#9984b28bc89a523a07b0afcb65c9b4198bd64c69" }
+source = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=11fda6743922cc3c68e31af94210dc35c1abc081#11fda6743922cc3c68e31af94210dc35c1abc081" }
 dependencies = [
     { name = "data-designer" },
     { name = "filelock" },
@@ -1921,7 +1921,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "data-designer", specifier = "==0.9.1" },
-    { name = "data-designer-retrieval-sdg", extras = ["multimodal"], git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=9984b28bc89a523a07b0afcb65c9b4198bd64c69" },
+    { name = "data-designer-retrieval-sdg", extras = ["multimodal"], git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=11fda6743922cc3c68e31af94210dc35c1abc081" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
 ]

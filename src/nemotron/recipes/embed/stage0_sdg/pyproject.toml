@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "9984b28bc89a523a07b0afcb65c9b4198bd64c69", subdirectory = "plugins/data-designer-retrieval-sdg" }
+data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "11fda6743922cc3c68e31af94210dc35c1abc081", subdirectory = "plugins/data-designer-retrieval-sdg" }
 
 [tool.nemotron]
 entry-point = "data_prep.py"
