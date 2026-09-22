@@ -290,6 +290,11 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     assert sdg.portable_export is True
     assert sdg.qa_generation_model == "public/image-qa-model"
     assert sdg.quality_judge_model == "public/image-judge-model"
+    assert sdg.sdg_options["summary_embedding_model"] == "nvidia/nemotron-3-embed-1b"
+    assert sdg.sdg_options["summary_embedding_endpoint"] == "https://integrate.api.nvidia.com/v1"
+    assert sdg.sdg_options["summary_embedding_credential_env"] == "NVIDIA_API_KEY"
+    assert sdg.sdg_options["summary_embedding_extra_body"] == {"input_type": "passage", "truncate": "NONE"}
+    assert "summary_embedding_revision" not in sdg.sdg_options
     assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert prep.train_input_file is None
     assert prep.retrieval_view == "image_and_text"

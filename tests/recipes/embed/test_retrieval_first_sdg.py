@@ -178,3 +178,18 @@ def test_generic_semantic_planning_controls_are_forwarded(tmp_path):
     assert all(getattr(mapped, key) == value for key, value in options.items())
     assert mapped.sources_file == tmp_path / "sources.jsonl"
     assert mapped.contexts_file == tmp_path / "contexts.jsonl"
+
+
+def test_summary_embedding_endpoint_is_independent_of_chat_provider(tmp_path):
+    options = {
+        "context_strategy": "sections",
+        "combination_iterations": 20,
+        "summary_embedding_model": "nvidia/nemotron-3-embed-1b",
+        "summary_embedding_endpoint": "https://integrate.api.nvidia.com/v1",
+        "summary_embedding_credential_env": "EMBEDDING_KEY",
+        "summary_embedding_extra_body": {"input_type": "passage", "truncate": "NONE"},
+    }
+    mapped = build_retrieval_first_config(config(tmp_path, sdg_options=options))
+    assert all(getattr(mapped, key) == value for key, value in options.items())
+    assert mapped.generator.endpoint == "https://example.invalid/v1"
+    assert mapped.generator.credential_env == "TEST_SDG_KEY"

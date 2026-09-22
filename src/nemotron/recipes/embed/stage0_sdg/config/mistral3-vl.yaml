@@ -17,9 +17,12 @@ sdg_options:
   context_strategy: sections
   section_size: 5
   combination_iterations: 20
-  summary_embedding_model: Qwen/Qwen3-Embedding-0.6B
-  summary_embedding_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
-  summary_embedding_device: cpu
+  summary_embedding_model: nvidia/nemotron-3-embed-1b
+  summary_embedding_endpoint: https://integrate.api.nvidia.com/v1
+  summary_embedding_credential_env: NVIDIA_API_KEY
+  summary_embedding_extra_body:
+    input_type: passage
+    truncate: NONE
   summary_count: 400
   max_context_chars: 100000
   judge_summaries: true

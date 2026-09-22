@@ -508,7 +508,7 @@ wheels = [
 [[package]]
 name = "data-designer-retrieval-sdg"
 version = "0.3.0a1"
-source = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=e72d7d41f8f31652c2dbae9285bf3acc472129ef#e72d7d41f8f31652c2dbae9285bf3acc472129ef" }
+source = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=7a7c759daf894ed22708dcbfacf84bff5b0e340c#7a7c759daf894ed22708dcbfacf84bff5b0e340c" }
 dependencies = [
     { name = "data-designer" },
     { name = "filelock" },
@@ -523,6 +523,7 @@ dependencies = [
 
 [package.optional-dependencies]
 multimodal = [
+    { name = "httpx" },
     { name = "scikit-learn" },
     { name = "sentence-transformers" },
     { name = "umap-learn" },
@@ -1920,7 +1921,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "data-designer", specifier = "==0.9.1" },
-    { name = "data-designer-retrieval-sdg", extras = ["multimodal"], git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=e72d7d41f8f31652c2dbae9285bf3acc472129ef" },
+    { name = "data-designer-retrieval-sdg", extras = ["multimodal"], git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git?subdirectory=plugins%2Fdata-designer-retrieval-sdg&rev=7a7c759daf894ed22708dcbfacf84bff5b0e340c" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
 ]

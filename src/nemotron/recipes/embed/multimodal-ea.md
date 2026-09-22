@@ -145,7 +145,8 @@ and 4096-token passage limits. Remote model code is disabled by default.
 
 ```bash
 export NVIDIA_API_KEY=your_endpoint_credential
-export NVIDIA_API_BASE_URL=https://your-authorized-openai-compatible-endpoint.example/v1
+# Optional: override the public https://integrate.api.nvidia.com/v1 endpoint.
+# export NVIDIA_API_BASE_URL=https://your-provider.example/v1
 export MISTRAL3_SDG_QA_MODEL=your-image-capable-generation-model
 export MISTRAL3_SDG_JUDGE_MODEL=your-image-capable-judge-model
 export MISTRAL3_VL_EMBED_MODEL=your-org/your-multimodal-embedding-checkpoint
@@ -161,11 +162,36 @@ nemotron embed eval -c mistral3-vl eval_base=true eval_finetuned=true eval_nim=f
 python -c 'import json; p="output/embed/mistral3-vl-preview/stage3_eval/eval_results.json"; r=json.load(open(p)); assert {"base","finetuned"} <= r.keys()'
 ```
 
-The generator and judge endpoints must accept images. There are two explicit
-hosted model roles and no implicit fallback. Semantic summary combinations also
-use the local, revision-pinned `Qwen/Qwen3-Embedding-0.6B` model (CPU by default),
-installed through the plugin's `multimodal` extra. Model weights use the Hugging
-Face cache; `sdg_options.summary_embedding_device` can select a local GPU.
+The model roles are independent:
+
+| Role | Default or required configuration |
+|---|---|
+| Visual enrichment, descriptions, summaries and query generation | User-supplied `MISTRAL3_SDG_QA_MODEL`; must accept images and structured responses. |
+| Summary/query judging and support localization | User-supplied `MISTRAL3_SDG_JUDGE_MODEL`; must accept images and structured responses. |
+| Summary embeddings for semantic clustering | [`nvidia/nemotron-3-embed-1b`](https://build.nvidia.com/nvidia/nemotron-3-embed-1b) at the public NVIDIA API, using passage mode. |
+| Hard-negative mining, fine-tuning and base evaluation | User-supplied `MISTRAL3_VL_EMBED_MODEL`, a compatible Mistral3 multimodal embedding checkpoint or local path. |
+| Fine-tuned evaluation | The local Stage 2 checkpoint. Optional endpoint evaluation requires a compatible user-configured service. |
+
+Hosted generation and judging default to `https://integrate.api.nvidia.com/v1`
+and use `NVIDIA_API_KEY`. Choose image-capable models available on
+[build.nvidia.com](https://build.nvidia.com), or configure your own compatible
+endpoint and model IDs. `NVIDIA_API_BASE_URL` changes the generator/judge endpoint;
+per-role `sdg_generator_options` and `sdg_judge_options` can override it independently.
+No private inference service or internal model ID is required.
+
+Summary embedding settings are independent of those chat settings. The public
+embedding endpoint receives section-summary text, not images, using the plugin's
+`multimodal` extra. Override `sdg_options.summary_embedding_model`,
+`summary_embedding_endpoint`, `summary_embedding_credential_env` and
+`summary_embedding_extra_body` for another service. `input_type: passage` is
+required by the default model; `truncate: NONE` rejects oversized inputs.
+Embedding responses are validated and cached for resume. For local Sentence
+Transformers inference, set `summary_embedding_endpoint: null` and
+`summary_embedding_extra_body: {}`, supply a Hugging Face model ID or local path,
+and optionally set `summary_embedding_revision` and `summary_embedding_device`
+(CPU by default). The default summary model is text-only; it is not the
+multimodal checkpoint being fine-tuned.
+
 The `mistral3-vl` profile selects `sdg_workflow=retrieval_first`: separate visual
 enrichment, document/corpus descriptions, five-unit section summaries, 20 seeded
 semantic clustering iterations, summary grading/selection, then bounded queries.
@@ -211,9 +237,12 @@ sdg_options:
   context_strategy: sections
   section_size: 5
   combination_iterations: 20
-  summary_embedding_model: Qwen/Qwen3-Embedding-0.6B
-  summary_embedding_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
-  summary_embedding_device: cpu
+  summary_embedding_model: nvidia/nemotron-3-embed-1b
+  summary_embedding_endpoint: https://integrate.api.nvidia.com/v1
+  summary_embedding_credential_env: NVIDIA_API_KEY
+  summary_embedding_extra_body:
+    input_type: passage
+    truncate: NONE
   max_context_chars: 100000
   judge_summaries: true
   summary_count: 400  # or clear this and set summary_fraction; never both
