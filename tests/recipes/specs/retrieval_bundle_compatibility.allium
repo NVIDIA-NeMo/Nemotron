@@ -1,0 +1,51 @@
+-- allium: 3
+-- Scope: Portable retrieval training bundle ingestion by the recipe.
+-- Includes: Explicit supported contracts, integrity, identity and label semantics.
+-- Excludes: Generation, mining algorithms, training and evaluation selection.
+
+contract RetrievalBundleIngestion {
+    inspect: (manifest: String, require_local_artifacts: Boolean) -> Any
+    prepare: (manifest: String, view: String, output: String) -> Any
+
+    @invariant SupportedProducerContracts
+        -- Accept a completed portable unified retrieval-SDG schema-v2 bundle
+        -- and the existing schema-v3 consumer contract through explicit paths.
+        -- Reject unsupported versions and incomplete or non-portable bundles.
+        -- Unified v2 has no status/portable flags: completeness and portability
+        -- are established by consumer inventory and local-content validation.
+        -- Structural-only inspection does not attest to local verification.
+
+    @invariant ProducerIdentityPreserved
+        -- Ingestion never rewrites the producer manifest, version, identities,
+        -- source language, source text, modality evidence or verification claims.
+
+    @invariant VerifiedPortableArtifacts
+        -- In local mode, verify unified-v2 required files, sizes and checksums
+        -- before use. Reject traversal, escaped assets, duplicate identifiers,
+        -- dangling qrels and source documents spanning declared partitions.
+        -- Legacy-v3 retains its producer attestations and inspection behavior;
+        -- explicit checksum verification covers inventoried artifacts and sizes
+        -- when declared. This does not independently rederive legacy provenance,
+        -- source-document disjointness or independent-label validity.
+
+    @invariant ExplicitViewMapping
+        -- Unified image_and_text is the same input view as recipe text_image.
+        -- Text and image views remain distinct. Never fabricate missing views.
+
+    @invariant RunnableTrainingHandoff
+        -- In unified-v2 local mode, require corpus metadata identifying the supported
+        -- source representation and its non-empty corpus identity. Each
+        -- training or validation query must contain non-empty query text and
+        -- refer to that declared corpus identity. Reject incomplete or
+        -- mismatched handoffs before preparation; do not repair the producer.
+
+    @invariant KnownPositivesRemainPartial
+        -- Generated qrels describe known positives, not exhaustive judgments.
+        -- Missing judgments remain unjudged, not certified negatives.
+        -- Preparing data does not claim hard-negative mining has occurred.
+
+    @invariant IndependentEvaluationRemainsSeparate
+        -- Generated queries are never relabelled as independent evaluation.
+        -- Source-preserving preparation exposes available text and image fields
+        -- without treating generated evidence as authoritative source text.
+}

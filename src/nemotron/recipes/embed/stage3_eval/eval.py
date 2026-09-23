@@ -58,9 +58,11 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import gc
 import json
 import math
+import mimetypes
 import os
 import sys
 from contextlib import contextmanager
@@ -95,6 +97,8 @@ class NIMEmbeddingModel:
         invalid_embedding_retries: int = 3,
         expected_dimension: int | None = None,
         api_backend: Literal["nim", "vllm"] = "nim",
+        dataset_path: Path | None = None,
+        api_truncate: Literal["NONE", "START", "END"] | None = None,
     ):
         """Initialize NIM embedding model.
 
@@ -106,7 +110,12 @@ class NIMEmbeddingModel:
             invalid_embedding_retries: Retry limit for non-numeric NIM vectors.
             expected_dimension: Required embedding dimension, if known.
             api_backend: Request and health-check conventions used by the server.
+            api_truncate: Optional Cohere truncation policy. Requires the vLLM backend.
         """
+        if api_truncate not in (None, "NONE", "START", "END"):
+            raise ValueError("api_truncate must be None, NONE, START, or END")
+        if api_truncate is not None and api_backend != "vllm":
+            raise ValueError("api_truncate requires api_backend=vllm")
         self.service_name = "vLLM" if api_backend == "vllm" else "NIM"
         self.api_url = api_url.rstrip("/")
         endpoint = "/v2/embed" if api_backend == "vllm" else "/v1/embeddings"
@@ -117,8 +126,10 @@ class NIMEmbeddingModel:
         self.invalid_embedding_retries = invalid_embedding_retries
         self.expected_dimension = expected_dimension
         self.api_backend = api_backend
+        self.api_truncate = api_truncate
         self.embedding_dimension = expected_dimension
         self.invalid_embedding_retry_requests = 0
+        self.dataset_path = dataset_path
         self._check_connection()
 
     def _check_connection(self) -> None:
@@ -150,7 +161,7 @@ class NIMEmbeddingModel:
 
     def _request_batch(
         self,
-        texts: list[str],
+        inputs: list[str | dict],
         input_type: str,
     ) -> list[list[float]]:
         """Send one embeddings request and return validated vectors in input order."""
@@ -159,13 +170,22 @@ class NIMEmbeddingModel:
 
         if self.api_backend == "vllm":
             payload_data = {
-                "texts": texts,
                 "model": self.model,
                 "input_type": "document" if input_type == "passage" else input_type,
                 "embedding_types": ["float"],
             }
+            if self.api_truncate is not None:
+                payload_data["truncate"] = self.api_truncate
+            if any(not isinstance(item, str) for item in inputs):
+                payload_data["inputs"] = [
+                    {"content": [{"type": "text", "text": item}]} if isinstance(item, str) else item for item in inputs
+                ]
+            else:
+                payload_data["texts"] = inputs
         else:
-            payload_data = {"input": texts, "model": self.model, "input_type": input_type}
+            if any(not isinstance(item, str) for item in inputs):
+                raise ValueError("Multimodal inputs require api_backend=vllm")
+            payload_data = {"input": inputs, "model": self.model, "input_type": input_type}
         payload = json.dumps(payload_data).encode("utf-8")
 
         req = urllib.request.Request(
@@ -191,8 +211,8 @@ class NIMEmbeddingModel:
             if not isinstance(embeddings, dict) or not isinstance(embeddings.get("float"), list):
                 raise RuntimeError("vLLM response is missing embeddings.float")
             vectors = embeddings["float"]
-            if len(vectors) != len(texts):
-                raise RuntimeError(f"vLLM returned {len(vectors)} embeddings; expected {len(texts)}")
+            if len(vectors) != len(inputs):
+                raise RuntimeError(f"vLLM returned {len(vectors)} embeddings; expected {len(inputs)}")
             return vectors
 
         served_model = result.get("model")
@@ -206,7 +226,7 @@ class NIMEmbeddingModel:
             raise RuntimeError("NIM response data entries must be objects")
 
         indices = [item.get("index") for item in embeddings_data]
-        expected_indices = list(range(len(texts)))
+        expected_indices = list(range(len(inputs)))
         if not all(isinstance(index, int) and not isinstance(index, bool) for index in indices):
             raise RuntimeError(f"NIM returned non-integer indices: {indices!r}")
         if sorted(indices) != expected_indices:
@@ -229,13 +249,13 @@ class NIMEmbeddingModel:
 
     def _encode_batch(
         self,
-        texts: list[str],
+        inputs: list[str | dict],
         input_type: str,
     ) -> list[list[float]]:
         """Encode a batch, retrying transient invalid vectors independently."""
-        embeddings = self._request_batch(texts, input_type)
-        if len(embeddings) != len(texts):
-            raise RuntimeError(f"{self.service_name} returned {len(embeddings)} embeddings for {len(texts)} inputs")
+        embeddings = self._request_batch(inputs, input_type)
+        if len(embeddings) != len(inputs):
+            raise RuntimeError(f"{self.service_name} returned {len(embeddings)} embeddings for {len(inputs)} inputs")
 
         for retry_number in range(self.invalid_embedding_retries + 1):
             invalid_indices = [
@@ -254,7 +274,7 @@ class NIMEmbeddingModel:
             )
             for index in invalid_indices:
                 self.invalid_embedding_retry_requests += 1
-                retry_embeddings = self._request_batch([texts[index]], input_type)
+                retry_embeddings = self._request_batch([inputs[index]], input_type)
                 if len(retry_embeddings) != 1:
                     raise RuntimeError(
                         f"{self.service_name} returned {len(retry_embeddings)} retry embeddings for 1 input"
@@ -271,12 +291,15 @@ class NIMEmbeddingModel:
 
     def diagnostics(self) -> dict[str, int | str | None]:
         """Return response-validation diagnostics for result provenance."""
-        return {
+        diagnostics = {
             "api_backend": self.api_backend,
             "requested_model": self.model,
             "embedding_dimension": self.embedding_dimension,
             "invalid_embedding_retry_requests": self.invalid_embedding_retry_requests,
         }
+        if self.api_truncate is not None:
+            diagnostics["api_truncate"] = self.api_truncate
+        return diagnostics
 
     def encode_queries(
         self,
@@ -334,22 +357,43 @@ class NIMEmbeddingModel:
         else:
             corpus_list = corpus
 
-        # Combine title and text for each document
-        texts = []
-        for doc in corpus_list:
-            title = doc.get("title", "")
-            text = doc.get("text", "")
-            if title:
-                texts.append(f"{title} {text}")
-            else:
-                texts.append(text)
-
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i : i + batch_size]
-            embeddings = self._encode_batch(batch, input_type="passage")
+        # Materialize image bytes only for the current request, not the BEIR chunk.
+        for i in range(0, len(corpus_list), batch_size):
+            inputs = [self._corpus_input(doc) for doc in corpus_list[i : i + batch_size]]
+            embeddings = self._encode_batch(inputs, input_type="passage")
             all_embeddings.extend(embeddings)
+            del inputs
 
         return np.asarray(all_embeddings, dtype=np.float32)
+
+    def _corpus_input(self, document: dict[str, str]) -> str | dict:
+        """Prepare one document without retaining image bytes between batches."""
+        title = document.get("title", "")
+        text = document.get("text", "")
+        document_text = f"{title} {text}".strip()
+        image_path = document.get("image_path")
+        if not image_path:
+            return document_text
+        if self.api_backend != "vllm":
+            raise ValueError("Corpus contains image_path but the selected backend is not vLLM")
+        if self.dataset_path is None:
+            raise ValueError("dataset_path is required to resolve multimodal corpus images")
+        image = self._resolve_image_path(str(image_path))
+        mime_type = mimetypes.guess_type(image.name)[0] or "image/png"
+        image_data = base64.b64encode(image.read_bytes()).decode("ascii")
+        content: list[dict] = [{"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_data}"}}]
+        if document_text:
+            content.append({"type": "text", "text": document_text})
+        return {"content": content}
+
+    def _resolve_image_path(self, relative_path: str) -> Path:
+        """Resolve an image path relative to a BEIR view or one of its parents."""
+        assert self.dataset_path is not None
+        for root in (self.dataset_path, *self.dataset_path.parents):
+            candidate = root / relative_path
+            if candidate.is_file():
+                return candidate
+        raise FileNotFoundError(f"Could not resolve corpus image {relative_path!r} from {self.dataset_path}")
 
 
 class EvalConfig(RecipeSettings):
@@ -376,6 +420,26 @@ class EvalConfig(RecipeSettings):
         default_factory=lambda data: data["artifact_root"] / "stage1_data_prep/eval_beir",
         description="Path to BEIR-formatted evaluation data.",
     )
+    image_root: Path | None = Field(
+        default=None,
+        description="Artifact root for portable multimodal image paths; defaults to eval_data_path.",
+    )
+    sdg_input_path: Path | None = Field(
+        default=None,
+        description="Stage 0 generation-result manifest used to resolve the exact portable evaluation bundle.",
+    )
+    retrieval_view: Literal["text", "image", "image_and_text"] | None = Field(
+        default=None,
+        description="Portable evaluation view selected from sdg_input_path.",
+    )
+    retrieval_split_protocol: Literal["grouped_query_disjoint"] | None = Field(
+        default=None,
+        description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
+    )
+    ignore_identical_ids: bool = Field(
+        default=True,
+        description="Preserve BEIR's legacy query/corpus identical-ID exclusion when true.",
+    )
 
     # Output settings
     output_dir: Path = Field(
@@ -396,8 +460,21 @@ class EvalConfig(RecipeSettings):
         default="mean", description="Pooling strategy (BEIR naming: mean=avg, cls=cls, max=last)."
     )
     normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
-    query_prefix: str = Field(default="query: ", description="Prefix for query inputs.")
-    passage_prefix: str = Field(default="passage: ", description="Prefix for passage inputs.")
+    query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs.")
+    passage_prefix: str | None = Field(default="passage: ", description="Prefix for passage inputs.")
+    model_family: Literal["text", "mistral3_vl"] = Field(default="text", description="Local evaluation model family.")
+    query_max_length: int | None = Field(default=None, gt=0, description="Multimodal query sequence limit.")
+    passage_max_length: int | None = Field(default=None, gt=0, description="Multimodal document sequence limit.")
+    image_longest_edge: int | None = Field(default=None, gt=0, description="Multimodal image resize limit.")
+    use_text_in_document: bool = Field(default=True, description="Retain text alongside document images.")
+    local_backend: Literal["huggingface", "automodel"] = Field(
+        default="huggingface",
+        description="Local checkpoint runtime. AutoModel preserves saved retrieval attention semantics.",
+    )
+    tokenizer_force_default: bool = Field(
+        default=False,
+        description="Use AutoModel's Hugging Face tokenizer wrapper instead of model-type registry dispatch.",
+    )
 
     # Evaluation mode
     eval_base: bool = Field(default=True, description="Whether to evaluate the base model.")
@@ -412,6 +489,10 @@ class EvalConfig(RecipeSettings):
     embedding_api_backend: Literal["nim", "vllm"] = Field(
         default="nim",
         description="Request and health-check conventions used by the deployed embedding service.",
+    )
+    embedding_api_truncate: Literal["NONE", "START", "END"] | None = Field(
+        default=None,
+        description="Optional Cohere truncation policy for vLLM; None preserves the server default.",
     )
     nim_invalid_embedding_retries: int = Field(
         default=32,
@@ -439,13 +520,36 @@ class EvalConfig(RecipeSettings):
     )
 
     @model_validator(mode="after")
+    def _validate_portable_evaluation_source(self):
+        if (self.sdg_input_path is None) != (self.retrieval_view is None):
+            raise ValueError("sdg_input_path and retrieval_view must be set together for portable evaluation")
+        if self.retrieval_split_protocol is not None and self.sdg_input_path is None:
+            raise ValueError("retrieval_split_protocol requires sdg_input_path and retrieval_view")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_api_truncation(self):
+        if self.embedding_api_truncate is not None and self.embedding_api_backend != "vllm":
+            raise ValueError("embedding_api_truncate requires embedding_api_backend=vllm")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_multimodal_local_backend(self):
+        if self.model_family != "mistral3_vl":
+            return self
+        if (self.eval_base or self.eval_finetuned) and self.local_backend != "automodel":
+            raise ValueError("model_family=mistral3_vl local evaluation requires local_backend=automodel")
+        if any(value is None for value in (self.query_max_length, self.passage_max_length)):
+            raise ValueError("model_family=mistral3_vl requires query and passage limits")
+        return self
+
+    @model_validator(mode="after")
     def _validate_metric_drift_gate(self):
         if self.fail_on_nim_metric_drift and not self.eval_finetuned:
             raise ValueError("fail_on_nim_metric_drift=true requires eval_finetuned=true")
         if self.fail_on_nim_metric_drift and not self.eval_nim:
             raise ValueError("fail_on_nim_metric_drift=true requires eval_nim=true")
         return self
-
 
 
 @contextmanager
@@ -481,8 +585,17 @@ def evaluate_model(
     k_values: list[int] | None = None,
     pooling: str = "mean",
     normalize: bool = True,
-    query_prefix: str = "query: ",
-    passage_prefix: str = "passage: ",
+    query_prefix: str | None = "query: ",
+    passage_prefix: str | None = "passage: ",
+    local_backend: Literal["huggingface", "automodel"] = "huggingface",
+    tokenizer_force_default: bool = False,
+    model_family: Literal["text", "mistral3_vl"] = "text",
+    query_max_length: int | None = None,
+    passage_max_length: int | None = None,
+    image_longest_edge: int | None = None,
+    use_text_in_document: bool = True,
+    image_root: Path | None = None,
+    ignore_identical_ids: bool = True,
 ) -> tuple[dict, dict]:
     """Evaluate an embedding model on a BEIR dataset.
 
@@ -497,15 +610,22 @@ def evaluate_model(
         normalize: Whether to normalize embeddings.
         query_prefix: Prefix for queries.
         passage_prefix: Prefix for passages.
+        local_backend: Runtime for loading the local retrieval checkpoint.
+        tokenizer_force_default: Bypass AutoModel tokenizer registry dispatch for local native evaluation.
+        model_family: Explicit local model family.
+        query_max_length: Native multimodal query sequence limit.
+        passage_max_length: Native multimodal document sequence limit.
+        image_longest_edge: Native multimodal image resize limit.
+        use_text_in_document: Retain document text alongside images.
+        image_root: Artifact root containing portable corpus image paths.
+        ignore_identical_ids: Apply BEIR's legacy query/corpus identical-ID exclusion.
 
     Returns:
         Tuple of (metrics dict, results dict).
     """
     try:
         from beir.datasets.data_loader import GenericDataLoader
-        from beir.retrieval import models
         from beir.retrieval.evaluation import EvaluateRetrieval
-        from beir.retrieval.models import huggingface as beir_huggingface
         from beir.retrieval.search.dense.exact_search import (
             DenseRetrievalExactSearch as DRES,  # noqa: N817
         )
@@ -516,16 +636,56 @@ def evaluate_model(
     if k_values is None:
         k_values = [1, 5, 10, 100]
 
-    with _allow_beir_tokenizer_remote_code(beir_huggingface):
-        dense_model = models.HuggingFace(
-            model_path=str(model_path),
+    if local_backend == "automodel":
+        from nemotron.recipes.embed.stage3_eval.automodel_backend import AutoModelBEIREncoder
+
+        if pooling != "mean" or not normalize:
+            raise ValueError("local_backend=automodel requires pooling=mean and normalize=true")
+        multimodal_config = None
+        if model_family == "mistral3_vl":
+            if query_max_length is None or passage_max_length is None:
+                raise ValueError("mistral3_vl evaluation requires query and passage limits")
+            from nemo_automodel._transformers.mining import CheckpointMiningEncoderConfig
+
+            processor_overrides = {
+                "q_max_length": query_max_length,
+                "p_max_length": passage_max_length,
+                "query_prefix": None if query_prefix is None else query_prefix.removesuffix(" "),
+                "passage_prefix": None if passage_prefix is None else passage_prefix.removesuffix(" "),
+                "image_longest_edge": image_longest_edge,
+                "use_text_in_document": use_text_in_document,
+                "use_images": True,
+            }
+            multimodal_config = CheckpointMiningEncoderConfig(
+                **{name: value for name, value in processor_overrides.items() if value is not None}
+            )
+        dense_model = AutoModelBEIREncoder(
+            model_path=model_path,
             max_length=max_length,
-            append_eos_token=False,
-            pooling=pooling,
-            normalize=normalize,
-            prompts={"query": query_prefix, "passage": passage_prefix},
-            dtype="bfloat16",
+            query_prefix=query_prefix,
+            passage_prefix=passage_prefix,
+            tokenizer_force_default=tokenizer_force_default,
+            multimodal_config=multimodal_config,
         )
+    else:
+        if model_family == "mistral3_vl":
+            raise ValueError("model_family=mistral3_vl requires local_backend=automodel")
+        try:
+            from beir.retrieval import models
+            from beir.retrieval.models import huggingface as beir_huggingface
+        except ImportError:
+            print("Error: BEIR Hugging Face model dependencies are required for local_backend=huggingface")
+            sys.exit(1)
+        with _allow_beir_tokenizer_remote_code(beir_huggingface):
+            dense_model = models.HuggingFace(
+                model_path=str(model_path),
+                max_length=max_length,
+                append_eos_token=False,
+                pooling=pooling,
+                normalize=normalize,
+                prompts={"query": query_prefix, "passage": passage_prefix},
+                dtype="bfloat16",
+            )
 
     dres_model = DRES(
         dense_model,
@@ -540,10 +700,19 @@ def evaluate_model(
     )
 
     corpus, queries, qrels = GenericDataLoader(str(dataset_path)).load(split="test")
-    results = retriever.retrieve(corpus, queries)
-    metrics = retriever.evaluate(qrels, results, retriever.k_values)
-
-    return metrics, results
+    if local_backend == "automodel":
+        declared_images = _restore_corpus_image_paths(
+            corpus,
+            dataset_path,
+            image_root=image_root,
+            resolve=model_family == "mistral3_vl",
+            strict=True,
+        )
+        if model_family == "text" and declared_images:
+            raise ValueError(
+                "Native text evaluation cannot discard corpus image_path fields; select model_family=mistral3_vl"
+            )
+    return _retrieve_and_evaluate(retriever, corpus, queries, qrels, ignore_identical_ids)
 
 
 def evaluate_nim(
@@ -556,6 +725,9 @@ def evaluate_nim(
     expected_dimension: int | None = None,
     api_backend: Literal["nim", "vllm"] = "nim",
     k_values: list[int] | None = None,
+    corpus_chunk_size: int = 50000,
+    api_truncate: Literal["NONE", "START", "END"] | None = None,
+    ignore_identical_ids: bool = True,
 ) -> tuple[dict, dict, dict[str, int | str | None]]:
     """Evaluate a NIM API endpoint on a BEIR dataset.
 
@@ -569,6 +741,9 @@ def evaluate_nim(
         expected_dimension: Required embedding dimension, if known.
         api_backend: Request and health-check conventions used by the server.
         k_values: K values for metrics.
+        corpus_chunk_size: Maximum number of documents in one retrieval search chunk.
+        api_truncate: Optional Cohere truncation policy. Requires the vLLM backend.
+        ignore_identical_ids: Apply BEIR's legacy query/corpus identical-ID exclusion.
 
     Returns:
         Tuple of (metrics dict, results dict, response diagnostics).
@@ -595,12 +770,14 @@ def evaluate_nim(
         invalid_embedding_retries=invalid_embedding_retries,
         expected_dimension=expected_dimension,
         api_backend=api_backend,
+        dataset_path=dataset_path,
+        api_truncate=api_truncate,
     )
 
     # Wrap in DRES for BEIR compatibility
     dres_model = DRES(
         nim_model_instance,
-        corpus_chunk_size=50000,
+        corpus_chunk_size=corpus_chunk_size,
         batch_size=batch_size,
     )
 
@@ -611,10 +788,122 @@ def evaluate_nim(
     )
 
     corpus, queries, qrels = GenericDataLoader(str(dataset_path)).load(split="test")
-    results = retriever.retrieve(corpus, queries)
-    metrics = retriever.evaluate(qrels, results, retriever.k_values)
+    _restore_corpus_image_paths(corpus, dataset_path)
+    metrics, results = _retrieve_and_evaluate(retriever, corpus, queries, qrels, ignore_identical_ids)
 
     return metrics, results, nim_model_instance.diagnostics()
+
+
+def _retrieve_and_evaluate(
+    retriever,
+    corpus: dict[str, dict[str, str]],
+    queries: dict[str, str],
+    qrels: dict[str, dict[str, int]],
+    ignore_identical_ids: bool,
+) -> tuple[dict, dict]:
+    """Retrieve and score while optionally preserving legitimate ID collisions."""
+    # BEIR's loader represents an omitted optional title as None. Its dense
+    # search sorts by title + text before calling our encoder, so normalize
+    # absence at this shared boundary for both local and API evaluation.
+    # Copy records to preserve the loaded inputs and all multimodal metadata.
+    corpus = {
+        document_id: {**document, "title": "" if document.get("title") is None else document["title"]}
+        for document_id, document in corpus.items()
+    }
+    if ignore_identical_ids:
+        results = _retrieve_rankings(retriever, corpus, queries)
+        return retriever.evaluate(qrels, results, retriever.k_values), results
+    retrieval_queries, aliases = _alias_query_ids(queries, corpus)
+    aliased_results = _retrieve_rankings(retriever, corpus, retrieval_queries)
+    results = {aliases[alias]: ranking for alias, ranking in aliased_results.items()}
+    metrics = retriever.evaluate(qrels, results, retriever.k_values, ignore_identical_ids=False)
+    return metrics, results
+
+
+def _retrieve_rankings(retriever, corpus: dict, queries: dict[str, str]) -> dict:
+    """Support one-query inputs with BEIR versions that index the second score row.
+
+    Pad only the retrieval request with an identical query under a fresh ID,
+    then discard that internal row before scoring or persisting rankings. This
+    keeps the real query, qrels, corpus, and identical-ID exclusion unchanged.
+    """
+    if len(queries) != 1:
+        return retriever.retrieve(corpus, queries)
+    query_id, text = next(iter(queries.items()))
+    padding_id = "__nemotron_single_query_padding__"
+    while padding_id in corpus or padding_id in queries:
+        padding_id = f"_{padding_id}"
+    rankings = retriever.retrieve(corpus, {**queries, padding_id: text})
+    return {query_id: rankings[query_id]}
+
+
+def _alias_query_ids(
+    queries: dict[str, str], corpus: dict[str, dict[str, str]]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Give every query a temporary ID that cannot collide with a corpus ID."""
+    used_ids = set(queries) | set(corpus)
+    aliased_queries = {}
+    aliases = {}
+    for index, (query_id, query) in enumerate(queries.items()):
+        alias = f"__nemotron_query_{index}__"
+        while alias in used_ids:
+            alias = f"_{alias}"
+        used_ids.add(alias)
+        aliased_queries[alias] = query
+        aliases[alias] = query_id
+    return aliased_queries, aliases
+
+
+def _resolve_portable_image_path(image_root: Path, image_path: str) -> Path:
+    """Resolve an image strictly within its configured artifact root."""
+    relative = Path(image_path)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"Corpus image_path must be portable and relative: {image_path!r}")
+    root = image_root.resolve(strict=True)
+    candidate = root / relative
+    if not candidate.exists():
+        raise FileNotFoundError(f"Could not resolve corpus image {image_path!r} within {root}")
+    resolved = candidate.resolve(strict=True)
+    try:
+        resolved.relative_to(root)
+    except ValueError as error:
+        raise ValueError(f"Corpus image_path escapes its configured image root: {image_path!r}") from error
+    if not resolved.is_file():
+        raise ValueError(f"Corpus image_path is not a regular file: {image_path!r}")
+    return resolved
+
+
+def _restore_corpus_image_paths(
+    corpus: dict,
+    dataset_path: Path,
+    *,
+    image_root: Path | None = None,
+    resolve: bool = False,
+    strict: bool = False,
+) -> int:
+    """Restore image fields dropped by BEIR and return the declaration count."""
+    declared_images = 0
+    corpus_path = dataset_path / "corpus.jsonl"
+    with corpus_path.open() as file:
+        for line in file:
+            raw_document = json.loads(line)
+            if "image_path" not in raw_document:
+                continue
+            declared_images += 1
+            document_id = raw_document.get("_id")
+            image_path = raw_document["image_path"]
+            if not isinstance(image_path, str) or not image_path.strip():
+                if strict:
+                    raise ValueError(f"Corpus document {document_id!r} declares an empty or malformed image_path")
+                continue
+            if document_id not in corpus:
+                if strict:
+                    raise ValueError(f"Corpus image document {document_id!r} was not loaded by BEIR")
+                continue
+            corpus[document_id]["image_path"] = (
+                str(_resolve_portable_image_path(image_root or dataset_path, image_path)) if resolve else image_path
+            )
+    return declared_images
 
 
 def _release_cuda_memory() -> None:
@@ -653,6 +942,14 @@ def run_eval(cfg: EvalConfig) -> dict:
     # Trust remote code for HuggingFace models (e.g. nvidia/llama-nemotron-embed)
     # to avoid interactive prompts during evaluation.
     os.environ.setdefault("HF_HUB_TRUST_REMOTE_CODE", "1")
+    if cfg.sdg_input_path is not None:
+        from nemotron.recipes.embed.sdg_manifest import resolve_portable_evaluation_input
+
+        evaluation_dir, image_root = resolve_portable_evaluation_input(
+            cfg.sdg_input_path, cfg.retrieval_view, cfg.retrieval_split_protocol
+        )
+        cfg = cfg.model_copy(update={"eval_data_path": evaluation_dir, "image_root": image_root})
+
     print("📊 Embedding Model Evaluation")
     print("=" * 60)
     print(f"Eval data:       {cfg.eval_data_path}")
@@ -677,10 +974,21 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     results = {}
     metadata = {
+        "retrieval_split_protocol_requested": cfg.retrieval_split_protocol,
+        "sdg_input_path": str(cfg.sdg_input_path.resolve()) if cfg.sdg_input_path else None,
         "eval_data_path": str(cfg.eval_data_path.resolve()),
+        "image_root": str((cfg.image_root or cfg.eval_data_path).resolve()),
+        "ignore_identical_ids": cfg.ignore_identical_ids,
         "k_values": cfg.k_values,
         "base_model": cfg.base_model if cfg.eval_base else None,
         "finetuned_model_path": (str(cfg.finetuned_model_path.resolve()) if cfg.eval_finetuned else None),
+        "local_backend": cfg.local_backend,
+        "tokenizer_force_default": cfg.tokenizer_force_default,
+        "model_family": cfg.model_family,
+        "query_max_length": cfg.query_max_length,
+        "passage_max_length": cfg.passage_max_length,
+        "image_longest_edge": cfg.image_longest_edge,
+        "use_text_in_document": cfg.use_text_in_document,
         "nim_url": cfg.nim_url if cfg.eval_nim else None,
         "nim_model": cfg.nim_model if cfg.eval_nim else None,
         "embedding_api_backend": cfg.embedding_api_backend if cfg.eval_nim else None,
@@ -688,13 +996,16 @@ def run_eval(cfg: EvalConfig) -> dict:
     api_result_key = cfg.embedding_api_backend
     api_display_name = "vLLM" if cfg.embedding_api_backend == "vllm" else "NIM"
     api_diagnostics: dict[str, int | str | None] | None = None
+    api_rankings: dict | None = None
+    base_rankings: dict | None = None
+    finetuned_rankings: dict | None = None
     api_metric_comparison: dict | None = None
     drift_failure = False
 
     # Evaluate base model
     if cfg.eval_base:
         print(f"📈 Evaluating base model: {cfg.base_model}")
-        base_metrics, _ = evaluate_model(
+        base_metrics, base_rankings = evaluate_model(
             model_path=cfg.base_model,
             dataset_path=cfg.eval_data_path,
             max_length=cfg.max_length,
@@ -705,6 +1016,15 @@ def run_eval(cfg: EvalConfig) -> dict:
             normalize=cfg.normalize,
             query_prefix=cfg.query_prefix,
             passage_prefix=cfg.passage_prefix,
+            local_backend=cfg.local_backend,
+            tokenizer_force_default=cfg.tokenizer_force_default,
+            model_family=cfg.model_family,
+            query_max_length=cfg.query_max_length,
+            passage_max_length=cfg.passage_max_length,
+            image_longest_edge=cfg.image_longest_edge,
+            use_text_in_document=cfg.use_text_in_document,
+            image_root=cfg.image_root,
+            ignore_identical_ids=cfg.ignore_identical_ids,
         )
         results["base"] = base_metrics
         _print_summary_metrics(base_metrics, cfg.k_values)
@@ -714,15 +1034,16 @@ def run_eval(cfg: EvalConfig) -> dict:
     # Evaluate fine-tuned model
     if cfg.eval_finetuned:
         if not cfg.finetuned_model_path.exists():
-            if cfg.fail_on_nim_metric_drift:
-                raise FileNotFoundError(
-                    f"Fine-tuned model required for metric-drift gate was not found at {cfg.finetuned_model_path}"
-                )
-            print(f"Warning: Fine-tuned model not found at {cfg.finetuned_model_path}")
-            print("         Skipping fine-tuned model evaluation.")
+            requirement = (
+                "required for metric-drift gate" if cfg.fail_on_nim_metric_drift else "requested for evaluation"
+            )
+            raise FileNotFoundError(
+                f"Fine-tuned model {requirement} was not found at {cfg.finetuned_model_path}; "
+                "set eval_finetuned=false to skip it explicitly"
+            )
         else:
             print(f"📈 Evaluating fine-tuned model: {cfg.finetuned_model_path}")
-            ft_metrics, _ = evaluate_model(
+            ft_metrics, finetuned_rankings = evaluate_model(
                 model_path=cfg.finetuned_model_path,
                 dataset_path=cfg.eval_data_path,
                 max_length=cfg.max_length,
@@ -733,6 +1054,15 @@ def run_eval(cfg: EvalConfig) -> dict:
                 normalize=cfg.normalize,
                 query_prefix=cfg.query_prefix,
                 passage_prefix=cfg.passage_prefix,
+                local_backend=cfg.local_backend,
+                tokenizer_force_default=cfg.tokenizer_force_default,
+                model_family=cfg.model_family,
+                query_max_length=cfg.query_max_length,
+                passage_max_length=cfg.passage_max_length,
+                image_longest_edge=cfg.image_longest_edge,
+                use_text_in_document=cfg.use_text_in_document,
+                image_root=cfg.image_root,
+                ignore_identical_ids=cfg.ignore_identical_ids,
             )
             results["finetuned"] = ft_metrics
             _print_summary_metrics(ft_metrics, cfg.k_values)
@@ -743,7 +1073,7 @@ def run_eval(cfg: EvalConfig) -> dict:
     if cfg.eval_nim:
         print(f"📈 Evaluating {cfg.embedding_api_backend} endpoint: {cfg.nim_url}")
         try:
-            api_metrics, _, api_diagnostics = evaluate_nim(
+            api_metrics, api_rankings, api_diagnostics = evaluate_nim(
                 nim_url=cfg.nim_url,
                 nim_model=cfg.nim_model,
                 dataset_path=cfg.eval_data_path,
@@ -753,6 +1083,9 @@ def run_eval(cfg: EvalConfig) -> dict:
                 expected_dimension=cfg.nim_embedding_dimension,
                 api_backend=cfg.embedding_api_backend,
                 k_values=cfg.k_values,
+                corpus_chunk_size=cfg.corpus_chunk_size,
+                api_truncate=cfg.embedding_api_truncate,
+                ignore_identical_ids=cfg.ignore_identical_ids,
             )
             results[api_result_key] = api_metrics
             _print_summary_metrics(api_metrics, cfg.k_values)
@@ -844,6 +1177,17 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     with open(results_file, "w") as f:
         json.dump(serializable_results, f, indent=2)
+    for rankings, filename in (
+        (base_rankings, "base_retrieval_results.json"),
+        (finetuned_rankings, "finetuned_retrieval_results.json"),
+    ):
+        if rankings is not None:
+            with (cfg.output_dir / filename).open("w") as file:
+                json.dump(rankings, file)
+    if api_rankings is not None:
+        rankings_file = cfg.output_dir / "retrieval_results.json"
+        with rankings_file.open("w") as file:
+            json.dump(api_rankings, file)
 
     if drift_failure:
         raise RuntimeError(

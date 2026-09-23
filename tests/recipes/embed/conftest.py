@@ -102,3 +102,9 @@ def config_model_and_yaml(request: pytest.FixtureRequest):
     cls = _import_config_class(stage)
     yaml_dict = _load_yaml_dict(stage)
     return cls, yaml_dict, stage["name"]
+
+
+@pytest.fixture(autouse=True)
+def preview_model_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Resolve the opt-in VL profile without requiring a user's checkpoint setting."""
+    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "test/mistral3-vl-embed")

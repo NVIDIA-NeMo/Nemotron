@@ -1,0 +1,55 @@
+-- allium: 3
+-- Scope: Optional adapter fine-tuning and full-model embedding handoff.
+-- Excludes: New training algorithms, guaranteed uplift and bitwise resume parity.
+
+contract RetrievalTrainingPeft {
+    configure: (settings: Any) -> Any
+    train: (settings: Any) -> String
+
+    @invariant DefaultPreserved
+        -- Omitting adapter settings retains existing full fine-tuning,
+        -- checkpoint handling and final model path for text and image recipes.
+
+    @invariant ExplicitValidatedAdapters
+        -- Adapter settings specify positive integer dimension and alpha and a
+        -- nonempty list of nonblank target module selectors. Unknown settings
+        -- and invalid types fail before training. Selected values reach the
+        -- native retrieval trainer; other model and data settings are unchanged.
+
+    @invariant LocalSourceContext
+        -- Adapter runs check the optional merge-library dependency and supported
+        -- merge capabilities before training; full fine-tuning does not need it.
+        -- Adapter runs require a local self-contained base checkpoint with
+        -- tokenizer, pooling, normalization and prompt metadata matching the
+        -- requested embedding contract. Image-capable bases additionally require
+        -- processor metadata; text-only bases do not. Missing or conflicting
+        -- context fails before expensive training, without changing the base.
+        -- Supported source modules are a root Transformer, 1_Pooling and optional
+        -- 2_Normalize in that order; unsupported learned modules fail closed.
+
+    @invariant ResumableNativeState
+        -- Native adapter, optimizer and training state remain in their native
+        -- checkpoints for resume. Export does not replace adapter state with a
+        -- merged model, omit optimizer state, or imply bitwise deterministic resume.
+
+    @invariant FullModelHandoff
+        -- After adapter training, the selected adapter is merged with the same
+        -- base using supported model-library operations on CPU, without custom
+        -- tensor arithmetic or tokenizer reserialization. The returned path and
+        -- published artifact identify full model weights, not adapter-only files,
+        -- at the existing downstream consolidated-model location.
+        -- Full exports intentionally use BF16, matching native training. Source
+        -- precision metadata may change to BF16; other model configuration must
+        -- remain semantically unchanged. No generic dtype differences are ignored.
+
+    @invariant MetadataPreserved
+        -- Required source auxiliary files are copied byte-for-byte only when
+        -- missing from the new export. Existing equal files are retained;
+        -- conflicting files, missing full model weights or incompatible model
+        -- context cause export failure. Original files are never modified.
+
+    @invariant NoOverwriteOrFalsePublication
+        -- An existing export destination is rejected, including partial output
+        -- from an earlier failure. A failed merge never returns or registers a
+        -- successful model artifact. Only the coordinating training rank exports.
+}

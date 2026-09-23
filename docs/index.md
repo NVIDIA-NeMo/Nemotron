@@ -316,6 +316,8 @@ Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Llama Nemotron Embed <nemotron/embed/README.md>
+Multimodal Embedding EA Guide <nemotron/embed/multimodal-ea.md>
+Grouped Query Retrieval Protocol <nemotron/embed/grouped-query-protocol.md>
 Llama Nemotron Rerank <nemotron/rerank/README.md>
 nemotron/artifacts.md
 ```

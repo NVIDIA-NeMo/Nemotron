@@ -319,6 +319,23 @@ automatically. The evaluator uses vLLM's `/v2/embed` endpoint and passes
 nonfinite endpoint responses, the evaluator retries up to 32 times per affected
 input. Treat every retry warning as a serving-reliability defect.
 
+To request rejection of overlength inputs instead of server-side truncation,
+set the optional Cohere truncation policy to `NONE` for vLLM mining and evaluation:
+
+```bash
+nemotron embed prep -c default mining_backend=vllm mining_api_truncate=NONE
+nemotron embed eval -c default eval_base=false eval_finetuned=false \
+  eval_nim=true embedding_api_backend=vllm embedding_api_truncate=NONE
+```
+
+Both settings also accept `START` and `END`. The default, `null`, omits the
+request field and preserves the server default. Explicit policies require the
+vLLM backend and are recorded in mining or evaluation diagnostics.
+These settings do not change the server's token limit. The local tokenizer
+settings `query_max_length`, `passage_max_length`, and `max_length` do not
+configure endpoint limits. Prepare inputs to fit the served model's budget,
+including image tokens, before selecting `NONE`.
+
 Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
 the deployable checkpoint. Stages 1 and 3 retain Transformers 5.1 through 5.5
 for the original checkpoint path.
@@ -334,6 +351,60 @@ configured tolerances should gate the run.
 Use `NEMOTRON3_EMBED_DEPLOY_CHECKPOINT` to override the default checkpoint
 directory for either backend. Use `NEMOTRON3_EMBED_NIM_MODEL` to set the model
 alias advertised by NIM or passed to vLLM as `--served-model-name`.
+
+### Text/Image Source-to-Evaluation Preview
+
+See the [multimodal embedding EA guide](multimodal-ea.md) for source preparation,
+model endpoint configuration, stage commands, and current validation limits.
+
+### Optional LoRA Fine-Tuning
+
+Stage 2 defaults to full fine-tuning. To use native low-rank adaptation (LoRA),
+provide a local base checkpoint and an explicit `peft` configuration:
+
+Install the optional merge dependency in the training environment first:
+
+```bash
+python -m pip install 'peft>=0.18.1'
+```
+
+The recipe checks this dependency before adapter training. Full fine-tuning
+does not require it.
+
+```bash
+nemotron embed finetune -c default base_model=/path/to/local/model \
+  'peft={"dim":16,"alpha":32,"target_modules":["*.q_proj","*.v_proj"]}'
+```
+
+Choose selectors for the model you are adapting. For image-capable models,
+include vision and projector layers explicitly when those layers should adapt.
+Selectors that match only attention projections do not necessarily include the
+multimodal projector. The recipe uses plain native LoRA, without quantization,
+DoRA, or fused LoRA kernels.
+
+The local base must contain full safetensors weights and matching retrieval
+metadata: tokenizer files, `modules.json`, `1_Pooling/config.json`,
+`sentence_bert_config.json`, and `config_sentence_transformers.json`.
+The supported module layout is a root Transformer followed by `1_Pooling` and,
+when normalization is enabled, `2_Normalize`; additional learned modules are
+not exported by this adapter path.
+Image-capable bases also require processor metadata. Pooling, normalization,
+attention policy, and query/document prompts must match your training settings.
+Text-only bases do not require an image processor.
+
+Native adapter and optimizer checkpoints remain available for resumption.
+After training, Stage 2 merges the selected adapter on CPU with Hugging Face PEFT
+and writes full weights to `checkpoints/LATEST/model/consolidated`, preserving
+the existing evaluation and deployment handoff. Required auxiliary files are
+copied from the base without tokenizer or processor reserialization.
+Exported weights use BF16, matching native training, including when the base was
+stored in FP32. This precision conversion is explicit; other model configuration
+changes are rejected.
+Keep the original base checkpoint alongside resumable adapter checkpoints.
+
+Missing or conflicting metadata, a failed merge, or an existing export directory
+stops the handoff. Partial exports are retained and never silently overwritten.
+Resumption does not guarantee bitwise-identical results across executions.
 
 ### Dry Run
 

@@ -100,7 +100,7 @@ def test_default_base_model_is_shared_across_model_stages() -> None:
     assert prep.output_dir == Path("output/embed/nemotron-3-1b/stage1_data_prep")
     assert finetune.base_model == BASE_MODEL
     assert finetune.trust_remote_code is True
-    assert finetune.flash_adamw_master_weight_bits is None
+    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.train_data_path == Path(
         "output/embed/nemotron-3-1b/stage1_data_prep/train_mined.automodel_unrolled.json"
     )
@@ -254,7 +254,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert prep.passage_prefix == "passage: "
     assert finetune.query_prefix == "query: "
     assert finetune.passage_prefix == "passage: "
-    assert finetune.flash_adamw_master_weight_bits is None
+    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.auto_scale_checkpoint_intervals is False
     assert evaluate.base_model == BASE_MODEL
     assert evaluate.batch_size == 4
@@ -267,6 +267,50 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert deploy.model_path_env == "NIM_MODEL_PATH"
     assert deploy.use_onnx is False
     assert deploy.model_dir == finetune.checkpoint_dir / "LATEST/model/consolidated"
+
+
+def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("MISTRAL3_SDG_ARTIFACT_MODEL", raising=False)
+    monkeypatch.setenv("MISTRAL3_SDG_QA_MODEL", "public/image-qa-model")
+    monkeypatch.setenv("MISTRAL3_SDG_JUDGE_MODEL", "public/image-judge-model")
+    monkeypatch.delenv("MISTRAL3_SDG_EMBED_MODEL", raising=False)
+    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "nvidia/test-mistral3-vl-embed")
+    raw_sdg = OmegaConf.to_container(load_config(CONFIG_ROOT / "stage0_sdg/config/mistral3-vl.yaml"), resolve=True)
+    raw_sdg.pop("run", None)
+    raw_sdg["sources_file"] = "/operator/sources.jsonl"
+    sdg = SDGConfig.model_validate(raw_sdg)
+    prep = _load_profile_config("mistral3-vl", "stage1_data_prep", DataPrepConfig)
+    finetune = _load_profile_config("mistral3-vl", "stage2_finetune", FinetuneConfig)
+    evaluate = _load_profile_config("mistral3-vl", "stage3_eval", EvalConfig)
+
+    assert sdg.sources_file == Path("/operator/sources.jsonl")
+    assert sdg.sdg_workflow == "retrieval_first"
+    assert sdg.portable_export is True
+    assert sdg.qa_generation_model == "public/image-qa-model"
+    assert sdg.quality_judge_model == "public/image-judge-model"
+    assert sdg.sdg_options["summary_embedding_model"] == "nvidia/nemotron-3-embed-1b"
+    assert sdg.sdg_options["summary_embedding_endpoint"] == "https://integrate.api.nvidia.com/v1"
+    assert sdg.sdg_options["summary_embedding_credential_env"] == "NVIDIA_API_KEY"
+    assert sdg.sdg_options["summary_embedding_extra_body"] == {"input_type": "passage", "truncate": "NONE"}
+    assert "summary_embedding_revision" not in sdg.sdg_options
+    assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
+    assert prep.train_input_file is None
+    assert prep.retrieval_view == "image_and_text"
+    assert prep.base_model == finetune.base_model == evaluate.base_model
+    assert finetune.train_data_path == prep.output_dir / "train_mined.automodel_unrolled.json"
+    assert finetune.attn_implementation == "sdpa"
+    assert finetune.optimizer_backend == "flash_adamw"
+    assert (prep.query_prefix, prep.passage_prefix, prep.image_longest_edge) == (None, None, None)
+    assert (finetune.query_prefix, finetune.passage_prefix, finetune.image_longest_edge) == (None, None, None)
+    assert (evaluate.query_prefix, evaluate.passage_prefix, evaluate.image_longest_edge) == (None, None, None)
+    assert evaluate.sdg_input_path == sdg.output_dir / "generation_result.json"
+    assert evaluate.retrieval_view == "image_and_text"
+    assert evaluate.eval_data_path == sdg.output_dir / "RESOLVED_FROM_GENERATION_MANIFEST"
+    assert evaluate.image_root is None
+    assert evaluate.eval_finetuned is True
+    assert evaluate.eval_nim is False
 
 
 def test_llama_profile_preserves_export_and_nim_contract() -> None:
