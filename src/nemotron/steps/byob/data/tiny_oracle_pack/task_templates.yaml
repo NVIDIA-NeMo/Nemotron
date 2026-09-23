@@ -1,0 +1,98 @@
+- template_id: lib_status_single
+  intent: check_book_status
+  category: circulation
+  difficulty: easy
+  turn_policy: single_turn
+  call_order: strict
+  required_tools: [get_book_status]
+  tools_present: [get_book_status, checkout_book]
+  slots:
+    book_id:
+      source: "fixture:books.book_id"
+      filter: "status == 'available'"
+      visible_in_first_turn: true
+  success_assertions: [assert_book_status_reported]
+  paraphrase:
+    allowed: false
+  user_turn_templates:
+    en: "Can you check whether book {book_id} is available?"
+  assistant_milestones:
+    - { type: tool_call, tool: get_book_status }
+    - { type: final_answer }
+
+- template_id: lib_checkout_confirm
+  intent: checkout_book
+  category: circulation
+  difficulty: medium
+  turn_policy: confirmation
+  mutates: true
+  call_order: strict
+  required_tools: [checkout_book]
+  tools_present: [get_book_status, checkout_book]
+  slots:
+    book_id:
+      source: "fixture:books.book_id"
+      filter: "status == 'available'"
+      visible_in_first_turn: true
+    patron_id:
+      source: "fixture:patrons.patron_id"
+      visible_in_first_turn: true
+  success_assertions:
+    - assert_checkout_awaiting_then_committed
+    - assert_book_now_on_loan
+  paraphrase:
+    allowed: false
+  user_turn_templates:
+    en: "I want to borrow book {book_id} for patron {patron_id}."
+  assistant_milestones:
+    - { type: ask_confirm }
+    - { type: tool_call, tool: checkout_book, args: { confirm: true } }
+    - { type: final_answer }
+  user_simulator_turns:
+    - after: ask_confirm
+      content_template:
+        en: "Yes, please confirm."
+
+- template_id: lib_status_parallel
+  intent: check_two_books
+  category: circulation
+  difficulty: medium
+  turn_policy: multi_tool
+  call_order: any
+  required_tools: [get_book_status]
+  tools_present: [get_book_status, checkout_book]
+  slots:
+    book_a:
+      source: "fixture:books.book_id"
+      filter: "status == 'available'"
+      visible_in_first_turn: true
+    book_b:
+      source: "fixture:books.book_id"
+      filter: "status == 'on_loan'"
+      visible_in_first_turn: true
+  success_assertions: [assert_book_status_reported]
+  paraphrase:
+    allowed: false
+  user_turn_templates:
+    en: "Please check status for {book_a} and {book_b}."
+  assistant_milestones:
+    - { type: tool_call, tool: get_book_status, args: { book_id: "{book_a}" }, call_group: 0 }
+    - { type: tool_call, tool: get_book_status, args: { book_id: "{book_b}" }, call_group: 0 }
+    - { type: final_answer }
+
+- template_id: lib_irrelevant_renew
+  intent: renew_card_online
+  category: circulation
+  difficulty: easy
+  turn_policy: irrelevant
+  call_order: strict
+  required_tools: []
+  tools_present: [get_book_status, checkout_book]
+  slots: {}
+  success_assertions: [assert_no_tool_called]
+  paraphrase:
+    allowed: false
+  user_turn_templates:
+    en: "Can you renew my library card online for me?"
+  assistant_milestones:
+    - { type: decline }

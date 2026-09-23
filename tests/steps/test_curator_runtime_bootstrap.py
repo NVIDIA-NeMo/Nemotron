@@ -133,8 +133,7 @@ def test_named_curator_runtime_profiles_from_pyproject(tmp_path: Path) -> None:
     metadata = curator_runtime._find_project_metadata(tmp_path)  # noqa: SLF001
 
     profiles = {
-        name: curator_runtime.load_runtime_spec(name, metadata)
-        for name in ("byob", "byob-gpu", "translate", "curate")
+        name: curator_runtime.load_runtime_spec(name, metadata) for name in ("byob", "byob-gpu", "translate", "curate")
     }
 
     assert set(profiles) == {"byob", "byob-gpu", "translate", "curate"}
@@ -173,9 +172,7 @@ def test_build_requirement_files_from_pyproject_extra(tmp_path: Path) -> None:
     assert "cupy-cuda12x==14.0.1" in gpu_requirements
 
 
-def test_runtime_payloads_ship_uv_constraints_and_overrides(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_runtime_payloads_ship_uv_constraints_and_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_pyproject(tmp_path)
     monkeypatch.setattr(runtime_payloads.shutil, "which", lambda _: None)
     output_dir = tmp_path / "runtime"
@@ -196,9 +193,7 @@ def test_runtime_payloads_ship_uv_constraints_and_overrides(
     assert (output_dir / "byob.overrides.txt").read_text(encoding="utf-8") == "torch==2.10.0\n"
 
 
-def test_runtime_payload_build_fails_when_uv_export_fails(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_runtime_payload_build_fails_when_uv_export_fails(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_pyproject(tmp_path)
     monkeypatch.setattr(runtime_payloads.shutil, "which", lambda _: "/bin/uv")
 
@@ -308,3 +303,23 @@ def test_normalize_command_replaces_python_with_runtime_python(tmp_path: Path) -
 def test_normalize_command_requires_payload(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="missing command"):
         curator_runtime._normalize_command(["--"], tmp_path / "python")  # noqa: SLF001
+
+
+def test_profile_can_refuse_an_unpinned_curator_checkout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    checkout = tmp_path / "Curator"
+    checkout.mkdir()
+    monkeypatch.setenv("PYTHONPATH", "/existing")
+
+    external = curator_runtime._runtime_env(  # noqa: SLF001
+        tmp_path / "venv",
+        checkout,
+        use_curator_checkout=True,
+    )
+    locked = curator_runtime._runtime_env(  # noqa: SLF001
+        tmp_path / "venv",
+        checkout,
+        use_curator_checkout=False,
+    )
+
+    assert str(checkout) in external["PYTHONPATH"].split(":")
+    assert str(checkout) not in locked["PYTHONPATH"].split(":")

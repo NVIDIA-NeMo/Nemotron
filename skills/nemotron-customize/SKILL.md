@@ -1,7 +1,6 @@
 ---
 name: nemotron-customize
-description: "Plan, configure, and chain repo-native Nemotron customization steps into single-step or multi-step pipelines: curation, translation, SFT/PEFT (AutoModel or Megatron-Bridge), pretraining/CPT, RL alignment (DPO/RLVR/GRPO/RLHF), BYOB/MCQ benchmarks, checkpoint conversion, ModelOpt optimization, env profiles, and evaluation of trained checkpoints or existing/hosted endpoints. Use when a request names a Nemotron step or workflow, or asks to clean, translate, train, fine-tune, align, convert, optimize, evaluate, or compose these into a pipeline. Do NOT use for frontend/dashboard/visualization work, generic ML advice, billing/access, or non-Nemotron coding tasks."
-version: 0.1.1
+description: "Configure and chain repo-native Nemotron steps for curation, tokenizer extension, SDG/BYOB, training, conversion, optimization, and evaluation."
 license: Apache-2.0
 metadata:
   version: 0.1.1
@@ -15,11 +14,12 @@ metadata:
 
 # nemotron-customize
 
-IMPORTANT: Read this file before answering any `nemotron-customize`,
-Nemotron customization, Curator curation, translation, SFT, PEFT, RL,
-conversion, optimization, checkpoint or existing/hosted-endpoint evaluation, or
-multi-step pipeline request. This applies whether the user names one step or
-asks you to compose several steps into a pipeline.
+IMPORTANT: Read this file before answering any `nemotron-customize`, Nemotron
+customization, governed Curator flow, translation, tokenizer extension,
+synthetic-data, BYOB benchmark, SFT, PEFT, RL, conversion, optimization,
+checkpoint or existing/hosted-endpoint evaluation, or multi-step pipeline
+request. This applies whether the user names one step or asks you to compose
+several steps into a pipeline.
 
 Evaluation requests count even when no training is involved: "evaluate",
 "benchmark", "smoke test", or "score" an existing/hosted endpoint, an API/model
@@ -38,18 +38,35 @@ pipelines. For frontend, dashboard, visualization, generic ML advice,
 billing/access, or unrelated coding tasks, stop with a short scope note and do
 not inspect the step catalog or edit files in that turn.
 
+## Inputs
+
+Required:
+
+- The requested outcome and enough concrete values to run the selected steps:
+  input data, model/checkpoint or endpoint, and output location.
+
+Optional when the selected route needs them:
+
+- Language, backend, hardware/GPU count, metrics, task IDs, tokenizer, and
+  step/config preferences.
+- Auth environment-variable names for hosted services. Accept names only;
+  never request, inline, or commit secret values.
+
+Resolve omitted values by consulting, in order: selected state/config files,
+explicit invocation arguments, established agent context, then the current user
+prompt. An explicit user correction overrides an older source. If a required
+value remains unknown, ask for it or return `Blocked`; do not guess it.
+
 ## Prerequisites
 
 - A checkout of the Nemotron repo with `src/nemotron/steps/` present; run from
-  the repo root.
-- `uv` available to invoke `uv run nemotron steps ...`.
-- For remote execution: an env profile TOML (`NEMOTRON_ENV_FILE` or
+  the repo root with `uv` available.
+- For remote execution, an env profile TOML (`NEMOTRON_ENV_FILE` or
   `env*.toml`) with a section matching the selected step.
-- For hosted services (translation, hosted eval): the auth environment variable
-  expected by the step (for example `NVIDIA_API_KEY`), exported in the
-  environment — never inlined or committed.
-- User-provided concrete values (model/checkpoint, data paths, output dir,
-  hardware/GPU count) before any command is presented as runnable.
+- Hosted-service credentials must already be exported through the environment
+  variable expected by the selected step.
+- Persona MCQ also needs its configured endpoint variables and may require
+  `NGC_API_KEY` for managed persona assets and `HF_TOKEN` for gated models.
 
 ## Limitations
 
@@ -144,6 +161,23 @@ route-specific fast paths. Use `ARTIFACTS.md`, `PATTERNS.md`, and `HARDWARE.md`
 only to resolve artifact, cross-step, or hardware constraints after the catalog
 narrows the route.
 
+The catalog includes four specialized routing families that must not be
+collapsed into generic steps:
+
+- Use the six-step governed Curator flow when the request needs stable document
+  identity, measured/approved filtering, audit evidence, holdout
+  decontamination, or nested fixed-budget subsets.
+- Use `sdg/persona_mcq` for persona-grounded MCQ-shaped **training data** and
+  `byob/mcq` for held-out MCQ benchmarks. Use `byob/bfcl` for executable
+  function-calling benchmarks and their translation/evaluation lifecycle.
+- Use `tokenizer_extension/*` for tokenizer construction, fertility, embedding
+  initialization, and cross-vocabulary BPB evaluation. Continue pretraining the
+  resulting resized HF checkpoint with a pretraining step; tokenizer evaluation
+  does not replace downstream model evaluation.
+- For `eval/model_eval`, choose `launcher` when NeMo Evaluator Launcher owns the
+  deployment/executor flow and `direct` when the endpoint is already hosted and
+  the selected Nemotron env profile should own scheduling.
+
 Each step is independent and stitching steps together is your job. Compose any
 pipeline by artifact matching from the user's end goal: chain a step only when
 the next step consumes an artifact type nothing upstream already produces. Do
@@ -235,8 +269,19 @@ Surface these constraints before commands or config writes:
 
 - SFT packing `pack_size`, Megatron-Bridge `seq_length`, packed sequence size,
   tokenizer, and chat template must match.
+- The 128K/256K Super3 configs are dry-run topology references, not launch-ready
+  stock configs; they require externally prepared alignment-aware packed shards
+  and mixed-precision validation.
 - Prepared `packed_parquet` and `binidx` are tokenizer-locked; rebuild after
   tokenizer, chat-template, sequence-length, split, or blend changes.
+- Tokenizer-extension comparisons must keep corpus and vocabulary budget fixed.
+  Use `max_docs`, not `max_tokens`, for BPB comparisons across vocabularies, and
+  compare BPB rather than per-token perplexity.
+- Curator policy candidates are not approvals. Profile unfiltered input, record
+  an explicit approval, then apply the policy; audit completeness only against
+  a producer-emitted manifest and attribute loss only when a ledger exists.
+- Decontamination removes from training only and detects whole-document
+  near-duplicates; do not claim it catches embedded benchmark questions.
 - Megatron-Bridge global batch size must be divisible by data-parallel size;
   start distributed validation with micro batch size 1.
 - TP/PP/CP/EP choices must fit GPU count, memory, topology, and model divisibility.
@@ -260,6 +305,9 @@ Surface these constraints before commands or config writes:
   needed by later merge/eval.
 - For translation and hosted eval, mention auth environment variable names only,
   never values.
+- Direct evaluation runs to completion and writes per-task artifacts; launcher
+  mode returns after acceptance, so poll its invocation to a terminal state
+  before treating the evaluation as passed.
 
 ## Boundaries
 
@@ -305,9 +353,11 @@ tokenizer, wait for approval, then add new configs under
 state the env TOML prerequisite or mark `Blocked`.
 
 **Hosted-endpoint evaluation (no training).** User: "benchmark my hosted model
-endpoint." Route to `eval/model_eval` with `-c tiny_chat`. Collect endpoint URL,
-model id, task IDs, and the auth env-var name (value exported, never inlined).
-See `references/COMMANDS.md` Evaluation Examples.
+endpoint." Route to `eval/model_eval`. Use `-c tiny_chat` for a one-sample
+launcher smoke test, or `-c direct` when the endpoint is already hosted and the
+Nemotron profile must own the backend. Collect endpoint URL, model id, task IDs,
+matching tokenizer, durable output directory, and the auth env-var name (value
+exported, never inlined). See `references/COMMANDS.md` Evaluation Examples.
 
 ## Troubleshooting
 

@@ -61,6 +61,13 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} Adapting Nemotron to a New Language
+:link: sovereign-ai
+:link-type: doc
+
+How tokenizer extension, curation, continued pretraining, synthetic SFT data, fine-tuning, and evaluation connect into one workflow.
+:::
+
 :::{grid-item-card} Translation
 :link: translation/index
 :link-type: doc
@@ -76,11 +83,18 @@ backends, and optional FAITH quality scoring.
 Generate and translate custom multiple-choice benchmarks with `byob/mcq`.
 :::
 
+:::{grid-item-card} Build Function-Calling Benchmarks
+:link: build-benchmarks/function-calling/index
+:link-type: doc
+
+Generate and evaluate custom function-calling benchmarks from an executable oracle pack with `byob/bfcl`.
+:::
+
 :::{grid-item-card} Data Curation
 :link: curate/index
 :link-type: doc
 
-Filter JSONL text with `curate/nemo_curator` before translation or training data preparation.
+Ingest, profile, filter, audit, decontaminate, and subset multilingual text corpora with the `curate` steps.
 :::
 
 :::{grid-item-card} Synthetic Data Generation
@@ -95,6 +109,13 @@ Use `sdg/data_designer` to produce SFT, tool-use, and preference datasets.
 :link-type: doc
 
 Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
+:::
+
+:::{grid-item-card} Tokenizer Extension
+:link: tokenizer-extension/index
+:link-type: doc
+
+Add target-language tokens to a base tokenizer and initialize their embeddings with `tokenizer_extension/*` before continued pretraining.
 :::
 
 ::::
@@ -225,6 +246,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 Home <self>
 application-examples.md
 deployment-guides.md
+Adapting Nemotron to a New Language <sovereign-ai.md>
 ```
 
 ```{toctree}
@@ -243,6 +265,7 @@ Airgap Environment <steps/airgap.md>
 
 About <curate/index.md>
 Getting Started <curate/getting-started.md>
+Concepts <curate/explanation/index.md>
 Tasks <curate/how-to/index.md>
 Reference <curate/reference/index.md>
 ```
@@ -280,6 +303,29 @@ Getting Started <build-benchmarks/getting-started.md>
 Concepts <build-benchmarks/explanation/index.md>
 Tasks <build-benchmarks/how-to/index.md>
 Reference <build-benchmarks/reference/index.md>
+```
+
+```{toctree}
+:caption: Build Function-Calling Benchmarks
+:hidden:
+
+About <build-benchmarks/function-calling/index.md>
+Tutorials <build-benchmarks/function-calling/tutorials/index.md>
+Concepts <build-benchmarks/function-calling/explanation/index.md>
+Tasks <build-benchmarks/function-calling/how-to/index.md>
+Reference <build-benchmarks/function-calling/reference/index.md>
+```
+
+```{toctree}
+:caption: Tokenizer Extension
+:hidden:
+
+About <tokenizer-extension/index.md>
+Prerequisites <tokenizer-extension/prerequisites.md>
+Getting Started <tokenizer-extension/getting-started.md>
+Concepts <tokenizer-extension/explanation/index.md>
+Tasks <tokenizer-extension/how-to/index.md>
+Reference <tokenizer-extension/reference/index.md>
 ```
 
 ```{toctree}

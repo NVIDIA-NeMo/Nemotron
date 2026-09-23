@@ -1,0 +1,23 @@
+# MMLU-ProX for an INSTRUCT model, one language per run.
+#
+#   MMLU_PROX_LANG=hi uv run nemotron steps run eval/model_eval \
+#     -c mmlu_prox_chat --batch <profile>
+#
+# Same subset trap as the completions variant: the bare task name means all 29
+# languages. See config/mmlu_prox.yaml for the coverage list.
+defaults: direct.yaml
+
+target:
+  api_endpoint:
+    type: chat
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        task: mmlu_prox_${oc.env:MMLU_PROX_LANG,en}
+        temperature: 0.0
+        top_p: 1.0
+        max_new_tokens: 2048
+  tasks:
+    - name: mmlu_prox_chat

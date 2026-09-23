@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import typer
 
@@ -87,6 +88,12 @@ class RecipeTyper(typer.Typer):
             input_artifacts={"data": "Pretrain data artifact"},
         )
     """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # Mounted under the root app its settings govern, but a recipe app run
+        # on its own needs the same guard against credentials in a traceback.
+        kwargs.setdefault("pretty_exceptions_show_locals", False)
+        super().__init__(*args, **kwargs)
 
     def recipe_command(
         self,

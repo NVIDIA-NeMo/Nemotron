@@ -21,11 +21,24 @@ tags = ["curate", "nemo-curator", "jsonl", "ray", "huggingface"]
 
 [[consumes]]
 type = "raw_jsonl"
-description = "Raw local JSONL records, or a Hugging Face dataset snapshot materialized before Curator reads input_glob."
+description = "Raw local JSONL records, or a Hugging Face dataset snapshot materialized before Curator reads input_glob. prepared_jsonl is accepted too, and is what the flow passes when curate/ingest runs."
+
+[[consumes]]
+type = "filter_policy"
+required = false
+description = "The approved policy whose thresholds this step applies. Optional: without one the step still runs its language, length and domain gates, and the manifest records that no thresholds were applied. A policy that is not approved is refused rather than applied."
 
 [[produces]]
 type = "filtered_jsonl"
 description = "Filtered JSONL records suitable for downstream translation, pretraining prep, or SFT prep. Language/domain annotations are present only when those filters are enabled."
+
+[[produces]]
+type = "curation_manifest"
+description = "run_manifest.json: per-shard row counts and digests, the policy applied and its approval state, and completed_at written only at the write barrier. curate/audit compares the corpus against this and can claim completeness only when it is present."
+
+[[produces]]
+type = "curation_ledger"
+description = "curation_ledger.json: how many documents entered, how many left, and which gate rejected each one. What lets curate/audit attribute loss to a cause instead of only detecting it."
 
 [[parameters]]
 name = "input_glob"
@@ -41,6 +54,42 @@ description = "Record field containing the text to curate."
 default = "text"
 
 [[parameters]]
+name = "metadata_fields"
+description = "Extra record fields to carry through the pipeline. JsonlReader treats fields as a projection, so anything omitted here is discarded at the first stage. Empty reproduces the historical text-only read."
+default = []
+
+[[parameters]]
+name = "id_field"
+description = "Field holding the source corpus's own document identifier. Recorded in the run manifest. This is the only document ID that survives resharding; Curator's AddId is positional."
+default = "null"
+
+[[parameters]]
+name = "source_field"
+description = "Field naming the corpus a record came from. When set, the run manifest carries per-source input and output counts."
+default = "null"
+
+[[parameters]]
+name = "mode"
+description = "How an approved policy is applied. filter drops rows and discards the scores, adding no columns — the shape the existing word-count gate already has. annotate scores every row and the POLICY drops none -- it is not a non-destructive mode: language_codes, quality_filters and domains are built independently of mode and still drop rows under it. both drops rows and keeps each score in __<signal> for the survivors. Only applies when heuristic_filters names a policy; absent reproduces current behaviour."
+default = "filter"
+choices = ["filter", "annotate", "both"]
+
+[[parameters]]
+name = "heuristic_filters"
+description = "Approved filtering policy. heuristic_filters.approved_policy names a promoted policy file; a candidate policy from curate/profile carries approved: false and is refused unless allow_unvalidated_policy is set. A policy using pack-backed signals also requires an explicit langpack_dir because no production packs are bundled. Signal names resolve through a closed allowlist, never an import path."
+default = "null"
+
+[[parameters]]
+name = "emit_ledger"
+description = "Path for the run's record accounting, consumed by curate/audit. Without it an audit can detect that records are missing but cannot tell one removed on purpose from one lost to a swallowed exception. Curator reports no per-stage removal counts, so the ledger attributes removals to 'unattributed' and says so in its own notes rather than naming a gate it cannot observe."
+default = "null"
+
+[[parameters]]
+name = "emit_manifest"
+description = "Path for the run manifest describing what this run read, wrote, and whether it finished. Null writes none, matching current behaviour."
+default = "null"
+
+[[parameters]]
 name = "dataset"
 description = "Optional Hugging Face snapshot_download kwargs. Set to null for local input_glob-only runs."
 default = "null"
@@ -51,14 +100,24 @@ description = "Uppercase language codes to keep. Set [] to skip FastText languag
 default = ["EN"]
 
 [[parameters]]
+name = "annotate_domains"
+description = "Run MultilingualDomainClassifier without filtering: every document gets a label, none are dropped. Filtering on a first run discards most of a corpus with nothing to justify the choice; annotating produces the distribution the choice needs. Ignored when domains is non-empty, which already runs the classifier."
+default = false
+
+[[parameters]]
+name = "domain_score_field"
+description = "Optional column for Curator's complete class-probability vector in model label order. It is not a scalar confidence. Absent reproduces Curator's default of recording only the argmax label."
+default = "null"
+
+[[parameters]]
 name = "domains"
 description = "Domains to keep through MultilingualDomainClassifier. Set [] to skip domain classification."
 default = []
 
 [[parameters]]
 name = "quality_filters"
-description = "Optional quality settings. min_langid_score applies when language filtering is enabled; min_words and max_words enable WordCountFilter and must be provided together."
-default = { min_langid_score = 0.3, min_words = 50, max_words = 5000 }
+description = "Optional quality settings. min_langid_score applies when language filtering is enabled. min_words and max_words enable Curator's WordCountFilter and must be provided together; they are NOT shipped as defaults because WordCountFilter splits on whitespace, which removes 39% of a Japanese corpus and 33% of a Thai one for having no spaces. A run that declares a language pack is refused unless the pack declares word_segmentation."
+default = { min_langid_score = 0.3 }
 
 [[parameters]]
 name = "models"
@@ -71,6 +130,14 @@ description = "Optional RayClient CPU count. If omitted, the Lepton curate profi
 [[strategies]]
 when = "You need a quick infrastructure smoke test"
 then = "Use config/tiny.yaml with the lepton_curate profile. It reads a packaged tiny JSONL, disables optional filters, and uses the Curator container as-is."
+
+[[strategies]]
+when = "You need to keep document IDs, URLs, or source labels in the output"
+then = "List them in metadata_fields. Without it the reader projects text only and every other column is dropped at the first stage, which leaves downstream steps with no way to attribute a record to its source."
+
+[[strategies]]
+when = "You need evidence that a run did not silently lose records"
+then = "Set emit_manifest to a path, and id_field/source_field if the corpus carries them. The manifest records input and output counts and omits completed_at when the run did not reach its write barrier."
 
 [[strategies]]
 when = "You already have local JSONL data"
@@ -93,12 +160,48 @@ when = "You need domain gating"
 then = "Set domains and optionally models.hf_cache_dir. Keep the first run small because the classifier can download/cache model assets."
 
 [[errors]]
+name = "policy_not_approved"
+recovery = "The policy carries approved: false, or is missing a required approval field. curate/profile emits candidates, never approvals: distribution analysis says what a threshold removes, not whether removing it is right. Promote it deliberately, or set heuristic_filters.allow_unvalidated_policy to override with a warning."
+
+[[errors]]
+name = "policy_langpack_mismatch"
+recovery = "The policy was derived from a different language pack than this run loads. Thresholds do not transfer between packs; re-profile against the current pack or pin the pack version."
+
+[[errors]]
+name = "unknown_signal_in_policy"
+recovery = "The policy names a signal outside the allowlist in runtime/registry.py. The error lists the allowed names. A policy file cannot name an import path."
+
+[[errors]]
+name = "metadata_field_absent_from_some_records"
+recovery = "A field named in metadata_fields is missing from some records. What the reader does in that case is Curator's behaviour, not this step's, and it has not been verified here — treat a run whose output lost a metadata column as unexplained and check a sample before relying on it. Raised as an open question in the PR."
+
+[[errors]]
+name = "language_filter_removed_everything"
+recovery = "The run is refused rather than publishing an empty corpus. language_codes are validated against the configured model's labels and matched case-insensitively, including the part before a script suffix. Check that models.fasttext_langid is the model you expect, correct the keep-list, or lower min_langid_score."
+
+[[errors]]
+name = "unknown_language_code"
+recovery = "Use a label exposed by models.fasttext_langid (lid.176 uses two-letter labels such as hi, not HIN), or set language_codes=[] to disable language filtering."
+
+[[errors]]
 name = "empty_or_tiny_output"
 recovery = "Relax language/domain/word-count filters or inspect the input_glob records before continuing downstream."
 
 [[errors]]
 name = "input_glob_no_matches"
 recovery = "Check that input_glob exists inside the container. For packaged tiny data use /nemo_run/code/src/nemotron/steps/curate/nemo_curator/data/tiny.jsonl."
+
+[[errors]]
+name = "input_is_not_readable_here"
+recovery = "The shared resolver returns parquet because curate/ingest reads it; this step reads .jsonl, .json and .ndjson. Run curate/ingest to normalise the corpus, or narrow input_glob past the parquet. A stray parquet BESIDE readable shards is not an error and is skipped."
+
+[[errors]]
+name = "input_has_nothing_readable"
+recovery = "input_glob matched files but none this step can parse. Check the glob is not pointing at a directory of reports or archives, and that the corpus has been through curate/ingest."
+
+[[errors]]
+name = "langpack_tag_mismatch"
+recovery = "The pack directory name and the language_tag inside its pack.toml must be the same tag. Rename the directory to match the manifest, or correct pack.language_tag. A pack filed under the wrong name puts one language's word lists behind another language's profile."
 
 [[errors]]
 name = "missing_language_model"
@@ -120,3 +223,55 @@ recovery = "Split very large JSONL files into smaller shards before reading them
 skill = "src/nemotron/steps/curate/nemo_curator/README.md"
 script = "https://github.com/NVIDIA-NeMo/Curator/tree/main/nemo_curator/stages/text"
 docs = "https://docs.nvidia.com/nemo/curator/latest/"
+
+[[errors]]
+name = "missing_upstream_artifact"
+recovery = "An enabled step needs an artifact whose producer is disabled and which is not on disk. Enable the producing step, or point output_root at a previous run that has it. The message names both."
+
+[[errors]]
+name = "score_column_never_written"
+recovery = "steps.subset.quality_score_field names a column, but steps.filter.mode is 'filter', which discards scores after use. Set mode to 'annotate' or 'both', or drop quality_score_field. Refused at preflight because the alternative is a subset stratified on a column that does not exist."
+
+[[errors]]
+name = "approval_corpus_mismatch"
+recovery = "The approve block was granted against a corpus whose fingerprint differs from the data present now. Thresholds and the signature approving them do not transfer between corpora — re-profile, or set approve.verify_corpus to false if you accept that the approval describes different data."
+
+[[errors]]
+name = "approve_before_profile"
+recovery = "approve.from points at a candidate_policies.yaml that does not exist. Run once with steps.profile enabled: there is nothing to approve until the corpus has been measured."
+
+[[errors]]
+name = "profile_enabled_during_approval"
+recovery = "Disable steps.profile in the approval run. Re-profiling while applying an older approval could replace the candidate measurements with data nobody reviewed."
+
+[[errors]]
+name = "missing_langpack_dir"
+recovery = "Set corpus.langpack_dir (or the per-step override) explicitly. Use en_c4 for the packaged English reference root, or point at the reviewed external pack used by your corpus. Test fixtures are never user defaults."
+
+[[errors]]
+name = "conflicting_approved_policy"
+recovery = "approve promotes one policy while steps.filter.heuristic_filters.approved_policy points at another. Remove the per-step path and let the flow wire the policy it promoted."
+
+[[errors]]
+name = "no_steps_enabled"
+recovery = "Every steps.<name>.enabled is false. Enable at least one."
+
+[[errors]]
+name = "unknown_step"
+recovery = "A key under steps does not name one of ingest, profile, filter, audit, subset, or decontamination. Correct the spelling; unknown steps are refused because silently ignoring one would report success without running it."
+
+[[errors]]
+name = "stale_filter_output"
+recovery = "steps.filter would write into a directory that already contains corpus shards. Delete the old filtered_jsonl directory or choose a new output_root; otherwise the run would append a second corpus and downstream steps would read their union."
+
+[[errors]]
+name = "ingest_source_field_unmapped"
+recovery = "corpus.source_field names the downstream column, but enabled ingest has neither source_field_in_source nor source_value to create it. Map the raw source column or set a constant source value."
+
+[[errors]]
+name = "decontamination_needs_a_holdout"
+recovery = "steps.decontamination.holdout is required. The split being protected cannot be guessed, and decontaminating against the wrong holdout is worse than not decontaminating."
+
+[[errors]]
+name = "no_gpu_available"
+recovery = "The decontamination similarity pass calls Curator's GPU MinHash/LSH stages. Set run.env.gpus_per_node to 1 in this config, or set steps.decontamination.skip_similarity to true."

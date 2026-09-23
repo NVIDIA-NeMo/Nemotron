@@ -1,0 +1,42 @@
+{
+  "canonicalization": {
+    "duplicate_ids": "reject",
+    "json": "sorted-keys, separators=(',',':'), ensure_ascii=false"
+  },
+  "declared": {
+    "attribution": "unavailable",
+    "failed": null,
+    "filtered": null,
+    "quarantined": null,
+    "rows_absent_from_output": 0
+  },
+  "input": {
+    "file_count": 2,
+    "glob": "./data/tiny/*.jsonl",
+    "per_source": {
+      "news": 2,
+      "web": 1,
+      "wiki": 2
+    },
+    "row_count": 5
+  },
+  "output": {
+    "file_count": 2,
+    "id_field": "id",
+    "per_source": {
+      "news": 2,
+      "web": 1,
+      "wiki": 2
+    },
+    "row_count": 5,
+    "source_field": "source"
+  },
+  "producer": {
+    "completed_at": "2026-08-24T00:00:01+00:00",
+    "config_hash": "sha256:89673a201c1faf2f80488b6bbcb0c95b9d7c93fef100503a4e7b2bdc20bda38c",
+    "started_at": "2026-08-24T00:00:00+00:00",
+    "step_id": "curate/nemo_curator",
+    "tool_revision": "unknown"
+  },
+  "schema_version": 1
+}

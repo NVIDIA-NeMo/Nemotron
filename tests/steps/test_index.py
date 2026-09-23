@@ -34,9 +34,7 @@ def test_every_step_manifest_is_mentioned_in_steps_index(
 
     for manifest_path in all_step_tomls:
         step_dir = manifest_path.parent.relative_to(steps_root).as_posix()
-        assert step_dir in steps_index, (
-            f"{manifest_path}: step directory {step_dir!r} is not mentioned in STEPS.md"
-        )
+        assert step_dir in steps_index, f"{manifest_path}: step directory {step_dir!r} is not mentioned in STEPS.md"
 
 
 def test_legacy_data_designer_namespace_is_not_discoverable(steps_root: Path) -> None:
@@ -52,6 +50,24 @@ def test_discovered_steps_have_runners(steps_root: Path) -> None:
     missing_runners = [step.id for step in discover_steps(steps_root) if not (step.path / "step.py").exists()]
 
     assert not missing_runners, f"Discovered steps without step.py runners: {missing_runners}"
+
+
+def test_bfcl_artifacts_are_optional_and_bound_to_emitting_stages(
+    steps_root: Path,
+) -> None:
+    bfcl = next(step for step in discover_steps(steps_root) if step.id == "byob/bfcl")
+    outputs = {artifact.type: artifact for artifact in bfcl.produces}
+
+    assert "bfcl_bias_audit_reports" not in outputs
+    assert all(not artifact.required for artifact in outputs.values())
+    assert outputs["bfcl_benchmark_parquet"].stages == ("generate", "all")
+    assert outputs["bfcl_translation_manifest"].stages == ("translate",)
+    assert outputs["bfcl_eval_artifacts"].stages == ("eval",)
+    assert all(artifact.stages for artifact in outputs.values())
+
+    (oracle_pack,) = bfcl.consumes
+    assert not oracle_pack.required
+    assert oracle_pack.stages == ("prepare", "generate", "all")
 
 
 def test_legacy_grpo_step_is_not_discoverable(steps_root: Path) -> None:

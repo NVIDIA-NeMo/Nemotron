@@ -1,19 +1,25 @@
 ---
-id: nemotron.steps.byob.mcq
-version: 0.2
+id: nemotron.steps.byob
+version: 0.3
 owner: nemotron
-summary: Generate and translate bring-your-own MCQ benchmarks from domain documents.
+summary: Generate BYOB MCQ or function-calling benchmarks from family-specific inputs.
 entrypoint:
   kind: cli
-  command: nemotron steps run byob/mcq
+  command: nemotron steps run byob/<family>
   module: nemotron.steps.byob.scripts.run
 consumes:
   - type: benchmark_source_corpus
   - type: benchmark_parquet
     required: false
+  - type: oracle_pack
+    required: false
 produces:
   - type: mcq_benchmark_parquet
   - type: translated_mcq_benchmark_parquet
+    required: false
+  - type: bfcl_benchmark_parquet
+    required: false
+  - type: bfcl_run_manifest
     required: false
 parameters:
   required:
@@ -40,14 +46,17 @@ source:
     path: src/nemotron/steps/byob/scripts/runtime.py
   - repo: Nemotron
     path: src/nemotron/steps/byob/runtime/benchmark_families/mcq/pipeline.py
+  - repo: Nemotron
+    path: src/nemotron/steps/byob/runtime/benchmark_families/bfcl/pipeline.py
 ---
 
 # BYOB Step Contract
 
-BYOB produces benchmark parquet artifacts from user-provided domain documents. The current registered
-family is `mcq`; new families should add isolated modules under `runtime/benchmark_families/`.
-The generic dispatcher is `scripts/runtime.py`; MCQ stage orchestration is
-`runtime/benchmark_families/mcq/pipeline.py`.
+BYOB produces benchmark parquet artifacts through the registered `mcq` and `bfcl`
+families. MCQ consumes domain documents; BFCL consumes executable oracle packs.
+New families should add isolated modules under `runtime/benchmark_families/`.
+The generic dispatcher is `scripts/runtime.py`; each family owns stage
+orchestration in its own `pipeline.py`.
 
 Install BYOB runtime dependencies explicitly with `uv sync --extra byob` or
 `pip install ".[byob]"`. The base Nemotron install does not pull Data Designer,

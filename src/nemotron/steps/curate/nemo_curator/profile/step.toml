@@ -1,0 +1,132 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "curate/profile"
+name = "Corpus Filtering Impact Profile"
+category = "curate"
+description = """Measure quality-signal distributions on a target corpus and report what candidate thresholds would do to it. Curator's default heuristic thresholds are inherited from English-language work. This step reports retention impact and proposes candidate policies. It does not approve any policy; promotion is a separate, recorded act."""
+tags = ["curate", "profiling", "quality"]
+
+[[consumes]]
+type = "raw_jsonl"
+description = "The corpus to profile, BEFORE any filtering. Profiling filtered output measures the gates after they have already removed what they remove, which is the one measurement this step exists to avoid. prepared_jsonl is accepted here too, and is what the flow passes when curate/ingest runs."
+
+[[produces]]
+type = "profile_report"
+description = "Per-signal quantiles and retention surfaces, macro and micro views, gate co-occurrence, and a sample manifest. Carries a producer block (timestamps, config_hash, tool_revision) so a report cannot be mistaken for one belonging to another run, and a profile_digest taken over everything except that block, so re-profiling the same corpus under the same config does not make an approved policy look stale."
+
+[[produces]]
+type = "filter_policy"
+description = "candidate_policies.yaml with approved: false. Not executable by curate/nemo_curator without an explicit override."
+
+[[parameters]]
+name = "input_glob"
+description = "JSONL files to profile."
+
+[[parameters]]
+name = "output_dir"
+description = "Directory for profile_report.json, candidate_policies.yaml, and sample_manifest.json."
+
+[[parameters]]
+name = "language"
+description = "BCP-47 tag selecting the language pack. No default: a wrong default silently produces wrong numbers for a corpus, which is worse than refusing to start."
+
+[[parameters]]
+name = "langpack_dir"
+description = "Required explicit language-pack root. The named en config opts into the packaged English reference root; other languages use a reviewed external directory. No pack root is selected by default."
+default = "null"
+
+[[parameters]]
+name = "text_field"
+description = "Record field holding the text to score."
+default = "text"
+
+[[parameters]]
+name = "source_field"
+description = "Field identifying the source. If the records do not carry it, each shard path is treated as a source and the report says so."
+default = "source"
+
+[[parameters]]
+name = "id_field"
+description = "Field holding a stable document identifier, used to make sampling reproducible. Falls back to a content hash."
+default = "null"
+
+[[parameters]]
+name = "signals"
+description = "Signals to profile, from the closed allowlist in runtime/registry.py. Empty profiles every signal whose requirements are met. A named signal whose requirements are unmet is an error, not a skip."
+default = []
+
+[[parameters]]
+name = "max_total_docs"
+description = "Cap on sampled documents. Per-source counts are derived from it proportionally. 0 profiles the whole corpus."
+default = 200000
+
+[[parameters]]
+name = "seed"
+description = "Seed for hash-bottom-k sampling. The same seed and cap reproduce the same sample."
+default = 0
+
+[[parameters]]
+name = "band_search"
+description = "Analysis constraints bounding which retention range is reported as a candidate band. These are choices, not properties discovered in the data."
+default = { min_keep_rate = 0.8, max_keep_rate = 0.995 }
+
+[[parameters]]
+name = "models"
+description = "Optional models. models.fasttext_langid is a path to a FastText language-identification model and enables the language-composition table, which no signal can supply because languages sharing a script are indistinguishable to a script ratio; a configured path that is not a file is refused rather than silently skipped. models.tokenizer is a { name, revision } mapping and enables the token_count signal; the revision is required because counts from two revisions are not comparable."
+
+[[strategies]]
+when = "You are curating a language Curator publishes no thresholds for"
+then = "Run with upstream filters disabled and read the retention curves. The report names what each shipped default would keep on your corpus; promote a candidate only after validating it."
+
+[[strategies]]
+when = "curate/nemo_curator produced far less output than expected"
+then = "Profile the unfiltered input. The retention curves and the co-occurrence table identify which gate is responsible."
+
+[[strategies]]
+when = "You want to compare two filtering policies fairly"
+then = "Profile first, then hold the token budget fixed with curate/subset. Otherwise a stricter policy is confounded with a smaller dataset."
+
+[[errors]]
+name = "language_pack_not_found"
+recovery = "Set langpack_dir explicitly and confirm it contains the requested BCP-47 tag. Use the named en config for the packaged English reference pack, or see data/langpacks/SPEC.md to author another."
+
+[[errors]]
+name = "language_pack_invalid"
+recovery = "The pack exists but breaks its contract — usually a capability declared without the word list or character set behind it, which would fill the report with zeroes rather than fail. The message names what is missing."
+
+[[errors]]
+name = "unknown_signal"
+recovery = "The config named a signal that is not in the allowlist. Signals are a closed set in runtime/registry.py; config cannot name an import path."
+
+[[errors]]
+name = "signal_requirements_unmet"
+recovery = "A named signal needs something this run does not have, such as a tokenizer for token_count. Supply it or remove the signal from the list."
+
+[[errors]]
+name = "direction_mismatch"
+recovery = "A registered signal's declared direction disagrees with the filter's own keep_document. The retention figures would be wrong, so the run stops. Report it rather than overriding."
+
+[[errors]]
+name = "empty_corpus"
+recovery = "input_glob matched files but no parsable records. Check the text_field name and that the files are JSONL."
+
+[[errors]]
+name = "config_error"
+recovery = "The config asks for a figure that cannot be reported honestly — usually models.tokenizer without a revision. The message names the field and what to set."
+
+[reference]
+skill = "src/nemotron/steps/curate/nemo_curator/profile/README.md"
+docs = "https://docs.nvidia.com/nemo/curator/latest/"

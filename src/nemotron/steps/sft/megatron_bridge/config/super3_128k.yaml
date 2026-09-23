@@ -1,0 +1,124 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Experimental reference for full-parameter Nemotron 3 Super SFT with 128K
+# packed sequences. It is kept in config/ for discovery and dry-run planning.
+# Do not launch it with the stock GA_v2 generic step: that runner does not
+# forward the context-parallel packing fields or preserve the DDP
+# gradient-reduction choice below. See the step README.
+#
+# Required input:
+#   SFT_PACKED_128K_DIR/splits/{train,valid}
+#
+# The packed data must use the same tokenizer and must pad each stored
+# subsequence so that (subsequence_length - 1) is divisible by 128.
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.02.nemotron_3_super
+    nodes: 8
+    gpus_per_node: 8
+    ntasks_per_node: 8
+    nproc_per_node: 8
+    env_vars:
+      CUDA_DEVICE_MAX_CONNECTIONS: "1"
+      PYTORCH_ALLOC_CONF: "expandable_segments:True"
+      SFT_PACKED_128K_DIR: ${oc.env:SFT_PACKED_128K_DIR}
+      SFT_OUTPUT_DIR: ${oc.env:SFT_OUTPUT_DIR}
+
+# Start from this public Hugging Face checkpoint when no Megatron checkpoint
+# is supplied through SFT_PRETRAINED_CHECKPOINT.
+hf_model_path: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16
+trust_remote_code: true
+load_hf_weights: true
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_super.nemotron_3_super_finetune_config
+  peft: null
+  packed_sequence: true
+  seq_length: 131072
+  finetune_lr: 5.0e-6
+  min_lr: 0.0
+  lr_warmup_iters: 50
+
+dataset:
+  seq_length: 131072
+  dataset_kwargs:
+    pad_to_max_length: true
+  packed_sequence_specs:
+    packed_sequence_size: 131072
+    # This must match the alignment used to materialize the packed shards.
+    pad_seq_to_mult: 128
+    packed_train_data_path: ${oc.env:SFT_PACKED_128K_DIR}/splits/train
+    packed_val_data_path: ${oc.env:SFT_PACKED_128K_DIR}/splits/valid
+
+train:
+  train_iters: 100
+  # This topology assumes 64 ranks, so the dense data-parallel size is 1.
+  global_batch_size: 1
+  micro_batch_size: 1
+  eval_interval: 10
+  eval_iters: 1
+  empty_unused_memory_level: 2
+
+model:
+  seq_length: 131072
+  tensor_model_parallel_size: 8
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 8
+  expert_model_parallel_size: 64
+  expert_tensor_parallel_size: 1
+  sequence_parallel: true
+  calculate_per_token_loss: true
+  recompute_granularity: selective
+  recompute_modules: [moe]
+  moe_router_load_balancing_type: none
+  # MTP is disabled for packed SFT with context parallelism.
+  mtp_num_layers: 0
+
+tokenizer:
+  tokenizer_type: HuggingFaceTokenizer
+  tokenizer_model: ${oc.env:SFT_TOKENIZER_MODEL,nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16}
+
+ddp:
+  check_for_nan_in_grad: false
+  # A compatible runner must preserve this value through precision setup.
+  grad_reduce_in_fp32: false
+  overlap_grad_reduce: false
+  overlap_param_gather: false
+  average_in_collective: false
+  use_distributed_optimizer: true
+
+logger:
+  log_interval: 1
+  wandb_project: ${oc.select:run.wandb.project,${oc.env:WANDB_PROJECT,null}}
+  wandb_entity: ${oc.select:run.wandb.entity,${oc.env:WANDB_ENTITY,null}}
+  wandb_exp_name: ${oc.env:WANDB_NAME,super3-sft-128k}
+  wandb_save_dir: ${oc.env:SFT_OUTPUT_DIR}/128k/wandb
+
+checkpoint:
+  save: ${oc.env:SFT_OUTPUT_DIR}/128k
+  load: ${oc.env:SFT_RESUME_CHECKPOINT,null}
+  pretrained_checkpoint: ${oc.env:SFT_PRETRAINED_CHECKPOINT,null}
+  save_interval: 10
+  finetune: true
+
+# The stock runner's named precision setup overrides the DDP value above.
+mixed_precision: bf16_mixed
+
+rng:
+  seed: 1234
+
+dist:
+  distributed_timeout_minutes: 120

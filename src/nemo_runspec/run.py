@@ -93,8 +93,7 @@ def patch_nemo_run_ray_template_for_cpu() -> None:
             # Slurm controller may be temporarily unavailable (e.g., backup controller
             # in standby mode). Proceed with safe defaults rather than failing.
             slurm_mod.logger.warning(
-                f"Ray cluster '{name}': failed to query Slurm status; "
-                f"proceeding with safe defaults: {e}"
+                f"Ray cluster '{name}': failed to query Slurm status; proceeding with safe defaults: {e}"
             )
             status = {"job_id": None, "state": "UNKNOWN"}
 
@@ -173,9 +172,7 @@ def patch_nemo_run_rsync_accept_new_host_keys() -> None:
         if "BatchMode" not in ssh_opts:
             ssh_opts = (ssh_opts + " " if ssh_opts else "") + "-o BatchMode=yes"
         if "PreferredAuthentications" not in ssh_opts:
-            ssh_opts = (ssh_opts + " " if ssh_opts else "") + (
-                "-o PreferredAuthentications=publickey"
-            )
+            ssh_opts = (ssh_opts + " " if ssh_opts else "") + ("-o PreferredAuthentications=publickey")
         if "ConnectTimeout" not in ssh_opts:
             ssh_opts = (ssh_opts + " " if ssh_opts else "") + "-o ConnectTimeout=30"
         kwargs["ssh_opts"] = ssh_opts
@@ -270,11 +267,14 @@ def _make_configs_excluding_copy_fn(original_signature: str):
         )
 
     if original_signature == "list":
+
         def patched(self, local_dir_path, dest_path):
             return ["sh", "-c", _build_cmd(local_dir_path, dest_path)]
     else:
+
         def patched(self, local_dir_path, dest_path):
             return _build_cmd(local_dir_path, dest_path)
+
     return patched
 
 
@@ -335,12 +335,8 @@ def patch_dgxcloud_strip_source_chunks_from_exports() -> None:
         # fields are dataclass attrs, so we can swap and restore.
         saved_exec_env = self.executor.env_vars
         saved_extra_env = self.extra_env
-        self.executor.env_vars = {
-            k: v for k, v in saved_exec_env.items() if not k.startswith("_NEMOTRON_SRC_")
-        }
-        self.extra_env = {
-            k: v for k, v in saved_extra_env.items() if not k.startswith("_NEMOTRON_SRC_")
-        }
+        self.executor.env_vars = {k: v for k, v in saved_exec_env.items() if not k.startswith("_NEMOTRON_SRC_")}
+        self.extra_env = {k: v for k, v in saved_extra_env.items() if not k.startswith("_NEMOTRON_SRC_")}
         try:
             return orig_materialize(self)
         finally:
@@ -349,6 +345,58 @@ def patch_dgxcloud_strip_source_chunks_from_exports() -> None:
 
     dgx_mod.DGXCloudRequest.materialize = materialize
     dgx_mod.DGXCloudRequest._nemotron_exports_patched = True
+
+
+def patch_lepton_enable_log_collection() -> None:
+    """Turn on Lepton log collection for submitted jobs.
+
+    ``LeptonExecutor.create_lepton_job`` hardcodes ``log=None`` on the job
+    spec, so Lepton discards a job's logs the moment it terminates. A job that
+    dies during startup -- a missing pip dependency, a bad path, an import
+    error -- therefore leaves ``lep job log`` with nothing but "Connection
+    stopped." and an exit code.
+
+    Recovering a traceback then means reading the failed spec back from the API
+    and re-creating it byte-for-byte with ``-lg true``, which for a job carrying
+    base64 source chunks is hundreds of KiB of argv. This turns that into a
+    normal log read.
+
+    Implemented by swapping the module's ``LeptonJobUserSpec`` for the duration
+    of the call: the spec is built and submitted inside ``create_lepton_job``,
+    so there is no returned object to mutate.
+    """
+    try:
+        from nemo_run.core.execution import lepton as lep_mod
+    except Exception:
+        return
+
+    if getattr(lep_mod.LeptonExecutor, "_nemotron_log_collection_patched", False):
+        return
+
+    try:
+        from leptonai.api.v1.types.deployment import LeptonLog
+    except Exception:
+        return
+
+    real_spec_cls = lep_mod.LeptonJobUserSpec
+    original = lep_mod.LeptonExecutor.create_lepton_job
+
+    def _spec_with_logs(*args, **kwargs):
+        # Only fill in what the executor left empty, so an explicit setting
+        # from a future nemo-run release keeps winning.
+        if not kwargs.get("log"):
+            kwargs["log"] = LeptonLog(enable_collection=True, save_termination_logs=True)
+        return real_spec_cls(*args, **kwargs)
+
+    def create_lepton_job(self, name: str):
+        lep_mod.LeptonJobUserSpec = _spec_with_logs
+        try:
+            return original(self, name)
+        finally:
+            lep_mod.LeptonJobUserSpec = real_spec_cls
+
+    lep_mod.LeptonExecutor.create_lepton_job = create_lepton_job
+    lep_mod.LeptonExecutor._nemotron_log_collection_patched = True
 
 
 def patch_cloud_data_mover_skip_configs() -> None:
@@ -374,15 +422,9 @@ def patch_cloud_data_mover_skip_configs() -> None:
         dgx_mod = None  # type: ignore[assignment]
 
     if lep_mod and not getattr(lep_mod.LeptonExecutor, "_nemotron_data_mover_patched", False):
-        lep_mod.LeptonExecutor.copy_directory_data_command = (
-            _make_configs_excluding_copy_fn("list")
-        )
+        lep_mod.LeptonExecutor.copy_directory_data_command = _make_configs_excluding_copy_fn("list")
         lep_mod.LeptonExecutor._nemotron_data_mover_patched = True
 
     if dgx_mod and not getattr(dgx_mod.DGXCloudExecutor, "_nemotron_data_mover_patched", False):
-        dgx_mod.DGXCloudExecutor.copy_directory_data_command = (
-            _make_configs_excluding_copy_fn("str")
-        )
+        dgx_mod.DGXCloudExecutor.copy_directory_data_command = _make_configs_excluding_copy_fn("str")
         dgx_mod.DGXCloudExecutor._nemotron_data_mover_patched = True
-
-

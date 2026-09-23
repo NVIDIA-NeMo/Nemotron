@@ -1,4 +1,7 @@
 patterns:
+  - id: create-bfcl-from-oracle-pack
+    title: Create a function-calling benchmark from an oracle pack
+    confidence: high
   - id: create-byob-mcq-from-domain-corpus
     title: Create BYOB MCQ benchmark from domain documents
     confidence: high

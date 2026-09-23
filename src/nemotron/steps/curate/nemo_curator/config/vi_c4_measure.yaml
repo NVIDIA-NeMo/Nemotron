@@ -1,0 +1,153 @@
+# Worked example, step 1 of 2: MEASURE the corpus.
+#
+#   uv run python -m nemotron.steps.curate.nemo_curator.scripts.run_flow \
+#     --config src/nemotron/steps/curate/nemo_curator/config/vi_c4_measure.yaml
+#
+# The flow is a script, not a registered step, so it takes a config PATH and
+# accepts no key=value overrides. Copy this file and edit the paths inside it.
+# Add --plan to print the derived per-step configs without running anything.
+#
+# Curating with a policy takes two runs, and this is the first. Run 1 reads the
+# unfiltered corpus and writes what every threshold would cost. Run 2 applies the
+# thresholds you chose. They are separate runs because the numbers you need do
+# not exist until the corpus has been read: `candidate_policies.yaml` is an
+# output of run 1, not something shipped with the code.
+#
+# Copy BOTH files. Change corpus.input, output_root and langpack_dir in each, and
+# keep those three identical between them — an approval that names a corpus
+# nobody profiled is the one mistake the fingerprint check exists to refuse.
+#
+# Every figure quoted below was measured on 20,000 real C4-vi documents.
+
+corpus:
+  # The UNFILTERED corpus. profile reads this deliberately: profiling the
+  # filtered output measures the gates after they have already run.
+  input: ./raw/vi/*.parquet
+  text_field: text
+  id_field: id
+
+  # C4 ships no id, so ingest mints one from content. A positional id does not
+  # survive resharding — it renames every document when the corpus is re-split.
+  id_fields: [url, text]
+  id_prefix: "c4vi-"
+
+  # No source column in the raw data, so name the constant. Without it the
+  # per-source figures describe shards rather than sources.
+  source_field: source
+  source_value: c4_vi
+  metadata_fields: [id, source, url]
+
+  # BCP-47. Selects the pack for MEASUREMENT, and is separate from
+  # steps.filter.language_codes, which decides what to KEEP.
+  language: vi
+  # Only an opt-in English reference pack is bundled. Supply your reviewed
+  # Vietnamese pack root; six signals below cannot run without it.
+  # The shipped vi example pack. Point this at your own reviewed pack root
+  # for a production run; the bundled pack is example data, not a default.
+  langpack_dir: ./src/nemotron/steps/curate/nemo_curator/data/langpacks
+
+output_root: ./output/vi
+
+steps:
+  # Raw parquet in, curatable JSONL out. Off by default — a corpus already in
+  # that shape should not be rewritten just to be read.
+  ingest:
+    enabled: true
+    format: parquet
+    on_duplicate: refuse          # a content-derived id cannot tell two
+                                  # identical documents apart
+    keep_fields: [url]
+
+  profile:
+    enabled: true
+    signals: []                   # [] = every signal the pack supports
+    max_total_docs: 200000
+    seed: 0
+    # Bounds on which retention range is reported as a candidate band. A choice,
+    # not something measured — narrow it and profile proposes tighter thresholds.
+    band_search:
+      min_keep_rate: 0.80
+      max_keep_rate: 0.995
+    models:
+      # 126 MB, downloaded separately. Set an absolute path to measure the
+      # language breakdown; left null the table is null rather than guessed.
+      #   https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+      #   sha256:7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e
+      fasttext_langid: null
+      # Optional, and enables the token_count signal. The revision is required
+      # because counts from two revisions are not comparable.
+      tokenizer:
+        name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+        revision: 97ab8012882a655dc38df4fee47422aca9caca07
+
+  # The only step that drops rows. On run 1 it applies the language and length
+  # gates below but no policy, because there is no approved policy yet.
+  filter:
+    enabled: true
+    mode: both                    # drop rows AND keep __<signal> columns
+    # Language identification is TWO decisions in two keys:
+    #   language_codes                     WHICH languages to keep
+    #   quality_filters.min_langid_score   how SURE FastText has to be
+    # [] disables both. Non-empty needs models.fasttext_langid as well.
+    language_codes: [VI]
+    quality_filters:
+      min_langid_score: 0.3
+      min_words: 50               # both bounds or neither
+      max_words: 100000
+    domains: []
+    annotate_domains: false
+    domain_score_field: null
+    heuristic_filters: null
+    dataset: null
+    models:
+      fasttext_langid: null
+
+  audit:
+    enabled: true
+    mode: all
+    comparison_fields: [id]       # required by containment; no implicit default
+
+  decontamination:
+    enabled: false
+    holdout: null
+    threshold: 0.8
+    shingle_kind: char
+    skip_similarity: true         # GPU similarity needs cuDF; this runs the
+                                  # exact pass on CPU
+
+  subset:
+    enabled: false
+    token_budgets: [100000000, 500000000]
+    tokenizer:
+      name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+      revision: 97ab8012882a655dc38df4fee47422aca9caca07
+    token_cache: ./cache/vi/token_counts.json
+    # Stratifies tiers on a score column as well as length, so a small tier does
+    # not come out all high-scoring. It must name a `__<signal>` column, and the
+    # only thing that writes those columns is an approved policy.
+    #
+    # So it stays null here and the flow enforces that: setting it with no
+    # approve block is refused with "no policy is configured, so steps.filter
+    # writes no score columns at all". See vi_c4_apply.yaml for the enabled form.
+    quality_score_field: null
+    length_bands: [128, 512, 2048, 8192]
+    seed: 0
+
+# ── What to read when this run finishes ──────────────────────────────────────
+# output/vi/profile/profile_summary.md, and specifically its `Approve block`
+# section. That block gives each threshold with its retention on the same line,
+# so the two cannot be mis-paired. Reading thresholds out of
+# candidate_policies.yaml instead is the known way to go wrong: a band's
+# threshold_low and threshold_high are two ALTERNATIVE single bounds, not a
+# range, and picking the wrong end is accepted without a warning.
+#
+# Read `Policy simulation` in the same file before deciding. The per-signal
+# tables are each gate applied alone, and gates overlap: on this corpus the
+# per-gate figures summed to 2,718 while the union was 1,808.
+#
+# The approve block covers one-sided signals only. word_count, mean_word_length
+# and token_count gate from both sides and are omitted — write those by hand
+# with both bounds, or leave the length gate to quality_filters above.
+#
+# Then copy vi_c4_apply.yaml and paste your chosen thresholds into it.
+approve: null

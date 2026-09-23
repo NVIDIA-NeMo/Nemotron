@@ -32,7 +32,7 @@ tokenizer-alignment
 :::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Pipeline Overview
 :link: pipeline-overview
 :link-type: doc
-Artifact flow from a checkpoint or hosted endpoint, through `eval/model_eval`, into `eval_results` on disk.
+Launcher mode and direct mode: who serves the model, who schedules the job, and what each writes into `eval_results`.
 +++
 {bdg-secondary}`architecture`
 :::
@@ -47,7 +47,7 @@ Artifact flow from a checkpoint or hosted endpoint, through `eval/model_eval`, i
 :::{grid-item-card} {octicon}`plug;1.5em;sd-mr-1` Endpoint Types And Benchmark Families
 :link: endpoint-types-and-benchmarks
 :link-type: doc
-Chat versus completions endpoints, and which benchmark families match each one.
+Chat versus completions endpoints, which shipped suites and benchmark families match each one, and why reasoning models need a parser.
 +++
 {bdg-secondary}`endpoint`
 :::
@@ -55,7 +55,7 @@ Chat versus completions endpoints, and which benchmark families match each one.
 :::{grid-item-card} {octicon}`package;1.5em;sd-mr-1` Tokenizer Alignment
 :link: tokenizer-alignment
 :link-type: doc
-Why log-probability benchmarks need a tokenizer that matches the served model.
+When to set an explicit tokenizer, including the generated tokenizer for tokenizer-extended checkpoints.
 +++
 {bdg-secondary}`tokenizer`
 :::

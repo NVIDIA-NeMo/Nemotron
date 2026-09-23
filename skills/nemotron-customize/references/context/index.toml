@@ -20,6 +20,13 @@ file = "byob-benchmark-curator-translation.txt"
 description = "Generate or translate BYOB MCQ benchmarks — domain corpus inputs, MCQ schema, Curator semantic deduplication, experimental translation, and round-trip metrics."
 
 [[packs]]
+id = "byob-bfcl-lifecycle"
+step = "byob/bfcl"
+intent = "generate-translate-evaluate"
+file = "byob-bfcl.txt"
+description = "Build, localize, and evaluate executable function-calling benchmarks from verified oracle packs while preserving publication, source, contamination, and replay evidence."
+
+[[packs]]
 id = "curate-nemo-curator-acquire"
 step = "curate/nemo_curator"
 intent = "acquire"
@@ -32,6 +39,48 @@ step = "curate/nemo_curator"
 intent = "process"
 file = "curator-processing-language-quality.txt"
 description = "Process text data with NeMo Curator — language filtering, quality assessment, and related pipelines."
+
+[[packs]]
+id = "curate-ingest-governed"
+step = "curate/ingest"
+intent = "governed-flow"
+file = "curator-governed-flow.txt"
+description = "Governed curation lifecycle — stable IDs, pre-filter profiling, explicit policy approval, producer evidence, holdout decontamination, and nested token-budget subsets."
+
+[[packs]]
+id = "curate-profile-governed"
+step = "curate/profile"
+intent = "governed-flow"
+file = "curator-governed-flow.txt"
+description = "Profile unfiltered corpus signals and produce a corpus-bound candidate policy that still requires explicit approval."
+
+[[packs]]
+id = "curate-filter-governed"
+step = "curate/nemo_curator"
+intent = "governed-flow"
+file = "curator-governed-flow.txt"
+description = "Apply an approved policy while preserving stable metadata and producing manifest/ledger evidence."
+
+[[packs]]
+id = "curate-audit-governed"
+step = "curate/audit"
+intent = "governed-flow"
+file = "curator-governed-flow.txt"
+description = "Audit curated shard readability, digests, completeness against a manifest, and loss attribution against a ledger."
+
+[[packs]]
+id = "curate-decontamination-governed"
+step = "curate/decontamination"
+intent = "governed-flow"
+file = "curator-governed-flow.txt"
+description = "Protect a holdout by removing whole-document source-identity and verified near-duplicate overlaps from training only."
+
+[[packs]]
+id = "curate-subset-governed"
+step = "curate/subset"
+intent = "governed-flow"
+file = "curator-governed-flow.txt"
+description = "Produce nested stratified token-budget tiers with stable IDs, a pinned tokenizer revision, and explicit shortfall evidence."
 
 [[packs]]
 id = "eval-model-eval-generate"
@@ -167,6 +216,13 @@ file = "data-designer-sdg.txt"
 description = "Data Designer synthetic data — column specs, seed data, output projections, preference data, tool-call SFT."
 
 [[packs]]
+id = "sdg-persona-mcq-generate"
+step = "sdg/persona_mcq"
+intent = "generate"
+file = "persona-mcq-sdg.txt"
+description = "Generate resumable multilingual persona-grounded MCQ-shaped SFT training data with teacher voting, script/reasoning gates, and downstream blend manifests."
+
+[[packs]]
 id = "sft-automodel-generate"
 step = "sft/automodel"
 intent = "generate"
@@ -200,3 +256,31 @@ step = "translate/nemo_curator"
 intent = "generate"
 file = "curator-translation-faith.txt"
 description = "Generate translation stage code with NeMo Curator — JSONL/Parquet I/O, structured fields, and FAITH evaluation."
+
+[[packs]]
+id = "tokenizer-extension-build"
+step = "tokenizer_extension/extend"
+intent = "build-evaluate-cpt"
+file = "tokenizer-extension.txt"
+description = "Extend a target-language tokenizer, compare fertility, initialize resized model rows, evaluate BPB on the same bytes, and hand the checkpoint to CPT."
+
+[[packs]]
+id = "tokenizer-extension-fertility"
+step = "tokenizer_extension/evaluate"
+intent = "build-evaluate-cpt"
+file = "tokenizer-extension.txt"
+description = "Compare tokenizer fertility on an identical held-out corpus without confusing it for model-quality evidence."
+
+[[packs]]
+id = "tokenizer-extension-init"
+step = "tokenizer_extension/init_embeddings"
+intent = "build-evaluate-cpt"
+file = "tokenizer-extension.txt"
+description = "Attach an extended tokenizer to an HF base, initialize rows with an arm-compatible method, and hand the resized checkpoint to CPT."
+
+[[packs]]
+id = "tokenizer-extension-bpb"
+step = "tokenizer_extension/eval_init"
+intent = "build-evaluate-cpt"
+file = "tokenizer-extension.txt"
+description = "Compare resized or CPT checkpoints across vocabularies using BPB over the same bytes and a document budget."

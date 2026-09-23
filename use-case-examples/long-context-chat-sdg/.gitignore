@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+data/
+
+# run outputs (per-experiment) and backups — data, not code
+experiments/
+backups/
+
+# local run override (real endpoints; never commit)
+config/pipeline.local.yaml

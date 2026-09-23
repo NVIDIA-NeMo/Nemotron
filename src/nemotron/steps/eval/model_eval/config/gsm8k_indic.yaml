@@ -1,0 +1,43 @@
+# GSM8K-Indic -- grade-school maths in an Indic language, posed over
+# /v1/chat/completions and scored by extracting the final number.
+#
+#   GSM8K_LANG=hi uv run nemotron steps run eval/model_eval -c gsm8k_indic --batch <profile>
+#
+# Language codes are the short ISO form the harness registers: en, hi, ml, bn,
+# gu, kn, mr, or, pa, ta, te. Each also has a `_roman` variant (the same
+# questions transliterated into Latin script) and a `_completions` variant for
+# base models; this config selects the chat task, which is what an instruct or
+# reasoning model should be measured on.
+#
+# Unlike MILU, `sarvamai/gsm8k-indic` is NOT gated, so no HF_TOKEN is needed.
+defaults: direct.yaml
+
+harness_image: ${oc.env:EVAL_HARNESS_IMAGE,nvcr.io/nvidia/eval-factory/sovereign:latest}
+
+target:
+  api_endpoint:
+    type: chat
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        # The task ships max_new_tokens=1024, sized for a non-reasoning model.
+        # A reasoning model spends that inside its reasoning block and is cut
+        # off before the final answer; the run still reports HTTP 200 for every
+        # request and returns a near-zero score rather than failing. Measured on
+        # milu_english_chat, same 100 samples, changing only this setting:
+        # parsed 0.20 at the task default against 0.97 at 16384.
+        max_new_tokens: ${oc.decode:${oc.env:EVAL_MAX_NEW_TOKENS,16384}}
+        # Reasoning-on decoding, matching the SFT guidebook's evaluation table.
+        temperature: ${oc.decode:${oc.env:EVAL_TEMPERATURE,1.0}}
+        top_p: ${oc.decode:${oc.env:EVAL_TOP_P,1.0}}
+        parallelism: ${oc.decode:${oc.env:EVAL_PARALLELISM,64}}
+        request_timeout: ${oc.decode:${oc.env:EVAL_REQUEST_TIMEOUT,3600}}
+        extra:
+          # Server-side generative scoring: no client-side tokenisation, so
+          # direct.yaml's completions-only tokenizer requirement does not apply.
+          tokenizer: null
+
+  tasks:
+    - name: gsm8k_indic_${oc.env:GSM8K_LANG,hi}

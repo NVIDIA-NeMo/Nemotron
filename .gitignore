@@ -30,6 +30,10 @@ env.bak/
 venv.bak/
 .venv/
 
+# This is a source package, not a virtual environment.
+!src/nemotron/steps/env/
+!src/nemotron/steps/env/**
+
 # UV lock files in recipe stages are tracked for reproducible builds
 
 # IDEs
@@ -96,6 +100,7 @@ src/nemotron/cli/commands/omni3/data/**/__pycache__/
 src/nemotron/cli/commands/lightning35/data/**/__pycache__/
 src/nemotron/cli/commands/data/**/__pycache__/
 src/nemotron/recipes/data/**/__pycache__/
+src/nemotron/steps/**/data/**/__pycache__/
 workspace/
 wandb/
 .nemotron/
@@ -109,6 +114,7 @@ CLAUDE.md
 config.yaml
 main.py
 src/nemotron/steps/_bootstrap/runtime/
+src/nemotron/steps/curate/__local__/
 
 # Documentation build
 docs/_build/
@@ -116,6 +122,14 @@ docs/_build/
 # Skill eval run outputs (generated; eval definitions like evals.json stay tracked)
 skills/*/evals/results/
 skills/*/evals/tier3-reports/
+
+# BFCL local run output. Bundled configs write to a scratch path outside the
+# checkout, but a run driven by hand lands here: published run trees and an
+# assembled oracle pack. A benchmark committed by accident is worse than an
+# unreadable git status.
+/.docker/
+/.scratch/
+/oracle_pack/
 
 # Local retrieval research and visualization artifacts
 /BENCHMARK.md
@@ -129,3 +143,9 @@ skills/*/evals/tier3-reports/
 /spec/
 /tests/skills/
 /tools/fetch_sample_corpus.py
+
+# Curator model cache, written at run time by a step reading a relative path.
+cache/
+
+# Guidebook figure generators are kept local, not shipped with the docs.
+src/nemotron/steps/*/guidebook/generate_assets.py

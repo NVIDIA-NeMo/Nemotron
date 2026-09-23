@@ -1,0 +1,27 @@
+# Zero-download English profiling example over the packaged tiny corpus.
+# The bundled English pack is reference score data, not a threshold default.
+
+input_glob: ./src/nemotron/steps/curate/nemo_curator/profile/data/tiny/*.jsonl
+output_dir: ./output/curate_profile_en
+
+language: en
+langpack_dir: ./src/nemotron/steps/curate/nemo_curator/data/langpacks
+
+text_field: text
+source_field: source
+id_field: id
+
+signals:
+  - unicode_alpha_numeric
+  - script_ratio
+  - stopword_ratio
+  - sentence_end_ratio
+
+max_total_docs: 0
+seed: 0
+
+band_search:
+  min_keep_rate: 0.80
+  max_keep_rate: 0.995
+
+models: {}

@@ -8,12 +8,24 @@ dry_run: false
 output_dir: ./results
 
 run:
-  # Use a concrete Megatron Bridge iter_* checkpoint via
-  # `deployment.checkpoint_path=...`, or keep this as a W&B artifact reference
-  # consumed by `${art:model,path}`.
-  model: model:latest
+  # No W&B by default: point `deployment.checkpoint_path` at a concrete
+  # Megatron Bridge iter_* directory. Artifact discovery would otherwise resolve
+  # a W&B reference here even when checkpoint_path overrides its use, and abort
+  # with "No API key configured" for anyone without W&B credentials.
+  # To source the checkpoint from a W&B artifact instead, set:
+  #   model: model:latest      # consumed by ${art:model,path}
   env:
+    # OUTER executor: which runspec backend runs this step. `--run/--batch`
+    # overrides it.
     executor: local
+    # INNER executor: which backend NeMo Evaluator Launcher submits to from
+    # inside this step. Deliberately a SEPARATE field -- when both read
+    # `run.env.executor`, submitting the step to Slurm silently asks the
+    # launcher to submit again from inside that allocation, and there is no
+    # way to express "outer local, launcher Slurm" at all.
+    # Supported by the launcher: local, slurm, lepton. There is no Run:ai
+    # executor -- use mode=direct for that.
+    launcher_executor: local
     container_image: nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
     host: ${oc.env:HOSTNAME,localhost}
     user: ${oc.env:USER,''}
@@ -21,12 +33,19 @@ run:
     partition: null
     remote_job_dir: ${oc.env:PWD}/.nemotron
     time: "04:00:00"
-  wandb:
-    entity: null
-    project: null
+  # Only read by the commented-out `export.wandb` block at the bottom.
+  # wandb:
+  #   entity: null
+  #   project: null
+
+# `host:VAR` makes VAR mandatory -- the launcher raises if it is unset on the
+# submitting host. Only HF_HOME is unconditional here. If your model or dataset
+# is gated, add:  HF_TOKEN: host:HF_TOKEN
+env_vars:
+  HF_HOME: lit:${run.env.remote_job_dir}/hf
 
 execution:
-  type: ${run.env.executor}
+  type: ${oc.select:run.env.launcher_executor,local}
   hostname: ${run.env.host}
   username: ${run.env.user}
   account: ${run.env.account}
@@ -36,18 +55,11 @@ execution:
   num_nodes: ${oc.select:run.env.nodes,1}
   deployment:
     n_tasks: ${execution.num_nodes}
-  auto_export:
-    destinations:
-      - wandb
-  env_vars:
-    deployment:
-      HF_HOME: ${run.env.remote_job_dir}/hf
-      HF_TOKEN: HF_TOKEN
-      NIM_CACHE_PATH: ${run.env.remote_job_dir}/nim
-      VLLM_CACHE_ROOT: ${run.env.remote_job_dir}/vllm
-    evaluation:
-      HF_HOME: ${run.env.remote_job_dir}/hf
-      HF_TOKEN: HF_TOKEN
+  # W&B export is opt-in. Uncomment to push results, and export WANDB_API_KEY
+  # (plus WANDB_PROJECT / WANDB_ENTITY if your setup needs them).
+  # auto_export:
+  #   destinations:
+  #     - wandb
   mounts:
     deployment: {}
     evaluation: {}
@@ -74,6 +86,11 @@ deployment:
     chat: /v1/chat/completions/
     completions: /v1/completions/
     health: /v1/health
+  env_vars:
+    HF_HOME: lit:${run.env.remote_job_dir}/hf
+    NIM_CACHE_PATH: lit:${run.env.remote_job_dir}/nim
+    VLLM_CACHE_ROOT: lit:${run.env.remote_job_dir}/vllm
+    # gated models/datasets also need:  HF_TOKEN: host:HF_TOKEN
 
 evaluation:
   nemo_evaluator_config:
@@ -105,7 +122,12 @@ evaluation:
             top_p: 0.0
     - name: hellaswag
 
-export:
-  wandb:
-    entity: ${run.wandb.entity}
-    project: ${run.wandb.project}
+# W&B export is fully opt-in. `needs_wandb()` treats the mere PRESENCE of an
+# `export.wandb` section as a request for credentials, which triggers ambient
+# W&B discovery and forwards WANDB_API_KEY to the job -- for a config that never
+# asked to export anything. Uncomment this block (and `run.wandb` above, and
+# `execution.auto_export`) only when you actually want results pushed.
+# export:
+#   wandb:
+#     entity: ${run.wandb.entity}
+#     project: ${run.wandb.project}

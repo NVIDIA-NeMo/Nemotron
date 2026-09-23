@@ -1,0 +1,4876 @@
+{
+  "accounts": [
+    {
+      "account_id": "ACC-001",
+      "customer_name": "Nguyen Van An",
+      "balance_vnd": 5000000,
+      "account_type": "payment",
+      "account_number": "1012345678901"
+    },
+    {
+      "account_id": "ACC-002",
+      "customer_name": "Nguyen Van An",
+      "balance_vnd": 12000000,
+      "account_type": "savings",
+      "account_number": "1012345678902"
+    },
+    {
+      "account_id": "ACC-003",
+      "customer_name": "Tran Thi Bich",
+      "balance_vnd": 2500000,
+      "account_type": "payment",
+      "account_number": "1023456789012"
+    },
+    {
+      "account_id": "ACC-004",
+      "customer_name": "Le Minh Cuong",
+      "balance_vnd": 8000000,
+      "account_type": "payment",
+      "account_number": "1034567890123"
+    },
+    {
+      "account_id": "ACC-005",
+      "customer_name": "Pham Thu Dung",
+      "balance_vnd": 15000000,
+      "account_type": "savings",
+      "account_number": "1045678901234"
+    },
+    {
+      "account_id": "ACC-006",
+      "customer_name": "Hoang Van Em",
+      "balance_vnd": 10000,
+      "account_type": "payment",
+      "account_number": "1056789012345",
+      "scenario_tags": [
+        "low_balance"
+      ]
+    },
+    {
+      "account_id": "ACC-007",
+      "customer_name": "Vo Thi Phuong",
+      "balance_vnd": 500000,
+      "account_type": "payment",
+      "account_number": "1067890123456",
+      "scenario_tags": [
+        "fee_gap_napas_500k"
+      ]
+    },
+    {
+      "account_id": "ACC-008",
+      "customer_name": "Do Quang Huy",
+      "balance_vnd": 20000000,
+      "account_type": "payment",
+      "account_number": "1078901234567"
+    },
+    {
+      "account_id": "ACC-009",
+      "customer_name": "Bui Nam",
+      "balance_vnd": 5375000,
+      "account_type": "payment",
+      "account_number": "1000000000009"
+    },
+    {
+      "account_id": "ACC-010",
+      "customer_name": "Do Phuong",
+      "balance_vnd": 5750000,
+      "account_type": "payment",
+      "account_number": "1000000000010"
+    },
+    {
+      "account_id": "ACC-011",
+      "customer_name": "Ngo Quang",
+      "balance_vnd": 6125000,
+      "account_type": "payment",
+      "account_number": "1000000000011"
+    },
+    {
+      "account_id": "ACC-012",
+      "customer_name": "Nguyen Trang",
+      "balance_vnd": 220000,
+      "account_type": "savings",
+      "account_number": "1000000000012",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    },
+    {
+      "account_id": "ACC-013",
+      "customer_name": "Tran Tuan",
+      "balance_vnd": 6875000,
+      "account_type": "payment",
+      "account_number": "1000000000013"
+    },
+    {
+      "account_id": "ACC-014",
+      "customer_name": "Le An",
+      "balance_vnd": 7250000,
+      "account_type": "payment",
+      "account_number": "1000000000014"
+    },
+    {
+      "account_id": "ACC-015",
+      "customer_name": "Pham Binh",
+      "balance_vnd": 7625000,
+      "account_type": "payment",
+      "account_number": "1000000000015"
+    },
+    {
+      "account_id": "ACC-016",
+      "customer_name": "Hoang Chi",
+      "balance_vnd": 8000000,
+      "account_type": "savings",
+      "account_number": "1000000000016"
+    },
+    {
+      "account_id": "ACC-017",
+      "customer_name": "Phan Dung",
+      "balance_vnd": 8375000,
+      "account_type": "payment",
+      "account_number": "1000000000017"
+    },
+    {
+      "account_id": "ACC-018",
+      "customer_name": "Vu Giang",
+      "balance_vnd": 280000,
+      "account_type": "payment",
+      "account_number": "1000000000018",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    },
+    {
+      "account_id": "ACC-019",
+      "customer_name": "Vo Ha",
+      "balance_vnd": 9125000,
+      "account_type": "payment",
+      "account_number": "1000000000019"
+    },
+    {
+      "account_id": "ACC-020",
+      "customer_name": "Dang Khanh",
+      "balance_vnd": 9500000,
+      "account_type": "savings",
+      "account_number": "1000000000020"
+    },
+    {
+      "account_id": "ACC-021",
+      "customer_name": "Bui Lan",
+      "balance_vnd": 9875000,
+      "account_type": "payment",
+      "account_number": "1000000000021"
+    },
+    {
+      "account_id": "ACC-022",
+      "customer_name": "Do Minh",
+      "balance_vnd": 10250000,
+      "account_type": "payment",
+      "account_number": "1000000000022"
+    },
+    {
+      "account_id": "ACC-023",
+      "customer_name": "Ngo Nam",
+      "balance_vnd": 10625000,
+      "account_type": "payment",
+      "account_number": "1000000000023"
+    },
+    {
+      "account_id": "ACC-024",
+      "customer_name": "Nguyen Phuong",
+      "balance_vnd": 340000,
+      "account_type": "savings",
+      "account_number": "1000000000024",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    },
+    {
+      "account_id": "ACC-025",
+      "customer_name": "Tran Quang",
+      "balance_vnd": 11375000,
+      "account_type": "payment",
+      "account_number": "1000000000025"
+    },
+    {
+      "account_id": "ACC-026",
+      "customer_name": "Le Trang",
+      "balance_vnd": 11750000,
+      "account_type": "payment",
+      "account_number": "1000000000026"
+    },
+    {
+      "account_id": "ACC-027",
+      "customer_name": "Pham Tuan",
+      "balance_vnd": 12125000,
+      "account_type": "payment",
+      "account_number": "1000000000027"
+    },
+    {
+      "account_id": "ACC-028",
+      "customer_name": "Hoang An",
+      "balance_vnd": 12500000,
+      "account_type": "savings",
+      "account_number": "1000000000028"
+    },
+    {
+      "account_id": "ACC-029",
+      "customer_name": "Phan Binh",
+      "balance_vnd": 12875000,
+      "account_type": "payment",
+      "account_number": "1000000000029"
+    },
+    {
+      "account_id": "ACC-030",
+      "customer_name": "Vu Chi",
+      "balance_vnd": 400000,
+      "account_type": "payment",
+      "account_number": "1000000000030",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    },
+    {
+      "account_id": "ACC-031",
+      "customer_name": "Vo Dung",
+      "balance_vnd": 13625000,
+      "account_type": "payment",
+      "account_number": "1000000000031"
+    },
+    {
+      "account_id": "ACC-032",
+      "customer_name": "Dang Giang",
+      "balance_vnd": 14000000,
+      "account_type": "savings",
+      "account_number": "1000000000032"
+    },
+    {
+      "account_id": "ACC-033",
+      "customer_name": "Bui Ha",
+      "balance_vnd": 14375000,
+      "account_type": "payment",
+      "account_number": "1000000000033"
+    },
+    {
+      "account_id": "ACC-034",
+      "customer_name": "Do Khanh",
+      "balance_vnd": 14750000,
+      "account_type": "payment",
+      "account_number": "1000000000034"
+    },
+    {
+      "account_id": "ACC-035",
+      "customer_name": "Ngo Lan",
+      "balance_vnd": 15125000,
+      "account_type": "payment",
+      "account_number": "1000000000035"
+    },
+    {
+      "account_id": "ACC-036",
+      "customer_name": "Nguyen Minh",
+      "balance_vnd": 460000,
+      "account_type": "savings",
+      "account_number": "1000000000036",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    },
+    {
+      "account_id": "ACC-037",
+      "customer_name": "Tran Nam",
+      "balance_vnd": 15875000,
+      "account_type": "payment",
+      "account_number": "1000000000037"
+    },
+    {
+      "account_id": "ACC-038",
+      "customer_name": "Le Phuong",
+      "balance_vnd": 16250000,
+      "account_type": "payment",
+      "account_number": "1000000000038"
+    },
+    {
+      "account_id": "ACC-039",
+      "customer_name": "Pham Quang",
+      "balance_vnd": 16625000,
+      "account_type": "payment",
+      "account_number": "1000000000039"
+    },
+    {
+      "account_id": "ACC-040",
+      "customer_name": "Hoang Trang",
+      "balance_vnd": 17000000,
+      "account_type": "savings",
+      "account_number": "1000000000040"
+    },
+    {
+      "account_id": "ACC-041",
+      "customer_name": "Phan Tuan",
+      "balance_vnd": 17375000,
+      "account_type": "payment",
+      "account_number": "1000000000041"
+    },
+    {
+      "account_id": "ACC-042",
+      "customer_name": "Vu An",
+      "balance_vnd": 520000,
+      "account_type": "payment",
+      "account_number": "1000000000042",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    },
+    {
+      "account_id": "ACC-043",
+      "customer_name": "Vo Binh",
+      "balance_vnd": 18125000,
+      "account_type": "payment",
+      "account_number": "1000000000043"
+    },
+    {
+      "account_id": "ACC-044",
+      "customer_name": "Dang Chi",
+      "balance_vnd": 18500000,
+      "account_type": "savings",
+      "account_number": "1000000000044"
+    },
+    {
+      "account_id": "ACC-045",
+      "customer_name": "Bui Dung",
+      "balance_vnd": 18875000,
+      "account_type": "payment",
+      "account_number": "1000000000045"
+    },
+    {
+      "account_id": "ACC-046",
+      "customer_name": "Do Giang",
+      "balance_vnd": 19250000,
+      "account_type": "payment",
+      "account_number": "1000000000046"
+    },
+    {
+      "account_id": "ACC-047",
+      "customer_name": "Ngo Ha",
+      "balance_vnd": 19625000,
+      "account_type": "payment",
+      "account_number": "1000000000047"
+    },
+    {
+      "account_id": "ACC-048",
+      "customer_name": "Nguyen Khanh",
+      "balance_vnd": 580000,
+      "account_type": "savings",
+      "account_number": "1000000000048",
+      "scenario_tags": [
+        "low_balance_scale"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "card_id": "CARD-001",
+      "account_id": "ACC-001",
+      "remaining_limit_vnd": 5000000
+    },
+    {
+      "card_id": "CARD-002",
+      "account_id": "ACC-002",
+      "remaining_limit_vnd": 7000000
+    },
+    {
+      "card_id": "CARD-003",
+      "account_id": "ACC-003",
+      "remaining_limit_vnd": 9000000
+    },
+    {
+      "card_id": "CARD-004",
+      "account_id": "ACC-004",
+      "remaining_limit_vnd": 11000000
+    },
+    {
+      "card_id": "CARD-005",
+      "account_id": "ACC-005",
+      "remaining_limit_vnd": 13000000
+    },
+    {
+      "card_id": "CARD-006",
+      "account_id": "ACC-006",
+      "remaining_limit_vnd": 15000000
+    },
+    {
+      "card_id": "CARD-007",
+      "account_id": "ACC-007",
+      "remaining_limit_vnd": 17000000
+    },
+    {
+      "card_id": "CARD-008",
+      "account_id": "ACC-008",
+      "remaining_limit_vnd": 19000000
+    },
+    {
+      "card_id": "CARD-009",
+      "account_id": "ACC-009",
+      "remaining_limit_vnd": 21000000
+    },
+    {
+      "card_id": "CARD-010",
+      "account_id": "ACC-010",
+      "remaining_limit_vnd": 23000000
+    },
+    {
+      "card_id": "CARD-011",
+      "account_id": "ACC-011",
+      "remaining_limit_vnd": 25000000
+    },
+    {
+      "card_id": "CARD-012",
+      "account_id": "ACC-012",
+      "remaining_limit_vnd": 3000000
+    },
+    {
+      "card_id": "CARD-013",
+      "account_id": "ACC-013",
+      "remaining_limit_vnd": 5000000
+    },
+    {
+      "card_id": "CARD-014",
+      "account_id": "ACC-014",
+      "remaining_limit_vnd": 7000000
+    },
+    {
+      "card_id": "CARD-015",
+      "account_id": "ACC-015",
+      "remaining_limit_vnd": 9000000
+    },
+    {
+      "card_id": "CARD-016",
+      "account_id": "ACC-016",
+      "remaining_limit_vnd": 11000000
+    },
+    {
+      "card_id": "CARD-017",
+      "account_id": "ACC-017",
+      "remaining_limit_vnd": 13000000
+    },
+    {
+      "card_id": "CARD-018",
+      "account_id": "ACC-018",
+      "remaining_limit_vnd": 15000000
+    },
+    {
+      "card_id": "CARD-019",
+      "account_id": "ACC-019",
+      "remaining_limit_vnd": 17000000
+    },
+    {
+      "card_id": "CARD-020",
+      "account_id": "ACC-020",
+      "remaining_limit_vnd": 19000000
+    },
+    {
+      "card_id": "CARD-021",
+      "account_id": "ACC-021",
+      "remaining_limit_vnd": 21000000
+    },
+    {
+      "card_id": "CARD-022",
+      "account_id": "ACC-022",
+      "remaining_limit_vnd": 23000000
+    },
+    {
+      "card_id": "CARD-023",
+      "account_id": "ACC-023",
+      "remaining_limit_vnd": 25000000
+    },
+    {
+      "card_id": "CARD-024",
+      "account_id": "ACC-024",
+      "remaining_limit_vnd": 3000000
+    },
+    {
+      "card_id": "CARD-025",
+      "account_id": "ACC-025",
+      "remaining_limit_vnd": 5000000
+    },
+    {
+      "card_id": "CARD-026",
+      "account_id": "ACC-026",
+      "remaining_limit_vnd": 7000000
+    },
+    {
+      "card_id": "CARD-027",
+      "account_id": "ACC-027",
+      "remaining_limit_vnd": 9000000
+    },
+    {
+      "card_id": "CARD-028",
+      "account_id": "ACC-028",
+      "remaining_limit_vnd": 11000000
+    },
+    {
+      "card_id": "CARD-029",
+      "account_id": "ACC-029",
+      "remaining_limit_vnd": 13000000
+    },
+    {
+      "card_id": "CARD-030",
+      "account_id": "ACC-030",
+      "remaining_limit_vnd": 15000000
+    },
+    {
+      "card_id": "CARD-031",
+      "account_id": "ACC-031",
+      "remaining_limit_vnd": 17000000
+    },
+    {
+      "card_id": "CARD-032",
+      "account_id": "ACC-032",
+      "remaining_limit_vnd": 19000000
+    },
+    {
+      "card_id": "CARD-033",
+      "account_id": "ACC-033",
+      "remaining_limit_vnd": 21000000
+    },
+    {
+      "card_id": "CARD-034",
+      "account_id": "ACC-034",
+      "remaining_limit_vnd": 23000000
+    },
+    {
+      "card_id": "CARD-035",
+      "account_id": "ACC-035",
+      "remaining_limit_vnd": 25000000
+    },
+    {
+      "card_id": "CARD-036",
+      "account_id": "ACC-036",
+      "remaining_limit_vnd": 3000000
+    },
+    {
+      "card_id": "CARD-037",
+      "account_id": "ACC-037",
+      "remaining_limit_vnd": 5000000
+    },
+    {
+      "card_id": "CARD-038",
+      "account_id": "ACC-038",
+      "remaining_limit_vnd": 7000000
+    },
+    {
+      "card_id": "CARD-039",
+      "account_id": "ACC-039",
+      "remaining_limit_vnd": 9000000
+    },
+    {
+      "card_id": "CARD-040",
+      "account_id": "ACC-040",
+      "remaining_limit_vnd": 11000000
+    },
+    {
+      "card_id": "CARD-041",
+      "account_id": "ACC-041",
+      "remaining_limit_vnd": 13000000
+    },
+    {
+      "card_id": "CARD-042",
+      "account_id": "ACC-042",
+      "remaining_limit_vnd": 15000000
+    },
+    {
+      "card_id": "CARD-043",
+      "account_id": "ACC-043",
+      "remaining_limit_vnd": 17000000
+    },
+    {
+      "card_id": "CARD-044",
+      "account_id": "ACC-044",
+      "remaining_limit_vnd": 19000000
+    },
+    {
+      "card_id": "CARD-045",
+      "account_id": "ACC-045",
+      "remaining_limit_vnd": 21000000
+    },
+    {
+      "card_id": "CARD-046",
+      "account_id": "ACC-046",
+      "remaining_limit_vnd": 23000000
+    },
+    {
+      "card_id": "CARD-047",
+      "account_id": "ACC-047",
+      "remaining_limit_vnd": 25000000
+    },
+    {
+      "card_id": "CARD-048",
+      "account_id": "ACC-048",
+      "remaining_limit_vnd": 3000000
+    }
+  ],
+  "transactions": [
+    {
+      "transaction_id": "TXN-1001",
+      "account_id": "ACC-001",
+      "direction": "debit",
+      "amount_vnd": 250000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-28T10:00:00+07:00",
+      "counterparty_name": "Cafe Trung Nguyen",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1002",
+      "account_id": "ACC-001",
+      "direction": "credit",
+      "amount_vnd": 1000000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-27T09:00:00+07:00",
+      "counterparty_name": "Luong T2",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1003",
+      "account_id": "ACC-002",
+      "direction": "debit",
+      "amount_vnd": 500000,
+      "status": "pending",
+      "channel": "internal",
+      "timestamp": "2026-03-01T08:30:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1004",
+      "account_id": "ACC-002",
+      "direction": "credit",
+      "amount_vnd": 2000000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-26T14:00:00+07:00",
+      "counterparty_name": "Chuyen den",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1005",
+      "account_id": "ACC-003",
+      "direction": "debit",
+      "amount_vnd": 189000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-02-25T16:20:00+07:00",
+      "counterparty_name": "Shop Sao Mai",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1006",
+      "account_id": "ACC-003",
+      "direction": "credit",
+      "amount_vnd": 300000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-24T11:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1007",
+      "account_id": "ACC-004",
+      "direction": "debit",
+      "amount_vnd": 750000,
+      "status": "failed",
+      "channel": "napas",
+      "timestamp": "2026-02-23T17:45:00+07:00",
+      "counterparty_name": "Nguoi nhan X",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1008",
+      "account_id": "ACC-004",
+      "direction": "credit",
+      "amount_vnd": 500000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-02-22T09:15:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1009",
+      "account_id": "ACC-005",
+      "direction": "debit",
+      "amount_vnd": 120000,
+      "status": "reversed",
+      "channel": "napas",
+      "timestamp": "2026-02-21T13:00:00+07:00",
+      "counterparty_name": "Hoan tien",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1010",
+      "account_id": "ACC-005",
+      "direction": "credit",
+      "amount_vnd": 4000000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-20T10:00:00+07:00",
+      "counterparty_name": "Tiet kiem",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1011",
+      "account_id": "ACC-006",
+      "direction": "debit",
+      "amount_vnd": 50000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-19T18:00:00+07:00",
+      "counterparty_name": "Sieu thi",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1012",
+      "account_id": "ACC-006",
+      "direction": "credit",
+      "amount_vnd": 100000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-18T08:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1013",
+      "account_id": "ACC-007",
+      "direction": "debit",
+      "amount_vnd": 220000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-17T12:30:00+07:00",
+      "counterparty_name": "Shop Da disputed",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1014",
+      "account_id": "ACC-007",
+      "direction": "credit",
+      "amount_vnd": 600000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-16T07:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1015",
+      "account_id": "ACC-008",
+      "direction": "debit",
+      "amount_vnd": 990000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-15T15:00:00+07:00",
+      "counterparty_name": "Cua hang ABC",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1016",
+      "account_id": "ACC-008",
+      "direction": "credit",
+      "amount_vnd": 1500000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-02-14T10:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1017",
+      "account_id": "ACC-017",
+      "direction": "debit",
+      "amount_vnd": 662500,
+      "status": "pending",
+      "channel": "vietqr",
+      "timestamp": "2026-02-24T12:00:00+07:00",
+      "counterparty_name": "Doi tac 18",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1018",
+      "account_id": "ACC-018",
+      "direction": "credit",
+      "amount_vnd": 700000,
+      "status": "failed",
+      "channel": "pos",
+      "timestamp": "2026-02-24T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1019",
+      "account_id": "ACC-019",
+      "direction": "debit",
+      "amount_vnd": 737500,
+      "status": "reversed",
+      "channel": "atm",
+      "timestamp": "2026-02-24T00:00:00+07:00",
+      "counterparty_name": "Doi tac 20",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1020",
+      "account_id": "ACC-020",
+      "direction": "credit",
+      "amount_vnd": 775000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-23T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1021",
+      "account_id": "ACC-021",
+      "direction": "debit",
+      "amount_vnd": 812500,
+      "status": "pending",
+      "channel": "internal",
+      "timestamp": "2026-02-23T12:00:00+07:00",
+      "counterparty_name": "Doi tac 22",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1022",
+      "account_id": "ACC-022",
+      "direction": "credit",
+      "amount_vnd": 850000,
+      "status": "failed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-23T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1023",
+      "account_id": "ACC-023",
+      "direction": "debit",
+      "amount_vnd": 887500,
+      "status": "reversed",
+      "channel": "pos",
+      "timestamp": "2026-02-23T00:00:00+07:00",
+      "counterparty_name": "Doi tac 24",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1024",
+      "account_id": "ACC-024",
+      "direction": "credit",
+      "amount_vnd": 925000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-02-22T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1025",
+      "account_id": "ACC-025",
+      "direction": "debit",
+      "amount_vnd": 962500,
+      "status": "pending",
+      "channel": "napas",
+      "timestamp": "2026-02-22T12:00:00+07:00",
+      "counterparty_name": "Doi tac 26",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1026",
+      "account_id": "ACC-026",
+      "direction": "credit",
+      "amount_vnd": 1000000,
+      "status": "failed",
+      "channel": "internal",
+      "timestamp": "2026-02-22T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1027",
+      "account_id": "ACC-027",
+      "direction": "debit",
+      "amount_vnd": 1037500,
+      "status": "reversed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-22T00:00:00+07:00",
+      "counterparty_name": "Doi tac 28",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1028",
+      "account_id": "ACC-028",
+      "direction": "credit",
+      "amount_vnd": 1075000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-21T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1029",
+      "account_id": "ACC-029",
+      "direction": "debit",
+      "amount_vnd": 1112500,
+      "status": "pending",
+      "channel": "atm",
+      "timestamp": "2026-02-21T12:00:00+07:00",
+      "counterparty_name": "Doi tac 30",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1030",
+      "account_id": "ACC-030",
+      "direction": "credit",
+      "amount_vnd": 1150000,
+      "status": "failed",
+      "channel": "napas",
+      "timestamp": "2026-02-21T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1031",
+      "account_id": "ACC-031",
+      "direction": "debit",
+      "amount_vnd": 1187500,
+      "status": "reversed",
+      "channel": "internal",
+      "timestamp": "2026-02-21T00:00:00+07:00",
+      "counterparty_name": "Doi tac 32",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1032",
+      "account_id": "ACC-032",
+      "direction": "credit",
+      "amount_vnd": 1225000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-02-20T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1033",
+      "account_id": "ACC-033",
+      "direction": "debit",
+      "amount_vnd": 1262500,
+      "status": "pending",
+      "channel": "pos",
+      "timestamp": "2026-02-20T12:00:00+07:00",
+      "counterparty_name": "Doi tac 34",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1034",
+      "account_id": "ACC-034",
+      "direction": "credit",
+      "amount_vnd": 1300000,
+      "status": "failed",
+      "channel": "atm",
+      "timestamp": "2026-02-20T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1035",
+      "account_id": "ACC-035",
+      "direction": "debit",
+      "amount_vnd": 1337500,
+      "status": "reversed",
+      "channel": "napas",
+      "timestamp": "2026-02-20T00:00:00+07:00",
+      "counterparty_name": "Doi tac 36",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1036",
+      "account_id": "ACC-036",
+      "direction": "credit",
+      "amount_vnd": 1375000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-19T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1037",
+      "account_id": "ACC-037",
+      "direction": "debit",
+      "amount_vnd": 1412500,
+      "status": "pending",
+      "channel": "vietqr",
+      "timestamp": "2026-02-19T12:00:00+07:00",
+      "counterparty_name": "Doi tac 01",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1038",
+      "account_id": "ACC-038",
+      "direction": "credit",
+      "amount_vnd": 1450000,
+      "status": "failed",
+      "channel": "pos",
+      "timestamp": "2026-02-19T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1039",
+      "account_id": "ACC-039",
+      "direction": "debit",
+      "amount_vnd": 1487500,
+      "status": "reversed",
+      "channel": "atm",
+      "timestamp": "2026-02-19T00:00:00+07:00",
+      "counterparty_name": "Doi tac 03",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1040",
+      "account_id": "ACC-040",
+      "direction": "credit",
+      "amount_vnd": 25000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-18T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1041",
+      "account_id": "ACC-041",
+      "direction": "debit",
+      "amount_vnd": 62500,
+      "status": "pending",
+      "channel": "internal",
+      "timestamp": "2026-02-18T12:00:00+07:00",
+      "counterparty_name": "Doi tac 05",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1042",
+      "account_id": "ACC-042",
+      "direction": "credit",
+      "amount_vnd": 100000,
+      "status": "failed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-18T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1043",
+      "account_id": "ACC-043",
+      "direction": "debit",
+      "amount_vnd": 137500,
+      "status": "reversed",
+      "channel": "pos",
+      "timestamp": "2026-02-18T00:00:00+07:00",
+      "counterparty_name": "Doi tac 07",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1044",
+      "account_id": "ACC-044",
+      "direction": "credit",
+      "amount_vnd": 175000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-02-17T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1045",
+      "account_id": "ACC-045",
+      "direction": "debit",
+      "amount_vnd": 212500,
+      "status": "pending",
+      "channel": "napas",
+      "timestamp": "2026-02-17T12:00:00+07:00",
+      "counterparty_name": "Doi tac 09",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1046",
+      "account_id": "ACC-046",
+      "direction": "credit",
+      "amount_vnd": 250000,
+      "status": "failed",
+      "channel": "internal",
+      "timestamp": "2026-02-17T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1047",
+      "account_id": "ACC-047",
+      "direction": "debit",
+      "amount_vnd": 287500,
+      "status": "reversed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-17T00:00:00+07:00",
+      "counterparty_name": "Doi tac 11",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1048",
+      "account_id": "ACC-048",
+      "direction": "credit",
+      "amount_vnd": 325000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-16T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1049",
+      "account_id": "ACC-001",
+      "direction": "debit",
+      "amount_vnd": 362500,
+      "status": "pending",
+      "channel": "atm",
+      "timestamp": "2026-02-16T12:00:00+07:00",
+      "counterparty_name": "Doi tac 13",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1050",
+      "account_id": "ACC-002",
+      "direction": "credit",
+      "amount_vnd": 400000,
+      "status": "failed",
+      "channel": "napas",
+      "timestamp": "2026-02-16T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1051",
+      "account_id": "ACC-003",
+      "direction": "debit",
+      "amount_vnd": 437500,
+      "status": "reversed",
+      "channel": "internal",
+      "timestamp": "2026-02-16T00:00:00+07:00",
+      "counterparty_name": "Doi tac 15",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1052",
+      "account_id": "ACC-004",
+      "direction": "credit",
+      "amount_vnd": 475000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-02-15T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1053",
+      "account_id": "ACC-005",
+      "direction": "debit",
+      "amount_vnd": 512500,
+      "status": "pending",
+      "channel": "pos",
+      "timestamp": "2026-02-15T12:00:00+07:00",
+      "counterparty_name": "Doi tac 17",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1054",
+      "account_id": "ACC-006",
+      "direction": "credit",
+      "amount_vnd": 550000,
+      "status": "failed",
+      "channel": "atm",
+      "timestamp": "2026-02-15T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1055",
+      "account_id": "ACC-007",
+      "direction": "debit",
+      "amount_vnd": 587500,
+      "status": "reversed",
+      "channel": "napas",
+      "timestamp": "2026-02-15T00:00:00+07:00",
+      "counterparty_name": "Doi tac 19",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1056",
+      "account_id": "ACC-008",
+      "direction": "credit",
+      "amount_vnd": 625000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-14T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1057",
+      "account_id": "ACC-009",
+      "direction": "debit",
+      "amount_vnd": 662500,
+      "status": "pending",
+      "channel": "vietqr",
+      "timestamp": "2026-02-14T12:00:00+07:00",
+      "counterparty_name": "Doi tac 21",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1058",
+      "account_id": "ACC-010",
+      "direction": "credit",
+      "amount_vnd": 700000,
+      "status": "failed",
+      "channel": "pos",
+      "timestamp": "2026-02-14T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1059",
+      "account_id": "ACC-011",
+      "direction": "debit",
+      "amount_vnd": 737500,
+      "status": "reversed",
+      "channel": "atm",
+      "timestamp": "2026-02-14T00:00:00+07:00",
+      "counterparty_name": "Doi tac 23",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1060",
+      "account_id": "ACC-012",
+      "direction": "credit",
+      "amount_vnd": 775000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-13T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1061",
+      "account_id": "ACC-013",
+      "direction": "debit",
+      "amount_vnd": 812500,
+      "status": "pending",
+      "channel": "internal",
+      "timestamp": "2026-02-13T12:00:00+07:00",
+      "counterparty_name": "Doi tac 25",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1062",
+      "account_id": "ACC-014",
+      "direction": "credit",
+      "amount_vnd": 850000,
+      "status": "failed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-13T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1063",
+      "account_id": "ACC-015",
+      "direction": "debit",
+      "amount_vnd": 887500,
+      "status": "reversed",
+      "channel": "pos",
+      "timestamp": "2026-02-13T00:00:00+07:00",
+      "counterparty_name": "Doi tac 27",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1064",
+      "account_id": "ACC-016",
+      "direction": "credit",
+      "amount_vnd": 925000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-02-12T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1065",
+      "account_id": "ACC-017",
+      "direction": "debit",
+      "amount_vnd": 962500,
+      "status": "pending",
+      "channel": "napas",
+      "timestamp": "2026-02-12T12:00:00+07:00",
+      "counterparty_name": "Doi tac 29",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1066",
+      "account_id": "ACC-018",
+      "direction": "credit",
+      "amount_vnd": 1000000,
+      "status": "failed",
+      "channel": "internal",
+      "timestamp": "2026-02-12T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1067",
+      "account_id": "ACC-019",
+      "direction": "debit",
+      "amount_vnd": 1037500,
+      "status": "reversed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-12T00:00:00+07:00",
+      "counterparty_name": "Doi tac 31",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1068",
+      "account_id": "ACC-020",
+      "direction": "credit",
+      "amount_vnd": 1075000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-11T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1069",
+      "account_id": "ACC-021",
+      "direction": "debit",
+      "amount_vnd": 1112500,
+      "status": "pending",
+      "channel": "atm",
+      "timestamp": "2026-02-11T12:00:00+07:00",
+      "counterparty_name": "Doi tac 33",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1070",
+      "account_id": "ACC-022",
+      "direction": "credit",
+      "amount_vnd": 1150000,
+      "status": "failed",
+      "channel": "napas",
+      "timestamp": "2026-02-11T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1071",
+      "account_id": "ACC-023",
+      "direction": "debit",
+      "amount_vnd": 1187500,
+      "status": "reversed",
+      "channel": "internal",
+      "timestamp": "2026-02-11T00:00:00+07:00",
+      "counterparty_name": "Doi tac 35",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1072",
+      "account_id": "ACC-024",
+      "direction": "credit",
+      "amount_vnd": 1225000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-02-10T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1073",
+      "account_id": "ACC-025",
+      "direction": "debit",
+      "amount_vnd": 1262500,
+      "status": "pending",
+      "channel": "pos",
+      "timestamp": "2026-02-10T12:00:00+07:00",
+      "counterparty_name": "Doi tac 37",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1074",
+      "account_id": "ACC-026",
+      "direction": "credit",
+      "amount_vnd": 1300000,
+      "status": "failed",
+      "channel": "atm",
+      "timestamp": "2026-02-10T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1075",
+      "account_id": "ACC-027",
+      "direction": "debit",
+      "amount_vnd": 1337500,
+      "status": "reversed",
+      "channel": "napas",
+      "timestamp": "2026-02-10T00:00:00+07:00",
+      "counterparty_name": "Doi tac 02",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1076",
+      "account_id": "ACC-028",
+      "direction": "credit",
+      "amount_vnd": 1375000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-09T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1077",
+      "account_id": "ACC-029",
+      "direction": "debit",
+      "amount_vnd": 1412500,
+      "status": "pending",
+      "channel": "vietqr",
+      "timestamp": "2026-02-09T12:00:00+07:00",
+      "counterparty_name": "Doi tac 04",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1078",
+      "account_id": "ACC-030",
+      "direction": "credit",
+      "amount_vnd": 1450000,
+      "status": "failed",
+      "channel": "pos",
+      "timestamp": "2026-02-09T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1079",
+      "account_id": "ACC-031",
+      "direction": "debit",
+      "amount_vnd": 1487500,
+      "status": "reversed",
+      "channel": "atm",
+      "timestamp": "2026-02-09T00:00:00+07:00",
+      "counterparty_name": "Doi tac 06",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1080",
+      "account_id": "ACC-032",
+      "direction": "credit",
+      "amount_vnd": 25000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-08T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1081",
+      "account_id": "ACC-033",
+      "direction": "debit",
+      "amount_vnd": 62500,
+      "status": "pending",
+      "channel": "internal",
+      "timestamp": "2026-02-08T12:00:00+07:00",
+      "counterparty_name": "Doi tac 08",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1082",
+      "account_id": "ACC-034",
+      "direction": "credit",
+      "amount_vnd": 100000,
+      "status": "failed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-08T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1083",
+      "account_id": "ACC-035",
+      "direction": "debit",
+      "amount_vnd": 137500,
+      "status": "reversed",
+      "channel": "pos",
+      "timestamp": "2026-02-08T00:00:00+07:00",
+      "counterparty_name": "Doi tac 10",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1084",
+      "account_id": "ACC-036",
+      "direction": "credit",
+      "amount_vnd": 175000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-02-07T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1085",
+      "account_id": "ACC-037",
+      "direction": "debit",
+      "amount_vnd": 212500,
+      "status": "pending",
+      "channel": "napas",
+      "timestamp": "2026-02-07T12:00:00+07:00",
+      "counterparty_name": "Doi tac 12",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1086",
+      "account_id": "ACC-038",
+      "direction": "credit",
+      "amount_vnd": 250000,
+      "status": "failed",
+      "channel": "internal",
+      "timestamp": "2026-02-07T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1087",
+      "account_id": "ACC-039",
+      "direction": "debit",
+      "amount_vnd": 287500,
+      "status": "reversed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-07T00:00:00+07:00",
+      "counterparty_name": "Doi tac 14",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1088",
+      "account_id": "ACC-040",
+      "direction": "credit",
+      "amount_vnd": 325000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-06T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1089",
+      "account_id": "ACC-041",
+      "direction": "debit",
+      "amount_vnd": 362500,
+      "status": "pending",
+      "channel": "atm",
+      "timestamp": "2026-02-06T12:00:00+07:00",
+      "counterparty_name": "Doi tac 16",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1090",
+      "account_id": "ACC-042",
+      "direction": "credit",
+      "amount_vnd": 400000,
+      "status": "failed",
+      "channel": "napas",
+      "timestamp": "2026-02-06T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1091",
+      "account_id": "ACC-043",
+      "direction": "debit",
+      "amount_vnd": 437500,
+      "status": "reversed",
+      "channel": "internal",
+      "timestamp": "2026-02-06T00:00:00+07:00",
+      "counterparty_name": "Doi tac 18",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1092",
+      "account_id": "ACC-044",
+      "direction": "credit",
+      "amount_vnd": 475000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-02-05T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1093",
+      "account_id": "ACC-045",
+      "direction": "debit",
+      "amount_vnd": 512500,
+      "status": "pending",
+      "channel": "pos",
+      "timestamp": "2026-02-05T12:00:00+07:00",
+      "counterparty_name": "Doi tac 20",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1094",
+      "account_id": "ACC-046",
+      "direction": "credit",
+      "amount_vnd": 550000,
+      "status": "failed",
+      "channel": "atm",
+      "timestamp": "2026-02-05T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1095",
+      "account_id": "ACC-047",
+      "direction": "debit",
+      "amount_vnd": 587500,
+      "status": "reversed",
+      "channel": "napas",
+      "timestamp": "2026-02-05T00:00:00+07:00",
+      "counterparty_name": "Doi tac 22",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1096",
+      "account_id": "ACC-048",
+      "direction": "credit",
+      "amount_vnd": 625000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-04T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1097",
+      "account_id": "ACC-001",
+      "direction": "debit",
+      "amount_vnd": 662500,
+      "status": "pending",
+      "channel": "vietqr",
+      "timestamp": "2026-02-04T12:00:00+07:00",
+      "counterparty_name": "Doi tac 24",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1098",
+      "account_id": "ACC-002",
+      "direction": "credit",
+      "amount_vnd": 700000,
+      "status": "failed",
+      "channel": "pos",
+      "timestamp": "2026-02-04T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1099",
+      "account_id": "ACC-003",
+      "direction": "debit",
+      "amount_vnd": 737500,
+      "status": "reversed",
+      "channel": "atm",
+      "timestamp": "2026-02-04T00:00:00+07:00",
+      "counterparty_name": "Doi tac 26",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1100",
+      "account_id": "ACC-004",
+      "direction": "credit",
+      "amount_vnd": 775000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-02-03T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1101",
+      "account_id": "ACC-005",
+      "direction": "debit",
+      "amount_vnd": 812500,
+      "status": "pending",
+      "channel": "internal",
+      "timestamp": "2026-02-03T12:00:00+07:00",
+      "counterparty_name": "Doi tac 28",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1102",
+      "account_id": "ACC-006",
+      "direction": "credit",
+      "amount_vnd": 850000,
+      "status": "failed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-03T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1103",
+      "account_id": "ACC-007",
+      "direction": "debit",
+      "amount_vnd": 887500,
+      "status": "reversed",
+      "channel": "pos",
+      "timestamp": "2026-02-03T00:00:00+07:00",
+      "counterparty_name": "Doi tac 30",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1104",
+      "account_id": "ACC-008",
+      "direction": "credit",
+      "amount_vnd": 925000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-02-02T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1105",
+      "account_id": "ACC-009",
+      "direction": "debit",
+      "amount_vnd": 962500,
+      "status": "pending",
+      "channel": "napas",
+      "timestamp": "2026-02-02T12:00:00+07:00",
+      "counterparty_name": "Doi tac 32",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1106",
+      "account_id": "ACC-010",
+      "direction": "credit",
+      "amount_vnd": 1000000,
+      "status": "failed",
+      "channel": "internal",
+      "timestamp": "2026-02-02T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1107",
+      "account_id": "ACC-011",
+      "direction": "debit",
+      "amount_vnd": 1037500,
+      "status": "reversed",
+      "channel": "vietqr",
+      "timestamp": "2026-02-02T00:00:00+07:00",
+      "counterparty_name": "Doi tac 34",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1108",
+      "account_id": "ACC-012",
+      "direction": "credit",
+      "amount_vnd": 1075000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-02-01T18:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1109",
+      "account_id": "ACC-013",
+      "direction": "debit",
+      "amount_vnd": 1112500,
+      "status": "pending",
+      "channel": "atm",
+      "timestamp": "2026-02-01T12:00:00+07:00",
+      "counterparty_name": "Doi tac 36",
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1110",
+      "account_id": "ACC-014",
+      "direction": "credit",
+      "amount_vnd": 1150000,
+      "status": "failed",
+      "channel": "napas",
+      "timestamp": "2026-02-01T06:00:00+07:00",
+      "counterparty_name": null,
+      "dispute_eligible": false
+    },
+    {
+      "transaction_id": "TXN-1111",
+      "account_id": "ACC-015",
+      "direction": "debit",
+      "amount_vnd": 1187500,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-02-01T00:00:00+07:00",
+      "counterparty_name": "Doi tac 01",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1112",
+      "account_id": "ACC-016",
+      "direction": "debit",
+      "amount_vnd": 1225000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-01-31T18:00:00+07:00",
+      "counterparty_name": "Doi tac 02",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1113",
+      "account_id": "ACC-017",
+      "direction": "debit",
+      "amount_vnd": 1262500,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-01-31T12:00:00+07:00",
+      "counterparty_name": "Doi tac 03",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1114",
+      "account_id": "ACC-018",
+      "direction": "debit",
+      "amount_vnd": 1300000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-01-31T06:00:00+07:00",
+      "counterparty_name": "Doi tac 04",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1115",
+      "account_id": "ACC-019",
+      "direction": "debit",
+      "amount_vnd": 1337500,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-01-31T00:00:00+07:00",
+      "counterparty_name": "Doi tac 05",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1116",
+      "account_id": "ACC-020",
+      "direction": "debit",
+      "amount_vnd": 1375000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-01-30T18:00:00+07:00",
+      "counterparty_name": "Doi tac 06",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1117",
+      "account_id": "ACC-021",
+      "direction": "debit",
+      "amount_vnd": 1412500,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-01-30T12:00:00+07:00",
+      "counterparty_name": "Doi tac 07",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1118",
+      "account_id": "ACC-022",
+      "direction": "debit",
+      "amount_vnd": 1450000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-01-30T06:00:00+07:00",
+      "counterparty_name": "Doi tac 08",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1119",
+      "account_id": "ACC-023",
+      "direction": "debit",
+      "amount_vnd": 1487500,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-01-30T00:00:00+07:00",
+      "counterparty_name": "Doi tac 09",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1120",
+      "account_id": "ACC-024",
+      "direction": "debit",
+      "amount_vnd": 25000,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-01-29T18:00:00+07:00",
+      "counterparty_name": "Doi tac 10",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1121",
+      "account_id": "ACC-025",
+      "direction": "debit",
+      "amount_vnd": 62500,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-01-29T12:00:00+07:00",
+      "counterparty_name": "Doi tac 11",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1122",
+      "account_id": "ACC-026",
+      "direction": "debit",
+      "amount_vnd": 100000,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-01-29T06:00:00+07:00",
+      "counterparty_name": "Doi tac 12",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1123",
+      "account_id": "ACC-027",
+      "direction": "debit",
+      "amount_vnd": 137500,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-01-29T00:00:00+07:00",
+      "counterparty_name": "Doi tac 13",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1124",
+      "account_id": "ACC-028",
+      "direction": "debit",
+      "amount_vnd": 175000,
+      "status": "succeeded",
+      "channel": "atm",
+      "timestamp": "2026-01-28T18:00:00+07:00",
+      "counterparty_name": "Doi tac 14",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1125",
+      "account_id": "ACC-029",
+      "direction": "debit",
+      "amount_vnd": 212500,
+      "status": "succeeded",
+      "channel": "napas",
+      "timestamp": "2026-01-28T12:00:00+07:00",
+      "counterparty_name": "Doi tac 15",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1126",
+      "account_id": "ACC-030",
+      "direction": "debit",
+      "amount_vnd": 250000,
+      "status": "succeeded",
+      "channel": "internal",
+      "timestamp": "2026-01-28T06:00:00+07:00",
+      "counterparty_name": "Doi tac 16",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1127",
+      "account_id": "ACC-031",
+      "direction": "debit",
+      "amount_vnd": 287500,
+      "status": "succeeded",
+      "channel": "vietqr",
+      "timestamp": "2026-01-28T00:00:00+07:00",
+      "counterparty_name": "Doi tac 17",
+      "dispute_eligible": true
+    },
+    {
+      "transaction_id": "TXN-1128",
+      "account_id": "ACC-032",
+      "direction": "debit",
+      "amount_vnd": 325000,
+      "status": "succeeded",
+      "channel": "pos",
+      "timestamp": "2026-01-27T18:00:00+07:00",
+      "counterparty_name": "Doi tac 18",
+      "dispute_eligible": true
+    }
+  ],
+  "transfers": [
+    {
+      "transfer_id": "TRF-0001",
+      "transaction_id": "TXN-1001",
+      "from_account_id": "ACC-001",
+      "to_account_number": "9876543210",
+      "to_bank_code": "970436",
+      "rail": "napas",
+      "amount_vnd": 250000,
+      "fee_vnd": 5500,
+      "status": "succeeded"
+    },
+    {
+      "transfer_id": "TRF-0002",
+      "transaction_id": "TXN-1007",
+      "from_account_id": "ACC-004",
+      "to_account_number": "1122334455",
+      "to_bank_code": "970415",
+      "rail": "napas",
+      "amount_vnd": 750000,
+      "fee_vnd": 5500,
+      "status": "failed"
+    },
+    {
+      "transfer_id": "TRF-0003",
+      "transaction_id": "TXN-1013",
+      "from_account_id": "ACC-007",
+      "to_account_number": "5566778899",
+      "to_bank_code": "970418",
+      "rail": "napas",
+      "amount_vnd": 220000,
+      "fee_vnd": 5500,
+      "status": "succeeded"
+    },
+    {
+      "transfer_id": "TRF-0004",
+      "transaction_id": "TXN-1003",
+      "from_account_id": "ACC-002",
+      "to_account_number": "1012345678901",
+      "rail": "internal",
+      "amount_vnd": 500000,
+      "fee_vnd": 0,
+      "status": "awaiting_confirmation"
+    }
+  ],
+  "vietqr_payments": [
+    {
+      "payment_ref": "VQ-1001",
+      "amount_vnd": 189000,
+      "merchant_name": "Shop Sao Mai",
+      "status": "paid",
+      "transaction_id": "TXN-1005"
+    },
+    {
+      "payment_ref": "VQ-1002",
+      "amount_vnd": 45000,
+      "merchant_name": "Quan Cafe 24h",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1003",
+      "amount_vnd": 320000,
+      "merchant_name": "Nha hang Bien Dong",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1004",
+      "amount_vnd": 99000,
+      "merchant_name": "GrabFood VN",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1005",
+      "amount_vnd": 75000,
+      "merchant_name": "ShopeePay Merchant",
+      "status": "paid",
+      "transaction_id": "TXN-1011"
+    },
+    {
+      "payment_ref": "VQ-1006",
+      "amount_vnd": 210000,
+      "merchant_name": "Dien May Xanh",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1007",
+      "amount_vnd": 725000,
+      "merchant_name": "Xanh Market 18",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1008",
+      "amount_vnd": 740000,
+      "merchant_name": "An Nam 19",
+      "status": "paid",
+      "transaction_id": "TXN-1113"
+    },
+    {
+      "payment_ref": "VQ-1009",
+      "amount_vnd": 755000,
+      "merchant_name": "Bach Hoa Viet 20",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1010",
+      "amount_vnd": 770000,
+      "merchant_name": "Cafe Pho 21",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1011",
+      "amount_vnd": 785000,
+      "merchant_name": "Dien May Viet 22",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1012",
+      "amount_vnd": 800000,
+      "merchant_name": "Gia Dinh Mart 00",
+      "status": "paid",
+      "transaction_id": "TXN-1117"
+    },
+    {
+      "payment_ref": "VQ-1013",
+      "amount_vnd": 815000,
+      "merchant_name": "Hoa Sen 01",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1014",
+      "amount_vnd": 830000,
+      "merchant_name": "Kim Long 02",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1015",
+      "amount_vnd": 845000,
+      "merchant_name": "Lotus Food 03",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1016",
+      "amount_vnd": 860000,
+      "merchant_name": "Minh Chau 04",
+      "status": "paid",
+      "transaction_id": "TXN-1121"
+    },
+    {
+      "payment_ref": "VQ-1017",
+      "amount_vnd": 875000,
+      "merchant_name": "Nha Sach Viet 05",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1018",
+      "amount_vnd": 890000,
+      "merchant_name": "Phuc An 06",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1019",
+      "amount_vnd": 905000,
+      "merchant_name": "Quan Ngon 07",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1020",
+      "amount_vnd": 20000,
+      "merchant_name": "Sao Mai 08",
+      "status": "paid",
+      "transaction_id": "TXN-1125"
+    },
+    {
+      "payment_ref": "VQ-1021",
+      "amount_vnd": 35000,
+      "merchant_name": "Thanh Cong 09",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1022",
+      "amount_vnd": 50000,
+      "merchant_name": "Viet Store 10",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1023",
+      "amount_vnd": 65000,
+      "merchant_name": "Xanh Market 11",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1024",
+      "amount_vnd": 80000,
+      "merchant_name": "An Nam 12",
+      "status": "paid",
+      "transaction_id": "TXN-1001"
+    },
+    {
+      "payment_ref": "VQ-1025",
+      "amount_vnd": 95000,
+      "merchant_name": "Bach Hoa Viet 13",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1026",
+      "amount_vnd": 110000,
+      "merchant_name": "Cafe Pho 14",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1027",
+      "amount_vnd": 125000,
+      "merchant_name": "Dien May Viet 15",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1028",
+      "amount_vnd": 140000,
+      "merchant_name": "Gia Dinh Mart 16",
+      "status": "paid",
+      "transaction_id": "TXN-1005"
+    },
+    {
+      "payment_ref": "VQ-1029",
+      "amount_vnd": 155000,
+      "merchant_name": "Hoa Sen 17",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1030",
+      "amount_vnd": 170000,
+      "merchant_name": "Kim Long 18",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1031",
+      "amount_vnd": 185000,
+      "merchant_name": "Lotus Food 19",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1032",
+      "amount_vnd": 200000,
+      "merchant_name": "Minh Chau 20",
+      "status": "paid",
+      "transaction_id": "TXN-1009"
+    },
+    {
+      "payment_ref": "VQ-1033",
+      "amount_vnd": 215000,
+      "merchant_name": "Nha Sach Viet 21",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1034",
+      "amount_vnd": 230000,
+      "merchant_name": "Phuc An 22",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1035",
+      "amount_vnd": 245000,
+      "merchant_name": "Quan Ngon 00",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1036",
+      "amount_vnd": 260000,
+      "merchant_name": "Sao Mai 01",
+      "status": "paid",
+      "transaction_id": "TXN-1013"
+    },
+    {
+      "payment_ref": "VQ-1037",
+      "amount_vnd": 275000,
+      "merchant_name": "Thanh Cong 02",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1038",
+      "amount_vnd": 290000,
+      "merchant_name": "Viet Store 03",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1039",
+      "amount_vnd": 305000,
+      "merchant_name": "Xanh Market 04",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1040",
+      "amount_vnd": 320000,
+      "merchant_name": "An Nam 05",
+      "status": "paid",
+      "transaction_id": "TXN-1017"
+    },
+    {
+      "payment_ref": "VQ-1041",
+      "amount_vnd": 335000,
+      "merchant_name": "Bach Hoa Viet 06",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1042",
+      "amount_vnd": 350000,
+      "merchant_name": "Cafe Pho 07",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1043",
+      "amount_vnd": 365000,
+      "merchant_name": "Dien May Viet 08",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1044",
+      "amount_vnd": 380000,
+      "merchant_name": "Gia Dinh Mart 09",
+      "status": "paid",
+      "transaction_id": "TXN-1021"
+    },
+    {
+      "payment_ref": "VQ-1045",
+      "amount_vnd": 395000,
+      "merchant_name": "Hoa Sen 10",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1046",
+      "amount_vnd": 410000,
+      "merchant_name": "Kim Long 11",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1047",
+      "amount_vnd": 425000,
+      "merchant_name": "Lotus Food 12",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1048",
+      "amount_vnd": 440000,
+      "merchant_name": "Minh Chau 13",
+      "status": "paid",
+      "transaction_id": "TXN-1025"
+    },
+    {
+      "payment_ref": "VQ-1049",
+      "amount_vnd": 455000,
+      "merchant_name": "Nha Sach Viet 14",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1050",
+      "amount_vnd": 470000,
+      "merchant_name": "Phuc An 15",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1051",
+      "amount_vnd": 485000,
+      "merchant_name": "Quan Ngon 16",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1052",
+      "amount_vnd": 500000,
+      "merchant_name": "Sao Mai 17",
+      "status": "paid",
+      "transaction_id": "TXN-1029"
+    },
+    {
+      "payment_ref": "VQ-1053",
+      "amount_vnd": 515000,
+      "merchant_name": "Thanh Cong 18",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1054",
+      "amount_vnd": 530000,
+      "merchant_name": "Viet Store 19",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1055",
+      "amount_vnd": 545000,
+      "merchant_name": "Xanh Market 20",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1056",
+      "amount_vnd": 560000,
+      "merchant_name": "An Nam 21",
+      "status": "paid",
+      "transaction_id": "TXN-1033"
+    },
+    {
+      "payment_ref": "VQ-1057",
+      "amount_vnd": 575000,
+      "merchant_name": "Bach Hoa Viet 22",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1058",
+      "amount_vnd": 590000,
+      "merchant_name": "Cafe Pho 00",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1059",
+      "amount_vnd": 605000,
+      "merchant_name": "Dien May Viet 01",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1060",
+      "amount_vnd": 620000,
+      "merchant_name": "Gia Dinh Mart 02",
+      "status": "paid",
+      "transaction_id": "TXN-1037"
+    },
+    {
+      "payment_ref": "VQ-1061",
+      "amount_vnd": 635000,
+      "merchant_name": "Hoa Sen 03",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1062",
+      "amount_vnd": 650000,
+      "merchant_name": "Kim Long 04",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1063",
+      "amount_vnd": 665000,
+      "merchant_name": "Lotus Food 05",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1064",
+      "amount_vnd": 680000,
+      "merchant_name": "Minh Chau 06",
+      "status": "paid",
+      "transaction_id": "TXN-1041"
+    },
+    {
+      "payment_ref": "VQ-1065",
+      "amount_vnd": 695000,
+      "merchant_name": "Nha Sach Viet 07",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1066",
+      "amount_vnd": 710000,
+      "merchant_name": "Phuc An 08",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1067",
+      "amount_vnd": 725000,
+      "merchant_name": "Quan Ngon 09",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1068",
+      "amount_vnd": 740000,
+      "merchant_name": "Sao Mai 10",
+      "status": "paid",
+      "transaction_id": "TXN-1045"
+    },
+    {
+      "payment_ref": "VQ-1069",
+      "amount_vnd": 755000,
+      "merchant_name": "Thanh Cong 11",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1070",
+      "amount_vnd": 770000,
+      "merchant_name": "Viet Store 12",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1071",
+      "amount_vnd": 785000,
+      "merchant_name": "Xanh Market 13",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1072",
+      "amount_vnd": 800000,
+      "merchant_name": "An Nam 14",
+      "status": "paid",
+      "transaction_id": "TXN-1049"
+    },
+    {
+      "payment_ref": "VQ-1073",
+      "amount_vnd": 815000,
+      "merchant_name": "Bach Hoa Viet 15",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1074",
+      "amount_vnd": 830000,
+      "merchant_name": "Cafe Pho 16",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1075",
+      "amount_vnd": 845000,
+      "merchant_name": "Dien May Viet 17",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1076",
+      "amount_vnd": 860000,
+      "merchant_name": "Gia Dinh Mart 18",
+      "status": "paid",
+      "transaction_id": "TXN-1053"
+    },
+    {
+      "payment_ref": "VQ-1077",
+      "amount_vnd": 875000,
+      "merchant_name": "Hoa Sen 19",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1078",
+      "amount_vnd": 890000,
+      "merchant_name": "Kim Long 20",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1079",
+      "amount_vnd": 905000,
+      "merchant_name": "Lotus Food 21",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1080",
+      "amount_vnd": 20000,
+      "merchant_name": "Minh Chau 22",
+      "status": "paid",
+      "transaction_id": "TXN-1057"
+    },
+    {
+      "payment_ref": "VQ-1081",
+      "amount_vnd": 35000,
+      "merchant_name": "Nha Sach Viet 00",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1082",
+      "amount_vnd": 50000,
+      "merchant_name": "Phuc An 01",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1083",
+      "amount_vnd": 65000,
+      "merchant_name": "Quan Ngon 02",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1084",
+      "amount_vnd": 80000,
+      "merchant_name": "Sao Mai 03",
+      "status": "paid",
+      "transaction_id": "TXN-1061"
+    },
+    {
+      "payment_ref": "VQ-1085",
+      "amount_vnd": 95000,
+      "merchant_name": "Thanh Cong 04",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1086",
+      "amount_vnd": 110000,
+      "merchant_name": "Viet Store 05",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1087",
+      "amount_vnd": 125000,
+      "merchant_name": "Xanh Market 06",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1088",
+      "amount_vnd": 140000,
+      "merchant_name": "An Nam 07",
+      "status": "paid",
+      "transaction_id": "TXN-1065"
+    },
+    {
+      "payment_ref": "VQ-1089",
+      "amount_vnd": 155000,
+      "merchant_name": "Bach Hoa Viet 08",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1090",
+      "amount_vnd": 170000,
+      "merchant_name": "Cafe Pho 09",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1091",
+      "amount_vnd": 185000,
+      "merchant_name": "Dien May Viet 10",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1092",
+      "amount_vnd": 200000,
+      "merchant_name": "Gia Dinh Mart 11",
+      "status": "paid",
+      "transaction_id": "TXN-1069"
+    },
+    {
+      "payment_ref": "VQ-1093",
+      "amount_vnd": 215000,
+      "merchant_name": "Hoa Sen 12",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1094",
+      "amount_vnd": 230000,
+      "merchant_name": "Kim Long 13",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1095",
+      "amount_vnd": 245000,
+      "merchant_name": "Lotus Food 14",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1096",
+      "amount_vnd": 260000,
+      "merchant_name": "Minh Chau 15",
+      "status": "paid",
+      "transaction_id": "TXN-1073"
+    },
+    {
+      "payment_ref": "VQ-1097",
+      "amount_vnd": 275000,
+      "merchant_name": "Nha Sach Viet 16",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1098",
+      "amount_vnd": 290000,
+      "merchant_name": "Phuc An 17",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1099",
+      "amount_vnd": 305000,
+      "merchant_name": "Quan Ngon 18",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1100",
+      "amount_vnd": 320000,
+      "merchant_name": "Sao Mai 19",
+      "status": "paid",
+      "transaction_id": "TXN-1077"
+    },
+    {
+      "payment_ref": "VQ-1101",
+      "amount_vnd": 335000,
+      "merchant_name": "Thanh Cong 20",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1102",
+      "amount_vnd": 350000,
+      "merchant_name": "Viet Store 21",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1103",
+      "amount_vnd": 365000,
+      "merchant_name": "Xanh Market 22",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1104",
+      "amount_vnd": 380000,
+      "merchant_name": "An Nam 00",
+      "status": "paid",
+      "transaction_id": "TXN-1081"
+    },
+    {
+      "payment_ref": "VQ-1105",
+      "amount_vnd": 395000,
+      "merchant_name": "Bach Hoa Viet 01",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1106",
+      "amount_vnd": 410000,
+      "merchant_name": "Cafe Pho 02",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1107",
+      "amount_vnd": 425000,
+      "merchant_name": "Dien May Viet 03",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1108",
+      "amount_vnd": 440000,
+      "merchant_name": "Gia Dinh Mart 04",
+      "status": "paid",
+      "transaction_id": "TXN-1085"
+    },
+    {
+      "payment_ref": "VQ-1109",
+      "amount_vnd": 455000,
+      "merchant_name": "Hoa Sen 05",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1110",
+      "amount_vnd": 470000,
+      "merchant_name": "Kim Long 06",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1111",
+      "amount_vnd": 485000,
+      "merchant_name": "Lotus Food 07",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1112",
+      "amount_vnd": 500000,
+      "merchant_name": "Minh Chau 08",
+      "status": "paid",
+      "transaction_id": "TXN-1089"
+    },
+    {
+      "payment_ref": "VQ-1113",
+      "amount_vnd": 515000,
+      "merchant_name": "Nha Sach Viet 09",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1114",
+      "amount_vnd": 530000,
+      "merchant_name": "Phuc An 10",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1115",
+      "amount_vnd": 545000,
+      "merchant_name": "Quan Ngon 11",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1116",
+      "amount_vnd": 560000,
+      "merchant_name": "Sao Mai 12",
+      "status": "paid",
+      "transaction_id": "TXN-1093"
+    },
+    {
+      "payment_ref": "VQ-1117",
+      "amount_vnd": 575000,
+      "merchant_name": "Thanh Cong 13",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1118",
+      "amount_vnd": 590000,
+      "merchant_name": "Viet Store 14",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1119",
+      "amount_vnd": 605000,
+      "merchant_name": "Xanh Market 15",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1120",
+      "amount_vnd": 620000,
+      "merchant_name": "An Nam 16",
+      "status": "paid",
+      "transaction_id": "TXN-1097"
+    },
+    {
+      "payment_ref": "VQ-1121",
+      "amount_vnd": 635000,
+      "merchant_name": "Bach Hoa Viet 17",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1122",
+      "amount_vnd": 650000,
+      "merchant_name": "Cafe Pho 18",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1123",
+      "amount_vnd": 665000,
+      "merchant_name": "Dien May Viet 19",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1124",
+      "amount_vnd": 680000,
+      "merchant_name": "Gia Dinh Mart 20",
+      "status": "paid",
+      "transaction_id": "TXN-1101"
+    },
+    {
+      "payment_ref": "VQ-1125",
+      "amount_vnd": 695000,
+      "merchant_name": "Hoa Sen 21",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1126",
+      "amount_vnd": 710000,
+      "merchant_name": "Kim Long 22",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1127",
+      "amount_vnd": 725000,
+      "merchant_name": "Lotus Food 00",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1128",
+      "amount_vnd": 740000,
+      "merchant_name": "Minh Chau 01",
+      "status": "paid",
+      "transaction_id": "TXN-1105"
+    },
+    {
+      "payment_ref": "VQ-1129",
+      "amount_vnd": 755000,
+      "merchant_name": "Nha Sach Viet 02",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1130",
+      "amount_vnd": 770000,
+      "merchant_name": "Phuc An 03",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1131",
+      "amount_vnd": 785000,
+      "merchant_name": "Quan Ngon 04",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1132",
+      "amount_vnd": 800000,
+      "merchant_name": "Sao Mai 05",
+      "status": "paid",
+      "transaction_id": "TXN-1109"
+    },
+    {
+      "payment_ref": "VQ-1133",
+      "amount_vnd": 815000,
+      "merchant_name": "Thanh Cong 06",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1134",
+      "amount_vnd": 830000,
+      "merchant_name": "Viet Store 07",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1135",
+      "amount_vnd": 845000,
+      "merchant_name": "Xanh Market 08",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1136",
+      "amount_vnd": 860000,
+      "merchant_name": "An Nam 09",
+      "status": "paid",
+      "transaction_id": "TXN-1113"
+    },
+    {
+      "payment_ref": "VQ-1137",
+      "amount_vnd": 875000,
+      "merchant_name": "Bach Hoa Viet 10",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1138",
+      "amount_vnd": 890000,
+      "merchant_name": "Cafe Pho 11",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1139",
+      "amount_vnd": 905000,
+      "merchant_name": "Dien May Viet 12",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1140",
+      "amount_vnd": 20000,
+      "merchant_name": "Gia Dinh Mart 13",
+      "status": "paid",
+      "transaction_id": "TXN-1117"
+    },
+    {
+      "payment_ref": "VQ-1141",
+      "amount_vnd": 35000,
+      "merchant_name": "Hoa Sen 14",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1142",
+      "amount_vnd": 50000,
+      "merchant_name": "Kim Long 15",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1143",
+      "amount_vnd": 65000,
+      "merchant_name": "Lotus Food 16",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1144",
+      "amount_vnd": 80000,
+      "merchant_name": "Minh Chau 17",
+      "status": "paid",
+      "transaction_id": "TXN-1121"
+    },
+    {
+      "payment_ref": "VQ-1145",
+      "amount_vnd": 95000,
+      "merchant_name": "Nha Sach Viet 18",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1146",
+      "amount_vnd": 110000,
+      "merchant_name": "Phuc An 19",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1147",
+      "amount_vnd": 125000,
+      "merchant_name": "Quan Ngon 20",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1148",
+      "amount_vnd": 140000,
+      "merchant_name": "Sao Mai 21",
+      "status": "paid",
+      "transaction_id": "TXN-1125"
+    },
+    {
+      "payment_ref": "VQ-1149",
+      "amount_vnd": 155000,
+      "merchant_name": "Thanh Cong 22",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1150",
+      "amount_vnd": 170000,
+      "merchant_name": "Viet Store 00",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1151",
+      "amount_vnd": 185000,
+      "merchant_name": "Xanh Market 01",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1152",
+      "amount_vnd": 200000,
+      "merchant_name": "An Nam 02",
+      "status": "paid",
+      "transaction_id": "TXN-1001"
+    },
+    {
+      "payment_ref": "VQ-1153",
+      "amount_vnd": 215000,
+      "merchant_name": "Bach Hoa Viet 03",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1154",
+      "amount_vnd": 230000,
+      "merchant_name": "Cafe Pho 04",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1155",
+      "amount_vnd": 245000,
+      "merchant_name": "Dien May Viet 05",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1156",
+      "amount_vnd": 260000,
+      "merchant_name": "Gia Dinh Mart 06",
+      "status": "paid",
+      "transaction_id": "TXN-1005"
+    },
+    {
+      "payment_ref": "VQ-1157",
+      "amount_vnd": 275000,
+      "merchant_name": "Hoa Sen 07",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1158",
+      "amount_vnd": 290000,
+      "merchant_name": "Kim Long 08",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1159",
+      "amount_vnd": 305000,
+      "merchant_name": "Lotus Food 09",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1160",
+      "amount_vnd": 320000,
+      "merchant_name": "Minh Chau 10",
+      "status": "paid",
+      "transaction_id": "TXN-1009"
+    },
+    {
+      "payment_ref": "VQ-1161",
+      "amount_vnd": 335000,
+      "merchant_name": "Nha Sach Viet 11",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1162",
+      "amount_vnd": 350000,
+      "merchant_name": "Phuc An 12",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1163",
+      "amount_vnd": 365000,
+      "merchant_name": "Quan Ngon 13",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1164",
+      "amount_vnd": 380000,
+      "merchant_name": "Sao Mai 14",
+      "status": "paid",
+      "transaction_id": "TXN-1013"
+    },
+    {
+      "payment_ref": "VQ-1165",
+      "amount_vnd": 395000,
+      "merchant_name": "Thanh Cong 15",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1166",
+      "amount_vnd": 410000,
+      "merchant_name": "Viet Store 16",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1167",
+      "amount_vnd": 425000,
+      "merchant_name": "Xanh Market 17",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1168",
+      "amount_vnd": 440000,
+      "merchant_name": "An Nam 18",
+      "status": "paid",
+      "transaction_id": "TXN-1017"
+    },
+    {
+      "payment_ref": "VQ-1169",
+      "amount_vnd": 455000,
+      "merchant_name": "Bach Hoa Viet 19",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1170",
+      "amount_vnd": 470000,
+      "merchant_name": "Cafe Pho 20",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1171",
+      "amount_vnd": 485000,
+      "merchant_name": "Dien May Viet 21",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1172",
+      "amount_vnd": 500000,
+      "merchant_name": "Gia Dinh Mart 22",
+      "status": "paid",
+      "transaction_id": "TXN-1021"
+    },
+    {
+      "payment_ref": "VQ-1173",
+      "amount_vnd": 515000,
+      "merchant_name": "Hoa Sen 00",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1174",
+      "amount_vnd": 530000,
+      "merchant_name": "Kim Long 01",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1175",
+      "amount_vnd": 545000,
+      "merchant_name": "Lotus Food 02",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1176",
+      "amount_vnd": 560000,
+      "merchant_name": "Minh Chau 03",
+      "status": "paid",
+      "transaction_id": "TXN-1025"
+    },
+    {
+      "payment_ref": "VQ-1177",
+      "amount_vnd": 575000,
+      "merchant_name": "Nha Sach Viet 04",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1178",
+      "amount_vnd": 590000,
+      "merchant_name": "Phuc An 05",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1179",
+      "amount_vnd": 605000,
+      "merchant_name": "Quan Ngon 06",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1180",
+      "amount_vnd": 620000,
+      "merchant_name": "Sao Mai 07",
+      "status": "paid",
+      "transaction_id": "TXN-1029"
+    },
+    {
+      "payment_ref": "VQ-1181",
+      "amount_vnd": 635000,
+      "merchant_name": "Thanh Cong 08",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1182",
+      "amount_vnd": 650000,
+      "merchant_name": "Viet Store 09",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1183",
+      "amount_vnd": 665000,
+      "merchant_name": "Xanh Market 10",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1184",
+      "amount_vnd": 680000,
+      "merchant_name": "An Nam 11",
+      "status": "paid",
+      "transaction_id": "TXN-1033"
+    },
+    {
+      "payment_ref": "VQ-1185",
+      "amount_vnd": 695000,
+      "merchant_name": "Bach Hoa Viet 12",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1186",
+      "amount_vnd": 710000,
+      "merchant_name": "Cafe Pho 13",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1187",
+      "amount_vnd": 725000,
+      "merchant_name": "Dien May Viet 14",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1188",
+      "amount_vnd": 740000,
+      "merchant_name": "Gia Dinh Mart 15",
+      "status": "paid",
+      "transaction_id": "TXN-1037"
+    },
+    {
+      "payment_ref": "VQ-1189",
+      "amount_vnd": 755000,
+      "merchant_name": "Hoa Sen 16",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1190",
+      "amount_vnd": 770000,
+      "merchant_name": "Kim Long 17",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1191",
+      "amount_vnd": 785000,
+      "merchant_name": "Lotus Food 18",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1192",
+      "amount_vnd": 800000,
+      "merchant_name": "Minh Chau 19",
+      "status": "paid",
+      "transaction_id": "TXN-1041"
+    },
+    {
+      "payment_ref": "VQ-1193",
+      "amount_vnd": 815000,
+      "merchant_name": "Nha Sach Viet 20",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1194",
+      "amount_vnd": 830000,
+      "merchant_name": "Phuc An 21",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1195",
+      "amount_vnd": 845000,
+      "merchant_name": "Quan Ngon 22",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1196",
+      "amount_vnd": 860000,
+      "merchant_name": "Sao Mai 00",
+      "status": "paid",
+      "transaction_id": "TXN-1045"
+    },
+    {
+      "payment_ref": "VQ-1197",
+      "amount_vnd": 875000,
+      "merchant_name": "Thanh Cong 01",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1198",
+      "amount_vnd": 890000,
+      "merchant_name": "Viet Store 02",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1199",
+      "amount_vnd": 905000,
+      "merchant_name": "Xanh Market 03",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1200",
+      "amount_vnd": 20000,
+      "merchant_name": "An Nam 04",
+      "status": "paid",
+      "transaction_id": "TXN-1049"
+    },
+    {
+      "payment_ref": "VQ-1201",
+      "amount_vnd": 35000,
+      "merchant_name": "Bach Hoa Viet 05",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1202",
+      "amount_vnd": 50000,
+      "merchant_name": "Cafe Pho 06",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1203",
+      "amount_vnd": 65000,
+      "merchant_name": "Dien May Viet 07",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1204",
+      "amount_vnd": 80000,
+      "merchant_name": "Gia Dinh Mart 08",
+      "status": "paid",
+      "transaction_id": "TXN-1053"
+    },
+    {
+      "payment_ref": "VQ-1205",
+      "amount_vnd": 95000,
+      "merchant_name": "Hoa Sen 09",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1206",
+      "amount_vnd": 110000,
+      "merchant_name": "Kim Long 10",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1207",
+      "amount_vnd": 125000,
+      "merchant_name": "Lotus Food 11",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1208",
+      "amount_vnd": 140000,
+      "merchant_name": "Minh Chau 12",
+      "status": "paid",
+      "transaction_id": "TXN-1057"
+    },
+    {
+      "payment_ref": "VQ-1209",
+      "amount_vnd": 155000,
+      "merchant_name": "Nha Sach Viet 13",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1210",
+      "amount_vnd": 170000,
+      "merchant_name": "Phuc An 14",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1211",
+      "amount_vnd": 185000,
+      "merchant_name": "Quan Ngon 15",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1212",
+      "amount_vnd": 200000,
+      "merchant_name": "Sao Mai 16",
+      "status": "paid",
+      "transaction_id": "TXN-1061"
+    },
+    {
+      "payment_ref": "VQ-1213",
+      "amount_vnd": 215000,
+      "merchant_name": "Thanh Cong 17",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1214",
+      "amount_vnd": 230000,
+      "merchant_name": "Viet Store 18",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1215",
+      "amount_vnd": 245000,
+      "merchant_name": "Xanh Market 19",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1216",
+      "amount_vnd": 260000,
+      "merchant_name": "An Nam 20",
+      "status": "paid",
+      "transaction_id": "TXN-1065"
+    },
+    {
+      "payment_ref": "VQ-1217",
+      "amount_vnd": 275000,
+      "merchant_name": "Bach Hoa Viet 21",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1218",
+      "amount_vnd": 290000,
+      "merchant_name": "Cafe Pho 22",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1219",
+      "amount_vnd": 305000,
+      "merchant_name": "Dien May Viet 00",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1220",
+      "amount_vnd": 320000,
+      "merchant_name": "Gia Dinh Mart 01",
+      "status": "paid",
+      "transaction_id": "TXN-1069"
+    },
+    {
+      "payment_ref": "VQ-1221",
+      "amount_vnd": 335000,
+      "merchant_name": "Hoa Sen 02",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1222",
+      "amount_vnd": 350000,
+      "merchant_name": "Kim Long 03",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1223",
+      "amount_vnd": 365000,
+      "merchant_name": "Lotus Food 04",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1224",
+      "amount_vnd": 380000,
+      "merchant_name": "Minh Chau 05",
+      "status": "paid",
+      "transaction_id": "TXN-1073"
+    },
+    {
+      "payment_ref": "VQ-1225",
+      "amount_vnd": 395000,
+      "merchant_name": "Nha Sach Viet 06",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1226",
+      "amount_vnd": 410000,
+      "merchant_name": "Phuc An 07",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1227",
+      "amount_vnd": 425000,
+      "merchant_name": "Quan Ngon 08",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1228",
+      "amount_vnd": 440000,
+      "merchant_name": "Sao Mai 09",
+      "status": "paid",
+      "transaction_id": "TXN-1077"
+    },
+    {
+      "payment_ref": "VQ-1229",
+      "amount_vnd": 455000,
+      "merchant_name": "Thanh Cong 10",
+      "status": "pending",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1230",
+      "amount_vnd": 470000,
+      "merchant_name": "Viet Store 11",
+      "status": "expired",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1231",
+      "amount_vnd": 485000,
+      "merchant_name": "Xanh Market 12",
+      "status": "failed",
+      "transaction_id": null
+    },
+    {
+      "payment_ref": "VQ-1232",
+      "amount_vnd": 500000,
+      "merchant_name": "An Nam 13",
+      "status": "paid",
+      "transaction_id": "TXN-1081"
+    }
+  ],
+  "disputes": [
+    {
+      "dispute_id": "DSP-0001",
+      "transaction_id": "TXN-1013",
+      "status": "open",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-18T09:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0002",
+      "transaction_id": "TXN-1001",
+      "status": "resolved",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-10T11:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0003",
+      "transaction_id": "TXN-1009",
+      "status": "rejected",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-12T14:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0004",
+      "transaction_id": "TXN-1005",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-26T10:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0005",
+      "transaction_id": "TXN-1001",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-23T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0006",
+      "transaction_id": "TXN-1002",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-22T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0007",
+      "transaction_id": "TXN-1003",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-21T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0008",
+      "transaction_id": "TXN-1004",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-20T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0009",
+      "transaction_id": "TXN-1005",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-19T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0010",
+      "transaction_id": "TXN-1006",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-18T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0011",
+      "transaction_id": "TXN-1007",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-17T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0012",
+      "transaction_id": "TXN-1008",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-16T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0013",
+      "transaction_id": "TXN-1009",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-15T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0014",
+      "transaction_id": "TXN-1010",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-14T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0015",
+      "transaction_id": "TXN-1011",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-13T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0016",
+      "transaction_id": "TXN-1012",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-12T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0017",
+      "transaction_id": "TXN-1013",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-11T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0018",
+      "transaction_id": "TXN-1014",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-10T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0019",
+      "transaction_id": "TXN-1015",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-09T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0020",
+      "transaction_id": "TXN-1016",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-08T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0021",
+      "transaction_id": "TXN-1017",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-07T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0022",
+      "transaction_id": "TXN-1018",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-06T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0023",
+      "transaction_id": "TXN-1019",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-05T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0024",
+      "transaction_id": "TXN-1020",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-04T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0025",
+      "transaction_id": "TXN-1021",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-03T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0026",
+      "transaction_id": "TXN-1022",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-02T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0027",
+      "transaction_id": "TXN-1023",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-01T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0028",
+      "transaction_id": "TXN-1024",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-31T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0029",
+      "transaction_id": "TXN-1025",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-30T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0030",
+      "transaction_id": "TXN-1026",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-29T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0031",
+      "transaction_id": "TXN-1027",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-28T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0032",
+      "transaction_id": "TXN-1028",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-27T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0033",
+      "transaction_id": "TXN-1029",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-26T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0034",
+      "transaction_id": "TXN-1030",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-25T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0035",
+      "transaction_id": "TXN-1031",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-24T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0036",
+      "transaction_id": "TXN-1032",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-23T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0037",
+      "transaction_id": "TXN-1033",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-22T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0038",
+      "transaction_id": "TXN-1034",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-21T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0039",
+      "transaction_id": "TXN-1035",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-20T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0040",
+      "transaction_id": "TXN-1036",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-19T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0041",
+      "transaction_id": "TXN-1037",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-18T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0042",
+      "transaction_id": "TXN-1038",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-17T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0043",
+      "transaction_id": "TXN-1039",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-16T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0044",
+      "transaction_id": "TXN-1040",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-15T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0045",
+      "transaction_id": "TXN-1041",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-14T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0046",
+      "transaction_id": "TXN-1042",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-13T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0047",
+      "transaction_id": "TXN-1043",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-12T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0048",
+      "transaction_id": "TXN-1044",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-11T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0049",
+      "transaction_id": "TXN-1045",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-10T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0050",
+      "transaction_id": "TXN-1046",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-09T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0051",
+      "transaction_id": "TXN-1047",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-08T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0052",
+      "transaction_id": "TXN-1048",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-07T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0053",
+      "transaction_id": "TXN-1049",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-06T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0054",
+      "transaction_id": "TXN-1050",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-05T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0055",
+      "transaction_id": "TXN-1051",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-04T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0056",
+      "transaction_id": "TXN-1052",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-03T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0057",
+      "transaction_id": "TXN-1053",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-02T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0058",
+      "transaction_id": "TXN-1054",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-01T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0059",
+      "transaction_id": "TXN-1055",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-31T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0060",
+      "transaction_id": "TXN-1056",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-30T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0061",
+      "transaction_id": "TXN-1057",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-29T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0062",
+      "transaction_id": "TXN-1058",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-28T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0063",
+      "transaction_id": "TXN-1059",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-27T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0064",
+      "transaction_id": "TXN-1060",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-26T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0065",
+      "transaction_id": "TXN-1061",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-25T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0066",
+      "transaction_id": "TXN-1062",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-24T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0067",
+      "transaction_id": "TXN-1063",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-23T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0068",
+      "transaction_id": "TXN-1064",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-22T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0069",
+      "transaction_id": "TXN-1065",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-21T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0070",
+      "transaction_id": "TXN-1066",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-20T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0071",
+      "transaction_id": "TXN-1067",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-19T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0072",
+      "transaction_id": "TXN-1068",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-18T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0073",
+      "transaction_id": "TXN-1069",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-17T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0074",
+      "transaction_id": "TXN-1070",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-16T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0075",
+      "transaction_id": "TXN-1071",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-15T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0076",
+      "transaction_id": "TXN-1072",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-14T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0077",
+      "transaction_id": "TXN-1073",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-13T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0078",
+      "transaction_id": "TXN-1074",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-12T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0079",
+      "transaction_id": "TXN-1075",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-11T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0080",
+      "transaction_id": "TXN-1076",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-10T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0081",
+      "transaction_id": "TXN-1077",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-09T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0082",
+      "transaction_id": "TXN-1078",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-08T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0083",
+      "transaction_id": "TXN-1079",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-07T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0084",
+      "transaction_id": "TXN-1080",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-06T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0085",
+      "transaction_id": "TXN-1081",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-05T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0086",
+      "transaction_id": "TXN-1082",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-04T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0087",
+      "transaction_id": "TXN-1083",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-03T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0088",
+      "transaction_id": "TXN-1084",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-02T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0089",
+      "transaction_id": "TXN-1085",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-01T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0090",
+      "transaction_id": "TXN-1086",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-28T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0091",
+      "transaction_id": "TXN-1087",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-27T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0092",
+      "transaction_id": "TXN-1088",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-26T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0093",
+      "transaction_id": "TXN-1089",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-25T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0094",
+      "transaction_id": "TXN-1090",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-24T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0095",
+      "transaction_id": "TXN-1091",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-23T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0096",
+      "transaction_id": "TXN-1092",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-22T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0097",
+      "transaction_id": "TXN-1093",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-21T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0098",
+      "transaction_id": "TXN-1094",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-20T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0099",
+      "transaction_id": "TXN-1095",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-19T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0100",
+      "transaction_id": "TXN-1096",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-18T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0101",
+      "transaction_id": "TXN-1097",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-17T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0102",
+      "transaction_id": "TXN-1098",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-16T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0103",
+      "transaction_id": "TXN-1099",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-15T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0104",
+      "transaction_id": "TXN-1100",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-14T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0105",
+      "transaction_id": "TXN-1101",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-13T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0106",
+      "transaction_id": "TXN-1102",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-12T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0107",
+      "transaction_id": "TXN-1103",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-11T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0108",
+      "transaction_id": "TXN-1104",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-10T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0109",
+      "transaction_id": "TXN-1105",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-09T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0110",
+      "transaction_id": "TXN-1106",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-08T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0111",
+      "transaction_id": "TXN-1107",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-07T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0112",
+      "transaction_id": "TXN-1108",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-06T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0113",
+      "transaction_id": "TXN-1109",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-05T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0114",
+      "transaction_id": "TXN-1110",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-02-04T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0115",
+      "transaction_id": "TXN-1001",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-02-03T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0116",
+      "transaction_id": "TXN-1002",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-02-02T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0117",
+      "transaction_id": "TXN-1003",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-02-01T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0118",
+      "transaction_id": "TXN-1004",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-31T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0119",
+      "transaction_id": "TXN-1005",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-30T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0120",
+      "transaction_id": "TXN-1006",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-29T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0121",
+      "transaction_id": "TXN-1007",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-28T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0122",
+      "transaction_id": "TXN-1008",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-27T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0123",
+      "transaction_id": "TXN-1009",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-26T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0124",
+      "transaction_id": "TXN-1010",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-25T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0125",
+      "transaction_id": "TXN-1011",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-24T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0126",
+      "transaction_id": "TXN-1012",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-23T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0127",
+      "transaction_id": "TXN-1013",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-22T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0128",
+      "transaction_id": "TXN-1014",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-21T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0129",
+      "transaction_id": "TXN-1015",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-20T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0130",
+      "transaction_id": "TXN-1016",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-19T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0131",
+      "transaction_id": "TXN-1017",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-18T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0132",
+      "transaction_id": "TXN-1018",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-17T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0133",
+      "transaction_id": "TXN-1019",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-16T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0134",
+      "transaction_id": "TXN-1020",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-15T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0135",
+      "transaction_id": "TXN-1021",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-14T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0136",
+      "transaction_id": "TXN-1022",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-13T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0137",
+      "transaction_id": "TXN-1023",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-12T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0138",
+      "transaction_id": "TXN-1024",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-11T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0139",
+      "transaction_id": "TXN-1025",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-10T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0140",
+      "transaction_id": "TXN-1026",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-09T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0141",
+      "transaction_id": "TXN-1027",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-08T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0142",
+      "transaction_id": "TXN-1028",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-07T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0143",
+      "transaction_id": "TXN-1029",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-06T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0144",
+      "transaction_id": "TXN-1030",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-05T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0145",
+      "transaction_id": "TXN-1031",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2026-01-04T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0146",
+      "transaction_id": "TXN-1032",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2026-01-03T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0147",
+      "transaction_id": "TXN-1033",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2026-01-02T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0148",
+      "transaction_id": "TXN-1034",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2026-01-01T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0149",
+      "transaction_id": "TXN-1035",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-31T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0150",
+      "transaction_id": "TXN-1036",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-30T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0151",
+      "transaction_id": "TXN-1037",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-29T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0152",
+      "transaction_id": "TXN-1038",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-28T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0153",
+      "transaction_id": "TXN-1039",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-27T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0154",
+      "transaction_id": "TXN-1040",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-26T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0155",
+      "transaction_id": "TXN-1041",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-25T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0156",
+      "transaction_id": "TXN-1042",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-24T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0157",
+      "transaction_id": "TXN-1043",
+      "status": "rejected",
+      "reason": "duplicate_charge",
+      "opened_at": "2025-12-23T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0158",
+      "transaction_id": "TXN-1044",
+      "status": "open",
+      "reason": "unauthorized",
+      "opened_at": "2025-12-22T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0159",
+      "transaction_id": "TXN-1045",
+      "status": "in_review",
+      "reason": "amount_mismatch",
+      "opened_at": "2025-12-21T18:00:00+07:00"
+    },
+    {
+      "dispute_id": "DSP-0160",
+      "transaction_id": "TXN-1046",
+      "status": "resolved",
+      "reason": "goods_not_received",
+      "opened_at": "2025-12-20T18:00:00+07:00"
+    }
+  ],
+  "fee_schedule": [
+    {
+      "rail": "napas",
+      "min_amount_vnd": 0,
+      "max_amount_vnd": 1000000,
+      "fee_vnd": 5500,
+      "eta_hint": "vai phut"
+    },
+    {
+      "rail": "napas",
+      "min_amount_vnd": 1000000,
+      "max_amount_vnd": 10000000,
+      "fee_vnd": 11000,
+      "eta_hint": "vai phut"
+    },
+    {
+      "rail": "napas",
+      "min_amount_vnd": 10000000,
+      "max_amount_vnd": null,
+      "fee_vnd": 22000,
+      "eta_hint": "trong ngay"
+    },
+    {
+      "rail": "internal",
+      "min_amount_vnd": 0,
+      "max_amount_vnd": 1000000,
+      "fee_vnd": 0,
+      "eta_hint": "tuc thi"
+    },
+    {
+      "rail": "internal",
+      "min_amount_vnd": 1000000,
+      "max_amount_vnd": 10000000,
+      "fee_vnd": 2000,
+      "eta_hint": "tuc thi"
+    },
+    {
+      "rail": "internal",
+      "min_amount_vnd": 10000000,
+      "max_amount_vnd": null,
+      "fee_vnd": 5000,
+      "eta_hint": "tuc thi"
+    }
+  ],
+  "transfer_scenarios": [
+    {
+      "scenario_id": "fee_gap_napas_500k",
+      "from_account_id": "ACC-007",
+      "amount_vnd": 500000,
+      "rail": "napas",
+      "to_account_number": "9988776655",
+      "to_bank_code": "970436",
+      "expected_outcome": "rejected_insufficient_funds"
+    },
+    {
+      "scenario_id": "low_balance_napas_500k",
+      "from_account_id": "ACC-006",
+      "amount_vnd": 500000,
+      "rail": "napas",
+      "to_account_number": "9988776655",
+      "to_bank_code": "970436",
+      "expected_outcome": "rejected_insufficient_funds"
+    }
+  ]
+}

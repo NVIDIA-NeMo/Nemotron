@@ -1,0 +1,7 @@
+{"id": "hi-clean-1", "language": "hi", "label": "keep", "phenomenon": "clean", "text": "आज मौसम बहुत अच्छा है और हम सुबह पार्क में टहलने गए।"}
+{"id": "hi-clean-2", "language": "hi", "label": "keep", "phenomenon": "clean", "text": "यह पुस्तकालय शहर के मध्य में स्थित है और प्रतिदिन खुला रहता है।"}
+{"id": "hi-nfd-1", "language": "hi", "label": "keep", "phenomenon": "nfd", "text": "आज मौसम बहुत अच्छा है और हम सुबह पार्क में टहलने गए।"}
+{"id": "hi-digits-1", "language": "hi", "label": "keep", "phenomenon": "local_digits", "text": "इस वर्ष कुल १२,३४५ लोग आए और ६७ कार्यक्रम हुए।"}
+{"id": "hi-ocr-1", "language": "hi", "label": "drop", "phenomenon": "ocr_noise", "text": "आ ||| ज ~~~ मौ ¦¦¦ स ### म ¬¬¬ ब __ हु ||| त ~~~ अ ¦¦¦ च्छा ### है ¬¬¬ ||| ~~~ ¦¦¦ ### ¬¬¬ ___"}
+{"id": "hi-mixed-1", "language": "hi", "label": "keep", "phenomenon": "code_mixing", "text": "हमने data analysis के लिए Python का उपयोग किया और report तैयार की।"}
+{"id": "hi-langid-1", "language": "hi", "label": "keep", "phenomenon": "langid_error", "text": "नमस्ते।"}

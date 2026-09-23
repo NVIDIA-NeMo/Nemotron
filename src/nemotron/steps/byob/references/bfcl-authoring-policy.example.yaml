@@ -1,0 +1,40 @@
+# Reviewed organizational defaults for guided BFCL authoring.
+schema_version: bfcl-authoring-policy-v1
+
+# pack_id is only a candidate. A human or CI invocation must still confirm it.
+pack_id: example-domain
+
+# A policy version is authoritative; server metadata and prose are never used.
+pack_version: "0.1.0"
+
+# Gold freeze still requires A2 even when early drafting policy permits A0.
+required_certification_tier: A0
+
+# Live authoring is disabled unless policy or an explicit environment override enables
+# the selected adapter. Offline review and freeze remain available.
+adapter_rollout:
+  local_python: false
+  http_package: false
+  mcp_mode_a: false
+
+# Set both decisions to organizational_policy to remove the two per-run pre-model
+# approvals for clean, native-v2 evidence. The policy itself is reviewed once and its
+# canonical digest is bound to every generated authorization record.
+pre_model:
+  exposure_authorization: manual
+  clean_evidence_approval: manual
+
+# A reviewed held-out decision may also be reused instead of restating it at every
+# intake. Use policy_path (and optional content_path) instead for reserved data.
+held_out:
+  not_applicable_reason: The example catalog uses public synthetic fixtures.
+  reviewed_by: policy-owner@example.test
+
+# Optional release defaults keep non-secret signing identity in reviewed policy. A
+# secret manager should mount the private key and set the named environment variable;
+# never put private-key bytes in this file.
+# release:
+#   signing_key_env: BFCL_RELEASE_SIGNING_KEY
+#   signing_key_id: example-release
+#   seal_issuer: benchmark-release-team
+#   seal_public_key: keys/release-public.pem

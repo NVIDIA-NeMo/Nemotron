@@ -1,0 +1,14 @@
+# Regular expressions matching English web boilerplate.
+# One pattern per line; a document is scored by how many of them it matches.
+Read\ more
+Share
+Advertisement
+All\ rights\ reserved
+Subscribe
+Related\ (articles|posts|stories)
+Skip\ to\ content
+Cookie\ Policy
+Terms\ of\ (use|service)
+Privacy\ policy
+Comments
+Home

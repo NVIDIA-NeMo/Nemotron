@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Untrusted close collector for Review S3 cleanup. Uses no AWS credentials and
+# only records the closed PR number for the trusted workflow_run cleanup
+# workflow (docs-review-s3-cleanup.yml).
+
+name: "Docs Review S3: Close"
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save close metadata
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p review-s3-close
+          printf '%s\n' "${PR_NUMBER}" > review-s3-close/pr_number
+
+      - name: Upload close metadata
+        uses: actions/upload-artifact@v6
+        with:
+          name: review-s3-close
+          path: review-s3-close/
+          if-no-files-found: error
+          retention-days: 1

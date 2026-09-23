@@ -17,9 +17,7 @@ def _write_step_tree(root: Path) -> Path:
     return script_path
 
 
-CURATOR_RUN_COMMAND = (
-    "python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m custom.step"
-)
+CURATOR_RUN_COMMAND = "python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m custom.step"
 
 
 def test_curator_runtime_env_vars_for_remote_curator_command(
@@ -123,3 +121,28 @@ def test_curator_runtime_env_vars_fail_fast_without_source_or_packaged_runtime(
 
 def test_uses_curator_runtime_from_run_command() -> None:
     assert run_cmd._uses_curator_runtime({"run_command": CURATOR_RUN_COMMAND})  # noqa: SLF001
+
+
+def test_source_revision_records_commit_and_dirty_state(monkeypatch, tmp_path: Path) -> None:
+    script_path = _write_step_tree(tmp_path)
+    (tmp_path / ".git").mkdir()
+    outputs = iter(["0123456789abcdef\n", " M pyproject.toml\n"])
+
+    class Result:
+        def __init__(self, stdout: str):
+            self.stdout = stdout
+
+    monkeypatch.setattr(
+        run_cmd.subprocess,
+        "run",
+        lambda *args, **kwargs: Result(next(outputs)),
+    )
+
+    assert run_cmd._source_tool_revision(script_path) == "git:0123456789abcdef+dirty"  # noqa: SLF001
+
+
+def test_source_revision_uses_installed_version_without_git(monkeypatch, tmp_path: Path) -> None:
+    script_path = _write_step_tree(tmp_path)
+    monkeypatch.setattr(run_cmd, "_installed_tool_revision", lambda: "nemotron 1.2.3")
+
+    assert run_cmd._source_tool_revision(script_path) == "nemotron 1.2.3"  # noqa: SLF001

@@ -1,0 +1,113 @@
+[step]
+id = "tokenizer_extension/extend"
+name = "Tokenizer Extension (Add / Replace)"
+category = "tokenizer_extension"
+description = """\
+Extend a base tokenizer with target-language subwords. Trains one BPE on a
+corpus (HF dataset or local parquet/jsonl) and splices it in using the arm
+chosen by `method` — one arm per job. Add keeps the base's residual script
+tokens and appends new ones; Replace prunes the target script's residual tokens
+and splices fresh corpus-optimal ones into the pruned base; Expand appends
+decoded surfaces with no merge rules (the naive baseline). CPU-only; the splice
+is rank-dead-safe."""
+tags = ["tokenizer", "bpe", "extension", "cpu", "multilingual"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "Base model/tokenizer to extend (only the tokenizer is read here)"
+required = true
+
+[[produces]]
+type = "tokenizer"
+description = "Extended tokenizer directory: output_dir/<method>/ (add/, replace/ or expand/)"
+
+[[models]]
+name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16"
+description = "Nemotron 3 Nano 30B-A3B. Tokenizer is shared across the Nano3 family."
+default = true
+min_gpus = 0
+
+[[parameters]]
+name = "method"
+description = "'add' keeps base residual tokens and appends new ones; 'replace' prunes the target script's residual tokens then refills; 'expand' adds the decoded surfaces atomically via add_tokens() with no merge rules (the naive baseline). Build ONE arm per job."
+default = "replace"
+choices = ["add", "replace", "expand"]
+
+[[parameters]]
+name = "language"
+description = "Target language; selects the corpus normalizer and the Replace prune script from the profile table in languages.py (hindi, vietnamese, malayalam, punjabi, ...). Overridden by an explicit remove_script / script_normalizer. Unset = legacy Devanagari defaults."
+default = "hindi"
+
+[[parameters]]
+name = "extension_size"
+description = "Number of new subwords to splice per arm"
+default = 30000
+
+[[parameters]]
+name = "remove_script"
+description = "For Replace: comma-separated script(s) whose residual tokens are pruned. LEAVE UNSET unless you are deliberately overriding `language:` — an explicit value here silently wins over the language profile (e.g. language=vietnamese + remove_script=devanagari prunes the wrong rows)."
+
+[[parameters]]
+name = "corpus.hf_dataset"
+description = "HF dataset path. Generic subset model: hf_name (config/subset) + hf_split, plus optional hf_data_dir / hf_data_files / hf_revision. Leave null to use corpus.path."
+
+[[parameters]]
+name = "corpus.hf_name"
+description = "HF config/subset name (load_dataset `name`), e.g. 'verified' (sangraha) or 'hi' (samanantar)"
+
+[[parameters]]
+name = "corpus.hf_split"
+description = "HF split, e.g. 'hin' (sangraha) or 'train' (samanantar)"
+
+[[parameters]]
+name = "corpus.streaming"
+description = "false = download+cache the dataset (reused by later jobs); true = stream on the fly (no reuse)"
+default = false
+
+[[parameters]]
+name = "corpus.path"
+description = "Local corpus dir/glob (parquet or jsonl) as an alternative to corpus.hf_dataset"
+
+[[parameters]]
+name = "corpus.text_field"
+description = "Column/field holding the text in the dataset"
+default = "text"
+
+[[parameters]]
+name = "corpus.samples"
+description = "Number of documents to train the BPE on"
+default = 1000000
+
+[[parameters]]
+name = "corpus.min_frequency"
+description = "Ignore merges below this word frequency (0 = keep all; safe now the splice is rank-dead-proof)"
+default = 0
+
+[[strategies]]
+when = "training on a memory-limited node"
+then = "set corpus.max_doc_chars (e.g. 400-700) and corpus.min_frequency>=3 to bound the BPE trainer footprint"
+
+[[strategies]]
+when = "deploying for a single target language only"
+then = "prefer method=replace (fewer vocab rows); for robustness across a script family (e.g. Hindi+Marathi) prefer method=add"
+
+[[strategies]]
+when = "corpus is a local parquet directory"
+then = "set corpus.path + corpus.glob and keep corpus.diversify=true for even cross-shard coverage"
+
+[[errors]]
+name = "corpus_source_unset"
+recovery = "Set either corpus.hf_dataset (+hf_config/hf_split) or corpus.path (+glob)."
+
+[[errors]]
+name = "rank_dead_tokens"
+recovery = "Spliced tokens unreachable at their merge rank — indicates a corrupt merge set; retrain with corpus.min_frequency>0 or fewer/cleaner docs."
+
+[[errors]]
+name = "oom_during_training"
+recovery = "Lower corpus.samples, set corpus.max_doc_chars, and raise corpus.min_frequency; the BPE trainer is CPU/RAM-bound."
+
+[reference]
+readme = "src/nemotron/steps/tokenizer_extension/extend/README.md"
+guide = "src/nemotron/steps/tokenizer_extension/guide.md"
+lib = "src/nemotron/steps/tokenizer_extension/extend/extension.py"

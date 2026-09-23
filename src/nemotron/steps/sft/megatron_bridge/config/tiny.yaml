@@ -57,6 +57,9 @@ model:
   context_parallel_size: 1
   expert_model_parallel_size: 8
   expert_tensor_parallel_size: 1
+  # Pin it: unset, Mcore chooses at runtime and the same config can use a
+  # different dispatcher between runs. alltoall works on every shape.
+  moe_token_dispatcher_type: alltoall
   sequence_parallel: true
   calculate_per_token_loss: true
   recompute_granularity: full

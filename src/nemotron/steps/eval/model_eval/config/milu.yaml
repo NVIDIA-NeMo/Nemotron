@@ -1,0 +1,23 @@
+# MILU -- Indic-language multitask understanding, plus English as a
+# forgetting control.
+#
+#   MILU_LANG=Punjabi uv run nemotron steps run eval/model_eval -c milu --batch <profile>
+#
+# MILU is NOT in the NeMo Evaluator Launcher registry; it ships only in the
+# sovereign harness image, which is why this config overrides the image. Run
+# `nemo-evaluator ls` inside the image for the language list.
+#
+# Large MILU splits do not reliably complete -- see TROUBLESHOOTING.md. Bound
+# the run with EVAL_LIMIT_SAMPLES; it is a deterministic first-N, so the subset
+# is identical across checkpoints and scores stay comparable within a grid.
+defaults: direct.yaml
+
+harness_image: ${oc.env:EVAL_HARNESS_IMAGE,nvcr.io/nvidia/eval-factory/sovereign:latest}
+
+evaluation:
+  tasks:
+    # MILU_LANG picks the target language; English stays as a forgetting
+    # control. Capitalised language names, as the harness registers them --
+    # `nemo-evaluator ls` in the image lists what it ships.
+    - name: milu_${oc.env:MILU_LANG,Hindi}
+    - name: milu_English

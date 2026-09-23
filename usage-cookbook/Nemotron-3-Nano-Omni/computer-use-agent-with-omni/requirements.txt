@@ -13,7 +13,7 @@ idna==3.13
 jiter==0.14.0
 loguru==0.7.3
 openai==2.33.0
-Pillow==12.2.0
+Pillow==12.3.0
 pydantic==2.13.3
 pydantic_core==2.46.3
 python-dotenv==1.2.2

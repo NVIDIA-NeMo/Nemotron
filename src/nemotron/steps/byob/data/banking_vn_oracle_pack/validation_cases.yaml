@@ -1,0 +1,199 @@
+- id: success_get_account_balance
+  tool: get_account_balance
+  arguments: {account_id: ACC-001}
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_get_account_balance
+  tool: get_account_balance
+  arguments: {account_id: ACC-ABSENT-1}
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: success_get_card_limit
+  tool: get_card_limit
+  arguments: {card_id: CARD-001}
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_get_card_limit
+  tool: get_card_limit
+  arguments: {card_id: CARD-ABSENT-1}
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: success_get_transaction_status
+  tool: get_transaction_status
+  arguments: {transaction_id: TXN-1001}
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_get_transaction_status
+  tool: get_transaction_status
+  arguments: {transaction_id: TXN-ABSENT-1}
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: success_list_recent_transactions
+  tool: list_recent_transactions
+  arguments: {account_id: ACC-001, limit: 5}
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_list_recent_transactions
+  tool: list_recent_transactions
+  arguments: {account_id: ACC-ABSENT-1}
+  expect: {result_class: success, error_code: null}
+  coverage: negative
+  reset_before: true
+  notes: "Collection miss returns empty transactions list, not not_found."
+
+- id: success_get_transfer_fee
+  tool: get_transfer_fee
+  arguments:
+    from_account_id: ACC-001
+    to_account_number: "9876543210"
+    amount_vnd: 500000
+    rail: napas
+    to_bank_code: "970436"
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_get_transfer_fee
+  tool: get_transfer_fee
+  arguments:
+    from_account_id: ACC-ABSENT-1
+    to_account_number: "9876543210"
+    amount_vnd: 500000
+    rail: napas
+    to_bank_code: "970436"
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: success_create_transfer
+  tool: create_transfer
+  arguments:
+    from_account_id: ACC-001
+    to_account_number: "9876543210"
+    amount_vnd: 200000
+    rail: napas
+    to_bank_code: "970436"
+    confirm: true
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_create_transfer
+  tool: create_transfer
+  arguments:
+    from_account_id: ACC-ABSENT-1
+    to_account_number: "9876543210"
+    amount_vnd: 200000
+    rail: napas
+    to_bank_code: "970436"
+    confirm: true
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: confirm_false_create_transfer
+  tool: create_transfer
+  arguments:
+    from_account_id: ACC-001
+    to_account_number: "9876543210"
+    amount_vnd: 200000
+    rail: napas
+    to_bank_code: "970436"
+    confirm: false
+  expect:
+    result_class: awaiting_confirmation
+    state_unchanged: true
+  reset_before: true
+
+- id: wrong_type_confirm_create_transfer
+  tool: create_transfer
+  arguments:
+    from_account_id: ACC-001
+    to_account_number: "9876543210"
+    amount_vnd: 200000
+    rail: napas
+    to_bank_code: "970436"
+    confirm: "false"
+  expect: {result_class: structured_error, error_code: invalid_argument}
+  reset_before: true
+
+- id: rejected_insufficient_funds_fee_gap
+  tool: create_transfer
+  arguments:
+    from_account_id: ACC-007
+    to_account_number: "9988776655"
+    amount_vnd: 500000
+    rail: napas
+    to_bank_code: "970436"
+    confirm: true
+  expect:
+    result_class: success
+    status: rejected_insufficient_funds
+    state_unchanged: true
+  reset_before: true
+  notes: "Business outcome status, not structured_error."
+
+- id: success_get_vietqr_payment_status
+  tool: get_vietqr_payment_status
+  arguments: {payment_ref: VQ-1001}
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_get_vietqr_payment_status
+  tool: get_vietqr_payment_status
+  arguments: {payment_ref: VQ-ABSENT-1}
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: success_get_dispute_status
+  tool: get_dispute_status
+  arguments: {dispute_id: DSP-0001}
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_get_dispute_status
+  tool: get_dispute_status
+  arguments: {dispute_id: DSP-ABSENT-1}
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: success_create_dispute
+  tool: create_dispute
+  arguments:
+    transaction_id: TXN-1111
+    reason: goods_not_received
+    confirm: true
+  expect: {result_class: success, error_code: null}
+  reset_before: true
+
+- id: miss_create_dispute
+  tool: create_dispute
+  arguments:
+    transaction_id: TXN-ABSENT-1
+    reason: goods_not_received
+    confirm: true
+  expect: {result_class: structured_error, error_code: not_found}
+  reset_before: true
+
+- id: confirm_false_create_dispute
+  tool: create_dispute
+  arguments:
+    transaction_id: TXN-1111
+    reason: goods_not_received
+    confirm: false
+  expect:
+    result_class: awaiting_confirmation
+    state_unchanged: true
+  reset_before: true
+
+- id: wrong_type_confirm_create_dispute
+  tool: create_dispute
+  arguments:
+    transaction_id: TXN-1111
+    reason: goods_not_received
+    confirm: "false"
+  expect: {result_class: structured_error, error_code: invalid_argument}
+  reset_before: true

@@ -1,0 +1,46 @@
+# Hindi validation fixture. It is test data, not a bundled language pack or a
+# claim that Nemotron provides a Hindi curation default.
+#
+# Chosen as the second language precisely because it is not like the first.
+# Devanagari is an abugida; matras split across Unicode categories Mn and Mc with
+# Mc in the majority, where Vietnamese NFD produces only Mn. Sentences end with
+# the danda, not a full stop. Digits exist in two scripts. Each of those breaks a
+# different assumption, and the point of this pack is that the runtime absorbs
+# them without changing.
+
+[pack]
+pack_id      = "x-test-hi"
+language_tag = "x-test-hi"
+version      = "1.1"
+schema       = 1
+
+[sources]
+stopwords = { file = "stopwords.txt", n = 89, origin = "assembled for cross-script transfer validation", license = "CC0-1.0" }
+charset = { file = "charset.txt", script = "Deva", note = "letters, matras (Mn and Mc) and Devanagari digits", origin = "Unicode Standard Devanagari repertoire curated for Hindi", license = "Unicode-3.0" }
+boilerplate = { file = "boilerplate.txt", n = 12, origin = "observed on Hindi news sites", license = "Apache-2.0" }
+
+# The danda U+0964 is the sentence terminator. Curator's PunctuationFilter looks
+# for '.', '!' and '?' only, so a correct Hindi paragraph scores zero against it.
+[orthography]
+sentence_terminators = ["।", "॥", ".", "!", "?"]
+
+# No fold_map. Devanagari matras are obligatory vowels, not removable marks.
+
+[capabilities]
+supports = [
+    "script_ratio",
+    "stopword_ratio",
+    "boilerplate_hits",
+    "sentence_end_ratio",
+    "word_segmentation",
+]
+[notes]
+absent_capabilities = """diacritic_ratio and stopword_ratio_folded are not declared, and that \
+is the finding rather than a shortfall. Vietnamese tone marks strip to degraded but readable \
+text, so measuring their density says something. Devanagari matras strip to nonsense, so the \
+same measurement would be meaningless — and because the capability is undeclared, every figure \
+derived from it is absent from the Hindi report with a recorded warning instead of being \
+computed on a false premise."""
+digits = """Devanagari digits are Unicode category Nd and satisfy str.isdigit(), but do not match \
+[0-9]. Curator's NumbersFilter therefore reads 0 on Devanagari-digit text. Recorded here; \
+correcting NumbersFilter is upstream work."""

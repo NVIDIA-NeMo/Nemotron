@@ -1,0 +1,57 @@
+# Embedding init -> resized HF checkpoint for CPT. Needs a GPU node (loads the model).
+#
+# Dispatches to an init engine (embeddings.py):
+#   method: baseline | subword | focus
+# The default is subword/uniform (a.k.a. mean-of-constituents): every new token
+# is initialized from the uniform mean of its base-vocabulary subword rows, with
+# input norm correction to the median Devanagari norm.
+
+# Nemotron-H and similar architectures ship their modeling code in the model
+# repo, so loading them executes that code. The step defaults to false; this
+# config opts in because the base model below requires it. Set false for any
+# repo you do not trust, and prefer a pinned revision.
+trust_remote_code: true
+
+base_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+dtype: bfloat16
+
+# Target language. Selects the script used to find the base model's existing
+# target rows, and the auxiliary encoder / fastText vectors (MuRIL for Indic,
+# XLM-R otherwise). Set this instead of hardcoding bert_model / candidate_pool.
+language: hindi
+arm: add                            # add | replace (replace needs extend's replace/ output + its id_remap.json)
+
+# Extended (append-style) tokenizer from the extend step.
+extended_tokenizer: ./output/tokenizer_extension/add
+
+# Resized HF checkpoint (weights + tokenizer) -> becomes CPT's hf_model_path.
+output_dir: ./output/resized_checkpoint
+
+method: subword
+
+baseline:
+  mode: mean_target                 # hf_default | mean_all | mean_target
+  norm_correction: true
+  num_samples: 10
+
+subword:
+  input_averaging: uniform          # uniform | char_weighted | max_char | bert_weighted | gemma_weighted
+  output_averaging: uniform
+  input_norm_correction: true
+  output_norm_correction: false     # ON risks LM-head over-confidence -> loss explosion
+  input_target_norm: true           # normalize to the median target-script norm
+  output_target_norm: false
+  temperature: 0.1                  # only used by bert_weighted / gemma_weighted
+  # Leave bert_model unset so `language:` picks the right encoder. Setting it
+  # here OVERRIDES the profile -- that is how a Vietnamese run silently ended up
+  # weighting with MuRIL, which has no Vietnamese.
+  # bert_model: google/muril-base-cased
+  gemma_model: google/gemma-2-27b
+  num_samples: 10
+
+focus:
+  fasttext_model: null              # required for method: focus (a cc.hi.300.bin)
+  candidate_pool: target            # target | all
+  sparsemax_temperature: 0.05
+  num_samples: 10
+  top_contributors: 5

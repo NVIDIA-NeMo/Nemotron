@@ -20,7 +20,7 @@ limitations under the License.
 
 Generate synthetic training data with [NeMo Data Designer](https://nvidia-nemo.github.io/DataDesigner/) using a declarative YAML pipeline. Seed a generation run with your domain-specific topics, scenarios, or personas; define the column structure and prompts in YAML; and produce training-ready JSONL without writing Python.
 
-Three output shapes ship out of the box: SFT chat data, tool-calling SFT data, and DPO preference pairs.
+Three output shapes ship with `sdg/data_designer`: SFT chat data, tool-calling SFT data, and DPO preference pairs. A second step, `sdg/persona_mcq`, produces multilingual persona-grounded multiple-choice SFT data with teacher-panel voting.
 
 :::{tip}
 New to SDG or new to model training? Read {doc}`using-skills` for a short guide to productive agent sessions, then start the {doc}`getting-started` tutorial to run the bundled pipeline and produce your first dataset in 5 to 10 minutes.
@@ -33,6 +33,7 @@ Use SDG when you need training data that does not already exist in sufficient qu
 - **SFT chat data** — Generate user/assistant conversation pairs grounded in domain-specific topics, scenarios, or personas. Use `default.yaml` as a starting point and adapt it to your domain.
 - **Tool-calling SFT data** — Generate multi-turn conversations that include assistant tool calls and tool responses in OpenAI format. Use `customer_support_tools.yaml` as a starting point.
 - **DPO preference data** — Generate prompt / chosen / rejected triples for preference learning. Use `rl_pref.yaml`.
+- **Persona-grounded MCQ SFT data** — Author multiple-choice questions from regional personas in several languages, deduplicate them, and keep only answers on which a panel of teacher models agrees. Use `sdg/persona_mcq`; refer to {doc}`how-to/persona-mcq-data`.
 - **Custom domains** — Swap the seed file, category columns, and prompts to target any domain. The pipeline is fully declarative; customisation does not require editing Python.
 - **Cluster-scale generation** — Dispatch generation to Lepton or Slurm via env.toml profiles when local throughput is insufficient.
 
@@ -83,7 +84,7 @@ Prepare for a focused chat with a coding agent: opening brief, seed ideas, and h
 :link-type: doc
 Task-focused guides: adapt the pipeline to a domain, generate preference pairs, dispatch to a cluster.
 +++
-{bdg-success}`5 guides` {bdg-secondary}`task-focused`
+{bdg-success}`6 guides` {bdg-secondary}`task-focused`
 :::
 
 :::{grid-item-card} {octicon}`list-unordered;1.5em;sd-mr-1` Reference
@@ -91,7 +92,7 @@ Task-focused guides: adapt the pipeline to a domain, generate preference pairs, 
 :link-type: doc
 YAML config schema, CLI flags, output projection shapes, and troubleshooting.
 +++
-{bdg-success}`4 references` {bdg-secondary}`lookup`
+{bdg-success}`5 references` {bdg-secondary}`lookup`
 :::
 
 ::::
@@ -117,6 +118,7 @@ YAML config schema, CLI flags, output projection shapes, and troubleshooting.
 | {doc}`how-to/create-domain-dataset` | Adapt the pipeline to a custom domain with a seed file and multiple category dimensions |
 | {doc}`how-to/tool-call-data` | Generate multi-turn tool-calling SFT data |
 | {doc}`how-to/preference-data` | Generate DPO preference pairs from `rl_pref.yaml` |
+| {doc}`how-to/persona-mcq-data` | Generate multilingual persona-grounded MCQ SFT data with `sdg/persona_mcq` |
 | {doc}`how-to/dispatch-to-cluster` | Dispatch generation to Lepton or Slurm via env.toml |
 
 ```
@@ -128,6 +130,7 @@ YAML config schema, CLI flags, output projection shapes, and troubleshooting.
 | {doc}`reference/config-schema` | Full YAML column types, sampler parameters, and projection fields |
 | {doc}`reference/cli-reference` | `nemotron steps run sdg/data_designer` flags and hydra overrides |
 | {doc}`reference/output-projections` | The three projection shapes with annotated JSONL examples |
+| {doc}`reference/persona-mcq-config` | `sdg/persona_mcq` fields, output artifacts, training record schema, and errors |
 | {doc}`reference/troubleshooting` | Dispatch failures, image pull errors, API key issues, schema drift |
 
 ```

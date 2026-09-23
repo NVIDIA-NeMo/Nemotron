@@ -1,0 +1,155 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "curate/subset"
+name = "Nested Token-Budget Subsets"
+category = "curate"
+description = """Draw stratified subsets of a corpus at several fixed token budgets in one run, guaranteeing that every smaller tier is contained in every larger one, so a filtering ablation compares policies rather than dataset sizes."""
+tags = ["curate", "subset", "ablation", "sampling", "determinism"]
+
+[[consumes]]
+type = "filtered_jsonl"
+description = "A curated corpus carrying its own document id. Optionally carries score columns from curate/nemo_curator mode: annotate or both, which then join the stratum key. When curate/decontamination runs, this must be its decontaminated_jsonl output: tiers cut from the pre-decontamination corpus carry the documents decontamination was asked to remove."
+
+[[produces]]
+type = "filtered_jsonl"
+description = "One JSONL corpus per requested budget, written to budget_<N>_<unit>/subset.jsonl. Records pass through unchanged; no column is added or removed."
+
+[[produces]]
+type = "subset_plan"
+description = "plan.json: every tier's per-stratum quota, the stratum membership, the seed and the tokenizer. Written before any corpus is materialized so it can be inspected and rejected first."
+
+[[produces]]
+type = "subset_report"
+description = "subset_report.json: per tier, achieved_tokens, token_shortfall, per_stratum_deviation, documents_refilled and strata_exhausted, plus the tokenizer name and revision the counts came from."
+
+[[parameters]]
+name = "input_glob"
+description = "JSONL file path or glob to subset."
+
+[[parameters]]
+name = "output_dir"
+description = "Directory receiving one subdirectory per tier, plan.json and subset_report.json."
+
+[[parameters]]
+name = "id_field"
+description = "Required. The corpus's own document identifier. A subset is a set of ids, so nesting cannot be stated without one, and Curator's AddId is positional and does not survive resharding. Non-unique or empty values are a hard error."
+
+[[parameters]]
+name = "text_field"
+description = "Record field holding the text to count."
+default = "text"
+
+[[parameters]]
+name = "source_field"
+description = "Field naming the corpus a record came from; it forms the first component of the stratum key. Without it each shard path becomes its own source and the strata describe shards."
+default = "null"
+
+[[parameters]]
+name = "token_budgets"
+description = "One tier per positive integer budget. All are planned together in a single run — tiers produced by separate runs cannot be shown to nest."
+
+[[parameters]]
+name = "tokenizer"
+description = "Mapping with name and revision, forwarded to Curator's TokenCountFilter via transformers_init_kwargs. revision is required because counts from two revisions are not comparable. Set the block to null to count whitespace words instead; artifacts then record unit: words."
+
+[[parameters]]
+name = "token_cache"
+description = "Path for token counts cached by (tokenizer, revision, id, content SHA-256). The content digest invalidates a stale count when text changes under the same id; a cache from another tokenizer, revision, or schema is ignored."
+default = "null"
+
+[[parameters]]
+name = "quality_score_field"
+description = "Optional score column. Present in the data, its deciles join the stratum key. Set but absent from the data, the run fails rather than quietly stratifying on less. Unset, the key is source x length band."
+default = "null"
+
+[[parameters]]
+name = "length_bands"
+description = "Strictly increasing positive integer upper edges of the length bands, in the budget's unit. A subset with the right source mix and the wrong length mix is not neutral."
+default = [128, 512, 2048, 8192]
+
+[[parameters]]
+name = "seed"
+description = "Seed for the per-stratum ordering. The ordering is a hash of the document id with the id as tiebreaker, never Python's hash(), which is salted per process."
+default = 0
+
+[[strategies]]
+when = "You want to compare two filtering policies"
+then = "Run each policy through curate/nemo_curator, then subset both to the same token_budgets. Comparing whatever each policy retained measures filter quality and dataset size at once, and the two cannot be separated afterwards."
+
+[[strategies]]
+when = "You need a quick check that the step runs"
+then = "Use config/tiny.yaml. It reads a packaged 120-document fixture and counts whitespace words, so no tokenizer is downloaded."
+
+[[strategies]]
+when = "You have score columns and want them to shape the subset"
+then = "Set quality_score_field to a column produced by curate/nemo_curator mode: annotate or both. Its deciles join the stratum key, so the subset preserves the score distribution as well as the source and length mix."
+
+[[strategies]]
+when = "You need to add a larger tier later"
+then = "Re-run with the original budgets plus the new one, the same seed and the same tokenizer revision. Running the new budget alone produces a corpus that may not contain the tiers you already trained on."
+
+[[strategies]]
+when = "You want to see what a run will do before it writes anything"
+then = "plan.json is written before the first tier is materialized and holds every per-stratum quota. Inspect it, and re-run with different budgets or length_bands if the composition is not what you expected."
+
+[[errors]]
+name = "id_field_not_unique"
+recovery = "The error reports the count and three examples. Deduplicate on the corpus's own identifier, or add one upstream — nesting is a statement about sets of ids and cannot be verified without them."
+
+[[errors]]
+name = "id_field_missing"
+recovery = "Set id_field to the corpus's own document id. If records do not carry one, add it before curation: an id assigned after filtering cannot be traced back to the input."
+
+[[errors]]
+name = "quality_score_field_absent"
+recovery = "The column is named in config but missing from the records. Produce it with curate/nemo_curator mode: annotate or mode: both, or unset quality_score_field. It is an error rather than a fallback because stratifying on less than was asked for changes what the subset represents."
+
+[[errors]]
+name = "quality_score_non_finite"
+recovery = "At least one configured quality score is NaN or infinite. Repair or remove those scores before stratifying; non-finite values cannot define deterministic decile boundaries."
+
+[[errors]]
+name = "token_count_non_positive"
+recovery = "At least one usable document has a zero or negative token count. Check the tokenizer/cache and input text. Every selected document needs a positive cost for token budgets and shortfall to be meaningful."
+
+[[errors]]
+name = "invalid_budget_or_length_band"
+recovery = "token_budgets must contain positive integers and length_bands must contain strictly increasing positive integers. Decimal, string, boolean, duplicate, and descending values are refused rather than coerced."
+
+[[errors]]
+name = "tier_write_mismatch"
+recovery = "A planned document id could not be written from the corpus during materialization. The run removes every tier and success report rather than publishing an artifact that disagrees with plan.json; ensure the input does not change during the run."
+
+[[errors]]
+name = "tokenizer_revision_missing"
+recovery = "Set tokenizer.revision, or set tokenizer to null to count whitespace words. Two subsets counted under different revisions are not an ablation pair, and a subset that cannot name its revision cannot be reused as a baseline."
+
+[[errors]]
+name = "starved_strata"
+recovery = "A warning, not a failure: the budget divided across the strata gives some of them less than their shortest document, so they contribute nothing to that tier. Raise the budget, widen length_bands, or unset quality_score_field. Stratifying more finely makes this worse."
+
+[[errors]]
+name = "token_shortfall"
+recovery = "Expected, not a fault. Nesting and filling the budget are not simultaneously satisfiable — with documents of 4, 3 and 2 tokens the fullest selection for a budget of 4 is {4} and for 5 is {3,2}, and {4} is not contained in {3,2}. Shortfall is reported per stratum and never made up from another stratum."
+
+[[errors]]
+name = "tiers_do_not_nest"
+recovery = "A defect in this step, not in the configuration. The run fails rather than writing subsets that cannot support the ablation they exist for. Report it with plan.json attached."
+
+[reference]
+skill = "src/nemotron/steps/curate/nemo_curator/subset/README.md"
+script = "src/nemotron/steps/curate/nemo_curator/scripts/run_subset.py"
+docs = "https://docs.nvidia.com/nemo/curator/latest/"

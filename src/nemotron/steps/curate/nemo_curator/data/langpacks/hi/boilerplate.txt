@@ -1,0 +1,14 @@
+# Regular expressions matching Hindi web boilerplate.
+# English strings appear because Hindi news sites carry them untranslated.
+और पढ़ें
+आगे पढ़ें
+यह भी पढ़ें
+शेयर करें
+टिप्पणी करें
+सर्वाधिकार सुरक्षित
+संबंधित ख़बरें
+विज्ञापन
+सदस्यता लें
+Read more
+Share
+Advertisement

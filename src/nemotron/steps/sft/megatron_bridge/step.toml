@@ -5,8 +5,9 @@ category = "sft"
 description = """\
 Supervised fine-tuning using NVIDIA Megatron-Bridge. Best for large-scale
 distributed training with tensor/pipeline/context parallelism. Requires
-packed Parquet data from data_prep/sft_packing."""
-tags = ["sft", "fine-tuning", "megatron", "distributed-training"]
+packed Parquet data; standard profiles use data_prep/sft_packing. Includes
+experimental long-context topology references."""
+tags = ["sft", "fine-tuning", "megatron", "distributed-training", "long-context"]
 
 [[consumes]]
 type = "packed_parquet"
@@ -39,8 +40,26 @@ description = "Nemotron 3 Super 120B-A12B (120.6B total / 12.7B active hybrid Ma
 min_gpus = 32
 
 [[parameters]]
-name = "seq_length"
-description = "Must match pack_size in data_prep/sft_packing"
+name = "recipe.seq_length"
+description = "Recipe sequence length. Keep it equal to dataset.seq_length, packed_sequence_size, model.seq_length, and the prepared pack size."
+default = 4096
+choices = [2048, 4096, 8192, 16384, 32768]
+
+[[parameters]]
+name = "dataset.seq_length"
+description = "Dataset sequence length. Change it together with recipe.seq_length, packed_sequence_size, and model.seq_length."
+default = 4096
+choices = [2048, 4096, 8192, 16384, 32768]
+
+[[parameters]]
+name = "dataset.packed_sequence_specs.packed_sequence_size"
+description = "Offline-packed sample size. It must match all configured sequence lengths and the prepared data."
+default = 4096
+choices = [2048, 4096, 8192, 16384, 32768]
+
+[[parameters]]
+name = "model.seq_length"
+description = "Model sequence length. Change it together with the recipe and dataset sequence lengths."
 default = 4096
 choices = [2048, 4096, 8192, 16384, 32768]
 
@@ -77,18 +96,32 @@ then = "Set recipe.packed_sequence=true and keep dataset.seq_length, dataset.pac
 
 [[strategies]]
 when = "user wants LoRA"
-then = "set peft=lora to reduce GPU requirements and checkpoint size"
+then = "set recipe.peft=lora to reduce GPU requirements and checkpoint size"
 skill = "Megatron-Bridge/skills/mlm-bridge-training/SKILL.md"
 
 [[strategies]]
-when = "user selects Super3 model"
+when = "user selects Super3 model at 32K context or shorter"
 then = "start from a 32-GPU plan with tp=8, pp=4, cp=1 and verify cluster topology early"
 skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
 
 [[strategies]]
 when = "sequence_length > 32K"
-then = "enable hybrid context parallelism"
+then = "use a config/super3 long-context YAML only for dry-run planning, then add and verify packing-alignment and mixed-precision support before launch"
 skill = "Megatron-Bridge/skills/perf-techniques/hybrid-context-parallel/SKILL.md"
+
+[[strategies]]
+when = "user selects Super3 with 128K context"
+then = "inspect config/super3_128k.yaml with --dry-run for a 64-rank TP=8, PP=1, CP=8, EP=64 topology; do not launch it with the stock step"
+skill = "Megatron-Bridge/skills/perf-techniques/hybrid-context-parallel/SKILL.md"
+
+[[strategies]]
+when = "user selects Super3 with 256K context"
+then = "inspect config/super3_256k.yaml with --dry-run for a 128-rank TP=8, PP=2, CP=8, EP=8 topology; do not launch it with the stock step"
+skill = "Megatron-Bridge/skills/perf-techniques/hybrid-context-parallel/SKILL.md"
+
+[[strategies]]
+when = "tokenizer, sequence length, TP, CP, or sequence parallelism changes"
+then = "use an external alignment-aware packer, write to a new output directory, and revalidate stored lengths and loss masks"
 
 [[strategies]]
 when = "GPU memory is tight (A100 40GB)"
@@ -111,7 +144,7 @@ skill = "Megatron-Bridge/skills/perf-techniques/parallelism-strategies/SKILL.md"
 
 [[errors]]
 name = "missing_packed_data"
-recovery = "run data_prep/sft_packing first, or point dataset.packed_sequence_specs.packed_train_data_path at the packed splits directory"
+recovery = "For standard profiles, run data_prep/sft_packing or point at compatible packed shards. The Super3 long-context references require pre-existing shards explicitly aligned to 128."
 
 [[errors]]
 name = "bad_parallel_batch_shape"
@@ -121,9 +154,14 @@ recovery = "Set train.global_batch_size as a multiple of data-parallel size and 
 name = "bad_loss_masks_or_template"
 recovery = "Inspect packed records from data_prep/sft_packing before training; prompt/template bugs often look like poor SFT quality."
 
+[[errors]]
+name = "misaligned_packed_sequences"
+recovery = "Use an external or updated packer that explicitly aligns every stored subsequence; alignment is not configurable through the stock GA_v2 SFT step."
+
 [reference]
 skill = "src/nemotron/steps/sft/megatron_bridge/README.md"
 recipe = "src/nemotron/recipes/nano3/stage1_sft/"
+super3_recipe = "src/nemotron/recipes/super3/stage1_sft/"
 config = "src/nemotron/recipes/nano3/stage1_sft/config/default.yaml"
 script = "src/nemotron/recipes/nano3/stage1_sft/train.py"
 megatron_bridge_repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"

@@ -1,0 +1,73 @@
+pipeline:
+  experiment_name: persona-mcq-smoke
+  output_root: ${oc.env:NEMOTRON_RUN_DIR,./outputs}/persona_mcq
+  stages: [all]
+  seed: 42
+  resume: true
+  overwrite: false
+
+languages:
+  english:
+    display_name: English
+    locale: en_IN
+    answer_label: Answer
+    script_pattern: "[A-Za-z]"
+    question_script_fraction: {min: 0.50, max: 1.0}
+    answer_script_fraction: {min: 0.85, max: 1.0}
+    strip_latin_glosses: false
+  hindi:
+    display_name: Hindi
+    locale: hi_Deva_IN
+    answer_label: उत्तर
+    answer_label_aliases: [उत्तर है]
+    script_pattern: "[ऀ-ॿ]"
+    question_script_fraction: {min: 0.50, max: 1.0}
+    answer_script_fraction: {min: 0.70, max: 1.0}
+    strip_latin_glosses: true
+  malayalam:
+    display_name: Malayalam
+    locale: en_IN
+    answer_label: ഉത്തരം
+    script_pattern: "[ഀ-ൿ]"
+    question_script_fraction: {min: 0.50, max: 1.0}
+    answer_script_fraction: {min: 0.70, max: 1.0}
+    strip_latin_glosses: true
+
+question_models: [oss]
+answer_models: [qwen, oss, gemma]
+
+models:
+  qwen:
+    model: Qwen/Qwen3.5-122B-A10B
+    endpoint: ${oc.env:QWEN_API_BASE}
+    api_key_env: NVIDIA_API_KEY
+    skip_health_check: true
+    question: {inference: {temperature: 0.7, top_p: 0.8, max_tokens: 2048, max_parallel_requests: 4, timeout: 300}}
+    answer: {temperature: 1.0, top_p: 0.95, max_tokens: 8192, extra_body: {chat_template_kwargs: {enable_thinking: true}}}
+  oss:
+    model: openai/gpt-oss-120b
+    endpoint: ${oc.env:OSS_API_BASE}
+    api_key_env: NVIDIA_API_KEY
+    skip_health_check: true
+    question: {inference: {temperature: 1.0, top_p: 1.0, max_tokens: 2048, max_parallel_requests: 4, timeout: 300, extra_body: {reasoning_effort: low}}}
+    answer: {temperature: 1.0, top_p: 1.0, max_tokens: 8192, extra_body: {reasoning_effort: high}}
+  gemma:
+    model: google/gemma-4-31B-it
+    endpoint: ${oc.env:GEMMA_API_BASE}
+    api_key_env: NVIDIA_API_KEY
+    skip_health_check: true
+    question: {inference: {temperature: 1.0, top_p: 0.95, max_tokens: 2048, max_parallel_requests: 4, timeout: 300}}
+    answer: {temperature: 1.0, top_p: 0.95, max_tokens: 8192, extra_body: {chat_template_kwargs: {enable_thinking: true}}}
+
+question_generation: {num_records: 8, max_parallel_requests: 4, buffer_size: 8}
+lexical_dedup: {threshold: 0.80, shingle_size: 4, permutations: 32, bands: 4, seed: 42}
+semantic_dedup: {model: intfloat/multilingual-e5-large, device: cpu, batch_size: 8, threshold: 0.965, method: greedy, seed: 13, chunk_size: 64}
+answer_generation: {max_parallel_requests: 4, timeout: 600, max_retries: 3}
+sft:
+  response_teachers: [qwen, oss, gemma]
+  agreement: unanimous
+  reasoning:
+    display_name: English
+    script_pattern: "[A-Za-z]"
+    script_fraction: {min: 0.85, max: 1.0}
+sampling: {per_language: 1, seed: 42, reasoning_off_fraction: 0.10, answer_variant: full}

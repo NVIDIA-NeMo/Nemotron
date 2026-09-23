@@ -12,6 +12,10 @@ content:
 
 # Enable Curation Filters
 
+Use this guide for the language, word-count, and domain gates of `curate/nemo_curator`.
+These gates take thresholds you already know and need no profiling run.
+To choose data-dependent thresholds for a corpus, use {doc}`run-the-measure-apply-flow`; to apply a policy that already exists, use {doc}`apply-a-known-policy`.
+
 Start with no filters, confirm JSONL input and output, then add one filter family at a time.
 
 ## Language Filtering
@@ -62,12 +66,23 @@ Keep the first domain-filtered run small.
 The classifier may download or cache model assets on first use.
 ```
 
+## Domain Annotation Without Filtering
+
+To record the classifier's prediction on every row without dropping any, set `annotate_domains: true` and leave `domains` empty.
+Set `domain_score_field` to also record the classifier's complete class-probability vector, in model label order, in a named column; it is not a scalar confidence.
+`annotate_domains` is ignored when `domains` is non-empty, because the filter already runs the classifier.
+
 ## Filter Order
 
-The step applies filters in this order:
+The step applies gates in this order:
 
 1. FastText language identification and language filtering, when `language_codes` is non-empty.
 2. Word-count filtering, when `quality_filters.min_words` and `quality_filters.max_words` are both set.
-3. Multilingual domain classification, when `domains` is non-empty.
+3. Multilingual domain classification, when `domains` is non-empty or `annotate_domains` is `true`.
+4. Policy thresholds, when `heuristic_filters.approved_policy` is set.
 
-When output is unexpectedly small, disable later filters first, then relax thresholds.
+Each enabled gate operates independently, and a row must pass every enabled gate to survive.
+The language, word-count, and domain gates drop rows under every `mode`; `mode` governs only the policy thresholds in step 4.
+
+When output is unexpectedly small, disable later gates first, then relax thresholds.
+Do not gate length in both `quality_filters` and a policy: the ledger then cannot attribute removals to either gate.

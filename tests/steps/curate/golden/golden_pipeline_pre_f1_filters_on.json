@@ -1,0 +1,92 @@
+[
+  {
+    "args": [],
+    "kwargs": {
+      "name": "curate_nemo_curator"
+    },
+    "stage": "Pipeline"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "fields": [
+        "text"
+      ],
+      "file_paths": [
+        "<TMP>/in/a.jsonl"
+      ],
+      "read_kwargs": {
+        "convert_dates": false,
+        "dtype": false
+      }
+    },
+    "stage": "JsonlReader"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "min_langid_score": 0.3,
+      "model_path": "/models/lid.176.bin"
+    },
+    "stage": "FastTextLangId"
+  },
+  {
+    "args": [
+      "FastTextLangId"
+    ],
+    "kwargs": {
+      "score_field": "language",
+      "text_field": "text"
+    },
+    "stage": "ScoreFilter"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "filter_field": "language",
+      "filter_fn": "<callable>"
+    },
+    "stage": "Filter"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "max_words": 5000,
+      "min_words": 50
+    },
+    "stage": "WordCountFilter"
+  },
+  {
+    "args": [
+      "WordCountFilter"
+    ],
+    "kwargs": {
+      "text_field": "text"
+    },
+    "stage": "ScoreFilter"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "cache_dir": "/cache/hf",
+      "filter_by": [
+        "News"
+      ],
+      "text_field": "text",
+      "max_chars": null
+    },
+    "stage": "MultilingualDomainClassifier"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "path": "<TMP>/out"
+    },
+    "stage": "JsonlWriter"
+  },
+  {
+    "args": [],
+    "kwargs": {},
+    "stage": "RayClient"
+  }
+]

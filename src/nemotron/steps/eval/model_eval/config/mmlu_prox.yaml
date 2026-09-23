@@ -1,0 +1,20 @@
+# MMLU-ProX, one language per run.
+#
+#   MMLU_PROX_LANG=hi uv run nemotron steps run eval/model_eval -c mmlu_prox --batch <profile>
+#
+# The task name alone means ALL 29 languages -- roughly 350k requests, which
+# does not error and does not finish. The language is pinned below.
+#
+# `config.params.task` is global to a run, so evaluate one language per
+# invocation and give each its own EVAL_RESULTS_DIR. Coverage is en, zh, ja,
+# ko, fr, de, es, pt, ar, th, hi, bn, sw, af, cs, hu, id, it, mr, ne, ru, sr,
+# te, uk, ur, vi, wo, yo, zu -- confirm against your image, tags differ.
+defaults: direct.yaml
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        task: mmlu_prox_${oc.env:MMLU_PROX_LANG,en}
+  tasks:
+    - name: mmlu_prox_completions

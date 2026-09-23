@@ -1,0 +1,169 @@
+# BFCL eval config template (schema 1.2).
+#
+# Evaluation is a separate run over a benchmark that was already published: it
+# reads run_manifest.json, never a bare parquet, because the manifest is Stage 12's
+# commit marker. Copy this file, fill in every REPLACE_ME_* value, set
+# config_status: resolved, and keep it out of the generation output tree.
+#
+# Nothing here falls back to a provider or pipeline default. Every gate, limit, and
+# decoding parameter is stated, because each one changes what the resulting number
+# means — and all of them together are what eval_config_hash stands for.
+#
+# Credentials are never written here. api_key_env names the environment variable
+# the runner reads; a literal key in this file is refused by the loader.
+
+# 1.2 adds a candidate that pins nothing and a weights digest that names its
+# scheme. A config that declares "1.1" still loads and still means what it meant:
+# every candidate must pin, and only sha256 digests are read.
+schema_version: "1.2"
+config_status: template
+
+# The published generation run under evaluation. Relative paths resolve from this
+# file's own directory.
+source_run_manifest: REPLACE_ME_SOURCE_RUN_MANIFEST_JSON
+# Required for executable mode. `oracle.kind` in run_manifest.json is only a
+# lineage label; it does not locate a backend or endpoint for a later process.
+# Point these at the exact pack and execution resource used by generation:
+#
+# source_oracle:
+#   kind: python  # or endpoint
+#   pack_manifest: REPLACE_ME_ORACLE_PACK_MANIFEST
+#   resource: REPLACE_ME_BACKEND_PY_OR_ENDPOINT_CONFIG
+source_oracle: null
+# Set only when scoring a translated benchmark derived from the same source run.
+# Verification requires the content-addressed BFCL translation contract,
+# complete stable-path translation/backtranslation/quality evidence, exact source
+# task order and truth projection, and a mandatory immutable translator identity
+# plus all-rows contamination scope. An unidentified translator is refused.
+translation_manifest: null
+
+eval:
+  # trace scores the calls the model proposed; executable additionally replays them
+  # against the oracle pack and evaluates the pack's assertions. held_out_eval is
+  # the private executable path; it additionally requires the versioned block below.
+  mode: [trace]
+
+# held_out_eval:
+#   contract_version: "1.0"
+#   policy_hash: REPLACE_ME_HELD_OUT_POLICY_SHA256
+#   fixture_refs: ['["collection","PRIMARY-ID"]']
+#   template_ids: [REPLACE_ME_HELD_OUT_TEMPLATE]
+#   seed: 42
+#   pack_version: REPLACE_ME_EXACT_PACK_VERSION
+#   max_tasks_per_template: 8
+
+scoring:
+  # Content-hashed: editing the contract changes eval_config_hash, because two runs
+  # that disagree on what "argument match" means are not the same evaluation.
+  contract: ../../references/bfcl-eval-scoring-contract.md
+  argument_matching: schema_then_canonical
+  insert_declared_defaults: true
+  respect_call_order: true
+  respect_call_group: true
+  allow_llm_repair: false
+  task_success: all_applicable_gates
+
+limits:
+  # Assistant turns per episode. A task whose trace needs more turns than this
+  # fails on the budget rather than on the model, so raise it before comparing
+  # scores across benchmarks with longer conversations.
+  max_turns: 5
+  tool_timeout_s: 10.0
+  candidate_timeout_s: 60.0
+  episode_timeout_s: 300.0
+  max_parallel_tasks: 1
+  # Total HTTP attempts are 1 + max_retries. Only transient transport/408/429/5xx
+  # failures retry, and all attempts must fit inside candidate_timeout_s.
+  max_retries: 2
+
+candidates:
+  - alias: candidate_a
+    # Serving route: where the request goes.
+    model: REPLACE_ME_SERVING_ROUTE
+    provider: nvidia
+    provider_api_version: v1
+    api:
+      base_url: REPLACE_ME_BASE_URL
+      api_key_env: NVIDIA_API_KEY
+    # Weight identity: what answered. A branch name such as main is refused, since
+    # the same config would score different weights next month.
+    # This is also what the contamination gate compares against the models that
+    # built the benchmark. Set weights_digest whenever the generation roles
+    # recorded one, under the same scheme: two comparable digests settle the
+    # comparison, while two model names that normalize alike leave it unresolved
+    # and block publication. A sha256: digest covers weight bytes, so two unequal
+    # ones are two sets of weights. A bfcl-weight-manifest-v1: digest covers every
+    # file in a weights directory, so it settles only when equal — unequal, or
+    # compared against a sha256:, it is reported as unresolved rather than as
+    # different weights. Record the scheme the other side recorded.
+    #
+    # Do not look these up by hand. Run
+    #   python -m nemotron.steps.byob.scripts.resolve_bfcl_model_identity registry \
+    #       --model ORG/MODEL --revision main
+    # and paste what it prints: it records the commit the reference points at now.
+    # Use the local subcommand for weights on disk.
+    #
+    # A hosted frontier route that publishes neither a commit nor a digest leaves
+    # both null (see the resolver's provider-managed subcommand). That run is still
+    # scored, and it is honest about what it measured: the identity reads as
+    # provider_managed and the run cannot request publication. With no pin, the
+    # route is the identity, so source and model must repeat this candidate's own
+    # provider and model. Never substitute a hash of the model name — it would name
+    # the string, not the weights, and would keep claiming reproducibility after
+    # the provider swapped them.
+    model_identity:
+      source: huggingface
+      model: REPLACE_ME_ORG/REPLACE_ME_MODEL
+      revision: REPLACE_ME_IMMUTABLE_COMMIT
+      weights_digest: null
+    inference:
+      temperature: 0.0
+      top_p: 1.0
+      max_tokens: 8192
+      seed: 42
+      tool_choice: auto
+      # Optional endpoint-only request fields live under the exact
+      # <provider>.<provider_api_version> namespace, for example:
+      # provider_extensions:
+      #   nvidia.v1:
+      #     repetition_penalty: 1.05
+      # Extensions cannot replace model/messages/tools or standard sampling fields.
+      provider_extensions: {}
+
+contamination:
+  # Held-out overlap is a validity precondition, not a scoring dimension: a
+  # violation aborts the run, and every candidate answers the same task set.
+  #
+  # A candidate collides when it is the model that profiled, paraphrased, judged,
+  # or translated rows it would be scored on. on_violation: exclude_row drops only
+  # those rows instead of aborting, and comparison_set: per_candidate lets each
+  # candidate keep its own set; both are debug-only. A comparison that cannot
+  # settle whether the candidate is the exposed model is never guessed: it is
+  # recorded, and it blocks publication.
+  enforce: true
+  on_violation: fail_run
+  comparison_set: common_intersection
+
+publication:
+  requested: true
+  require_same_task_ids: true
+
+outputs:
+  # Must be outside the generation publication tree; an eval run may never write
+  # beside run_manifest.json or the benchmark it scores. Source verification
+  # writes source_verification_report.json here on success, and
+  # source_verification_failure.json instead when it refuses the source; the
+  # contamination gate writes contamination_report.json or
+  # contamination_failure.json the same way.
+  output_dir: REPLACE_ME_EVAL_OUTPUT_DIR
+  write_task_results: true
+  write_eval_manifest: true
+  # Candidate transport writes a hash-verified request, every HTTP attempt, and
+  # one completion marker to candidate_io_cache.jsonl. A committed completion replays without
+  # credentials or network; an interrupted sequence fails closed.
+  cache_candidate_responses: true
+  # Conversation driving replays the tool results the benchmark recorded rather
+  # than executing a tool, so a whole episode can be re-derived from this cache.
+  cache_tool_results: true
+  # For held_out_eval all three fields above must be false. Only aggregate
+  # diagnostics may leave the private evaluation boundary.

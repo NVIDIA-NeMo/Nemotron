@@ -1,0 +1,146 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Direct mode — the harness runs in THIS job; Nemotron's runspec executors do
+# the scheduling. Backend-agnostic by construction.
+#
+#   uv run nemotron steps run eval/model_eval -c direct --batch <profile>
+#
+# The profile decides the backend; the step does not care which.
+#
+# Why this exists: NeMo Evaluator Launcher's own executors cover local/slurm/
+# lepton only — there is no Run:ai backend — and its cloud executors carry
+# defects documented in this step's README. Direct mode never enters that
+# layer, so every backend Nemotron already supports works the same way.
+#
+# NOTE ON LOCAL RUNS: the `evaluator` extra installs the launcher, NOT any
+# benchmark harness -- `nemo-evaluator ls` in a plain checkout reports zero
+# harness packages, so a local run cannot resolve a task name. Run inside the
+# harness image this config selects (see `harness_image` below), or install a
+# harness into your environment first.
+#
+# REQUIREMENTS
+#   1. The step's container must ship the harness (`nemo-evaluator` on PATH).
+#      Use a harness image, e.g.
+#        run.env.container_image=nvcr.io/nvidia/eval-factory/lm-evaluation-harness:26.03
+#      or a nemo-evaluator variant (:latest-lm-eval, :latest-gym, :latest-full).
+#   2. The model is reached over HTTP:
+#        Host it separately and set EVAL_ENDPOINT_URL, or bring the server up
+#        in the same allocation where the backend allows it. Either way it is
+#        just a URL here.
+#   3. Results are written to output_dir, which must be on storage that
+#      outlives the job (a mount), not the container's ephemeral disk.
+#
+# REQUIRED ENVIRONMENT
+#   EVAL_ENDPOINT_URL   OpenAI-compatible URL, e.g. https://host/v1/completions
+#   EVAL_MODEL_HANDLE   model id the endpoint serves (must equal its
+#                       --served-model-name, or every request 404s)
+#   EVAL_RESULTS_DIR    results directory on shared storage
+# OPTIONAL
+#   EVAL_API_KEY_NAME   name of the env var holding the endpoint token (never
+#                       the token itself). Defaults to ENDPOINT_TOKEN. NeMo
+#                       Evaluator RAISES if a key name is given but that
+#                       variable is unset, so for an endpoint that needs no
+#                       auth set EVAL_API_KEY_NAME=null explicitly.
+
+mode: direct
+dry_run: false
+
+# Recorded as `harness.image` in run_manifest.json. Top-level ON PURPOSE: the
+# generic runner strips `run.env` before invoking the step, so an image read
+# from there is present in a local run and null in every submitted one --
+# exactly the runs whose provenance matters. `run.env.container_image` below
+# interpolates from here, and `run.env.env_vars` forwards the resolved value
+# back into the job, so the executor and the manifest cannot disagree.
+harness_image: ${oc.env:EVAL_HARNESS_IMAGE,nvcr.io/nvidia/eval-factory/lm-evaluation-harness:26.03}
+output_dir: ${oc.env:EVAL_RESULTS_DIR}
+task_filters: []
+
+run:
+  env:
+    # Must contain the harness. NOT overridable by a --run/--batch profile:
+    # build_job_config() re-applies YAML-owned resource keys (container_image,
+    # nodes, gpus_per_node, ...) after merging env.toml, so the config wins.
+    # Select the image with EVAL_HARNESS_IMAGE, or on the command line with
+    # `run.env.container_image=<image>` (CLI overrides land in the YAML before
+    # the profile is merged, so they do win).
+    container_image: ${harness_image}
+    env_vars:
+      # `harness_image` above is an ${oc.env:} lookup, and the config is
+      # serialised UNRESOLVED -- so it is re-resolved inside the container,
+      # where EVAL_HARNESS_IMAGE is not set unless we send it. Without this
+      # line the executor runs the pinned image while the manifest records the
+      # default tag, which is worse than recording nothing.
+      #
+      # Read from run.env.container_image rather than harness_image so this
+      # tracks whatever the executor was finally given -- including a CLI
+      # `run.env.container_image=...` override. It resolves on the submitting
+      # host, after profile merging, i.e. at the same point the executor takes
+      # its image.
+      EVAL_HARNESS_IMAGE: ${run.env.container_image}
+  wandb:
+    entity: null
+    project: null
+
+target:
+  api_endpoint:
+    url: ${oc.env:EVAL_ENDPOINT_URL}
+    model_id: ${oc.env:EVAL_MODEL_HANDLE}
+    # Base models: completions + few-shot. Instruct models: chat.
+    type: ${oc.env:EVAL_ENDPOINT_TYPE,completions}
+    # Name of the env var holding the key — never the key itself. Set
+    # EVAL_API_KEY_NAME=null for an endpoint that requires no authentication;
+    # leaving this pointed at an unset variable is an error, not a no-op.
+    api_key_name: ${oc.env:EVAL_API_KEY_NAME,ENDPOINT_TOKEN}
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        parallelism: 16
+        request_timeout: 3600
+        max_retries: 5
+        # Smoke with a small number first; null runs the full split.
+        limit_samples: ${oc.decode:${oc.env:EVAL_LIMIT_SAMPLES,null}}
+        extra:
+          # REQUIRED for completions endpoints. lm-evaluation-harness builds
+          # log-likelihood requests client-side, so it loads this with
+          # AutoTokenizer. Left unset it falls back to the `model=` value --
+          # your served-model-name -- and dies with RepositoryNotFoundError
+          # naming that as a missing HF repo, which points nowhere near here.
+          # An HF repo id or a local snapshot path both work.
+          # Tokenizer-extended checkpoints need their OWN tokenizer; the base
+          # tokenizer would mis-tokenize every prompt and score silently wrong.
+          tokenizer: ${oc.env:EVAL_TOKENIZER,null}
+          tokenizer_backend: huggingface
+          tokenized_requests: false
+    target:
+      api_endpoint:
+        # The adapter proxy between the harness and your endpoint. Caching is
+        # the load-bearing setting: without it the harness holds every request
+        # and response for a task in memory, and a task past roughly 30k
+        # requests dies client-side -- on a large CPU shape, while the endpoint
+        # is still answering 200 to every call. `output_dir` defaults to a
+        # per-task directory under output_dir when left unset.
+        adapter_config:
+          use_caching: true
+          output_dir: null
+          use_request_logging: true
+          max_logged_requests: 10
+          use_response_logging: true
+          max_logged_responses: 10
+          use_progress_tracking: false
+  tasks:
+    - name: adlr_arc_challenge_llama_25_shot
+    - name: hellaswag

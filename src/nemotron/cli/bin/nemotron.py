@@ -41,6 +41,9 @@ app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
     rich_markup_mode="rich",
+    # Submission locals hold HF_TOKEN and WANDB_API_KEY; rendering them into a
+    # traceback prints live credentials to the terminal and into CI logs.
+    pretty_exceptions_show_locals=False,
 )
 
 

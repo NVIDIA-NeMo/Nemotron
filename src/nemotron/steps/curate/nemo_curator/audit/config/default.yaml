@@ -1,0 +1,41 @@
+# Starter config for auditing a curated corpus.
+#
+# The audit reads files on disk; it starts no Ray cluster and needs no GPU. It
+# reports what is there and, when given a manifest the producing step wrote,
+# whether that matches what the producer said it wrote.
+
+target_glob: ./output/filtered_jsonl/**/*.jsonl
+output_dir: ./output/audit
+
+# Required for any completeness claim. Without it a row count is informational:
+# a corpus can parse cleanly and still be missing rows, and filters are supposed
+# to remove records, so a bare count cannot distinguish the two.
+# curate/nemo_curator writes this when its emit_manifest key is set.
+# Per-stage ledgers from the producing steps. Without them this audit detects
+# loss but cannot attribute it. Null keeps the detection-only behaviour.
+ledger_glob: null
+
+declared_manifest: null
+
+# The corpus this one was derived from. Null skips the row delta.
+# Required by mode: containment.
+reference_glob: null
+
+# integrity | digest | containment | all
+#   integrity   readability and counts
+#   digest      + a content digest, independent of file enumeration order
+#   containment + every target record is present in reference_glob
+mode: integrity
+
+# Fields compared in containment mode. Deliberately empty: the pipeline adds
+# language and domain columns, so an implicit "all common fields" default would
+# report differences that are the pipeline working as intended. Use [id] when
+# the corpus carries a stable identifier.
+comparison_fields: []
+
+# Taken from the declared manifest when one is supplied.
+source_field: null
+
+# Shard paths in the digest are made relative to this, so moving the corpus
+# does not change the digest. Null uses absolute paths.
+digest_root: null

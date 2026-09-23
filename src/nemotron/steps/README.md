@@ -162,6 +162,7 @@ Those checked-in configs are examples and test fixtures.
 | SFT packing, pretrain bin/idx, RL sharding | `data_prep/README.md` | `training_jsonl`, `packed_parquet`, `binidx` |
 | Corpus translation and FAITH scoring | `translate/README.md` | `filtered_jsonl`, `translated_jsonl` |
 | Pretraining or continued pretraining | `pretrain/README.md` | `binidx`, `checkpoint_hf`, `checkpoint_megatron` |
+| Extending a tokenizer for a new language | `tokenizer_extension/guide.md` | `tokenizer`, `checkpoint_hf` |
 | Supervised fine-tuning | `sft/README.md` | `training_jsonl`, `packed_parquet`, checkpoints |
 | LoRA or adapter tuning | `peft/README.md` | `checkpoint_lora` |
 | DPO, RLVR, or RLHF alignment | `rl/README.md` | prompt or preference JSONL, Megatron checkpoints |

@@ -1,0 +1,126 @@
+# Example: the opt-in model-authored surface profile. It is publication.example.yaml
+# with one difference that matters — a model rewords the prompts. It preserves the
+# same executable cases and requests one guarded paraphrase per eligible binding,
+# so the added diversity is in wording only and never in what a candidate must call.
+#
+# A template opts in per binding: only templates whose pack declares
+# `paraphrase.allowed: true` are eligible, and `max_variants` bounds each one.
+# Slot values are preserved and tool names are withheld from the model, so a
+# paraphrase cannot leak the answer into the prompt.
+#
+# The paraphrase route is a Data Designer provider: register a provider whose name
+# matches `provider` below, then export the key named by `api_key_env`. Substitute
+# your own model identity; the fields below must stay mutually distinct and pinned,
+# because lineage refuses an unpinned or ambiguous model.
+
+schema_version: "1.1"
+config_status: resolved
+family: bfcl
+expt_name: bfcl_gold_paraphrase_example
+stage: all
+random_seed: 42
+ndd_batch_size: 32
+
+output_dir: /tmp/bfcl/gold_paraphrase_example
+
+oracle_pack:
+  manifest_path: data/banking_vn_oracle_pack/manifest.yaml
+
+oracle_runtime:
+  clock: "2026-03-02T09:00:00+07:00"
+  tool_timeout_s: 5.0
+  assertion_timeout_s: 5.0
+  import_timeout_s: 10.0
+  reset_timeout_s: 5.0
+  episode_timeout_s: 60.0
+  worker: process
+  allowed_roots: [data]
+
+lineage:
+  policy: strict_separation
+  profile_influenced_surface: false
+  judge_advisory: null
+  roles:
+    profile: {enabled: false, model_config: null}
+    paraphrase:
+      enabled: true
+      model_config:
+        alias: gpt_5_6_sol_paraphrase_vi
+        model: azure/openai/gpt-5.6-sol
+        provider: nvidia_inference_api
+        canonical_id: nvidia-inference-api/azure/openai/gpt-5.6-sol
+        api_key_env: NGC_API_KEY
+        base_url: https://inference-api.nvidia.com/v1
+        # This route rejects top_p, so sampling is expressed by temperature only.
+        inference_parameters:
+          temperature: 0.8
+          max_tokens: 2048
+          max_parallel_requests: 8
+    surface_judge: {enabled: false, model_config: null}
+
+surface_generation:
+  language: vi
+  model_paraphrase_enabled: true
+  paraphrases_per_template: 1
+  preserve_slot_values: true
+  prevent_tool_name_leakage: true
+
+surface_quality_validation:
+  contract_version: "1.1"
+  enabled: true
+  drop_authority: false
+
+task_generation:
+  candidate_tasks_per_category: 480
+  tasks_per_category: 232
+  target_published_tasks: 1392
+  difficulty_mix: {easy: 0.25, medium: 0.30, hard: 0.45}
+  turn_mix: {single_turn: 0.70, multi_turn: 0.30}
+  # Weight this toward multi-call paths when the domain has real tool chains to
+  # exercise; a catalog of independent lookups is better served by a flatter mix.
+  # The bias audit checks the published mix against this one (dimension B5).
+  tool_call_count_mix: {"1": 0.60, "2": 0.30, "3+": 0.10}
+  # The within-category intent target. The bias audit (dimension B15) allows five
+  # percentage points of post-selection drift against it; the stricter per-intent
+  # row cap under semantic_deduplication_config remains the operational bound.
+  max_intent_share: 0.50
+  # Conversation policy is the axis a candidate is most likely to fail on, so the
+  # run declares it rather than letting inventory decide. Every weight below is
+  # jointly reachable with the category budget and the difficulty and turn mixes at
+  # this scale; `irrelevant` is pinned at one sixth because one category here owes
+  # its full 232 rows and declares no other policy.
+  policy_mix:
+    single_turn: 0.19
+    missing_slot: 0.10
+    dependent_call: 0.15
+    multi_tool: 0.07
+    confirmation: 0.07
+    correction: 0.08
+    negative_path: 0.07
+    clarify_only: 0.1033
+    irrelevant: 0.1667
+
+semantic_deduplication_config:
+  contract_version: "1.0"
+  enabled: true
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 64
+  eps: 0.08
+  remove_duplicates: false
+  # Exact wording may repeat only in small fixture-bound groups. Semantic
+  # similarity remains evidence; it is not confused with executable identity.
+  max_exact_surface_reuse: 8
+  min_exact_surface_ratio: 0.15
+  # Two rows that call the same tools with the same arguments score the same model
+  # twice, so the run admits each executable case once and caps how much of the
+  # benchmark any single intent can own.
+  max_execution_case_reuse: 1
+  max_rows_per_intent: 120
+  # A paraphrase run prefers the model wording as the representative and keeps the
+  # template as the fallback; publication.example.yaml has no model row to prefer.
+  representative_source_preference: [model, template]
+  unmet_target_policy: abort
+
+exports:
+  bfcl_json: true
+  nemo_evaluator_bundle: true

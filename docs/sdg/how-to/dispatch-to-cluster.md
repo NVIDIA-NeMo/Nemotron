@@ -43,8 +43,8 @@ mounts = [
     { path = "/your-nfs-source", mount_path = "/mnt/shared", from = "node-nfs:your-nfs-id" }
 ]
 
-[lepton_sdg_data_designer.env_vars]
-NVIDIA_API_KEY = "${oc.env:NVIDIA_API_KEY}"
+[lepton_sdg_data_designer.secret_vars]
+NVIDIA_API_KEY = "${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}"
 ```
 
 ## Run
@@ -96,19 +96,25 @@ mounts = [
 In the `mounts` table, `path` is the NFS **source** path on the NFS server — not the in-container destination. `mount_path` is the in-container path.
 :::
 
-### `NVIDIA_API_KEY` is not forwarded automatically
+### `NVIDIA_API_KEY` is injected from a Lepton secret
 
-Unlike `HF_TOKEN` and `WANDB_API_KEY`, `NVIDIA_API_KEY` is not automatically forwarded to the container. Declare it explicitly in the `env_vars` section:
+`NVIDIA_API_KEY` reaches the container as a platform secret reference, not as a
+plaintext `env_vars` value. The shipped profiles already declare it:
 
 ```toml
-[lepton_sdg_data_designer.env_vars]
-NVIDIA_API_KEY = "${oc.env:NVIDIA_API_KEY}"
+[lepton_sdg_data_designer.secret_vars]
+NVIDIA_API_KEY = "${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}"
 ```
 
-Set it in your local shell before submitting the job:
+Create the secret once with `lep secret create -n NVIDIA_API_KEY -v <value>`, or
+point the profile at an existing one with `NEMOTRON_NVIDIA_API_KEY_SECRET`. Do not
+also add it to `env_vars`: a name in `secret_vars` must not appear there too, and
+the duplicate is stripped before submission.
+
+If your secret has a different name, export that name—not the credential value—before submitting:
 
 ```console
-$ export NVIDIA_API_KEY="your-api-key"
+$ export NEMOTRON_NVIDIA_API_KEY_SECRET="your-secret-name"
 $ uv run --no-sync nemotron steps run sdg/data_designer -c default --batch lepton_sdg_data_designer num_records=1000
 ```
 
@@ -122,7 +128,11 @@ Do not invent image tags. `nemo:latest` does not exist on `nvcr.io`. Check `src/
 
 ## Slurm Profile
 
-For Slurm, replace the Lepton-specific fields with Slurm equivalents. The `startup_commands` and `env_vars` gotchas apply equally:
+For Slurm, replace the Lepton-specific fields with Slurm equivalents. Lepton
+`secret_vars` are not available on this executor; the run-spec layer instead
+removes recognized credentials from the generated Slurm configuration and
+delivers them through a private mode-0600 environment file. Do not copy this
+`env_vars` credential pattern into a Lepton profile.
 
 ```toml
 [slurm-sdg]

@@ -1,0 +1,38 @@
+# Synthetic language pack — a test fixture, not production data.
+#
+# Deliberately an invented language in an unrelated script. A substring check for
+# "vi" or "hi" in the runtime would prove nothing; running the whole pipeline
+# against a language that does not exist proves the runtime is parametric,
+# because there is nothing about it anyone could have special-cased.
+#
+# x-test is a BCP-47 private-use tag. It is NOT shipped in data/langpacks/.
+
+[pack]
+pack_id      = "x-test-synthetic"
+language_tag = "x-test"
+version      = "1.0"
+schema       = 1
+
+[sources]
+stopwords = { file = "stopwords.txt", n = 21, origin = "invented", license = "CC0-1.0" }
+charset = { file = "charset.txt", script = "Armn", note = "invented; Armenian letters plus a combining acute", origin = "synthetic test fixture", license = "Apache-2.0" }
+boilerplate = { file = "boilerplate.txt", n = 2, origin = "invented", license = "Apache-2.0" }
+
+[orthography]
+sentence_terminators = ["\u058A", ".", "!"]
+
+[fold_map]
+"\u0587" = "\u0565"
+
+[capabilities]
+supports = [
+    "script_ratio",
+    "diacritic_ratio",
+    "stopword_ratio",
+    "stopword_ratio_folded",
+    "boilerplate_hits",
+    "sentence_end_ratio",
+    "word_segmentation",
+    "ascii_digits",
+    "ascii_punctuation",
+]

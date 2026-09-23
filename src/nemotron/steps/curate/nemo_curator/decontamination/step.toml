@@ -1,0 +1,134 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "curate/decontamination"
+name = "Holdout Near-Duplicate Decontamination"
+category = "curate"
+description = """Remove training documents that near-duplicate a held-out split, using exact source-document identity plus MinHash/LSH candidates verified by exact Jaccard. Detects whole-document near-duplicates only; a benchmark question embedded in a long document is substring contamination and is out of scope."""
+tags = ["curate", "decontamination", "deduplication", "minhash", "gpu"]
+
+[[consumes]]
+type = "filtered_jsonl"
+description = "The training split to decontaminate, and the held-out split to protect. Both carry a stable document id."
+
+[[produces]]
+type = "decontaminated_jsonl"
+description = "train_decontaminated.jsonl: the training split with overlapping documents removed. The holdout is never written. Declared apart from filtered_jsonl so a step that must run after this one can say so: the two corpora differ by exactly the documents this step was asked to remove."
+
+[[produces]]
+type = "decontamination_report"
+description = "Every removed document with the holdout document and exact similarity that justified it, the normalization and shingling used, and the candidate pairs that could not be verified."
+
+[[parameters]]
+name = "train_glob"
+description = "The training split. This is the only split that ever shrinks."
+
+[[parameters]]
+name = "holdout_glob"
+description = "The held-out split to protect. Read only; never modified, and the run fails if anything tries."
+
+[[parameters]]
+name = "output_dir"
+description = "Directory receiving train_decontaminated.jsonl and decontamination_report.json."
+
+[[parameters]]
+name = "id_field"
+description = "Required, and unique within each split. The report names each removed document and the holdout document that justified it, which is not possible without a stable identifier."
+
+[[parameters]]
+name = "text_field"
+description = "Record field holding the text to compare."
+default = "text"
+
+[[parameters]]
+name = "threshold"
+description = "Exact Jaccard required for removal. Config rather than a constant: the right value depends on the corpora and on how much training data is acceptable to lose to a false positive."
+default = 0.8
+
+[[parameters]]
+name = "shingle_kind"
+description = "char or word. Must match the candidate generator — Curator shingles on characters, so verifying on words computes a similarity over a different set than MinHash approximated and the threshold stops referring to anything."
+default = "char"
+
+[[parameters]]
+name = "normalization"
+description = "What is done to text before shingling: nfc, casefold, collapse_whitespace, strip_punctuation. Recorded in the report, because two runs that normalized differently did not measure the same thing. Punctuation stripping is category-based, not a regex: Python's \\w excludes combining marks, so a regex would delete Devanagari vowel signs."
+default = { nfc = true, casefold = true, collapse_whitespace = true, strip_punctuation = true }
+
+[[parameters]]
+name = "minhash"
+description = "Passed to Curator's FuzzyDeduplicationWorkflow: seed, char_ngrams, num_bands, minhashes_per_band. char_ngrams is also the width the exact verification uses. The seed is recorded; recall is measured, never asserted."
+default = { seed = 42, char_ngrams = 24, num_bands = 20, minhashes_per_band = 13 }
+
+[[parameters]]
+name = "prefer_id_field"
+description = "Group on id_field before the URL aliases rather than after. The default order suits a corpus whose URL is the real identity of a page and whose id is synthetic. Set this when the URL column is coarse — a source_url holding a site homepage groups every document from that site into one key, so a single holdout page marks the whole site's training documents as overlapping and they are removed without duplicating anything."
+default = false
+
+[[parameters]]
+name = "shared_id_space"
+description = "Whether the two splits are parts of one corpus, so an equal id means the same document. True by default, which is what a train/holdout split of one corpus is: namespacing ids by side would give one document two keys and report no overlap at all. Set false only when the splits are separately built corpora that both number from zero, where equal ids are a collision rather than a match."
+default = true
+
+[[parameters]]
+name = "work_dir"
+description = "Scratch directory for the union corpus and Curator's dedup cache."
+default = "./cache/decontamination"
+
+[[parameters]]
+name = "skip_similarity"
+description = "Run only the exact source-identity pass and skip MinHash/LSH. Lets the step run without a GPU; the report then states that near-duplicate overlap was not measured, rather than reporting zero overlap."
+default = false
+
+[[strategies]]
+when = "You want a cheap check before committing a GPU"
+then = "Set skip_similarity: true. The source-identity pass needs no GPU and catches same-page leaks regardless of how much the text was rewritten. The report says explicitly that similarity was not measured."
+
+[[strategies]]
+when = "You need to know what the candidate generator missed"
+then = "Call runtime/decon.candidate_recall on a sample small enough to compare every pair. It measures recall by brute force. LSH recall depends on the band and row structure and on the corpus, so a number quoted from elsewhere does not transfer."
+
+[[strategies]]
+when = "A benchmark question appears verbatim inside long training documents"
+then = "This step will not find it. Whole-document Jaccard cannot: a short question inside a long page moves similarity far below any usable threshold. That is substring contamination and needs a containment-oriented design."
+
+[[strategies]]
+when = "You are tuning the threshold"
+then = "Read unverifiable_pairs and removed_pairs in the report first. Similarity is reported per pair, so you can see the distribution of what a lower threshold would additionally remove before lowering it."
+
+[[errors]]
+name = "holdout_modified"
+recovery = "Something attempted to remove documents from the held-out split. This is never allowed and never a configuration choice: changing a benchmark so it agrees with the training data invalidates every result measured against it, including results already published. Only the training split shrinks."
+
+[[errors]]
+name = "id_field_missing_or_duplicated"
+recovery = "Every record in both splits needs a unique id. A removal report keyed on a non-unique id cannot say which document it removed, which makes the report unusable as evidence."
+
+[[errors]]
+name = "unverifiable_pairs"
+recovery = "A warning, not a failure. Candidate pairs whose text was too short to shingle, or whose documents could not be found, are reported and NOT removed. Treating them as similarity zero would report a clean result for a comparison that never happened."
+
+[[errors]]
+name = "shingling_mismatch"
+recovery = "shingle_kind and minhash.char_ngrams must describe the same shingling the candidates were generated with. Verifying at a different granularity computes a similarity over a different set, and the threshold no longer refers to the quantity the candidates were selected by."
+
+[[errors]]
+name = "no_gpu_available"
+recovery = "The similarity pass calls Curator's GPU-backed MinHash and LSH stages, so install nemotron[curate-gpu] (or select the curate-gpu isolated runtime) and provide a GPU. Set skip_similarity: true to run the exact source-identity pass on the ordinary CPU-only curate extra."
+
+[reference]
+skill = "src/nemotron/steps/curate/nemo_curator/decontamination/README.md"
+script = "src/nemotron/steps/curate/nemo_curator/scripts/run_decontamination.py"
+docs = "https://docs.nvidia.com/nemo/curator/latest/"

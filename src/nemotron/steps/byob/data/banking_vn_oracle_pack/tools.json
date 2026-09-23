@@ -1,0 +1,162 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_account_balance",
+      "description": "Return available balance for a bank account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": { "type": "string" }
+        },
+        "required": ["account_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_card_limit",
+      "description": "Return remaining spending limit for a card.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": { "type": "string" }
+        },
+        "required": ["card_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_transaction_status",
+      "description": "Return status and metadata for one bank transaction id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": { "type": "string" }
+        },
+        "required": ["transaction_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_recent_transactions",
+      "description": "List recent transactions for an account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": { "type": "string" },
+          "limit": { "type": "integer", "default": 5 },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "succeeded", "failed", "reversed"]
+          }
+        },
+        "required": ["account_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_transfer_fee",
+      "description": "Estimate domestic transfer fee before creating a transfer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_account_id": { "type": "string" },
+          "to_account_number": { "type": "string" },
+          "amount_vnd": { "type": "integer" },
+          "rail": { "type": "string", "enum": ["napas", "internal"] },
+          "to_bank_code": { "type": "string" }
+        },
+        "required": ["from_account_id", "to_account_number", "amount_vnd", "rail"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "x-mutates": true,
+    "x-requires-confirmation": true,
+    "function": {
+      "name": "create_transfer",
+      "description": "Create a domestic transfer; requires confirmation before commit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_account_id": { "type": "string" },
+          "to_account_number": { "type": "string" },
+          "amount_vnd": { "type": "integer" },
+          "rail": { "type": "string", "enum": ["napas", "internal"] },
+          "to_bank_code": { "type": "string" },
+          "memo": { "type": "string" },
+          "confirm": { "type": "boolean", "default": false }
+        },
+        "required": ["from_account_id", "to_account_number", "amount_vnd", "rail"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_vietqr_payment_status",
+      "description": "Return status for a VietQR merchant payment reference.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_ref": { "type": "string" }
+        },
+        "required": ["payment_ref"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_dispute_status",
+      "description": "Return status of an existing payment dispute (tra soát) case.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dispute_id": { "type": "string" }
+        },
+        "required": ["dispute_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "x-mutates": true,
+    "x-requires-confirmation": true,
+    "function": {
+      "name": "create_dispute",
+      "description": "Open a dispute on an existing transaction; requires confirmation before commit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": { "type": "string" },
+          "reason": {
+            "type": "string",
+            "enum": ["goods_not_received", "duplicate_charge", "unauthorized", "amount_mismatch"]
+          },
+          "note": { "type": "string" },
+          "confirm": { "type": "boolean", "default": false }
+        },
+        "required": ["transaction_id", "reason"],
+        "additionalProperties": false
+      }
+    }
+  }
+]

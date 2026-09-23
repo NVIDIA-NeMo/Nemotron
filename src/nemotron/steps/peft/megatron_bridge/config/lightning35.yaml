@@ -1,0 +1,88 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Overlay on default.yaml: Nemotron 3.5 Lightning 30B-A3B packed PEFT (LoRA) at 4k.
+# Inherits LoRA dim/alpha, hf_load, checkpoint_patch, logger; only Lightning deltas live here.
+#
+# Required env (env.toml profile or shell):
+#   L35_PACKED_DIR, L35_OUTPUT_DIR, L35_PRETRAINED_CHECKPOINT
+# Optional: WANDB_PROJECT, WANDB_ENTITY, WANDB_NAME
+#
+#   nemotron steps run peft/megatron_bridge -c lightning35 --batch lepton_lightning35_sft_lora
+
+defaults: default.yaml
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.08
+    env_vars:
+      FLASHINFER_WORKSPACE_BASE: /nemo_run/cache/flashinfer_workspace
+      FLASHINFER_CUBIN_DIR: /nemo_run/cache/flashinfer_cubins
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TILELANG_CACHE_DIR: /tmp/tilelang_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@d12f6c8c9aff51e166d872fd70151687a8e3f375,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_peft_config
+  peft_scheme: lora
+  packed_sequence: null
+  peft: null
+  seq_length: null
+
+peft:
+  target_modules:
+    - linear_qkv
+    - linear_proj
+    - linear_fc1
+    - linear_fc2
+    - in_proj
+    - out_proj
+
+dataset:
+  nano3_packed_sft_dir: null
+  packed_sequence_specs:
+    packed_train_data_path: ${oc.env:L35_PACKED_DIR}/splits/train
+    packed_val_data_path: ${oc.env:L35_PACKED_DIR}/splits/valid
+
+train:
+  train_iters: 100
+  global_batch_size: 128
+
+model:
+  tensor_model_parallel_size: 2
+  expert_model_parallel_size: 8
+  expert_tensor_parallel_size: 1
+  sequence_parallel: true
+  calculate_per_token_loss: true
+  recompute_granularity: selective
+  recompute_modules: [moe, layernorm, core_attn, mlp]
+
+optimizer:
+  lr: 1.0e-4
+  min_lr: 0.0
+
+scheduler:
+  lr_warmup_iters: 10
+  lr_decay_iters: 100
+
+checkpoint:
+  save: ${oc.env:L35_OUTPUT_DIR}/lora-4k-tp2-ep8
+  pretrained_checkpoint: ${oc.env:L35_PRETRAINED_CHECKPOINT}/iter_0000000
+  save_interval: 20
+

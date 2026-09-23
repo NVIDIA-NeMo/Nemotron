@@ -1,0 +1,9 @@
+# Smoke config: re-ingests a packaged JSONL fixture. No parquet, no downloads.
+input: /nemo_run/code/src/nemotron/steps/curate/nemo_curator/profile/data/tiny/*.jsonl
+output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_ingest_tiny
+format: jsonl
+text_field: text
+id_from: id
+source_from: source
+keep_fields: []
+on_duplicate: refuse

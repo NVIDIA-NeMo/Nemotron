@@ -1,0 +1,2 @@
+{"id": "doc-0004", "source": "news", "text": "Completeness is claimed only against a producer-emitted manifest."}
+{"id": "doc-0005", "source": "web", "text": "Filters remove records on purpose, so a row delta is not by itself an error."}
