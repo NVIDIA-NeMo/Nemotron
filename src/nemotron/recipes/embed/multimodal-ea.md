@@ -284,30 +284,26 @@ sdg_options:
 sdg_generator_options:
   temperature: 0.6
   max_tokens: 8192
-  tokenizer_file: /absolute/path/to/deployment/tokenizer.json
-  context_window_tokens: 131072  # example: replace with deployed model window
-  image_tokens_per_image: 4096  # example: replace with serving-resolution upper bound
-  request_overhead_tokens: 1024  # example: chat/system/image wrapper upper bound
 sdg_judge_options:
   temperature: 0.6
   max_tokens: 8192
-  tokenizer_file: /absolute/path/to/deployment/tokenizer.json
-  context_window_tokens: 131072  # example: replace with deployed model window
-  image_tokens_per_image: 4096  # example: replace with serving-resolution upper bound
-  request_overhead_tokens: 1024  # example: chat/system/image wrapper upper bound
 ```
 
 There is no default source-text character cap. Complete rendered prompts are
-checked against DD's secure-renderer ceiling (currently 512,000 characters), then
-against each role's model budget. The latter includes structured-output schema,
-chat/system overhead, image tokens and output space. Set the four deployment
-budget fields above for each role; the profile leaves them unset and live
-inference fails clearly until supplied. Example numbers are not model defaults.
-The local tokenizer must match the serving model; its content hash is recorded.
+checked against DD's secure-renderer ceiling (currently 512,000 characters).
+Normal runs require no tokenizer or model-budget metadata; the provider enforces
+its serving-model context window. Provider size errors remain explicit failures,
+with no silent evidence truncation.
+
+Local token preflight is optional, independently for either role. To enable it,
+set `context_window_tokens` along with a matching local `tokenizer_file`,
+`request_overhead_tokens`, and `image_tokens_per_image` for image requests.
+The check includes structured-output schema, overhead, images and output reserve.
+Incomplete opt-in settings fail early; the default profile leaves budgeting off.
 Fitting contexts stay intact. Oversized contexts split without dropping units;
-if an actual generated query makes a judge prompt overflow, child-context queries
-are regenerated rather than grading the original query against partial evidence.
-A single unit that cannot fit fails explicitly without truncation.
+if an actual generated query makes a locally checked judge prompt overflow,
+child-context queries are regenerated rather than grading against partial evidence.
+An indivisible oversized request fails explicitly without truncation.
 
 Model option mappings accept the public `ModelSettings` fields, including
 independent endpoint, credential **environment-variable name**, timeout and

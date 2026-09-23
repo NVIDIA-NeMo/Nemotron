@@ -29,17 +29,8 @@ sdg_options:
   group_near_duplicates: true
   require_verbatim_quotes: false
   missing_response_attempts: 3
-# Supply these per deployment; the recipe never guesses the context window or image token cost.
-sdg_generator_options:
-  context_window_tokens: null
-  tokenizer_file: null
-  image_tokens_per_image: null
-  request_overhead_tokens: null
-sdg_judge_options:
-  context_window_tokens: null
-  tokenizer_file: null
-  image_tokens_per_image: null
-  request_overhead_tokens: null
+sdg_generator_options: {}
+sdg_judge_options: {}
 portable_export: true
 export_train_ratio: 0.8
 export_validation_ratio: 0.0
