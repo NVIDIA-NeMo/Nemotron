@@ -109,6 +109,11 @@ prevent AutoModel's repository-local uv index policy from replacing the recipe's
 CUDA 12.9 Torch source. The retrieval-SDG plugin uses a commit-pinned Git source
 from the consolidated public [DataDesignerPlugins multimodal SDG EA candidate](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/92)
 (the exact reviewed commit is pinned in the Stage 0 project).
+The pinned producer preserves the visual/multi-document summary priorities and
+uses seeded ordering within combined-summary categories, so a capped selection
+does not systematically favor early documents in sorted combinations. Generation
+and source-local judging prefer clearly legible image evidence when extracted
+text conflicts with it.
 No manually built wheels, private scripts, or private package index are required.
 The checked-in locks resolve both mutually exclusive extras from those public
 sources.
