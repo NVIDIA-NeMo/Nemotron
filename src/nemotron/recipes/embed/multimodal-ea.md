@@ -59,6 +59,15 @@ planner preserves input order within each document/language; it does not sort by
 `page_number`. Escape embedded newlines in JSON strings as `\n` rather than
 splitting a record across lines. Do not wrap the file in a JSON array.
 
+Automatic sections use markdown headings and confirmed table-of-contents (TOC)
+boundaries while retaining whole units. Optional `page_number` metadata supports
+TOC alignment only when source-title matches establish a consistent numbering
+offset; unit IDs are never interpreted as page numbers. Unusable structure falls
+back to fixed-size grouping. The default target is five units, with up to ten for
+structure-aligned sections. Complete ordered coverage is checked before summary
+generation. TOC confirmations use the configured judge and existing inference
+cache; `planning/section_boundaries.json` records the decisions and coverage.
+
 The input loader rejects empty files, malformed records, unknown fields,
 duplicate `unit_id` values, units without content, more than one image per unit,
 and missing image files. Images must be accessible locally to the process running
