@@ -4,6 +4,11 @@ The `mistral3-vl` preview profile connects one canonical JSONL source to a
 portable `image_and_text` training view, native hard-negative mining, training,
 checkpoint reload, and a fresh retrieval evaluation.
 
+Start with the plugin's
+[VLM-based SDG flowchart](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/blob/sthan/retrieval-multimodal-sdg-ea/plugins/data-designer-retrieval-sdg/README.md#vlm-based-sdg-workflow)
+for an overview of how Stage 0 turns source text and images into queries with
+graded supporting sources before this recipe mines negatives and fine-tunes.
+
 ## Prepare your input
 
 Stage 0 expects a **UTF-8 JSONL file plus local page images**, not a PDF directory
