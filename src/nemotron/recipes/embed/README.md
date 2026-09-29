@@ -356,6 +356,9 @@ alias advertised by NIM or passed to vLLM as `--served-model-name`.
 
 See the [multimodal embedding EA guide](multimodal-ea.md) for source preparation,
 model endpoint configuration, stage commands, and current validation limits.
+For a step-by-step view of Stage 0, see the plugin's
+[VLM-based SDG flowchart](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/blob/sthan/retrieval-multimodal-sdg-ea/plugins/data-designer-retrieval-sdg/README.md#vlm-based-sdg-workflow),
+from source preparation through query generation, quality checks, and export.
 
 ### Optional LoRA Fine-Tuning
 
