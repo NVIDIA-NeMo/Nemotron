@@ -8,6 +8,9 @@ exact-match accuracy on a deterministic held-out split.
 - [`grpo-circle-count-nemo-gym/`](grpo-circle-count-nemo-gym/grpo_training_cookbook_nemo_gym.md):
   GRPO with validation at steps 0, 5, 10, and 15, including a full-weight
   four-node reference and a compact two-node LoRA configuration.
+- [`grpo-star-count-nemo-gym/`](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md):
+  full-weight GRPO with a 16 x 8 rollout batch on variable 800–1,200-pixel
+  canvases containing 1–30 colored stars.
 
 ## Runtime and hardware requirements
 
@@ -176,5 +179,6 @@ Ray worker.
 ## What to run next
 
 Follow the [circle-count NeMo Gym guide](grpo-circle-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-to generate the deterministic dataset, start an interactive allocation, and
-run the step 0/5/10/15 reference recipe.
+for the original compact task and two-node pipeline check. Follow the
+[star-count NeMo Gym guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
+to run the larger 16 x 8 full-weight training and monitor its validation curve.
