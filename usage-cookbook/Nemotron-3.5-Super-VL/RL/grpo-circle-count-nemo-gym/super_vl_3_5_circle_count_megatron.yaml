@@ -18,7 +18,8 @@ grpo:
   val_period: 5
   val_at_start: true
   val_at_end: true
-  max_val_samples: 256
+  # NeMo Gym evaluates the validation JSONL exactly as provided.
+  max_val_samples: null
   stop_at_validation_metric: null
   stop_at_validation_threshold: null
   async_grpo:
@@ -90,4 +91,3 @@ logger:
     project: nemotron-super-vl-35-circle-count
     name: megatron-grpo-step0-15
     log_nemo_gym_full_result_tables: false
-
