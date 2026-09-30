@@ -11,8 +11,8 @@ grpo:
   num_generations_per_prompt: 8
   val_num_generations_per_prompt: 1
   max_num_epochs: 10
-  max_num_steps: 30
-  val_period: 5
+  max_num_steps: 10
+  val_period: 2
   val_at_start: true
   val_at_end: true
   max_val_samples: null
@@ -83,5 +83,5 @@ logger:
   monitor_gpus: true
   wandb:
     project: nemotron-super-vl-35-star-count
-    name: fullweight-grpo-16x8-step0-30
+    name: fullweight-grpo-16x8-step0-10
     log_nemo_gym_full_result_tables: false

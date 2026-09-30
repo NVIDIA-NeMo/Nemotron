@@ -33,7 +33,7 @@ uses the existing verifier without changing its reward semantics.
 | Rollout batch | 16 prompts x 8 generations = 128 responses |
 | Policy global batch | 128 |
 | Validation | 256 held-out examples, greedy decoding |
-| Evaluation cadence | before RL, then every 5 steps through step 30 |
+| Evaluation cadence | before RL, then every 2 steps through step 10 |
 | Logging | online W&B with GPU monitoring |
 
 The recipe preserves the Super VL settings inherited from the
@@ -134,7 +134,7 @@ sbatch \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
   --job-name=super-vl-star-count-16x8 \
-  --time=08:00:00 \
+  --time=04:00:00 \
   --gres=gpu:"${GPUS_PER_NODE}" \
   --exclusive \
   ray.sub
@@ -182,8 +182,8 @@ python -u examples/nemo_gym/run_grpo_nemo_gym.py \
 
 ## Monitor training and convergence
 
-The run logs exact-match `val:accuracy` before training and at steps 5, 10,
-15, 20, 25, and 30. W&B also receives reward, response length, loss, gradient
+The run logs exact-match `val:accuracy` before training and at steps 2, 4, 6,
+8, and 10. W&B also receives reward, response length, loss, gradient
 norm, throughput, timing, and GPU telemetry. Use the accuracy series from one
 run to assess its learning curve; the sampled GRPO rollouts make individual
 steps noisy.
@@ -195,7 +195,7 @@ squeue -j <jobid> -o '%i %T %M %l %D %R'
 tail -f "${NEMO_RL}/<jobid>-logs/ray-driver.log"
 ```
 
-A successful run reaches step 30, performs final validation after the last
-weight refit, syncs W&B, and exits with status zero. Compare step 30 against
+A successful run reaches step 10, performs final validation after the last
+weight refit, syncs W&B, and exits with status zero. Compare step 10 against
 step 0 and inspect all intermediate validation points before drawing a
 convergence conclusion.
