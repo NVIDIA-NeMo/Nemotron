@@ -65,12 +65,22 @@ mkdir -p "${DATA_DIR}"
 python /opt/nemo-rl/examples/nemo_gym/nemotron-3-super-omni/prepare_circle_count_mopd_data.py \
   --out "${DATA_DIR}/train.jsonl" \
   --num-samples 1024 \
-  --seed-offset 0
+  --seed-offset 0 \
+  --image-size 256 \
+  --radius-min 12 \
+  --radius-max 24 \
+  --num-circles-min 1 \
+  --num-circles-max 8
 
 python /opt/nemo-rl/examples/nemo_gym/nemotron-3-super-omni/prepare_circle_count_mopd_data.py \
   --out "${DATA_DIR}/validation.jsonl" \
   --num-samples 256 \
-  --seed-offset 100000
+  --seed-offset 1000000 \
+  --image-size 256 \
+  --radius-min 12 \
+  --radius-max 24 \
+  --num-circles-min 1 \
+  --num-circles-max 8
 ```
 
 Validate the row counts and ensure the splits share no generated requests:
@@ -167,6 +177,17 @@ The driver log and W&B run should contain four `val:accuracy` measurements,
 at global steps 0, 5, 10, and 15. A successful run exits with status 0 after
 step 15.
 
+The tested four-node run (`7555680`) completed in 59 minutes and recorded:
+
+| Step | Correct | `val:accuracy` |
+| ---: | ---: | ---: |
+| 0 | 152/256 | 0.59375 |
+| 5 | 148/256 | 0.578125 |
+| 10 | 168/256 | 0.65625 |
+| 15 | 209/256 | 0.81640625 |
+
+See the corresponding [W&B run](https://wandb.ai/hwinf_dcm/nemotron-super-vl-35-circle-count/runs/awmpvucm).
+
 The mounted NeMo RL checkout and shared `HF_MODULES_CACHE` are required. The
 model uses Hugging Face remote-code modules that must be importable by every
 Megatron Ray worker. Running the entry point from the image's `/opt/nemo-rl`
@@ -178,3 +199,8 @@ Accuracy is exact-match reward averaged over the fixed 256-example validation
 file. Compare step 15 with step 0 from the same W&B run. The small synthetic
 task is a pipeline and learning check; it is not a general visual-reasoning
 benchmark.
+
+This 15-step task is sensitive to rollout and optimizer randomness. A separate
+run with the same training setup reached 0.96875 at step 15, while the fully
+instrumented run above reached 0.81640625. Use repeated runs or more training
+steps when a stable accuracy target matters.

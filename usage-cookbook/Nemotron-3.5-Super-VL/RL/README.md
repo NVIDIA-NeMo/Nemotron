@@ -22,8 +22,17 @@ updates with Megatron tensor parallelism 4 and expert parallelism 16.
 
 ## Tested result
 
-The held-out split contains 256 examples. A prior run with the same data,
-model, topology, and optimizer settings measured 59.77% before RL and 96.88%
-after step 15. Re-run the recipe to verify these values for a new runtime or
-checkpoint copy.
+The held-out split contains 256 examples. Slurm job `7555680` completed the
+recipe with exit code 0 and produced this validation curve:
 
+| Step | Correct | Accuracy |
+| ---: | ---: | ---: |
+| 0 | 152/256 | 59.38% |
+| 5 | 148/256 | 57.81% |
+| 10 | 168/256 | 65.62% |
+| 15 | 209/256 | 81.64% |
+
+The exact run is recorded in [W&B](https://wandb.ai/hwinf_dcm/nemotron-super-vl-35-circle-count/runs/awmpvucm).
+An earlier run of the same 15-step training setup reached 96.88% at step 15,
+so the short run has material rollout and optimization variance. Compare
+step 15 with step 0 from the same run.
