@@ -116,8 +116,26 @@ if [[ -f /shared/.env ]]; then
   set +a
 fi
 : "${WANDB_API_KEY:?WANDB_API_KEY must be set for online experiment logging}"
-cd /opt/nemo-rl
-exec /opt/nemo_rl_venv/bin/python examples/nemo_gym/run_grpo_nemo_gym.py \
+
+export NEMO_RL=/shared/code/RL
+export RUN_DIR=/shared/runs/super35_circle_count_megatron
+mkdir -p \
+  "${RUN_DIR}/hf_modules" \
+  "${RUN_DIR}/hf_config_locks" \
+  "${RUN_DIR}/vllm_compile_cache"
+export HF_MODULES_CACHE="${RUN_DIR}/hf_modules"
+export MEGATRON_CONFIG_LOCK_DIR="${RUN_DIR}/hf_config_locks"
+export NRL_MEGATRON_CHECKPOINT_DIR="${RUN_DIR}/megatron_ckpt_cache"
+export VLLM_CACHE_ROOT="${RUN_DIR}/vllm_compile_cache"
+export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge/src:${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge/3rdparty/Megatron-LM:${PYTHONPATH:-}"
+export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
+export NRL_WG_USE_RAY_REF=1
+export NRL_VLLM_USE_V1=1
+export VLLM_ATTENTION_BACKEND=FLASH_ATTN
+export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+
+cd "${NEMO_RL}"
+exec python -u examples/nemo_gym/run_grpo_nemo_gym.py \
   --config /shared/code/Nemotron-2/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-circle-count-nemo-gym/super_vl_3_5_circle_count_megatron.yaml
 RUN
 chmod 700 "${RUN_SCRIPT}"
@@ -149,10 +167,14 @@ The driver log and W&B run should contain four `val:accuracy` measurements,
 at global steps 0, 5, 10, and 15. A successful run exits with status 0 after
 step 15.
 
+The mounted NeMo RL checkout and shared `HF_MODULES_CACHE` are required. The
+model uses Hugging Face remote-code modules that must be importable by every
+Megatron Ray worker. Running the entry point from the image's `/opt/nemo-rl`
+copy can leave those generated modules outside the workers' import path.
+
 ## Interpreting the result
 
 Accuracy is exact-match reward averaged over the fixed 256-example validation
 file. Compare step 15 with step 0 from the same W&B run. The small synthetic
 task is a pipeline and learning check; it is not a general visual-reasoning
 benchmark.
-
