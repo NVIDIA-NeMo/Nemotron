@@ -1,9 +1,10 @@
 # GRPO with Nemotron 3.5 Super VL and NeMo Gym Circle Count
 
-This guide runs full-weight multimodal GRPO through NeMo RL's Megatron
-backend. NeMo Gym presents synthetic circle images to the policy through the
-Responses API, routes each response through `circle_count_simple_agent`, and
-returns a binary exact-match reward.
+This guide runs multimodal GRPO through NeMo RL's Megatron backend. The
+four-node reference performs full-weight updates, and the two-node variant
+uses LoRA. NeMo Gym presents synthetic circle images to the policy through
+the Responses API, routes each response through `circle_count_simple_agent`,
+and returns a binary exact-match reward.
 
 Use [`super_vl_3_5_circle_count_megatron.yaml`](super_vl_3_5_circle_count_megatron.yaml)
 as the training configuration. Complete the repository, container, checkpoint,
@@ -38,6 +39,28 @@ The recipe uses the following reference settings:
 The short schedule is intended to verify the complete multimodal RL pipeline
 and expose a before/after learning signal. Treat it as a starting point for
 task-specific experiments rather than a general visual-reasoning benchmark.
+
+### Two-node pipeline check
+
+[`super_vl_3_5_circle_count_megatron_2n.yaml`](super_vl_3_5_circle_count_megatron_2n.yaml)
+is an overlay for two 4-GPU GB200 nodes. It inherits the data, rollout, and
+evaluation settings above, then changes training to TP=8 and EP=8 with
+rank-16 LoRA. It keeps one node-local TP=4 vLLM group per node, enables
+expandable CUDA allocation, and holds the vision encoder and projection fixed.
+
+To use it in the commands below, select two nodes and the overlay filename:
+
+```bash
+export NUM_NODES=2
+export RECIPE_NAME=super_vl_3_5_circle_count_megatron_2n.yaml
+```
+
+The topology was validated end to end with a one-step smoke run on 16 held-out
+examples. Exact-match accuracy was 0.75 both before and after that update. The
+unchanged score is expected to be inconclusive at this scale: the smoke run
+checks distributed initialization, rollout, optimization, adapter refit, and
+post-update inference. Run the full schedule and validation split for an
+accuracy comparison.
 
 ## Generate the train and validation data
 
@@ -103,7 +126,7 @@ Start a persistent allocation from the login node. Replace the Slurm account,
 partition, and container values with settings for your cluster:
 
 ```bash
-export NUM_NODES=4
+export NUM_NODES=${NUM_NODES:-4}
 export GPUS_PER_NODE=4
 export SLURM_ACCOUNT=<SLURM_ACCOUNT>
 export PARTITION=<SLURM_PARTITION>
@@ -138,7 +161,7 @@ export NEMOTRON_REPO=/shared/code/Nemotron
 export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-circle-count
 export COOKBOOK_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL"
-export RECIPE="${COOKBOOK_DIR}/grpo-circle-count-nemo-gym/super_vl_3_5_circle_count_megatron.yaml"
+export RECIPE="${COOKBOOK_DIR}/grpo-circle-count-nemo-gym/${RECIPE_NAME:-super_vl_3_5_circle_count_megatron.yaml}"
 
 mkdir -p \
   "${RUN_DIR}/hf_modules" \
@@ -194,7 +217,7 @@ export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/${RUN_NAME}
 export CACHE_DIR=/shared/runs/super35-circle-count/cache
 export COOKBOOK_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL"
-export RECIPE="${COOKBOOK_DIR}/grpo-circle-count-nemo-gym/super_vl_3_5_circle_count_megatron.yaml"
+export RECIPE="${COOKBOOK_DIR}/grpo-circle-count-nemo-gym/${RECIPE_NAME:-super_vl_3_5_circle_count_megatron.yaml}"
 
 mkdir -p "${RUN_DIR}/logs" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt_cache,vllm_compile_cache}
 export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
@@ -220,7 +243,7 @@ exec python -u examples/nemo_gym/run_grpo_nemo_gym.py \
 RUN
 chmod 700 "${RUN_SCRIPT}"
 
-export NUM_NODES=4
+export NUM_NODES=${NUM_NODES:-4}
 export GPUS_PER_NODE=4
 export SLURM_ACCOUNT=<SLURM_ACCOUNT>
 export PARTITION=<SLURM_PARTITION>
@@ -257,6 +280,10 @@ The driver logs `val:accuracy` before the first optimizer update and after
 steps 5, 10, and 15. Compare step 15 with step 0 from the same run. A normal
 run reaches `Max number of steps has been reached`, shuts down NeMo Gym,
 syncs the logger, and exits successfully.
+
+For the two-node configuration, successful completion also confirms that the
+LoRA optimizer update was refit into the colocated vLLM workers before the
+next validation pass.
 
 The short synthetic task can vary across runs because training rollouts are
 sampled. Use repeated runs, a longer schedule, and a task-specific validation

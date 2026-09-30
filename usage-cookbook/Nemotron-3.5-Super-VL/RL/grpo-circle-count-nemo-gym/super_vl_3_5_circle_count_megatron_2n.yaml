@@ -1,0 +1,52 @@
+# Two-node variant of the Nemotron 3.5 Super VL circle-count recipe.
+#
+# Eight GPUs are sufficient for the short pipeline validation when expert
+# parallelism is reduced to the eight available ranks and LoRA is used for
+# policy updates. Data, rollout, and evaluation settings inherit from the
+# reference recipe.
+defaults: ./super_vl_3_5_circle_count_megatron.yaml
+
+cluster:
+  num_nodes: 2
+  gpus_per_node: 4
+
+policy:
+  megatron_cfg:
+    # TP spans both nodes so the dense model and optimizer state fit alongside
+    # the sleeping colocated vLLM workers.
+    tensor_model_parallel_size: 8
+    expert_model_parallel_size: 8
+    freeze_vision_model: true
+    freeze_vision_projection: true
+    peft:
+      enabled: true
+      target_modules: []
+      dim: 16
+      alpha: 32
+      dropout: 0.0
+      dropout_position: post
+      lora_A_init_method: xavier
+      lora_B_init_method: zero
+      a2a_experimental: false
+      lora_dtype: null
+      exclude_modules: ['*out_proj*', '*vision_model*', '*vision_projection*']
+    optimizer:
+      optimizer_cpu_offload: false
+      optimizer_offload_fraction: 0.0
+      overlap_cpu_optimizer_d2h_h2d: false
+    env_vars:
+      CUDA_LAUNCH_BLOCKING: '0'
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      # This NeMo RL guard avoids an incompatible empty_cache call while the
+      # expandable allocator is active.
+      NRL_BEST_EFFORT_EMPTY_CACHE: '1'
+  generation:
+    # Keep one node-local TP4 generation group per node.
+    colocated:
+      resources:
+        gpus_per_node: 4
+        num_nodes: 2
+
+logger:
+  wandb:
+    name: megatron-grpo-2n-step0-15

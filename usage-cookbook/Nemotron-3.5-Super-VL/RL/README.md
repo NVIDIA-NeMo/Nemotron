@@ -6,7 +6,8 @@ The included workflow trains on synthetic circle-count images and evaluates
 exact-match accuracy on a deterministic held-out split.
 
 - [`grpo-circle-count-nemo-gym/`](grpo-circle-count-nemo-gym/grpo_training_cookbook_nemo_gym.md):
-  full-weight GRPO with validation at steps 0, 5, 10, and 15.
+  GRPO with validation at steps 0, 5, 10, and 15, including a full-weight
+  four-node reference and a compact two-node LoRA configuration.
 
 ## Runtime and hardware requirements
 
@@ -27,7 +28,20 @@ policy.megatron_cfg.expert_model_parallel_size=16
 policy.generation.vllm_cfg.tensor_parallel_size=4
 ```
 
-The recipe performs full-weight BF16 updates. Model conversion caches and
+For pipeline validation on eight GB200 GPUs, the included two-node overlay
+uses tensor parallelism 8 and expert parallelism 8 for training, with one
+node-local TP=4 vLLM group per node. It applies rank-16 LoRA to the language
+and MoE policy while keeping the vision stack fixed. The overlay also enables
+PyTorch expandable CUDA segments together with NeMo RL's compatible cache
+handling.
+
+The two-node topology has been exercised through baseline validation, rollout
+collection, a GRPO optimizer step, adapter refit into vLLM, and post-update
+validation. This is a pipeline check; use the full validation split and
+multiple runs for model-quality comparisons.
+
+The four-node reference recipe performs full-weight BF16 updates. The compact
+two-node overlay performs BF16 LoRA updates. Model conversion caches and
 optional training checkpoints require substantial shared storage.
 
 ## Shared-storage layout
