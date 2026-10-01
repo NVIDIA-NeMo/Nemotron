@@ -6,10 +6,10 @@ their colors, count them, and follow a precise answer format. This guide turns
 that compact task into an end-to-end reinforcement learning example with a
 clear, automatically verifiable reward.
 
-The workflow uses NeMo RL's Megatron backend for full-weight GRPO, colocated
-vLLM for generation, and NeMo Gym for task execution and verification. Begin
-with the repository, container, checkpoint, and shared-storage setup in
-[`../README.md`](../README.md), then use
+This is the cookbook's single training workflow. It uses NeMo RL's Megatron
+backend for full-weight GRPO, colocated vLLM for generation, and NeMo Gym for
+task execution and verification. Begin with the repository, container,
+checkpoint, and shared-storage setup in [`../README.md`](../README.md), then use
 [`super_vl_3_5_star_count_megatron.yaml`](super_vl_3_5_star_count_megatron.yaml)
 for training.
 

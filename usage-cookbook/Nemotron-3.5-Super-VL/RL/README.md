@@ -1,24 +1,23 @@
-# Nemotron 3.5 Super VL RL Training Cookbook
+# Nemotron 3.5 Super VL Star-Count RL Cookbook
 
 This directory documents multimodal RL post-training for Nemotron 3.5 Super
 VL with NeMo RL's Megatron backend, colocated vLLM generation, and NeMo Gym.
-The included workflow trains on synthetic circle-count images and evaluates
-exact-match accuracy on a deterministic held-out split.
+The workflow applies full-weight GRPO to synthetic star-count images and
+evaluates exact-match accuracy on a deterministic held-out split.
 
-- [`grpo-circle-count-nemo-gym/`](grpo-circle-count-nemo-gym/grpo_training_cookbook_nemo_gym.md):
-  GRPO with validation at steps 0, 5, 10, and 15, including a full-weight
-  four-node reference and a compact two-node LoRA configuration.
-- [`grpo-star-count-nemo-gym/`](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md):
-  full-weight GRPO with a 16 x 8 rollout batch on variable 800–1,200-pixel
-  canvases containing 1–30 colored stars.
+The [star-count training guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
+covers dataset generation, validation, interactive and batch launch paths,
+monitoring, and interpretation of the reference result. Its recipe uses a
+16 x 8 rollout batch on variable 800–1,200-pixel canvases containing 1–30
+colored stars.
 
 ## Runtime and hardware requirements
 
 Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
-Megatron model path, the compatible vLLM integration, and the NeMo Gym
-circle-count data preparation utility used by this cookbook.
+Megatron model path, compatible vLLM integration, and NeMo Gym support used by
+this cookbook.
 
-The recipes and reported reference runs were validated at NeMo RL commit
+The recipe and reported reference run were validated at NeMo RL commit
 `eb420d15034c`, with NeMo Gym pinned by that checkout at `14317ecb50bd`. For
 exact reproduction, check out that NeMo RL commit before building the image.
 When using a newer revision, keep the revision in the container tag and review
@@ -37,26 +36,13 @@ policy.megatron_cfg.expert_model_parallel_size=16
 policy.generation.vllm_cfg.tensor_parallel_size=4
 ```
 
-For pipeline validation on eight GB200 GPUs, the included two-node overlay
-uses tensor parallelism 8 and expert parallelism 8 for training, with one
-node-local TP=4 vLLM group per node. It applies rank-16 LoRA to the language
-and MoE policy while keeping the vision stack fixed. The overlay also enables
-PyTorch expandable CUDA segments together with NeMo RL's compatible cache
-handling.
-
-The two-node topology has been exercised through baseline validation, rollout
-collection, a GRPO optimizer step, adapter refit into vLLM, and post-update
-validation. This is a pipeline check; use the full validation split and
-multiple runs for model-quality comparisons.
-
-The four-node reference recipe performs full-weight BF16 updates. The compact
-two-node overlay performs BF16 LoRA updates. Model conversion caches and
+The recipe performs full-weight BF16 updates. Model conversion caches and
 optional training checkpoints require substantial shared storage.
 
 ## Shared-storage layout
 
 Use storage visible to every allocated node and mount its root at `/shared`
-inside the container. The examples use this layout:
+inside the container. The recipe uses this layout:
 
 ```text
 /shared
@@ -160,11 +146,16 @@ The model uses repository-provided remote code. Keep `MODEL_DIR`, the shared
 Hugging Face module cache, and the mounted NeMo RL source available to every
 Ray worker.
 
+## Run the recipe
+
+Continue with the
+[star-count NeMo Gym guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
+to generate the deterministic dataset, check the image-token budget, and
+launch the four-node full-weight training job.
+
 ## Operational notes
 
-- The circle-count recipe evaluates before RL and every five steps through
-  step 15. The star-count recipe evaluates before RL and every two steps
-  through step 10.
+- The recipe evaluates before RL and every two steps through step 10.
 - The training and validation files are generated from disjoint seed ranges.
 - The first launch can spend several minutes converting the Hugging Face
   checkpoint into the cached Megatron representation.
@@ -183,10 +174,3 @@ Ray worker.
 | vLLM runs out of memory during refit | Keep the reference TP=4 colocated layout and the recipe's memory and sequence limits. |
 | Validation does not cover the complete file | Leave `grpo.max_val_samples: null`; NeMo Gym derives the validation size from the JSONL file. |
 | Worker environments are stale after changing the image or branch | Remove the affected cached environment or set `NRL_FORCE_REBUILD_VENVS=true` for one launch. |
-
-## What to run next
-
-Follow the [circle-count NeMo Gym guide](grpo-circle-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-for the original compact task and two-node pipeline check. Follow the
-[star-count NeMo Gym guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-to run the larger 16 x 8 full-weight training and monitor its validation curve.
