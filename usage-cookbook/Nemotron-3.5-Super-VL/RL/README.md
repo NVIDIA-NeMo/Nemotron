@@ -18,6 +18,12 @@ Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
 Megatron model path, the compatible vLLM integration, and the NeMo Gym
 circle-count data preparation utility used by this cookbook.
 
+The recipes and reported reference runs were validated at NeMo RL commit
+`eb420d15034c`, with NeMo Gym pinned by that checkout at `14317ecb50bd`. For
+exact reproduction, check out that NeMo RL commit before building the image.
+When using a newer revision, keep the revision in the container tag and review
+the resolved configuration because inherited recipe defaults can change.
+
 The reference configuration uses 16 GB200 GPUs across four 4-GPU nodes. It
 trains with Megatron tensor parallelism 4 and expert parallelism 16, while
 colocating one tensor-parallel vLLM group on each node. Keep the following
@@ -85,6 +91,7 @@ git clone --branch super-v3.5-posttraining --recursive \
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git "${NEMOTRON_REPO}"
 
 cd "${NEMO_RL}"
+git checkout eb420d15034c
 git submodule update --init --recursive
 ```
 
@@ -155,8 +162,9 @@ Ray worker.
 
 ## Operational notes
 
-- The recipe evaluates the untouched checkpoint before the first optimizer
-  update and then evaluates every five steps through step 15.
+- The circle-count recipe evaluates before RL and every five steps through
+  step 15. The star-count recipe evaluates before RL and every two steps
+  through step 10.
 - The training and validation files are generated from disjoint seed ranges.
 - The first launch can spend several minutes converting the Hugging Face
   checkpoint into the cached Megatron representation.

@@ -170,6 +170,10 @@ def main() -> None:
     for name, (minimum, maximum) in ranges.items():
         if minimum <= 0 or minimum > maximum:
             raise ValueError(f"invalid {name} range: {minimum}..{maximum}")
+    if args.num_colors_max > len(COLORS):
+        raise ValueError(
+            f"--num-colors-max cannot exceed the {len(COLORS)} available colors"
+        )
     if args.canvas_size_min <= 2 * (args.radius_max + 10):
         raise ValueError("the minimum canvas is too small for the maximum radius")
 

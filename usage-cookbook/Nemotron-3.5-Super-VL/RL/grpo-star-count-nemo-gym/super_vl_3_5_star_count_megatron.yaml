@@ -1,4 +1,5 @@
 # Nemotron 3.5 Super VL full-weight GRPO on a variable-resolution star task.
+# Validated with NVIDIA-NeMo/RL commit eb420d15034c.
 defaults: /opt/nemo-rl/examples/configs/recipes/vlm/vlm_grpo-nemotron-super-omni-120ba12b-16n8g-megatron-tp8ep16cp2-async-gym.v1.yaml
 
 cluster:
@@ -10,8 +11,15 @@ grpo:
   num_prompts_per_step: 16
   num_generations_per_prompt: 8
   val_num_generations_per_prompt: 1
-  max_num_epochs: 10
+  # Ten steps consume 160 prompts, so one 1,024-row epoch is sufficient.
+  max_num_epochs: 1
   max_num_steps: 10
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  reward_shaping:
+    enabled: false
+  reward_scaling:
+    enabled: false
   val_period: 2
   val_at_start: true
   val_at_end: true
@@ -65,6 +73,8 @@ policy:
         num_nodes: 4
 
 data:
+  # The reference curve used the first 160 rows in deterministic seed order.
+  # Enable shuffling for broader sampling in longer or comparative runs.
   shuffle: false
   train:
     data_path: /shared/runs/super35-star-count/data/train.jsonl

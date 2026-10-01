@@ -23,13 +23,19 @@ it with the count in the example metadata:
 - a correct count receives reward `1.0`;
 - an incorrect, missing, or malformed count receives reward `0.0`.
 
-There is no partial credit and no judge model. This sparse binary reward makes
-the task easy to interpret: an increase in validation accuracy directly means
-that the policy solves more held-out images.
+There is no partial credit and no judge model. Exact-match accuracy therefore
+combines several behaviors: perceiving and counting the target stars, emitting
+a parseable integer, and following the required boxed-answer format. Report
+format coverage alongside accuracy before attributing a gain to visual
+counting alone.
 
 The environment is a single-turn `circle_count_simple_agent` interaction with
 no tools. The generator retains the verifier's `circles` metadata key for
 compatibility, while the rendered images and prompts contain stars throughout.
+This compatibility path was validated with NeMo RL commit `eb420d15034c` and
+its pinned NeMo Gym commit `14317ecb50bd`. Recheck the verifier before moving
+the recipe to another NeMo Gym revision because it depends on the verifier
+reading only each item's `color` field.
 
 ## Dataset design
 
@@ -41,10 +47,16 @@ The deterministic generator creates two disjoint splits:
 | Validation | 256 | 1,000,000–1,000,255 |
 
 For every example, it samples a square canvas from 800 x 800 through
-1,200 x 1,200 pixels, draws 1–30 non-overlapping stars, and assigns colors
+1,200 x 1,200 pixels, draws 1–30 non-overlapping stars, and selects 2–4 colors
 from a fixed eight-color palette. Every selected color appears at least once,
 so each question has a positive answer. The PNG is embedded in its JSONL row
 as a base64 data URL, which keeps every example self-contained across workers.
+
+The palette follows the original synthetic task. Its red, orange, and pink
+tones are closer than its other colors, and yellow appears as a dark gold.
+This can make color identification part of the task rather than a perfectly
+controlled counting variable. Keep the palette fixed when comparing runs, or
+replace it with a perceptually validated palette and regenerate both splits.
 
 ### Sample examples
 
@@ -95,6 +107,8 @@ The reference recipe uses the following settings:
 | Validation | 256 held-out examples, greedy decoding |
 | Evaluation cadence | Before RL, then every 2 steps through step 10 |
 | Maximum response length | 256 tokens |
+| Training coverage | 160 prompts: the first 160 rows of the 1,024-row split |
+| Checkpointing | Disabled; the example does not save trained weights |
 
 The 16 x 8 rollout batch gives GRPO eight candidate responses for each prompt.
 NeMo RL converts their binary rewards into group-relative advantages using
@@ -106,6 +120,18 @@ colocated weight refit, the recipe temporarily moves distributed optimizer
 state out of GPU memory so the full tensor-parallel weight gather has enough
 headroom.
 
+The ten-step schedule is a smoke test and short convergence demonstration rather than a full
+dataset epoch: 10 steps x 16 prompts consume 160 rows. With
+`data.shuffle: false`, these are rows 0–159 in seed order. Increase the step
+count or enable shuffling for broader training coverage. `max_num_epochs` is
+set explicitly to one because the step limit ends this example before the
+first epoch completes.
+
+TP=4 shards dense and attention tensors across four ranks. EP=16 independently
+distributes the model's 512 routed experts across all 16 GPUs, leaving 32
+routed experts per expert-parallel rank. The TP and EP values describe
+different parallel dimensions and do not imply a 64-GPU allocation.
+
 ## Generate the train and validation data
 
 Run the generator inside the NeMo RL container or from an attached allocation.
@@ -114,6 +140,7 @@ The commands use the `/shared` layout established in the parent README:
 ```bash
 export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
+export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export DATA_DIR=/shared/runs/super35-star-count/data
 export GENERATOR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/prepare_star_count_data.py"
 mkdir -p "${DATA_DIR}"
@@ -127,7 +154,9 @@ python "${GENERATOR}" \
   --radius-min 24 \
   --radius-max 48 \
   --num-stars-min 1 \
-  --num-stars-max 30
+  --num-stars-max 30 \
+  --num-colors-min 2 \
+  --num-colors-max 4
 
 python "${GENERATOR}" \
   --out "${DATA_DIR}/validation.jsonl" \
@@ -138,7 +167,9 @@ python "${GENERATOR}" \
   --radius-min 24 \
   --radius-max 48 \
   --num-stars-min 1 \
-  --num-stars-max 30
+  --num-stars-max 30 \
+  --num-colors-min 2 \
+  --num-colors-max 4
 ```
 
 Validate the row counts, image dimensions, star bounds, agent routing, and
@@ -150,11 +181,12 @@ import base64
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 
 from PIL import Image
 
-root = Path('/shared/runs/super35-star-count/data')
+root = Path(os.environ['DATA_DIR'])
 fingerprints = {}
 
 for split, expected in [('train', 1024), ('validation', 256)]:
@@ -172,30 +204,64 @@ for split, expected in [('train', 1024), ('validation', 256)]:
     for row in rows:
         content = row['responses_create_params']['input'][1]['content']
         image_url = content[0]['image_url']
+        image_bytes = base64.b64decode(image_url.split(',', 1)[1])
         image = Image.open(
-            io.BytesIO(base64.b64decode(image_url.split(',', 1)[1]))
+            io.BytesIO(image_bytes)
         )
         assert image.width == image.height
         assert 800 <= image.width <= 1200
         assert 'stars' in content[1]['text']
+        target_color = row['target_color']
+        target_count = sum(
+            star['color'] == target_color for star in row['circles']
+        )
+        assert target_count > 0
 
-    fingerprints[split] = {
-        hashlib.sha256(
-            json.dumps(row['responses_create_params'], sort_keys=True).encode()
-        ).hexdigest()
-        for row in rows
-    }
+    fingerprints[split] = set()
+    for row in rows:
+        image_url = row['responses_create_params']['input'][1]['content'][0]['image_url']
+        image_bytes = base64.b64decode(image_url.split(',', 1)[1])
+        fingerprints[split].add(hashlib.sha256(image_bytes).hexdigest())
 
 assert fingerprints['train'].isdisjoint(fingerprints['validation'])
 print('Star-count train and validation splits are valid and disjoint.')
 PY
 ```
 
+### Check the image-token budget
+
+Pixel dimensions do not directly determine sequence length. The model's image
+processor resizes each image to a dynamic patch grid and then applies spatial
+downsampling. Check the generated files with the same processor used for
+training:
+
+```bash
+export TOKEN_CHECKER="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/check_image_token_budget.py"
+
+python "${TOKEN_CHECKER}" \
+  --model-dir "${MODEL_DIR}" \
+  --max-sequence-length 4096 \
+  --text-reserve 512 \
+  --response-reserve 256 \
+  "${DATA_DIR}/train.jsonl" \
+  "${DATA_DIR}/validation.jsonl"
+```
+
+For the validated checkpoint, the 800–1,200-pixel square images produce
+625–1,444 image tokens. The conservative check reserves another 512 tokens for
+the prompt and 256 for the response, for a maximum budget of 2,212 tokens.
+This fits within the 4,096-token limit. In the reference run, all 256
+validation rows were processed at every evaluation and the largest observed
+prompt-plus-response sequence was 1,766 tokens. Repeat this check whenever the
+checkpoint, image processor, resolution range, or prompt template changes.
+
 ## Interactive run
 
 Use an interactive allocation when bringing up the recipe for the first time,
 inspecting logs, or trying configuration overrides. From the login node, set
-the scheduler and container values for your cluster:
+the scheduler and container values for your cluster. The parent README defines
+`SHARED_ROOT`, `NEMO_RL`, `CONTAINER`, and the `/shared` mount convention used
+below:
 
 ```bash
 export NUM_NODES=4
@@ -229,31 +295,10 @@ Inside the attached container, configure persistent caches and launch the
 training driver:
 
 ```bash
-export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
-export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-star-count
-export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
-
-mkdir -p \
-  "${RUN_DIR}/logs" \
-  "${RUN_DIR}/cache/hf_modules" \
-  "${RUN_DIR}/cache/hf_config_locks" \
-  "${RUN_DIR}/cache/megatron_ckpt" \
-  "${RUN_DIR}/cache/vllm"
-
-export HF_MODULES_CACHE="${RUN_DIR}/cache/hf_modules"
-export MEGATRON_CONFIG_LOCK_DIR="${RUN_DIR}/cache/hf_config_locks"
-export NRL_MEGATRON_CHECKPOINT_DIR="${RUN_DIR}/cache/megatron_ckpt"
-export VLLM_CACHE_ROOT="${RUN_DIR}/cache/vllm"
-export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
-export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
-export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
-export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
-export NRL_WG_USE_RAY_REF=1
-export NRL_VLLM_USE_V1=1
-export VLLM_ATTENTION_BACKEND=FLASH_ATTN
-export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+export SETUP_ENV="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/setup_star_count_env.sh"
+source "${SETUP_ENV}"
 
 cd "${NEMO_RL}"
 python -u examples/nemo_gym/run_grpo_nemo_gym.py \
@@ -287,30 +332,10 @@ set -euo pipefail
 
 export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
-export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR="/shared/runs/${RUN_NAME}"
 export CACHE_DIR=/shared/runs/super35-star-count/cache
-export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
-
-mkdir -p \
-  "${RUN_DIR}/logs" \
-  "${CACHE_DIR}/hf_modules" \
-  "${CACHE_DIR}/hf_config_locks" \
-  "${CACHE_DIR}/megatron_ckpt" \
-  "${CACHE_DIR}/vllm"
-
-export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
-export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
-export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
-export VLLM_CACHE_ROOT="${CACHE_DIR}/vllm"
-export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
-export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
-export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
-export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
-export NRL_WG_USE_RAY_REF=1
-export NRL_VLLM_USE_V1=1
-export VLLM_ATTENTION_BACKEND=FLASH_ATTN
-export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+export SETUP_ENV="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/setup_star_count_env.sh"
+source "${SETUP_ENV}"
 
 cd "${NEMO_RL}"
 exec python -u examples/nemo_gym/run_grpo_nemo_gym.py \
@@ -361,30 +386,63 @@ The driver reports exact-match validation accuracy before training and after
 steps 2, 4, 6, 8, and 10. It also records training reward, loss, response
 length, throughput, timing, and GPU utilization through the configured logger.
 
+NeMo RL writes each validation response to `val_data_step*.jsonl`, even when
+external experiment tracking is disabled. Measure boxed-answer coverage with
+the included analyzer:
+
+```bash
+export FORMAT_ANALYZER="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/analyze_validation_format.py"
+
+python "${FORMAT_ANALYZER}" \
+  "${RUN_DIR}/logs/val_data_step0.jsonl" \
+  "${RUN_DIR}/logs/val_data_step10.jsonl"
+```
+
+Also inspect `validation/max_gen_tokens_per_turn` against
+`policy.generation.max_new_tokens`. The generic NeMo Gym `truncation_rate` in
+the validated revision tracks the total sequence ceiling, so it does not by
+itself show whether a response reached the separate 256-token generation cap.
+
 A successful run reaches step 10, completes the final validation pass, shuts
 down the NeMo Gym services, flushes the logger, and exits with status zero.
 
-## Interpreting the result
+## Interpreting the reference result
 
-One reference run produced the following held-out accuracy curve:
+One reference run produced the following held-out exact-match counts:
 
-| Step | Validation accuracy |
-| ---: | ---: |
-| 0 | 11.33% |
-| 2 | 13.67% |
-| 4 | 13.67% |
-| 6 | 55.47% |
-| 8 | 71.09% |
-| 10 | 70.31% |
+| Step | Correct | Validation accuracy |
+| ---: | ---: | ---: |
+| 0 | 29/256 | 11.33% |
+| 2 | 35/256 | 13.67% |
+| 4 | 35/256 | 13.67% |
+| 6 | 142/256 | 55.47% |
+| 8 | 182/256 | 71.09% |
+| 10 | 180/256 | 70.31% |
 
-The curve tells a useful story. The first updates produced little visible
-change, improvement became clear by step 6, and the final two measurements
-showed that individual GRPO updates can remain noisy even after substantial
-learning. The run improved by 58.98 percentage points from its pre-RL
-baseline, while its best measured accuracy occurred at step 8.
+The format diagnostics materially change how this curve should be read:
+
+| Diagnostic | Step 0 | Step 10 |
+| --- | ---: | ---: |
+| Parseable boxed integer | 30/256 (11.72%) | 255/256 (99.61%) |
+| Correct boxed integer | 29/256 (11.33%) | 180/256 (70.31%) |
+| Mean response length | 249.2 tokens | 155.2 tokens |
+| Responses in the 254–256 token histogram bin | 227/256 | 1/256 |
+
+The run clearly learned to emit shorter, parseable boxed answers. Because the
+reward requires that format, the 58.98 percentage-point exact-match gain
+cannot be interpreted as a pure improvement in visual perception or counting.
+The available telemetry does not isolate those contributions. A stronger
+evaluation would compare counting accuracy only among parseable responses and
+repeat validation with a larger response budget.
+
+At 256 examples, a proportion near 70% has a standard error of about three
+percentage points. The step-8 and step-10 results differ by only two correct
+examples, so they are statistically indistinguishable at this sample size.
+Treat the sequence as repeated measurements from one short run, not a precise
+ranking of checkpoints.
 
 Treat this result as a pipeline reference rather than a benchmark claim.
 Sampled rollouts, hardware, software revisions, and model checkpoints can all
 affect the curve. For model-quality comparisons, repeat the experiment with
-multiple seeds, preserve the same validation split, and report both the final
-and best validation accuracy.
+multiple seeds, preserve the same validation split, report exact counts and
+format coverage, and use confidence intervals when comparing checkpoints.
