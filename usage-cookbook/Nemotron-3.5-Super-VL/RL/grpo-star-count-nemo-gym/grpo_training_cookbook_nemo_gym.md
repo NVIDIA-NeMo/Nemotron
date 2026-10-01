@@ -201,3 +201,26 @@ A successful run reaches step 10, performs final validation after the last
 weight refit, syncs W&B, and exits with status zero. Compare step 10 against
 step 0 and inspect all intermediate validation points before drawing a
 convergence conclusion.
+
+## Reference result
+
+A full-weight 4-node reference run completed all ten updates and all six
+evaluations. Exact-match accuracy on the fixed 256-example validation split
+improved from 11.33% before RL to 70.31% after the final update.
+
+| Step | Validation accuracy |
+| ---: | ---: |
+| 0 | 11.33% |
+| 2 | 13.67% |
+| 4 | 13.67% |
+| 6 | 55.47% |
+| 8 | 71.09% |
+| 10 | 70.31% |
+
+The step-8 to step-10 change shows the expected noise from sampled GRPO
+updates, while the complete curve shows clear learning over the baseline. The
+run finished successfully in 1 hour 40 minutes. Its W&B dashboard contains the
+accuracy curve, training rewards, optimization metrics, throughput, timings,
+and GPU telemetry:
+
+<https://wandb.ai/hwinf_dcm/nemotron-super-vl-35-star-count/runs/w2kbfgfr>
