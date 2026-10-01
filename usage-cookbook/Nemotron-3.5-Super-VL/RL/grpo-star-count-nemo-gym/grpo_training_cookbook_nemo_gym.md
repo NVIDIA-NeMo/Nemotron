@@ -46,6 +46,39 @@ from a fixed eight-color palette. Every selected color appears at least once,
 so each question has a positive answer. The PNG is embedded in its JSONL row
 as a base64 data URL, which keeps every example self-contained across workers.
 
+### Sample examples
+
+The following examples come directly from the deterministic training split.
+Together they show how the same task ranges from a sparse scene to a more
+crowded visual counting problem.
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="assets/star_count_sample_1.png" alt="Three colored stars on a white canvas" width="360"><br>
+      <strong>Prompt:</strong> How many cyan stars are in the image?<br>
+      <strong>Expected response:</strong> <code>\boxed{1}</code>
+    </td>
+    <td width="50%">
+      <img src="assets/star_count_sample_2.png" alt="Thirteen colored stars on a white canvas" width="360"><br>
+      <strong>Prompt:</strong> How many red stars are in the image?<br>
+      <strong>Expected response:</strong> <code>\boxed{5}</code>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="assets/star_count_sample_3.png" alt="Eighteen orange and purple stars on a white canvas" width="360"><br>
+      <strong>Prompt:</strong> How many orange stars are in the image?<br>
+      <strong>Expected response:</strong> <code>\boxed{10}</code>
+    </td>
+    <td width="50%">
+      <img src="assets/star_count_sample_4.png" alt="Twenty-nine red, purple, and yellow stars on a white canvas" width="360"><br>
+      <strong>Prompt:</strong> How many red stars are in the image?<br>
+      <strong>Expected response:</strong> <code>\boxed{8}</code>
+    </td>
+  </tr>
+</table>
+
 ## Configuration overview
 
 The reference recipe uses the following settings:
