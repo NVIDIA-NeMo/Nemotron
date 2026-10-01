@@ -40,7 +40,9 @@ The recipe preserves the Super VL settings inherited from the
 `super-v3.5-posttraining` branch: trainable vision components, disabled MTP,
 activation checkpointing, precision-aware distributed Adam, raw vLLM
 log-probabilities, float32 Mamba state, and encoder-cache reset after each
-weight refit.
+weight refit. It also uses PyTorch expandable CUDA segments with NeMo RL's
+best-effort cache cleanup so the full-weight refit can reuse reserved memory
+after a large 16 x 8 optimizer step.
 
 ## Generate and validate the dataset
 

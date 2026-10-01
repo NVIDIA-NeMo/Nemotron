@@ -44,6 +44,10 @@ policy:
       overlap_cpu_optimizer_d2h_h2d: false
     env_vars:
       CUDA_LAUNCH_BLOCKING: '0'
+      # Avoid allocator fragmentation during the full-weight Megatron-to-vLLM
+      # refit after each optimizer update.
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      NRL_BEST_EFFORT_EMPTY_CACHE: '1'
   generation:
     max_new_tokens: 256
     val_temperature: 0.0
