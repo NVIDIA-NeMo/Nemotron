@@ -120,8 +120,8 @@ colocated weight refit, the recipe temporarily moves distributed optimizer
 state out of GPU memory so the full tensor-parallel weight gather has enough
 headroom.
 
-The ten-step schedule is a smoke test and short convergence demonstration rather than a full
-dataset epoch: 10 steps x 16 prompts consume 160 rows. With
+The ten-step schedule is a smoke test and short convergence demonstration
+rather than a full dataset epoch: 10 steps x 16 prompts consume 160 rows. With
 `data.shuffle: false`, these are rows 0–159 in seed order. Increase the step
 count or enable shuffling for broader training coverage. `max_num_epochs` is
 set explicitly to one because the step limit ends this example before the
@@ -131,6 +131,12 @@ TP=4 shards dense and attention tensors across four ranks. EP=16 independently
 distributes the model's 512 routed experts across all 16 GPUs, leaving 32
 routed experts per expert-parallel rank. The TP and EP values describe
 different parallel dimensions and do not imply a 64-GPU allocation.
+
+The environment helper explicitly exports `NRL_VLLM_USE_V1=1` and
+`VLLM_ATTENTION_BACKEND=FLASH_ATTN` to match the reference run. At the pinned
+NeMo RL commit, V1 is already the default and the inherited recipe also sets
+the vLLM attention backend to `FLASH_ATTN`; keeping both exports makes those
+runtime choices visible and protects reproduction from ambient settings.
 
 ## Generate the train and validation data
 
@@ -250,10 +256,12 @@ python "${TOKEN_CHECKER}" \
 For the validated checkpoint, the 800–1,200-pixel square images produce
 625–1,444 image tokens. The conservative check reserves another 512 tokens for
 the prompt and 256 for the response, for a maximum budget of 2,212 tokens.
-This fits within the 4,096-token limit. In the reference run, all 256
-validation rows were processed at every evaluation and the largest observed
-prompt-plus-response sequence was 1,766 tokens. Repeat this check whenever the
-checkpoint, image processor, resolution range, or prompt template changes.
+The fixed 512-token text allowance is conservative by construction rather
+than a measurement of each rendered prompt. The total fits within the
+4,096-token limit. In the reference run, all 256 validation rows were
+processed at every evaluation and the largest observed prompt-plus-response
+sequence was 1,766 tokens. Repeat this check whenever the checkpoint, image
+processor, resolution range, or prompt template changes.
 
 ## Interactive run
 
@@ -398,6 +406,11 @@ python "${FORMAT_ANALYZER}" \
   "${RUN_DIR}/logs/val_data_step10.jsonl"
 ```
 
+The analyzer follows the validation logger schema at the pinned NeMo RL
+commit and applies the pinned verifier's exact `\\boxed{<digits>}` regex to
+the final assistant message. Consequently, forms such as `\\boxed{ 5 }` and
+`\\boxed{5.0}` do not count as parseable, matching the reward verifier.
+
 Also inspect `validation/max_gen_tokens_per_turn` against
 `policy.generation.max_new_tokens`. The generic NeMo Gym `truncation_rate` in
 the validated revision tracks the total sequence ceiling, so it does not by
@@ -425,15 +438,19 @@ The format diagnostics materially change how this curve should be read:
 | --- | ---: | ---: |
 | Parseable boxed integer | 30/256 (11.72%) | 255/256 (99.61%) |
 | Correct boxed integer | 29/256 (11.33%) | 180/256 (70.31%) |
+| Correct among parseable answers | 29/30 (96.67%) | 180/255 (70.59%) |
 | Mean response length | 249.2 tokens | 155.2 tokens |
 | Responses in the 254–256 token histogram bin | 227/256 | 1/256 |
 
 The run clearly learned to emit shorter, parseable boxed answers. Because the
 reward requires that format, the 58.98 percentage-point exact-match gain
 cannot be interpreted as a pure improvement in visual perception or counting.
-The available telemetry does not isolate those contributions. A stronger
-evaluation would compare counting accuracy only among parseable responses and
-repeat validation with a larger response budget.
+Among the small set of step-0 responses that finished in the required format,
+29 of 30 were already correct; at step 10, 180 of 255 parseable responses were
+correct. This reinforces that output completion and formatting account for a
+large part of the measured gain, although the 30-example step-0 denominator is
+too small to estimate conditional counting accuracy precisely. A stronger
+evaluation would repeat validation with a larger response budget.
 
 At 256 examples, a proportion near 70% has a standard error of about three
 percentage points. The step-8 and step-10 results differ by only two correct

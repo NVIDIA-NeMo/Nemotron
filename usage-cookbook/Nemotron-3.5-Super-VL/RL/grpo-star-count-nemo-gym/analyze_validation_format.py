@@ -2,7 +2,7 @@
 # Copyright (c) 2026, NVIDIA CORPORATION. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Report boxed-answer coverage from NeMo RL validation JSONL logs."""
+"""Report boxed-answer coverage from pinned NeMo RL validation JSONL logs."""
 
 from __future__ import annotations
 
@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Any
 
 
-BOXED_INTEGER = re.compile(r"\\boxed\{\d+\}")
+# Match the pinned circle-count verifier exactly: no whitespace, sign, or decimal.
+VERIFIER_BOXED_INTEGER = re.compile(r"\\boxed\{\d+\}")
 
 
 def _unwrap_singleton(value: Any) -> Any:
@@ -49,24 +50,29 @@ def main() -> None:
         with log_path.open(encoding="utf-8") as input_file:
             for line in input_file:
                 row = json.loads(line)
+                # These fields and singleton dimensions follow the validation
+                # logger schema at NeMo RL commit eb420d15034c.
                 messages = _unwrap_singleton(row["content"])
-                assistant_text = "\n".join(
+                assistant_messages = [
                     _content_text(message.get("content", ""))
                     for message in messages
                     if message.get("role") == "assistant"
-                )
+                ]
+                assistant_text = assistant_messages[-1] if assistant_messages else ""
                 reward = _unwrap_singleton(row["rewards"])
                 if isinstance(reward, list):
                     reward = reward[0]
                 total += 1
-                boxed += bool(BOXED_INTEGER.search(assistant_text))
+                boxed += bool(VERIFIER_BOXED_INTEGER.search(assistant_text))
                 correct += float(reward) == 1.0
 
         if total == 0:
             raise ValueError(f"no validation rows found in {log_path}")
+        conditional = f"{correct}/{boxed} ({correct / boxed:.2%})" if boxed else "n/a"
         print(
             f"{log_path.name}: correct={correct}/{total} ({correct / total:.2%}), "
-            f"boxed={boxed}/{total} ({boxed / total:.2%})"
+            f"boxed={boxed}/{total} ({boxed / total:.2%}), "
+            f"correct_given_boxed={conditional}"
         )
 
 

@@ -29,3 +29,8 @@ export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGAT
 export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
 export NRL_WG_USE_RAY_REF=1
 export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+
+# Pin the runtime choices used by the reference run. NeMo RL defaults to vLLM
+# V1 at the validated commit, and the recipe also sets FLASH_ATTN explicitly.
+export NRL_VLLM_USE_V1=1
+export VLLM_ATTENTION_BACKEND=FLASH_ATTN
