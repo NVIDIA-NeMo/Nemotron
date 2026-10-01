@@ -1,52 +1,82 @@
 # GRPO with Nemotron 3.5 Super VL and NeMo Gym Star Count
 
-This guide runs full-weight multimodal GRPO on a deterministic colored-star
-counting task. Each square canvas is sampled from 800 x 800 through
-1,200 x 1,200 pixels and contains 1–30 non-overlapping stars. The policy must
-count stars of a requested color and return the answer in `\boxed{}` format.
+A page of colored stars looks like a simple visual puzzle. Solving it reliably,
+however, requires a multimodal model to find the relevant objects, distinguish
+their colors, count them, and follow a precise answer format. This guide turns
+that compact task into an end-to-end reinforcement learning example with a
+clear, automatically verifiable reward.
 
-Use [`super_vl_3_5_star_count_megatron.yaml`](super_vl_3_5_star_count_megatron.yaml)
-after completing the repository, container, checkpoint, and shared-storage
-setup in [`../README.md`](../README.md).
+The workflow uses NeMo RL's Megatron backend for full-weight GRPO, colocated
+vLLM for generation, and NeMo Gym for task execution and verification. Begin
+with the repository, container, checkpoint, and shared-storage setup in
+[`../README.md`](../README.md), then use
+[`super_vl_3_5_star_count_megatron.yaml`](super_vl_3_5_star_count_megatron.yaml)
+for training.
 
-## Training goal and data
+## The learning task
 
-The generator creates 1,024 training examples from seeds 0–1,023 and 256
-held-out examples from seeds 1,000,000–1,000,255. It uniformly samples the
-integer canvas size, total star count, radius, and color assignment within the
-configured bounds. Every selected color occurs at least once, so the requested
-count is positive.
+Each example presents a square image containing colored stars and asks the
+policy to count the stars of one specified color. The model returns its final
+answer in `\boxed{}` format. NeMo Gym extracts the boxed integer and compares
+it with the count in the example metadata:
 
-The pinned NeMo Gym `circle_count_simple_agent` verifier only examines the
-color entries in its `circles` payload field. The star generator retains that
-wire-format field while rendering and prompting exclusively with stars. This
-uses the existing verifier without changing its reward semantics.
+- a correct count receives reward `1.0`;
+- an incorrect, missing, or malformed count receives reward `0.0`.
+
+There is no partial credit and no judge model. This sparse binary reward makes
+the task easy to interpret: an increase in validation accuracy directly means
+that the policy solves more held-out images.
+
+The environment is a single-turn `circle_count_simple_agent` interaction with
+no tools. The generator retains the verifier's `circles` metadata key for
+compatibility, while the rendered images and prompts contain stars throughout.
+
+## Dataset design
+
+The deterministic generator creates two disjoint splits:
+
+| Split | Examples | Seeds |
+| --- | ---: | --- |
+| Training | 1,024 | 0–1,023 |
+| Validation | 256 | 1,000,000–1,000,255 |
+
+For every example, it samples a square canvas from 800 x 800 through
+1,200 x 1,200 pixels, draws 1–30 non-overlapping stars, and assigns colors
+from a fixed eight-color palette. Every selected color appears at least once,
+so each question has a positive answer. The PNG is embedded in its JSONL row
+as a base64 data URL, which keeps every example self-contained across workers.
 
 ## Configuration overview
 
+The reference recipe uses the following settings:
+
 | Component | Setting |
 | --- | --- |
+| Algorithm | Synchronous GRPO |
 | Backend | Megatron, full-weight BF16 |
-| Hardware reference | 4 nodes x 4 GB200 GPUs |
+| Resources | 4 nodes x 4 GPUs |
 | Training parallelism | TP=4, EP=16 |
-| Generation | colocated vLLM, TP=4 |
-| Rollout batch | 16 prompts x 8 generations = 128 responses |
-| Policy global batch | 128 |
+| Generation | Colocated vLLM, TP=4 |
+| Rollout batch | 16 prompts x 8 generations |
+| Policy global batch | 128 responses |
 | Validation | 256 held-out examples, greedy decoding |
-| Evaluation cadence | before RL, then every 2 steps through step 10 |
-| Logging | online W&B with GPU monitoring |
+| Evaluation cadence | Before RL, then every 2 steps through step 10 |
+| Maximum response length | 256 tokens |
 
-The recipe preserves the Super VL settings inherited from the
-`super-v3.5-posttraining` branch: trainable vision components, disabled MTP,
-activation checkpointing, precision-aware distributed Adam, raw vLLM
-log-probabilities, float32 Mamba state, and encoder-cache reset after each
-weight refit. The recipe temporarily offloads distributed optimizer state
-during each colocated vLLM refit, leaving GPU headroom for full tensor-parallel
-weight gathers after a large 16 x 8 optimizer step.
+The 16 x 8 rollout batch gives GRPO eight candidate responses for each prompt.
+NeMo RL converts their binary rewards into group-relative advantages using
+reward normalization and a leave-one-out baseline. Reward shaping and reward
+scaling remain disabled.
 
-## Generate and validate the dataset
+The policy trains both the language and vision components. During each
+colocated weight refit, the recipe temporarily moves distributed optimizer
+state out of GPU memory so the full tensor-parallel weight gather has enough
+headroom.
 
-Run these commands inside the NeMo RL image or an attached allocation:
+## Generate the train and validation data
+
+Run the generator inside the NeMo RL container or from an attached allocation.
+The commands use the `/shared` layout established in the parent README:
 
 ```bash
 export NEMO_RL=/shared/code/RL
@@ -78,7 +108,8 @@ python "${GENERATOR}" \
   --num-stars-max 30
 ```
 
-Validate row counts, canvas and star bounds, routing, and split separation:
+Validate the row counts, image dimensions, star bounds, agent routing, and
+split separation before launching training:
 
 ```bash
 python - <<'PY'
@@ -92,18 +123,29 @@ from PIL import Image
 
 root = Path('/shared/runs/super35-star-count/data')
 fingerprints = {}
+
 for split, expected in [('train', 1024), ('validation', 256)]:
-    rows = [json.loads(line) for line in (root / f'{split}.jsonl').read_text().splitlines()]
+    rows = [
+        json.loads(line)
+        for line in (root / f'{split}.jsonl').read_text().splitlines()
+    ]
     assert len(rows) == expected
-    assert all(row['agent_ref']['name'] == 'circle_count_simple_agent' for row in rows)
+    assert all(
+        row['agent_ref']['name'] == 'circle_count_simple_agent'
+        for row in rows
+    )
     assert all(1 <= len(row['circles']) <= 30 for row in rows)
+
     for row in rows:
-        image_url = row['responses_create_params']['input'][1]['content'][0]['image_url']
-        image = Image.open(io.BytesIO(base64.b64decode(image_url.split(',', 1)[1])))
+        content = row['responses_create_params']['input'][1]['content']
+        image_url = content[0]['image_url']
+        image = Image.open(
+            io.BytesIO(base64.b64decode(image_url.split(',', 1)[1]))
+        )
         assert image.width == image.height
         assert 800 <= image.width <= 1200
-        prompt = row['responses_create_params']['input'][1]['content'][1]['text']
-        assert 'stars' in prompt and 'circles' not in prompt
+        assert 'stars' in content[1]['text']
+
     fingerprints[split] = {
         hashlib.sha256(
             json.dumps(row['responses_create_params'], sort_keys=True).encode()
@@ -116,10 +158,11 @@ print('Star-count train and validation splits are valid and disjoint.')
 PY
 ```
 
-## Launch the four-node run
+## Interactive run
 
-Start a persistent allocation from the login node. Replace the account,
-partition, and container placeholders with values for the target cluster:
+Use an interactive allocation when bringing up the recipe for the first time,
+inspecting logs, or trying configuration overrides. From the login node, set
+the scheduler and container values for your cluster:
 
 ```bash
 export NUM_NODES=4
@@ -135,14 +178,14 @@ sbatch \
   --nodes="${NUM_NODES}" \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
-  --job-name=super-vl-star-count-16x8 \
+  --job-name=interactive-super-vl-star-count \
   --time=04:00:00 \
   --gres=gpu:"${GPUS_PER_NODE}" \
   --exclusive \
   ray.sub
 ```
 
-Attach using the helper emitted by `ray.sub`:
+After the allocation starts, attach with the helper created by `ray.sub`:
 
 ```bash
 cd "${NEMO_RL}"
@@ -150,8 +193,7 @@ bash ./<jobid>-attach.sh
 ```
 
 Inside the attached container, configure persistent caches and launch the
-recipe. Provide `WANDB_API_KEY` through the job environment or a protected
-environment file.
+training driver:
 
 ```bash
 export NEMO_RL=/shared/code/RL
@@ -160,11 +202,17 @@ export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-star-count
 export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
 
-mkdir -p "${RUN_DIR}"/{logs,hf_modules,hf_config_locks,megatron_ckpt_cache,vllm_compile_cache}
-export HF_MODULES_CACHE="${RUN_DIR}/hf_modules"
-export MEGATRON_CONFIG_LOCK_DIR="${RUN_DIR}/hf_config_locks"
-export NRL_MEGATRON_CHECKPOINT_DIR="${RUN_DIR}/megatron_ckpt_cache"
-export VLLM_CACHE_ROOT="${RUN_DIR}/vllm_compile_cache"
+mkdir -p \
+  "${RUN_DIR}/logs" \
+  "${RUN_DIR}/cache/hf_modules" \
+  "${RUN_DIR}/cache/hf_config_locks" \
+  "${RUN_DIR}/cache/megatron_ckpt" \
+  "${RUN_DIR}/cache/vllm"
+
+export HF_MODULES_CACHE="${RUN_DIR}/cache/hf_modules"
+export MEGATRON_CONFIG_LOCK_DIR="${RUN_DIR}/cache/hf_config_locks"
+export NRL_MEGATRON_CHECKPOINT_DIR="${RUN_DIR}/cache/megatron_ckpt"
+export VLLM_CACHE_ROOT="${RUN_DIR}/cache/vllm"
 export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
 export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
 export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
@@ -182,31 +230,110 @@ python -u examples/nemo_gym/run_grpo_nemo_gym.py \
   logger.log_dir="${RUN_DIR}/logs"
 ```
 
-## Monitor training and convergence
+For a pipeline check without external experiment tracking, append
+`logger.wandb_enabled=false`. To use W&B, provide `WANDB_API_KEY` through the
+job environment or a protected environment file.
 
-The run logs exact-match `val:accuracy` before training and at steps 2, 4, 6,
-8, and 10. W&B also receives reward, response length, loss, gradient
-norm, throughput, timing, and GPU telemetry. Use the accuracy series from one
-run to assess its learning curve; the sampled GRPO rollouts make individual
-steps noisy.
+## Batch run
 
-From the login node, monitor the scheduler and driver log:
+For an unattended experiment, create a driver script on shared storage and
+pass its container path to `ray.sub` through `COMMAND`. Run the following setup
+from the login node:
+
+```bash
+export RUN_NAME=super35-star-count-$(date +%Y%m%d-%H%M%S)
+export HOST_RUN_DIR="${SHARED_ROOT}/runs/${RUN_NAME}"
+export RUN_SCRIPT="${HOST_RUN_DIR}/run.sh"
+mkdir -p "${HOST_RUN_DIR}"
+
+cat > "${RUN_SCRIPT}" <<'RUN'
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${RUN_NAME:?RUN_NAME must be exported before submission}"
+
+export NEMO_RL=/shared/code/RL
+export NEMOTRON_REPO=/shared/code/Nemotron
+export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
+export RUN_DIR="/shared/runs/${RUN_NAME}"
+export CACHE_DIR=/shared/runs/super35-star-count/cache
+export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
+
+mkdir -p \
+  "${RUN_DIR}/logs" \
+  "${CACHE_DIR}/hf_modules" \
+  "${CACHE_DIR}/hf_config_locks" \
+  "${CACHE_DIR}/megatron_ckpt" \
+  "${CACHE_DIR}/vllm"
+
+export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
+export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
+export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
+export VLLM_CACHE_ROOT="${CACHE_DIR}/vllm"
+export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
+export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
+export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
+export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
+export NRL_WG_USE_RAY_REF=1
+export NRL_VLLM_USE_V1=1
+export VLLM_ATTENTION_BACKEND=FLASH_ATTN
+export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+
+cd "${NEMO_RL}"
+exec python -u examples/nemo_gym/run_grpo_nemo_gym.py \
+  --config "${RECIPE}" \
+  policy.model_name="${MODEL_DIR}" \
+  policy.tokenizer.name="${MODEL_DIR}" \
+  logger.log_dir="${RUN_DIR}/logs" \
+  logger.wandb.name="${RUN_NAME}"
+RUN
+chmod 700 "${RUN_SCRIPT}"
+
+export NUM_NODES=4
+export GPUS_PER_NODE=4
+export SLURM_ACCOUNT=<SLURM_ACCOUNT>
+export PARTITION=<SLURM_PARTITION>
+export CONTAINER=<NEMO_RL_CONTAINER_OR_SQUASHFS>
+export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
+export COMMAND="/shared/runs/${RUN_NAME}/run.sh"
+
+cd "${NEMO_RL}"
+sbatch \
+  --nodes="${NUM_NODES}" \
+  --account="${SLURM_ACCOUNT}" \
+  --partition="${PARTITION}" \
+  --job-name="${RUN_NAME}" \
+  --time=04:00:00 \
+  --gres=gpu:"${GPUS_PER_NODE}" \
+  --exclusive \
+  ray.sub
+```
+
+Slurm exports `RUN_NAME` and the other submission variables by default. If
+your cluster uses a restricted export policy, add `--export=ALL` to `sbatch`.
+Provide `WANDB_API_KEY` through the submission environment when experiment
+tracking is enabled. To run without W&B, add
+`logger.wandb_enabled=false` to the Python command in `run.sh`.
+
+## Monitor training
+
+Monitor the allocation and driver log from the NeMo RL checkout:
 
 ```bash
 squeue -j <jobid> -o '%i %T %M %l %D %R'
-tail -f "${NEMO_RL}/<jobid>-logs/ray-driver.log"
+tail -f <jobid>-logs/ray-driver.log
 ```
 
-A successful run reaches step 10, performs final validation after the last
-weight refit, syncs W&B, and exits with status zero. Compare step 10 against
-step 0 and inspect all intermediate validation points before drawing a
-convergence conclusion.
+The driver reports exact-match validation accuracy before training and after
+steps 2, 4, 6, 8, and 10. It also records training reward, loss, response
+length, throughput, timing, and GPU utilization through the configured logger.
 
-## Reference result
+A successful run reaches step 10, completes the final validation pass, shuts
+down the NeMo Gym services, flushes the logger, and exits with status zero.
 
-A full-weight 4-node reference run completed all ten updates and all six
-evaluations. Exact-match accuracy on the fixed 256-example validation split
-improved from 11.33% before RL to 70.31% after the final update.
+## Interpreting the result
+
+One reference run produced the following held-out accuracy curve:
 
 | Step | Validation accuracy |
 | ---: | ---: |
@@ -217,10 +344,14 @@ improved from 11.33% before RL to 70.31% after the final update.
 | 8 | 71.09% |
 | 10 | 70.31% |
 
-The step-8 to step-10 change shows the expected noise from sampled GRPO
-updates, while the complete curve shows clear learning over the baseline. The
-run finished successfully in 1 hour 40 minutes. Its W&B dashboard contains the
-accuracy curve, training rewards, optimization metrics, throughput, timings,
-and GPU telemetry:
+The curve tells a useful story. The first updates produced little visible
+change, improvement became clear by step 6, and the final two measurements
+showed that individual GRPO updates can remain noisy even after substantial
+learning. The run improved by 58.98 percentage points from its pre-RL
+baseline, while its best measured accuracy occurred at step 8.
 
-<https://wandb.ai/hwinf_dcm/nemotron-super-vl-35-star-count/runs/w2kbfgfr>
+Treat this result as a pipeline reference rather than a benchmark claim.
+Sampled rollouts, hardware, software revisions, and model checkpoints can all
+affect the curve. For model-quality comparisons, repeat the experiment with
+multiple seeds, preserve the same validation split, and report both the final
+and best validation accuracy.
