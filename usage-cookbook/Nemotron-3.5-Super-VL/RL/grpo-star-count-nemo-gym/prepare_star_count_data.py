@@ -115,7 +115,7 @@ def make_example(
         for (x, y), color in zip(positions, color_names, strict=True)
     ]
 
-    # The pinned NeMo Gym verifier calls this field `circles`, but only reads
+    # The NeMo Gym verifier calls this field `circles`, but only reads
     # each item's color. Retaining that wire-format key lets the existing
     # circle_count_simple_agent score star images without a custom service.
     return {

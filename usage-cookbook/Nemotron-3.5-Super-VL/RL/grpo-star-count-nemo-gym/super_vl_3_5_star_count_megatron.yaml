@@ -1,5 +1,5 @@
 # Nemotron 3.5 Super VL full-weight GRPO on a variable-resolution star task.
-# Validated with NVIDIA-NeMo/RL commit eb420d15034c.
+# Validated on the NVIDIA-NeMo/RL super-v3.5-posttraining branch.
 defaults: /opt/nemo-rl/examples/configs/recipes/vlm/vlm_grpo-nemotron-super-omni-120ba12b-16n8g-megatron-tp8ep16cp2-async-gym.v1.yaml
 
 cluster:

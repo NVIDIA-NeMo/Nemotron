@@ -2,7 +2,7 @@
 # Copyright (c) 2026, NVIDIA CORPORATION. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Report boxed-answer coverage from pinned NeMo RL validation JSONL logs."""
+"""Report boxed-answer coverage from NeMo RL validation JSONL logs."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-# Match the pinned circle-count verifier exactly: no whitespace, sign, or decimal.
+# Match the circle-count verifier exactly: no whitespace, sign, or decimal.
 VERIFIER_BOXED_INTEGER = re.compile(r"\\boxed\{\d+\}")
 
 
@@ -51,7 +51,7 @@ def main() -> None:
             for line in input_file:
                 row = json.loads(line)
                 # These fields and singleton dimensions follow the validation
-                # logger schema at NeMo RL commit eb420d15034c.
+                # logger schema on the documented NeMo RL branch.
                 messages = _unwrap_singleton(row["content"])
                 assistant_messages = [
                     _content_text(message.get("content", ""))

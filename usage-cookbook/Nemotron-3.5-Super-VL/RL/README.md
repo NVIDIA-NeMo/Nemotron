@@ -24,12 +24,6 @@ Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
 Megatron model path, compatible vLLM integration, and NeMo Gym support used by
 this cookbook.
 
-The recipe and reported reference run were validated at NeMo RL commit
-`eb420d15034c`, with NeMo Gym pinned by that checkout at `14317ecb50bd`. For
-exact reproduction, check out that NeMo RL commit before building the image.
-When using a newer revision, keep the revision in the container tag and review
-the resolved configuration because inherited recipe defaults can change.
-
 The reference configuration uses 16 GB200 GPUs across four 4-GPU nodes. It
 trains with Megatron tensor parallelism 4 and expert parallelism 16, while
 colocating one tensor-parallel vLLM group on each node. Keep the following
@@ -87,9 +81,9 @@ export MODEL_DIR="${SHARED_ROOT}/models/NVIDIA-Nemotron-3.5-Super-VL-09212026"
 export HF_HOME="${SHARED_ROOT}/.cache/huggingface"
 ```
 
-## Clone NeMo RL and initialize pinned sources
+## Clone NeMo RL and initialize submodules
 
-Clone the Super VL post-training branch and initialize all pinned submodules:
+Clone the Super VL post-training branch and initialize its submodules:
 
 ```bash
 mkdir -p "${SHARED_ROOT}/code"
@@ -98,7 +92,6 @@ git clone --branch super-v3.5-posttraining --recursive \
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git "${NEMOTRON_REPO}"
 
 cd "${NEMO_RL}"
-git checkout eb420d15034c
 git submodule update --init --recursive
 ```
 

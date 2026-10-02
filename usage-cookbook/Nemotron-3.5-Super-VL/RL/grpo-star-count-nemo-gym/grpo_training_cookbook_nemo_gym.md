@@ -32,10 +32,10 @@ counting alone.
 The environment is a single-turn `circle_count_simple_agent` interaction with
 no tools. The generator retains the verifier's `circles` metadata key for
 compatibility, while the rendered images and prompts contain stars throughout.
-This compatibility path was validated with NeMo RL commit `eb420d15034c` and
-its pinned NeMo Gym commit `14317ecb50bd`. Recheck the verifier before moving
-the recipe to another NeMo Gym revision because it depends on the verifier
-reading only each item's `color` field.
+This compatibility path was validated on the NeMo RL
+`super-v3.5-posttraining` branch. Recheck the verifier after updating the NeMo
+Gym submodule because the recipe depends on the verifier reading only each
+item's `color` field.
 
 ## Dataset design
 
@@ -133,10 +133,11 @@ routed experts per expert-parallel rank. The TP and EP values describe
 different parallel dimensions and do not imply a 64-GPU allocation.
 
 The environment helper explicitly exports `NRL_VLLM_USE_V1=1` and
-`VLLM_ATTENTION_BACKEND=FLASH_ATTN` to match the reference run. At the pinned
-NeMo RL commit, V1 is already the default and the inherited recipe also sets
-the vLLM attention backend to `FLASH_ATTN`; keeping both exports makes those
-runtime choices visible and protects reproduction from ambient settings.
+`VLLM_ATTENTION_BACKEND=FLASH_ATTN` to match the reference run. On the
+documented NeMo RL branch, V1 is already the default and the inherited recipe
+also sets the vLLM attention backend to `FLASH_ATTN`; keeping both exports
+makes those runtime choices visible and protects reproduction from ambient
+settings.
 
 ## Generate the train and validation data
 
@@ -406,14 +407,14 @@ python "${FORMAT_ANALYZER}" \
   "${RUN_DIR}/logs/val_data_step10.jsonl"
 ```
 
-The analyzer follows the validation logger schema at the pinned NeMo RL
-commit and applies the pinned verifier's exact `\\boxed{<digits>}` regex to
+The analyzer follows the validation logger schema on the documented NeMo RL
+branch and applies the verifier's exact `\\boxed{<digits>}` regex to
 the final assistant message. Consequently, forms such as `\\boxed{ 5 }` and
 `\\boxed{5.0}` do not count as parseable, matching the reward verifier.
 
 Also inspect `validation/max_gen_tokens_per_turn` against
 `policy.generation.max_new_tokens`. The generic NeMo Gym `truncation_rate` in
-the validated revision tracks the total sequence ceiling, so it does not by
+the reference run tracks the total sequence ceiling, so it does not by
 itself show whether a response reached the separate 256-token generation cap.
 
 A successful run reaches step 10, completes the final validation pass, shuts
