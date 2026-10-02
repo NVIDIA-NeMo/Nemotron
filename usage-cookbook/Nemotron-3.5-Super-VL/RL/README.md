@@ -165,8 +165,8 @@ Ray worker.
 
 Continue with the
 [star-count NeMo Gym guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-to generate the deterministic dataset, check the image-token budget, and
-launch the four-node full-weight training job.
+to generate the deterministic dataset and launch the four-node full-weight
+training job.
 
 ## Operational notes
 

@@ -148,12 +148,8 @@ distributes the model's 512 routed experts across all 16 GPUs, leaving 32
 routed experts per expert-parallel rank. The TP and EP values describe
 different parallel dimensions and do not imply a 64-GPU allocation.
 
-The environment helper explicitly exports `NRL_VLLM_USE_V1=1` and
-`VLLM_ATTENTION_BACKEND=FLASH_ATTN` to match the reference run. On the
-documented NeMo RL branch, V1 is already the default and the inherited recipe
-also sets the vLLM attention backend to `FLASH_ATTN`; keeping both exports
-makes those runtime choices visible and protects reproduction from ambient
-settings.
+The launch commands below make the vLLM V1 and `FLASH_ATTN` runtime choices
+explicit and place model-conversion caches on shared storage.
 
 ## Generate the train and validation data
 
@@ -171,114 +167,16 @@ mkdir -p "${DATA_DIR}"
 python "${GENERATOR}" \
   --out "${DATA_DIR}/train.jsonl" \
   --num-samples 1024 \
-  --seed-offset 0 \
-  --canvas-size-min 800 \
-  --canvas-size-max 1200 \
-  --radius-min 24 \
-  --radius-max 48 \
-  --num-stars-min 1 \
-  --num-stars-max 30 \
-  --num-colors-min 2 \
-  --num-colors-max 4
+  --seed-offset 0
 
 python "${GENERATOR}" \
   --out "${DATA_DIR}/validation.jsonl" \
   --num-samples 256 \
-  --seed-offset 1000000 \
-  --canvas-size-min 800 \
-  --canvas-size-max 1200 \
-  --radius-min 24 \
-  --radius-max 48 \
-  --num-stars-min 1 \
-  --num-stars-max 30 \
-  --num-colors-min 2 \
-  --num-colors-max 4
+  --seed-offset 1000000
 ```
 
-Validate the row counts, image dimensions, star bounds, agent routing, and
-split separation before launching training:
-
-```bash
-python - <<'PY'
-import base64
-import hashlib
-import io
-import json
-import os
-from pathlib import Path
-
-from PIL import Image
-
-root = Path(os.environ['DATA_DIR'])
-fingerprints = {}
-
-for split, expected in [('train', 1024), ('validation', 256)]:
-    rows = [
-        json.loads(line)
-        for line in (root / f'{split}.jsonl').read_text().splitlines()
-    ]
-    assert len(rows) == expected
-    assert all(
-        row['agent_ref']['name'] == 'circle_count_simple_agent'
-        for row in rows
-    )
-    assert all(1 <= len(row['circles']) <= 30 for row in rows)
-
-    for row in rows:
-        content = row['responses_create_params']['input'][1]['content']
-        image_url = content[0]['image_url']
-        image_bytes = base64.b64decode(image_url.split(',', 1)[1])
-        image = Image.open(
-            io.BytesIO(image_bytes)
-        )
-        assert image.width == image.height
-        assert 800 <= image.width <= 1200
-        assert 'stars' in content[1]['text']
-        target_color = row['target_color']
-        target_count = sum(
-            star['color'] == target_color for star in row['circles']
-        )
-        assert target_count > 0
-
-    fingerprints[split] = set()
-    for row in rows:
-        image_url = row['responses_create_params']['input'][1]['content'][0]['image_url']
-        image_bytes = base64.b64decode(image_url.split(',', 1)[1])
-        fingerprints[split].add(hashlib.sha256(image_bytes).hexdigest())
-
-assert fingerprints['train'].isdisjoint(fingerprints['validation'])
-print('Star-count train and validation splits are valid and disjoint.')
-PY
-```
-
-### Check the image-token budget
-
-Pixel dimensions do not directly determine sequence length. The model's image
-processor resizes each image to a dynamic patch grid and then applies spatial
-downsampling. Check the generated files with the same processor used for
-training:
-
-```bash
-export TOKEN_CHECKER="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/check_image_token_budget.py"
-
-python "${TOKEN_CHECKER}" \
-  --model-dir "${MODEL_DIR}" \
-  --max-sequence-length 4096 \
-  --text-reserve 512 \
-  --response-reserve 256 \
-  "${DATA_DIR}/train.jsonl" \
-  "${DATA_DIR}/validation.jsonl"
-```
-
-For the validated checkpoint, the 800–1,200-pixel square images produce
-625–1,444 image tokens. The conservative check reserves another 512 tokens for
-the prompt and 256 for the response, for a maximum budget of 2,212 tokens.
-The fixed 512-token text allowance is conservative by construction rather
-than a measurement of each rendered prompt. The total fits within the
-4,096-token limit. In the reference run, all 256 validation rows were
-processed at every evaluation and the largest observed prompt-plus-response
-sequence was 1,766 tokens. Repeat this check whenever the checkpoint, image
-processor, resolution range, or prompt template changes.
+The generator writes self-contained JSONL rows with embedded PNG images. The
+training and validation seeds are disjoint.
 
 ## Interactive run
 
@@ -320,10 +218,26 @@ Inside the attached container, configure persistent caches and launch the
 training driver:
 
 ```bash
+export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
+export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-star-count
-export SETUP_ENV="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/setup_star_count_env.sh"
-source "${SETUP_ENV}"
+export CACHE_DIR="${RUN_DIR}/cache"
+export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
+
+mkdir -p "${RUN_DIR}/logs" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
+export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
+export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
+export VLLM_CACHE_ROOT="${CACHE_DIR}/vllm"
+export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
+export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
+export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
+export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
+export NRL_WG_USE_RAY_REF=1
+export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+export NRL_VLLM_USE_V1=1
+export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 
 cd "${NEMO_RL}"
 python -u examples/nemo_gym/run_grpo_nemo_gym.py \
@@ -357,10 +271,24 @@ set -euo pipefail
 
 export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
+export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR="/shared/runs/${RUN_NAME}"
 export CACHE_DIR=/shared/runs/super35-star-count/cache
-export SETUP_ENV="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/setup_star_count_env.sh"
-source "${SETUP_ENV}"
+export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
+
+mkdir -p "${RUN_DIR}/logs" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
+export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
+export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
+export VLLM_CACHE_ROOT="${CACHE_DIR}/vllm"
+export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
+export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
+export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
+export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
+export NRL_WG_USE_RAY_REF=1
+export NEMO_GYM_VENV_DIR=/opt/gym_venvs
+export NRL_VLLM_USE_V1=1
+export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 
 cd "${NEMO_RL}"
 exec python -u examples/nemo_gym/run_grpo_nemo_gym.py \
@@ -411,28 +339,6 @@ The driver reports exact-match validation accuracy before training and after
 steps 2, 4, 6, 8, and 10. It also records training reward, loss, response
 length, throughput, timing, and GPU utilization through the configured logger.
 
-NeMo RL writes each validation response to `val_data_step*.jsonl`, even when
-external experiment tracking is disabled. Measure boxed-answer coverage with
-the included analyzer:
-
-```bash
-export FORMAT_ANALYZER="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/analyze_validation_format.py"
-
-python "${FORMAT_ANALYZER}" \
-  "${RUN_DIR}/logs/val_data_step0.jsonl" \
-  "${RUN_DIR}/logs/val_data_step10.jsonl"
-```
-
-The analyzer follows the validation logger schema on the documented NeMo RL
-branch and applies the verifier's exact `\\boxed{<digits>}` regex to
-the final assistant message. Consequently, forms such as `\\boxed{ 5 }` and
-`\\boxed{5.0}` do not count as parseable, matching the reward verifier.
-
-Also inspect `validation/max_gen_tokens_per_turn` against
-`policy.generation.max_new_tokens`. The generic NeMo Gym `truncation_rate` in
-the reference run tracks the total sequence ceiling, so it does not by
-itself show whether a response reached the separate 256-token generation cap.
-
 A successful run reaches step 10, completes the final validation pass, shuts
 down the NeMo Gym services, flushes the logger, and exits with status zero.
 
@@ -449,7 +355,7 @@ One reference run produced the following held-out exact-match counts:
 | 8 | 182/256 | 71.09% |
 | 10 | 180/256 | 70.31% |
 
-The format diagnostics materially change how this curve should be read:
+Format diagnostics change how this curve should be read:
 
 | Diagnostic | Step 0 | Step 10 |
 | --- | ---: | ---: |
@@ -459,24 +365,9 @@ The format diagnostics materially change how this curve should be read:
 | Mean response length | 249.2 tokens | 155.2 tokens |
 | Responses in the 254–256 token histogram bin | 227/256 | 1/256 |
 
-The run clearly learned to emit shorter, parseable boxed answers. Because the
-reward requires that format, the 58.98 percentage-point exact-match gain
-cannot be interpreted as a pure improvement in visual perception or counting.
-Among the small set of step-0 responses that finished in the required format,
-29 of 30 were already correct; at step 10, 180 of 255 parseable responses were
-correct. This reinforces that output completion and formatting account for a
-large part of the measured gain, although the 30-example step-0 denominator is
-too small to estimate conditional counting accuracy precisely. A stronger
-evaluation would repeat validation with a larger response budget.
-
-At 256 examples, a proportion near 70% has a standard error of about three
-percentage points. The step-8 and step-10 results differ by only two correct
-examples, so they are statistically indistinguishable at this sample size.
-Treat the sequence as repeated measurements from one short run, not a precise
-ranking of checkpoints.
-
-Treat this result as a pipeline reference rather than a benchmark claim.
-Sampled rollouts, hardware, software revisions, and model checkpoints can all
-affect the curve. For model-quality comparisons, repeat the experiment with
-multiple seeds, preserve the same validation split, report exact counts and
-format coverage, and use confidence intervals when comparing checkpoints.
+The policy learned to emit shorter, parseable boxed answers. Since 29 of the
+30 parseable step-0 responses were already correct, much of the measured gain
+comes from output completion and formatting and cannot be attributed solely
+to better visual counting. The step-8 and step-10 results differ by only two
+examples and are statistically indistinguishable at this sample size. Treat
+this short run as a pipeline reference rather than a benchmark result.
