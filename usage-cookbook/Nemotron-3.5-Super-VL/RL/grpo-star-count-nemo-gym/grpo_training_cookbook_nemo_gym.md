@@ -29,12 +29,28 @@ a parseable integer, and following the required boxed-answer format. Report
 format coverage alongside accuracy before attributing a gain to visual
 counting alone.
 
-The environment is a single-turn `circle_count_simple_agent` interaction with
-no tools. The generator retains the verifier's `circles` metadata key for
-compatibility, while the rendered images and prompts contain stars throughout.
-This compatibility path was validated on the NeMo RL
+### Built on the NeMo Gym circle-count environment
+
+The star-count task is an adaptation of NeMo Gym's circle-count environment.
+It replaces the rendered circles with five-point stars and changes the prompt
+to ask about stars. It deliberately retains the environment's data contract,
+interaction pattern, answer format, and reward function:
+
+| Mechanism | Retained behavior |
+| --- | --- |
+| Agent routing | Each row targets `circle_count_simple_agent` in a single-turn interaction with no tools. |
+| Request format | `responses_create_params.input` contains a system message followed by one user message with a base64 PNG and text question. |
+| Dataset keys | Each generated star is stored under the existing `circles` key with `x`, `y`, `radius`, and `color`; `target_color` identifies the requested class. |
+| Answer format | The final answer must contain a plain non-negative integer in strict `\boxed{<digits>}` form. |
+| Reward | The verifier counts entries in `circles` whose `color` equals `target_color`, extracts the first boxed integer, and returns `1.0` for an exact match or `0.0` otherwise. |
+
+The verifier is therefore shape-agnostic: it reads the generated metadata and
+does not inspect whether the rendered objects are circles or stars. The data
+generator keeps the star image, prompt, and retained metadata aligned, which
+allows the existing environment to score the new visual object without a
+custom NeMo Gym service. This compatibility path was validated on the NeMo RL
 `super-v3.5-posttraining` branch. Recheck the verifier after updating the NeMo
-Gym submodule because the recipe depends on the verifier reading only each
+Gym submodule because the recipe depends on it continuing to read only each
 item's `color` field.
 
 ## Dataset design
