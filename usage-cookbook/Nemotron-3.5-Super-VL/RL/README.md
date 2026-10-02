@@ -43,8 +43,22 @@ policy.megatron_cfg.expert_model_parallel_size=16
 policy.generation.vllm_cfg.tensor_parallel_size=4
 ```
 
-The recipe performs full-weight BF16 updates. Model conversion caches and
-optional training checkpoints require substantial shared storage.
+The recipe performs full-weight BF16 updates. Approximate shared-storage usage
+from the validated reference artifacts is:
+
+| Artifact | Approximate size |
+| --- | ---: |
+| Hugging Face checkpoint | 235 GiB |
+| Converted Megatron checkpoint cache | 232 GiB |
+| ARM64 squashfs container | 73 GiB |
+| Weights-only training checkpoint | 227 GiB each |
+| Training checkpoint with optimizer state | 1.4 TB each |
+
+Checkpointing is disabled in the provided smoke-test recipe. Allow at least
+650 GiB for the model, one conversion cache, the container, logs, and working
+headroom. If checkpointing is enabled for resumable training, add about 1.4 TB
+for every retained optimizer checkpoint and configure pruning accordingly.
+Exact usage varies with the model revision, save format, and filesystem.
 
 ## Shared-storage layout
 
