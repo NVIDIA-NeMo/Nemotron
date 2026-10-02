@@ -11,6 +11,13 @@ monitoring, and interpretation of the reference result. Its recipe uses a
 16 x 8 rollout batch on variable 800–1,200-pixel canvases containing 1–30
 colored stars.
 
+> **Container requirement:** This recipe requires either a NeMo RL container
+> built from the `super-v3.5-posttraining` source branch or a prebuilt
+> [NGC NeMo RL image](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/nemo-rl/-/tags)
+> newer than v0.7. A suitable post-v0.7 prebuilt image was not yet available
+> when this guide was published, so the source build below is the supported
+> path for reproducing the recipe.
+
 ## Runtime and hardware requirements
 
 Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
@@ -86,9 +93,10 @@ it, and rerun the submodule command before building the image.
 
 ## Container and worker environments
 
-Build from the checked-out branch so the image and mounted source use the same
-NeMo RL revision. The following command creates an ARM64 release image for
-GB200 systems and prebuilds the NeMo Gym environments used by Super VL:
+Until a suitable post-v0.7 prebuilt image is available, build from the
+checked-out branch so the image and mounted source use the same NeMo RL
+revision. The following command creates an ARM64 release image for GB200
+systems and prebuilds the NeMo Gym environments used by Super VL:
 
 ```bash
 cd "${NEMO_RL}"
