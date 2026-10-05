@@ -1,7 +1,7 @@
 # Nemotron 3.5 Super VL Star-Count RL Cookbook
 
 This directory documents multimodal RL post-training for Nemotron 3.5 Super
-VL with NeMo RL's Megatron backend, colocated vLLM generation, and NeMo Gym.
+VL with NeMo RL's Megatron backend, dedicated vLLM generation, and NeMo Gym.
 The workflow applies full-weight GRPO to synthetic star-count images and
 evaluates exact-match accuracy on a deterministic held-out split.
 
@@ -24,26 +24,21 @@ Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
 Megatron model path, compatible vLLM integration, and NeMo Gym support used by
 this cookbook.
 
-The branch must include the Super VL Mamba refit fix that calls `model.eval()`
-before moving Megatron parameter buffers to CPU. Without that ordering, the
-initial Megatron-to-vLLM refit can fail with a CUDA illegal-memory-access error.
-
-The vLLM workers must also honor `NRL_VLLM_SLEEP_LEVEL=2`. The recipe uses
-level-2 sleep to discard stale rollout weights before each refit instead of
-retaining a second copy in host memory. The refit installs the current policy
-weights before generation resumes.
-
-The reference configuration uses 16 GB200 GPUs across four 4-GPU nodes. It
-trains with Megatron tensor parallelism 4 and expert parallelism 16, while
-colocating one tensor-parallel vLLM group on each node. Keep the following
-settings aligned when adapting the topology:
+The reference configuration uses 20 GB200 GPUs across five 4-GPU nodes. Four
+nodes form the 16-GPU Megatron policy cluster with tensor parallelism 4 and
+expert parallelism 16. The fifth node runs a dedicated TP=4 vLLM instance.
+NeMo RL transfers updated weights from the policy cluster to the generation
+cluster through the non-colocated collective path. Keep the following settings
+aligned when adapting the topology:
 
 ```text
-cluster.num_nodes=4
+cluster.num_nodes=5
 cluster.gpus_per_node=4
 policy.megatron_cfg.tensor_model_parallel_size=4
 policy.megatron_cfg.expert_model_parallel_size=16
 policy.generation.vllm_cfg.tensor_parallel_size=4
+policy.generation.colocated.enabled=false
+policy.generation.colocated.resources.num_nodes=1
 ```
 
 The recipe performs full-weight BF16 updates. Approximate shared-storage usage
@@ -76,13 +71,17 @@ inside the container. The recipe uses this layout:
 |____models
 |    |____NVIDIA-Nemotron-3.5-Super-VL-09212026
 |____runs
+|    |____super35-star-count
+|         |____data            <- generated train and validation JSONL files
+|         |____logs            <- training and validation logs
 |____.cache
-     |____huggingface
+     |____huggingface          <- Hugging Face downloads
+     |____megatron_ckpt        <- converted Megatron checkpoint
 ```
 
 Define the corresponding host paths before running the remaining commands:
 
-**Run on the login or head node:**
+**Run on the login/head or docker-build node:**
 
 ```bash
 export SHARED_ROOT=$(realpath </YOUR/SHARED/STORAGE>)
@@ -96,7 +95,7 @@ export HF_HOME="${SHARED_ROOT}/.cache/huggingface"
 
 Clone the Super VL post-training branch and initialize its submodules:
 
-**Run on the login or head node:**
+**Run on the login/head or docker-build node:**
 
 ```bash
 mkdir -p "${SHARED_ROOT}/code"
@@ -122,8 +121,7 @@ systems and prebuilds the NeMo Gym environments used by Super VL:
 
 ```bash
 cd "${NEMO_RL}"
-export NEMO_RL_REV=$(git rev-parse --short=12 HEAD)
-export IMAGE="<YOUR_REGISTRY>/nemo-rl:super-v3.5-posttraining-${NEMO_RL_REV}-arm64"
+export IMAGE="<YOUR_REGISTRY>/nemo-rl:super-v3.5-posttraining-arm64"
 
 docker buildx build \
   --platform linux/arm64 \
@@ -152,21 +150,12 @@ node:**
 
 ```bash
 cd "${NEMO_RL}"
-export NEMO_RL_REV=$(git rev-parse --short=12 HEAD)
-export IMAGE="<YOUR_REGISTRY>/nemo-rl:super-v3.5-posttraining-${NEMO_RL_REV}-arm64"
-export CONTAINER="${SHARED_ROOT}/nemo-rl-super-v3.5-posttraining-${NEMO_RL_REV}-arm64.sqsh"
+export IMAGE="<YOUR_REGISTRY>/nemo-rl:super-v3.5-posttraining-arm64"
+export CONTAINER="${SHARED_ROOT}/nemo-rl-super-v3.5-posttraining-arm64.sqsh"
 enroot import -o "${CONTAINER}" "docker://${IMAGE}"
 ```
 
-Use the registry URI directly when the cluster runtime supports it. Mount the
-shared root at its host path for `ray.sub` and at `/shared` for portable recipe
-paths:
-
-**Run on the login or head node in the shell used to submit Slurm jobs:**
-
-```bash
-export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
-```
+Use the registry URI directly when the cluster runtime supports it.
 
 ## Obtain the checkpoint
 
@@ -194,7 +183,7 @@ Ray worker.
 
 Continue with the
 [star-count NeMo Gym guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-to generate the deterministic dataset and launch the four-node full-weight
+to generate the deterministic dataset and launch the five-node full-weight
 training job.
 
 ## Operational notes
@@ -215,6 +204,6 @@ training job.
 | Megatron workers cannot import `transformers_modules` | Launch from the mounted NeMo RL checkout and put the shared `HF_MODULES_CACHE` on `PYTHONPATH`. |
 | A Gym service environment is missing | Rebuild with `prefetch_super35_all_envs.yaml`, or allow the first job to create the environment on shared storage. |
 | Model conversion repeats on every launch | Set `NRL_MEGATRON_CHECKPOINT_DIR` to a persistent shared directory. |
-| vLLM runs out of memory during refit | Keep the reference TP=4 colocated layout and the recipe's memory and sequence limits. |
+| vLLM runs out of memory | Keep the dedicated generation node, TP=4, and the recipe's memory and sequence limits. |
 | Validation does not cover the complete file | Leave `grpo.max_val_samples: null`; NeMo Gym derives the validation size from the JSONL file. |
 | Worker environments are stale after changing the image or branch | Remove the affected cached environment or set `NRL_FORCE_REBUILD_VENVS=true` for one launch. |

@@ -3,7 +3,8 @@
 defaults: /opt/nemo-rl/examples/configs/recipes/vlm/vlm_grpo-nemotron-super-omni-120ba12b-16n8g-megatron-tp8ep16cp2-async-gym.v1.yaml
 
 cluster:
-  num_nodes: 4
+  # Four policy nodes and one dedicated generation node.
+  num_nodes: 5
   gpus_per_node: 4
 
 grpo:
@@ -37,9 +38,6 @@ policy:
   model_name: /shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
   train_global_batch_size: 128
   max_total_sequence_length: 4096
-  # Free optimizer state while gathering full TP weights for the colocated
-  # vLLM refit. Four nodes provide enough host memory for the temporary offload.
-  offload_optimizer_for_refit: true
   megatron_cfg:
     tensor_model_parallel_size: 4
     expert_model_parallel_size: 16
@@ -62,19 +60,16 @@ policy:
       tensor_parallel_size: 4
       gpu_memory_utilization: 0.4
       enforce_eager: true
+      reasoning_parser_plugin: /opt/nemo-rl/nemo_rl/models/generation/vllm/reasoning_parsers/nano_v3_reasoning_parser.py
       reset_encoder_cache_after_weight_update: true
-      env_vars:
-        # Discard stale rollout weights while vLLM sleeps. The following refit
-        # writes the current policy weights before generation resumes.
-        NRL_VLLM_SLEEP_LEVEL: '2'
     vllm_kwargs:
       max_num_batched_tokens: 4096
       max_num_seqs: 4
     colocated:
-      enabled: true
+      enabled: false
       resources:
         gpus_per_node: 4
-        num_nodes: 4
+        num_nodes: 1
 
 data:
   # The reference curve used the first 160 rows in deterministic seed order.

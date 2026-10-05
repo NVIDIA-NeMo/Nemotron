@@ -4,7 +4,7 @@ Counting colored stars is a compact way to exercise the complete multimodal RL
 pipeline. The policy must inspect an image, identify the requested color, count
 the matching objects, and return an answer that an automatic verifier can
 score. This guide runs that task with full-weight GRPO, NeMo RL's Megatron
-backend, colocated vLLM generation, and NeMo Gym.
+backend, dedicated vLLM generation, and NeMo Gym.
 
 ## How the task works
 
@@ -21,19 +21,22 @@ data contract and reward mechanism:
 | --- | --- |
 | Agent | `circle_count_simple_agent`, with one user turn and no tools |
 | Request | A system message followed by a user message containing a base64 PNG and question |
-| Object metadata | Stars use the existing `circles` key with `x`, `y`, `radius`, and `color` fields |
+| Object metadata | Each star is stored under the legacy `circles` key for compatibility. `x` and `y` are its center, `radius` is the center-to-tip distance, and `color` is its palette label. |
 | Target | `target_color` identifies the color to count |
 | Answer | Strict `\boxed{<digits>}` format |
 | Reward | Exact comparison between the boxed integer and the number of matching metadata entries |
 
-The verifier reads object colors from the metadata rather than inspecting the
-rendered shape. This lets the star task use the existing environment without a
-custom NeMo Gym service.
+The `circles` field name is inherited from the circle-count environment; its
+records describe the rendered stars. The verifier counts records whose `color`
+matches `target_color`. It does not use `x`, `y`, or `radius` when scoring, so
+the star task can reuse the existing environment without a custom NeMo Gym
+service.
 
 The deterministic generator creates 1,024 training examples with seeds
 0–1,023 and 256 held-out examples with seeds 1,000,000–1,000,255. Images range
 from 800 x 800 to 1,200 x 1,200 pixels and contain 1–30 non-overlapping stars
-drawn from 2–4 colors. Every requested color appears at least once.
+drawn from 1–4 colors. A one-star image has one color; all other images have
+2–4. Every requested color appears at least once.
 
 <table>
   <tr>
@@ -54,9 +57,9 @@ uses the following settings:
 
 | Component | Setting |
 | --- | --- |
-| Compute | 4 nodes x 4 GPUs |
-| Training | Full-weight BF16, TP=4, EP=16 |
-| Generation | Colocated vLLM, TP=4 |
+| Compute | 5 nodes x 4 GPUs |
+| Training | 4 nodes, full-weight BF16, TP=4, EP=16 |
+| Generation | 1 dedicated node, vLLM TP=4 |
 | GRPO batch | 16 prompts x 8 responses |
 | Schedule | 10 updates; validation before RL and every 2 updates |
 | Sequence limit | 4,096 total tokens; 256 generated tokens |
@@ -70,21 +73,29 @@ per expert-parallel rank.
 
 ## Prerequisites
 
-Prepare shared storage that is visible to every compute node and contains:
+Use storage visible to every allocated node and mount its root at `/shared`
+inside the container. The recipe uses this layout:
 
 ```text
-<SHARED_ROOT>/
-|-- code/RL/                 # NeMo RL, branch super-v3.5-posttraining
-|-- code/Nemotron/           # This repository
-|-- models/NVIDIA-Nemotron-3.5-Super-VL-09212026/
-`-- runs/
+</YOUR/SHARED/STORAGE> (Host):/shared (Container)
+|____code
+|    |____RL                    <- NeMo RL, branch super-v3.5-posttraining
+|    |____Nemotron              <- this cookbook repository
+|____models
+|    |____NVIDIA-Nemotron-3.5-Super-VL-09212026
+|____runs
+|    |____super35-star-count
+|         |____data            <- generated train and validation JSONL files
+|         |____logs            <- training and validation logs
+|____.cache
+     |____huggingface          <- Hugging Face downloads
+     |____megatron_ckpt        <- converted Megatron checkpoint
 ```
 
 Use a NeMo RL container built from the `super-v3.5-posttraining` branch, or a
-compatible prebuilt image newer than v0.7. The checkout must include the Super
-VL Mamba refit ordering fix and vLLM worker support for
-`NRL_VLLM_SLEEP_LEVEL=2`. These keep refit stable and prevent stale rollout
-weights from consuming another full copy of the model in host memory.
+compatible prebuilt image newer than v0.7. This branch provides the Super VL
+Megatron model path, vLLM integration, NeMo Gym support, and non-colocated
+collective weight synchronization used by this recipe.
 
 No suitable prebuilt image was available when this guide was published. Build
 the image from the same checkout that will be mounted into the job:
@@ -108,28 +119,34 @@ artifacts, logs, and working headroom. Checkpointing is disabled in this
 example. If enabled, allow about 227 GiB per weights-only checkpoint or 1.4 TB
 per checkpoint that includes optimizer state.
 
-The commands below assume that the shared root is also mounted at `/shared`
-inside the container. Use the registry URI as `CONTAINER` when supported, or
-convert it to the cluster's local container format first.
+The container needs the shared filesystem at its host path for `ray.sub` and
+at `/shared` for portable recipe paths. Mount the root of the site's shared
+filesystem namespace, such as `/lustre`, at the same path inside the container.
+Use the registry URI as `CONTAINER` when supported, or convert it to the
+cluster's local container format first.
 
 On the login or head node, define the site-specific values once:
 
 ```bash
-export SHARED_ROOT=</YOUR/SHARED/STORAGE>
+export SHARED_ROOT=$(realpath </YOUR/SHARED/STORAGE>)
+export NFS_ROOT=/lustre
 export NEMO_RL="${SHARED_ROOT}/code/RL"
 export CONTAINER=<NEMO_RL_CONTAINER_OR_SQUASHFS>
 export SLURM_ACCOUNT=<SLURM_ACCOUNT>
 export PARTITION=<SLURM_PARTITION>
 export GPUS_PER_NODE=4
-export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
+export MOUNTS="${NFS_ROOT}:${NFS_ROOT},${SHARED_ROOT}:/shared"
 ```
+
+The example assumes that `SHARED_ROOT` is below `NFS_ROOT`. Adjust `NFS_ROOT`
+to the shared filesystem root used by your cluster.
 
 ## Interactive path
 
 Use the interactive path when trying the recipe for the first time or watching
 the training process directly.
 
-### 1. Reserve four nodes — login or head node
+### 1. Reserve five nodes — login or head node
 
 Run from the NeMo RL repository root:
 
@@ -137,7 +154,7 @@ Run from the NeMo RL repository root:
 cd "${NEMO_RL}"
 unset COMMAND
 sbatch \
-  --nodes=4 \
+  --nodes=5 \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
   --job-name=super-vl-star-count \
@@ -148,10 +165,10 @@ sbatch \
   ray.sub
 ```
 
-`--mem=0` requests all host memory on each node. The colocated full-weight
-recipe temporarily moves optimizer state to host memory during weight refits.
-Its level-2 vLLM sleep setting discards stale rollout weights before the refit
-to avoid keeping another full copy in host memory.
+`--mem=0` requests all host memory on each node. Four nodes host the full-weight
+Megatron policy, while the fifth node hosts the TP=4 vLLM generation engine.
+The two worker groups remain resident and exchange updated weights through the
+non-colocated collective path.
 
 ### 2. Attach — login or head node
 
@@ -165,17 +182,16 @@ bash ./<jobid>-attach.sh
 ### 3. Generate data and train — attached Ray-head container
 
 Run this block in the attached container. It contains all runtime paths and
-cache settings; the only separate recipe file is the checked-in YAML.
+cache settings and invokes the checked-in data generator and YAML recipe. No
+additional setup script is required.
 
 ```bash
-set -euo pipefail
-
 export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
 export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-star-count
 export DATA_DIR="${RUN_DIR}/data"
-export CACHE_DIR="${RUN_DIR}/cache"
+export CACHE_DIR=/shared/.cache
 export EXAMPLE_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym"
 
 mkdir -p "${DATA_DIR}" "${RUN_DIR}/logs" \
@@ -227,11 +243,12 @@ export NEMOTRON_REPO=/shared/code/Nemotron
 export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-star-count
 export DATA_DIR="${RUN_DIR}/data"
-export CACHE_DIR="${RUN_DIR}/cache"
+export CACHE_DIR=/shared/.cache
 export EXAMPLE_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym"
 
 mkdir -p "${DATA_DIR}" "${RUN_DIR}/logs" \
   "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+
 export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
 export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
 export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
@@ -257,7 +274,7 @@ RUN
 export COMMAND
 
 sbatch \
-  --nodes=4 \
+  --nodes=5 \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
   --job-name=super-vl-star-count \
@@ -278,9 +295,9 @@ tail -f <jobid>-logs/ray-driver.log
 ## Reading the result
 
 The driver reports held-out exact-match accuracy before RL and after steps 2,
-4, 6, 8, and 10. One end-to-end run produced 32, 36, 38, 65, 157, and 181
-correct answers out of 256 at those checkpoints, increasing from 12.50% before
-RL to 70.70% after step 10.
+4, 6, 8, and 10. A representative completed run produced 32, 36, 38, 65, 157,
+and 181 correct answers out of 256 at those checkpoints. Accuracy increased
+from 12.50% before RL to 70.70% after step 10.
 
 This metric combines visual counting, response completion, and strict answer
 formatting. Mean response length in that run fell from 249.8 to 143.3 tokens.
