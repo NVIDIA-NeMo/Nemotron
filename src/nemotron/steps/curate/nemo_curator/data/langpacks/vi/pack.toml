@@ -1,0 +1,51 @@
+# Vietnamese example language pack.
+#
+# Example data, not a curation default: it is never selected implicitly, and the
+# thresholds that use it must still be profiled and approved on your own corpus.
+# Shipped so that the worked example in config/vi_c4_measure.yaml can actually be
+# run, and as the second script alongside `en` -- Vietnamese NFD produces only
+# combining marks of category Mn, which is exactly the assumption Devanagari in
+# the `hi` pack breaks.
+
+[pack]
+pack_id      = "vi-example"
+language_tag = "vi"
+version      = "1.0.0"
+schema       = 1
+
+[sources]
+stopwords = { file = "stopwords.txt", n = 287, origin = "assembled for this repository during a Vietnamese CPT curation run", license = "CC0-1.0" }
+charset = { file = "charset.txt", script = "Latn", origin = "Unicode Standard Latin repertoire, curated by hand for Vietnamese orthography (base Latin plus every marked Vietnamese form)", license = "Unicode-3.0" }
+boilerplate = { file = "boilerplate.txt", n = 31, origin = "patterns written for this repository from observed Vietnamese news and forum crawls", license = "Apache-2.0" }
+
+[orthography]
+sentence_terminators = [".", "!", "?"]
+
+# The fold map lives here rather than in code. Vietnamese "d with stroke" does not
+# decompose under NFD, so removing it has to be declared somewhere, and declaring
+# it in the runtime would put one language inside the language-neutral layer.
+[fold_map]
+"đ" = "d"
+"Đ" = "D"
+
+[capabilities]
+supports = [
+    "script_ratio",
+    "diacritic_ratio",
+    "stopword_ratio",
+    "stopword_ratio_folded",
+    "boilerplate_hits",
+    "sentence_end_ratio",
+    # Vietnamese is space-delimited (syllable-spaced, but whitespace is
+    # a real boundary) and uses ASCII digits and ASCII sentence marks.
+    "word_segmentation",
+    "ascii_digits",
+    "ascii_punctuation",
+]
+
+[notes]
+scope = """Example data, not an implicit language or threshold default. Profile every target \
+corpus before approving a gate; a list assembled on one corpus does not transfer unexamined."""
+folded_stopwords = """Folding merges distinct stopwords together. The collision count is reported \
+alongside any folded figure, because it is a property of the language rather than a defect in the \
+word list."""

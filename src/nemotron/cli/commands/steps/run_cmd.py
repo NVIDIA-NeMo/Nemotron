@@ -30,6 +30,7 @@ command, e.g. ``nemotron steps run peft/automodel -c default train.train_iters=5
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Annotated
 
@@ -116,6 +117,9 @@ def run_step(
             pass
 
     env_vars = build_env_vars(job_config, env_for_executor)
+    source_revision = _source_tool_revision(script_path)
+    if source_revision:
+        env_vars.setdefault("NEMOTRON_TOOL_REVISION", source_revision)
     startup_commands = list(get_startup_commands(env_for_executor) or [])
     curator_runtime_env = _build_curator_runtime_env_vars(
         script_path=script_path,
@@ -135,8 +139,7 @@ def run_step(
     executor_type = _executor_type(env_for_executor, default="local" if global_ctx.mode == "local" else None)
     if executor_type is None:
         typer.echo(
-            "No executor selected. Pass --run <profile> / --batch <profile> "
-            "or set executor in env.toml.",
+            "No executor selected. Pass --run <profile> / --batch <profile> or set executor in env.toml.",
             err=True,
         )
         raise typer.Exit(1)
@@ -163,8 +166,10 @@ def _executor_type(env: object, *, default: str | None) -> str | None:
     if env is None:
         return default
     if hasattr(env, "get"):
-        return env.get("executor", default)
-    return getattr(env, "executor", default)
+        value = env.get("executor", default)
+    else:
+        value = getattr(env, "executor", default)
+    return value if isinstance(value, str) or value is None else default
 
 
 def _build_curator_runtime_env_vars(*, script_path: Path, env: object, mode: str) -> dict[str, str]:
@@ -192,7 +197,8 @@ def _build_curator_runtime_env_vars(*, script_path: Path, env: object, mode: str
         raise typer.Exit(1)
 
     typer.echo(f"Prepared Curator runtime requirements from {source_description}")
-    return runtime_payloads.encode_runtime_payload_env(payloads)
+    encoded = runtime_payloads.encode_runtime_payload_env(payloads)
+    return {str(key): str(value) for key, value in encoded.items()}
 
 
 def _uses_curator_runtime(env: object) -> bool:
@@ -214,3 +220,35 @@ def _find_source_checkout_root(path: Path) -> Path | None:
         if (candidate / "pyproject.toml").is_file() and (candidate / "src" / "nemotron").is_dir():
             return candidate
     return None
+
+
+def _installed_tool_revision() -> str | None:
+    """Package version for a submission source that has no Git metadata."""
+    try:
+        from importlib.metadata import version
+
+        return f"nemotron {version('nemotron')}"
+    except Exception:  # noqa: BLE001 - provenance must never fail a submission
+        return None
+
+
+def _source_tool_revision(path: Path) -> str | None:
+    root = _find_source_checkout_root(path)
+    if root is None or not (root / ".git").exists():
+        return _installed_tool_revision()
+    try:
+        revision = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return _installed_tool_revision()
+    return f"git:{revision}{'+dirty' if dirty else ''}"

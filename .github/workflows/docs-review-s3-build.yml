@@ -1,0 +1,80 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Untrusted half of the Review S3 preview flow. Builds the Sphinx site for a
+# pull request and uploads the HTML plus PR metadata as artifacts. No AWS
+# credentials are used here; the trusted workflow_run companion
+# (docs-review-s3-upload.yml) publishes the artifact.
+
+name: "Docs Review S3: Build"
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "src/nemotron/**/*.md"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/docs-review-s3-build.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Install docs dependencies
+        run: |
+          uv venv
+          uv sync --only-group docs
+
+      - name: Build Sphinx HTML
+        working-directory: docs
+        run: |
+          source ../.venv/bin/activate
+          sphinx-build --builder html . _build/html
+
+      - name: Save Review S3 metadata
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p review-s3-metadata
+          printf '%s\n' "${PR_NUMBER}" > review-s3-metadata/pr_number
+          printf '%s\n' "${HEAD_REF}" > review-s3-metadata/head_ref
+          printf '%s\n' "${HEAD_SHA}" > review-s3-metadata/head_sha
+          printf '%s\n' "${BASE_REF}" > review-s3-metadata/base_ref
+
+      - name: Upload Sphinx docs artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: review-s3-sphinx
+          path: docs/_build/html/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Review S3 metadata
+        uses: actions/upload-artifact@v6
+        with:
+          name: review-s3-metadata
+          path: review-s3-metadata/
+          if-no-files-found: error
+          retention-days: 1

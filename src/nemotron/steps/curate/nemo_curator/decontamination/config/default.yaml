@@ -1,0 +1,53 @@
+# Remove training documents that near-duplicate a held-out split.
+#
+# Threat model (A): whole-document near-duplicates. This does NOT detect a short
+# benchmark question embedded inside a long training document — that is
+# substring contamination and needs a containment-oriented algorithm.
+
+train_glob: ./output/filtered_jsonl/**/*.jsonl
+holdout_glob: ./data/holdout/**/*.jsonl
+output_dir: ./output/decontaminated
+
+text_field: text
+
+# Required. The report names every document it removed and the holdout document
+# that justified the removal, which needs a stable identifier on both sides.
+id_field: id
+
+# Exact Jaccard required for removal. Config, not a hard-coded constant: the
+# right value depends on the corpora and on how much training data you are
+# willing to lose to a false positive.
+threshold: 0.8
+
+# Must match the candidate generator below. Curator shingles on characters, so
+# verifying on words would compute a similarity over a different set than the
+# one MinHash approximated and the threshold would no longer mean anything.
+shingle_kind: char
+
+# Applied before shingling, and recorded in the report. Two runs that normalized
+# differently did not measure the same thing.
+normalization:
+  nfc: true
+  casefold: true
+  collapse_whitespace: true
+  strip_punctuation: true
+
+# Passed to Curator's FuzzyDeduplicationWorkflow. char_ngrams is also the width
+# the exact verification uses.
+minhash:
+  seed: 42
+  char_ngrams: 24
+  num_bands: 20
+  minhashes_per_band: 13
+
+work_dir: ./cache/decontamination
+
+# Set true to run only the exact source-identity pass and skip MinHash/LSH
+# entirely. Useful without a GPU; the report then states plainly that
+# near-duplicate overlap was not measured.
+skip_similarity: false
+
+# The two splits are parts of one corpus, so an equal id means the same
+# document. Set false only for separately built corpora that both number
+# from zero, where an equal id is a collision rather than a match.
+shared_id_space: true

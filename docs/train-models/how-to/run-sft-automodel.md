@@ -26,7 +26,8 @@ Before following this guide, complete [Getting Started with Training Steps](../g
 
 - A completed `env.toml` at the repository root with a training profile such as `lepton_sft_automodel`.
   See [Getting Started with Training Steps](../getting-started.md) for the environment snippet and how to generate the full profile file.
-- `HF_TOKEN`, `WANDB_API_KEY`, and `NVIDIA_API_KEY` exported in your shell.
+- Lepton secrets for `HF_TOKEN` and `WANDB_API_KEY`, configured as described in
+  [Getting Started with Training Steps](../getting-started.md).
 - Instruction data in JSONL form where each record includes a `messages` field in OpenAI chat format.
 - A Hugging Face access token if the base model is gated or must be downloaded from the Hugging Face Hub.
 - Enough GPU memory for the model you select.

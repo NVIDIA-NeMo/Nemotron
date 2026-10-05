@@ -1,0 +1,76 @@
+# Governed Curator Flow Context
+
+Use this pack for the governed curation steps when the request needs stable
+document identity, measured/approved thresholds, integrity evidence, holdout
+decontamination, or controlled corpus-size ablations.
+
+## Step Routing
+
+| Need | Step | Important output |
+|---|---|---|
+| Normalize Parquet/JSONL and create stable IDs | `curate/ingest` | `prepared_jsonl` |
+| Measure signal/threshold impact before filtering | `curate/profile` | `profile_report`, unapproved `filter_policy` |
+| Apply language/domain/length or approved signal policy | `curate/nemo_curator` | `filtered_jsonl`, manifest, ledger |
+| Recount/read/hash and optionally check containment | `curate/audit` | `curation_report` |
+| Remove whole-document holdout overlaps | `curate/decontamination` | `decontaminated_jsonl`, report |
+| Make nested fixed-budget ablation tiers | `curate/subset` | JSONL tiers, plan, report |
+
+The complete flow is:
+
+```text
+ingest -> profile -> human approval -> filter -> audit -> decontamination -> subset
+```
+
+Each step is callable independently. The six-stage `run_flow` orchestrator is a
+Python module, not a registered step.
+
+## Hard Invariants
+
+- Ingest may be skipped only when JSONL already has a stable unique document
+  identifier. Curator's positional IDs do not survive resharding.
+- Profile the corpus before policy filtering. A profile of filtered output
+  cannot say what the filter removed.
+- `candidate_policies.yaml` starts with `approved: false`. Distribution evidence
+  informs a human decision; it never approves thresholds.
+- `curate/nemo_curator` projects JSONL fields. Put every required downstream
+  ID/URL/source field in `metadata_fields` or it is discarded.
+- `mode=annotate` prevents the approved heuristic policy from dropping rows,
+  but independent language/domain/word filters can still drop rows.
+- Completeness claims require the producer's `curation_manifest`; loss
+  attribution also requires `curation_ledger`.
+- Decontamination shrinks training only. Never alter the holdout. Full
+  similarity needs one GPU; `skip_similarity=true` measures exact source
+  identity only and must not be reported as a similarity-clean result.
+- Whole-document Jaccard does not detect a short benchmark item embedded in a
+  long document. Report exactly what was measured.
+- When decontamination is enabled, subset its output, not the earlier filtered
+  corpus. Plan every token-budget tier in one run and pin tokenizer revision.
+
+## Live Sources
+
+- Overview: `src/nemotron/steps/curate/README.md`
+- Flow: `src/nemotron/steps/curate/nemo_curator/scripts/run_flow.py`
+- Manifests: `src/nemotron/steps/curate/nemo_curator/<stage>/step.toml`
+- Filter contract: `src/nemotron/steps/curate/nemo_curator/step.toml`
+- Language packs: `src/nemotron/steps/curate/nemo_curator/data/langpacks/SPEC.md`
+
+## Dependencies And Compute
+
+- `ingest`, `profile`, `audit`, `subset`, and identity-only decontamination are
+  CPU paths.
+- The Curator filter flow needs both `curate` and `xenna` extras so Ray workers
+  can import `cosmos_xenna`.
+- Full decontamination needs the `curate-gpu` runtime and one GPU.
+- Keep secrets out of configs. Hugging Face acquisition uses `HF_TOKEN` only
+  when required.
+
+## Failure Interpretation
+
+- Duplicate stable IDs are a corpus decision: refuse (default), deliberately
+  drop, or deliberately suffix during ingest.
+- An unreadable shard makes observed row count a lower bound, not proof of an
+  empty shard.
+- A missing manifest means completeness is unknown; a missing ledger means the
+  cause of missing records is unknown.
+- Token-budget shortfall may be necessary to preserve nesting and strata; do
+  not refill from another stratum and silently change the ablation.

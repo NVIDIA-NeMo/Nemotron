@@ -1,0 +1,182 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "search_available_rooms",
+      "description": "List the rooms that are bookable at one hotel for a date range and party size.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hotel_id": { "type": "string" },
+          "check_in": { "type": "string" },
+          "check_out": { "type": "string" },
+          "guests": { "type": "integer" }
+        },
+        "required": ["hotel_id", "check_in", "check_out", "guests"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_room_details",
+      "description": "Return the room type, bed configuration, maximum occupancy and amenities for one room id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": { "type": "string" }
+        },
+        "required": ["room_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_booking",
+      "description": "Return the current status, dates, room and rate plan of one booking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" }
+        },
+        "required": ["booking_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_guest_profile",
+      "description": "Return the loyalty tier and stored contact details for one guest.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guest_id": { "type": "string" }
+        },
+        "required": ["guest_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_cancellation_policy",
+      "description": "Return the free-cancellation deadline and penalty rule of one rate plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rate_plan_id": { "type": "string" }
+        },
+        "required": ["rate_plan_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "estimate_stay_price",
+      "description": "Return the nightly rate, taxes and total price for one room, rate plan and date range.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": { "type": "string" },
+          "rate_plan_id": { "type": "string" },
+          "check_in": { "type": "string" },
+          "check_out": { "type": "string" },
+          "guests": { "type": "integer" }
+        },
+        "required": ["room_id", "rate_plan_id", "check_in", "check_out", "guests"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "x-mutates": true,
+    "x-requires-confirmation": true,
+    "function": {
+      "name": "create_booking",
+      "description": "Reserve a room for a guest. Returns a pending quote and commits the booking only when confirmed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guest_id": { "type": "string" },
+          "room_id": { "type": "string" },
+          "rate_plan_id": { "type": "string" },
+          "check_in": { "type": "string" },
+          "check_out": { "type": "string" },
+          "guests": { "type": "integer" },
+          "confirm": { "type": "boolean", "default": false }
+        },
+        "required": [
+          "guest_id",
+          "room_id",
+          "rate_plan_id",
+          "check_in",
+          "check_out",
+          "guests"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "x-mutates": true,
+    "x-requires-confirmation": true,
+    "function": {
+      "name": "cancel_booking",
+      "description": "Cancel a confirmed booking. Returns the pending penalty and commits the cancellation only when confirmed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "reason_code": { "type": "string" },
+          "confirm": { "type": "boolean", "default": false }
+        },
+        "required": ["booking_id", "reason_code"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "x-mutates": true,
+    "function": {
+      "name": "update_guest_contact",
+      "description": "Replace the stored email and phone of one guest. Commits immediately and is not confirmation gated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guest_id": { "type": "string" },
+          "email": { "type": "string" },
+          "phone": { "type": "string" }
+        },
+        "required": ["guest_id", "email", "phone"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "rebuild_availability_index",
+      "description": "Operational sweep that recomputes the availability index for one hotel. An incremental sweep returns at once; a full sweep walks every night of every room.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hotel_id": { "type": "string" },
+          "full": { "type": "boolean", "default": false }
+        },
+        "required": ["hotel_id", "full"],
+        "additionalProperties": false
+      }
+    }
+  }
+]

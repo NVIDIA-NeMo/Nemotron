@@ -30,8 +30,11 @@ to reason about.
 ## CLI And Overlay Knobs
 
 Start from `config/tiny.yaml` for launch validation and `config/default.yaml`
-for the production-shaped topology. In a project overlay, the first fields
-developers usually change are:
+for the production-shaped Nano topology. `config/lightning35.yaml` is a
+`defaults: default.yaml` overlay for Nemotron 3.5 Lightning 30B-A3B packed LoRA
+at 4k: it keeps LoRA dim/alpha and `hf_load`, and overrides the Lightning
+recipe, extra target modules, TP/EP, and `L35_*` paths. In a project overlay,
+the first fields developers usually change are:
 
 - `checkpoint.pretrained_checkpoint`: concrete Megatron base checkpoint.
 - `dataset.packed_sequence_specs.packed_train_data_path`: normally
@@ -66,6 +69,9 @@ Related patterns:
 - `dataset.packed_sequence_specs.packed_train_data_path` should point at `splits/train/*.parquet` produced by `data_prep/sft_packing`.
 - Packed `pack_size`, model `seq_length`, and packed sequence size must match
   the assumptions used by the SFT packing step.
+- Lightning overlays null inherited Nano recipe kwargs (`packed_sequence`,
+  `peft`, `seq_length`) because `nemotron_3_5_lightning_peft_config` is not the
+  Nano PEFT callable.
 
 ## Run It
 
@@ -75,22 +81,31 @@ Smoke first to validate wiring, imports, data access, and output paths:
 uv run nemotron steps run peft/megatron_bridge -c tiny --dry-run
 ```
 
-Then run the real job from a project overlay:
+Then run the real job from a project overlay. Convert the Hugging Face base to
+Megatron with `convert/hf_to_megatron` before PEFT (including `-c lightning35`);
+adapters cannot load HF weights.
 
 ```bash
 uv run nemotron steps run peft/megatron_bridge \
   -c <project>/config/peft_megatron_bridge.yaml
+
+uv run nemotron steps run peft/megatron_bridge -c lightning35 --batch <profile>
 ```
 
 ## Repository Layout
 
 - Manifest: `src/nemotron/steps/peft/megatron_bridge/step.toml`
 - Runner: `src/nemotron/steps/peft/megatron_bridge/step.py`
-- Configs: `src/nemotron/steps/peft/megatron_bridge/config/default.yaml`, `src/nemotron/steps/peft/megatron_bridge/config/tiny.yaml`
+- Configs:
+  - `src/nemotron/steps/peft/megatron_bridge/config/default.yaml`
+  - `src/nemotron/steps/peft/megatron_bridge/config/tiny.yaml`
+  - `src/nemotron/steps/peft/megatron_bridge/config/lightning35.yaml` (`defaults: default.yaml` overlay)
 
 ## Guardrails
 
 - Run `data_prep/sft_packing` first unless a compatible packed dataset already exists.
+- Convert Hugging Face weights to Megatron with `convert/hf_to_megatron` before
+  PEFT; the frozen base must be a Megatron checkpoint.
 - Use `sft/megatron_bridge` instead when the user explicitly needs full fine-tuning.
 - Keep the base Megatron checkpoint path separate from adapter output paths.
 - Plan the HF export/merge path before training if the adapter must become a

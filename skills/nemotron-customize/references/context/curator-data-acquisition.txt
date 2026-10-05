@@ -8,6 +8,8 @@ text before downstream curation, translation, pretraining prep, or SFT prep.
 - The current step is a lightweight text curation wrapper. It reads local JSONL
   or an optional Hugging Face snapshot, applies configured filters, and writes
   JSONL.
+- Raw Parquet, column normalization, or stable-ID creation now routes to
+  `curate/ingest`; use the governed-flow context pack for that lifecycle.
 - Do not implement a full Common Crawl downloader unless the repo step cannot
   satisfy the user request and the user approves Explorer-mode code.
 - Keep Curator reader/writer stages as the default I/O path.

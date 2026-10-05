@@ -1,0 +1,55 @@
+# Nested stratified subsets at fixed token budgets.
+#
+# All tiers are produced in one run from one plan. Producing them separately
+# cannot guarantee that a smaller tier is contained in a larger one, which is
+# the property that makes a filtering ablation interpretable.
+
+input_glob: ./output/filtered_jsonl/**/*.jsonl
+output_dir: ./output/subset
+
+text_field: text
+
+# Required. A subset is a set of document ids, so it needs the corpus's own id —
+# Curator's AddId is positional and does not survive resharding.
+id_field: id
+
+# Without it every shard path becomes its own "source" and the strata describe
+# shards rather than corpora.
+source_field: source
+
+# One tier per budget, smallest first or not — they are sorted either way.
+token_budgets:
+  - 100000000
+  - 500000000
+  - 2000000000
+
+# The Nemotron family's own tokenizer, and pinned to a commit rather than to a
+# branch. Both halves are deliberate:
+#
+#   name     ungated, so this config runs for anyone who checks the repo out. A
+#            default that needs an accepted licence agreement is a default that
+#            fails on first contact for most readers.
+#   revision token counts from two revisions are not comparable, so two subsets
+#            counted under different revisions are not an ablation pair. `main`
+#            moves, which defeats the reason this key is required at all.
+#
+# Set the whole block to null to count whitespace words instead; every artifact
+# then records unit: words so the two can never be confused.
+tokenizer:
+  name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+  revision: 97ab8012882a655dc38df4fee47422aca9caca07
+
+# Counts are cached keyed by (tokenizer, revision, id, content SHA-256). The
+# content digest prevents a filtered or edited document from reusing the count
+# of older text that happened to carry the same id.
+token_cache: ./cache/subset/token_counts.json
+
+# Optional. Set and present in the data, score deciles join the stratum key.
+# Set but absent, the run fails rather than quietly stratifying on less. Produce
+# the column with curate/nemo_curator mode: annotate or mode: both.
+quality_score_field: null
+
+# Upper edges of the length bands, in the same unit as the budgets.
+length_bands: [128, 512, 2048, 8192]
+
+seed: 0

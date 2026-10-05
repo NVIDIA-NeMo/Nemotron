@@ -1,0 +1,52 @@
+# Persona MCQ SDG Context
+
+Use this pack for `sdg/persona_mcq`, which generates persona-grounded
+MCQ-shaped **SFT training data**. Use `byob/mcq` instead for a held-out benchmark.
+
+## Contract
+
+- Step: `sdg/persona_mcq`
+- Configs: `tiny`, `default`
+- Output: `training_jsonl` plus per-teacher blend manifests
+- Stages: `personas`, `questions`, `lexical_dedup`, `semantic_dedup`,
+  `answer_seed`, `answers`, `build_sft`, `sample`
+- Resume key: stable `pipeline.experiment_name` plus unchanged config identity
+
+The pipeline authors questions from configured persona locales, deduplicates,
+asks at least three teacher models to answer, votes, applies script/reasoning
+quality gates, and exports aligned per-teacher language mixes.
+
+## Routing And Safety
+
+- Start with `tiny` and a fresh experiment name. A reused name with a changed
+  config is refused unless overwrite is explicit.
+- Teacher agreement is a consistency gate, not factual verification. Inspect
+  voting, rejection, and language-purity summaries before training.
+- Keep the same teacher list across answer generation, voting, and aligned
+  sampling. Distinct aliases should use distinct endpoints in production.
+- Language output, persona locale, answer label, script regex, and English
+  reasoning contract are independent config choices; do not infer them from a
+  language name alone.
+- The tiny profile is CPU-portable; production semantic dedup normally uses one
+  GPU.
+
+## Credentials
+
+Managed persona assets may require `NGC_API_KEY`. Model endpoints use the
+configured base-URL variables and `NVIDIA_API_KEY`; gated Hub models may need
+`HF_TOKEN`. Export values in the environment and never write them into YAML,
+commands, or committed metadata.
+
+## Downstream Handoff
+
+- AutoModel: feed the selected `training/<teacher>/<view>/train.jsonl` directly
+  to `sft/automodel` or `peft/automodel`.
+- Megatron-Bridge: feed the emitted blend manifest to
+  `data_prep/sft_packing`, then train on the resulting packed Parquet.
+- Keep this training corpus separate from BYOB held-out benchmark artifacts.
+
+## Live Sources
+
+- `src/nemotron/steps/sdg/persona_mcq/step.toml`
+- `src/nemotron/steps/sdg/persona_mcq/README.md`
+- `src/nemotron/steps/sdg/persona_mcq/config/{tiny,default}.yaml`

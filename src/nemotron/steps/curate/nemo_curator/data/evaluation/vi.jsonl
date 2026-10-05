@@ -1,0 +1,7 @@
+{"id": "vi-clean-1", "language": "vi", "label": "keep", "phenomenon": "clean", "text": "Hôm nay trời đẹp và chúng tôi đi dạo quanh hồ Hoàn Kiếm vào buổi sáng sớm."}
+{"id": "vi-clean-2", "language": "vi", "label": "keep", "phenomenon": "clean", "text": "Nhà ga được xây dựng năm 1902 và vẫn giữ nguyên kiến trúc thuộc địa."}
+{"id": "vi-nfd-1", "language": "vi", "label": "keep", "phenomenon": "nfd", "text": "Hôm nay trời đẹp và chúng tôi đi dạo quanh hồ Hoàn Kiếm vào buổi sáng sớm."}
+{"id": "vi-digits-1", "language": "vi", "label": "keep", "phenomenon": "local_digits", "text": "Năm 2024 có 12.345 lượt khách và 67 sự kiện được tổ chức."}
+{"id": "vi-ocr-1", "language": "vi", "label": "drop", "phenomenon": "ocr_noise", "text": "H0m ||| n@y ~~~ tr0i ¦¦¦ d3p ### va` ¬¬¬ ch|_|ng __ t0i ||| d1 ~~~ dao ¦¦¦ h0 ### H0an ¬¬¬ K13m |||"}
+{"id": "vi-mixed-1", "language": "vi", "label": "keep", "phenomenon": "code_mixing", "text": "Chúng tôi dùng thư viện pandas để xử lý dữ liệu, sau đó export ra file CSV."}
+{"id": "vi-langid-1", "language": "vi", "label": "keep", "phenomenon": "langid_error", "text": "Ok."}

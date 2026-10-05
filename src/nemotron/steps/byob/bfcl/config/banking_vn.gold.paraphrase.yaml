@@ -1,0 +1,7 @@
+# Historical path retained for the frozen banking_vn Oracle Pack README.
+#
+# The maintained paraphrased generation configuration is:
+#   publication.paraphrase.example.yaml
+#
+# This pointer is intentionally not a second runnable copy. Keeping one
+# authoritative configuration prevents the historical alias from drifting.

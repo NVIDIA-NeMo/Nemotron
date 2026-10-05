@@ -1,0 +1,61 @@
+# Resolve every placeholder before running. Translation accepts only the
+# committed run_manifest.json, never a bare benchmark parquet.
+# Relative paths resolve from src/nemotron/steps/byob.
+
+family: bfcl
+expt_name: bfcl_translation
+stage: translate
+config_status: template
+
+source_run_manifest: REPLACE_ME_SOURCE_RUN_MANIFEST_JSON
+output_dir: runs/bfcl/translate_out
+source_language: en
+target_language: vi
+translate_tool_descriptions: false
+remove_low_quality: false
+
+# The translator is also the only model allowed to localize these fields.
+# Deterministic fixes and language gates run before any artifact is published.
+localization:
+  deterministic_fixes:
+    normalize_unicode: true
+  validation:
+    minimum_changed_fraction: 0.01
+    # Set this for languages where the primary subtag cannot infer the script.
+    # Supported values: arabic, cyrillic, devanagari, greek, han, hangul,
+    # hebrew, japanese, thai. Use null for Latin-script targets.
+    required_script: null
+  response_guards:
+    # Case-insensitive regular expressions rejected from unprotected output.
+    forbidden_patterns: []
+
+translation_model_config:
+  backend_type: llm
+  params:
+    alias: REPLACE_ME_TRANSLATOR_CANONICAL_ID
+    canonical_id: REPLACE_ME_TRANSLATOR_CANONICAL_ID
+    model: REPLACE_ME_TRANSLATOR_MODEL
+    provider: nvidia
+    source: REPLACE_ME_WEIGHT_SOURCE
+    revision: REPLACE_ME_IMMUTABLE_REVISION
+    weights_digest: null
+    api_key_env: NVIDIA_API_KEY
+    base_url: https://integrate.api.nvidia.com/v1
+    inference_parameters:
+      max_tokens: 16000
+      max_parallel_requests: 8
+      temperature: 0.0
+      top_p: 0.95
+  stage:
+    segmentation_mode: coarse
+    min_segment_chars: 0
+    output_mode: both
+  segment_stage:
+    health_check: true
+    max_concurrent_requests: 8
+
+backtranslation_quality_metrics:
+  - type: sacrebleu
+    threshold: 25
+  - type: chrf
+    threshold: 50

@@ -11,17 +11,19 @@ The goal is a clear handoff between what you decide and what the agent edits or 
 
 ## What The Agent Needs
 
-For the hosted chat smoke test, provide:
+For the hosted chat verification run, provide:
 
 - The endpoint URL, including the `/v1/chat/completions` path.
 - The model id advertised by the endpoint.
 - The API key environment variable name, usually `NVIDIA_API_KEY`.
 - The output directory to use.
 
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically. If you used Tokenizer Extension, use the generated tokenizer.
+
 For checkpoint evaluation with `default.yaml`, also provide:
 
 - The concrete Megatron Bridge `iter_*` checkpoint path.
-- The tokenizer path or Hugging Face tokenizer id if the selected task needs logprobs.
+- The generated tokenizer, if you used Tokenizer Extension.
 
 ## Recommended First Run
 
@@ -42,12 +44,12 @@ uv run --no-sync nemotron steps run eval/model_eval \
 
 ```text
 Context: [one sentence on the model and what you want to score]
-Goal for this session: [for example, a hosted chat smoke test that writes files on disk]
+Goal for this session: [for example, a hosted chat verification run that writes files on disk]
 Endpoint URL: [full URL with path, or "I do not have this yet, please ask"]
 Model identifier: [as the endpoint advertises it]
 API key environment variable: [name only, for example NVIDIA_API_KEY]
 Checkpoint path: [only if using default.yaml launcher deployment]
-Tokenizer: [only if using log-probability tasks]
+Tokenizer: [for a model alias, custom tokenizer path, or Tokenizer Extension]
 Hard limits: [for example, do not change endpoint type, do not fabricate values]
 Please: Use `eval/model_eval` defaults from the repo unless something blocks that.
 ```
@@ -56,7 +58,7 @@ The agent should ask for missing fields instead of guessing.
 
 ## What Success Looks Like
 
-A reasonable first success is the hosted chat smoke test described in {doc}`getting-started`.
+A reasonable first success is the hosted chat verification run described in {doc}`getting-started`.
 The session reaches that point when:
 
 - The agent issues one `nemotron steps run eval/model_eval -c tiny_chat ...` command.

@@ -1,0 +1,49 @@
+[pack]
+pack_id = "en-reference-snowball-cldr48"
+language_tag = "en"
+version = "1.0.0"
+schema = 1
+
+[sources.stopwords]
+file = "stopwords.txt"
+n = 174
+origin = "Snowball English stop word list"
+license = "BSD-3-Clause"
+url = "https://snowballstem.org/algorithms/english/stop.txt"
+upstream_sha256 = "06b8b14bbe6f6e0b64c0830813819416d96a71bec1655668d83b3e602a651db6"
+transformation = "Kept the token before Snowball's | comment delimiter on every non-comment line."
+license_file = "LICENSES/Snowball-BSD-3-Clause.txt"
+
+[sources.charset]
+file = "charset.txt"
+n = 52
+script = "Latn"
+origin = "Unicode CLDR 48 English main exemplar characters"
+license = "Unicode-3.0"
+url = "https://unicode.org/Public/cldr/48/core.zip#common/main/en.xml"
+upstream_file_sha256 = "a1d2dfc2fb283be056209f04c5a4b3b89e7fa8a12d7a0bc4e3a1625890d2bd4a"
+transformation = "Expanded CLDR's [a-z] main exemplar set and added Unicode uppercase mappings."
+license_file = "LICENSES/Unicode-3.0.txt"
+
+[orthography]
+sentence_terminators = [".", "!", "?"]
+
+[capabilities]
+supports = [
+    "script_ratio",
+    "stopword_ratio",
+    "sentence_end_ratio",
+    # English is space-delimited and writes numbers and sentence
+    # punctuation in ASCII, so the word- and ASCII-based signals mean
+    # what they say here.
+    "word_segmentation",
+    "ascii_digits",
+    "ascii_punctuation",
+    "ascii_alphabet",
+]
+
+[notes]
+scope = """Opt-in reference data, not an implicit language or threshold default. \
+Snowball stopwords are an information-retrieval list; profile every target corpus before approving a gate."""
+absent_capabilities = """No boilerplate_hits: there is no standards-owned English web-boilerplate list. \
+No diacritic_ratio or stopword_ratio_folded: English does not have a productive system of removable marks."""

@@ -1,0 +1,33 @@
+# Regular expressions matching Vietnamese web boilerplate.
+# One pattern per line; a document is scored by how many of them it matches.
+Xem\ thêm
+Đọc\ thêm
+Read\ more
+Xem\ tiếp
+Bình\ luận
+Chia\ sẻ\ bài\ viết
+Theo\ dõi\ chúng\ tôi
+Cookie\ Policy
+Chính\ sách\ cookie
+Điều\ khoản\ sử\ dụng
+Chính\ sách\ bảo\ mật
+Tất\ cả\ quyền\ được\ bảo\ lưu
+All\ rights\ reserved
+Liên\ hệ\ quảng\ cáo
+Quảng\ cáo
+Tin\ liên\ quan
+Bài\ viết\ liên\ quan
+Tags:
+Từ\ khóa:
+Nguồn:
+Tác\ giả:
+Ngày\ đăng:
+Cập\ nhật:
+Theo\ dõi\ fanpage
+Đăng\ ký\ nhận\ tin
+Subscribe
+Tải\ thêm
+Load\ more
+Quay\ lại\ trang\ chủ
+Trang\ chủ
+Home

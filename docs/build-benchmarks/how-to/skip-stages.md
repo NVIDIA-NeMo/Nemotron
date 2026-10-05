@@ -3,10 +3,11 @@
   SPDX-License-Identifier: Apache-2.0
 -->
 
-# Skip Stages When Iterating
+# Resume or Skip Generation Stages
 
-Both **generate** and **translate** honor `skip_until`, a string that names an enum entry on the internal stage list.
-Stages whose enum value is **less than** the named stage are skipped as long as the expected Parquet already exists.
+MCQ **generate** and **translate** honor `skip_until`, a string that names an
+enum entry on the internal stage list. Stages whose enum value is **less than**
+the named stage are skipped as long as the expected Parquet already exists.
 
 ## Generation enum names
 
@@ -32,9 +33,32 @@ uv run nemotron steps run byob/mcq -c /path/to/generate.yaml skip_until=JUDGEMEN
 uv run nemotron steps run byob/mcq -c translate stage=translate skip_until=BACKTRANSLATION
 ```
 
+## Verified BFCL generation resume
+
+BFCL generation uses lowercase canonical names:
+
+`reference_profile`, `expand`, `state_machine`, `render`, `expected_trace`,
+`schema_validation`, `executable_replay`, `surface_quality`,
+`dedup_balancing`, `final_output`
+
+The named stage and every later enabled stage run. For example:
+
+```console
+uv run nemotron steps run byob/bfcl -c /path/to/generate.yaml stage=generate skip_until=expected_trace
+```
+
+Unlike MCQ's file-presence shortcut, BFCL recursively verifies immutable
+checkpoint snapshots and their parent identities. It also revalidates config,
+Oracle pack, endpoint identity, pipeline source, schemas, hashes, counts, task
+IDs, and ordering. Optional stages are valid targets only when enabled.
+
 ## Preconditions
 
-Skipping only works when the Parquet file produced by the previous stage is already on disk under `output_dir/expt_name/stage_cache/`.
-Otherwise the next stage reads missing input and fails.
+MCQ skipping requires the Parquet file produced by the previous stage under
+`output_dir/expt_name/stage_cache/`. BFCL resume requires the complete verified
+predecessor chain under `stage_cache/checkpoints/`; missing, stale, or tampered
+evidence fails closed and requires a clean generation run. Restoration keeps the
+append-only model I/O caches so a re-run stage replays recorded model responses
+rather than generating new ones.
 
 For other common failure modes, see {doc}`../reference/troubleshooting`.

@@ -7,7 +7,8 @@
 
 # Translation
 
-Learn how to take an existing `benchmark.parquet` from generation, translate it to a target locale, score quality with backtranslation metrics, and export another `benchmark.parquet`.
+Learn how to localize a generated benchmark, score quality with backtranslation
+metrics, and preserve the benchmark-family contract.
 
 The field names, defaults, and validation rules are listed in {doc}`../reference/translation-config`.
 Artifact paths are summarized in {doc}`../reference/output-files`.
@@ -34,6 +35,40 @@ The CLI requires an explicit stage when that key is absent.
 ```console
 uv run nemotron steps run byob/mcq -c translate stage=translate
 ```
+
+For BFCL, resolve
+`src/nemotron/steps/byob/bfcl/config/translate.yaml` and run:
+
+```console
+uv run nemotron steps run byob/bfcl -c /path/to/translate.yaml stage=translate
+```
+
+BFCL starts from `source_run_manifest`, verifies the committed source tables,
+and translates only system/user text, eligible assistant text, intent display
+text, and optionally function descriptions. It protects tool names, parameter
+keys, slot values, IDs, calls, and enums with ordered placeholders. Any lost,
+duplicated, mutated, or reordered placeholder aborts the transaction.
+
+The adapter validates every reconstructed row against its original. Task IDs,
+roles, message order, tool schemas, expected calls, assertions, fixture
+references, held-out state, and generation lineage must remain unchanged.
+Quality failures remain evidence in `stage_cache/quality_metrics.parquet`; BFCL
+never removes a row. The final `translation_manifest.json` binds the localized
+Parquet to the source manifest hash and records translator and contamination
+provenance.
+
+Before publication, BFCL normalizes localized text deterministically, rejects
+configured response/leakage patterns, rejects a no-op translator, and checks
+the expected Unicode script for target languages with a distinctive script.
+It then reads the Parquet back and repeats the truth projection. The manifest
+records the resulting changed-field fraction, script gate, response guards,
+and replay mode. Evaluation recomputes these claims and every quality
+pass/fail value from the stored scores and thresholds rather than trusting the
+booleans in the evidence file.
+
+The translation model is also the localization model and is recorded once as
+the translator contamination identity. No hidden second model runs between
+translation and publication.
 
 ## Tune Quality Gates
 

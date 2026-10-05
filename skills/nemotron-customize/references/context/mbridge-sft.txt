@@ -18,7 +18,9 @@ Use this pack for:
 
 - `dataset.packed_sequence_specs.packed_train_data_path`: training Parquet glob.
 - Validation/test packed paths when the config schedules validation.
-- `seq_length` equal to the data-prep `pack_size`.
+- `recipe.seq_length`, `dataset.seq_length`,
+  `dataset.packed_sequence_specs.packed_sequence_size`, and `model.seq_length`
+  equal to the prepared data's `pack_size`.
 - `checkpoint.pretrained_checkpoint` when adapting a Megatron base.
 - Distinct output directories for base checkpoint, adapter, and final merged
   artifact.
@@ -39,11 +41,20 @@ Use this pack for:
 - Use `load_hf_weights=false` when starting from a Megatron checkpoint.
 - For adapter reliability, prefer simple checkpoint saves over async/optimizer
   saves unless the user explicitly needs them.
+- `super3_128k.yaml` and `super3_256k.yaml` are topology/dry-run references,
+  not stock launch configs. They require externally prepared shards with the
+  expected stored-sequence alignment and explicit mixed-precision validation.
+- Repack to a new output directory after tokenizer, sequence length, TP, CP, or
+  sequence-parallelism changes; inspect stored lengths and loss masks before
+  launch.
 
 ## Failure Modes
 
 - `missing_packed_data`: run `data_prep/sft_packing`.
-- `sequence_length_mismatch`: repack data or align `seq_length`.
+- `sequence_length_mismatch`: repack data or align all four sequence-length
+  fields.
+- `misaligned_packed_sequences`: use an alignment-aware external/updated packer;
+  the stock SFT step cannot configure 128-token stored-sequence alignment.
 - `missing_base_checkpoint`: set the Megatron base checkpoint for PEFT.
 - `oom`: lower micro batch, enable recomputation, increase parallelism, or use
   LoRA.

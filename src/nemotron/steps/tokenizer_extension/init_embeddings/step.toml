@@ -1,0 +1,117 @@
+[step]
+id = "tokenizer_extension/init_embeddings"
+name = "Embedding Initialization"
+category = "tokenizer_extension"
+description = """\
+Attach an extended (append-style) tokenizer to the base model and initialize the
+new embedding (and LM-head) rows, producing a resized HF checkpoint ready for
+continued pretraining. embeddings.py dispatches to one of three init engines
+selected by `method`: baseline (hf_default/mean_all/mean_target), subword
+(uniform/char/max_char/bert/gemma weighted subword averaging), or focus
+(FOCUS + fastText + sparsemax)."""
+tags = ["tokenizer", "embeddings", "initialization", "cpt"]
+
+[[consumes]]
+type = "tokenizer"
+description = "Extended tokenizer directory from tokenizer_extension/extend. Both arms are supported: an add/ tokenizer for arm=add, or a replace/ tokenizer (with its id_remap.json) for arm=replace."
+required = true
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "Base HF model whose embeddings are resized"
+required = true
+
+[[produces]]
+type = "checkpoint_hf"
+description = "Resized HF checkpoint (weights + tokenizer) for pretrain/megatron_bridge CPT"
+
+[[models]]
+name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16"
+description = "Nemotron 3 Nano 30B-A3B base. Loads with device_map='auto'."
+default = true
+min_gpus = 1
+
+[[parameters]]
+name = "arm"
+description = "Must match how the tokenizer was built by extend: 'add' for extend method=add OR method=expand (both append-style, base rows unchanged); 'replace' for extend method=replace (survivor rows permuted via id_remap.json, which only the replace output carries). Both arms support baseline, subword and focus; on replace, baseline is limited to hf_default|mean_all and gemma_weighted is unavailable."
+default = "add"
+choices = ["add", "replace"]
+
+[[parameters]]
+name = "language"
+description = "Target language. Selects the target script used to locate the base model's existing rows, and supplies the auxiliary-encoder / fastText defaults (e.g. MuRIL for Indic, XLM-R for Vietnamese). Set this rather than bert_model, which overrides it."
+
+[[parameters]]
+name = "method"
+description = "Which init engine to dispatch to."
+default = "subword"
+choices = ["baseline", "subword", "focus"]
+
+[[parameters]]
+name = "subword.input_averaging"
+description = "subword: how to weight the base subword rows for the new INPUT embedding."
+default = "uniform"
+choices = ["uniform", "char_weighted", "max_char", "bert_weighted", "gemma_weighted"]
+
+[[parameters]]
+name = "subword.output_averaging"
+description = "subword: how to weight the base subword rows for the new OUTPUT (LM-head) embedding."
+default = "uniform"
+choices = ["uniform", "char_weighted", "max_char", "bert_weighted", "gemma_weighted"]
+
+[[parameters]]
+name = "baseline.mode"
+description = "baseline: hf_default (multivariate-normal) | mean_all | mean_target (mean of the base model's existing target-script rows). 'mean_hindi' is the legacy alias for 'mean_target'. NOTE: arm=replace supports only hf_default and mean_all — replace_init has no target-script-mean engine."
+default = "mean_target"
+choices = ["hf_default", "mean_all", "mean_target", "mean_hindi"]
+
+[[parameters]]
+name = "focus.candidate_pool"
+description = "Base rows eligible to contribute to a FOCUS init: 'target' (the base model's target-script rows) or 'all'. 'hindi' is the legacy alias for 'target'."
+default = "target"
+choices = ["target", "all", "hindi"]
+
+[[parameters]]
+name = "focus.fasttext_model"
+description = "focus: path to a fastText binary for the target language, e.g. cc.<code>.300.bin (cc.hi.300.bin for Hindi, cc.vi.300.bin for Vietnamese). Optional: left unset, the file for the resolved language is downloaded from the fastText URL into FASTTEXT_CACHE_DIR and reused by later runs. The vectors are multi-GB, so point FASTTEXT_CACHE_DIR at durable shared storage rather than re-fetching per job."
+
+[[parameters]]
+name = "extended_tokenizer"
+description = "Extended (add) tokenizer dir from extend."
+
+[[parameters]]
+name = "output_dir"
+description = "Where the resized HF checkpoint is written; use as pretrain hf_model_path"
+
+[[strategies]]
+when = "choosing an init method"
+then = "subword/uniform (mean-of-constituents) is the default: dependency-free and the strongest in the current final-horizon measurement. baseline/mean_target is the cheap floor. focus needs a fastText .bin and an encoder that covers the language; its ranking is not stable across languages, so validate it against subword/uniform rather than adopting it by default"
+
+[[strategies]]
+when = "the tokenizer is a replace arm (has id_remap.json)"
+then = "set arm=replace and method=subword; replace_init.py copies survivor rows exactly via id_remap.json and inits fresh tokens by mean-of-constituents"
+
+[[strategies]]
+when = "iterating cheaply"
+then = "run -c default against a smaller base model that shares the tokenizer (override base_model=), and cap the work with a small extension_size, to validate the wiring before committing to the full-size run"
+
+[[errors]]
+name = "unknown_method"
+recovery = "method must be one of baseline | subword | focus"
+
+[[errors]]
+name = "replace_tokenizer_rejected"
+recovery = "id_remap.json means this is a replace-arm tokenizer: set arm=replace so replace_init.py re-indexes survivor rows through the remap. Set arm=add only for an add/ tokenizer."
+
+[[errors]]
+name = "row_count_mismatch"
+recovery = "Model embedding rows must equal the base tokenizer size before resize; ensure base_model matches the tokenizer's base"
+
+[[errors]]
+name = "missing_fasttext"
+recovery = "method=focus needs the `fasttext` package installed. focus.fasttext_model is optional: unset, the vectors for the resolved language are downloaded into FASTTEXT_CACHE_DIR and reused; set it to use a file you already have."
+
+[reference]
+readme = "src/nemotron/steps/tokenizer_extension/init_embeddings/README.md"
+guide = "src/nemotron/steps/tokenizer_extension/guide.md"
+lib = "src/nemotron/steps/tokenizer_extension/init_embeddings/embeddings.py"

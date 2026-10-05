@@ -21,8 +21,10 @@ that projects generated records into that schema.
 
 ## Steps
 
-The catalog ships one step under this category:
-[`sdg/data_designer`](data_designer/README.md).
+- [`sdg/data_designer`](data_designer/README.md) builds general declarative SFT,
+  tool-call, or preference datasets.
+- [`sdg/persona_mcq`](persona_mcq/README.md) runs the end-to-end persona-grounded MCQ SFT
+  pipeline with multi-teacher voting and aligned exports.
 
 ## Configurations
 
@@ -86,6 +88,7 @@ writing adapters in downstream data prep.
 ```bash
 nemotron steps run sdg/data_designer -c tiny
 nemotron steps run sdg/data_designer -c default --extra-args=--preview
+nemotron steps run sdg/persona_mcq -c tiny
 ```
 
 ## Patterns to cite

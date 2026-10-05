@@ -1,0 +1,22 @@
+# Smoke config: the packaged 120-document fixture, counted in whitespace words
+# so no tokenizer needs to be downloaded. Budgets are in words, and every
+# artifact says so.
+
+input_glob: /nemo_run/code/src/nemotron/steps/curate/nemo_curator/subset/data/tiny/corpus.jsonl
+output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_subset_tiny
+
+text_field: text
+id_field: id
+source_field: source
+
+token_budgets: [1000, 2500, 4500]
+
+tokenizer: null
+token_cache: null
+
+# The fixture carries a __quality column. Left off here so the smoke run has
+# nine strata rather than ninety and does not warn about starved strata on a
+# 5000-word corpus; set it to __quality to exercise decile stratification.
+quality_score_field: null
+length_bands: [20, 60]
+seed: 0

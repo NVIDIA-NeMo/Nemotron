@@ -110,5 +110,75 @@
       "Use text_field=text in the command shape.",
       "Explain that stricter filtering can be added after IO is validated."
     ]
+  },
+  {
+    "id": "nemotron-customize-governed-curation-flow",
+    "question": "I have raw Parquet without stable document IDs. Before CPT, I need language-specific threshold selection, evidence that filtering did not silently lose rows, decontamination against my held-out set, and nested 1B/5B-token ablation subsets. Plan the step sequence.",
+    "expected_skill": "nemotron-customize",
+    "expected_script": null,
+    "ground_truth": "The answer should plan curate/ingest -> curate/profile -> explicit policy approval -> curate/nemo_curator -> curate/audit -> curate/decontamination -> curate/subset. It should explain prepared_jsonl/stable IDs, that profiling happens before filtering, that a candidate policy is not approved automatically, that audit completeness/attribution use manifest/ledger evidence, that only training shrinks during decontamination, and that subsets consume decontaminated output and are planned together with a pinned tokenizer revision.",
+    "expected_behavior": [
+      "Route Parquet normalization and stable ID creation to curate/ingest.",
+      "Keep threshold measurement and human approval separate from application.",
+      "Require the audit manifest/ledger before claiming complete attributable accounting.",
+      "Protect the holdout and feed post-decontamination data into nested subsets.",
+      "Do not replace the governed flow with only curate/nemo_curator."
+    ]
+  },
+  {
+    "id": "nemotron-customize-tokenizer-extension",
+    "question": "I want to compare add and replace tokenizer extensions for Vietnamese, initialize the model, continue pretraining, and compare the results fairly. What steps and metrics should I use?",
+    "expected_skill": "nemotron-customize",
+    "expected_script": null,
+    "ground_truth": "The answer should use tokenizer_extension/extend once per arm, optionally tokenizer_extension/evaluate on the same held-out corpus, tokenizer_extension/init_embeddings with arm matching each build, data_prep/pretrain_prep rebuilt with each extended tokenizer, a pretrain step for CPT, tokenizer_extension/eval_init using BPB over the same bytes with max_docs, and downstream eval/model_eval. It should hold base model, corpus/normalization, and extension_size fixed and avoid comparing per-token perplexity across vocabularies.",
+    "expected_behavior": [
+      "Use the four tokenizer_extension steps for their distinct contracts.",
+      "Match replace output to arm=replace and add output to arm=add.",
+      "Rebuild tokenizer-locked pretraining data before CPT.",
+      "Use BPB and a document budget for cross-vocabulary comparison.",
+      "Keep tokenizer metrics separate from downstream model evaluation."
+    ]
+  },
+  {
+    "id": "nemotron-customize-persona-mcq-routing",
+    "question": "Generate Hindi and Malayalam persona-grounded multiple-choice examples that I will train on with SFT. Should I use byob/mcq or the persona MCQ workflow?",
+    "expected_skill": "nemotron-customize",
+    "expected_script": null,
+    "ground_truth": "The answer should select sdg/persona_mcq because the output is MCQ-shaped SFT training data, not a held-out benchmark. It should recommend tiny first with a fresh experiment name, describe teacher voting and language/script/reasoning gates, mention environment-only credentials, and hand training_jsonl or its blend manifest to AutoModel directly or through sft_packing for Megatron-Bridge.",
+    "expected_behavior": [
+      "Distinguish training intent from held-out BYOB benchmark intent.",
+      "Select sdg/persona_mcq and not byob/mcq.",
+      "Start with the tiny config and a fresh experiment name.",
+      "Treat teacher agreement as a consistency gate rather than factual proof.",
+      "Describe the correct AutoModel or Megatron-Bridge handoff."
+    ]
+  },
+  {
+    "id": "nemotron-customize-bfcl-routing",
+    "question": "I have executable tools, fixtures, and assertions for a banking domain and need a publishable function-calling benchmark, a Vietnamese localization, and candidate scoring. Which workflow applies?",
+    "expected_skill": "nemotron-customize",
+    "expected_script": null,
+    "ground_truth": "The answer should select byob/bfcl and plan prepare/generate, translate, and eval stages from a validated allowlisted oracle pack. It should preserve canonical parquet and run-manifest lineage, translate only approved natural-language fields without changing executable truth, verify the frozen source and contamination before candidate inference, and avoid treating compatibility exports as independent truth.",
+    "expected_behavior": [
+      "Use byob/bfcl rather than byob/mcq or generic translation.",
+      "Require a validated oracle pack and publication evidence.",
+      "Preserve tool schemas, expected calls, fixtures, assertions, and lineage during localization.",
+      "Verify source identity and contamination before evaluation.",
+      "Do not infer authorization for publication or external MCP mutation."
+    ]
+  },
+  {
+    "id": "nemotron-customize-eval-direct-mode",
+    "question": "My model is already hosted and the Evaluator Launcher has no executor for our backend. I want the Nemotron env profile to schedule the evaluation job and I need a terminal pass/fail result. What should I use?",
+    "expected_skill": "nemotron-customize",
+    "expected_script": null,
+    "ground_truth": "The answer should use eval/model_eval with config/direct.yaml and mode=direct, not Launcher-managed deployment. It should require an existing endpoint, exact served model id, endpoint type, matching tokenizer, harness image containing the selected task, durable results directory, auth env-var name, and a real env profile. It should explain that direct mode blocks to completion while launcher mode exits after acceptance.",
+    "expected_behavior": [
+      "Choose direct eval because the Nemotron profile must own scheduling.",
+      "Do not create or delete the already hosted endpoint.",
+      "Require exact task discovery inside the selected harness image.",
+      "Require the evaluated model's matching tokenizer and durable output storage.",
+      "Distinguish direct terminal completion from launcher submission acceptance."
+    ]
   }
 ]

@@ -411,7 +411,9 @@ def resolve_artifact_pre_init(
     except Exception as e:
         err_str = str(e)
         err_type = type(e).__name__
-        if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
+        # wandb raises AuthenticationError for an unreachable server too.
+        unreachable = any(m in err_str.lower() for m in ("unable to connect", "connection refused", "timed out"))
+        if not unreachable and ("401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type):
             raise RuntimeError(
                 f"W&B authentication failed while resolving artifact '{artifact_ref}'. "
                 f"The WANDB_API_KEY environment variable is set but rejected by the server. "

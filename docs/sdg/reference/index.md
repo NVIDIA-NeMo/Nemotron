@@ -47,6 +47,14 @@ The three projection shapes with annotated JSONL examples.
 {bdg-secondary}`lookup`
 :::
 
+:::{grid-item-card} {octicon}`globe;1.5em;sd-mr-1` Persona MCQ Configuration
+:link: persona-mcq-config
+:link-type: doc
+`sdg/persona_mcq` fields, output artifacts, training record schema, and errors.
++++
+{bdg-secondary}`lookup`
+:::
+
 :::{grid-item-card} {octicon}`alert;1.5em;sd-mr-1` Troubleshooting
 :link: troubleshooting
 :link-type: doc
@@ -64,5 +72,6 @@ Failure modes for local runs and cluster dispatch.
 config-schema
 cli-reference
 output-projections
+persona-mcq-config
 troubleshooting
 ```

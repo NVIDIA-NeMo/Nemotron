@@ -48,7 +48,8 @@ model:
   pipeline_model_parallel_size: 1
   context_parallel_size: 1
 
-# LoRA adapter spec applied via megatron.bridge.recipes.utils.finetune_utils.default_peft_config
+# LoRA adapter spec applied via Megatron-Bridge PEFT (default_peft_config or
+# megatron.bridge.peft.lora.LoRA on nemo:26.08).
 peft:
   type: lora
   dim: 32

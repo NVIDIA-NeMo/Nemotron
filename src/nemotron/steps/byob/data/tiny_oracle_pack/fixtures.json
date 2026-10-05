@@ -1,0 +1,12 @@
+{
+  "books": [
+    {"book_id": "BK-100", "title": "Algorithms", "status": "available", "copies": 2},
+    {"book_id": "BK-200", "title": "Databases", "status": "available", "copies": 1},
+    {"book_id": "BK-300", "title": "Networks", "status": "on_loan", "copies": 0}
+  ],
+  "patrons": [
+    {"patron_id": "P-1", "name": "Ada"},
+    {"patron_id": "P-2", "name": "Grace"}
+  ],
+  "loans": []
+}

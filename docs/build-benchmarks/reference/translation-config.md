@@ -7,7 +7,7 @@
 
 # Translation Configuration Reference
 
-This page describes the YAML configuration file that you provide for the translate stage: the keys you set or override, how backtranslation quality scores show up in Parquet output columns, and which rows are omitted from the final `benchmark.parquet` when quality filtering is enabled.
+This page describes the YAML configuration file that you provide for the translate stage: the keys you set or override, how backtranslation quality scores show up in Parquet output columns, and the stricter truth-preserving rules used by BFCL.
 
 ## Required Keys
 
@@ -20,6 +20,12 @@ This page describes the YAML configuration file that you provide for the transla
 | `target_language` | Target locale tag (for example `hi-IN`). |
 | `translation_model_config` | Dictionary with `backend_type`, `params`, and optional `stage` and `segment_stage`. |
 | `backtranslation_quality_metrics` | Non-empty list; each element is a dictionary with `type` and `threshold`. |
+
+For MCQ, `dataset_path` names `benchmark.parquet`. BFCL instead requires
+`family: bfcl`, `stage: translate`, `config_status: resolved`, and
+`source_run_manifest` naming the immutable generation `run_manifest.json`. BFCL
+refuses `dataset_path` because a bare Parquet file cannot prove publication
+lineage or artifact hashes.
 
 ## Quality Metrics
 
@@ -44,6 +50,32 @@ Inspect `stage_cache/quality_metrics.parquet` under your experiment directory to
 | Key | Default | Notes |
 | --- | --- | --- |
 | `remove_low_quality` | `True` unless YAML overrides it | When true, the pipeline omits rows where `is_quality_metric_passed` is false before export. |
+
+BFCL requires `remove_low_quality: false`: localization cannot add, drop, or
+reorder task IDs. Its optional `translate_tool_descriptions` key defaults to
+false. When true, only `tools[].function.description` may change; function names
+and the complete parameter schema remain immutable.
+
+BFCL model parameters must name `provider`, `model`, and a stable
+`canonical_id` (or `alias`). The translation manifest records these fields,
+optional weight source/revision/digest, and a hash of the complete model config
+for contamination analysis.
+
+BFCL also accepts a `localization` mapping. Its
+`deterministic_fixes.normalize_unicode` switch defaults to `true`; output is
+normalized to NFC, LF line endings, and no trailing line whitespace before
+backtranslation. `validation.minimum_changed_fraction` defaults to `0.01` and
+rejects an identity/no-op translator. `validation.required_script` is inferred
+for Arabic, Cyrillic, Devanagari, Greek, Han, Hangul, Hebrew, Japanese, and Thai
+targets, and may be set explicitly or to `null`. Case-insensitive regular
+expressions under `response_guards.forbidden_patterns` reject model refusals,
+source-language leakage, or other deployment-specific phrases.
+
+Locale comparisons use normalized primary BCP-47 subtags, so source metadata
+`en` is compatible with configured `en-US`. Full canonical tags remain in the
+artifacts, while the normalized lowercase tag is used in the output filename.
+The translator is the sole model-facing localization stage; deterministic
+fixes do not introduce a second, untracked model identity.
 
 ## FAITH evaluation
 

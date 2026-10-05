@@ -47,5 +47,8 @@ sample: null
 sample_seed: 42
 force: false
 
+tokenization:
+  cpus_per_worker: 1
+
 observability:
   pipeline_logging_interval_s: 5

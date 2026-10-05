@@ -262,9 +262,9 @@ def test_distributed_import_command_is_built(monkeypatch: pytest.MonkeyPatch) ->
         },
     )
 
-    assert cmd[:2] == ["torchrun", "--nproc_per_node=8"]
-    assert cmd[2] == sys.executable
-    assert cmd[3].endswith("/examples/conversion/convert_checkpoints_multi_gpu.py")
+    assert cmd[:3] == ["torchrun", "--no-python", "--nproc_per_node=8"]
+    assert cmd[3] == sys.executable
+    assert cmd[4].endswith("/examples/conversion/convert_checkpoints_multi_gpu.py")
     assert cmd[cmd.index("--hf-model") + 1] == "hf-source"
     assert cmd[cmd.index("--megatron-path") + 1] == "/tmp/megatron"
     assert cmd[cmd.index("--tp") + 1] == "2"
@@ -379,7 +379,7 @@ def test_distributed_command_can_wrap_converter(monkeypatch: pytest.MonkeyPatch)
         },
     )
 
-    assert cmd[:3] == ["torchrun", "--nproc_per_node=8", "--nnodes=8"]
+    assert cmd[:4] == ["torchrun", "--no-python", "--nproc_per_node=8", "--nnodes=8"]
     python_index = cmd.index(sys.executable)
     assert cmd[python_index : python_index + 2] == [sys.executable, "-c"]
     assert "MegatronParamMapping.broadcast_from_pp_rank" in cmd[python_index + 2]
@@ -408,7 +408,7 @@ def test_distributed_export_command_is_built(monkeypatch: pytest.MonkeyPatch) ->
         },
     )
 
-    assert cmd[:2] == ["torchrun", "--nproc_per_node=4"]
+    assert cmd[:3] == ["torchrun", "--no-python", "--nproc_per_node=4"]
     assert "export" in cmd
     assert cmd[cmd.index("--hf-path") + 1] == "/tmp/hf"
     assert "--no-progress" in cmd
@@ -469,3 +469,35 @@ def test_runner_uses_distributed_launcher(monkeypatch: pytest.MonkeyPatch) -> No
     convert.run_megatron_to_hf(Path("unused.yaml"))
 
     assert calls == [("export", cfg)]
+
+
+def test_torchrun_does_not_re_prepend_python() -> None:
+    """torchrun prepends python to its first positional unless --no-python."""
+    cmd = convert.build_distributed_conversion_command(
+        "import",
+        {
+            "hf_model_id": "hf-source",
+            "megatron_path": "/tmp/megatron",
+            "tp": 2,
+            "pp": 1,
+            "ep": 1,
+            "etp": 1,
+            "torchrun": {"nproc_per_node": 2},
+        },
+    )
+
+    assert "--no-python" in cmd[: cmd.index(sys.executable)]
+
+
+def test_unreadable_script_reports_the_intended_guidance(tmp_path: Path) -> None:
+    """An unreadable parent raises PermissionError rather than returning False."""
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    script = locked / "convert_checkpoints_multi_gpu.py"
+    script.touch()
+    locked.chmod(0o000)
+    try:
+        with pytest.raises(FileNotFoundError, match="Distributed conversion script not found"):
+            convert._ensure_distributed_converter_script([sys.executable, str(script)])
+    finally:
+        locked.chmod(0o755)

@@ -1,0 +1,3 @@
+{"id": "en-clean-1", "language": "en", "label": "keep", "phenomenon": "clean", "text": "The weather is pleasant today and we walked around the lake in the morning."}
+{"id": "en-ocr-1", "language": "en", "label": "drop", "phenomenon": "ocr_noise", "text": "Th3 ||| w3@th3r ~~~ 1s ¦¦¦ pl3@s@nt ### t0d@y ¬¬¬ @nd __ w3 ||| w@lk3d ~~~ ¦¦¦ ### ¬¬¬ ___ +++"}
+{"id": "en-langid-1", "language": "en", "label": "drop", "phenomenon": "langid_error", "text": "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj"}

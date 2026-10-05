@@ -2,6 +2,10 @@
 
 Pick an SFT backend and keep data and checkpoint formats compatible.
 
+> **Planning an SFT run for a new language or domain?** See the customer-facing
+> [Supervised Fine-Tuning Guidebook](guidebook/README.md) for data-volume, base-checkpoint,
+> instruction-following, language-fidelity and LoRA guidance backed by the current ablations.
+
 ## Developer Journey
 
 SFT turns instruction data into a model checkpoint. The first developer decision

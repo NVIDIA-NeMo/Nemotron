@@ -19,7 +19,7 @@ The step consumes packed Apache Parquet shards produced by `data_prep/sft_packin
 ## Syntax
 
 ```bash
-nemotron steps run peft/megatron_bridge \
+uv run nemotron steps run peft/megatron_bridge \
     [-c <config-name-or-path>] \
     [-r <run-profile> | -b <batch-profile>] \
     [-d] \
@@ -32,19 +32,34 @@ Refer to the [Nemotron Steps CLI Reference](../cli-reference.md) for the shared 
 
 ## Configuration Files
 
-The step ships two configuration files under `src/nemotron/steps/peft/megatron_bridge/config/`.
+The step ships three configuration files under `src/nemotron/steps/peft/megatron_bridge/config/`.
 
 | File | Purpose |
 | --- | --- |
 | `default.yaml` | Full-shape LoRA tuning on top of the Nano3 Megatron-Bridge finetune recipe with rank thirty-two adapters on `linear_qkv` and `linear_proj`. |
 | `tiny.yaml` | Short validation run against packed Parquet shards. |
+| `lightning35.yaml` | Overlay on `default.yaml` (`defaults: default.yaml`) for Nemotron 3.5 Lightning 30B-A3B packed LoRA at 4096 tokens in the `nemo:26.08` container: `nemotron_3_5_lightning_peft_config` recipe, adapters on `linear_qkv`, `linear_proj`, `linear_fc1`, `linear_fc2`, `in_proj`, and `out_proj`, TP 2, EP 8, 100 iterations at `train.global_batch_size: 128`, learning rate `1.0e-4`. Refer to [Nemotron 3.5 Lightning](#nemotron-35-lightning). |
 
 Pass the configuration name with `-c`:
 
 ```console
-$ nemotron steps run peft/megatron_bridge -c tiny
-$ nemotron steps run peft/megatron_bridge -c default
+$ uv run nemotron steps run peft/megatron_bridge -c tiny
+$ uv run nemotron steps run peft/megatron_bridge -c default
 ```
+
+### Nemotron 3.5 Lightning
+
+The frozen base for `lightning35.yaml` must be a Megatron checkpoint.
+Convert the Hugging Face model first with [`convert/hf_to_megatron -c lightning35`](../convert/hf-to-megatron.md), then set the following environment variables in the shell or the `env.toml` profile:
+
+| Variable | Consumed as |
+| --- | --- |
+| `L35_PRETRAINED_CHECKPOINT` | `checkpoint.pretrained_checkpoint` (`${L35_PRETRAINED_CHECKPOINT}/iter_0000000`) |
+| `L35_PACKED_DIR` | `dataset.packed_sequence_specs.packed_train_data_path` and `packed_val_data_path` (`${L35_PACKED_DIR}/splits/{train,valid}`) |
+| `L35_OUTPUT_DIR` | `checkpoint.save` (`${L35_OUTPUT_DIR}/lora-4k-tp2-ep8`) |
+
+The overlay sets the inherited Nano recipe arguments `recipe.packed_sequence`, `recipe.peft`, and `recipe.seq_length` to `null` and selects the adapter through `recipe.peft_scheme: lora`, because the Lightning PEFT recipe is a different callable from the Nano recipe.
+The inherited `peft.dim` and `peft.alpha` values from `default.yaml` still apply.
 
 ## Inputs and Outputs
 
@@ -131,6 +146,7 @@ Example: `dataset.nano3_packed_sft_dir=/lustre/packed/super3-sft`
 The manifest records one operator strategy for `peft/megatron_bridge`.
 
 - When a full supervised fine-tune does not fit in memory at the desired model size, switch to `peft/megatron_bridge` to keep tensor and pipeline parallelism while reducing the trainable parameter count.
+- When the operator selects Nemotron 3.5 Lightning, convert the base model with `convert/hf_to_megatron -c lightning35` first and run `-c lightning35`; adapters cannot load Hugging Face weights.
 
 ## Common Errors
 
@@ -146,19 +162,19 @@ Recovery: run `data_prep/sft_packing` first, or override `dataset.nano3_packed_s
 Run the tiny validation configuration locally:
 
 ```console
-$ nemotron steps run peft/megatron_bridge -c tiny
+$ uv run nemotron steps run peft/megatron_bridge -c tiny
 ```
 
 Compile the default configuration without submitting the job:
 
 ```console
-$ nemotron steps run peft/megatron_bridge -c default --dry-run
+$ uv run nemotron steps run peft/megatron_bridge -c default --dry-run
 ```
 
 Submit an attached LoRA run on a Lepton profile with a longer sequence length:
 
 ```console
-$ nemotron steps run peft/megatron_bridge -c default -r lepton_peft_megatron_bridge \
+$ uv run nemotron steps run peft/megatron_bridge -c default -r lepton_peft_megatron_bridge \
     peft.dim=16 \
     recipe.seq_length=8192 \
     train.train_iters=2000
@@ -167,10 +183,19 @@ $ nemotron steps run peft/megatron_bridge -c default -r lepton_peft_megatron_bri
 Submit a detached LoRA run on a Slurm profile with eight-way tensor parallelism:
 
 ```console
-$ nemotron steps run peft/megatron_bridge -c default -b slurm_peft_megatron_bridge \
+$ uv run nemotron steps run peft/megatron_bridge -c default -b slurm_peft_megatron_bridge \
     peft.dim=32 \
     recipe.tensor_model_parallel_size=8 \
     train.global_batch_size=64
+```
+
+Submit a detached Nemotron 3.5 Lightning LoRA run from a converted Megatron checkpoint:
+
+```console
+$ L35_PRETRAINED_CHECKPOINT=/lustre/checkpoints/lightning35-megatron \
+    L35_PACKED_DIR=/lustre/packed/lightning35 \
+    L35_OUTPUT_DIR=/lustre/runs/lightning35 \
+    uv run nemotron steps run peft/megatron_bridge -c lightning35 -b <batch-profile>
 ```
 
 ## Related Skill

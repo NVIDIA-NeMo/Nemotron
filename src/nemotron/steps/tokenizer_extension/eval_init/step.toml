@@ -1,0 +1,78 @@
+[step]
+id = "tokenizer_extension/eval_init"
+name = "Embedding-Init Evaluation (BPB)"
+category = "tokenizer_extension"
+description = """\
+Score one or more extended checkpoints (freshly resized, or after CPT) for
+embedding-initialization quality: cross-entropy loss, perplexity, and
+bits-per-byte (BPB) on a validation corpus, with an optional base-model
+reference and a regression check. BPB is the only cross-vocabulary-comparable
+metric here. Wraps the bpb.py engine."""
+tags = ["tokenizer", "embeddings", "evaluation", "bpb", "perplexity"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "One or more extended HF checkpoints to score (resized or CPT'd)"
+required = true
+
+[[produces]]
+type = "eval_results"
+description = "JSON with per-model loss / perplexity / BPB / token + byte counts"
+
+[[models]]
+name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16"
+description = "Optional base-model reference (base_model in config)."
+default = true
+min_gpus = 8
+
+[[parameters]]
+name = "models"
+description = "List of checkpoint paths to evaluate."
+
+[[parameters]]
+name = "base_model"
+description = "Optional unextended reference model scored first."
+
+[[parameters]]
+name = "data_file"
+description = "Local validation corpus (.jsonl/.json with text_field, or .txt one doc per line)."
+
+[[parameters]]
+name = "max_docs"
+description = "Cap the number of documents scored. Tokenizer-independent, so this is the CORRECT budget when comparing BPB across tokenizers with different fertility. -1 = whole corpus."
+default = -1
+
+[[parameters]]
+name = "max_tokens"
+description = "Stop after scoring this many tokens (-1 for all). NOT comparable across tokenizers — each one reaches the budget after a different amount of text — so scoring >1 model this way is refused unless max_docs is also set. Prefer max_docs."
+default = -1
+
+[[parameters]]
+name = "max_length"
+description = "Context window per forward pass."
+default = 2048
+
+[[parameters]]
+name = "stride"
+description = "Sliding-window step; overlapping tokens are scored once."
+default = 512
+
+[[strategies]]
+when = "comparing init methods or CPT arms"
+then = "read BPB, not loss/PPL — per-token metrics are not comparable across different vocabularies"
+
+[[strategies]]
+when = "checking for English/base-language regression"
+then = "run once on Hindi and once on English data; pass base_model to get the regression check"
+
+[[errors]]
+name = "missing_data_file"
+recovery = "set data_file to a local .jsonl/.txt corpus; this engine reads local files, not HF streams"
+
+[[errors]]
+name = "empty_models"
+recovery = "set models to at least one checkpoint path"
+
+[reference]
+lib = "src/nemotron/steps/tokenizer_extension/eval_init/bpb.py"
+guide = "src/nemotron/steps/tokenizer_extension/guide.md"

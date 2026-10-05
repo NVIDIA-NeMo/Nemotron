@@ -1,0 +1,31 @@
+- id: success_get_book_status
+  tool: get_book_status
+  arguments: { book_id: BK-100 }
+  expect: { result_class: success, error_code: null }
+  reset_before: true
+
+- id: miss_get_book_status
+  tool: get_book_status
+  arguments: { book_id: BK-ABSENT-1 }
+  expect: { result_class: structured_error, error_code: not_found }
+  reset_before: true
+
+- id: success_checkout_book
+  tool: checkout_book
+  arguments: { book_id: BK-100, patron_id: P-1, confirm: true }
+  expect: { result_class: success, error_code: null }
+  reset_before: true
+
+- id: confirm_false_checkout
+  tool: checkout_book
+  arguments: { book_id: BK-100, patron_id: P-1, confirm: false }
+  expect:
+    result_class: awaiting_confirmation
+    state_unchanged: true
+  reset_before: true
+
+- id: wrong_type_confirm_checkout
+  tool: checkout_book
+  arguments: { book_id: BK-100, patron_id: P-1, confirm: "false" }
+  expect: { result_class: structured_error, error_code: invalid_argument }
+  reset_before: true

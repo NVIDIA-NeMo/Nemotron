@@ -8,10 +8,9 @@ The goal is to validate end-to-end execution, NeMo Run, and your environment pro
 
 - You need access to DGX Cloud Lepton with GPU nodes.
   This path assumes two nodes with eight A100 80 GB GPUs per node, matching the `run.env` block in `src/nemotron/steps/sft/automodel/config/tiny.yaml`.
-- You set the following environment variables:
-  - `HF_TOKEN`
-  - `WANDB_API_KEY`
-  - `NVIDIA_API_KEY`
+- Your Lepton workspace has secrets containing `HF_TOKEN` and `WANDB_API_KEY`.
+  The examples use those names by default; if your secret names differ, set
+  `NEMOTRON_HF_TOKEN_SECRET` and `NEMOTRON_WANDB_API_KEY_SECRET` to their names.
 - You ran `lep login` after synchronizing dependencies and are logged into Lepton.
 
 The preceding list applies to the steps on this page.
@@ -39,7 +38,7 @@ Refer to [](./index.md#limitations-and-restrictions) for information about suppo
 
    ```{dropdown} Summary of the Config File
 
-   The `[lepton_base]` table defines cluster fundamentals that every profile inherits: the executor, the base container image, the node group, shared-storage paths, the Ray runtime version, the shared-memory size, the Python package extras the Nemotron CLI needs, the cluster mount, and an `env_vars` block whose `${oc.env:VAR,''}` entries pull credentials from your shell at submit time.
+   The `[lepton_base]` table defines cluster fundamentals that every profile inherits: the executor, the base container image, the node group, shared-storage paths, the Ray runtime version, the shared-memory size, the Python package extras the Nemotron CLI needs, the cluster mount, non-sensitive `env_vars`, and `secret_vars` mappings from container environment-variable names to Lepton secret names.
    The `[lepton_sft_automodel]` table extends the base and adds the AutoModel container image, the resource shape needed for full-parameter SFT, the node count, and the additional Python package extras the AutoModel runtime expects.
 
    Contact your cluster administrator for the values that replace the placeholders.
@@ -51,7 +50,20 @@ Refer to [](./index.md#limitations-and-restrictions) for information about suppo
    - `<project>`: The Weights & Biases project name the run reports to.
    ```
 
-   Export `HF_TOKEN`, `WANDB_API_KEY`, and `NVIDIA_API_KEY` in your shell before submitting; the env file pulls them in without writing the values to disk.
+   Create the secrets once before submitting. Secret values are stored by
+   Lepton and are not written into `env.toml` or the submitted job spec.
+
+   ```console
+   $ lep secret create -n HF_TOKEN -v <hugging-face-token>
+   $ lep secret create -n WANDB_API_KEY -v <wandb-api-key>
+   ```
+
+   If your workspace uses different secret names, export only those names:
+
+   ```console
+   $ export NEMOTRON_HF_TOKEN_SECRET="your-hf-secret-name"
+   $ export NEMOTRON_WANDB_API_KEY_SECRET="your-wandb-secret-name"
+   ```
 
    If you would rather generate a complete env file with every Nemotron training profile pre-wired, run the bundled environment profile generator instead of writing the file by hand.
 

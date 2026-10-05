@@ -1,0 +1,10 @@
+# Nemotron CLI envelope for direct BFCL evaluation.
+# Keep operational CLI choices here and scoring semantics in eval.default.yaml.
+schema_version: "1.0"
+family: bfcl
+stage: eval
+eval_config_path: ./eval.default.yaml
+execution_backend: direct
+output_format: human
+probe_oracle: true
+dry_run: false

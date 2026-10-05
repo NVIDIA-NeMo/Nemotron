@@ -19,22 +19,15 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - Python 3.10 fallback for older containers.
-    import tomli as tomllib  # type: ignore[no-redef]
-
-
 DEFAULT_CURATOR_PATH = Path(os.environ.get("NEMOTRON_CURATOR_PATH", "/opt/Curator"))
 DEFAULT_VENV_ROOT = Path(os.environ.get("NEMOTRON_CURATOR_VENV_ROOT", "/tmp/nemotron-curator-runtime"))
-DEFAULT_METADATA_ROOT = Path(
-    os.environ.get("NEMOTRON_CURATOR_METADATA_ROOT", str(DEFAULT_VENV_ROOT / "metadata"))
-)
+DEFAULT_METADATA_ROOT = Path(os.environ.get("NEMOTRON_CURATOR_METADATA_ROOT", str(DEFAULT_VENV_ROOT / "metadata")))
 
 
 @dataclass(frozen=True)
@@ -108,18 +101,28 @@ def _run_capture(argv: Sequence[str | Path], *, cwd: Path, env: dict[str, str] |
     return result.stdout
 
 
-def _runtime_env(venv_dir: Path, curator_path: Path = DEFAULT_CURATOR_PATH) -> dict[str, str]:
+def _runtime_env(
+    venv_dir: Path,
+    curator_path: Path = DEFAULT_CURATOR_PATH,
+    *,
+    use_curator_checkout: bool = True,
+) -> dict[str, str]:
     env = os.environ.copy()
     env["VIRTUAL_ENV"] = str(venv_dir)
     env["UV_PROJECT_ENVIRONMENT"] = str(venv_dir)
     env["PATH"] = f"{venv_dir / 'bin'}:{env.get('PATH', '')}"
 
     pythonpath = [part for part in env.get("PYTHONPATH", "").split(":") if part]
-    if curator_path.exists():
+    if use_curator_checkout and curator_path.exists():
         pythonpath.insert(0, str(curator_path))
 
     seen: set[str] = set()
-    env["PYTHONPATH"] = ":".join(part for part in pythonpath if not (part in seen or seen.add(part)))
+    deduplicated = []
+    for part in pythonpath:
+        if part not in seen:
+            seen.add(part)
+            deduplicated.append(part)
+    env["PYTHONPATH"] = ":".join(deduplicated)
     return env
 
 
@@ -488,7 +491,11 @@ def ensure_runtime(
     """Ensure a runtime exists and return ``(python, env)`` for exec."""
     venv_dir = venv_root / spec.venv_name
     venv_python = _ensure_venv(venv_dir, recreate=recreate)
-    env = _runtime_env(venv_dir, curator_path)
+    env = _runtime_env(
+        venv_dir,
+        curator_path,
+        use_curator_checkout="nemo-curator" in spec.omit_packages,
+    )
 
     if _stamp_matches(venv_dir, spec) and _verify_profile(venv_python, spec, env):
         print(f"[curator-runtime] reusing {spec.name} runtime at {venv_dir}", flush=True)
@@ -502,6 +509,9 @@ def ensure_runtime(
     uv = _ensure_uv(venv_python, venv_dir, env)
     with tempfile.TemporaryDirectory(prefix="nemotron-runtime-") as td:
         requirement_files = _build_requirement_files(metadata, spec, Path(td), uv=uv, env=env)
+        requirements = requirement_files["requirements"]
+        if requirements is None:
+            raise RuntimeError(f"{spec.name} runtime resolved no requirements file")
         command: list[str | Path] = [
             uv,
             "pip",
@@ -511,7 +521,7 @@ def ensure_runtime(
             "--quiet",
             "--no-cache",
             "--requirements",
-            requirement_files["requirements"],
+            requirements,
         ]
         if requirement_files["constraints"]:
             command.extend(["--constraints", requirement_files["constraints"]])

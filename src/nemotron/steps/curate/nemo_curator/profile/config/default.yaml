@@ -1,0 +1,51 @@
+# Starter config for profiling a corpus.
+#
+# The step measures. It does not decide. Its output describes what each
+# candidate threshold would remove; whether what it removes is worth removing
+# needs evidence this step cannot produce.
+
+input_glob: ./output/filtered_jsonl/**/*.jsonl
+output_dir: ./output/profile
+
+# BCP-47 tag. Required: there is deliberately no default, because a wrong one
+# produces plausible numbers for the wrong language.
+language: null
+# Required explicit pack root. Use `-c en` for the opt-in packaged English
+# reference, or point this at your own reviewed language-pack directory.
+langpack_dir: null
+
+text_field: text
+
+# If the records do not carry this field, each shard path becomes its own
+# "source" and the report states that, because per-source figures would
+# otherwise look like corpus statistics when they are shard statistics.
+source_field: source
+
+# Makes the sample reproducible across runs and machines. Falls back to a
+# content hash when absent.
+id_field: null
+
+# Empty profiles every signal whose requirements are met. Naming a signal whose
+# requirements are unmet is an error rather than a silent skip: it answers a
+# question the caller did not ask.
+signals: []
+
+# Per-source counts are derived from this proportionally. 0 profiles everything.
+max_total_docs: 200000
+seed: 0
+
+# Analysis constraints bounding which part of a retention curve gets reported as
+# a candidate band. These are choices, not facts discovered in the corpus.
+band_search:
+  min_keep_rate: 0.80
+  max_keep_rate: 0.995
+
+# models.tokenizer enables the token_count signal. It takes a name and a
+# revision, as curate/subset does: counts from two revisions are not comparable,
+# so an unpinned one would make a promoted token_count threshold unverifiable.
+#
+#   models:
+#     tokenizer:
+#       name: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+#       revision: 97ab8012882a655dc38df4fee47422aca9caca07
+models: {}

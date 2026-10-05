@@ -40,6 +40,16 @@ writing configs.
 - **NeMo-RL**: requires validated SFT policy checkpoint, Ray/placement sizing, and reward path validation.
 - **Curator / Data Designer**: may be CPU-heavy or Ray-heavy; do not allocate GPU profiles unless the selected backend needs them.
 - **Evaluator**: hosted endpoint smoke can be light; checkpoint deployment eval needs model-size-appropriate GPUs.
+- **Governed Curator flow**: ingest/profile/audit/subset and identity-only
+  decontamination are CPU paths. Full decontamination needs one GPU for Curator
+  MinHash/LSH; never allocate it merely for the CPU stages.
+- **Persona MCQ**: endpoint inference is remote; the tiny profile is CPU-only,
+  while production semantic deduplication uses one local GPU.
+- **Tokenizer extension**: `extend` and `evaluate` are CPU-only.
+  `init_embeddings` normally needs one GPU (large auxiliary encoders may need
+  more), and `eval_init` needs enough GPU memory/ranks to load the selected
+  model. The default 30B manifest advertises 8 GPUs even though smaller shared-
+  tokenizer models can validate wiring on less hardware.
 
 ## Interconnect Rules
 
@@ -51,6 +61,9 @@ writing configs.
 
 - Do not assume GPU count from model name.
 - For Super3, start from a 32-GPU Megatron-Bridge plan and verify topology early.
+- Treat `super3_128k.yaml` (64 ranks) and `super3_256k.yaml` (128 ranks) as
+  topology/dry-run references. Do not launch until alignment-aware packed data,
+  all sequence-length fields, precision, and topology have been validated.
 - Start distributed validation with micro batch size 1 and a tiny config; scale only after launch and checkpoint writing are proven.
 - Keep global batch size divisible by data-parallel size.
 - Treat tiny configs as wiring tests, not quality evidence.

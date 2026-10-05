@@ -1,0 +1,64 @@
+# Example: smoke-run a domain-sized oracle pack before spending a publication
+# budget on it. It validates the pack, then generates every declared category at
+# a small budget, so a pack defect surfaces in minutes rather than hours.
+#
+# Copy this file, point `oracle_pack.manifest_path` at your own pack, and set
+# `tasks_per_category` to at least the template count of your widest category.
+# It runs as written against the bundled reference pack.
+#
+# `lineage.policy: smoke_no_publication` makes the result deliberately
+# unpublishable. Use publication.example.yaml when you want a releasable
+# benchmark.
+
+family: bfcl
+expt_name: bfcl_smoke_validation
+stage: all
+random_seed: 42
+config_status: resolved
+
+output_dir: /tmp/bfcl/smoke_validation
+
+oracle_pack:
+  manifest_path: data/banking_vn_oracle_pack/manifest.yaml
+
+oracle_runtime:
+  clock: "2026-03-02T09:00:00+07:00"
+  tool_timeout_s: 5.0
+  assertion_timeout_s: 5.0
+  import_timeout_s: 10.0
+  reset_timeout_s: 5.0
+  episode_timeout_s: 60.0
+  worker: process
+  allowed_roots:
+    - data
+
+lineage:
+  policy: smoke_no_publication
+  profile_influenced_surface: false
+  judge_advisory: null
+  roles:
+    profile: { enabled: false, model_config: null }
+    paraphrase: { enabled: false, model_config: null }
+    surface_judge: { enabled: false, model_config: null }
+
+surface_generation:
+  model_paraphrase_enabled: false
+  paraphrases_per_template: 0
+
+surface_quality_validation:
+  enabled: false
+  drop_authority: false
+
+task_generation:
+  # Shared by every template in a category, so it may not fall below the number of
+  # templates in the widest category or a template would lose its only instance.
+  tasks_per_category: 10
+
+semantic_deduplication_config:
+  enabled: false
+
+exports:
+  # Enable either writer to exercise Stage 12 compatibility publication. A smoke
+  # run keeps them off so its default run stays minimal.
+  bfcl_json: false
+  nemo_evaluator_bundle: false

@@ -1,0 +1,24 @@
+pack_id: tiny_library
+version: "0.1.0"
+languages:
+  - en
+clock: "2026-03-02T09:00:00+07:00"
+paths:
+  tools: tools.json
+  backend: backend.py
+  fixtures: fixtures.json
+  templates: task_templates.yaml
+  assertions: assertions.py
+  validation_cases: validation_cases.yaml
+absent_ids:
+  books:
+    - BK-ABSENT-1
+assistant_turn_templates:
+  ask_for_slot:
+    en: "Could you tell me the {slot_name}?"
+  ask_confirm:
+    en: "Please confirm you want me to go ahead with the details above."
+  decline:
+    en: "Sorry, none of the tools I have can do that."
+  final_answer:
+    en: "Done."

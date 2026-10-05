@@ -1,0 +1,64 @@
+# BYOB BFCL Context
+
+Use this pack for `byob/bfcl`: executable function-calling benchmark
+generation, localization, and candidate evaluation from an allowlisted oracle
+pack.
+
+## Routing
+
+- `stage=prepare`: validate/normalize the oracle pack; no publishable benchmark.
+- `stage=generate`: build canonical raw/published parquet, caches, validation
+  evidence, and `run_manifest.json`.
+- `stage=translate`: localize only approved natural-language fields while
+  preserving executable truth and source identity.
+- `stage=eval`: verify the frozen source, check candidate contamination, run
+  native function-calling episodes, and write bound eval artifacts.
+- `stage=all`: use only with a config whose intended enabled stages were read.
+
+The oracle pack contains tools, fixtures, task templates, assertions, and
+validation cases. It may use an allowlisted local Python backend or the pinned
+BFCL Oracle HTTP contract. Never execute unreviewed pack code in the evaluator
+process; the runtime isolates it in workers.
+
+## Publication Invariants
+
+- `benchmark.parquet` plus `run_manifest.json` are canonical. Optional BFCL
+  JSONL and NeMo Evaluator bundles are derived compatibility exports and need
+  `export_validation_report.json` before use.
+- Use `tiny` for the smallest no-model-call plumbing check. A smoke lineage is
+  intentionally not publication-eligible.
+- Resume only through verified stage checkpoints; keep release/config/source
+  hashes bound together.
+- Translation starts from the immutable source run manifest, not a bare
+  parquet. Do not translate tool names, schemas, expected calls, fixture values,
+  assertions, tool results, held-out state, or lineage.
+- Before candidate inference, verify source hashes/publication semantics and
+  evaluate contamination. Unresolved candidate/source identity must not be
+  guessed away for a publishable result.
+- Native candidate requests preserve tool calls and raw arguments. Do not
+  repair model output before scoring.
+
+## Evaluation Modes
+
+Direct BFCL evaluation runs through the BFCL runtime. Launcher mode materializes
+an immutable adapter package and then requires the generated package to be
+installed explicitly before submission. Read the selected `eval.*.yaml` and
+the live scoring contract before producing a runnable command; the BFCL eval
+surface is intentionally too strict to reconstruct from memory.
+
+## Authoring Boundaries
+
+Oracle-pack scaffolding, assisted authoring, MCP intake/gateway, release review,
+freeze, publication, revocation, and bias audit are explicit workflows with
+their own approval/evidence contracts. Do not infer authorization to publish,
+freeze, revoke, contact an MCP target, or execute external mutations merely
+because the user asked to configure `byob/bfcl`.
+
+## Live Sources
+
+- Manifest: `src/nemotron/steps/byob/bfcl/step.toml`
+- User flow: `src/nemotron/steps/byob/bfcl/README.md`
+- Oracle contract: `src/nemotron/steps/byob/references/bfcl-oracle-pack.md`
+- Eval contract: `src/nemotron/steps/byob/references/bfcl-eval-scoring-contract.md`
+- MCP/user authoring references: `src/nemotron/steps/byob/references/bfcl-*.md`
+- Pattern: `src/nemotron/steps/byob/patterns/create-bfcl-from-oracle-pack.md`

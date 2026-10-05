@@ -23,6 +23,7 @@ pattern's full detail is needed.
 | `eval-before-and-after-training` / `eval-bookends` | Any SFT, RL, optimization, conversion, or quality-changing stage. | Evaluate before and after with the same task set/settings. |
 | `byob-benchmark-design` | Sovereign/domain deployment needs held-out evidence. | Build a target-domain BYOB benchmark separate from training data. |
 | `custom-mcq-benchmark-byob` | Need MCQ benchmark from private/domain docs or translated benchmark preserving answer indexes. | Route to `byob/mcq`. |
+| `create-bfcl-from-oracle-pack` | Need an executable function-calling benchmark from domain tools/state. | Scaffold or validate an allowlisted oracle pack, then use `byob/bfcl`; preserve publication/source-verification evidence through eval. |
 | `checkpoint-before-convert` / `convert-checkpoint-safety` | Converting checkpoints or merging LoRA. | Convert from clean checkpoint dirs; keep source and output dirs distinct. |
 | `peft-adapter-merge-discipline` | Adapter will feed deployment/eval as a standalone model. | Preserve exact base; validate adapter-loaded and merged artifacts separately. |
 | `pretrain-token-budget-before-scale` | Planning pretraining/CPT beyond smoke. | Write token budget, seq length, GBS, train iters, LR schedule, and checkpoint cadence before launch. |
@@ -35,3 +36,7 @@ pattern's full detail is needed.
 - If a pattern conflicts with a user request, surface it as `WARNING:` and propose the least-disruptive fix.
 - Keep pattern names in generated READMEs so reviewers can trace decisions back to catalog rules.
 - For source fallbacks, prefer pattern markdown over generic category README because patterns capture cross-step constraints.
+- Curation approval, audit, decontamination, tokenizer-comparison, and
+  direct-eval rules are step-contract guardrails documented in `CATALOG.md` and
+  their context packs; do not invent pattern IDs for them when no pattern file
+  exists.

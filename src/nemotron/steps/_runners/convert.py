@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 import os
 import re
 import shlex
@@ -185,6 +186,76 @@ def import_hf_to_megatron(cfg: Mapping[str, Any]) -> None:
     _call_with_supported_kwargs(AutoBridge.import_ckpt, **kwargs)
 
 
+# Megatron-Bridge's internal tokenizer wrapper names. These are not
+# `transformers` classes, so `AutoTokenizer.from_pretrained(<export>)` raises
+# "Tokenizer class X does not exist or is not currently imported".
+_INTERNAL_TOKENIZER_CLASSES = {"TokenizersBackend", "HuggingFaceTokenizer", "MegatronTokenizer"}
+
+# Keys Megatron-Bridge adds that `transformers` does not understand.
+_INTERNAL_TOKENIZER_KEYS = ("backend", "is_local")
+
+
+def normalize_exported_tokenizer_config(hf_path: str | Path) -> bool:
+    """Make an exported tokenizer loadable by `AutoTokenizer`.
+
+    Megatron-Bridge serialises its own wrapper name into the export's
+    `tokenizer_config.json` (`"tokenizer_class": "TokenizersBackend"`). vLLM
+    serves such a directory happily, so the defect stays hidden until something
+    tokenizes client-side -- log-likelihood evals, for instance -- and then
+    every consumer of the export fails, not just that one.
+
+    A `tokenizer.json` alongside it is exactly what `PreTrainedTokenizerFast`
+    loads, so that is the correct class to record.
+
+    Returns True if the file was rewritten.
+    """
+    config_path = Path(hf_path) / "tokenizer_config.json"
+    if not config_path.is_file():
+        return False
+    try:
+        config = json.loads(config_path.read_text())
+    except (OSError, ValueError) as exc:
+        # A conversion that produced weights must not fail over this.
+        print(f"Warning: could not read {config_path}: {exc}", flush=True)
+        return False
+    if not isinstance(config, dict):
+        return False
+
+    changed = False
+    if config.get("tokenizer_class") in _INTERNAL_TOKENIZER_CLASSES:
+        if not (Path(hf_path) / "tokenizer.json").is_file():
+            # Without a fast-tokenizer file, PreTrainedTokenizerFast would be a
+            # guess. Say so rather than write something that fails differently.
+            print(
+                f"Warning: {config_path} names the internal tokenizer class "
+                f"{config['tokenizer_class']!r} but there is no tokenizer.json to "
+                f"load; AutoTokenizer will fail on this export.",
+                flush=True,
+            )
+            return False
+        config["tokenizer_class"] = "PreTrainedTokenizerFast"
+        changed = True
+    for key in _INTERNAL_TOKENIZER_KEYS:
+        if key in config:
+            del config[key]
+            changed = True
+
+    if not changed:
+        return False
+    try:
+        config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"Warning: could not rewrite {config_path}: {exc}", flush=True)
+        return False
+    print(
+        f"Normalized {config_path}: tokenizer_class -> PreTrainedTokenizerFast "
+        f"(the exported value is a Megatron-Bridge wrapper name that "
+        f"AutoTokenizer cannot resolve)",
+        flush=True,
+    )
+    return True
+
+
 def export_megatron_to_hf(
     *,
     megatron_path: str,
@@ -210,6 +281,7 @@ def export_megatron_to_hf(
         show_progress=show_progress,
         strict=strict,
     )
+    normalize_exported_tokenizer_config(hf_path)
 
 
 def merge_hf_peft_lora(cfg: Mapping[str, Any]) -> None:
@@ -339,7 +411,10 @@ def build_distributed_conversion_command(direction: str, cfg: Mapping[str, Any])
     torchrun = _optional_mapping(cfg.get("torchrun"), "torchrun")
     run_env = _run_env_mapping(cfg)
     nproc = _configured_torchrun_nproc(cfg)
-    torchrun_cmd = ["torchrun", f"--nproc_per_node={nproc}"]
+    # --no-python: the command below already starts with the interpreter.
+    # Without it torchrun prepends its own python and runs the interpreter
+    # binary as a script.
+    torchrun_cmd = ["torchrun", "--no-python", f"--nproc_per_node={nproc}"]
     for key in ("nnodes", "node_rank", "master_addr", "master_port"):
         run_env_key = "nodes" if key == "nnodes" else key
         value = torchrun.get(key, cfg.get(key, run_env.get(run_env_key)))
@@ -370,8 +445,13 @@ def _ensure_distributed_converter_script(command: list[str]) -> None:
     script = _distributed_converter_script_path(command)
     if script is None:
         return
-    if Path(script).is_file():
-        return
+    try:
+        if Path(script).is_file():
+            return
+    except OSError:
+        # An unreadable parent directory raises rather than returning False, and
+        # the guidance below is what the caller needs either way.
+        pass
     raise FileNotFoundError(
         f"Distributed conversion script not found: {script}. "
         "Use a NeMo image that ships convert_checkpoints_multi_gpu.py, "

@@ -6,8 +6,11 @@
 (model-eval-run-hosted-evaluation)=
 # Run A Hosted Evaluation
 
-This guide runs `eval/model_eval` against an already-running OpenAI-compatible endpoint.
-For the out-of-the-box hosted smoke test, use `tiny_chat.yaml`.
+This guide runs `eval/model_eval` in launcher mode against an already-running OpenAI-compatible endpoint.
+For the out-of-the-box hosted verification run, use `tiny_chat.yaml`.
+
+This flow uses NeMo Evaluator Launcher's own executor, which is `local` in `tiny_chat.yaml`.
+To run the harness in a Nemotron-scheduled job instead, on Slurm, Lepton, Run:ai, or DGX Cloud, use {doc}`run-direct-mode-evaluation`.
 
 ## Prerequisites
 
@@ -20,10 +23,11 @@ For the out-of-the-box hosted smoke test, use `tiny_chat.yaml`.
 
 | Config | Use |
 | --- | --- |
-| `tiny_chat.yaml` | Hosted chat smoke test. Runs `mmlu_instruct` with `limit_samples: 1`. |
+| `tiny_chat.yaml` | Hosted chat verification run in launcher mode. Runs `mmlu_instruct` with `limit_samples: 1`. |
 | `default.yaml` | Launcher-managed checkpoint deployment and evaluation. Use this when the launcher should deploy a Megatron Bridge checkpoint. |
+| `direct.yaml` and the suite configs | Direct mode against an endpoint you host. Refer to {doc}`run-direct-mode-evaluation`. |
 
-Hosted chat QA should start with `tiny_chat.yaml`.
+Hosted chat verification in launcher mode should start with `tiny_chat.yaml`.
 
 ## Set Endpoint Values
 
@@ -79,6 +83,7 @@ The exact file set is owned by NeMo Evaluator Launcher and can vary by task vers
 ## Related
 
 - {doc}`discover-the-step` for discovery commands.
+- {doc}`run-direct-mode-evaluation` for the direct-mode hosted flow.
 - {doc}`evaluate-deployed-checkpoint` for the launcher-managed checkpoint path.
 - {doc}`../reference/cli-reference` for the full flag and override surface.
 - {doc}`../reference/config-schema` for the YAML field reference.

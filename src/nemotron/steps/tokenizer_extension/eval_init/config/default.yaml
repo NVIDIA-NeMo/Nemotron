@@ -1,0 +1,26 @@
+# BPB / perplexity eval of extended checkpoints vs the base model.
+# BPB (bits-per-byte) is the cross-vocabulary-comparable metric.
+
+# Nemotron-H and similar architectures ship their modeling code in the model
+# repo, so loading them executes that code. Off by default; set true only for
+# repos you trust, ideally with a pinned revision.
+trust_remote_code: true
+
+base_model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+models:
+  - ./output/resized_checkpoint
+
+# Local validation corpus (.jsonl with `text_field`, or .txt one doc per line).
+data_file: ./data/eval/target_val.jsonl
+text_field: text
+
+# max_docs caps the document stream and is tokenizer-independent: use it (or
+# -1 = whole corpus) when comparing BPB across tokenizers. A max_tokens budget
+# stops each tokenizer after a different amount of text and is NOT comparable.
+max_docs: -1
+max_tokens: -1
+max_length: 2048
+stride: 512
+dtype: bfloat16
+
+output_json: ./output/eval/bpb_add_subword.json

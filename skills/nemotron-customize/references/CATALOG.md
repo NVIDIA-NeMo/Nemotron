@@ -38,6 +38,13 @@ or runner behavior.
 - Route light Curator smoke tests, cleaned local JSONL output, permissive
   filtering, and first-pass IO/schema validation to `curate/nemo_curator`.
   Require concrete `input_glob` and `output_dir` before a runnable command.
+- Route raw Parquet, column normalization, or missing stable document IDs to
+  `curate/ingest` before filtering. For defensible thresholding, profile the
+  unfiltered corpus with `curate/profile`, obtain an explicit policy approval,
+  apply it with `curate/nemo_curator`, and verify the producer manifest/ledger
+  with `curate/audit`. Use `curate/decontamination` before final subset/training
+  when a held-out set must be protected, and `curate/subset` for nested,
+  fixed-token-budget ablations.
 - Route direct corpus translation to `translate/nemo_curator`. It consumes
   `filtered_jsonl`, so any upstream producing translation-ready JSONL (curation,
   SDG, or a user corpus) satisfies it; insert an upstream step only when the
@@ -50,6 +57,12 @@ or runner behavior.
   benchmark. Trigger on: "MCQ", "multiple choice", "benchmark", "eval set",
   "questions and options", or any `answer`/`answer_index` schema. When unsure
   whether data is a benchmark, ask before routing.
+- Persona-grounded MCQ-shaped **SFT data** routes to `sdg/persona_mcq`, not
+  `byob/mcq`; the latter is held-out benchmark data. Function-calling benchmark
+  generation, localization, or executable evaluation routes to `byob/bfcl`.
+- Tokenizer extension routes through `tokenizer_extension/extend`, optional
+  `evaluate`, `init_embeddings`, and optional `eval_init`, followed by CPT and
+  downstream `eval/model_eval` when model quality is in scope.
 - Insert conversion only when adjacent stages disagree on checkpoint type.
 - Bookend quality-changing stages with `eval/model_eval`.
 
@@ -58,14 +71,21 @@ or runner behavior.
 | Step | Use When | Consumes | Produces | Configs | Key Knobs / Notes |
 |---|---|---|---|---|---|
 | `byob/mcq` | Generate or translate domain MCQ benchmarks while preserving answer indexes and row identity. | `benchmark_source_corpus`; optional `benchmark_parquet` | `mcq_benchmark_parquet`; optional `translated_mcq_benchmark_parquet` | `default`, `tiny`, `translate` | `family=mcq`, `stage=prepare/generate/translate/all`, `target_source_mapping`, translation settings. Final rows keep `question_id`, `question`, `options`, `answer_index`, `answer`, `cot_content`, `src`, `category`. |
-| `curate/nemo_curator` | Filter raw/local/HF JSONL before translation, SFT prep, or pretrain prep; use for light Curator smoke tests and cleaned local JSONL output. | `raw_jsonl` | `filtered_jsonl` | `default`, `tiny` | Start with `dataset=null`, `language_codes=[]`, `domains=[]`, and `quality_filters={}` until reader/writer IO and schema are verified. |
+| `byob/bfcl` | Build, localize, or evaluate an executable function-calling benchmark from an allowlisted oracle pack. | optional `oracle_pack` | BFCL parquet/manifests/caches; localized benchmark; eval artifacts | `default`, `tiny`, `translate`, `eval.*` | `stage=prepare/generate/translate/eval/all`. Verify/freeze the source before evaluation; direct and Launcher eval have separate orchestration configs. Do not treat compatibility exports as independently authored truth. |
+| `curate/ingest` | Normalize raw Parquet/JSONL, project columns, and mint stable content-derived document IDs. | `raw_jsonl` | `prepared_jsonl` | `default`, `tiny` | Choose `id_from` or explicit `id_fields`; duplicate handling changes corpus semantics and defaults to refusal. CPU-only. |
+| `curate/profile` | Measure signal distributions and threshold retention before filtering. | `raw_jsonl` or `prepared_jsonl` | `profile_report`, unapproved `filter_policy` | `default`, `en` | Profile unfiltered input. Pin language pack and tokenizer revision; candidate policies are never implicitly approved. |
+| `curate/nemo_curator` | Apply light filters or an approved policy and emit downstream JSONL plus accounting evidence. | `raw_jsonl` or `prepared_jsonl`; optional `filter_policy` | `filtered_jsonl`, `curation_manifest`, `curation_ledger` | `default`, `tiny` | Preserve needed columns with `metadata_fields`. `annotate`/`both` keep scores; word-count bounds are opt-in because whitespace counting is not language-neutral. |
+| `curate/audit` | Independently verify shard readability, counts, digests, and optional containment. | `filtered_jsonl`; optional manifest/ledger | `curation_report` | `default`, `tiny` | Completeness requires a producer manifest; cause attribution requires a ledger. A damaged unreadable shard makes row counts a floor. |
+| `curate/decontamination` | Remove whole training documents that duplicate/near-duplicate a held-out split. | `filtered_jsonl` | `decontaminated_jsonl`, `decontamination_report` | `default`, `tiny` | Holdout is read-only. Similarity uses GPU MinHash/LSH plus exact Jaccard; `skip_similarity=true` runs source-identity only on CPU. Does not detect a short benchmark item embedded in a long document. |
+| `curate/subset` | Produce nested, stratified fixed-token-budget tiers for controlled ablations. | `filtered_jsonl` or `decontaminated_jsonl` | `filtered_jsonl`, `subset_plan`, `subset_report` | `default`, `tiny` | Stable unique IDs are mandatory. Plan all tiers together and pin tokenizer revision; shortfall may be required to preserve nesting. |
 | `translate/nemo_curator` | Translate plain JSONL/Parquet training corpora or chat messages. NOT for MCQ/benchmark/eval datasets -> those go to `byob/mcq`. | `filtered_jsonl` | `translated_jsonl` | `default` | Require source/target language, input/output paths, format, `text_field`, backend, and auth env-var names. Preserve user-provided globs exactly. Use `messages.*.content` with `reconstruct_messages=true` for chat. |
 | `sdg/data_designer` | Generate synthetic SFT, tool-call SFT, or DPO preference data from seeds and declarative columns. | optional `training_jsonl` | `synthetic_jsonl` | `default`, `customer_support_tools`, `rl_pref`, `tiny` | Use preview/tiny before scale. `default` emits OpenAI messages, `customer_support_tools` emits tool-call records, `rl_pref` emits DPO preference rows. |
+| `sdg/persona_mcq` | Generate multilingual persona-grounded MCQ-shaped SFT training data, not a held-out benchmark. | - | `training_jsonl` | `default`, `tiny` | Resumable staged pipeline; use a fresh `pipeline.experiment_name`, at least three answer teachers, explicit language/script contracts, and inspect agreement/purity summaries. Production semantic dedup uses one GPU. |
 | `data_prep/sft_packing` | Pack chat JSONL for Megatron-Bridge SFT/PEFT. | `training_jsonl` | `packed_parquet` | `default`, `tiny` | `tokenizer`, `pack_size`, `chat_template`, split ratios, shard counts. `pack_size` must match downstream seq length. |
 | `data_prep/pretrain_prep` | Tokenize text blends into Megatron bin/idx shards and `blend.json`. | `filtered_jsonl` | `binidx` | `default`, `tiny` | `blend_path`, tokenizer, shards, splits, `text_field`. Rebuild if tokenizer changes. |
 | `data_prep/rl_prep` | Resolve HF references and shard prompt/preference data for RL. | `training_jsonl` | `training_jsonl` | `default`, `tiny` | Validate DPO chosen/rejected ordering and RLVR verifier fields before training. |
 | `sft/automodel` | HF-format SFT on OpenAI-style chat JSONL, smaller GPU counts, direct HF output. | `training_jsonl` | `checkpoint_hf` | `default`, `tiny` | `model.pretrained_model_name_or_path`, `dataset.path_or_dataset_id`, `peft=null/lora`. Do not feed packed Parquet. |
-| `sft/megatron_bridge` | Distributed SFT with packed Parquet and Megatron checkpoints. | `packed_parquet`; optional `checkpoint_megatron` | `checkpoint_megatron` | `default`, `tiny` | Nano3 default min 8 GPUs; Super3 min 32. Keep packed sequence size, data prep pack size, and model seq length identical. |
+| `sft/megatron_bridge` | Distributed SFT with packed Parquet and Megatron checkpoints. | `packed_parquet`; optional `checkpoint_megatron` | `checkpoint_megatron` | `default`, `tiny`; topology-only `super3_128k`, `super3_256k` | Nano3 default min 8 GPUs; Super3 min 32. Keep all four sequence-length fields and prepared pack size identical. Long-context Super3 configs are dry-run references and need alignment-aware external packing before launch. |
 | `peft/automodel` | LoRA adapter tuning with HF base and direct JSONL, especially 1-4 GPUs. | `training_jsonl` | `checkpoint_lora` | `default`, `tiny` | Keep base model/tokenizer/rank/alpha provenance for later merge. |
 | `peft/megatron_bridge` | LoRA over a Megatron base with packed Parquet and distributed parallelism. | `packed_parquet`, `checkpoint_megatron` | `checkpoint_lora` | `default`, `tiny` | Plan merge/export path up front; keep base, adapter, merged outputs separate. |
 | `pretrain/automodel` | HF-native pretraining/CPT over bin/idx data. | `binidx` | `checkpoint_hf` | `default`, `tiny` | `load_weights=true` for CPT with lower LR; set dataset paths to emitted `blend.json`. |
@@ -79,20 +99,38 @@ or runner behavior.
 | `optimize/modelopt/quantize` | FP8/NVFP4/PTQ for deployment footprint. | `checkpoint_hf` | `checkpoint_megatron` | `default`, `fp8`, `nvfp4`, `tiny` | H100/Hopper -> `fp8`; B200/Blackwell -> `nvfp4`; representative calibration is required for quality. |
 | `optimize/modelopt/prune` | Structured architecture pruning or target-parameter search. | `checkpoint_hf` | `checkpoint_hf` | `default`, `tiny` | Use target params or exact export config, not both. Distill afterward if quality matters. |
 | `optimize/modelopt/distill` | Teacher-student recovery or standalone distillation. | `checkpoint_hf`; optional `binidx` | `checkpoint_megatron` | `default`, `tiny` | Mock data is launch validation only. Teacher is usually the original BF16 checkpoint. |
-| `eval/model_eval` | Hosted endpoint smoke/benchmark or Megatron checkpoint evaluation. | optional `checkpoint_megatron` | `eval_results` | `default`, `tiny_chat` | Use exact Launcher task IDs. Chat tasks need chat endpoints; logprob tasks need compatible completions/tokenizer support. |
+| `tokenizer_extension/extend` | Train and splice target-language subwords into a base tokenizer. | `checkpoint_hf` | `tokenizer` | `default` | CPU-only. `method=add`, `replace`, or naive `expand`; one arm per job. Fix language, corpus, normalization, and extension budget across comparisons; confirm `tokens_spliced`. |
+| `tokenizer_extension/evaluate` | Compare tokenizer fertility on a held-out corpus. | `tokenizer` | `eval_results` | `default` | CPU streaming. Run each tokenizer on the exact same corpus/slice; lower fertility is better but is not model-quality evidence. |
+| `tokenizer_extension/init_embeddings` | Resize an HF model and initialize rows for an extended tokenizer. | `tokenizer`, `checkpoint_hf` | `checkpoint_hf` | `default` | `arm` must match extend (`add` also covers `expand`; `replace` needs `id_remap.json`). Default to `subword/uniform`; validate FOCUS/encoder-weighted methods per language. |
+| `tokenizer_extension/eval_init` | Compare resized/CPT checkpoints across vocabularies. | `checkpoint_hf` | `eval_results` | `default` | GPU. Use BPB on the same bytes and `max_docs`; per-token loss/PPL and `max_tokens` are not cross-vocabulary comparable. |
+| `eval/model_eval` | Evaluate a Megatron checkpoint or an existing OpenAI-compatible endpoint. | optional `checkpoint_megatron` | `eval_results` | `default`, `tiny_chat`, `direct`, `base_en`, `instruct_en`, `milu`, `mmlu_prox*` | `launcher` submits then must be polled; `direct` runs the harness in the Nemotron job and needs a separately hosted endpoint, harness image, matching tokenizer, and durable results path. Exact task names come from the selected registry/image. |
 | `env/env_toml` | Generate Lepton, Slurm, or DGX Cloud env profile TOML. | - | `env_toml` | `lepton`, `slurm`, `dgxcloud` | Keep site logistics in env TOML and step runtime flags in YAML. Export `NEMOTRON_ENV_FILE` for non-default env files. |
 
 ## Category Notes
 
 ### Curation, Translation, And Data Generation
 
-- Curation is lightweight JSONL filtering: cleaning, language/word/domain
-  filtering, smoke testing, or quality gating. It is a standalone step that
-  stands on its own and feeds any downstream consumer of `filtered_jsonl`. Full
-  crawling/dedup pipelines belong in dedicated Curator recipes unless a catalog
-  step is added.
+- Curation may be a lightweight standalone filter or the governed flow:
+  ingest -> profile -> human approval -> filter -> audit -> decontamination ->
+  subset. Do not apply candidate thresholds directly, profile already-filtered
+  output, or claim completeness/attribution without the corresponding manifest
+  and ledger.
 - Translation is a data step, not benchmark translation for MCQ artifacts. For chat/tool/code data prefer the `llm` backend; for large plain text and local service prefer `nmt`; for high-value data enable FAITH and keep scores.
 - SDG must project to the downstream schema: OpenAI messages for SFT, structured messages for tool-call SFT, DPO preference rows for DPO.
+- `sdg/persona_mcq` emits training JSONL; `byob/mcq` and `byob/bfcl` emit
+  held-out benchmark artifacts. Never route solely from the word "MCQ" without
+  deciding whether the requested output trains or evaluates the model.
+
+### Tokenizer Extension
+
+- The standard chain is `extend -> evaluate` (optional tokenizer metric) and
+  `extend -> init_embeddings -> pretrain/* -> eval_init/eval/model_eval`.
+- Keep the base model, corpus slice, language profile, normalization, and
+  extension size fixed across add/replace/expand comparisons.
+- A resized checkpoint is ready for CPT, not finished adaptation. Rebuild
+  tokenizer-locked `binidx`/packed data with the extended tokenizer.
+- Token fertility is a tokenizer metric; BPB is the cross-vocabulary model
+  metric; downstream benchmarks remain separate.
 
 ### SFT And PEFT
 
@@ -123,6 +161,10 @@ or runner behavior.
 - Convert only at real format boundaries.
 - Optimization happens after source checkpoint eval, never before the customization is proven.
 - Evaluation should surround SFT, RL, conversion, and optimization whenever quality is being claimed.
+- In launcher mode, a successful step exit means the invocation was accepted,
+  not that tasks passed. In direct mode the step blocks to completion. Both chat
+  and completions harnesses need the evaluated tokenizer when the harness loads
+  one client-side, and extended checkpoints must use their own tokenizer.
 
 ## Fallbacks
 

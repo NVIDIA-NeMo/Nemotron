@@ -18,7 +18,7 @@ Use it when a downstream Megatron-Bridge step expects `checkpoint_megatron` but 
 ## Syntax
 
 ```bash
-nemotron steps run convert/hf_to_megatron \
+uv run nemotron steps run convert/hf_to_megatron \
     [-c <config-name-or-path>] \
     [-r <run-profile> | -b <batch-profile>] \
     [-d] \
@@ -29,8 +29,12 @@ Refer to the [Nemotron Steps CLI Reference](../cli-reference.md) for the shared 
 
 ## Configuration Files
 
-The step ships `config/default.yaml` under `src/nemotron/steps/convert/hf_to_megatron/config/`.
-The default source model is `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16`, and the default output path is derived from `CONVERT_OUTPUT_DIR`, `NEMO_RUN_DIR`, or `./output/convert`.
+The step ships two configuration files under `src/nemotron/steps/convert/hf_to_megatron/config/`.
+
+| File | Purpose |
+| --- | --- |
+| `default.yaml` | Distributed conversion of `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16` in the `nemo:26.04` container with `tp=1 pp=1 ep=8 etp=1`. The output path is derived from `CONVERT_OUTPUT_DIR`, `NEMO_RUN_DIR`, or `./output/convert`. This is the programmatic default. |
+| `lightning35.yaml` | Conversion of `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16` in the `nemo:26.08` container with pinned Megatron-Bridge and Megatron-LM mounts. The output path is read from `L35_PRETRAINED_CHECKPOINT`, which the `sft/megatron_bridge` and `peft/megatron_bridge` `lightning35` configurations consume as `checkpoint.pretrained_checkpoint`. |
 
 ## Inputs and Outputs
 
@@ -109,7 +113,7 @@ Default: `NEMOTRON_CONVERT_NPROC_PER_NODE` or `8`.
 Convert the default NVIDIA Nemotron base model into a local Megatron output directory:
 
 ```console
-$ nemotron steps run convert/hf_to_megatron -c default \
+$ uv run nemotron steps run convert/hf_to_megatron -c default \
     hf_model_id=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
     megatron_path=./output/convert/nano3-megatron \
     tp=1 pp=1 ep=8
@@ -118,9 +122,16 @@ $ nemotron steps run convert/hf_to_megatron -c default \
 Submit the conversion through a generated Lepton profile:
 
 ```console
-$ nemotron steps run convert/hf_to_megatron -c default --batch lepton_convert_model \
+$ uv run nemotron steps run convert/hf_to_megatron -c default --batch lepton_convert_model \
     hf_model_id=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16 \
     megatron_path=/mnt/lustre-shared/output/convert/nano3-megatron
+```
+
+Convert the Nemotron 3.5 Lightning base model before running `sft/megatron_bridge -c lightning35` or `peft/megatron_bridge -c lightning35`:
+
+```console
+$ L35_PRETRAINED_CHECKPOINT=/lustre/checkpoints/lightning35-megatron \
+    uv run nemotron steps run convert/hf_to_megatron -c lightning35 --batch <batch-profile>
 ```
 
 ## Recovery Notes

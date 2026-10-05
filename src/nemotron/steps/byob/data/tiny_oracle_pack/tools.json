@@ -1,0 +1,36 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_book_status",
+      "description": "Return loan status for one book id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": { "type": "string" }
+        },
+        "required": ["book_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "x-mutates": true,
+    "x-requires-confirmation": true,
+    "function": {
+      "name": "checkout_book",
+      "description": "Check out a book to a patron; requires confirmation before commit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "book_id": { "type": "string" },
+          "patron_id": { "type": "string" },
+          "confirm": { "type": "boolean", "default": false }
+        },
+        "required": ["book_id", "patron_id"],
+        "additionalProperties": false
+      }
+    }
+  }
+]

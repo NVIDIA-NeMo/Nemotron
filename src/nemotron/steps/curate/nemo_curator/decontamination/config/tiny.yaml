@@ -1,0 +1,15 @@
+# Smoke config: packaged fixtures, exact source-identity pass only, so it runs
+# without a GPU. The report says in so many words that near-duplicate overlap
+# was not measured on this run.
+
+train_glob: /nemo_run/code/src/nemotron/steps/curate/nemo_curator/decontamination/data/tiny/train.jsonl
+holdout_glob: /nemo_run/code/src/nemotron/steps/curate/nemo_curator/decontamination/data/tiny/holdout.jsonl
+output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_decontamination_tiny
+
+text_field: text
+id_field: id
+threshold: 0.8
+shingle_kind: char
+
+skip_similarity: true
+work_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_decontamination_tiny/cache

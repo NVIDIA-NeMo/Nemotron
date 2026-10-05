@@ -1,0 +1,19 @@
+# Tokenizer fertility on an eval corpus. CPU-only.
+
+tokenizer: ./output/tokenizer_extension/replace   # HF id or a local extended-tokenizer dir
+label: replace-30k          # free-text tag recorded in the output JSON
+trust_remote_code: true
+
+# Independent eval corpus (keep distinct from the extend training corpus).
+corpus:
+  hf_dataset: ai4bharat/samanantar
+  hf_config: hi
+  hf_split: train
+  path: null                # or a local parquet dir / jsonl glob
+  glob: "*.parquet"
+  text_field: tgt           # samanantar Hindi text column
+  num_docs: 0               # 0 = full corpus
+  skip_docs: 0              # skip first N (avoid train overlap when eval==train source)
+
+batch_size: 1000
+output: ./output/eval/fertility_replace.json

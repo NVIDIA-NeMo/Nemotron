@@ -1,0 +1,39 @@
+# Raw corpus in, curatable corpus out.
+#
+# Without this step "provide a config and your data" was not true: a parquet
+# corpus had to be converted by hand, and a corpus with no document id had to
+# have one minted by hand.
+
+# parquet or JSONL, a glob, a directory, or a list of either.
+input: ./raw/*.parquet
+output_dir: ./output/ingested
+
+# auto infers from the file extensions and refuses a mixed set rather than
+# reading half a corpus.
+format: auto
+
+text_field: text
+
+# null mints an id from content, so it survives resharding — unlike Curator's
+# AddId, which is positional and renames every document when the corpus is
+# re-split. Name a column instead if the corpus already carries a stable id.
+id_from: null
+id_fields: [url, text]      # what the minted id is derived from
+id_prefix: ""               # e.g. "c4vi-" to keep corpora distinguishable
+
+# Where `source` comes from. source_from names a column (Sangraha's `type` is
+# web/pdf/speech); source sets one literal value for a single-source corpus.
+source_from: null
+source: null
+
+# Columns carried through. Everything else is dropped at ingestion.
+keep_fields: [url]
+
+# Two documents with the same identity fields (which must include text), or two
+# corpus records with the same id_from value, produce the same id. There is no
+# safe default:
+#   refuse  stop and report (default)
+#   drop    keep the first of each group
+#   suffix  keep every copy under a distinguishable id
+# drop and suffix both change what the corpus is, so neither happens silently.
+on_duplicate: refuse
