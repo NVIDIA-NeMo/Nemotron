@@ -5,7 +5,7 @@
 
 # Nemotron Post-training Calculator
 
-Use this calculator to create a directional GPU sizing, training-time, and compute-cost estimate for Nemotron supervised fine-tuning (SFT), low-rank adaptation (LoRA), or group relative policy optimization (GRPO).
+Use this calculator to create a directional GPU sizing, training-time, and compute-cost estimate for customizing a released Nemotron checkpoint with supervised fine-tuning (SFT), low-rank adaptation (LoRA), or group relative policy optimization (GRPO).
 
 Select a model, GPU, and customization workload. The calculator reports a verified memory-fit GPU count and training setting, estimates throughput and runtime from the closest measured benchmark calibration, and calculates compute cost after you enter your own GPU-hour rate.
 
