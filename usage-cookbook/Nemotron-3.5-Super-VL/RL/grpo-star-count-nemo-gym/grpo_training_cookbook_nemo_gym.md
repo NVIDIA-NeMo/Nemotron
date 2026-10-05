@@ -1,244 +1,158 @@
-# GRPO with Nemotron 3.5 Super VL and NeMo Gym Star Count
+# Train Nemotron 3.5 Super VL to Count Stars with GRPO
 
-A page of colored stars looks like a simple visual puzzle. Solving it reliably,
-however, requires a multimodal model to find the relevant objects, distinguish
-their colors, count them, and follow a precise answer format. This guide turns
-that compact task into an end-to-end reinforcement learning example with a
-clear, automatically verifiable reward.
+Counting colored stars is a compact way to exercise the complete multimodal RL
+pipeline. The policy must inspect an image, identify the requested color, count
+the matching objects, and return an answer that an automatic verifier can
+score. This guide runs that task with full-weight GRPO, NeMo RL's Megatron
+backend, colocated vLLM generation, and NeMo Gym.
 
-This is the cookbook's single training workflow. It uses NeMo RL's Megatron
-backend for full-weight GRPO, colocated vLLM for generation, and NeMo Gym for
-task execution and verification. Begin with the repository, container,
-checkpoint, and shared-storage setup in [`../README.md`](../README.md), then use
-[`super_vl_3_5_star_count_megatron.yaml`](super_vl_3_5_star_count_megatron.yaml)
-for training.
+## How the task works
 
-## The learning task
+Each example contains a generated PNG and a question such as, “How many cyan
+stars are in the image?” The expected response is a plain non-negative integer
+inside `\boxed{}`, for example `\boxed{3}`. The verifier gives reward `1.0` for
+an exact match and `0.0` for an incorrect or malformed answer.
 
-Each example presents a square image containing colored stars and asks the
-policy to count the stars of one specified color. The model returns its final
-answer in `\boxed{}` format. NeMo Gym extracts the boxed integer and compares
-it with the count in the example metadata:
+The task builds on NeMo Gym's circle-count environment. The generator replaces
+circles with five-point stars while retaining the environment's established
+data contract and reward mechanism:
 
-- a correct count receives reward `1.0`;
-- an incorrect, missing, or malformed count receives reward `0.0`.
-
-There is no partial credit and no judge model. Exact-match accuracy therefore
-combines several behaviors: perceiving and counting the target stars, emitting
-a parseable integer, and following the required boxed-answer format. Report
-format coverage alongside accuracy before attributing a gain to visual
-counting alone.
-
-### Built on the NeMo Gym circle-count environment
-
-The star-count task is an adaptation of NeMo Gym's circle-count environment.
-It replaces the rendered circles with five-point stars and changes the prompt
-to ask about stars. It deliberately retains the environment's data contract,
-interaction pattern, answer format, and reward function:
-
-| Mechanism | Retained behavior |
+| Mechanism | Star-count behavior |
 | --- | --- |
-| Agent routing | Each row targets `circle_count_simple_agent` in a single-turn interaction with no tools. |
-| Request format | `responses_create_params.input` contains a system message followed by one user message with a base64 PNG and text question. |
-| Dataset keys | Each generated star is stored under the existing `circles` key with `x`, `y`, `radius`, and `color`; `target_color` identifies the requested class. |
-| Answer format | The final answer must contain a plain non-negative integer in strict `\boxed{<digits>}` form. |
-| Reward | The verifier counts entries in `circles` whose `color` equals `target_color`, extracts the first boxed integer, and returns `1.0` for an exact match or `0.0` otherwise. |
+| Agent | `circle_count_simple_agent`, with one user turn and no tools |
+| Request | A system message followed by a user message containing a base64 PNG and question |
+| Object metadata | Stars use the existing `circles` key with `x`, `y`, `radius`, and `color` fields |
+| Target | `target_color` identifies the color to count |
+| Answer | Strict `\boxed{<digits>}` format |
+| Reward | Exact comparison between the boxed integer and the number of matching metadata entries |
 
-The verifier is therefore shape-agnostic: it reads the generated metadata and
-does not inspect whether the rendered objects are circles or stars. The data
-generator keeps the star image, prompt, and retained metadata aligned, which
-allows the existing environment to score the new visual object without a
-custom NeMo Gym service. This compatibility path was validated with the NeMo
-RL `super-v3.5-posttraining` branch described in the parent README. Recheck the
-verifier after updating the NeMo Gym submodule because the recipe depends on
-it continuing to read only each item's `color` field.
+The verifier reads object colors from the metadata rather than inspecting the
+rendered shape. This lets the star task use the existing environment without a
+custom NeMo Gym service.
 
-## Dataset design
-
-The deterministic generator creates two disjoint splits:
-
-| Split | Examples | Seeds |
-| --- | ---: | --- |
-| Training | 1,024 | 0–1,023 |
-| Validation | 256 | 1,000,000–1,000,255 |
-
-For every example, it samples a square canvas from 800 x 800 through
-1,200 x 1,200 pixels, draws 1–30 non-overlapping stars, and selects 2–4 colors
-from a fixed eight-color palette. Every selected color appears at least once,
-so each question has a positive answer. The PNG is embedded in its JSONL row
-as a base64 data URL, which keeps every example self-contained across workers.
-
-The palette follows the original synthetic task. Its red, orange, and pink
-tones are closer than its other colors, and yellow appears as a dark gold.
-This can make color identification part of the task rather than a perfectly
-controlled counting variable. Keep the palette fixed when comparing runs, or
-replace it with a perceptually validated palette and regenerate both splits.
-
-### Sample examples
-
-The following examples come directly from the deterministic training split.
-Together they show how the same task ranges from a sparse scene to a more
-crowded visual counting problem.
+The deterministic generator creates 1,024 training examples with seeds
+0–1,023 and 256 held-out examples with seeds 1,000,000–1,000,255. Images range
+from 800 x 800 to 1,200 x 1,200 pixels and contain 1–30 non-overlapping stars
+drawn from 2–4 colors. Every requested color appears at least once.
 
 <table>
   <tr>
-    <td width="50%">
-      <img src="assets/star_count_sample_1.png" alt="Three colored stars on a white canvas" width="360"><br>
-      <strong>Prompt:</strong> How many cyan stars are in the image?<br>
-      <strong>Expected response:</strong> <code>\boxed{1}</code>
-    </td>
-    <td width="50%">
-      <img src="assets/star_count_sample_2.png" alt="Thirteen colored stars on a white canvas" width="360"><br>
-      <strong>Prompt:</strong> How many red stars are in the image?<br>
-      <strong>Expected response:</strong> <code>\boxed{5}</code>
-    </td>
+    <td width="50%"><img src="assets/star_count_sample_1.png" alt="Sparse colored-star example" width="360"><br><strong>Question:</strong> How many cyan stars are in the image?<br><strong>Answer:</strong> <code>\boxed{1}</code></td>
+    <td width="50%"><img src="assets/star_count_sample_2.png" alt="Colored-star counting example" width="360"><br><strong>Question:</strong> How many red stars are in the image?<br><strong>Answer:</strong> <code>\boxed{5}</code></td>
   </tr>
   <tr>
-    <td width="50%">
-      <img src="assets/star_count_sample_3.png" alt="Eighteen orange and purple stars on a white canvas" width="360"><br>
-      <strong>Prompt:</strong> How many orange stars are in the image?<br>
-      <strong>Expected response:</strong> <code>\boxed{10}</code>
-    </td>
-    <td width="50%">
-      <img src="assets/star_count_sample_4.png" alt="Twenty-nine red, purple, and yellow stars on a white canvas" width="360"><br>
-      <strong>Prompt:</strong> How many red stars are in the image?<br>
-      <strong>Expected response:</strong> <code>\boxed{8}</code>
-    </td>
+    <td width="50%"><img src="assets/star_count_sample_3.png" alt="Orange and purple star example" width="360"><br><strong>Question:</strong> How many orange stars are in the image?<br><strong>Answer:</strong> <code>\boxed{10}</code></td>
+    <td width="50%"><img src="assets/star_count_sample_4.png" alt="Crowded colored-star example" width="360"><br><strong>Question:</strong> How many red stars are in the image?<br><strong>Answer:</strong> <code>\boxed{8}</code></td>
   </tr>
 </table>
 
-## Configuration overview
+## Reference configuration
 
-The reference recipe uses the following settings:
+The included
+[`super_vl_3_5_star_count_megatron.yaml`](super_vl_3_5_star_count_megatron.yaml)
+uses the following settings:
 
 | Component | Setting |
 | --- | --- |
-| Algorithm | Synchronous GRPO |
-| Backend | Megatron, full-weight BF16 |
-| Resources | 4 nodes x 4 GPUs |
-| Training parallelism | TP=4, EP=16 |
+| Compute | 4 nodes x 4 GPUs |
+| Training | Full-weight BF16, TP=4, EP=16 |
 | Generation | Colocated vLLM, TP=4 |
-| Rollout batch | 16 prompts x 8 generations |
-| Policy global batch | 128 responses |
-| Validation | 256 held-out examples, greedy decoding |
-| Evaluation cadence | Before RL, then every 2 steps through step 10 |
-| Maximum response length | 256 tokens |
-| Training coverage | 160 prompts: the first 160 rows of the 1,024-row split |
-| Checkpointing | Disabled; the example does not save trained weights |
+| GRPO batch | 16 prompts x 8 responses |
+| Schedule | 10 updates; validation before RL and every 2 updates |
+| Sequence limit | 4,096 total tokens; 256 generated tokens |
+| Checkpoints | Disabled |
 
-The 16 x 8 rollout batch gives GRPO eight candidate responses for each prompt.
-NeMo RL converts their binary rewards into group-relative advantages using
-reward normalization and a leave-one-out baseline. Reward shaping and reward
-scaling remain disabled.
+The short schedule uses the first 160 rows because data shuffling is disabled.
+It is intended as a reproducible pipeline example rather than a full training
+run over all 1,024 examples. TP=4 shards dense and attention tensors within a
+node. EP=16 distributes the 512 routed experts across all GPUs, with 32 experts
+per expert-parallel rank.
 
-The policy trains both the language and vision components. During each
-colocated weight refit, the recipe temporarily moves distributed optimizer
-state out of GPU memory so the full tensor-parallel weight gather has enough
-headroom.
+## Prerequisites
 
-The ten-step schedule is a smoke test and short convergence demonstration
-rather than a full dataset epoch: 10 steps x 16 prompts consume 160 rows. With
-`data.shuffle: false`, these are rows 0–159 in seed order. Increase the step
-count or enable shuffling for broader training coverage. `max_num_epochs` is
-set explicitly to one because the step limit ends this example before the
-first epoch completes.
+Prepare shared storage that is visible to every compute node and contains:
 
-TP=4 shards dense and attention tensors across four ranks. EP=16 independently
-distributes the model's 512 routed experts across all 16 GPUs, leaving 32
-routed experts per expert-parallel rank. The TP and EP values describe
-different parallel dimensions and do not imply a 64-GPU allocation.
+```text
+<SHARED_ROOT>/
+|-- code/RL/                 # NeMo RL, branch super-v3.5-posttraining
+|-- code/Nemotron/           # This repository
+|-- models/NVIDIA-Nemotron-3.5-Super-VL-09212026/
+`-- runs/
+```
 
-The launch commands below place model-conversion caches on shared storage.
-The inherited recipe selects vLLM V1 and FlashAttention through its NeMo RL
-configuration.
+Use a NeMo RL container built from the `super-v3.5-posttraining` branch, or a
+compatible prebuilt image newer than v0.7. The parent
+[`README.md`](../README.md) provides the source build command and storage
+estimates. The commands below assume that the shared root is also mounted at
+`/shared` inside the container.
 
-## Interactive run
-
-Use this path when bringing up the recipe for the first time, inspecting logs,
-or trying configuration overrides.
-
-### 1. Request the allocation — login or head node
-
-Run from the NeMo RL checkout on the login or head node. The parent README
-defines `SHARED_ROOT`, `NEMO_RL`, `CONTAINER`, and the `/shared` mount
-convention used below:
+On the login or head node, define the site-specific values once:
 
 ```bash
-export NUM_NODES=4
-export GPUS_PER_NODE=4
+export SHARED_ROOT=</YOUR/SHARED/STORAGE>
+export NEMO_RL="${SHARED_ROOT}/code/RL"
+export CONTAINER=<NEMO_RL_CONTAINER_OR_SQUASHFS>
 export SLURM_ACCOUNT=<SLURM_ACCOUNT>
 export PARTITION=<SLURM_PARTITION>
-export CONTAINER=<NEMO_RL_CONTAINER_OR_SQUASHFS>
+export GPUS_PER_NODE=4
 export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
-unset COMMAND
+```
 
+## Interactive path
+
+Use the interactive path when trying the recipe for the first time or watching
+the training process directly.
+
+### 1. Reserve four nodes — login or head node
+
+Run from the NeMo RL repository root:
+
+```bash
 cd "${NEMO_RL}"
+unset COMMAND
 sbatch \
-  --nodes="${NUM_NODES}" \
+  --nodes=4 \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
-  --job-name=interactive-super-vl-star-count \
+  --job-name=super-vl-star-count \
   --time=04:00:00 \
-  --gres=gpu:"${GPUS_PER_NODE}" \
+  --gres=gpu:4 \
   --mem=0 \
   --exclusive \
   ray.sub
 ```
 
-`--mem=0` requests all memory on each allocated node. The full-weight optimizer
-offload used during colocated refits requires substantial host memory.
+`--mem=0` requests all host memory on each node. The colocated full-weight
+recipe temporarily moves optimizer state to host memory during weight refits.
 
-### 2. Attach to the Ray head — login or head node
+### 2. Attach — login or head node
 
-After the allocation starts, run the generated helper from the same NeMo RL
-checkout on the login or head node:
+After the allocation starts, use the helper created by `ray.sub`:
 
 ```bash
 cd "${NEMO_RL}"
 bash ./<jobid>-attach.sh
 ```
 
-### 3. Generate the dataset — attached container
+### 3. Generate data and train — attached Ray-head container
 
-Run inside the attached Ray-head container:
-
-```bash
-export NEMO_RL=/shared/code/RL
-export NEMOTRON_REPO=/shared/code/Nemotron
-export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
-export DATA_DIR=/shared/runs/super35-star-count/data
-export GENERATOR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/prepare_star_count_data.py"
-mkdir -p "${DATA_DIR}"
-
-cd "${NEMO_RL}"
-uv run --no-sync python "${GENERATOR}" \
-  --out "${DATA_DIR}/train.jsonl" \
-  --num-samples 1024 \
-  --seed-offset 0
-
-uv run --no-sync python "${GENERATOR}" \
-  --out "${DATA_DIR}/validation.jsonl" \
-  --num-samples 256 \
-  --seed-offset 1000000
-```
-
-The generator writes self-contained JSONL rows with embedded PNG images. The
-training and validation seeds are disjoint.
-
-### 4. Start training — attached container
-
-Continue inside the attached Ray-head container. Configure persistent caches,
-then launch the training driver:
+Run this block in the attached container. It contains all runtime paths and
+cache settings; the only separate recipe file is the checked-in YAML.
 
 ```bash
+set -euo pipefail
+
 export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
 export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR=/shared/runs/super35-star-count
+export DATA_DIR="${RUN_DIR}/data"
 export CACHE_DIR="${RUN_DIR}/cache"
-export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
+export EXAMPLE_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym"
 
-mkdir -p "${RUN_DIR}/logs" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+mkdir -p "${DATA_DIR}" "${RUN_DIR}/logs" \
+  "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+
 export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
 export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
 export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
@@ -251,46 +165,45 @@ export NRL_WG_USE_RAY_REF=1
 export NEMO_GYM_VENV_DIR=/opt/gym_venvs
 
 cd "${NEMO_RL}"
+uv run --no-sync python "${EXAMPLE_DIR}/prepare_star_count_data.py" \
+  --out "${DATA_DIR}/train.jsonl" --num-samples 1024 --seed-offset 0
+uv run --no-sync python "${EXAMPLE_DIR}/prepare_star_count_data.py" \
+  --out "${DATA_DIR}/validation.jsonl" --num-samples 256 --seed-offset 1000000
+
 uv run --no-sync python -u examples/nemo_gym/run_grpo_nemo_gym.py \
-  --config "${RECIPE}" \
+  --config "${EXAMPLE_DIR}/super_vl_3_5_star_count_megatron.yaml" \
   policy.model_name="${MODEL_DIR}" \
   policy.tokenizer.name="${MODEL_DIR}" \
   logger.log_dir="${RUN_DIR}/logs"
 ```
 
-For a pipeline check without external experiment tracking, append
-`logger.wandb_enabled=false`. To use W&B, provide `WANDB_API_KEY` through the
-job environment or a protected environment file.
+Append `logger.wandb_enabled=false` to the final command when external
+experiment tracking is not desired.
 
-## Batch run
+## Batch path
 
-For an unattended experiment, create a driver script on shared storage and
-pass its container path to `ray.sub` through `COMMAND`. Run this entire section
-from the login or head node. The generated `run.sh` executes inside the
-Ray-head container after the allocation starts.
+For an unattended run, submit the same work through `COMMAND`. `ray.sub`
+materializes this value inside its job log directory, so no additional launch
+script is needed.
+
+Run the following block from the NeMo RL repository root on the login or head
+node. It assumes the prerequisite variables above are still defined.
 
 ```bash
-export RUN_NAME=super35-star-count-$(date +%Y%m%d-%H%M%S)
-export HOST_RUN_DIR="${SHARED_ROOT}/runs/${RUN_NAME}"
-export RUN_SCRIPT="${HOST_RUN_DIR}/run.sh"
-mkdir -p "${HOST_RUN_DIR}"
+cd "${NEMO_RL}"
 
-cat > "${RUN_SCRIPT}" <<'RUN'
-#!/usr/bin/env bash
+read -r -d '' COMMAND <<'RUN' || true
 set -euo pipefail
-
-: "${RUN_NAME:?RUN_NAME must be exported before submission}"
-
 export NEMO_RL=/shared/code/RL
 export NEMOTRON_REPO=/shared/code/Nemotron
 export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
-export RUN_DIR="/shared/runs/${RUN_NAME}"
-export CACHE_DIR=/shared/runs/super35-star-count/cache
-export DATA_DIR=/shared/runs/super35-star-count/data
-export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
-export GENERATOR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/prepare_star_count_data.py"
+export RUN_DIR=/shared/runs/super35-star-count
+export DATA_DIR="${RUN_DIR}/data"
+export CACHE_DIR="${RUN_DIR}/cache"
+export EXAMPLE_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym"
 
-mkdir -p "${RUN_DIR}/logs" "${DATA_DIR}" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+mkdir -p "${DATA_DIR}" "${RUN_DIR}/logs" \
+  "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
 export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
 export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
 export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
@@ -303,94 +216,47 @@ export NRL_WG_USE_RAY_REF=1
 export NEMO_GYM_VENV_DIR=/opt/gym_venvs
 
 cd "${NEMO_RL}"
-uv run --no-sync python "${GENERATOR}" \
-  --out "${DATA_DIR}/train.jsonl" \
-  --num-samples 1024 \
-  --seed-offset 0
-uv run --no-sync python "${GENERATOR}" \
-  --out "${DATA_DIR}/validation.jsonl" \
-  --num-samples 256 \
-  --seed-offset 1000000
-
+uv run --no-sync python "${EXAMPLE_DIR}/prepare_star_count_data.py" \
+  --out "${DATA_DIR}/train.jsonl" --num-samples 1024 --seed-offset 0
+uv run --no-sync python "${EXAMPLE_DIR}/prepare_star_count_data.py" \
+  --out "${DATA_DIR}/validation.jsonl" --num-samples 256 --seed-offset 1000000
 exec uv run --no-sync python -u examples/nemo_gym/run_grpo_nemo_gym.py \
-  --config "${RECIPE}" \
+  --config "${EXAMPLE_DIR}/super_vl_3_5_star_count_megatron.yaml" \
   policy.model_name="${MODEL_DIR}" \
   policy.tokenizer.name="${MODEL_DIR}" \
-  logger.log_dir="${RUN_DIR}/logs" \
-  logger.wandb.name="${RUN_NAME}"
+  logger.log_dir="${RUN_DIR}/logs"
 RUN
-chmod 700 "${RUN_SCRIPT}"
+export COMMAND
 
-export NUM_NODES=4
-export GPUS_PER_NODE=4
-export SLURM_ACCOUNT=<SLURM_ACCOUNT>
-export PARTITION=<SLURM_PARTITION>
-export CONTAINER=<NEMO_RL_CONTAINER_OR_SQUASHFS>
-export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
-export COMMAND="/shared/runs/${RUN_NAME}/run.sh"
-
-cd "${NEMO_RL}"
 sbatch \
-  --nodes="${NUM_NODES}" \
+  --nodes=4 \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
-  --job-name="${RUN_NAME}" \
+  --job-name=super-vl-star-count \
   --time=04:00:00 \
-  --gres=gpu:"${GPUS_PER_NODE}" \
+  --gres=gpu:4 \
   --mem=0 \
   --exclusive \
   ray.sub
 ```
 
-Slurm exports `RUN_NAME` and the other submission variables by default. If
-your cluster uses a restricted export policy, add `--export=ALL` to `sbatch`.
-Provide `WANDB_API_KEY` through the submission environment when experiment
-tracking is enabled. To run without W&B, add
-`logger.wandb_enabled=false` to the Python command in `run.sh`.
-
-## Monitor training
-
-For an interactive run, follow progress in the attached terminal. For a batch
-run, run these commands from the NeMo RL checkout on the login or head node:
+Monitor a batch job from the login or head node:
 
 ```bash
 squeue -j <jobid> -o '%i %T %M %l %D %R'
 tail -f <jobid>-logs/ray-driver.log
 ```
 
-The driver reports exact-match validation accuracy before training and after
-steps 2, 4, 6, 8, and 10. It also records training reward, loss, response
-length, throughput, timing, and GPU utilization through the configured logger.
+## Reading the result
 
-A successful run reaches step 10, completes the final validation pass, shuts
-down the NeMo Gym services, flushes the logger, and exits with status zero.
+The driver reports held-out exact-match accuracy before RL and after steps 2,
+4, 6, 8, and 10. One reference run increased from 29/256 (11.33%) before RL to
+180/256 (70.31%) after step 10.
 
-## Interpreting the reference result
-
-One reference run produced the following held-out exact-match counts:
-
-| Step | Correct | Validation accuracy |
-| ---: | ---: | ---: |
-| 0 | 29/256 | 11.33% |
-| 2 | 35/256 | 13.67% |
-| 4 | 35/256 | 13.67% |
-| 6 | 142/256 | 55.47% |
-| 8 | 182/256 | 71.09% |
-| 10 | 180/256 | 70.31% |
-
-Format diagnostics change how this curve should be read:
-
-| Diagnostic | Step 0 | Step 10 |
-| --- | ---: | ---: |
-| Parseable boxed integer | 30/256 (11.72%) | 255/256 (99.61%) |
-| Correct boxed integer | 29/256 (11.33%) | 180/256 (70.31%) |
-| Correct among parseable answers | 29/30 (96.67%) | 180/255 (70.59%) |
-| Mean response length | 249.2 tokens | 155.2 tokens |
-| Responses in the 254–256 token histogram bin | 227/256 | 1/256 |
-
-The policy learned to emit shorter, parseable boxed answers. Since 29 of the
-30 parseable step-0 responses were already correct, much of the measured gain
-comes from output completion and formatting and cannot be attributed solely
-to better visual counting. The step-8 and step-10 results differ by only two
-examples and are statistically indistinguishable at this sample size. Treat
-this short run as a pipeline reference rather than a benchmark result.
+This metric combines visual counting, response completion, and strict answer
+formatting. In the reference run, parseable boxed answers rose from 30/256 to
+255/256 while mean response length fell from 249 to 155 tokens. Among
+parseable answers, the initial policy was already correct on 29/30 examples.
+The result therefore demonstrates that the RL pipeline teaches the policy to
+produce concise, verifiable responses; it should not be read as a pure measure
+of improved visual perception.

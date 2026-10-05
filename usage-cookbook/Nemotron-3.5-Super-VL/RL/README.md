@@ -6,8 +6,8 @@ The workflow applies full-weight GRPO to synthetic star-count images and
 evaluates exact-match accuracy on a deterministic held-out split.
 
 The [star-count training guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-covers dataset generation, validation, interactive and batch launch paths,
-monitoring, and interpretation of the reference result. Its recipe uses a
+covers dataset generation, interactive and batch launch paths, monitoring,
+and interpretation of the reference result. Its recipe uses a
 16 x 8 rollout batch on variable 800–1,200-pixel canvases containing 1–30
 colored stars.
 
