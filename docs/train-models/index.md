@@ -16,6 +16,10 @@ If you are new to fine-tuning, start with [Training Basics](explanation/basics.m
 
 ## Limitations and Restrictions
 
+```{note}
+The [Nemotron Post-training Calculator](sizing-calculator.md) is a separate planning tool for customizing released checkpoints. Its supported sizing configurations include smaller GPU counts; the execution requirements below describe the Nemotron Steps workflows documented in this section.
+```
+
 The Nemotron steps for data preparation and model training do not support local training, such as on a developer workstation.
 
 These steps require access to at least two nodes, each equipped with 8 x NVIDIA A100 80 GB or better GPUs.
@@ -38,6 +42,14 @@ For assistance with configuring access to one of the supported computing environ
 This page defines supervised fine-tuning, parameter-efficient fine-tuning, reinforcement learning alignment, quantization, tokenizers, the chat dataset format, and checkpoints.
 +++
 `Beginner Level`
+:::
+
+:::{grid-item-card} Nemotron Post-training Calculator
+:link: sizing-calculator
+:link-type: doc
+Estimate GPU count, training time, and compute cost for customizing a released Nemotron checkpoint with SFT, LoRA, or GRPO.
++++
+`Planning Tool`
 :::
 
 :::{grid-item-card} Getting Started
@@ -84,6 +96,7 @@ Use the customize skill with a YAML-first plan: repo steps, then configs, then c
 
 ## Quick Links
 
+- [Nemotron Post-training Calculator](sizing-calculator.md) provides directional GPU sizing, runtime, and compute-cost estimates for SFT, LoRA, and GRPO.
 - [Model Training with Agents](using-skill.md) describes how to work with the `nemotron-customize` skill for multi-stage training plans and YAML-first deliverables.
 - [Getting Started](getting-started.md) describes how to verify the CLI and run a tiny configuration.
 - [Execution through NeMo Run](../nemo_runspec/nemo-run.md) describes profiles, attached and detached runs, and clusters.
