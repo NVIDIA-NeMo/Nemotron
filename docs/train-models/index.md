@@ -16,6 +16,10 @@ If you are new to fine-tuning, start with [Training Basics](explanation/basics.m
 
 ## Limitations and Restrictions
 
+```{note}
+The [Nemotron Post-training Calculator](sizing-calculator.md) is a separate planning tool for customizing released checkpoints. Its supported sizing configurations include smaller GPU counts; the execution requirements below describe the Nemotron Steps workflows documented in this section.
+```
+
 The Nemotron steps for data preparation and model training do not support local training, such as on a developer workstation.
 
 These steps require access to at least two nodes, each equipped with 8 x NVIDIA A100 80 GB or better GPUs.
@@ -40,10 +44,10 @@ This page defines supervised fine-tuning, parameter-efficient fine-tuning, reinf
 `Beginner Level`
 :::
 
-:::{grid-item-card} Sizing and Compute Cost
+:::{grid-item-card} Nemotron Post-training Calculator
 :link: sizing-calculator
 :link-type: doc
-Estimate the GPU count, verified training settings, runtime, and compute cost for Nemotron SFT, LoRA, and GRPO workloads.
+Estimate GPU count, training time, and compute cost for customizing a released Nemotron checkpoint with SFT, LoRA, or GRPO.
 +++
 `Planning Tool`
 :::
