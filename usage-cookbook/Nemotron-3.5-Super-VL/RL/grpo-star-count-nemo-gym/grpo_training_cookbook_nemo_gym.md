@@ -81,10 +81,36 @@ Prepare shared storage that is visible to every compute node and contains:
 ```
 
 Use a NeMo RL container built from the `super-v3.5-posttraining` branch, or a
-compatible prebuilt image newer than v0.7. The parent
-[`README.md`](../README.md) provides the source build command and storage
-estimates. The commands below assume that the shared root is also mounted at
-`/shared` inside the container.
+compatible prebuilt image newer than v0.7. The checkout must include the Super
+VL Mamba refit ordering fix and vLLM worker support for
+`NRL_VLLM_SLEEP_LEVEL=2`. These keep refit stable and prevent stale rollout
+weights from consuming another full copy of the model in host memory.
+
+No suitable prebuilt image was available when this guide was published. Build
+the image from the same checkout that will be mounted into the job:
+
+```bash
+# Run on a Docker-capable ARM64 build node with registry access.
+cd </YOUR/SHARED/STORAGE>/code/RL
+export IMAGE="<YOUR_REGISTRY>/nemo-rl:super-v3.5-posttraining-arm64"
+docker buildx build --platform linux/arm64 --progress=plain --push \
+  --build-context nemo-rl=. -f docker/Dockerfile --target release \
+  --build-arg MAX_JOBS=8 \
+  --build-arg SKIP_SGLANG_BUILD=1 \
+  --build-arg SKIP_TRTLLM_BUILD=1 \
+  --build-arg NEMO_GYM_PREFETCH_CONFIGS="examples/nemo_gym/prefetch_super35_all_envs.yaml" \
+  -t "${IMAGE}" .
+```
+
+The model uses about 235 GiB, its converted Megatron cache about 232 GiB, and
+an ARM64 squashfs image about 73 GiB. Provision at least 650 GiB for those
+artifacts, logs, and working headroom. Checkpointing is disabled in this
+example. If enabled, allow about 227 GiB per weights-only checkpoint or 1.4 TB
+per checkpoint that includes optimizer state.
+
+The commands below assume that the shared root is also mounted at `/shared`
+inside the container. Use the registry URI as `CONTAINER` when supported, or
+convert it to the cluster's local container format first.
 
 On the login or head node, define the site-specific values once:
 
@@ -124,6 +150,8 @@ sbatch \
 
 `--mem=0` requests all host memory on each node. The colocated full-weight
 recipe temporarily moves optimizer state to host memory during weight refits.
+Its level-2 vLLM sleep setting discards stale rollout weights before the refit
+to avoid keeping another full copy in host memory.
 
 ### 2. Attach — login or head node
 
@@ -250,13 +278,14 @@ tail -f <jobid>-logs/ray-driver.log
 ## Reading the result
 
 The driver reports held-out exact-match accuracy before RL and after steps 2,
-4, 6, 8, and 10. One reference run increased from 29/256 (11.33%) before RL to
-180/256 (70.31%) after step 10.
+4, 6, 8, and 10. One end-to-end run produced 32, 36, 38, 65, 157, and 181
+correct answers out of 256 at those checkpoints, increasing from 12.50% before
+RL to 70.70% after step 10.
 
 This metric combines visual counting, response completion, and strict answer
-formatting. In the reference run, parseable boxed answers rose from 30/256 to
-255/256 while mean response length fell from 249 to 155 tokens. Among
-parseable answers, the initial policy was already correct on 29/30 examples.
+formatting. Mean response length in that run fell from 249.8 to 143.3 tokens.
+In a separate diagnostic run, parseable boxed answers rose from 30/256 to
+255/256, and the initial policy was already correct on 29/30 parseable answers.
 The result therefore demonstrates that the RL pipeline teaches the policy to
 produce concise, verifiable responses; it should not be read as a pure measure
 of improved visual perception.

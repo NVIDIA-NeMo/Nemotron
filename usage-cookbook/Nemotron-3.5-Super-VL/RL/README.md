@@ -28,6 +28,11 @@ The branch must include the Super VL Mamba refit fix that calls `model.eval()`
 before moving Megatron parameter buffers to CPU. Without that ordering, the
 initial Megatron-to-vLLM refit can fail with a CUDA illegal-memory-access error.
 
+The vLLM workers must also honor `NRL_VLLM_SLEEP_LEVEL=2`. The recipe uses
+level-2 sleep to discard stale rollout weights before each refit instead of
+retaining a second copy in host memory. The refit installs the current policy
+weights before generation resumes.
+
 The reference configuration uses 16 GB200 GPUs across four 4-GPU nodes. It
 trains with Megatron tensor parallelism 4 and expert parallelism 16, while
 colocating one tensor-parallel vLLM group on each node. Keep the following

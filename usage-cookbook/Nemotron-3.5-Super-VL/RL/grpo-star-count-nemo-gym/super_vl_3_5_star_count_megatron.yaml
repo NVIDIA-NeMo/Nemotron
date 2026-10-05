@@ -63,6 +63,10 @@ policy:
       gpu_memory_utilization: 0.4
       enforce_eager: true
       reset_encoder_cache_after_weight_update: true
+      env_vars:
+        # Discard stale rollout weights while vLLM sleeps. The following refit
+        # writes the current policy weights before generation resumes.
+        NRL_VLLM_SLEEP_LEVEL: '2'
     vllm_kwargs:
       max_num_batched_tokens: 4096
       max_num_seqs: 4
