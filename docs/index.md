@@ -35,7 +35,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 > **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](nemo_runspec/nemo-run.md) for setup instructions.
 
-## Sample Deployments and Applications
+## Deploy, Customize, and Use Nemotron
 
 ::::{grid} 1 2 2 2
 :gutter: 3
@@ -52,6 +52,15 @@ Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging 
 :link-type: doc
 
 End-to-end applications: RAG agents, ML agents, and multi-agent systems.
+:::
+
+:::{grid-item-card} Nemotron Post-training Calculator
+:link: train-models/sizing-calculator
+:link-type: doc
+
+Estimate GPU count, training time, and compute cost for customizing a released Nemotron checkpoint with SFT, LoRA, or GRPO.
++++
+`Planning Tool`
 :::
 
 ::::
@@ -225,6 +234,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 Home <self>
 application-examples.md
 deployment-guides.md
+Post-training Calculator <train-models/sizing-calculator.md>
 ```
 
 ```{toctree}

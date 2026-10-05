@@ -23,6 +23,8 @@ configuration, multi-GPU deployment, LoRA fine-tuning, and RL post-training.
 
 ### Fine-Tuning
 
+You may use the [Nemotron Post-training Calculator](../../docs/train-models/sizing-calculator.md) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
+
 - **[RL](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3-Ultra/RL/README.md)** - Full-weight RL training with DAPO/GRPO, including direct NeMo RL and NeMo Gym variants.
 - **[lora-text2sql/nemo-automodel](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3-Ultra/lora-text2sql/nemo-automodel/README.md)** - LoRA fine-tuning recipe for Text2SQL using NeMo AutoModel.
 - **[lora-text2sql/nemo-megatron-bridge](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3-Ultra/lora-text2sql/nemo-megatron-bridge/README.md)** - LoRA fine-tuning recipe for Text2SQL using NeMo Megatron-Bridge.
