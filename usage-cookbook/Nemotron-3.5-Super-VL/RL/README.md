@@ -24,6 +24,10 @@ Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
 Megatron model path, compatible vLLM integration, and NeMo Gym support used by
 this cookbook.
 
+The branch must include the Super VL Mamba refit fix that calls `model.eval()`
+before moving Megatron parameter buffers to CPU. Without that ordering, the
+initial Megatron-to-vLLM refit can fail with a CUDA illegal-memory-access error.
+
 The reference configuration uses 16 GB200 GPUs across four 4-GPU nodes. It
 trains with Megatron tensor parallelism 4 and expert parallelism 16, while
 colocating one tensor-parallel vLLM group on each node. Keep the following
@@ -60,7 +64,7 @@ Use storage visible to every allocated node and mount its root at `/shared`
 inside the container. The recipe uses this layout:
 
 ```text
-/shared
+</YOUR/SHARED/STORAGE> (Host):/shared (Container)
 |____code
 |    |____RL                    <- NeMo RL, branch super-v3.5-posttraining
 |    |____Nemotron              <- this cookbook repository
@@ -73,6 +77,8 @@ inside the container. The recipe uses this layout:
 
 Define the corresponding host paths before running the remaining commands:
 
+**Run on the login or head node:**
+
 ```bash
 export SHARED_ROOT=$(realpath </YOUR/SHARED/STORAGE>)
 export NEMO_RL="${SHARED_ROOT}/code/RL"
@@ -84,6 +90,8 @@ export HF_HOME="${SHARED_ROOT}/.cache/huggingface"
 ## Clone NeMo RL and initialize submodules
 
 Clone the Super VL post-training branch and initialize its submodules:
+
+**Run on the login or head node:**
 
 ```bash
 mkdir -p "${SHARED_ROOT}/code"
@@ -104,6 +112,8 @@ Until a suitable post-v0.7 prebuilt image is available, build from the
 checked-out branch so the image and mounted source use the same NeMo RL
 revision. The following command creates an ARM64 release image for GB200
 systems and prebuilds the NeMo Gym environments used by Super VL:
+
+**Run on a Docker-capable ARM64 build node with registry access:**
 
 ```bash
 cd "${NEMO_RL}"
@@ -132,7 +142,13 @@ vLLM, so the build skips SGLang and TensorRT-LLM.
 Clusters using enroot or Pyxis can convert the registry image to a local
 squashfs image:
 
+**Run on a node with enroot and registry access, commonly the login or head
+node:**
+
 ```bash
+cd "${NEMO_RL}"
+export NEMO_RL_REV=$(git rev-parse --short=12 HEAD)
+export IMAGE="<YOUR_REGISTRY>/nemo-rl:super-v3.5-posttraining-${NEMO_RL_REV}-arm64"
 export CONTAINER="${SHARED_ROOT}/nemo-rl-super-v3.5-posttraining-${NEMO_RL_REV}-arm64.sqsh"
 enroot import -o "${CONTAINER}" "docker://${IMAGE}"
 ```
@@ -141,6 +157,8 @@ Use the registry URI directly when the cluster runtime supports it. Mount the
 shared root at its host path for `ray.sub` and at `/shared` for portable recipe
 paths:
 
+**Run on the login or head node in the shell used to submit Slurm jobs:**
+
 ```bash
 export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
 ```
@@ -148,10 +166,16 @@ export MOUNTS="${SHARED_ROOT}:${SHARED_ROOT},${SHARED_ROOT}:/shared"
 ## Obtain the checkpoint
 
 Download a compatible Hugging Face format Nemotron 3.5 Super VL checkpoint to
-the shared model directory. The example below uses the public checkpoint name
-expected by the cookbook:
+the shared model directory. The example below uses the checkpoint repository
+expected by the cookbook; your Hugging Face account must have access to it:
+
+**Run on the login or head node:**
 
 ```bash
+python3 -m pip install --user --upgrade "huggingface_hub[cli]"
+export PATH="${HOME}/.local/bin:${PATH}"
+hf auth login
+
 mkdir -p "${MODEL_DIR}" "${HF_HOME}"
 hf download nvidia/NVIDIA-Nemotron-3.5-Super-VL-09212026 \
   --local-dir "${MODEL_DIR}"

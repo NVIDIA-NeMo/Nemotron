@@ -48,10 +48,10 @@ The verifier is therefore shape-agnostic: it reads the generated metadata and
 does not inspect whether the rendered objects are circles or stars. The data
 generator keeps the star image, prompt, and retained metadata aligned, which
 allows the existing environment to score the new visual object without a
-custom NeMo Gym service. This compatibility path was validated on the NeMo RL
-`super-v3.5-posttraining` branch. Recheck the verifier after updating the NeMo
-Gym submodule because the recipe depends on it continuing to read only each
-item's `color` field.
+custom NeMo Gym service. This compatibility path was validated with the NeMo
+RL `super-v3.5-posttraining` branch described in the parent README. Recheck the
+verifier after updating the NeMo Gym submodule because the recipe depends on
+it continuing to read only each item's `color` field.
 
 ## Dataset design
 
@@ -148,43 +148,20 @@ distributes the model's 512 routed experts across all 16 GPUs, leaving 32
 routed experts per expert-parallel rank. The TP and EP values describe
 different parallel dimensions and do not imply a 64-GPU allocation.
 
-The launch commands below make the vLLM V1 and `FLASH_ATTN` runtime choices
-explicit and place model-conversion caches on shared storage.
-
-## Generate the train and validation data
-
-Run the generator inside the NeMo RL container or from an attached allocation.
-The commands use the `/shared` layout established in the parent README:
-
-```bash
-export NEMO_RL=/shared/code/RL
-export NEMOTRON_REPO=/shared/code/Nemotron
-export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
-export DATA_DIR=/shared/runs/super35-star-count/data
-export GENERATOR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/prepare_star_count_data.py"
-mkdir -p "${DATA_DIR}"
-
-python "${GENERATOR}" \
-  --out "${DATA_DIR}/train.jsonl" \
-  --num-samples 1024 \
-  --seed-offset 0
-
-python "${GENERATOR}" \
-  --out "${DATA_DIR}/validation.jsonl" \
-  --num-samples 256 \
-  --seed-offset 1000000
-```
-
-The generator writes self-contained JSONL rows with embedded PNG images. The
-training and validation seeds are disjoint.
+The launch commands below place model-conversion caches on shared storage.
+The inherited recipe selects vLLM V1 and FlashAttention through its NeMo RL
+configuration.
 
 ## Interactive run
 
-Use an interactive allocation when bringing up the recipe for the first time,
-inspecting logs, or trying configuration overrides. From the login node, set
-the scheduler and container values for your cluster. The parent README defines
-`SHARED_ROOT`, `NEMO_RL`, `CONTAINER`, and the `/shared` mount convention used
-below:
+Use this path when bringing up the recipe for the first time, inspecting logs,
+or trying configuration overrides.
+
+### 1. Request the allocation — login or head node
+
+Run from the NeMo RL checkout on the login or head node. The parent README
+defines `SHARED_ROOT`, `NEMO_RL`, `CONTAINER`, and the `/shared` mount
+convention used below:
 
 ```bash
 export NUM_NODES=4
@@ -203,19 +180,55 @@ sbatch \
   --job-name=interactive-super-vl-star-count \
   --time=04:00:00 \
   --gres=gpu:"${GPUS_PER_NODE}" \
+  --mem=0 \
   --exclusive \
   ray.sub
 ```
 
-After the allocation starts, attach with the helper created by `ray.sub`:
+`--mem=0` requests all memory on each allocated node. The full-weight optimizer
+offload used during colocated refits requires substantial host memory.
+
+### 2. Attach to the Ray head — login or head node
+
+After the allocation starts, run the generated helper from the same NeMo RL
+checkout on the login or head node:
 
 ```bash
 cd "${NEMO_RL}"
 bash ./<jobid>-attach.sh
 ```
 
-Inside the attached container, configure persistent caches and launch the
-training driver:
+### 3. Generate the dataset — attached container
+
+Run inside the attached Ray-head container:
+
+```bash
+export NEMO_RL=/shared/code/RL
+export NEMOTRON_REPO=/shared/code/Nemotron
+export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
+export DATA_DIR=/shared/runs/super35-star-count/data
+export GENERATOR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/prepare_star_count_data.py"
+mkdir -p "${DATA_DIR}"
+
+cd "${NEMO_RL}"
+uv run --no-sync python "${GENERATOR}" \
+  --out "${DATA_DIR}/train.jsonl" \
+  --num-samples 1024 \
+  --seed-offset 0
+
+uv run --no-sync python "${GENERATOR}" \
+  --out "${DATA_DIR}/validation.jsonl" \
+  --num-samples 256 \
+  --seed-offset 1000000
+```
+
+The generator writes self-contained JSONL rows with embedded PNG images. The
+training and validation seeds are disjoint.
+
+### 4. Start training — attached container
+
+Continue inside the attached Ray-head container. Configure persistent caches,
+then launch the training driver:
 
 ```bash
 export NEMO_RL=/shared/code/RL
@@ -236,11 +249,9 @@ export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGAT
 export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
 export NRL_WG_USE_RAY_REF=1
 export NEMO_GYM_VENV_DIR=/opt/gym_venvs
-export NRL_VLLM_USE_V1=1
-export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 
 cd "${NEMO_RL}"
-python -u examples/nemo_gym/run_grpo_nemo_gym.py \
+uv run --no-sync python -u examples/nemo_gym/run_grpo_nemo_gym.py \
   --config "${RECIPE}" \
   policy.model_name="${MODEL_DIR}" \
   policy.tokenizer.name="${MODEL_DIR}" \
@@ -254,8 +265,9 @@ job environment or a protected environment file.
 ## Batch run
 
 For an unattended experiment, create a driver script on shared storage and
-pass its container path to `ray.sub` through `COMMAND`. Run the following setup
-from the login node:
+pass its container path to `ray.sub` through `COMMAND`. Run this entire section
+from the login or head node. The generated `run.sh` executes inside the
+Ray-head container after the allocation starts.
 
 ```bash
 export RUN_NAME=super35-star-count-$(date +%Y%m%d-%H%M%S)
@@ -274,9 +286,11 @@ export NEMOTRON_REPO=/shared/code/Nemotron
 export MODEL_DIR=/shared/models/NVIDIA-Nemotron-3.5-Super-VL-09212026
 export RUN_DIR="/shared/runs/${RUN_NAME}"
 export CACHE_DIR=/shared/runs/super35-star-count/cache
+export DATA_DIR=/shared/runs/super35-star-count/data
 export RECIPE="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/super_vl_3_5_star_count_megatron.yaml"
+export GENERATOR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym/prepare_star_count_data.py"
 
-mkdir -p "${RUN_DIR}/logs" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+mkdir -p "${RUN_DIR}/logs" "${DATA_DIR}" "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
 export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
 export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
 export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
@@ -287,11 +301,18 @@ export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGAT
 export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
 export NRL_WG_USE_RAY_REF=1
 export NEMO_GYM_VENV_DIR=/opt/gym_venvs
-export NRL_VLLM_USE_V1=1
-export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 
 cd "${NEMO_RL}"
-exec python -u examples/nemo_gym/run_grpo_nemo_gym.py \
+uv run --no-sync python "${GENERATOR}" \
+  --out "${DATA_DIR}/train.jsonl" \
+  --num-samples 1024 \
+  --seed-offset 0
+uv run --no-sync python "${GENERATOR}" \
+  --out "${DATA_DIR}/validation.jsonl" \
+  --num-samples 256 \
+  --seed-offset 1000000
+
+exec uv run --no-sync python -u examples/nemo_gym/run_grpo_nemo_gym.py \
   --config "${RECIPE}" \
   policy.model_name="${MODEL_DIR}" \
   policy.tokenizer.name="${MODEL_DIR}" \
@@ -316,6 +337,7 @@ sbatch \
   --job-name="${RUN_NAME}" \
   --time=04:00:00 \
   --gres=gpu:"${GPUS_PER_NODE}" \
+  --mem=0 \
   --exclusive \
   ray.sub
 ```
@@ -328,7 +350,8 @@ tracking is enabled. To run without W&B, add
 
 ## Monitor training
 
-Monitor the allocation and driver log from the NeMo RL checkout:
+For an interactive run, follow progress in the attached terminal. For a batch
+run, run these commands from the NeMo RL checkout on the login or head node:
 
 ```bash
 squeue -j <jobid> -o '%i %T %M %l %D %R'
