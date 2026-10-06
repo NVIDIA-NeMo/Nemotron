@@ -486,7 +486,9 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     print(f"\nSaving resized checkpoint -> {args.output_dir}")
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(args.output_dir)
+    from checkpoint import save_pretrained
+
+    save_pretrained(model, args.output_dir)
     ext_tok.save_pretrained(args.output_dir)
     print(RULE)
     print(f"DONE in {time.time() - t0:.1f}s -> {args.output_dir}")

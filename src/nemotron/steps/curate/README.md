@@ -25,6 +25,13 @@ raw parquet/JSONL
 Nothing here approves a threshold on your behalf. A distribution says what a gate
 removes; it never says whether removing it is right.
 
+The `curate/profile` step itself only measures. The worked **measure flow** also
+enables `curate/nemo_curator`, so its configured language and length gates do
+remove rows even though no policy thresholds are applied yet. Disable
+both `steps.filter.enabled` and `steps.audit.enabled` when you want a
+measurement-only first run with no filtered corpus output; audit consumes the
+corpus produced by the filter step.
+
 ## Steps
 
 Listed in the order the flow runs them. Types are the ones each step declares in

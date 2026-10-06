@@ -120,6 +120,26 @@ uv run nemotron steps run curate/decontamination \
   id_field=id threshold=0.8
 ```
 
+The step starts one Ray head before the fuzzy workflow so Curator's named ID
+generator remains available across all stages. If `RAY_ADDRESS` is already set,
+it reuses that cluster and leaves it running.
+
+To manage the single-node Ray head yourself, start it before the step and export
+the address it prints:
+
+```bash
+ray start --head --port=6379 --num-gpus=1
+export RAY_ADDRESS=127.0.0.1:6379
+uv run nemotron steps run curate/decontamination \
+  train_glob='./output/filtered_jsonl/**/*.jsonl' \
+  holdout_glob='./data/holdout/**/*.jsonl' \
+  output_dir=./output/decontaminated id_field=id threshold=0.8
+```
+
+Use the head node's reachable address instead of `127.0.0.1` when the driver is
+on another node. Because this cluster is externally managed, the step leaves it
+running; stop it with `ray stop` when no other work uses it.
+
 This is the only step in `curate/` that declares `gpus_per_node = 1`. Set
 `skip_similarity: true` to run the identity pass alone on CPU; the report then
 says near-duplicate overlap was **not measured**, rather than reporting none.

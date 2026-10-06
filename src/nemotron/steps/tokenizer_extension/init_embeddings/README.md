@@ -143,6 +143,11 @@ arms, so input and output stay independently weighted.
 `pip_extras`). The import is lazy, so the other methods run without it.
 See `../guide.md`.
 
+The locked environment uses Transformers 4.x. If a compatible runtime supplies
+Transformers 5 with legacy list-form tied-weight metadata, checkpoint saving
+converts it to the new empty mapping only after confirming that the model config
+and the embedding tensors are both untied.
+
 ## Run
 ```bash
 L=vietnamese          # must match the language used by extend

@@ -44,6 +44,27 @@ For each activity, such as model training or data generation, refer to the getti
 
 The output lists the step-catalog subcommands that this guide uses: `list`, `show`, and `run`.
 
+## Tokenizer Extension Prerequisites
+
+The default `tokenizer_extension/init_embeddings` model is a Mamba-hybrid and
+needs Python 3.11 or later and the GPU-specific packages in addition to the
+common dependencies:
+
+```console
+$ uv sync --extra tokenizer-extension --extra tokenizer-extension-gpu
+```
+
+On Linux x86-64, `mamba-ssm` and `causal-conv1d` build CUDA extensions from
+source. Install a CUDA toolkit that provides `nvcc` and is compatible with the
+PyTorch/CUDA environment before running that command. The repository's uv
+configuration supplies PyTorch during their isolated builds. Verify the compiler
+is visible with `nvcc --version` before initializing the default checkpoint.
+
+The CPU-only tokenizer construction step does not need
+`tokenizer-extension-gpu`. See
+`src/nemotron/steps/tokenizer_extension/guide.md` in the repository for the
+complete workflow and remote-profile requirements.
+
 ## List the Available Steps
 
 Use `nemotron steps list` to see every step that the CLI discovers.

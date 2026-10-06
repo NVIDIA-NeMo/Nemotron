@@ -148,6 +148,7 @@ def candidate_pairs(
     every test in this file — loads on a host without ``cudf``.
     """
     try:
+        from nemo_curator.core.client import RayClient
         from nemo_curator.stages.deduplication.fuzzy.workflow import FuzzyDeduplicationWorkflow
     except ModuleNotFoundError as exc:
         raise ConfigError(
@@ -200,7 +201,19 @@ def candidate_pairs(
         num_bands=int(minhash.get("num_bands", 20)),
         minhashes_per_band=int(minhash.get("minhashes_per_band", 13)),
     )
-    workflow.run()
+    # Fuzzy deduplication creates a named id-generator actor before its first
+    # pipeline.  Starting Ray explicitly keeps that actor on one persistent
+    # cluster for all workflow stages.  RayClient reuses RAY_ADDRESS when the
+    # operator supplied an external cluster and stops only a cluster it started.
+    ray_client = RayClient(num_gpus=1, include_dashboard=False)
+    ray_started = False
+    try:
+        ray_client.start()
+        ray_started = True
+        workflow.run()
+    finally:
+        if ray_started:
+            ray_client.stop()
 
     id_map_path = work_dir / "out" / "fuzzy_id_generator.json"
     try:

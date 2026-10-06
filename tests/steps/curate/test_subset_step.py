@@ -432,32 +432,48 @@ def test_the_step_does_not_claim_to_maximize() -> None:
 # -- the tokenizer pin --------------------------------------------------------
 
 
-def test_the_tokenizer_is_passed_as_a_model_name_not_a_tokenizer_object() -> None:
-    """``tokenizer=`` takes a loaded AutoTokenizer; a string there is inert.
-
-    TokenCountFilter accepts either a loaded ``tokenizer`` or an ``hf_model_name``
-    string. Passing the model name under ``tokenizer=`` is accepted by the
-    constructor and then fails once per document as
-    ``str.encode(encoding=<the document text>)``. Worse, ``load_tokenizer`` only
-    reads ``transformers_init_kwargs`` when ``hf_model_name`` is set, so the
-    revision pin — the reason a revision is recorded at all — would never be
-    applied and two incomparable subsets would look comparable.
-    """
+def test_curator_receives_a_loaded_tokenizer_not_a_model_name() -> None:
+    """The loaded-object path avoids Curator's forced local-only lookup."""
     import inspect
 
     source = inspect.getsource(run_subset.TokenCounter._load)
 
-    assert "hf_model_name=self.name" in source
-    assert "tokenizer=self.name" not in source
+    assert "tokenizer=tokenizer" in source
+    assert "hf_model_name=self.name" not in source
 
 
-def test_the_revision_travels_in_transformers_init_kwargs() -> None:
-    """TokenCountFilter has no revision parameter; this is where the pin lands."""
+def test_the_revision_is_used_when_loading_the_tokenizer() -> None:
     import inspect
 
     source = inspect.getsource(run_subset.TokenCounter._load)
 
-    assert 'transformers_init_kwargs={"revision": self.revision}' in source
+    assert "AutoTokenizer.from_pretrained(self.name, revision=self.revision)" in source
+
+
+def test_the_tokenizer_is_downloaded_before_curator_loads_it(monkeypatch) -> None:
+    """AutoTokenizer may populate a clean cache before Curator sees the object."""
+    transformers = pytest.importorskip("transformers")
+    module = pytest.importorskip("nemo_curator.stages.text.filters.token.token_count")
+    events: list[str] = []
+    loaded = object()
+
+    class Filter:
+        def __init__(self, **kwargs) -> None:
+            assert kwargs == {"tokenizer": loaded}
+            events.append("curator")
+
+    def download(name, **kwargs):
+        assert name == "org/tokenizer"
+        assert kwargs == {"revision": "abc123"}
+        events.append("download")
+        return loaded
+
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", download)
+    monkeypatch.setattr(module, "TokenCountFilter", Filter)
+
+    run_subset.TokenCounter("org/tokenizer", "abc123", None)._load()
+
+    assert events == ["download", "curator"]
 
 
 def test_token_count_filter_still_accepts_these_arguments() -> None:
@@ -467,11 +483,8 @@ def test_token_count_filter_still_accepts_these_arguments() -> None:
 
     params = inspect.signature(module.TokenCountFilter.__init__).parameters
 
-    for name in ("hf_model_name", "transformers_init_kwargs", "min_tokens", "max_tokens"):
+    for name in ("tokenizer", "min_tokens", "max_tokens"):
         assert name in params, f"TokenCountFilter no longer accepts {name}"
-    assert "revision" not in params, (
-        "TokenCountFilter grew a revision parameter; the transformers_init_kwargs detour is no longer necessary"
-    )
 
 
 # -- the second nesting check must read the disk --------------------------------
