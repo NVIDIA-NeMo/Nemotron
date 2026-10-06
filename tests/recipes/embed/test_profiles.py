@@ -97,9 +97,11 @@ def test_default_base_model_is_shared_across_model_stages() -> None:
 
     assert prep.base_model == BASE_MODEL
     assert prep.trust_remote_code is True
+    assert prep.tokenizer_force_default is True
     assert prep.output_dir == Path("output/embed/nemotron-3-1b/stage1_data_prep")
     assert finetune.base_model == BASE_MODEL
     assert finetune.trust_remote_code is True
+    assert finetune.tokenizer_force_default is True
     assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.train_data_path == Path(
         "output/embed/nemotron-3-1b/stage1_data_prep/train_mined.automodel_unrolled.json"

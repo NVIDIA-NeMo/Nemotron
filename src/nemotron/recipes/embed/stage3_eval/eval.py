@@ -645,7 +645,7 @@ def evaluate_model(
         if model_family == "mistral3_vl":
             if query_max_length is None or passage_max_length is None:
                 raise ValueError("mistral3_vl evaluation requires query and passage limits")
-            from nemo_automodel._transformers.mining import CheckpointMiningEncoderConfig
+            from nemotron.recipes.embed.mining_encoder import CheckpointMiningEncoderConfig
 
             processor_overrides = {
                 "q_max_length": query_max_length,

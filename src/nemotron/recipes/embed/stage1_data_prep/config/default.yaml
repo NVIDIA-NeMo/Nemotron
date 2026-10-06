@@ -35,6 +35,8 @@ output_dir: ${artifact_root}/stage1_data_prep
 # Base embedding model for hard negative mining
 base_model: nvidia/Nemotron-3-Embed-1B-BF16
 trust_remote_code: true
+# Preserve the checkpoint tokenizer instead of the Mistral Common registry backend.
+tokenizer_force_default: true
 
 # Quality filtering threshold (0-10 scale)
 quality_threshold: 7.0

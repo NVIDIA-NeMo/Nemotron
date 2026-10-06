@@ -117,8 +117,9 @@ is downloaded automatically by this profile.
 Each stage declares dependencies in its own `pyproject.toml`. The CLI selects
 the `vl` extra for this profile and the `text` extra for existing text profiles.
 These extras preserve their different Transformers requirements. AutoModel uses
-immutable commit archives from the companion
-[AutoModel PR](https://github.com/NVIDIA-NeMo/Automodel/pull/3915); archive URLs
+the immutable main-branch commit
+[`3914f200a4c782d44b58ee7a01b4685e4158e19c`](https://github.com/NVIDIA-NeMo/Automodel/commit/3914f200a4c782d44b58ee7a01b4685e4158e19c),
+shared with text preparation, text training, and reranker training. Archive URLs
 prevent AutoModel's repository-local uv index policy from replacing the recipe's
 CUDA 12.9 Torch source. The retrieval-SDG plugin uses a commit-pinned Git source
 from the consolidated public [DataDesignerPlugins multimodal SDG EA candidate](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/pull/92)

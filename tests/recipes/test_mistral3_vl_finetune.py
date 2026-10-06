@@ -296,12 +296,12 @@ def test_vl_stages_pin_their_selected_automodel_runtime() -> None:
     with (Path(embed_train.__file__).parent / "pyproject.toml").open("rb") as stream:
         embed_project = tomllib.load(stream)
     extras = embed_project["project"]["optional-dependencies"]
-    assert "transformers==5.12.1" in extras["text"]
+    assert "transformers==5.15.1" in extras["text"]
     assert "transformers==5.15.1" in extras["vl"]
     sources = embed_project["tool"]["uv"]["sources"]["nemo-automodel"]
     assert {entry["extra"]: entry["url"] for entry in sources} == {
-        "text": ("https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"),
-        "vl": ("https://github.com/NVIDIA-NeMo/Automodel/archive/0e02c4274d09e7e09159009916f7348fcb7dc9bb.tar.gz"),
+        "text": ("https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz"),
+        "vl": ("https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz"),
     }
 
 

@@ -29,7 +29,7 @@ def test_seed_reaches_training_and_dataset_configuration(
     raw_config, _ = train._load_automodel_config(cfg, _as_dict)
 
     expected_seed = 42 if seed is None else seed
-    dataset = raw_config["dataset"] if model_family == "mistral3_vl" else raw_config["dataloader"]["dataset"]
+    dataset = raw_config["dataset"]
     assert cfg.seed == expected_seed
     assert raw_config["seed"] == expected_seed
     assert dataset["seed"] == expected_seed
@@ -51,5 +51,5 @@ def test_dotlist_seed_override_reaches_training_and_dataset(monkeypatch: pytest.
 
     raw_config, _ = train._load_automodel_config(cfg, _as_dict)
 
-    dataset = raw_config["dataset"] if cfg.model_family == "mistral3_vl" else raw_config["dataloader"]["dataset"]
+    dataset = raw_config["dataset"]
     assert (cfg.seed, raw_config["seed"], dataset["seed"]) == (173, 173, 173)

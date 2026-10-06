@@ -55,8 +55,8 @@ def test_embed_finetune_and_export_stages_limit_python_to_312() -> None:
 
 def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
     expected_by_stage = {
-        "stage1_data_prep": "transformers>=5.1,<5.6",
-        "stage2_finetune": "transformers==5.12.1",
+        "stage1_data_prep": "transformers==5.15.1",
+        "stage2_finetune": "transformers==5.15.1",
         "stage3_eval": "transformers>=5.1,<5.6",
     }
 
@@ -75,8 +75,8 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
         ]
         assert (5, 15) in versions
         versions.remove((5, 15))
-        if stage_name == "stage2_finetune":
-            assert versions == [(5, 12)]
+        if stage_name != "stage3_eval":
+            assert versions == []
         else:
             assert len(versions) == 1
             assert (5, 1) <= versions[0] < (5, 6)
@@ -86,20 +86,20 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
     automodel_source = finetune_project["tool"]["uv"]["sources"]["nemo-automodel"]
     assert next(source for source in automodel_source if source["extra"] == "text") == {
         "extra": "text",
-        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz",
+        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz",
     }
     assert "nemo-automodel" not in finetune_project["tool"]["nemotron"]["container-exclude-dependencies"]
 
 
-def test_embed_prep_uses_generic_automodel_release() -> None:
+def test_embed_prep_uses_pinned_automodel_main() -> None:
     with open(EMBED_DIR / "stage1_data_prep" / "pyproject.toml", "rb") as f:
         pyproject_data = tomllib.load(f)
-    assert "nemo-automodel==0.4.0" in pyproject_data["project"]["optional-dependencies"]["text"]
+    assert "nemo-automodel" in pyproject_data["project"]["optional-dependencies"]["text"]
 
     with open(EMBED_DIR / "stage1_data_prep" / "uv.lock", "rb") as f:
         lock_data = tomllib.load(f)
     versions = [package["version"] for package in lock_data["package"] if package["name"] == "nemo-automodel"]
-    assert "0.4.0" in versions
+    assert versions == ["0.7.0"]
     assert any("url" in package["source"] for package in lock_data["package"] if package["name"] == "nemo-automodel")
 
 

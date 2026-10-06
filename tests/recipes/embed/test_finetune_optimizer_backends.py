@@ -25,7 +25,7 @@ def test_auto_optimizer_uses_fused_adam_when_available(monkeypatch: pytest.Monke
     assert raw_config["model"]["_target_"] == "nemo_automodel.NeMoAutoModelBiEncoder.from_pretrained"
     assert raw_config["tokenizer"]["_target_"] == "nemo_automodel.NeMoAutoTokenizer.from_pretrained"
     assert raw_config["tokenizer"]["add_eos_token"] is False
-    assert raw_config["dataloader"]["dataset"]["n_passages"] == 5
+    assert raw_config["dataset"]["n_passages"] == 5
     assert raw_config["dataloader"]["collate_fn"]["_target_"] == (
         "nemo_automodel.components.datasets.llm.BiEncoderCollator"
     )

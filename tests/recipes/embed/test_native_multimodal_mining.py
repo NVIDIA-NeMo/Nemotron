@@ -69,7 +69,7 @@ def test_native_vl_mining_forwards_training_processor_policy(tmp_path, monkeypat
     assert data_prep.run_mining(cfg, cfg.train_input_file) == output
     cmd = run.call_args.args[0]
     expected = {
-        "_target_": "nemo_automodel._transformers.mining.CheckpointMiningEncoderConfig",
+        "_target_": "nemotron.recipes.embed.mining_encoder.CheckpointMiningEncoderConfig",
         "q_max_length": "256",
         "p_max_length": "8192",
         "query_prefix": "query:",
@@ -133,7 +133,7 @@ def test_vl_profile_native_override_preserves_image_processing(
     assert data_prep.run_mining(cfg, tmp_path / "train.json") == output
     cmd = run.call_args.args[0]
     assert cmd[cmd.index("--mining.multimodal_encoder._target_") + 1] == (
-        "nemo_automodel._transformers.mining.CheckpointMiningEncoderConfig"
+        "nemotron.recipes.embed.mining_encoder.CheckpointMiningEncoderConfig"
     )
     assert cmd[cmd.index("--mining.multimodal_encoder.use_images") + 1] == "true"
     assert "--mining.multimodal_encoder.processor_name_or_path" not in cmd

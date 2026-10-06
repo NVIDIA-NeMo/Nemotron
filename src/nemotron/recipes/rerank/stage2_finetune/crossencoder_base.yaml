@@ -46,17 +46,17 @@ tokenizer:
   trust_remote_code: true
   add_eos_token: false
 
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.retrieval_dataset.RetrievalDatasetConfig
+  model_type: cross_encoder
+  data_dir_list:
+    - training_datasets/train.json
+  data_type: train
+  n_passages: 5
+  seed: 42
+  do_shuffle: true
+
 dataloader:
-  _target_: torchdata.stateful_dataloader.StatefulDataLoader
-  dataset:
-    _target_: nemo_automodel.components.datasets.llm.make_retrieval_dataset
-    model_type: cross_encoder
-    data_dir_list:
-      - training_datasets/train.json
-    data_type: train
-    n_passages: 5
-    seed: 42
-    do_shuffle: true
   collate_fn:
     _target_: nemo_automodel.components.datasets.llm.CrossEncoderCollator
     rerank_max_length: 512

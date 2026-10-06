@@ -360,7 +360,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
 
     if cfg.model_family == "mistral3_vl":
         multimodal_options: list[tuple[str, str | int | bool | None]] = [
-            ("_target_", "nemo_automodel._transformers.mining.CheckpointMiningEncoderConfig"),
+            ("_target_", "nemotron.recipes.embed.mining_encoder.CheckpointMiningEncoderConfig"),
             ("q_max_length", cfg.query_max_length),
             ("p_max_length", cfg.passage_max_length),
             ("query_prefix", None if cfg.query_prefix is None else cfg.query_prefix.removesuffix(" ")),

@@ -469,7 +469,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
             "use_triton": False,
         }
         raw_config["checkpoint"]["save_consolidated"] = False
-    dataset = raw_config["dataset"] if cfg.model_family == "mistral3_vl" else raw_config["dataloader"]["dataset"]
+    dataset = raw_config["dataset"]
     dataset["seed"] = cfg.seed
 
     wandb_config = _wandb_config_from_env()
@@ -657,8 +657,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         if cfg.image_longest_edge is not None:
             automodel_cfg.tokenizer.image_longest_edge = cfg.image_longest_edge
     else:
-        automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
-        automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
+        automodel_cfg.dataset.data_dir_list = [str(cfg.train_data_path)]
+        automodel_cfg.dataset.n_passages = cfg.train_n_passages
         automodel_cfg.dataloader.collate_fn.q_max_len = cfg.query_max_length
         automodel_cfg.dataloader.collate_fn.p_max_len = cfg.passage_max_length
         automodel_cfg.dataloader.collate_fn.query_prefix = _automodel_collator_prefix(cfg.query_prefix)
