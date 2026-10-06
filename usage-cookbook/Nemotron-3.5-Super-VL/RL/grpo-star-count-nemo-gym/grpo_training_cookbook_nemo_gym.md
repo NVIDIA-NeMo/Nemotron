@@ -301,8 +301,5 @@ from 12.50% before RL to 70.70% after step 10.
 
 This metric combines visual counting, response completion, and strict answer
 formatting. Mean response length in that run fell from 249.8 to 143.3 tokens.
-In a separate diagnostic run, parseable boxed answers rose from 30/256 to
-255/256, and the initial policy was already correct on 29/30 parseable answers.
 The result therefore demonstrates that the RL pipeline teaches the policy to
-produce concise, verifiable responses; it should not be read as a pure measure
-of improved visual perception.
+produce concise, verifiable responses for this task.
