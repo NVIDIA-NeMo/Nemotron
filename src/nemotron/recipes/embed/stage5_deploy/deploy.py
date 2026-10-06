@@ -84,6 +84,10 @@ class DeployConfig(RecipeSettings):
     )
 
     # Container settings
+    model_family: Literal["nemotron3_text", "mistral3_vl"] = Field(
+        default="nemotron3_text",
+        description="Model-family deployment contract.",
+    )
     backend: Literal["nim", "vllm"] = Field(default="nim", description="Serving backend to launch.")
     nim_image: str | None = Field(
         default_factory=lambda: os.environ.get("NEMOTRON3_EMBED_NIM_IMAGE", DEFAULT_NIM_IMAGE),
@@ -92,6 +96,27 @@ class DeployConfig(RecipeSettings):
     vllm_image: str = Field(
         default="nvcr.io/nvidia/vllm:26.06-py3",
         description="vLLM container image to use for the vLLM backend.",
+    )
+    vllm_runner: Literal["pooling"] | None = Field(
+        default=None,
+        description="Optional vLLM runner override.",
+    )
+    vllm_max_model_len: int | None = Field(
+        default=None,
+        gt=0,
+        description="Optional vLLM maximum model length.",
+    )
+    vllm_hf_overrides: dict[str, object] | None = Field(
+        default=None,
+        description="Optional Hugging Face config overrides passed to vLLM.",
+    )
+    vllm_compilation_config: dict[str, object] | None = Field(
+        default=None,
+        description="Optional compilation config passed to vLLM; leaves backend defaults unchanged when unset.",
+    )
+    vllm_trust_remote_code: bool = Field(
+        default=False,
+        description="Allow the vLLM server to load checkpoint-provided Python code.",
     )
     nim_model: str = Field(
         default="nvidia/nemotron-3-embed-1b",
@@ -186,6 +211,8 @@ class DeployConfig(RecipeSettings):
             raise ValueError("nim_image must be nonempty when backend=nim")
         if self.backend == "vllm" and not self.vllm_image.strip():
             raise ValueError("vllm_image must be set when backend=vllm")
+        if self.model_family == "mistral3_vl" and self.backend != "vllm":
+            raise ValueError("model_family=mistral3_vl currently supports backend=vllm only")
         return self
 
     @property
@@ -321,6 +348,16 @@ def build_docker_command(cfg: DeployConfig) -> list[str]:
                 str(cfg.container_port),
             ]
         )
+        if cfg.vllm_runner is not None:
+            cmd.extend(["--runner", cfg.vllm_runner])
+        if cfg.vllm_max_model_len is not None:
+            cmd.extend(["--max-model-len", str(cfg.vllm_max_model_len)])
+        if cfg.vllm_hf_overrides is not None:
+            cmd.extend(["--hf-overrides", json.dumps(cfg.vllm_hf_overrides, separators=(",", ":"))])
+        if cfg.vllm_compilation_config is not None:
+            cmd.extend(["--compilation-config", json.dumps(cfg.vllm_compilation_config, separators=(",", ":"))])
+        if cfg.vllm_trust_remote_code:
+            cmd.append("--trust-remote-code")
 
     return cmd
 

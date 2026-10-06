@@ -6,6 +6,9 @@ Tests validation constraints, defaults, and model validators without any I/O.
 from __future__ import annotations
 
 import importlib
+import json
+import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -122,17 +125,32 @@ class TestDataPrepConfigValidation:
     def test_mining_uses_visible_gpu_count_default(self, DataPrepConfig, tmp_path, monkeypatch):
         mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")
         captured = {}
+        input_dir = tmp_path / "prepared" / "tiny-train"
+        output_dir = tmp_path / "smoke-mined"
+        input_dir.mkdir(parents=True)
+        output_dir.mkdir()
+        train_file = input_dir / "train.json"
+        train_file.write_text("{}")
 
         def fake_run(cmd, **kwargs):
             captured["cmd"] = cmd
+            output_index = cmd.index("--mining.train_file_output_path")
+            Path(cmd[output_index + 1]).write_text(
+                json.dumps({"corpus": {"path": "./corpus/"}, "data": [{"question": "retained"}]})
+            )
             return SimpleNamespace(returncode=0, stderr="")
 
         monkeypatch.setattr(mod.subprocess, "run", fake_run)
 
-        cfg = DataPrepConfig(sdg_input_path="/tmp/fake", output_dir=tmp_path)
-        output_file = mod.run_mining(cfg, tmp_path / "train.json")
+        cfg = DataPrepConfig(
+            sdg_input_path="/tmp/fake",
+            output_dir=output_dir,
+            tokenizer_force_default=True,
+        )
+        output_file = mod.run_mining(cfg, train_file)
 
         nproc_index = captured["cmd"].index("--nproc_per_node")
+        assert "--standalone" in captured["cmd"]
         assert captured["cmd"][nproc_index + 1] == "gpu"
         query_prefix_index = captured["cmd"].index("--mining.query_prefix")
         assert captured["cmd"][query_prefix_index + 1] == "query: "
@@ -140,7 +158,26 @@ class TestDataPrepConfigValidation:
         assert captured["cmd"][passage_prefix_index + 1] == "passage: "
         trust_index = captured["cmd"].index("--mining.trust_remote_code")
         assert captured["cmd"][trust_index + 1] == "true"
-        assert output_file == tmp_path / "train_mined.automodel.json"
+        tokenizer_index = captured["cmd"].index("--mining.tokenizer_force_default")
+        assert captured["cmd"][tokenizer_index + 1] == "true"
+        assert output_file == output_dir / "train_mined.automodel.json"
+        mined = json.loads(output_file.read_text())
+        assert mined["corpus"]["path"] == os.path.relpath(input_dir / "corpus", output_dir)
+        assert mined["data"] == [{"question": "retained"}]
+
+    @pytest.mark.parametrize("corpus_path", ["/data/corpus", "hf://org/dataset/corpus"])
+    def test_mining_preserves_nonrelative_corpus_reference(self, tmp_path, corpus_path):
+        mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")
+        train_file = tmp_path / "input" / "train.json"
+        output_file = tmp_path / "output" / "mined.json"
+        train_file.parent.mkdir()
+        output_file.parent.mkdir()
+        output_file.write_text(json.dumps({"corpus": {"path": corpus_path}, "data": [1]}))
+        original = output_file.read_bytes()
+
+        mod._rebase_mined_corpus_path(train_file, output_file)
+
+        assert output_file.read_bytes() == original
 
 
 # ---------------------------------------------------------------------------

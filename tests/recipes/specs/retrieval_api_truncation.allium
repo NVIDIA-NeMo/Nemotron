@@ -1,0 +1,20 @@
+-- allium: 3
+-- Scope: optional explicit truncation policy in endpoint mining and evaluation.
+-- Excludes: source clipping, model token limits, and training tokenization.
+contract RetrievalAPITruncation {
+    configure: (backend: String, truncate: String?) -> Any
+    request: (configured_client: Any, inputs: List<Any>) -> Any
+    @invariant OptIn
+        -- Unspecified policy preserves existing requests, including NIM requests.
+        -- Explicit NONE, START or END is passed unchanged to the Cohere endpoint
+        -- for every query, document and retry request.
+    @invariant RejectIncompatibleSettings
+        -- Reject invalid policies and explicit policies on non-vLLM backends
+        -- before sending requests. Do not silently ignore these settings.
+    @invariant StagePropagation
+        -- Mining and evaluation configuration carry the selected policy through
+        -- to the shared client and its actual outgoing request.
+    @invariant AuditableSelection
+        -- Persist an explicitly selected policy in mining/evaluation diagnostics.
+        -- Selecting a policy does not change the model's maximum input length.
+}

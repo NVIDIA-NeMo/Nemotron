@@ -1,0 +1,45 @@
+# Generic retrieval-first SDG EA profile. No dataset-specific adapters.
+# Uses the public plugin's structured parser with released Data Designer.
+
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:26.06-py3
+
+artifact_root: ./output/embed/mistral3-vl-preview
+corpus_id: multimodal_retrieval
+sources_file: null
+sdg_workflow: retrieval_first
+contexts_file: null
+sdg_max_units_per_context: 8
+sdg_batch_size: 30
+sdg_credential_env: NVIDIA_API_KEY
+sdg_options:
+  context_strategy: sections
+  section_size: 5
+  combination_iterations: 20
+  summary_embedding_model: nvidia/nemotron-3-embed-1b
+  summary_embedding_endpoint: https://integrate.api.nvidia.com/v1
+  summary_embedding_credential_env: NVIDIA_API_KEY
+  summary_embedding_extra_body:
+    input_type: passage
+    truncate: NONE
+  summary_count: 400
+  max_context_chars: null  # concrete prompts are bounded by DD and the model deployment
+  judge_summaries: true
+  group_near_duplicates: true
+  require_verbatim_quotes: false
+  missing_response_attempts: 3
+sdg_generator_options: {}
+sdg_judge_options: {}
+portable_export: true
+export_train_ratio: 0.8
+export_validation_ratio: 0.0
+export_seed: 42
+strict_visual: false
+output_dir: ${artifact_root}/stage0_sdg
+resume: never
+preview: false
+
+# Explicit hosted model identities are required for the multimodal path.
+qa_generation_model: ${oc.env:MISTRAL3_SDG_QA_MODEL}
+quality_judge_model: ${oc.env:MISTRAL3_SDG_JUDGE_MODEL}

@@ -101,12 +101,16 @@ def _execute_eval(cfg: RecipeConfig, *, experiment=None):
 
 def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
     """Execute eval locally via UV isolated environment."""
+    from nemo_runspec.config.pydantic_loader import load_config
     from nemo_runspec.execution import execute_uv_local_from_spec
+
+    model_family = load_config(train_path, passthrough, EvalConfig).model_family
 
     execute_uv_local_from_spec(
         spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
+        extras=["vl" if model_family == "mistral3_vl" else "text"],
     )
 
 
@@ -120,6 +124,11 @@ def _execute_remote(
     experiment=None,
 ):
     """Execute eval via nemo-run with remote backend."""
+    from nemo_runspec.config.pydantic_loader import load_config
+
+    model_family = load_config(train_path, passthrough, EvalConfig).model_family
+    if model_family == "mistral3_vl":
+        raise RuntimeError("VL container dependency selection is not validated; run this stage locally.")
     try:
         import nemo_run as run
     except ImportError:

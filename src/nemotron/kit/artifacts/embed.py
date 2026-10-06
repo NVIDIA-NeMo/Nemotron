@@ -45,7 +45,15 @@ class EmbedModelArtifact(Artifact):
 
     base_model: Annotated[str, Field(description="Base model that was fine-tuned")]
     training_examples: Annotated[int, Field(ge=0, description="Number of training examples")]
-    num_epochs: Annotated[int, Field(ge=0, description="Training epochs")]
+    num_epochs: Annotated[int | None, Field(ge=0, description="Training epochs, or null for step-based training")]
+    max_steps: Annotated[
+        int | None,
+        Field(
+            default=None,
+            gt=0,
+            description="Absolute optimizer-step target for step-based training",
+        ),
+    ]
     global_batch_size: Annotated[int, Field(ge=0, description="Global batch size")]
     learning_rate: Annotated[float, Field(description="Learning rate")]
     temperature: Annotated[float, Field(description="Contrastive loss temperature")]

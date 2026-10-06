@@ -20,6 +20,39 @@ from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig
 from nemotron.recipes.embed.stage1_data_prep.plugin_adapter import build_conversion_config
 
 
+def test_canonical_source_adapter_preserves_shared_plugin_contract(tmp_path: Path) -> None:
+    from data_designer_retrieval_sdg import RetrievalSourcesFile
+
+    from nemotron.recipes.embed.stage0_sdg.plugin_adapter import build_generation_config
+
+    source = tmp_path / "sources.jsonl"
+    config, _ = build_generation_config(SDGConfig(sources_file=source), source)
+    assert config.seed_source == RetrievalSourcesFile(path=source)
+    assert config.pipeline.num_pairs == 7
+
+
+def test_canonical_generation_does_not_download_or_chunk_text(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from nemotron.recipes.embed.stage0_sdg import data_prep, plugin_adapter
+
+    sources = tmp_path / "sources.jsonl"
+    sources.write_text('{"unit_id":"page-1","document_id":"doc","text":"source"}', encoding="utf-8")
+    output_path = _touch_jsonl(tmp_path / "stage0_sdg" / "canonical.jsonl")
+    result = SimpleNamespace(
+        output_path=output_path, dataset_name="canonical", num_records=1, resolved_config_path=None
+    )
+    monkeypatch.setenv("NVIDIA_API_KEY", "test-key")
+    monkeypatch.setattr(data_prep, "_resolve_corpus_dir", unexpected_corpus_operation)
+    monkeypatch.setattr(data_prep, "_validate_corpus", unexpected_corpus_operation)
+    monkeypatch.setattr(plugin_adapter, "execute_generation", lambda *_args: result)
+    assert run_sdg(SDGConfig(artifact_root=tmp_path, sources_file=sources)) == output_path
+    assert resolve_generation_input(tmp_path / "stage0_sdg" / GENERATION_MANIFEST_FILENAME) == output_path
+
+
+def unexpected_corpus_operation(*args: object, **kwargs: object) -> None:
+    """Fail if canonical-source execution touches the legacy text corpus."""
+    pytest.fail("Canonical sources must bypass text corpus download and chunk validation")
+
+
 def _touch_jsonl(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("{}\n", encoding="utf-8")

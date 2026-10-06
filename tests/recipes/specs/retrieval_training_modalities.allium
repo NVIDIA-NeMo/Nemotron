@@ -1,0 +1,26 @@
+-- allium: 3
+-- Scope: Source-preserving modality adaptation at the retrieval training boundary.
+-- Includes: Mixed corpora, absent modalities and supported image representations.
+-- Excludes: Mining policy, model preprocessing, batching and training algorithms.
+
+contract RetrievalTrainingModalities {
+    load_document: (source_document: Any) -> Any
+
+    @invariant AbsentImagesRemainAbsent
+        -- Text-only documents in a mixed corpus remain loadable when their
+        -- image is omitted, null or explicitly empty. Do not synthesize pixels.
+
+    @invariant AbsentTextRemainsAbsent
+        -- Image-only documents remain loadable when text is omitted or null.
+        -- Missing text must not be replaced by generated evidence or captions.
+
+    @invariant AvailableContentPreserved
+        -- Preserve supplied text and image pixels for text-only, image-only
+        -- and combined documents. Existing decoded images remain usable;
+        -- supported binary image representations are decoded without content loss.
+
+    @invariant InvalidImagesFailClosed
+        -- Corrupt image data and unsupported image references must fail, not
+        -- silently become a text-only source. An explicit null image is absent;
+        -- an unread image reference is not evidence that the image is absent.
+}

@@ -1,0 +1,29 @@
+-- allium: 3
+-- Scope: Optional compilation settings for embedding deployment.
+-- Includes: Configuration shape, explicit propagation and unchanged defaults.
+-- Excludes: Reranking, vLLM option semantics, hardware compatibility and model-quality claims.
+
+contract RetrievalDeploymentCompilation {
+    configure: (backend: String, compilation: Any?) -> List<String>
+
+    @invariant OptInOnly
+        -- Omitting compilation settings or supplying null preserves the existing
+        -- deployment command. No model profile implicitly enables a workaround.
+        -- This applies to text-only and multimodal model families alike.
+
+    @invariant ExplicitMappingPropagation
+        -- For the vLLM backend, a supplied JSON-compatible mapping is passed as
+        -- exactly one JSON argument after one --compilation-config flag.
+        -- Preserve nested values and spaces without shell interpretation.
+        -- An explicitly empty mapping is passed as an empty JSON object.
+        -- Existing Hugging Face overrides remain independently configurable.
+
+    @invariant ConfigurationShape
+        -- Compilation settings accept a mapping or null, not a raw string,
+        -- list or scalar. Validation of individual vLLM options remains vLLM's
+        -- responsibility, as for the existing Hugging Face overrides mapping.
+
+    @invariant BackendIsolation
+        -- NIM deployment receives no compilation flag or otherwise changed
+        -- command when vLLM-only compilation settings are supplied.
+}

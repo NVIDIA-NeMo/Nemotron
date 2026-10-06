@@ -1,0 +1,24 @@
+-- allium: 3
+-- Scope: Reproducible seed selection for retrieval embedding training.
+-- Includes: Defaults, validation and propagation for text and image inputs.
+-- Excludes: Bitwise hardware determinism, data splitting and evaluation selection.
+
+config {
+    seed: Integer = 42
+}
+
+contract RetrievalTrainingSeed {
+    configure: (seed: Integer) -> Any
+
+    @invariant DefaultPreserved
+        -- Omitting the seed preserves the existing default seed of 42.
+
+    @invariant ValidatedSeed
+        -- Accept only whole-number seeds from 0 through 4294967295 inclusive.
+        -- Reject invalid seeds before constructing a training run.
+
+    @invariant SeedPropagation
+        -- The selected seed reaches both training initialization and dataset
+        -- sampling configuration for text-only and multimodal training alike.
+        -- Explicit seed selection never silently falls back to a template seed.
+}

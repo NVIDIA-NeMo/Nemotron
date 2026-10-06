@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import urllib.request
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -113,6 +114,33 @@ def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_pat
     assert not any(argument.startswith("NIM_") for argument in command)
     assert f"{model_dir.resolve()}:/model:ro" in command
     assert f"{tmp_path / 'cache' / 'huggingface'}:/root/.cache/huggingface" in command
+
+
+def test_vl_vllm_docker_contract_includes_validated_runtime_overrides(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    model_dir = tmp_path / "checkpoint"
+    model_dir.mkdir()
+
+    cfg = _deploy_config(
+        model_family="mistral3_vl",
+        backend="vllm",
+        vllm_image=TEST_VLLM_IMAGE,
+        nim_model="example-org/mistral3-vl-embed",
+        model_dir=model_dir,
+        vllm_runner="pooling",
+        vllm_max_model_len=8192,
+        vllm_hf_overrides={"vision_config": {"image_size": 1120}},
+    )
+    command = deploy.build_docker_command(cfg)
+
+    assert command[command.index("--runner") + 1] == "pooling"
+    assert command[command.index("--max-model-len") + 1] == "8192"
+    assert json.loads(command[command.index("--hf-overrides") + 1]) == {"vision_config": {"image_size": 1120}}
+
+
+def test_vl_deployment_rejects_nim_backend() -> None:
+    with pytest.raises(ValueError, match="supports backend=vllm only"):
+        _deploy_config(model_family="mistral3_vl", backend="nim")
 
 
 def test_huggingface_checkpoint_artifact_validation(tmp_path) -> None:
@@ -309,3 +337,24 @@ def test_detached_success_prints_valid_smoke_payload(monkeypatch, tmp_path, caps
         "model": cfg.nim_model,
         "input_type": "query",
     }
+
+
+@pytest.mark.parametrize("opt_in", [False, True])
+def test_vl_profile_preserves_checkpoint_config_unless_override_is_requested(tmp_path, monkeypatch, opt_in):
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
+
+    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "operator/generic-vl-checkpoint")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    path = Path(deploy.__file__).parent / "config/mistral3-vl.yaml"
+    raw = load_config(path)
+    if opt_in:
+        raw = apply_dotlist_overrides(raw, ['vllm_hf_overrides={"vision_config":{"image_size":1120}}'])
+    cfg = deploy.DeployConfig.model_validate(OmegaConf.to_container(raw, resolve=True))
+    command = deploy.build_docker_command(cfg)
+    if opt_in:
+        assert json.loads(command[command.index("--hf-overrides") + 1]) == {"vision_config": {"image_size": 1120}}
+    else:
+        assert cfg.vllm_hf_overrides is None
+        assert "--hf-overrides" not in command

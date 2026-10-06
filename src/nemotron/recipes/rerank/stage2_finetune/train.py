@@ -454,8 +454,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.model.attn_implementation = attn_impl
 
     # Data settings
-    automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
-    automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
+    automodel_cfg.dataset.data_dir_list = [str(cfg.train_data_path)]
+    automodel_cfg.dataset.n_passages = cfg.train_n_passages
     automodel_cfg.dataloader.collate_fn.rerank_max_length = cfg.rerank_max_length
     automodel_cfg.dataloader.collate_fn.prompt_template = cfg.prompt_template
 
