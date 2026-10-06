@@ -231,9 +231,9 @@ def test_evaluate_model_builds_exact_multimodal_processor_config(
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
-    mining_module = ModuleType("nemo_automodel._transformers.mining")
+    mining_module = ModuleType("nemotron.recipes.embed.mining_encoder")
     mining_module.CheckpointMiningEncoderConfig = CheckpointMiningEncoderConfig
-    monkeypatch.setitem(sys.modules, "nemo_automodel._transformers.mining", mining_module)
+    monkeypatch.setitem(sys.modules, "nemotron.recipes.embed.mining_encoder", mining_module)
 
     with pytest.raises(StopSearchError):
         evaluation.evaluate_model(

@@ -336,9 +336,10 @@ settings `query_max_length`, `passage_max_length`, and `max_length` do not
 configure endpoint limits. Prepare inputs to fit the served model's budget,
 including image tokens, before selecting `NONE`.
 
-Stage 2 uses a commit-pinned Automodel source with Transformers 5.12.1 to write
-the deployable checkpoint. Stages 1 and 3 retain Transformers 5.1 through 5.5
-for the original checkpoint path.
+Stages 1 and 2 use a commit-pinned Automodel main source with Transformers
+5.15.1. Stage 3 retains Transformers 5.1 through 5.5 for text checkpoint
+evaluation; its multimodal extra uses the same Automodel pin and Transformers
+5.15.1.
 
 The preceding served-endpoint evaluation commands evaluate the fine-tuned
 checkpoint and served endpoint in one process. They record endpoint, model, and

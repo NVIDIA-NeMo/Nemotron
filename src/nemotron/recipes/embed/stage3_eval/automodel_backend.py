@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from nemo_automodel._transformers.mining import CheckpointMiningEncoderConfig
+    from nemotron.recipes.embed.mining_encoder import CheckpointMiningEncoderConfig
 
 
 class AutoModelBEIREncoder:

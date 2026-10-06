@@ -23,6 +23,8 @@ artifact_root: ./output/embed/nemotron-3-1b
 # Base embedding model to fine-tune
 base_model: nvidia/Nemotron-3-Embed-1B-BF16
 trust_remote_code: true
+# Preserve the checkpoint tokenizer instead of the Mistral Common registry backend.
+tokenizer_force_default: true
 
 # Path to training data (output from stage1_data_prep)
 train_data_path: ${artifact_root}/stage1_data_prep/train_mined.automodel_unrolled.json

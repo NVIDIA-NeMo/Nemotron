@@ -13,7 +13,7 @@ from nemo_runspec._pyproject import _write_temp_pyproject
 
 EMBED = Path(__file__).resolve().parents[3] / "src/nemotron/recipes/embed"
 STAGES = ("stage1_data_prep", "stage2_finetune", "stage3_eval")
-AUTOMODEL_REV = "0e02c4274d09e7e09159009916f7348fcb7dc9bb"
+AUTOMODEL_REV = "3914f200a4c782d44b58ee7a01b4685e4158e19c"
 AUTOMODEL_URL = f"https://github.com/NVIDIA-NeMo/Automodel/archive/{AUTOMODEL_REV}.tar.gz"
 
 
@@ -23,27 +23,24 @@ def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None
     extras = config["project"]["optional-dependencies"]
     assert "transformers==5.15.1" in extras["vl"]
     assert "torchvision>=0.25,<0.26" in extras["vl"]
-    expected_text = "transformers==5.12.1" if stage == "stage2_finetune" else "transformers>=5.1,<5.6"
+    expected_text = "transformers==5.15.1" if stage != "stage3_eval" else "transformers>=5.1,<5.6"
     assert expected_text in extras["text"]
     assert config["tool"]["uv"]["conflicts"] == [[{"extra": "text"}, {"extra": "vl"}]]
     sources = config["tool"]["uv"]["sources"]
     model_sources = sources["nemo-automodel"]
     if isinstance(model_sources, dict):
         model_sources = [model_sources]
-    assert next(source for source in model_sources if source["extra"] == "vl") == {
-        "url": AUTOMODEL_URL,
-        "extra": "vl",
-    }
+    assert all(source["url"] == AUTOMODEL_URL for source in model_sources)
     assert sources["torch"]["index"] == sources["torchvision"]["index"] == "pytorch-cu129"
     assert config["tool"]["uv"]["index"][0]["explicit"] is True
     assert config["tool"]["nemotron"]["container-extras"] == ["text"]
     if stage == "stage2_finetune":
         assert "wandb>=0.21,<1" in config["project"]["dependencies"]
         assert next(source for source in model_sources if source["extra"] == "text")["url"] == (
-            "https://github.com/NVIDIA-NeMo/Automodel/archive/a9f4423819c513fd08083324fe1f738746ac6e54.tar.gz"
+            "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz"
         )
     elif stage == "stage1_data_prep":
-        assert "nemo-automodel==0.4.0" in extras["text"]
+        assert "nemo-automodel" in extras["text"]
 
 
 @pytest.mark.parametrize("stage", ("stage0_sdg", *STAGES))
@@ -108,3 +105,19 @@ def test_unvalidated_vl_container_lane_still_fails_before_submission(tmp_path: P
             env_vars={},
             force_squash=False,
         )
+
+
+@pytest.mark.parametrize(
+    "recipe_stage",
+    ("embed/stage1_data_prep", "embed/stage2_finetune", "embed/stage3_eval", "rerank/stage2_finetune"),
+)
+def test_retrieval_stage_locks_share_the_automodel_commit(recipe_stage: str) -> None:
+    stage = EMBED.parent / recipe_stage
+    lock = tomllib.loads((stage / "uv.lock").read_text())
+    packages = [package for package in lock["package"] if package["name"] == "nemo-automodel"]
+    assert len(packages) == 1
+    assert packages[0]["source"] == {"url": AUTOMODEL_URL}
+    project = tomllib.loads((stage / "pyproject.toml").read_text())
+    if recipe_stage == "embed/stage2_finetune":
+        assert "peft>=0.20.0" in project["project"]["dependencies"]
+        assert any(package["name"] == "accelerate" for package in lock["package"])
