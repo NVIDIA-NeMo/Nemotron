@@ -36,12 +36,12 @@ Four phases, in this order for a reason:
     fail the run if it does not hold. Verifying the plan rather than the output
     would check the arithmetic and not the artifact.
 
-Tokenization goes through Curator's ``TokenCountFilter``. It has no ``revision``
-parameter, but forwards ``transformers_init_kwargs`` verbatim to
-``AutoTokenizer.from_pretrained``, which is where the pin is applied. The
-resolved name and revision go into every tier's manifest: two subsets counted
-under different revisions are not comparable and must not be presented as an
-ablation pair.
+Tokenization goes through Curator's ``TokenCountFilter`` with a pre-loaded
+``AutoTokenizer``. Loading it here applies the revision pin and permits the
+first run to populate an empty cache; Curator's model-name path is local-only.
+The resolved name and revision go into every tier's manifest: two subsets
+counted under different revisions are not comparable and must not be presented
+as an ablation pair.
 """
 
 from __future__ import annotations
@@ -143,19 +143,13 @@ class TokenCounter:
     def _load(self) -> Any:
         if self._filter is None:
             from nemo_curator.stages.text.filters.token.token_count import TokenCountFilter
+            from transformers import AutoTokenizer
 
-            # hf_model_name, not tokenizer: the latter takes a *loaded*
-            # AutoTokenizer. Passing a model-name string there is accepted by the
-            # constructor and then fails per document as
-            # ``str.encode(encoding=<the document>)`` -> LookupError, and, worse,
-            # leaves transformers_init_kwargs unread, so the revision pin — the
-            # whole point of recording one — would be silently inert.
-            self._filter = TokenCountFilter(
-                hf_model_name=self.name,
-                transformers_init_kwargs={"revision": self.revision},
-            )
-            if hasattr(self._filter, "load_tokenizer"):
-                self._filter.load_tokenizer()
+            # Curator's model-name path loads with local_files_only=True. Load
+            # the tokenizer ourselves so a clean cache is populated on the
+            # first run, while still pinning the exact recorded revision.
+            tokenizer = AutoTokenizer.from_pretrained(self.name, revision=self.revision)
+            self._filter = TokenCountFilter(tokenizer=tokenizer)
         return self._filter
 
     def count(self, doc_id: str, text: str) -> int:

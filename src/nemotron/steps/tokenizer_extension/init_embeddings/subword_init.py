@@ -1052,7 +1052,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         from vocab_pad import pad_vocab_to_multiple
 
         pad_vocab_to_multiple(model, 4)  # TP-safe: divisible by TP (=4); minimal padding across all arms/methods
-        model.save_pretrained(args.output_dir)
+        from checkpoint import save_pretrained
+
+        save_pretrained(model, args.output_dir)
         extended_tokenizer.save_pretrained(args.output_dir)
 
     total_elapsed = time.time() - script_start

@@ -14,9 +14,11 @@ overclaim would live if it lived anywhere.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tomllib
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 import yaml
@@ -323,6 +325,56 @@ def test_missing_gpu_dependencies_name_the_install_extra(tmp_path, monkeypatch) 
             "id",
             "text",
         )
+
+
+def test_gpu_workflow_runs_inside_one_explicit_ray_lifecycle(tmp_path, monkeypatch) -> None:
+    events: list[str] = []
+
+    class RayClient:
+        def __init__(self, **kwargs) -> None:
+            assert kwargs == {"num_gpus": 1, "include_dashboard": False}
+
+        def start(self) -> None:
+            # RayClient shells out to the `ray` CLI; it must resolve from this
+            # interpreter's venv even when the venv is not activated.
+            assert str(Path(sys.executable).parent) in os.environ["PATH"].split(os.pathsep)
+            events.append("ray-start")
+
+        def stop(self) -> None:
+            events.append("ray-stop")
+
+    class Workflow:
+        def __init__(self, **kwargs) -> None:
+            self.output_path = Path(kwargs["output_path"])
+
+        def run(self) -> None:
+            events.append("workflow")
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            (self.output_path / "fuzzy_id_generator.json").write_text(
+                json.dumps({"batch_registry": {"union": [0, 1]}, "next_id": 2}),
+                encoding="utf-8",
+            )
+
+    client_module = ModuleType("nemo_curator.core.client")
+    client_module.RayClient = RayClient
+    workflow_module = ModuleType("nemo_curator.stages.deduplication.fuzzy.workflow")
+    workflow_module.FuzzyDeduplicationWorkflow = Workflow
+    monkeypatch.setitem(sys.modules, "nemo_curator.core.client", client_module)
+    monkeypatch.setitem(sys.modules, "nemo_curator.stages.deduplication.fuzzy.workflow", workflow_module)
+    monkeypatch.setattr(step, "read_cross_split_pairs", lambda *args: [])
+    monkeypatch.setenv("PATH", "/usr/bin")
+
+    assert (
+        step.candidate_pairs(
+            {"work_dir": str(tmp_path / "work")},
+            [{"id": "t1", "text": FILLER}],
+            [{"id": "h1", "text": FILLER}],
+            "id",
+            "text",
+        )
+        == []
+    )
+    assert events == ["ray-start", "workflow", "ray-stop"]
 
 
 def test_cross_split_pairs_use_named_lsh_columns_not_column_order(tmp_path) -> None:

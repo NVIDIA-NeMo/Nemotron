@@ -91,10 +91,14 @@ work out why a tier is small.
 
 ## Tokenizer
 
-`tokenizer.revision` is **required**. `TokenCountFilter` has no `revision`
-parameter but forwards `transformers_init_kwargs` verbatim to
-`AutoTokenizer.from_pretrained`, which is where the pin lands. The resolved name
-and revision are recorded in `plan.json` and `subset_report.json`.
+`tokenizer.revision` is **required**. The step loads `AutoTokenizer` at that
+revision, then passes the loaded tokenizer to Curator's `TokenCountFilter`. The
+resolved name and revision are recorded in `plan.json` and
+`subset_report.json`.
+
+On the first online run the step downloads and loads that pinned tokenizer into
+the Hugging Face cache, then gives Curator the loaded object. Later runs reuse
+the cache without a separate preparation command.
 
 Two subsets counted under different revisions are not comparable and must not be
 presented as an ablation pair.

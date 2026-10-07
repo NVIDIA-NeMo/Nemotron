@@ -143,6 +143,11 @@ arms, so input and output stay independently weighted.
 `pip_extras`). The import is lazy, so the other methods run without it.
 See `../guide.md`.
 
+Transformers 5 expects `_tied_weights_keys` as a mapping, but the default
+model's remote code still supplies the legacy list form. Checkpoint saving
+converts it to an empty mapping only after confirming that the model config and
+the embedding tensors are both untied, and refuses to save otherwise.
+
 ## Run
 ```bash
 L=vietnamese          # must match the language used by extend

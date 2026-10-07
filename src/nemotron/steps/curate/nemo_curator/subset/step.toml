@@ -63,7 +63,7 @@ description = "One tier per positive integer budget. All are planned together in
 
 [[parameters]]
 name = "tokenizer"
-description = "Mapping with name and revision, forwarded to Curator's TokenCountFilter via transformers_init_kwargs. revision is required because counts from two revisions are not comparable. Set the block to null to count whitespace words instead; artifacts then record unit: words."
+description = "Mapping with name and revision. The step loads AutoTokenizer at that revision (downloading it on first use) and passes the loaded tokenizer to Curator's TokenCountFilter. revision is required because counts from two revisions are not comparable. Set the block to null to count whitespace words instead; artifacts then record unit: words."
 
 [[parameters]]
 name = "token_cache"
