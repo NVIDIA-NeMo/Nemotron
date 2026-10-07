@@ -21,6 +21,25 @@ from nemotron.steps.byob.scripts.runtime import run_byob
 BYOB_ROOT = Path(__file__).resolve().parents[3] / "src" / "nemotron" / "steps" / "byob"
 
 
+def test_resume_cli_uses_the_documented_skip_until_option() -> None:
+    from nemotron.steps.byob.scripts.run import build_parser
+
+    args = build_parser().parse_args(
+        [
+            "--config",
+            "generate.yaml",
+            "--family",
+            "bfcl",
+            "--stage",
+            "generate",
+            "--skip-until",
+            "dedup_balancing",
+        ]
+    )
+
+    assert args.skip_until == "dedup_balancing"
+
+
 def _config(tmp_path: Path) -> Path:
     value = yaml.safe_load((BYOB_ROOT / "bfcl" / "config" / "tiny.yaml").read_text(encoding="utf-8"))
     value["output_dir"] = str(tmp_path / "output")

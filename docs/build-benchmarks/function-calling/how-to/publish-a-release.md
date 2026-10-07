@@ -182,7 +182,19 @@ uv run nemotron steps run byob/bfcl \
 
 `stage=all` runs prepare followed by generate; it does not translate or evaluate, because those are separate post-publication runs.
 
-If a stage fails, preserve the experiment directory and resume with `skip_until=<stage>` only when the predecessor checkpoint is intact and the pack, configuration, and pipeline identities have not changed. Resume recursively verifies that chain and fails closed on any drift, and restoration keeps the append-only model input/output caches so a re-run stage replays recorded responses instead of paying for new ones that would render different surfaces. Never patch a generated Parquet file, export, manifest, or cache record.
+If a stage fails, preserve the experiment directory and resume with `--skip-until <stage>` only when the predecessor checkpoint is intact and the pack, configuration, and pipeline identities have not changed. Repeat the original command exactly, including `stage=`, and add only the resume option:
+
+```bash
+uv run nemotron steps run byob/bfcl \
+  -c /srv/bfcl/runs/warehouse-gold.yaml \
+  stage=all \
+  family=bfcl \
+  --skip-until dedup_balancing
+```
+
+The configuration identity includes `stage`, so resuming a `stage=all` run with `stage=generate` is refused as a different run. A refused resume still invalidates the previous publication, so it cannot look current; rerun the resume with the original `stage=` to restore it from the checkpoints.
+
+Resume recursively verifies that chain and fails closed on any drift, and restoration keeps the append-only model input/output caches so a re-run stage replays recorded responses instead of paying for new ones that would render different surfaces. Never patch a generated Parquet file, export, manifest, or cache record.
 
 ## Step 7: Verify the Publication
 

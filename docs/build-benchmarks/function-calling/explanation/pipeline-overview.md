@@ -293,14 +293,15 @@ Even when they are enabled, none of them may touch a task's calls, arguments, or
 Each generation stage writes one artifact under `stage_cache/`, keyed by `task_id` with one row per task, and a checkpoint holding a canonical state snapshot plus immutable copies of the stage's mutable artifacts.
 Because every table carries the same `task_id` set, joining them shows exactly which stage dropped a task instead of leaving a shortfall unexplained.
 
-`skip_until=<stage>` resumes by running the named stage and every later enabled stage.
+`--skip-until <stage>` resumes by running the named stage and every later enabled stage.
+Resume with the same configuration and `stage=` as the original run: `stage` is part of the configuration identity, so a `stage=all` run cannot be resumed with `stage=generate`.
 It recursively verifies the named stage's immediate enabled predecessor: the versioned manifest and canonical state, artifact snapshots, schemas, hashes, counts, task order, the generation-config hash, and the pack and endpoint identities.
 Unknown stages, disabled optional stages, missing parents, and any drift fail closed.
 Restoration removes only the stage outputs that will run again and keeps the append-only model input/output caches, so a re-run stage replays the responses it already recorded rather than paying for new ones that would render different surfaces.
 
 :::{note}
-A run started without `skip_until` clears the old checkpoints, and resuming revalidates the pack and endpoint before restoring anything.
-`stage=all` therefore does not run `prepare` first when `skip_until` is set.
+A run started without `--skip-until` clears the old checkpoints, and resuming revalidates the pack and endpoint before restoring anything.
+`stage=all` therefore does not run `prepare` first when `--skip-until` is set.
 :::
 
 ## Configuration Is Fail-Closed

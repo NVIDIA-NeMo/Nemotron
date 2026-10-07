@@ -72,10 +72,11 @@ so it leaves behind no artifact a later reader could mistake for a verdict it
 never reached.
 
 Each stage writes one table under `stage_cache/` keyed by `task_id`, plus a
-verified checkpoint. `skip_until=<stage>` resumes by running the named stage and
-every later enabled stage, after recursively verifying the immediate enabled
+verified checkpoint. The CLI option `--skip-until <stage>` resumes by running
+the named stage and every later enabled stage, after recursively verifying the immediate enabled
 predecessor's manifest, state, artifact hashes, task order, config identity, and
-pack and endpoint identities. Any drift fails closed.
+pack and endpoint identities. Any drift fails closed. The config identity
+includes `stage`, so resume with the same `stage=` as the original run.
 
 Three authoring routes produce a reviewed pack before Stage 1 — writing one by
 hand, drafting one from a conventional Python package or HTTPS service with model

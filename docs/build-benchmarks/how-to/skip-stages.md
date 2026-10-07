@@ -44,8 +44,13 @@ BFCL generation uses lowercase canonical names:
 The named stage and every later enabled stage run. For example:
 
 ```console
-uv run nemotron steps run byob/bfcl -c /path/to/generate.yaml stage=generate skip_until=expected_trace
+uv run nemotron steps run byob/bfcl -c /path/to/generate.yaml \
+  stage=generate --skip-until expected_trace
 ```
+
+Use the same configuration and `stage=` as the run being resumed. `stage` is
+part of the configuration identity, so a run started with `stage=all` must be
+resumed with `stage=all --skip-until <stage>`.
 
 Unlike MCQ's file-presence shortcut, BFCL recursively verifies immutable
 checkpoint snapshots and their parent identities. It also revalidates config,

@@ -334,8 +334,9 @@ export BFCL_RUN_MANIFEST="$BFCL_PUBLICATION_DIR/run_manifest.json"
 ```
 
 Model I/O caches are append-only. On failure, preserve the experiment directory
-and use `skip_until=<stage>` only when its predecessor checkpoint is intact and
-the pack, config, and pipeline identities have not changed.
+and use `--skip-until <stage>` only when its predecessor checkpoint is intact and
+the pack, config, and pipeline identities have not changed. Repeat the original
+`stage=` when resuming; it is part of the config identity.
 
 Never patch generated parquet, exports, manifests, or cache completion records.
 
