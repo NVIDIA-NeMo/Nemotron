@@ -212,6 +212,7 @@ def _execute_remote(
         attached=attached,
         force_squash=force_squash,
         default_image=SPEC.image,
+        script_resources=SPEC.resources,
     )
 
     recipe_name = SPEC.name.replace("/", "-")
