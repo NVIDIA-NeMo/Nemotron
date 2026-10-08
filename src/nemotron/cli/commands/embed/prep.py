@@ -33,10 +33,10 @@ from nemo_runspec.config import (
     save_configs,
 )
 from nemo_runspec.display import display_job_config, display_job_submission
-from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
+from nemo_runspec.staging import parse_env_for_stage, run_or_stage_experiment, validate_staging_target
 from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig
 
 SCRIPT_PATH = "src/nemotron/recipes/embed/stage1_data_prep/data_prep.py"
@@ -57,7 +57,7 @@ META = RecipeMeta(
 def _execute_prep(cfg: RecipeConfig, *, experiment=None):
     """Execute data prep with visible execution logic."""
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
-    env = parse_env(cfg.ctx)
+    env = parse_env_for_stage(cfg.ctx, stage=cfg.stage)
 
     script_path = SCRIPT_PATH if cfg.mode == "local" else SCRIPT_REMOTE
 
@@ -75,6 +75,9 @@ def _execute_prep(cfg: RecipeConfig, *, experiment=None):
     if cfg.dry_run:
         return
 
+    if cfg.stage:
+        validate_staging_target(env)
+
     job_dir = generate_job_dir(SPEC.name)
     train_config_for_script = extract_train_config(job_config, for_remote=False)
     job_path, train_path = save_configs(job_config, train_config_for_script, job_dir)
@@ -82,7 +85,8 @@ def _execute_prep(cfg: RecipeConfig, *, experiment=None):
     env_for_executor = job_config.run.env if hasattr(job_config.run, "env") else None
     env_vars = build_env_vars(job_config, env_for_executor)
 
-    display_job_submission(job_path, train_path, env_vars, cfg.mode)
+    if not cfg.stage:
+        display_job_submission(job_path, train_path, env_vars, cfg.mode)
 
     if cfg.mode == "local":
         _execute_uv_local(train_path, cfg.passthrough)
@@ -94,6 +98,7 @@ def _execute_prep(cfg: RecipeConfig, *, experiment=None):
             attached=cfg.attached,
             env_vars=env_vars,
             force_squash=cfg.force_squash,
+            stage=cfg.stage,
             experiment=experiment,
         )
 
@@ -116,6 +121,7 @@ def _execute_remote(
     attached: bool,
     env_vars: dict[str, str],
     force_squash: bool,
+    stage: bool = False,
     experiment=None,
 ):
     """Execute data prep via nemo-run with remote backend."""
@@ -165,7 +171,7 @@ def _execute_remote(
             executor=executor,
             name=recipe_name,
         )
-        exp.run(detach=not attached, tail_logs=attached)
+        run_or_stage_experiment(exp, stage=stage, attached=attached)
 
 
 def prep(ctx: typer.Context) -> None:

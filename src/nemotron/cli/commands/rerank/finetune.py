@@ -32,10 +32,10 @@ from nemo_runspec.config import (
     save_configs,
 )
 from nemo_runspec.display import display_job_config, display_job_submission
-from nemo_runspec.env import parse_env
 from nemo_runspec.execution import build_env_vars
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
+from nemo_runspec.staging import parse_env_for_stage, run_or_stage_experiment, validate_staging_target
 from nemotron.recipes.rerank.stage2_finetune.train import FinetuneConfig
 
 SCRIPT_PATH = "src/nemotron/recipes/rerank/stage2_finetune/train.py"
@@ -56,7 +56,7 @@ META = RecipeMeta(
 def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
     """Execute finetune with visible execution logic."""
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
-    env = parse_env(cfg.ctx)
+    env = parse_env_for_stage(cfg.ctx, stage=cfg.stage)
 
     script_path = SCRIPT_PATH if cfg.mode == "local" else SCRIPT_REMOTE
 
@@ -76,8 +76,7 @@ def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
         return
 
     if cfg.stage:
-        typer.echo("Error: --stage is not supported for rerank stage commands yet.", err=True)
-        raise typer.Exit(1)
+        validate_staging_target(env)
 
     job_dir = generate_job_dir(SPEC.name)
     # Preserve ${oc.env:NEMO_RUN_DIR,.}; recipe scripts resolve it from the executor's
@@ -88,7 +87,8 @@ def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
     env_for_executor = job_config.run.env if hasattr(job_config.run, "env") else None
     env_vars = build_env_vars(job_config, env_for_executor)
 
-    display_job_submission(job_path, train_path, env_vars, cfg.mode)
+    if not cfg.stage:
+        display_job_submission(job_path, train_path, env_vars, cfg.mode)
 
     if cfg.mode == "local":
         _execute_uv_local(train_path, cfg.passthrough)
@@ -100,6 +100,7 @@ def _execute_finetune(cfg: RecipeConfig, *, experiment=None):
             attached=cfg.attached,
             env_vars=env_vars,
             force_squash=cfg.force_squash,
+            stage=cfg.stage,
             experiment=experiment,
         )
 
@@ -122,6 +123,7 @@ def _execute_remote(
     attached: bool,
     env_vars: dict[str, str],
     force_squash: bool,
+    stage: bool = False,
     experiment=None,
 ):
     """Execute finetune via nemo-run with remote backend."""
@@ -172,7 +174,7 @@ def _execute_remote(
             executor=executor,
             name=recipe_name,
         )
-        exp.run(detach=not attached, tail_logs=attached)
+        run_or_stage_experiment(exp, stage=stage, attached=attached)
 
 
 def finetune(ctx: typer.Context) -> None:
