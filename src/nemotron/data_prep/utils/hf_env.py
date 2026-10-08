@@ -21,8 +21,10 @@ construction for Xenna pipeline stages.
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
-from cosmos_xenna.ray_utils.runtime_envs import RuntimeEnv
+if TYPE_CHECKING:
+    from cosmos_xenna.ray_utils.runtime_envs import RuntimeEnv
 
 
 def detect_hf_env_vars() -> dict[str, str]:
@@ -44,7 +46,7 @@ def make_hf_runtime_env(
     *,
     base_env_vars: dict[str, str] | None = None,
     extra_env_vars: dict[str, str] | None = None,
-) -> RuntimeEnv:
+) -> "RuntimeEnv":
     """Create a RuntimeEnv with HuggingFace environment variables for worker processes.
 
     Args:
@@ -55,7 +57,19 @@ def make_hf_runtime_env(
 
     Returns:
         RuntimeEnv configured with HuggingFace environment variables.
+
+    Raises:
+        ImportError: If cosmos_xenna is not installed. Install the xenna or byob
+            extra: ``uv pip install -e '.[byob]'``
     """
+    try:
+        from cosmos_xenna.ray_utils.runtime_envs import RuntimeEnv
+    except ImportError as exc:
+        raise ImportError(
+            "cosmos_xenna is required to build a RuntimeEnv. "
+            "Install it with: uv pip install -e '.[byob]'"
+        ) from exc
+
     # Auto-detect if not provided
     if base_env_vars is None:
         base_env_vars = detect_hf_env_vars()
