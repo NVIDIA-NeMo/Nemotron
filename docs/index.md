@@ -226,6 +226,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) – SFT and RL data
 - [Artifact Lineage](nemotron/artifacts.md) – W&B integration guide
 - [Model training steps](train-models/index.md) – SFT, PEFT, RL, and optimization with `nemotron step run`
+- [Training FAQ](train-models/faq/index.md) – answers to common questions about training and fine-tuning Nemotron models
 
 ```{toctree}
 :caption: Nemotron
@@ -302,6 +303,7 @@ Tips for Using Agents <train-models/using-skill.md>
 Concepts <train-models/explanation/index.md>
 Tasks <train-models/how-to/index.md>
 Reference <train-models/reference/index.md>
+FAQ <train-models/faq/index.md>
 ```
 
 ```{toctree}
