@@ -4,7 +4,7 @@ Counting colored stars is a compact way to exercise the complete multimodal RL
 pipeline. The policy must inspect an image, identify the requested color, count
 the matching objects, and return an answer that an automatic verifier can
 score. This guide runs that task with full-weight GRPO, NeMo RL's Megatron
-backend, dedicated vLLM generation, and NeMo Gym.
+backend, colocated vLLM generation, and NeMo Gym.
 
 ## How the task works
 
@@ -57,9 +57,9 @@ uses the following settings:
 
 | Component | Setting |
 | --- | --- |
-| Compute | 5 nodes x 4 GPUs |
-| Training | 4 nodes, full-weight BF16, TP=4, EP=16 |
-| Generation | 1 dedicated node, vLLM TP=4 |
+| Compute | 4 nodes x 4 GPUs |
+| Training | Full-weight BF16, TP=4, EP=16 |
+| Generation | Colocated vLLM, TP=4 |
 | GRPO batch | 16 prompts x 8 responses |
 | Schedule | 10 updates; validation before RL and every 2 updates |
 | Sequence limit | 4,096 total tokens; 256 generated tokens |
@@ -94,8 +94,8 @@ inside the container. The recipe uses this layout:
 
 Use a NeMo RL container built from the `super-v3.5-posttraining` branch, or a
 compatible prebuilt image newer than v0.7. This branch provides the Super VL
-Megatron model path, vLLM integration, NeMo Gym support, and non-colocated
-collective weight synchronization used by this recipe.
+Megatron model path, vLLM integration, NeMo Gym support, and colocated weight
+refit support used by this recipe.
 
 No suitable prebuilt image was available when this guide was published. Build
 the image from the same checkout that will be mounted into the job:
@@ -146,7 +146,7 @@ to the shared filesystem root used by your cluster.
 Use the interactive path when trying the recipe for the first time or watching
 the training process directly.
 
-### 1. Reserve five nodes — login or head node
+### 1. Reserve four nodes — login or head node
 
 Run from the NeMo RL repository root:
 
@@ -154,7 +154,7 @@ Run from the NeMo RL repository root:
 cd "${NEMO_RL}"
 unset COMMAND
 sbatch \
-  --nodes=5 \
+  --nodes=4 \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
   --job-name=super-vl-star-count \
@@ -165,10 +165,11 @@ sbatch \
   ray.sub
 ```
 
-`--mem=0` requests all host memory on each node. Four nodes host the full-weight
-Megatron policy, while the fifth node hosts the TP=4 vLLM generation engine.
-The two worker groups remain resident and exchange updated weights through the
-non-colocated collective path.
+`--mem=0` requests all host memory on each node. Megatron and vLLM share all
+four nodes. During refit, NeMo RL temporarily moves optimizer state to host
+memory before the current policy weights are installed. The validated run
+reached about 867 GiB peak RSS on its 920 GiB Ray head node, so use nodes with
+at least 920 GiB of host RAM.
 
 ### 2. Attach — login or head node
 
@@ -195,12 +196,14 @@ export CACHE_DIR=/shared/.cache
 export EXAMPLE_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym"
 
 mkdir -p "${DATA_DIR}" "${RUN_DIR}/logs" \
-  "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+  "${CACHE_DIR}/huggingface"/{modules,vllm} \
+  "${CACHE_DIR}/megatron_ckpt/config_locks"
 
-export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
-export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
+export HF_HOME="${CACHE_DIR}/huggingface"
+export HF_MODULES_CACHE="${HF_HOME}/modules"
 export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
-export VLLM_CACHE_ROOT="${CACHE_DIR}/vllm"
+export MEGATRON_CONFIG_LOCK_DIR="${NRL_MEGATRON_CHECKPOINT_DIR}/config_locks"
+export VLLM_CACHE_ROOT="${HF_HOME}/vllm"
 export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
 export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
 export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
@@ -247,12 +250,14 @@ export CACHE_DIR=/shared/.cache
 export EXAMPLE_DIR="${NEMOTRON_REPO}/usage-cookbook/Nemotron-3.5-Super-VL/RL/grpo-star-count-nemo-gym"
 
 mkdir -p "${DATA_DIR}" "${RUN_DIR}/logs" \
-  "${CACHE_DIR}"/{hf_modules,hf_config_locks,megatron_ckpt,vllm}
+  "${CACHE_DIR}/huggingface"/{modules,vllm} \
+  "${CACHE_DIR}/megatron_ckpt/config_locks"
 
-export HF_MODULES_CACHE="${CACHE_DIR}/hf_modules"
-export MEGATRON_CONFIG_LOCK_DIR="${CACHE_DIR}/hf_config_locks"
+export HF_HOME="${CACHE_DIR}/huggingface"
+export HF_MODULES_CACHE="${HF_HOME}/modules"
 export NRL_MEGATRON_CHECKPOINT_DIR="${CACHE_DIR}/megatron_ckpt"
-export VLLM_CACHE_ROOT="${CACHE_DIR}/vllm"
+export MEGATRON_CONFIG_LOCK_DIR="${NRL_MEGATRON_CHECKPOINT_DIR}/config_locks"
+export VLLM_CACHE_ROOT="${HF_HOME}/vllm"
 export MEGATRON_BRIDGE="${NEMO_RL}/3rdparty/Megatron-Bridge-workspace/Megatron-Bridge"
 export MEGATRON_LM="${MEGATRON_BRIDGE}/3rdparty/Megatron-LM"
 export PYTHONPATH="${HF_MODULES_CACHE}:${NEMO_RL}:${MEGATRON_BRIDGE}/src:${MEGATRON_LM}:${PYTHONPATH:-}"
@@ -274,7 +279,7 @@ RUN
 export COMMAND
 
 sbatch \
-  --nodes=5 \
+  --nodes=4 \
   --account="${SLURM_ACCOUNT}" \
   --partition="${PARTITION}" \
   --job-name=super-vl-star-count \
@@ -295,11 +300,11 @@ tail -f <jobid>-logs/ray-driver.log
 ## Reading the result
 
 The driver reports held-out exact-match accuracy before RL and after steps 2,
-4, 6, 8, and 10. A representative completed run produced 32, 36, 38, 65, 157,
-and 181 correct answers out of 256 at those checkpoints. Accuracy increased
-from 12.50% before RL to 70.70% after step 10.
+4, 6, 8, and 10. A completed four-node colocated run produced 35, 32, 41, 132,
+185, and 200 correct answers out of 256 at those checkpoints. Accuracy
+increased from 13.67% before RL to 78.12% after step 10.
 
 This metric combines visual counting, response completion, and strict answer
-formatting. Mean response length in that run fell from 249.8 to 143.3 tokens.
-The result therefore demonstrates that the RL pipeline teaches the policy to
-produce concise, verifiable responses for this task.
+formatting. The result demonstrates that the RL pipeline teaches the policy to
+produce more concise, verifiable responses for this task; it should not be
+interpreted as a pure measure of improved visual perception.

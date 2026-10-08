@@ -1,7 +1,7 @@
 # Nemotron 3.5 Super VL Star-Count RL Cookbook
 
 This directory documents multimodal RL post-training for Nemotron 3.5 Super
-VL with NeMo RL's Megatron backend, dedicated vLLM generation, and NeMo Gym.
+VL with NeMo RL's Megatron backend, colocated vLLM generation, and NeMo Gym.
 The workflow applies full-weight GRPO to synthetic star-count images and
 evaluates exact-match accuracy on a deterministic held-out split.
 
@@ -21,24 +21,22 @@ colored stars.
 ## Runtime and hardware requirements
 
 Use the NeMo RL `super-v3.5-posttraining` branch. It contains the Super VL
-Megatron model path, compatible vLLM integration, and NeMo Gym support used by
-this cookbook.
+Megatron model path, compatible vLLM integration, NeMo Gym support, and the
+stabilized colocated refit path used by this cookbook.
 
-The reference configuration uses 20 GB200 GPUs across five 4-GPU nodes. Four
-nodes form the 16-GPU Megatron policy cluster with tensor parallelism 4 and
-expert parallelism 16. The fifth node runs a dedicated TP=4 vLLM instance.
-NeMo RL transfers updated weights from the policy cluster to the generation
-cluster through the non-colocated collective path. Keep the following settings
-aligned when adapting the topology:
+The reference configuration uses 16 GB200 GPUs across four 4-GPU nodes. It
+trains with Megatron tensor parallelism 4 and expert parallelism 16 while
+colocating one tensor-parallel vLLM group on each node. Keep the following
+settings aligned when adapting the topology:
 
 ```text
-cluster.num_nodes=5
+cluster.num_nodes=4
 cluster.gpus_per_node=4
 policy.megatron_cfg.tensor_model_parallel_size=4
 policy.megatron_cfg.expert_model_parallel_size=16
 policy.generation.vllm_cfg.tensor_parallel_size=4
-policy.generation.colocated.enabled=false
-policy.generation.colocated.resources.num_nodes=1
+policy.generation.colocated.enabled=true
+policy.generation.colocated.resources.num_nodes=4
 ```
 
 The recipe performs full-weight BF16 updates. Approximate shared-storage usage
@@ -57,6 +55,10 @@ Checkpointing is disabled in the provided smoke-test recipe. Allow at least
 headroom. If checkpointing is enabled for resumable training, add about 1.4 TB
 for every retained optimizer checkpoint and configure pruning accordingly.
 Exact usage varies with the model revision, save format, and filesystem.
+
+The validated run used nodes with 920 GiB of host memory and reached about
+867 GiB peak RSS on the Ray head node. Request all node memory and use nodes
+with at least 920 GiB of host RAM for this four-node topology.
 
 ## Shared-storage layout
 
@@ -183,7 +185,7 @@ Ray worker.
 
 Continue with the
 [star-count NeMo Gym guide](grpo-star-count-nemo-gym/grpo_training_cookbook_nemo_gym.md)
-to generate the deterministic dataset and launch the five-node full-weight
+to generate the deterministic dataset and launch the four-node full-weight
 training job.
 
 ## Operational notes
@@ -204,6 +206,6 @@ training job.
 | Megatron workers cannot import `transformers_modules` | Launch from the mounted NeMo RL checkout and put the shared `HF_MODULES_CACHE` on `PYTHONPATH`. |
 | A Gym service environment is missing | Rebuild with `prefetch_super35_all_envs.yaml`, or allow the first job to create the environment on shared storage. |
 | Model conversion repeats on every launch | Set `NRL_MEGATRON_CHECKPOINT_DIR` to a persistent shared directory. |
-| vLLM runs out of memory | Keep the dedicated generation node, TP=4, and the recipe's memory and sequence limits. |
+| vLLM runs out of memory during refit | Keep TP=4, optimizer offload during refit, and the recipe's memory and sequence limits. |
 | Validation does not cover the complete file | Leave `grpo.max_val_samples: null`; NeMo Gym derives the validation size from the JSONL file. |
 | Worker environments are stale after changing the image or branch | Remove the affected cached environment or set `NRL_FORCE_REBUILD_VENVS=true` for one launch. |
