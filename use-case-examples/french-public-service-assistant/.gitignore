@@ -1,0 +1,7 @@
+data/persona_seeds.jsonl
+data/seeds.jsonl
+data/sdg/
+data/train.jsonl
+data/validation.jsonl
+checkpoints/
+eval/comparison.*
