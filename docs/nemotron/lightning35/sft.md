@@ -304,7 +304,7 @@ uv run nemotron lightning35 sft train.train_iters=5000
 uv run nemotron lightning35 sft optimizer.lr=1e-5
 
 # Load specific pretrained checkpoint
-uv run nemotron lightning35 sft checkpoint.load=/path/to/pretrain/checkpoint
+uv run nemotron lightning35 sft checkpoint.pretrained_checkpoint=/path/to/pretrain/checkpoint
 ```
 
 ### Running with NeMo-Run
@@ -372,13 +372,12 @@ This stage uses the following components from the [NVIDIA AI Stack](../nvidia-st
 ### Container
 
 ```
-nvcr.io/nvidian/nemo:26.08.rc2   # public nvcr.io/nvidia/nemo:26.08 at launch
+nvcr.io/nvidia/nemo:26.08
 ```
 
-The rc container's bundled Megatron-Bridge predates the Lightning recipes, so the
-config mounts Megatron-Bridge main (`@0c565c9a0`) and its pinned Megatron-LM
-(`@d12f6c8c9`) over the container's copies via `${auto_mount:...}` (Slurm executor
-only). These mounts disappear once the launch container ships with the recipes built in.
+The config also mounts the Megatron-Bridge main revision the Lightning recipes were
+validated against (`@0c565c9a0`) and its pinned Megatron-LM (`@d12f6c8c9`) over the
+container's copies via `${auto_mount:...}` (Slurm executor only).
 
 ---
 

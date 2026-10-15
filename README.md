@@ -229,7 +229,7 @@ A complete training recipe for the frontier Hybrid Mamba Latent Mixture-of-Exper
 
 ### Nemotron 3.5 Super
 
-A post-training recipe for Nemotron 3.5 Super VL, the 120B-A12B hybrid Mamba-Transformer LatentMoE model that SFT turns from a text-only base into a vision-language agent, followed by RLVR, six specialist teachers, and two-phase multi-teacher on-policy distillation (MOPD).
+A training recipe for Nemotron 3.5 Super VL, the 120B-A12B hybrid Mamba-Transformer LatentMoE model that SFT turns from a text-only base into a vision-language agent, followed by RLVR, six specialist teachers, and two-phase multi-teacher on-policy distillation (MOPD).
 
 ![Nemotron 3.5 Super VL post-training pipeline: multimodal SFT on the 1M-context text base, a shared RL trunk, specialist teachers for reasoning, agentic, vision, and alignment, and two MOPD stages that merge them into the final weights](docs/assets/super35/post-training-pipeline.png)
 
@@ -246,12 +246,17 @@ A post-training recipe for Nemotron 3.5 Super VL, the 120B-A12B hybrid Mamba-Tra
 - Multi-environment RLVR with NeMo Gym, including competitive-programming and finance-agent environments
 - Specialist teachers for reasoning, vision tool use, video reasoning and tracking, vision reasoning, and alignment (GenRM-based RLHF)
 - Two-phase MOPD with per-domain teacher routing, a self-anchor, and a proximal-teacher target
-- NVFP4 PTQ + QAD reaching 99.52% median accuracy recovery (report summary; not a CLI stage)
+- NVFP4 PTQ + QAD reaching 99.52% median accuracy recovery (not a CLI stage; reproducible with Model Optimizer's W4A4 tutorial)
 
 **Resources**:
 - [Training Guide](docs/nemotron/super35/README.md)
-- [Quantization Summary (PTQ + QAD)](docs/nemotron/super35/quantization.md)
-- [Model Weights (BF16)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16)
+- Tech Report: *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication)
+- [NeMo-RL Super 3.5 VL Guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md)
+- [NeMo Gym Evaluation Reproducibility Guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md)
+- [Quantization Guide (PTQ + QAD)](docs/nemotron/super35/quantization.md)
+- [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16)
+- [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16)
+- [Model Weights (NVFP4)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4)
 
 ### Nemotron 3.5 Lightning
 

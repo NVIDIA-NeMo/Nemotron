@@ -23,7 +23,7 @@ Values below are from the checked-in YAMLs; re-read the YAML before quoting, sin
 | Reasoning teacher | RLVR | 80 |
 | Vision (tool use) teacher | RLVR | 40 |
 | Video teacher | RLVR | 60 |
-| Vision-reasoning teacher | RLVR → stage 1 (114) → stage 2 | 20 |
+| Vision-reasoning teacher | RLVR → stage 1 (114) → stage 2 (recipe starts from text RLVR; §3.4.3 says "an existing multimodal RLVR checkpoint") | 20 |
 | Alignment (RLHF) teacher 1 | SFT | 120, then full resume to 500 |
 | Alignment (RLHF) teacher 2 | RLVR | stage 1 step 200 → stage 2 (weights only) step 120 |
 | Agentic teacher | RLVR | 14 (config only; cannot be launched publicly) |

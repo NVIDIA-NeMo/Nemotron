@@ -236,11 +236,11 @@ uv run nemotron lightning35 pretrain [options] [overrides...]
 #### Override Examples
 
 ```bash
-# More training iterations
+# Set the number of training iterations
 uv run nemotron lightning35 pretrain train.train_iters=5000
 
-# Larger batch size
-uv run nemotron lightning35 pretrain train.global_batch_size=64
+# Smaller global batch size (default: 512)
+uv run nemotron lightning35 pretrain train.global_batch_size=256
 
 # Different checkpoint location
 uv run nemotron lightning35 pretrain checkpoint.save=/path/to/checkpoints
@@ -285,7 +285,7 @@ uv run nemotron lightning35 pretrain checkpoint.load=/path/to/checkpoints/
 |--------|-------------|
 | `checkpoint.save` | Directory for saving checkpoints |
 | `checkpoint.load` | Path to checkpoint for resuming |
-| `checkpoint.save_interval` | Steps between saves (default: 1000) |
+| `checkpoint.save_interval` | Steps between saves (recipe config: 20) |
 
 Checkpoints use Megatron's distributed format, which handles model parallelism automatically. Each checkpoint contains model weights, optimizer state, and training progress.
 
@@ -344,13 +344,12 @@ Pretraining uses multiple parallelism strategies for efficient scaling:
 ### Container
 
 ```
-nvcr.io/nvidian/nemo:26.08.rc2   # public nvcr.io/nvidia/nemo:26.08 at launch
+nvcr.io/nvidia/nemo:26.08
 ```
 
-The rc container's bundled Megatron-Bridge predates the Lightning recipes, so the
-config mounts Megatron-Bridge main (`@0c565c9a0`) and its pinned Megatron-LM
-(`@d12f6c8c9`) over the container's copies via `${auto_mount:...}` (Slurm executor
-only). These mounts disappear once the launch container ships with the recipes built in.
+The config also mounts the Megatron-Bridge main revision the Lightning recipes were
+validated against (`@0c565c9a0`) and its pinned Megatron-LM (`@d12f6c8c9`) over the
+container's copies via `${auto_mount:...}` (Slurm executor only).
 
 ---
 

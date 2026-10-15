@@ -39,7 +39,7 @@
 """Video teacher for Nemotron 3.5 Super VL (RL stage 2).
 
 GRPO from RLVR step 120 on CapRL video QA (64 frames as native video) and
-SA-V object tracking (ordered images), with vision/audio modules frozen and
+SA-V object tracking (ordered images), with vision modules frozen and
 Ray router replay. Step 60 is distilled in MOPD phase 2.
 
 CLI:

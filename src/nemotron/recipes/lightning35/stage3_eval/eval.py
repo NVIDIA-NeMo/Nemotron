@@ -41,7 +41,7 @@
 
 NeMo Evaluator is deprecated for the instruct-model benchmark suite in favor
 of NeMo Gym. This stage reproduces the Gym-native evaluation flow used for
-the published Lightning results (see Gym `scripts/more/reproducibility.md`):
+the published Lightning results (see Gym `nemotron_recipes/lightning-3.5/reproducibility.md`):
 
 1. Serve the HF checkpoint with vLLM using the Lightning serving settings
    (nemotron_v3 reasoning parser, qwen3_coder tool parser, fp32 mamba cache,
@@ -162,7 +162,8 @@ def run_benchmark(
     """Run one Gym benchmark; return its aggregate metrics (or None on failure).
 
     A benchmark entry is either a name ("gpqa") or a mapping with per-benchmark
-    Gym overrides, mirroring the reference scripts in Gym scripts/more/:
+    Gym overrides, mirroring the reference scripts in Gym
+    nemotron_recipes/lightning-3.5/instruct/gym/:
         {name: scicode, overrides: ["++...test_data_fpath=/data/test_data.h5"]}
     """
     if isinstance(benchmark, dict):

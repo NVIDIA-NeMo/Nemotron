@@ -1,5 +1,5 @@
 # =============================================================================
-# Nemotron 3.5 Super VL — MOPD phase 2 (final checkpoint)
+# Nemotron 3.5 Super VL — MOPD phase 2 (final backbone, before MTP boosting)
 # =============================================================================
 # Student:   MOPD phase-1 step 30 (run.model). The `general` self-anchor teacher
 #            is a frozen copy of the same checkpoint; the agentic and reasoning
@@ -13,8 +13,9 @@
 #            Keep `data.shuffle: false` and 1,024 prompts per step: the blend is
 #            laid out as 44 ordered steps. Start a fresh experiment (new
 #            checkpoint_dir) when changing datasets.
-# Selected:  step 30 is the final Nemotron 3.5 Super checkpoint. Saves every
-#            2 steps and stops at step 40 (one pass over the prompts); append
+# Selected:  the reference run selected step 30 as the released model's backbone
+#            (the report says only that phase 2 ran 40 steps). Saves every
+#            2 steps and stops at step 40, the report's run length; append
 #            `grpo.max_num_steps=<n>` to extend.
 #
 # Cluster (128 nodes x 4 GPUs):
@@ -56,6 +57,7 @@ run:
   env:
     container: /home/${oc.env:USER}/.cache/nemotron/containers/super35-rl.sqsh
     nodes: 128  # = cluster.num_nodes (training + generation + teacher fleets)
+    gpus_per_node: 4
     sandbox:
       container: ""  # Set to a NeMo-Skills sandbox image (code-execution environments)
       port: 6000

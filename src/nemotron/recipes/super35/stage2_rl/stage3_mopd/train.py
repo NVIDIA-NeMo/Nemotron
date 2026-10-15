@@ -47,7 +47,7 @@ copy of the student's starting checkpoint (the self-anchor).
   vision tool-use teachers. Selected checkpoint: step 30.
 - ``phase2``: phase-1 student; RLHF teacher 2, vision tool-use,
   vision-reasoning and video teachers, proximal-teacher alpha 0.2.
-  Selected (final) checkpoint: step 30.
+  Reference-run selected checkpoint: step 30 (the report gives 40 steps).
 
 CLI:
     nemotron super35 rl mopd [-c phase2] --run <profile>

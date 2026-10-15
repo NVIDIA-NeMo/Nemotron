@@ -27,9 +27,9 @@
 
 | Checkpoint | Precision | Description | Hugging Face |
 |---|---|---|---|
-| Nemotron 3.5 Super VL 120B-A12B Base BF16 | BF16 | Text-only base after the full pretraining pipeline | Announced; id not yet confirmed |
+| Nemotron 3.5 Super VL 120B-A12B Base BF16 | BF16 | Text-only base after the full pretraining pipeline | `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16` |
 | Nemotron 3.5 Super VL 120B-A12B BF16 | BF16 | Post-trained VLM (MOPD phase 2 output + MTP boosting) | `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16` |
-| Nemotron 3.5 Super VL 120B-A12B NVFP4 | NVFP4 | Post-trained, quantized with the aggressive PTQ recipe + QAD | Announced; id not yet confirmed |
+| Nemotron 3.5 Super VL 120B-A12B NVFP4 | NVFP4 | Post-trained, quantized with the aggressive PTQ recipe + QAD | `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4` |
 
 Not released: intermediate SFT/RLVR/teacher/MOPD checkpoints and the length-penalized GenRM variant used for RL (NeMo-RL's public recipe uses `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`).
 

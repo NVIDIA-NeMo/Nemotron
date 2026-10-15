@@ -87,14 +87,14 @@ Base-model results were collected with the NeMo Evaluator SDK and its LM Evaluat
 :::{admonition} Why this stage is not reproduced
 :class: note
 
-The report's pretraining requires Nemotron 3 Ultra Base teacher logits, the full pretraining and mid-training mixtures, and the internal long-context blends. None of these are public, so this repository does not ship a text-pretraining recipe for Super 3.5. Start from the released Base or post-trained checkpoint instead.
+The report's pretraining requires Nemotron 3 Ultra Base teacher logits, the full pretraining and mid-training mixtures, and the internal long-context blends. None of these are public, so this repository does not ship a text-pretraining recipe for Super 3.5. Start from the released [Base](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16) checkpoint (the report's SFT starting point) or the [post-trained](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) checkpoint instead.
 :::
 
 ---
 
 ## Recipe: Vision-Language Pretraining
 
-`nemotron super35 pretrain` runs Megatron-Bridge's `nemotron_35_super_vl_pretrain_config` recipe: image-caption training of the full Super VL model with every component trainable (C-RADIO vision encoder, temporal video embedder, projector, and hybrid language decoder with its shared MTP head), warm-started from converted pretrained weights. The report warms up the vision projector before SFT; this recipe is the closest public analogue and the natural place to adapt the vision-language stack to your own image-text data.
+`nemotron super35 pretrain` runs Megatron-Bridge's `nemotron_35_super_vl_pretrain_config` recipe: image-caption training of the full Super VL model with every component trainable (C-RADIO vision encoder, temporal video embedder, projector, and hybrid language decoder with its shared MTP head), warm-started from converted pretrained weights. The report warms up only the vision projector before SFT; this recipe is a different, heavier step (every component trains) and the natural place to adapt the vision-language stack to your own image-text data.
 
 ### Megatron-Bridge verification
 
@@ -183,6 +183,8 @@ The stage loads a Megatron checkpoint converted from Hugging Face. Megatron-Brid
   --torch-dtype bfloat16 --tp 1 --pp 2 --ep 2 --etp 1 --trust-remote-code
 ```
 
+To start from the released Base checkpoint, pass `--hf-model nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16`; Megatron-Bridge verified the round trip on the post-trained checkpoint only.
+
 ### Configuration
 
 | File | Purpose |
@@ -204,7 +206,7 @@ uv run nemotron super35 pretrain --run YOUR-CLUSTER dataset.path=/path/to/datase
 
 ### Container
 
-The configs use a 26.08-generation NeMo container and mount a pinned Megatron-Bridge commit (plus the Megatron-LM revision it pins) over the container's copy with `${auto_mount:...}`, because the Super-VL recipes are newer than the container's bundled Megatron-Bridge. These mounts are cloned on the cluster side and **require the Slurm executor**. Once a public container ships the Super-VL recipes, the mounts can be dropped.
+The configs use the NeMo 26.08 container (`nvcr.io/nvidia/nemo:26.08`) and mount a pinned Megatron-Bridge commit (plus the Megatron-LM revision it pins) over the container's copy with `${auto_mount:...}`, because the Super-VL recipes are newer than the container's bundled Megatron-Bridge. These mounts are cloned on the cluster side and **require the Slurm executor**. Once a public container ships the Super-VL recipes, the mounts can be dropped.
 
 ### Artifact Lineage
 

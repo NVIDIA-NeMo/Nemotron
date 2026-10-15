@@ -125,7 +125,7 @@ env:
     string_match:
       resources_servers:
         string_match:
-          # TODO(open-source): structured-answer verifier (set / ordered-list / interval grading)
+          # Not in public NeMo Gym yet: structured-answer verifier (set / ordered-list / interval grading)
           # is a custom string_match entrypoint; it must be added to public Gym under this name.
           entrypoint: structured_answer_app.py
     tokenizer_config:

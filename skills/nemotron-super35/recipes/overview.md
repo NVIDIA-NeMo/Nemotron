@@ -48,7 +48,7 @@ flowchart LR
 | Teachers (§3.3–3.5) | `stage2_rl/stage2_teachers/*` | `super35 rl teacher <name> [-c variant]` | reasoning, vision, video, vision-reasoning (stage1/stage2), rlhf (teacher1/teacher2, two sub-stages each), agentic (config only) |
 | MOPD (§3.6) | `stage2_rl/stage3_mopd` | `super35 rl mopd [-c phase2 \| single_stage]` | Phase 1 student = RLVR; phase 2 student = phase 1 step 30; `single_stage` = NeMo-RL's variant without the agentic teacher |
 | MTP boosting (§3.7) | not included | — | |
-| Quantization (§4) | not a stage | — | See `docs/nemotron/super35/quantization.md` |
+| Quantization (§4) | not a stage | — | `docs/nemotron/super35/quantization.md` → Recipe Execution runs Model Optimizer's NemotronH Omni VL W4A4 tutorial (released Aggressive recipe; 512 text calibration samples, 600-iteration QAD on 32 GB300 GPUs and public data, unlike the report's 200 iterations on 512 GPUs) |
 | Evaluation (§3.8) | `stage3_eval` | `super35 eval` | NeMo Evaluator; five Table 10 benchmarks, not a Table 10 reproduction |
 
 Checkpoint import: `super35 model import {pretrain,sft,rl}`. Data import: `super35 data import {sft,rl}` (the Super 3.5 blends are not public, so users register their own).

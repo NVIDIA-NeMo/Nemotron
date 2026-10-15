@@ -20,8 +20,8 @@ from pathlib import Path
 
 import typer
 
-from nemotron.kit.artifact import ModelArtifact
 from nemo_runspec.env import get_wandb_config
+from nemotron.kit.artifact import ModelArtifact
 from nemotron.kit.wandb_kit import WandbConfig, init_wandb_if_configured
 
 

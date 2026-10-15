@@ -21,7 +21,7 @@ Each teacher continues RL from a shared trunk on a narrow, domain-specific mix s
 | [Reasoning](#reasoning-teacher) | `rl teacher reasoning` | RLVR step 120 | 64 | 80 | MOPD phase 1 |
 | [Vision tool use](#vision-tool-use-teacher) | `rl teacher vision` | RLVR step 120 | 16 | 40 | MOPD phases 1 and 2 |
 | [Video reasoning and tracking](#video-teacher) | `rl teacher video` | RLVR step 120 | 32 | 60 | MOPD phase 2 |
-| [Vision reasoning](#vision-reasoning-teacher) | `rl teacher vision-reasoning [-c stage2]` | RLVR step 120 → stage 1 | 32 / 33 | 114 → 20 | MOPD phase 2 |
+| [Vision reasoning](#vision-reasoning-teacher) | `rl teacher vision-reasoning [-c stage2]` | RLVR step 120 → stage 1 (the report: "an existing multimodal RLVR checkpoint") | 32 / 33 | 114 → 20 | MOPD phase 2 |
 | [Alignment (RLHF) teacher 1](#alignment-rlhf-teachers) | `rl teacher rlhf [-c teacher1_stage2]` | SFT | 32 / 32 | 120 → 500 | MOPD phase 1 |
 | [Alignment (RLHF) teacher 2](#alignment-rlhf-teachers) | `rl teacher rlhf -c teacher2_stage1 \| teacher2_stage2` | RLVR step 120 | 64 / 32 | 200 → 120 | MOPD phase 2 |
 
@@ -81,7 +81,7 @@ The report (§3.3.1) trains this teacher with full end-to-end GRPO on sandboxed,
 | Nodes | — | 128 (32 training, TP8 / CP8 / EP8; 96 generation) |
 | Selected checkpoint | — | Step 14 (the config is recovered from the neighbouring step 15) |
 
-The config mixes Terminal-Bench and BrowseComp prompts. The reference run started from a text-only RLVR export whose identity with the selected step-120 weights is not confirmed, and trained with MTP loss off. Artifact: `super35-rl-teacher-agentic-model`.
+The config mixes Terminal-Bench, SWE-bench and BrowseComp prompts (the report's Terminal, SWE and Search environments, §3.3.1). The reference run started from a text-only RLVR export whose identity with the selected step-120 weights is not confirmed, and trained with MTP loss off. Artifact: `super35-rl-teacher-agentic-model`.
 
 ## Reasoning Teacher
 
@@ -117,7 +117,7 @@ The report does not give batch or schedule settings. The config's values (from t
 | Prompts × generations | 16 × 8 |
 | Context | 32K; image agent limited to 8 steps / 6 tool calls |
 | Learning rate | 3e-6 |
-| Trainable | Language model, vision encoder, and projector (audio modules frozen) |
+| Trainable | Language model, vision encoder, and projector |
 | Nodes | 16: 8 training (TP8 / CP2 / EP16) + 8 generation |
 | Selected checkpoint | Step 40 (the config runs to 200) |
 
@@ -186,7 +186,7 @@ The report describes one alignment teacher. The reference run, and the recipe, t
 | `teacher2_stage1` | 2a | RLVR step 120 | Blend 2 | 0.06 | 200 | `super35-rl-teacher-rlhf2-stage1-model` |
 | `teacher2_stage2` | 2b | 2a step 200, **weights only** (fresh optimizer, restarted step counter) | Blend 3 (Blend 2 + abstention prompts), abstention reward 0.2 | 0.06 | 120 (320 RLHF steps in total) | `super35-rl-teacher-rlhf2-model` |
 
-All substages use 32 prompts × 32 generations, a 48K context with up to 16K generated tokens, LR 2e-6, text-only data, and frozen vision and audio towers. Each config stops at its selected step.
+All substages use 32 prompts × 32 generations, a 48K context with up to 16K generated tokens, LR 2e-6, text-only data, and frozen vision towers. Each config stops at its selected step.
 
 | Config | Nodes (`run.env.nodes`) | External servers in the reference run |
 |--------|------------------------:|---------------------------------------|

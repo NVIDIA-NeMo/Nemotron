@@ -196,37 +196,23 @@ $ uv run nemotron lightning35 rl --run YOUR-CLUSTER
 
 ### Running in NeMo-RL Repository
 
-For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3.5 Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md):
+For direct execution with NeMo-RL (without the nemotron CLI wrapper), follow the
+[NeMo-RL Nemotron 3.5 Lightning guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/models/nemotron/nemotron-3.5-lightning.md).
+Its RLVR section reproduces the reference run on GB200 NVL72 (aarch64) hardware with
+asynchronous GRPO and NeMo Gym, using the files under
+`examples/nemo_gym/nemotron-3.5-lightning/` in the NeMo-RL repository:
 
-**1. Download and prepare the dataset:**
+- `rlvr.yaml` — training, generation, reward, and Gym configuration
+- `lightning35_launch.sh` — Slurm submission, code snapshots, persistent caches, container
+  mounts, and run-specific paths
 
-```bash
-# Download the RL blend dataset
-huggingface-cli download nvidia/Nemotron-3.5-Lightning-RL-Training-Blend \
-    --repo-type dataset \
-    --local-dir /path/to/rl-blend
-
-# Fill in placeholder entries (resolves DAPO, Skywork references)
-python /path/to/rl-blend/create_nanov3_jsonl.py /path/to/rl-blend/data/train.jsonl
-
-# Split into train/validation
-head -n -1000 /path/to/rl-blend/data/train.jsonl > /path/to/train.jsonl
-tail -n 1000 /path/to/rl-blend/data/train.jsonl > /path/to/validation.jsonl
-```
-
-**2. Run GRPO training:**
-
-```bash
-# From NeMo-RL repository root
-uv run python examples/nemo_gym/run_grpo_nemo_gym.py \
-    --config examples/nemo_gym/grpo_nanov3.yaml \
-    data.train_jsonl_fpath=/path/to/train.jsonl \
-    data.validation_jsonl_fpath=/path/to/validation.jsonl \
-    policy.model_name=/path/to/sft/checkpoint \
-    logger.wandb_enabled=True
-```
-
-> **Note**: The default recipe requires 32 nodes with 8 GPUs each. See the [NeMo-RL cluster documentation](https://docs.nvidia.com/nemo/rl/latest/cluster.html) for Slurm configuration.
+That upstream run differs from this recipe: it is asynchronous, uses an 86-node GB200
+topology with external GenRM and NL2Bash judge pools, and reads the blend from
+[`nvidia/Nemotron-RL-Lightning-Training-Blend`](https://huggingface.co/datasets/nvidia/Nemotron-RL-Lightning-Training-Blend)
+(`rlvr.jsonl`, restored with the bundled `fill_placeholders.py`). The recipe in this
+repository runs synchronous GRPO from
+`src/nemotron/recipes/lightning35/stage2_rl/config/default.yaml` through
+`uv run nemotron lightning35 rl` (see [Training](#training) below).
 
 ### Configuration
 
@@ -288,7 +274,7 @@ uv run nemotron lightning35 rl [options] [overrides...]
 #### Override Examples
 
 ```bash
-# More training steps
+# Cap the run at fewer training steps (default: 1000000)
 uv run nemotron lightning35 rl grpo.max_num_steps=200000
 
 # Different temperature for generation

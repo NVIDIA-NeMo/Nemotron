@@ -292,12 +292,19 @@ def build_job_config(
     return job_config
 
 
+# Plain run-section values that a script reads at runtime (not artifact
+# references), kept in the script config alongside the artifact references.
+SCRIPT_RUN_KEYS = ("output_artifact", "hf_architecture", "convert_megatron_to_hf")
+
+
 def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) -> DictConfig:
     """Extract the script-only config from job config.
 
     Keeps only the fields needed for train.py:
     - All top-level config sections (recipe, train, model, logger, etc.)
     - run.data, run.model (artifact references for ${art:X,path} resolution)
+    - run.output_artifact, run.hf_architecture, run.convert_megatron_to_hf
+      (SCRIPT_RUN_KEYS, read by the script at runtime)
 
     Resolves ${run.wandb.*} and ${run.recipe.*} interpolations directly
     so the config is self-contained and doesn't need the full run section.
@@ -328,7 +335,7 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
         # Build a minimal run section with just artifact references
         run_for_train = {}
         for key, value in run_section.items():
-            if _is_artifact_reference(value):
+            if _is_artifact_reference(value) or key in SCRIPT_RUN_KEYS:
                 run_for_train[key] = value
 
         if run_for_train:
@@ -345,7 +352,7 @@ def extract_train_config(job_config: DictConfig, *, for_remote: bool = False) ->
         # Build a minimal run section with just artifact references
         run_for_train = {}
         for key, value in run_section.items():
-            if _is_artifact_reference(value):
+            if _is_artifact_reference(value) or key in SCRIPT_RUN_KEYS:
                 run_for_train[key] = value
 
         # Resolve ${run.wandb.*} and ${run.recipe.*} interpolations

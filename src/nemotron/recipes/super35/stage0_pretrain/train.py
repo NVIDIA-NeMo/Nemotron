@@ -5,7 +5,7 @@
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "super35/pretrain"
 # image = "nvcr.io/nvidia/nemo:26.08"
-# # The stage configs pin the 26.08 container generation and mount a pinned
+# # The stage configs use this container and mount a pinned
 # # Megatron-Bridge commit that carries the Super-VL recipes (see config/).
 # setup = "NeMo is pre-installed in the image; Megatron-Bridge is mounted at a pinned commit by the stage config."
 #

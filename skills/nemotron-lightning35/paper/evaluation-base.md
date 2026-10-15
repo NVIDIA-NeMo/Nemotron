@@ -89,7 +89,7 @@ Observations (from the printed values):
 # Not Reported
 - **Long-context base scores** (RULER etc.) for Lightning: none in the report. The RULER-1M figures in §1/§2.4 (79.9 -> 33.5 -> 81.0) are Super's. The Base model card gives RULER 256K 76.88 and 1M 69.62.
 - **Base vs other open base models** (Nano 3 Base, Qwen3-30B-A3B-Base): not in the report. Lightning's own initialization (Nano 3 Base) is not shown, so the report gives no direct measure of what MTP warm-up + 1T distillation + LC added.
-- **Model-card / repo-doc base numbers:** docs evaluate.md reproduces Table 6 and says the repo's base evaluation uses a short-context lm-evaluation-harness suite plus RULER via nemo-evaluator-launcher (configs in the NeMo Gym repo under `scripts/more/base/`). The Base model card has its own benchmark table with comparison models; its numbers differ slightly from Table 6 (e.g. MMLU 78.59 vs 78.63).
+- **Model-card / repo-doc base numbers:** docs evaluate.md reproduces Table 6 and says the repo's base evaluation uses a short-context lm-evaluation-harness suite plus RULER via nemo-evaluator-launcher (configs in the NeMo Gym repo under `nemotron_recipes/lightning-3.5/base/`). The Base model card has its own benchmark table with comparison models; its numbers differ slightly from Table 6 (e.g. MMLU 78.59 vs 78.63).
 - **Indic base numbers:** Table 3's "Base reference" four-benchmark Indic mean is 45.5 (MILU, MMLU-Pro, ARC-Challenge, GSM8K). The report does not identify that checkpoint exactly; see data.md.
 
 # Caveats

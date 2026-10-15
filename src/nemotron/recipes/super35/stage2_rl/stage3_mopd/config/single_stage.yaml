@@ -49,6 +49,7 @@ run:
   env:
     container: /home/${oc.env:USER}/.cache/nemotron/containers/super35-rl.sqsh
     nodes: 112  # = cluster.num_nodes (training + generation + teacher fleets)
+    gpus_per_node: 4
     sandbox:
       container: ""  # Set to a NeMo-Skills sandbox image (code-execution environments)
       port: 6000

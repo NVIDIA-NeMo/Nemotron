@@ -2,7 +2,7 @@
 #
 # GRPO from RLVR step 120 with an image-tools agent (crop / zoom / ... issued as
 # structured tool calls) over string-match, math, MCQA and GUI-coordinate
-# verifiers. Vision encoder and projector are trainable; audio modules frozen.
+# verifiers. Vision encoder and projector are trainable.
 # Selected checkpoint: step 40. Used in both MOPD phases.
 #
 # Nodes (GB200, 4 GPUs/node): 16 = 8 training (TP8/CP2/EP16) + 8 generation.

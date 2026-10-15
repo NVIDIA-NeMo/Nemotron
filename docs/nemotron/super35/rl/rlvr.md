@@ -17,7 +17,7 @@ Compared with Nemotron 3 Ultra, the report refreshes the RL data with more recen
 | Environment | Description |
 |-------------|-------------|
 | **Competitive programming** | 2,847 training and 372 validation problems from past Olympiad-level contests, each with a validated executable evaluator. Generated C++ solutions are compiled and run against problem-specific tests; reward is 1 for full credit, 0 otherwise. |
-| **Finance agent** | A NeMo Gym environment ([`finance_sec_search`](https://github.com/NVIDIA-NeMo/Gym/tree/main/resources_servers/finance_sec_search)) with SEC filing search, document parsing, evidence retrieval, and source-supported submission tools. The same tools are used for trajectory generation, SFT, RL, and evaluation. Questions come from two synthetic-data tracks: document-grounded questions over 10-K / 10-Q / 8-K filings of S&P 500 companies, and an agentic track that targets coverage gaps against the Vals.ai Finance Agent taxonomy. |
+| **Finance agent** | A NeMo Gym environment ([`finance_sec_search`](https://github.com/NVIDIA-NeMo/Gym/tree/e24db4e6f470333e10180148a72cc8f25f25a912/resources_servers/finance_sec_search)) with SEC filing search, document parsing, evidence retrieval, and source-supported submission tools. The same tools are used for trajectory generation, SFT, RL, and evaluation. Questions come from two synthetic-data tracks: document-grounded questions over 10-K / 10-Q / 8-K filings of S&P 500 companies, and an agentic track that targets coverage gaps against the Vals.ai Finance Agent taxonomy. |
 
 ### Medium-effort reasoning
 

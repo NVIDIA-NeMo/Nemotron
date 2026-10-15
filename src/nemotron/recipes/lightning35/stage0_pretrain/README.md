@@ -59,8 +59,8 @@ uv run nemotron lightning35 data prep pretrain [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via NeMo-Run |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 ### Input
 

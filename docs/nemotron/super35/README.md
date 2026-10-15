@@ -15,8 +15,8 @@ This guide separates three things throughout:
 
 - The SFT and RL datasets used for Super 3.5 are not yet published. Bring your own data, registered under the artifact names each stage expects.
 - The length-penalized GenRM variant used in the report is not public. NeMo-RL's public Super 3.5 recipe uses [`nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM) instead.
-- The **agentic teacher** depends on a NeMo Gym environment that is not public. Its config is provided for reference and cannot be launched.
-- The tech report link and the NeMo Gym Super 3.5 evaluation recipes are pending publication.
+- The **agentic teacher** and **vision-reasoning stage 2** depend on NeMo Gym components that are not public (an environment and a verifier). Their configs are provided for reference and cannot be launched, so the report's two MOPD phases cannot run end to end; `super35 rl mopd -c single_stage` can.
+- The tech report link is pending publication. NeMo Gym's [Super 3.5 evaluation recipes](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) are on the `jakub/marlin` branch until they are merged to `main`.
 
 The RL training stack is public: NeMo-RL `super-v3.5-posttraining` at commit `f299847f1`, which pins NeMo Gym `e24db4e6`.
 :::
@@ -30,7 +30,7 @@ The RL training stack is public: NeMo-RL `super-v3.5-posttraining` at commit `f2
   - RL: GB200 nodes with 4 GPUs each; 16 to 144 nodes depending on the stage (see [RL](./rl/index.md#per-stage-parameters)).
 - **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../artifacts.md).
 - **Containers**:
-  - Pretrain and SFT: a 26.08-generation NeMo container. Until a public image ships the Super-VL recipes (`megatron.bridge.recipes.nemotronh_multimodal`), the configs mount a pinned Megatron-Bridge commit into the container with `${auto_mount:...}`, which **requires the Slurm executor**.
+  - Pretrain and SFT: the NeMo 26.08 container (`nvcr.io/nvidia/nemo:26.08`). Until a public image ships the Super-VL recipes (`megatron.bridge.recipes.nemotronh_multimodal`), the configs mount a pinned Megatron-Bridge commit into the container with `${auto_mount:...}`, which **requires the Slurm executor**.
   - RL: built from the stage-owned Dockerfile with `nemotron kit slurm build` (see [RL](./rl/index.md#container)).
   - Eval: a vLLM image that serves Super 3.5 VL.
 
@@ -85,13 +85,13 @@ $ uv run nemotron super35 rl teacher reasoning --run YOUR-CLUSTER
 $ uv run nemotron super35 rl mopd --run YOUR-CLUSTER
 $ uv run nemotron super35 rl mopd -c phase2 --run YOUR-CLUSTER
 
-// Stage 3: Evaluation
-$ uv run nemotron super35 eval --run YOUR-CLUSTER
+// Stage 3: Evaluation (export the RL checkpoint to HF first; see Evaluation)
+$ uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
 ```
 
 </div>
 
-Each RL stage reads its own data artifact; [RL](./rl/index.md#data) lists the names. The full RL sequence covers six teachers (nine teacher configs) before MOPD.
+Each RL stage reads its own data artifact; [RL](./rl/index.md#data) lists the names. The full RL sequence covers six teachers (ten teacher configs) before MOPD.
 
 > **Note**: Stages never chain automatically to a newly trained checkpoint. Each config reads `:latest` of its input artifact, which you can override (for example `run.model=super35-rl-rlvr-model:v3`). To start from an existing checkpoint, register it with `nemotron super35 model import {pretrain,sft,rl}`.
 
@@ -100,8 +100,8 @@ Each RL stage reads its own data artifact; [RL](./rl/index.md#data) lists the na
 - **Tech report**: *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication). Section and table references (§, Table) in this guide point to that report.
 - **Model weights**:
   - [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) (post-trained model)
-  - Nemotron 3.5 Super VL 120B-A12B Base BF16 (base model; announced in the report)
-  - Nemotron 3.5 Super VL 120B-A12B NVFP4 (post-trained, NVFP4-quantized; announced in the report)
+  - [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16) (base model)
+  - [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4) (post-trained, NVFP4-quantized)
 - **Data**: see [Open-Source Data](#open-source-data).
 - **Megatron-Bridge**: Super-VL conversion, pretraining, SFT, and PEFT recipes in [`megatron.bridge.recipes.nemotronh_multimodal`](https://github.com/NVIDIA-NeMo/Megatron-Bridge).
 - **NeMo-RL / NeMo Gym**: [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) (`super-v3.5-posttraining` branch) and [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym).
@@ -117,7 +117,7 @@ Each RL stage reads its own data artifact; [RL](./rl/index.md#data) lists the na
 | 2.3 | MOPD | Two-phase multi-teacher on-policy distillation | `super35 rl mopd [-c phase2 \| single_stage]` | [rl/mopd.md](./rl/mopd.md) |
 | — | MTP boosting | MTP-only knowledge distillation on the final backbone | Not included | [rl/index.md](./rl/index.md#mtp-boosting-not-included) |
 | 3 | Evaluation | NeMo Gym evaluation on the Table 10 suite | NeMo Evaluator on five supported benchmarks (`super35 eval`) | [evaluate.md](./evaluate.md) |
-| — | Quantization | NVFP4 PTQ + QAD (released NVFP4 checkpoint) | Not a CLI stage; report summary | [quantization.md](./quantization.md) |
+| — | Quantization | NVFP4 PTQ + QAD (released NVFP4 checkpoint) | Not a CLI stage; Model Optimizer tutorial | [quantization.md](./quantization.md) |
 
 ![Super 3.5 VL post-training pipeline from the tech report (Figure 4): SFT on top of the 1M-context base, a shared RL trunk, specialist teachers, and two MOPD stages with self-anchoring.](../../assets/super35/post-training-pipeline.png)
 
@@ -128,13 +128,17 @@ The report's figure groups teachers by capability. The diagram below shows the c
 flowchart LR
     base["Text-only Base<br/>(report §2)"] --> sft["SFT stage 1 → 2<br/>(adds vision)"]
     sft --> rlvr["RLVR<br/>step 120"]
-    sft --> h1["Alignment teacher 1"]
-    rlvr --> teachers["Teachers: agentic, reasoning,<br/>vision tool use, video,<br/>vision reasoning, alignment 2"]
+    sft --> h1["Alignment teacher 1<br/>(reference run)"]
+    rlvr --> t1["Agentic,<br/>reasoning teachers"]
+    rlvr --> tv["Vision tool-use<br/>teacher"]
+    rlvr --> t2["Video, vision reasoning,<br/>alignment 2 teachers"]
     rlvr --> m1["MOPD phase 1"]
     h1 --> m1
-    teachers --> m1
-    m1 --> m2["MOPD phase 2<br/>step 30"]
-    teachers --> m2
+    t1 --> m1
+    tv --> m1
+    m1 --> m2["MOPD phase 2<br/>step 30 (reference run)"]
+    tv --> m2
+    t2 --> m2
     m2 --> boost["MTP boosting<br/>(not included)"]
     boost --> rel["Released BF16 → NVFP4"]
 
@@ -144,6 +148,8 @@ flowchart LR
     style m2 fill:#e8f5e9,stroke:#4caf50
     style boost fill:#eeeeee,stroke:#999999
 ```
+
+Vision tool use is distilled in both MOPD phases; the other teachers in one each. Two points come from the reference run rather than the report: alignment teacher 1 starts from SFT (Figure 4 and NeMo-RL's guide start alignment from the RL trunk, and the report describes a single alignment teacher), and the vision-reasoning teacher starts from RLVR step 120 (the report starts it from "an existing multimodal RLVR checkpoint", §3.4.3).
 
 ## Architecture
 
@@ -196,7 +202,7 @@ From the tech report (post-trained BF16 model unless noted):
 | Indic continued pretraining | +4.98 to +9.82 points on five Indic benchmarks | Table 2 |
 | MTP boosting | Average acceptance length 4.287 → 4.718 (greedy) and 3.787 → 4.612 (sampled), draft length 7 | Table 8 |
 | NVFP4 quantization | 99.52% median accuracy recovery over 35 benchmarks at 4.82 bits per element | §4.1 |
-| Serving throughput | Up to 4,632 output tokens/s/GPU on GB200 at ≥ 50 tokens/s/user | §5, Table 23 |
+| Serving throughput | Up to 4,632 output tokens/s/GPU on GB200 at ≥ 50 tokens/s/user (abstract; Figure 11 shows 4,331.88 at the same threshold, see [Quantization](./quantization.md#serving-notes)) | Abstract, §5, Table 23 |
 
 See [Evaluation](./evaluate.md) for the full results.
 
@@ -206,9 +212,9 @@ The tech report releases three checkpoints:
 
 | Checkpoint | Description | Hugging Face |
 |------------|-------------|--------------|
-| Nemotron 3.5 Super VL 120B-A12B Base BF16 | Text-only base after distillation, Indic CPT, long-context extension, agentic mid-training, and long-context recovery | Pending release |
+| Nemotron 3.5 Super VL 120B-A12B Base BF16 | Text-only base after distillation, Indic CPT, long-context extension, agentic mid-training, and long-context recovery | [`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16) |
 | Nemotron 3.5 Super VL 120B-A12B BF16 | Post-trained vision-language model (MOPD output plus MTP boosting) | [`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) |
-| Nemotron 3.5 Super VL 120B-A12B NVFP4 | Post-trained, NVFP4-quantized (aggressive recipe + QAD) | Pending release |
+| Nemotron 3.5 Super VL 120B-A12B NVFP4 | Post-trained, NVFP4-quantized (aggressive recipe + QAD) | [`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4) |
 
 The recipes use `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16` as `run.hf_architecture` and as the source of the Hugging Face processor and tokenizer.
 
@@ -232,19 +238,19 @@ Three sub-stages on NeMo-RL with NeMo Gym environments:
 
 1. **RLVR**: joint RLVR and RLHF across a broad environment mix from the SFT checkpoint. Step 120 is the MOPD student and the root of most teachers.
 2. **Specialist teachers**: agentic, reasoning, vision tool use, video reasoning and tracking, vision reasoning, and alignment (RLHF). All except alignment teacher 1 branch from RLVR step 120; alignment teacher 1 branches from SFT.
-3. **MOPD**: two phases that route each prompt to the teacher that owns its domain, with a frozen self-anchor for the rest. Phase 2 step 30 is the post-trained backbone of the released model.
+3. **MOPD**: two phases that route each prompt to the teacher that owns its domain, with a frozen self-anchor for the rest. In the reference run, phase 2's step 30 is the backbone of the released model (the report says phase 2 ran 40 steps, then applies MTP boosting).
 
 → [RL Guide](./rl/index.md)
 
 ### Stage 3: Evaluation
 
-The report evaluates every post-trained result with NeMo Gym across agentic, code, math and science, multimodal, long-context, instruction-following and chat, and multilingual benchmarks. `super35 eval` runs the five Table 10 benchmarks that NeMo Evaluator supports out of the box, which is enough to check training runs but not to reproduce Table 10.
+The report evaluates every post-trained result with NeMo Gym across agentic, code, math and science, multimodal, long-context, instruction-following and chat, and multilingual benchmarks. `super35 eval` runs the five Table 10 benchmarks that NeMo Evaluator supports out of the box, which is enough to check training runs but not to reproduce Table 10. To reproduce Table 10, the guide runs NeMo Gym's Super 3.5 reproducibility recipes against a vLLM endpoint.
 
 → [Evaluation Guide](./evaluate.md)
 
 ### Quantization
 
-The released NVFP4 checkpoint uses the predefined **aggressive** PTQ recipe (4.82 bits per element) followed by 200 iterations of SFT-based Quantization-Aware Distillation. It reaches **99.52% median accuracy recovery** relative to BF16 across 35 benchmarks and deploys as W4A4 on Blackwell and W4A16 on other GPUs. This is not a `nemotron super35` stage.
+The released NVFP4 checkpoint uses the predefined **aggressive** PTQ recipe (4.82 bits per element) followed by 200 iterations of SFT-based Quantization-Aware Distillation. It reaches **99.52% median accuracy recovery** relative to BF16 across 35 benchmarks and deploys as W4A4 on Blackwell and W4A16 on other GPUs. This is not a `nemotron super35` stage: the guide runs the same precision recipe with Model Optimizer's [NemotronH Omni VL W4A4 tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD).
 
 → [Quantization Guide](./quantization.md)
 
@@ -402,7 +408,7 @@ $ uv run nemotron super35 rl --help
 | `super35 rl teacher reasoning` / `vision` / `video` / `agentic` | `default` | `default` |
 | `super35 rl teacher vision-reasoning` | `stage1`, `stage2` | `stage1` |
 | `super35 rl teacher rlhf` | `teacher1_stage1`, `teacher1_stage2`, `teacher2_stage1`, `teacher2_stage2` | `teacher1_stage1` |
-| `super35 rl mopd` | `phase1`, `phase2` | `phase1` |
+| `super35 rl mopd` | `phase1`, `phase2`, `single_stage` | `phase1` |
 | `super35 eval` | `default` | `default` |
 | `super35 data import sft` / `rl` | — | artifact `super35-sft-data` / `super35-rl-rlvr-data`; set others with `--name` |
 | `super35 model import pretrain` / `sft` / `rl` | — | artifact `super35-pretrain-model` / `super35-sft-model` / `super35-rl-rlvr-model` |

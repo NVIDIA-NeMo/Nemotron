@@ -4,8 +4,8 @@ Evaluate Nemotron 3.5 Super VL checkpoints with NeMo Evaluator.
 
 ## Overview
 
-This stage evaluates the final RL checkpoint (MOPD phase 2, Hugging Face format) by serving it
-with vLLM and running NeMo Evaluator tasks through `nemo-evaluator-launcher`. Task names and
+This stage evaluates a Hugging Face checkpoint (for example the exported MOPD phase 2 checkpoint)
+by serving it with vLLM and running NeMo Evaluator tasks through `nemo-evaluator-launcher`. Task names and
 per-task settings follow NeMo Evaluator's Nemotron 3 Super example
 (`packages/nemo-evaluator-launcher/examples/nemotron/nemotron-3-super/` in
 [NVIDIA-NeMo/Evaluator](https://github.com/NVIDIA-NeMo/Evaluator)).
@@ -15,10 +15,10 @@ per-task settings follow NeMo Evaluator's Nemotron 3 Super example
 | `config/default.yaml` | vLLM deployment + NeMo Evaluator task list |
 
 > The tech report's numbers (Table 10) were collected with
-> [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), not NeMo Evaluator, and the report points to a
-> Super 3.5 reproducibility guide in the Gym repository
-> (`nemotron_recipes/super-3.5/reproducibility.md`).
-> TODO(open-source): that guide is not published yet; link it here once it is.
+> [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), not NeMo Evaluator. To reproduce them, use
+> NeMo Gym's [Super 3.5 reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md)
+> (one recipe per benchmark; on the `jakub/marlin` branch until merged to `main`), summarized in
+> [docs/nemotron/super35/evaluate.md](../../../../../docs/nemotron/super35/evaluate.md#reproducing-the-published-results-nemo-gym).
 > Scores from this stage are therefore not expected to match Table 10 exactly.
 
 ## Benchmarks
@@ -54,11 +54,8 @@ Not covered here:
 ## Quick Start
 
 ```bash
-# Evaluate the final RL checkpoint
-uv run nemotron super35 eval --run YOUR-CLUSTER
-
-# Evaluate another stage (must be a Hugging Face checkpoint)
-uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-rlvr-model:latest
+# Evaluate an exported Hugging Face checkpoint (see "Checkpoint format" below)
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
 
 # Select tasks
 uv run nemotron super35 eval --run YOUR-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifbench
@@ -75,15 +72,31 @@ uv run nemotron super35 eval --dry-run
 
 | Section | Notes |
 |---------|-------|
-| `run.model` | Default `super35-rl-mopd-phase2-model:latest` (final checkpoint) |
-| `run.env.container` | vLLM image; TODO(open-source): pin the first public vLLM release that serves Super 3.5 VL |
+| `run.model` | Default `super35-rl-mopd-phase2-model:latest`; override with an HF-format artifact (see below) |
+| `run.env.container` | `vllm/vllm-openai:v0.30.0`, the vLLM release the published NeMo Gym runs used |
 | `deployment` | `type: vllm`, TP8 on one node, `--trust-remote-code`, Mamba SSM cache in FP32; check the model card for the recommended reasoning/tool-call parsers and MTP speculative decoding |
 | `evaluation.nemo_evaluator_config` | Reasoning on (`enable_thinking: true`), temperature 1.0, top-p 0.95, up to 131,072 new tokens |
 | `execution.mounts` | Add your shared filesystem so the deployment container can read the checkpoint |
 | `export.wandb` | Results exported to the W&B project from `env.toml` |
 
-Checkpoints produced by Megatron-Bridge (stages 0-1) are Megatron format; export them to
-Hugging Face with Megatron-Bridge before evaluating them here.
+## Checkpoint format
+
+vLLM serves Hugging Face checkpoints only. Checkpoints produced by Megatron-Bridge (stages 0-1)
+are Megatron format; export them with Megatron-Bridge's `convert.sh export` first.
+
+RL stages save NeMo-RL checkpoints (`step_N/policy/weights/...`), which vLLM cannot serve.
+Export the selected step to Hugging Face with NeMo-RL's converter (inside the RL container,
+from `/opt/nemo-rl`), register the result, and evaluate that artifact:
+
+```bash
+uv run --extra mcore python examples/converters/convert_megatron_to_hf.py \
+    --config /path/to/step_N/config.yaml \
+    --hf-model-name nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --megatron-ckpt-path /path/to/step_N/policy/weights/iter_XXXXXXX \
+    --hf-ckpt-path /path/to/super35-hf
+uv run nemotron super35 model import rl /path/to/super35-hf --name super35-rl-mopd-phase2-hf-model
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
+```
 
 ## Previous Stages
 

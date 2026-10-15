@@ -14,7 +14,7 @@ id = "skill"
 topic = "routing"
 file = "../SKILL.md"
 kind = "compact"
-description = "Reference-desk instructions, routing table, caveats (Base-card vs report lineage, NVFP4 Mamba precision, removed Nano 3 text), and handoff for Lightning 3.5."
+description = "Reference-desk instructions, routing table, caveats (Base-card vs report lineage, NVFP4 Mamba precision and calibration, removed Nano 3 text), and handoff for Lightning 3.5."
 
 [[entries]]
 id = "model-card"

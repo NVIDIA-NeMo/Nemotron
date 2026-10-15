@@ -16,10 +16,10 @@
 #
 # Notes carried over from the reference run:
 #   - Standalone NeMo-RL config (no recipe inheritance), aligned with the
-#     official Super 3.5 RLHF recipe. Training uses TP8/CP8/EP16 (the official
-#     scripts use TP4/CP2/EP16); policy generation and judge parallelism are
+#     official Super 3.5 RLHF recipe. Training uses TP8/CP8/EP16 (the reference-run
+#     scripts used TP4/CP2/EP16; NeMo-RL's rlhf_teacher.yaml uses TP8/CP8/EP16); policy generation and judge parallelism are
 #     unchanged. Do not resume a checkpoint saved with another layout.
-#   - Text-only data on the omni architecture: vision/audio towers are loaded
+#   - Text-only data on the omni architecture: vision towers are loaded
 #     and frozen (`policy.is_vlm: true`), and policy generation uses
 #     `load_format: auto` because frozen tower weights are not refit. The
 #     historical teachers used a text-only architecture.
@@ -42,6 +42,7 @@ run:
     container: /home/${oc.env:USER}/.cache/nemotron/containers/super35-rl.sqsh
     # Ray cluster nodes (= cluster.num_nodes); external judge servers are extra.
     nodes: 32
+    gpus_per_node: 4
     persistent_cache: ""  # Set to a shared cache dir for vLLM/FlashInfer compile caches
     env_vars:
       NRL_VLLM_USE_V1: "1"
@@ -156,13 +157,13 @@ env:
     # Ultra GenRM trained with a reasoning-length penalty, served with MTP3
     # speculative decoding (serving flags in README.md). The vllm_serve_*
     # settings below are inactive while base_url points at an external server.
-    # TODO(open-source): publish the Super 3.5 RLHF GenRM checkpoint.
+    # The report's Super 3.5 RLHF GenRM checkpoint is not public.
     genrm_model:
       responses_api_models:
         genrm_model:
           api_key: ${oc.env:GENRM_API_KEY,dummy_key}
           base_url: ${oc.env:GENRM_BASE_URL,http://127.0.0.1:8000/v1}
-          debug: true
+          debug: false
           entrypoint: app.py
           model: ${oc.env:GENRM_MODEL,model}
           ray_worker_py_executable: /opt/ray_venvs/nemo_rl.models.generation.vllm.vllm_worker_async.VllmAsyncGenerationWorker/bin/python
@@ -208,7 +209,7 @@ env:
       responses_api_agents:
         simple_agent:
           max_steps: 1
-    global_aiohttp_client_request_debug: true
+    global_aiohttp_client_request_debug: false
     invalid_tool_call_patterns:
     - <tool_call>
     - </tool_call>

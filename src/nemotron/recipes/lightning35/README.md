@@ -132,7 +132,7 @@ Use the `tiny` config variant for quick testing:
 
 ```bash
 # Quick test with small dataset sample
-uv run nemotron lightning35 data prep pretrain --run YOUR-CLUSTER --sample 1000
+uv run nemotron lightning35 data prep pretrain --run YOUR-CLUSTER sample=1000
 
 # Quick training test (small model, few iterations)
 uv run nemotron lightning35 pretrain -c tiny --run YOUR-CLUSTER
@@ -144,13 +144,13 @@ uv run nemotron lightning35 pretrain -c tiny --run YOUR-CLUSTER
 
 ```bash
 # Pretrain data: tokenize to Megatron bin/idx format
-uv run nemotron lightning35 data prep pretrain [--run <profile>] [--sample N] [--force]
+uv run nemotron lightning35 data prep pretrain [--run <profile>] [sample=N] [force=true]
 
 # SFT data: apply chat templates, tokenize to packed Parquet
-uv run nemotron lightning35 data prep sft [--run <profile>] [--sample N] [--force]
+uv run nemotron lightning35 data prep sft [--run <profile>] [sample=N] [force=true]
 
 # RL data: convert to JSONL chat format
-uv run nemotron lightning35 data prep rl [--run <profile>] [--sample N] [--force]
+uv run nemotron lightning35 data prep rl [--run <profile>] [sample=N] [force=true]
 ```
 
 ### Training

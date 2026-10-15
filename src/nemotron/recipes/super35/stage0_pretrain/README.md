@@ -62,9 +62,10 @@ mounted over the NeMo 26.08 container via `${auto_mount:...}` in `run.env.mounts
        --torch-dtype bfloat16 --tp 1 --pp 2 --ep 2 --etp 1 --trust-remote-code
    ```
 
-   TODO(open-source): verify the released Base checkpoint id
-   (`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16`) and whether MB's
-   conversion card applies to it unchanged.
+   The released Base checkpoint
+   ([`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16))
+   converts with the same command and `--hf-model` swapped; MB verified the round trip on the
+   post-trained BF16 checkpoint only.
 
 2. **An Energon image-caption dataset** (`energon prepare` output: tar shards plus
    `.nv-meta/`). Samples may contain text, images and video, but no audio.

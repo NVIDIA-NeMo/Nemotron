@@ -113,16 +113,19 @@ class TestImport:
 
         names: list[str] = []
 
-        class _Stop(Exception):
+        class _StopError(Exception):
             pass
 
         class _Artifact(wandb.Artifact):
             def __init__(self, name, *args, **kwargs):
                 names.append(name)
-                raise _Stop
+                raise _StopError
 
         monkeypatch.setattr(wandb, "Artifact", _Artifact)
         monkeypatch.setenv("WANDB_MODE", "disabled")
+        # A wandb session started by an earlier test ignores WANDB_MODE, so
+        # tear it down; the import must never reach the W&B servers.
+        wandb.teardown()
         return names
 
     @pytest.fixture
@@ -139,7 +142,11 @@ class TestImport:
             (("data", "import", "sft", "{d}/energon"), "run.data", "stage1_sft/config/default.yaml"),
             (("model", "import", "pretrain", "{d}/ckpt"), "run.model", "stage1_sft/config/default.yaml"),
             (("model", "import", "sft", "{d}/ckpt"), "run.model", "stage2_rl/stage1_rlvr/config/default.yaml"),
-            (("model", "import", "rl", "{d}/ckpt"), "run.model", "stage2_rl/stage2_teachers/reasoning/config/default.yaml"),
+            (
+                ("model", "import", "rl", "{d}/ckpt"),
+                "run.model",
+                "stage2_rl/stage2_teachers/reasoning/config/default.yaml",
+            ),
         ],
     )
     def test_default_name_matches_consumer(self, captured, inputs, args, consumer_key, consumer_config):

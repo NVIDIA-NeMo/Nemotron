@@ -18,21 +18,23 @@
 # used for Nemotron's artifact resolution and env.toml profile injection,
 # then stripped before passing to the evaluator launcher.
 #
-# The final RL checkpoint (MOPD phase 2) is a Hugging Face checkpoint, so it
-# is served with vLLM. Task names and per-task settings follow the NeMo
+# The model is served with vLLM, which needs a Hugging Face checkpoint. RL
+# stages save NeMo-RL checkpoints: export one with NeMo-RL's
+# examples/converters/convert_megatron_to_hf.py, register it with
+# `nemotron super35 model import rl`, and pass it as run.model (see README). Task names and per-task settings follow the NeMo
 # Evaluator Nemotron 3 Super example
 # (packages/nemo-evaluator-launcher/examples/nemotron/nemotron-3-super/ in
 # github.com/NVIDIA-NeMo/Evaluator) and cover the tech report's Table 10
 # benchmarks that NeMo Evaluator supports.
 #
 # The report's numbers were collected with NeMo Gym, not NeMo Evaluator.
-# TODO(open-source): link the NeMo Gym Super 3.5 reproducibility guide
-# (github.com/NVIDIA-NeMo/Gym/blob/main/nemotron_recipes/super-3.5/reproducibility.md)
-# once it is published; it does not exist yet.
+# To reproduce them, use NeMo Gym's Super 3.5 reproducibility guide:
+# github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md
+# (on the jakub/marlin branch until it is merged to main).
 #
 # Usage:
 #   nemotron super35 eval --run MY-CLUSTER
-#   nemotron super35 eval --run MY-CLUSTER run.model=super35-sft-model:latest
+#   nemotron super35 eval --run MY-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
 #   nemotron super35 eval --run MY-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifbench
 #   nemotron super35 eval --dry-run
 
@@ -49,16 +51,15 @@ defaults:
 # This section is used for interpolation and stripped before calling the launcher
 # =============================================================================
 run:
-  # Model artifact to evaluate (default: final RL stage output, HF format)
+  # Model artifact to evaluate; must be HF format (export RL checkpoints first)
   model: super35-rl-mopd-phase2-model:latest
 
   # Environment config - populated from env.toml profile via --run
   # These defaults allow local execution without env.toml
   env:
     executor: local
-    # TODO(open-source): pin the first public vLLM release that serves
-    # Nemotron 3.5 Super VL.
-    container: vllm/vllm-openai:latest
+    # vLLM release used for the published NeMo Gym runs of Super 3.5 VL.
+    container: vllm/vllm-openai:v0.30.0
     host: ${oc.env:HOSTNAME,localhost}
     user: ${oc.env:USER}
     account: null

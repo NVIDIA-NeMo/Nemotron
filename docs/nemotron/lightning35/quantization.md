@@ -31,17 +31,18 @@ maintain accuracy": it **deploys as W4A16 on every GPU SKU**, Blackwell included
 
 For evaluation, both the BF16 and NVFP4 checkpoints were served with FP8 KV cache and FP32 Mamba SSM
 cache (§4.8). The report's acceptance criteria are a median accuracy recovery of at least 99% and a
-verbosity increase of at most 5% vs BF16 (§4). Across the 18 benchmarks of Table 21 (CritPt, with a BF16 score of 0, is excluded from the median),
-the NVFP4 checkpoint reaches a **median accuracy recovery of 99.24%** and a **−3.63% verbosity change** (ratio of total
+verbosity increase of at most 5% vs BF16 (§4). Table 21 lists 18 benchmarks; over the 17 with a defined recovery (CritPt, with a BF16 score of 0, is
+excluded from the median), the NVFP4 checkpoint reaches a **median accuracy recovery of 99.24%** and a **−3.63% verbosity change** (ratio of total
 tokens). Per-benchmark scores are listed in [Evaluate](evaluate.md#reported-results-post-trained-model).
 The report gives no throughput or latency numbers for Lightning.
 
-**Where this page and the report differ.** The recipe documented below was written before the report:
+**Where this page and the report differ.**
 
-- **Mamba projections.** The report (§4.8) and the NVFP4 model card both describe the Mamba in/out
-  projections as FP8 (the model card: "FP8 per-tensor dynamic scales on mamba in_proj/out_proj and KV
-  cache"). This page's chosen `four_over_six` recipe instead quantizes them to W4A16 NVFP4; FP8 Mamba
-  appears here only in the non-chosen `mamba_fp8_max` recipe. These have not been reconciled.
+- **Mamba projections.** The report (§4.8) and the NVFP4 model card describe the Mamba in/out
+  projections as FP8. The Model Optimizer recipe for the released checkpoint,
+  [`models/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ptq/w4a16_nvfp4_4o6`](https://github.com/NVIDIA/Model-Optimizer/blob/main/modelopt_recipes/models/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ptq/w4a16_nvfp4_4o6.yaml), matches: four-over-six W4A16 NVFP4 for the routed and shared experts and the
+  `lm_head`, FP8 (weights and activations) for the Mamba in/out projections, FP8 KV cache, attention
+  in BF16, and the MTP subtree unquantized. It is the recipe the commands below use.
 - **Calibration.** The report says only that the W4A16 configuration was selected "using the same
   PTQ/QAD procedure" as Super 3.5, and names no Lightning calibration method. The NVFP4 model card names
   four-over-six NVFP4 calibration on 1,000 samples of a Nemotron Ultra validation subset at 32K tokens.
@@ -82,17 +83,17 @@ B300.
 | `MSE` | W4A16 static NVFP4 | MSE (mean squared error) | W4A16 NVFP4 | FP8 |
 | **`four_over_six`** | W4A16 static NVFP4 | 4/6 (MSE over M=6 vs M=4, [arXiv:2512.02010](https://arxiv.org/abs/2512.02010)) | W4A16 NVFP4 | FP8 |
 | `four_over_six + NVFP4 KV` | W4A16 static NVFP4 | 4/6 | W4A16 NVFP4 | NVFP4 |
+| **Released (`w4a16_nvfp4_4o6`)** | W4A16 static NVFP4 | 4/6 | FP8 (W+A) | FP8 |
 
 All five use W4A16 NVFP4 weights and range from max-calibrated dynamic recipes to MSE-based static
 recipes. The last recipe, `four_over_six + NVFP4 KV`, is the most aggressive: it pushes only K and V
 to NVFP4 (W4A4) and leaves the Q·Kᵀ and attn·V batched matrix multiplications in BF16, with Q left
 unquantized.
 
-**After evaluating different PTQ recipes, `four_over_six` with W4A16 Mamba linears provided the best
-tradeoff** of accuracy degradation to boost in inference performance, and is the recipe this page
-uses (`Nemotron-3.5-Lightning-30B-A3B/lightning_w4a16_nvfp4_4o6`). Note that the tech report and model
-card describe the published checkpoint with FP8 Mamba projections; see
-[The Released Checkpoint](#the-released-checkpoint-tech-report).
+**After evaluating these PTQ recipes, `four_over_six` calibration provided the best tradeoff** of
+accuracy degradation to boost in inference performance. The released checkpoint combines it with FP8
+Mamba projections, as the report and model card describe; that is the recipe this page uses
+([`models/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ptq/w4a16_nvfp4_4o6`](https://github.com/NVIDIA/Model-Optimizer/blob/main/modelopt_recipes/models/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ptq/w4a16_nvfp4_4o6.yaml)).
 
 This choice carries into training: max-calibrated recipes feed **dynamic-scale** QAD, where the
 scales are recomputed on the fly during training and both the weights and the scales adapt as the
@@ -144,7 +145,7 @@ python quantize.py \
     --hf_model_name_or_path $HF_MODEL \
     --trust_remote_code \
     --tp_size 1 --ep_size 1 --pp_size 1 \
-    --recipe models/Nemotron-3.5-Lightning-30B-A3B/lightning_w4a16_nvfp4_4o6 \
+    --recipe models/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ptq/w4a16_nvfp4_4o6 \
     --calib_batch_size 1 \
     --calib_num_samples 1000 \
     --seq_length 32768 \
@@ -160,10 +161,6 @@ TP=1 only. Drop `--skip_generate` to emit sample generations at the end as a san
 `--moe_calib_experts_ratio` are ignored, and the YAML supplies `quant_cfg`, the calibration
 algorithm, and the KV-cache config.
 
-> The `lightning_w4a16_nvfp4_4o6` recipe ships with the model release. Until then, the four-over-six
-> numerics are public — see `modelopt_recipes/configs/numerics/nvfp4_four_over_six.yaml` and the
-> `Nemotron-3-Ultra-550B-A55B/ptq/nvfp4-4o6.yaml` recipe for a working example of the same
-> calibration method on a different model size.
 
 ### Step 2 — QAD
 

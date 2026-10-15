@@ -79,6 +79,40 @@ class TestStageConfig:
             assert not _INTERNAL_PATTERNS.search(line), f"{config.name}:{lineno}: {line.strip()}"
 
 
+@pytest.mark.parametrize("for_remote", [True, False], ids=["remote", "local"])
+@pytest.mark.parametrize("config", RL_CONFIGS, ids=_ids(RL_CONFIGS))
+def test_script_config_keeps_runner_metadata(config, for_remote):
+    """The CLI hands the runner an extracted config; it must still carry the
+    ``run`` keys ``_nemo_rl.run`` reads (output artifact, HF architecture)."""
+    from nemo_runspec.config.loader import extract_train_config
+
+    run = extract_train_config(_load(config), for_remote=for_remote).run
+    assert run.output_artifact == _load(config).run.output_artifact
+    assert run.hf_architecture == _load(config).run.hf_architecture
+
+
+@pytest.mark.parametrize("config", RL_CONFIGS, ids=_ids(RL_CONFIGS))
+def test_slurm_gpus_match_cluster(config):
+    """The Slurm allocation must request the GPUs/node NeMo-RL expects; a
+    missing ``run.env.gpus_per_node`` silently inherits the env profile's."""
+    cfg = _load(config)
+    assert cfg.run.env.gpus_per_node == cfg.cluster.gpus_per_node
+
+
+_ALL_SUPER35_FILES = sorted(
+    p
+    for p in (REPO_ROOT / "src/nemotron/recipes/super35").rglob("*")
+    if p.suffix in {".yaml", ".py", ".md", ".sh"} or p.name == "Dockerfile"
+)
+
+
+@pytest.mark.parametrize("path", _ALL_SUPER35_FILES, ids=lambda p: str(p.relative_to(REPO_ROOT)))
+def test_no_internal_references_anywhere(path):
+    """Every super35 recipe file (not only the RL configs) stays public-safe."""
+    for lineno, line in enumerate(path.read_text().splitlines(), 1):
+        assert not _INTERNAL_PATTERNS.search(line), f"{path.name}:{lineno}: {line.strip()}"
+
+
 def test_output_artifacts_are_unique():
     names = [_load(p).run.output_artifact for p in RL_CONFIGS]
     assert len(names) == len(set(names)), names

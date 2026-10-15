@@ -23,9 +23,9 @@ Enabled by default: GPQA-Diamond, SciCode, LiveCodeBench v6 (`test_v6_2408_2505`
 
 ## What it does not reproduce
 
-- The paper collected Table 10 with **NeMo Gym**, not NeMo Evaluator, and points to a Super 3.5 reproducibility guide in the Gym repo that is not published yet. Scores from this stage are not expected to match Table 10 exactly.
+- The paper collected Table 10 with **NeMo Gym**, not NeMo Evaluator. To reproduce Table 10, use NeMo Gym's Super 3.5 reproducibility guide (`nemotron_recipes/super-3.5/reproducibility.md`, on Gym's `jakub/marlin` branch until merged to `main`): one recipe per benchmark, run with `nemotron_recipes/super-3.5/run.sh <benchmark>` against a vLLM endpoint (published runs: vLLM 0.30.0, TP4 + EP on 4× GB200). It has no recipe for the multimodal benchmarks, NV Chat Benchmark, HLE with tools, the OpenCode BrowseComp harness or Text Arena. Scores from this stage are not expected to match Table 10 exactly; see `docs/nemotron/super35/evaluate.md`.
 - Multimodal benchmarks (BabyVision, CharXiv-RQ, MathVision, OCRBench-v2, Video-MME-v2, ...) and agentic benchmarks (SWE-bench, Terminal-Bench, BrowseComp, ...) are not covered; several use internal scaffolding the report says will be open-sourced later.
-- The vLLM container is `vllm/vllm-openai:latest` until a release that serves Super 3.5 VL is pinned.
+- The vLLM container is `vllm/vllm-openai:v0.30.0`, the vLLM release used for the published NeMo Gym runs.
 
 ---
 

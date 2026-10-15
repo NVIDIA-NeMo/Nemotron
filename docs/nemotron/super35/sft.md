@@ -94,6 +94,8 @@ cd Megatron-Bridge
     --hf-model nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
     --megatron-path /path/to/super35-megatron \
     --torch-dtype bfloat16 --tp 1 --pp 2 --ep 2 --etp 1 --trust-remote-code
+# (the report's SFT starts from the Base model: use
+#  --hf-model nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16)
 
 # SFT on 8 x 8 H100 (the verified layout)
 ./scripts/training/train.sh --wait --nodes 8 --gpus-per-node 8 \
@@ -182,7 +184,7 @@ Freezing a base component does not stop LoRA from placing adapters inside it: ad
 
 ### Container
 
-Like [pretraining](./pretrain.md#container), the SFT configs use a 26.08-generation NeMo container with a pinned Megatron-Bridge commit mounted through `${auto_mount:...}`, which requires the Slurm executor.
+Like [pretraining](./pretrain.md#container), the SFT configs use the NeMo 26.08 container (`nvcr.io/nvidia/nemo:26.08`) with a pinned Megatron-Bridge commit mounted through `${auto_mount:...}`, which requires the Slurm executor.
 
 ### Artifact Lineage
 

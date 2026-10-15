@@ -75,7 +75,7 @@ Pipeline:
 
 CLI:
     nemotron lightning35 data prep sft                       # local execution
-    nemotron lightning35 data prep sft --run ray --sample 10000  # submit to cluster
+    nemotron lightning35 data prep sft --run ray sample=10000  # submit to cluster
 
 Execution logic: src/nemotron/cli/commands/lightning35/data/prep/sft.py
 

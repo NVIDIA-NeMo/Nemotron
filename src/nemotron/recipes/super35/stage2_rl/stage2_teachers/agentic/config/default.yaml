@@ -100,7 +100,7 @@ env:
           context_reset_tokens: 192000
           datasets:
           - jsonl_fpath: ${data.train.data_path}
-            license: TODO(open-source)  # set to the released dataset's license
+            license: TBD  # set to your dataset's license (Gym requires one for train data)
             name: super35-rl-teacher-agentic-train
             type: train
           entrypoint: app.py
@@ -143,11 +143,11 @@ env:
           workspace: per_session
     config_paths:
     - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
-    # TODO(open-source): BLOCKER -- the two Terminal-Bench agent configs below (legacy
-    # swe_agents_orig agent + terminalbench.yaml) are not in public Gym; see README.md.
+    # Not in public NeMo Gym at the pinned commit: the Terminal-Bench and SWE agent
+    # configs below (swe_agents_orig agent + terminalbench.yaml); see README.md.
     - responses_api_agents/swe_agents/configs/terminalbench.yaml
     - responses_api_agents/swe_agents_orig/configs/swebench_opencode_training_orig.yaml
-    # TODO(open-source): BrowseComp 192K training config (renamed from its private Gym name).
+    # Not in public NeMo Gym at the pinned commit: BrowseComp 192K training config.
     - resources_servers/browsecomp_advanced_harness/configs/browsecomp_training_tbsearch_192k.yaml
     invalid_tool_call_patterns:
     - <tool_call>

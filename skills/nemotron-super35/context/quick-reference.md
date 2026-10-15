@@ -89,6 +89,7 @@ labelled. Throughput numbers are condition-specific.
 - **99.52% median accuracy recovery** over 35 benchmarks; verbosity +0.49%.
 - Deploys **W4A4** on Blackwell, **W4A16** elsewhere. FP8 KV cache (NVFP4 KV: 99.36%).
 - MTP: experts NVFP4, shared lm_head FP8 → AL 4.520 (draft length 7, temp 1), 1.127× projected speedup (simulated, draft length 5; Table 20).
+- Reproduce: Model Optimizer's `examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD` (recipe `model_type/nemotron_h/ptq/nvfp4-aggressive-mse` = released Aggressive tier; tutorial QAD is 600 iters on 32 GB300 with public data, 70 GB checkpoint — not the released run). Steps in `docs/nemotron/super35/quantization.md` → Recipe Execution.
 
 ---
 

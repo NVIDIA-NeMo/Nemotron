@@ -64,7 +64,7 @@ uv run nemotron super35 data import sft /path/to/energon/stage1
 uv run nemotron super35 data import sft /path/to/energon/stage2 --name super35-sft-stage2-data
 ```
 
-TODO(open-source): replace with the public dataset ids once the Super 3.5 SFT data is released.
+The Super 3.5 SFT blends are not public yet, so these are your own Energon datasets.
 
 The `long_context` config builds its own text dataset (Hugging Face CoderForge at a pinned
 revision, offline-packed to 131,072 tokens) and ignores `run.data`.

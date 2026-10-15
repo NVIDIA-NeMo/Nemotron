@@ -54,8 +54,8 @@ uv run nemotron lightning35 data prep rl [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via NeMo-Run |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 ### Input
 
@@ -135,21 +135,27 @@ uv run nemotron lightning35 rl [options] [overrides...]
 ### Key Configuration Sections
 
 ```yaml
+initial_checkpoint: ${art:model,path}   # Megatron checkpoint from the SFT stage
+
 policy:
-  model_name: "path/to/sft/checkpoint"
-  tokenizer: "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
+  model_name: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+  tokenizer:
+    name: ${policy.model_name}
+  megatron_cfg:
+    optimizer:
+      lr: 4.0e-6
   generation:
-    temperature: 0.7
-    max_new_tokens: 1024
+    temperature: 1.0
+    max_new_tokens: ${policy.max_total_sequence_length}
 
 grpo:
-  num_iterations: 100
-  batch_size: 32
-  learning_rate: 1e-6
+  num_prompts_per_step: 512
+  num_generations_per_prompt: 16
+  max_num_steps: 1000000
 
 data:
-  train_jsonl_fpath: "/path/to/train/data.jsonl"
-  validation_jsonl_fpath: "/path/to/val/data.jsonl"
+  train_jsonl_fpath: ${art:data,train}
+  validation_jsonl_fpath: ${art:data,val}
 
 env:
   nemo_gym:
@@ -159,8 +165,8 @@ env:
 ### Override Examples
 
 ```bash
-# More iterations
-uv run nemotron lightning35 rl -c tiny grpo.num_iterations=200
+# More training steps (tiny default: 10)
+uv run nemotron lightning35 rl -c tiny grpo.max_num_steps=200
 
 # Different temperature
 uv run nemotron lightning35 rl -c tiny policy.generation.temperature=0.8

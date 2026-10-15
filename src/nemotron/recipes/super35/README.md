@@ -15,11 +15,11 @@ Models for Agentic AI* (NVIDIA, 2026). Section references below (§) point to th
 |----------|-------|
 | Parameters | 120B total, 12B active |
 | Language model | Hybrid Mamba-Transformer with latent Mixture-of-Experts, initialized from Nemotron 3 Super |
-| Vision | C-RADIO vision encoder + vision projector + temporal video embedder (the Nemotron Omni image/video stack, no audio) |
+| Vision | C-RADIO vision encoder + VL connector (report); Megatron-Bridge also lists a temporal video embedder (the Nemotron Omni image/video stack, no audio) |
 | Speculative decoding | One recursively shared MTP head; post-training trains repeated MTP heads at loss coefficient 0.3, followed by MTP boosting (§3.7) |
 | Context | Up to 1M tokens |
 | Released checkpoints | Base BF16, post-trained BF16, NVFP4 |
-| Hugging Face id | `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16` (the Base checkpoint id is not confirmed yet) |
+| Hugging Face ids | `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-{Base-BF16,BF16,NVFP4}` |
 
 The base model is text-only; vision is introduced during SFT. The post-trained model reaches
 51.78% on SWE-bench Pro (Table 10).
@@ -31,8 +31,8 @@ The base model is text-only; vision is introduced during SFT. The post-trained m
 | 0. Pretrain | [`stage0_pretrain/`](stage0_pretrain/README.md) | `nemotron super35 pretrain` | Megatron-Bridge | MB's **vision-language** (image-caption) pretrain recipe, all stacks trainable. Not the report's text pretraining (see below). |
 | 1. SFT | [`stage1_sft/`](stage1_sft/README.md) | `nemotron super35 sft` (stage 1), `sft -c stage2` | Megatron-Bridge | Two SFT stages: general vision/reasoning/chat/long-context/safety/agentic mix, then a small re-balanced second stage. Also `-c peft` (LoRA) and `-c long_context` (128K, GB200, unverified). |
 | 2. RL — RLVR | [`stage2_rl/`](stage2_rl/README.md) | `nemotron super35 rl rlvr` | NeMo-RL + NeMo Gym | Text-only RLVR from the SFT checkpoint; seeds the teachers and the MOPD student. |
-| 2. RL — teachers | [`stage2_rl/`](stage2_rl/README.md) | `nemotron super35 rl teacher {reasoning,vision,video,vision-reasoning,rlhf,agentic}` | NeMo-RL + NeMo Gym | Specialist teachers: reasoning, vision tool use, video reasoning/tracking, vision-reasoning RLVR, two RLHF/alignment teachers, agentic (config only; Gym environment not public). |
-| 2. RL — MOPD | [`stage2_rl/`](stage2_rl/README.md) | `nemotron super35 rl mopd` (phase 1), `rl mopd -c phase2` | NeMo-RL | Multi-teacher on-policy distillation in two phases; phase 2 produces the final checkpoint. `-c single_stage` runs NeMo-RL's one-stage variant without the agentic teacher. |
+| 2. RL — teachers | [`stage2_rl/`](stage2_rl/README.md) | `nemotron super35 rl teacher {reasoning,vision,video,vision-reasoning,rlhf,agentic}` | NeMo-RL + NeMo Gym | Specialist teachers: reasoning, vision tool use, video reasoning/tracking, vision-reasoning RLVR, two RLHF/alignment teachers (the reference run's split; the report describes one alignment teacher), agentic (config only; Gym environment not public). |
+| 2. RL — MOPD | [`stage2_rl/`](stage2_rl/README.md) | `nemotron super35 rl mopd` (phase 1), `rl mopd -c phase2` | NeMo-RL | Multi-teacher on-policy distillation in two phases; phase 2 produces the final backbone (before the report's MTP boosting, not included). `-c single_stage` runs NeMo-RL's one-stage variant without the agentic teacher. |
 | 3. Eval | [`stage3_eval/`](stage3_eval/README.md) | `nemotron super35 eval` | NeMo Evaluator | vLLM-served checkpoint on the Table 10 benchmarks NeMo Evaluator supports. |
 
 ### About pretraining
@@ -91,8 +91,8 @@ uv run nemotron super35 rl teacher video --run YOUR-CLUSTER
 uv run nemotron super35 rl mopd --run YOUR-CLUSTER
 uv run nemotron super35 rl mopd -c phase2 --run YOUR-CLUSTER
 
-# 3. Evaluate the final checkpoint
-uv run nemotron super35 eval --run YOUR-CLUSTER
+# 3. Evaluate the final checkpoint, exported to HF (see stage3_eval/README.md)
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
 
 # Preview any stage without submitting
 uv run nemotron super35 sft --dry-run
@@ -257,13 +257,14 @@ shorter lineage in its [Nemotron 3.5 Super VL guide](https://github.com/NVIDIA-N
 |------|--------|
 | Text pretraining pipeline (§2) | Not reproducible (data and teacher logits not public) |
 | Megatron-Bridge Super-VL recipes | Public (MB `main`); pretrain/SFT/LoRA verified on H100 (SFT/LoRA also GB200); long-context SFT unverified |
-| SFT data blends | TODO(open-source): not public yet — bring your own Energon dataset |
-| RL data blends | TODO(open-source): not public yet — register your own JSONL per stage |
+| SFT data blends | Not public yet — bring your own Energon dataset |
+| RL data blends | Not public yet (NeMo-RL says it will be released later) — register your own JSONL per stage |
 | NeMo-RL `super-v3.5-posttraining` branch | Public; pinned to `f299847f1` (Gym `e24db4e6`) in `stage2_rl/Dockerfile` |
 | Agentic teacher Gym environment | Not public; config only |
 | RL recipe validation | Ports of the reference-run configs; vision and vision-reasoning teachers not yet GPU-validated on the shared RL stack |
 | End-to-end pipeline | Not run end to end from this repository (including the SFT → RL hand-off) |
-| NeMo Gym Super 3.5 reproducibility guide | TODO(open-source): referenced by the report, not published yet |
+| NeMo Gym Super 3.5 reproducibility guide | Public ([`jakub/marlin` branch](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) until merged); one recipe per Table 10 benchmark |
+| NVFP4 quantization | Public: Model Optimizer's [NemotronH Omni VL W4A4 tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) (released precision recipe; smaller public QAD) |
 | Multimodal benchmarks (BabyVision, CharXiv-RQ, MathVision, ...) | Not yet onboarded in open-source evaluation tools |
 
 ## Stage Documentation

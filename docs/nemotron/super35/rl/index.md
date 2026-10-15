@@ -8,6 +8,8 @@ This stage post-trains the SFT model with [NeMo-RL](../../nvidia-stack.md#nemo-r
 - Every RL stage runs on the public NeMo-RL `super-v3.5-posttraining` branch at commit `f299847f1`, which pins NeMo Gym `e24db4e6` (see `src/nemotron/recipes/super35/stage2_rl/Dockerfile`).
 - The RL data used for Super 3.5 (RLVR, teacher, and MOPD blends) is not yet published. NeMo-RL's guide says this data will be released at a later date. The report's length-penalized GenRM variant is not public either; NeMo-RL's public recipe uses [`nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM) instead.
 - The **agentic teacher** is blocked: its Terminal-Bench agent environment is not in public NeMo Gym. The config is provided for reference only.
+- **Vision-reasoning stage 2** is blocked: its structured-answer verifier is not in public NeMo Gym. With the agentic teacher, this means neither of the report's MOPD phases runs end to end from public code; the `single_stage` MOPD variant does.
+- No RL config has been run end to end on GPUs from this repository.
 - The **vision** and **vision-reasoning** teachers have not yet been fully GPU-validated on the shared RL stack.
 :::
 
@@ -69,7 +71,7 @@ Edge labels are MOPD prompt shares; the self-anchor takes the remaining 5% (phas
 | Reasoning teacher | `rl teacher reasoning` | RLVR | 64 | Hosted DeepSeek-V4-Flash judge | 256 × 16 | 128K generation, 256K total | 4e-6 | 80 |
 | Vision tool-use teacher | `rl teacher vision` | RLVR | 16 | — | 16 × 8 | 32K | 3e-6 | 40 |
 | Video teacher | `rl teacher video` | RLVR | 32 | — | 128 × 16 | 64K (16K generation) | 3e-6 | 60 |
-| Vision-reasoning teacher | `rl teacher vision-reasoning [-c stage2]` | RLVR → stage 1 | 32 / 33 | — | 256 × 16 | 32K | 3e-6 | 114 → 20 |
+| Vision-reasoning teacher | `rl teacher vision-reasoning [-c stage2]` | RLVR → stage 1 (report: a multimodal RLVR checkpoint) | 32 / 33 | — | 256 × 16 | 32K | 3e-6 | 114 → 20 |
 | Alignment teacher 1 | `rl teacher rlhf [-c teacher1_stage2]` | SFT | 32 / 32 | 32 nodes GenRM | 32 × 32 | 48K (16K generation) | 2e-6 | 120 → 500 |
 | Alignment teacher 2 | `rl teacher rlhf -c teacher2_stage1 \| teacher2_stage2` | RLVR | 64 / 32 | 64 / 32 nodes GenRM, plus 4 nodes abstention judge (2b) | 32 × 32 | 48K (16K generation) | 2e-6 | 200 → 120 |
 | Agentic teacher | `rl teacher agentic` | RLVR | 128 | Hosted search judge | 64 × 16 | 192K | 3e-6 | 14 |
@@ -82,7 +84,7 @@ All nodes are GB200 with 4 GPUs. `run.env.nodes` is the Slurm allocation each co
 ### Shared Settings
 
 - **Algorithm** (report): asynchronous GRPO as in Nemotron 3 Ultra; training and generation run on separate GPUs, with a bounded maximum trajectory age.
-- **Train–inference mismatch** (report): router replay and an FP32 LM head on top of the Nemotron 3 Ultra algorithm cut the KL error between the training and inference engines by more than an order of magnitude. In the configs, router replay is per stage (on for the video teacher and vision-reasoning stage 2; off for RLVR, the reasoning teacher, and vision-reasoning stage 1).
+- **Train–inference mismatch** (report): router replay and an FP32 LM head on top of the Nemotron 3 Ultra algorithm cut the KL error between the training and inference engines by more than an order of magnitude. In the configs, router replay is per stage (on for the video teacher and vision-reasoning stage 2; off for RLVR, the reasoning teacher, and vision-reasoning stage 1, although the report used it for RLVR, §3.2).
 - **MTP** (recipe): every config trains **five repeated, detached MTP heads** with loss coefficient **0.3**. This standardizes the MTP setting; the reference runs varied by stage (several trained one head, used coefficient 0.1, or turned MTP loss off), and each stage page lists the difference. Policy MTP speculative decoding is off except in the reasoning teacher (one speculative token).
 - **Serving** (recipe): policy generation uses vLLM with `max_num_seqs=256` and `max_num_batched_tokens=32768`.
 - **Checkpoint format**: every stage loads its policy and teachers as Hugging Face checkpoints. A Megatron checkpoint from `super35 sft` is converted to HF automatically using `run.hf_architecture`.
@@ -113,10 +115,10 @@ NeMo-RL publishes its own [Nemotron 3.5 Super VL guide](https://github.com/NVIDI
 |---|---|---|
 | Student RLVR | `stage1_rlvr` | `student_rlvr.yaml`. Same settings; the guide stops at 120 steps (`grpo.max_num_steps`), this config has no step limit |
 | RLHF teacher | Two teachers, each with two sub-stages (`rlhf1`, `rlhf2`) | One `rlhf_teacher.yaml`, started from Student RLVR. Same shape as `teacher2_stage2` (GenRM comparison plus abstention), with a group reasoning-length penalty of 0.12 instead of 0.06 |
-| Reasoning teacher | `reasoning` | `reasoning_teacher.yaml`. Same settings; the guide uses 44 generation nodes instead of 48 |
+| Reasoning teacher | `reasoning` | `reasoning_teacher.yaml`. Same settings; the guide uses 44 generation nodes instead of 48 (60 cluster nodes instead of 64) |
 | Vision teacher | `vision` | `vision_teacher.yaml`. Same training settings |
 | Video, vision-reasoning, and agentic teachers | Included (agentic is config-only) | Not included |
-| MOPD | Two phases; `-c single_stage` is the port of the guide's stage | One `mopd.yaml` stage, close to phase 1. The agentic environments are routed to the general teacher (Student RLVR), so it needs no agentic teacher. It runs on 112 nodes instead of 128 |
+| MOPD | Two phases; `-c single_stage` is the port of the guide's stage | One `mopd.yaml` stage, close to phase 1. The agent names phase 1 routes to the agentic teacher go to the general teacher (Student RLVR), so it needs no agentic teacher. It runs on 112 nodes instead of 128. Ours consumes RLHF teacher 1 (from SFT), not NeMo-RL's RLHF teacher |
 
 The guide's NeMo-RL commit is newer than the one this recipe's configs were ported from. Both use NeMo Gym `e24db4e6`, and every config here validates against the pinned commit's GRPO config schema. The guide also says the training data will be released at a later date.
 

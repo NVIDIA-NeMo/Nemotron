@@ -30,7 +30,7 @@ RL_ROOT = REPO_ROOT / "src/nemotron/recipes/super35/stage2_rl"
 RL_CONFIGS = sorted(RL_ROOT.glob("**/config/*.yaml"))
 
 # References that are known not to exist in public Gym at GYM_COMMIT. Each
-# entry must also be called out with a TODO in the config and stage README.
+# entry must also be called out as not public in the config and stage README.
 KNOWN_MISSING = {
     # Agentic teacher is blocked on the legacy Terminal-Bench agent
     # (swe_agents_orig + swe_agents/configs/terminalbench.yaml).
@@ -96,7 +96,9 @@ def _known_missing(config: Path, kind: str) -> bool:
 
 
 def test_gym_checkout_is_pinned_commit():
-    head = subprocess.run(["git", "-C", str(GYM_DIR), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    head = subprocess.run(
+        ["git", "-C", str(GYM_DIR), "rev-parse", "HEAD"], capture_output=True, text=True
+    ).stdout.strip()
     assert head == GYM_COMMIT
 
 

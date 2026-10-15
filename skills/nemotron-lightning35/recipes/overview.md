@@ -71,8 +71,8 @@ Released checkpoints can be registered with `lightning35 model import` to skip s
 
 1. **Open data only.** Every stage trains on the open-sourced subset; the stage READMEs say results will differ from the model-card benchmarks.
 2. **Pretraining is not the report's.** The report builds the base from Nano 3 Base with an MTP warm-up and 1T tokens of distillation from Super 3 Base (`../paper/pretraining.md`); the repo stage pretrains with Megatron-Bridge on open data.
-3. **Container.** Megatron-Bridge stages pin `nvcr.io/nvidian/nemo:26.08.rc2` until the public `nvcr.io/nvidia/nemo:26.08` tag ships (see the runspec comment in `stage0_pretrain/train.py`); RL and eval use `nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_5_lightning`.
-4. **Slurm only.** The recipe README says this release was tested only with Slurm execution.
+3. **Container.** Megatron-Bridge stages use `nvcr.io/nvidia/nemo:26.08` and mount a pinned Megatron-Bridge main revision over it (see `stage0_pretrain/config/default.yaml`); RL and eval use `nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_5_lightning`.
+4. **Tested with Slurm only.** The recipe README and docs say this release was tested only with Slurm execution; the pretrain and SFT `${auto_mount:...}` mounts require the Slurm executor.
 
 ---
 

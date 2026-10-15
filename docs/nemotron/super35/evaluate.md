@@ -1,13 +1,11 @@
 # Stage 3: Evaluation
 
-This page has two parts: the tech report's results for the released checkpoints, and the `nemotron super35 eval` stage, which runs a subset of those benchmarks with [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) to check your own training runs.
+This page has three parts: the tech report's results for the released checkpoints, how to reproduce them with [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), and the `nemotron super35 eval` stage, which runs a subset of those benchmarks with [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) to check your own training runs.
 
-The report collects every post-trained result, for Super 3.5 and for the baselines, with [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), and points to a Super 3.5 reproducibility guide in the NeMo Gym repository (`nemotron_recipes/super-3.5/reproducibility.md`). `super35 eval` uses NeMo Evaluator instead, so its scores are not expected to match the tables below exactly.
+The report collects every post-trained result, for Super 3.5 and for the baselines, with NeMo Gym. NeMo Gym's [Super 3.5 reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) has one recipe per Table 10 benchmark with the settings of the published run; use it to compare against the report (see [Reproducing the Published Results](#reproducing-the-published-results-nemo-gym)). `super35 eval` uses NeMo Evaluator instead, so its scores are not expected to match the tables below exactly.
 
-:::{admonition} Pending open-source release
-:class: warning
-
-The NeMo Gym Super 3.5 benchmark recipes and reproducibility guide are pending publication. The report lists BabyVision, CharXiv-RQ, MathVision, MMLongBench-Doc, OCR-Reasoning, OCRBench-v2, V\*, and Video-MME-v2 as not yet onboarded in its open-source tools (it used their official implementations or internal scaffolding). NV Chat Benchmark is internal to NVIDIA.
+:::{note}
+The reproducibility guide is on NeMo Gym's `jakub/marlin` branch until it is merged to `main`. The multimodal Table 10 benchmarks (BabyVision, CharXiv-RQ, MathVision, MMLongBench-Doc, OCR-Reasoning, OCRBench-v2, V\*, Video-MME-v2), NV Chat Benchmark (internal to NVIDIA), HLE with tools, the OpenCode BrowseComp harness, and Text Arena have no recipe there.
 :::
 
 ---
@@ -180,16 +178,60 @@ Base-model results (Table 6) were collected with the NeMo Evaluator SDK and its 
 
 ---
 
+## Reproducing the Published Results (NeMo Gym)
+
+The [reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) is the reference for matching Table 10. Each benchmark is one Gym config (`nemotron_recipes/super-3.5/<benchmark>.yaml`) holding the published run's settings, and one script, `run.sh`, runs any of them against an OpenAI-compatible endpoint:
+
+```bash
+# From a separate Gym clone: run.sh switches the checkout to each recipe's pinned Gym commit
+git clone -b jakub/marlin https://github.com/NVIDIA-NeMo/Gym.git && cd Gym
+uv venv --python 3.13.14 && source .venv/bin/activate && uv sync
+
+cp nemotron_recipes/super-3.5/env.yaml.example env.yaml   # model endpoint and judges
+cp nemotron_recipes/super-3.5/.env.example .env           # keys and paths
+set -a; source .env; set +a
+
+LIMIT=3 nemotron_recipes/super-3.5/run.sh gpqa   # smoke test; not a score
+nemotron_recipes/super-3.5/run.sh gpqa           # full run
+```
+
+Scores land in `./results/<recipe>/evaluator_rollouts_aggregate_metrics.json`. Shared settings (thinking on, temperature 1.0, top-p 0.95) live in the guide's `common.yaml`; keep `env.yaml` to endpoints and keys, since anything else there overrides the published settings.
+
+| Covered by a recipe | Needs extra setup (see the guide) |
+|---------------------|-----------------------------------|
+| GPQA Diamond, HLE (text-only and full), AA-LCR, AA-Omniscience, Tau2, Tau3-Banking, LiveCodeBench v6, IFBench, GraphWalks, APEX Shortlist, MMLU-ProX, BrowseComp | SciCode (`test_data.h5`), CritPt (Artificial Analysis API), WMT24++ (local xCOMET-XXL), SWE-bench Verified / Multilingual / Pro and Terminal-Bench 2.1 (OpenSandbox), OSWorld-Verified (KVM VMs), GDPval-AA v2 (Apptainer sandbox, root) |
+
+HLE, AA-LCR, AA-Omniscience, BrowseComp, GDPval-AA v2, Tau2/Tau3 and CritPt need a judge, user-simulator or grading endpoint, configured once in `env.yaml`. GPQA and HLE use gated Hugging Face datasets.
+
+**Serving.** The published runs used vLLM 0.30.0 on one 4-GPU node per server:
+
+```bash
+vllm serve nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+  --served-model-name nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 --port 8000 \
+  --tensor-parallel-size 4 --enable-expert-parallel \
+  --trust-remote-code --gpu-memory-utilization 0.8 \
+  --enable-prefix-caching --enable-chunked-prefill --async-scheduling --api-server-count 1 \
+  --enable-auto-tool-choice --tool-call-parser qwen3_coder \
+  --reasoning-parser nemotron_v3 \
+  --kv-cache-dtype fp8 --mamba-cache-dtype auto --mamba-ssm-cache-dtype float32 \
+  --no-enable-mamba-cache-stochastic-rounding \
+  --max-model-len 262144 --max-num-seqs 1024 --max-num-batched-tokens 135680 \
+  --limit-mm-per-prompt '{"image":128,"video":1}' --video-pruning-rate 0.5 \
+  --allowed-local-media-path / --media-io-kwargs '{"video":{"fps":2,"num_frames":256}}' \
+  --skip-mm-profiling --mm-encoder-attn-backend TORCH_SDPA
+```
+
+This command was validated on 4× GB200 and does not start on 80 GB GPUs; there, follow the model card's memory settings. GraphWalks needs `--max-model-len 1048576 --max-num-batched-tokens 8192`. To evaluate your own checkpoint, serve its Hugging Face export the same way (RL checkpoints need the export in [Recipe](#recipe-nemotron-super35-eval)).
+
+**Comparing numbers.** Table 10 numbers are the mean of two runs (one for CritPt, BrowseComp and AA-Omniscience), sampled at temperature 1.0, so expect run-to-run variation. Compare only full runs whose `evaluator_rollouts_failures.jsonl` is empty, and serve the model yourself: a gap against someone else's endpoint can come from their serving stack. Table 6 base-model results come from the NeMo Evaluator SDK and LM Evaluation Harness, not NeMo Gym.
+
 ## Recipe: `nemotron super35 eval`
 
 ### Quick Start
 
 ```bash
-# Evaluate the final MOPD checkpoint (default: run.model=super35-rl-mopd-phase2-model:latest)
-uv run nemotron super35 eval --run YOUR-CLUSTER
-
-# Evaluate a specific artifact version (for example the phase-2 step-30 checkpoint)
-uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-model:vN
+# Evaluate an HF-format checkpoint (RL checkpoints must be exported first; see below)
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
 
 # Filter tasks
 uv run nemotron super35 eval --run YOUR-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifbench
@@ -198,7 +240,18 @@ uv run nemotron super35 eval --run YOUR-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifb
 uv run nemotron super35 eval --dry-run
 ```
 
-Like the [Nemotron 3 Super evaluation](../super3/evaluate.md), `super35 eval` has no recipe script: the CLI compiles `src/nemotron/recipes/super35/stage3_eval/config/default.yaml`, resolves the model artifact, and passes the job to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). The checkpoint must be in Hugging Face format (the RL stages produce HF checkpoints; Megatron checkpoints from pretrain and SFT need a Megatron-Bridge export first).
+Like the [Nemotron 3 Super evaluation](../super3/evaluate.md), `super35 eval` has no recipe script: the CLI compiles `src/nemotron/recipes/super35/stage3_eval/config/default.yaml`, resolves the model artifact, and passes the job to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). The checkpoint must be in Hugging Face format. Megatron checkpoints from pretrain and SFT need a Megatron-Bridge export first. RL checkpoints are NeMo-RL `step_N` directories; export the selected step with NeMo-RL's converter and register it:
+
+```bash
+uv run --extra mcore python examples/converters/convert_megatron_to_hf.py \
+    --config /path/to/step_N/config.yaml \
+    --hf-model-name nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --megatron-ckpt-path /path/to/step_N/policy/weights/iter_XXXXXXX \
+    --hf-ckpt-path /path/to/super35-hf
+uv run nemotron super35 model import rl /path/to/super35-hf --name super35-rl-mopd-phase2-hf-model
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
+```
+
 
 ### Default tasks
 
@@ -220,7 +273,7 @@ HLE, AA-LCR, AA-Omniscience, CritPt, τ²-Bench, and WMT24++ are listed but comm
 |---------|-------|
 | Serving | vLLM, tensor parallel 8 on one node, `--trust-remote-code`, FP32 Mamba SSM cache, `qwen3_coder` tool-call parser, `nemotron_v3` reasoning parser |
 | Sampling | Reasoning on (`enable_thinking: true`), temperature 1.0, top-p 0.95, up to 131,072 new tokens |
-| Container | `run.env.container` (a vLLM image that serves Super 3.5 VL; pin a released version) |
+| Container | `vllm/vllm-openai:v0.30.0` (`run.env.container`), the vLLM release the published NeMo Gym runs used |
 | Export | Results are exported to the W&B project from `env.toml` |
 
 The eval stage has not been run against Table 10 from this repository.
@@ -229,6 +282,7 @@ The eval stage has not been run against Table 10 from this repository.
 
 - Nemotron 3.5 tech report, §2.6 (base model), §3.8–3.11 (post-trained evaluation, reasoning control, harnesses, test-time scaling), Tables 6, 10, 11
 - [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym): evaluation environments and harnesses
+- [NeMo Gym Super 3.5 reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md): one recipe per Table 10 benchmark
 - [Quantization](./quantization.md): BF16 vs NVFP4 across 35 benchmarks
 - **Recipe Source**: `src/nemotron/recipes/super35/stage3_eval/`
 - [Back to Overview](./README.md)

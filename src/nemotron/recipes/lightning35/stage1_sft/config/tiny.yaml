@@ -2,9 +2,8 @@ run:
   data: lightning35-sft-data-tiny:latest
   model: lightning35-pretrain-model-tiny:latest
   env:
-    # 26.08 container generation (has the Lightning stack); the public
-    # nvcr.io/nvidia/nemo:26.08 tag publishes at launch — switch then.
-    container: nvcr.io/nvidian/nemo:26.08.rc2
+    # 26.08 container generation (has the Lightning stack).
+    container: nvcr.io/nvidia/nemo:26.08
     # FlashInfer JIT cache must live on a writable mount — the container's
     # /root/.cache overlay is tiny and import fails with ENOSPC otherwise
     # (same fix as super3 RL's persistent cache mapping).

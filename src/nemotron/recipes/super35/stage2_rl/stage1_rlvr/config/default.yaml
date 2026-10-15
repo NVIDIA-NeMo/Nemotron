@@ -313,7 +313,7 @@ env:
       responses_api_agents:
         simple_agent:
           max_steps: 1
-    global_aiohttp_client_request_debug: true
+    global_aiohttp_client_request_debug: false
     instruction_following_simple_agent:
       responses_api_agents:
         simple_agent:

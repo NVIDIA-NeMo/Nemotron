@@ -141,7 +141,7 @@ If you synthesize across files, say so.
    - AA-LCR (post-trained BF16): 68.63 in Table 10 vs 68.62 in Table 22.
    The `paper/` files record the exact locations.
 2. **Release is staged.** Distinguish Base BF16, post-trained BF16, and NVFP4. Intermediate teacher checkpoints, the report's length-penalized GenRM variant, and the SFT and RL blends are not released (NeMo-RL's public recipe uses the public `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM` as the GenRM).
-3. **Repo recipe coverage is partial.** The text-only pretraining pipeline is not reproducible; `super35 pretrain` runs Megatron-Bridge vision-language image-caption pretraining instead. SFT, RLVR, the teachers, and MOPD have runnable configs, but without the released data and GenRM they need user data. The agentic teacher cannot be launched (its NeMo Gym environment is not public). MTP boosting and quantization are not CLI stages.
+3. **Repo recipe coverage is partial.** The text-only pretraining pipeline is not reproducible; `super35 pretrain` runs Megatron-Bridge vision-language image-caption pretraining instead. SFT, RLVR, and the reasoning, vision tool-use, video, alignment, and vision-reasoning stage-1 teachers have runnable configs, but without the released data they need user data. Two teachers cannot run on public NeMo Gym: the agentic teacher (its environment is not public) and vision-reasoning stage 2 (its structured-answer verifier is not public). So neither report MOPD phase runs end to end from public code; `rl mopd -c single_stage` (NeMo-RL's variant without the agentic teacher) does. None of the RL configs has run end to end on GPUs from this repo. MTP boosting is not included; quantization is not a CLI stage (Model Optimizer tutorial in `docs/nemotron/super35/quantization.md`).
 4. **Pretraining-time MTP training, post-SFT MTP-only training, and post-MOPD MTP boosting** are three different things.
 
 ---
@@ -152,7 +152,7 @@ If the user shifts from **describing Super 3.5** to **building/modifying a pipel
 
 1. give the relevant Super 3.5 stage order first,
 2. point to `recipes/overview.md` and the matching `docs/nemotron/super35/` guide,
-3. state the public-recipe gaps plainly (data, GenRM, agentic teacher, MTP boosting),
+3. state the public-recipe gaps plainly (data, GenRM, agentic teacher, vision-reasoning stage-2 verifier, MTP boosting),
 4. then hand broader implementation work to `/nemotron-customize`.
 
 Do not invent missing checkpoints, datasets, configs, or step contracts inside this skill.

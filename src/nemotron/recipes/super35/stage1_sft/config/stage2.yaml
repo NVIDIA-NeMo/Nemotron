@@ -15,15 +15,14 @@
 #   run.model  super35-sft-stage1-model (output of default.yaml)
 #   run.data   Energon WebDataset registered with
 #              `nemotron super35 data import sft <dir> --name super35-sft-stage2-data`.
-#              TODO(open-source): the stage-2 blend is not public yet.
+#              The stage-2 blend is not public yet; bring your own.
 
 run:
   model: super35-sft-stage1-model:latest
   data: super35-sft-stage2-data:latest
   env:
-    # 26.08 container generation (same as lightning35); the public
-    # nvcr.io/nvidia/nemo:26.08 tag publishes at launch — switch then.
-    container: nvcr.io/nvidian/nemo:26.08.rc2
+    # Public NeMo 26.08 container (same as lightning35).
+    container: nvcr.io/nvidia/nemo:26.08
     env_vars:
       # Triton/Inductor/FlashInfer JIT caches default under /root, whose
       # container overlay is tiny — use node-local /tmp instead.

@@ -48,7 +48,7 @@ chunks (joint Nemotron 3.5 Super and Lightning report) unless labelled **docs** 
 
 ## 7. Quantization
 
-W4A16 on every SKU; MTP not quantized; FP8 KV cache and FP32 Mamba SSM cache in the report's evaluation. Mamba projections FP8 (report §4.8; confirmed by the NVFP4 card). Calibration four-over-six, 1000 samples of a Nemotron Ultra validation subset at 32K (card; the report names no method). The docs' ModelOpt recipe uses W4A16 NVFP4 Mamba linears instead; the docs flag it. Checkpoint 22 GB vs 66 GB BF16.
+W4A16 on every SKU; MTP not quantized; FP8 KV cache and FP32 Mamba SSM cache in the report's evaluation. Mamba projections FP8 (report §4.8; confirmed by the NVFP4 card). Calibration four-over-six, 1000 samples of a Nemotron Ultra validation subset at 32K (card; the report names no method). Model Optimizer's published recipe `models/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/ptq/w4a16_nvfp4_4o6` matches (FP8 Mamba, MTP BF16); the docs' commands use it with public calibration data. Checkpoint 22 GB vs 66 GB BF16.
 
 ---
 
@@ -67,9 +67,9 @@ W4A16 on every SKU; MTP not quantized; FP8 KV cache and FP32 Mamba SSM cache in 
 | Need | Step / mode |
 |---|---|
 | SFT on Megatron-Bridge | `data_prep/sft_packing` + `sft/megatron_bridge` (lists Lightning) |
-| pretraining | `pretrain/megatron_bridge` shape (does not list Lightning) → ground on `recipes/lightning35/stage0_pretrain/` |
-| RLVR | `rl/nemo_rl/rlvr` shape (does not list Lightning) → ground on `recipes/lightning35/stage2_rl/` |
-| evaluation | `recipes/lightning35/stage3_eval/` (NeMo Gym); `eval/model_eval` only for a quick endpoint check |
+| pretraining | `pretrain/megatron_bridge` shape (does not list Lightning) → ground on `src/nemotron/recipes/lightning35/stage0_pretrain/` |
+| RLVR | `rl/nemo_rl/rlvr` shape (does not list Lightning) → ground on `src/nemotron/recipes/lightning35/stage2_rl/` |
+| evaluation | `src/nemotron/recipes/lightning35/stage3_eval/` (NeMo Gym); `eval/model_eval` only for a quick endpoint check |
 | quantization | `optimize/modelopt/quantize` shape; follow `docs/nemotron/lightning35/quantization.md` |
 
 ## 10. Caveats

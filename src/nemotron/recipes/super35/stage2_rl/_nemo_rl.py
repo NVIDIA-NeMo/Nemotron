@@ -24,7 +24,9 @@ This module only does what the upstream script cannot:
 1. Resolve ``${art:...}`` references (policy, teachers, data) into concrete
    paths. Every other interpolation -- notably ``${oc.env:...}`` secrets such
    as judge API keys -- is left for NeMo-RL to resolve when it loads the
-   config, so secrets never land in the handed-off YAML or the logs.
+   config, so secrets never land in the handed-off YAML. NeMo-RL itself
+   then prints the resolved config and logs it to W&B and each checkpoint's
+   ``config.yaml``, so treat those outputs as containing the keys.
 2. Turn checkpoint artifacts into the form NeMo-RL expects: HF checkpoints for
    the policy and MOPD teachers (converting Megatron-Bridge SFT checkpoints and
    NeMo-RL ``step_N`` checkpoints on first use), and the native weights dir for

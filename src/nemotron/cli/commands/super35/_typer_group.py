@@ -25,14 +25,16 @@ Design: LLM-Native Recipe Architecture
 
 from __future__ import annotations
 
+from nemo_runspec.recipe_typer import RecipeTyper
 from nemotron.cli.commands.super35.data import data_app
 from nemotron.cli.commands.super35.eval import META as EVAL_META
 from nemotron.cli.commands.super35.eval import eval as eval_cmd
 from nemotron.cli.commands.super35.model import model_app
-from nemotron.cli.commands.super35.pretrain import META as PRETRAIN_META, pretrain
+from nemotron.cli.commands.super35.pretrain import META as PRETRAIN_META
+from nemotron.cli.commands.super35.pretrain import pretrain
 from nemotron.cli.commands.super35.rl import rl_app
-from nemotron.cli.commands.super35.sft import META as SFT_META, sft
-from nemo_runspec.recipe_typer import RecipeTyper
+from nemotron.cli.commands.super35.sft import META as SFT_META
+from nemotron.cli.commands.super35.sft import sft
 
 super35_app = RecipeTyper(
     name="super35",

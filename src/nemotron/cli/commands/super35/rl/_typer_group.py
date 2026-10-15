@@ -22,10 +22,12 @@ Mirrors the Super 3.5 reference run:
 
 from __future__ import annotations
 
-from nemotron.cli.commands.super35.rl.mopd import META as MOPD_META, mopd
-from nemotron.cli.commands.super35.rl.rlvr import META as RLVR_META, rlvr
-from nemotron.cli.commands.super35.rl.teachers import teacher_app
 from nemo_runspec.recipe_typer import RecipeTyper
+from nemotron.cli.commands.super35.rl.mopd import META as MOPD_META
+from nemotron.cli.commands.super35.rl.mopd import mopd
+from nemotron.cli.commands.super35.rl.rlvr import META as RLVR_META
+from nemotron.cli.commands.super35.rl.rlvr import rlvr
+from nemotron.cli.commands.super35.rl.teachers import teacher_app
 
 rl_app = RecipeTyper(
     name="rl",

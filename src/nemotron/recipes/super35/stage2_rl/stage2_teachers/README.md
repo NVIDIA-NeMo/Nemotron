@@ -28,11 +28,11 @@ The dashed edge marks an unconfirmed lineage: the historical agentic run started
 | [Reasoning](#reasoning) | `reasoning` | RLVR step 120 | 80 | 64 (16 train + 48 gen) | MOPD 1 | `super35-rl-teacher-reasoning-model` |
 | [Vision](#vision) | `vision` | RLVR step 120 | 40 | 16 (8 + 8) | MOPD 1 and 2 | `super35-rl-teacher-vision-model` |
 | [Video](#video) | `video` | RLVR step 120 | 60 | 32 (16 + 16) | MOPD 2 | `super35-rl-teacher-video-model` |
-| [Vision-Reasoning](#vision-reasoning) | `vision-reasoning -c stage1` / `-c stage2` | RLVR step 120 → stage 1 | 114 → 20 | 32 (16 + 16); stage 2 also used a dedicated Ray head | MOPD 2 | `...-vision-reasoning-stage1-model` → `super35-rl-teacher-vision-reasoning-model` |
+| [Vision-Reasoning](#vision-reasoning) | `vision-reasoning -c stage1` / `-c stage2` | RLVR step 120 → stage 1 (recipe choice; the report starts from a multimodal RLVR checkpoint) | 114 → 20 | 32 (16 + 16); stage 2 also used a dedicated Ray head | MOPD 2 | `...-vision-reasoning-stage1-model` → `super35-rl-teacher-vision-reasoning-model` |
 | [RLHF](#rlhf) | `rlhf -c teacher1_stage1` ... `teacher2_stage2` | SFT (teacher 1), RLVR (teacher 2) | 500 / 120 | see configs | MOPD 1 (teacher 1), MOPD 2 (teacher 2) | `super35-rl-teacher-rlhf1-model`, `super35-rl-teacher-rlhf2-model` |
 | [Agentic](#agentic-blocked) | `agentic` | RLVR step 120 | 14 | 128 (32 + 96) | MOPD 1 | `super35-rl-teacher-agentic-model` |
 
-Every config sets `run.model: super35-rl-rlvr-model:latest` except RLHF teacher 1 and vision-reasoning stage 2. MOPD reads `super35-rl-mopd-phase1-data` and `super35-rl-mopd-phase2-data`.
+Every config sets `run.model: super35-rl-rlvr-model:latest` except RLHF teacher 1 (from SFT), RLHF teacher 2 stage 2 (from teacher 2 stage 1) and vision-reasoning stage 2 (from stage 1). MOPD reads `super35-rl-mopd-phase1-data` and `super35-rl-mopd-phase2-data`.
 
 ## Data artifacts
 
@@ -109,7 +109,7 @@ The self-hosted judge is not guaranteed to grade identically to the hosted one.
 `video/config/default.yaml` trains video QA and object tracking.
 
 - **Data**: CapRL video QA uses 64 ordered frames rebuilt as native video. SA-V object tracking uses ordered images. Keep the dataset's `_is_video_frame` / `_video_source` metadata. Both paths use video temporal patch size 2 and 1,024 target patches.
-- **Training**: 128 prompts × 16 generations; TP2 / CP1 / EP16 training; TP4 generation. Ray router replay is on. Vision and audio modules and the MoE router are frozen.
+- **Training**: 128 prompts × 16 generations; TP2 / CP1 / EP16 training; TP4 generation. Ray router replay is on. Vision modules and the MoE router are frozen.
 - **Weight loading**: frozen vision weights are never refitted, so `policy.generation.vllm_cfg.load_format` **must stay `auto`**. The reference launcher checked this before training.
 - **Media access**: `NEMO_RL_VIDEO_MEDIA_ROOT=/` and `allowed_local_media_path: /` let vLLM read media at the absolute paths stored in the data.
 - **SA-V verifier**: the `sav_tracks` resources server is in public NeMo-Gym at `e24db4e6`.
@@ -125,7 +125,7 @@ These are two GRPO stages on chart, document and OCR visual reasoning. Run them 
   - `run.base_model` (RLVR step 120) still provides the HF architecture, tokenizer and frozen vision weights through `policy.model_name`.
   - The shared runner maps a NeMo-RL `step_N` artifact to its native weights directory (`step_N/policy/weights`, which holds `iter_*/`) before NeMo-RL loads it.
   - The reference deployment added a dedicated Ray head node (33 nodes).
-- **Structured-answer verifier**: stage 2 grades set, ordered-list and interval answers with a custom `string_match` entrypoint (`structured_answer_app.py`). That code is not in public Gym. **TODO(open-source)**: the verifier must be added to public Gym before stage 2 can run.
+- **Structured-answer verifier**: stage 2 grades set, ordered-list and interval answers with a custom `string_match` entrypoint (`structured_answer_app.py`). That code is not in public NeMo Gym yet, so stage 2 cannot run until the verifier is published.
 
 ## RLHF
 

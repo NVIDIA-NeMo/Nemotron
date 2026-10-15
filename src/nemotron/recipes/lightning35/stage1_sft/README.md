@@ -65,8 +65,8 @@ uv run nemotron lightning35 data prep sft [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via NeMo-Run |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 ### Input
 
@@ -183,7 +183,7 @@ uv run nemotron lightning35 sft -c tiny train.train_iters=5000
 uv run nemotron lightning35 sft -c tiny optimizer.lr=1e-5
 
 # Load specific pretrained checkpoint
-uv run nemotron lightning35 sft -c tiny checkpoint.load=/path/to/pretrain/checkpoint
+uv run nemotron lightning35 sft -c tiny checkpoint.pretrained_checkpoint=/path/to/pretrain/checkpoint
 ```
 
 ## Running with NeMo-Run

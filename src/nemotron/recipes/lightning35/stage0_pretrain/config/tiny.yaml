@@ -1,11 +1,9 @@
 run:
   data: lightning35-pretrain-data-tiny:latest
   env:
-    # 26.08 container generation — what the Lightning verification-card runs
-    # use (MB with the nemotron_3_5_lightning_* recipes and matching
-    # Megatron-LM/transformers stack, no mounts). The public nvcr.io/nvidia/
-    # nemo:26.08 tag publishes at launch; use the internal rc until then.
-    container: nvcr.io/nvidian/nemo:26.08.rc2
+    # 26.08 container generation (Megatron-LM/transformers stack matching the
+    # nemotron_3_5_lightning_* Megatron-Bridge recipes).
+    container: nvcr.io/nvidia/nemo:26.08
     # FlashInfer JIT cache must live on a writable mount — the container's
     # /root/.cache overlay is tiny and import fails with ENOSPC otherwise
     # (same fix as super3 RL's persistent cache mapping).
@@ -20,9 +18,10 @@ run:
       XDG_CACHE_HOME: /tmp/xdg_cache
     # Tiny smoke fits on one node (script default is 2)
     nodes: 1
-    # The rc container's bundled MB predates the Lightning recipes
-    # (merged 2026-07-28); mount MB main over it. MB main matches this
-    # container generation's dependency stack (transformers 5.x, etc.).
+    # Pin Megatron-Bridge to the main revision the Lightning recipes (merged
+    # 2026-07-28) were validated against by mounting it over the container's
+    # copy. MB main matches this container generation's dependency stack
+    # (transformers 5.x, etc.).
     mounts:
       - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@0c565c9a063bc8578ec094b4eb488594ed8b033a,/opt/Megatron-Bridge}
       # megatron.core resolves from MB's vendored submodule path in this

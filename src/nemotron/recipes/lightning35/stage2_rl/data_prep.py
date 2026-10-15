@@ -57,7 +57,7 @@ For simple copy/passthrough (no placeholder resolution), use data_prep_copy.py i
 
 CLI:
     nemotron lightning35 data prep rl                       # local execution
-    nemotron lightning35 data prep rl --run ray --sample 10000  # submit to cluster
+    nemotron lightning35 data prep rl --run ray sample=10000  # submit to cluster
 
 Execution logic: src/nemotron/cli/commands/lightning35/data/prep/rl.py
 

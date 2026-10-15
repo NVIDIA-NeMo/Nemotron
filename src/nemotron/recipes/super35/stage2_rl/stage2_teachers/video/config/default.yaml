@@ -1,8 +1,8 @@
 # Nemotron 3.5 Super VL -- RL stage 2 teacher: video (video QA + SA-V object tracking).
 #
 # GRPO from RLVR step 120 on CapRL video questions (64 ordered frames rebuilt as
-# native video) plus SA-V tracking (ordered images). Vision and audio modules and
-# the MoE router are frozen; Ray router replay on.
+# native video) plus SA-V tracking (ordered images). Vision modules and the MoE
+# router are frozen (no audio in this model); Ray router replay on.
 # Selected checkpoint: step 60. Used in MOPD phase 2.
 #
 # Nodes (GB200, 4 GPUs/node): 32 = 16 training (TP2/CP1/EP16) + 16 generation (TP4).

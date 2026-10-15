@@ -37,9 +37,17 @@ TEACHERS = (
     ("reasoning", "reasoning", "Science/math/competitive-coding reasoning teacher (128K generation)."),
     ("vision", "vision", "Vision tool-use teacher (crop, zoom, rotate, ... as structured tool calls)."),
     ("video", "video", "Video reasoning and SA-V object-tracking teacher."),
-    ("vision-reasoning", "vision_reasoning", "Chart/document/OCR vision-reasoning teacher (2 stages: -c stage1, -c stage2)."),
+    (
+        "vision-reasoning",
+        "vision_reasoning",
+        "Chart/document/OCR vision-reasoning teacher (2 stages: -c stage1, -c stage2).",
+    ),
     ("rlhf", "rlhf", "Alignment (RLHF/GenRM) teachers 1 and 2 (-c teacher1_stage1 ... teacher2_stage2)."),
-    ("agentic", "agentic", "End-to-end Terminal-Bench + BrowseComp agentic teacher."),
+    (
+        "agentic",
+        "agentic",
+        "End-to-end Terminal-Bench + SWE-bench + BrowseComp agentic teacher (not runnable on public NeMo Gym).",
+    ),
 )
 
 
@@ -62,7 +70,7 @@ def _make_command(cli_name: str, recipe_dir: str, description: str) -> tuple[Cal
         cfg = parse_recipe_config(ctx)
         _execute_rl(cfg, script_path=script_path, spec=spec)
 
-    command.__doc__ = f"Train the {description}"
+    command.__doc__ = description
     return command, meta
 
 

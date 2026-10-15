@@ -2,8 +2,8 @@
 
 MOPD merges the specialist teachers from [stage 2](../stage2_teachers/README.md)
 into one student model. It runs in two phases on 128 GB200 nodes. Phase 2
-produces the final Nemotron 3.5 Super checkpoint, which then goes to
-[evaluation](../../stage3_eval/README.md).
+produces the final backbone of Nemotron 3.5 Super (the report then applies MTP
+boosting), which then goes to [evaluation](../../stage3_eval/README.md).
 
 ## How it works
 
@@ -70,7 +70,7 @@ and phase 2 toward chat quality and vision.
 | Training parallelism | TP4 / CP4 / EP16 (see the reference-run notes) | TP8 / CP8 / EP16 |
 | Nodes: training / generation / teachers | 64 / 30 / 34 | 64 / 44 / 20 |
 | Checkpointing | every 5 steps, budget 200 steps | every 2 steps, stops at step 40 |
-| Selected checkpoint | **step 30** | **step 30** (final model) |
+| Selected checkpoint | **step 30** | **step 30** (reference run; the report gives 40 steps) |
 | Output artifact | `super35-rl-mopd-phase1-model` | `super35-rl-mopd-phase2-model` |
 
 In phase 2 the agentic and reasoning teachers are retired. Their environments
@@ -135,8 +135,10 @@ blend's dataloader state.
 with the agentic teacher removed: the agent names phase 1 sends to the agentic
 teacher go to the `general` self-anchor (the RLVR student) instead, and the
 allocation drops from 128 to 112 nodes. The other teachers (reasoning, RLHF
-teacher 1, vision) and all training settings are phase 1's. Every teacher it
-uses can be trained from public code, so this is the MOPD to run until the
+teacher 1, vision) and all training settings are phase 1's. Its RLHF teacher
+is this repo's teacher 1 (from SFT), not NeMo-RL's `rlhf_teacher.yaml` (from
+Student RLVR, with abstention and a 0.12 length penalty). Every teacher it
+uses can be trained from public code with your own data, so this is the MOPD to run until the
 agentic teacher's environment is public. It is not the report's pipeline,
 which has the agentic teacher and a second phase.
 
@@ -189,7 +191,6 @@ The MOPD prompt blends are not public yet. Register your own NeMo-Gym JSONL as
 `nemotron super35 data import rl ...`. Each row's Gym agent name must appear
 in the routing table, or the row falls back to the self-anchor.
 
-<!-- TODO(open-source): link the MOPD phase-1/phase-2 prompt blends once released. -->
 
 ## Requirements
 

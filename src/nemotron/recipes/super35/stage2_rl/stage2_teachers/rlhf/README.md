@@ -1,7 +1,8 @@
 # RLHF Teachers (Alignment)
 
 Two alignment teachers trained with RLHF against a Generative Reward Model
-(GenRM). Teacher 1 is distilled into the student in
+(GenRM). The report describes a single alignment teacher (§3.5); the split
+into two teachers is the reference run's. Teacher 1 is distilled into the student in
 [MOPD phase 1](../../stage3_mopd/README.md); teacher 2 in MOPD phase 2.
 Each teacher is trained in two substages, and each substage is a config variant
 of the same recipe.
@@ -28,8 +29,8 @@ Nemotron 3 Ultra abstention environment.
 
 The data is text-only, with reasoning-on and reasoning-off prompts routed to
 `genrm_simple_agent` / `genrm_simple_agent_reasoning_off`. The policy loads the
-full omni checkpoint (`policy.is_vlm: true`) and freezes the vision and audio
-towers. Their weights are kept in the saved checkpoints.
+full omni checkpoint (`policy.is_vlm: true`) and freezes the vision
+towers (the `freeze_sound_*` flags are no-ops: the model has no audio). Their weights are kept in the saved checkpoints.
 
 ## Substages
 
@@ -208,12 +209,11 @@ expects.
 | `super35-rl-teacher-rlhf2-stage1-data` | Blend 2 | `teacher2_stage1` |
 | `super35-rl-teacher-rlhf2-data` | Blend 3 (Blend 2 + abstention) | `teacher2_stage2` |
 
-<!-- TODO(open-source): link the RLHF Blend 1/2/3 datasets once they are released. -->
 
 ## Differences from the historical runs
 
 - The historical teachers used a text-only architecture. These recipes train
-  the omni architecture with frozen vision and audio towers. They are
+  the omni architecture with frozen vision towers. They are
   training-input ports, not claims of bitwise-identical trajectories.
 - Training uses TP8 / CP8 / EP16 instead of the reference scripts' TP4 / CP2 / EP16.
 - Validation is off (`val_period` is effectively never reached). Replay

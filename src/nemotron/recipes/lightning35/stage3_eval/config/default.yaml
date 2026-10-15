@@ -18,14 +18,14 @@
 # favor of NeMo Gym. This stage serves the checkpoint with vLLM in-job and
 # drives `gym eval prepare` + `gym eval run` against the endpoint,
 # reproducing the Gym-native published-evaluation flow
-# (see Gym scripts/more/reproducibility.md).
+# (see Gym nemotron_recipes/lightning-3.5/reproducibility.md).
 #
 # Base-model tasks (lm-evaluation-harness short-context suite, RULER long
 # context) are NOT Gym environments and still run via nemo-evaluator-launcher.
 #
 # Usage:
 #   nemotron lightning35 eval --run MY-CLUSTER
-#   nemotron lightning35 eval --run MY-CLUSTER run.model=sft-model:v2
+#   nemotron lightning35 eval --run MY-CLUSTER run.model=lightning35-rl-model:v2
 #   nemotron lightning35 eval --run MY-CLUSTER -t gpqa -t scicode
 #   nemotron lightning35 eval --run MY-CLUSTER gym.limit=5   # smoke run
 #   nemotron lightning35 eval --dry-run
@@ -63,7 +63,8 @@ serving:
   mamba_ssm_cache_dtype: float32
   tool_call_parser: qwen3_coder
   reasoning_parser: nemotron_v3
-  # MTP speculative decoding (Lightning ships 5 MTP layers); set to null to disable
+  # MTP speculative decoding: Lightning ships one recursively shared MTP layer,
+  # applied num_speculative_tokens times per draft; set to null to disable
   speculative_config: '{"method":"mtp","num_speculative_tokens":5}'
   max_model_len: null
   # Extra raw `vllm serve` args, e.g. ["--max-num-batched-tokens 8480"]
@@ -82,7 +83,7 @@ gym:
 
   # Benchmarks to run (filter with -t/--task flags). Entries are either a
   # name or {name, overrides: [...]} for per-benchmark Gym overrides,
-  # mirroring the published reference scripts (Gym scripts/more/*.sh).
+  # mirroring the published reference scripts (Gym nemotron_recipes/lightning-3.5/instruct/gym/*.sh).
   #
   # Default: gpqa is the only turnkey benchmark (requires HF_TOKEN for the
   # gated dataset). The rest of the published Lightning reference suite needs
@@ -97,7 +98,7 @@ gym:
     - gpqa
 
   # Reference-standard overrides applied to every benchmark
-  # (from Gym scripts/more/*.sh — score-determining, do not remove lightly)
+  # (from Gym nemotron_recipes/lightning-3.5/instruct/gym/*.sh — score-determining, do not remove lightly)
   common_overrides:
     - '++overwrite_metrics_conflicts=true'
     - '++policy_model.responses_api_models.vllm_model.chat_template_kwargs={enable_thinking: true}'
@@ -109,7 +110,7 @@ gym:
   limit: null
   # Override the benchmark's default repeat count (null = benchmark default).
   # Note: for some benchmarks --num-repeats MULTIPLIES the config default
-  # rather than replacing it (see Gym scripts/more/scicode.sh).
+  # rather than replacing it (see Gym nemotron_recipes/lightning-3.5/instruct/gym/scicode.sh).
   num_repeats: null
   output_dir: /nemo_run/lightning35-eval-results
   # Ad-hoc Gym hydra-style overrides appended after common/per-benchmark ones,

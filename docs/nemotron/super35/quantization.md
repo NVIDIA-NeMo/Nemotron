@@ -2,13 +2,9 @@
 
 The released Nemotron 3.5 Super VL NVFP4 checkpoint is produced with [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer): post-training quantization (PTQ) with a predefined **aggressive** recipe, followed by **200 iterations** of SFT-based Quantization-Aware Distillation (QAD). It reaches **99.52% median accuracy recovery** relative to BF16 across 35 benchmarks, with a mean per-benchmark verbosity increase of 0.49%.
 
-This page summarizes §4 of the tech report. Quantization is not a `nemotron super35` CLI stage.
+This page summarizes §4 of the tech report and shows how to run the same precision recipe with Model Optimizer. Quantization is not a `nemotron super35` CLI stage.
 
-:::{admonition} Pending open-source release
-:class: warning
-
-The NVFP4 checkpoint and the Super 3.5 VL Model Optimizer recipe files are pending public release. For the general PTQ → QAD → export workflow on Megatron-Bridge, see the Model Optimizer [`examples/megatron_bridge/`](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge) and the [Nemotron 3.5 Lightning quantization guide](../lightning35/quantization.md), which uses the same tooling.
-:::
+The released NVFP4 checkpoint is [`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4). To quantize a Super 3.5 checkpoint yourself (for example your own fine-tune), see [Recipe Execution](#recipe-execution): Model Optimizer's [NemotronH Omni VL W4A4 tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) runs the released precision recipe through PTQ → QAD → export with Megatron-Bridge.
 
 ---
 
@@ -128,6 +124,101 @@ The MTP module (one attention layer and one MoE layer) shares the checkpoint's s
 
 The MTP KV cache must use the backbone's precision. The released checkpoint was built by quantizing the boosted MTP separately and splicing it into the quantized backbone; the report recommends co-quantizing both in future releases.
 
+## Recipe Execution
+
+Model Optimizer's [NemotronH Omni VL W4A4 PTQ + QAD tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) quantizes this architecture (`NemotronH_Omni_Reasoning_V3`, which Megatron-Bridge maps to its Nemotron 3.5 Super VL bridge) with Megatron-Bridge: PTQ → QAD → Hugging Face export → vLLM serving. Its PTQ recipe is the report's released **Aggressive** tier; its calibration, QAD data, and QAD scale are smaller and public. The commands below are summarized from the tutorial; follow it for the full notes.
+
+### Where the tutorial differs from the report
+
+| Aspect | Tech report (released checkpoint) | Model Optimizer tutorial |
+|--------|-----------------------------------|--------------------------|
+| Precision recipe | Aggressive tier (Table 12) | `model_type/nemotron_h/ptq/nvfp4-aggressive-mse`: NVFP4 W4A4 experts (MSE weight scales), FP8 attention, Mamba `in_proj`/`out_proj` and `lm_head`, FP8 KV cache, NVFP4 MTP experts; vision tower, projector, latent MoE, routers and embeddings BF16 |
+| Calibration | 1,024 image–text samples from the SFT data | 512 text-only samples (`cnn_nemotron_v2_mix`); the vision tower is not run |
+| QAD data | SFT blend | 35,800 conversations from 11 public Nemotron chat datasets ([`data_blend.yaml`](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD/data_blend.yaml)), loss on assistant tokens |
+| QAD scale | 512 GB200 GPUs, 200 iterations, LR 5e-6 constant after warm-up | 32 GB300 GPUs, 600 iterations, GBS 64 at 32K, LR 2e-5 → 5e-6 |
+| MTP head | Boosted MTP quantized separately, then spliced in | Quantized in PTQ, frozen during QAD (`--freeze_mtp`) |
+| Checkpoint size | 74.987 GB | 70 GB |
+
+### Setup
+
+The tutorial runs in the NeMo 26.08 container (`nvcr.io/nvidia/nemo:26.08`) on GB300 (4 GPUs per node), with Model Optimizer mounted at `/opt/Model-Optimizer` and Megatron-Bridge `main` at `/opt/Megatron-Bridge`. Serving NVFP4 W4A4 requires a Blackwell GPU.
+
+### Step 1 — Data
+
+```bash
+# Set output_dir in data_blend.yaml first; writes train.jsonl (35,800) and validation.jsonl (1,000)
+python -m modelopt.torch.utils.plugins.prepare_megatron_data_blend --config data_blend.yaml
+```
+
+### Step 2 — PTQ (one 4-GPU node)
+
+```bash
+torchrun --nproc_per_node 4 /opt/Model-Optimizer/examples/megatron_bridge/quantize.py \
+    --hf_model_name_or_path nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --trust_remote_code \
+    --recipe model_type/nemotron_h/ptq/nvfp4-aggressive-mse \
+    --tp_size 1 --ep_size 4 --pp_size 1 \
+    --calib_dataset_name cnn_nemotron_v2_mix --calib_num_samples 512 --calib_batch_size 1 \
+    --export_megatron_path /path/to/super35_w4a4_megatron \
+    --skip_generate
+```
+
+`--tp_size 1` is required: static NVFP4 weight scales are not supported with tensor parallelism, so expert parallelism spreads the experts instead.
+
+### Step 3 — QAD (8 nodes × 4 GB300)
+
+QAD distills the frozen BF16 teacher into the PTQ student with a logit KL loss only. Launch one task per GPU (32 in all) with `srun`, mapping the Slurm rank variables to `RANK` / `WORLD_SIZE` / `LOCAL_RANK`; the tutorial has the full `sbatch` script. Each task runs:
+
+```bash
+python -u /opt/Model-Optimizer/examples/megatron_bridge/distill.py \
+    --teacher_hf_path nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --student_hf_path nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --student_megatron_path /path/to/super35_w4a4_megatron \
+    --trust_remote_code \
+    --tp_size 1 --pp_size 1 --cp_size 4 --ep_size 32 \
+    --sft --sft_hf_dataset /path/to/qad_blend/train.jsonl \
+    --sft_hf_validation /path/to/qad_blend/validation.jsonl \
+    --sft_loss_mode assistant \
+    --freeze_mtp \
+    --seq_length 32768 --mbs 1 --gbs 64 --train_iters 600 \
+    --lr 2e-5 --min_lr 5e-6 --lr_warmup_iters 30 \
+    --recompute_granularity full --recompute_method uniform --recompute_num_layers 1 \
+    --no_async_save --save_interval 100 --checkpoint_keep_last -1 \
+    --eval_iters 4 --eval_interval 100 --log_interval 10 \
+    --output_dir /path/to/qad_output
+```
+
+Each saved iteration is about 1.6 TB; size `--save_interval` and `--checkpoint_keep_last` to your storage.
+
+### Step 4 — Export to Hugging Face (one 4-GPU node)
+
+```bash
+torchrun --nproc_per_node 4 /opt/Model-Optimizer/examples/megatron_bridge/export_quantized_megatron_to_hf.py \
+    --hf_model_name_or_path nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --trust_remote_code \
+    --megatron_path /path/to/qad_output/checkpoints \
+    --export_unified_hf_path /path/to/super35_w4a4_hf \
+    --pp_size 4
+```
+
+The exporter writes the quantized language model (including the MTP head) and copies the vision tower and projector from the BF16 checkpoint. It exports the latest `iter_*` under `--megatron_path`.
+
+### Tutorial results (selected rows)
+
+Served with vLLM on one 4-GPU GB300 node (TP4 with expert parallelism; FP8 KV cache for the quantized checkpoints, FP16 Mamba SSM cache with stochastic rounding, `nemotron_v3` reasoning parser):
+
+| Benchmark | BF16 | W4A4 PTQ | W4A4 QAD (600 iters) |
+|-----------|-----:|---------:|---------------------:|
+| AA-LCR | 68.63 | 68.62 | 67.94 |
+| AA-Omniscience | 26.21 | 25.63 | 25.87 |
+| GPQA Diamond | 89.52 | 89.84 | 89.90 |
+| HLE (no tools) | 31.79 | 30.49 | 30.72 |
+| MMLU-ProX | 76.91 | 74.41 | 81.15 |
+| SciCode (subtask) | 47.13 | 46.48 | 46.58 |
+| τ³-bench banking | 18.88 | 17.40 | 20.10 |
+
+These are the tutorial's numbers for its own checkpoint, not the released one (see [Results](#results)). Most of the MMLU-ProX gain after QAD comes from fewer responses missing the required answer phrase.
+
 ## Serving Notes
 
 The report's inference work (§5) targets interactive, long-context agentic serving in vLLM:
@@ -151,6 +242,7 @@ Headline numbers:
 
 - Nemotron 3.5 tech report, §4 (Quantization), §5 (Inference)
 - [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer) — PTQ, AutoQuantize, QAD
+- [NemotronH Omni VL W4A4 PTQ + QAD tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) — the commands in [Recipe Execution](#recipe-execution)
 - [Nemotron 3.5 Lightning quantization](../lightning35/quantization.md) — PTQ + QAD workflow with the same tooling
 - [Nemotron 3 Super quantization](../super3/quantization.md) — Mamba-MoE quantization configs and Megatron-Bridge scripts
 - [Back to Overview](./README.md)

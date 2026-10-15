@@ -24,7 +24,7 @@ other training stage. Inside the job it:
    stage-level `summary.json`.
 
 This reproduces the Gym-native flow used for the published Lightning
-evaluation numbers (see Gym `scripts/more/reproducibility.md`).
+evaluation numbers (see Gym `nemotron_recipes/lightning-3.5/reproducibility.md`).
 
 ## Quick start
 
@@ -33,7 +33,7 @@ evaluation numbers (see Gym `scripts/more/reproducibility.md`).
 uv run nemotron lightning35 eval --run YOUR-CLUSTER
 
 # Evaluate a specific model artifact from W&B lineage
-uv run nemotron lightning35 eval --run YOUR-CLUSTER run.model=sft-model:v2
+uv run nemotron lightning35 eval --run YOUR-CLUSTER run.model=lightning35-rl-model:v2
 
 # Evaluate an explicit HF checkpoint path
 uv run nemotron lightning35 eval --run YOUR-CLUSTER serving.model_path=/path/to/hf_ckpt
@@ -145,7 +145,7 @@ The base checkpoint
 (`nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16`) is evaluated with
 a short-context lm-evaluation-harness suite plus RULER long-context tasks via
 nemo-evaluator-launcher, not Gym. Those configs are maintained in the Gym
-repo under `scripts/more/base/`.
+repo under `nemotron_recipes/lightning-3.5/base/`.
 
 The tech report's base results (§2.6, Table 6) cover 24 short-context tasks,
 collected with NeMo Evaluator SDK and NVIDIA's LM Evaluation Harness

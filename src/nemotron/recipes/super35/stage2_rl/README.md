@@ -13,7 +13,8 @@ sub-stages, all run with [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) and
    vision reasoning, alignment (RLHF) and agentic.
 3. **[MOPD](stage3_mopd/README.md)** is multi-teacher on-policy distillation.
    It merges the teachers back into one student in two phases. Phase 2
-   produces the final model.
+   produces the final backbone (the report then applies MTP boosting, which
+   is not included here).
 
 Every sub-stage runs the same upstream entry point
 (`examples/nemo_gym/run_grpo_nemo_gym.py`) through the shared runner in
@@ -38,7 +39,7 @@ flowchart TD
   A --> M1
   R --> M1
   VISION --> M1
-  M1 -->|"student + general teacher"| M2["MOPD phase 2 · step 30 (final)<br/>super35-rl-mopd-phase2-model"]
+  M1 -->|"student + general teacher"| M2["MOPD phase 2 · step 30 (reference run)<br/>super35-rl-mopd-phase2-model"]
   VISION --> M2
 
   RLVR --> VIDEO["Video teacher · step 60<br/>super35-rl-teacher-video-model"]
