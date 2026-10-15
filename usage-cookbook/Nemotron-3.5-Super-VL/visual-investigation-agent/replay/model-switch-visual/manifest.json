@@ -1,0 +1,31 @@
+{
+ "agent_version": "agent",
+ "matches_frozen": true,
+ "config": "agent",
+ "config_hash": "06adac9ebd66d189",
+ "scenario": "model-switch-visual",
+ "ablate": null,
+ "utc": "20261008T064831Z",
+ "recorded": "2026-10-08",
+ "model": "Nemotron 3.5 Super VL (hosted preview endpoint)",
+ "sampling": {
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "enable_thinking": true,
+  "max_tokens": 16384
+ },
+ "limits": {
+  "max_turns": 40,
+  "max_nudges": 2,
+  "max_images_in_context": 4
+ },
+ "sha256": {
+  "system_prompt": "2023e8a2c554489892ba693314f5936453bcd4c82e3d7e02f2d09402a0ad23bc",
+  "request": "cb641af1ef462ef95a415d7f07df6ce122f348a32c22e77d1e75ba38f7924673",
+  "tools": "95d8a9304903abba1d36f78f92a79d61752a219ebab3118056f30ebf3512eb66",
+  "playbook": "063707da85c3e207ff49c761549667a4ae5408b9287a55cb9e793b0435b6cf95",
+  "policy": "2d4f7359e10c98de8b03a5e0add41e4bbbc7266412b33c99342ec9086c3258ee",
+  "world_content": "926b387cae43bb5f0b980eb87685c77076baac73fc9d37d247792fe827f849ba"
+ },
+ "selection": "Chosen from a batch of live runs: of the runs that passed every check, needed no reminders or retries, hit no tool errors, never contradicted the dashboard, opened no page twice, and finished within 10 minutes, the one closest to the batch's median time."
+}
