@@ -82,7 +82,7 @@ $ uv run nemotron lightning35 pipe --run YOUR-CLUSTER
 
 ## Resources
 
-- **Tech report:** *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication). It describes how the released Lightning checkpoints were built; section and table references (§, Table) in this guide point to that report.
+- **Tech report:** [Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf) (NVIDIA, 2026). It describes how the released Lightning checkpoints were built; section and table references (§, Table) in this guide point to that report.
 - **Release Blog:** [NVIDIA Nemotron 3.5 Lightning Delivers Fast, Accurate Specialized Task Execution for Long-Running Agents](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)
 
 - **Model Weights:**

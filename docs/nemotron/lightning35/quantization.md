@@ -16,7 +16,7 @@ the released NVFP4 checkpoint keeps a median 99.24% of BF16 accuracy in the tech
 
 ## The Released Checkpoint (Tech Report)
 
-The tech report (*Nemotron 3.5 Super and Lightning*, NVIDIA, 2026; link pending publication) describes
+The tech report ([*Nemotron 3.5 Super and Lightning*](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf), NVIDIA, 2026) describes
 the released NVFP4 checkpoint in §4, §4.7 and §4.8. Lightning targets local and agentic use as well as
 datacenter deployment, so it is quantized "to minimize weight fetch and raise activation precision to
 maintain accuracy": it **deploys as W4A16 on every GPU SKU**, Blackwell included (§4).

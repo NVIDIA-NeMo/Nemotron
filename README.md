@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Docs](https://img.shields.io/badge/docs-dev-76B900.svg)](https://nvidia-nemo.github.io/Nemotron/dev/)
+[![Docs](https://img.shields.io/badge/docs-latest-76B900.svg)](https://docs.nvidia.com/nemotron/latest/)
 
 <div align="center">
 
@@ -17,7 +17,7 @@
 
 ---
 
-> 🎉**Nemotron 3.5 Super** is now released — a 120B-A12B hybrid Mamba-Transformer LatentMoE vision-language model with native Multi-Token Prediction and up to 1M context, built for multimodal agentic reasoning over text, images, and video. See the [training recipe](./docs/nemotron/super35/README.md) and the [model weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16).
+> 🎉**Nemotron 3.5 Super** is now released — a 120B-A12B hybrid Mamba-Transformer LatentMoE vision-language model with native Multi-Token Prediction and up to 1M context, built for multimodal agentic reasoning over text, images, and video. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-super-vl-powers-specialized-agents-with-multimodal-reasoning/), the [technical report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf), the [training recipe](./docs/nemotron/super35/README.md) and the [model weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16).
 >
 > 🎉**Nemotron 3.5 Lightning** is now released — a 30B-A3B hybrid Mamba-Transformer MoE with Multi-Token Prediction, built for the high-volume execution layer of long-running agents. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/), the [training recipe](./docs/nemotron/lightning35/README.md), and the [model weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16).
 >
@@ -248,8 +248,9 @@ A training recipe for Nemotron 3.5 Super, a 120B-A12B hybrid Mamba-Transformer L
 - NVFP4 PTQ + QAD reaching 99.52% median accuracy recovery (not a CLI stage; the released precision recipe runs through Model Optimizer's W4A4 tutorial)
 
 **Resources**:
+- [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-super-vl-powers-specialized-agents-with-multimodal-reasoning/)
 - [Training Guide](docs/nemotron/super35/README.md)
-- Tech Report: *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication)
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf)
 - [NeMo-RL Super 3.5 Guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md)
 - [NeMo Gym Evaluation Reproducibility Guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md)
 - [Quantization Guide (PTQ + QAD)](docs/nemotron/super35/quantization.md)
@@ -280,7 +281,7 @@ A complete training recipe for the 30B-A3B hybrid Mamba-Transformer MoE with Mul
 **Resources**:
 - [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)
 - [Training Guide](docs/nemotron/lightning35/README.md)
-- Tech Report: *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication)
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf)
 - [NeMo-RL Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md)
 - [DGX Station Customization Recipes](./usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/README.md)
 - [Quantization Guide (PTQ + QAD)](docs/nemotron/lightning35/quantization.md)

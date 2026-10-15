@@ -93,8 +93,8 @@ configure.
 
 ### Reported results (post-trained model)
 
-For reference, Table 21 of the tech report (*Nemotron 3.5 Super and
-Lightning*, NVIDIA, 2026; link pending publication) gives these scores for the
+For reference, Table 21 of the tech report ([*Nemotron 3.5 Super and
+Lightning*](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf), NVIDIA, 2026) gives these scores for the
 post-trained Lightning checkpoints. Both were served with FP8 KV cache and
 FP32 Mamba SSM cache (§4.8). The report notes that scores may differ from those
 on the model cards because of run-to-run sampling and judge variability.

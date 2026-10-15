@@ -12,7 +12,7 @@ Nemotron 3.5 Lightning is a **hybrid Mamba-Transformer-MoE** model with 52 layer
 
 > **Training Framework**: Pretraining is implemented using [Megatron-Bridge](https://docs.nvidia.com/nemo/megatron-bridge/latest/), which provides the training loop, distributed training primitives, and checkpoint management. See [Training Entry Points](https://docs.nvidia.com/nemo/megatron-bridge/latest/training/entry-points.html) for details on how `pretrain()` works.
 >
-> **Tech report**: Lightning's base-model recipe is described in *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication). Section and table references (§, Table) on this page point to that report. The recipe configs in this repository are the reference for what `lightning35 pretrain` runs.
+> **Tech report**: Lightning's base-model recipe is described in [Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf) (NVIDIA, 2026). Section and table references (§, Table) on this page point to that report. The recipe configs in this repository are the reference for what `lightning35 pretrain` runs.
 
 ### How the Released Base Was Built
 
@@ -359,7 +359,7 @@ After pretraining completes, proceed to [Stage 1: SFT](./sft.md) for instruction
 
 ## Reference
 
-- *Nemotron 3.5 Super and Lightning* tech report (NVIDIA, 2026; link pending publication) – §2.1–§2.2 for the released base model
+- [*Nemotron 3.5 Super and Lightning* tech report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf) (NVIDIA, 2026) – §2.1–§2.2 for the released base model
 - [Base model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16) – architecture and pretraining reference
 - [NVIDIA AI Stack](../nvidia-stack.md) – Megatron-Core, Megatron-Bridge
 - [Artifact Lineage](../artifacts.md) – W&B artifact system

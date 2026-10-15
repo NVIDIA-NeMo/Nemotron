@@ -83,7 +83,8 @@ Each RL stage reads its own data artifact; [RL](./rl/index.md#data) lists the na
 
 ## Resources
 
-- **Tech report**: *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication). Section and table references (§, Table) in this guide point to that report.
+- **Release blog**: [NVIDIA Nemotron 3.5 Super VL Powers Specialized Agents with Multimodal Reasoning](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-super-vl-powers-specialized-agents-with-multimodal-reasoning/)
+- **Tech report**: [Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf) (NVIDIA, 2026). Section and table references (§, Table) in this guide point to that report.
 - **Model weights**:
   - [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16) (base: text-only, after distillation, Indic CPT, long-context extension, agentic mid-training, and long-context recovery)
   - [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) (post-trained vision-language model: MOPD output plus MTP boosting)
@@ -302,7 +303,7 @@ These recipes are reference implementations. The configs, CLI, and training stac
 - **RL stack**: public. NeMo-RL `super-v3.5-posttraining` at commit `f299847f1`, which pins NeMo Gym `e24db4e6` (see [RL → Container](./rl/index.md#container)).
 - **GenRM**: the length-penalized GenRM variant used in the report is not public. NeMo-RL's public Super 3.5 recipe uses [`nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM) instead.
 - **Blocked stages**: the agentic teacher and vision-reasoning stage 2 depend on NeMo Gym components that are not public (an environment and a verifier). Their configs are provided for reference and cannot be launched, so the report's two MOPD phases cannot run end to end; `super35 rl mopd -c single_stage` can.
-- **Tech report and evaluation**: the tech report link is pending publication. NeMo Gym's [Super 3.5 evaluation recipes](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) are on the `jakub/marlin` branch until they are merged to `main`.
+- **Evaluation**: NeMo Gym's [Super 3.5 evaluation recipes](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) are on the `jakub/marlin` branch until they are merged to `main`.
 
 ### Verification
 

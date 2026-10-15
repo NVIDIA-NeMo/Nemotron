@@ -50,7 +50,7 @@ Concise. Technical. Cite the exact file(s) you used.
 
 Resolve conflicts in this order:
 
-1. `paper/*.md` (and `paper/rl/*.md`)
+1. `paper/*.md` (and `paper/rl/*.md`), summarizing the joint [Nemotron 3.5 Super and Lightning technical report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf)
 2. `model-card.md`
 3. `context/quick-reference.md`
 4. `recipes/*.md` (what the repo runs, and what it does not)
