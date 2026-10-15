@@ -65,8 +65,9 @@ Megatron checkpoints must be exported first — see
 
 ## Benchmark suite
 
-The published Lightning instruct evaluation uses the Gym-native reference
-suite:
+The published Lightning instruct evaluation (tech report §4.8, Table 21)
+was run with NeMo Gym. The recipe has entries for the following Gym
+benchmarks; only `gpqa` is enabled by default:
 
 | Benchmark | Self-contained | Notes |
 |-----------|----------------|-------|
@@ -84,6 +85,43 @@ suite:
 Enable additional benchmarks by extending `gym.benchmarks` once the required
 endpoints/keys are configured, and pass judge/API settings through
 `gym.extra_overrides`.
+
+This is a subset of the report's suite. Table 21 also covers SWE-Bench
+Verified, SWE-Bench Multilingual, Tau3 Banking, Terminal-Bench v2.1,
+RULER-v1 (1M), IFBench, and LM Arena Proxy, which this recipe does not
+configure.
+
+### Reported results (post-trained model)
+
+For reference, Table 21 of the tech report (*Nemotron 3.5 Super and
+Lightning*, NVIDIA, 2026; link pending publication) gives these scores for the
+post-trained Lightning checkpoints. Both were served with FP8 KV cache and
+FP32 Mamba SSM cache (§4.8). The report notes that scores may differ from those
+on the model cards because of run-to-run sampling and judge variability.
+
+| Benchmark | BF16 | W4A16 NVFP4 |
+|-----------|------|-------------|
+| SWE-Bench Verified | 52.20 | 52.20 |
+| SWE-Bench Multilingual | 37.13 | 37.00 |
+| Tau2 Telecom | 59.65 | 60.96 |
+| Tau3 Banking | 9.90 | 9.48 |
+| Terminal-Bench v2.1 | 24.44 | 22.05 |
+| GDPval | 17.19 | 19.09 |
+| PinchBench | 83.86 | 84.78 |
+| BrowseComp | 39.50 | 39.50 |
+| SciCode (subtask) | 32.74 | 31.53 |
+| GPQA Diamond (no tools) | 76.45 | 75.38 |
+| HLE (no tools) | 10.80 | 10.70 |
+| AA-Omniscience Accuracy | 17.47 | 16.35 |
+| AA-Omni Non-Hallucination | 68.88 | 69.20 |
+| CritPt | 0.00 | 0.00 |
+| AA-LCR | 52.38 | 50.00 |
+| RULER-v1 (1M) | 91.52 | 90.83 |
+| IFBench (loose) | 72.00 | 74.04 |
+| LM Arena Proxy | 12.06 | 11.10 |
+
+NVFP4 vs BF16: median accuracy recovery 99.24%, verbosity change (ratio of
+total tokens) −3.63%. See [Quantization](quantization.md).
 
 ## Outputs
 
@@ -105,6 +143,39 @@ per-benchmark status table.
 
 The base checkpoint
 (`nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16`) is evaluated with
-21 short-context lm-evaluation-harness tasks plus RULER (64K–1M context) via
+a short-context lm-evaluation-harness suite plus RULER long-context tasks via
 nemo-evaluator-launcher, not Gym. Those configs are maintained in the Gym
 repo under `scripts/more/base/`.
+
+The tech report's base results (§2.6, Table 6) cover 24 short-context tasks,
+collected with NeMo Evaluator SDK and NVIDIA's LM Evaluation Harness
+container. Table 6 has no RULER or other long-context scores for the base
+model; the [base model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16)
+reports RULER at 256K and 1M, collected with the NeMo Skills harness.
+
+| Category | Task | Setting | Lightning 3.5 30B-A3B Base |
+|----------|------|---------|----------------------------|
+| General knowledge | MMLU | exact match | 78.63 |
+| | MMLU-Pro | exact match | 67.50 |
+| | AGIEval-En | CoT exact match | 68.62 |
+| | SuperGPQA | CoT | 33.21 |
+| | GPQA Diamond | 5-shot, CoT exact match | 33.33 |
+| Math | GSM8K | 8-shot, CoT exact match | 91.74 |
+| | Minerva MATH | exact match | 83.10 |
+| | MATH-500 | 4-shot, sampled pass@1 (n=32) | 79.53 |
+| Code | HumanEval | 0-shot, sampled pass@1 (n=32), EvalPlus | 76.91 |
+| | MBPP-Sanitized | 3-shot, sampled pass@1 (n=32), EvalPlus | 76.98 |
+| | LiveCodeBench CodeGen | pass@1 | 29.77 |
+| | BigCodeBench Complete | greedy | 50.09 |
+| | BigCodeBench Instruct | greedy | 51.75 |
+| Commonsense | CommonsenseQA | 7-shot, acc | 81.08 |
+| | ARC-Challenge | 25-shot, acc_norm | 93.17 |
+| | HellaSwag | 10-shot, acc_norm | 85.25 |
+| | OpenBookQA | 0-shot, acc_norm | 47.80 |
+| | PIQA | 0-shot, acc_norm | 85.09 |
+| | TruthfulQA MC2 | 0-shot, acc | 55.53 |
+| | WinoGrande | 5-shot, acc | 78.06 |
+| | SocialIQA | 0-shot, acc | 47.80 |
+| Reading comprehension | RACE | 0-shot, acc | 87.85 |
+| Multilingual | Global MMLU | average of 8 languages | 75.09 |
+| | MGSM | 8-shot native CoT, average of 6 languages | 82.27 |

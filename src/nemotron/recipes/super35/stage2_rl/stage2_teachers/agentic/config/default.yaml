@@ -1,0 +1,512 @@
+# =============================================================================
+# BLOCKED -- THIS STAGE CANNOT RUN YET.
+# The Terminal-Bench half of this recipe uses a legacy agent
+# (responses_api_agents/swe_agents_orig + swe_agents/configs/terminalbench.yaml)
+# that is not in public NeMo-Gym, and no validated equivalent exists. Do not swap
+# in another Terminal-Bench implementation silently. The config is published for
+# reference only; see README.md in this directory.
+# =============================================================================
+#
+# Nemotron 3.5 Super VL -- RL stage 2 teacher: agentic (Terminal-Bench + BrowseComp).
+#
+# End-to-end agentic GRPO on mixed Terminal-Bench (containerized shell tasks) and
+# BrowseComp (web search with an LLM judge), 192K context. Starts from RLVR step 120.
+# Selected checkpoint: step 14 (this config is the recovered neighbouring step-15
+# config). Used in MOPD phase 1.
+#
+# Nodes (GB200, 4 GPUs/node): 128 = 32 training (TP8/CP8/EP8) + 96 generation.
+# 64 prompts x 16 generations per step.
+# Deviation: five repeated, detached MTP heads trained with coefficient 0.3
+# (historically MTP loss off). The historical run started from a text-only
+# export whose identity with RLVR step 120 is unconfirmed.
+# Requires NeMo-RL super-v3.5-posttraining @ f299847f1 (Gym e24db4e6); see ../../../Dockerfile.
+# Several keys below (reward_penalties, router_replay, ...) only exist on that branch.
+
+run:
+  model: super35-rl-rlvr-model:latest
+  data: super35-rl-teacher-agentic-data:latest
+  output_artifact: super35-rl-teacher-agentic-model
+  hf_architecture: nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/super35-rl.sqsh
+    nodes: 128  # Slurm allocation: 32 training + 96 generation
+    gpus_per_node: 4
+    persistent_cache: ""  # Shared dir for vLLM/Triton/Inductor caches
+    env_vars:
+      NRL_WG_USE_RAY_REF: "1"
+      OMP_NUM_THREADS: "16"
+      RAY_ENABLE_UV_RUN_RUNTIME_ENV: "0"
+      UV_HTTP_TIMEOUT: "10"
+      UV_LOCK_TIMEOUT: "1800"
+      WANDB_INIT_TIMEOUT: "300"
+      VLLM_USE_FLASHINFER_MOE_FP8: "1"
+      VLLM_FLASHINFER_MOE_BACKEND: "latency"
+      NEMO_GYM_VENV_DIR: "/opt/gym_venvs"
+      NRL_VLLM_ASYNC_TIMEOUT_SECONDS: "1800"
+      NRL_USE_FASTOKENS: "1"
+      # BrowseComp search / judge credentials: set EXA_API_KEYS, TAVILY_API_KEYS and
+      # SEARCH_JUDGE_API_KEY in the job environment; never put keys in this file.
+checkpointing:
+  load_replay_buffer: false
+  checkpoint_dir: results/super35-rl-teacher-agentic/checkpoints
+  checkpoint_must_save_by: null
+  enabled: true
+  ft_keep_latest_k: 1
+  ft_save_period: 1
+  higher_is_better: true
+  keep_top_k: 1000000
+  metric_name: val:total_reward/mean
+  model_save_format: safetensors
+  save_consolidated: false
+  save_period: 3
+  save_optimizer: true
+cluster:
+  gpus_per_node: 4
+  num_nodes: 128
+  segment_size: 2
+data:
+  default:
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    processor: nemo_gym_data_processor
+    prompt_file: null
+    system_prompt_file: null
+  max_input_seq_length: null
+  num_workers: 1
+  shuffle: false
+  train:
+    data_path: ${art:data,train}
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    processor: nemo_gym_data_processor
+    prompt_file: null
+    system_prompt_file: null
+  validation:
+    data_path: ${art:data,val}
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    processor: nemo_gym_data_processor
+    prompt_file: null
+    system_prompt_file: null
+env:
+  nemo_gym:
+    browsecomp_exa_api_keys: ${oc.decode:${oc.env:EXA_API_KEYS,'[]'}}
+    browsecomp_tavily_api_keys: ${oc.decode:${oc.env:TAVILY_API_KEYS,'[]'}}
+    browsecomp_training_agent:
+      responses_api_agents:
+        browsecomp_agent:
+          context_reset_keep_rounds: 3
+          context_reset_pct: 0.3
+          context_reset_tokens: 192000
+          datasets:
+          - jsonl_fpath: ${data.train.data_path}
+            license: TODO(open-source)  # set to the released dataset's license
+            name: super35-rl-teacher-agentic-train
+            type: train
+          entrypoint: app.py
+          keep_rounds: 9999
+          max_context_tokens: 196608
+          max_reset_count: 0
+          max_run_retries: 1
+          max_steps: 400
+          model_server:
+            name: policy_model
+            type: responses_api_models
+          nudge_steps: true
+          progress: true
+          resources_server:
+            name: browsecomp_training_resources_server
+            type: resources_servers
+          rollout_timeout_s: 7200
+          save_model_call_using_vllm_tokenize_endpoint: true
+          snap_dir: null
+    browsecomp_training_resources_server:
+      resources_servers:
+        browsecomp_advanced_harness:
+          debug: false
+          domain: agent
+          entrypoint: app.py
+          exa_api_key: ${oc.decode:${oc.env:EXA_API_KEYS,'[]'}}
+          exclude_domains_file_path: ${oc.env:BROWSECOMP_EXCLUDE_DOMAINS_FILE,/path/to/excluded_domains.json}
+          judge_model_server:
+            name: judge_model
+            type: responses_api_models
+          judge_responses_create_params:
+            input: []
+          search_cache_dir: ${oc.env:BROWSECOMP_SEARCH_CACHE_DIR,/path/to/browsecomp_cache}
+          search_cache_fuzzy_threshold: 0.8
+          search_cache_read_only: true
+          search_provider: exa
+          tavily_api_key: ${oc.decode:${oc.env:TAVILY_API_KEYS,'[]'}}
+          use_judge: true
+          verified: false
+          workspace: per_session
+    config_paths:
+    - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
+    # TODO(open-source): BLOCKER -- the two Terminal-Bench agent configs below (legacy
+    # swe_agents_orig agent + terminalbench.yaml) are not in public Gym; see README.md.
+    - responses_api_agents/swe_agents/configs/terminalbench.yaml
+    - responses_api_agents/swe_agents_orig/configs/swebench_opencode_training_orig.yaml
+    # TODO(open-source): BrowseComp 192K training config (renamed from its private Gym name).
+    - resources_servers/browsecomp_advanced_harness/configs/browsecomp_training_tbsearch_192k.yaml
+    invalid_tool_call_patterns:
+    - <tool_call>
+    - </tool_call>
+    - <function_call>
+    - </function_call>
+    judge_model:
+      responses_api_models:
+        vllm_model:
+          api_key: ${oc.env:SEARCH_JUDGE_API_KEY,null}
+          base_url: ${oc.env:SEARCH_JUDGE_BASE_URL,http://127.0.0.1:8000/v1}
+          entrypoint: app.py
+          # Historically a hosted GLM-5.1 endpoint.
+          model: ${oc.env:SEARCH_JUDGE_MODEL,/path/to/search_judge_model}
+          return_token_id_information: false
+          uses_reasoning_parser: true
+    num_gpu_nodes: 0
+    policy_model:
+      responses_api_models:
+        vllm_model:
+          num_workers: 64
+    port_range_high: 20000
+    port_range_low: 15001
+    search_judge_model_base_url: ${oc.env:SEARCH_JUDGE_BASE_URL,http://127.0.0.1:8000/v1}
+    search_judge_model_name: ${oc.env:SEARCH_JUDGE_MODEL,/path/to/search_judge_model}
+    skip_venv_if_present: true
+    swe_agents:
+      responses_api_agents:
+        swe_agents:
+          concurrency: 1024
+          swebench_agent_timeout: 7200
+          swebench_tests_timeout: 900
+    swe_agents_orig:
+      responses_api_agents:
+        swe_agents_orig:
+          agent_max_turns: 300
+          apptainer_memory_limit_mb: 65536
+          concurrency: 2048
+          # Apptainer images per task instance (8 search roots historically).
+          container_formatter:
+          - ${oc.env:SWE_SIF_DIR,/path/to/swe_sifs}/{instance_id}.sif
+          dataset_path: ${data.train.data_path}
+          swebench_agent_timeout: 4800
+          swebench_tests_timeout: 900
+    swe_agents_train:
+      responses_api_agents:
+        swe_agents:
+          agent_max_turns: 300
+          apptainer_memory_limit_mb: 65536
+          concurrency: 2048
+          # Terminal-Bench task images (6 search roots, amd64 + arm64, historically).
+          container_formatter:
+          - ${oc.env:TB_SIF_DIR,/path/to/terminalbench_sifs}/{instance_id}_arm64.sif
+          dataset_path: ${data.train.data_path}
+          swebench_agent_timeout: 7200
+          swebench_tests_timeout: 900
+    swe_agents_val:
+      responses_api_agents:
+        swe_agents:
+          agent_max_turns: 300
+          apptainer_memory_limit_mb: 65536
+          concurrency: 2048
+          # Terminal-Bench task images (6 search roots, amd64 + arm64, historically).
+          container_formatter:
+          - ${oc.env:TB_SIF_DIR,/path/to/terminalbench_sifs}/{instance_id}_arm64.sif
+          dataset_path: ${data.validation.data_path}
+          swebench_agent_timeout: 7200
+          swebench_tests_timeout: 900
+    thinking_tags:
+    - <think>
+    - </think>
+    use_absolute_ip: true
+    # (reference-run value carried terminal colour codes around this path; stripped)
+    uv_cache_dir: /tmp/nemo_rl_uv_cache
+    uv_venv_dir: ${oc.env:NEMO_GYM_VENV_DIR,/opt/gym_venvs}
+    nemo_gym_log_dir: ${logger.log_dir}/nemo_gym
+    effort_levels:
+      low_penalty: 1
+      low_string: '{reasoning effort: efficient}'
+      low_ub: 15000
+      low_weight: 0.1
+  should_log_nemo_gym_responses: true
+  should_use_nemo_gym: true
+grpo:
+  advantage_clip_high: 50
+  advantage_clip_low: -50
+  async_grpo:
+    enabled: true
+    in_flight_weight_updates: true
+    max_trajectory_age_steps: 1
+    recompute_kv_cache_after_weight_updates: false
+  batch_multiplier: 1
+  best_at_k_k: 8
+  best_at_k_m: 1000
+  combined_training_best_at_k_weight: 0.2
+  combined_training_pass_at_1_weight: 1.0
+  combined_training_weight_mode: auto
+  dynamic_sampling_max_gen_batches: 10
+  dynamic_sampling_oversample_ratio: 1.0
+  invalid_tool_call_advantage: -5.0
+  malformed_thinking_advantage: -5.0
+  max_num_epochs: 4
+  max_num_steps: 1000000
+  max_rollout_turns: 1
+  max_val_samples: null
+  normalize_rewards: true
+  num_generations_per_prompt: 16
+  num_prompts_per_step: 64
+  overlong_filtering: false
+  reward_scaling:
+    enabled: false
+    source_max: 1.0
+    source_min: 0.0
+    target_max: 1.0
+    target_min: 0.0
+  reward_shaping:
+    enabled: false
+    max_response_length: 196608
+    overlong_buffer_length: 128
+    overlong_buffer_penalty: 1
+    stop_properly_penalty_coef: null
+  seed: 42
+  seq_logprob_error_threshold: 2
+  use_dynamic_sampling: false
+  use_leave_one_out_baseline: true
+  val_at_end: false
+  val_at_start: false
+  val_batch_size: null
+  val_period: 1000000
+  val_num_generations_per_prompt: 2
+logger:
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+  log_dir: results/super35-rl-teacher-agentic/logs
+  mlflow:
+    experiment_name: super35-rl-teacher-agentic
+    run_name: super35-rl-teacher-agentic
+  mlflow_enabled: false
+  monitor_gpus: true
+  num_val_samples_to_print: 0
+  swanlab_enabled: false
+  tensorboard: {}
+  tensorboard_enabled: false
+  wandb:
+    name: super35-rl-teacher-agentic
+    project: super35-rl-teacher-agentic
+  wandb_enabled: true
+loss_fn:
+  force_on_policy_ratio: true
+  kl_input_clamp_value: null
+  kl_output_clamp_value: null
+  ratio_clip_c: null
+  ratio_clip_max: 0.28
+  ratio_clip_min: 0.2
+  reference_policy_kl_penalty: 0.0
+  reference_policy_kl_type: k3
+  sequence_level_importance_ratios: false
+  token_level_loss: true
+  truncated_importance_sampling_ratio: 5
+  truncated_importance_sampling_ratio_min: 0.2
+  truncated_importance_sampling_type: tis
+  use_importance_sampling_correction: true
+  use_kl_in_reward: false
+  use_on_policy_kl_approximation: true
+policy:
+  dtensor_cfg:
+    _v2: true
+    activation_checkpointing: false
+    context_parallel_size: 1
+    cpu_offload: false
+    custom_parallel_plan: null
+    enabled: false
+    sequence_parallel: false
+    tensor_parallel_size: 1
+  dynamic_batching:
+    enabled: false
+    logprob_mb_tokens: 196608
+    sequence_length_round: 64
+    train_mb_tokens: 196608
+  generation:
+    val_temperature: 1.0
+    val_top_p: 1.0
+    val_top_k: null
+    backend: vllm
+    colocated:
+      enabled: false
+      resources:
+        gpus_per_node: 4
+        num_nodes: 96
+    max_new_tokens: 196608
+    model_name: ${policy.model_name}
+    port_range_high: 15000
+    port_range_low: 11001
+    stop_strings: null
+    stop_token_ids: null
+    temperature: 1.0
+    top_k: null
+    top_p: 1.0
+    vllm_cfg:
+      async_engine: true
+      enable_vllm_metrics_logger: true
+      enforce_eager: false
+      expert_parallel_size: 1
+      expose_http_server: true
+      gpu_memory_utilization: 0.9
+      hf_overrides: {}
+      http_server_serving_chat_kwargs:
+        enable_auto_tools: true
+        reasoning_parser: nano_v3
+        reasoning_parser_plugin: nemo_rl/models/generation/vllm/reasoning_parsers/nano_v3_reasoning_parser.py
+        tool_parser: qwen3_coder
+      kv_cache_dtype: auto
+      load_format: dummy
+      max_model_len: 196608
+      num_first_layers_in_bf16: 0
+      num_last_layers_in_bf16: 0
+      pipeline_parallel_size: 1
+      precision: bfloat16
+      skip_tokenizer_init: false
+      tensor_parallel_size: 4
+      use_deep_gemm: false
+      vllm_metrics_logger_interval: 0.5
+    vllm_kwargs:
+      max_num_seqs: 256
+      max_num_batched_tokens: 32768
+      attention_backend: FLASH_ATTN
+      compilation_config:
+        cudagraph_capture_sizes:
+        - 1
+        - 2
+        - 4
+        - 8
+        - 16
+        - 32
+        - 64
+        pass_config:
+          fuse_allreduce_rms: false
+      disable_custom_all_reduce: true
+      mamba_ssm_cache_dtype: float32
+  generation_batch_size: 64
+  hf_config_overrides: {}
+  logprob_batch_size: 1
+  logprob_chunk_size: 1024
+  make_sequence_length_divisible_by: 8
+  max_grad_norm: 1.0
+  max_total_sequence_length: 196608
+  megatron_cfg:
+    activation_checkpointing: true
+    apply_rope_fusion: true
+    bias_activation_fusion: false
+    calculate_per_token_loss: true
+    checkpoint:
+      async_save: true
+      ckpt_assume_constant_structure: true
+      fully_parallel_load_exchange_algo: broadcast
+      fully_parallel_load_process_group: ep_dp
+      fully_parallel_save_process_group: ep_dp
+    context_parallel_size: 8
+    cp_normalize: true
+    defer_fp32_logits: true
+    distributed_data_parallel_config:
+      average_in_collective: false
+      data_parallel_sharding_strategy: optim_grads_params
+      grad_reduce_in_fp32: false
+      overlap_grad_reduce: false
+      overlap_param_gather: true
+      use_custom_fsdp: false
+    do_not_average_loss: true
+    empty_unused_memory_level: 2
+    enabled: true
+    env_vars: null
+    expert_model_parallel_size: 8
+    expert_tensor_parallel_size: 1
+    first_last_layers_bf16: true
+    fp8_cfg:
+      enabled: false
+      fp8: e4m3
+      fp8_param: false
+      fp8_recipe: mxfp8
+    freeze_moe_router: true
+    moe_aux_loss_coeff: 0.0
+    moe_enable_deepep: false
+    moe_flex_dispatcher_backend: hybridep
+    moe_hybridep_num_sms: 32
+    moe_per_layer_logging: true
+    moe_permute_fusion: true
+    moe_router_bias_update_rate: 0.001
+    moe_router_dtype: fp32
+    moe_router_enable_expert_bias: true
+    moe_router_load_balancing_type: none
+    moe_shared_expert_overlap: false
+    moe_token_dispatcher_type: alltoall
+    mtp_detach_heads: true
+    mtp_loss_scaling_factor: 0.3
+    mtp_num_layers: 5
+    mtp_use_repeated_layer: true
+    num_layers_at_end_in_bf16: 1
+    num_layers_at_start_in_bf16: 1
+    num_layers_in_first_pipeline_stage: null
+    num_layers_in_last_pipeline_stage: null
+    optimizer:
+      adam_beta1: 0.9
+      adam_beta2: 0.999
+      adam_eps: 1.0e-08
+      bf16: true
+      clip_grad: 1.0
+      fp16: false
+      lr: 3.0e-06
+      min_lr: 3.0e-06
+      optimizer: adam
+      optimizer_cpu_offload: false
+      optimizer_offload_fraction: 0.0
+      params_dtype: float32
+      sgd_momentum: 0.9
+      use_distributed_optimizer: true
+      use_precision_aware_optimizer: true
+      weight_decay: 0.0
+    pipeline_dtype: bfloat16
+    pipeline_model_parallel_size: 1
+    scale_loss_by_dp_cp_size: false
+    scheduler:
+      end_weight_decay: 0.0
+      lr_decay_iters: null
+      lr_decay_style: constant
+      lr_warmup_init: 3.0e-07
+      lr_warmup_iters: 10
+      override_opt_param_scheduler: true
+      start_weight_decay: 0.0
+      weight_decay_incr_style: constant
+    sequence_parallel: true
+    tensor_model_parallel_size: 8
+    track_moe_metrics: true
+    train_iters: 1660
+    use_fused_weighted_squared_relu: true
+    use_gloo_process_groups: false
+  model_name: ${art:model,path}
+  offload_optimizer_for_logprob: false
+  optimizer: null
+  precision: bfloat16
+  scheduler: null
+  sequence_packing:
+    algorithm: modified_first_fit_decreasing
+    enabled: true
+    fuse_loss: true
+    logprob_mb_tokens: 196608
+    sequence_length_round: 64
+    train_mb_tokens: 196608
+  tokenizer:
+    chat_template_kwargs: null
+    name: ${policy.model_name}
+  train_global_batch_size: 1024
+  train_micro_batch_size: 1
+reward_penalties:
+  penalize_duplicated_reasoning: false
+  penalize_empty_final_answer: false
+  penalize_eos_token: false
+  penalize_malformed_think_tag: false
+  token_ids:
+    eos: 2
+    think_close: 13
+    think_open: 12

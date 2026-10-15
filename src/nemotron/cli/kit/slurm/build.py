@@ -68,6 +68,9 @@ RECIPES: dict[str, dict[str, tuple[str, str, str]]] = {
         "sft": ("stage0_sft", "omni3-sft", "omni3-sft.sqsh"),
         "rl": ("stage1_rl", "omni3-rl", "omni3-rl.sqsh"),
     },
+    "super35": {
+        "rl": ("stage2_rl", "super35-rl", "super35-rl.sqsh"),
+    },
 }
 
 

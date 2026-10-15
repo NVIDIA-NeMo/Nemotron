@@ -10,14 +10,15 @@ This stage aligns the instruction-tuned model using GRPO (Group Relative Policy 
 
 > **Training Framework**: RL alignment is implemented using [NeMo-RL](https://docs.nvidia.com/nemo/rl/latest/) with Ray for distributed actor coordination and vLLM for fast rollout generation. The Megatron backend handles distributed policy training with tensor, pipeline, context, and expert parallelism. See [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) for implementation details.
 >
-> Nemotron 3.5 Lightning has no separate technical report. The [model cards](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) and the recipe configs in this repository are the authoritative references for methodology.
+> Lightning is covered by the joint tech report *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026). The report does not give Lightning's RL environments, data, or hyperparameters; the values on this page come from the recipe configs in this repository.
 
 ### RL Pipeline Overview
 
-The RL pipeline consists of three components:
-1. **RLVR** – multi-environment training with verifiable rewards
-2. **RLHF with GenRM** – generative reward model-based alignment
-3. **DPO** – preference learning to reduce tool hallucination
+**Released model (tech report):** Lightning follows "a lighter post-training pipeline consisting of single-stage text-only SFT and RLVR" (§1, §3). Unlike Super 3.5, Lightning has no MOPD stage (§3.6). After RL, the report runs MTP boosting for 48k steps against the final backbone, updating only the MTP head (§3.7).
+
+**Released model (model card):** The [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) describes multi-environment RL with GRPO in NeMo RL and NeMo Gym, using an asynchronous RL architecture that uses MTP to accelerate rollouts.
+
+**This recipe:** a single GRPO run over six NeMo Gym environments with verifiable rewards (see [Multi-Environment RLVR](#multi-environment-rlvr)). It runs synchronously (`grpo.async_grpo.enabled: false`) and has no RLHF, reward-model, or DPO stage. MTP boosting is not a recipe stage; the MTP heads are only kept training alongside GRPO (`mtp_num_layers: 5`, loss scale 0.3).
 
 ### Data Preparation Pipeline
 
@@ -48,7 +49,7 @@ flowchart LR
 | **HuggingFace Dataset** | Load [Nemotron-3.5-Lightning-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3.5-Lightning-RL-Training-Blend) from HuggingFace Hub |
 | **Placeholder Resolution** | Resolve `_hf_placeholder` records by fetching from external datasets (DAPO, Skywork) and applying template restoration |
 | **JSONL Format** | Convert to JSONL with `question`, `expected_answer`, and `responses_create_params` fields |
-| **Train/Val/Test Split** | Split into training (98%), validation (1%), and test (1%) sets |
+| **Train/Val/Test Split** | Write one JSONL per split published by the HF dataset (`train`, `validation`, `test` become `train`, `val`, `test`); no split ratio is applied |
 | **NeMo-Gym Environment** | Route samples to appropriate reward environments based on task type |
 | **Reward Computation** | Compute verifiable rewards (math correctness, code execution, schema adherence) |
 
@@ -95,55 +96,31 @@ Where:
 |-------------|-------------|
 | **On-Policy KL Approximation** | Uses importance weights to correct for off-policy samples. This gives an unbiased and guaranteed-positive KL estimator |
 | **Importance Sampling Correction** | Corrects for discrepancies between inference (vLLM) and training (Megatron) token probabilities |
-| **Overlong Filtering** | Excludes sequences that hit max length without EOS from loss computation, reducing noise from truncated generations |
+| **Overlong Filtering** | Available in NeMo-RL (excludes sequences that hit max length without EOS from the loss) but **disabled** in this recipe (`grpo.overlong_filtering: false`) |
 | **Asymmetric Clipping** | Uses `ratio_clip_min=0.2` and `ratio_clip_max=0.28` for asymmetric policy update bounds |
 
 > For detailed loss function derivations, see the [NeMo-RL GRPO Guide](https://docs.nvidia.com/nemo/rl/latest/guides/grpo.html#loss).
 
 ### Multi-Environment RLVR
 
-Training uses 6 reward environments through NeMo-Gym:
+The recipe config (`env.nemo_gym.config_paths`) trains on 6 NeMo Gym reward environments simultaneously, plus the `vllm_model_for_training` policy model server:
 
 | Environment | Description | Reward Type |
 |-------------|-------------|-------------|
-| **math_with_judge** | Mathematical reasoning (DAPO, Skywork math) | Answer correctness verification |
-| **code_gen** | Code correctness with test case execution | Unit test pass rate |
+| **math_with_judge** | Mathematical reasoning (DAPO, Skywork math); LLM judge disabled (`should_use_judge: false`) | Answer correctness verification |
+| **code_gen** | Code correctness with test case execution (1024 processes, 10 s unit-test timeout) | Unit test pass rate |
 | **mcqa** | STEM multiple choice questions | Answer matching |
-| **instruction_following** | IFEval, Multi-Challenge compliance | Constraint satisfaction |
-| **workplace_assistant** | Agentic tool use, multi-turn interactions | Task completion |
+| **instruction_following** | Instruction constraint compliance | Constraint satisfaction |
+| **workplace_assistant** | Agentic tool use | Task completion |
 | **structured_outputs_json** | JSON schema adherence | Schema validation |
 
-Training on all environments simultaneously provides stable gains without co-reward degradation.
+Rollouts are single-turn (`max_rollout_turns: 1`).
 
 > For environment implementation details, see [NeMo-RL Environments Guide](https://docs.nvidia.com/nemo/rl/latest/guides/environments.html).
 
-### GenRM (RLHF)
-
-Generative reward models use circular comparison strategy (N comparisons instead of O(N²)) with length-normalized reward adjustment:
-
-| Parameter | Value |
-|-----------|-------|
-| **Prompts per batch** | 128 |
-| **Responses per prompt** | 16 |
-| **Comparison strategy** | Circular |
-| **Length bonus α** | 0.5 |
-
-### DPO for Tool Hallucination
-
-DPO reduces hallucinated tool usage with minimal computational overhead:
-
-| Metric | Before DPO | After DPO |
-|--------|------------|-----------|
-| **AIME25 Accuracy** | 80.88% | 84.58% |
-| **Hallucination Rate** | 8.33% | 0.7% |
-
-> For DPO methodology, see the [NeMo-RL DPO Guide](https://docs.nvidia.com/nemo/rl/latest/guides/dpo.html).
-
 ### Reasoning Control
 
-The model supports:
-- **Reasoning on/off control** – strip reasoning from 10% of samples
-- **Token budget control** – truncate 3% of reasoning traces to different budgets
+Per the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16), reasoning can be switched on (the default) or off through the chat template (`enable_thinking=True/False`). Neither the report nor the model card describes how reasoning on/off or reasoning-budget data was prepared for Lightning, and this recipe adds no reasoning-control step.
 
 ### Hyperparameters
 
@@ -159,6 +136,7 @@ The model supports:
 | `reasoning_parser` | `nano_v3` | vLLM reasoning parser (plugin shipped in NeMo-RL) |
 | `normalize_rewards` | true | Normalize rewards across batch |
 | `use_leave_one_out_baseline` | true | Variance reduction for advantage estimation |
+| `overlong_filtering` | false | Truncated generations are kept in the loss |
 | `val_period` | 5 | Validation every N steps |
 | `max_num_epochs` | 1 | Single epoch over data |
 | `seed` | 42 | Random seed for reproducibility |
@@ -179,8 +157,9 @@ The model supports:
 | Parameter | Value |
 |-----------|-------|
 | `optimizer` | AdamW |
-| `lr` | 4e-6 |
+| `lr` | 4e-6 (constant) |
 | `min_lr` | 4e-6 |
+| `lr_warmup_iters` | 10 (from 4e-7) |
 | `weight_decay` | 0.0 |
 | `adam_beta1` | 0.9 |
 | `adam_beta2` | 0.999 |
@@ -276,8 +255,8 @@ uv run nemotron lightning35 data prep rl [options]
 #### Output
 
 ```
-output/lightning35/stage2_rl/
-├── manifest.json                       # {"train": "<path>", "val": "<path>", "test": "<path>"}
+output/stage2_rl_resolved/
+├── manifest.json                       # {"train": "<path>", "val": "<path>", "test": "<path>", "source_splits": [...]}
 └── runs/<run_hash>/
     ├── <dataset>__train/
     │   └── shard_000000.jsonl
@@ -286,6 +265,8 @@ output/lightning35/stage2_rl/
     └── <dataset>__test/
         └── shard_000000.jsonl
 ```
+
+One `<dataset>__<split>` directory is written for each split the HF dataset publishes; a split the dataset does not publish is left empty in `manifest.json`. Training reads `train` and `val` from the manifest.
 
 The output is registered as a [W&B Artifact](../artifacts.md) (`SplitJsonlDataArtifact-<config_name>`) for lineage tracking.
 
@@ -391,7 +372,7 @@ Common errors and solutions:
 flowchart TB
     prev["ModelArtifact-sft<br/>(from Stage 1)"] --> train
     rl["RL Datasets<br/>(HuggingFace)"] --> dp["data_prep.py"]
-    data2["SplitJsonlDataArtifact<br/>(JSONL)"]
+    dp --> data["SplitJsonlDataArtifact<br/>(JSONL)"]
     data --> train["train.py<br/>(GRPO with NeMo-RL)"]
     train --> model["ModelArtifact-rl<br/>(final aligned model)"]
 
@@ -481,7 +462,7 @@ NeMo-RL uses a Ray-based actor model:
 | **Policy Model** | Trainable policy weights (Megatron backend) |
 | **Generator** | vLLM-backed rollout generation (colocated) |
 | **Reward Environments** | NeMo-Gym environments for reward computation |
-| **Reference Model** | Frozen SFT checkpoint for KL divergence |
+| **Reference Model** | Frozen SFT checkpoint for KL divergence (KL penalty is 0 in the default config) |
 
 ### Container
 
@@ -498,7 +479,7 @@ After RL completes, proceed to [Stage 3: Evaluation](./evaluate.md) to benchmark
 ## Reference
 
 - [Instruct model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) – post-training reference
-- [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) – GRPO, DPO, environments
+- [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) – GRPO, environments
 - [NeMo-RL Nemotron 3.5 Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md) — upstream training guide
 - [NVIDIA AI Stack](../nvidia-stack.md) – NeMo-RL, Megatron-Core
 - [Artifact Lineage](../artifacts.md) – W&B artifact system

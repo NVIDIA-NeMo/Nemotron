@@ -1,0 +1,94 @@
+# Super35 stage 1 — SFT stage 2
+#
+# The tech report (§3.1) follows the general SFT stage with "a small second
+# stage of SFT, where we change the blend composition to boost some
+# capabilities the first stage did not learn adequately". This config runs the
+# same Megatron-Bridge Super-VL SFT recipe and verified H100 layout as
+# default.yaml, starting from the stage-1 checkpoint, on a second Energon blend.
+# Its output, `super35-sft-model`, is the SFT model that RL starts from (after
+# Megatron -> Hugging Face export, see ../README.md).
+#
+# The stage-2 step count and LR schedule are not published; the values below
+# are a short, constant-LR continuation — tune them for your blend.
+#
+# Inputs:
+#   run.model  super35-sft-stage1-model (output of default.yaml)
+#   run.data   Energon WebDataset registered with
+#              `nemotron super35 data import sft <dir> --name super35-sft-stage2-data`.
+#              TODO(open-source): the stage-2 blend is not public yet.
+
+run:
+  model: super35-sft-stage1-model:latest
+  data: super35-sft-stage2-data:latest
+  env:
+    # 26.08 container generation (same as lightning35); the public
+    # nvcr.io/nvidia/nemo:26.08 tag publishes at launch — switch then.
+    container: nvcr.io/nvidian/nemo:26.08.rc2
+    env_vars:
+      # Triton/Inductor/FlashInfer JIT caches default under /root, whose
+      # container overlay is tiny — use node-local /tmp instead.
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    # The Super-VL recipes (megatron.bridge.recipes.nemotronh_multimodal)
+    # exist only on recent Megatron-Bridge main. Mount the pinned MB commit
+    # over the container's copy, plus the Megatron-LM revision that commit
+    # pins as its 3rdparty/Megatron-LM submodule.
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@f7f37b263307812702ee57bbc413a8a26c0924b5,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bab851bfe3abc805256155962389ec0fe5de7571,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh_multimodal.nemotron_35_super_vl_sft_config
+  step_func: nemotron_omni_step
+
+dataset:
+  path: ${art:data,path}
+  seq_length: 4096
+  num_workers: 2
+  do_validation: false
+
+model:
+  seq_length: 4096
+  # Verified-card overrides on top of the recipe's TP1/PP2/EP32 layout.
+  tensor_model_parallel_size: 2
+  sequence_parallel: true
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+  recompute_modules: []
+  # Freeze policy (recipe default, MB SFT): train LM + projector, freeze RADIO.
+  freeze_language_model: false
+  freeze_vision_model: true
+  freeze_vision_projection: false
+
+train:
+  train_iters: 100
+  global_batch_size: 1280
+  micro_batch_size: 1
+
+scheduler:
+  lr_warmup_iters: 10
+  lr_decay_iters: 100
+  lr_decay_style: constant
+
+validation:
+  eval_iters: 0
+  eval_interval: 0
+
+logger:
+  log_interval: 1
+  log_throughput: true
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+  wandb_exp_name: super35-sft-stage2
+
+checkpoint:
+  save: /nemo_run/super35-sft-model
+  save_interval: 100
+  pretrained_checkpoint: ${art:model,path}
+  load: null
+  load_optim: false
+  load_rng: false
+  async_save: false

@@ -6,6 +6,8 @@ Pretrain Nemotron Lightning 3.5 on a large text corpus using Megatron-Bridge.
 
 This stage tokenizes raw text data and trains the base language model from scratch. It produces a pretrained checkpoint that serves as the foundation for subsequent instruction tuning (SFT) and alignment (RL) stages.
 
+> **Released base model**: The published Lightning base was not pretrained from scratch. Per the tech report (*Nemotron 3.5 Super and Lightning*, §2), it was initialized from Nemotron 3 Nano Base, warmed up with an MTP head derived from Nemotron 3 Super Base (100B tokens), distilled for 1T tokens from Nemotron 3 Super Base, and then trained for long context. This recipe is a reference pretraining implementation on open data, not a reproduction of that distillation run.
+
 > **Open-Source Data Only**: This recipe trains exclusively on the open-sourced subset of pretraining data. Results will differ from the published model-card benchmarks, which used additional proprietary data. Use this recipe as a reference implementation to apply the methodology with your own data.
 
 | Component | Description |
@@ -35,7 +37,7 @@ Inside a container on a compute node:
 
 ```bash
 # Data preparation
-python data_prep.py --config config/data_prep.yaml
+python data_prep.py --config config/data_prep/default.yaml
 
 # Training (single node)
 python train.py --config config/tiny.yaml
@@ -62,7 +64,7 @@ uv run nemotron lightning35 data prep pretrain [options]
 
 ### Input
 
-Dataset blend defined in `config/data_blend_raw.json`:
+Dataset blend defined in `config/data_prep/data_blend_raw.json`:
 
 ```json
 {
@@ -92,15 +94,16 @@ The output is registered as a W&B Artifact (`lightning35-pretrain-data (Pretrain
 
 ### Configuration
 
-`config/data_prep.yaml`:
+`config/data_prep/default.yaml` (excerpt):
 
 ```yaml
-blend_path: config/data_blend_raw.json
-output_dir: output/lightning35/stage0_pretrain
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/lightning35/stage0_pretrain/config/data_prep/data_blend_raw.json
+output_dir: ${oc.env:PWD}/../output/lightning35/stage0_pretrain
 num_shards: 128
-tokenizer_model: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
-add_bos: false
-add_eos: true
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
+  add_bos: false
+  add_eos: true
 ```
 
 ## Training
@@ -137,8 +140,8 @@ uv run nemotron lightning35 pretrain [options] [overrides...]
 |------|---------|
 | `config/default.yaml` | Production configuration |
 | `config/tiny.yaml` | Testing — the real Lightning architecture (hybrid Mamba/attention/MoE + MTP) shrunk to toy dimensions |
-| `config/data_blend_raw.json` | Full dataset blend |
-| `config/data_blend_raw_small.json` | Small blend (math-only) for testing |
+| `config/data_prep/data_blend_raw.json` | Full dataset blend |
+| `config/data_prep/data_blend_raw_small.json` | Small blend (math-only) for testing |
 
 #### config/tiny.yaml
 

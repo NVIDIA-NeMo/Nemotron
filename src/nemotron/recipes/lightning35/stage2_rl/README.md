@@ -35,7 +35,7 @@ Inside a container on a compute node (requires NeMo-RL and Ray):
 
 ```bash
 # Data preparation
-python data_prep.py --config config/data_prep.yaml
+python data_prep.py --config config/data_prep/default.yaml
 
 # Training (Ray will be initialized internally)
 python train.py --config config/default.yaml
@@ -59,7 +59,7 @@ uv run nemotron lightning35 data prep rl [options]
 
 ### Input
 
-RL datasets defined in `config/data_blend_raw.json`. The data is transformed using the `nemotron_rl` transform which extracts from `responses_create_params.input`.
+RL datasets defined in `config/data_prep/data_blend_raw.json` (the `nvidia/Nemotron-3.5-Lightning-RL-Training-Blend` dataset). The data is transformed using the `nemotron_rl` transform which extracts from `responses_create_params.input`.
 
 ### Output
 
@@ -78,22 +78,21 @@ The output is registered as a W&B Artifact (`lightning35-rl-data (SplitJsonlData
 
 ### Configuration
 
-`config/data_prep.yaml`:
+`config/data_prep/default.yaml`:
 
 ```yaml
-blend_path: config/data_blend_raw.json
-output_dir: output/lightning35/stage2_rl
-shard_size: 256MB
-split_output: train_val_test
-train_ratio: 0.98
-val_ratio: 0.01
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/lightning35/stage2_rl/config/data_prep/data_blend_raw.json
+output_dir: ${oc.env:PWD}/../output/stage2_rl_resolved
+sample: null
+force: false
 ```
 
 | Parameter | Description |
 |-----------|-------------|
-| `split_output` | `train_val_test` for separate splits, `none` for single output |
-| `train_ratio` | Fraction for training split (default 0.98) |
-| `val_ratio` | Fraction for validation split (default 0.01) |
+| `blend_path` | RL dataset blend to resolve |
+| `output_dir` | Where resolved JSONL splits are written |
+| `sample` | Limit rows per dataset for quick tests (`null` = no limit) |
+| `force` | Force a new run, ignoring cache |
 
 ## Training
 
@@ -131,7 +130,7 @@ uv run nemotron lightning35 rl [options] [overrides...]
 |------|---------|
 | `config/default.yaml` | Production GRPO configuration |
 | `config/tiny.yaml` | Testing variant |
-| `config/data_blend_raw.json` | RL dataset blend (6 datasets) |
+| `config/data_prep/data_blend_raw.json` | RL dataset blend (Nemotron-3.5-Lightning-RL-Training-Blend) |
 
 ### Key Configuration Sections
 
@@ -231,7 +230,7 @@ Key features:
 ```mermaid
 flowchart TB
     prev["ModelArtifact-sft<br/>(from Stage 1)"] --> train
-    rl["RL Datasets<br/>(preference/reward data)"] --> dp["data_prep.py"]
+    rl["RL Datasets<br/>(NeMo Gym prompts)"] --> dp["data_prep.py"]
     dp --> data["lightning35-rl-data (SplitJsonlDataArtifact)<br/>(JSONL files)"]
     data --> train["train.py<br/>(GRPO with NeMo-RL)"]
     train --> model["ModelArtifact-rl<br/>(final aligned model)"]

@@ -1,0 +1,65 @@
+# Super35 stage 1 — long-context SFT (128K, GB200) — UNVERIFIED
+#
+# Megatron-Bridge's `nemotron_35_super_vl_sft_long_context_128gpu_gb200_bf16_config`:
+# text-only CoderForge SFT at sequence length 131,072 with offline sequence
+# packing, on 128 GB200 GPUs (32 nodes x 4). TP1/PP2 (38/50 layer split),
+# CP32 with ring P2P attention (the checkpoint has two KV heads, so Ulysses
+# A2A is not possible), EP64, full uniform recompute, GBS/MBS 8/1, LR 5e-6
+# with 10 warmup and 100 decay steps. The recipe builds its own dataset
+# (Hugging Face CoderForge at a pinned revision), so no `run.data` is used.
+#
+# STATUS: Megatron-Bridge's verification card records NO long-context SFT
+# result (neither H100 nor GB200) — this recipe exists in MB but is not
+# verified. Treat this config as a starting point, not a reference run.
+#
+# The tech report's production SFT packs sequences of up to 524,288 tokens;
+# this recipe stops at 128K.
+#
+# Inputs:
+#   run.model  Megatron-format starting checkpoint (see default.yaml).
+
+run:
+  model: super35-pretrain-model:latest
+  env:
+    nodes: 32
+    gpus_per_node: 4
+    # 26.08 container generation (same as lightning35); the public
+    # nvcr.io/nvidia/nemo:26.08 tag publishes at launch — switch then.
+    container: nvcr.io/nvidian/nemo:26.08.rc2
+    env_vars:
+      # Triton/Inductor/FlashInfer JIT caches default under /root, whose
+      # container overlay is tiny — use node-local /tmp instead.
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    # The Super-VL recipes (megatron.bridge.recipes.nemotronh_multimodal)
+    # exist only on recent Megatron-Bridge main. Mount the pinned MB commit
+    # over the container's copy, plus the Megatron-LM revision that commit
+    # pins as its 3rdparty/Megatron-LM submodule.
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@f7f37b263307812702ee57bbc413a8a26c0924b5,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bab851bfe3abc805256155962389ec0fe5de7571,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh_multimodal.nemotron_35_super_vl_sft_long_context_128gpu_gb200_bf16_config
+  # Megatron-Bridge maps every nemotron_35_super_vl_* recipe to this step.
+  step_func: nemotron_omni_step
+
+# Dataset, model layout, optimizer and schedule all come from the recipe.
+
+logger:
+  log_interval: 1
+  log_throughput: true
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+  wandb_exp_name: super35-sft-long-context
+
+checkpoint:
+  save: /nemo_run/super35-sft-long-context-model
+  save_interval: 50
+  pretrained_checkpoint: ${art:model,path}
+  load: null
+  load_optim: false
+  load_rng: false
+  async_save: false

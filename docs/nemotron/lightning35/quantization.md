@@ -9,7 +9,43 @@ loads the model through `AutoBridge`, and `distill.py` drives Megatron-Bridge's
 `megatron.bridge.training.distill` training loop.
 
 Compressed down to 22 GB from the 66 GB BF16 checkpoint by quantizing many of its weights to 4 bits,
-the NVFP4 checkpoint preserves accuracy while unlocking up to 4x faster throughput.
+the released NVFP4 checkpoint keeps a median 99.24% of BF16 accuracy in the tech report's evaluation
+(see below).
+
+---
+
+## The Released Checkpoint (Tech Report)
+
+The tech report (*Nemotron 3.5 Super and Lightning*, NVIDIA, 2026; link pending publication) describes
+the released NVFP4 checkpoint in §4, §4.7 and §4.8. Lightning targets local and agentic use as well as
+datacenter deployment, so it is quantized "to minimize weight fetch and raise activation precision to
+maintain accuracy": it **deploys as W4A16 on every GPU SKU**, Blackwell included (§4).
+
+| Module | Precision in the released checkpoint (§4.7, §4.8) |
+|---|---|
+| Routed experts, shared experts | NVFP4 weights, 16-bit activations (W4A16) |
+| Language-model output head (`lm_head`) | NVFP4 weights, 16-bit activations (W4A16) |
+| Mamba input / output projections | FP8 weights and activations |
+| Attention projections | BF16 |
+| MTP module | Not quantized |
+
+For evaluation, both the BF16 and NVFP4 checkpoints were served with FP8 KV cache and FP32 Mamba SSM
+cache (§4.8). The report's acceptance criteria are a median accuracy recovery of at least 99% and a
+verbosity increase of at most 5% vs BF16 (§4). Across the 18 benchmarks of Table 21 (CritPt, with a BF16 score of 0, is excluded from the median),
+the NVFP4 checkpoint reaches a **median accuracy recovery of 99.24%** and a **−3.63% verbosity change** (ratio of total
+tokens). Per-benchmark scores are listed in [Evaluate](evaluate.md#reported-results-post-trained-model).
+The report gives no throughput or latency numbers for Lightning.
+
+**Where this page and the report differ.** The recipe documented below was written before the report:
+
+- **Mamba projections.** The report (§4.8) and the NVFP4 model card both describe the Mamba in/out
+  projections as FP8 (the model card: "FP8 per-tensor dynamic scales on mamba in_proj/out_proj and KV
+  cache"). This page's chosen `four_over_six` recipe instead quantizes them to W4A16 NVFP4; FP8 Mamba
+  appears here only in the non-chosen `mamba_fp8_max` recipe. These have not been reconciled.
+- **Calibration.** The report says only that the W4A16 configuration was selected "using the same
+  PTQ/QAD procedure" as Super 3.5, and names no Lightning calibration method. The NVFP4 model card names
+  four-over-six NVFP4 calibration on 1,000 samples of a Nemotron Ultra validation subset at 32K tokens.
+  The commands below use four-over-six on 1,000 samples of the public `cnn_nemotron_v2_mix` instead.
 
 ---
 
@@ -53,8 +89,10 @@ to NVFP4 (W4A4) and leaves the Q·Kᵀ and attn·V batched matrix multiplication
 unquantized.
 
 **After evaluating different PTQ recipes, `four_over_six` with W4A16 Mamba linears provided the best
-tradeoff** of accuracy degradation to boost in inference performance, and is the recipe used for the
-published checkpoint (`Nemotron-3.5-Lightning-30B-A3B/lightning_w4a16_nvfp4_4o6`).
+tradeoff** of accuracy degradation to boost in inference performance, and is the recipe this page
+uses (`Nemotron-3.5-Lightning-30B-A3B/lightning_w4a16_nvfp4_4o6`). Note that the tech report and model
+card describe the published checkpoint with FP8 Mamba projections; see
+[The Released Checkpoint](#the-released-checkpoint-tech-report).
 
 This choice carries into training: max-calibrated recipes feed **dynamic-scale** QAD, where the
 scales are recomputed on the fly during training and both the weights and the scales adapt as the
@@ -211,9 +249,10 @@ global-batch-size 64 each step is 8 gradient-accumulation microbatches, and 200 
 roughly 419M training tokens.
 
 Sequence length turned out to be critical for certain benchmarks, especially the longer-context
-ones, where training too short leaves accuracy on the table. Post-training SFT used roughly 522K
-tokens, and the ablations showed that a 522K sequence length was necessary for preserving long
-context performance. To train at a higher sequence length, raise `--seq_length`.
+ones, where training too short leaves accuracy on the table. Ablations during development indicated
+that running QAD at the post-training SFT sequence length (roughly 522K tokens) was needed to preserve
+long-context performance. The command above uses 32,768 tokens, so it does not reproduce that setting;
+expect lower long-context scores unless you raise `--seq_length`.
 
 ### Step 3 — Export to HuggingFace
 

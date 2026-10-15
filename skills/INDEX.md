@@ -11,6 +11,9 @@ its own `SKILL.md` (frontmatter + body) and lives in a sibling directory.
 | **[/nemotron-retrieval-recipes](nemotron-retrieval-recipes/SKILL.md)** | The user wants to **operate public Nemotron retrieval recipes** — choose `embed` vs `rerank`, select Nemotron 3 Embed vs Llama Embed profiles, plan long-running stages safely, debug metrics, or prepare export/deploy. |
 | **[/nemotron-nano3](nemotron-nano3/SKILL.md)** | The user wants **facts about Nano3** — architecture, training data, recipe details, eval scores, deployment notes. Reference, not generation. |
 | **[/nemotron-super3](nemotron-super3/SKILL.md)** | Same as above, for **Super3**. |
+| **[/nemotron-ultra](nemotron-ultra/SKILL.md)** | Same as above, for **Nemotron 3 Ultra** (550B-A55B): NVFP4 pretraining, MOPD, MTP boosting. |
+| **[/nemotron-super35](nemotron-super35/SKILL.md)** | Same as above, for **Nemotron 3.5 Super VL** (120B-A12B): vision-language SFT, specialist teachers, two-phase MOPD, NVFP4. |
+| **[/nemotron-lightning35](nemotron-lightning35/SKILL.md)** | Same as above, for **Nemotron 3.5 Lightning** (30B-A3B): distillation from Super 3 Base, text-only SFT and RLVR, MTP boosting, NVFP4. |
 | **[/nemotron-add-step](nemotron-add-step/SKILL.md)** | A contributor wants to **add a new step** to the catalog under [src/nemotron/steps/](../src/nemotron/steps/). |
 | **[/nemotron-add-pattern](nemotron-add-pattern/SKILL.md)** | A contributor wants to **encode a cross-cutting decision rule** (tokenizer lock, eval bookends, etc.) under [src/nemotron/steps/patterns/](../src/nemotron/steps/patterns/). |
 | **[/nemotron-add-model](nemotron-add-model/SKILL.md)** | A contributor wants to **onboard a new model family** so downstream skills can route to it. |

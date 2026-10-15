@@ -131,6 +131,15 @@ Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 **Stages:** Pretraining → SFT → RL → Quantization → Eval
 :::
 
+:::{grid-item-card} Nemotron 3.5 Super
+:link: nemotron/super35/README
+:link-type: doc
+
+120B total / 12B active vision-language model with native MTP, post-trained with specialist teachers and multi-teacher on-policy distillation.
+
+**Stages:** Pretraining → SFT → RLVR → Teachers → MOPD → Eval
+:::
+
 :::{grid-item-card} Nemotron 3 Nano
 :link: nemotron/nano3/README
 :link-type: doc
@@ -198,6 +207,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Lightning35](nemotron/lightning35/README.md) | Pretraining → SFT → RL → Quantization |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Super35](nemotron/super35/README.md) | Pretraining → SFT → RLVR → Teachers → MOPD → Eval |
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
 | [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 | [Rerank](nemotron/rerank/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
@@ -324,6 +334,7 @@ Nemotron 3 Nano <nemotron/nano3/README.md>
 Nemotron 3.5 Lightning <nemotron/lightning35/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
+Nemotron 3.5 Super <nemotron/super35/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Llama Nemotron Embed <nemotron/embed/README.md>
 Llama Nemotron Rerank <nemotron/rerank/README.md>

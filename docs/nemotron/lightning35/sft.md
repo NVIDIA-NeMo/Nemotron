@@ -2,7 +2,7 @@
 
 This stage fine-tunes the pretrained model for instruction following using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge).
 
-> **Open-Source Data Only**: This recipe uses exclusively open-sourced SFT data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe includes datasets from Nemotron-Science-v1, Nemotron-Instruction-Following-Chat-v1, Nemotron-Math-Proofs-v1, Nemotron-SWE-v1, Nemotron-Agentic-v1, and Nemotron-Competitive-Programming-v1. Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
+> **Open-Source Data Only**: This recipe uses exclusively open-sourced SFT data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe includes datasets from Nemotron-Instruction-Following-Chat-v1, Nemotron-Math-Proofs-v1, Nemotron-SWE-v1, Nemotron-Agentic-v1, and Nemotron-Competitive-Programming-v1 (see [Recipe Data Blend](#recipe-data-blend)). Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
 
 ---
 
@@ -10,7 +10,7 @@ This stage fine-tunes the pretrained model for instruction following using [Mega
 
 > **Training Framework**: SFT is implemented using [Megatron-Bridge](https://docs.nvidia.com/nemo/megatron-bridge/latest/)'s `finetune()` entry point, which loads a pretrained checkpoint and handles the training loop with role-based loss masking. See [Training Entry Points](https://docs.nvidia.com/nemo/megatron-bridge/latest/training/entry-points.html) for implementation details.
 >
-> Nemotron 3.5 Lightning has no separate technical report. The [model cards](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) and the recipe configs in this repository are the authoritative references for methodology.
+> Lightning is covered by the joint tech report *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026). It describes Lightning's post-training as "a lighter post-training pipeline consisting of single-stage text-only SFT and RLVR" (§1, §3, §3.1) and does not report Lightning's SFT data or hyperparameters. The recipe below is a reference implementation on open data; its settings come from the recipe configs in this repository, not from the report.
 
 ### Data Preparation Pipeline
 
@@ -132,32 +132,32 @@ Nemotron 3.5 Lightning supports both reasoning and non-reasoning modes:
 - **Multi-Turn**: Reasoning from previous turns dropped when user message introduced
 - **Tool Calling**: Uses XML-style special tags to reduce character escaping
 
-### SFT Data Domains
+### SFT Data
 
-| Domain | Description |
-|--------|-------------|
-| **Competition Math** | Tool-integrated reasoning with GPT-OSS teachers |
-| **Competition Code** | OpenCodeReasoning solutions with obfuscation/complication |
-| **InfinityByte** | Cross-domain code synthesis at model capability boundaries |
-| **STEM Reasoning (RQA)** | Reasoning Q&A from undergraduate/graduate STEM content |
-| **Conversational Tool Use** | Multi-turn trajectories with simulated tool execution |
-| **Long Context** | 128k mean token length, 256k hard limit |
-| **Formal Proofs** | Lean theorem proving with 300k examples |
-| **Multilingual** | French, Spanish, Italian, German, Japanese |
-| **Terminal Use** | Terminal operations from Terminal Bench |
-| **General Chat** | Multi-turn responses from LMSYS and WildChat |
-| **Instruction Following** | Tulu 3 methodology with verifier filtering |
-| **Safety** | Refusal behaviors from safety datasets |
-| **Software Engineering** | GitHub issue resolution trajectories |
-| **Science** | Physics, chemistry, biology via NeMo Data Designer |
+**Released model (tech report):** Lightning "is trained with single SFT stage with the text only SFT data" (§3.1). Unlike Super 3.5, it has no vision-projector warm-up and no second SFT stage. The report does not describe the Lightning SFT blend, its size, teacher models, or hyperparameters.
 
-### Data Filtering
+**Released model (model card):** The [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) lists synthetic code, math, science, tool calling, instruction following, structured outputs, and general knowledge data, plus data for long-range retrieval and multi-document aggregation. It describes these post-training data filters:
+- **Structural checks**: Discard malformed examples (e.g., tool calls without tool definitions)
+- **Pathological repetition filtering**: Remove reasoning traces with repeated n-grams
+- **Narrative filtering**: Keyword- and regex-based removal of trajectories aligned with specific political entities or nationalistic narratives
 
-The pipeline applies:
-- **Structural checks**: Discard malformed examples
-- **Pathological repetition filtering**: Remove repeated n-grams
-- **Consistency filtering**: Judge-based action consistency verification
-- **Narrative filtering**: Remove political/nationalistic narratives
+### Recipe Data Blend
+
+The open-data recipe trains on the datasets in `config/data_prep/data_blend_raw.json`:
+
+| Blend Entry | Dataset | Subset |
+|-------------|---------|--------|
+| `instruction-following-chat` | Nemotron-Instruction-Following-Chat-v1 | `chat_if` |
+| `instruction-following-structured` | Nemotron-Instruction-Following-Chat-v1 | `structured_outputs` |
+| `math-proofs-lean` | Nemotron-Math-Proofs-v1 | `lean` |
+| `swe` | Nemotron-SWE-v1 | (default) |
+| `agentic-interactive` | Nemotron-Agentic-v1 | `interactive_agent` |
+| `agentic-tool-calling` | Nemotron-Agentic-v1 | `tool_calling` |
+| `competitive-cpp-00`, `-01` | Nemotron-Competitive-Programming-v1 | `competitive_coding_cpp.part_00`, `.part_01` |
+| `competitive-python-00`, `-01` | Nemotron-Competitive-Programming-v1 | `competitive_coding_python.part_00`, `.part_01` |
+| `infinibyte-00`, `-01` | Nemotron-Competitive-Programming-v1 | `infinibyte.part_00`, `.part_01` |
+
+Science MCQ/RQA entries are temporarily disabled in the blend file (corrupted parquet file), so no science dataset is included. Data prep keeps only records whose `used_in` field contains `nano_v3` (`used_in_filter` in `config/data_prep/default.yaml`) and splits the packed output 98% / 1% / 1% into train / valid / test.
 
 ### Troubleshooting
 
@@ -335,7 +335,7 @@ See [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md) for complete co
 flowchart TB
     prev["ModelArtifact-pretrain<br/>(from Stage 0)"] --> train
     inst["Instruction Datasets<br/>(OpenAI chat format)"] --> dp["data_prep.py"]
-    data1["SFTDataArtifact<br/>(Parquet)"]
+    dp --> data["SFTDataArtifact<br/>(Parquet)"]
     data --> train["train.py"]
     train --> model["ModelArtifact-sft<br/>(fine-tuned checkpoint)"]
     model --> next["Stage 2: RL"]
