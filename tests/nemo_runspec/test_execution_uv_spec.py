@@ -4,11 +4,38 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 import typer
 
 from nemo_runspec import execution, parse
+
+
+def test_stage_extra_keeps_stage_script_and_torchrun(monkeypatch: pytest.MonkeyPatch) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    stage = repo_root / "src/nemotron/recipes/embed/stage2_finetune"
+    run = Mock(return_value=SimpleNamespace(returncode=0))
+    monkeypatch.setattr(execution.subprocess, "run", run)
+    spec = SimpleNamespace(
+        script_path=stage / "train.py",
+        run=SimpleNamespace(launch="torchrun"),
+        resources=SimpleNamespace(gpus_per_node=1),
+    )
+    with pytest.raises(typer.Exit) as outcome:
+        execution.execute_uv_local_from_spec(
+            spec=spec,
+            train_path=Path("/tmp/resolved.yaml"),
+            passthrough=["max_steps=2"],
+            extras=["vl"],
+        )
+    assert outcome.value.exit_code == 0
+    command = run.call_args.args[0]
+    assert command[command.index("--project") + 1] == str(stage)
+    assert command[command.index("--extra") + 1] == "vl"
+    assert command[-4:] == [str(stage / "train.py"), "--config", "/tmp/resolved.yaml", "max_steps=2"]
+    assert "torch.distributed.run" in command
+    assert "--nproc_per_node=1" in command
 
 
 def test_embed_finetune_runspec_defaults_to_all_local_gpus() -> None:

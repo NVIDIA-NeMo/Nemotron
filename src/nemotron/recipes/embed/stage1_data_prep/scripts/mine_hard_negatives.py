@@ -32,6 +32,7 @@
 from __future__ import annotations
 
 from nemo_automodel._transformers.auto_model import NeMoAutoModelBiEncoder
+from nemo_automodel._transformers.auto_tokenizer import NeMoAutoTokenizer
 from nemo_automodel.components.config._arg_parser import parse_args_and_load_config
 from nemo_automodel.recipes.retrieval import mine_hard_negatives as automodel_mining
 
@@ -41,6 +42,16 @@ class MineHardNegativesRecipe(automodel_mining.MineHardNegativesRecipe):
 
     def setup(self):
         """Build the miner, forwarding ``trust_remote_code`` to AutoModel."""
+        if self.cfg.get("mining.multimodal_encoder", None) is not None:
+            if "multimodal_encoder" not in automodel_mining.MINING_DEFAULTS:
+                raise RuntimeError(
+                    "Native multimodal mining requires an AutoModel revision with multimodal_encoder support. "
+                    "Install the matching AutoModel revision; the released text-only miner cannot process images."
+                )
+            # The native encoder owns multimodal preprocessing. Keep the legacy
+            # setup below for text-only recipes running released AutoModel 0.4.
+            super().setup()
+            return
         self.dist_env = automodel_mining.build_distributed(self.cfg.get("dist_env", {}))
 
         self.mining_cfg = self.cfg.get("mining", None)
@@ -70,6 +81,23 @@ class MineHardNegativesRecipe(automodel_mining.MineHardNegativesRecipe):
         self._load_data()
         self._build_document_mappings()
         self._prepare_data()
+
+    def _configure_tokenizer(self) -> None:
+        """Load the tokenizer, optionally bypassing model-type registry dispatch."""
+        if not self._get_mining_param("tokenizer_force_default", False):
+            super()._configure_tokenizer()
+            return
+
+        tokenizer_kwargs = {"force_default": True}
+        if self.add_bos_token is not None:
+            tokenizer_kwargs["add_bos_token"] = self.add_bos_token
+        if self.add_eos_token is not None:
+            tokenizer_kwargs["add_eos_token"] = self.add_eos_token
+        self.tokenizer = NeMoAutoTokenizer.from_pretrained(self.tokenizer_name_or_path, **tokenizer_kwargs)
+        automodel_mining.logger.info("Using AutoModel's Hugging Face tokenizer wrapper")
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.padding_side = "left"
 
 
 def main(default_config_path="examples/biencoder/mining_config.yaml"):

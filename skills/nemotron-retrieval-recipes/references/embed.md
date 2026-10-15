@@ -160,10 +160,9 @@ Llama profile (`-c llama`):
   constraint instead of imposing one range across the full pipeline.
 - Do not copy performance overrides between profiles without a dry-run. The
   default Nemotron 3 eval batch is `4`; the Llama profile uses `128`.
-- Preserve each profile's optimizer and checkpoint defaults. Nemotron 3 uses
-  no FlashAdamW master weights and fixed 1000-step checkpoint/validation
-  intervals; Llama uses 32-bit master weights and auto-scaled 100-step
-  intervals.
+- Preserve each profile's optimizer and checkpoint defaults. Both profiles use
+  32-bit effective FlashAdamW master weights. Nemotron 3 uses fixed 1000-step
+  checkpoint/validation intervals; Llama uses auto-scaled 100-step intervals.
 
 ```bash
 uv run nemotron embed run -c default -d --from sdg --to eval

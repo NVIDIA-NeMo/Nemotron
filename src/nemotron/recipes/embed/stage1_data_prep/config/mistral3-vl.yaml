@@ -1,0 +1,35 @@
+# Preview data-preparation profile for Mistral3 VL embedding.
+# The input is the verified image_and_text view emitted by DataDesignerPlugins.
+
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:26.06-py3
+
+artifact_root: ./output/embed/mistral3-vl-preview
+corpus_id: multimodal_retrieval
+sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
+train_input_file: null
+retrieval_view: image_and_text
+output_dir: ${artifact_root}/stage1_data_prep
+artifact_recipe: embed
+
+base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+model_family: mistral3_vl
+trust_remote_code: false
+tokenizer_force_default: true
+image_longest_edge: null
+use_text_in_document: true
+
+mining_backend: automodel
+mining_use_images: true
+attn_implementation: sdpa
+hard_negatives_to_mine: 5
+hard_neg_margin: 0.95
+mining_batch_size: 4
+# Separate encoder batches control activation memory, not negative selection.
+query_embedding_batch_size: 1
+document_embedding_batch_size: 1
+query_max_length: 512
+passage_max_length: 4096
+query_prefix: null
+passage_prefix: null

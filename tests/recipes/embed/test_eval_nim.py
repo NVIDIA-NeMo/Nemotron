@@ -141,6 +141,39 @@ def test_vllm_requests_use_v2_embed_input_types_without_manual_prefixes(monkeypa
     assert model.diagnostics()["api_backend"] == "vllm"
 
 
+def test_vllm_multimodal_corpus_request_preserves_image_and_text(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(NIMEmbeddingModel, "_check_connection", lambda self: None)
+    requests = []
+    dataset_path = tmp_path / "synthetic_eval" / "text_image"
+    dataset_path.mkdir(parents=True)
+    image_path = tmp_path / "assets" / "pages" / "page.png"
+    image_path.parent.mkdir(parents=True)
+    image_path.write_bytes(b"preview-image")
+
+    def fake_urlopen(request, timeout):
+        requests.append(json.loads(request.data.decode()))
+        return _Response({"embeddings": {"float": [[1.0, 0.0]]}})
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    model = NIMEmbeddingModel(
+        api_url="http://vllm",
+        model="example-org/mistral3-vl-embed",
+        api_backend="vllm",
+        dataset_path=dataset_path,
+    )
+
+    model.encode_corpus(
+        [{"title": "Title", "text": "Body", "image_path": "assets/pages/page.png"}],
+        batch_size=1,
+    )
+
+    payload = requests[0]
+    assert "texts" not in payload
+    assert payload["input_type"] == "document"
+    assert payload["inputs"][0]["content"][0]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert payload["inputs"][0]["content"][1] == {"type": "text", "text": "Title Body"}
+
+
 def test_persistent_invalid_nim_embedding_raises(monkeypatch) -> None:
     monkeypatch.setattr(NIMEmbeddingModel, "_check_connection", lambda self: None)
     response = _Response({"data": [{"index": 0, "embedding": [None, None]}]})
@@ -175,6 +208,24 @@ def test_nim_eval_failure_propagates(monkeypatch, tmp_path) -> None:
     )
 
     with pytest.raises(RuntimeError, match="NIM failed"):
+        eval_module.run_eval(cfg)
+
+
+def test_requested_finetuned_evaluation_requires_checkpoint(tmp_path) -> None:
+    from nemotron.recipes.embed.stage3_eval import eval as eval_module
+
+    eval_data = tmp_path / "eval"
+    eval_data.mkdir()
+    cfg = eval_module.EvalConfig(
+        eval_data_path=eval_data,
+        finetuned_model_path=tmp_path / "missing-checkpoint",
+        output_dir=tmp_path / "output",
+        eval_base=False,
+        eval_finetuned=True,
+        eval_nim=False,
+    )
+
+    with pytest.raises(FileNotFoundError, match="set eval_finetuned=false"):
         eval_module.run_eval(cfg)
 
 
