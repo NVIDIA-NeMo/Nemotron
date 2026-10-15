@@ -31,7 +31,7 @@ Maps the paper's SFT (§3.1) to `src/nemotron/recipes/super35/stage1_sft/`.
 
 ## What it does not reproduce
 
-| Setting | Repo default (Megatron-Bridge verified card) | Paper §3.1 |
+| Setting | Repo default (Megatron-Bridge verified configuration) | Paper §3.1 |
 |---|---|---|
 | Sequence length | 4,096 | packed up to 524,288 |
 | Global batch | 1,280 | 32 |
@@ -47,4 +47,4 @@ Verification: Megatron-Bridge reports 200-step image-caption runs on 64 × H100 
 
 ## Reproduce with nemotron-customize
 
-`sft/megatron_bridge` and `peft/megatron_bridge` are the matching catalog steps, but neither lists Super 3.5 VL in `[[models]]`, and `data_prep/sft_packing` produces packed text Parquet, not the Energon multimodal data this recipe needs. Ground a Super 3.5 SFT build on `src/nemotron/recipes/super35/stage1_sft/` directly, or treat it as Explorer mode; do not claim catalog support until the step manifests add the model.
+`sft/megatron_bridge` and `peft/megatron_bridge` are the matching catalog steps, but neither lists Super 3.5 in `[[models]]`, and `data_prep/sft_packing` produces packed text Parquet, not the Energon multimodal data this recipe needs. Ground a Super 3.5 SFT build on `src/nemotron/recipes/super35/stage1_sft/` directly, or treat it as Explorer mode; do not claim catalog support until the step manifests add the model.

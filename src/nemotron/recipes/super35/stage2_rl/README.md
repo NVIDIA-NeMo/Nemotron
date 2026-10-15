@@ -1,20 +1,22 @@
 # Stage 2: Reinforcement Learning (RL)
 
-This stage post-trains the Nemotron 3.5 Super VL SFT checkpoint in three
+This stage post-trains the Nemotron 3.5 Super SFT checkpoint in three
 sub-stages, all run with [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) and
-[NeMo-Gym](https://github.com/NVIDIA-NeMo/Gym) environments:
+[NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) environments:
 
-1. **[RLVR](stage1_rlvr/README.md)** runs joint RLVR + RLHF over a broad
+1. **[RLVR](stage1_rlvr/README.md)** (2.1) runs joint RLVR + RLHF over a broad
    multi-environment blend, starting from SFT. Its step-120 checkpoint is the
    shared trunk: every teacher except RLHF teacher 1 branches from it, and it
    is the MOPD phase-1 student.
-2. **[Specialist teachers](stage2_teachers/README.md)** are trained by
+2. **[Specialist teachers](stage2_teachers/README.md)** (2.2) are trained by
    separate RL runs, one per capability: reasoning, vision tool use, video,
    vision reasoning, alignment (RLHF) and agentic.
-3. **[MOPD](stage3_mopd/README.md)** is multi-teacher on-policy distillation.
-   It merges the teachers back into one student in two phases. Phase 2
-   produces the final backbone (the report then applies MTP boosting, which
-   is not included here).
+3. **[MOPD](stage3_mopd/README.md)** (2.3) is multi-teacher on-policy
+   distillation. It merges the teachers back into one student in two phases,
+   with a self-anchor (a frozen copy of the student's starting checkpoint,
+   `general` in the configs) scoring prompts no specialist owns. Phase 2
+   produces the final backbone. The report then applies MTP boosting, which
+   is not included here.
 
 Every sub-stage runs the same upstream entry point
 (`examples/nemo_gym/run_grpo_nemo_gym.py`) through the shared runner in
@@ -35,11 +37,11 @@ flowchart TD
   RLVR -.-> A["Agentic teacher · step 14<br/>super35-rl-teacher-agentic-model"]
   RLVR --> R["Reasoning teacher · step 80<br/>super35-rl-teacher-reasoning-model"]
   RLVR --> VISION["Vision teacher · step 40<br/>super35-rl-teacher-vision-model"]
-  RLVR -->|"student + general teacher"| M1
+  RLVR -->|"student + self-anchor"| M1
   A --> M1
   R --> M1
   VISION --> M1
-  M1 -->|"student + general teacher"| M2["MOPD phase 2 · step 30 (reference run)<br/>super35-rl-mopd-phase2-model"]
+  M1 -->|"student + self-anchor"| M2["MOPD phase 2 · step 30<br/>super35-rl-mopd-phase2-model"]
   VISION --> M2
 
   RLVR --> VIDEO["Video teacher · step 60<br/>super35-rl-teacher-video-model"]
@@ -52,11 +54,10 @@ flowchart TD
   H2B --> M2
 ```
 
-The dashed arrow marks lineage that is assumed but not confirmed: the agentic
-teacher's starting export may not be byte-identical to the selected RLVR
-weights.
+The dashed arrow marks unconfirmed lineage; see
+[Agentic](stage2_teachers/README.md#agentic-blocked).
 
-## Sub-stages
+## Sub-Stages
 
 Node counts are GB200 nodes with 4 GPUs each, inside the Ray cluster.
 External judge servers, which run outside the cluster, are listed separately.
@@ -93,8 +94,8 @@ nemotron super35 rl mopd -c phase2 --run <profile>
 ```
 
 > **`--run <profile>`** names a profile in your `env.toml`. The profile sets
-> the Slurm account, partition, mounts and other cluster settings. See the
-> [env.toml setup guide](../../super3/README.md#envtoml-setup) for details.
+> the Slurm account, partition, mounts and other cluster settings. See
+> [NeMo-Run configuration](../../../../../docs/nemo_runspec/nemo-run.md) for details.
 
 All sub-stages share these settings: five repeated, detached MTP heads with
 loss coefficient 0.3 (MTP decoding stays off in policy generation unless a
@@ -106,8 +107,10 @@ stage README says otherwise), policy serving with `max_num_seqs=256` and
 ### Container
 
 Every RL sub-stage runs in one container. It is built from NeMo-RL's
-`super-v3.5-posttraining` branch with NeMo-Gym and the pre-built Gym
-virtualenvs under `/opt/gym_venvs`:
+`super-v3.5-posttraining` branch at commit `f299847f1`, which pins NeMo Gym
+`e24db4e6` and Megatron-Bridge `3961f399` ([`Dockerfile`](Dockerfile),
+`ARG NEMO_RL_REF`), with the pre-built NeMo Gym virtualenvs under
+`/opt/gym_venvs`:
 
 ```bash
 nemotron kit slurm build <profile> --recipe super35 --stage rl
@@ -118,7 +121,7 @@ on the cluster. That is the default `run.env.container` of every config. Set
 `NEMO_GYM_VENV_DIR` (in `run.env.env_vars`) only to use a different
 container-visible virtualenv directory.
 
-### Judge, GenRM and teacher servers
+### Judge, GenRM and Teacher Servers
 
 Some environments are scored by models that run as separate, OpenAI-compatible
 vLLM servers outside the Ray cluster. Start them before training and pass their
@@ -141,7 +144,7 @@ cluster as non-colocated inference fleets.
 
 ### Sandbox
 
-Code-execution environments (RLVR, MOPD) need a
+Code-execution environments (RLVR, the reasoning teacher, MOPD) need a
 [NeMo-Skills](https://github.com/NVIDIA/NeMo-Skills) sandbox container:
 
 ```bash
@@ -150,35 +153,27 @@ nemotron super35 rl mopd --run <profile> run.env.sandbox.container=<sandbox-imag
 
 The RLHF, vision and video teachers don't use a sandbox.
 
-### Persistent cache
+### Persistent Cache
 
 Set `run.env.persistent_cache` to a shared directory to reuse the vLLM,
 DeepGEMM and FlashInfer compile caches across runs.
 
-## Open-source status
+## Data
 
-- **Training stack.** Public: NeMo-RL `super-v3.5-posttraining` at commit
-  `f299847f1`, which pins NeMo-Gym `e24db4e6` and Megatron-Bridge `3961f399`
-  ([`Dockerfile`](Dockerfile), `ARG NEMO_RL_REF`). The agentic teacher is
-  still config-only, because its Terminal-Bench agent environment is not in
-  public Gym.
-- **Datasets.** The RL datasets (RLVR blend, teacher datasets, RLHF Blends
-  1–3, MOPD prompt blends) are not public yet. To run a sub-stage, register
-  your own NeMo-Gym JSONL as the data artifact that the stage's `run.data`
-  names:
+The RL datasets (RLVR blend, teacher datasets, RLHF Blends 1–3, MOPD prompt
+blends) are not public yet; see [Open-Source Status](../README.md#open-source-status).
+To run a sub-stage, register your own NeMo Gym JSONL as the data artifact that
+the stage's `run.data` names:
 
-  ```bash
-  nemotron super35 data import rl ...
-  ```
+```bash
+nemotron super35 data import rl ...
+```
 
-  Expected artifact names: `super35-rl-rlvr-data`,
-  `super35-rl-teacher-<name>-data`, `super35-rl-mopd-phase1-data` and
-  `super35-rl-mopd-phase2-data`. Each stage README lists its own.
-- **Checkpoints.** Intermediate RL checkpoints and the RLHF GenRM are not
-  published. The final post-trained model is released on Hugging Face as
-  `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16`.
+Expected artifact names: `super35-rl-rlvr-data`,
+`super35-rl-teacher-<name>-data`, `super35-rl-mopd-phase1-data` and
+`super35-rl-mopd-phase2-data`. Each stage README lists its own.
 
-## Previous and next stages
+## Previous and Next Stages
 
 - [Stage 1: SFT](../stage1_sft/README.md) produces `super35-sft-model`.
 - [Stage 3: Evaluation](../stage3_eval/README.md) evaluates

@@ -15,12 +15,12 @@ Maps the paper's pretraining (§2) to `src/nemotron/recipes/super35/stage0_pretr
 
 ## What the repo exposes
 
-`nemotron super35 pretrain` runs Megatron-Bridge's **vision-language image-caption** pretraining recipe, `megatron.bridge.recipes.nemotronh_multimodal.nemotron_35_super_vl_pretrain_config`, with forward step `nemotron_omni_step`. It warm-starts from a Super-VL checkpoint converted from Hugging Face and trains every stack.
+`nemotron super35 pretrain` runs Megatron-Bridge's **vision-language image-caption** pretraining recipe, `megatron.bridge.recipes.nemotronh_multimodal.nemotron_35_super_vl_pretrain_config`, with forward step `nemotron_omni_step`. It warm-starts from a Super 3.5 checkpoint converted from Hugging Face and trains every stack.
 
 | Path | Role |
 |---|---|
 | `train.py` | loads the recipe named in the YAML `recipe:` block, merges YAML/CLI overrides, calls Megatron-Bridge `pretrain()` |
-| `config/default.yaml` | Megatron-Bridge verified H100 card: 8 × 8 H100, TP2 / PP2 / EP32, seq 4,096, GBS 1,280, 200 steps |
+| `config/default.yaml` | Megatron-Bridge's verified H100 configuration: 8 × 8 H100, TP2 / PP2 / EP32, seq 4,096, GBS 1,280, 200 steps |
 | `config/tiny.yaml` | 10-step smoke test on the same layout (still the full 120B model) |
 
 Inputs come from environment variables, not artifacts: `SUPER35_INIT_CHECKPOINT` (converted Megatron checkpoint) and `SUPER35_PRETRAIN_DATA` (Energon image-caption dataset). Output: `super35-pretrain-model`.

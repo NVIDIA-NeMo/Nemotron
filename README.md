@@ -229,16 +229,15 @@ A complete training recipe for the frontier Hybrid Mamba Latent Mixture-of-Exper
 
 ### Nemotron 3.5 Super
 
-A training recipe for Nemotron 3.5 Super VL, the 120B-A12B hybrid Mamba-Transformer LatentMoE model that SFT turns from a text-only base into a vision-language agent, followed by RLVR, six specialist teachers, and two-phase multi-teacher on-policy distillation (MOPD).
+A training recipe for Nemotron 3.5 Super, a 120B-A12B hybrid Mamba-Transformer LatentMoE vision-language model. SFT turns its text-only base into a vision-language model; RLVR, six specialist teachers, and two-phase multi-teacher on-policy distillation (MOPD) then post-train it into a multimodal agent.
 
-![Nemotron 3.5 Super VL post-training pipeline: multimodal SFT on the 1M-context text base, a shared RL trunk, specialist teachers for reasoning, agentic, vision, and alignment, and two MOPD stages that merge them into the final weights](docs/assets/super35/post-training-pipeline.png)
-
-> **Pending Open-Source Release**: The RL stages run on the public NeMo-RL `super-v3.5-posttraining` branch (pinned to `f299847f1`), but the SFT and RL data used for Super 3.5 is not yet published, and the agentic teacher's environment is not in public NeMo Gym. The configs and CLI are in place; see the [training guide](docs/nemotron/super35/README.md#verification-status) for what has been verified.
+> **Pending Open-Source Release**: The SFT and RL data used for Super 3.5 are not yet published, and the agentic teacher's environment is not in public NeMo Gym. The configs, CLI, and RL stack (NeMo-RL `super-v3.5-posttraining`) are public; see the [training guide](docs/nemotron/super35/README.md#open-source-status) for what has been verified.
 
 **Model Specifications**:
 - 120B total / 12B active parameters, initialized from Nemotron 3 Super
 - C-RADIO vision encoder + temporal video embedder (text, image, and video; no audio)
-- Single recursively shared MTP head for speculative decoding; up to 1M context
+- Single recursively shared MTP head for speculative decoding
+- Up to 1M context
 - Released as Base BF16, post-trained BF16, and NVFP4 checkpoints
 
 **What You Can Extract**:
@@ -246,12 +245,12 @@ A training recipe for Nemotron 3.5 Super VL, the 120B-A12B hybrid Mamba-Transfor
 - Multi-environment RLVR with NeMo Gym, including competitive-programming and finance-agent environments
 - Specialist teachers for reasoning, vision tool use, video reasoning and tracking, vision reasoning, and alignment (GenRM-based RLHF)
 - Two-phase MOPD with per-domain teacher routing, a self-anchor, and a proximal-teacher target
-- NVFP4 PTQ + QAD reaching 99.52% median accuracy recovery (not a CLI stage; reproducible with Model Optimizer's W4A4 tutorial)
+- NVFP4 PTQ + QAD reaching 99.52% median accuracy recovery (not a CLI stage; the released precision recipe runs through Model Optimizer's W4A4 tutorial)
 
 **Resources**:
 - [Training Guide](docs/nemotron/super35/README.md)
 - Tech Report: *Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI* (NVIDIA, 2026; link pending publication)
-- [NeMo-RL Super 3.5 VL Guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md)
+- [NeMo-RL Super 3.5 Guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md)
 - [NeMo Gym Evaluation Reproducibility Guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md)
 - [Quantization Guide (PTQ + QAD)](docs/nemotron/super35/quantization.md)
 - [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16)

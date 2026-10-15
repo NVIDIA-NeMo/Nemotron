@@ -1,7 +1,7 @@
 # Stage 1: Supervised Fine-Tuning (SFT)
 
-Turn the Megatron-format Super-VL checkpoint into an instruction-following
-vision-language model with Megatron-Bridge's Nemotron 3.5 Super VL SFT recipes.
+Turn the Megatron-format Nemotron 3.5 Super checkpoint into an instruction-following
+vision-language model with Megatron-Bridge's Super-VL SFT recipes.
 
 ## Overview
 
@@ -13,35 +13,35 @@ steps on top of Megatron-Bridge's `nemotron_35_super_vl_sft_config`.
 
 | Component | Description |
 |-----------|-------------|
-| `train.py` | Loads the MB recipe named in the YAML `recipe:` block, merges YAML/CLI overrides, exports the recipe's HybridEP/NVTE env vars and calls Megatron-Bridge `finetune()` with `nemotron_omni_step` |
-| `config/default.yaml` | **SFT stage 1** — MB's verified 64x H100 SFT configuration |
+| `train.py` | Loads the Megatron-Bridge recipe named in the YAML `recipe:` block, merges YAML/CLI overrides, exports the recipe's HybridEP/NVTE env vars and calls Megatron-Bridge `finetune()` with `nemotron_omni_step` |
+| `config/default.yaml` | **SFT stage 1** — Megatron-Bridge's verified 64× H100 SFT configuration |
 | `config/stage2.yaml` | **SFT stage 2** — continues from stage 1 on a second blend; output `super35-sft-model` |
-| `config/peft.yaml` | LoRA (rank 32) on 16x H100 — MB's verified LoRA configuration |
-| `config/long_context.yaml` | 128K text SFT on 128x GB200 — **unverified in Megatron-Bridge** |
+| `config/peft.yaml` | LoRA (rank 32) on 16× H100 — Megatron-Bridge's verified LoRA configuration |
+| `config/long_context.yaml` | 128K text SFT on 128× GB200 — **unverified in Megatron-Bridge** |
 | `config/tiny.yaml` | 10-step smoke test on the default layout (still the full 120B model) |
 
-### What the recipe trains
+### What the Recipe Trains
 
 | Component | SFT (`default`, `stage2`) | LoRA (`peft`) |
 |-----------|---------------------------|---------------|
 | Language model (hybrid Mamba-Transformer latent MoE) + shared MTP | trained | LoRA adapters |
 | Vision projector | trained | frozen |
-| RADIO vision encoder + temporal video embedder | frozen | frozen |
+| C-RADIO vision encoder + temporal video embedder | frozen | frozen |
 
 The shared MTP block is trained with two prediction depths at an auxiliary loss scale of 0.3.
 Data is read from an Energon WebDataset through the Nemotron Omni task encoder (images and
 video; no audio). The report fine-tunes language and vision components jointly; set
-`model.freeze_vision_model=false` to unfreeze RADIO as well (see the freeze matrix in MB's
+`model.freeze_vision_model=false` to unfreeze C-RADIO as well (see the freeze matrix in Megatron-Bridge's
 `examples/models/nemotron/nemotron_3/super_vl/README.md`).
 
-### Default vs. production settings
+### Default vs. Production Settings
 
-The configs default to Megatron-Bridge's **verified** card so they run as-is. The report's
+The configs default to Megatron-Bridge's **verified** configuration so they run as-is. The report's
 production run used a non-public blend and much longer packed sequences:
 
-| Setting | Default (MB verified, H100) | Tech report §3.1 |
+| Setting | Default (Megatron-Bridge verified, H100) | Tech report §3.1 |
 |---------|-----------------------------|------------------|
-| Hardware | 8 nodes x 8 H100 | not stated |
+| Hardware | 8 nodes × 8 H100 | not stated |
 | Parallelism | TP2 (SP) / PP2 / EP32, full recompute | not stated |
 | Sequence length | 4,096 | packed up to 524,288 |
 | Global batch | 1,280 | 32 |
@@ -64,12 +64,10 @@ uv run nemotron super35 data import sft /path/to/energon/stage1
 uv run nemotron super35 data import sft /path/to/energon/stage2 --name super35-sft-stage2-data
 ```
 
-The Super 3.5 SFT blends are not public yet, so these are your own Energon datasets.
-
 The `long_context` config builds its own text dataset (Hugging Face CoderForge at a pinned
 revision, offline-packed to 131,072 tokens) and ignores `run.data`.
 
-## Starting checkpoint
+## Starting Checkpoint
 
 `run.model` must be a Megatron-format checkpoint. Either use
 [Stage 0](../stage0_pretrain/README.md)'s output (`super35-pretrain-model`), or convert the
@@ -97,7 +95,7 @@ uv run nemotron super35 sft -c stage2 --run YOUR-CLUSTER
 # LoRA (2 nodes)
 uv run nemotron super35 sft -c peft --run YOUR-CLUSTER
 
-# Long-context SFT (32 GB200 nodes x 4 GPUs; unverified)
+# Long-context SFT (32 GB200 nodes × 4 GPUs; unverified)
 uv run nemotron super35 sft -c long_context --run YOUR-GB200-CLUSTER
 
 # Production-style overrides (example)
@@ -116,7 +114,7 @@ uv run nemotron super35 sft --run YOUR-CLUSTER \
 | `long_context` | `super35-pretrain-model` | (CoderForge, from recipe) | `super35-sft-long-context-model` |
 | `tiny` | `super35-pretrain-model` | `super35-sft-data` | `super35-sft-model-tiny` |
 
-## Handing off to RL
+## Handing Off to RL
 
 The stage-2 output (`super35-sft-model`, Megatron format) feeds RL directly: the RL runner
 converts it to Hugging Face on first use (written to `<ckpt>/hf`), so no manual export is
@@ -126,7 +124,7 @@ needed. To start RL from an externally produced checkpoint instead, register it:
 uv run nemotron super35 model import sft /path/to/super35-sft-hf
 ```
 
-For LoRA, MB notes that standalone HF adapter export does not preserve the trained router
+For LoRA, Megatron-Bridge notes that standalone HF adapter export does not preserve the trained router
 expert-bias buffers: reload natively, merge into the full model, then export.
 
 ## Software

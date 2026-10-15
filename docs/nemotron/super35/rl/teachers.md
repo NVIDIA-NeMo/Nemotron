@@ -1,15 +1,6 @@
 # Specialist Teachers (Stage 2.2)
 
-Each teacher continues RL from a shared trunk on a narrow, domain-specific mix so it can push one capability further than the generalist student. [MOPD](mopd.md) then distills the teachers back into a single model. All teachers use asynchronous GRPO in NeMo-RL. In this recipe every teacher config trains five repeated, detached MTP heads (coefficient 0.3); the reference runs used different MTP settings, noted per teacher below.
-
-:::{admonition} Pending open-source release
-:class: warning
-
-- The teacher data used for Super 3.5 is not yet published, and neither is the report's length-penalized GenRM variant (NeMo-RL's public recipe uses [`nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM)). The training stack is public: NeMo-RL `super-v3.5-posttraining` @ `f299847f1` (NeMo Gym `e24db4e6`).
-- **Agentic teacher: blocked.** Its Terminal-Bench agent environment is not in public NeMo Gym. The config is provided for reference and cannot be launched.
-- **Vision tool-use and vision-reasoning teachers** have not yet been fully GPU-validated on the shared RL stack.
-- **Vision-reasoning stage 2** uses a structured-answer verifier that is not yet in public NeMo Gym.
-:::
+Each Nemotron 3.5 Super teacher continues RL from a shared checkpoint on a narrow, domain-specific mix, so it can push one capability further than the generalist student. [MOPD](mopd.md) then distills the teachers back into a single model. All teachers use asynchronous GRPO in NeMo-RL. Each section below separates what the report states from what the config sets; where the report is silent, values come from the reference config.
 
 ---
 
@@ -21,17 +12,15 @@ Each teacher continues RL from a shared trunk on a narrow, domain-specific mix s
 | [Reasoning](#reasoning-teacher) | `rl teacher reasoning` | RLVR step 120 | 64 | 80 | MOPD phase 1 |
 | [Vision tool use](#vision-tool-use-teacher) | `rl teacher vision` | RLVR step 120 | 16 | 40 | MOPD phases 1 and 2 |
 | [Video reasoning and tracking](#video-teacher) | `rl teacher video` | RLVR step 120 | 32 | 60 | MOPD phase 2 |
-| [Vision reasoning](#vision-reasoning-teacher) | `rl teacher vision-reasoning [-c stage2]` | RLVR step 120 → stage 1 (the report: "an existing multimodal RLVR checkpoint") | 32 / 33 | 114 → 20 | MOPD phase 2 |
-| [Alignment (RLHF) teacher 1](#alignment-rlhf-teachers) | `rl teacher rlhf [-c teacher1_stage2]` | SFT | 32 / 32 | 120 → 500 | MOPD phase 1 |
-| [Alignment (RLHF) teacher 2](#alignment-rlhf-teachers) | `rl teacher rlhf -c teacher2_stage1 \| teacher2_stage2` | RLVR step 120 | 64 / 32 | 200 → 120 | MOPD phase 2 |
+| [Vision reasoning](#vision-reasoning-teacher) | `rl teacher vision-reasoning [-c stage2]` | RLVR step 120 → stage 1 | 32 / 33 | 114 → 20 | MOPD phase 2 |
+| [RLHF teacher 1](#alignment-rlhf-teachers) | `rl teacher rlhf [-c teacher1_stage2]` | SFT | 32 / 32 | 120 → 500 | MOPD phase 1 |
+| [RLHF teacher 2](#alignment-rlhf-teachers) | `rl teacher rlhf -c teacher2_stage1 \| teacher2_stage2` | RLVR step 120 | 64 / 32 | 200 → 120 | MOPD phase 2 |
 
 Nodes are GB200 nodes with 4 GPUs. `run.env.nodes` covers training and generation; external GenRM and judge servers are extra (see each teacher). Every teacher writes `super35-rl-teacher-<name>-model`; the two-stage teachers also write an intermediate artifact.
 
-Each section below separates what the report states from what the config sets. Where the report is silent, values come from the reference-run configs the recipe is ported from.
-
 ## Data Artifacts
 
-The teacher data is not yet published. Each config reads its own data artifact (`run.data`); register your NeMo Gym JSONL under exactly that name:
+Each config reads its own data artifact (`run.data`); register your NeMo Gym JSONL under exactly that name:
 
 | Config | Data: import as |
 |--------|-----------------|
@@ -52,8 +41,8 @@ uv run nemotron super35 data import rl /data/video/train.jsonl --val /data/video
 uv run nemotron super35 data import rl /data/vr1/train.jsonl --val /data/vr1/val.jsonl --name super35-rl-teacher-vision-reasoning-stage1-data
 uv run nemotron super35 data import rl /data/vr2/train.jsonl --val /data/vr2/val.jsonl --name super35-rl-teacher-vision-reasoning-data
 uv run nemotron super35 data import rl /data/rlhf1/train.jsonl --val /data/rlhf1/val.jsonl --name super35-rl-teacher-rlhf1-data
-uv run nemotron super35 data import rl /data/rlhf2a/train.jsonl --val /data/rlhf2a/val.jsonl --name super35-rl-teacher-rlhf2-stage1-data
-uv run nemotron super35 data import rl /data/rlhf2b/train.jsonl --val /data/rlhf2b/val.jsonl --name super35-rl-teacher-rlhf2-data
+uv run nemotron super35 data import rl /data/rlhf2-stage1/train.jsonl --val /data/rlhf2-stage1/val.jsonl --name super35-rl-teacher-rlhf2-stage1-data
+uv run nemotron super35 data import rl /data/rlhf2-stage2/train.jsonl --val /data/rlhf2-stage2/val.jsonl --name super35-rl-teacher-rlhf2-data
 uv run nemotron super35 data import rl /data/agentic/train.jsonl --val /data/agentic/val.jsonl --name super35-rl-teacher-agentic-data
 ```
 
@@ -63,11 +52,7 @@ Image and video paths inside the rows must resolve inside the RL container; moun
 
 ## Agentic Teacher
 
-:::{admonition} Blocked
-:class: warning
-
-The Terminal-Bench half of this teacher uses an agent environment that is not in public NeMo Gym, and no validated replacement exists. The recipe does not substitute a different Terminal-Bench implementation silently. `agentic/config/default.yaml` documents the setup for reference.
-:::
+> **Blocked**: the Terminal-Bench half of this teacher needs an agent environment that is not in public NeMo Gym, and no validated replacement exists. `agentic/config/default.yaml` documents the setup for reference; the recipe does not silently substitute a different Terminal-Bench implementation.
 
 The report (§3.3.1) trains this teacher with full end-to-end GRPO on sandboxed, fully executable Terminal, SWE, and Search tasks, with no single-step environments, profiled for difficulty against the RLVR step-120 checkpoint.
 
@@ -79,9 +64,9 @@ The report (§3.3.1) trains this teacher with full end-to-end GRPO on sandboxed,
 | Context | — | 192K |
 | Learning rate | — | 3e-6 |
 | Nodes | — | 128 (32 training, TP8 / CP8 / EP8; 96 generation) |
-| Selected checkpoint | — | Step 14 (the config is recovered from the neighbouring step 15) |
+| Selected checkpoint | — | Step 14 (the config is recovered from the neighboring step 15) |
 
-The config mixes Terminal-Bench, SWE-bench and BrowseComp prompts (the report's Terminal, SWE and Search environments, §3.3.1). The reference run started from a text-only RLVR export whose identity with the selected step-120 weights is not confirmed, and trained with MTP loss off. Artifact: `super35-rl-teacher-agentic-model`.
+The config mixes Terminal-Bench, SWE-bench, and BrowseComp prompts (the report's Terminal, SWE, and Search environments). Differences from the reference run: that run started from a text-only RLVR export whose identity with the selected step-120 weights is unconfirmed (the dashed edge in the [lineage diagram](index.md#why-three-sub-stages)), and it trained with MTP loss off. Artifact: `super35-rl-teacher-agentic-model`.
 
 ## Reasoning Teacher
 
@@ -98,7 +83,13 @@ The report (§3.3.2) replaces the broad RLVR mixture with a reasoning-focused cu
 | Selected checkpoint | Step 80 (the config stops there) |
 | Config layout | 64 nodes: 16 training (TP4 / CP16 / EP32) + 48 generation |
 
-Differences from the reference run: the config uses DeepSeek-V4-Flash as the judge throughout (the reference run switched judges at step 30), keeps reasoning enabled on coding prompts, trains five MTP heads at coefficient 0.3 (one head, coefficient 1 historically), and keeps one MTP speculative token for generation. Point `DSV4_JUDGE_BASE_URL` (and `DSV4_JUDGE_MODEL`, default `deepseek-ai/DeepSeek-V4-Flash`) at your endpoint and export `NVIDIA_API_KEY`; a hosted judge needs no cluster nodes. Coding rewards need a NeMo-Skills sandbox (`run.env.sandbox.container`).
+Differences from the reference run:
+
+- DeepSeek-V4-Flash is the judge throughout (the reference run switched judges at step 30).
+- Reasoning stays on for coding prompts.
+- Five MTP heads at coefficient 0.3 (the reference run: one head, coefficient 1); generation keeps one MTP speculative token.
+
+Point `DSV4_JUDGE_BASE_URL` (and `DSV4_JUDGE_MODEL`, default `deepseek-ai/DeepSeek-V4-Flash`) at your endpoint and export `NVIDIA_API_KEY`; a hosted judge needs no cluster nodes. Coding rewards need a NeMo-Skills sandbox (`run.env.sandbox.container`).
 
 ```bash
 uv run nemotron super35 rl teacher reasoning --run YOUR-CLUSTER run.env.sandbox.container=<sandbox-image>
@@ -110,7 +101,7 @@ Artifact: `super35-rl-teacher-reasoning-model`.
 
 The report (§3.4.2) trains effective tool use on complex vision tasks. Tools (crop, zoom, rotate, flip, difference detection, side-by-side comparison, overlays, object counting, color analysis) are called as structured XML. The training set is synthetic multiple-choice and numerical questions that need one or more tools, filtered to samples that are nearly impossible to solve without them. Rewards are outcome correctness plus an auxiliary tool-use reward that penalizes duplicate and malformed calls. Checkpoints are selected on V\*, HRBench8K, and BabyVision accuracy.
 
-The report does not give batch or schedule settings. The config's values (from the reference run):
+The report does not give batch or schedule settings. The config's values (from the reference config):
 
 | Parameter | Config |
 |-----------|--------|
@@ -152,19 +143,23 @@ Artifact: `super35-rl-teacher-video-model`.
 
 ## Vision-Reasoning Teacher
 
-Improves reasoning over charts, documents, tables, OCR, geometry, and visual puzzles, with outcome rewards from math, multiple-choice, and string-matching verifiers (report §3.4.3). It runs in two stages:
+Improves reasoning over charts, documents, tables, OCR, geometry, and visual puzzles, with outcome rewards from math, multiple-choice, and string-matching verifiers (report §3.4.3).
+
+> **Stage 2 is blocked**: its structured-answer verifier is not yet in public NeMo Gym.
+
+It runs in two stages:
 
 | | Stage 1 (`-c stage1`, default) | Stage 2 (`-c stage2`) |
 |---|---|---|
 | Data (report) | 16,090 profiled examples | 13,848 examples: 8,366 chart-reasoning + 5,482 document/table/OCR; exact duplicates removed |
-| Starts from | RLVR step 120 (the report says "an existing multimodal RLVR checkpoint") | Stage 1 step 114, **policy weights only** (fresh optimizer) |
+| Starts from | RLVR step 120, as in the reference run (the report: "an existing multimodal RLVR checkpoint") | Stage 1 step 114, **policy weights only** (fresh optimizer) |
 | Prompts × generations | 256 × 16 | 256 × 16 |
 | Context, LR (config) | 32K, 3e-6 | 32K, 3e-6 |
 | Training parallelism (config) | TP2 / CP1 / EP16, no router replay | TP2 / CP2 / EP16, router replay on |
 | Nodes | 32 (report: 128 GPUs on 32 nodes) | 33 (the reference run added a dedicated Ray head) |
 | Selected checkpoint | Step 114 (config runs to 125) | Step 20 (config runs to 54) |
 
-Both stages freeze the vision encoder and projector. Stage 2 keeps its structured-answer verifier for set, ordered-list, and interval answers. The reference runs trained five MTP heads at coefficient 0.1 (stage 1) and no MTP loss (stage 2); the stage-1 config follows the retained step-110 config.
+Both stages freeze the vision encoder and projector. Stage 2 keeps its structured-answer verifier for set, ordered-list, and interval answers. The reference runs trained five MTP heads at coefficient 0.1 (stage 1) and no MTP loss (stage 2); the stage-1 config is ported from the reference run's saved step-110 config.
 
 ```bash
 uv run nemotron super35 rl teacher vision-reasoning --run YOUR-CLUSTER            # stage 1
@@ -177,16 +172,16 @@ Artifacts: `super35-rl-teacher-vision-reasoning-stage1-model` (stage 1), `super3
 
 The report (§3.5) trains an alignment teacher primarily with RLHF against a GenRM: a new variant of the Nemotron 3 Ultra GenRM trained with a reasoning-length penalty, which together with MTP inference makes training substantially faster. Instead of cyclic self-comparison, every policy response is compared with a fixed response from Gemma 4 31B-it, scored by the mean of per-rubric scores. The blend adds new preference data, updated model identity and capability data, and more emphasis on language mixing, and is mixed with Nemotron 3 Ultra's abstention training and a small reasoning-length penalty. Policy improvements are evaluated on NVIDIA's internal chat benchmark.
 
-The report describes one alignment teacher. The reference run, and the recipe, train two (one per MOPD phase), each in two substages. The substage structure, blends, and penalties below come from the reference-run configs:
+The report describes one alignment teacher, started from the RL trunk (Figure 4; NeMo-RL's guide does the same). The reference run, and this recipe, train two, one per MOPD phase, each in two stages; RLHF teacher 1 starts from SFT. The stage structure, blends, and penalties below come from the reference config (Blends 1–3 are its three alignment blends; `src/nemotron/recipes/super35/stage2_rl/stage2_teachers/rlhf/README.md` lists their sizes):
 
-| Config | Substage | Initialization | Data | Reasoning-length penalty | Selected step | Artifact |
-|--------|----------|----------------|------|--------------------------|---------------|----------|
-| `teacher1_stage1` (default) | 1a | SFT checkpoint | Blend 1 | 0.12 | 120 | `super35-rl-teacher-rlhf1-stage1-model` |
-| `teacher1_stage2` | 1b | **Full-state resume** of 1a step 120 | Blend 1 | 0.06 | 500 (500 RLHF steps in total) | `super35-rl-teacher-rlhf1-model` |
-| `teacher2_stage1` | 2a | RLVR step 120 | Blend 2 | 0.06 | 200 | `super35-rl-teacher-rlhf2-stage1-model` |
-| `teacher2_stage2` | 2b | 2a step 200, **weights only** (fresh optimizer, restarted step counter) | Blend 3 (Blend 2 + abstention prompts), abstention reward 0.2 | 0.06 | 120 (320 RLHF steps in total) | `super35-rl-teacher-rlhf2-model` |
+| Config | Initialization | Data | Reasoning-length penalty | Selected step | Artifact |
+|--------|----------------|------|--------------------------|---------------|----------|
+| `teacher1_stage1` (default) | SFT checkpoint | Blend 1 | 0.12 | 120 | `super35-rl-teacher-rlhf1-stage1-model` |
+| `teacher1_stage2` | **Full-state resume** of `teacher1_stage1` step 120 | Blend 1 | 0.06 | 500 (500 RLHF steps in total) | `super35-rl-teacher-rlhf1-model` |
+| `teacher2_stage1` | RLVR step 120 | Blend 2 | 0.06 | 200 | `super35-rl-teacher-rlhf2-stage1-model` |
+| `teacher2_stage2` | `teacher2_stage1` step 200, **weights only** (fresh optimizer, restarted step counter) | Blend 3 (Blend 2 + abstention prompts), abstention reward 0.2 | 0.06 | 120 (320 RLHF steps in total) | `super35-rl-teacher-rlhf2-model` |
 
-All substages use 32 prompts × 32 generations, a 48K context with up to 16K generated tokens, LR 2e-6, text-only data, and frozen vision towers. Each config stops at its selected step.
+All stages use 32 prompts × 32 generations, a 48K context with up to 16K generated tokens, LR 2e-6, text-only data, and frozen vision towers. Each config stops at its selected step.
 
 | Config | Nodes (`run.env.nodes`) | External servers in the reference run |
 |--------|------------------------:|---------------------------------------|
@@ -194,10 +189,10 @@ All substages use 32 prompts × 32 generations, a 48K context with up to 16K gen
 | `teacher2_stage1` | 64 (32 + 32) | GenRM, 32 TP8 replicas (64 nodes) |
 | `teacher2_stage2` | 32 (16 + 16) | GenRM (32 nodes) + abstention judge, Qwen3-235B-A22B-Instruct-2507-FP8, 4 TP4 replicas (4 nodes) |
 
-- **1b must resume 1a's full training state** (optimizer, scheduler, step counter, dataloader position), not just its weights. Both substages share one checkpoint directory.
-- **2b is a fresh run** warm-started from 2a's exported weights.
-- Set the GenRM and abstention judge endpoints with `GENRM_BASE_URL`, `GENRM_MODEL`, `ABSTENTION_JUDGE_BASE_URL`, and `ABSTENTION_JUDGE_MODEL`.
-- Differences from the reference run: training uses TP8 / CP8 / EP16 (the reference launch scripts used TP4 / CP2 / EP16), the reference teachers loaded a text-only architecture rather than the full VL checkpoint with frozen towers, and MTP training follows the recipe-wide setting.
+- **`teacher1_stage2` must resume `teacher1_stage1`'s full training state** (optimizer, scheduler, step counter, dataloader position), not just its weights. Both stages share one checkpoint directory.
+- **`teacher2_stage2` is a fresh run** warm-started from `teacher2_stage1`'s exported weights.
+- Set the GenRM and abstention judge endpoints with `GENRM_BASE_URL`, `GENRM_MODEL`, `ABSTENTION_JUDGE_BASE_URL`, and `ABSTENTION_JUDGE_MODEL` (see [External Services](index.md#external-services)).
+- Differences from the reference run: training uses TP8 / CP8 / EP16 (the reference launch scripts used TP4 / CP2 / EP16), the reference teachers loaded a text-only architecture rather than the full vision-language checkpoint with frozen towers, and MTP training follows the recipe-wide setting.
 
 ```bash
 uv run nemotron super35 rl teacher rlhf --run YOUR-CLUSTER
@@ -206,7 +201,9 @@ uv run nemotron super35 rl teacher rlhf -c teacher2_stage1 --run YOUR-CLUSTER
 uv run nemotron super35 rl teacher rlhf -c teacher2_stage2 --run YOUR-CLUSTER
 ```
 
----
+## Next Steps
+
+Distill the teachers with [MOPD](mopd.md).
 
 ## Reference
 

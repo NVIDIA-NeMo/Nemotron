@@ -15,7 +15,7 @@ Maps the paper's post-trained evaluation (§3.8) to `src/nemotron/recipes/super3
 
 ## What the repo exposes
 
-`nemotron super35 eval` compiles `config/default.yaml` and runs `nemo-evaluator-launcher`: it serves the checkpoint with vLLM (default model `super35-rl-mopd-phase2-model:latest`) and runs NeMo Evaluator tasks. Task settings follow NeMo Evaluator's Nemotron 3 Super example.
+`nemotron super35 eval` compiles `config/default.yaml` and runs `nemo-evaluator-launcher`: it serves the checkpoint with vLLM (default model `super35-rl-mopd-phase2-model:latest`) and runs NeMo Evaluator tasks. vLLM serves Hugging Face checkpoints only, so export the selected RL step to Hugging Face, register it with `super35 model import rl`, and pass it as `run.model`. Task settings follow NeMo Evaluator's Nemotron 3 Super example.
 
 Enabled by default: GPQA-Diamond, SciCode, LiveCodeBench v6 (`test_v6_2408_2505`, 3 repeats), IFBench, MMLU-ProX. Available but off by default because they need a judge, an API key, a user simulator, or a local scorer: HLE (text), AA-LCR, AA-Omniscience, CritPt, Tau2 Retail/Airline/Telecom, WMT24++ COMET.
 

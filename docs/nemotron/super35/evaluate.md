@@ -1,18 +1,12 @@
 # Stage 3: Evaluation
 
-This page has three parts: the tech report's results for the released checkpoints, how to reproduce them with [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), and the `nemotron super35 eval` stage, which runs a subset of those benchmarks with [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) to check your own training runs.
-
-The report collects every post-trained result, for Super 3.5 and for the baselines, with NeMo Gym. NeMo Gym's [Super 3.5 reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) has one recipe per Table 10 benchmark with the settings of the published run; use it to compare against the report (see [Reproducing the Published Results](#reproducing-the-published-results-nemo-gym)). `super35 eval` uses NeMo Evaluator instead, so its scores are not expected to match the tables below exactly.
-
-:::{note}
-The reproducibility guide is on NeMo Gym's `jakub/marlin` branch until it is merged to `main`. The multimodal Table 10 benchmarks (BabyVision, CharXiv-RQ, MathVision, MMLongBench-Doc, OCR-Reasoning, OCRBench-v2, V\*, Video-MME-v2), NV Chat Benchmark (internal to NVIDIA), HLE with tools, the OpenCode BrowseComp harness, and Text Arena have no recipe there.
-:::
+This page summarizes the tech report's evaluation of the released Nemotron 3.5 Super checkpoints, all collected with [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), and shows two ways to evaluate your own: `nemotron super35 eval`, which runs five Table 10 benchmarks with [NeMo Evaluator](https://github.com/NVIDIA-NeMo/Evaluator) to check training runs, and NeMo Gym's [Super 3.5 reproducibility recipes](#reproducing-table-10-with-nemo-gym), which use the published runs' settings and are the way to compare against the report.
 
 ---
 
-## Evaluation Setup (report §3.8)
+## Evaluation Setup
 
-All models were evaluated under the same settings: agentic resources (CPU, timeouts, tools, search APIs), input data, prompt templates, number of repeats, and extraction and metric implementations. Sampling parameters (temperature, top-p, maximum tokens) follow each model's card.
+The report (§3.8) evaluates all models under the same settings: agentic resources (CPU, timeouts, tools, search APIs), input data, prompt templates, number of repeats, and extraction and metric implementations. Sampling parameters (temperature, top-p, maximum tokens) follow each model's card.
 
 | Category | Benchmarks and protocol |
 |----------|-------------------------|
@@ -26,7 +20,7 @@ All models were evaluated under the same settings: agentic resources (CPU, timeo
 
 ## Results
 
-### Post-trained model (Table 10)
+### Post-Trained Model (Table 10)
 
 Nemotron 3.5 Super (BF16) against the six open models the report compares with. A dash means the report has no result.
 
@@ -79,9 +73,12 @@ Nemotron 3.5 Super (BF16) against the six open models the report compares with. 
 | MMLU-ProX | 76.91 | 83.10 | 83.19 | 82.98 | 85.53 | 83.97 | 82.99 |
 | WMT24++ COMET | 84.80 | 82.06 | 86.34 | 86.20 | 85.50 | 84.60 | 86.13 |
 
-With about 4.6× fewer active parameters than Nemotron 3 Ultra, Super 3.5 scores higher than Ultra on SWE-bench Pro, τ³-Bench Banking, Terminal-Bench 2.1, GDPVal-AA, both BrowseComp settings, SciCode, GPQA-Diamond, CritPt, both HLE settings, Apex-Shortlist, AA-Omniscience accuracy, GraphWalks, NV Chat Benchmark, and WMT24++. It scores lower on SWE-bench Verified and Multilingual, the three τ²-Bench domains, LiveCodeBench v6, AA-Omniscience non-hallucination, AA-LCR, IFBench, and MMLU-ProX.
+With about 4.6× fewer active parameters than Nemotron 3 Ultra, Super 3.5 compares with Ultra as follows:
 
-> **Note**: These numbers come from the full post-training pipeline, including data that is not yet published, and from the MTP-boosted release checkpoint. Checkpoints trained with these recipes on other data will score differently.
+- **Higher**: SWE-bench Pro, τ³-Bench Banking, Terminal-Bench 2.1, GDPVal-AA, both BrowseComp settings, SciCode, GPQA-Diamond, CritPt, both HLE settings, Apex-Shortlist, AA-Omniscience accuracy, GraphWalks, NV Chat Benchmark, WMT24++.
+- **Lower**: SWE-bench Verified and Multilingual, the three τ²-Bench domains, LiveCodeBench v6, AA-Omniscience non-hallucination, AA-LCR, IFBench, MMLU-ProX.
+
+> **Note**: These scores are for the released, MTP-boosted checkpoint, trained with data that is not yet published. Checkpoints trained with these recipes on other data will score differently.
 
 ### Text Arena (Table 11)
 
@@ -94,9 +91,9 @@ Elo ratings from human pairwise preference votes. The report lists both Nemotron
 | English, with style control | 1442 | 1439 | 1430 | 1445 | 1417 | 1478 |
 | English, no style control | 1432 | 1454 | 1429 | 1441 | 1421 | 1473 |
 
-### Agentic coding across harnesses (§3.10)
+### Agentic Coding Across Harnesses
 
-The report evaluates the model under six agent harnesses with unmodified system prompts and standard configurations (Figure 8). For SWE-bench Pro, Git history is removed and a user instruction prohibits cheating or seeking online resources, so these scores are not comparable with Table 10.
+The report (§3.10) evaluates the model under six agent harnesses with unmodified system prompts and standard configurations (Figure 8). For SWE-bench Pro, Git history is removed and a user instruction prohibits cheating or seeking online resources, so these scores are not comparable with Table 10.
 
 | Harness | SWE-bench Pro | Terminal-Bench 2.1 |
 |---------|--------------:|-------------------:|
@@ -109,9 +106,9 @@ The report evaluates the model under six agent harnesses with unmodified system 
 
 The harness ordering differs between the two benchmarks, so report the harness and its configuration with any agentic result.
 
-### Test-time scaling (§3.11)
+### Test-Time Scaling
 
-N independent copies of the same agent attempt each task in parallel, and the same checkpoint then picks one trajectory with LLM-as-a-Verifier: pairwise comparisons on three criteria (specification adherence, output match, error-signal detection), both presentation orders, aggregated with a Probabilistic Pivot Tournament. No extra training or separate verifier is needed (Figure 9):
+In the report's test-time scaling setup (§3.11), N independent copies of the same agent attempt each task in parallel, and the same checkpoint then picks one trajectory with LLM-as-a-Verifier: pairwise comparisons on three criteria (specification adherence, output match, error-signal detection), both presentation orders, aggregated with a Probabilistic Pivot Tournament. No extra training or separate verifier is needed (Figure 9):
 
 | Benchmark | Candidates | Tasks | Pass@1 | With selection | Gain (pp) |
 |-----------|-----------:|------:|-------:|---------------:|----------:|
@@ -124,9 +121,9 @@ N independent copies of the same agent attempt each task in parallel, and the sa
 
 On the BrowseComp subset, selection recovers about 70% of the gap between pass@1 and oracle best-of-three.
 
-### Efficiency on SWE-bench Pro (§3.9)
+### Efficiency on SWE-bench Pro
 
-Figure 7 measures the aggregate GPU time to complete SWE-bench Pro three times (2,193 tasks) on four B200 GPUs, replaying each model's recorded trajectories (NVFP4 for all models except DeepSeek V4 Flash 0731, which uses MXFP4):
+Figure 7 of the report (§3.9) measures the aggregate GPU time to complete SWE-bench Pro three times (2,193 tasks) on four B200 GPUs, replaying each model's recorded trajectories (NVFP4 for all models except DeepSeek V4 Flash 0731, which uses MXFP4):
 
 | Model | Pass@1 | GPU-hours |
 |-------|-------:|----------:|
@@ -135,11 +132,11 @@ Figure 7 measures the aggregate GPU time to complete SWE-bench Pro three times (
 | DeepSeek V4 Flash 0731 284B-A13B (MXFP4) | 56.9% | 40.4 |
 | Inkling Small 276B-A12B (NVFP4) | 56.5% | 98.9 |
 
-### Reasoning modes (§3.9)
+### Reasoning Modes
 
-The model supports **reasoning-off**, **regular**, and **medium-effort** modes; regular and medium-effort can be combined with inference-time budget control. Averaged over the Artificial Analysis Intelligence Index benchmarks, medium-effort uses about 2.2× fewer tokens than regular mode for about a 9% accuracy drop.
+The model supports **reasoning-off**, **regular**, and **medium-effort** modes (§3.9); regular and medium-effort can be combined with inference-time budget control. Averaged over the Artificial Analysis Intelligence Index benchmarks, medium-effort uses about 2.2× fewer tokens than regular mode for about a 9% accuracy drop.
 
-### Base model results
+### Base Model Results
 
 Base-model results (Table 6) were collected with the NeMo Evaluator SDK and its LM Evaluation Harness container. Nemotron 3.5 Lightning is shown for reference.
 
@@ -176,11 +173,70 @@ Base-model results (Table 6) were collected with the NeMo Evaluator SDK and its 
 | Global MMLU | avg. across 8 languages | 86.56 | 75.09 |
 | MGSM | 8-shot, native CoT, avg. across 6 languages | 87.53 | 82.27 |
 
+
 ---
 
-## Reproducing the Published Results (NeMo Gym)
+## Recipe Execution
 
-The [reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) is the reference for matching Table 10. Each benchmark is one Gym config (`nemotron_recipes/super-3.5/<benchmark>.yaml`) holding the published run's settings, and one script, `run.sh`, runs any of them against an OpenAI-compatible endpoint:
+Like the [Nemotron 3 Super evaluation](../super3/evaluate.md), `super35 eval` has no recipe script: the CLI compiles `src/nemotron/recipes/super35/stage3_eval/config/default.yaml`, resolves the model artifact, and hands the job to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). The stage has not yet been compared against Table 10 from this repository.
+
+### Quick Start
+
+```bash
+# Evaluate an HF-format checkpoint (RL checkpoints must be exported first; see Exporting Checkpoints)
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
+
+# Filter tasks
+uv run nemotron super35 eval --run YOUR-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifbench
+
+# Preview the compiled config
+uv run nemotron super35 eval --dry-run
+```
+
+### Exporting Checkpoints
+
+vLLM serves Hugging Face checkpoints only. Export Megatron checkpoints from pretrain and SFT with Megatron-Bridge (see the [SFT export command](./sft.md#direct-script-execution-megatron-bridge)). RL checkpoints are NeMo-RL `step_N` directories; export the selected step with NeMo-RL's converter and register it:
+
+```bash
+uv run --extra mcore python examples/converters/convert_megatron_to_hf.py \
+    --config /path/to/step_N/config.yaml \
+    --hf-model-name nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
+    --megatron-ckpt-path /path/to/step_N/policy/weights/iter_XXXXXXX \
+    --hf-ckpt-path /path/to/super35-hf
+uv run nemotron super35 model import rl /path/to/super35-hf --name super35-rl-mopd-phase2-hf-model
+uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
+```
+
+### Default Tasks
+
+The config runs the five Table 10 benchmarks that NeMo Evaluator supports without a judge model or extra services. Task names follow NeMo Evaluator's Nemotron 3 Super example.
+
+| Table 10 benchmark | Task | Repeats (config) | Repeats (report) |
+|--------------------|------|-----------------:|-----------------:|
+| GPQA-Diamond | `nemo_skills.ns_gpqa` | 8 | 8 |
+| SciCode | `ns_scicode` | 8 | 8 |
+| LiveCodeBench v6 | `ns_livecodebench` (`test_v6_2408_2505`) | 3 | 3 |
+| IFBench | `ns_ifbench` | 8 | 8 |
+| MMLU-ProX | `ns_mmlu_prox` | 1 | not stated |
+
+HLE, AA-LCR, AA-Omniscience, CritPt, τ²-Bench, and WMT24++ are listed but commented out in the config, because they need judge or user-simulator models, API keys, or a local XCOMET-XXL checkpoint. The agentic, multimodal, Apex-Shortlist, GraphWalks, OSWorld, and NV Chat Benchmark results are not covered by this stage.
+
+### Deployment and Sampling
+
+| Setting | Value |
+|---------|-------|
+| Serving | vLLM, tensor parallel 8 on one node, `--trust-remote-code`, FP32 Mamba SSM cache, `qwen3_coder` tool-call parser, `nemotron_v3` reasoning parser |
+| Sampling | Reasoning on (`enable_thinking: true`), temperature 1.0, top-p 0.95, up to 131,072 new tokens |
+| Container | `vllm/vllm-openai:v0.30.0` (`run.env.container`), the vLLM release the published NeMo Gym runs used |
+| Export | Results are exported to the W&B project from `env.toml` |
+
+### Reproducing Table 10 with NeMo Gym
+
+The report collects every post-trained result, for Super 3.5 and for the baselines, with NeMo Gym, so NeMo Gym's [Super 3.5 reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md) is the reference for matching Table 10; `super35 eval` uses NeMo Evaluator and is not expected to match exactly.
+
+The guide is on NeMo Gym's `jakub/marlin` branch until it is merged to `main`. It has no recipe for the multimodal Table 10 benchmarks (BabyVision, CharXiv-RQ, MathVision, MMLongBench-Doc, OCR-Reasoning, OCRBench-v2, V\*, Video-MME-v2), NV Chat Benchmark (internal to NVIDIA), HLE with tools, the OpenCode BrowseComp harness, or Text Arena.
+
+Each benchmark is one Gym config (`nemotron_recipes/super-3.5/<benchmark>.yaml`) holding the published run's settings, and one script, `run.sh`, runs any of them against an OpenAI-compatible endpoint:
 
 ```bash
 # From a separate Gym clone: run.sh switches the checkout to each recipe's pinned Gym commit
@@ -221,62 +277,9 @@ vllm serve nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
   --skip-mm-profiling --mm-encoder-attn-backend TORCH_SDPA
 ```
 
-This command was validated on 4× GB200 and does not start on 80 GB GPUs; there, follow the model card's memory settings. GraphWalks needs `--max-model-len 1048576 --max-num-batched-tokens 8192`. To evaluate your own checkpoint, serve its Hugging Face export the same way (RL checkpoints need the export in [Recipe](#recipe-nemotron-super35-eval)).
+This command was validated on 4× GB200 and does not start on 80 GB GPUs; there, follow the model card's memory settings. GraphWalks needs `--max-model-len 1048576 --max-num-batched-tokens 8192`. To evaluate your own checkpoint, serve its Hugging Face export the same way (see [Exporting Checkpoints](#exporting-checkpoints)).
 
 **Comparing numbers.** Table 10 numbers are the mean of two runs (one for CritPt, BrowseComp and AA-Omniscience), sampled at temperature 1.0, so expect run-to-run variation. Compare only full runs whose `evaluator_rollouts_failures.jsonl` is empty, and serve the model yourself: a gap against someone else's endpoint can come from their serving stack. Table 6 base-model results come from the NeMo Evaluator SDK and LM Evaluation Harness, not NeMo Gym.
-
-## Recipe: `nemotron super35 eval`
-
-### Quick Start
-
-```bash
-# Evaluate an HF-format checkpoint (RL checkpoints must be exported first; see below)
-uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
-
-# Filter tasks
-uv run nemotron super35 eval --run YOUR-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifbench
-
-# Preview the compiled config
-uv run nemotron super35 eval --dry-run
-```
-
-Like the [Nemotron 3 Super evaluation](../super3/evaluate.md), `super35 eval` has no recipe script: the CLI compiles `src/nemotron/recipes/super35/stage3_eval/config/default.yaml`, resolves the model artifact, and passes the job to [nemo-evaluator-launcher](https://github.com/NVIDIA-NeMo/Evaluator). The checkpoint must be in Hugging Face format. Megatron checkpoints from pretrain and SFT need a Megatron-Bridge export first. RL checkpoints are NeMo-RL `step_N` directories; export the selected step with NeMo-RL's converter and register it:
-
-```bash
-uv run --extra mcore python examples/converters/convert_megatron_to_hf.py \
-    --config /path/to/step_N/config.yaml \
-    --hf-model-name nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
-    --megatron-ckpt-path /path/to/step_N/policy/weights/iter_XXXXXXX \
-    --hf-ckpt-path /path/to/super35-hf
-uv run nemotron super35 model import rl /path/to/super35-hf --name super35-rl-mopd-phase2-hf-model
-uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
-```
-
-
-### Default tasks
-
-The config runs the five Table 10 benchmarks that NeMo Evaluator supports without a judge model or extra services. Task names follow NeMo Evaluator's Nemotron 3 Super example.
-
-| Table 10 benchmark | Task | Repeats (config) | Repeats (report) |
-|--------------------|------|-----------------:|-----------------:|
-| GPQA-Diamond | `nemo_skills.ns_gpqa` | 8 | 8 |
-| SciCode | `ns_scicode` | 8 | 8 |
-| LiveCodeBench v6 | `ns_livecodebench` (`test_v6_2408_2505`) | 3 | 3 |
-| IFBench | `ns_ifbench` | 8 | 8 |
-| MMLU-ProX | `ns_mmlu_prox` | 1 | not stated |
-
-HLE, AA-LCR, AA-Omniscience, CritPt, τ²-Bench, and WMT24++ are listed but commented out in the config, because they need judge or user-simulator models, API keys, or a local XCOMET-XXL checkpoint. The agentic, multimodal, Apex-Shortlist, GraphWalks, OSWorld, and NV Chat Benchmark results are not covered by this stage.
-
-### Deployment and sampling
-
-| Setting | Value |
-|---------|-------|
-| Serving | vLLM, tensor parallel 8 on one node, `--trust-remote-code`, FP32 Mamba SSM cache, `qwen3_coder` tool-call parser, `nemotron_v3` reasoning parser |
-| Sampling | Reasoning on (`enable_thinking: true`), temperature 1.0, top-p 0.95, up to 131,072 new tokens |
-| Container | `vllm/vllm-openai:v0.30.0` (`run.env.container`), the vLLM release the published NeMo Gym runs used |
-| Export | Results are exported to the W&B project from `env.toml` |
-
-The eval stage has not been run against Table 10 from this repository.
 
 ## Reference
 

@@ -24,11 +24,11 @@ Values below are from the checked-in YAMLs; re-read the YAML before quoting, sin
 | Vision (tool use) teacher | RLVR | 40 |
 | Video teacher | RLVR | 60 |
 | Vision-reasoning teacher | RLVR → stage 1 (114) → stage 2 (recipe starts from text RLVR; §3.4.3 says "an existing multimodal RLVR checkpoint") | 20 |
-| Alignment (RLHF) teacher 1 | SFT | 120, then full resume to 500 |
-| Alignment (RLHF) teacher 2 | RLVR | stage 1 step 200 → stage 2 (weights only) step 120 |
+| RLHF teacher 1 | SFT | 120, then full resume to 500 |
+| RLHF teacher 2 | RLVR | stage 1 step 200 → stage 2 (weights only) step 120 |
 | Agentic teacher | RLVR | 14 (config only; cannot be launched publicly) |
-| MOPD phase 1 | RLVR + agentic, reasoning, RLHF 1, vision | 30 |
-| MOPD phase 2 | MOPD phase 1 + RLHF 2, vision, vision reasoning, video | 30 (= released backbone, before MTP boosting) |
+| MOPD phase 1 | RLVR + agentic, reasoning, RLHF teacher 1, vision | 30 |
+| MOPD phase 2 | MOPD phase 1 + RLHF teacher 2, vision, vision reasoning, video | 30 (= released backbone, before MTP boosting) |
 
 ---
 
@@ -54,7 +54,7 @@ All configs: GB200-style 4-GPU nodes, KL penalty 0, async GRPO enabled. RLVR's j
 
 ---
 
-## Runner behaviour (`_nemo_rl.py`)
+## Runner behavior (`_nemo_rl.py`)
 
 - resolves only `${art:...}` artifact references; secrets stay as `oc.env` interpolations, so their values never land in the handed-off YAML;
 - converts Megatron-Bridge and NeMo-RL `step_N` checkpoints to HF under `<ckpt>/hf`, or `<converted_checkpoint_dir>/<name>_hf` when set (policy, and each MOPD teacher);
@@ -69,7 +69,7 @@ All configs: GB200-style 4-GPU nodes, KL penalty 0, async GRPO enabled. RLVR's j
 - The report's length-penalized GenRM variant is not public; NeMo-RL's public recipe uses `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`.
 - Agentic teacher: blocked (legacy Terminal-Bench agent and configs not in public NeMo Gym). `rl mopd -c single_stage` (port of NeMo-RL's `mopd.yaml`) is MOPD phase 1 without it: agentic routes go to the self-anchor.
 - Vision-reasoning stage 2: structured-answer verifier unpublished. The reasoning teacher's STEM judge prompt ships with NeMo-RL (`examples/nemo_gym/nemotron-3.5-super/prompts/reasoning_semantic.txt`) and is the config default.
-- NeMo-RL's own [Super 3.5 guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md) is a shorter lineage (one RLHF teacher, no video/vision-reasoning/agentic teachers, single-stage MOPD); see `docs/nemotron/super35/rl/index.md → Relation to NeMo-RL's Super 3.5 guide`.
+- NeMo-RL's own [Super 3.5 guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md) is a shorter lineage (one RLHF teacher, no video/vision-reasoning/agentic teachers, single-stage MOPD); see `docs/nemotron/super35/rl/index.md → NeMo-RL's Super 3.5 Guide`.
 - MTP boosting (§3.7) has no recipe.
 
 Human guides: `docs/nemotron/super35/rl/{index,rlvr,teachers,mopd}.md`.

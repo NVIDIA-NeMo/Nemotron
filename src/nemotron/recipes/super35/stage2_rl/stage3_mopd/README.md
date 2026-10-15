@@ -1,11 +1,11 @@
-# Stage 3: Multi-Teacher On-Policy Distillation (MOPD)
+# Stage 2.3: Multi-Teacher On-Policy Distillation (MOPD)
 
-MOPD merges the specialist teachers from [stage 2](../stage2_teachers/README.md)
-into one student model. It runs in two phases on 128 GB200 nodes. Phase 2
-produces the final backbone of Nemotron 3.5 Super (the report then applies MTP
-boosting), which then goes to [evaluation](../../stage3_eval/README.md).
+MOPD merges the specialist teachers from [Stage 2.2](../stage2_teachers/README.md)
+into one Nemotron 3.5 Super student, in two phases on 128 GB200 nodes. Phase 2
+produces the final backbone, which goes to [evaluation](../../stage3_eval/README.md);
+the report applies MTP boosting first, which is not included here.
 
-## How it works
+## How It Works
 
 MOPD runs the same NeMo-RL GRPO entry point as the other RL stages, with an
 `on_policy_distillation` block and the `opd` advantage estimator
@@ -33,7 +33,7 @@ MOPD runs the same NeMo-RL GRPO entry point as the other RL stages, with an
    masked (`truncated_importance_sampling_type: icepop`). Only
    student-generated tokens enter the loss.
 4. **Self-anchor routing.** Prompts from environments that no specialist owns
-   go to the `general` teacher. This is a frozen copy of the student's
+   go to the self-anchor (teacher alias `general`). This is a frozen copy of the student's
    *starting* checkpoint (`${art:model,path}`). It gives no signal while the
    student still matches its start, and it pulls the student back when the
    student drifts. Agent names that are missing from the routing table also
@@ -67,20 +67,20 @@ and phase 2 toward chat quality and vision.
 | Prompts / step | 512 × 1 rollout | 1,024 × 1 rollout, `data.shuffle: false` |
 | Generation | 48K new tokens, 128K context | 128K new tokens, 128K context |
 | LR | 2e-6 | 3e-6 |
-| Training parallelism | TP4 / CP4 / EP16 (see the reference-run notes) | TP8 / CP8 / EP16 |
+| Training parallelism | TP4 / CP4 / EP16 (see [Differences from the Reference Run](#differences-from-the-reference-run)) | TP8 / CP8 / EP16 |
 | Nodes: training / generation / teachers | 64 / 30 / 34 | 64 / 44 / 20 |
 | Checkpointing | every 5 steps, budget 200 steps | every 2 steps, stops at step 40 |
-| Selected checkpoint | **step 30** | **step 30** (reference run; the report gives 40 steps) |
+| Selected checkpoint | **step 30** | **step 30** (the report gives 40 steps) |
 | Output artifact | `super35-rl-mopd-phase1-model` | `super35-rl-mopd-phase2-model` |
 
 In phase 2 the agentic and reasoning teachers are retired. Their environments
 are routed to the self-anchor, so the student is held near phase 1 on those
 domains rather than distilled again.
 
-### Phase → teacher mapping
+### Phase → Teacher Mapping
 
 Each canonical alias in `on_policy_distillation.teacher_model_by_agent_name`
-resolves to a `run:` artifact key. Every Gym agent name in the routing table
+resolves to a `run:` artifact key. Every NeMo Gym agent name in the routing table
 then points at one canonical alias.
 
 | Alias | `run:` key | Artifact | Phase 1 fleet | Phase 2 fleet |
@@ -129,15 +129,15 @@ is laid out as ordered batches. If you change the dataset, use a new
 `checkpointing.checkpoint_dir` so that the run does not resume a different
 blend's dataloader state.
 
-## Single-stage variant (no agentic teacher)
+## Single-Stage Variant (No Agentic Teacher)
 
 `-c single_stage` ports NeMo-RL's own [`mopd.yaml`](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/examples/nemo_gym/nemotron-3.5-super/mopd.yaml). It is phase 1
 with the agentic teacher removed: the agent names phase 1 sends to the agentic
 teacher go to the `general` self-anchor (the RLVR student) instead, and the
 allocation drops from 128 to 112 nodes. The other teachers (reasoning, RLHF
 teacher 1, vision) and all training settings are phase 1's. Its RLHF teacher
-is this repo's teacher 1 (from SFT), not NeMo-RL's `rlhf_teacher.yaml` (from
-Student RLVR, with abstention and a 0.12 length penalty). Every teacher it
+is this repository's RLHF teacher 1 (from SFT), not NeMo-RL's `rlhf_teacher.yaml` (from
+Student RLVR, NeMo-RL's name for its RLVR stage, with abstention and a 0.12 length penalty). Every teacher it
 uses can be trained from public code with your own data, so this is the MOPD to run until the
 agentic teacher's environment is public. It is not the report's pipeline,
 which has the agentic teacher and a second phase.
@@ -151,10 +151,10 @@ It reads the phase-1 prompt blend (`super35-rl-mopd-phase1-data`) and writes
 `super35-rl-mopd-single-stage-model`. Like NeMo-RL's config it has a 200-step
 budget and no selected step; pick the checkpoint by evaluation.
 
-## Runtime environment
+## Runtime Environment
 
 MOPD does not call any judge or GenRM servers, because verification is
-skipped. The datasets mix many Gym environments, so some resource servers
+skipped. The datasets mix many NeMo Gym environments, so some resource servers
 still read data files when they start. Set these through
 `run.env.env_vars`:
 
@@ -169,14 +169,14 @@ Code-execution environments need the NeMo-Skills sandbox
 (`run.env.sandbox.container`). The reference run wrapped `/start-with-nginx.sh` in a
 retry loop with up to six attempts, which is preserved in `run.env.sandbox.command`.
 
-## Reference-run notes
+## Differences from the Reference Run
 
 - **Phase-1 parallelism.** The selected phase-1 step-30 checkpoint came from
   a run whose saved config used **TP8 / CP8 / EP16 and zero MTP loss**. This
-  maintained recipe uses **TP4 / CP4 / EP16** with the common detached MTP5
+  recipe uses **TP4 / CP4 / EP16** with the common detached MTP5
   training (5 repeated heads, coefficient 0.3). The LR is still 2e-6, and
   policy MTP inference is off.
-- **Phase-2 self-anchor.** The historical phase-2 run used the original
+- **Phase-2 self-anchor.** The reference run's phase 2 used the original
   phase-1 run's checkpoint as its `general` teacher. This recipe uses the
   selected phase-1 step 30 as both the student and the self-anchor. Start a
   fresh experiment if you change either.
@@ -186,18 +186,16 @@ retry loop with up to six attempts, which is preserved in `run.env.sandbox.comma
 
 ## Data
 
-The MOPD prompt blends are not public yet. Register your own NeMo-Gym JSONL as
+The MOPD prompt blends are not public yet. Register your own NeMo Gym JSONL as
 `super35-rl-mopd-phase1-data` and `super35-rl-mopd-phase2-data` with
-`nemotron super35 data import rl ...`. Each row's Gym agent name must appear
+`nemotron super35 data import rl ...`. Each row's NeMo Gym agent name must appear
 in the routing table, or the row falls back to the self-anchor.
-
 
 ## Requirements
 
-- The Super 3.5 RL container (see the [RL overview](../README.md#prerequisites)),
-  built from NeMo-RL `super-v3.5-posttraining` @ `f299847f1` with NeMo-Gym
-  `e24db4e6` (pinned in [`../Dockerfile`](../Dockerfile)). The SAV tracking
-  agents and the `bc_v4_8` tool-use config used in phase 2 come from that Gym pin.
+- The Super 3.5 RL container (see [RL overview](../README.md#container)). The
+  SAV tracking agents and the `bc_v4_8` tool-use config used in phase 2 come
+  from its NeMo Gym pin.
 - All teacher artifacts for the phase you run.
 - 128 nodes × 4 GPUs (GB200).
 

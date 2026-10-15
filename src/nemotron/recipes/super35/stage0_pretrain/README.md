@@ -1,33 +1,31 @@
 # Stage 0: Vision-Language Pretraining (Megatron-Bridge)
 
-> **This is Megatron-Bridge's vision-language (image-caption) pretraining recipe
-> for Nemotron 3.5 Super VL. It is _not_ a reproduction of the tech report's text
-> pretraining**, which is not publicly reproducible (see
-> [What the tech report did](#what-the-tech-report-did)).
+`nemotron super35 pretrain` runs Megatron-Bridge's vision-language (image-caption) pretraining
+recipe for Nemotron 3.5 Super. It does not reproduce the tech report's text-only pretraining; see
+[What the Tech Report Did](#what-the-tech-report-did).
 
 ## Overview
 
-`nemotron super35 pretrain` runs Megatron-Bridge's
-`nemotron_35_super_vl_pretrain_config`: image-caption training on an
+The stage runs Megatron-Bridge's `nemotron_35_super_vl_pretrain_config`: image-caption training on an
 [Energon](https://github.com/NVIDIA/Megatron-Energon) WebDataset with **every model stack
 trainable** (hybrid Mamba-Transformer latent-MoE language model with its shared MTP head,
-RADIO vision encoder, vision projector and temporal video embedder), warm-started from a
-Super-VL checkpoint converted from Hugging Face.
+C-RADIO vision encoder, vision projector and temporal video embedder), warm-started from a
+Super 3.5 checkpoint converted from Hugging Face.
 
 | Component | Description |
 |-----------|-------------|
-| `train.py` | Loads the MB recipe named in the YAML `recipe:` block, merges YAML/CLI overrides, exports the recipe's HybridEP/NVTE env vars and calls Megatron-Bridge `pretrain()` with `nemotron_omni_step` |
-| `config/default.yaml` | MB's verified 64x H100 configuration (below) |
+| `train.py` | Loads the Megatron-Bridge recipe named in the YAML `recipe:` block, merges YAML/CLI overrides, exports the recipe's HybridEP/NVTE env vars and calls Megatron-Bridge `pretrain()` with `nemotron_omni_step` |
+| `config/default.yaml` | Megatron-Bridge's verified 64× H100 configuration (below) |
 | `config/tiny.yaml` | 10-step smoke test on the same layout (still the full 120B model) |
 
-### Default configuration
+### Default Configuration
 
-The defaults reproduce Megatron-Bridge's verified H100 pretrain card
-(`docs/models/nemotron/nemotron3.5-super-vl.md` at the pinned MB commit):
+The defaults reproduce Megatron-Bridge's verification record for H100 pretraining
+(`docs/models/nemotron/nemotron3.5-super-vl.md` at the pinned Megatron-Bridge commit):
 
 | Setting | Value |
 |---------|-------|
-| Hardware | 8 nodes x 8 H100 (64 GPUs), BF16, FP32 optimizer state |
+| Hardware | 8 nodes × 8 H100 (64 GPUs), BF16, FP32 optimizer state |
 | Parallelism | TP2 (sequence parallel) / PP2 / EP32 / ETP1, natural HybridEP routing |
 | Sequence length | 4,096 |
 | Global / micro batch | 1,280 / 1 |
@@ -35,7 +33,7 @@ The defaults reproduce Megatron-Bridge's verified H100 pretrain card
 | MTP | two shared prediction depths, loss scale 0.3 |
 | Forward step | `nemotron_omni_step` |
 
-The MB card trained on a DataComp image-caption Energon dataset and reports a
+Megatron-Bridge's verification record trained on a DataComp image-caption Energon dataset and reports a
 loss drop from 3.37 to 1.92 over 200 steps. It is bounded support verification, not a
 convergence run.
 
@@ -43,19 +41,19 @@ convergence run.
 
 Megatron-Bridge is mounted at commit
 [`f7f37b26`](https://github.com/NVIDIA-NeMo/Megatron-Bridge/commit/f7f37b263307812702ee57bbc413a8a26c0924b5)
-(the latest MB `main` commit touching `recipes/nemotronh_multimodal/nemotron_35_super_vl.py`),
+(the latest Megatron-Bridge `main` commit touching `recipes/nemotronh_multimodal/nemotron_35_super_vl.py`),
 and Megatron-LM at
 [`bab851bf`](https://github.com/NVIDIA/Megatron-LM/commit/bab851bfe3abc805256155962389ec0fe5de7571),
-the `3rdparty/Megatron-LM` submodule revision that MB commit records. Both are
+the `3rdparty/Megatron-LM` submodule revision that Megatron-Bridge commit records. Both are
 mounted over the NeMo 26.08 container via `${auto_mount:...}` in `run.env.mounts`.
 
 ## Prerequisites
 
 1. **A Megatron-format starting checkpoint.** Convert the Hugging Face checkpoint with
-   Megatron-Bridge (MB's verified import used 1 node x 4 GPUs, TP1/PP2/EP2):
+   Megatron-Bridge (Megatron-Bridge's verified import used 1 node × 4 GPUs, TP1/PP2/EP2):
 
    ```bash
-   # from a Megatron-Bridge checkout at the pinned commit (command from MB's card)
+   # from a Megatron-Bridge checkout at the pinned commit (command from Megatron-Bridge's verification record)
    ./scripts/conversion/convert.sh import --executor slurm --device gpu --nodes 1 --gpus-per-node 4 \
        --hf-model nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16 \
        --megatron-path /path/to/megatron/super35-vl \
@@ -64,7 +62,7 @@ mounted over the NeMo 26.08 container via `${auto_mount:...}` in `run.env.mounts
 
    The released Base checkpoint
    ([`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16))
-   converts with the same command and `--hf-model` swapped; MB verified the round trip on the
+   converts with the same command and `--hf-model` swapped; Megatron-Bridge verified the round trip on the
    post-trained BF16 checkpoint only.
 
 2. **An Energon image-caption dataset** (`energon prepare` output: tar shards plus
@@ -86,7 +84,7 @@ uv run nemotron super35 pretrain --dry-run
 # Smoke test (10 steps, same 8-node layout)
 uv run nemotron super35 pretrain -c tiny --run YOUR-CLUSTER
 
-# Verified MB configuration (200 steps)
+# Verified Megatron-Bridge configuration (200 steps)
 uv run nemotron super35 pretrain --run YOUR-CLUSTER
 
 # Overrides use Hydra-style dotlists
@@ -103,7 +101,7 @@ directly:
 uv run nemotron super35 model import pretrain /path/to/megatron/super35-vl
 ```
 
-## What the tech report did
+## What the Tech Report Did
 
 The Nemotron 3.5 Super base model was built with a long **text-only** pipeline starting
 from Nemotron 3 Super Base. Its data and teacher logits are not public, so it cannot be

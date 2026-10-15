@@ -1,15 +1,15 @@
-# Stage 1: Text-Only RLVR
+# Stage 2.1: RLVR
 
-Text-only multi-environment RLVR is the first RL stage for Nemotron 3.5 Super VL. It starts from the SFT checkpoint and trains on a broad NeMo-Gym environment blend. The blend mixes verifiable-reward environments with GenRM pairwise comparison (RLHF), so RLVR and RLHF run jointly in one stage.
+Text-only multi-environment RLVR is the first RL sub-stage for Nemotron 3.5 Super. It starts from the SFT checkpoint and trains on a broad NeMo Gym environment blend. The blend mixes verifiable-reward environments with GenRM pairwise comparison (RLHF), so RLVR and RLHF run jointly in one stage.
 
 The selected checkpoint is **step 120**. It feeds most of the rest of the RL pipeline:
 
-- **MOPD phase 1** uses it as the student start and as the "general" teacher.
+- **MOPD phase 1** uses it as the student start and as the self-anchor (`general` in the configs).
 - **Every specialist teacher** starts from it, except RLHF teacher 1, which starts from SFT ([stage2_teachers](../stage2_teachers/README.md)).
 
 ## Data
 
-The RLVR blend contains 47 Gym config files (see `env.nemo_gym.config_paths`), grouped roughly as follows:
+The RLVR blend contains 47 NeMo Gym config files (see `env.nemo_gym.config_paths`), grouped roughly as follows:
 
 | Domain | Environments |
 |--------|--------------|
@@ -23,9 +23,9 @@ The RLVR blend contains 47 Gym config files (see `env.nemo_gym.config_paths`), g
 | **Tool use / agentic** | Single-step tool use (incl. search / schema / SWE / Droid pivots), conversational tool-use simulation, calendar, workplace assistant, finance SEC search, NeMo-Skills tools, terminal multi-harness (several harnesses), SWE pivot, NL2Bash, Terminus judge |
 | **Reasoning Gym** | Assorted reasoning tasks |
 
-Medium-effort ("efficient") reasoning: the config sets `env.nemo_gym.effort_levels.low_weight: 0.1`, so the environment marks 10% of sampled prompts with `{reasoning effort: efficient}` and penalizes those responses past 15,000 tokens. The tech report (§3.9) describes the overall RL mix as approximately 4% medium-effort prompts covering math, STEM and coding. The 10% weight is the reference-run RLVR setting; the report does not break the 4% figure down by stage.
+Medium-effort ("efficient") reasoning: the config sets `env.nemo_gym.effort_levels.low_weight: 0.1`, so the environment marks 10% of sampled prompts with `{reasoning effort: efficient}` and penalizes those responses past 15,000 tokens. The tech report (§3.9) describes the overall RL mix as approximately 4% medium-effort prompts covering math, STEM and coding. The 10% weight is the reference run's RLVR setting; the report does not break the 4% figure down by stage.
 
-The `super35-rl-rlvr-data` artifact must point at NeMo-Gym JSONL with train/val splits. The reference run used its training file as the validation set; validation is effectively off (`val_period: 1000000`).
+The `super35-rl-rlvr-data` artifact must point at NeMo Gym JSONL with train/val splits. The reference run used its training file as the validation set; validation is effectively off (`val_period: 1000000`).
 
 ## Algorithm
 
@@ -55,28 +55,27 @@ This stage uses **asynchronous GRPO** with training and generation on separate n
 | KL penalty | 0 |
 | Router replay | off |
 
-The config is a flattened port of the maintained reference-run recipe. It keeps every key and value except the substitutions listed in its header (artifacts, paths, judge endpoints, logger names). It differs deliberately from the historical run in three ways:
+The config is a flattened port of the reference config. It keeps every key and value except the substitutions listed in its header (artifacts, paths, judge endpoints, logger names). It differs deliberately from the reference run in three ways:
 
-- It uses the same data blend from step 0. The historical run's first 34 steps used an earlier blend.
-- Router replay is off throughout. Historically, step 120 came from a router-replay fork created at step 101.
-- It keeps the 81,920 context, CP2 and 0.12/0.12 GenRM length penalties. The source recipe's later context-length and penalty changes are not included.
+- It uses the same data blend from step 0. The reference run's first 34 steps used an earlier blend.
+- Router replay is off throughout. In the reference run, step 120 came from a router-replay fork created at step 101.
+- It keeps the 81,920 context, CP2 and 0.12/0.12 GenRM length penalties. The reference run's later context-length and penalty changes are not included.
 
-## External judge servers
+## External Judge Servers
 
 Three model servers run **outside** the Ray cluster. Start them yourself (for example, vLLM with the OpenAI API) and point the config at them with environment variables. The config resolves these variables when the job starts, so set them in the job environment or pass the equivalent Hydra overrides.
 
-| Server (config key) | Env vars | Model (default) | Reference deployment | Used by |
+| Server (config key) | Env vars | Model (default) | Reference run | Used by |
 |---------------------|----------|-----------------|----------------------|---------|
 | GenRM (`genrm_model`) | `GENRM_BASE_URL`, `GENRM_MODEL`, `GENRM_API_KEY` | `/path/to/genrm_model` | 8 replicas × TP8, 131,072 context, 384 seqs | GenRM pairwise comparison |
 | General judge (`nl2bash_judge_model`) | `NL2BASH_BASE_URL`, `NL2BASH_JUDGE_MODEL` | `Qwen/Qwen3-235B-A22B-Instruct-2507-FP8` | 8 replicas × TP4 | math, equivalence, LC, multi-challenge, inverse IF, abstention, finance, NL2Bash |
 | Safety judge (`safety_judge_model`) | `SAFETY_BASE_URL`, `SAFETY_JUDGE_MODEL` | `nvidia/Nemotron-Content-Safety-Reasoning-4B` | 2 replicas × TP4 | jailbreak, over-refusal |
 
-> The GenRM variant the report trained with a reasoning-length penalty (§3.5) is not public.
-> NeMo-RL's public Super 3.5 recipe uses [`nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM) for this server.
+> For which GenRM model to serve, see [RL overview → Judge, GenRM and Teacher Servers](../README.md#judge-genrm-and-teacher-servers).
 
-All `base_url`s default to `http://127.0.0.1:8000/v1`. The `vllm_serve_kwargs` blocks record how the reference servers were configured.
+All `base_url`s default to `http://127.0.0.1:8000/v1`. The `vllm_serve_kwargs` blocks record how the reference run's servers were configured.
 
-## Other runtime inputs
+## Other Runtime Inputs
 
 | Env var | Purpose |
 |---------|---------|
@@ -85,11 +84,11 @@ All `base_url`s default to `http://127.0.0.1:8000/v1`. The `vllm_serve_kwargs` b
 | `FINANCE_SEC_CACHE_DIR`, `FINANCE_SEC_DUMP_PATH` | SEC filing cache and dump for the finance search environment |
 | `SCICODE_TEST_DATA`, `SCICODE_TRAIN_DATA` | SciCode test data (`.h5`) and agent transitions JSONL |
 
-`run.env.env_vars` also carries the runtime settings the reference launcher exported. These include the NeMo-RL/vLLM timeouts, `NRL_USE_FASTOKENS=1`, the FlashInfer MoE FP8 backend and the Gym venv directory. `VLLM_ATTENTION_BACKEND` is deliberately left unset.
+`run.env.env_vars` also carries the runtime settings the reference run's launcher exported. These include the NeMo-RL/vLLM timeouts, `NRL_USE_FASTOKENS=1`, the FlashInfer MoE FP8 backend and the NeMo Gym venv directory. `VLLM_ATTENTION_BACKEND` is deliberately left unset.
 
 ## Prerequisites
 
-- **NeMo-RL**: the `super-v3.5-posttraining` branch with its pinned Gym, Megatron-Bridge and Megatron-LM submodules. The Super3.5 RL container bakes these in; [`../Dockerfile`](../Dockerfile) pins commit `f299847f1` (Gym `e24db4e6`, Megatron-Bridge `3961f399`).
+- **NeMo-RL**: the `super-v3.5-posttraining` branch with its pinned NeMo Gym, Megatron-Bridge and Megatron-LM submodules, baked into the Super 3.5 RL container (see [RL overview](../README.md#container)).
 - **Sandbox container**: NeMo-Skills sandbox for code execution, Lean4 and CCC (`run.env.sandbox.container`). See the [NeMo-Skills sandbox Dockerfile](https://github.com/NVIDIA-NeMo/Skills/blob/main/dockerfiles/Dockerfile.sandbox).
 - **Judge servers**: running and reachable from the training nodes (see above).
 
@@ -103,10 +102,6 @@ nemotron super35 rl rlvr \
 ```
 
 By default the stage starts from `super35-sft-model:latest` and reads `super35-rl-rlvr-data:latest`. It registers checkpoints as `super35-rl-rlvr-model`. Checkpoints are saved every 5 steps. The run stops only at `grpo.max_num_steps`, so append `grpo.max_num_steps=120` to stop at the selected step.
-
-> **`--run <profile>`** refers to a profile defined in your `env.toml` file,
-> which configures SLURM account, partition, mounts, and other cluster settings.
-> See the [env.toml setup guide](../../../super3/README.md#envtoml-setup) for details.
 
 ## References
 

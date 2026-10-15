@@ -2,13 +2,13 @@
 
 Use this file for fast recall. All figures come from the `paper/` chunks of the Nemotron 3.5 Super
 and Lightning Tech Report (2026). The report covers both models; everything here is **Super** unless
-labelled. Throughput numbers are condition-specific.
+labeled. Throughput numbers are condition-specific.
 
 ---
 
 ## 1. Identity
 
-- **Model**: Nemotron 3.5 Super VL 120B-A12B (NVIDIA)
+- **Model**: Nemotron 3.5 Super 120B-A12B (NVIDIA); the released checkpoints are named Nemotron-3.5-Super-VL
 - **Params**: 120B total / 12B active (124.453B counting vision encoder, projector, MTP; §4.1)
 - **Initialized from**: Nemotron 3 Super Base
 - **Modalities**: text, image, video in; text out; no audio
@@ -53,18 +53,18 @@ labelled. Throughput numbers are condition-specific.
 
 ## 5. RL and MOPD
 
-**Order:** SFT → RLVR trunk → specialist teachers → MOPD stage 1 → MOPD stage 2 → MTP boosting.
+**Order:** SFT → RLVR trunk → specialist teachers → MOPD phase 1 → MOPD phase 2 → MTP boosting.
 
-- **RLVR trunk (§3.2)**: joint RLVR + RLHF; GBS 8,192, 16 rollouts per prompt; max generation 80K → 128K; router replay + FP32 LM head. New environments: competitive programming (2,847 train problems) and a finance agent. **Step 120** is the MOPD student and the teachers' root.
+- **RLVR trunk (§3.2)**: joint RLVR + RLHF; GBS 8,192, 16 rollouts per prompt; max generation 80K → 128K; router replay + FP32 LM head. New environments: competitive programming (2,847 train problems) and a finance agent. **Step 120** is the MOPD phase-1 student and the starting point of every teacher except RLHF teacher 1.
 - **Teachers (§3.3–3.5)**: agentic (end-to-end GRPO on Terminal/SWE/Search), reasoning (90% science; 131,072-token generation), video reasoning + tracking (step 60), vision tool use, vision reasoning (two stages), alignment (RLHF with a length-penalized Ultra GenRM variant).
 - **MOPD (§3.6)**: per-token reverse KL to the teacher that owns each prompt's environment; frozen self-anchor for unowned environments; 128 GB200 nodes.
-  - Stage 1: agentic 35%, reasoning 25%, alignment 20%, vision tool use 15%, self-anchor 5%; 512 prompts; LR 2e-6; 30 steps.
-  - Stage 2: agentic and reasoning retired; alignment 30%, vision tool use 20%, vision reasoning 20%, video 20%, self-anchor 10%; 1,024 prompts; proximal teacher α = 0.2.
+  - Phase 1: agentic 35%, reasoning 25%, alignment 20%, vision tool use 15%, self-anchor 5%; 512 prompts; LR 2e-6; 30 steps.
+  - Phase 2: agentic and reasoning retired; alignment 30%, vision tool use 20%, vision reasoning 20%, video 20%, self-anchor 10%; 1,024 prompts; proximal teacher α = 0.2.
 - **MTP boosting (§3.7)**: backbone frozen; LK loss against the backbone; 4K steps on SFT checkpoint, then 25K steps on the final backbone. Avg acceptance length (draft length 7) **4.287 → 4.718** greedy, **3.787 → 4.612** sampled.
 
 ---
 
-## 6. Evaluation (post-trained BF16 unless labelled)
+## 6. Evaluation (post-trained BF16 unless labeled)
 
 | Benchmark | Score |
 |---|---:|
@@ -97,7 +97,7 @@ labelled. Throughput numbers are condition-specific.
 
 - Workload: 20-turn agentic proxy, 2K input / 1K output per turn; "usable" = ≥ 50 tokens/s/user.
 - NVFP4 vs BF16 max throughput: H100 522 → 970 (1.86×), GB200 1,778 → 4,324 (2.43×) tokens/s/GPU (Figure 10).
-- vs Qwen on GB200 (Figure 11): Super 4,331.88, Qwen3.8 Flash-Next 2,282.73, Qwen3.5-122B-A10B 1,854.35.
+- vs Qwen on GB200 (Figure 11): Super 3.5 4,331.88, Qwen3.8 Flash-Next 2,282.73, Qwen3.5-122B-A10B 1,854.35.
 - **Contradiction**: the Abstract and §1 claim 4,632 tokens/s/GPU (it matches a Table 23 ReplaySSM-off point) and §1/§6 claim 2.88× Qwen3.8 Flash-Next; Figure 11 shows 4,331.88 and implies 1.90×. Quote both.
 
 ---
@@ -107,15 +107,15 @@ labelled. Throughput numbers are condition-specific.
 | Paper stage | Repo stage | CLI |
 |---|---|---|
 | text-only pretraining (§2) | not reproduced | — |
-| — (VL image-caption pretraining) | `stage0_pretrain` | `super35 pretrain` |
+| — (vision-language image-caption pretraining) | `stage0_pretrain` | `super35 pretrain` |
 | SFT stage 1 / 2 (§3.1) | `stage1_sft` | `super35 sft`, `super35 sft -c stage2` (also `-c peft`, `-c long_context`) |
 | RLVR (§3.2) | `stage2_rl/stage1_rlvr` | `super35 rl rlvr` |
-| teachers (§3.3–3.5) | `stage2_rl/stage2_teachers/*` | `super35 rl teacher <name> [-c variant]` (agentic: config only) |
+| teachers (§3.3–3.5) | `stage2_rl/stage2_teachers/*` | `super35 rl teacher <name> [-c variant]` (agentic: blocked) |
 | MOPD (§3.6) | `stage2_rl/stage3_mopd` | `super35 rl mopd [-c phase2 \| single_stage]` (`single_stage`: NeMo-RL's variant, no agentic teacher) |
 | MTP boosting (§3.7), quantization (§4) | not included | — |
 | evaluation (§3.8) | `stage3_eval` | `super35 eval` (five Table 10 benchmarks by default) |
 
-The data and the report's length-penalized GenRM variant are not public (NeMo-RL's public recipe uses `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`); users register their own (`super35 data import {sft,rl}`).
+The data and the report's length-penalized GenRM variant are not public (NeMo-RL's public recipe uses `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`); users register their own (`super35 data import {sft,rl}`). The SFT output feeds RL directly (the RL runner converts Megatron-Bridge checkpoints to Hugging Face); only evaluation needs an explicit Hugging Face export.
 
 ---
 
@@ -123,7 +123,7 @@ The data and the report's length-penalized GenRM variant are not public (NeMo-RL
 
 | Need | Step / mode |
 |---|---|
-| SFT on Megatron-Bridge | `sft/megatron_bridge` shape, but Super 3.5 VL is not in its `[[models]]` and the data path is text-only → ground on `recipes/super35/stage1_sft/` (Explorer mode) |
+| SFT on Megatron-Bridge | `sft/megatron_bridge` shape, but Super 3.5 is not in its `[[models]]` and the data path is text-only → ground on `recipes/super35/stage1_sft/` (Explorer mode) |
 | LoRA | `peft/megatron_bridge` shape, same caveat → `stage1_sft` `peft` config |
 | RLVR with GRPO | `rl/nemo_rl/rlvr` shape; environments and container come from `recipes/super35/stage2_rl/` |
 | specialist teachers, MOPD | no catalog step → Explorer mode on `recipes/super35/stage2_rl/` |

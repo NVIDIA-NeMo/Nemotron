@@ -1,11 +1,11 @@
 # RLHF Teachers (Alignment)
 
-Two alignment teachers trained with RLHF against a Generative Reward Model
-(GenRM). The report describes a single alignment teacher (§3.5); the split
+Two alignment teachers for Nemotron 3.5 Super (RLHF teachers 1 and 2), trained
+with RLHF against a Generative Reward Model (GenRM). The report describes a single alignment teacher (§3.5); the split
 into two teachers is the reference run's. Teacher 1 is distilled into the student in
 [MOPD phase 1](../../stage3_mopd/README.md); teacher 2 in MOPD phase 2.
-Each teacher is trained in two substages, and each substage is a config variant
-of the same recipe.
+Each teacher is trained in two stages, and each stage is a config variant of
+the same recipe.
 
 ## Approach
 
@@ -24,15 +24,16 @@ Training is close to the Nemotron 3 Ultra RLHF recipe, with three changes
   MTP speculative decoding (3 tokens).
 
 The policy also gets a small group reasoning-length penalty
-(`group_reasoning_length_penalty_coeff`). Teacher 2's second substage adds the
+(`group_reasoning_length_penalty_coeff`). Teacher 2's stage 2 adds the
 Nemotron 3 Ultra abstention environment.
 
 The data is text-only, with reasoning-on and reasoning-off prompts routed to
 `genrm_simple_agent` / `genrm_simple_agent_reasoning_off`. The policy loads the
-full omni checkpoint (`policy.is_vlm: true`) and freezes the vision
-towers (the `freeze_sound_*` flags are no-ops: the model has no audio). Their weights are kept in the saved checkpoints.
+full omni checkpoint (`policy.is_vlm: true`) and freezes the vision towers,
+whose weights are kept in the saved checkpoints. (The `freeze_sound_*` flags
+are no-ops; the model has no audio.)
 
-## Substages
+## Stages
 
 | Variant | Start | Data | Length penalty | Selected step | Output artifact |
 |---|---|---|---|---|---|
@@ -60,7 +61,7 @@ flowchart LR
 `grpo.max_num_steps` in each variant stops at its selected checkpoint. Append
 `grpo.max_num_steps=<n>` to continue past it.
 
-### Teacher 1: full-state resume
+### Teacher 1: Full-State Resume
 
 `teacher1_stage2` continues the same optimization as `teacher1_stage1`. It
 restores the weights, the optimizer and scheduler state (including the Adam
@@ -94,7 +95,7 @@ seed without following the links into the source. The helper also refused to
 run if the destination already held a step below 120. If you use symlinks,
 keep the source checkpoint until stage 2 has saved its own first checkpoint.
 
-### Teacher 2: weights-only warm start
+### Teacher 2: Weights-Only Warm Start
 
 `teacher2_stage2` is a fresh run that starts from step 0. It uses its own
 `checkpoint_dir` and a new optimizer and replay state. `run.model` points at
@@ -106,7 +107,7 @@ nemotron super35 rl teacher rlhf -c teacher2_stage1 --run <profile>   # 64 Ray n
 nemotron super35 rl teacher rlhf -c teacher2_stage2 --run <profile>
 ```
 
-The reference recipe continued `teacher2_stage1` on a smaller allocation once
+The reference run continued `teacher2_stage1` on a smaller allocation once
 it had saved a checkpoint: the same experiment and `checkpoint_dir`, on 16
 training and 16 generation nodes, with 16 GenRM replicas. The exact step of
 the scale-down is not recorded. To do the same:
@@ -119,7 +120,7 @@ nemotron super35 rl teacher rlhf -c teacher2_stage1 --run <profile> \
 Without an existing checkpoint, this command starts a fresh, smaller run
 instead of a continuation.
 
-## External judge servers
+## External Judge Servers
 
 The judges run as separate OpenAI-compatible vLLM servers **outside** the Ray
 cluster. Start them before training and pass their endpoints through
@@ -154,7 +155,7 @@ nemotron super35 rl teacher rlhf -c teacher2_stage2 --run <profile> \
 env: VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm VLLM_ALLREDUCE_USE_SYMM_MEM=0
 ```
 
-The length-penalized GenRM variant from the report is not public. NeMo-RL's public Super 3.5 recipe uses [`nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-GenRM) instead.
+For which GenRM model to serve, see [RL overview → Judge, GenRM and Teacher Servers](../../README.md#judge-genrm-and-teacher-servers).
 
 **Abstention judge** (`teacher2_stage2` only). The reference run used
 [Qwen3-235B-A22B-Instruct-2507-FP8](https://huggingface.co/Qwen/Qwen3-235B-A22B-Instruct-2507-FP8),
@@ -186,7 +187,7 @@ All nodes are GB200 with 4 GPUs each.
 
 | Setting | Value |
 |---|---|
-| Training parallelism | TP8 / CP8 / EP16 / PP1, expert TP1 (the reference launch scripts use TP4 / CP2 / EP16) |
+| Training parallelism | TP8 / CP8 / EP16 / PP1, expert TP1 (the reference run's launch scripts use TP4 / CP2 / EP16) |
 | Batch | 32 prompts × 32 generations = 1,024; LR 2e-6 constant, 10 warmup steps |
 | Context | 49,152 total, 16,384 max new tokens |
 | Policy generation | vLLM TP4 / EP4, max sequences 256, max batched tokens 32,768, `load_format: auto` |
@@ -198,7 +199,7 @@ layout, check that the two layouts are compatible.
 
 ## Data
 
-The RLHF datasets are not public yet. Register your own NeMo-Gym JSONL as the
+The RLHF datasets are not public yet. Register your own NeMo Gym JSONL as the
 data artifacts with `nemotron super35 data import rl ...`. Each row must carry
 the Gemma-4-31B-it baseline response and the rubric ids that `genrm_compare`
 expects.
@@ -209,23 +210,20 @@ expects.
 | `super35-rl-teacher-rlhf2-stage1-data` | Blend 2 | `teacher2_stage1` |
 | `super35-rl-teacher-rlhf2-data` | Blend 3 (Blend 2 + abstention) | `teacher2_stage2` |
 
+## Differences from the Reference Run
 
-## Differences from the historical runs
-
-- The historical teachers used a text-only architecture. These recipes train
+- The reference run's teachers used a text-only architecture. These recipes train
   the omni architecture with frozen vision towers. They are
   training-input ports, not claims of bitwise-identical trajectories.
-- Training uses TP8 / CP8 / EP16 instead of the reference scripts' TP4 / CP2 / EP16.
+- Training uses TP8 / CP8 / EP16 instead of the reference run's TP4 / CP2 / EP16.
 - Validation is off (`val_period` is effectively never reached). Replay
   restoration is disabled, which matches the reference configs.
-- The reference launchers set a 100,000-step ceiling. These configs stop at
+- The reference run's launchers set a 100,000-step ceiling. These configs stop at
   the four selected checkpoints (120 / 500 / 200 / 120).
 
 ## Requirements
 
-- The Super 3.5 RL container (see the [RL overview](../../README.md#prerequisites)),
-  built from NeMo-RL `super-v3.5-posttraining` @ `f299847f1` with NeMo-Gym
-  `e24db4e6` (pinned in [`../../Dockerfile`](../../Dockerfile)).
+- The Super 3.5 RL container (see [RL overview](../../README.md#container)).
 - The external GenRM server and, for `teacher2_stage2`, the abstention judge.
 - No code-execution sandbox is needed.
 

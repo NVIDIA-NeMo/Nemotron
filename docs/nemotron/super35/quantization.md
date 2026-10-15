@@ -1,35 +1,10 @@
 # Quantization (PTQ + QAD)
 
-The released Nemotron 3.5 Super VL NVFP4 checkpoint is produced with [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer): post-training quantization (PTQ) with a predefined **aggressive** recipe, followed by **200 iterations** of SFT-based Quantization-Aware Distillation (QAD). It reaches **99.52% median accuracy recovery** relative to BF16 across 35 benchmarks, with a mean per-benchmark verbosity increase of 0.49%.
+The released Nemotron 3.5 Super NVFP4 checkpoint ([`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4)) is produced with [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer): post-training quantization (PTQ) with the predefined **aggressive** recipe, followed by **200 iterations** of SFT-based Quantization-Aware Distillation (QAD). It reaches **99.52% median accuracy recovery** relative to BF16 across 35 benchmarks, with a mean per-benchmark verbosity increase of 0.49%.
 
-This page summarizes §4 of the tech report and shows how to run the same precision recipe with Model Optimizer. Quantization is not a `nemotron super35` CLI stage.
-
-The released NVFP4 checkpoint is [`nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4`](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4). To quantize a Super 3.5 checkpoint yourself (for example your own fine-tune), see [Recipe Execution](#recipe-execution): Model Optimizer's [NemotronH Omni VL W4A4 tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) runs the released precision recipe through PTQ → QAD → export with Megatron-Bridge.
+This page summarizes §4–5 of the tech report. Quantization is not a `nemotron super35` stage: to quantize your own Super 3.5 checkpoint (for example your own fine-tune), see [Recipe Execution](#recipe-execution), which runs the released precision recipe through PTQ → QAD → export with Megatron-Bridge, using Model Optimizer's [NemotronH Omni VL W4A4 tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD).
 
 ---
-
-## Deployment Targets
-
-| Platform | Mode | Notes |
-|----------|------|-------|
-| Blackwell (B200, GB200, GB300) | **W4A4** | NVFP4 weights and activations |
-| Non-Blackwell (for example H100) | **W4A16** | NVFP4 weights, 16-bit activations |
-
-On a 20-turn agentic proxy workload (2K input / 1K output tokens per turn) served with vLLM (Figure 10):
-
-| Platform | Max throughput at ≥ 50 tokens/s/user, BF16 → NVFP4 (output tokens/s/GPU) | Generation tokens/s/user at minimum latency, BF16 → NVFP4 |
-|----------|------------------------------|------------------------------|
-| H100 80GB (W4A16) | 522 → 970 (1.86×) | 509 → 576 (1.13×) |
-| GB200 (W4A4) | 1,778 → 4,324 (2.43×) | 587 → 765 (1.30×) |
-
-![NVFP4 vs. BF16 serving with vLLM on H100 (W4A16) and GB200 (W4A4): maximum throughput at ≥ 50 tokens/s/user and generation speed at minimum latency (tech report Figure 10).](../../assets/super35/nvfp4-serving.png)
-
-### Acceptance criteria
-
-Recipes are developed between conservative and aggressive bookends and must meet:
-
-- **Median accuracy recovery ≥ 99%** — the median over benchmarks of the NVFP4 / BF16 score ratio, averaged over repeats.
-- **Verbosity increase ≤ 5%** relative to BF16.
 
 ## Precision Recipes
 
@@ -54,6 +29,13 @@ The released checkpoint uses the **Aggressive** column (Table 12 of the report).
 | Avg. BPE | 16.00 | 8.10 | 5.15 | **4.82** | 4.64 |
 
 The released checkpoint also contains the quantized, boosted MTP head. It was evaluated with an FP8 KV cache; ablations showed comparable accuracy with an NVFP4 KV cache (99.36% vs. 99.52% median recovery).
+
+### Acceptance Criteria
+
+Recipes are developed between conservative and aggressive bookends and must meet:
+
+- **Median accuracy recovery ≥ 99%** — the median over benchmarks of the NVFP4 / BF16 score ratio, averaged over repeats.
+- **Verbosity increase ≤ 5%** relative to BF16.
 
 ## PTQ
 
@@ -108,11 +90,11 @@ Selected rows from the BF16 vs. released NVFP4 comparison (Table 22 of the repor
 
 Verbosity excludes non-completed Terminal-Bench rollouts: about 4.5% runaway trajectories of roughly 700K tokens each dominate that benchmark's mean, and including them raises the ratio-of-totals change to 2.99%.
 
-### MTP drafter precision
+### MTP Drafter Precision
 
 The MTP module (one attention layer and one MoE layer) shares the checkpoint's single `lm_head`. Profiling shows the MTP experts and the `lm_head` dominate drafting latency, so the released checkpoint quantizes the MTP experts to NVFP4 W4A4 (MTP attention weights stay BF16) and the shared `lm_head` to FP8. This barely changes acceptance length while speeding up drafting (Table 20; SPEED-Bench, temperature 1; speedup projected at draft length 5 on one GB200 relative to the NVFP4 backbone with unquantized MTP and `lm_head`):
 
-| Backbone / LM head | MTP experts / MTP LM head | AL, draft length 5 | AL, draft length 7 | Projected speedup |
+| Backbone / LM head | MTP experts / MTP LM head | Acceptance length, draft 5 | Acceptance length, draft 7 | Projected speedup |
 |--------------------|---------------------------|-------------------:|-------------------:|------------------:|
 | BF16 / BF16 | BF16 / BF16 | 4.115 | 4.612 | — |
 | NVFP4 / BF16 | BF16 / BF16 | 4.109 | 4.592 | 1.000 |
@@ -124,11 +106,47 @@ The MTP module (one attention layer and one MoE layer) shares the checkpoint's s
 
 The MTP KV cache must use the backbone's precision. The released checkpoint was built by quantizing the boosted MTP separately and splicing it into the quantized backbone; the report recommends co-quantizing both in future releases.
 
+## Deployment and Serving
+
+The NVFP4 checkpoint runs in one of two modes, depending on the GPU:
+
+| Platform | Mode | Notes |
+|----------|------|-------|
+| Blackwell (B200, GB200, GB300) | **W4A4** | NVFP4 weights and activations |
+| Non-Blackwell (for example H100) | **W4A16** | NVFP4 weights, 16-bit activations |
+
+Figure 10 measures serving with vLLM on a 20-turn agentic proxy workload (2K input / 1K output tokens per turn). Peak throughput is output tokens/s/GPU at ≥ 50 tokens/s/user; speed at minimum latency is generation tokens/s/user.
+
+| Platform | Peak throughput, BF16 → NVFP4 | Speed at minimum latency, BF16 → NVFP4 |
+|----------|-------------------------------|----------------------------------------|
+| H100 80GB (W4A16) | 522 → 970 (1.86×) | 509 → 576 (1.13×) |
+| GB200 (W4A4) | 1,778 → 4,324 (2.43×) | 587 → 765 (1.30×) |
+
+![NVFP4 vs. BF16 serving with vLLM on H100 (W4A16) and GB200 (W4A4): maximum throughput at ≥ 50 tokens/s/user and generation speed at minimum latency (tech report Figure 10).](../../assets/super35/nvfp4-serving.png)
+
+The report's inference work (§5) targets interactive, long-context agentic serving in vLLM:
+
+- **Prefix caching + speculative decoding**: an extra Mamba cache checkpoint near the speculative-decoding replay boundary avoids replaying a whole Mamba cache block to recover the drafter's hidden state.
+- **Per-quantization GEMM backend selection** for mixed-precision checkpoints at intermediate batch sizes.
+- **Internal prefill checkpoints** write reusable Mamba states without splitting the prefill forward pass.
+- **ReplaySSM** (checkpointing replay for the Mamba state) stores a checkpointed state plus a small buffer of recent inputs instead of writing every speculative state. On one GB200 with a 16-step buffer it raises output throughput by 4.7–6.4% and per-user generation speed by 6.4–12.5% (Table 23).
+
+Headline numbers:
+
+- **Peak throughput**: up to **4,632 output tokens/s/GPU** on GB200 at ≥ 50 tokens/s/user (abstract and conclusion; Table 23: one GB200, concurrency 64, 5 speculative tokens, ReplaySSM off; 4,856 with ReplaySSM on).
+- **Against Qwen3.8 Flash-Next**: the abstract and conclusion quote **2.88×** under the evaluated interactive agentic workload. Figure 11, at the same ≥ 50 tokens/s/user threshold, shows 4,331.88 output tokens/s/GPU on GB200 against 2,282.73 for Qwen3.8 Flash-Next (1.90×) and 1,854.35 for Qwen3.5-122B-A10B (2.34×). The report does not reconcile the two.
+- **Disaggregated serving** of the NVFP4 checkpoint with NVIDIA Dynamo and vLLM on 11 Vera Rubin (VR200) GPUs, replaying SWE-bench Pro agentic sessions (Table 24):
+
+| Deployment | Concurrency | Output tokens/s/GPU | Tokens/s/user (median) | TTFT (median) |
+|------------|------------:|--------------------:|-----------------------:|--------------:|
+| Aggregated (11 instances) | 616 | 2,969 | 96.6 | 0.49 s |
+| Disaggregated (7 prefill + 4 decode GPUs) | 528 | 3,276 (+10.3%) | 155.9 (+61%) | 1.12 s |
+
 ## Recipe Execution
 
-Model Optimizer's [NemotronH Omni VL W4A4 PTQ + QAD tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) quantizes this architecture (`NemotronH_Omni_Reasoning_V3`, which Megatron-Bridge maps to its Nemotron 3.5 Super VL bridge) with Megatron-Bridge: PTQ → QAD → Hugging Face export → vLLM serving. Its PTQ recipe is the report's released **Aggressive** tier; its calibration, QAD data, and QAD scale are smaller and public. The commands below are summarized from the tutorial; follow it for the full notes.
+Model Optimizer's [NemotronH Omni VL W4A4 PTQ + QAD tutorial](https://github.com/NVIDIA/Model-Optimizer/tree/main/examples/megatron_bridge/tutorials/NemotronH-Omni-W4A4-QAD) quantizes this architecture (`NemotronH_Omni_Reasoning_V3`, which Megatron-Bridge maps to its Super-VL bridge) with Megatron-Bridge: PTQ → QAD → Hugging Face export → vLLM serving. Its PTQ recipe is the report's released **Aggressive** tier; its calibration, QAD data, and QAD scale are smaller and public. The commands below are summarized from the tutorial; follow it for the full notes.
 
-### Where the tutorial differs from the report
+### Where the Tutorial Differs from the Report
 
 | Aspect | Tech report (released checkpoint) | Model Optimizer tutorial |
 |--------|-----------------------------------|--------------------------|
@@ -203,7 +221,7 @@ torchrun --nproc_per_node 4 /opt/Model-Optimizer/examples/megatron_bridge/export
 
 The exporter writes the quantized language model (including the MTP head) and copies the vision tower and projector from the BF16 checkpoint. It exports the latest `iter_*` under `--megatron_path`.
 
-### Tutorial results (selected rows)
+### Tutorial Results
 
 Served with vLLM on one 4-GPU GB300 node (TP4 with expert parallelism; FP8 KV cache for the quantized checkpoints, FP16 Mamba SSM cache with stochastic rounding, `nemotron_v3` reasoning parser):
 
@@ -218,25 +236,6 @@ Served with vLLM on one 4-GPU GB300 node (TP4 with expert parallelism; FP8 KV ca
 | τ³-bench banking | 18.88 | 17.40 | 20.10 |
 
 These are the tutorial's numbers for its own checkpoint, not the released one (see [Results](#results)). Most of the MMLU-ProX gain after QAD comes from fewer responses missing the required answer phrase.
-
-## Serving Notes
-
-The report's inference work (§5) targets interactive, long-context agentic serving in vLLM:
-
-- **Prefix caching + speculative decoding**: an extra Mamba cache checkpoint near the speculative-decoding replay boundary avoids replaying a whole Mamba cache block to recover the drafter's hidden state.
-- **Per-quantization GEMM backend selection** for mixed-precision checkpoints at intermediate batch sizes.
-- **Internal prefill checkpoints** write reusable Mamba states without splitting the prefill forward pass.
-- **ReplaySSM** (checkpointing replay for the Mamba state) stores a checkpointed state plus a small buffer of recent inputs instead of writing every speculative state. On one GB200 with a 16-step buffer it raises output throughput by 4.7–6.4% and per-user generation speed by 6.4–12.5% (Table 23).
-
-Headline numbers:
-
-- The report's abstract and conclusion quote up to **4,632 output tokens/s/GPU** on GB200 at ≥ 50 tokens/s/user (Table 23: one GB200, concurrency 64, 5 speculative tokens, ReplaySSM off; 4,856 with ReplaySSM on), and **2.88×** the throughput of Qwen3.8 Flash-Next under the evaluated interactive agentic workload. Figure 11, at the same ≥ 50 tokens/s/user threshold, shows 4,331.88 output tokens/s/GPU on GB200 against 2,282.73 for Qwen3.8 Flash-Next (1.90×) and 1,854.35 for Qwen3.5-122B-A10B (2.34×); the report does not reconcile the 2.88× figure with Figure 11.
-- **Disaggregated serving** of the NVFP4 checkpoint with NVIDIA Dynamo and vLLM on 11 Vera Rubin (VR200) GPUs, replaying SWE-bench Pro agentic sessions (Table 24):
-
-| Deployment | Concurrency | Output tokens/s/GPU | Tokens/s/user (median) | TTFT (median) |
-|------------|------------:|--------------------:|-----------------------:|--------------:|
-| Aggregated (11 instances) | 616 | 2,969 | 96.6 | 0.49 s |
-| Disaggregated (7 prefill + 4 decode GPUs) | 528 | 3,276 (+10.3%) | 155.9 (+61%) | 1.12 s |
 
 ## Reference
 

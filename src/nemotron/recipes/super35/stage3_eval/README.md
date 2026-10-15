@@ -1,6 +1,6 @@
 # Stage 3: Evaluation
 
-Evaluate Nemotron 3.5 Super VL checkpoints with NeMo Evaluator.
+Evaluate Nemotron 3.5 Super checkpoints with NeMo Evaluator.
 
 ## Overview
 
@@ -14,12 +14,9 @@ per-task settings follow NeMo Evaluator's Nemotron 3 Super example
 |-----------|-------------|
 | `config/default.yaml` | vLLM deployment + NeMo Evaluator task list |
 
-> The tech report's numbers (Table 10) were collected with
-> [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym), not NeMo Evaluator. To reproduce them, use
-> NeMo Gym's [Super 3.5 reproducibility guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md)
-> (one recipe per benchmark; on the `jakub/marlin` branch until merged to `main`), summarized in
-> [docs/nemotron/super35/evaluate.md](../../../../../docs/nemotron/super35/evaluate.md#reproducing-the-published-results-nemo-gym).
-> Scores from this stage are therefore not expected to match Table 10 exactly.
+> The tech report's Table 10 numbers come from [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym),
+> not NeMo Evaluator, so scores from this stage are not expected to match them exactly. To
+> reproduce Table 10, see [Reproducing Table 10 with NeMo Gym](../../../../../docs/nemotron/super35/evaluate.md#reproducing-table-10-with-nemo-gym).
 
 ## Benchmarks
 
@@ -54,7 +51,7 @@ Not covered here:
 ## Quick Start
 
 ```bash
-# Evaluate an exported Hugging Face checkpoint (see "Checkpoint format" below)
+# Evaluate an exported Hugging Face checkpoint (see "Checkpoint Format" below)
 uv run nemotron super35 eval --run YOUR-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
 
 # Select tasks
@@ -79,9 +76,9 @@ uv run nemotron super35 eval --dry-run
 | `execution.mounts` | Add your shared filesystem so the deployment container can read the checkpoint |
 | `export.wandb` | Results exported to the W&B project from `env.toml` |
 
-## Checkpoint format
+## Checkpoint Format
 
-vLLM serves Hugging Face checkpoints only. Checkpoints produced by Megatron-Bridge (stages 0-1)
+vLLM serves Hugging Face checkpoints only. Checkpoints produced by Megatron-Bridge (stages 0–1)
 are Megatron format; export them with Megatron-Bridge's `convert.sh export` first.
 
 RL stages save NeMo-RL checkpoints (`step_N/policy/weights/...`), which vLLM cannot serve.
