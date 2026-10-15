@@ -1,0 +1,51 @@
+{
+ "name": "agent",
+ "frozen": "2026-10-08",
+ "config_hash": "06adac9ebd66d189",
+ "about": "The tested configuration of the visual investigation agent. Everything the model sees has a hash here; investigator.version.check_config() compares the code with these hashes.",
+ "model_facing_sha256": {
+  "system_contract": "d0dfb75f98c3bcc913c87edb47f18d01a2b3a234a49e2727695bb5c5d67c360a",
+  "policy_text": "cd9749a70128e17a345cbdb4e6d5ebee8194aa78e85c295f99656eb5e8911dfb",
+  "system_prompt": {
+   "model-switch": "e1ee16e1fe09df5cd0e6e5acc33b424ecea7c07b26e68017988b9f9d923f55a0",
+   "volume-growth": "e1ee16e1fe09df5cd0e6e5acc33b424ecea7c07b26e68017988b9f9d923f55a0",
+   "model-switch-visual": "2023e8a2c554489892ba693314f5936453bcd4c82e3d7e02f2d09402a0ad23bc",
+   "price-increase": "e1ee16e1fe09df5cd0e6e5acc33b424ecea7c07b26e68017988b9f9d923f55a0"
+  },
+  "tool_schemas": "95d8a9304903abba1d36f78f92a79d61752a219ebab3118056f30ebf3512eb66",
+  "request": {
+   "model-switch": "cb641af1ef462ef95a415d7f07df6ce122f348a32c22e77d1e75ba38f7924673",
+   "volume-growth": "cb641af1ef462ef95a415d7f07df6ce122f348a32c22e77d1e75ba38f7924673",
+   "model-switch-visual": "cb641af1ef462ef95a415d7f07df6ce122f348a32c22e77d1e75ba38f7924673",
+   "price-increase": "cb641af1ef462ef95a415d7f07df6ce122f348a32c22e77d1e75ba38f7924673"
+  },
+  "playbook": "063707da85c3e207ff49c761549667a4ae5408b9287a55cb9e793b0435b6cf95",
+  "policy": "2d4f7359e10c98de8b03a5e0add41e4bbbc7266412b33c99342ec9086c3258ee"
+ },
+ "world_content_sha256": {
+  "model-switch": "4a9e81a03c13cd7272242be0c083e14f5a4d5f8dc13759e62b4f9655745bd28e",
+  "volume-growth": "2d1af09a3b4df61529bf3baed30b1cf82966c34f1c1c79e242f984efcb7e4334",
+  "model-switch-visual": "926b387cae43bb5f0b980eb87685c77076baac73fc9d37d247792fe827f849ba",
+  "price-increase": "d75c6dcb5269c7ff64200baae3c7a91e5b3ed5b021a40035808f7b505587618a"
+ },
+ "sampling": {
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "enable_thinking": true,
+  "max_tokens": 16384
+ },
+ "limits": {
+  "max_turns": 40,
+  "max_nudges": 2,
+  "max_images_in_context": 4,
+  "image_context_policy": "images attached to the user's request always stay; the oldest tool images are cleared first; new tool images per turn = max images minus attached images",
+  "python_timeout_seconds": 60,
+  "sql_max_rows": 200,
+  "tool_output_max_chars": 12000
+ },
+ "serving": {
+  "server": "OpenAI-compatible chat completions with tool calling and reasoning output",
+  "model": "Nemotron 3.5 Super VL (tested on a hosted preview endpoint)"
+ },
+ "change_rule": "Any change to model-facing content (system contract, tools, playbook, policy, report contract, request) is a new version: update AGENT_VERSION, rerun the scenario suite, and write a new manifest."
+}
