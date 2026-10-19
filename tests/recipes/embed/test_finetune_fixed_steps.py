@@ -41,7 +41,7 @@ def test_invalid_training_budget(options: dict[str, Any]) -> None:
         train.FinetuneConfig(**options)
 
 
-@pytest.mark.parametrize("profile", ["default", "llama", "mistral3-vl"])
+@pytest.mark.parametrize("profile", ["default", "llama", "nemotron-3.5"])
 def test_public_dotlist_parses_strict_exact_step_budget(profile: str) -> None:
     """Profile defaults do not replace an explicit null epoch override."""
     cfg = train.load_config(

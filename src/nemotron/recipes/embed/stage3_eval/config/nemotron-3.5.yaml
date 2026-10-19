@@ -1,4 +1,4 @@
-# Preview local-checkpoint evaluation profile for Mistral3 VL embedding.
+# Local checkpoint evaluation profile for Nemotron 3.5 Embed 1B.
 # This default uses the held-out synthetic view from Stage 0. It is useful for a
 # pipeline smoke test, but it is not an independent model-quality evaluation.
 
@@ -6,11 +6,11 @@ run:
   env:
     container: nvcr.io/nvidia/pytorch:26.06-py3
 
-artifact_root: ./output/embed/mistral3-vl-preview
-base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+artifact_root: ./output/embed/nemotron-3.5
+base_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
 finetuned_model_path: ${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated
 sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
-retrieval_view: image_and_text
+retrieval_view: mixed
 # Resolved from sdg_input_path at runtime; never use an assumed bundle name.
 eval_data_path: ${artifact_root}/stage0_sdg/RESOLVED_FROM_GENERATION_MANIFEST
 image_root: null
@@ -24,8 +24,7 @@ pooling: mean
 normalize: true
 query_prefix: null
 passage_prefix: null
-model_family: mistral3_vl
-local_backend: automodel
+model_family: nemotron_3_5
 query_max_length: 512
 passage_max_length: 4096
 image_longest_edge: null
@@ -37,8 +36,8 @@ eval_base: false
 eval_finetuned: true
 eval_nim: false
 embedding_api_backend: vllm
-nim_url: ${oc.env:MISTRAL3_VL_EMBED_URL,http://localhost:8000}
-nim_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+nim_url: ${oc.env:NEMOTRON_3_5_EMBED_URL,http://localhost:8000}
+nim_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
 nim_batch_size: 4
 nim_timeout: 300
 nim_invalid_embedding_retries: 3

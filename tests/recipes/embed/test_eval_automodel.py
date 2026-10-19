@@ -16,97 +16,6 @@ from nemotron.recipes.embed.stage3_eval import eval as evaluation
 from nemotron.recipes.embed.stage3_eval.automodel_backend import AutoModelBEIREncoder
 
 
-def test_automodel_backend_is_additive_default() -> None:
-    """Existing local evaluation keeps its Hugging Face backend by default."""
-    assert evaluation.EvalConfig().local_backend == "huggingface"
-    assert evaluation.EvalConfig().tokenizer_force_default is False
-
-
-def test_evaluate_model_dispatches_native_backend(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    """The public evaluator forwards its local contract to the native adapter."""
-    captured = {}
-
-    class Native:
-        def __init__(self, **kwargs):
-            captured.update(kwargs)
-
-    monkeypatch.setattr(
-        "nemotron.recipes.embed.stage3_eval.automodel_backend.AutoModelBEIREncoder",
-        Native,
-    )
-
-    class StopSearchError(Exception):
-        pass
-
-    def search(model, **kwargs):
-        captured["model"] = model
-        raise StopSearchError
-
-    modules = {
-        "beir.datasets.data_loader": {"GenericDataLoader": object},
-        "beir.retrieval": {"models": SimpleNamespace(HuggingFace=MagicMock())},
-        "beir.retrieval.evaluation": {"EvaluateRetrieval": object},
-        "beir.retrieval.models": {},
-        "beir.retrieval.models.huggingface": {"AutoTokenizer": object},
-        "beir.retrieval.search.dense.exact_search": {"DenseRetrievalExactSearch": search},
-    }
-    for name, attributes in modules.items():
-        module = ModuleType(name)
-        module.__dict__.update(attributes)
-        monkeypatch.setitem(sys.modules, name, module)
-
-    with pytest.raises(StopSearchError):
-        evaluation.evaluate_model("checkpoint", tmp_path, local_backend="automodel", tokenizer_force_default=True)
-    assert captured["model_path"] == "checkpoint"
-    assert captured["query_prefix"] == "query: "
-    assert captured["passage_prefix"] == "passage: "
-    assert captured["tokenizer_force_default"] is True
-
-
-def test_native_encoder_restores_attention_and_uses_native_embedding_contract(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The adapter preserves saved attention while pinning pooling, normalization, and tokens."""
-    torch = pytest.importorskip("torch")
-    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
-    load_model = MagicMock()
-    model = MagicMock()
-    model.is_causal = False
-    model.parameters.return_value = iter([torch.zeros(1)])
-    model.encode.return_value = torch.tensor([[1.0, 0.0]])
-    load_model.return_value = model
-    tokenizer = MagicMock()
-    tokenizer.return_value = {"input_ids": [[1, 2]], "attention_mask": [[1, 1]]}
-    tokenizer.pad.return_value = {
-        "input_ids": torch.tensor([[1, 2]]),
-        "attention_mask": torch.tensor([[1, 1]]),
-    }
-    load_tokenizer = MagicMock(return_value=tokenizer)
-
-    auto_model_module = ModuleType("nemo_automodel._transformers.auto_model")
-    auto_model_module.NeMoAutoModelBiEncoder = SimpleNamespace(from_pretrained=load_model)
-    auto_tokenizer_module = ModuleType("nemo_automodel._transformers.auto_tokenizer")
-    auto_tokenizer_module.NeMoAutoTokenizer = SimpleNamespace(from_pretrained=load_tokenizer)
-    monkeypatch.setitem(sys.modules, "nemo_automodel._transformers.auto_model", auto_model_module)
-    monkeypatch.setitem(sys.modules, "nemo_automodel._transformers.auto_tokenizer", auto_tokenizer_module)
-
-    encoder = AutoModelBEIREncoder("checkpoint", tokenizer_force_default=True)
-    encoder.encode_queries(["question"], batch_size=1)
-
-    kwargs = load_model.call_args.kwargs
-    assert kwargs["pooling"] == "avg"
-    assert kwargs["l2_normalize"] is True
-    assert "is_causal" not in kwargs
-    assert encoder.model.is_causal is False
-    model.to.assert_called_once_with("cpu")
-    assert load_tokenizer.call_args.kwargs == {
-        "force_default": True,
-        "add_bos_token": True,
-        "add_eos_token": False,
-    }
-    assert tokenizer.call_args.args[0] == ["query: question"]
-
-
 def test_run_eval_records_backend_and_persists_each_local_ranking_once(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
@@ -131,20 +40,20 @@ def test_run_eval_records_backend_and_persists_each_local_ranking_once(
         base_model="base",
         finetuned_model_path=checkpoint,
         output_dir=output,
-        local_backend="automodel",
-        tokenizer_force_default=True,
+        model_family="nemotron_3_5",
+        query_max_length=512,
+        passage_max_length=8192,
         eval_nim=False,
     )
 
     evaluation.run_eval(cfg)
 
     assert len(calls) == 2
-    assert all(call["local_backend"] == "automodel" for call in calls)
+    assert all(call["model_family"] == "nemotron_3_5" for call in calls)
     assert json.loads((output / "base_retrieval_results.json").read_text()) == {"query": {"base-doc": 1.0}}
     assert json.loads((output / "finetuned_retrieval_results.json").read_text()) == {"query": {"finetuned-doc": 1.0}}
     saved = json.loads((output / "eval_results.json").read_text())
     assert saved["_metadata"]["local_backend"] == "automodel"
-    assert saved["_metadata"]["tokenizer_force_default"] is True
     assert not (output / "retrieval_results.json").exists()
 
 
@@ -177,7 +86,11 @@ def test_multimodal_encoder_uses_native_mining_loader_and_preserves_images(
     )
 
     assert load_model.call_args.args == ("merged-checkpoint",)
-    assert load_model.call_args.kwargs == {"use_liger_kernel": False, "use_sdpa_patching": True}
+    assert load_model.call_args.kwargs == {
+        "use_liger_kernel": False,
+        "use_sdpa_patching": True,
+        "attn_implementation": "sdpa",
+    }
     config.build.assert_called_once_with(model=model, device=torch.device("cpu"))
     native.encode_documents.assert_called_once_with(
         [{"title": "Title", "text": "Body", "image": "/bundle/assets/page.png"}],
@@ -239,8 +152,7 @@ def test_evaluate_model_builds_exact_multimodal_processor_config(
         evaluation.evaluate_model(
             "merged-checkpoint",
             tmp_path,
-            local_backend="automodel",
-            model_family="mistral3_vl",
+            model_family="nemotron_3_5",
             query_max_length=512,
             passage_max_length=8192,
             query_prefix=query_prefix,
@@ -273,7 +185,7 @@ def test_restore_multimodal_images_after_portable_bundle_move(tmp_path) -> None:
     moved_dataset = moved / "synthetic_eval" / "text_image"
     corpus = {"page": {"title": "", "text": "body"}}
 
-    evaluation._restore_corpus_image_paths(corpus, moved_dataset, image_root=moved, resolve=True, strict=True)
+    evaluation._restore_corpus_image_paths(corpus, moved_dataset, image_root=moved, resolve=True)
 
     assert corpus["page"]["image_path"] == str((moved / "assets/pages/page.png").resolve())
 
@@ -288,7 +200,7 @@ def test_restore_multimodal_images_fails_when_declared_image_is_missing(tmp_path
 
     with pytest.raises(FileNotFoundError, match="missing.png"):
         evaluation._restore_corpus_image_paths(
-            {"page": {"text": "body"}}, dataset, image_root=tmp_path, resolve=True, strict=True
+            {"page": {"text": "body"}}, dataset, image_root=tmp_path, resolve=True
         )
 
 
@@ -301,7 +213,7 @@ def test_restore_multimodal_images_rejects_nonportable_or_empty_paths(tmp_path, 
 
     with pytest.raises(ValueError):
         evaluation._restore_corpus_image_paths(
-            {"page": {"text": "body"}}, dataset, image_root=tmp_path, resolve=True, strict=True
+            {"page": {"text": "body"}}, dataset, image_root=tmp_path, resolve=True
         )
 
 
@@ -319,45 +231,8 @@ def test_restore_multimodal_images_rejects_symlink_escape(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="escapes"):
         evaluation._restore_corpus_image_paths(
-            {"page": {"text": "body"}}, dataset, image_root=root, resolve=True, strict=True
+            {"page": {"text": "body"}}, dataset, image_root=root, resolve=True
         )
-
-
-def test_native_text_evaluation_rejects_declared_images(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    """The native text family cannot silently flatten a corpus that declares images."""
-    dataset = tmp_path / "eval"
-    dataset.mkdir()
-    (dataset / "corpus.jsonl").write_text(json.dumps({"_id": "page", "text": "body", "image_path": "page.png"}) + "\n")
-
-    class Loader:
-        def __init__(self, path):
-            pass
-
-        def load(self, split):
-            return {"page": {"text": "body"}}, {"query": "question"}, {"query": {"page": 1}}
-
-    class Retriever:
-        k_values = [10]
-
-        def __init__(self, *args, **kwargs):
-            pass
-
-    modules = {
-        "beir.datasets.data_loader": {"GenericDataLoader": Loader},
-        "beir.retrieval": {"models": SimpleNamespace(HuggingFace=MagicMock())},
-        "beir.retrieval.evaluation": {"EvaluateRetrieval": Retriever},
-        "beir.retrieval.models": {},
-        "beir.retrieval.models.huggingface": {"AutoTokenizer": object},
-        "beir.retrieval.search.dense.exact_search": {"DenseRetrievalExactSearch": MagicMock()},
-    }
-    for name, attributes in modules.items():
-        module = ModuleType(name)
-        module.__dict__.update(attributes)
-        monkeypatch.setitem(sys.modules, name, module)
-    monkeypatch.setattr("nemotron.recipes.embed.stage3_eval.automodel_backend.AutoModelBEIREncoder", MagicMock())
-
-    with pytest.raises(ValueError, match="cannot discard"):
-        evaluation.evaluate_model("checkpoint", dataset, local_backend="automodel")
 
 
 @pytest.mark.parametrize("title_fields", [{}, {"title": None}, {"title": ""}, {"title": "Document"}])
@@ -411,7 +286,9 @@ def test_real_beir_preserves_legitimate_query_document_id_collisions(
     metrics, results = evaluation.evaluate_model(
         "checkpoint",
         dataset,
-        local_backend="automodel",
+        model_family="nemotron_3_5",
+        query_max_length=512,
+        passage_max_length=8192,
         k_values=[1],
         ignore_identical_ids=False,
     )
@@ -428,20 +305,90 @@ def test_real_beir_preserves_legitimate_query_document_id_collisions(
     }
 
 
-def test_multimodal_eval_config_requires_native_limits_and_backend() -> None:
-    """Image-capable local evaluation is explicit and fully bounded."""
-    with pytest.raises(ValueError, match="requires local_backend=automodel"):
-        evaluation.EvalConfig(
-            model_family="mistral3_vl",
-            query_max_length=512,
-            passage_max_length=8192,
-            image_longest_edge=1120,
-        )
+def test_multimodal_eval_config_requires_native_limits() -> None:
+    """Image-capable local evaluation requires explicit sequence limits."""
+    with pytest.raises(ValueError, match="requires query and passage limits"):
+        evaluation.EvalConfig(model_family="nemotron_3_5")
     config = evaluation.EvalConfig(
-        model_family="mistral3_vl",
-        local_backend="automodel",
+        model_family="nemotron_3_5",
         query_max_length=512,
         passage_max_length=8192,
     )
     assert config.image_longest_edge is None
     assert config.use_text_in_document is True
+
+
+@pytest.mark.parametrize("backend", ["native", "api"])
+@pytest.mark.parametrize("text_fields", [{}, {"text": None}])
+def test_real_beir_evaluates_image_only_corpus_with_restored_images(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, backend: str, text_fields: dict
+) -> None:
+    """Image-only exports survive BEIR loading/search on local and API paths."""
+    import base64
+    from pathlib import Path
+
+    torch = pytest.importorskip("torch")
+    dataset = tmp_path / "bundle/synthetic_eval/image"
+    root = tmp_path / "bundle"
+    (dataset / "qrels").mkdir(parents=True)
+    (root / "assets").mkdir()
+    for name in ("positive", "negative"):
+        (root / f"assets/{name}.png").write_bytes(name.encode())
+    corpus_rows = [
+        {"_id": name, "title": "", "image_path": f"assets/{name}.png", **text_fields}
+        for name in ("positive", "negative")
+    ]
+    (dataset / "corpus.jsonl").write_text("".join(json.dumps(row) + "\n" for row in corpus_rows))
+    (dataset / "queries.jsonl").write_text(json.dumps({"_id": "q", "text": "Which image matches?"}) + "\n")
+    (dataset / "qrels/test.tsv").write_text("query-id\tcorpus-id\tscore\nq\tpositive\t2\n")
+    seen_images = []
+
+    def image_vector(content):
+        seen_images.append(content)
+        return [1.0, 0.0] if content == b"positive" else [0.0, 1.0]
+
+    if backend == "native":
+        class Native:
+            def __init__(self, **kwargs):
+                pass
+
+            def encode_queries(self, queries, **kwargs):
+                return torch.tensor([[1.0, 0.0] for _ in queries])
+
+            def encode_corpus(self, corpus, **kwargs):
+                assert all(document["text"] == "" for document in corpus)
+                paths = [Path(document["image_path"]) for document in corpus]
+                assert all(path.is_absolute() and path.is_relative_to(root) for path in paths)
+                return torch.tensor([image_vector(path.read_bytes()) for path in paths])
+
+        monkeypatch.setattr("nemotron.recipes.embed.stage3_eval.automodel_backend.AutoModelBEIREncoder", Native)
+        metrics, rankings = evaluation.evaluate_model(
+            "checkpoint",
+            dataset,
+            model_family="nemotron_3_5",
+            query_max_length=512,
+            passage_max_length=4096,
+            image_root=root,
+            k_values=[1],
+        )
+    else:
+        def request(self, inputs, input_type):
+            if input_type == "query":
+                return [[1.0, 0.0] for _ in inputs]
+            vectors = []
+            for document in inputs:
+                content = document["content"]
+                assert len(content) == 1 and content[0]["type"] == "image_url"
+                vectors.append(image_vector(base64.b64decode(content[0]["image_url"]["url"].split(",", 1)[1])))
+            return vectors
+
+        monkeypatch.setattr(evaluation.NIMEmbeddingModel, "_check_connection", lambda self: None)
+        monkeypatch.setattr(evaluation.NIMEmbeddingModel, "_request_batch", request)
+        metrics, rankings, _ = evaluation.evaluate_nim(
+            "http://example.invalid", "fixture", dataset, api_backend="vllm", image_root=root, k_values=[1]
+        )
+
+    assert set(seen_images) == {b"positive", b"negative"}
+    assert rankings["q"] == {"positive": 1.0}
+    assert metrics[0]["NDCG@1"] == 1.0
+    assert [json.loads(line) for line in (dataset / "corpus.jsonl").read_text().splitlines()] == corpus_rows

@@ -99,6 +99,8 @@ class NIMEmbeddingModel:
         api_backend: Literal["nim", "vllm"] = "nim",
         dataset_path: Path | None = None,
         api_truncate: Literal["NONE", "START", "END"] | None = None,
+        image_root: Path | None = None,
+        use_text_in_document: bool = True,
     ):
         """Initialize NIM embedding model.
 
@@ -110,12 +112,12 @@ class NIMEmbeddingModel:
             invalid_embedding_retries: Retry limit for non-numeric NIM vectors.
             expected_dimension: Required embedding dimension, if known.
             api_backend: Request and health-check conventions used by the server.
-            api_truncate: Optional Cohere truncation policy. Requires the vLLM backend.
+            api_truncate: Optional NIM or vLLM truncation policy. None preserves the server default.
+            image_root: Root containing portable corpus image paths.
+            use_text_in_document: Retain text alongside document images.
         """
         if api_truncate not in (None, "NONE", "START", "END"):
             raise ValueError("api_truncate must be None, NONE, START, or END")
-        if api_truncate is not None and api_backend != "vllm":
-            raise ValueError("api_truncate requires api_backend=vllm")
         self.service_name = "vLLM" if api_backend == "vllm" else "NIM"
         self.api_url = api_url.rstrip("/")
         endpoint = "/v2/embed" if api_backend == "vllm" else "/v1/embeddings"
@@ -130,6 +132,8 @@ class NIMEmbeddingModel:
         self.embedding_dimension = expected_dimension
         self.invalid_embedding_retry_requests = 0
         self.dataset_path = dataset_path
+        self.image_root = image_root
+        self.use_text_in_document = use_text_in_document
         self._check_connection()
 
     def _check_connection(self) -> None:
@@ -174,8 +178,6 @@ class NIMEmbeddingModel:
                 "input_type": "document" if input_type == "passage" else input_type,
                 "embedding_types": ["float"],
             }
-            if self.api_truncate is not None:
-                payload_data["truncate"] = self.api_truncate
             if any(not isinstance(item, str) for item in inputs):
                 payload_data["inputs"] = [
                     {"content": [{"type": "text", "text": item}]} if isinstance(item, str) else item for item in inputs
@@ -186,6 +188,8 @@ class NIMEmbeddingModel:
             if any(not isinstance(item, str) for item in inputs):
                 raise ValueError("Multimodal inputs require api_backend=vllm")
             payload_data = {"input": inputs, "model": self.model, "input_type": input_type}
+        if self.api_truncate is not None:
+            payload_data["truncate"] = self.api_truncate
         payload = json.dumps(payload_data).encode("utf-8")
 
         req = urllib.request.Request(
@@ -382,13 +386,15 @@ class NIMEmbeddingModel:
         mime_type = mimetypes.guess_type(image.name)[0] or "image/png"
         image_data = base64.b64encode(image.read_bytes()).decode("ascii")
         content: list[dict] = [{"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_data}"}}]
-        if document_text:
+        if document_text and self.use_text_in_document:
             content.append({"type": "text", "text": document_text})
         return {"content": content}
 
     def _resolve_image_path(self, relative_path: str) -> Path:
         """Resolve an image path relative to a BEIR view or one of its parents."""
         assert self.dataset_path is not None
+        if self.image_root is not None:
+            return _resolve_portable_image_path(self.image_root, relative_path)
         for root in (self.dataset_path, *self.dataset_path.parents):
             candidate = root / relative_path
             if candidate.is_file():
@@ -428,13 +434,9 @@ class EvalConfig(RecipeSettings):
         default=None,
         description="Stage 0 generation-result manifest used to resolve the exact portable evaluation bundle.",
     )
-    retrieval_view: Literal["text", "image", "image_and_text"] | None = Field(
+    retrieval_view: Literal["text", "image", "image_and_text", "mixed"] | None = Field(
         default=None,
         description="Portable evaluation view selected from sdg_input_path.",
-    )
-    retrieval_split_protocol: Literal["grouped_query_disjoint"] | None = Field(
-        default=None,
-        description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
     )
     ignore_identical_ids: bool = Field(
         default=True,
@@ -462,20 +464,11 @@ class EvalConfig(RecipeSettings):
     normalize: bool = Field(default=True, description="Whether to L2 normalize embeddings.")
     query_prefix: str | None = Field(default="query: ", description="Prefix for query inputs.")
     passage_prefix: str | None = Field(default="passage: ", description="Prefix for passage inputs.")
-    model_family: Literal["text", "mistral3_vl"] = Field(default="text", description="Local evaluation model family.")
+    model_family: Literal["text", "nemotron_3_5"] = Field(default="text", description="Local evaluation model family.")
     query_max_length: int | None = Field(default=None, gt=0, description="Multimodal query sequence limit.")
     passage_max_length: int | None = Field(default=None, gt=0, description="Multimodal document sequence limit.")
     image_longest_edge: int | None = Field(default=None, gt=0, description="Multimodal image resize limit.")
     use_text_in_document: bool = Field(default=True, description="Retain text alongside document images.")
-    local_backend: Literal["huggingface", "automodel"] = Field(
-        default="huggingface",
-        description="Local checkpoint runtime. AutoModel preserves saved retrieval attention semantics.",
-    )
-    tokenizer_force_default: bool = Field(
-        default=False,
-        description="Use AutoModel's Hugging Face tokenizer wrapper instead of model-type registry dispatch.",
-    )
-
     # Evaluation mode
     eval_base: bool = Field(default=True, description="Whether to evaluate the base model.")
     eval_finetuned: bool = Field(default=True, description="Whether to evaluate the fine-tuned model.")
@@ -492,7 +485,7 @@ class EvalConfig(RecipeSettings):
     )
     embedding_api_truncate: Literal["NONE", "START", "END"] | None = Field(
         default=None,
-        description="Optional Cohere truncation policy for vLLM; None preserves the server default.",
+        description="Optional truncation policy for NIM or vLLM; None preserves the server default.",
     )
     nim_invalid_embedding_retries: int = Field(
         default=32,
@@ -523,24 +516,14 @@ class EvalConfig(RecipeSettings):
     def _validate_portable_evaluation_source(self):
         if (self.sdg_input_path is None) != (self.retrieval_view is None):
             raise ValueError("sdg_input_path and retrieval_view must be set together for portable evaluation")
-        if self.retrieval_split_protocol is not None and self.sdg_input_path is None:
-            raise ValueError("retrieval_split_protocol requires sdg_input_path and retrieval_view")
         return self
 
     @model_validator(mode="after")
-    def _validate_api_truncation(self):
-        if self.embedding_api_truncate is not None and self.embedding_api_backend != "vllm":
-            raise ValueError("embedding_api_truncate requires embedding_api_backend=vllm")
-        return self
-
-    @model_validator(mode="after")
-    def _validate_multimodal_local_backend(self):
-        if self.model_family != "mistral3_vl":
+    def _validate_multimodal_limits(self):
+        if self.model_family != "nemotron_3_5":
             return self
-        if (self.eval_base or self.eval_finetuned) and self.local_backend != "automodel":
-            raise ValueError("model_family=mistral3_vl local evaluation requires local_backend=automodel")
         if any(value is None for value in (self.query_max_length, self.passage_max_length)):
-            raise ValueError("model_family=mistral3_vl requires query and passage limits")
+            raise ValueError("model_family=nemotron_3_5 requires query and passage limits")
         return self
 
     @model_validator(mode="after")
@@ -587,9 +570,7 @@ def evaluate_model(
     normalize: bool = True,
     query_prefix: str | None = "query: ",
     passage_prefix: str | None = "passage: ",
-    local_backend: Literal["huggingface", "automodel"] = "huggingface",
-    tokenizer_force_default: bool = False,
-    model_family: Literal["text", "mistral3_vl"] = "text",
+    model_family: Literal["text", "nemotron_3_5"] = "text",
     query_max_length: int | None = None,
     passage_max_length: int | None = None,
     image_longest_edge: int | None = None,
@@ -610,8 +591,6 @@ def evaluate_model(
         normalize: Whether to normalize embeddings.
         query_prefix: Prefix for queries.
         passage_prefix: Prefix for passages.
-        local_backend: Runtime for loading the local retrieval checkpoint.
-        tokenizer_force_default: Bypass AutoModel tokenizer registry dispatch for local native evaluation.
         model_family: Explicit local model family.
         query_max_length: Native multimodal query sequence limit.
         passage_max_length: Native multimodal document sequence limit.
@@ -636,45 +615,33 @@ def evaluate_model(
     if k_values is None:
         k_values = [1, 5, 10, 100]
 
-    if local_backend == "automodel":
+    if model_family == "nemotron_3_5":
+        from nemotron.recipes.embed.mining_encoder import CheckpointMiningEncoderConfig
         from nemotron.recipes.embed.stage3_eval.automodel_backend import AutoModelBEIREncoder
 
         if pooling != "mean" or not normalize:
-            raise ValueError("local_backend=automodel requires pooling=mean and normalize=true")
-        multimodal_config = None
-        if model_family == "mistral3_vl":
-            if query_max_length is None or passage_max_length is None:
-                raise ValueError("mistral3_vl evaluation requires query and passage limits")
-            from nemotron.recipes.embed.mining_encoder import CheckpointMiningEncoderConfig
-
-            processor_overrides = {
-                "q_max_length": query_max_length,
-                "p_max_length": passage_max_length,
-                "query_prefix": None if query_prefix is None else query_prefix.removesuffix(" "),
-                "passage_prefix": None if passage_prefix is None else passage_prefix.removesuffix(" "),
-                "image_longest_edge": image_longest_edge,
-                "use_text_in_document": use_text_in_document,
-                "use_images": True,
-            }
-            multimodal_config = CheckpointMiningEncoderConfig(
-                **{name: value for name, value in processor_overrides.items() if value is not None}
-            )
-        dense_model = AutoModelBEIREncoder(
-            model_path=model_path,
-            max_length=max_length,
-            query_prefix=query_prefix,
-            passage_prefix=passage_prefix,
-            tokenizer_force_default=tokenizer_force_default,
-            multimodal_config=multimodal_config,
+            raise ValueError("nemotron_3_5 evaluation requires pooling=mean and normalize=true")
+        if query_max_length is None or passage_max_length is None:
+            raise ValueError("nemotron_3_5 evaluation requires query and passage limits")
+        processor_overrides = {
+            "q_max_length": query_max_length,
+            "p_max_length": passage_max_length,
+            "query_prefix": None if query_prefix is None else query_prefix.removesuffix(" "),
+            "passage_prefix": None if passage_prefix is None else passage_prefix.removesuffix(" "),
+            "image_longest_edge": image_longest_edge,
+            "use_text_in_document": use_text_in_document,
+            "use_images": True,
+        }
+        multimodal_config = CheckpointMiningEncoderConfig(
+            **{name: value for name, value in processor_overrides.items() if value is not None}
         )
+        dense_model = AutoModelBEIREncoder(model_path=model_path, multimodal_config=multimodal_config)
     else:
-        if model_family == "mistral3_vl":
-            raise ValueError("model_family=mistral3_vl requires local_backend=automodel")
         try:
             from beir.retrieval import models
             from beir.retrieval.models import huggingface as beir_huggingface
         except ImportError:
-            print("Error: BEIR Hugging Face model dependencies are required for local_backend=huggingface")
+            print("Error: BEIR Hugging Face model dependencies are required for text evaluation")
             sys.exit(1)
         with _allow_beir_tokenizer_remote_code(beir_huggingface):
             dense_model = models.HuggingFace(
@@ -700,18 +667,8 @@ def evaluate_model(
     )
 
     corpus, queries, qrels = GenericDataLoader(str(dataset_path)).load(split="test")
-    if local_backend == "automodel":
-        declared_images = _restore_corpus_image_paths(
-            corpus,
-            dataset_path,
-            image_root=image_root,
-            resolve=model_family == "mistral3_vl",
-            strict=True,
-        )
-        if model_family == "text" and declared_images:
-            raise ValueError(
-                "Native text evaluation cannot discard corpus image_path fields; select model_family=mistral3_vl"
-            )
+    if model_family == "nemotron_3_5":
+        _restore_corpus_image_paths(corpus, dataset_path, image_root=image_root, resolve=True)
     return _retrieve_and_evaluate(retriever, corpus, queries, qrels, ignore_identical_ids)
 
 
@@ -728,6 +685,8 @@ def evaluate_nim(
     corpus_chunk_size: int = 50000,
     api_truncate: Literal["NONE", "START", "END"] | None = None,
     ignore_identical_ids: bool = True,
+    image_root: Path | None = None,
+    use_text_in_document: bool = True,
 ) -> tuple[dict, dict, dict[str, int | str | None]]:
     """Evaluate a NIM API endpoint on a BEIR dataset.
 
@@ -742,8 +701,10 @@ def evaluate_nim(
         api_backend: Request and health-check conventions used by the server.
         k_values: K values for metrics.
         corpus_chunk_size: Maximum number of documents in one retrieval search chunk.
-        api_truncate: Optional Cohere truncation policy. Requires the vLLM backend.
+        api_truncate: Optional NIM or vLLM truncation policy. None preserves the server default.
         ignore_identical_ids: Apply BEIR's legacy query/corpus identical-ID exclusion.
+        image_root: Root containing portable corpus image paths.
+        use_text_in_document: Retain text alongside document images.
 
     Returns:
         Tuple of (metrics dict, results dict, response diagnostics).
@@ -772,6 +733,8 @@ def evaluate_nim(
         api_backend=api_backend,
         dataset_path=dataset_path,
         api_truncate=api_truncate,
+        image_root=image_root,
+        use_text_in_document=use_text_in_document,
     )
 
     # Wrap in DRES for BEIR compatibility
@@ -802,12 +765,15 @@ def _retrieve_and_evaluate(
     ignore_identical_ids: bool,
 ) -> tuple[dict, dict]:
     """Retrieve and score while optionally preserving legitimate ID collisions."""
-    # BEIR's loader represents an omitted optional title as None. Its dense
-    # search sorts by title + text before calling our encoder, so normalize
-    # absence at this shared boundary for both local and API evaluation.
-    # Copy records to preserve the loaded inputs and all multimodal metadata.
+    # BEIR represents omitted title/text as None, including image-only exports.
+    # Dense search sorts by title + text before encoding, so normalize absent
+    # strings for both local and API evaluation while retaining image metadata.
     corpus = {
-        document_id: {**document, "title": "" if document.get("title") is None else document["title"]}
+        document_id: {
+            **document,
+            "title": "" if document.get("title") is None else document["title"],
+            "text": "" if document.get("text") is None else document["text"],
+        }
         for document_id, document in corpus.items()
     }
     if ignore_identical_ids:
@@ -879,31 +845,23 @@ def _restore_corpus_image_paths(
     *,
     image_root: Path | None = None,
     resolve: bool = False,
-    strict: bool = False,
-) -> int:
-    """Restore image fields dropped by BEIR and return the declaration count."""
-    declared_images = 0
+) -> None:
+    """Restore image fields dropped by BEIR, rejecting invalid declarations."""
     corpus_path = dataset_path / "corpus.jsonl"
     with corpus_path.open() as file:
         for line in file:
             raw_document = json.loads(line)
             if "image_path" not in raw_document:
                 continue
-            declared_images += 1
             document_id = raw_document.get("_id")
             image_path = raw_document["image_path"]
             if not isinstance(image_path, str) or not image_path.strip():
-                if strict:
-                    raise ValueError(f"Corpus document {document_id!r} declares an empty or malformed image_path")
-                continue
+                raise ValueError(f"Corpus document {document_id!r} declares an empty or malformed image_path")
             if document_id not in corpus:
-                if strict:
-                    raise ValueError(f"Corpus image document {document_id!r} was not loaded by BEIR")
-                continue
+                raise ValueError(f"Corpus image document {document_id!r} was not loaded by BEIR")
             corpus[document_id]["image_path"] = (
                 str(_resolve_portable_image_path(image_root or dataset_path, image_path)) if resolve else image_path
             )
-    return declared_images
 
 
 def _release_cuda_memory() -> None:
@@ -946,7 +904,7 @@ def run_eval(cfg: EvalConfig) -> dict:
         from nemotron.recipes.embed.sdg_manifest import resolve_portable_evaluation_input
 
         evaluation_dir, image_root = resolve_portable_evaluation_input(
-            cfg.sdg_input_path, cfg.retrieval_view, cfg.retrieval_split_protocol
+            cfg.sdg_input_path, cfg.retrieval_view
         )
         cfg = cfg.model_copy(update={"eval_data_path": evaluation_dir, "image_root": image_root})
 
@@ -974,7 +932,6 @@ def run_eval(cfg: EvalConfig) -> dict:
 
     results = {}
     metadata = {
-        "retrieval_split_protocol_requested": cfg.retrieval_split_protocol,
         "sdg_input_path": str(cfg.sdg_input_path.resolve()) if cfg.sdg_input_path else None,
         "eval_data_path": str(cfg.eval_data_path.resolve()),
         "image_root": str((cfg.image_root or cfg.eval_data_path).resolve()),
@@ -982,8 +939,7 @@ def run_eval(cfg: EvalConfig) -> dict:
         "k_values": cfg.k_values,
         "base_model": cfg.base_model if cfg.eval_base else None,
         "finetuned_model_path": (str(cfg.finetuned_model_path.resolve()) if cfg.eval_finetuned else None),
-        "local_backend": cfg.local_backend,
-        "tokenizer_force_default": cfg.tokenizer_force_default,
+        "local_backend": "automodel" if cfg.model_family == "nemotron_3_5" else "huggingface",
         "model_family": cfg.model_family,
         "query_max_length": cfg.query_max_length,
         "passage_max_length": cfg.passage_max_length,
@@ -1016,8 +972,6 @@ def run_eval(cfg: EvalConfig) -> dict:
             normalize=cfg.normalize,
             query_prefix=cfg.query_prefix,
             passage_prefix=cfg.passage_prefix,
-            local_backend=cfg.local_backend,
-            tokenizer_force_default=cfg.tokenizer_force_default,
             model_family=cfg.model_family,
             query_max_length=cfg.query_max_length,
             passage_max_length=cfg.passage_max_length,
@@ -1054,8 +1008,6 @@ def run_eval(cfg: EvalConfig) -> dict:
                 normalize=cfg.normalize,
                 query_prefix=cfg.query_prefix,
                 passage_prefix=cfg.passage_prefix,
-                local_backend=cfg.local_backend,
-                tokenizer_force_default=cfg.tokenizer_force_default,
                 model_family=cfg.model_family,
                 query_max_length=cfg.query_max_length,
                 passage_max_length=cfg.passage_max_length,
@@ -1086,6 +1038,8 @@ def run_eval(cfg: EvalConfig) -> dict:
                 corpus_chunk_size=cfg.corpus_chunk_size,
                 api_truncate=cfg.embedding_api_truncate,
                 ignore_identical_ids=cfg.ignore_identical_ids,
+                image_root=cfg.image_root,
+                use_text_in_document=cfg.use_text_in_document,
             )
             results[api_result_key] = api_metrics
             _print_summary_metrics(api_metrics, cfg.k_values)

@@ -34,8 +34,7 @@ class CheckpointMiningEncoderConfig:
 
         if model is None:
             options = {"use_liger_kernel": False, "use_sdpa_patching": True, "trust_remote_code": trust_remote_code}
-            if attn_implementation is not None:
-                options["attn_implementation"] = attn_implementation
+            options["attn_implementation"] = attn_implementation or "sdpa"
             model = NeMoAutoModelBiEncoder.from_pretrained(model_name_or_path, **options).to(device)
             model.eval()
         target = getattr(model.model, "retrieval_processor_target", None)
@@ -48,8 +47,9 @@ class CheckpointMiningEncoderConfig:
             for name in ("q_max_length", "p_max_length", "query_prefix", "passage_prefix", "image_longest_edge")
             if getattr(self, name) is not None
         }
-        if model.config._commit_hash is not None:
-            options["revision"] = model.config._commit_hash
+        revision = getattr(model.config, "_commit_hash", None)
+        if revision is not None:
+            options["revision"] = revision
         processor = processor_class.from_pretrained(model.config.name_or_path or model.source_model_path, **options)
         use_images, use_text = self.use_images, self.use_text_in_document
 

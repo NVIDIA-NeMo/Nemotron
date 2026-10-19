@@ -244,3 +244,19 @@ class TestDeployConfigValidation:
     def test_port_too_high(self, DeployConfig):
         with pytest.raises(ValidationError):
             DeployConfig(host_port=70000)
+
+
+@pytest.mark.parametrize(
+    "module_name,class_name",
+    [
+        ("nemotron.recipes.embed.stage1_data_prep.data_prep", "DataPrepConfig"),
+        ("nemotron.recipes.embed.stage3_eval.eval", "EvalConfig"),
+    ],
+)
+def test_mixed_view_is_explicit_stage_selection(module_name, class_name):
+    """Both public stages accept the additive view without accepting unknown views."""
+    cls = getattr(importlib.import_module(module_name), class_name)
+    cfg = cls(sdg_input_path="/tmp/fake", retrieval_view="mixed")
+    assert cfg.retrieval_view == "mixed"
+    with pytest.raises(ValidationError):
+        cls(sdg_input_path="/tmp/fake", retrieval_view="arbitrary-view")

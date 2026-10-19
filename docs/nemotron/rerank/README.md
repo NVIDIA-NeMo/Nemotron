@@ -1,10 +1,23 @@
 # Reranking Model Fine-Tuning Recipe
 
-A complete 6-stage pipeline for fine-tuning and deploying cross-encoder reranking models on domain-specific data using synthetic data generation.
+Fine-tune a cross-encoder reranker on your domain data. Choose the workflow that
+matches your model.
+
+| Model | Profile | Recipe Scope |
+| --- | --- | --- |
+| Llama Nemotron Rerank 1B v2 | `default` | Text data generation, preparation, training, evaluation, export, and NIM deployment |
+| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Multimodal Stage 2 training](#fine-tune-nemotron-35-rerank-8b-on-image-documents) from prepared retrieval data |
 
 ## Overview
 
-This recipe fine-tunes NVIDIA's [Llama-Nemotron-Rerank-1B-v2](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2) cross-encoder reranking model on your own domain data. By the end of this pipeline, you'll have a domain-adapted reranker that improves retrieval precision by re-scoring candidate documents returned by a first-stage retriever.
+The six-stage text pipeline fine-tunes NVIDIA's
+[Llama Nemotron Rerank 1B v2](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2)
+on your domain data and serves it through NIM. A reranker scores the candidate
+documents returned by a first-stage retriever. Measure retrieval quality before
+and after training to determine whether adaptation improves your task.
+
+The pipeline diagram and text-stage instructions below apply to `default`. The
+`nemotron-3.5` profile has separate [training instructions](#fine-tune-nemotron-35-rerank-8b-on-image-documents).
 
 ### Why Fine-Tune Reranking Models?
 
@@ -212,6 +225,59 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 - **Cost**: Free tier has rate limits; contact NVIDIA for production usage
 
 ## Quick Start
+
+### Fine-Tune Nemotron 3.5 Rerank 8B on Image Documents
+
+Use the `nemotron-3.5` training profile for
+[Nemotron 3.5 Rerank 8B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Rerank-8B-BF16).
+This profile covers Stage 2 only. The text-model evaluation, ONNX export, and NIM
+deployment commands on this page do not support this multimodal model. Do not
+select `nemotron-3.5` with `rerank run` or carry it into those stages.
+
+Complete the [CLI installation](../embed/multimodal.md#prerequisites)
+and use a Linux machine with Python 3.12 and NVIDIA GPUs. Start with local
+execution and inspect memory use with your image sizes, sequence lengths, and
+batch settings before scaling. Full fine-tuning updates all model weights.
+
+Provide an Automodel training JSON with a corpus reference, one positive per
+unrolled query row, and at least three negatives. To generate this input from
+a directory of text and image files or explicit source records, follow the
+[multimodal embedding walkthrough](../embed/multimodal.md)
+through Stage 1. The embedding model mines the negatives; the reranker then
+learns to score the resulting query–document pairs. Keep the complete prepared
+corpus with the training JSON so its relative corpus references resolve.
+
+For a prepared run at `./output/embed/multimodal-first-run`, inspect the
+configuration before training:
+
+```bash
+uv run nemotron rerank finetune -c nemotron-3.5 -d \
+  train_data_path=./output/embed/multimodal-first-run/stage1_data_prep/train_mined.automodel_unrolled.json \
+  checkpoint_dir=./output/rerank/multimodal-first-run/checkpoints
+```
+
+Confirm the input and output paths, then start training and check the final
+checkpoint:
+
+```bash
+uv run nemotron rerank finetune -c nemotron-3.5 \
+  train_data_path=./output/embed/multimodal-first-run/stage1_data_prep/train_mined.automodel_unrolled.json \
+  checkpoint_dir=./output/rerank/multimodal-first-run/checkpoints
+test -f ./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated/config.json
+```
+
+The profile pins the model revision and uses a multimodal processor,
+bidirectional attention, average pooling, and model score temperature `0.05`.
+It preserves the released scoring head and uses native NeMo Automodel
+cross-encoder training. The processor uses a 4,096-token limit and a 1,120-pixel
+image longest edge. Keep the configured scaled dot product attention (`sdpa`)
+backend for image inputs.
+
+Checkpoints include a consolidated model under `LATEST/model/consolidated`.
+A completed training run establishes checkpoint creation. Evaluate the trained
+reranker with representative, independently labeled query–document pairs before
+using it in a retrieval application.
+
 
 ### Local Execution
 

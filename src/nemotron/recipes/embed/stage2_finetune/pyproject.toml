@@ -5,24 +5,22 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "omegaconf>=2.3.0",
     "pydantic-settings>=2.0.0",
-    # Native LoRA export merges adapters through Hugging Face PEFT.
-    "peft>=0.20.0",
     "torch>=2.10.0,<2.11.0",
     # AutoModel metric logging imports wandb even when hosted logging is disabled.
     "wandb>=0.21,<1",
 ]
 
 [project.optional-dependencies]
-text = ["nemo-automodel", "transformers==5.15.1"]
-vl = ["nemo-automodel", "transformers==5.15.1", "torchvision>=0.25,<0.26"]
+text = ["nemo-automodel", "transformers==5.18.0"]
+vl = ["nemo-automodel", "transformers==5.18.0", "torchvision>=0.25,<0.26"]
 
 [tool.uv]
 conflicts = [[{ extra = "text" }, { extra = "vl" }]]
 
 [tool.uv.sources]
 nemo-automodel = [
-    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz", extra = "text" },
-    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz", extra = "vl" },
+    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz", extra = "text" },
+    { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz", extra = "vl" },
 ]
 torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }

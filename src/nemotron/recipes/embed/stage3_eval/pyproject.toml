@@ -14,13 +14,13 @@ dependencies = [
 [project.optional-dependencies]
 # Preserve the original checkpoint's pre-5.6 bidirectional-mask API.
 text = ["transformers>=5.1,<5.6"]
-vl = ["nemo-automodel", "transformers==5.15.1", "torchvision>=0.25,<0.26"]
+vl = ["nemo-automodel", "transformers==5.18.0", "torchvision>=0.25,<0.26"]
 
 [tool.uv]
 conflicts = [[{ extra = "text" }, { extra = "vl" }]]
 
 [tool.uv.sources]
-nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz", extra = "vl" }
+nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz", extra = "vl" }
 torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
 

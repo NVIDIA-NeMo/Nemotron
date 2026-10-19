@@ -60,54 +60,11 @@ class TestCliImportChain:
             f"--- stderr ---\n{result.stderr}"
         )
 
-    @pytest.mark.parametrize("stage_name", STAGE_NAMES)
-    def test_uv_run_with_injection(self, stage_name: str) -> None:
-        """``uv run --with <root> --project <stage> python -c "import ..."`` exits 0.
-
-        The CLI launches stage scripts via ``uv run --with <root_package>
-        --project <stage_dir> python <entry_script>``.  This builds a wheel
-        from the root project and installs it alongside stage deps.  If any
-        module is missing from the built wheel (e.g. a deleted subpackage
-        still referenced by imports), this test will catch it.
-        """
-        import shutil
-
-        uv = shutil.which("uv")
-        if uv is None:
-            pytest.skip("uv not found on PATH")
-
-        stage_dir = EMBED_DIR / stage_name
-        code_root = EMBED_DIR.parents[3]
-
-        # Import the config_loader — this triggers the full nemotron.kit
-        # import chain (artifact → artifacts, pydantic_settings, etc.)
-        result = subprocess.run(
-            [
-                uv,
-                "run",
-                "--no-cache",
-                "--with",
-                str(code_root),
-                "--project",
-                str(stage_dir),
-                "python",
-                "-c",
-                "from nemo_runspec.config.pydantic_loader import parse_config_and_overrides",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        assert result.returncode == 0, (
-            f"uv run --with injection failed for {stage_name}:\n"
-            f"--- stderr ---\n{result.stderr[-2000:]}"
-        )
-
-
 # ===================================================================
 # Tier 1: Local uv sync — validates pyproject.toml + uv.lock
 # ===================================================================
 @pytest.mark.gpu
+@pytest.mark.parametrize("stage_extra", ["text", "vl"])
 class TestLocalUvSync:
     """Validate that ``uv sync`` resolves each stage's dependencies locally.
 
@@ -115,25 +72,46 @@ class TestLocalUvSync:
     venvs — the test runner itself does not need torch or CUDA.
     """
 
+    @pytest.mark.parametrize("stage_name", STAGE_NAMES)
+    def test_stage_imports_checkout_config_loader(self, stage_name: str, stage_extra: str, stage_venv_factory) -> None:
+        """Import checkout code with stage dependencies, as the local CLI does.
+
+        Installing the root project into a stage would impose its incompatible
+        Transformers constraint. The launcher supplies source through PYTHONPATH.
+        """
+        python = stage_venv_factory(stage_name, stage_extra)
+        source = str(EMBED_DIR.parents[2])
+        env = {**subprocess.os.environ, "PYTHONPATH": source}
+        result = subprocess.run(
+            [str(python), "-c", "from nemo_runspec.config.pydantic_loader import parse_config_and_overrides"],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+
     # -- uv sync succeeds ---------------------------------------------------
 
     @pytest.mark.parametrize("stage_name", STAGE_NAMES)
     def test_uv_sync_succeeds(
-        self, stage_name: str, stage_venv_factory
+        self, stage_name: str, stage_extra: str, stage_venv_factory
     ) -> None:
         """``uv sync --frozen`` exits 0 for the stage's pyproject.toml."""
-        python = stage_venv_factory(stage_name)
+        python = stage_venv_factory(stage_name, stage_extra)
         assert python.is_file(), f"venv python not created for {stage_name}"
 
     # -- key imports work ---------------------------------------------------
 
     @pytest.mark.parametrize("stage_name", STAGE_NAMES)
     def test_key_imports(
-        self, stage_name: str, stage_venv_factory
+        self, stage_name: str, stage_extra: str, stage_venv_factory
     ) -> None:
         """Each stage's key packages are importable in the synced venv."""
-        python = stage_venv_factory(stage_name)
-        key_imports = STAGES[stage_name]["key_imports"]
+        python = stage_venv_factory(stage_name, stage_extra)
+        key_imports = list(STAGES[stage_name]["key_imports"])
+        if stage_extra == "vl":
+            key_imports.extend(["nemo_automodel", "torchvision"])
 
         for pkg in key_imports:
             result = subprocess.run(
@@ -151,10 +129,10 @@ class TestLocalUvSync:
 
     @pytest.mark.parametrize("stage_name", STAGE_NAMES)
     def test_stage_script_parseable(
-        self, stage_name: str, stage_venv_factory
+        self, stage_name: str, stage_extra: str, stage_venv_factory
     ) -> None:
         """The stage entry script parses without syntax errors."""
-        python = stage_venv_factory(stage_name)
+        python = stage_venv_factory(stage_name, stage_extra)
         script = EMBED_DIR / stage_name / STAGES[stage_name]["entry_script"]
         assert script.is_file(), f"Entry script not found: {script}"
 

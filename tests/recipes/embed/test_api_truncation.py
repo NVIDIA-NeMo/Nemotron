@@ -1,4 +1,4 @@
-"""Public boundary coverage for optional Cohere truncation policy."""
+"""Public boundary coverage for NIM and vLLM truncation policies."""
 
 from __future__ import annotations
 
@@ -29,13 +29,16 @@ class Response:
         return json.dumps(self.payload).encode()
 
 
+@pytest.mark.parametrize("backend", ["nim", "vllm"])
 @pytest.mark.parametrize("policy", [None, "NONE", "START", "END"])
-def test_policy_reaches_query_image_document_and_retry_requests(monkeypatch, tmp_path, policy):
+def test_policy_reaches_query_document_and_retry_requests(monkeypatch, tmp_path, backend, policy):
     monkeypatch.setattr(evaluation.NIMEmbeddingModel, "_check_connection", lambda self: None)
     (tmp_path / "image.png").write_bytes(b"invented-image")
     requests = []
 
     def endpoint(request, timeout):
+        endpoint_path = "/v1/embeddings" if backend == "nim" else "/v2/embed"
+        assert request.full_url.endswith(endpoint_path)
         payload = json.loads(request.data)
         requests.append(payload)
         if policy is None:
@@ -43,16 +46,22 @@ def test_policy_reaches_query_image_document_and_retry_requests(monkeypatch, tmp
         else:
             assert payload["truncate"] == policy
         vectors = [[None, None]] if len(requests) == 1 else [[1.0, 0.0]]
+        if backend == "nim":
+            return Response({"data": [{"index": 0, "embedding": vectors[0]}]})
         return Response({"embeddings": {"float": vectors}})
 
     monkeypatch.setattr("urllib.request.urlopen", endpoint)
     client = evaluation.NIMEmbeddingModel(
-        api_backend="vllm", api_truncate=policy, dataset_path=tmp_path, invalid_embedding_retries=1
+        api_backend=backend, api_truncate=policy, dataset_path=tmp_path, invalid_embedding_retries=1
     )
     client.encode_queries(["Standalone query"])
-    client.encode_corpus([{"text": "Native text", "image_path": "image.png"}])
+    document = {"text": "Native text"}
+    if backend == "vllm":
+        document["image_path"] = "image.png"
+    client.encode_corpus([document])
     assert len(requests) == 3
-    assert [row["input_type"] for row in requests] == ["query", "query", "document"]
+    document_type = "passage" if backend == "nim" else "document"
+    assert [row["input_type"] for row in requests] == ["query", "query", document_type]
     assert client.diagnostics().get("api_truncate") == policy
 
 
@@ -71,36 +80,28 @@ def test_default_nim_request_unchanged(monkeypatch):
     assert "api_truncate" not in client.diagnostics()
 
 
+@pytest.mark.parametrize("backend", ["nim", "vllm"])
 @pytest.mark.parametrize("invalid", ["INVALID", "none", "", 0, True, []])
-def test_shared_client_rejects_invalid_policy_before_connection(monkeypatch, invalid):
+def test_shared_client_rejects_invalid_policy_before_connection(monkeypatch, backend, invalid):
     def connection(self):
         pytest.fail("Invalid policy reached the connection check")
 
     monkeypatch.setattr(evaluation.NIMEmbeddingModel, "_check_connection", connection)
     with pytest.raises(ValueError, match="truncate"):
-        evaluation.NIMEmbeddingModel(api_backend="vllm", api_truncate=invalid)
+        evaluation.NIMEmbeddingModel(api_backend=backend, api_truncate=invalid)
 
 
-@pytest.mark.parametrize("policy", ["NONE", "START", "END"])
-def test_shared_client_rejects_policy_on_nim_before_connection(monkeypatch, policy):
-    def connection(self):
-        pytest.fail("Incompatible policy reached the connection check")
-
-    monkeypatch.setattr(evaluation.NIMEmbeddingModel, "_check_connection", connection)
-    with pytest.raises(ValueError, match="vllm"):
-        evaluation.NIMEmbeddingModel(api_backend="nim", api_truncate=policy)
-
-
-@pytest.mark.parametrize("stage", ["prep", "eval"])
-@pytest.mark.parametrize("profile", ["default", "llama", "mistral3-vl"])
-def test_cli_policy_is_explicit_and_defaults_are_preserved(stage, profile):
+@pytest.mark.parametrize("stage,api_backend", [("prep", "vllm"), ("eval", "nim"), ("eval", "vllm")])
+@pytest.mark.parametrize("profile", ["default", "llama", "nemotron-3.5"])
+def test_cli_policy_is_explicit_and_defaults_are_preserved(stage, api_backend, profile):
     module = data_prep if stage == "prep" else evaluation
     model = data_prep.DataPrepConfig if stage == "prep" else evaluation.EvalConfig
     field = "mining_api_truncate" if stage == "prep" else "embedding_api_truncate"
     backend = "mining_backend" if stage == "prep" else "embedding_api_backend"
     config = module.STAGE_PATH / "config" / f"{profile}.yaml"
     assert getattr(load_pydantic_config(config, [], model), field) is None
-    assert getattr(load_pydantic_config(config, [f"{backend}=vllm", f"{field}=NONE"], model), field) == "NONE"
+    cfg = load_pydantic_config(config, [f"{backend}={api_backend}", f"{field}=NONE"], model)
+    assert getattr(cfg, field) == "NONE"
 
 
 @pytest.mark.parametrize(
@@ -110,11 +111,14 @@ def test_cli_policy_is_explicit_and_defaults_are_preserved(stage, profile):
         (evaluation.EvalConfig, "embedding_api_truncate", "embedding_api_backend"),
     ],
 )
-def test_config_rejects_incompatible_backend(model, field, backend):
-    with pytest.raises(ValueError, match="requires.*vllm"):
-        model(**{field: "NONE"})
+def test_config_rejects_invalid_policy(model, field, backend):
     with pytest.raises(ValueError, match=field):
         model(**{field: "INVALID", backend: "vllm"})
+
+
+def test_native_mining_rejects_api_policy():
+    with pytest.raises(ValueError, match="requires.*vllm"):
+        data_prep.DataPrepConfig(mining_api_truncate="NONE")
 
 
 @pytest.mark.parametrize("policy", [None, "NONE", "START", "END"])
@@ -166,13 +170,15 @@ class SearchConfiguredError(Exception):
     pass
 
 
+@pytest.mark.parametrize("backend", ["nim", "vllm"])
 @pytest.mark.parametrize("policy", [None, "NONE", "START", "END"])
-def test_stage3_policy_reaches_actual_shared_client(monkeypatch, tmp_path, policy):
+def test_stage3_policy_reaches_actual_shared_client(monkeypatch, tmp_path, backend, policy):
     monkeypatch.setattr(evaluation.NIMEmbeddingModel, "_check_connection", lambda self: None)
     observed = []
 
     def search(model, **kwargs):
         observed.append(model.api_truncate)
+        assert model.api_backend == backend
         assert model.diagnostics().get("api_truncate") == policy
         raise SearchConfiguredError
 
@@ -191,7 +197,7 @@ def test_stage3_policy_reaches_actual_shared_client(monkeypatch, tmp_path, polic
         eval_base=False,
         eval_finetuned=False,
         eval_nim=True,
-        embedding_api_backend="vllm",
+        embedding_api_backend=backend,
         embedding_api_truncate=policy,
     )
     with pytest.raises(SearchConfiguredError):

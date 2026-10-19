@@ -271,25 +271,38 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert deploy.model_dir == finetune.checkpoint_dir / "LATEST/model/consolidated"
 
 
+@pytest.mark.parametrize(
+    "source_field,source_value",
+    [
+        ("sources_file", "/operator/sources.jsonl"),
+        ("source_directory", {"path": "/operator/documents"}),
+    ],
+)
 def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     monkeypatch: pytest.MonkeyPatch,
+    source_field: str,
+    source_value: str | dict,
 ) -> None:
-    monkeypatch.delenv("MISTRAL3_SDG_ARTIFACT_MODEL", raising=False)
-    monkeypatch.setenv("MISTRAL3_SDG_QA_MODEL", "public/image-qa-model")
-    monkeypatch.setenv("MISTRAL3_SDG_JUDGE_MODEL", "public/image-judge-model")
-    monkeypatch.delenv("MISTRAL3_SDG_EMBED_MODEL", raising=False)
-    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "nvidia/test-mistral3-vl-embed")
-    raw_sdg = OmegaConf.to_container(load_config(CONFIG_ROOT / "stage0_sdg/config/mistral3-vl.yaml"), resolve=True)
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_ARTIFACT_MODEL", raising=False)
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_QA_MODEL", "public/image-qa-model")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "public/image-judge-model")
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_EMBED_MODEL", raising=False)
+    monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "nvidia/test-nemotron-3.5-embed")
+    raw_sdg = OmegaConf.to_container(load_config(CONFIG_ROOT / "stage0_sdg/config/nemotron-3.5.yaml"), resolve=True)
     raw_sdg.pop("run", None)
-    raw_sdg["sources_file"] = "/operator/sources.jsonl"
+    raw_sdg[source_field] = source_value
     sdg = SDGConfig.model_validate(raw_sdg)
-    prep = _load_profile_config("mistral3-vl", "stage1_data_prep", DataPrepConfig)
-    finetune = _load_profile_config("mistral3-vl", "stage2_finetune", FinetuneConfig)
-    evaluate = _load_profile_config("mistral3-vl", "stage3_eval", EvalConfig)
+    prep = _load_profile_config("nemotron-3.5", "stage1_data_prep", DataPrepConfig)
+    finetune = _load_profile_config("nemotron-3.5", "stage2_finetune", FinetuneConfig)
+    evaluate = _load_profile_config("nemotron-3.5", "stage3_eval", EvalConfig)
 
-    assert sdg.sources_file == Path("/operator/sources.jsonl")
-    assert sdg.sdg_workflow == "retrieval_first"
-    assert sdg.portable_export is True
+    if source_field == "sources_file":
+        assert sdg.sources_file == Path("/operator/sources.jsonl")
+        assert sdg.source_directory is None
+    else:
+        assert sdg.sources_file is None
+        assert sdg.source_directory.path == Path("/operator/documents")
+    assert sdg.sdg_workflow == "multimodal"
     assert sdg.qa_generation_model == "public/image-qa-model"
     assert sdg.quality_judge_model == "public/image-judge-model"
     assert sdg.sdg_options["summary_embedding_model"] == "nvidia/nemotron-3-embed-1b"
@@ -299,7 +312,7 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     assert "summary_embedding_revision" not in sdg.sdg_options
     assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
     assert prep.train_input_file is None
-    assert prep.retrieval_view == "image_and_text"
+    assert prep.retrieval_view == "mixed"
     assert prep.base_model == finetune.base_model == evaluate.base_model
     assert finetune.train_data_path == prep.output_dir / "train_mined.automodel_unrolled.json"
     assert finetune.attn_implementation == "sdpa"
@@ -308,7 +321,7 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     assert (finetune.query_prefix, finetune.passage_prefix, finetune.image_longest_edge) == (None, None, None)
     assert (evaluate.query_prefix, evaluate.passage_prefix, evaluate.image_longest_edge) == (None, None, None)
     assert evaluate.sdg_input_path == sdg.output_dir / "generation_result.json"
-    assert evaluate.retrieval_view == "image_and_text"
+    assert evaluate.retrieval_view == "mixed"
     assert evaluate.eval_data_path == sdg.output_dir / "RESOLVED_FROM_GENERATION_MANIFEST"
     assert evaluate.image_root is None
     assert evaluate.eval_finetuned is True
@@ -410,3 +423,22 @@ def test_enabled_llama_export_branch(monkeypatch, tmp_path: Path) -> None:
 
     assert result == {"model_path": str(checkpoint), "onnx_path": str(tmp_path / "onnx")}
     assert calls == [("model", "tokenizer"), ("onnx-exporter", True)]
+
+
+def test_multimodal_profile_defaults_to_public_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("NEMOTRON_3_5_EMBED_MODEL", raising=False)
+    for stage, cls in [
+        ("stage1_data_prep", DataPrepConfig),
+        ("stage2_finetune", FinetuneConfig),
+        ("stage3_eval", EvalConfig),
+    ]:
+        cfg = _load_profile_config("nemotron-3.5", stage, cls)
+        assert cfg.base_model == "nvidia/Nemotron-3.5-Embed-1B-BF16"
+    deploy = _load_profile_config("nemotron-3.5", "stage5_deploy", DeployConfig)
+    assert deploy.nim_model == "nvidia/Nemotron-3.5-Embed-1B-BF16"
+
+
+@pytest.mark.parametrize("cls", [DataPrepConfig, FinetuneConfig])
+def test_multimodal_flash_attention_fails_before_model_loading(cls) -> None:
+    with pytest.raises(ValueError, match="Transformers 5.18.0; use sdpa"):
+        cls(model_family="nemotron_3_5", attn_implementation="flash_attention_2")

@@ -1,20 +1,20 @@
-# Preview data-preparation profile for Mistral3 VL embedding.
-# The input is the verified image_and_text view emitted by DataDesignerPlugins.
+# Data-preparation profile for Nemotron 3.5 Embed 1B.
+# The mixed view retains text, image, and paired units from DataDesignerPlugins.
 
 run:
   env:
     container: nvcr.io/nvidia/pytorch:26.06-py3
 
-artifact_root: ./output/embed/mistral3-vl-preview
+artifact_root: ./output/embed/nemotron-3.5
 corpus_id: multimodal_retrieval
 sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
 train_input_file: null
-retrieval_view: image_and_text
+retrieval_view: mixed
 output_dir: ${artifact_root}/stage1_data_prep
 artifact_recipe: embed
 
-base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
-model_family: mistral3_vl
+base_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
+model_family: nemotron_3_5
 trust_remote_code: false
 tokenizer_force_default: true
 image_longest_edge: null

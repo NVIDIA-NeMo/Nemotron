@@ -6,11 +6,11 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Runtime source: the commit-pinned AutoModel dependency in pyproject.toml's vl extra.
+# Uses the immutable AutoModel source declared in pyproject.toml.
 
-recipe: TrainBiEncoderRecipe
+recipe: TrainCrossEncoderRecipe
 seed: 42
-temperature: 0.02
+temperature: 1.0
 
 step_scheduler:
   global_batch_size: 8
@@ -20,39 +20,43 @@ step_scheduler:
   num_epochs: 1
 
 model:
-  _target_: nemo_automodel.NeMoAutoModelBiEncoder.from_pretrained
-  pretrained_model_name_or_path: mistralai/Ministral-3-3B-Instruct-2512-BF16
+  _target_: nemo_automodel.NeMoAutoModelCrossEncoder.from_pretrained
+  pretrained_model_name_or_path: nvidia/Nemotron-3.5-Rerank-8B-BF16
+  # Preserve the released Nemotron 3.5 reranker scoring head.
+  key_mapping:
+    '^language_model\.score\.weight$': score.weight
+  num_labels: 1
+  temperature: 0.05
   pooling: avg
-  l2_normalize: true
   is_causal: false
   use_liger_kernel: true
   use_sdpa_patching: true
   torch_dtype: bfloat16
-  attn_implementation: flash_attention_2
-  do_distributed_inbatch_negative: false  # EA: unrolled positives are not masked across queries.
-  detach_distributed_inbatch_negatives: false
+  attn_implementation: sdpa
 
 tokenizer:
   _target_: nemo_automodel.components.models.ministral_bidirectional.processor.Mistral3BiEncoderProcessor.from_pretrained
-  pretrained_model_name_or_path: mistralai/Ministral-3-3B-Instruct-2512-BF16
-  q_max_length: 512
-  p_max_length: 4096
+  pretrained_model_name_or_path: nvidia/Nemotron-3.5-Rerank-8B-BF16
+  rerank_max_length: 4096
+  use_prompt_template: true
+  export_as_stock_processor: false
   pad_to_multiple_of: 8
+  image_longest_edge: 1120
 
 dataset:
-  _target_: nemotron.recipes.retrieval_vl.DataDesignerRetrievalDatasetConfig
-  model_type: bi_encoder
+  _target_: nemotron.recipes._retrieval.data.NullableImageDatasetConfig
+  model_type: cross_encoder
   data_dir_list:
     - training_datasets/train.json
   data_type: train
   n_passages: 4
   seed: 42
-  use_text_in_document: false
+  use_text_in_document: true
 
 dataloader:
   collate_fn:
     _target_: nemo_automodel.components.datasets.llm.ProcessorMethodCollator
-    collator_fn_name: process_queries_documents_biencoder
+    collator_fn_name: process_queries_documents_crossencoder
   shuffle: true
   num_workers: 4
   pin_memory: true
@@ -71,14 +75,14 @@ lr_scheduler:
 
 checkpoint:
   enabled: true
-  checkpoint_dir: ./output/mistral3_vl_embedding/checkpoints
+  checkpoint_dir: ./output/rerank/nemotron-3.5/stage2_finetune/checkpoints
   model_save_format: safetensors
-  save_consolidated: true
-  # Keep the latest checkpoint plus any pointer-protected best checkpoint.
+  save_consolidated: final
   max_recent_checkpoints: 1
 
 distributed:
   strategy: fsdp2
+  defer_fsdp_grad_sync: false
   dp_size: none
   tp_size: 1
   cp_size: 1

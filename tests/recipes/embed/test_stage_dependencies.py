@@ -13,7 +13,7 @@ from nemo_runspec._pyproject import _write_temp_pyproject
 
 EMBED = Path(__file__).resolve().parents[3] / "src/nemotron/recipes/embed"
 STAGES = ("stage1_data_prep", "stage2_finetune", "stage3_eval")
-AUTOMODEL_REV = "3914f200a4c782d44b58ee7a01b4685e4158e19c"
+AUTOMODEL_REV = "497b995339e234fc492368e8c470669a04cdb9b7"
 AUTOMODEL_URL = f"https://github.com/NVIDIA-NeMo/Automodel/archive/{AUTOMODEL_REV}.tar.gz"
 
 
@@ -21,9 +21,9 @@ AUTOMODEL_URL = f"https://github.com/NVIDIA-NeMo/Automodel/archive/{AUTOMODEL_RE
 def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None:
     config = tomllib.loads((EMBED / stage / "pyproject.toml").read_text())
     extras = config["project"]["optional-dependencies"]
-    assert "transformers==5.15.1" in extras["vl"]
+    assert "transformers==5.18.0" in extras["vl"]
     assert "torchvision>=0.25,<0.26" in extras["vl"]
-    expected_text = "transformers==5.15.1" if stage != "stage3_eval" else "transformers>=5.1,<5.6"
+    expected_text = "transformers==5.18.0" if stage != "stage3_eval" else "transformers>=5.1,<5.6"
     assert expected_text in extras["text"]
     assert config["tool"]["uv"]["conflicts"] == [[{"extra": "text"}, {"extra": "vl"}]]
     sources = config["tool"]["uv"]["sources"]
@@ -37,7 +37,7 @@ def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None
     if stage == "stage2_finetune":
         assert "wandb>=0.21,<1" in config["project"]["dependencies"]
         assert next(source for source in model_sources if source["extra"] == "text")["url"] == (
-            "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz"
+            "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz"
         )
     elif stage == "stage1_data_prep":
         assert "nemo-automodel" in extras["text"]
@@ -62,14 +62,14 @@ def test_container_manifest_preserves_conflicts_and_git_sources(stage: str) -> N
 
 
 @pytest.mark.parametrize("command", ("prep", "finetune", "eval"))
-@pytest.mark.parametrize("family", ("text", "mistral3_vl"))
+@pytest.mark.parametrize("family", ("text", "nemotron_3_5"))
 def test_cli_selects_stage_extra_after_overrides(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str, family: str
 ) -> None:
     module = importlib.import_module(f"nemotron.cli.commands.embed.{command}")
     config = tmp_path / "resolved.yaml"
     config.write_text(
-        "model_family: text\nlocal_backend: automodel\nquery_max_length: 512\npassage_max_length: 8192\n"
+        "model_family: text\nquery_max_length: 512\npassage_max_length: 8192\n"
         if command == "eval"
         else "model_family: text\n"
     )
@@ -82,7 +82,7 @@ def test_cli_selects_stage_extra_after_overrides(
         module._execute_uv_local(config, overrides)
     kwargs = execute.call_args.kwargs
     assert "project_dir" not in kwargs
-    assert kwargs["extras"] == ["vl" if family == "mistral3_vl" else "text"]
+    assert kwargs["extras"] == ["vl" if family == "nemotron_3_5" else "text"]
     assert kwargs["train_path"] == config
     assert kwargs["passthrough"] == overrides
 
@@ -92,9 +92,9 @@ def test_unvalidated_vl_container_lane_still_fails_before_submission(tmp_path: P
     module = importlib.import_module(f"nemotron.cli.commands.embed.{command}")
     train_path = tmp_path / "resolved.yaml"
     train_path.write_text(
-        "model_family: mistral3_vl\nlocal_backend: automodel\nquery_max_length: 512\npassage_max_length: 8192\n"
+        "model_family: nemotron_3_5\nquery_max_length: 512\npassage_max_length: 8192\n"
         if command == "eval"
-        else "model_family: mistral3_vl\n"
+        else "model_family: nemotron_3_5\n"
     )
     with pytest.raises(RuntimeError, match="VL container dependency selection"):
         module._execute_remote(
@@ -111,13 +111,14 @@ def test_unvalidated_vl_container_lane_still_fails_before_submission(tmp_path: P
     "recipe_stage",
     ("embed/stage1_data_prep", "embed/stage2_finetune", "embed/stage3_eval", "rerank/stage2_finetune"),
 )
-def test_retrieval_stage_locks_share_the_automodel_commit(recipe_stage: str) -> None:
+def test_retrieval_stage_locks_pin_the_selected_automodel_commit(recipe_stage: str) -> None:
     stage = EMBED.parent / recipe_stage
     lock = tomllib.loads((stage / "uv.lock").read_text())
     packages = [package for package in lock["package"] if package["name"] == "nemo-automodel"]
     assert len(packages) == 1
-    assert packages[0]["source"] == {"url": AUTOMODEL_URL}
-    project = tomllib.loads((stage / "pyproject.toml").read_text())
-    if recipe_stage == "embed/stage2_finetune":
-        assert "peft>=0.20.0" in project["project"]["dependencies"]
-        assert any(package["name"] == "accelerate" for package in lock["package"])
+    expected_url = (
+        "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz"
+        if recipe_stage == "rerank/stage2_finetune"
+        else AUTOMODEL_URL
+    )
+    assert packages[0]["source"] == {"url": expected_url}

@@ -17,6 +17,7 @@ from nemotron.kit.artifacts.embed import EmbedModelArtifact
 from nemotron.recipes.embed.stage2_finetune import train as embed_train
 from nemotron.recipes.embed.stage3_eval.eval import EvalConfig as EmbedEvalConfig
 from nemotron.recipes.embed.stage5_deploy.deploy import DeployConfig as EmbedDeployConfig
+from nemotron.recipes.rerank.stage2_finetune import train as rerank_train
 
 
 def _namespace_config() -> SimpleNamespace:
@@ -97,7 +98,7 @@ def _mined_training_file(tmp_path: Path) -> Path:
 def test_embed_vl_base_matches_automodel_mr(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(embed_train, "_can_import_fused_adam", lambda: (True, None))
     monkeypatch.setattr(embed_train, "_can_import_flash_adamw", lambda: (False, "not installed"))
-    cfg = embed_train.FinetuneConfig(model_family="mistral3_vl")
+    cfg = embed_train.FinetuneConfig(model_family="nemotron_3_5")
 
     raw, backend = embed_train._load_automodel_config(cfg, lambda value: value)
 
@@ -107,8 +108,20 @@ def test_embed_vl_base_matches_automodel_mr(monkeypatch: pytest.MonkeyPatch) -> 
     assert "query_prefix" not in raw["tokenizer"]
     assert "passage_prefix" not in raw["tokenizer"]
     assert "image_longest_edge" not in raw["tokenizer"]
-    assert raw["dataset"]["_target_"].endswith("DataDesignerRetrievalDatasetConfig")
+    assert raw["dataset"]["_target_"] == "nemotron.recipes._retrieval.data.NullableImageDatasetConfig"
     assert raw["dataloader"]["collate_fn"]["collator_fn_name"] == "process_queries_documents_biencoder"
+
+
+@pytest.mark.parametrize("module", [embed_train, rerank_train])
+@pytest.mark.parametrize("family", ["text", "nemotron_3_5"])
+def test_training_bounds_native_checkpoint_retention(monkeypatch, module, family):
+    """Every runtime template keeps one recent checkpoint and its full export."""
+    monkeypatch.setattr(module, "_can_import_fused_adam", lambda: (True, None))
+    monkeypatch.setattr(module, "_can_import_flash_adamw", lambda: (False, "not installed"))
+    config, _ = module._load_automodel_config(module.FinetuneConfig(model_family=family), dict)
+    assert config["checkpoint"]["enabled"] is True
+    assert config["checkpoint"]["max_recent_checkpoints"] == 1
+    assert config["checkpoint"]["save_consolidated"] in (True, "final", "every")
 
 
 def test_vl_flash_adamw_uses_quantized_states_and_full_master_weights(
@@ -116,7 +129,7 @@ def test_vl_flash_adamw_uses_quantized_states_and_full_master_weights(
 ) -> None:
     monkeypatch.setattr(embed_train, "_can_import_fused_adam", lambda: (False, "not installed"))
     monkeypatch.setattr(embed_train, "_can_import_flash_adamw", lambda: (True, None))
-    cfg = embed_train.FinetuneConfig(model_family="mistral3_vl", optimizer_backend="flash_adamw")
+    cfg = embed_train.FinetuneConfig(model_family="nemotron_3_5", optimizer_backend="flash_adamw")
 
     raw, backend = embed_train._load_automodel_config(cfg, lambda value: value)
 
@@ -146,7 +159,7 @@ def test_embed_vl_export_metadata_is_vllm_compatible(tmp_path: Path) -> None:
         json.dumps({"prompts": {"query": "query: ", "document": "passage: "}})
     )
     cfg = embed_train.FinetuneConfig(
-        model_family="mistral3_vl",
+        model_family="nemotron_3_5",
         pooling="avg",
         query_prefix="query: ",
         passage_prefix="passage: ",
@@ -171,7 +184,7 @@ def test_embed_vl_runtime_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(embed_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
     monkeypatch.setattr(embed_train, "_repair_vllm_sentence_transformers_metadata", lambda model_dir, cfg: None)
     cfg = embed_train.FinetuneConfig(
-        model_family="mistral3_vl",
+        model_family="nemotron_3_5",
         base_model="mistralai/Ministral-3-3B-Instruct-2512-BF16",
         train_data_path=_mined_training_file(tmp_path),
         checkpoint_dir=tmp_path / "checkpoints",
@@ -209,7 +222,7 @@ def test_embed_vl_runtime_omits_checkpoint_owned_processor_overrides(
     monkeypatch.setattr(embed_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
     monkeypatch.setattr(embed_train, "_repair_vllm_sentence_transformers_metadata", lambda model_dir, cfg: None)
     cfg = embed_train.FinetuneConfig(
-        model_family="mistral3_vl",
+        model_family="nemotron_3_5",
         train_data_path=_mined_training_file(tmp_path),
         checkpoint_dir=tmp_path / "checkpoints",
         train_n_passages=4,
@@ -230,11 +243,11 @@ def test_embed_vl_runtime_omits_checkpoint_owned_processor_overrides(
     assert "image_longest_edge" not in tokenizer.__dict__
 
 
-@pytest.mark.parametrize("profile", ["default", "mistral3-vl"])
+@pytest.mark.parametrize("profile", ["default", "nemotron-3.5"])
 def test_embed_exact_step_dotlist_reaches_native_scheduler(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str
 ) -> None:
-    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "nvidia/test-mistral3-vl-embed")
+    monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "nvidia/test-nemotron-3.5-embed")
     captured: dict[str, Any] = {}
     saved_artifacts: list[EmbedModelArtifact] = []
     base = _namespace_config()
@@ -296,55 +309,154 @@ def test_vl_stages_pin_their_selected_automodel_runtime() -> None:
     with (Path(embed_train.__file__).parent / "pyproject.toml").open("rb") as stream:
         embed_project = tomllib.load(stream)
     extras = embed_project["project"]["optional-dependencies"]
-    assert "transformers==5.15.1" in extras["text"]
-    assert "transformers==5.15.1" in extras["vl"]
+    assert "transformers==5.18.0" in extras["text"]
+    assert "transformers==5.18.0" in extras["vl"]
     sources = embed_project["tool"]["uv"]["sources"]["nemo-automodel"]
     assert {entry["extra"]: entry["url"] for entry in sources} == {
-        "text": ("https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz"),
-        "vl": ("https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz"),
+        "text": ("https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz"),
+        "vl": ("https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz"),
     }
 
 
 def test_public_profiles_declare_dependency_and_safe_data_contract() -> None:
     root = Path(embed_train.__file__).parents[2]
-    raw = yaml.safe_load((root / "embed/stage2_finetune/config/mistral3-vl.yaml").read_text())
-    assert raw["model_family"] == "mistral3_vl"
+    raw = yaml.safe_load((root / "embed/stage2_finetune/config/nemotron-3.5.yaml").read_text())
+    assert raw["model_family"] == "nemotron_3_5"
     assert raw["do_distributed_inbatch_negative"] is False
     assert raw["require_mined_negatives"] is True
     assert raw["use_text_in_document"] is True
     assert raw["flash_adamw_master_weight_bits"] == 32
-    assert "MISTRAL3_VL_TRAIN_DATA" in raw["train_data_path"]
-    assert raw["base_model"] == "${oc.env:MISTRAL3_VL_EMBED_MODEL}"
+    assert "NEMOTRON_3_5_TRAIN_DATA" in raw["train_data_path"]
+    assert raw["base_model"] == "${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}"
 
-    embed_prep = yaml.safe_load((root / "embed/stage1_data_prep/config/mistral3-vl.yaml").read_text())
+    embed_prep = yaml.safe_load((root / "embed/stage1_data_prep/config/nemotron-3.5.yaml").read_text())
     assert embed_prep["passage_max_length"] == raw["passage_max_length"] == 4096
     assert embed_prep["query_max_length"] == raw["query_max_length"] == 512
     assert embed_prep["mining_backend"] == "automodel"
     assert embed_prep["mining_use_images"] is True
     assert embed_prep["hard_negatives_to_mine"] >= 3
     assert embed_prep["sdg_input_path"].endswith("/stage0_sdg/generation_result.json")
-    assert embed_prep["retrieval_view"] == "image_and_text"
+    assert embed_prep["retrieval_view"] == "mixed"
     assert embed_prep["train_input_file"] is None
 
 
 def test_preview_eval_and_deploy_profiles_are_vllm_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "nvidia/test-mistral3-vl-embed")
+    monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "nvidia/test-nemotron-3.5-embed")
     root = Path(embed_train.__file__).parents[2]
     embed_eval = load_pydantic_config(
-        root / "embed/stage3_eval/config/mistral3-vl.yaml",
+        root / "embed/stage3_eval/config/nemotron-3.5.yaml",
         [],
         EmbedEvalConfig,
     )
     embed_deploy = load_pydantic_config(
-        root / "embed/stage5_deploy/config/mistral3-vl.yaml",
+        root / "embed/stage5_deploy/config/nemotron-3.5.yaml",
         [],
         EmbedDeployConfig,
     )
     assert embed_eval.passage_max_length == 4096
     assert embed_eval.query_max_length == 512
     assert embed_eval.embedding_api_backend == "vllm"
-    assert embed_eval.nim_model == "nvidia/test-mistral3-vl-embed"
+    assert embed_eval.nim_model == "nvidia/test-nemotron-3.5-embed"
     assert embed_deploy.backend == "vllm"
     assert embed_deploy.vllm_runner == "pooling"
     assert embed_deploy.vllm_max_model_len == 8192
-    assert embed_deploy.vllm_hf_overrides is None
+
+
+@pytest.mark.parametrize("family", ["text", "nemotron_3_5"])
+def test_rerank_multimodal_config_and_flash_optimizer(monkeypatch, family):
+    monkeypatch.setattr(rerank_train, "_can_import_fused_adam", lambda: (False, "unavailable"))
+    monkeypatch.setattr(rerank_train, "_can_import_flash_adamw", lambda: (True, None))
+    cfg = rerank_train.FinetuneConfig(model_family=family, optimizer_backend="flash_adamw")
+    raw, backend = rerank_train._load_automodel_config(cfg, lambda value: value)
+    assert backend == "flash_adamw"
+    assert raw["optimizer"]["quantize"] is False
+    assert raw["optimizer"]["master_weight_bits"] == 32
+    if family == "nemotron_3_5":
+        assert raw["model"]["key_mapping"] == {r"^language_model\.score\.weight$": "score.weight"}
+        assert raw["model"]["is_causal"] is False
+        assert raw["temperature"] == 1.0
+        assert raw["tokenizer"]["_target_"].endswith("Mistral3BiEncoderProcessor.from_pretrained")
+        assert raw["tokenizer"]["use_prompt_template"] is True
+        assert raw["tokenizer"]["image_longest_edge"] == 1120
+        assert raw["dataloader"]["collate_fn"]["collator_fn_name"] == "process_queries_documents_crossencoder"
+        assert raw["dataset"]["model_type"] == "cross_encoder"
+        assert raw["dataset"]["use_text_in_document"] is True
+        assert raw["distributed"]["defer_fsdp_grad_sync"] is False
+        assert raw["checkpoint"]["save_consolidated"] == "final"
+
+
+@pytest.mark.parametrize("family", ["text", "nemotron_3_5"])
+def test_rerank_routes_processor_and_revision(tmp_path, monkeypatch, family):
+    captured = {}
+    base = _namespace_config()
+    _install_recipe(monkeypatch, recipe_name="TrainCrossEncoderRecipe", captured=captured)
+    monkeypatch.setattr(rerank_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
+    cfg = rerank_train.FinetuneConfig(
+        model_family=family,
+        model_revision="bfa359b67f29ae42b3cef7e1657457b4f6354cb9",
+        train_data_path=_mined_training_file(tmp_path),
+        checkpoint_dir=tmp_path / "checkpoints",
+        train_n_passages=4,
+        num_epochs=1,
+        rerank_max_length=4096,
+        temperature=0.05,
+        attn_implementation="sdpa",
+    )
+    rerank_train.run_finetune(cfg)
+    native = captured["config"]
+    assert native.model.revision == native.tokenizer.revision == cfg.model_revision
+    assert native.model.temperature == 0.05
+    assert native.dataset.n_passages == 4
+    if family == "nemotron_3_5":
+        assert native.tokenizer.rerank_max_length == 4096
+        assert not hasattr(native.dataloader.collate_fn, "prompt_template")
+    else:
+        assert native.dataloader.collate_fn.rerank_max_length == 4096
+        assert native.dataloader.collate_fn.prompt_template == cfg.prompt_template
+
+
+def test_rerank_rejects_invalid_vl_data_before_model_import(tmp_path, monkeypatch):
+    data = _mined_training_file(tmp_path)
+    payload = json.loads(data.read_text())
+    payload["data"][0]["neg_doc"] = []
+    data.write_text(json.dumps(payload))
+    cfg = rerank_train.FinetuneConfig(model_family="nemotron_3_5", train_data_path=data, train_n_passages=4)
+    with pytest.raises(ValueError, match="negatives"):
+        rerank_train.run_finetune(cfg)
+
+
+def test_rerank_vl_rejects_unsupported_flash_attention() -> None:
+    with pytest.raises(ValueError, match="Multimodal Flash Attention 2"):
+        rerank_train.FinetuneConfig(model_family="nemotron_3_5", attn_implementation="flash_attention_2")
+
+
+def test_rerank_vl_automatic_attention_uses_sdpa_even_with_flash_installed(tmp_path, monkeypatch) -> None:
+    captured = {}
+    base = _namespace_config()
+    _install_recipe(monkeypatch, recipe_name="TrainCrossEncoderRecipe", captured=captured)
+    monkeypatch.setattr(rerank_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
+    monkeypatch.setitem(sys.modules, "flash_attn", ModuleType("flash_attn"))
+    cfg = rerank_train.FinetuneConfig(
+        model_family="nemotron_3_5",
+        train_data_path=_mined_training_file(tmp_path),
+        checkpoint_dir=tmp_path / "checkpoints",
+        train_n_passages=4,
+    )
+    rerank_train.run_finetune(cfg)
+    assert captured["config"].model.attn_implementation == "sdpa"
+
+
+def test_released_reranker_profile_and_runtime_pin():
+    stage = Path(rerank_train.__file__).parent
+    cfg = load_pydantic_config(stage / "config/nemotron-3.5.yaml", [], rerank_train.FinetuneConfig)
+    assert cfg.base_model == "nvidia/Nemotron-3.5-Rerank-8B-BF16"
+    assert cfg.model_revision == "bfa359b67f29ae42b3cef7e1657457b4f6354cb9"
+    assert cfg.model_family == "nemotron_3_5" and cfg.temperature == 0.05
+    legacy = load_pydantic_config(stage / "config/default.yaml", [], rerank_train.FinetuneConfig)
+    assert cfg.checkpoint_dir != legacy.checkpoint_dir
+    assert cfg.checkpoint_dir.parts[-4:] == ("rerank", "nemotron-3.5", "stage2_finetune", "checkpoints")
+    project = tomllib.loads((stage / "pyproject.toml").read_text())
+    assert project["tool"]["uv"]["sources"]["nemo-automodel"]["url"].endswith(
+        "/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz"
+    )
+    assert "torchvision>=0.25,<0.26" in project["project"]["dependencies"]

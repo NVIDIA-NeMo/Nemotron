@@ -98,7 +98,7 @@ class DataPrepConfig(RecipeSettings):
     train_input_file: Path | None = Field(
         default=None, description="Path to pre-converted training file (skips SDG conversion)."
     )
-    retrieval_view: Literal["text", "image", "image_and_text"] | None = Field(
+    retrieval_view: Literal["text", "image", "image_and_text", "mixed"] | None = Field(
         default=None,
         description=(
             "Select a portable Stage 0 view, preserving its splits and quality decisions; skips legacy conversion."
@@ -107,10 +107,6 @@ class DataPrepConfig(RecipeSettings):
     output_dir: Path = Field(
         default_factory=lambda data: data["artifact_root"] / "stage1_data_prep",
         description="Output directory for prepared training data.",
-    )
-    retrieval_split_protocol: Literal["grouped_query_disjoint"] | None = Field(
-        default=None,
-        description="Expected portable bundle split protocol; omitted means use the manifest declaration.",
     )
     artifact_recipe: Literal["embed", "rerank"] = Field(
         default="embed",
@@ -121,7 +117,7 @@ class DataPrepConfig(RecipeSettings):
     base_model: str = Field(
         default="nvidia/Nemotron-3-Embed-1B-BF16", description="Base embedding model for hard negative mining."
     )
-    model_family: Literal["text", "mistral3_vl"] = Field(
+    model_family: Literal["text", "nemotron_3_5"] = Field(
         default="text", description="Native mining processor family; match the fine-tuning model family."
     )
     image_longest_edge: int | None = Field(
@@ -202,6 +198,12 @@ class DataPrepConfig(RecipeSettings):
 
     @model_validator(mode="after")
     def _check_api_truncation(self):
+        if (
+            self.model_family == "nemotron_3_5"
+            and self.mining_backend == "automodel"
+            and self.attn_implementation == "flash_attention_2"
+        ):
+            raise ValueError("Multimodal Flash Attention 2 is unsupported with Transformers 5.18.0; use sdpa or eager")
         if self.mining_api_truncate is not None and self.mining_backend != "vllm":
             raise ValueError("mining_api_truncate requires mining_backend=vllm")
         return self
@@ -210,8 +212,6 @@ class DataPrepConfig(RecipeSettings):
     def _check_input_source(self):
         if self.retrieval_view is not None and self.train_input_file is not None:
             raise ValueError("retrieval_view applies to an SDG manifest, not train_input_file")
-        if self.retrieval_split_protocol is not None and self.retrieval_view is None:
-            raise ValueError("retrieval_split_protocol requires retrieval_view and a portable manifest")
         if self.sdg_input_path and self.train_input_file:
             raise ValueError(
                 "sdg_input_path and train_input_file are mutually exclusive. "
@@ -271,13 +271,15 @@ def _record_native_vl_mining(output_file: Path, cfg: DataPrepConfig) -> None:
             if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score):
                 raise ValueError(f"Native mining record {index} has no finite negative score")
         record["negative_mining_performed"] = True
-    payload["mining"] = {
-        "backend": "automodel",
-        "model": cfg.base_model,
-        "hard_negatives_to_mine": cfg.hard_negatives_to_mine,
-        "hard_neg_margin": cfg.hard_neg_margin,
-        "relevance_semantics": "retrieval-mined candidates remain unjudged",
-    }
+    payload.setdefault("mining", {}).update(
+        {
+            "backend": "automodel",
+            "model": cfg.base_model,
+            "hard_negatives_to_mine": cfg.hard_negatives_to_mine,
+            "hard_neg_margin": cfg.hard_neg_margin,
+            "relevance_semantics": "retrieval-mined candidates remain unjudged",
+        }
+    )
     temporary_file = output_file.with_suffix(f"{output_file.suffix}.tmp")
     temporary_file.write_text(json.dumps(payload, indent=2) + "\n")
     temporary_file.replace(output_file)
@@ -293,7 +295,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
     mining_config = STAGE_PATH / "scripts" / "mining_config.yaml"
     output_file = cfg.output_dir / "train_mined.automodel.json"
     if cfg.mining_backend == "vllm":
-        from nemotron.recipes.retrieval_vl import mine_vllm_hard_negatives
+        from nemotron.recipes.embed.stage1_data_prep.mining import mine_vllm_hard_negatives
 
         print("\nMining multimodal hard negatives through vLLM...")
         return mine_vllm_hard_negatives(
@@ -306,6 +308,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
             hard_neg_margin=cfg.hard_neg_margin,
             expected_dimension=cfg.mining_embedding_dimension,
             use_images=cfg.mining_use_images,
+            use_text_in_document=cfg.use_text_in_document,
             api_truncate=cfg.mining_api_truncate,
         )
     cache_dir = cfg.output_dir / "cache_embeddings"
@@ -358,7 +361,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         if value is not None:
             cmd.extend([f"--mining.{field}", value])
 
-    if cfg.model_family == "mistral3_vl":
+    if cfg.model_family == "nemotron_3_5":
         multimodal_options: list[tuple[str, str | int | bool | None]] = [
             ("_target_", "nemotron.recipes.embed.mining_encoder.CheckpointMiningEncoderConfig"),
             ("q_max_length", cfg.query_max_length),
@@ -386,7 +389,7 @@ def run_mining(cfg: DataPrepConfig, train_file: Path) -> Path:
         sys.exit(result.returncode)
 
     _rebase_mined_corpus_path(train_file, output_file)
-    if cfg.model_family == "mistral3_vl":
+    if cfg.model_family == "nemotron_3_5":
         _record_native_vl_mining(output_file, cfg)
     return output_file
 
@@ -434,9 +437,7 @@ def run_data_prep(cfg: DataPrepConfig) -> Path:
     if configured_sdg_input and cfg.retrieval_view is not None:
         from nemotron.recipes.embed.sdg_manifest import resolve_portable_training_input
 
-        train_input = resolve_portable_training_input(
-            configured_sdg_input, cfg.retrieval_view, cfg.retrieval_split_protocol
-        )
+        train_input = resolve_portable_training_input(configured_sdg_input, cfg.retrieval_view)
         evaluation_dir = train_input.parents[2] / "synthetic_eval" / cfg.retrieval_view
         cfg = cfg.model_copy(update={"sdg_input_path": None, "train_input_file": train_input})
     elif configured_sdg_input:

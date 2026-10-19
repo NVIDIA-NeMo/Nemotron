@@ -1,6 +1,6 @@
 # Copyright (c) 2026, NVIDIA CORPORATION. All rights reserved.
 
-"""Boundary obligations from specs/retrieval_bundle_compatibility.allium."""
+"""Portable retrieval bundle integrity and consumer compatibility."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import pyarrow.parquet as pq
 import pytest
 from PIL import Image
 
-from nemotron.recipes import retrieval_vl
+from nemotron.recipes.embed.stage0_sdg import validate as bundle_validation
 
 
 def _json(path: Path, value: object) -> None:
@@ -84,9 +84,12 @@ def _document_bundle(root: Path, view: str = "image_and_text") -> Path:
         _json(
             corpus_path / "merlin_metadata.json",
             {
-                "class": {"text": "TextQADataset", "image": "ColPaliDataset", "image_and_text": "WikiSSNQDataset"}[
-                    view
-                ],
+                "class": {
+                    "text": "TextQADataset",
+                    "image": "ColPaliDataset",
+                    "image_and_text": "WikiSSNQDataset",
+                    "mixed": "WikiSSNQDataset",
+                }[view],
                 "corpus_id": "fixture",
                 "view": view,
                 "format": "parquet",
@@ -101,6 +104,9 @@ def _document_bundle(root: Path, view: str = "image_and_text") -> Path:
                 "pos_doc": [{"id": identifier}],
                 "neg_doc": [],
                 "negative_scores": [],
+                "negative_mining_performed": False,
+                "relevance_judgements_complete": False,
+                "unlisted_document_disposition": "unjudged",
                 "positive_unit_ids": [identifier],
                 "source_document_ids": [document],
                 "language": "fr",
@@ -126,23 +132,67 @@ def _document_bundle(root: Path, view: str = "image_and_text") -> Path:
 
 
 def _bundle(root: Path, view: str = "image_and_text") -> Path:
-    from tests.recipes.test_grouped_query_bundle import _grouped
+    from tests.recipes.embed.test_sdg_query_groups import _grouped
 
     return _grouped(root, view, validation=True)
 
 
 @pytest.mark.parametrize(
-    "view,producer_view", [("text", "text"), ("image", "image"), ("text_image", "image_and_text")]
+    "view,producer_view", [("text", "text"), ("image", "image"), ("image_and_text", "image_and_text")]
 )
-def test_unified_bundle_explicit_view_mapping_and_producer_preservation(tmp_path, view, producer_view):
+def test_unified_bundle_resolves_view_without_modifying_producer_manifest(tmp_path, view, producer_view):
     manifest = _bundle(tmp_path, producer_view)
     original = manifest.read_bytes()
-    paths = retrieval_vl.inspect_vl_bundle(manifest, view=view)
+    paths = bundle_validation.validate_bundle(manifest, view=view)
     assert paths.train == tmp_path / f"views/{producer_view}/train.json"
     assert paths.view == view
-    assert paths.gold_eval is None
-    assert paths.local_artifacts_verified is True
     assert manifest.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "available,requested,producer_view", [("image", "text", "text"), ("text", "image_and_text", "image_and_text")]
+)
+def test_unified_bundle_reports_unavailable_view(tmp_path, available, requested, producer_view):
+    manifest = _bundle(tmp_path, available)
+    payload = json.loads(manifest.read_text())
+    payload["counts"] = {"views": {available: {}, "future_view": {}}}
+    _json(manifest, payload)
+    original = manifest.read_bytes()
+    assert bundle_validation.validate_bundle(manifest, view=available).view == available
+
+    with pytest.raises(ValueError) as error:
+        bundle_validation.validate_bundle(manifest, view=requested)
+
+    assert str(error.value) == (
+        f"Requested retrieval view '{producer_view}' is unavailable in this bundle. "
+        f"Available views: {available}. Select an available retrieval_view or re-export the requested view."
+    )
+    assert manifest.read_bytes() == original
+
+
+@pytest.mark.parametrize("requested", ["image", "text"])
+def test_unified_bundle_checks_integrity_before_view_availability(tmp_path, requested):
+    manifest = _bundle(tmp_path, "image")
+    payload = json.loads(manifest.read_text())
+    payload["counts"] = {"views": {"image": {}}}
+    _json(manifest, payload)
+    (tmp_path / "assets/train.png").write_bytes(b"corrupted")
+
+    with pytest.raises(ValueError, match="Size mismatch for assets/train.png"):
+        bundle_validation.validate_bundle(manifest, view=requested)
+
+
+def test_unified_bundle_declared_view_still_requires_corpus_shards(tmp_path):
+    manifest = _bundle(tmp_path, "image")
+    payload = json.loads(manifest.read_text())
+    payload["counts"] = {"views": {"image": {}}}
+    payload["artifacts"] = [
+        item for item in payload["artifacts"] if item["path"] != "views/image/corpus/shared/part-00000.parquet"
+    ]
+    _json(manifest, payload)
+
+    with pytest.raises(ValueError, match="Manifest missing required corpus shard: views/image/corpus/shared/"):
+        bundle_validation.validate_bundle(manifest, view="image")
 
 
 @pytest.mark.parametrize(
@@ -217,15 +267,8 @@ def test_unified_bundle_rejects_corruption_and_semantic_drift(tmp_path, mutation
         pq.write_table(table, shard)
         if mutation != "undeclared-shard":
             _inventory(root)
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match=match):
-        retrieval_vl.inspect_vl_bundle(manifest)
-
-
-def test_structural_only_inspection_never_attests_local_integrity(tmp_path):
-    manifest = _bundle(tmp_path)
-    (tmp_path / "assets/train.png").unlink()
-    paths = retrieval_vl.inspect_vl_bundle(manifest, require_local_artifacts=False)
-    assert paths.local_artifacts_verified is False
+    with pytest.raises(ValueError, match=match):
+        bundle_validation.validate_bundle(manifest)
 
 
 @pytest.mark.parametrize("view", ["text", "image", "image_and_text"])
@@ -251,9 +294,8 @@ def test_unified_bundle_rejects_unloadable_corpus_metadata(tmp_path, view, field
         metadata[field] = value
     _json(path, metadata)
     _inventory(tmp_path)
-    recipe_view = "text_image" if view == "image_and_text" else view
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="[Mm]etadata|corpus"):
-        retrieval_vl.inspect_vl_bundle(manifest, view=recipe_view)
+    with pytest.raises(ValueError, match="[Mm]etadata|corpus"):
+        bundle_validation.validate_bundle(manifest, view=view)
 
 
 @pytest.mark.parametrize("split", ["train", "validation"])
@@ -278,8 +320,8 @@ def test_unified_bundle_rejects_unloadable_training_queries(tmp_path, split, fie
         payload["data"][0][field] = value
     _json(path, payload)
     _inventory(tmp_path)
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="corpus|[Qq]uery|question"):
-        retrieval_vl.inspect_vl_bundle(manifest)
+    with pytest.raises(ValueError, match="corpus|[Qq]uery|question"):
+        bundle_validation.validate_bundle(manifest)
 
 
 @pytest.mark.parametrize(
@@ -297,67 +339,20 @@ def test_contradictory_completion_and_label_claims_are_rejected(tmp_path, key, v
     payload = json.loads(manifest.read_text())
     payload[key] = value
     _json(manifest, payload)
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError):
-        retrieval_vl.inspect_vl_bundle(manifest)
+    with pytest.raises(ValueError):
+        bundle_validation.validate_bundle(manifest)
 
 
-def test_preparation_preserves_source_and_partial_relevance_without_overwriting(tmp_path):
-    manifest = _bundle(tmp_path / "bundle")
-    original = manifest.read_bytes()
-    output = tmp_path / "prepared"
-    train = retrieval_vl.prepare_vl_training_data(manifest, output_dir=output)
-    data = json.loads(train.read_text())
-    record = data["data"][0]
-    assert record["language"] == "fr"
-    assert record["evidence"] == "Generated explanation, not source text"
-    assert record["negative_mining_performed"] is False
-    assert record["relevance_judgements_complete"] is False
-    assert record["unlisted_document_disposition"] == "unjudged"
-    assert record["neg_doc"] == []
-    corpus = pq.read_table(sorted((train.parent / data["corpus"]["path"]).glob("*.parquet"))).to_pylist()
-    assert corpus[0]["text"] == "Texte source français"
-    assert corpus[0]["image"]
-    assert data["source_bundle"]["schema_version"] == 2
-    assert manifest.read_bytes() == original
-    with pytest.raises(FileExistsError):
-        retrieval_vl.prepare_vl_training_data(manifest, output_dir=output)
-
-
-def test_unsupported_version_and_missing_view_are_not_fabricated(tmp_path):
+@pytest.mark.parametrize("version", [3, 99])
+def test_unsupported_version_and_missing_view_are_not_fabricated(tmp_path, version):
     manifest = _bundle(tmp_path, "text")
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="missing|required"):
-        retrieval_vl.inspect_vl_bundle(manifest, view="image")
+    with pytest.raises(ValueError, match="missing|required"):
+        bundle_validation.validate_bundle(manifest, view="image")
     payload = json.loads(manifest.read_text())
-    payload["schema_version"] = 99
+    payload["schema_version"] = version
     _json(manifest, payload)
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="schema_version"):
-        retrieval_vl.inspect_vl_bundle(manifest)
-
-
-def test_legacy_checksum_mode_includes_corpus_artifacts(tmp_path):
-    manifest = _document_bundle(tmp_path, "text")
-    payload = json.loads(manifest.read_text())
-    payload.update(
-        schema_version=3,
-        status="completed",
-        portable=True,
-        consumer_contract_identity=retrieval_vl.EXPECTED_CONSUMER_CONTRACT,
-        consumer_contract_verified=True,
-        relevance_annotation_scope="known_positives_only",
-        negative_mining_performed=False,
-        unlisted_document_disposition="unjudged",
-        relevance_judgements_complete=False,
-    )
-    payload["artifacts"] = [
-        {"relative_path": item["path"], "checksum": item["sha256"], "size_bytes": item["bytes"]}
-        for item in payload["artifacts"]
-    ]
-    _json(manifest, payload)
-    assert retrieval_vl.inspect_vl_bundle(manifest, view="text", verify_checksums=True).gold_eval is None
-    shard = tmp_path / "views/text/corpus/train/part-00000.parquet"
-    shard.write_bytes(shard.read_bytes() + b"corruption")
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="Checksum"):
-        retrieval_vl.inspect_vl_bundle(manifest, view="text", verify_checksums=True)
+    with pytest.raises(ValueError, match="schema_version"):
+        bundle_validation.validate_bundle(manifest)
 
 
 class _MiningClient:
@@ -382,16 +377,19 @@ class _MiningClient:
     [
         ("text", "text", False),
         ("image", "image", True),
-        ("text_image", "image_and_text", True),
+        ("image_and_text", "image_and_text", True),
     ],
 )
-def test_prepared_view_reaches_actual_recipe_miner(tmp_path, monkeypatch, view, producer_view, use_images):
+@pytest.mark.parametrize("use_text_in_document", [True, False])
+def test_portable_view_reaches_actual_recipe_miner(
+    tmp_path, monkeypatch, view, producer_view, use_images, use_text_in_document
+):
     from nemotron.recipes.embed.stage3_eval import eval as eval_module
 
     manifest = _bundle(tmp_path / "bundle", producer_view)
     corpus_path = manifest.parent / f"views/{producer_view}/corpus/shared/part-00000.parquet"
     rows = pq.read_table(corpus_path).to_pylist()
-    id_key = {"text": "id", "image": "image_filename", "text_image": "docid"}[view]
+    id_key = {"text": "id", "image": "image_filename", "image_and_text": "docid"}[view]
     distractor = dict(rows[0], **{id_key: "page-distractor"})
     pq.write_table(pa.Table.from_pylist([*rows, distractor]), corpus_path)
     units_path = manifest.parent / "retrieval_units.jsonl"
@@ -403,22 +401,81 @@ def test_prepared_view_reaches_actual_recipe_miner(tmp_path, monkeypatch, view, 
     eval_rows.append(dict(eval_rows[0], _id="page-distractor"))
     _jsonl(eval_path, eval_rows)
     _inventory(manifest.parent)
-    train = retrieval_vl.prepare_vl_training_data(manifest, output_dir=tmp_path / "prepared", view=view)
+    train = bundle_validation.validate_bundle(manifest, view=view).train
+    training = json.loads(train.read_text())
+    training["data"][0]["pos_doc"][0]["score"] = 2
+    _json(train, training)
     _MiningClient.document_inputs = []
     monkeypatch.setattr(eval_module, "NIMEmbeddingModel", _MiningClient)
-    result = retrieval_vl.mine_vllm_hard_negatives(
+    from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig, run_mining
+
+    result = run_mining(
+        DataPrepConfig(
+            sdg_input_path=None,
+            train_input_file=train,
+            output_dir=tmp_path / "mined",
+            mining_backend="vllm",
+            mining_api_url="http://unused",
+            base_model="fixture",
+            mining_batch_size=2,
+            hard_negatives_to_mine=1,
+            hard_neg_margin=0.95,
+            mining_use_images=use_images,
+            use_text_in_document=use_text_in_document,
+        ),
         train,
-        tmp_path / "mined.json",
-        api_url="http://unused",
-        model="fixture",
-        batch_size=2,
-        hard_negatives_to_mine=1,
-        hard_neg_margin=0.95,
-        use_images=use_images,
     )
     row = json.loads(result.read_text())["data"][0]
     assert row["neg_doc"][0]["id"] != row["pos_doc"][0]["id"]
     assert row["negative_mining_performed"] is True
+    assert row["pos_doc"][0]["source_score"] == 2
+    assert row["pos_doc"][0]["score"] != 2
     assert row["unlisted_document_disposition"] == "unjudged"
     assert row["relevance_judgements_complete"] is False
-    assert isinstance(_MiningClient.document_inputs[0], dict if use_images else str)
+    document = _MiningClient.document_inputs[0]
+    assert isinstance(document, dict if use_images else str)
+    if use_images:
+        content_types = [part["type"] for part in document["content"]]
+        assert "image_url" in content_types
+        assert ("text" in content_types) == (use_text_in_document and view == "image_and_text")
+    else:
+        assert document == "Texte source français"  # Text-only documents remain encodable.
+
+
+@pytest.mark.parametrize("view", ["mixed", "image_and_text", "image"])
+@pytest.mark.parametrize("mutation", [None, "invented-corpus-image", "invented-evaluation-image"])
+def test_mixed_view_absent_images_match_original_sources(tmp_path, view, mutation):
+    """Only mixed accepts absent pixels, without inventing source image evidence."""
+    root = tmp_path / "bundle"
+    manifest = _bundle(root, view)
+    units = [json.loads(line) for line in (root / "retrieval_units.jsonl").read_text().splitlines()]
+    identifier = units[0]["unit_id"]
+    units[0]["images"] = []
+    units[1]["text"] = ""
+    _jsonl(root / "retrieval_units.jsonl", units)
+    shard = root / f"views/{view}/corpus/shared/part-00000.parquet"
+    table = pq.read_table(shard)
+    rows = table.to_pylist()
+    id_key = "image_filename" if view == "image" else "docid"
+    for row in rows:
+        if row[id_key] == units[1]["unit_id"] and "text" in row:
+            row["text"] = ""
+        if row[id_key] == identifier and mutation != "invented-corpus-image":
+            row["image"] = None
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), shard)
+    eval_path = root / f"synthetic_eval/{view}/corpus.jsonl"
+    documents = [json.loads(line) for line in eval_path.read_text().splitlines()]
+    for row in documents:
+        if row["_id"] == units[1]["unit_id"] and "text" in row:
+            row["text"] = ""
+        if row["_id"] == identifier and mutation != "invented-evaluation-image":
+            row.pop("image_path", None)
+    _jsonl(eval_path, documents)
+    qrels = (root / f"synthetic_eval/{view}/qrels/test.tsv").read_bytes()
+    manifest = _inventory(root)
+    if mutation or view != "mixed":
+        with pytest.raises(ValueError, match="image"):
+            bundle_validation.validate_bundle(manifest, view=view)
+    else:
+        paths = bundle_validation.validate_bundle(manifest, view="mixed")
+        assert (paths.synthetic_eval / "qrels/test.tsv").read_bytes() == qrels

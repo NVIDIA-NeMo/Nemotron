@@ -8,13 +8,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from nemotron.recipes import retrieval_vl
 from nemotron.recipes.embed.sdg_manifest import (
     resolve_portable_evaluation_input,
     resolve_portable_training_input,
     write_generation_manifest,
 )
-from tests.recipes.test_retrieval_bundle_v2 import _document_bundle, _inventory, _json, _jsonl
+from nemotron.recipes.embed.stage0_sdg import validate as bundle_validation
+from tests.recipes.embed.test_sdg_bundle_validation import _document_bundle, _inventory, _json, _jsonl
 
 
 def _seal(root):
@@ -82,24 +82,19 @@ def _grouped(root, view="image_and_text", validation=False):
     return _seal(root)
 
 
-@pytest.mark.parametrize("view", ["text", "image", "image_and_text"])
+@pytest.mark.parametrize("view", ["text", "image", "image_and_text", "mixed"])
 @pytest.mark.parametrize("validation", [False, True])
 def test_shared_full_corpus_and_public_handoffs(tmp_path, view, validation):
     root = tmp_path / "bundle"
     manifest = _grouped(root, view, validation)
     before = (root / f"synthetic_eval/{view}/qrels/test.tsv").read_bytes()
-    paths = retrieval_vl.inspect_vl_bundle(manifest, view="text_image" if view == "image_and_text" else view)
-    assert paths.split_protocol == "grouped_query_disjoint"
-    assert paths.corpus_scope == "full_collection"
-    assert paths.train_corpus == paths.validation_corpus == paths.evaluation_corpus
+    paths = bundle_validation.validate_bundle(manifest, view=view)
     handoff = write_generation_manifest(
         output_dir=tmp_path, output_path=paths.train, dataset_name="fixture", portable_bundle=root
     )
-    assert resolve_portable_training_input(handoff, view, "grouped_query_disjoint") == paths.train
-    assert resolve_portable_evaluation_input(handoff, view, "grouped_query_disjoint") == (paths.synthetic_eval, root)
+    assert resolve_portable_training_input(handoff, view) == paths.train
+    assert resolve_portable_evaluation_input(handoff, view) == (paths.synthetic_eval, root)
     assert (root / f"synthetic_eval/{view}/qrels/test.tsv").read_bytes() == before
-    with pytest.raises(ValueError, match="differs"):
-        resolve_portable_training_input(handoff, view, "document_disjoint")
 
 
 @pytest.mark.parametrize(
@@ -161,23 +156,8 @@ def test_grouped_protocol_rejects_leakage_and_incomplete_inputs(tmp_path, mutati
     _jsonl(query_path, [query])
     _json(split_path, split)
     _seal(tmp_path)
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError):
-        retrieval_vl.inspect_vl_bundle(manifest)
-
-
-def test_recipe_protocol_assertion_requires_portable_input():
-    from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig
-    from nemotron.recipes.embed.stage3_eval.eval import EvalConfig
-
-    for config in (DataPrepConfig, EvalConfig):
-        with pytest.raises(ValueError, match="retrieval_split_protocol requires"):
-            config(retrieval_split_protocol="grouped_query_disjoint")
-        resolved = config(
-            sdg_input_path="generation_result.json",
-            retrieval_view="image_and_text",
-            retrieval_split_protocol="grouped_query_disjoint",
-        )
-        assert resolved.retrieval_split_protocol == "grouped_query_disjoint"
+    with pytest.raises(ValueError):
+        bundle_validation.validate_bundle(manifest)
 
 
 @pytest.mark.parametrize("protocol", [None, "document_disjoint"])
@@ -186,5 +166,5 @@ def test_obsolete_document_partition_protocol_is_rejected(tmp_path, protocol):
     payload = json.loads(manifest.read_text())
     payload["split_protocol"] = protocol
     _json(manifest, payload)
-    with pytest.raises(retrieval_vl.RetrievalVLBundleError, match="grouped_query_disjoint"):
-        retrieval_vl.inspect_vl_bundle(manifest)
+    with pytest.raises(ValueError, match="grouped_query_disjoint"):
+        bundle_validation.validate_bundle(manifest)

@@ -157,7 +157,7 @@ def test_vllm_multimodal_corpus_request_preserves_image_and_text(monkeypatch, tm
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
     model = NIMEmbeddingModel(
         api_url="http://vllm",
-        model="example-org/mistral3-vl-embed",
+        model="example-org/nemotron-3.5-embed",
         api_backend="vllm",
         dataset_path=dataset_path,
     )
@@ -172,6 +172,72 @@ def test_vllm_multimodal_corpus_request_preserves_image_and_text(monkeypatch, tm
     assert payload["input_type"] == "document"
     assert payload["inputs"][0]["content"][0]["image_url"]["url"].startswith("data:image/png;base64,")
     assert payload["inputs"][0]["content"][1] == {"type": "text", "text": "Title Body"}
+
+
+@pytest.mark.parametrize("use_text", [False, True])
+def test_api_evaluation_preserves_image_root_and_document_modalities(monkeypatch, tmp_path, use_text) -> None:
+    """Exercise config-to-client wiring with images outside the evaluation directory."""
+    import sys
+    from types import ModuleType
+
+    from nemotron.recipes.embed.stage3_eval import eval as evaluation
+
+    dataset = tmp_path / "evaluation"
+    dataset.mkdir()
+    assets = tmp_path / "separate-assets"
+    assets.mkdir()
+    (assets / "page.png").write_bytes(b"correct-image")
+    # A conflicting sibling must not take precedence over the declared root.
+    (dataset / "page.png").write_bytes(b"wrong-image")
+    observed = []
+
+    class SearchConfiguredError(Exception):
+        pass
+
+    def search(model, **kwargs):
+        observed.append(model._corpus_input({"text": "OCR text", "image_path": "page.png"}))
+        assert model._corpus_input({"text": "Text-only document"}) == "Text-only document"
+        raise SearchConfiguredError
+
+    for name, attributes in {
+        "beir.datasets.data_loader": {"GenericDataLoader": object},
+        "beir.retrieval.evaluation": {"EvaluateRetrieval": object},
+        "beir.retrieval.search.dense.exact_search": {"DenseRetrievalExactSearch": search},
+    }.items():
+        module = ModuleType(name)
+        module.__dict__.update(attributes)
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(NIMEmbeddingModel, "_check_connection", lambda self: None)
+    cfg = evaluation.EvalConfig(
+        eval_data_path=dataset,
+        image_root=assets,
+        use_text_in_document=use_text,
+        output_dir=tmp_path / "output",
+        eval_base=False,
+        eval_finetuned=False,
+        eval_nim=True,
+        embedding_api_backend="vllm",
+    )
+    with pytest.raises(SearchConfiguredError):
+        evaluation.run_eval(cfg)
+
+    import base64
+
+    content = observed[0]["content"]
+    assert base64.b64decode(content[0]["image_url"]["url"].split(",", 1)[1]) == b"correct-image"
+    assert content[1:] == ([{"type": "text", "text": "OCR text"}] if use_text else [])
+
+
+def test_api_evaluation_does_not_search_outside_explicit_image_root(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(NIMEmbeddingModel, "_check_connection", lambda self: None)
+    root = tmp_path / "assets"
+    root.mkdir()
+    (tmp_path / "page.png").write_bytes(b"outside-image")
+    model = NIMEmbeddingModel(api_backend="vllm", dataset_path=tmp_path, image_root=root)
+    with pytest.raises(FileNotFoundError, match="within"):
+        model._corpus_input({"image_path": "page.png"})
+    with pytest.raises(ValueError, match="portable"):
+        model._corpus_input({"image_path": "../page.png"})
 
 
 def test_persistent_invalid_nim_embedding_raises(monkeypatch) -> None:

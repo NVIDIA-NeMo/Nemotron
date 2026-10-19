@@ -11,8 +11,9 @@ import pytest
 from nemotron.recipes.embed.mining_encoder import CheckpointMiningEncoderConfig
 
 
+@pytest.mark.parametrize("has_revision", [True, False])
 @pytest.mark.parametrize("use_images,use_text", [(True, True), (True, False), (False, True), (False, False)])
-def test_native_encoder_preserves_processor_and_modality_controls(monkeypatch, use_images, use_text):
+def test_native_encoder_preserves_processor_and_modality_controls(monkeypatch, use_images, use_text, has_revision):
     captured = {}
 
     class Processor:
@@ -41,6 +42,8 @@ def test_native_encoder_preserves_processor_and_modality_controls(monkeypatch, u
         model=SimpleNamespace(retrieval_processor_target="smoke_processor.Processor"),
         config=SimpleNamespace(_commit_hash="revision", name_or_path="checkpoint"),
     )
+    if not has_revision:
+        del model.config._commit_hash
     config = CheckpointMiningEncoderConfig(
         q_max_length=64,
         p_max_length=256,
@@ -57,7 +60,7 @@ def test_native_encoder_preserves_processor_and_modality_controls(monkeypatch, u
             "p_max_length": 256,
             "query_prefix": "",
             "image_longest_edge": 224,
-            "revision": "revision",
+            **({"revision": "revision"} if has_revision else {}),
         },
     }
     image = object()

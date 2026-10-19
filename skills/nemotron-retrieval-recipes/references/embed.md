@@ -5,6 +5,7 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 ## Contents
 
 - Grounding Paths
+- Nemotron 3.5 Multimodal Workflow
 - When To Use Embed
 - Commands
 - Data And Credential Safety
@@ -21,8 +22,93 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 - Recipe README: `src/nemotron/recipes/embed/README.md`
 - CLI group: `src/nemotron/cli/commands/embed/_typer_group.py`
 - Pipeline command: `src/nemotron/cli/commands/embed/run.py`
-- Stage configs: `src/nemotron/recipes/embed/stage*/config/{default,llama}.yaml`
+- Stage configs: `src/nemotron/recipes/embed/stage*/config/{default,llama,nemotron-3.5}.yaml`
 - Main outputs: `output/embed/`
+
+## Nemotron 3.5 Multimodal Workflow
+
+Use `-c nemotron-3.5` for `nvidia/Nemotron-3.5-Embed-1B-BF16`, with text queries
+over text, images, or paired documents. Start from
+`docs/nemotron/embed/multimodal.md`; use `data-reference.md` for the source and
+bundle contracts and `sdg-reference.md` for model roles and producer settings.
+The commands and tables in the remaining sections describe the text profiles.
+
+Prefer a normal document directory:
+
+```bash
+uv run nemotron embed sdg -c nemotron-3.5 -d source_directory.path=./documents
+```
+
+Directory input supports independent UTF-8 `.txt`, `.md`, `.markdown` files and
+static `.png`, `.jpg`, `.jpeg`, `.webp` images. It searches subdirectories, chunks
+text to at most 1,024 tokens by default, and emits one unit per image. Keep
+`artifact_root` outside the input. Configure discovery and chunking under
+`source_directory`, including `source_directory.num_files` for a bounded run.
+
+Use `sources_file` for custom units, explicit text/image pairs, or page
+relationships; directory input does not infer these relationships. Set exactly
+one input mode. PDF extraction, OCR, and rendering happen before the recipe.
+The `multimodal` workflow always exports a portable bundle; text profiles use
+`text_qa` and `corpus_dir`. Do not substitute arbitrary query/text pairs.
+
+Before resolving Stage 0, configure `NEMOTRON_3_5_SDG_QA_MODEL` and
+`NEMOTRON_3_5_SDG_JUDGE_MODEL` for approved image-capable models with structured
+responses. Summary embeddings have an independent endpoint and credential.
+The embedding checkpoint needs no private override. Do not request credentials
+in chat or print their values.
+
+Preserve these invariants:
+
+- Carry `-c nemotron-3.5` and the same `artifact_root` through the run; the default
+  root is `output/embed/nemotron-3.5`.
+- Retain the default `retrieval_view=mixed` in preparation and evaluation.
+  `image_and_text` excludes text-only units. Never substitute an unavailable view.
+- The plugin owns the query-group split. Stage 1 preserves it and all positives
+  without resplitting. Stage 3 searches the full eligible collection, including
+  distractors.
+  Documents are shared between query partitions; generated qrels are not
+  independent gold labels.
+- Keep SDPA, query/passage lengths, prompts, pooling, normalization, and image
+  preprocessing aligned. Preserve `do_distributed_inbatch_negative=false`
+  because unrolled queries can share positives.
+- Run Stages 1–3 locally. The multimodal dependency selection rejects Docker and
+  Slurm submission for these stages.
+- Enable `eval_base=true` for a comparison; the profile otherwise evaluates only
+  the fine-tuned checkpoint. Each checkpoint encodes its own queries and corpus.
+- Mine at least `train_n_passages - 1` negatives. Resume with the original visible
+  GPU count and checkpoint directory. `max_steps` is the total target; resume
+  restores the saved learning-rate schedule.
+- Deploy separately after evaluation: there is no Stage 4 export profile.
+  vLLM serves the consolidated checkpoint; endpoint evaluation uses
+  `eval_nim=true embedding_api_backend=vllm`.
+
+Preview the full pipeline with stage-specific override prefixes:
+
+```bash
+uv run nemotron embed run -c nemotron-3.5 -d --from sdg --to eval \
+  artifact_root=./output/embed/my-run sdg.source_directory.path=./documents \
+  eval.eval_base=true
+```
+
+Pipeline previews show stage order and overrides. Stage previews resolve
+configuration; neither validates content, endpoint access, or GPU memory.
+Follow the walkthrough's two-step settings for a bounded execution check.
+
+Verify `stage0_sdg/generation_result.json`, prepared directory records under
+`stage0_sdg/multimodal/inputs/sources.jsonl`, mined/unrolled Stage 1 JSON, the
+Stage 2 `LATEST/model/consolidated/config.json`, and Stage 3 `eval_results.json`.
+Portable evaluation resolves data through the Stage 0 manifest, not the legacy
+`stage1_data_prep/eval_beir` directory. Retain the complete bundle and its assets.
+Normal handoffs check schema, view, required inputs, safe paths, and manifest
+identity. For a full hash, content, and split audit, follow **Validate an Export**
+in `docs/nemotron/embed/data-reference.md`; downstream stages do not repeat it.
+
+For compatible failed SDG, repeat the original overrides with `resume=always`.
+Use a new root after source, configuration, tokenizer, or producer changes;
+producer code participates in run identity. `preview=true` is unsupported.
+Report the commands, checkout commit, configuration, artifacts, query counts,
+evaluation results, and remaining limitations. A short run verifies execution,
+not convergence or retrieval-quality improvement.
 
 ## When To Use Embed
 
@@ -137,8 +223,8 @@ Default (`-c default`):
   activation, and prompts from the checkpoint.
 - The evaluator retries null/non-finite endpoint responses up to 32 times per
   affected input. Preserve retry warnings as serving-reliability evidence.
-- Stage 2 pins Transformers 5.12.1. Stages 1 and 3 retain the supported 5.1-5.5
-  range for their checkpoint paths.
+- Preserve the checked-in dependency constraints for each stage and profile;
+  the text and multimodal extras use different Transformers requirements.
 
 Llama profile (`-c llama`):
 
@@ -160,9 +246,10 @@ Llama profile (`-c llama`):
   constraint instead of imposing one range across the full pipeline.
 - Do not copy performance overrides between profiles without a dry-run. The
   default Nemotron 3 eval batch is `4`; the Llama profile uses `128`.
-- Preserve each profile's optimizer and checkpoint defaults. Both profiles use
-  32-bit effective FlashAdamW master weights. Nemotron 3 uses fixed 1000-step
-  checkpoint/validation intervals; Llama uses auto-scaled 100-step intervals.
+- Preserve each profile's optimizer and checkpoint defaults. Nemotron 3 uses
+  no FlashAdamW master weights and fixed 1000-step checkpoint/validation
+  intervals; Llama uses 32-bit master weights and auto-scaled 100-step
+  intervals.
 
 ```bash
 uv run nemotron embed run -c default -d --from sdg --to eval

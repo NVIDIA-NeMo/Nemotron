@@ -9,7 +9,7 @@ from .conftest import REPO_ROOT
 EMBED_DIR = REPO_ROOT / "src" / "nemotron" / "recipes" / "embed"
 PACKAGE_NAME = "data-designer-retrieval-sdg"
 PACKAGE_VERSION = "0.3.0a1"
-DATA_DESIGNER_VERSION = "0.9.1"
+DATA_DESIGNER_VERSION = "0.9.4"
 PACKAGE_STAGES = ("stage0_sdg", "stage1_data_prep")
 
 

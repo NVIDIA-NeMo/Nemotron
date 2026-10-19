@@ -55,8 +55,8 @@ def test_embed_finetune_and_export_stages_limit_python_to_312() -> None:
 
 def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
     expected_by_stage = {
-        "stage1_data_prep": "transformers==5.15.1",
-        "stage2_finetune": "transformers==5.15.1",
+        "stage1_data_prep": "transformers==5.18.0",
+        "stage2_finetune": "transformers==5.18.0",
         "stage3_eval": "transformers>=5.1,<5.6",
     }
 
@@ -64,7 +64,7 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
         with open(EMBED_DIR / stage_name / "pyproject.toml", "rb") as f:
             pyproject_data = tomllib.load(f)
         assert expected_dependency in pyproject_data["project"]["optional-dependencies"]["text"]
-        assert "transformers==5.15.1" in pyproject_data["project"]["optional-dependencies"]["vl"]
+        assert "transformers==5.18.0" in pyproject_data["project"]["optional-dependencies"]["vl"]
 
         with open(EMBED_DIR / stage_name / "uv.lock", "rb") as f:
             lock_data = tomllib.load(f)
@@ -73,8 +73,8 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
             for package in lock_data["package"]
             if package["name"] == "transformers"
         ]
-        assert (5, 15) in versions
-        versions.remove((5, 15))
+        assert (5, 18) in versions
+        versions.remove((5, 18))
         if stage_name != "stage3_eval":
             assert versions == []
         else:
@@ -86,7 +86,7 @@ def test_embed_model_stages_pin_their_required_transformers_versions() -> None:
     automodel_source = finetune_project["tool"]["uv"]["sources"]["nemo-automodel"]
     assert next(source for source in automodel_source if source["extra"] == "text") == {
         "extra": "text",
-        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz",
+        "url": "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz",
     }
     assert "nemo-automodel" not in finetune_project["tool"]["nemotron"]["container-exclude-dependencies"]
 
@@ -99,7 +99,7 @@ def test_embed_prep_uses_pinned_automodel_main() -> None:
     with open(EMBED_DIR / "stage1_data_prep" / "uv.lock", "rb") as f:
         lock_data = tomllib.load(f)
     versions = [package["version"] for package in lock_data["package"] if package["name"] == "nemo-automodel"]
-    assert versions == ["0.7.0"]
+    assert versions == ["0.8.0"]
     assert any("url" in package["source"] for package in lock_data["package"] if package["name"] == "nemo-automodel")
 
 

@@ -63,13 +63,7 @@ from typing import Any, Literal
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
-from nemotron.recipes.embed.stage2_finetune.peft import (
-    PeftConfig,
-    merge_peft_checkpoint,
-    validate_peft_base,
-    validate_peft_runtime,
-)
-from nemotron.recipes.retrieval_vl import validate_vl_training_data
+from nemotron.recipes._retrieval import validate_training_data
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -106,13 +100,9 @@ class FinetuneConfig(RecipeSettings):
         default=False,
         description="Use AutoModel's Hugging Face tokenizer wrapper instead of model-type registry dispatch.",
     )
-    model_family: Literal["text", "mistral3_vl"] = Field(
+    model_family: Literal["text", "nemotron_3_5"] = Field(
         default="text",
-        description="AutoModel integration family. Use mistral3_vl for Mistral 3 vision-language retrieval models.",
-    )
-    peft: PeftConfig | None = Field(
-        default=None,
-        description="Optional native LoRA settings. Requires a local base with matching retrieval metadata.",
+        description="Recipe model family. Use nemotron_3_5 for Nemotron 3.5 multimodal embedding.",
     )
 
     # Data paths
@@ -250,6 +240,29 @@ class FinetuneConfig(RecipeSettings):
             ValueError: If a string does not represent an integer.
         """
         return int(value) if isinstance(value, str) else value
+
+    @field_validator("flash_adamw_master_weight_bits", mode="before")
+    @classmethod
+    def parse_master_weight_bits_override(cls, value: Any) -> Any:
+        """Parse CLI integer strings while retaining the supported precision choices.
+
+        Args:
+            value: Master-weight precision supplied by configuration or a CLI override.
+
+        Returns:
+            Parsed integer for a string, otherwise the unchanged value.
+
+        Raises:
+            ValueError: If a string does not represent an integer.
+        """
+        return int(value) if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def validate_multimodal_attention(self) -> FinetuneConfig:
+        """Avoid the pinned Transformers Flash Attention 2 image regression."""
+        if self.model_family == "nemotron_3_5" and self.attn_implementation == "flash_attention_2":
+            raise ValueError("Multimodal Flash Attention 2 is unsupported with Transformers 5.18.0; use sdpa or eager")
+        return self
 
     @model_validator(mode="after")
     def validate_training_budget(self) -> FinetuneConfig:
@@ -452,7 +465,7 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     import yaml
 
     base_config_name = (
-        "mistral3_vl_biencoder_base.yaml" if cfg.model_family == "mistral3_vl" else "biencoder_base.yaml"
+        "nemotron_3_5_biencoder_base.yaml" if cfg.model_family == "nemotron_3_5" else "biencoder_base.yaml"
     )
     base_config_path = STAGE_PATH / base_config_name
     with open(base_config_path) as f:
@@ -461,14 +474,6 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     raw_config["seed"] = cfg.seed
     if cfg.model_family == "text" and cfg.tokenizer_force_default:
         raw_config["tokenizer"]["force_default"] = True
-    if cfg.peft is not None:
-        raw_config["peft"] = {
-            "_target_": "nemo_automodel.components._peft.lora.PeftConfig",
-            **cfg.peft.model_dump(),
-            "use_memory_efficient_lora": False,
-            "use_triton": False,
-        }
-        raw_config["checkpoint"]["save_consolidated"] = False
     dataset = raw_config["dataset"]
     dataset["seed"] = cfg.seed
 
@@ -529,19 +534,13 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
         Path to final checkpoint directory.
     """
     # Validate inputs
-    if cfg.peft is not None:
-        validate_peft_runtime()
-        validate_peft_base(cfg)
-        export_path = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
-        if export_path.exists() or export_path.is_symlink():
-            raise FileExistsError(f"PEFT export already exists: {export_path}")
     if not cfg.train_data_path.exists():
         print(f"Error: Training data not found: {cfg.train_data_path}", file=sys.stderr)
         print("       Please run stage1_data_prep first.", file=sys.stderr)
         sys.exit(1)
 
-    if cfg.model_family == "mistral3_vl":
-        validate_vl_training_data(
+    if cfg.model_family == "nemotron_3_5":
+        validate_training_data(
             cfg.train_data_path,
             required_negatives=cfg.train_n_passages - 1,
             require_mined_negatives=cfg.require_mined_negatives,
@@ -632,6 +631,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Auto-detect attention implementation if not explicitly set
     if cfg.attn_implementation is not None:
         attn_impl = cfg.attn_implementation
+    elif cfg.model_family == "nemotron_3_5":
+        attn_impl = "sdpa"
     else:
         try:
             import flash_attn  # noqa: F401
@@ -643,7 +644,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.model.attn_implementation = attn_impl
 
     # Data settings
-    if cfg.model_family == "mistral3_vl":
+    if cfg.model_family == "nemotron_3_5":
         automodel_cfg.dataset.data_dir_list = [str(cfg.train_data_path)]
         automodel_cfg.dataset.n_passages = cfg.train_n_passages
         automodel_cfg.dataset.use_text_in_document = cfg.use_text_in_document
@@ -681,7 +682,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Model architecture
     automodel_cfg.model.pooling = cfg.pooling
     automodel_cfg.model.l2_normalize = cfg.l2_normalize
-    if cfg.model_family == "mistral3_vl":
+    if cfg.model_family == "nemotron_3_5":
         automodel_cfg.model.is_causal = cfg.is_causal
         automodel_cfg.model.do_distributed_inbatch_negative = cfg.do_distributed_inbatch_negative
         automodel_cfg.model.detach_distributed_inbatch_negatives = cfg.detach_distributed_inbatch_negatives
@@ -697,9 +698,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
-    if _is_rank_zero() and cfg.peft is not None:
-        merge_peft_checkpoint(cfg, final_model_dir)
-    elif _is_rank_zero() and cfg.model_family == "mistral3_vl":
+    if _is_rank_zero() and cfg.model_family == "nemotron_3_5":
         _repair_vllm_sentence_transformers_metadata(final_model_dir, cfg)
 
     print("\nFine-tuning complete!")

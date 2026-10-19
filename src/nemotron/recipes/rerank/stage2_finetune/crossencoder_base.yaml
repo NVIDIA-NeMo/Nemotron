@@ -81,6 +81,8 @@ checkpoint:
   checkpoint_dir: ./output/rerank/stage2_finetune/checkpoints
   model_save_format: safetensors
   save_consolidated: true
+  # Keep the latest checkpoint plus any pointer-protected best checkpoint.
+  max_recent_checkpoints: 1
 
 distributed:
   strategy: fsdp2

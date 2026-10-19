@@ -12,9 +12,9 @@ import pytest
 from pydantic import ValidationError
 
 from nemo_runspec.config import load_pydantic_config
+from nemotron.recipes._retrieval import validate_training_data
 from nemotron.recipes.embed.stage1_data_prep import data_prep
 from nemotron.recipes.embed.stage1_data_prep.scripts.unroll_pos_docs import unroll_training_data
-from nemotron.recipes.retrieval_vl import validate_vl_training_data
 
 
 @pytest.mark.parametrize("score", [0.2, None, float("nan"), True])
@@ -30,7 +30,7 @@ def test_native_mining_output_satisfies_training_contract(tmp_path, monkeypatch,
         "relevance_judgements_complete": False,
     }
     output.write_text(json.dumps({"corpus": {"path": "/corpus"}, "data": [row]}))
-    cfg = data_prep.DataPrepConfig(output_dir=tmp_path, model_family="mistral3_vl", hard_negatives_to_mine=1)
+    cfg = data_prep.DataPrepConfig(output_dir=tmp_path, model_family="nemotron_3_5", hard_negatives_to_mine=1)
     if score is None or isinstance(score, bool) or score != score:
         with pytest.raises(ValueError, match="finite negative score"):
             data_prep.run_mining(cfg, tmp_path / "train.json")
@@ -41,7 +41,7 @@ def test_native_mining_output_satisfies_training_contract(tmp_path, monkeypatch,
     payload["data"] = unroll_training_data(payload["data"])
     unrolled = tmp_path / "unrolled.json"
     unrolled.write_text(json.dumps(payload))
-    assert validate_vl_training_data(unrolled, required_negatives=1, require_mined_negatives=True) == 1
+    assert validate_training_data(unrolled, required_negatives=1, require_mined_negatives=True) == 1
     assert payload["data"][0] == dict(row, negative_mining_performed=True)
     assert payload["mining"]["relevance_semantics"] == "retrieval-mined candidates remain unjudged"
 
@@ -56,7 +56,7 @@ def test_native_vl_mining_forwards_training_processor_policy(tmp_path, monkeypat
         train_input_file=tmp_path / "train.json",
         sdg_input_path=None,
         output_dir=tmp_path,
-        model_family="mistral3_vl",
+        model_family="nemotron_3_5",
         base_model="/pinned-vl-model",
         query_max_length=256,
         passage_max_length=8192,
@@ -103,7 +103,7 @@ def test_native_mining_failure_does_not_add_success_marker(tmp_path, monkeypatch
     output = tmp_path / "train_mined.automodel.json"
     original = json.dumps({"corpus": {"path": "/corpus"}, "data": [{"neg_doc": []}]})
     output.write_text(original)
-    cfg = data_prep.DataPrepConfig(output_dir=tmp_path, model_family="mistral3_vl", hard_negatives_to_mine=1)
+    cfg = data_prep.DataPrepConfig(output_dir=tmp_path, model_family="nemotron_3_5", hard_negatives_to_mine=1)
     with pytest.raises(SystemExit if returncode else ValueError):
         data_prep.run_mining(cfg, tmp_path / "train.json")
     assert output.read_text() == original
@@ -120,16 +120,16 @@ def test_vl_profile_native_override_preserves_image_processing(
     """Switching the public VL profile to native mining must not select text encoding."""
     run = Mock(return_value=SimpleNamespace(returncode=0, stderr=""))
     monkeypatch.setattr(data_prep.subprocess, "run", run)
-    monkeypatch.setenv("MISTRAL3_VL_EMBED_MODEL", "nvidia/test-mistral3-vl-embed")
+    monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "nvidia/test-nemotron-3.5-embed")
     output = tmp_path / "train_mined.automodel.json"
     output.write_text('{"corpus": {"path": "/corpus"}, "data": []}')
     cfg = load_pydantic_config(
-        data_prep.STAGE_PATH / "config/mistral3-vl.yaml",
+        data_prep.STAGE_PATH / "config/nemotron-3.5.yaml",
         ["mining_backend=automodel", f"output_dir={tmp_path}"],
         data_prep.DataPrepConfig,
     )
 
-    assert cfg.model_family == "mistral3_vl"
+    assert cfg.model_family == "nemotron_3_5"
     assert data_prep.run_mining(cfg, tmp_path / "train.json") == output
     cmd = run.call_args.args[0]
     assert cmd[cmd.index("--mining.multimodal_encoder._target_") + 1] == (
@@ -182,7 +182,7 @@ def test_native_vl_mining_preserves_explicit_empty_prefixes(tmp_path, monkeypatc
     output.write_text('{"corpus": {"path": "/corpus"}, "data": []}')
     cfg = data_prep.DataPrepConfig(
         output_dir=tmp_path,
-        model_family="mistral3_vl",
+        model_family="nemotron_3_5",
         query_prefix="",
         passage_prefix="",
     )

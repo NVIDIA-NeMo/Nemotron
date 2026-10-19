@@ -1,6 +1,6 @@
 # Copyright (c) 2026, NVIDIA CORPORATION. All rights reserved.
 
-"""Recipe integration of the generic retrieval-first public producer."""
+"""Recipe integration of the generic multimodal public producer."""
 
 from __future__ import annotations
 
@@ -13,14 +13,13 @@ from pydantic import ValidationError
 pytest.importorskip("data_designer_retrieval_sdg.multimodal")
 
 from nemotron.recipes.embed.stage0_sdg.data_prep import SDGConfig, run_sdg
-from nemotron.recipes.embed.stage0_sdg.plugin_adapter import build_retrieval_first_config
+from nemotron.recipes.embed.stage0_sdg.plugin_adapter import build_multimodal_config
 
 
 def config(tmp_path: Path, **updates) -> SDGConfig:
     return SDGConfig(
-        sdg_workflow="retrieval_first",
+        sdg_workflow="multimodal",
         sources_file=tmp_path / "sources.jsonl",
-        portable_export=True,
         output_dir=tmp_path / "output",
         contexts_file=tmp_path / "contexts.jsonl",
         qa_generation_model="configured-generator",
@@ -32,13 +31,13 @@ def config(tmp_path: Path, **updates) -> SDGConfig:
 
 
 @pytest.mark.parametrize("field", ["sdg_options", "sdg_generator_options", "sdg_judge_options"])
-def test_retrieval_first_options_are_rejected_by_legacy_workflow(field):
-    with pytest.raises(ValidationError, match="require sdg_workflow='retrieval_first'"):
+def test_multimodal_options_are_rejected_by_legacy_workflow(field):
+    with pytest.raises(ValidationError, match="require sdg_workflow='multimodal'"):
         SDGConfig(**{field: {"temperature": 0.5}})
 
 
 def test_generic_configuration_mapping(tmp_path):
-    mapped = build_retrieval_first_config(config(tmp_path, max_parallel_requests_for_gen=16, resume="always"))
+    mapped = build_multimodal_config(config(tmp_path, max_parallel_requests_for_gen=16, resume="always"))
     assert mapped.generator.model == "configured-generator"
     assert mapped.judge.model == "configured-judge"
     assert mapped.generator.credential_env == "TEST_SDG_KEY"
@@ -54,7 +53,7 @@ def test_generic_configuration_mapping(tmp_path):
     [({}, False), ({"require_verbatim_quotes": False}, False), ({"require_verbatim_quotes": True}, True)],
 )
 def test_quote_policy_forwarding_preserves_quality_thresholds(tmp_path, options, strict):
-    mapped = build_retrieval_first_config(config(tmp_path, sdg_options=options))
+    mapped = build_multimodal_config(config(tmp_path, sdg_options=options))
     assert mapped.require_verbatim_quotes is strict
     assert mapped.relevance_threshold == 4
     assert mapped.self_sufficiency_threshold == 4
@@ -88,7 +87,7 @@ def test_all_generic_producer_controls_and_model_settings_are_forwarded(tmp_path
             }
         ],
     }
-    mapped = build_retrieval_first_config(
+    mapped = build_multimodal_config(
         config(
             tmp_path,
             sdg_options=options,
@@ -110,11 +109,18 @@ def test_all_generic_producer_controls_and_model_settings_are_forwarded(tmp_path
 
 @pytest.mark.parametrize(
     "options",
-    [{"output_dir": "elsewhere"}, {"seed": 7}, {"unknown": True}, {"summary_count": 2, "summary_fraction": 0.5}],
+    [
+        {"output_dir": "elsewhere"},
+        {"seed": 7},
+        {"sources_file": "elsewhere.jsonl"},
+        {"source_directory": {"path": "elsewhere"}},
+        {"unknown": True},
+        {"summary_count": 2, "summary_fraction": 0.5},
+    ],
 )
 def test_producer_options_cannot_hide_errors_or_override_recipe_identity(tmp_path, options):
     with pytest.raises(ValueError):
-        build_retrieval_first_config(config(tmp_path, sdg_options=options))
+        build_multimodal_config(config(tmp_path, sdg_options=options))
 
 
 def test_independent_judge_credential_is_checked_before_inference(tmp_path, monkeypatch):
@@ -124,22 +130,19 @@ def test_independent_judge_credential_is_checked_before_inference(tmp_path, monk
         run_sdg(config(tmp_path, sdg_judge_options={"credential_env": "JUDGE_KEY"}))
 
 
-@pytest.mark.parametrize("updates", [{"preview": True}, {"strict_visual": True}])
-def test_unsupported_legacy_modes_do_not_silently_change_ea_run(tmp_path, updates):
+def test_multimodal_preview_is_rejected(tmp_path):
     with pytest.raises(ValidationError):
-        config(tmp_path, **updates)
+        config(tmp_path, preview=True)
 
 
-def test_requires_canonical_input_and_portable_handoff():
+def test_requires_explicit_source_input():
     with pytest.raises(ValidationError, match="canonical"):
-        SDGConfig(sdg_workflow="retrieval_first")
+        SDGConfig(sdg_workflow="multimodal")
 
 
 def test_ea_route_never_invokes_legacy_generation_or_downloads_default_corpus(tmp_path, monkeypatch):
     expected = tmp_path / "output.jsonl"
-    monkeypatch.setattr(
-        "nemotron.recipes.embed.stage0_sdg.plugin_adapter.execute_retrieval_first", lambda cfg: expected
-    )
+    monkeypatch.setattr("nemotron.recipes.embed.stage0_sdg.plugin_adapter.execute_multimodal", lambda cfg: expected)
     assert run_sdg(config(tmp_path)) == expected
 
 
@@ -151,7 +154,7 @@ def test_credentials_are_required_before_inference(tmp_path, monkeypatch):
         run_sdg(config(tmp_path, nvidia_api_key="placeholder"))
 
 
-def test_recipe_validates_bundle_and_publishes_single_stage_handoff(tmp_path, monkeypatch):
+def test_recipe_publishes_single_stage_handoff(tmp_path, monkeypatch):
     import data_designer_retrieval_sdg.multimodal as producer
     from data_designer_retrieval_sdg.multimodal.storage import write_json
 
@@ -162,13 +165,8 @@ def test_recipe_validates_bundle_and_publishes_single_stage_handoff(tmp_path, mo
     write_json(bundle / "run_manifest.json", {"counts": {"views": {"image_and_text": {"accepted_queries": 1}}}})
     handoff = bundle / "generation_result.json"
     monkeypatch.setattr(producer, "run_multimodal_sdg", lambda cfg: handoff)
-    inspected = []
-    monkeypatch.setattr(
-        "nemotron.recipes.retrieval_vl.inspect_vl_bundle", lambda *args, **kwargs: inspected.append((args, kwargs))
-    )
     result = run_sdg(config(tmp_path))
     assert result == bundle / "source_records.jsonl"
-    assert inspected[0][1] == {"view": "text_image", "require_local_artifacts": True, "verify_checksums": True}
     top = json.loads((tmp_path / "output/generation_result.json").read_text())
     assert top["portable_bundle_manifest"] == "multimodal/bundle/run_manifest.json"
     assert top["portable_bundle_sha256"]
@@ -185,7 +183,7 @@ def test_generic_semantic_planning_controls_are_forwarded(tmp_path):
         "summary_count": 400,
         "persona": "A reader comparing maintenance procedures.",
     }
-    mapped = build_retrieval_first_config(config(tmp_path, sdg_options=options))
+    mapped = build_multimodal_config(config(tmp_path, sdg_options=options))
     assert all(getattr(mapped, key) == value for key, value in options.items())
     assert mapped.sources_file == tmp_path / "sources.jsonl"
     assert mapped.contexts_file == tmp_path / "contexts.jsonl"
@@ -200,7 +198,7 @@ def test_summary_embedding_endpoint_is_independent_of_chat_provider(tmp_path):
         "summary_embedding_credential_env": "EMBEDDING_KEY",
         "summary_embedding_extra_body": {"input_type": "passage", "truncate": "NONE"},
     }
-    mapped = build_retrieval_first_config(config(tmp_path, sdg_options=options))
+    mapped = build_multimodal_config(config(tmp_path, sdg_options=options))
     assert all(getattr(mapped, key) == value for key, value in options.items())
     assert mapped.generator.endpoint == "https://example.invalid/v1"
     assert mapped.generator.credential_env == "TEST_SDG_KEY"
@@ -213,9 +211,9 @@ def test_local_embedding_override_clears_hosted_defaults(tmp_path, monkeypatch, 
     from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
     from nemo_runspec.config.pydantic_loader import load_config as load_script_config
 
-    monkeypatch.setenv("MISTRAL3_SDG_QA_MODEL", "operator/generator")
-    monkeypatch.setenv("MISTRAL3_SDG_JUDGE_MODEL", "operator/judge")
-    path = Path(__file__).parents[3] / "src/nemotron/recipes/embed/stage0_sdg/config/mistral3-vl.yaml"
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_QA_MODEL", "operator/generator")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "operator/judge")
+    path = Path(__file__).parents[3] / "src/nemotron/recipes/embed/stage0_sdg/config/nemotron-3.5.yaml"
     changes = {
         "summary_embedding_endpoint": None,
         "summary_embedding_extra_body": None,
@@ -243,8 +241,95 @@ def test_local_embedding_override_clears_hosted_defaults(tmp_path, monkeypatch, 
             ],
             SDGConfig,
         )
-    mapped = build_retrieval_first_config(cfg)
+    mapped = build_multimodal_config(cfg)
     assert mapped.summary_embedding_endpoint is None
     assert mapped.summary_embedding_extra_body == {}
     assert mapped.summary_embedding_model == "operator/local-embedding"
     assert mapped.combination_iterations == 20  # Unrelated profile settings survive.
+
+
+@pytest.mark.parametrize("input_kind", ["sources_file", "source_directory"])
+def test_multimodal_execution_paths_are_absolute(tmp_path, monkeypatch, input_kind):
+    monkeypatch.chdir(tmp_path)
+    inputs = {input_kind: "sources.jsonl" if input_kind == "sources_file" else {"path": "documents"}}
+    cfg = SDGConfig(
+        sdg_workflow="multimodal",
+        contexts_file="contexts.jsonl",
+        output_dir="generated",
+        **inputs,
+    )
+    mapped = build_multimodal_config(cfg)
+    assert mapped.sources_file == (tmp_path / "sources.jsonl" if input_kind == "sources_file" else None)
+    if input_kind == "source_directory":
+        assert mapped.source_directory.path == tmp_path / "documents"
+    else:
+        assert mapped.source_directory is None
+    assert mapped.contexts_file == tmp_path / "contexts.jsonl"
+    assert mapped.output_dir == tmp_path / "generated/multimodal"
+
+
+def test_directory_options_are_validated_and_defaulted_by_public_producer(tmp_path):
+    cfg = SDGConfig(
+        sdg_workflow="multimodal",
+        source_directory={"path": tmp_path, "sentences_per_chunk": 3, "reserved_tokens": 24},
+    )
+    source = build_multimodal_config(cfg).source_directory
+    assert source.sentences_per_chunk == 3
+    assert source.reserved_tokens == 24
+    assert source.max_tokens_per_chunk == 1024
+    assert source.tokenizer == "nvidia/Nemotron-3.5-Embed-1B-BF16"
+    assert source.recursive
+    # The base CLI accepts producer-owned options without importing the stage
+    # dependency; the installed producer rejects unknown options before execution.
+    invalid = SDGConfig(
+        sdg_workflow="multimodal",
+        source_directory={"path": tmp_path, "text_chunk_chars": 4000},
+    )
+    with pytest.raises(ValidationError, match="text_chunk_chars"):
+        build_multimodal_config(invalid)
+
+
+@pytest.mark.parametrize("entrypoint", ["recipe_cli", "direct_script"])
+def test_directory_path_override_replaces_null_profile_selector(tmp_path, monkeypatch, entrypoint):
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
+    from nemo_runspec.config.pydantic_loader import load_config as load_script_config
+
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_QA_MODEL", "operator/generator")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "operator/judge")
+    path = Path(__file__).parents[3] / "src/nemotron/recipes/embed/stage0_sdg/config/nemotron-3.5.yaml"
+    overrides = [f"source_directory.path={tmp_path / 'documents'}"]
+    if entrypoint == "recipe_cli":
+        raw = apply_dotlist_overrides(load_config(path), overrides)
+        values = OmegaConf.to_container(raw, resolve=True)
+        values.pop("run", None)
+        cfg = SDGConfig.model_validate(values)
+    else:
+        cfg = load_script_config(path, overrides, SDGConfig)
+    mapped = build_multimodal_config(cfg)
+    assert mapped.sources_file is None
+    assert mapped.source_directory.path == tmp_path / "documents"
+    assert mapped.source_directory.max_tokens_per_chunk == 1024
+    assert mapped.context_strategy == "sections"
+
+
+@pytest.mark.parametrize("tokenizer", ["local/tokenizer", "operator/custom-tokenizer"])
+def test_directory_tokenizer_override_is_forwarded_unchanged(tmp_path, tokenizer):
+    cfg = SDGConfig(
+        sdg_workflow="multimodal",
+        source_directory={"path": tmp_path, "tokenizer": tokenizer, "max_tokens_per_chunk": 512},
+    )
+    source = build_multimodal_config(cfg).source_directory
+    assert source.tokenizer == tokenizer
+    assert source.max_tokens_per_chunk == 512
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{"max_tokens_per_chunk": 16, "reserved_tokens": 16}, {"file_extensions": [".pdf"]}],
+)
+def test_directory_producer_rejects_invalid_preparation_settings(tmp_path, options):
+    cfg = SDGConfig(sdg_workflow="multimodal", source_directory={"path": tmp_path, **options})
+    with pytest.raises(ValidationError):
+        build_multimodal_config(cfg)

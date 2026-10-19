@@ -28,6 +28,15 @@ Use reranker fine-tuning when relevant documents are already in the candidate se
 
 ## Commands
 
+The `default` profile below runs the Llama reranker workflow. For
+`nvidia/Nemotron-3.5-Rerank-8B-BF16`, use `nemotron-3.5` only with
+`nemotron rerank finetune`. Read the multimodal section of the recipe README
+before preparing inputs. Use the Nemotron 3.5 embedding SDG and preparation stages
+for a text/image directory or explicit source records. Supply the resulting
+mined, unrolled training data and its corpus root explicitly, and use a separate checkpoint directory. The profile has no
+matching Stage 3 evaluation, export, or deployment recipe. Do not apply the
+default Llama instructions to a Nemotron 3.5 checkpoint.
+
 Use `uv run` when `nemotron` is not already available.
 
 ```bash

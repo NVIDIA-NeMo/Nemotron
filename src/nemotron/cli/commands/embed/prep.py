@@ -109,7 +109,7 @@ def _execute_uv_local(train_path: Path, passthrough: list[str]) -> None:
         spec=SPEC,
         train_path=train_path,
         passthrough=passthrough,
-        extras=["vl" if model_family == "mistral3_vl" else "text"],
+        extras=["vl" if model_family == "nemotron_3_5" else "text"],
     )
 
 
@@ -126,7 +126,7 @@ def _execute_remote(
     from nemo_runspec.config.pydantic_loader import load_config
 
     model_family = load_config(train_path, passthrough, DataPrepConfig).model_family
-    if model_family == "mistral3_vl":
+    if model_family == "nemotron_3_5":
         raise RuntimeError("VL container dependency selection is not validated; run this stage locally.")
     try:
         import nemo_run as run

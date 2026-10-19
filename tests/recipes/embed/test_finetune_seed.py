@@ -15,7 +15,7 @@ def _as_dict(raw_config: dict[str, Any]) -> dict[str, Any]:
     return raw_config
 
 
-@pytest.mark.parametrize("model_family", ["text", "mistral3_vl"])
+@pytest.mark.parametrize("model_family", ["text", "nemotron_3_5"])
 @pytest.mark.parametrize("seed", [None, 0, 173, 4294967295])
 def test_seed_reaches_training_and_dataset_configuration(
     monkeypatch: pytest.MonkeyPatch, model_family: str, seed: int | None
@@ -42,7 +42,7 @@ def test_invalid_seed_rejected_before_training(seed: object) -> None:
         train.FinetuneConfig(seed=seed)
 
 
-@pytest.mark.parametrize("profile", ["default", "llama", "mistral3-vl"])
+@pytest.mark.parametrize("profile", ["default", "llama", "nemotron-3.5"])
 def test_dotlist_seed_override_reaches_training_and_dataset(monkeypatch: pytest.MonkeyPatch, profile: str) -> None:
     """The public CLI loader preserves the selected seed in every profile."""
     monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (True, None))

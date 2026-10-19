@@ -1,16 +1,16 @@
-# Preview profile for Mistral3 VL embedding.
+# Fine-tuning profile for Nemotron 3.5 Embed 1B.
 # Uses the commit-pinned AutoModel dependency in the stage's vl extra.
-# MISTRAL3_VL_TRAIN_DATA points to the scored hard-negative output from Stage 1.
+# NEMOTRON_3_5_TRAIN_DATA points to the scored hard-negative output from Stage 1.
 
 run:
   env:
     container: nvcr.io/nvidia/nemo-automodel:26.06
 
-artifact_root: ./output/embed/mistral3-vl-preview
-model_family: mistral3_vl
-base_model: ${oc.env:MISTRAL3_VL_EMBED_MODEL}
+artifact_root: ./output/embed/nemotron-3.5
+model_family: nemotron_3_5
+base_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
 trust_remote_code: false
-train_data_path: ${oc.env:MISTRAL3_VL_TRAIN_DATA,${artifact_root}/stage1_data_prep/train_mined.automodel_unrolled.json}
+train_data_path: ${oc.env:NEMOTRON_3_5_TRAIN_DATA,${artifact_root}/stage1_data_prep/train_mined.automodel_unrolled.json}
 checkpoint_dir: ${artifact_root}/stage2_finetune/checkpoints
 
 num_epochs: 1
@@ -29,7 +29,7 @@ pooling: avg
 l2_normalize: true
 temperature: 0.02
 is_causal: false
-do_distributed_inbatch_negative: false  # EA: unrolled positives are not masked across queries.
+do_distributed_inbatch_negative: false  # Unrolled positives are not masked across queries.
 detach_distributed_inbatch_negatives: false
 
 query_max_length: 512

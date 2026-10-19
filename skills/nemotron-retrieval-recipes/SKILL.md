@@ -1,6 +1,6 @@
 ---
 name: nemotron-retrieval-recipes
-version: "0.2.0"
+version: "0.3.0"
 author: "NVIDIA Nemotron Team <noreply@nvidia.com>"
 license: Apache-2.0
 tags:
@@ -53,10 +53,10 @@ For runnable commands, treat the current checkout as authoritative. If a require
 
 ## Prerequisites
 
-- Repo environment: `uv sync --all-extras` or the smallest relevant extra documented by the checkout.
+- Repo environment: `uv sync --python 3.12` for the root CLI. The embed CLI installs stage dependencies in isolated environments.
 - Stage 0 SDG: `NVIDIA_API_KEY`; never ask users to paste secret values.
 - Stages 1–3 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
-- Stage 4 export: NeMo Export-Deploy container when using TensorRT. The default Nemotron 3 Embed profile intentionally skips export.
+- Stage 4 export: NeMo Export-Deploy container when using TensorRT. The default Nemotron 3 Embed profile intentionally skips export. Nemotron 3.5 uses direct deployment and has no export profile.
 - Stage 5 deploy: Docker. Default Nemotron 3 Embed can use the checked-in vLLM path with `backend=vllm`, or a compatible `NEMOTRON3_EMBED_NIM_IMAGE` with `backend=nim`; Llama Embed and rerank deployment may require NGC access and `NGC_API_KEY`.
 - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 
@@ -68,9 +68,15 @@ For runnable commands, treat the current checkout as authoritative. If a require
    - Use both references only when the user asks about both families or asks which family to choose.
 2. For `embed`, choose one model profile before composing stage commands.
    - Run `uv run nemotron embed info` when the requested model is unclear.
-   - Use `-c default` for `nvidia/Nemotron-3-Embed-1B-BF16`.
+   - Use `-c nemotron-3.5` for public `nvidia/Nemotron-3.5-Embed-1B-BF16` with text, images, or paired documents.
+   - Use `-c default` for text-only `nvidia/Nemotron-3-Embed-1B-BF16`.
    - Use `-c llama` for `nvidia/llama-nemotron-embed-1b-v2` and its export path.
-   - Carry the selected profile and `artifact_root` through every stage; never combine artifacts from the two profiles.
+   - Carry the selected profile and `artifact_root` through every stage; never combine artifacts from different profiles.
+   - For Nemotron 3.5 SDG, prefer `source_directory.path=./documents` for independent text and image files. Use `sources_file` for custom units, text/image pairing, or page relationships; set exactly one input mode. Keep output outside the input directory.
+   - Retain the default `retrieval_view=mixed` through preparation and evaluation for heterogeneous corpora. Enable `eval_base=true` for a multimodal base comparison.
+   - After upgrading the retrieval SDG producer dependency, start a new artifact root because stored run identity includes producer code.
+   - Multimodal Stages 1–3 require local execution. Deploy the consolidated model with vLLM after evaluation; skip export.
+   - For Nemotron 3.5 Rerank, load `references/rerank.md`: `nemotron-3.5` is a Stage 2 fine-tuning profile, not a complete rerank pipeline.
 3. Choose the model family to tune from the retrieval failure mode.
    - Prefer embedding fine-tuning when relevant documents are absent from the candidate set.
    - Prefer reranker fine-tuning when relevant documents are retrieved but ordered poorly near the top.
@@ -93,16 +99,16 @@ For runnable commands, treat the current checkout as authoritative. If a require
    - `run --help` may omit inherited `-c` and `-d` options even though `run -c default -d ...` works; validate by running the dry-run when unsure.
    - In an already prepared checkout, `uv run --no-sync ... --help` or `uv run --no-sync ... -d` can avoid unexpected dependency sync during read-only checks.
 3. Check prerequisites for the requested stage:
-   - Repo environment: `uv sync --all-extras` or the smallest relevant extra if documented by the repo.
+   - Repo environment: `uv sync --python 3.12` for the root CLI; preserve isolated stage environments.
    - Stage 0 SDG: `NVIDIA_API_KEY`.
    - Stages 1–3 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
-   - Stage 4 export: the NeMo Export-Deploy container when using TensorRT. Default Nemotron 3 Embed skips this stage.
+   - Stage 4 export: the NeMo Export-Deploy container when using TensorRT. Default Nemotron 3 Embed skips this stage; Nemotron 3.5 has no export profile.
    - Stage 5 deploy: Docker plus the selected backend's image and artifact contract; default Nemotron 3 may use the checked-in vLLM image without NIM credentials. Load the family reference before requiring NGC credentials.
    - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 4. Use dotlist overrides instead of editing defaults unless the user asks for reusable config changes. Keep the selected profile, artifact root, sequence length, prefixes, pooling/normalization, prompt templates, and hard-negative counts consistent across stages.
 5. Avoid launching API, GPU, Docker, Slurm, NIM, or long-running jobs unless the user explicitly asked to run them. Offer or run dry-runs, config review, and small pilots first.
 6. For local execution, scope requested GPU IDs with `CUDA_VISIBLE_DEVICES=<ids>`. For `--run` or `--batch`, configure scheduler resources such as `gpus_per_node` in the selected `env.toml` profile and let the scheduler assign devices; do not assume submit-shell `CUDA_VISIBLE_DEVICES` propagates remotely.
-7. For multi-stage local runs, prefer `uv run nemotron <family> run -c <profile> --from <stage> --to <stage>`. Use `default` for rerank. The default `run` target stops at `eval`; `export` and `deploy` are opt-in.
+7. For multi-stage local runs, prefer `uv run nemotron <family> run -c <profile> --from <stage> --to <stage>`. Use `default` for rerank. The default `run` target stops at `eval`; `export` and `deploy` are opt-in. For the `embed` profile `nemotron-3.5`, launch `deploy` separately because there is no export profile.
 8. When evaluating quality, compare against the base model on a fixed held-out evaluation set before recommending deployment. Do not substitute a standalone public-benchmark eval for the recipe's own Stage 3 evaluation.
 9. For long-running SDG, prep, finetune, or eval work, start the process in a session-safe way and poll at human-scale intervals: roughly 60 seconds for small pilots and 120-300 seconds for larger runs.
 10. For failures, localize the failing stage, then inspect the stage config, expected inputs, output directory, and corresponding CLI wrapper or `run_uv.py`.

@@ -334,8 +334,7 @@ name = "flashoptim"
 version = "0.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "torch", version = "2.10.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and extra == 'extra-18-recipe-runner-eval-vl') or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
-    { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(sys_platform == 'linux' and extra == 'extra-18-recipe-runner-eval-vl') or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
+    { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "sys_platform == 'linux'" },
     { name = "triton", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a3/ad/9bf3ec596650e23371a1515014de3d250046e18de8226310ebd6256677a9/flashoptim-0.1.4.tar.gz", hash = "sha256:8d2d9f2608bef51005ba827b8b63af17189979cc0301c542aad2610ab1780718", size = 99938, upload-time = "2026-04-17T18:17:49.268Z" }
@@ -665,11 +664,11 @@ wheels = [
 
 [[package]]
 name = "nemo-automodel"
-version = "0.7.0"
-source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz" }
+version = "0.8.0"
+source = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz" }
 dependencies = [
     { name = "datasets" },
-    { name = "flashoptim" },
+    { name = "flashoptim", marker = "sys_platform == 'linux'" },
     { name = "megatron-fsdp" },
     { name = "mistral-common", extra = ["audio", "hf-hub", "sentencepiece"], marker = "extra == 'extra-18-recipe-runner-eval-vl'" },
     { name = "ninja" },
@@ -680,9 +679,9 @@ dependencies = [
     { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(sys_platform == 'linux' and extra == 'extra-18-recipe-runner-eval-vl') or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
     { name = "torchao" },
     { name = "torchdata" },
-    { name = "transformers", version = "5.15.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "transformers", version = "5.18.0", source = { registry = "https://pypi.org/simple" } },
 ]
-sdist = { hash = "sha256:3a83e422cb39ab7f4cc1bddf5046a1a882ead0ebd4727c8964db5b5af1d5c65e" }
+sdist = { hash = "sha256:cf424b9815a8c41b3e00387c7113c2ddc4df1d09bb35f6ec8a16e0f74cc17e2d" }
 
 [package.metadata]
 requires-dist = [
@@ -703,7 +702,7 @@ requires-dist = [
     { name = "ffpa-attn", marker = "extra == 'ffpa'", specifier = ">=0.2.4" },
     { name = "flash-attn", marker = "extra == 'fa'", specifier = "<=2.8.3" },
     { name = "flash-linear-attention", marker = "extra == 'fla'", specifier = ">=0.4.2" },
-    { name = "flashoptim", specifier = ">=0.1.3" },
+    { name = "flashoptim", marker = "sys_platform == 'linux'", specifier = ">=0.1.3" },
     { name = "fmha-sm100", marker = "sys_platform == 'linux' and extra == 'msa'" },
     { name = "ftfy", marker = "extra == 'diffusion'" },
     { name = "imageio", marker = "extra == 'diffusion'" },
@@ -730,8 +729,10 @@ requires-dist = [
     { name = "nemo-automodel", extras = ["mlflow"], marker = "extra == 'tracking'" },
     { name = "nemo-automodel", extras = ["s3"], marker = "extra == 'all'" },
     { name = "nemo-automodel", extras = ["tracking"], marker = "extra == 'all'" },
+    { name = "nemo-automodel", extras = ["trackio"], marker = "extra == 'tracking'" },
     { name = "nemo-automodel", extras = ["vlm"], marker = "extra == 'all'" },
     { name = "nemo-automodel", extras = ["vlm-media"], marker = "extra == 'media'" },
+    { name = "nemo-automodel", extras = ["wandb"], marker = "extra == 'swanlab'" },
     { name = "nemo-automodel", extras = ["wandb"], marker = "extra == 'tracking'" },
     { name = "nemo-run", marker = "extra == 'cli'" },
     { name = "ninja" },
@@ -754,19 +755,21 @@ requires-dist = [
     { name = "sentencepiece", marker = "extra == 'extra'" },
     { name = "soundfile", marker = "extra == 'vlm'" },
     { name = "sqlalchemy", marker = "extra == 'mlflow'", specifier = ">=1.4.0,<3" },
+    { name = "swanlab", marker = "extra == 'swanlab'", specifier = ">=0.10.2,<0.11" },
     { name = "tiktoken" },
     { name = "tile-kernels", marker = "extra == 'cuda'", specifier = "==1.0.0" },
     { name = "tilelang", marker = "extra == 'cuda'", specifier = ">=0.1.11" },
     { name = "timm", marker = "extra == 'vlm'", specifier = "<=1.0.22" },
-    { name = "torch", specifier = ">=2.6.0" },
+    { name = "torch", specifier = ">=2.8.0" },
     { name = "torchao", specifier = ">=0.16.0" },
     { name = "torchdata" },
     { name = "torchvision", marker = "extra == 'diffusion'" },
+    { name = "trackio", extras = ["gpu"], marker = "extra == 'trackio'", specifier = ">=0.40.0" },
     { name = "transformer-engine", extras = ["pytorch"], marker = "extra == 'cuda'", specifier = ">=2.19.0" },
-    { name = "transformers", specifier = "==5.15.1" },
+    { name = "transformers", specifier = "==5.18.0" },
     { name = "wandb", marker = "extra == 'wandb'", specifier = ">=0.30.0" },
 ]
-provides-extras = ["diffusion", "diffusion-kernels", "cuda", "cuda-source", "extra", "fa", "ffpa", "fla", "delta-databricks", "moe", "mok", "vlm", "cli", "s3", "msc", "vlm-media", "diffusion-media", "media", "mlflow", "mlflow-full", "wandb", "tracking", "msa", "all"]
+provides-extras = ["diffusion", "diffusion-kernels", "cuda", "cuda-source", "extra", "fa", "ffpa", "fla", "delta-databricks", "moe", "mok", "vlm", "cli", "s3", "msc", "vlm-media", "diffusion-media", "media", "mlflow", "mlflow-full", "wandb", "trackio", "swanlab", "tracking", "msa", "all"]
 
 [[package]]
 name = "networkx"
@@ -1369,13 +1372,13 @@ vl = [
     { name = "nemo-automodel" },
     { name = "torchvision", version = "0.25.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and extra == 'extra-18-recipe-runner-eval-vl') or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
     { name = "torchvision", version = "0.25.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(sys_platform == 'linux' and extra == 'extra-18-recipe-runner-eval-vl') or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
-    { name = "transformers", version = "5.15.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "transformers", version = "5.18.0", source = { registry = "https://pypi.org/simple" } },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "beir", specifier = ">=2.0.0" },
-    { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/3914f200a4c782d44b58ee7a01b4685e4158e19c.tar.gz" },
+    { name = "nemo-automodel", marker = "extra == 'vl'", url = "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "requests", specifier = ">=2.32.0" },
@@ -1385,7 +1388,7 @@ requires-dist = [
     { name = "torchvision", marker = "sys_platform == 'linux' and extra == 'vl'", specifier = ">=0.25,<0.26", index = "https://download.pytorch.org/whl/cu129" },
     { name = "torchvision", marker = "sys_platform != 'linux' and extra == 'vl'", specifier = ">=0.25,<0.26" },
     { name = "transformers", marker = "extra == 'text'", specifier = ">=5.1,<5.6" },
-    { name = "transformers", marker = "extra == 'vl'", specifier = "==5.15.1" },
+    { name = "transformers", marker = "extra == 'vl'", specifier = "==5.18.0" },
 ]
 provides-extras = ["text", "vl"]
 
@@ -1553,12 +1556,13 @@ dependencies = [
     { name = "numpy" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "tokenizers" },
+    { name = "tokenizers", version = "0.22.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-text'" },
+    { name = "tokenizers", version = "0.23.3", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
     { name = "torch", version = "2.10.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
     { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "sys_platform == 'linux' or (extra == 'extra-18-recipe-runner-eval-text' and extra == 'extra-18-recipe-runner-eval-vl')" },
     { name = "tqdm" },
     { name = "transformers", version = "5.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-text'" },
-    { name = "transformers", version = "5.15.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "transformers", version = "5.18.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
     { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d9/ef/87681678d0aa91a1e77f0ffdd2e5d900aaf358aac644dd14bead8d95ec4c/sentence_transformers-6.0.1.tar.gz", hash = "sha256:1c3b8d9403f87ad0c879638554f36cc85744f38a6a70d150fd7e964ca0e9935b", size = 575395, upload-time = "2026-08-31T07:50:43.518Z" }
@@ -1689,8 +1693,14 @@ wheels = [
 name = "tokenizers"
 version = "0.22.2"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "sys_platform == 'linux'",
+    "sys_platform == 'win32'",
+    "sys_platform == 'emscripten'",
+    "sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+]
 dependencies = [
-    { name = "huggingface-hub" },
+    { name = "huggingface-hub", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/73/6f/f80cfef4a312e1fb34baf7d85c72d4411afde10978d4657f8cdd811d3ccc/tokenizers-0.22.2.tar.gz", hash = "sha256:473b83b915e547aa366d1eee11806deaf419e17be16310ac0a14077f1e28f917", size = 372115, upload-time = "2026-01-05T10:45:15.988Z" }
 wheels = [
@@ -1709,6 +1719,39 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/18/a545c4ea42af3df6effd7d13d250ba77a0a86fb20393143bbb9a92e434d4/tokenizers-0.22.2-cp39-abi3-win32.whl", hash = "sha256:a6bf3f88c554a2b653af81f3204491c818ae2ac6fbc09e76ef4773351292bc92", size = 2502363, upload-time = "2026-01-05T10:45:20.593Z" },
     { url = "https://files.pythonhosted.org/packages/65/71/0670843133a43d43070abeb1949abfdef12a86d490bea9cd9e18e37c5ff7/tokenizers-0.22.2-cp39-abi3-win_amd64.whl", hash = "sha256:c9ea31edff2968b44a88f97d784c2f16dc0729b8b143ed004699ebca91f05c48", size = 2747786, upload-time = "2026-01-05T10:45:18.411Z" },
     { url = "https://files.pythonhosted.org/packages/72/f4/0de46cfa12cdcbcd464cc59fde36912af405696f687e53a091fb432f694c/tokenizers-0.22.2-cp39-abi3-win_arm64.whl", hash = "sha256:9ce725d22864a1e965217204946f830c37876eee3b2ba6fc6255e8e903d5fcbc", size = 2612133, upload-time = "2026-01-05T10:45:17.232Z" },
+]
+
+[[package]]
+name = "tokenizers"
+version = "0.23.3"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "sys_platform == 'linux'",
+    "sys_platform == 'win32'",
+    "sys_platform == 'emscripten'",
+    "sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "huggingface-hub", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/7c/2cabb2174e772636683008f2c5621949b645da7d303c596589e84516a184/tokenizers-0.23.3.tar.gz", hash = "sha256:cded33237c77caeef62944d32aa9a7ef42bdce2b3497e18d137e072a8c4be438", size = 385286, upload-time = "2026-10-09T10:16:55.759Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/2e/4ce5b9716f26e526eff6b0502ebed4ea8d7161f03b3c77617c9f25528e97/tokenizers-0.23.3-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9d2b5c97daf61688c2ad1803ca851800feaba50fb68d5821779e9ea5880d968c", size = 3148800, upload-time = "2026-10-09T10:00:51.457Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/72/01e49f032bb346e5aaf06c10c74fe8aeec847173adbadd66eb7c53054bf2/tokenizers-0.23.3-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:68649e97d5b43c44c031d8d848874a6eecae8f8fe40ea989aa777a5a83aca716", size = 3101381, upload-time = "2026-10-09T10:00:54.063Z" },
+    { url = "https://files.pythonhosted.org/packages/15/fc/ae987741829b1cd547668c4c94be732ae3eefd1d74344e64c3d2ca714acd/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ec82e80e65a862275b97c3d90b7a523df8d9519ee48aeb4e9625b2cc909274e0", size = 3519944, upload-time = "2026-10-09T10:00:55.885Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/da/cc8f6c030afaf05fbddc608158fbb761dca46913cbeba6b112e59fc82e2a/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:c64a0713180ff16829d4e7f39a658b77ea11443af4e1aa46523692943c9b1414", size = 3397695, upload-time = "2026-10-09T10:00:57.444Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/f1/256f78d1365fa2cd3ea6db716883d74667c8cbb6a21f15fa5b89a773cdc2/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ddedfd4b3b4be6be24ff6ca645c4a37fddfd305f6f3e354c54cf10b715c48215", size = 3753125, upload-time = "2026-10-09T10:01:00.165Z" },
+    { url = "https://files.pythonhosted.org/packages/60/93/eee007ac2fcbf4ecfce7fbc354826cf3611f56bdb886f3e91b1f7dd06b8f/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:2a89614730d7b80940a5d2ed9320e1ec8add5a745c6151d8d05071b7215505b6", size = 4018598, upload-time = "2026-10-09T10:01:02.05Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/f9/0c96c4739461fce9d8d865b416728081bf6230022d7163bd6244f35f4b31/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:e88646b8580c5ad7f4361477f1298e9cc01771a1ee9aecfe32c47b8ff614cc38", size = 3602442, upload-time = "2026-10-09T10:01:03.77Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/40/6706b82693715581457c6d5423eaa7faae576bb0526c5738a57085eb4449/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:376851d22bcf9d650a5c3090bb83e6cf9e895fbf0595369fa4cd43c1f69b5f87", size = 3396193, upload-time = "2026-10-09T10:01:05.48Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/0c/85946de40e25b7364b8f1bcf56def129069acd5bb364b7c86a32919e1a23/tokenizers-0.23.3-cp310-abi3-manylinux_2_31_riscv64.whl", hash = "sha256:bf501c40b72d2d5c8623620210430e9cac1ce47a46e45b34107b70a1557d46b0", size = 3553483, upload-time = "2026-10-09T10:01:07.387Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/6b/8d615d92cad1d511ca5ab188d1c7c167f0b3d295cc0d96207f9f82d486d8/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:114e2b55ed177179d59f4ab98200a4471e11e78f9e4b5a922d146740f96fcf52", size = 9972248, upload-time = "2026-10-09T10:01:09.437Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/7d/a922e37ddd58d1b463bbc2ad08120c8f59c60b814cd353519a116b24f8ba/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:d3407fb7b9c4d75dd68850ffd7180bc0a5d2dbaf0762d888e612f31fec3f9c6b", size = 9802957, upload-time = "2026-10-09T10:01:11.869Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/06/5d3f506a86ae0699a0e4ea05c05978f9aee169ef2c1d844e68c971cf8194/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_i686.whl", hash = "sha256:84513ef0aeb8bf8f4ea11a2e8a7ac163ec5288aa115e649a59b470ac5c3107df", size = 10145487, upload-time = "2026-10-09T10:01:14.268Z" },
+    { url = "https://files.pythonhosted.org/packages/26/e5/065625317690ea3548d834dad81f48ea1fd32e4964610e658e195d7fe28e/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:e05ab7baf7f47b406a95fea6f3b0a484b2ddcd9e1d14b68844c457eb755085a3", size = 10266026, upload-time = "2026-10-09T10:16:33.054Z" },
+    { url = "https://files.pythonhosted.org/packages/77/4e/babede85d0d19f5e3deeef0063e01848141329934d3d77c31b5cab5ac2b4/tokenizers-0.23.3-cp310-abi3-win32.whl", hash = "sha256:1ebf28794e7e4954e20a7f70fbea410b2d1f0418f7dbbca97ca384fcfef38c25", size = 2588086, upload-time = "2026-10-09T10:16:35.686Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/6c/24f074c9a0efb98e61b20aafe6b2641922d5db24e447d5d6daffd9e17555/tokenizers-0.23.3-cp310-abi3-win_amd64.whl", hash = "sha256:1f0823bb00c5fdc98e487354d54dd55a03848d61a1a0bf29a68c77f24f3b26c3", size = 2872101, upload-time = "2026-10-09T10:16:37.533Z" },
+    { url = "https://files.pythonhosted.org/packages/53/77/a476b6f73a661c11d113a342d2326b91506cf2285f0995d1212a6bb2022d/tokenizers-0.23.3-cp310-abi3-win_arm64.whl", hash = "sha256:7e48734d2de9260d86f03ab056d2cfeeff3869f61dbd49aaa15a2793b5f3458b", size = 2742580, upload-time = "2026-10-09T10:16:39.244Z" },
 ]
 
 [[package]]
@@ -1881,7 +1924,7 @@ dependencies = [
     { name = "pyyaml", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
     { name = "regex", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
     { name = "safetensors", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
-    { name = "tokenizers", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
+    { name = "tokenizers", version = "0.22.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-text'" },
     { name = "tqdm", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
     { name = "typer", marker = "extra == 'extra-18-recipe-runner-eval-text'" },
 ]
@@ -1892,7 +1935,7 @@ wheels = [
 
 [[package]]
 name = "transformers"
-version = "5.15.1"
+version = "5.18.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "sys_platform == 'linux'",
@@ -1907,13 +1950,13 @@ dependencies = [
     { name = "pyyaml", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
     { name = "regex", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
     { name = "safetensors", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
-    { name = "tokenizers", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
+    { name = "tokenizers", version = "0.23.3", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
     { name = "tqdm", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
     { name = "typer", marker = "extra == 'extra-18-recipe-runner-eval-vl' or extra != 'extra-18-recipe-runner-eval-text'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/92/c50c61da7046bbb59a4d011291aeadcfb4d7980ab36fdb31e93823a3fb93/transformers-5.15.1.tar.gz", hash = "sha256:27c996bd9075ddc82d40f8590dfdc81ea45f611bfca477e0db5d7fd257a482f7", size = 9378434, upload-time = "2026-08-19T11:28:20.33Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/6e/5a50ca8aff5fdd4ff21271198d2fb9e1f11bcd0ea279576199c0caa34cba/transformers-5.18.0.tar.gz", hash = "sha256:d89c206e42e841af7cd314b3d2b21c03e977d819cdb4aef65ada048769a644df", size = 10028745, upload-time = "2026-09-30T16:46:00.575Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/c4/a12e1d9b387fb0c40a57116db82b457e8c771cb419163cda29204d74a595/transformers-5.15.1-py3-none-any.whl", hash = "sha256:b7cdf238ff583e3a58dbc7fa34da1aaf091ce063141f65a30538160bd5afe93f", size = 11749582, upload-time = "2026-08-19T11:28:16.726Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/3b/f84d7d12886147c5267216ed6c57d1163e68d24a89b2ad29d835a7089463/transformers-5.18.0-py3-none-any.whl", hash = "sha256:d79e5a515a572ee3deb33eb0d578be47d91e70c75d54cf21bf6eede6edef14a9", size = 12579646, upload-time = "2026-09-30T16:45:57.51Z" },
 ]
 
 [[package]]

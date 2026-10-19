@@ -1,0 +1,28 @@
+# Fine-tune the released multimodal Nemotron 3.5 Rerank 8B model.
+# nemotron rerank finetune --config nemotron-3.5 train_data_path=/path/to/train_mined.automodel_unrolled.json
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+model_family: nemotron_3_5
+base_model: nvidia/Nemotron-3.5-Rerank-8B-BF16
+model_revision: bfa359b67f29ae42b3cef7e1657457b4f6354cb9
+train_data_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage1_prep/train_mined.automodel_unrolled.json
+checkpoint_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage2_finetune/checkpoints
+
+num_epochs: 1
+global_batch_size: 32
+local_batch_size: 1
+learning_rate: 2.0e-6
+lr_warmup_steps: 20
+lr_decay_style: linear
+weight_decay: 0.01
+optimizer_backend: auto
+flash_adamw_master_weight_bits: 32
+attn_implementation: sdpa
+train_n_passages: 4
+temperature: 0.05
+pooling: avg
+rerank_max_length: 4096
+checkpoint_every_steps: 100
+val_every_steps: 100
