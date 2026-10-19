@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Direct dependencies, pinned to the versions this cookbook was tested with (2026-09-29).
+# The agent itself needs only the Python standard library; these serve the notebook.
+
+# Run the notebook.
+jupyterlab==4.6.4
+ipykernel==7.4.0
+ipython==9.17.1
+
+# Charts and image resizing for the step cards.
+matplotlib==3.11.2
+pillow==12.3.0
+
+# Load MODEL_BASE_URL, MODEL_NAME, and NVIDIA_API_KEY from a local .env file.
+python-dotenv==1.2.3

@@ -135,8 +135,10 @@ policy:
     moe_token_dispatcher_type: "alltoall"
     moe_aux_loss_coeff: 0.0
     moe_router_enable_expert_bias: true
-    # Multi-Token Prediction heads (Lightning ships 5 MTP layers; the
-    # published RLVR reference keeps them training during RL)
+    # Multi-Token Prediction head: Lightning ships one recursively shared
+    # (repeated) MTP layer; mtp_num_layers is the recursion depth applied
+    # here (Megatron-Bridge's Lightning pretrain/SFT recipes use 2). The
+    # published RLVR reference keeps the head training during RL.
     mtp_loss_scaling_factor: 0.3
     mtp_use_repeated_layer: true
     mtp_num_layers: 5

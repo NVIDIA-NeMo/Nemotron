@@ -26,6 +26,12 @@ Absence is the signal for the simpler case.
 
 Deployment guides, fine-tuning recipes, and agentic usage examples for Nemotron models. Each card links to its directory in the [Nemotron GitHub repository](https://github.com/NVIDIA-NeMo/nemotron).
 
+```{admonition} Plan your post-training run
+:class: tip
+
+Use the [Nemotron Post-training Calculator](train-models/sizing-calculator.md) for directional estimates of GPU count, training time, and compute cost for customizing a released checkpoint with SFT, LoRA, or GRPO.
+```
+
 ::::{grid} 1 2 2 2
 :gutter: 3
 

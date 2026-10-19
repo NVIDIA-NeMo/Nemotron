@@ -51,8 +51,9 @@ $ uv run nemotron super3 data prep sft --run YOUR-CLUSTER
 $ uv run nemotron super3 sft --run YOUR-CLUSTER
 
 // Stage 2: Reinforcement Learning
-$ uv run nemotron super3 data prep rl --run YOUR-CLUSTER
-$ uv run nemotron super3 rl --run YOUR-CLUSTER
+$ uv run nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+$ uv run nemotron super3 rl rlvr --run YOUR-CLUSTER
+// ...then swe1, swe2 and rlhf; see the RL guide
 
 // Stage 3: Evaluation
 $ uv run nemotron super3 eval --run YOUR-CLUSTER

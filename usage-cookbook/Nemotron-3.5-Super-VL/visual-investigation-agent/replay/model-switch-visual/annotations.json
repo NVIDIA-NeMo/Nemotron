@@ -1,0 +1,94 @@
+{
+ "img-0": [
+  {
+   "id": "spend",
+   "x": 28,
+   "y": 119,
+   "width": 266,
+   "height": 94
+  },
+  {
+   "id": "tickets",
+   "x": 308,
+   "y": 119,
+   "width": 266,
+   "height": 94
+  },
+  {
+   "id": "cost-per-ticket",
+   "x": 587,
+   "y": 119,
+   "width": 266,
+   "height": 94
+  },
+  {
+   "id": "average-price",
+   "x": 1146,
+   "y": 119,
+   "width": 266,
+   "height": 94
+  }
+ ],
+ "img-3": [
+  {
+   "id": "candidate-price-rows",
+   "x": 78,
+   "y": 212,
+   "width": 902,
+   "height": 92
+  }
+ ],
+ "img-4": [
+  {
+   "id": "vesk-lite-quality",
+   "x": 31,
+   "y": 237,
+   "width": 1025,
+   "height": 31
+  },
+  {
+   "id": "vesk-4-quality",
+   "x": 31,
+   "y": 299,
+   "width": 1025,
+   "height": 31
+  }
+ ],
+ "img-5": [
+  {
+   "id": "vesk-lite-account-tokens",
+   "x": 31,
+   "y": 330,
+   "width": 1025,
+   "height": 31
+  },
+  {
+   "id": "vesk-lite-billing-tokens",
+   "x": 31,
+   "y": 361,
+   "width": 1025,
+   "height": 31
+  },
+  {
+   "x": 31,
+   "width": 1025,
+   "height": 31,
+   "id": "vesk-4-tech-tokens",
+   "y": 640
+  },
+  {
+   "x": 31,
+   "width": 1025,
+   "height": 31,
+   "id": "vesk-4-integrations-tokens",
+   "y": 671
+  },
+  {
+   "x": 31,
+   "width": 1025,
+   "height": 31,
+   "id": "osric-tech-tokens",
+   "y": 516
+  }
+ ]
+}

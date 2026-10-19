@@ -1,0 +1,76 @@
+# Super35 stage 0 — pipeline smoke test (tiny)
+#
+# Same Megatron-Bridge Super-VL pretrain recipe and parallel layout as
+# default.yaml, but only 10 steps with a global batch equal to the
+# data-parallel size (64 GPUs / (TP2 x PP2) = 16). The model is the full
+# 120B-A12B Super-VL, so this still needs the full 8-node footprint and a
+# converted checkpoint; use it to validate container, mounts, data and
+# checkpoint paths before a real run.
+#
+# Inputs: SUPER35_PRETRAIN_DATA and SUPER35_INIT_CHECKPOINT (see default.yaml).
+
+run:
+  env:
+    # Public NeMo 26.08 container (same as lightning35).
+    container: nvcr.io/nvidia/nemo:26.08
+    env_vars:
+      # Triton/Inductor/FlashInfer JIT caches default under /root, whose
+      # container overlay is tiny — use node-local /tmp instead.
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    # The Super-VL recipes (megatron.bridge.recipes.nemotronh_multimodal)
+    # exist only on recent Megatron-Bridge main. Mount the pinned MB commit
+    # over the container's copy, plus the Megatron-LM revision that commit
+    # pins as its 3rdparty/Megatron-LM submodule (megatron.core resolves from
+    # MB's vendored submodule path in this container).
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@f7f37b263307812702ee57bbc413a8a26c0924b5,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bab851bfe3abc805256155962389ec0fe5de7571,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh_multimodal.nemotron_35_super_vl_pretrain_config
+  step_func: nemotron_omni_step
+
+dataset:
+  path: ${oc.env:SUPER35_PRETRAIN_DATA,/path/to/energon/image-caption-dataset}
+  seq_length: 4096
+  num_workers: 2
+  do_validation: false
+
+model:
+  seq_length: 4096
+  # Verified-card overrides on top of the recipe's TP1/PP2/EP32 layout.
+  tensor_model_parallel_size: 2
+  sequence_parallel: true
+  cross_entropy_fusion_impl: native
+
+train:
+  train_iters: 10
+  global_batch_size: 16
+  micro_batch_size: 1
+
+scheduler:
+  lr_warmup_iters: 2
+  lr_decay_iters: 10
+
+validation:
+  eval_iters: 0
+  eval_interval: 0
+
+logger:
+  log_interval: 1
+  log_throughput: true
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+  wandb_exp_name: super35-pretrain-tiny
+
+checkpoint:
+  save: /nemo_run/super35-pretrain-model-tiny
+  save_interval: 10
+  pretrained_checkpoint: ${oc.env:SUPER35_INIT_CHECKPOINT,/path/to/megatron/super35-vl/iter_0000000}
+  load: null
+  load_optim: false
+  load_rng: false
+  async_save: false

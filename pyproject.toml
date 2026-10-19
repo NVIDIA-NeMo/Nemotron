@@ -1,6 +1,6 @@
 [project]
 name = "nemotron"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reproducible training recipes for NVIDIA Nemotron model family - transparent pipelines for data preparation, training, and evaluation across all stages"
 requires-python = ">=3.10,<3.14"
 license = {text = "MIT"}

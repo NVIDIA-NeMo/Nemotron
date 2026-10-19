@@ -4,6 +4,8 @@ Examples on how to get started with Nemotron models
 
 ---
 
+Planning to customize a released Nemotron checkpoint? Use the [Nemotron Post-training Calculator](../docs/train-models/sizing-calculator.md) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
+
 ## What's Inside
 
 This directory contains cookbook-style guides showing how to deploy and use the models directly:

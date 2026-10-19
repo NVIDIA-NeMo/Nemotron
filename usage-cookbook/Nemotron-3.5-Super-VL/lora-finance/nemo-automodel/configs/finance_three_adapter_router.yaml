@@ -1,0 +1,28 @@
+version: 1
+router: finance_explicit_task_tag
+policy:
+  benchmark_order: seeded_shuffle
+  seed: 42
+  route_basis: explicit_task_tag
+  reference_answer_visible_to_router: false
+  reference_reasoning_visible_to_router: false
+  execution: dynamo_dynamic_lora_shuffled_order
+routes:
+  visual_ocr:
+    tasks:
+      - TAT-DQA/multi-span
+      - TAT-DQA/span
+    dataset: data/finance_visual_ocr_v1
+    adapter: checkpoints/finance_visual_ocr_lora_bf16_20261001/LOWEST_VAL/model
+  reasoning:
+    tasks:
+      - TAT-DQA/arithmetic
+      - TAT-DQA/count
+    dataset: data/finance_reasoning_v1
+    adapter: checkpoints/finance_reasoning_lora_bf16_20261001/LOWEST_VAL/model
+  code_generation:
+    tasks:
+      - CodeFinQA
+      - CodeTAT-QA
+    dataset: data/finance_code_generation_v1
+    adapter: checkpoints/finance_code_generation_lora_bf16_20261001/LOWEST_VAL/model

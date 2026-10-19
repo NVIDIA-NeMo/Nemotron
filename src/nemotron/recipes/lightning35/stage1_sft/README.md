@@ -35,7 +35,7 @@ Inside a container on a compute node:
 
 ```bash
 # Data preparation
-python data_prep.py --config config/data_prep.yaml
+python data_prep.py --config config/data_prep/default.yaml
 
 # Training (single node)
 python train.py --config config/tiny.yaml
@@ -65,12 +65,12 @@ uv run nemotron lightning35 data prep sft [options]
 | Option | Description |
 |--------|-------------|
 | `--run <profile>` | Execute on Slurm via NeMo-Run |
-| `--sample N` | Limit rows per dataset (for testing) |
-| `--force` | Force re-run, ignoring cache |
+| `sample=N` | Limit rows per dataset (for testing) |
+| `force=true` | Force re-run, ignoring cache |
 
 ### Input
 
-OpenAI chat format datasets defined in `config/data_blend_raw.json`:
+OpenAI chat format datasets defined in `config/data_prep/data_blend_raw.json`:
 
 ```json
 {
@@ -113,12 +113,13 @@ The output is registered as a W&B Artifact (`lightning35-sft-data (SFTDataArtifa
 
 ### Configuration
 
-`config/data_prep.yaml`:
+`config/data_prep/default.yaml` (excerpt):
 
 ```yaml
-blend_path: config/data_blend_raw.json
-output_dir: output/stage1_sft
-tokenizer_model: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/lightning35/stage1_sft/config/data_prep/data_blend_raw.json
+output_dir: ${oc.env:PWD}/../output/stage1_sft
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16
 pack_size: 4096
 chat_template: lightning35
 messages_field: messages
@@ -169,8 +170,8 @@ uv run nemotron lightning35 sft [options] [overrides...]
 |------|---------|
 | `config/default.yaml` | Production configuration |
 | `config/tiny.yaml` | Testing variant |
-| `config/data_blend_raw.json` | Full dataset blend |
-| `config/data_blend_tiny.json` | Small blend for testing |
+| `config/data_prep/data_blend_raw.json` | Full dataset blend |
+| `config/data_prep/data_blend_tiny.json` | Small blend for testing |
 
 ### Override Examples
 
@@ -182,7 +183,7 @@ uv run nemotron lightning35 sft -c tiny train.train_iters=5000
 uv run nemotron lightning35 sft -c tiny optimizer.lr=1e-5
 
 # Load specific pretrained checkpoint
-uv run nemotron lightning35 sft -c tiny checkpoint.load=/path/to/pretrain/checkpoint
+uv run nemotron lightning35 sft -c tiny checkpoint.pretrained_checkpoint=/path/to/pretrain/checkpoint
 ```
 
 ## Running with NeMo-Run

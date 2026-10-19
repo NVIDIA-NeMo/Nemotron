@@ -116,6 +116,7 @@ def _register_groups() -> None:
         ("nano3", "nemotron.cli.commands.nano3", "nano3_app"),
         ("omni3", "nemotron.cli.commands.omni3", "omni3_app"),
         ("super3", "nemotron.cli.commands.super3", "super3_app"),
+        ("super35", "nemotron.cli.commands.super35", "super35_app"),
         ("ultra3", "nemotron.cli.commands.ultra3", "ultra3_app"),
         ("kit", "nemotron.cli.kit", "kit_app"),
         ("embed", "nemotron.cli.commands.embed", "embed_app"),

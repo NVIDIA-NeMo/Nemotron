@@ -1,0 +1,19 @@
+{
+  "owner": "Fernledger help-desk platform team",
+  "quality_bar": {
+    "rule": "For every ticket type, a proposed model's offline-eval resolution rate may be at most 2 percentage points below the baseline model's rate for that ticket type.",
+    "baseline_model": "Vesk 4",
+    "baseline_reason": "Vesk 4 is the baseline approved by the June 2026 quality review.",
+    "max_drop_pct_points": 2.0
+  },
+  "proposals": {
+    "rule": "File at most one change proposal per investigation, only with propose_change. A person reviews it; nothing changes until they approve.",
+    "max_per_run": 1
+  },
+  "report": {
+    "rule": "The report's proposal_id must be the ID returned by propose_change, or \"none\" if no proposal was filed.",
+    "manager_summary_rule": "The manager summary is for a product manager: plain language, at most 140 words, and none of these terms.",
+    "manager_summary_max_words": 140,
+    "manager_summary_banned_terms": ["token", "per 1m", "yaml", "config", "reasoning token", "log scale", "blended"]
+  }
+}

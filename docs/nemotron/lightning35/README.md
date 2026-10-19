@@ -6,28 +6,25 @@ Reproducible training pipeline for [Nemotron 3.5 Lightning](https://developer.nv
 
 ### Prerequisites
 
-- **GPU cluster** (H100 recommended) reachable through one of the supported
-  executors: **Slurm**, **DGX Cloud (run:ai)**, or **DGX Cloud Lepton** —
-  plus `local`/`docker` for development. The executor is selected per profile
-  via `executor = "..."` in `env.toml`; see
+- **Slurm cluster** with GPU nodes (H100 recommended). This release has been
+  tested only with Slurm execution. The executor is selected per profile via
+  `executor = "..."` in `env.toml`; NeMo-Run defines other executors, but they
+  are untested with these recipes. See
   [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md).
 
-  > **Note**: Until the public 26.08 launch container ships, the pretrain and
-  > SFT stages mount Megatron-Bridge main via `${auto_mount:...}`, which is
-  > cloned over an SSH tunnel and therefore **requires the Slurm executor**.
-  > The RL and eval stages have no mounts and run on any executor. Once the
-  > launch container (with the Lightning recipes built in) is available, the
-  > mounts disappear and all stages become executor-agnostic.
+  > **Note**: The pretrain and SFT stages mount a pinned Megatron-Bridge main
+  > revision via `${auto_mount:...}`, which is cloned over an SSH tunnel and
+  > therefore **requires the Slurm executor**. The RL and eval stages have no
+  > mounts.
 
 - **[Weights & Biases](../wandb.md) account** for experiment tracking and
   [artifact lineage](../artifacts.md) — optional; the file-based
   [manifest registry](../artifacts.md) (`[artifacts.manifest]` in `env.toml`)
   works without W&B
 - **Container images**:
-  - Training (pretrain/SFT): `nvcr.io/nvidian/nemo:26.08.rc2` (internal rc) until the
-    public `nvcr.io/nvidia/nemo:26.08` tag ships at launch. The rc container's bundled
-    Megatron-Bridge predates the Lightning recipes, so the configs mount Megatron-Bridge
-    main (`@0c565c9a0`) plus its pinned Megatron-LM into the container (see the note above)
+  - Training (pretrain/SFT): `nvcr.io/nvidia/nemo:26.08`. The configs also mount the
+    Megatron-Bridge main revision the Lightning recipes were validated against
+    (`@0c565c9a0`) plus its pinned Megatron-LM into the container (see the note above)
   - RL and eval: `nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_5_lightning` (bundles vLLM and
     NeMo Gym with the Lightning reference eval scripts)
 
@@ -85,12 +82,8 @@ $ uv run nemotron lightning35 pipe --run YOUR-CLUSTER
 
 ## Resources
 
+- **Tech report:** [Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf) (NVIDIA, 2026). It describes how the released Lightning checkpoints were built; section and table references (§, Table) in this guide point to that report.
 - **Release Blog:** [NVIDIA Nemotron 3.5 Lightning Delivers Fast, Accurate Specialized Task Execution for Long-Running Agents](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)
-
-  > There is no separate technical report — the release blog, the
-  > [model cards](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3),
-  > and the recipe configs in this repository are the authoritative references
-  > for methodology.
 
 - **Model Weights:**
   - [NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16) (Base model)
@@ -119,9 +112,9 @@ For model cards and recipe summaries, see {doc}`/customize/models/lightning35/in
 
 | Stage | Name | Purpose | Guide |
 |-------|------|---------|-------|
-| 0 | [Pretraining](./pretrain.md) | Base model on the released pretraining recipe.md](./pretrain.md) |
-| 1 | [SFT](./sft.md) | Multi-domain instruction tuning with 12+ data sources | [sft.md](./sft.md) |
-| 2 | [RL](./rl.md) | GRPO alignment with multi-environment rewards | [rl.md](./rl.md) |
+| 0 | [Pretraining](./pretrain.md) | Megatron-Bridge pretraining with MTP heads on open pretraining data | [pretrain.md](./pretrain.md) |
+| 1 | [SFT](./sft.md) | Single-stage instruction tuning on 12 blend entries from 5 open datasets | [sft.md](./sft.md) |
+| 2 | [RL](./rl.md) | RLVR with GRPO across multiple NeMo Gym environments | [rl.md](./rl.md) |
 | 3 | [Evaluation](./evaluate.md) | Benchmark evaluation with NeMo Gym | [evaluate.md](./evaluate.md) |
 | 4 | [Quantization](./quantization.md) | NVFP4 PTQ + Quantization-Aware Distillation via Model Optimizer | [quantization.md](./quantization.md) |
 
@@ -135,34 +128,55 @@ For model cards and recipe summaries, see {doc}`/customize/models/lightning35/in
 | **Layers / Hidden** | 52 / 2688 |
 | **Experts** | 128 routed (top-6) + 1 shared |
 
-> For architecture details, see the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16). There is no separate technical report for Nemotron 3.5 Lightning; the HF model cards and the recipe configs in this repository are the authoritative references.
+> Layer, hidden-size, and expert counts are from the checkpoint's `config.json` on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). For how the released model was built, see the tech report listed under [Resources](#resources).
+
+## Key Results
+
+Selected post-trained scores from the tech report (Table 21, NeMo Gym, FP8 KV cache). The report notes that scores vary from run to run and may differ from the model cards.
+
+| Benchmark | BF16 | NVFP4 (W4A16) |
+|-----------|------|---------------|
+| SWE-Bench Verified | 52.20 | 52.20 |
+| GPQA Diamond (no tools) | 76.45 | 75.38 |
+| Tau2 Telecom | 59.65 | 60.96 |
+| IFBench (loose) | 72.00 | 74.04 |
+| AA-LCR | 52.38 | 50.00 |
+| RULER-v1 (1M) | 91.52 | 90.83 |
+| **Median accuracy recovery (NVFP4 vs BF16)** | — | **99.24%** |
+
+Base-model scores (MMLU, GSM8K, HumanEval, and others) are in Table 6 of the report. These numbers come from the released checkpoints; the open-data recipes in this repository will not reproduce them.
 
 ## Stage Summaries
 
 ### Stage 0: Pretraining
 
-Two-phase curriculum on the pretraining mixture from the released recipe configs.5T) focuses on diversity across web, code, math, and multilingual data; Phase 2 (1.5T) emphasizes high-quality sources. Includes long-context extension to 1M tokens.
+The released Lightning base was not pretrained from scratch. Per the tech report (§2.1–2.2), it was initialized from Nemotron 3 Nano Base, given an MTP head built from Nemotron 3 Super Base's MTP head (projections fused, then pruned), warmed up on that head for 100B tokens with the backbone frozen, distilled for 1T tokens from Nemotron 3 Super Base, and then trained for long context. The `lightning35 pretrain` recipe runs Megatron-Bridge's Lightning pretraining config (with MTP heads) on open pretraining data; it is a reference implementation, not a reproduction of the distillation run.
 
 → [Pretraining Guide](./pretrain.md)
 
 ### Stage 1: Supervised Fine-Tuning
 
-Multi-domain instruction tuning covering 12+ data domains including competition math/code, InfinityByte cross-domain synthesis, STEM reasoning, conversational tool use, and multilingual support.
+The report describes a single text-only SFT stage (§3.1). The recipe packs 12 blend entries from 5 open datasets covering instruction following and structured outputs, Lean math proofs, software engineering, agentic and tool-calling conversations, competitive programming, and InfiniByte.
 
 → [SFT Guide](./sft.md)
 
 ### Stage 2: Reinforcement Learning
 
-Multi-environment RLVR training across 7 reward environments using GRPO, plus GenRM-based RLHF and DPO for reducing tool hallucination.
+The report describes RLVR after SFT, with no MOPD stage, followed by 48k steps of MTP boosting on the frozen backbone (§3, §3.6, §3.7). The recipe runs GRPO over 6 NeMo Gym environments (math with judge, code generation, workplace assistant, MCQA, instruction following, and structured JSON outputs) and keeps the MTP heads training. MTP boosting is not part of the recipe.
 
 → [RL Guide](./rl.md)
 
 ### Quantization (PTQ + QAD)
 
 NVFP4 post-training quantization with four-over-six calibration, followed by
-Quantization-Aware Distillation to recover accuracy — producing the released
-NVFP4 checkpoint (22 GB from 66 GB BF16, up to 4x faster throughput). Runs
-from [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer)'s
+Quantization-Aware Distillation to recover accuracy. This approximates the
+released NVFP4 checkpoint rather than reproducing it: the PTQ recipe is the
+released one (FP8 Mamba projections, as in the report and model card), but the
+calibration data and QAD run are public substitutes (see the
+[Quantization Guide](./quantization.md)). Per the report (§4, §4.7, §4.8), Lightning deploys as W4A16 (NVFP4
+weights, 16-bit activations) on every GPU SKU, leaves the MTP module
+unquantized, and keeps a 99.24% median accuracy recovery versus BF16
+(Table 21). Runs from [NVIDIA Model Optimizer](https://github.com/NVIDIA/Model-Optimizer)'s
 Megatron-Bridge examples.
 
 → [Quantization Guide](./quantization.md)
@@ -224,9 +238,8 @@ Native integrations with NVIDIA's NeMo ecosystem:
 | [NeMo Curator](https://github.com/NVIDIA-NeMo/Curator) | Data curation: deduplication, quality filtering, PII removal | Planned |
 | [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) | Synthetic data generation for instruction tuning and alignment | Planned |
 | [NeMo Export-Deploy](https://github.com/NVIDIA-NeMo/Export-Deploy) | Model export to TensorRT-LLM and deployment | Planned |
-| [NeMo Gym](https://github.com/NVIDIA-NeMo/Evaluator) | Model evaluation and benchmarking | Planned |
 
-These integrations will connect data curation directly to model evaluation.
+Evaluation already runs on [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) (see [Evaluate](./evaluate.md)).
 
 ## CLI Reference
 

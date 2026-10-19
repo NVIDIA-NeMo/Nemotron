@@ -35,7 +35,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 > **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](nemo_runspec/nemo-run.md) for setup instructions.
 
-## Sample Deployments and Applications
+## Deploy, Customize, and Use Nemotron
 
 ::::{grid} 1 2 2 2
 :gutter: 3
@@ -52,6 +52,15 @@ Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging 
 :link-type: doc
 
 End-to-end applications: RAG agents, ML agents, and multi-agent systems.
+:::
+
+:::{grid-item-card} Nemotron Post-training Calculator
+:link: train-models/sizing-calculator
+:link-type: doc
+
+Estimate GPU count, training time, and compute cost for customizing a released Nemotron checkpoint with SFT, LoRA, or GRPO.
++++
+`Planning Tool`
 :::
 
 ::::
@@ -122,6 +131,15 @@ Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
 **Stages:** Pretraining → SFT → RL → Quantization → Eval
 :::
 
+:::{grid-item-card} Nemotron 3.5 Super
+:link: nemotron/super35/README
+:link-type: doc
+
+120B total / 12B active vision-language model with native MTP, post-trained with specialist teachers and multi-teacher on-policy distillation.
+
+**Stages:** Pretraining → SFT → RLVR → Teachers → MOPD → Eval
+:::
+
 :::{grid-item-card} Nemotron 3 Nano
 :link: nemotron/nano3/README
 :link-type: doc
@@ -189,6 +207,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Lightning35](nemotron/lightning35/README.md) | Pretraining → SFT → RL → Quantization |
 | [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Super35](nemotron/super35/README.md) | Pretraining → SFT → RLVR → Teachers → MOPD → Eval |
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
 | [Embed](nemotron/embed/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
 | [Rerank](nemotron/rerank/README.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
@@ -225,6 +244,7 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 Home <self>
 application-examples.md
 deployment-guides.md
+Post-training Calculator <train-models/sizing-calculator.md>
 ```
 
 ```{toctree}
@@ -314,6 +334,7 @@ Nemotron 3 Nano <nemotron/nano3/README.md>
 Nemotron 3.5 Lightning <nemotron/lightning35/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
+Nemotron 3.5 Super <nemotron/super35/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Embedding Fine-Tuning <nemotron/embed/README.md>
 Llama Nemotron Rerank <nemotron/rerank/README.md>

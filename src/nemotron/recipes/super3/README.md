@@ -102,8 +102,9 @@ uv run nemotron super3 data prep sft --run YOUR-CLUSTER
 uv run nemotron super3 sft --run YOUR-CLUSTER
 
 # Stage 2: Data prep + RL
-uv run nemotron super3 data prep rl --run YOUR-CLUSTER
-uv run nemotron super3 rl --run YOUR-CLUSTER
+uv run nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+uv run nemotron super3 rl rlvr --run YOUR-CLUSTER
+# ...then swe1, swe2 and rlhf (data prep rl <stage>, rl <stage>)
 
 # Stage 3: Evaluation
 uv run nemotron super3 eval --run YOUR-CLUSTER
@@ -132,8 +133,8 @@ uv run nemotron super3 data prep pretrain [--run <profile>] [--sample N] [--forc
 # SFT data: apply chat templates, tokenize to packed Parquet
 uv run nemotron super3 data prep sft [--run <profile>] [--sample N] [--force]
 
-# RL data: resolve HF placeholders, convert to JSONL
-uv run nemotron super3 data prep rl [--run <profile>] [--sample N] [--force]
+# RL data, one sub-stage at a time (rlvr resolves HF placeholders; swe1/swe2/rlhf split JSONL)
+uv run nemotron super3 data prep rl {rlvr,swe1,swe2,rlhf} [--run <profile>] [--sample N] [--force]
 ```
 
 ### Training

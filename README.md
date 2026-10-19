@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Docs](https://img.shields.io/badge/docs-dev-76B900.svg)](https://nvidia-nemo.github.io/Nemotron/dev/)
+[![Docs](https://img.shields.io/badge/docs-latest-76B900.svg)](https://docs.nvidia.com/nemotron/latest/)
 
 <div align="center">
 
@@ -17,6 +17,8 @@
 
 ---
 
+> 🎉**Nemotron 3.5 Super** is now released — a 120B-A12B hybrid Mamba-Transformer LatentMoE vision-language model with native Multi-Token Prediction and up to 1M context, built for multimodal agentic reasoning over text, images, and video. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-super-vl-powers-specialized-agents-with-multimodal-reasoning/), the [technical report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf), the [training recipe](./docs/nemotron/super35/README.md) and the [model weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16).
+>
 > 🎉**Nemotron 3.5 Lightning** is now released — a 30B-A3B hybrid Mamba-Transformer MoE with Multi-Token Prediction, built for the high-volume execution layer of long-running agents. See the [release blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/), the [training recipe](./docs/nemotron/lightning35/README.md), and the [model weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16).
 >
 > 🎉Nemotron 3 Ultra was [announced](https://www.youtube.com/live/q_umfWm8J28?t=4568s) at GTC San Jose 2026\. The model is open-source on [Hugging Face](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16), and the [training recipe](./docs/nemotron/ultra3/README.md) is now available in this repo\. To learn more, [see the usage guide](./usage-cookbook/Nemotron-3-Ultra/README.md)\!
@@ -171,6 +173,7 @@ Because these are complete systems, you can extract specific techniques with con
 |-------|-------------|--------|-------|
 | **[Nemotron 3 Ultra](docs/nemotron/ultra3/README.md)** | 550B total / 55B active hybrid Mamba-Attention LatentMoE Transformer with MTP and 1M context — NVIDIA's largest Nemotron 3 model for datacenter-scale agentic reasoning | Pretrain → SFT → RLVR → MOPD | [Training Guide](docs/nemotron/ultra3/README.md) |
 | **[Nemotron 3 Super](docs/nemotron/super3/README.md)** | 120.6B total / 12.7B active Hybrid Mamba Latent MoE Transformer for frontier reasoning, coding, and agentic tasks | Pretrain → SFT → RL | [Training Guide](docs/nemotron/super3/README.md) |
+| **[Nemotron 3.5 Super](docs/nemotron/super35/README.md)** | 120B total / 12B active hybrid Mamba-Transformer LatentMoE vision-language model with native MTP — text, image, and video reasoning for agentic workloads | Pretrain → SFT → RLVR → Teachers → MOPD → Eval | [Training Guide](docs/nemotron/super35/README.md) |
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
 | **[Nemotron 3.5 Lightning](docs/nemotron/lightning35/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE with Multi-Token Prediction | Pretrain → SFT → RL → Quantization | [Training Guide](docs/nemotron/lightning35/README.md) |
 | **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
@@ -224,6 +227,37 @@ A complete training recipe for the frontier Hybrid Mamba Latent Mixture-of-Exper
 - [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf)
 - [Model Weights (Instruct)](https://huggingface.co/nvidia/Nemotron-3-Super-49B-v1)
 
+### Nemotron 3.5 Super
+
+A training recipe for Nemotron 3.5 Super, a 120B-A12B hybrid Mamba-Transformer LatentMoE vision-language model. SFT turns its text-only base into a vision-language model; RLVR, six specialist teachers, and two-phase multi-teacher on-policy distillation (MOPD) then post-train it into a multimodal agent.
+
+> **Pending Open-Source Release**: The SFT and RL data used for Super 3.5 are not yet published, and the agentic teacher's environment is not in public NeMo Gym. The configs, CLI, and RL stack (NeMo-RL `super-v3.5-posttraining`) are public; see the [training guide](docs/nemotron/super35/README.md#open-source-status) for what has been verified.
+
+**Model Specifications**:
+- 120B total / 12B active parameters, initialized from Nemotron 3 Super
+- C-RADIO vision encoder + temporal video embedder (text, image, and video; no audio)
+- Single recursively shared MTP head for speculative decoding
+- Up to 1M context
+- Released as Base BF16, post-trained BF16, and NVFP4 checkpoints
+
+**What You Can Extract**:
+- Megatron-Bridge vision-language pretraining, two-stage SFT, PEFT, and freeze controls for the language model, vision encoder, and projector
+- Multi-environment RLVR with NeMo Gym, including competitive-programming and finance-agent environments
+- Specialist teachers for reasoning, vision tool use, video reasoning and tracking, vision reasoning, and alignment (GenRM-based RLHF)
+- Two-phase MOPD with per-domain teacher routing, a self-anchor, and a proximal-teacher target
+- NVFP4 PTQ + QAD reaching 99.52% median accuracy recovery (not a CLI stage; the released precision recipe runs through Model Optimizer's W4A4 tutorial)
+
+**Resources**:
+- [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-super-vl-powers-specialized-agents-with-multimodal-reasoning/)
+- [Training Guide](docs/nemotron/super35/README.md)
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf)
+- [NeMo-RL Super 3.5 Guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3.5-posttraining/docs/guides/models/nemotron/nemotron-3.5-super-vl.md)
+- [NeMo Gym Evaluation Reproducibility Guide](https://github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md)
+- [Quantization Guide (PTQ + QAD)](docs/nemotron/super35/quantization.md)
+- [Model Weights (Base)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-Base-BF16)
+- [Model Weights (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16)
+- [Model Weights (NVFP4)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4)
+
 ### Nemotron 3.5 Lightning
 
 A complete training recipe for the 30B-A3B hybrid Mamba-Transformer MoE with Multi-Token Prediction, built for fast, accurate specialized task execution in long-running agents. Weights, data, and recipes are released under OpenMDW-1.1.
@@ -247,6 +281,7 @@ A complete training recipe for the 30B-A3B hybrid Mamba-Transformer MoE with Mul
 **Resources**:
 - [Release Blog](https://developer.nvidia.com/blog/nvidia-nemotron-3-5-lightning-delivers-fast-accurate-specialized-task-execution-for-long-running-agents/)
 - [Training Guide](docs/nemotron/lightning35/README.md)
+- [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf)
 - [NeMo-RL Lightning Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/nemotron-3.5-lightning.md)
 - [DGX Station Customization Recipes](./usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/README.md)
 - [Quantization Guide (PTQ + QAD)](docs/nemotron/lightning35/quantization.md)

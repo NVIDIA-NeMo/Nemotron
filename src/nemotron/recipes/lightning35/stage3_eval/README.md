@@ -10,7 +10,7 @@ Evaluate trained Nemotron 3.5 Lightning models using [NeMo Gym](https://github.c
 ## Overview
 
 This stage reproduces the Gym-native flow used for the published Lightning
-evaluation results (see Gym `scripts/more/reproducibility.md`):
+evaluation results (see Gym `nemotron_recipes/lightning-3.5/reproducibility.md`):
 
 1. Serve the HF checkpoint with vLLM in-job, using the Lightning family
    serving settings (`nemotron_v3` reasoning parser, `qwen3_coder` tool
@@ -35,7 +35,7 @@ artifacts from W&B lineage.
 uv run nemotron lightning35 eval --run YOUR-CLUSTER
 
 # Evaluate a specific model artifact
-uv run nemotron lightning35 eval --run YOUR-CLUSTER run.model=sft-model:v2
+uv run nemotron lightning35 eval --run YOUR-CLUSTER run.model=lightning35-rl-model:v2
 
 # Filter specific benchmarks
 uv run nemotron lightning35 eval --run YOUR-CLUSTER -t gpqa -t scicode

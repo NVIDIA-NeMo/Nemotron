@@ -4,13 +4,15 @@ A complete 3-stage training pipeline for Nemotron 3.5 Lightning, an open, effici
 
 ## Paper
 
-**Model Cards**: [Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16) · [BF16 (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) · [NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4) — no separate technical report; the model cards and these recipes are the reference.
+**Tech Report**: [Nemotron 3.5 Super and Lightning: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Models for Agentic AI](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Super-and-Lightning-Technical-Report.pdf) (NVIDIA, 2026)
+
+**Model Cards**: [Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Base-BF16) · [BF16 (Instruct)](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) · [NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4)
 
 > **Open-Source Data Only**: These recipes train exclusively on the open-sourced subset of training data. Results will differ from the published model-card benchmarks, which used additional proprietary data. Use these recipes as reference implementations to apply the methodology with your own data.
 
 ## Model Overview
 
-Nemotron 3.5 Lightning achieves better or on-par accuracy than competitive models while having up to 3.3x higher inference throughput. It supports an extended long context of 1M tokens, outperforming both GPT-OSS-20B and Qwen3-30B-A3B on RULER across different context lengths.
+Nemotron 3.5 Lightning is a text-only model built for fast, accurate specialized task execution in long-running agents and for efficient local and datacenter deployment. Per the tech report, it was initialized from Nemotron 3 Nano Base, given an MTP head derived from Nemotron 3 Super Base, distilled for 1T tokens from Nemotron 3 Super Base, and trained for long context, then post-trained with single-stage text-only SFT, RLVR, and MTP boosting. The model card lists a context length of up to 1M tokens.
 
 | Property | Value |
 |----------|-------|
@@ -33,11 +35,12 @@ Nemotron 3.5 Lightning achieves better or on-par accuracy than competitive model
 
 ### Key Capabilities
 
-- **Agentic Reasoning**: Enhanced multi-step and multi-turn agentic tasks
-- **Tool Use**: XML-style tool calling with reduced hallucination via DPO
-- **Reasoning Control**: On/off control and token budget control
-- **Long Context**: Up to 1M tokens with strong RULER performance
-- **Multilingual**: Support for 15+ languages
+- **Agentic Tasks**: Multi-step and multi-turn agentic tasks, including software engineering and tool use
+- **Tool Use**: Tool calling served with the `qwen3_coder` tool parser
+- **Reasoning Control**: Thinking on/off via the chat template (`enable_thinking`)
+- **Long Context**: Up to 1M tokens (RULER-v1 1M: 91.52 BF16, report Table 21)
+- **Multilingual**: English, Spanish, French, German, Italian, and Japanese (per the model card)
+- **NVFP4**: W4A16 checkpoint with 99.24% median accuracy recovery versus BF16 (report Table 21)
 
 ## Training Pipeline
 
@@ -55,7 +58,7 @@ flowchart TB
 
     subgraph stage2["Stage 2: RL"]
         direction LR
-        pref["Preference Datasets"] --> dp2["data_prep.py<br/>(JSONL)"] --> train2["train.py<br/>(NeMo-RL/GRPO)"] --> aligned["Aligned Model"]
+        pref["RL Prompts<br/>(NeMo Gym)"] --> dp2["data_prep.py<br/>(JSONL)"] --> train2["train.py<br/>(NeMo-RL/GRPO)"] --> aligned["Aligned Model"]
     end
 
     base --> train1
@@ -70,7 +73,7 @@ flowchart TB
 |-------|---------|-----------|--------|
 | [Stage 0: Pretrain](./stage0_pretrain/) | Train on large text corpus | Megatron-Bridge | Base model checkpoint |
 | [Stage 1: SFT](./stage1_sft/) | Instruction tuning | Megatron-Bridge | Instruction-following model |
-| [Stage 2: RL](./stage2_rl/) | Alignment with GRPO | NeMo-RL | Final aligned model |
+| [Stage 2: RL](./stage2_rl/) | RLVR with GRPO | NeMo-RL | Final aligned model |
 
 ## Prerequisites
 
@@ -129,7 +132,7 @@ Use the `tiny` config variant for quick testing:
 
 ```bash
 # Quick test with small dataset sample
-uv run nemotron lightning35 data prep pretrain --run YOUR-CLUSTER --sample 1000
+uv run nemotron lightning35 data prep pretrain --run YOUR-CLUSTER sample=1000
 
 # Quick training test (small model, few iterations)
 uv run nemotron lightning35 pretrain -c tiny --run YOUR-CLUSTER
@@ -141,13 +144,13 @@ uv run nemotron lightning35 pretrain -c tiny --run YOUR-CLUSTER
 
 ```bash
 # Pretrain data: tokenize to Megatron bin/idx format
-uv run nemotron lightning35 data prep pretrain [--run <profile>] [--sample N] [--force]
+uv run nemotron lightning35 data prep pretrain [--run <profile>] [sample=N] [force=true]
 
 # SFT data: apply chat templates, tokenize to packed Parquet
-uv run nemotron lightning35 data prep sft [--run <profile>] [--sample N] [--force]
+uv run nemotron lightning35 data prep sft [--run <profile>] [sample=N] [force=true]
 
 # RL data: convert to JSONL chat format
-uv run nemotron lightning35 data prep rl [--run <profile>] [--sample N] [--force]
+uv run nemotron lightning35 data prep rl [--run <profile>] [sample=N] [force=true]
 ```
 
 ### Training
@@ -186,8 +189,8 @@ Each stage has a `config/` directory with:
 |------|---------|
 | `default.yaml` | Production configuration template |
 | `tiny.yaml` | Testing variant (small model, few iterations) |
-| `data_prep.yaml` | Data preparation configuration |
-| `data_blend_raw.json` | Dataset blend specification |
+| `data_prep/default.yaml` | Data preparation configuration |
+| `data_prep/data_blend_raw.json` | Dataset blend specification |
 
 Override config values on the command line:
 

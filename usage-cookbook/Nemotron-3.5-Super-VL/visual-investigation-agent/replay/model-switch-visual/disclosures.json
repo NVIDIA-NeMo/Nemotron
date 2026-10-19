@@ -1,0 +1,14 @@
+[
+ {
+  "where": "Submitted report, how it happened",
+  "recorded": "Osric 2 Thinking generates far more output units per ticket \"at a higher output price\"",
+  "verified": "Osric 2 Thinking's output price is lower: $1.90 against Vesk 4's $7.60 per 1M tokens (scanned price list)",
+  "disposition": "The cost rose because Osric uses far more tokens per ticket, not because of its price. The finding, figures, routes, and savings are unaffected; the report validator does not check this sentence."
+ },
+ {
+  "where": "Submitted report, recommendation and manager summary",
+  "recorded": "projected to cut cost per ticket from $0.0542 to $0.0290, saving about $102.6k per month",
+  "verified": "The $102.6k uses the cost per ticket since the switch, $0.0616 (Sep 10\u201321), as the proposal itself states. $0.0542 is the Sep 1\u201321 average, which includes a week on the previous model; from $0.0542 the saving would be about $79k a month.",
+  "disposition": "The savings figure and the routing are right; this sentence pairs them with the wrong starting cost per ticket."
+ }
+]

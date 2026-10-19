@@ -53,7 +53,7 @@ Execution logic: src/nemotron/cli/commands/lightning35/rl.py
 Direct usage:
     python /path/to/train.py --config /path/to/grpo_config.yaml
     python /path/to/train.py --config /path/to/grpo_config.yaml \
-        grpo.num_iterations=100 policy.generation.temperature=0.7
+        grpo.max_num_steps=100 policy.generation.temperature=0.7
 """
 
 from __future__ import annotations

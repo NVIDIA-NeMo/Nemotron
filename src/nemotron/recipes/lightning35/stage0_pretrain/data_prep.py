@@ -48,7 +48,7 @@ compatible with Megatron-Bridge's per_split_data_args_path parameter.
 
 CLI:
     nemotron lightning35 data prep pretrain                       # local execution
-    nemotron lightning35 data prep pretrain --run ray --sample 10000  # submit to cluster
+    nemotron lightning35 data prep pretrain --run ray sample=10000  # submit to cluster
 
 Execution logic: src/nemotron/cli/commands/lightning35/data/prep/pretrain.py
 
