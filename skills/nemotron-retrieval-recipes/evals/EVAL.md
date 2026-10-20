@@ -30,7 +30,7 @@ Each ID below has the prefix `nemotron-retrieval-recipes-`:
 | `multimodal-resume-001` | Detect producer identity changes before resume and preserve existing artifacts. |
 | `rerank-choice-001` | Choose embedding or reranking from candidate recall and ordering quality. |
 | `llama-profile-export-001` | Preserve the Llama profile's ONNX/NIM contract across stages. |
-| `nemotron3-deploy-001` | Preserve default Nemotron 3 direct deployment and its endpoint-specific evaluation contract. |
+| `nemotron3-deploy-001` | Preserve the `nemotron-3` profile's direct deployment and endpoint-specific evaluation contract. |
 | `export-boundary-001` | Localize a legacy TensorRT regression after checkpoint/ONNX parity. |
 | `remote-batch-001` | Use scheduler GPU allocation and a durable execution handoff for a supported text profile. |
 | `rerank-sdg-governance-001` | Check confidential-corpus egress permission and protect ambient credentials. |

@@ -47,7 +47,7 @@ the user's existing checkout and revision when they already chose one:
 ```bash
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
-git checkout e68db1595a9f078a3fb48f8216fa0481d1c862a2
+git checkout db6312b2d2aac53a341afd6b45c7784ee966b47c
 uv sync --python 3.12
 ```
 
@@ -99,7 +99,7 @@ Check only the prerequisites for the requested stage:
 - Source checkout setup, when needed: `uv sync --python 3.12` at the checkout root; preserve isolated stage environments. Skip synchronization if that environment is already prepared.
 - Stage 0 synthetic data generation (SDG): `NVIDIA_API_KEY` and the selected profile's model-role configuration.
 - Stages 1–3 GPU work: CUDA/NVIDIA driver availability and enough VRAM.
-- Stage 4 export: the NeMo Export-Deploy container when using TensorRT. Default Nemotron 3 Embed skips this stage; Nemotron 3.5 has no export profile.
+- Stage 4 export: the NeMo Export-Deploy container when using TensorRT. The `nemotron-3` embedding profile skips this stage; Nemotron 3.5 has no export profile.
 - Stage 5 deploy: Docker plus the selected backend's image and artifact contract. Load the family reference before requiring NGC credentials.
 - Remote execution: root `env.toml` profile for `--run` or `--batch`; load `references/remote.md` when remote scheduling, logs, or GPU placement matter.
 
@@ -149,7 +149,7 @@ uv run nemotron rerank run -c default -d --from prep --to eval
 
 ## Limitations
 
-- Bundled references describe Nemotron commit `e68db1595a9f078a3fb48f8216fa0481d1c862a2`. Verify commands, flags, defaults, and output paths against the selected runtime before execution.
+- Bundled references describe Nemotron commit `db6312b2d2aac53a341afd6b45c7784ee966b47c`. Verify commands, flags, defaults, and output paths against the selected runtime before execution.
 - This skill does not provide datasets, checkpoints, credentials, GPU capacity, Docker images, or NIM services.
 
 ## Output Style

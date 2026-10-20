@@ -30,7 +30,7 @@ Mitigation: Review and scan skill before deployment. <br>
 - [Evaluation Reference](references/evaluation.md) <br>
 - [Remote Execution Reference](references/remote.md) <br>
 - [Multimodal Data Reference](references/multimodal-data.md) <br>
-- [NVIDIA Nemotron Documentation Snapshot](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/index.md) <br>
+- [NVIDIA Nemotron Documentation Snapshot](https://github.com/NVIDIA-NeMo/Nemotron/blob/db6312b2d2aac53a341afd6b45c7784ee966b47c/docs/index.md) <br>
 
 
 ## Skill Output: <br>

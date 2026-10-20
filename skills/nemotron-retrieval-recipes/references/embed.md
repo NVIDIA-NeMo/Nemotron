@@ -124,7 +124,7 @@ identity. A full export audit additionally checks hashes, content, and query
 splits; downstream stages do not repeat that audit.
 
 For optional background, refer to the
-[walkthrough at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/embed/multimodal.md).
+[walkthrough at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/db6312b2d2aac53a341afd6b45c7784ee966b47c/docs/nemotron/embed/multimodal.md).
 
 ## Nemotron 3.5 Recovery
 

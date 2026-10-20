@@ -134,5 +134,5 @@ artifact before reuse; a passing audit does not prove label quality.
 
 These permalinks document the bundled contract; they are not prerequisites:
 
-- [Data contract at the supported Nemotron revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/embed/data-reference.md).
-- [SDG configuration at the supported Nemotron revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/embed/sdg-reference.md).
+- [Data contract at the supported Nemotron revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/db6312b2d2aac53a341afd6b45c7784ee966b47c/docs/nemotron/embed/data-reference.md).
+- [SDG configuration at the supported Nemotron revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/db6312b2d2aac53a341afd6b45c7784ee966b47c/docs/nemotron/embed/sdg-reference.md).

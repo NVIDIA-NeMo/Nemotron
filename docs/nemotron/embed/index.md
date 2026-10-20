@@ -15,7 +15,7 @@ The profile determines the data format, training environment, and deployment pat
 | Model | Profile | Input | Start Here |
 | --- | --- | --- | --- |
 | Nemotron 3.5 Embed 1B | `nemotron-3.5` | Text, images, or paired documents | [Fine-tune multimodal embeddings](multimodal.md) |
-| Nemotron 3 Embed 1B | `default` | Text | [Fine-tune text embeddings](README.md) |
+| Nemotron 3 Embed 1B | `nemotron-3` | Text | [Fine-tune text embeddings](README.md) |
 | Llama Nemotron Embed 1B v2 | `llama` | Text | [Text profile selection](README.md#choose-a-model-profile) |
 
 Keep the selected profile and `artifact_root` consistent across stages.

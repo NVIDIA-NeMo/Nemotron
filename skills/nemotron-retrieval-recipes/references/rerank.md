@@ -90,7 +90,7 @@ endpoint checks for each run rather than inferring successful validation from a
 configuration preview.
 
 Optional background is available in the
-[reranker guide at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/rerank/README.md#fine-tune-nemotron-35-rerank-8b-on-image-documents).
+[reranker guide at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/db6312b2d2aac53a341afd6b45c7784ee966b47c/docs/nemotron/rerank/README.md#fine-tune-nemotron-35-rerank-8b-on-image-documents).
 
 ## Default Text-Profile Commands
 
