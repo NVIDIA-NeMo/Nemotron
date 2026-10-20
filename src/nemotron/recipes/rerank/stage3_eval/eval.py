@@ -298,6 +298,12 @@ def _get_first_stage_results(
     if model_family == "nemotron_3_5":
         from nemotron.recipes.embed.stage3_eval.eval import _restore_corpus_image_paths
 
+        # BEIR loads omitted title/text fields as None, then concatenates them
+        # while sorting for dense retrieval. Image-only documents need empty strings.
+        for document in corpus.values():
+            for key in ("title", "text"):
+                if document.get(key) is None:
+                    document[key] = ""
         _restore_corpus_image_paths(corpus, dataset_path, image_root=image_root, resolve=True)
     if first_stage_results_path is not None:
         results = json.loads(first_stage_results_path.read_text())

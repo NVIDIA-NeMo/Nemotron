@@ -187,7 +187,8 @@ def test_profile_selects_native_family_and_training_revision():
     assert config.query_prefix is None
 
 
-def test_saved_and_dense_candidates_preserve_matching_query_document_ids(tmp_path, monkeypatch):
+@pytest.mark.parametrize("text_fields", [{}, {"title": None, "text": None}, {"title": "", "text": ""}])
+def test_saved_and_dense_candidates_preserve_matching_query_document_ids(tmp_path, monkeypatch, text_fields):
     pytest.importorskip("beir")
     image = tmp_path / "page.png"
     Image.new("RGB", (2, 3)).save(image)
@@ -195,7 +196,7 @@ def test_saved_and_dense_candidates_preserve_matching_query_document_ids(tmp_pat
         "\n".join(
             json.dumps(row)
             for row in [
-                {"_id": "good", "title": "", "text": "", "image_path": "page.png"},
+                {"_id": "good", **text_fields, "image_path": "page.png"},
                 {"_id": "bad", "title": "", "text": "unrelated"},
             ]
         )
@@ -209,6 +210,7 @@ def test_saved_and_dense_candidates_preserve_matching_query_document_ids(tmp_pat
         "unused", tmp_path, model_family="nemotron_3_5", first_stage_results_path=candidates
     )
     assert corpus["good"]["image_path"] == str(image)
+    assert corpus["good"]["title"] == corpus["good"]["text"] == ""
 
     class Scorer:
         def score_pairs(self, pairs, *, batch_size):

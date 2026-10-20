@@ -33,17 +33,6 @@ def _load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _contained_path(root: Path, relative_path: str) -> Path:
-    if not isinstance(relative_path, str) or not relative_path or ".." in Path(relative_path).parts:
-        raise ValueError(f"Invalid bundle artifact path: {relative_path!r}")
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root.resolve())
-    except ValueError as error:
-        raise ValueError(f"Bundle artifact escapes its root: {relative_path}") from error
-    return candidate
-
-
 def mine_vllm_hard_negatives(
     train_data_path: Path,
     output_path: Path,
@@ -66,9 +55,11 @@ def mine_vllm_hard_negatives(
 
     payload = _load_json(train_data_path)
     corpus = payload.get("corpus")
-    if not isinstance(corpus, dict) or not isinstance(corpus.get("path"), str):
-        raise ValueError("Training data corpus.path must be a string")
-    corpus_path = _contained_path(train_data_path.parent, corpus["path"])
+    if not isinstance(corpus, dict) or not isinstance(corpus.get("path"), str) or not corpus["path"]:
+        raise ValueError("Training data corpus.path must be a nonempty string")
+    # Prepared training files can reference a sibling corpus or an absolute path.
+    # Portable bundle containment is checked when resolving the Stage 0 manifest.
+    corpus_path = (train_data_path.parent / corpus["path"]).resolve()
     parquet_files = sorted(corpus_path.glob("*.parquet"))
     if not parquet_files:
         raise ValueError(f"No Parquet corpus shards found under {corpus_path}")

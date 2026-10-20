@@ -232,12 +232,17 @@ Skip Stage 4: `nemotron-3.5` has no export profile. Install Docker with NVIDIA
 GPU support, then preview and launch vLLM using the same artifact root:
 
 ```bash
-uv run nemotron embed deploy -c nemotron-3.5 -d artifact_root="$EMBED_RUN"
-uv run nemotron embed deploy -c nemotron-3.5 artifact_root="$EMBED_RUN" detach=true
+uv run nemotron embed deploy -c nemotron-3.5 -d \
+  artifact_root="$EMBED_RUN" gpus='device=0'
+uv run nemotron embed deploy -c nemotron-3.5 \
+  artifact_root="$EMBED_RUN" gpus='device=0' detach=true
 curl --fail-with-body http://localhost:8000/v2/embed \
   -H 'Content-Type: application/json' \
   -d '{"texts":["What is the operating temperature?"],"model":"nvidia/Nemotron-3.5-Embed-1B-BF16","input_type":"query"}'
 ```
+
+Select the Docker GPU explicitly with `gpus`; `CUDA_VISIBLE_DEVICES` in your
+shell does not select the container's GPU. The example uses host GPU `0`.
 
 The profile mounts `stage2_finetune/checkpoints/LATEST/model/consolidated` at
 `/model` in `vllm/vllm-openai:v0.31.0`. Detached launch waits for the health check.

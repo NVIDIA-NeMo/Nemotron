@@ -80,7 +80,8 @@ Preserve these invariants:
   restores the saved learning-rate schedule.
 - Deploy separately after evaluation: there is no Stage 4 export profile.
   vLLM serves the consolidated checkpoint; endpoint evaluation uses
-  `eval_nim=true embedding_api_backend=vllm`.
+  `eval_nim=true embedding_api_backend=vllm`. Select the Docker GPU with `gpus`,
+  for example `gpus='device=0'`; the shell's `CUDA_VISIBLE_DEVICES` does not apply.
 
 Preview the full pipeline with stage-specific override prefixes:
 

@@ -321,12 +321,14 @@ For independently labeled evaluation data, omit `sdg_input_path` and
 for relative `image_path` values in the corpus. Synthetic holdout metrics describe
 the generated query task; use independent labels for broader quality claims.
 
-After local evaluation finishes, start the server with Docker:
+After local evaluation finishes, start the server with Docker. Select an available
+host GPU with `gpus`; the example uses device `0`. `CUDA_VISIBLE_DEVICES` in your
+shell does not select the container's GPU.
 
 ```bash
 uv run nemotron rerank deploy -c nemotron-3.5 \
   model_dir=./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated \
-  detach=true
+  gpus='device=0' detach=true
 curl --fail http://localhost:8000/health
 ```
 

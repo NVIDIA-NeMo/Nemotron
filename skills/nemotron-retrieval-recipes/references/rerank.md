@@ -43,7 +43,7 @@ For multimodal evaluation:
 - Select portable input with `sdg_input_path=<generation_result.json>` and `retrieval_view=mixed`, or provide independent `eval_data_path` and `image_root` paths.
 - Keep `top_k`, `k_values`, image settings, and the held-out data fixed. Set `first_stage_results_path` to the local evaluation's `first_stage_results.json` to reuse candidates for endpoint comparisons.
 - Read `base_rankings.json` and `finetuned_rankings.json` alongside `eval_results.json`. Scores are raw logits; higher values indicate greater predicted relevance.
-- Deploy with `rerank deploy -c nemotron-3.5 model_dir=<consolidated-checkpoint> detach=true`. Evaluate that server with `eval_base=false eval_finetuned=false eval_vllm=true vllm_url=http://localhost:8000` and the same input paths.
+- Deploy with `rerank deploy -c nemotron-3.5 model_dir=<consolidated-checkpoint> gpus='device=0' detach=true`, replacing `0` with the selected host GPU. The shell's `CUDA_VISIBLE_DEVICES` does not apply to Docker. Evaluate that server with `eval_base=false eval_finetuned=false eval_vllm=true vllm_url=http://localhost:8000` and the same input paths.
 - Use `/classify` with query/document messages for multimodal requests. Keep raw logits by setting `use_activation=false` and preserve the checkpoint template with `add_special_tokens=false`.
 - Compare `vllm_rankings.json` and metrics against the local checkpoint. Check processor formatting, score-head identity, image resizing, and sequence limits before attributing drift to training.
 

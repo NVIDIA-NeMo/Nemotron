@@ -83,7 +83,7 @@ def export_fixture(config) -> Path:
 
 
 @pytest.fixture
-def portable_handoff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def portable_handoff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> Path:
     """Publish a real bundle and recipe handoff; only inference is substituted."""
     import data_designer_retrieval_sdg.multimodal as producer
 
@@ -95,7 +95,7 @@ def portable_handoff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             sdg_workflow="multimodal",
             sources_file=tmp_path / "sources.jsonl",
             output_dir=output,
-            export_train_ratio=1,
+            export_train_ratio=getattr(request, "param", 1),
         )
     )
     return output / "generation_result.json"
@@ -110,6 +110,7 @@ def test_exported_view_survives_relocation(portable_handoff: Path, tmp_path: Pat
     assert len(json.loads(train.read_text())["data"]) == (2 if view in {"image_and_text", "mixed"} else 1)
 
 
+@pytest.mark.parametrize("portable_handoff", [0], indirect=True)
 def test_evaluation_follows_suffixed_bundle_in_latest_manifest(portable_handoff: Path) -> None:
     original = portable_handoff.parent / "multimodal/bundle"
     suffixed = portable_handoff.parent / "multimodal/bundle-1"
