@@ -262,7 +262,8 @@ class SDGConfig(RecipeSettings):
     )
     artifact_extraction_provider: str = Field(default="nvidia", description="Provider for artifact extraction model.")
     qa_generation_model: str = Field(
-        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for QA generation."
+        default="nvidia/nemotron-3-ultra-550b-a55b",
+        description="Model for text QA generation or multimodal enrichment, summaries, and query generation.",
     )
     qa_generation_provider: str = Field(default="nvidia", description="Provider for QA generation model.")
     quality_judge_model: str = Field(

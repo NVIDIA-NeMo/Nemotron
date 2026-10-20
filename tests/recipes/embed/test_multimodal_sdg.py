@@ -211,7 +211,7 @@ def test_local_embedding_override_clears_hosted_defaults(tmp_path, monkeypatch, 
     from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
     from nemo_runspec.config.pydantic_loader import load_config as load_script_config
 
-    monkeypatch.setenv("NEMOTRON_3_5_SDG_QA_MODEL", "operator/generator")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", "operator/generator")
     monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "operator/judge")
     path = Path(__file__).parents[3] / "src/nemotron/recipes/embed/stage0_sdg/config/nemotron-3.5.yaml"
     changes = {
@@ -290,14 +290,18 @@ def test_directory_options_are_validated_and_defaulted_by_public_producer(tmp_pa
 
 
 @pytest.mark.parametrize("entrypoint", ["recipe_cli", "direct_script"])
-def test_directory_path_override_replaces_null_profile_selector(tmp_path, monkeypatch, entrypoint):
+@pytest.mark.parametrize("judge_model", [None, "operator/judge"])
+def test_directory_path_override_replaces_null_profile_selector(tmp_path, monkeypatch, entrypoint, judge_model):
     from omegaconf import OmegaConf
 
     from nemo_runspec.config.loader import apply_dotlist_overrides, load_config
     from nemo_runspec.config.pydantic_loader import load_config as load_script_config
 
-    monkeypatch.setenv("NEMOTRON_3_5_SDG_QA_MODEL", "operator/generator")
-    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "operator/judge")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", "operator/generator")
+    if judge_model is None:
+        monkeypatch.delenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", raising=False)
+    else:
+        monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", judge_model)
     path = Path(__file__).parents[3] / "src/nemotron/recipes/embed/stage0_sdg/config/nemotron-3.5.yaml"
     overrides = [f"source_directory.path={tmp_path / 'documents'}"]
     if entrypoint == "recipe_cli":
@@ -308,6 +312,8 @@ def test_directory_path_override_replaces_null_profile_selector(tmp_path, monkey
     else:
         cfg = load_script_config(path, overrides, SDGConfig)
     mapped = build_multimodal_config(cfg)
+    assert mapped.generator.model == "operator/generator"
+    assert mapped.judge.model == (judge_model or "nvidia/nemotron-3.5-super-vl-120b-a12b")
     assert mapped.sources_file is None
     assert mapped.source_directory.path == tmp_path / "documents"
     assert mapped.source_directory.max_tokens_per_chunk == 1024

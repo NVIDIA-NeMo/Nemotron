@@ -65,15 +65,19 @@ filters, token limits, and generated source IDs.
 ## 2. Configure Model Roles
 
 Configure `NVIDIA_API_KEY` through your credential manager or local environment.
-Replace the model placeholders below with IDs served by your endpoint.
+Replace the generator placeholder below with an approved model ID served by your endpoint.
 Select an available local GPU; the example uses device `0`:
 
 ```bash
-export NEMOTRON_3_5_SDG_QA_MODEL='<image-capable-generator-model>'
-export NEMOTRON_3_5_SDG_JUDGE_MODEL='<image-capable-judge-model>'
+export NEMOTRON_3_5_SDG_GENERATOR_MODEL='<image-capable-generator-model>'
 export CUDA_VISIBLE_DEVICES=0
 export EMBED_RUN=./output/embed/multimodal-first-run
 ```
+
+Summary and query judging default to
+[`nvidia/nemotron-3.5-super-vl-120b-a12b`](https://build.nvidia.com/nvidia/nemotron-3.5-super-vl-120b-a12b).
+Set `NEMOTRON_3_5_SDG_JUDGE_MODEL` to use another approved judge.
+The generator produces visual descriptions, summaries, and retrieval queries.
 
 Generation and judging default to `https://integrate.api.nvidia.com/v1`.
 Set `NVIDIA_API_BASE_URL` for another compatible service. Both roles must accept

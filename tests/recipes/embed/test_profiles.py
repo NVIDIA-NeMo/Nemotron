@@ -284,8 +284,8 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
     source_value: str | dict,
 ) -> None:
     monkeypatch.delenv("NEMOTRON_3_5_SDG_ARTIFACT_MODEL", raising=False)
-    monkeypatch.setenv("NEMOTRON_3_5_SDG_QA_MODEL", "public/image-qa-model")
-    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "public/image-judge-model")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", "public/image-generator-model")
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", raising=False)
     monkeypatch.delenv("NEMOTRON_3_5_SDG_EMBED_MODEL", raising=False)
     monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "nvidia/test-nemotron-3.5-embed")
     raw_sdg = OmegaConf.to_container(load_config(CONFIG_ROOT / "stage0_sdg/config/nemotron-3.5.yaml"), resolve=True)
@@ -303,8 +303,8 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
         assert sdg.sources_file is None
         assert sdg.source_directory.path == Path("/operator/documents")
     assert sdg.sdg_workflow == "multimodal"
-    assert sdg.qa_generation_model == "public/image-qa-model"
-    assert sdg.quality_judge_model == "public/image-judge-model"
+    assert sdg.qa_generation_model == "public/image-generator-model"
+    assert sdg.quality_judge_model == "nvidia/nemotron-3.5-super-vl-120b-a12b"
     assert sdg.sdg_options["summary_embedding_model"] == "nvidia/nemotron-3-embed-1b"
     assert sdg.sdg_options["summary_embedding_endpoint"] == "https://integrate.api.nvidia.com/v1"
     assert sdg.sdg_options["summary_embedding_credential_env"] == "NVIDIA_API_KEY"

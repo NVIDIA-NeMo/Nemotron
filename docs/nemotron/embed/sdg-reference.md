@@ -35,10 +35,20 @@ Configure the following roles separately.
 
 | Role | Configuration | Input |
 | --- | --- | --- |
-| Visual enrichment, descriptions, summaries, and query generation | `NEMOTRON_3_5_SDG_QA_MODEL` and `sdg_generator_options` | Source text and images |
+| Visual enrichment, descriptions, summaries, and query generation | `NEMOTRON_3_5_SDG_GENERATOR_MODEL` and `sdg_generator_options` | Source text and images |
 | Summary/query judging and support localization | `NEMOTRON_3_5_SDG_JUDGE_MODEL` and `sdg_judge_options` | Queries, summaries, and supporting sources |
 | Summary clustering embeddings | `sdg_options.summary_embedding_*` | Summary text |
 | Mining, training, and base evaluation | Public Nemotron 3.5 checkpoint; optional `NEMOTRON_3_5_EMBED_MODEL` override | Text queries and view-selected documents |
+
+Set `NEMOTRON_3_5_SDG_GENERATOR_MODEL` explicitly. Summary and query judging
+default to `nvidia/nemotron-3.5-super-vl-120b-a12b`; set
+`NEMOTRON_3_5_SDG_JUDGE_MODEL` to override it. The default judge accepts images
+and supports structured output through its
+[chat-completions API](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3_5-super-vl-120b-a12b-infer).
+
+The shared YAML field `qa_generation_model` selects the generator for both
+workflow types. In the multimodal workflow, it produces descriptions,
+summaries, and retrieval queries without generating answers.
 
 Generation and judging default to `https://integrate.api.nvidia.com/v1` with
 `NVIDIA_API_KEY`. `NVIDIA_API_BASE_URL` changes both chat endpoints. Per-role

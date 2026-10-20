@@ -54,9 +54,11 @@ one input mode. PDF extraction, OCR, and rendering happen before the recipe.
 The `multimodal` workflow always exports a portable bundle; text profiles use
 `text_qa` and `corpus_dir`. Do not substitute arbitrary query/text pairs.
 
-Before resolving Stage 0, configure `NEMOTRON_3_5_SDG_QA_MODEL` and
-`NEMOTRON_3_5_SDG_JUDGE_MODEL` for approved image-capable models with structured
-responses. Summary embeddings have an independent endpoint and credential.
+Before resolving Stage 0, set `NEMOTRON_3_5_SDG_GENERATOR_MODEL` to an approved
+image-capable model with structured responses. Summary and query judging
+default to `nvidia/nemotron-3.5-super-vl-120b-a12b`;
+`NEMOTRON_3_5_SDG_JUDGE_MODEL` overrides the judge. Summary embeddings have an
+independent endpoint and credential.
 The embedding checkpoint needs no private override. Do not request credentials
 in chat or print their values.
 

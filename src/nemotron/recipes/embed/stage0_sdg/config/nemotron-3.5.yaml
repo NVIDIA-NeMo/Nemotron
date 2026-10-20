@@ -39,6 +39,7 @@ output_dir: ${artifact_root}/stage0_sdg
 resume: never
 preview: false
 
-# Explicit hosted model identities are required for the multimodal path.
-qa_generation_model: ${oc.env:NEMOTRON_3_5_SDG_QA_MODEL}
-quality_judge_model: ${oc.env:NEMOTRON_3_5_SDG_JUDGE_MODEL}
+# Select the generator explicitly; the shared field also serves text QA profiles.
+qa_generation_model: ${oc.env:NEMOTRON_3_5_SDG_GENERATOR_MODEL}
+# Summary and query judging share this image-capable default.
+quality_judge_model: ${oc.env:NEMOTRON_3_5_SDG_JUDGE_MODEL,nvidia/nemotron-3.5-super-vl-120b-a12b}
