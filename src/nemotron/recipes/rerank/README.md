@@ -6,7 +6,7 @@ is maintained in `docs/` and covers model selection, prerequisites, execution,
 evaluation, and deployment.
 
 - [Nemotron 3.5 multimodal workflow](../../../../docs/nemotron/rerank/multimodal.md)
-- [Text workflows](../../../../docs/nemotron/rerank/README.md)
+- [Text data workflow](../../../../docs/nemotron/rerank/text.md)
 - [Shared data contracts](../../../../docs/nemotron/embed/data-reference.md)
 
 Choose a profile before running a stage. Keep that profile and `artifact_root`

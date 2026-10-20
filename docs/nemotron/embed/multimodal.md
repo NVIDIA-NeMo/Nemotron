@@ -7,6 +7,8 @@ from a directory of text files, images, or both to a mined training set, a
 consolidated checkpoint, and a base-versus-fine-tuned retrieval comparison.
 Images are optional; text-only directories use the same workflow.
 
+For model selection and other workflows, refer to [Embedding Fine-Tuning](index.md).
+
 The profile uses `output/embed/nemotron-3.5` by default. To continue an existing
 run, pass its original `artifact_root` to every stage.
 

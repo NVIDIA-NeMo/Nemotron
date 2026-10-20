@@ -38,6 +38,11 @@ Complete the base-versus-fine-tuned comparison before serving a checkpoint.
 Synthetic holdout labels measure the generated task; independently authored
 queries and labels support broader quality claims.
 
+For the text QA workflow, refer to [evaluation metrics](text.md#evaluation-metrics),
+[deployment commands](text.md#cli-commands), and [troubleshooting](text.md#troubleshooting).
+
+For the Nemotron 3.5 workflow, use these task guides:
+
 - [Evaluate independent data](multimodal.md#evaluate-independent-data).
 - [Serve a multimodal checkpoint](multimodal.md#serve-the-consolidated-checkpoint).
 - [Verify the workflow](multimodal.md#run-a-basic-verification) with a small fixture.

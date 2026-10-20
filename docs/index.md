@@ -209,8 +209,8 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
 | [Super35](nemotron/super35/README.md) | Pretraining → SFT → RLVR → Teachers → MOPD → Eval |
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
-| [Embed](nemotron/embed/index.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
-| [Rerank](nemotron/rerank/index.md) | SDG → Data Prep → Finetune → Eval → Export → Deploy |
+| [Embed](nemotron/embed/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
+| [Rerank](nemotron/rerank/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
 
 ## Why Nemotron?
 

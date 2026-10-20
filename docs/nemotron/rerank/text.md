@@ -1,12 +1,20 @@
-# Fine-Tune Text Rerankers
+# Fine-Tune Rerankers on Text Data
 
-Fine-tune the Llama Nemotron text reranker on your domain data. For an overview
-of both text and multimodal workflows, refer to [Reranking Fine-Tuning](index.md).
+<a id="reranking-model-fine-tuning-recipe"></a>
+<a id="fine-tune-text-rerankers"></a>
+
+Fine-tune a reranker on your domain's text data. The command examples in this
+guide use the `default` Llama Nemotron profile. For all supplied profiles,
+refer to [Reranking Fine-Tuning](index.md).
 
 | Model | Profile | Recipe Scope |
 | --- | --- | --- |
 | Llama Nemotron Rerank 1B v2 | `default` | Text data generation, preparation, training, evaluation, export, and NIM deployment |
-| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Multimodal training, evaluation, and vLLM deployment](#fine-tune-nemotron-35-rerank-8b-on-image-documents) |
+| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Training, evaluation, and vLLM deployment for text, images, or paired documents](multimodal.md) |
+
+For a first run, [check the prerequisites](#prerequisites),
+[install the CLI](#installation), and [prepare your corpus](#preparing-your-corpus).
+Then follow the [quick start](#quick-start).
 
 ## Overview
 
@@ -16,8 +24,16 @@ on your domain data and serves it through NIM. A reranker scores the candidate
 documents returned by a first-stage retriever. Measure retrieval quality before
 and after training to determine whether adaptation improves your task.
 
-The pipeline diagram and text-stage instructions below apply to `default`. The
-`nemotron-3.5` profile has separate [multimodal instructions](#fine-tune-nemotron-35-rerank-8b-on-image-documents).
+The pipeline diagram and text-stage instructions below apply to `default`.
+
+<a id="fine-tune-nemotron-35-rerank-8b-on-image-documents"></a>
+<a id="fine-tune-nemotron-3-5-rerank-8b-on-image-documents"></a>
+<a id="evaluate-and-deploy-the-multimodal-reranker"></a>
+
+For `nemotron-3.5`, follow the [Nemotron 3.5 workflow](multimodal.md), including
+[checkpoint evaluation](multimodal.md#3-evaluate-both-checkpoints) and
+[served-score comparison](multimodal.md#4-deploy-and-check-served-scores).
+Images are optional in that workflow.
 
 ### Why Fine-Tune Reranking Models?
 
@@ -108,9 +124,10 @@ The two models are complementary — use the embedding model to cast a wide net,
 
 ## Installation
 
-### 1. Install UV Package Manager
+### 1. Install uv Package Manager
 
-This project **requires [UV](https://docs.astral.sh/uv/)** as its package manager. UV automatically creates and manages a virtual environment under the repository root, and each pipeline stage uses its own isolated environment as well. **Do not use `pip install`** — the project relies on UV workspaces and per-stage dependency isolation.
+Use the [uv](https://docs.astral.sh/uv/) package manager to install the CLI.
+Each pipeline stage manages its own isolated environment.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -123,8 +140,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
-# UV creates a virtual environment at .venv/ and installs all dependencies
-uv sync --all-extras
+# Install the CLI; each stage installs its isolated dependencies when launched.
+uv sync --python 3.12
 ```
 
 ### 3. Get Your NVIDIA API Key
@@ -197,14 +214,17 @@ All files matching the `file_extensions` config (default: `.txt,.md,.text,` plus
 ### Software Requirements
 
 - **Python**: 3.12 or later
-- **UV**: Package manager (installation instructions above)
+- **uv**: Package manager (refer to [Installation](#installation))
 - **NVIDIA API Key**: Required for synthetic data generation
 - **NGC API Key**: Required for authenticated NIM deployment
 - **NVIDIA GPU Drivers**: Latest drivers for your GPU
 - **Docker** (optional): For containerized execution or NIM deployment
 - **Slurm** (optional): For cluster execution
 
-### Expected Runtime & Resources
+<a id="expected-runtime--resources"></a>
+<a id="expected-runtime-resources"></a>
+
+### Expected Runtime and Resources
 
 | Stage | GPU VRAM | CPU | Notes |
 |-------|----------|-----|-------|
@@ -225,18 +245,6 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 - **Cost**: Free tier has rate limits; contact NVIDIA for production usage
 
 ## Quick Start
-
-### Fine-Tune Nemotron 3.5 Rerank 8B on Image Documents
-
-Follow [Fine-Tune Multimodal Rerankers](multimodal.md) for Nemotron 3.5.
-That guide covers embedding-data preparation, checkpoint resources, training,
-evaluation, and vLLM deployment. The remaining instructions describe the
-`default` Llama text profile.
-
-#### Evaluate and Deploy the Multimodal Reranker
-
-Continue with [checkpoint evaluation](multimodal.md#3-evaluate-both-checkpoints)
-and [served-score comparison](multimodal.md#4-deploy-and-check-served-scores).
 
 ### Local Execution
 
@@ -712,4 +720,4 @@ Higher scores indicate better re-ranking performance. The key metric to watch is
 For issues, questions, or contributions:
 - **Issues**: [GitHub Issues](https://github.com/NVIDIA-NeMo/Nemotron/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/NVIDIA-NeMo/Nemotron/discussions)
-- **Documentation**: [Nemotron Documentation](https://github.com/NVIDIA-NeMo/Nemotron)
+- **Documentation**: [Nemotron Documentation](https://docs.nvidia.com/nemotron/latest/)

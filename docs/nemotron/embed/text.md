@@ -1,5 +1,7 @@
 # Fine-Tune Embeddings on Text Data
 
+<a id="embedding-model-fine-tuning-recipe"></a>
+
 Adapt an embedding model for text retrieval in your domain, then evaluate and
 deploy it. The command examples in this guide use the `nemotron-3` and `llama`
 profiles. For all supplied profiles, refer to [Embedding Fine-Tuning](index.md).
@@ -30,6 +32,10 @@ The remaining instructions describe the `nemotron-3` and `llama` examples.
 The `nemotron-3.5` profile requires local preparation, training, and checkpoint
 evaluation; its consolidated checkpoint deploys through vLLM without Stage 4.
 Carry the selected profile and `artifact_root` through every stage.
+
+For a first run, [check the prerequisites](#prerequisites),
+[install the CLI](#installation), and [prepare your corpus](#preparing-your-corpus).
+Then follow the [quick start](#quick-start).
 
 ## Overview
 
@@ -580,7 +586,7 @@ All ordinary fields can still be overridden on the command line:
 nemotron embed finetune -c nemotron-3 num_epochs=1 learning_rate=2e-5
 ```
 
-### Sequence length
+### Sequence Length
 
 Mining, training, and evaluation use 512 tokens. The default NIM profile uses
 the selected image's runtime limit. Set `max_seq_len: 512` to enforce the same
@@ -659,9 +665,9 @@ Model: fine-tuned
 | Component | Purpose | Repository |
 |-----------|---------|------------|
 | Data Designer retrieval SDG plugin | Generate synthetic question-and-answer pairs and convert them to training data | [Plugin source](https://github.com/NVIDIA-NeMo/DataDesignerPlugins/tree/main/plugins/data-designer-retrieval-sdg) |
-| Automodel | Embedding model training framework | [GitHub](https://github.com/NVIDIA/NeMo-Automodel) |
+| Automodel | Embedding model training framework | [GitHub](https://github.com/NVIDIA-NeMo/Automodel) |
 | BEIR | Evaluation framework for information retrieval | [GitHub](https://github.com/beir-cellar/beir) |
-| NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
+| NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA-NeMo/Export-Deploy) |
 | NVIDIA NIM | Production inference microservice with custom model support | [Developer Site](https://developer.nvidia.com/nim) |
 
 <a id="default-model-profile"></a>
@@ -1084,7 +1090,7 @@ Typical results on enterprise domains show **+5 to +20 absolute points of nDCG@1
 ## Further Reading
 
 - [NeMo Data Designer](https://github.com/NVIDIA-NeMo/DataDesigner) - Synthetic data generation framework
-- [Automodel](https://github.com/NVIDIA/NeMo-Automodel) - Model training framework
+- [Automodel](https://github.com/NVIDIA-NeMo/Automodel) - Model training framework
 - [BEIR Benchmark](https://github.com/beir-cellar/beir) - Information retrieval evaluation
 - [NVIDIA NIM Documentation](https://developer.nvidia.com/nim) - Production inference microservices
 - [Retrieval-Synthetic-NVDocs-v1 Dataset](https://huggingface.co/datasets/nvidia/Retrieval-Synthetic-NVDocs-v1) - Pre-generated synthetic retrieval dataset on NVIDIA content

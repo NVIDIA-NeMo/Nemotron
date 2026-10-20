@@ -7,6 +7,9 @@ Prepare data through the embedding workflow described below. Run the rerank
 stages explicitly and deploy the consolidated checkpoint directly with vLLM.
 Skip Stage 4 export for this model.
 
+Use text-only, image-only, or paired documents. Images are optional.
+For model selection and other workflows, refer to [Reranking Fine-Tuning](index.md).
+
 ## Prerequisites
 
 Complete the [CLI installation](../embed/multimodal.md#prerequisites)
