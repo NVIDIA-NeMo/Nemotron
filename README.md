@@ -177,16 +177,8 @@ Because these are complete systems, you can extract specific techniques with con
 | **[Nemotron 3 Nano](docs/nemotron/nano3/README.md)** | 31.6B total / 3.6B active MoE Hybrid Mamba-Transformer for agentic reasoning | Pretrain → SFT → RL | [Training Guide](docs/nemotron/nano3/README.md) |
 | **[Nemotron 3.5 Lightning](docs/nemotron/lightning35/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE with Multi-Token Prediction | Pretrain → SFT → RL → Quantization | [Training Guide](docs/nemotron/lightning35/README.md) |
 | **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
-
-### Retrieval Fine-Tuning
-
-Adapt embedding and reranking models to your documents, then compare the base
-and fine-tuned checkpoints before deployment. Start with the guides in `docs/`:
-
-| Workflow | Models | Guide |
-| --- | --- | --- |
-| Embedding | Nemotron 3.5 Embed 1B, Nemotron 3 Embed 1B, and Llama Nemotron Embed 1B v2 | [Embedding fine-tuning](docs/nemotron/embed/index.md) |
-| Reranking | Nemotron 3.5 Rerank 8B and Llama Nemotron Rerank 1B v2 | [Reranking fine-tuning](docs/nemotron/rerank/index.md) |
+| **[Nemotron Embed](docs/nemotron/embed/index.md)** | Fine-tune text and multimodal embedding models for domain-specific retrieval | SDG → Data Prep → Finetune → Eval → Export (Llama only) → Deploy | [Training Guide](docs/nemotron/embed/index.md) |
+| **[Nemotron Rerank](docs/nemotron/rerank/index.md)** | Fine-tune text and multimodal rerankers to score and reorder retrieved documents | SDG → Data Prep → Finetune → Eval → Export (Llama only) → Deploy | [Training Guide](docs/nemotron/rerank/index.md) |
 
 ### Nemotron 3 Ultra
 
