@@ -69,9 +69,9 @@
       "prompt": "I need to fine-tune nvidia/llama-nemotron-embed-1b-v2 and export the result to ONNX for its NIM. Can I use the default embed profile?",
       "expected_skill": "nemotron-retrieval-recipes",
       "expected_script": null,
-      "expected_output": "The agent should select `-c llama` for every stage, keep the flat `output/embed/` artifact root, explain that the Llama profile enables Stage 4 ONNX/TensorRT export while default Nemotron 3 skips export, and preserve the Llama deploy contract: its configured NIM image mounts the export at `/opt/nim/custom_model` through `NIM_CUSTOM_MODEL` and may require NGC credentials.",
+      "expected_output": "The agent should select `-c llama` for every stage, keep the flat `output/embed/` artifact root, explain that the Llama profile enables Stage 4 ONNX/TensorRT export while `nemotron-3` skips export and the former embedding `default` selector is no longer available, and preserve the Llama deploy contract: its configured NIM image mounts the export at `/opt/nim/custom_model` through `NIM_CUSTOM_MODEL` and may require NGC credentials.",
       "assertions": [
-        "The agent selected `-c llama` and did not mix default-profile artifacts",
+        "The agent selected `-c llama` and did not mix Nemotron 3 artifacts",
         "The agent explained the Llama export and NIM_CUSTOM_MODEL deployment contract accurately",
         "The agent validated the profile with info or dry-run commands before execution"
       ]
@@ -81,7 +81,7 @@
       "prompt": "My Nemotron 3 Embed fine-tuning checkpoint is ready, but NEMOTRON3_EMBED_NIM_IMAGE is unset. Should I run the export stage and deploy the ONNX directory instead?",
       "expected_skill": "nemotron-retrieval-recipes",
       "expected_script": null,
-      "expected_output": "The agent should explain that default Nemotron 3 export is an intentional no-op, deploy the consolidated Stage 2 checkpoint directly either through a compatible NIM image and NIM_ENGINE_MODEL_PATH or through the checked-in vLLM backend, avoid requiring or forwarding NGC_API_KEY solely for the mounted local artifact, and recommend a deploy dry-run plus checkpoint fingerprint verification. For vLLM evaluation it should select embedding_api_backend=vllm, which uses /v2/embed and input_type instead of manually adding prefixes.",
+      "expected_output": "The agent should select `-c nemotron-3` and explain that its export is an intentional no-op, deploy the consolidated Stage 2 checkpoint directly either through a compatible NIM image and NIM_ENGINE_MODEL_PATH or through the checked-in vLLM backend, avoid requiring or forwarding NGC_API_KEY solely for the mounted local artifact, and recommend a deploy dry-run plus checkpoint fingerprint verification. For vLLM evaluation it should select embedding_api_backend=vllm, which uses /v2/embed and input_type instead of manually adding prefixes.",
       "assertions": [
         "The agent did not redirect Nemotron 3 to the Llama ONNX export path",
         "The agent offered the profile-specific NIM image or the checked-in vLLM backend with a direct checkpoint mount",

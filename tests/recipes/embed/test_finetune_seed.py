@@ -42,7 +42,7 @@ def test_invalid_seed_rejected_before_training(seed: object) -> None:
         train.FinetuneConfig(seed=seed)
 
 
-@pytest.mark.parametrize("profile", ["default", "llama", "nemotron-3.5"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama", "nemotron-3.5"])
 def test_dotlist_seed_override_reaches_training_and_dataset(monkeypatch: pytest.MonkeyPatch, profile: str) -> None:
     """The public CLI loader preserves the selected seed in every profile."""
     monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (True, None))

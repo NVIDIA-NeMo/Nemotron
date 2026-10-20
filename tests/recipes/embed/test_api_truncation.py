@@ -92,7 +92,7 @@ def test_shared_client_rejects_invalid_policy_before_connection(monkeypatch, bac
 
 
 @pytest.mark.parametrize("stage,api_backend", [("prep", "vllm"), ("eval", "nim"), ("eval", "vllm")])
-@pytest.mark.parametrize("profile", ["default", "llama", "nemotron-3.5"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama", "nemotron-3.5"])
 def test_cli_policy_is_explicit_and_defaults_are_preserved(stage, api_backend, profile):
     module = data_prep if stage == "prep" else evaluation
     model = data_prep.DataPrepConfig if stage == "prep" else evaluation.EvalConfig

@@ -4,12 +4,12 @@
 # Fine-tunes an embedding model using contrastive learning.
 #
 # Usage:
-#   nemotron embed finetune -c default
-#   nemotron embed finetune -c default base_model=/path/to/checkpoint
+#   nemotron embed finetune -c nemotron-3
+#   nemotron embed finetune -c nemotron-3 base_model=/path/to/checkpoint
 #
 # Remote execution (Slurm):
-#   nemotron embed finetune -c default --run my-cluster
-#   nemotron embed finetune -c default --batch my-cluster
+#   nemotron embed finetune -c nemotron-3 --run my-cluster
+#   nemotron embed finetune -c nemotron-3 --batch my-cluster
 
 # Execution environment configuration
 run:

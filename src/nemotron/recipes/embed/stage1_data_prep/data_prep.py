@@ -12,7 +12,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "default"
+# default = "nemotron-3"
 #
 # [tool.runspec.resources]
 # nodes = 1
@@ -41,14 +41,14 @@ Prepares training data from SDG output:
 3. Unroll multi-hop positives
 
 Usage:
-    # With default config
-    nemotron embed prep -c default
+    # With the Nemotron 3 config
+    nemotron embed prep -c nemotron-3
 
     # With custom config
     nemotron embed prep -c /path/to/config.yaml
 
     # With CLI overrides
-    nemotron embed prep -c default sdg_input_path=/path/to/sdg
+    nemotron embed prep -c nemotron-3 sdg_input_path=/path/to/sdg
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ if TYPE_CHECKING:
     from data_designer_retrieval_sdg import ConversionResult
 
 STAGE_PATH = Path(__file__).parent
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))

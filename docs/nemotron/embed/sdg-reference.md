@@ -8,7 +8,7 @@ the roles, generation contexts, or execution bounds for your corpus.
 ## Workflow Selection
 
 The `nemotron-3.5` profile selects `sdg_workflow: multimodal`. The text-only
-`default` and `llama` profiles select `sdg_workflow: text_qa` and continue to accept
+`nemotron-3` and `llama` profiles select `sdg_workflow: text_qa` and continue to accept
 `corpus_dir`. The two producers have different input and output contracts.
 Refer to [Choose the Input Format](data-reference.md#choose-the-input-format).
 

@@ -70,8 +70,8 @@ Use the current checkout rather than memory. Run the smallest relevant subset of
 
 ```bash
 uv run --no-sync nemotron embed --help
-uv run --no-sync nemotron embed run -c default -d --from sdg --to prep
-uv run --no-sync nemotron embed run -c default -d --from prep --to eval
+uv run --no-sync nemotron embed run -c nemotron-3 -d --from sdg --to prep
+uv run --no-sync nemotron embed run -c nemotron-3 -d --from prep --to eval
 uv run --no-sync nemotron rerank --help
 uv run --no-sync nemotron rerank run -c default -d --from prep --to eval
 uv run --no-sync nemotron rerank eval -c default -d eval_nim=true eval_base=false

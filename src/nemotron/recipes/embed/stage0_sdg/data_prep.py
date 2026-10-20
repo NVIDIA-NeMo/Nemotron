@@ -12,7 +12,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "default"
+# default = "nemotron-3"
 #
 # [tool.runspec.resources]
 # nodes = 1
@@ -39,14 +39,14 @@ Generates synthetic Q&A pairs from a document corpus using the retrieval SDG plu
 This step uses NVIDIA's LLM APIs to create high-quality training data.
 
 Usage:
-    # With default config
-    nemotron embed sdg -c default
+    # With the Nemotron 3 config
+    nemotron embed sdg -c nemotron-3
 
     # With custom config
     nemotron embed sdg -c /path/to/config.yaml
 
     # With CLI overrides
-    nemotron embed sdg -c default corpus_dir=/path/to/docs
+    nemotron embed sdg -c nemotron-3 corpus_dir=/path/to/docs
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 STAGE_PATH = Path(__file__).parent
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))

@@ -21,7 +21,7 @@ STAGES = [
         "cli_module": "nemotron.cli.commands.embed.sdg",
         "config_model_path": "nemotron.recipes.embed.stage0_sdg.data_prep",
         "config_model_name": "SDGConfig",
-        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage0_sdg/config/default.yaml",
+        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage0_sdg/config/nemotron-3.yaml",
         "command": "sdg",
     },
     {
@@ -29,7 +29,7 @@ STAGES = [
         "cli_module": "nemotron.cli.commands.embed.prep",
         "config_model_path": "nemotron.recipes.embed.stage1_data_prep.data_prep",
         "config_model_name": "DataPrepConfig",
-        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage1_data_prep/config/default.yaml",
+        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage1_data_prep/config/nemotron-3.yaml",
         "command": "prep",
     },
     {
@@ -37,7 +37,7 @@ STAGES = [
         "cli_module": "nemotron.cli.commands.embed.finetune",
         "config_model_path": "nemotron.recipes.embed.stage2_finetune.train",
         "config_model_name": "FinetuneConfig",
-        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage2_finetune/config/default.yaml",
+        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage2_finetune/config/nemotron-3.yaml",
         "command": "finetune",
     },
     {
@@ -45,7 +45,7 @@ STAGES = [
         "cli_module": "nemotron.cli.commands.embed.eval",
         "config_model_path": "nemotron.recipes.embed.stage3_eval.eval",
         "config_model_name": "EvalConfig",
-        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage3_eval/config/default.yaml",
+        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage3_eval/config/nemotron-3.yaml",
         "command": "eval",
     },
     {
@@ -53,7 +53,7 @@ STAGES = [
         "cli_module": "nemotron.cli.commands.embed.export",
         "config_model_path": "nemotron.recipes.embed.stage4_export.export",
         "config_model_name": "ExportConfig",
-        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage4_export/config/default.yaml",
+        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage4_export/config/nemotron-3.yaml",
         "command": "export",
     },
     {
@@ -61,7 +61,7 @@ STAGES = [
         "cli_module": "nemotron.cli.commands.embed.deploy",
         "config_model_path": "nemotron.recipes.embed.stage5_deploy.deploy",
         "config_model_name": "DeployConfig",
-        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage5_deploy/config/default.yaml",
+        "yaml_path": REPO_ROOT / "src/nemotron/recipes/embed/stage5_deploy/config/nemotron-3.yaml",
         "command": "deploy",
     },
 ]
@@ -88,7 +88,7 @@ def _import_config_class(stage: dict):
 
 
 def _load_yaml_dict(stage: dict) -> dict:
-    """Load a stage's default.yaml, stripping the ``run:`` key."""
+    """Load a stage's nemotron-3.yaml, stripping the ``run:`` key."""
     with open(stage["yaml_path"]) as f:
         raw = yaml.safe_load(f)
     raw.pop("run", None)

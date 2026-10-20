@@ -5,13 +5,13 @@
 # intentionally skipped. Use -c llama for ONNX/TensorRT export.
 #
 # Usage:
-#   nemotron embed export -c default
+#   nemotron embed export -c nemotron-3
 #   nemotron embed export -c llama export_to_trt=false
 #   nemotron embed export -c llama model_path=/path/to/model
 #
 # Remote execution (Slurm):
-#   nemotron embed export -c default --run my-cluster
-#   nemotron embed export -c default --batch my-cluster
+#   nemotron embed export -c nemotron-3 --run my-cluster
+#   nemotron embed export -c nemotron-3 --batch my-cluster
 
 # Execution environment configuration
 run:

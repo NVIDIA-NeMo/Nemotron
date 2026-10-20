@@ -6,7 +6,7 @@ Use Stage 3 metrics as the source of truth for recipe quality. Training loss is 
 
 - Compare base vs fine-tuned on the same held-out eval set.
 - Keep the evaluation corpus, queries, and relevance labels fixed across comparisons. Legacy text uses Stage 1 `eval_beir/`; portable multimodal evaluation resolves the Stage 0 manifest and selected view.
-- Inspect `${artifact_root}/stage3_eval/eval_results.json`: default Embed uses `output/embed/nemotron-3-1b`, multimodal Embed uses `output/embed/nemotron-3.5`, Llama Embed uses `output/embed`, and rerank uses its configured artifact root.
+- Inspect `${artifact_root}/stage3_eval/eval_results.json`: Nemotron 3 Embed uses `output/embed/nemotron-3-1b`, multimodal Embed uses `output/embed/nemotron-3.5`, Llama Embed uses `output/embed`, and rerank uses its configured artifact root.
 - Prioritize nDCG@10 for top-rank quality, then check the rest of the k values for consistency. For embed-vs-rerank routing, inspect first-stage candidate recall at the rerank candidate depth, usually `Recall@100` or the configured `top_k`, instead of treating `Recall@10` alone as candidate coverage.
 - Report query counts and inspect results by modality and query type. Small evaluations can hide regressions or exaggerate gains.
 - Define task-specific acceptance criteria. Do not assume a universal expected gain.
@@ -18,7 +18,7 @@ Use Stage 3 metrics as the source of truth for recipe quality. Training loss is 
 
 - Save the exact command, dotlist overrides, git commit, config files, and output directory for each run.
 - Change one major variable at a time.
-- Start embedding learning-rate comparisons from the selected profile: default text uses `1e-5`, while multimodal uses `2e-6`. Keep other variables fixed.
+- Start embedding learning-rate comparisons from the selected profile: `nemotron-3` uses `1e-5`, while `nemotron-3.5` uses `2e-6`. Keep other variables fixed.
 - Start rerank LR sweeps near `1e-6`, `3e-6`, and `1e-5`.
 - Choose a training budget using held-out results. A completed short run does not establish convergence.
 - Evaluate data saturation by running 25%, 50%, and 100% corpus sizes with the same held-out eval set.
@@ -37,7 +37,7 @@ Use Stage 3 metrics as the source of truth for recipe quality. Training loss is 
 ## Deployment Checks
 
 - Evaluate the exported or served model against the same eval set.
-- For embedding NIM, use `uv run nemotron embed eval -c default eval_nim=true eval_base=false`.
+- For embedding NIM, use `uv run nemotron embed eval -c nemotron-3 eval_nim=true eval_base=false`.
 - For multimodal vLLM, keep the run root and view, and use `-c nemotron-3.5 eval_nim=true embedding_api_backend=vllm`. Enable `eval_base=true` when comparing against the base model.
 - For rerank NIM, use `uv run nemotron rerank eval -c default eval_nim=true eval_base=false`.
 - For Nemotron 3.5 rerank vLLM, use `rerank eval -c nemotron-3.5 eval_vllm=true eval_base=false eval_finetuned=false`, the same evaluation inputs, and `first_stage_results_path` from local evaluation. Compare `vllm_rankings.json` with local raw scores and check metrics separately.

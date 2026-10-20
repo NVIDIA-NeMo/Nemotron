@@ -7,12 +7,12 @@
 # 3. Unroll multi-hop positives
 #
 # Usage:
-#   nemotron embed prep -c default
-#   nemotron embed prep -c default sdg_input_path=/path/to/sdg
+#   nemotron embed prep -c nemotron-3
+#   nemotron embed prep -c nemotron-3 sdg_input_path=/path/to/sdg
 #
 # Remote execution (Slurm):
-#   nemotron embed prep -c default --run my-cluster
-#   nemotron embed prep -c default --batch my-cluster
+#   nemotron embed prep -c nemotron-3 --run my-cluster
+#   nemotron embed prep -c nemotron-3 --batch my-cluster
 
 # Execution environment configuration
 run:

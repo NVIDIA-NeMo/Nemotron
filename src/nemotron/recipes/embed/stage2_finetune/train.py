@@ -12,7 +12,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "default"
+# default = "nemotron-3"
 #
 # [tool.runspec.resources]
 # nodes = 1
@@ -38,17 +38,17 @@ Fine-tunes an embedding model using contrastive learning with prepared
 training data (from stage1_data_prep).
 
 Usage:
-    # With default config
-    nemotron embed finetune -c default
+    # With the Nemotron 3 config
+    nemotron embed finetune -c nemotron-3
 
     # With custom config
     nemotron embed finetune -c /path/to/config.yaml
 
     # With CLI overrides
-    nemotron embed finetune -c default model.pretrained_model_name_or_path=...
+    nemotron embed finetune -c nemotron-3 model.pretrained_model_name_or_path=...
 
     # With an exact optimizer-step target
-    nemotron embed finetune -c default num_epochs=null max_steps=1000
+    nemotron embed finetune -c nemotron-3 num_epochs=null max_steps=1000
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ from nemotron.recipes._retrieval import validate_training_data
 from nemotron.recipes._retrieval.checkpoint import report_checkpoint_resources
 
 STAGE_PATH = Path(__file__).parent
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))

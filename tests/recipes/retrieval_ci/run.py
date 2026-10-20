@@ -23,6 +23,7 @@ TESTS = [
     "tests/recipes/embed/test_sdg_bundle_resolution.py",
     "tests/recipes/embed/test_sdg_directory_config.py",
     "tests/recipes/embed/test_sdg.py",
+    "tests/recipes/embed/test_cli.py",
     "tests/recipes/embed/test_native_multimodal_mining.py",
     "tests/recipes/embed/test_vllm_mining.py",
     "tests/recipes/embed/test_api_truncation.py",

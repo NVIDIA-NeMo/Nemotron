@@ -16,7 +16,7 @@ from nemotron.recipes.embed.stage1_data_prep.plugin_adapter import execute_conve
 
 @pytest.mark.parametrize("selector", ["text_qa", "multimodal"])
 def test_workflow_profiles_load(selector, tmp_path):
-    profile = "nemotron-3.5" if selector == "multimodal" else "default"
+    profile = "nemotron-3.5" if selector == "multimodal" else "nemotron-3"
     overrides = []
     if selector == "multimodal":
         overrides = [
@@ -46,7 +46,7 @@ class _GeneratedTextFixture:
         return len(self.frame)
 
 
-@pytest.mark.parametrize("profile", ["default", "llama"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama"])
 def test_text_profiles_read_directories_and_convert_public_generation_output(tmp_path, monkeypatch, profile):
     """Keep real producer orchestration, chunking, manifests and conversion; replace inference only."""
     pytest.importorskip("data_designer_retrieval_sdg")

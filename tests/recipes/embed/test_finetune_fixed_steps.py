@@ -41,7 +41,7 @@ def test_invalid_training_budget(options: dict[str, Any]) -> None:
         train.FinetuneConfig(**options)
 
 
-@pytest.mark.parametrize("profile", ["default", "llama", "nemotron-3.5"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama", "nemotron-3.5"])
 def test_public_dotlist_parses_strict_exact_step_budget(profile: str) -> None:
     """Profile defaults do not replace an explicit null epoch override."""
     cfg = train.load_config(
@@ -58,7 +58,7 @@ def test_public_dotlist_parses_strict_exact_step_budget(profile: str) -> None:
 def test_public_dotlist_rejects_non_positive_strict_max_steps(value: str) -> None:
     with pytest.raises((ValidationError, ValueError)):
         train.load_config(
-            train.STAGE_PATH / "config/default.yaml",
+            train.STAGE_PATH / "config/nemotron-3.yaml",
             ["num_epochs=null", f"max_steps={value}"],
             train.FinetuneConfig,
         )

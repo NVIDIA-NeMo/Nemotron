@@ -57,7 +57,7 @@ Gather only what the requested task needs:
    - Use `references/rerank.md` for rerank, reranker, cross-encoder, second-stage retrieval, acceptable recall but poor top-rank ordering, low nDCG with good Recall, or `nemotron rerank`.
    - Use both references only when the user asks about both families or asks which family to choose.
 2. Choose the model profile within the selected family.
-   - For embed, use `-c default` for Nemotron 3 Embed, `-c llama` for Llama Nemotron Embed, or `-c nemotron-3.5` for Nemotron 3.5 Embed with text, images, or paired documents.
+   - For embed, use `-c nemotron-3` for Nemotron 3 Embed, `-c llama` for Llama Nemotron Embed, or `-c nemotron-3.5` for Nemotron 3.5 Embed with text, images, or paired documents.
    - For rerank, use `-c default` for Llama Nemotron Rerank or `-c nemotron-3.5` for Nemotron 3.5 Rerank.
    - Run `uv run nemotron <family> info` when model identity is unclear. Read the selected profile's section in the family reference before composing commands.
    - Carry the selected profile and `artifact_root` through every stage; never combine artifacts from different profiles.
@@ -91,7 +91,7 @@ Check only the prerequisites for the requested stage:
    - `uv run nemotron <family> <stage> --help`
    - `uv run nemotron <family> <stage> -c <profile> -d`
    - `uv run nemotron <family> run -c <profile> -d --from <stage> --to <stage>`
-   - `run --help` may omit inherited `-c` and `-d` options even though `run -c default -d ...` works; validate by running the dry-run when unsure.
+   - `run --help` may omit inherited `-c` and `-d` options even though `run -c <model-profile> -d ...` works; validate by running the dry-run when unsure.
    - In an already prepared checkout, `uv run --no-sync ... --help` or `uv run --no-sync ... -d` can avoid unexpected dependency sync during read-only checks.
 3. Use dotlist overrides instead of editing defaults unless the user asks for reusable config changes. Keep the selected profile, artifact root, sequence length, prefixes, pooling/normalization, prompt templates, and hard-negative counts consistent across stages.
 4. Avoid launching API, GPU, Docker, Slurm, NIM, or long-running jobs unless the user explicitly asked to run them. Offer or run dry-runs, config review, and small pilots first.

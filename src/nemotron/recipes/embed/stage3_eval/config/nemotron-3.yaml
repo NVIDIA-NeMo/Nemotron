@@ -6,17 +6,17 @@
 # Optionally evaluates a NIM API endpoint for accuracy verification.
 #
 # Usage:
-#   nemotron embed eval -c default
-#   nemotron embed eval -c default finetuned_model_path=/path/to/model
+#   nemotron embed eval -c nemotron-3
+#   nemotron embed eval -c nemotron-3 finetuned_model_path=/path/to/model
 #
 # Evaluate NIM endpoint:
-#   nemotron embed eval -c default eval_nim=true nim_url=http://localhost:8001
+#   nemotron embed eval -c nemotron-3 eval_nim=true nim_url=http://localhost:8001
 # Evaluate vLLM endpoint:
-#   nemotron embed eval -c default eval_nim=true embedding_api_backend=vllm
+#   nemotron embed eval -c nemotron-3 eval_nim=true embedding_api_backend=vllm
 #
 # Remote execution (Slurm):
-#   nemotron embed eval -c default --run my-cluster
-#   nemotron embed eval -c default --batch my-cluster
+#   nemotron embed eval -c nemotron-3 --run my-cluster
+#   nemotron embed eval -c nemotron-3 --batch my-cluster
 
 # Execution environment configuration
 run:

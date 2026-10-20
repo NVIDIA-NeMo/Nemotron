@@ -23,7 +23,7 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 - Recipe README: `src/nemotron/recipes/embed/README.md`
 - CLI group: `src/nemotron/cli/commands/embed/_typer_group.py`
 - Pipeline command: `src/nemotron/cli/commands/embed/run.py`
-- Stage configs: `src/nemotron/recipes/embed/stage*/config/{default,llama,nemotron-3.5}.yaml`
+- Stage configs: `src/nemotron/recipes/embed/stage*/config/{nemotron-3,llama,nemotron-3.5}.yaml`
 - Main outputs: `output/embed/`
 
 ## Nemotron 3.5 Multimodal Workflow
@@ -133,29 +133,29 @@ Use `uv run` when `nemotron` is not already available.
 ```bash
 uv run nemotron embed info
 uv run nemotron embed --help
-uv run nemotron embed run -c default -d --from prep --to eval
+uv run nemotron embed run -c nemotron-3 -d --from prep --to eval
 ```
 
 For raw domain documents, preview only data generation and prep before any training plan:
 
 ```bash
-uv run nemotron embed run -c default -d --from sdg --to prep
+uv run nemotron embed run -c nemotron-3 -d --from sdg --to prep
 ```
 
 If training/eval pairs already exist, skip SDG and preview prep through eval:
 
 ```bash
-uv run nemotron embed run -c default -d --from prep --to eval
+uv run nemotron embed run -c nemotron-3 -d --from prep --to eval
 ```
 
 Stage commands:
 
 ```bash
-uv run nemotron embed sdg -c default corpus_dir=/path/to/docs
-uv run nemotron embed prep -c default
-uv run nemotron embed finetune -c default
-uv run nemotron embed eval -c default
-uv run nemotron embed deploy -c default
+uv run nemotron embed sdg -c nemotron-3 corpus_dir=/path/to/docs
+uv run nemotron embed prep -c nemotron-3
+uv run nemotron embed finetune -c nemotron-3
+uv run nemotron embed eval -c nemotron-3
+uv run nemotron embed deploy -c nemotron-3
 
 # The Llama profile adds the export stage.
 uv run nemotron embed export -c llama
@@ -165,8 +165,8 @@ uv run nemotron embed deploy -c llama
 Remote execution uses root `env.toml` profiles:
 
 ```bash
-uv run nemotron embed finetune -c default --run my-cluster
-uv run nemotron embed finetune -c default --batch my-cluster
+uv run nemotron embed finetune -c nemotron-3 --run my-cluster
+uv run nemotron embed finetune -c nemotron-3 --batch my-cluster
 ```
 
 ## Data And Credential Safety
@@ -189,7 +189,7 @@ any key that may have been exposed.
 | 1 prep | `embed prep` | Stage 0 output or existing QA data | Profile-specific Stage 1 directory | Converts data, mines hard negatives, and creates BEIR eval data. |
 | 2 finetune | `embed finetune` | `train_mined.automodel_unrolled.json` | Profile-specific checkpoints | AutoModel contrastive training. |
 | 3 eval | `embed eval` | BEIR eval data and checkpoint | Profile-specific `eval_results.json` | Compare base, fine-tuned, and optionally NIM retrieval metrics. |
-| 4 export | `embed export` | Fine-tuned checkpoint | Skipped by default; ONNX/TensorRT for `llama` | Only the Llama profile needs this stage. |
+| 4 export | `embed export` | Fine-tuned checkpoint | Skipped for `nemotron-3`; ONNX/TensorRT for `llama` | Only the Llama profile needs this stage. |
 | 5 deploy | `embed deploy` | PyTorch checkpoint or Llama export | NIM or vLLM on `host_port` | Requires Docker. Default local-artifact deployment does not forward `NGC_API_KEY`; `NIM_CUSTOM_MODEL` or model-download paths may require it. |
 
 The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `embed run` defaults to `--to eval`.
@@ -197,20 +197,21 @@ The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `em
 
 ## Stage Contracts
 
-| Stage | Required Inputs | Default Creates | `llama` Profile Difference | Cheapest Check |
+| Stage | Required Inputs | `nemotron-3` Creates | `llama` Profile Difference | Cheapest Check |
 | --- | --- | --- | --- | --- |
-| 0 SDG | Text corpus, inference credential | `output/embed/nemotron-3-1b/stage0_sdg` | `output/embed/stage0_sdg`; Llama profile generation models | `uv run nemotron embed sdg -c default -d` |
-| 1 prep | Stage 0 output | `output/embed/nemotron-3-1b/stage1_data_prep` | Flat artifact root and Llama hard-negative miner | `uv run nemotron embed prep -c default -d` |
-| 2 finetune | Unrolled Automodel JSON | `output/embed/nemotron-3-1b/stage2_finetune/checkpoints` | Llama model, Llama optimizer master-weight setting | `uv run nemotron embed finetune -c default -d` |
-| 3 eval | Fixed BEIR split and checkpoint | `output/embed/nemotron-3-1b/stage3_eval/eval_results.json` | Llama model/API identity and Llama artifact root | `uv run nemotron embed eval -c default -d` |
+| 0 SDG | Text corpus, inference credential | `output/embed/nemotron-3-1b/stage0_sdg` | `output/embed/stage0_sdg`; Llama profile generation models | `uv run nemotron embed sdg -c nemotron-3 -d` |
+| 1 prep | Stage 0 output | `output/embed/nemotron-3-1b/stage1_data_prep` | Flat artifact root and Llama hard-negative miner | `uv run nemotron embed prep -c nemotron-3 -d` |
+| 2 finetune | Unrolled Automodel JSON | `output/embed/nemotron-3-1b/stage2_finetune/checkpoints` | Llama model, Llama optimizer master-weight setting | `uv run nemotron embed finetune -c nemotron-3 -d` |
+| 3 eval | Fixed BEIR split and checkpoint | `output/embed/nemotron-3-1b/stage3_eval/eval_results.json` | Llama model/API identity and Llama artifact root | `uv run nemotron embed eval -c nemotron-3 -d` |
 | 4 export | Fine-tuned checkpoint | Explicit no-op | Exports ONNX/TensorRT and must use `-c llama` | `uv run nemotron embed export -c llama -d` |
-| 5 deploy | PyTorch checkpoint or exported Llama artifact, Docker | Default can mount safetensors through NIM `NIM_ENGINE_MODEL_PATH` or vLLM | Mounts ONNX/TensorRT through `NIM_CUSTOM_MODEL` | `uv run nemotron embed deploy -c default -d backend=vllm` |
+| 5 deploy | PyTorch checkpoint or exported Llama artifact, Docker | Nemotron 3 can mount safetensors through NIM `NIM_ENGINE_MODEL_PATH` or vLLM | Mounts ONNX/TensorRT through `NIM_CUSTOM_MODEL` | `uv run nemotron embed deploy -c nemotron-3 -d backend=vllm` |
 
 ## Model Profiles
 
-Default (`-c default`):
+Nemotron 3 (`-c nemotron-3`):
 
-- Nemotron 3 Embed is the default model family.
+- Use `-c nemotron-3` explicitly. It replaces the former embedding `default`
+  selector; omitting `-c` also selects `nemotron-3`.
 - Uses `nvidia/Nemotron-3-Embed-1B-BF16` from Hugging Face.
 - Stage 0 uses Data Designer's built-in endpoint or the generic
   `NVIDIA_API_BASE_URL` override and
@@ -257,16 +258,16 @@ Llama profile (`-c llama`):
   `trust_remote_code=true`. Preserve each stage's checked-in Transformers
   constraint instead of imposing one range across the full pipeline.
 - Do not copy performance overrides between profiles without a dry-run. The
-  default Nemotron 3 eval batch is `4`; the Llama profile uses `128`.
+  Nemotron 3 eval batch is `4`; the Llama profile uses `128`.
 - Preserve each profile's optimizer and checkpoint defaults. Nemotron 3 uses
   no FlashAdamW master weights and fixed 1000-step checkpoint/validation
   intervals; Llama uses 32-bit master weights and auto-scaled 100-step
   intervals.
 
 ```bash
-uv run nemotron embed run -c default -d --from sdg --to eval
-uv run nemotron embed deploy -c default -d backend=vllm
-uv run nemotron embed deploy -c default -d
+uv run nemotron embed run -c nemotron-3 -d --from sdg --to eval
+uv run nemotron embed deploy -c nemotron-3 -d backend=vllm
+uv run nemotron embed deploy -c nemotron-3 -d
 
 uv run nemotron embed run -c llama -d --from sdg --to export
 uv run nemotron embed deploy -c llama -d
@@ -286,14 +287,14 @@ uv run nemotron embed deploy -c llama -d
 ## Serving Smoke Tests
 
 ```bash
-# Default profile
+# `nemotron-3` profile
 curl -X POST http://localhost:8000/v1/embeddings \
   -H 'Content-Type: application/json' \
   -d '{"input": ["hello"], "model": "nvidia/nemotron-3-embed-1b", "input_type": "query"}'
 
 # With -c llama, use model nvidia/llama-3.2-nv-embedqa-1b-v2 instead.
 
-# Default profile with backend=vllm. The checkpoint applies the prompt for
+# `nemotron-3` profile with backend=vllm. The checkpoint applies the prompt for
 # the input type, so do not add `query: ` or `passage: ` yourself.
 curl -X POST http://localhost:8000/v2/embed \
   -H 'Content-Type: application/json' \
@@ -304,13 +305,13 @@ For behavioral comparison, evaluate the local checkpoint and selected serving
 backend in the same run and write to a separate directory:
 
 ```bash
-uv run nemotron embed eval -c default eval_nim=true eval_base=false \
+uv run nemotron embed eval -c nemotron-3 eval_nim=true eval_base=false \
   eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 
 # For backend=vllm, switch the evaluation adapter to /v2/embed. It sends
 # `input_type` and does not add query/passage prefixes itself.
-uv run nemotron embed eval -c default eval_nim=true embedding_api_backend=vllm \
+uv run nemotron embed eval -c nemotron-3 eval_nim=true embedding_api_backend=vllm \
   eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_vllm_comparison
 ```
@@ -324,6 +325,6 @@ gate the run.
 
 ```bash
 uv run nemotron embed --help
-uv run nemotron embed finetune -c default -d
+uv run nemotron embed finetune -c nemotron-3 -d
 uv run pytest tests/recipes/embed tests/nemo_runspec/test_execution_uv_spec.py -q
 ```

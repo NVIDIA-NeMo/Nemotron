@@ -116,7 +116,7 @@ def test_flash_adamw_disables_master_weights_when_explicitly_requested(monkeypat
     assert raw_config["optimizer"]["master_weight_bits"] is None
 
 
-@pytest.mark.parametrize("profile", ["default", "nemotron-3.5"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "nemotron-3.5"])
 @pytest.mark.parametrize("use_flags", [False, True])
 @pytest.mark.parametrize(("value", "expected"), [("24", 24), ("32", 32), ("null", None)])
 def test_master_weight_precision_cli_override(profile: str, use_flags: bool, value: str, expected: int | None) -> None:
@@ -137,7 +137,7 @@ def test_invalid_master_weight_precision_cli_override(use_flags: bool, value: st
     overrides = [f"--{field}", value] if use_flags else [f"{field}={value}"]
 
     with pytest.raises(ValidationError, match=field):
-        train.load_config(train.STAGE_PATH / "config" / "default.yaml", overrides, train.FinetuneConfig)
+        train.load_config(train.STAGE_PATH / "config" / "nemotron-3.yaml", overrides, train.FinetuneConfig)
 
 
 @pytest.mark.parametrize(

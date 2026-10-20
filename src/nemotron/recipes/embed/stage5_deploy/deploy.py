@@ -11,7 +11,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "default"
+# default = "nemotron-3"
 # ///
 
 # Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
@@ -37,17 +37,17 @@ artifacts. The optional vLLM backend serves the same Hugging Face checkpoint
 and is evaluated through vLLM's ``/v2/embed`` API.
 
 Usage:
-    # With default config (launches NIM in foreground)
-    nemotron embed deploy -c default
+    # With the Nemotron 3 config (launches NIM in foreground)
+    nemotron embed deploy -c nemotron-3
 
     # With custom model path
-    nemotron embed deploy -c default model_dir=/path/to/model
+    nemotron embed deploy -c nemotron-3 model_dir=/path/to/model
 
     # Detached mode (background)
-    nemotron embed deploy -c default detach=true
+    nemotron embed deploy -c nemotron-3 detach=true
 
     # Serve the default checkpoint with NVIDIA's vLLM container
-    nemotron embed deploy -c default backend=vllm
+    nemotron embed deploy -c nemotron-3 backend=vllm
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ from pydantic import BeforeValidator, ConfigDict, Field, model_validator
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 STAGE_PATH = Path(__file__).parent
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
 DEFAULT_NIM_IMAGE = "nvcr.io/nim/nvidia/nemotron-3-embed-1b:2.2.0"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run

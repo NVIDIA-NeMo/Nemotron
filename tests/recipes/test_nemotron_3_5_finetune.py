@@ -280,7 +280,7 @@ def test_embed_vl_runtime_omits_checkpoint_owned_processor_overrides(
     assert "image_longest_edge" not in tokenizer.__dict__
 
 
-@pytest.mark.parametrize("profile", ["default", "nemotron-3.5"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "nemotron-3.5"])
 def test_embed_exact_step_dotlist_reaches_native_scheduler(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str
 ) -> None:

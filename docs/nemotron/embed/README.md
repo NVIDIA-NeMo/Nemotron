@@ -7,8 +7,13 @@ Adapt an embedding model to your domain-specific data, then evaluate and deploy 
 | Profile | Model | Input and Guide |
 | --- | --- | --- |
 | `nemotron-3.5` | [Nemotron 3.5 Embed 1B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Embed-1B-BF16) | Text and image files; follow [Fine-Tune Multimodal Embeddings](multimodal.md) |
-| `default` | Nemotron 3 Embed 1B BF16 | Text; follow this page |
+| `nemotron-3` | Nemotron 3 Embed 1B BF16 | Text; follow this page |
 | `llama` | Llama Nemotron Embed 1B v2 | Text; use `-c llama` through export and deployment |
+
+The `nemotron-3` profile replaces the former `default` profile. Update
+`-c default` to `-c nemotron-3` and any embedding `config/default.yaml` paths to
+`config/nemotron-3.yaml`. Model settings and artifact paths are unchanged.
+Omitting `-c` still selects `nemotron-3`; use an explicit profile in scripts.
 
 For Nemotron 3.5, start with `source_directory.path=./documents`. The recipe
 prepares source records automatically. Use explicit JSONL when you need custom
@@ -213,7 +218,7 @@ All files matching the `file_extensions` config (default: `.txt,.md`) will be pr
 | Stage 1 (Data Prep) | 40 GB | 16 or more cores | Hard-negative mining on GPU; runtime varies by dataset size |
 | Stage 2 (Finetune) | 80 GB | 16 or more cores | Runtime varies by dataset size and epochs |
 | Stage 3 (Eval) | 40 GB | 8 or more cores | Evaluation metrics computation; runtime varies by dataset size |
-| Stage 4 (Export) | N/A for default; 40 GB for `llama` | 8 or more cores | Default is a no-op; TensorRT export requires an NGC container |
+| Stage 4 (Export) | N/A for `nemotron-3`; 40 GB for `llama` | 8 or more cores | Nemotron 3 export is a no-op; TensorRT export requires an NGC container |
 | Stage 5 (Deploy) | 40 GB | 4 or more cores | Inference container initialization |
 
 **Total disk space**: Approximately 50 GB for outputs, model checkpoints, and containers
@@ -253,7 +258,7 @@ To continue an interrupted run, keep `artifact_path`, `dataset_name`, and `buffe
 unchanged:
 
 ```bash
-nemotron embed sdg -c default corpus_dir=/path/to/your/docs resume=always
+nemotron embed sdg -c nemotron-3 corpus_dir=/path/to/your/docs resume=always
 ```
 
 Resume compatibility uses Data Designer's configuration fingerprint; it does not hash
@@ -277,9 +282,11 @@ stable `dataset_name` with `resume=always` to continue an interrupted run.
 
 ## Quick Start
 
-### Default Profile
+<a id="default-profile"></a>
 
-The default profile loads `nvidia/Nemotron-3-Embed-1B-BF16` from
+### Nemotron 3 Profile
+
+The `nemotron-3` profile loads `nvidia/Nemotron-3-Embed-1B-BF16` from
 Hugging Face for mining, fine-tuning, and base-model evaluation. Stage 5 can
 mount the consolidated Stage 2 checkpoint directly into Retriever NIM 2.x or
 serve it with vLLM:
@@ -290,23 +297,23 @@ export NVIDIA_API_KEY=your_endpoint_credential
 # Optional: override Data Designer's built-in NVIDIA endpoint.
 export NVIDIA_API_BASE_URL=https://your-authorized-endpoint.example/v1
 
-nemotron embed sdg -c default corpus_dir=/path/to/your/docs
-nemotron embed prep -c default
-nemotron embed finetune -c default
-nemotron embed eval -c default
+nemotron embed sdg -c nemotron-3 corpus_dir=/path/to/your/docs
+nemotron embed prep -c nemotron-3
+nemotron embed finetune -c nemotron-3
+nemotron embed eval -c nemotron-3
 
 # Stage 4 is an intentional no-op for this profile.
-nemotron embed export -c default
+nemotron embed export -c nemotron-3
 
 # Option A: deploy with the default Retriever NIM 2.2 image.
-nemotron embed deploy -c default detach=true
-nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+nemotron embed deploy -c nemotron-3 detach=true
+nemotron embed eval -c nemotron-3 eval_nim=true eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 docker stop nemotron-embed
 
 # Option B: deploy with the checked-in vLLM backend.
-nemotron embed deploy -c default backend=vllm detach=true
-nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+nemotron embed deploy -c nemotron-3 backend=vllm detach=true
+nemotron embed eval -c nemotron-3 eval_nim=true eval_base=false eval_finetuned=true \
   embedding_api_backend=vllm \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_vllm_comparison
 docker stop nemotron-embed
@@ -356,7 +363,7 @@ alias advertised by NIM or passed to vLLM as `--served-model-name`.
 ### Dry Run
 
 ```bash
-nemotron embed finetune -c default --dry-run
+nemotron embed finetune -c nemotron-3 --dry-run
 ```
 
 ## Pipeline Flexibility
@@ -372,10 +379,10 @@ Stages are designed to run sequentially, but you can start from any stage if you
 | **Stage 4** | Model checkpoint | Export existing model when the selected profile requires it |
 | **Stage 5** | Model checkpoint or exported artifact | Deploy existing model |
 
-The default profile loads the Stage 2 Hugging Face-style PyTorch checkpoint
+The `nemotron-3` profile loads the Stage 2 Hugging Face-style PyTorch checkpoint
 directly through `NIM_MODEL_PATH`, so Stage 4 is an explicit no-op.
 
-For stage-specific input requirements and options, run `nemotron embed <stage> --help`. In a source checkout, inspect the corresponding `config/default.yaml` file for default paths and settings.
+For stage-specific input requirements and options, run `nemotron embed <stage> --help`. In a source checkout, inspect the corresponding `config/nemotron-3.yaml` file for default paths and settings.
 
 ### Using NVIDIA's Pre-Generated Dataset
 
@@ -393,11 +400,11 @@ ds.to_json('./output/embed/stage0_sdg/nv_docs_sdg.jsonl')
 
 # `datasets.to_json()` writes JSONL; pass the exact file to avoid mixed-directory ambiguity.
 # Start from Stage 1 (data preparation) using the downloaded data
-nemotron embed prep -c default sdg_input_path=./output/embed/stage0_sdg/nv_docs_sdg.jsonl
+nemotron embed prep -c nemotron-3 sdg_input_path=./output/embed/stage0_sdg/nv_docs_sdg.jsonl
 
 # Continue with the rest of the pipeline
-nemotron embed finetune -c default
-nemotron embed eval -c default
+nemotron embed finetune -c nemotron-3
+nemotron embed eval -c nemotron-3
 ```
 
 This is useful for quickly getting started with the recipe or benchmarking the pipeline without needing an NVIDIA API key for synthetic data generation.
@@ -411,8 +418,8 @@ The embed recipe supports multiple execution modes for flexibility between local
 Run directly on your local machine with GPU:
 
 ```bash
-nemotron embed finetune -c default
-nemotron embed eval -c default
+nemotron embed finetune -c nemotron-3
+nemotron embed eval -c nemotron-3
 ```
 
 ### Docker Execution
@@ -421,12 +428,12 @@ Run inside a Docker container with GPU passthrough using `--run local-docker`:
 
 ```bash
 # Runs the command inside a Docker container with GPU access
-nemotron embed finetune -c default --run local-docker
+nemotron embed finetune -c nemotron-3 --run local-docker
 
 # All stages support Docker execution
-nemotron embed sdg -c default --run local-docker
-nemotron embed prep -c default --run local-docker
-nemotron embed eval -c default --run local-docker
+nemotron embed sdg -c nemotron-3 --run local-docker
+nemotron embed prep -c nemotron-3 --run local-docker
+nemotron embed eval -c nemotron-3 --run local-docker
 ```
 
 > **Note**: Requires the `local-docker` profile in `env.toml` (refer to [Execution Profiles](#execution-profiles)).
@@ -437,16 +444,16 @@ Submit jobs to a Slurm cluster for production workloads:
 
 ```bash
 # Attached execution (waits for completion, streams logs via SSH)
-nemotron embed finetune -c default --run my-cluster
+nemotron embed finetune -c nemotron-3 --run my-cluster
 
 # Detached execution (submits job and exits immediately)
-nemotron embed finetune -c default --batch my-cluster
+nemotron embed finetune -c nemotron-3 --batch my-cluster
 
 # Run full pipeline on cluster
-nemotron embed sdg -c default --batch my-cluster
-nemotron embed prep -c default --batch my-cluster
-nemotron embed finetune -c default --batch my-cluster
-nemotron embed eval -c default --batch my-cluster
+nemotron embed sdg -c nemotron-3 --batch my-cluster
+nemotron embed prep -c nemotron-3 --batch my-cluster
+nemotron embed finetune -c nemotron-3 --batch my-cluster
+nemotron embed eval -c nemotron-3 --batch my-cluster
 ```
 
 ### Execution Profiles
@@ -498,13 +505,13 @@ Override execution settings on the command line:
 
 ```bash
 # Use more GPUs
-nemotron embed finetune -c default --run my-cluster run.env.gpus_per_node=4
+nemotron embed finetune -c nemotron-3 --run my-cluster run.env.gpus_per_node=4
 
 # Use different partition
-nemotron embed finetune -c default --batch my-cluster run.env.partition=batch
+nemotron embed finetune -c nemotron-3 --batch my-cluster run.env.partition=batch
 
 # Override time limit
-nemotron embed finetune -c default --batch my-cluster run.env.time=08:00:00
+nemotron embed finetune -c nemotron-3 --batch my-cluster run.env.time=08:00:00
 ```
 
 ### Interactive Debugging
@@ -513,7 +520,7 @@ Stage files to the cluster for interactive debugging:
 
 ```bash
 # Stage files without executing
-nemotron embed finetune -c default --run my-cluster --stage
+nemotron embed finetune -c nemotron-3 --run my-cluster --stage
 
 # Then SSH to cluster and run manually
 ssh cluster.example.com
@@ -523,19 +530,21 @@ cd /path/to/staged/files
 
 ## Configuration
 
-Each stage's `default.yaml` config derives its paths from the profile-wide
+Each stage's `nemotron-3.yaml` config derives its paths from the profile-wide
 `artifact_root`, which defaults to `./output/embed/nemotron-3-1b`. Override it
 once for an entire pipeline run:
 
 ```bash
-nemotron embed run -c default --to eval artifact_root=./output/embed/experiments/domain-a
+nemotron embed run -c nemotron-3 --to eval artifact_root=./output/embed/experiments/domain-a
 ```
 
 Changing `artifact_root` only relocates artifacts. A future model profile such
 as `nemotron-3-8b` must also set its own base model, runtime settings, NIM
 identity and fingerprint, and any model-specific dependencies.
 
-### Default Model Settings
+<a id="default-model-settings"></a>
+
+### Nemotron 3 Model Settings
 
 ```yaml
 # Stage 0
@@ -560,7 +569,7 @@ max_seq_len: null  # Use the NIM image default; vLLM reads checkpoint metadata
 All ordinary fields can still be overridden on the command line:
 
 ```bash
-nemotron embed finetune -c default num_epochs=1 learning_rate=2e-5
+nemotron embed finetune -c nemotron-3 num_epochs=1 learning_rate=2e-5
 ```
 
 ### Sequence length
@@ -578,10 +587,10 @@ necessary.
 # Inspect the recipe
 nemotron embed info
 
-# Default direct-checkpoint path
-nemotron embed run -c default --to eval
-nemotron embed deploy -c default detach=true
-nemotron embed eval -c default eval_nim=true eval_base=false eval_finetuned=true \
+# Nemotron 3 direct-checkpoint path
+nemotron embed run -c nemotron-3 --to eval
+nemotron embed deploy -c nemotron-3 detach=true
+nemotron embed eval -c nemotron-3 eval_nim=true eval_base=false eval_finetuned=true \
   output_dir=./output/embed/nemotron-3-1b/stage3_eval_nim_comparison
 
 # Stop the default container
@@ -647,7 +656,9 @@ Model: fine-tuned
 | NeMo Export-Deploy | ONNX/TensorRT export for optimized inference | [GitHub](https://github.com/NVIDIA/NeMo-Export-Deploy) |
 | NVIDIA NIM | Production inference microservice with custom model support | [Developer Site](https://developer.nvidia.com/nim) |
 
-## Default Model Profile
+<a id="default-model-profile"></a>
+
+## Nemotron 3 Model Profile
 
 | Property | Value |
 |----------|-------|
@@ -658,7 +669,7 @@ Model: fine-tuned
 | Deployment backend | Retriever NIM or vLLM |
 | Serving input artifact | Hugging Face PyTorch/safetensors checkpoint |
 | NIM selector | `NIM_MODEL_PATH` when using NIM |
-| Stage 4 | Skipped for the default profile |
+| Stage 4 | Skipped for the `nemotron-3` profile |
 
 ## Troubleshooting
 
@@ -701,7 +712,7 @@ export NVIDIA_API_KEY=your_key_here
 **Error: `CUDA out of memory` during hard negative mining**
 ```bash
 # Reduce mining batch size in config
-nemotron embed prep -c default mining_batch_size=64
+nemotron embed prep -c nemotron-3 mining_batch_size=64
 ```
 
 **Error: No valid Q&A pairs after quality filtering**
@@ -729,7 +740,7 @@ uv sync --all-extras
 **Error: `CUDA out of memory` during training**
 ```bash
 # Reduce local batch size
-nemotron embed finetune -c default local_batch_size=2
+nemotron embed finetune -c nemotron-3 local_batch_size=2
 ```
 
 **Error: Training very slow**
@@ -745,7 +756,7 @@ nemotron embed finetune -c default local_batch_size=2
 ls -la output/embed/nemotron-3-1b/stage2_finetune/checkpoints/LATEST/model/consolidated/
 
 # Specify custom path
-nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
+nemotron embed eval -c nemotron-3 finetuned_model_path=/path/to/checkpoint
 ```
 
 **Error: BEIR evaluation fails**
@@ -757,12 +768,12 @@ nemotron embed eval -c default finetuned_model_path=/path/to/checkpoint
 **Override the default NIM image**
 ```bash
 export NEMOTRON3_EMBED_NIM_IMAGE=nvcr.io/your-compatible-embedding-nim:tag
-nemotron embed deploy -c default
+nemotron embed deploy -c nemotron-3
 ```
 
 Alternatively, use the checked-in vLLM backend:
 ```bash
-nemotron embed deploy -c default backend=vllm
+nemotron embed deploy -c nemotron-3 backend=vllm
 ```
 
 **Error: Serving container fails to start**
@@ -774,7 +785,7 @@ docker login nvcr.io
 sudo lsof -i :8000
 
 # Use different port
-nemotron embed deploy -c default backend=vllm host_port=8002
+nemotron embed deploy -c nemotron-3 backend=vllm host_port=8002
 ```
 
 **Error: Served accuracy differs from checkpoint**
@@ -855,7 +866,7 @@ scontrol show job <job-id>
 **Enable verbose logging**
 ```bash
 # Add --verbose flag (if available)
-nemotron embed finetune -c default --verbose
+nemotron embed finetune -c nemotron-3 --verbose
 
 # Check logs in output directory
 cat output/embed/stage2_finetune/logs/*.log
@@ -864,7 +875,7 @@ cat output/embed/stage2_finetune/logs/*.log
 **Dry run to preview**
 ```bash
 # Preview command without executing
-nemotron embed finetune -c default --dry-run
+nemotron embed finetune -c nemotron-3 --dry-run
 ```
 
 ## Monitoring Training

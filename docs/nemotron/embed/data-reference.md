@@ -12,7 +12,7 @@ generation and multimodal generation use different source formats.
 
 | Model Profile | Workflow | Stage 0 Input | Output Used by Stage 1 |
 | --- | --- | --- | --- |
-| `default` or `llama` | `text_qa` | `corpus_dir`: local directory or supported `hf://` text corpus | Generated QA JSONL, then text QA conversion |
+| `nemotron-3` or `llama` | `text_qa` | `corpus_dir`: local directory or supported `hf://` text corpus | Generated QA JSONL, then text QA conversion |
 | `nemotron-3.5` | `multimodal` | `source_directory.path`: local text/image directory, or `sources_file`: explicit source JSONL | Portable retrieval bundle with queries, relevance labels, and text/image views |
 
 Text QA still scans and sentence-chunks text files through the producer's
@@ -250,7 +250,7 @@ Every profile derives paths from `artifact_root`. The checked-in defaults are:
 
 | Profile | Default Root |
 | --- | --- |
-| `default` | `./output/embed/nemotron-3-1b` |
+| `nemotron-3` | `./output/embed/nemotron-3-1b` |
 | `nemotron-3.5` | `./output/embed/nemotron-3.5` |
 | `llama` | `./output/embed` |
 
@@ -280,9 +280,9 @@ Choose the entry point that matches your artifact.
 
 | Available Input | Entry Point |
 | --- | --- |
-| Compatible legacy SDG JSON, JSONL, or Parquet | `embed prep -c default sdg_input_path=<path>` |
+| Compatible legacy SDG JSON, JSONL, or Parquet | `embed prep -c nemotron-3 sdg_input_path=<path>` |
 | Portable `generation_result.json` | `embed prep -c nemotron-3.5 sdg_input_path=<path> retrieval_view=<view>` |
-| Existing Automodel training JSON to mine | `embed prep -c default sdg_input_path=null train_input_file=<path>` |
+| Existing Automodel training JSON to mine | `embed prep -c nemotron-3 sdg_input_path=null train_input_file=<path>` |
 | Mined and unrolled training JSON | `embed finetune -c <profile> train_data_path=<path>` |
 | Independent BEIR dataset and checkpoint | Follow [Evaluate Independent Data](multimodal.md#evaluate-independent-data) |
 
@@ -294,5 +294,5 @@ is an existing text SDG source. Export its records to a file and pass that file
 explicitly to avoid ambiguous directory selection.
 
 `source_directory` or `sources_file` input and portable export require
-`sdg_workflow=multimodal`. Existing `default` and `llama` generation use
+`sdg_workflow=multimodal`. Existing `nemotron-3` and `llama` generation use
 `text_qa` with `corpus_dir`. Do not use `corpus_dir` for multimodal directory input.

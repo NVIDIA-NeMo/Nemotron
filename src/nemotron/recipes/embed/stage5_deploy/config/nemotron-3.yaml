@@ -5,10 +5,10 @@
 # NIM exposes OpenAI-compatible embeddings; vLLM evaluation uses `/v2/embed`.
 #
 # Usage:
-#   nemotron embed deploy -c default
-#   nemotron embed deploy -c default detach=true
-#   nemotron embed deploy -c default model_dir=/path/to/consolidated-checkpoint
-#   nemotron embed deploy -c default backend=vllm
+#   nemotron embed deploy -c nemotron-3
+#   nemotron embed deploy -c nemotron-3 detach=true
+#   nemotron embed deploy -c nemotron-3 model_dir=/path/to/consolidated-checkpoint
+#   nemotron embed deploy -c nemotron-3 backend=vllm
 #
 # Test the deployed service:
 #   curl -X POST http://localhost:8000/v1/embeddings \

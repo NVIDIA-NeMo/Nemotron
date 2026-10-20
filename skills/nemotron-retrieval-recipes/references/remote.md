@@ -13,9 +13,9 @@ Load this reference when the user mentions clusters, Slurm, `env.toml`, `--run`,
 
 | Mode | Use When | Pattern |
 | --- | --- | --- |
-| Local dry-run | Validate config rendering before scheduling | `uv run nemotron <family> <stage> -c default -d ...` |
-| Remote run | User wants an interactive remote execution path | `uv run nemotron <family> <stage> -c default --run <profile> ...` |
-| Remote batch | User wants a scheduled detached job | `uv run nemotron <family> <stage> -c default --batch <profile> ...` |
+| Local dry-run | Validate config rendering before scheduling | `uv run nemotron <family> <stage> -c <model-profile> -d ...` |
+| Remote run | User wants an interactive remote execution path | `uv run nemotron <family> <stage> -c <model-profile> --run <profile> ...` |
+| Remote batch | User wants a scheduled detached job | `uv run nemotron <family> <stage> -c <model-profile> --batch <profile> ...` |
 
 ## Operating Pattern
 

@@ -12,7 +12,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "default"
+# default = "nemotron-3"
 #
 # [tool.runspec.resources]
 # nodes = 1
@@ -43,17 +43,17 @@ Supports evaluation of:
 - NIM API endpoints (OpenAI-compatible embeddings API)
 
 Usage:
-    # With default config
-    nemotron embed eval -c default
+    # With the Nemotron 3 config
+    nemotron embed eval -c nemotron-3
 
     # With custom config
     nemotron embed eval -c /path/to/config.yaml
 
     # With CLI overrides
-    nemotron embed eval -c default finetuned_model_path=/path/to/model
+    nemotron embed eval -c nemotron-3 finetuned_model_path=/path/to/model
 
     # Evaluate NIM endpoint
-    nemotron embed eval -c default eval_nim=true nim_url=http://localhost:8001
+    nemotron embed eval -c nemotron-3 eval_nim=true nim_url=http://localhost:8001
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ from pydantic import ConfigDict, Field, model_validator
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 STAGE_PATH = Path(__file__).parent
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))

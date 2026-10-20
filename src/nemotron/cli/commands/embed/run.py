@@ -19,10 +19,12 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from importlib import import_module
 
 import typer
 
 from nemo_runspec.cli_context import GlobalContext
+from nemo_runspec.config import find_config_file
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 
 # Stage order defines the DAG
@@ -120,7 +122,6 @@ def _run_pipeline_remote(
 ) -> None:
     """Run stages as tasks in a single nemo-run Experiment."""
     import nemo_run as run
-    from importlib import import_module
 
     experiment_name = "embed-" + "-".join(stages)
 
@@ -172,6 +173,15 @@ def run(
     options = parse_recipe_config(ctx)
     stages = _resolve_stages(from_stage, to_stage)
     stage_overrides, global_overrides = _split_stage_overrides(options.dotlist)
+
+    # Check the selected profile for every stage before previewing or launching.
+    # A dry run must not accept a removed profile or a missing stage config.
+    for stage in stages:
+        spec = import_module(STAGE_MODULES[stage]).SPEC
+        try:
+            find_config_file(options.config or spec.config.default, spec.config_dir)
+        except FileNotFoundError as exc:
+            raise typer.BadParameter(f"{stage}: {exc}", param_hint="-c/--config") from exc
 
     print(f"Embed pipeline: {' → '.join(stages)}")
     if options.config:
