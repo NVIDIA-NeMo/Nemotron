@@ -19,6 +19,7 @@ TESTS = [
     "tests/recipes/test_nemotron_3_5_finetune.py",
     "tests/recipes/test_retrieval_training_preflight.py",
     "tests/recipes/test_retrieval_checkpoint_resources.py",
+    "tests/recipes/test_retrieval_skill_portability.py",
     "tests/recipes/embed/test_sdg_bundle_validation.py",
     "tests/recipes/embed/test_sdg_bundle_resolution.py",
     "tests/recipes/embed/test_sdg_directory_config.py",

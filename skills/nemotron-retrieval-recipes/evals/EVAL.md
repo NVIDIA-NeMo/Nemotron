@@ -4,7 +4,7 @@ This skill follows a functional skill evaluation approach: define realistic task
 
 ## Evaluation Goals
 
-The evaluation is functional: it checks whether agents use the skill when public Nemotron retrieval recipe expertise is needed, avoid it for unrelated tasks, and produce better task outcomes with the skill than without it. Because these recipes are long-running, wall-clock recipe completion is not the main success signal. The useful lift is whether the skill helps the agent route to the right recipe family, ground itself in the current checkout, choose safe dry-runs before expensive stages, preserve secrets, interpret metrics correctly, and hand off long-running execution with clear run reports.
+The evaluation is functional: it checks whether agents use the skill when public Nemotron retrieval recipe expertise is needed, avoid it for unrelated tasks, and produce better task outcomes with the skill than without it. Because these recipes are long-running, wall-clock recipe completion is not the main success signal. The useful lift is whether the skill helps the agent route to the right recipe family, use bundled guidance for planning, verify the available runtime before execution, choose safe dry-runs before expensive stages, preserve secrets, interpret metrics correctly, and hand off long-running execution with clear run reports.
 
 ## Dataset Rules
 
@@ -24,7 +24,7 @@ Each ID below has the prefix `nemotron-retrieval-recipes-`:
 
 | Case ID | Distinct behavior protected |
 | --- | --- |
-| `multimodal-input-plan-001` | Select the current profile and input contract; distinguish directory discovery, paired records, and PDF preprocessing before a bounded preview. |
+| `multimodal-input-plan-001` | Plan without a checkout or installed CLI; distinguish directory discovery, paired records, and PDF preprocessing, then provide a future bounded preview. |
 | `multimodal-rerank-handoff-001` | Reuse embedding preparation with explicit input paths, a separate rerank artifact root, and the supported stage sequence. |
 | `multimodal-serving-drift-001` | Compare fixed candidates and raw scores across local and vLLM evaluation, with correct Docker GPU selection and preserved results. |
 | `multimodal-resume-001` | Detect producer identity changes before resume and preserve existing artifacts. |
@@ -46,7 +46,7 @@ prerequisite cases add little coverage for their execution cost.
 Score agent usefulness above raw runtime. Strong with-skill trajectories should:
 
 - activate on public Nemotron `embed`/`rerank` recipe tasks and stay inactive for generic retrieval or vector database advice,
-- inspect or cite the current repo surface before relying on stale docs or memory,
+- use bundled guidance for planning without a checkout, then verify the selected runtime before execution,
 - choose `embed` vs `rerank` from the retrieval failure mode,
 - recommend help/dry-run checks before API, GPU, Docker, Slurm, NIM, or other long-running work,
 - handle secrets through environment configuration without asking users to paste values,
@@ -57,6 +57,7 @@ Score agent usefulness above raw runtime. Strong with-skill trajectories should:
 Before publication, run the configured skill evaluation harness in the configured evaluation environment:
 
 - validate the skill and eval dataset structure,
+- copy the skill outside the repository and check that bundled references resolve and external documentation links are commit-pinned,
 - run static skill-quality checks,
 - verify documented command examples with read-only `uv run --no-sync ... --help` and `-d` dry-runs when the checkout has the recipe CLI installed,
 - run live with-skill and without-skill evaluation,

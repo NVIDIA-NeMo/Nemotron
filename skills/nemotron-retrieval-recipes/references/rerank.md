@@ -17,7 +17,10 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 
 ## Grounding Paths
 
-- Recipe README: `docs/nemotron/rerank/README.md`
+These paths describe the execution checkout, not files bundled with this skill.
+Planning uses the guidance below without a checkout. Run CLI checks from the
+checkout root when preparing to execute.
+
 - CLI group: `src/nemotron/cli/commands/rerank/_typer_group.py`
 - Pipeline command: `src/nemotron/cli/commands/rerank/run.py`
 - Stage configs: `src/nemotron/recipes/rerank/stage*/config/default.yaml`
@@ -30,8 +33,8 @@ Use reranker fine-tuning when relevant documents are already in the candidate se
 ## Nemotron 3.5 Workflow
 
 For `nvidia/Nemotron-3.5-Rerank-8B-BF16`, use `nemotron-3.5` with `finetune`,
-`eval`, and `deploy`. Read the multimodal section of the recipe README before
-preparing inputs. Use the Nemotron 3.5 embedding SDG and preparation stages for
+`eval`, and `deploy`. Read the bundled [multimodal data reference](multimodal-data.md)
+when preparing inputs. Use the Nemotron 3.5 [embedding](embed.md) SDG and preparation stages for
 a text/image directory or explicit source records. Supply the mined, unrolled
 training data through `train_data_path` and retain the corpus at the relative
 location recorded in that JSON. Select a separate rerank `artifact_root`.
@@ -42,6 +45,35 @@ and Stage 5 model paths. Input paths remain explicit. Per-stage
 overrides take priority.
 Run the stages explicitly; skip Stage 4 and deploy the consolidated model with
 vLLM. The default Llama ONNX/NIM path does not apply to this model.
+
+Preview the training handoff from the execution checkout. Replace the example run
+directories with the prepared embedding run and a separate reranker output:
+
+```bash
+uv run nemotron rerank finetune -c nemotron-3.5 -d \
+  artifact_root=./output/rerank/my-run \
+  train_data_path=./output/embed/my-run/stage1_data_prep/train_mined.automodel_unrolled.json
+```
+
+Remove `-d` only for an authorized training run. Full 8B fine-tuning requires
+capacity for optimizer state and checkpoint staging as well as model weights.
+With FlashAdamW and 32-bit master weights, budget approximately
+80 GiB per full checkpoint and space for the next save before retention runs.
+The PyTorch 2.10 writer can retain about 47 GiB of optimizer tensor data across
+ranks, in addition to the rest of the workload. Unified-memory systems share
+that capacity with GPU allocations.
+`checkpoint.max_recent_checkpoints=1` limits recent history; pointer-protected
+checkpoints can remain. A configuration preview does not check resource capacity.
+
+After training, check `stage2_finetune/checkpoints/LATEST/model/consolidated/config.json`
+under the reranker root, then evaluate using the original data handoff:
+
+```bash
+uv run nemotron rerank eval -c nemotron-3.5 \
+  artifact_root=./output/rerank/my-run \
+  sdg_input_path=./output/embed/my-run/stage0_sdg/generation_result.json \
+  retrieval_view=mixed
+```
 
 For multimodal evaluation:
 
@@ -56,6 +88,9 @@ For multimodal evaluation:
 These profiles provide the execution path; report the actual completed GPU and
 endpoint checks for each run rather than inferring successful validation from a
 configuration preview.
+
+Optional background is available in the
+[reranker guide at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/rerank/README.md#fine-tune-nemotron-35-rerank-8b-on-image-documents).
 
 ## Default Text-Profile Commands
 
@@ -192,6 +227,8 @@ curl -X POST http://localhost:8000/v1/ranking \
 ```
 
 ## Tests And Checks
+
+Run these only in a prepared source checkout; they are not prerequisites for planning.
 
 ```bash
 uv run nemotron rerank --help

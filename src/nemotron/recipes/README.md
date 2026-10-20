@@ -17,6 +17,8 @@ Recipes are complete training pipelines that take you from raw data to a fully t
 |--------|-------------|--------|
 | [nano3](./nano3/) | Nemotron Nano 3 (31.6B total / 3.6B active params) - 3-stage training pipeline | Available |
 | [evaluator](./evaluator/) | Pre-built evaluation configs for Nemotron models using NeMo Evaluator | Available |
+| [embed](../../../docs/nemotron/embed/index.md) | Text and multimodal embedding adaptation, evaluation, and deployment | Available |
+| [rerank](../../../docs/nemotron/rerank/index.md) | Text and multimodal reranker adaptation, evaluation, and deployment | Available |
 | chipnemo | ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation) | Planned |
 
 ## Prerequisites (v0)

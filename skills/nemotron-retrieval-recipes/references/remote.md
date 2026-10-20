@@ -4,7 +4,7 @@ Load this reference when the user mentions clusters, Slurm, `env.toml`, `--run`,
 
 ## Profile Checks
 
-- Inspect the repo root `env.toml` before composing remote commands.
+- Inspect the selected execution environment's `env.toml` before composing remote commands. In a source checkout, it normally lives at the repository root. A copied skill does not provide an execution profile.
 - Confirm the requested profile exists and matches the intended executor.
 - Keep credential values in the remote environment and out of chat. Ask only whether the required credentials are configured.
 - Start with the same local help or dry-run command before adding `--run` or `--batch`.

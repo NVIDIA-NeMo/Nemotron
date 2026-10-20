@@ -1,6 +1,8 @@
-# Embedding Model Fine-Tuning Recipe
+# Fine-Tune Text Embeddings
 
-Adapt an embedding model to your domain-specific data, then evaluate and deploy it with this complete six-stage pipeline.
+Adapt a Nemotron 3 or Llama Nemotron text embedding model to your domain, then
+evaluate and deploy it. For all supported profiles, refer to
+[Embedding Fine-Tuning](index.md).
 
 ## Choose a Model Profile
 
@@ -1087,11 +1089,3 @@ For issues, questions, or contributions:
 - **Issues**: [GitHub Issues](https://github.com/NVIDIA-NeMo/Nemotron/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/NVIDIA-NeMo/Nemotron/discussions)
 - **Documentation**: [Nemotron Documentation](https://docs.nvidia.com/nemotron/latest)
-
-```{toctree}
-:hidden:
-
-multimodal
-data-reference
-sdg-reference
-```

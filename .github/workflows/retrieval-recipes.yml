@@ -15,6 +15,7 @@ on:
       - "src/nemotron/cli/commands/rerank/**"
       - "tests/recipes/**"
       - "scripts/retrieval/**"
+      - "skills/nemotron-retrieval-recipes/**"
       - "pyproject.toml"
   push:
     branches: [main]
@@ -28,6 +29,7 @@ on:
       - "src/nemotron/cli/commands/rerank/**"
       - "tests/recipes/**"
       - "scripts/retrieval/**"
+      - "skills/nemotron-retrieval-recipes/**"
       - "pyproject.toml"
   workflow_dispatch:
 

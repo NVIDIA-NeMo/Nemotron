@@ -3,12 +3,12 @@
   "evals": [
     {
       "id": "nemotron-retrieval-recipes-multimodal-input-plan-001",
-      "prompt": "I want to adapt Nemotron 3.5 Embed to a folder containing Markdown, PNGs, and raw PDFs. Some images belong with specific text passages. An older text recipe uses corpus_dir. How should I prepare the inputs and preview the pipeline before spending GPU time?",
+      "prompt": "I'm planning from another project and do not have a Nemotron checkout or CLI installed yet. I want to adapt Nemotron 3.5 Embed to a folder containing Markdown, PNGs, and raw PDFs. Some images belong with specific text passages. An older text recipe uses corpus_dir. How should I prepare the inputs, and what preview should I run after installation before spending GPU time?",
       "expected_skill": "nemotron-retrieval-recipes",
       "expected_script": null,
-      "expected_output": "Select embed -c nemotron-3.5 and verify current info/help/configs. Use source_directory.path for independent text and supported static images, but sources_file for explicit text/image pairs; set exactly one input mode. Extract or render PDFs first. Preserve mixed retrieval, use one artifact root outside the source directory, and preview SDG through eval with stage-prefixed overrides. Enable eval.eval_base=true for a base comparison. Explain that previews do not validate content, endpoint access, or GPU memory, and that multimodal prep/training/eval require local execution.",
+      "expected_output": "Provide a plan from bundled guidance without requiring a checkout, local repository docs, or CLI installation to answer. Select embed -c nemotron-3.5 and explain that current info/help/configs must be verified after installation, before execution. Use source_directory.path for independent text and supported static images, but sources_file for explicit text/image pairs; set exactly one input mode. Extract or render PDFs first. Preserve mixed retrieval, use one artifact root outside the source directory, and provide a future SDG-through-eval preview with stage-prefixed overrides. Enable eval.eval_base=true for a base comparison. Explain that previews do not validate content, endpoint access, or GPU memory, and that multimodal prep/training/eval require local execution.",
       "assertions": [
-        "Chooses the Nemotron 3.5 profile and current checkout guidance instead of copying the older corpus_dir contract",
+        "Provides a useful Nemotron 3.5 plan without blocking on absent repository docs or runtime, and defers CLI verification until installation",
         "Distinguishes directory discovery from explicit paired source records and requires PDF preprocessing",
         "Preserves one artifact root outside the input, mixed retrieval, and an explicit base comparison",
         "Provides a pipeline dry-run with stage-prefixed input overrides, explains its limits, and does not launch API or GPU work"

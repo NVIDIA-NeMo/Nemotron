@@ -20,7 +20,10 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 
 ## Grounding Paths
 
-- Recipe README: `src/nemotron/recipes/embed/README.md`
+These paths describe the execution checkout, not files bundled with this skill.
+Planning uses the guidance below without a checkout. Run CLI checks from the
+checkout root when preparing to execute.
+
 - CLI group: `src/nemotron/cli/commands/embed/_typer_group.py`
 - Pipeline command: `src/nemotron/cli/commands/embed/run.py`
 - Stage configs: `src/nemotron/recipes/embed/stage*/config/{nemotron-3,llama,nemotron-3.5}.yaml`
@@ -29,9 +32,9 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 ## Nemotron 3.5 Multimodal Workflow
 
 Use `-c nemotron-3.5` for `nvidia/Nemotron-3.5-Embed-1B-BF16`, with text queries
-over text, images, or paired documents. Start from
-`docs/nemotron/embed/multimodal.md`; use `data-reference.md` for the source and
-bundle contracts and `sdg-reference.md` for model roles and producer settings.
+over text, images, or paired documents. Use the bundled
+[multimodal data reference](multimodal-data.md) for source and bundle contracts,
+model roles, and producer settings.
 The commands and tables in the remaining sections describe the text profiles.
 For a Nemotron 3.5 task, read this workflow and recovery section; load the text
 sections only when comparing profiles.
@@ -100,7 +103,18 @@ uv run nemotron embed run -c nemotron-3.5 -d --from sdg --to eval \
 
 Pipeline previews show stage order and overrides. Stage previews resolve
 configuration; neither validates content, endpoint access, or GPU memory.
-Follow the walkthrough's two-step settings for a bounded execution check.
+For an authorized execution check after preparation, run two optimizer steps:
+
+```bash
+uv run nemotron embed finetune -c nemotron-3.5 artifact_root=./output/embed/my-run \
+  num_epochs=null max_steps=2 global_batch_size=2 local_batch_size=1 \
+  train_n_passages=2 lr_warmup_steps=0
+```
+
+This requires one mined negative per positive and checks execution, not
+convergence. Keep SDPA and the profile's optimizer. Check disk and host memory
+before saving. `checkpoint.max_recent_checkpoints=1` limits recent history;
+checkpoints protected by pointers such as `LATEST` or `LOWEST_VAL` can remain.
 
 Verify `stage0_sdg/generation_result.json`, prepared directory records under
 `stage0_sdg/multimodal/inputs/sources.jsonl`, mined/unrolled Stage 1 JSON, the
@@ -108,8 +122,11 @@ Stage 2 `LATEST/model/consolidated/config.json`, and Stage 3 `eval_results.json`
 Portable evaluation resolves data through the Stage 0 manifest, not the legacy
 `stage1_data_prep/eval_beir` directory. Retain the complete bundle and its assets.
 Normal handoffs check schema, view, required inputs, safe paths, and manifest
-identity. For a full hash, content, and split audit, follow **Validate an Export**
-in `docs/nemotron/embed/data-reference.md`; downstream stages do not repeat it.
+identity. For a full hash, content, and split audit, use the bundled
+[export audit](multimodal-data.md#audit-an-export); downstream stages do not repeat it.
+
+For optional background, refer to the
+[walkthrough at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/embed/multimodal.md).
 
 ## Nemotron 3.5 Recovery
 
@@ -322,6 +339,8 @@ mount/fingerprint checks establish which local checkpoint was selected. Set
 gate the run.
 
 ## Tests And Checks
+
+Run these only in a prepared source checkout; they are not prerequisites for planning.
 
 ```bash
 uv run nemotron embed --help

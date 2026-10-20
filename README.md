@@ -178,6 +178,16 @@ Because these are complete systems, you can extract specific techniques with con
 | **[Nemotron 3.5 Lightning](docs/nemotron/lightning35/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE with Multi-Token Prediction | Pretrain → SFT → RL → Quantization | [Training Guide](docs/nemotron/lightning35/README.md) |
 | **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
 
+### Retrieval Fine-Tuning
+
+Adapt embedding and reranking models to your documents, then compare the base
+and fine-tuned checkpoints before deployment. Start with the guides in `docs/`:
+
+| Workflow | Models | Guide |
+| --- | --- | --- |
+| Embedding | Nemotron 3.5 Embed 1B, Nemotron 3 Embed 1B, and Llama Nemotron Embed 1B v2 | [Embedding fine-tuning](docs/nemotron/embed/index.md) |
+| Reranking | Nemotron 3.5 Rerank 8B and Llama Nemotron Rerank 1B v2 | [Reranking fine-tuning](docs/nemotron/rerank/index.md) |
+
 ### Nemotron 3 Ultra
 
 A training recipe for NVIDIA's largest Nemotron 3 model — a 550B-A55B hybrid Mamba-Attention Mixture-of-Experts Transformer with LatentMoE and multi-token prediction (MTP), pretrained in NVFP4 and extended to 1M-token context for datacenter-scale agentic reasoning.
