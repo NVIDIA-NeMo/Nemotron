@@ -9,14 +9,14 @@ NVIDIA <br>
 ### License/Terms of Use: <br>
 Apache 2.0 <br>
 ## Use Case: <br>
-Developers and ML engineers use this skill to plan, run, debug, tune, evaluate, export, and deploy the public Nemotron embedding and reranking retrieval recipes (including Nemotron 3.5 multimodal profiles) from a Nemotron source checkout. <br>
+Developers and ML engineers use this skill to plan, run, debug, tune, evaluate, export, and deploy public Nemotron embedding and reranking recipes, including Nemotron 3.5 multimodal profiles. Planning uses the bundled references without a checkout or network access. Recipe execution requires a prepared Nemotron source checkout. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
 
 ## Requirements / Dependencies: <br>
-**Requires API Key or External Credential:** [Yes] <br>
-**Credential Type(s):** [API key] <br>
+**Requires API Key or External Credential:** Only for stages that use protected services; planning requires none. <br>
+**Credential Type(s):** API key for hosted generation or authenticated model/container access, as required by the selected workflow. <br>
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate. <br>
 
@@ -29,7 +29,8 @@ Mitigation: Review and scan skill before deployment. <br>
 - [Rerank Recipe Reference](references/rerank.md) <br>
 - [Evaluation Reference](references/evaluation.md) <br>
 - [Remote Execution Reference](references/remote.md) <br>
-- [NVIDIA Nemotron Documentation](https://docs.nvidia.com/nemotron/latest/) <br>
+- [Multimodal Data Reference](references/multimodal-data.md) <br>
+- [NVIDIA Nemotron Documentation Snapshot](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/index.md) <br>
 
 
 ## Skill Output: <br>
@@ -66,6 +67,8 @@ Underlying evaluation signals used in this run: <br>
 
 
 ## Evaluation Results: <br>
+These results describe version 0.3.0. Live agent evaluation has not been rerun for the portability changes in version 0.4.0. <br>
+
 | Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
 |---|---:|---:|
 | Overall | 91.9% (uplift unavailable) | 94.8% (uplift unavailable) |
@@ -76,7 +79,7 @@ Underlying evaluation signals used in this run: <br>
 | Efficiency | 68.9% (uplift unavailable) | 95.0% (uplift unavailable) |
 
 ## Skill Version(s): <br>
-0.3.0 (source: frontmatter) <br>
+0.4.0 (source: frontmatter) <br>
 
 ## Ethical Considerations: <br>
 NVIDIA believes Trustworthy AI is a shared responsibility and we have established policies and practices to enable development for a wide array of AI applications. When downloaded or used in accordance with our terms of service, developers should work with their internal team to ensure this skill meets requirements for the relevant industry and use case and addresses unforeseen product misuse. <br>
