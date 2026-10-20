@@ -1,8 +1,7 @@
 # Multimodal Data and Generation
 
 Read this reference for Nemotron 3.5 source selection, model roles, bundle
-handoffs, or export validation. Use [embedding](embed.md) or [reranking](rerank.md)
-for training and evaluation. The procedures here do not require repository docs.
+handoffs, or export validation. The procedures here do not require repository docs.
 
 ## Choose the Source Input
 

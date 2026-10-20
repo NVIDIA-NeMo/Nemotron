@@ -33,9 +33,9 @@ Use reranker fine-tuning when relevant documents are already in the candidate se
 ## Nemotron 3.5 Workflow
 
 For `nvidia/Nemotron-3.5-Rerank-8B-BF16`, use `nemotron-3.5` with `finetune`,
-`eval`, and `deploy`. Read the bundled [multimodal data reference](multimodal-data.md)
-when preparing inputs. Use the Nemotron 3.5 [embedding](embed.md) SDG and preparation stages for
-a text/image directory or explicit source records. Supply the mined, unrolled
+`eval`, and `deploy`. The Nemotron 3.5 embedding SDG and preparation stages
+produce the shared inputs from a text/image directory or explicit source records.
+Supply the mined, unrolled
 training data through `train_data_path` and retain the corpus at the relative
 location recorded in that JSON. Select a separate rerank `artifact_root`.
 Carry that root through `finetune`, `eval`, and `deploy`. It defaults to

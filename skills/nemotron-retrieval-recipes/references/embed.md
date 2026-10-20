@@ -32,9 +32,7 @@ checkout root when preparing to execute.
 ## Nemotron 3.5 Multimodal Workflow
 
 Use `-c nemotron-3.5` for `nvidia/Nemotron-3.5-Embed-1B-BF16`, with text queries
-over text, images, or paired documents. Use the bundled
-[multimodal data reference](multimodal-data.md) for source and bundle contracts,
-model roles, and producer settings.
+over text, images, or paired documents.
 The commands and tables in the remaining sections describe the text profiles.
 For a Nemotron 3.5 task, read this workflow and recovery section; load the text
 sections only when comparing profiles.
@@ -122,8 +120,8 @@ Stage 2 `LATEST/model/consolidated/config.json`, and Stage 3 `eval_results.json`
 Portable evaluation resolves data through the Stage 0 manifest, not the legacy
 `stage1_data_prep/eval_beir` directory. Retain the complete bundle and its assets.
 Normal handoffs check schema, view, required inputs, safe paths, and manifest
-identity. For a full hash, content, and split audit, use the bundled
-[export audit](multimodal-data.md#audit-an-export); downstream stages do not repeat it.
+identity. A full export audit additionally checks hashes, content, and query
+splits; downstream stages do not repeat that audit.
 
 For optional background, refer to the
 [walkthrough at the supported revision](https://github.com/NVIDIA-NeMo/Nemotron/blob/e68db1595a9f078a3fb48f8216fa0481d1c862a2/docs/nemotron/embed/multimodal.md).

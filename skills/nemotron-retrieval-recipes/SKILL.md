@@ -74,17 +74,18 @@ Gather only what the requested task needs:
 1. Identify the recipe family.
    - Use `references/embed.md` for embedding, embed, bi-encoder, vector search, first-stage retrieval, low Recall@k, missing relevant documents, NIM embeddings, or `nemotron embed`.
    - Use `references/rerank.md` for rerank, reranker, cross-encoder, second-stage retrieval, acceptable recall but poor top-rank ordering, low nDCG with good Recall, or `nemotron rerank`.
-   - Use both references only when the user asks about both families or asks which family to choose.
+   - Use both references when comparing families or planning work that spans both families.
 2. Choose the model profile within the selected family.
    - For embed, use `-c nemotron-3` for Nemotron 3 Embed, `-c llama` for Llama Nemotron Embed, or `-c nemotron-3.5` for Nemotron 3.5 Embed with text, images, or paired documents.
    - For rerank, use `-c default` for Llama Nemotron Rerank or `-c nemotron-3.5` for Nemotron 3.5 Rerank.
+   - For Nemotron 3.5 reranking from raw documents, also load the embedding reference's multimodal workflow: embedding SDG and preparation produce the shared training inputs. With prepared inputs, start from the rerank reference's handoff.
    - When the CLI is available, run `nemotron <family> info` if model identity is unclear. Read the selected profile's section in the family reference before composing commands.
    - Carry the selected profile and `artifact_root` through every stage; never combine artifacts from different profiles.
 3. Choose the model family to tune from the retrieval failure mode.
    - Prefer embedding fine-tuning when relevant documents are absent from the candidate set.
    - Prefer reranker fine-tuning when relevant documents are retrieved but ordered poorly near the top.
    - For production retrieval stacks, remember that these are complementary: embed first, rerank candidates second.
-4. Identify the intent: plan a run, execute a stage, debug a failure, tune hyperparameters, interpret metrics, export/deploy a model, inspect configs, or propose dotlist overrides.
+4. Identify the intent: plan a run, execute a stage, debug a failure, tune hyperparameters, interpret metrics, export/deploy a model, inspect configs, or propose dotlist overrides. Select any additional references below for that task before composing commands.
 5. Before execution, inspect CLI help and dry runs. When a matching checkout is available, use these optional implementation locations for debugging:
    - Recipe files: `src/nemotron/recipes/<embed|rerank>/`
    - CLI files: `src/nemotron/cli/commands/<embed|rerank>/`
@@ -127,11 +128,14 @@ recovery guidance before rerunning or replacing artifacts.
 
 ## References
 
+Select only the guidance needed for the chosen profile and stage. All bundled
+references are linked here; the individual guides contain procedures and contracts.
+
 - [Embedding reference](references/embed.md): read for embedding tasks; choose its Nemotron 3.5 or text-profile section for stage contracts, commands, and recovery.
 - [Rerank reference](references/rerank.md): read for reranking tasks; choose its Nemotron 3.5 or default text-profile section for data handoffs and deployment.
 - [Evaluation reference](references/evaluation.md): read when interpreting metrics, comparing checkpoints or endpoints, or assessing deployment readiness.
 - [Remote reference](references/remote.md): read when scheduling supported profiles, selecting GPUs, finding logs, or managing long-running jobs.
-- [Multimodal data reference](references/multimodal-data.md): read for source records, generator/judge settings, bundle validation, or missing artifacts.
+- [Multimodal data reference](references/multimodal-data.md): read for Nemotron 3.5 source records, generator/judge settings, bundle handoffs, or missing artifacts. For full hash, content, and split validation, use its [export audit procedure](references/multimodal-data.md#audit-an-export); normal stage handoffs do not repeat that audit.
 
 ## Examples
 
