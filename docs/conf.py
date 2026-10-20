@@ -126,9 +126,6 @@ if os.environ.get("CI", False):
     ]
 
 redirects = {
-    # Text guides renamed to distinguish them from the landing pages.
-    "nemotron/embed/README": "text.html",
-    "nemotron/rerank/README": "text.html",
     # Usage cookbook → deployment guides summary
     "usage-cookbook/README": "../deployment-guides.html",
     "usage-cookbook/Nemotron-Nano2-VL/README": "../../deployment-guides.html",
