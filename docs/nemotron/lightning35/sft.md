@@ -2,7 +2,7 @@
 
 This stage fine-tunes the pretrained model for instruction following using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge).
 
-> **Open-Source Data Only**: This recipe uses exclusively open-sourced SFT data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe includes datasets from Nemotron-Instruction-Following-Chat-v1, Nemotron-Math-Proofs-v1, Nemotron-SWE-v1, Nemotron-Agentic-v1, and Nemotron-Competitive-Programming-v1 (see [Recipe Data Blend](#recipe-data-blend)). Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
+> **Open-Source Data Only**: This recipe uses exclusively open-sourced SFT data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-datasets) collection, which is a subset of the full data used to train the released model. The recipe includes datasets from Nemotron-Instruction-Following-Chat-v1, Nemotron-Math-Proofs-v1, Nemotron-SWE-v1, Nemotron-Agentic-v1, and Nemotron-Competitive-Programming-v1 (see [Recipe Data Blend](#recipe-data-blend)). Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
 
 ---
 

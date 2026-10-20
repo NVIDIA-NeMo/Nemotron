@@ -96,7 +96,7 @@ $ uv run nemotron lightning35 pipe --run YOUR-CLUSTER
 - **Model Collection:** [NVIDIA Nemotron v3 Collection](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3)
 - **Training Datasets:**
   - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)
-  - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) (SFT and RL data)
+  - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-datasets) (SFT and RL data)
 - **[Workstation Customization](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/README.md):**
   - [LoRA on one DGX Station GB300 system](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/lora.md)
   - [Full-weight SFT on two DGX Station GB300 systems](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/sft.md)
