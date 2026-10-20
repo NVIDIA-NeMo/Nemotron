@@ -16,7 +16,7 @@ generation and multimodal generation use different source formats.
 | `nemotron-3.5` | `multimodal` | `source_directory.path`: local text/image directory, or `sources_file`: explicit source JSONL | Portable retrieval bundle with queries, relevance labels, and text/image views |
 
 Text QA still scans and sentence-chunks text files through the producer's
-package-root API. Follow the [text recipe](README.md) for that path.
+package-root API. Follow the [Nemotron 3 and Llama workflows](text.md) for that path.
 
 For multimodal generation, set exactly one of `source_directory.path` or
 `sources_file`. Use directory input for independent text and image files. Use

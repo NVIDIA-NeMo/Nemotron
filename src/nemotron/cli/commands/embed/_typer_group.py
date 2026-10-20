@@ -79,7 +79,7 @@ def info() -> None:
     console.print("  - llama: nvidia/llama-nemotron-embed-1b-v2 (export path)")
     console.print()
     console.print("  Multimodal: run sdg through eval, then deploy separately with vLLM.")
-    console.print("  Guides: docs/nemotron/embed/README.md")
+    console.print("  Guides: docs/nemotron/embed/index.md")
 
 
 # Register stage commands

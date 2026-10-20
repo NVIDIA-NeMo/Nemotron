@@ -1,4 +1,4 @@
-# Fine-Tune Text Embeddings
+# Fine-Tune Nemotron 3 and Llama Embeddings
 
 Adapt a Nemotron 3 or Llama Nemotron text embedding model to your domain, then
 evaluate and deploy it. For all supported profiles, refer to
