@@ -75,17 +75,38 @@ def run(command: list[str], log: Path, gpu: str) -> None:
         subprocess.run(command, cwd=ROOT, env=environment, stdout=stream, stderr=subprocess.STDOUT, check=True)
 
 
+def check_training_update(checkpoint: Path, expected: int) -> dict:
+    """Require finite metrics for the update recorded by this checkpoint."""
+    metrics_path = checkpoint / "training.jsonl"
+    update = None
+    for line in metrics_path.read_text().splitlines():
+        row = json.loads(line)
+        if type(row.get("step")) is int and row["step"] == expected - 1:
+            update = row
+    if update is None:
+        raise ValueError(f"Missing completed update {expected - 1} in {metrics_path}")
+    for name in ("loss", "grad_norm", "lr"):
+        value = update.get(name)
+        if type(value) not in (int, float) or not math.isfinite(value):
+            raise ValueError(f"Missing or nonfinite {name} for update {expected - 1} in {metrics_path}")
+    if update["lr"] <= 0:
+        raise ValueError(f"Nonpositive learning rate for update {expected - 1} in {metrics_path}")
+    return update
+
+
 def checkpoint_command(stage: str, checkpoint: Path, expected: int, result: Path) -> list[str]:
-    code = """import json, pathlib, sys, torch
+    code = """import json, pathlib, runpy, sys, torch
 root, expected, output = pathlib.Path(sys.argv[1]), int(sys.argv[2]), pathlib.Path(sys.argv[3])
 latest = (root / 'LATEST').resolve(strict=True)
 state = torch.load(latest / 'step_scheduler.pt', map_location='cpu', weights_only=True)
 assert state['step'] == expected, state
 assert (latest / 'model/consolidated/config.json').is_file(), latest
 assert any((latest / 'optim').rglob('*.distcp')), 'Full optimizer checkpoint missing'
-output.write_text(json.dumps({'checkpoint': str(latest), 'step': state['step']}, indent=2) + '\\n')
+update = runpy.run_path(sys.argv[4])['check_training_update'](root, expected)
+evidence = {'checkpoint': str(latest), 'step': state['step'], 'training_update': update}
+output.write_text(json.dumps(evidence, indent=2) + '\\n')
 """
-    return uv_command(stage, "-c", code, str(checkpoint), str(expected), str(result))
+    return uv_command(stage, "-c", code, str(checkpoint), str(expected), str(result), str(Path(__file__).resolve()))
 
 
 def check_metrics(path: Path, names: tuple[str, ...]) -> None:

@@ -6,6 +6,7 @@
 import importlib.util
 import json
 import math
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -121,6 +122,70 @@ def test_metric_check_requires_each_requested_backend(tmp_path):
     path.write_text("{}")
     with pytest.raises(KeyError):
         _module("smoke").check_metrics(path, ("finetuned", "vllm"))
+
+
+def _training_metrics(path, *rows):
+    (path / "training.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+
+def test_training_update_uses_expected_zero_indexed_step_and_retains_evidence(tmp_path):
+    update = {"step": 3, "epoch": 1, "loss": 0.0, "grad_norm": 0.0, "lr": 2e-8}
+    _training_metrics(tmp_path, {"step": 1, "loss": math.nan}, update)
+    assert _module("smoke").check_training_update(tmp_path, 4) == update
+
+
+def test_training_update_rejects_missing_expected_update(tmp_path):
+    _training_metrics(tmp_path, {"step": 0, "loss": 0.1, "grad_norm": 0.01, "lr": 2e-6})
+    with pytest.raises(ValueError, match="Missing completed update 1"):
+        _module("smoke").check_training_update(tmp_path, 2)
+
+
+@pytest.mark.parametrize("field", ["loss", "grad_norm", "lr"])
+@pytest.mark.parametrize("value", [None, math.nan, math.inf, -math.inf, True, "0.1"])
+def test_training_update_rejects_missing_nonfinite_or_nonnumeric_metrics(tmp_path, field, value):
+    update = {"step": 0, "loss": 0.1, "grad_norm": 0.01, "lr": 2e-6}
+    if value is None:
+        del update[field]
+    else:
+        update[field] = value
+    _training_metrics(tmp_path, update)
+    with pytest.raises(ValueError, match=f"Missing or nonfinite {field}"):
+        _module("smoke").check_training_update(tmp_path, 1)
+
+
+@pytest.mark.parametrize("lr", [0.0, -2e-6])
+def test_training_update_rejects_nonpositive_learning_rate(tmp_path, lr):
+    _training_metrics(tmp_path, {"step": 1, "loss": 0.1, "grad_norm": 0.01, "lr": lr})
+    with pytest.raises(ValueError, match="Nonpositive learning rate"):
+        _module("smoke").check_training_update(tmp_path, 2)
+
+
+def test_training_update_does_not_accept_stale_finite_duplicate(tmp_path):
+    update = {"step": 1, "loss": 0.1, "grad_norm": 0.01, "lr": 2e-6}
+    _training_metrics(tmp_path, update, {**update, "loss": math.nan})
+    with pytest.raises(ValueError, match="Missing or nonfinite loss"):
+        _module("smoke").check_training_update(tmp_path, 2)
+
+
+def test_checkpoint_probe_includes_validated_training_update_in_evidence(tmp_path, monkeypatch):
+    latest = tmp_path / "epoch_1_step_1"
+    (latest / "model/consolidated").mkdir(parents=True)
+    (latest / "model/consolidated/config.json").write_text("{}")
+    (latest / "optim").mkdir()
+    (latest / "optim/rank0.distcp").touch()
+    (tmp_path / "LATEST").symlink_to(latest.name)
+    update = {"step": 1, "loss": 0.0, "grad_norm": 1.7e-9, "lr": 2e-8}
+    _training_metrics(tmp_path, update)
+    result = tmp_path / "checked.json"
+    command = _module("smoke").checkpoint_command("embed/stage2_finetune", tmp_path, 2, result)
+    code_index = command.index("-c") + 1
+    monkeypatch.setattr("sys.argv", ["-c", *command[code_index + 1 :]])
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(load=lambda *args, **kwargs: {"step": 2}))
+
+    exec(command[code_index], {"__name__": "__main__"})
+
+    evidence = json.loads(result.read_text())
+    assert evidence == {"checkpoint": str(latest), "step": 2, "training_update": update}
 
 
 @pytest.mark.parametrize("hook", ["pytest_collectreport", "pytest_runtest_logreport"])

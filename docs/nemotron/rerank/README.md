@@ -257,6 +257,8 @@ Allow host memory for checkpoint saving as well as GPU memory for training.
 The default PyTorch 2.10 writer can retain about 47 GiB of this optimizer's
 tensor data across the training ranks, plus allocator overhead and the rest of
 the workload. Check available host memory and monitor the first checkpoint save.
+On systems with unified memory, GPU allocations and checkpoint staging share
+the same memory pool. Reserve capacity for both, plus runtime overhead.
 
 Before loading weights, training reports available disk space and host RAM,
 checkpoint size, and estimated space needed through the next save. For the

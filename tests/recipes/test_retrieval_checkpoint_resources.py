@@ -102,6 +102,26 @@ def test_unknown_model_does_not_inherit_default_model_estimates(tmp_path: Path, 
     assert "Estimated full checkpoint" not in output
 
 
+def test_estimate_accepts_automodel_serialized_optimizer_target(tmp_path: Path, monkeypatch, capsys) -> None:
+    # Captured from the pinned ConfigNode.to_yaml_dict(); the native integration
+    # test verifies this representation against the optional model runtime.
+    optimizer = {**FLASH, "_target_": "flashoptim.optimizers.FlashAdamW"}
+    monkeypatch.setattr(checkpoint.shutil, "disk_usage", lambda path: SimpleNamespace(free=200 * GIB))
+    monkeypatch.setattr(checkpoint, "_available_host_memory", lambda: 128 * GIB)
+
+    checkpoint.report_checkpoint_resources(
+        tmp_path,
+        base_model="nvidia/Nemotron-3.5-Rerank-8B-BF16",
+        model_revision="39aa01525864f736e63f1d5742fc4cf59e754abd",
+        optimizer_config=optimizer,
+    )
+
+    output = capsys.readouterr().out
+    assert "full checkpoint with consolidated export: 78.1 GiB" in output
+    assert "46.8 GiB of optimizer tensors" in output
+    assert "Checkpoint estimate unavailable" not in output
+
+
 def test_cgroup_limit_bounds_available_host_memory(monkeypatch) -> None:
     files = {
         "/proc/meminfo": "MemTotal: 262144000 kB\nMemAvailable: 104857600 kB\n",
@@ -138,6 +158,7 @@ def test_cgroup_limit_bounds_available_host_memory(monkeypatch) -> None:
             12 * GIB,
         ),
         ({**FLASH, "compress_state_dict": True}, None),
+        ({**FLASH, "_target_": "custom.optimizers.FlashAdamW"}, None),
     ],
 )
 def test_optimizer_estimate_tracks_actual_serialization(optimizer: dict, expected: int | None) -> None:

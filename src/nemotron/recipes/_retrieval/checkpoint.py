@@ -96,7 +96,9 @@ def _optimizer_bytes(model_bytes: int, config: Mapping[str, Any]) -> int | None:
     """Estimate tensor state for the optimizers configured by these recipes."""
     target = str(config.get("_target_", ""))
     parameters = model_bytes // 2
-    if target == "flashoptim.FlashAdamW" and config.get("compress_state_dict") is False:
+    # ConfigNode resolves the public re-export, then serializes its defining module.
+    flash_adamw = target in ("flashoptim.FlashAdamW", "flashoptim.optimizers.FlashAdamW")
+    if flash_adamw and config.get("compress_state_dict") is False:
         # Quantized moments are dequantized to FP32 for uncompressed saves.
         # Unquantized moments retain the BF16 parameter dtype.
         moment_bytes = 8 if config.get("quantize", True) else 4

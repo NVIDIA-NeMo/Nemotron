@@ -1,6 +1,6 @@
 # Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
 
-"""Exercise plugin-shaped Parquet through the optional native AutoModel dataset."""
+"""Exercise data and configuration integration with the optional native AutoModel runtime."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import pickle
 from dataclasses import fields
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image, UnidentifiedImageError
@@ -129,3 +130,35 @@ def test_image_view_uses_native_colpali_corpus(tmp_path, adapter):
     row = config_class(data_dir_list=str(path), n_passages=1).build()[0]
     assert row["doc_text"] == [""]
     assert row["doc_image"][0].getpixel((0, 0)) == (255, 0, 0)
+
+
+def test_checkpoint_estimate_uses_real_automodel_serialized_optimizer(tmp_path, monkeypatch, capsys):
+    pytest.importorskip("flashoptim")
+    loader = pytest.importorskip("nemo_automodel.components.config.loader")
+    from nemotron.recipes._retrieval import checkpoint
+
+    optimizer = loader.ConfigNode(
+        {
+            "optimizer": {
+                "_target_": "flashoptim.FlashAdamW",
+                "compress_state_dict": False,
+                "quantize": False,
+                "master_weight_bits": 32,
+            }
+        }
+    ).optimizer.to_yaml_dict()
+    gib = 1024**3
+    monkeypatch.setattr(checkpoint.shutil, "disk_usage", lambda path: SimpleNamespace(free=200 * gib))
+    monkeypatch.setattr(checkpoint, "_available_host_memory", lambda: 128 * gib)
+
+    checkpoint.report_checkpoint_resources(
+        tmp_path,
+        base_model="nvidia/Nemotron-3.5-Rerank-8B-BF16",
+        model_revision="39aa01525864f736e63f1d5742fc4cf59e754abd",
+        optimizer_config=optimizer,
+    )
+
+    output = capsys.readouterr().out
+    assert "full checkpoint with consolidated export: 78.1 GiB" in output
+    assert "46.8 GiB of optimizer tensors" in output
+    assert "Checkpoint estimate unavailable" not in output
