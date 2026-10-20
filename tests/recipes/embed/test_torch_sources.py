@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import tomllib
+from packaging.markers import Marker
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EMBED_DIR = REPO_ROOT / "src" / "nemotron" / "recipes" / "embed"
@@ -16,17 +18,30 @@ TORCH_STAGE_NAMES = [
 ]
 
 
-def test_embed_torch_stages_pin_compatible_linux_cuda_indexes() -> None:
-    expected_source = {"index": "pytorch-cu129", "marker": "sys_platform == 'linux'"}
+@pytest.mark.parametrize("platform", ["linux", "win32", "darwin"])
+def test_embed_torch_stages_select_compatible_platform_indexes(platform: str) -> None:
     for stage_name in TORCH_STAGE_NAMES:
         data = tomllib.loads((EMBED_DIR / stage_name / "pyproject.toml").read_text())
+        indexes = {entry["name"]: entry for entry in data["tool"]["uv"]["index"]}
         for package in ("torch", "torchvision"):
             sources = data["tool"]["uv"]["sources"][package]
             if isinstance(sources, dict):
                 sources = [sources]
-            assert sources == [expected_source]
-        indexes = {entry["name"]: entry["url"] for entry in data["tool"]["uv"]["index"]}
-        assert indexes["pytorch-cu129"] == "https://download.pytorch.org/whl/cu129"
+            selected = [
+                source["index"]
+                for source in sources
+                if "marker" not in source or Marker(source["marker"]).evaluate({"sys_platform": platform})
+            ]
+            expected = []
+            if platform == "linux":
+                expected = ["pytorch-cu129"]
+            elif platform == "win32" and stage_name == "stage2_finetune" and package == "torch":
+                expected = ["pytorch-cpu"]
+            assert selected == expected, (stage_name, package, platform)
+            for index in selected:
+                backend = "cpu" if index == "pytorch-cpu" else "cu129"
+                assert indexes[index]["url"] == f"https://download.pytorch.org/whl/{backend}"
+                assert indexes[index]["explicit"] is True
 
 
 def test_embed_export_lock_pins_linux_torchvision_to_cu129() -> None:

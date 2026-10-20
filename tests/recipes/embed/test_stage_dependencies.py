@@ -31,8 +31,6 @@ def test_model_dependencies_are_stage_local_exclusive_extras(stage: str) -> None
     if isinstance(model_sources, dict):
         model_sources = [model_sources]
     assert all(source["url"] == AUTOMODEL_URL for source in model_sources)
-    assert sources["torch"]["index"] == sources["torchvision"]["index"] == "pytorch-cu129"
-    assert config["tool"]["uv"]["index"][0]["explicit"] is True
     assert config["tool"]["nemotron"]["container-extras"] == ["text"]
     if stage == "stage2_finetune":
         assert "wandb>=0.21,<1" in config["project"]["dependencies"]
