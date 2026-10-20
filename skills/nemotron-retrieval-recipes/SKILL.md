@@ -110,7 +110,7 @@ Check only the prerequisites for the requested stage:
    - `uv run nemotron <family> <stage> --help`
    - `uv run nemotron <family> <stage> -c <profile> -d`
    - `uv run nemotron <family> run -c <profile> -d --from <stage> --to <stage>`
-   - `run --help` may omit inherited `-c` and `-d` options even though `run -c <model-profile> -d ...` works; validate by running the dry-run when unsure.
+   - The inherited `-c` and `-d` options work with `run`, even when they are absent from `run --help` output. Confirm with `run -c <model-profile> -d ...` when unsure.
    - In an already prepared checkout, `uv run --no-sync ... --help` or `uv run --no-sync ... -d` can avoid unexpected dependency sync during read-only checks.
 3. Use dotlist overrides instead of editing defaults unless the user asks for reusable config changes. Keep the selected profile, artifact root, sequence length, prefixes, pooling/normalization, prompt templates, and hard-negative counts consistent across stages.
 4. Avoid launching API, GPU, Docker, Slurm, NIM, or long-running jobs unless the user explicitly asked to run them. Offer or run dry-runs, config review, and small pilots first.
