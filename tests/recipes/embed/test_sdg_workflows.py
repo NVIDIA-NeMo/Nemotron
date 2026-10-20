@@ -21,8 +21,8 @@ def test_workflow_profiles_load(selector, tmp_path):
     if selector == "multimodal":
         overrides = [
             f"sources_file={tmp_path / 'sources.jsonl'}",
-            "qa_generation_model=fixture/generator",
-            "quality_judge_model=fixture/judge",
+            "sdg_generator_model=fixture/generator",
+            "sdg_judge_model=fixture/judge",
         ]
     cfg = load_pydantic_config(STAGE_PATH / f"config/{profile}.yaml", overrides, SDGConfig)
     assert cfg.sdg_workflow == selector

@@ -69,6 +69,7 @@ _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 # HuggingFace URI prefix for downloading datasets
 _HF_PREFIX = "hf://"
+_MULTIMODAL_SDG_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
 
 
 class SourceDirectorySettings(BaseModel):
@@ -98,6 +99,23 @@ class SDGConfig(RecipeSettings):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_model_defaults(cls, values: Any) -> Any:
+        """Resolve multimodal roles before validation or CLI config persistence."""
+        if not isinstance(values, dict) or values.get("sdg_workflow") != "multimodal":
+            return values
+        values = dict(values)
+        if values.get("sdg_generator_model") is None:
+            values["sdg_generator_model"] = os.environ.get(
+                "NEMOTRON_3_5_SDG_GENERATOR_MODEL", _MULTIMODAL_SDG_MODEL
+            )
+        if values.get("sdg_judge_model") is None:
+            values["sdg_judge_model"] = os.environ.get(
+                "NEMOTRON_3_5_SDG_JUDGE_MODEL", _MULTIMODAL_SDG_MODEL
+            )
+        return values
 
     artifact_root: Path = Field(
         default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
@@ -136,6 +154,16 @@ class SDGConfig(RecipeSettings):
     sdg_max_units_per_context: int = Field(default=8, ge=1)
     sdg_batch_size: int = Field(default=30, ge=1, le=128)
     sdg_credential_env: str = Field(default="NVIDIA_API_KEY", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    sdg_generator_model: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Multimodal enrichment, summary, and query generator. Defaults to Nemotron 3.5 Super VL.",
+    )
+    sdg_judge_model: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Shared multimodal judge. Defaults to Nemotron 3.5 Super VL.",
+    )
     sdg_options: dict[str, Any] = Field(
         default_factory=dict,
         description=(
@@ -149,7 +177,7 @@ class SDGConfig(RecipeSettings):
     )
     sdg_judge_options: dict[str, Any] = Field(
         default_factory=dict,
-        description="Independent public ModelSettings overrides for the judge. No inline secrets.",
+        description="Public ModelSettings overrides for the shared multimodal judge. No inline secrets.",
     )
     export_train_ratio: float = Field(default=0.8, ge=0, le=1, description="Portable query-group training fraction.")
     export_validation_ratio: float = Field(default=0.0, ge=0, le=1, description="Portable validation fraction.")
@@ -228,9 +256,16 @@ class SDGConfig(RecipeSettings):
                 "Canonical sources and source_directory require sdg_workflow='multimodal'; "
                 "text_qa accepts corpus_dir text files."
             )
-        elif self.sdg_options or self.sdg_generator_options or self.sdg_judge_options:
+        elif (
+            self.sdg_generator_model is not None
+            or self.sdg_judge_model is not None
+            or self.sdg_options
+            or self.sdg_generator_options
+            or self.sdg_judge_options
+        ):
             raise ValueError(
-                "sdg_options, sdg_generator_options, and sdg_judge_options require sdg_workflow='multimodal'"
+                "sdg_generator_model, sdg_judge_model, sdg_options, sdg_generator_options, and sdg_judge_options "
+                "require sdg_workflow='multimodal'"
             )
         return self
 
@@ -263,7 +298,7 @@ class SDGConfig(RecipeSettings):
     artifact_extraction_provider: str = Field(default="nvidia", description="Provider for artifact extraction model.")
     qa_generation_model: str = Field(
         default="nvidia/nemotron-3-ultra-550b-a55b",
-        description="Model for text QA generation or multimodal enrichment, summaries, and query generation.",
+        description="Model name for text QA generation.",
     )
     qa_generation_provider: str = Field(default="nvidia", description="Provider for QA generation model.")
     quality_judge_model: str = Field(

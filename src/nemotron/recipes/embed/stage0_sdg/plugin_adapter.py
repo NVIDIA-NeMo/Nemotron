@@ -52,15 +52,17 @@ def build_multimodal_config(cfg: SDGConfig):
         dataset_id=cfg.corpus_id,
         generator=ModelSettings.model_validate(
             {
-                "model": cfg.qa_generation_model,
+                "model": cfg.sdg_generator_model,
                 "endpoint": endpoint,
                 "credential_env": cfg.sdg_credential_env,
                 **cfg.sdg_generator_options,
             }
         ),
+        # This is the shared fallback; future per-stage judges belong in the
+        # plugin's native `judges` mapping, with routing owned by the plugin.
         judge=ModelSettings.model_validate(
             {
-                "model": cfg.quality_judge_model,
+                "model": cfg.sdg_judge_model,
                 "endpoint": endpoint,
                 "credential_env": cfg.sdg_credential_env,
                 **cfg.sdg_judge_options,

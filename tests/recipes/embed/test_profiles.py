@@ -303,8 +303,8 @@ def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
         assert sdg.sources_file is None
         assert sdg.source_directory.path == Path("/operator/documents")
     assert sdg.sdg_workflow == "multimodal"
-    assert sdg.qa_generation_model == "public/image-generator-model"
-    assert sdg.quality_judge_model == "nvidia/nemotron-3.5-super-vl-120b-a12b"
+    assert sdg.sdg_generator_model == "public/image-generator-model"
+    assert sdg.sdg_judge_model == "nvidia/nemotron-3.5-super-vl-120b-a12b"
     assert sdg.sdg_options["summary_embedding_model"] == "nvidia/nemotron-3-embed-1b"
     assert sdg.sdg_options["summary_embedding_endpoint"] == "https://integrate.api.nvidia.com/v1"
     assert sdg.sdg_options["summary_embedding_credential_env"] == "NVIDIA_API_KEY"

@@ -1,4 +1,4 @@
-"""Tests for embed SDG credential handling."""
+"""Tests for embed SDG model selection and credential handling."""
 
 from __future__ import annotations
 
@@ -8,6 +8,48 @@ import pytest
 from omegaconf import OmegaConf
 
 from nemotron.cli.commands.embed import sdg as sdg_module
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_multimodal_models_are_resolved_before_preview_and_persistence(monkeypatch, tmp_path, dry_run):
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", raising=False)
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", raising=False)
+    monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
+    config = OmegaConf.create({"sdg_workflow": "multimodal", "source_directory": {"path": "documents"}})
+    captured = {}
+    monkeypatch.setattr(sdg_module, "parse_config", lambda *_: config)
+    monkeypatch.setattr(sdg_module, "parse_env", lambda *_: {})
+    monkeypatch.setattr(
+        sdg_module,
+        "build_job_config",
+        lambda train, *_args, **_kwargs: OmegaConf.merge(train, {"run": {"env": {}}}),
+    )
+    monkeypatch.setattr(
+        sdg_module,
+        "display_job_config",
+        lambda job, **_kwargs: captured.update(preview=OmegaConf.to_container(job, resolve=True)),
+    )
+    monkeypatch.setattr(sdg_module, "generate_job_dir", lambda *_: tmp_path)
+    monkeypatch.setattr(sdg_module, "extract_train_config", lambda job, **_kwargs: job)
+    monkeypatch.setattr(sdg_module, "build_env_vars", lambda *_: {})
+    monkeypatch.setattr(sdg_module, "display_job_submission", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        sdg_module,
+        "_execute_uv_local",
+        lambda path, _: captured.update(saved=OmegaConf.to_container(OmegaConf.load(path), resolve=True)),
+    )
+    cfg = SimpleNamespace(
+        ctx=object(), mode="local", argv=[], dry_run=dry_run, passthrough=[], attached=False, force_squash=False
+    )
+    sdg_module._execute_sdg(cfg)
+
+    assert ("saved" in captured) is not dry_run
+    for values in captured.values():
+        assert values["sdg_generator_model"] == values["sdg_judge_model"] == (
+            "nvidia/nemotron-3.5-super-vl-120b-a12b"
+        )
+        assert "qa_generation_model" not in values
+        assert "quality_judge_model" not in values
 
 
 def test_sdg_redacts_nvidia_api_key_from_saved_config_surfaces():

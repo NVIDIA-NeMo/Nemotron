@@ -14,6 +14,51 @@ from pydantic import ValidationError
 from nemotron.recipes.embed.stage0_sdg.data_prep import SDGConfig
 
 
+def test_workflow_defaults_and_multimodal_environment_overrides(monkeypatch):
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", raising=False)
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", raising=False)
+    multimodal = {"sdg_workflow": "multimodal", "source_directory": {"path": "documents"}}
+    default = SDGConfig(**multimodal)
+    assert default.sdg_generator_model == default.sdg_judge_model == "nvidia/nemotron-3.5-super-vl-120b-a12b"
+
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", "operator/generator")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "operator/judge")
+    configured = SDGConfig(**multimodal)
+    assert configured.sdg_generator_model == "operator/generator"
+    assert configured.sdg_judge_model == "operator/judge"
+    text = SDGConfig()
+    assert text.sdg_generator_model is text.sdg_judge_model is None
+    assert text.qa_generation_model == text.quality_judge_model == "nvidia/nemotron-3-ultra-550b-a55b"
+
+    explicit = SDGConfig(**multimodal, sdg_generator_model="custom/generator", sdg_judge_model="custom/judge")
+    assert explicit.sdg_generator_model == "custom/generator"
+    assert explicit.sdg_judge_model == "custom/judge"
+    # Saved configurations retain their selected models when the environment changes.
+    restored = SDGConfig.model_validate_json(default.model_dump_json())
+    assert restored.sdg_generator_model == restored.sdg_judge_model == default.sdg_judge_model
+
+
+def test_text_model_settings_do_not_select_multimodal_models(monkeypatch):
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", "operator/generator")
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", "operator/judge")
+    cfg = SDGConfig(
+        sdg_workflow="multimodal",
+        sources_file="sources.jsonl",
+        qa_generation_model="custom/text-generator",
+        quality_judge_model="custom/text-judge",
+    )
+    assert cfg.sdg_generator_model == "operator/generator"
+    assert cfg.sdg_judge_model == "operator/judge"
+    assert cfg.qa_generation_model == "custom/text-generator"
+    assert cfg.quality_judge_model == "custom/text-judge"
+
+
+@pytest.mark.parametrize("field", ["sdg_generator_model", "sdg_judge_model"])
+def test_multimodal_model_fields_are_rejected_for_text_qa(field):
+    with pytest.raises(ValidationError, match="require sdg_workflow='multimodal'"):
+        SDGConfig(**{field: "custom/model"})
+
+
 @pytest.mark.parametrize(
     "inputs",
     [{}, {"sources_file": "sources.jsonl", "source_directory": {"path": "documents"}}],

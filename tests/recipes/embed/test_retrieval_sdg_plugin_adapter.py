@@ -61,6 +61,8 @@ def test_generation_fields_have_explicit_ownership() -> None:
         "sdg_batch_size",
         "sdg_credential_env",
         "sdg_options",
+        "sdg_generator_model",
+        "sdg_judge_model",
         "sdg_generator_options",
         "sdg_judge_options",
         "artifact_root",
