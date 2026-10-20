@@ -6,7 +6,8 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 
 - Grounding Paths
 - When To Use Rerank
-- Commands
+- Nemotron 3.5 Workflow
+- Default Text-Profile Commands
 - Stage Map
 - Stage Contracts
 - Important Defaults
@@ -26,14 +27,14 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 
 Use reranker fine-tuning when relevant documents are already in the candidate set but the top ranks are wrong, nDCG@k is low while Recall@k is acceptable, or users say the right answer appears below worse answers. A reranker re-scores query-document pairs; it cannot recover documents that first-stage retrieval did not return.
 
-## Commands
+## Nemotron 3.5 Workflow
 
-The `default` profile below runs the Llama reranker workflow. For
-`nvidia/Nemotron-3.5-Rerank-8B-BF16`, use `nemotron-3.5` with `finetune`,
+For `nvidia/Nemotron-3.5-Rerank-8B-BF16`, use `nemotron-3.5` with `finetune`,
 `eval`, and `deploy`. Read the multimodal section of the recipe README before
 preparing inputs. Use the Nemotron 3.5 embedding SDG and preparation stages for
 a text/image directory or explicit source records. Supply the mined, unrolled
-training data and its corpus root, and select a separate rerank `artifact_root`.
+training data through `train_data_path` and retain the corpus at the relative
+location recorded in that JSON. Select a separate rerank `artifact_root`.
 Carry that root through `finetune`, `eval`, and `deploy`. It defaults to
 `output/rerank/nemotron-3.5` and derives the Stage 2 checkpoint, Stage 3 output,
 and Stage 5 model paths. Input paths remain explicit. Per-stage
@@ -55,6 +56,11 @@ For multimodal evaluation:
 These profiles provide the execution path; report the actual completed GPU and
 endpoint checks for each run rather than inferring successful validation from a
 configuration preview.
+
+## Default Text-Profile Commands
+
+The remaining sections describe the `default` Llama reranker profile. Read them
+for text-profile tasks or comparisons with the Nemotron 3.5 workflow.
 
 Use `uv run` when `nemotron` is not already available.
 
@@ -133,7 +139,8 @@ Stage 2:
 - Checkpoints: `./output/rerank/stage2_finetune/checkpoints`
 - Defaults: `num_epochs=3`, `global_batch_size=128`, `local_batch_size=4`, `learning_rate=3.0e-6`, `train_n_passages=5`
 - Optimizer backend: `auto`, using Transformer Engine FusedAdam when available and FlashAdamW otherwise.
-- Tokenization: `rerank_max_length=512`, `prompt_template="question:{query} \n \n passage:{passage}"`
+- Sequence limit: `rerank_max_length=512`.
+- Prompt template: `prompt_template="question:{query} \n \n passage:{passage}"`.
 - For real corpora, start with 1-2 epochs unless Stage 3 metrics still improve; the 3 epoch default is for small examples.
 
 Stage 3:

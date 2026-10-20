@@ -6,6 +6,7 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 
 - Grounding Paths
 - Nemotron 3.5 Multimodal Workflow
+- Nemotron 3.5 Recovery
 - When To Use Embed
 - Commands
 - Data And Credential Safety
@@ -14,7 +15,7 @@ Load this reference for `nemotron embed ...` work or for questions about first-s
 - Model Profiles
 - Profile Selection Invariants
 - Operating Patterns
-- NIM Smoke Test
+- Serving Smoke Tests
 - Tests And Checks
 
 ## Grounding Paths
@@ -32,6 +33,8 @@ over text, images, or paired documents. Start from
 `docs/nemotron/embed/multimodal.md`; use `data-reference.md` for the source and
 bundle contracts and `sdg-reference.md` for model roles and producer settings.
 The commands and tables in the remaining sections describe the text profiles.
+For a Nemotron 3.5 task, read this workflow and recovery section; load the text
+sections only when comparing profiles.
 
 Prefer a normal document directory:
 
@@ -104,9 +107,13 @@ Normal handoffs check schema, view, required inputs, safe paths, and manifest
 identity. For a full hash, content, and split audit, follow **Validate an Export**
 in `docs/nemotron/embed/data-reference.md`; downstream stages do not repeat it.
 
+## Nemotron 3.5 Recovery
+
 For compatible failed SDG, repeat the original overrides with `resume=always`.
 Use a new root after source, configuration, tokenizer, or producer changes;
 producer code participates in run identity. `preview=true` is unsupported.
+Inspect existing artifacts before retrying; do not delete data or checkpoints
+without the user's approval.
 Report the commands, checkout commit, configuration, artifacts, query counts,
 evaluation results, and remaining limitations. A short run verifies execution,
 not convergence or retrieval-quality improvement.
