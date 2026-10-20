@@ -167,7 +167,7 @@ GA-checkpoint multimodal post-training recipe with stage-local container builds 
 **Stages:** SFT → RL MPO → RL text → RL vision → Eval
 :::
 
-:::{grid-item-card} Embedding Fine-Tuning
+:::{grid-item-card} Nemotron Embed
 :link: nemotron/embed/index
 :link-type: doc
 
@@ -176,7 +176,7 @@ Fine-tune Nemotron text and multimodal embedding models with synthetic data gene
 **Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
 :::
 
-:::{grid-item-card} Reranking Fine-Tuning
+:::{grid-item-card} Nemotron Rerank
 :link: nemotron/rerank/index
 :link-type: doc
 
@@ -338,8 +338,8 @@ Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
 Nemotron 3.5 Super <nemotron/super35/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>
-Embedding Fine-Tuning <nemotron/embed/index.md>
-Reranking Fine-Tuning <nemotron/rerank/index.md>
+Nemotron Embed <nemotron/embed/index.md>
+Nemotron Rerank <nemotron/rerank/index.md>
 nemotron/artifacts.md
 ```
 
