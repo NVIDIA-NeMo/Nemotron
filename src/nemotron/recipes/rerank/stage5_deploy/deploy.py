@@ -4,7 +4,7 @@
 # schema = "1"
 # docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
 # name = "rerank/deploy"
-# setup = "Local-only Docker wrapper. Launches a NIM container for inference."
+# setup = "Local-only Docker wrapper. Launches a NIM or vLLM container for inference."
 #
 # [tool.runspec.run]
 # launch = "direct"
@@ -28,29 +28,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Deploy script for NVIDIA NeMo Retriever Reranking NIM.
+"""Deploy a reranking service with NIM or vLLM.
 
-Launches the NVIDIA Reranking NIM container. By default the exported Stage 4
-ONNX model directory is mounted into the container and exposed through
-NIM_CUSTOM_MODEL. The NIM discovers the mounted custom model at startup and
-creates its runtime manifest automatically.
-
-Usage:
-    # Launch with the Stage 4 ONNX export in foreground
-    nemotron rerank deploy -c default
-
-    # Detached mode (background)
-    nemotron rerank deploy -c default detach=true
-
-    # Use a TensorRT export instead
-    nemotron rerank deploy -c default model_dir=/path/to/stage4_export/tensorrt
-
-    # Serve the image default model
-    nemotron rerank deploy -c default model_dir=null
+The default NIM backend mounts the Stage 4 ONNX/TensorRT export through
+NIM_CUSTOM_MODEL. The Nemotron 3.5 profile serves the consolidated Stage 2
+checkpoint with vLLM, retaining its classifier head and query-document template.
+Set model_dir=null with that profile to serve the public base checkpoint.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import signal
@@ -58,9 +46,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import BeforeValidator, ConfigDict, Field
+from pydantic import BeforeValidator, ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
@@ -78,11 +66,21 @@ def _default_container_user() -> str:
 
 
 class DeployConfig(RecipeSettings):
-    """Deployment configuration for NIM reranking service."""
+    """Deployment configuration for a NIM or Nemotron 3.5 vLLM service."""
 
     model_config = ConfigDict(extra="forbid")
 
     # Container settings
+    backend: Literal["nim", "vllm"] = Field(default="nim", description="Serving backend to launch.")
+    vllm_image: str = Field(default="vllm/vllm-openai:v0.31.0", description="vLLM container image.")
+    vllm_model: str = Field(
+        default="nvidia/Nemotron-3.5-Rerank-8B-BF16",
+        description="Served model name and Hugging Face model ID when model_dir is null.",
+    )
+    model_revision: str | None = Field(default=None, description="Hugging Face revision when model_dir is null.")
+    vllm_max_model_len: int = Field(default=4096, gt=0, description="Maximum combined query/document length.")
+    vllm_max_num_seqs: int = Field(default=4, gt=0, description="Maximum concurrent vLLM sequences.")
+    vllm_gpu_memory_utilization: float = Field(default=0.9, gt=0, le=1, description="vLLM GPU memory fraction.")
     nim_image: str = Field(
         default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0",
         description="NIM container image to use.",
@@ -90,23 +88,25 @@ class DeployConfig(RecipeSettings):
     container_name: str = Field(default="nemotron-rerank-nim", description="Name for the Docker container.")
     replace_existing: bool = Field(default=False, description="Replace an existing container created by this recipe.")
 
-    # Optional NIM model selection. A custom ONNX/TensorRT export directory is
-    # mounted and advertised via NIM_CUSTOM_MODEL. NIM discovers the artifact and
-    # creates its runtime manifest during startup.
+    # NIM consumes Stage 4 exports; vLLM consumes native Stage 2 checkpoints.
     model_dir: Path | None = Field(
         default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx",
-        description="Optional host directory containing an exported ONNX or TensorRT model artifact.",
+        description="Local NIM export or vLLM consolidated checkpoint; null selects the backend base model.",
     )
 
     # Container paths
     container_model_path: str = Field(
         default="/opt/nim/custom_model",
-        description="Container mount path for the custom exported model artifact.",
+        description="Container mount path for local model artifacts.",
     )
     container_cache_path: str = Field(default="/opt/nim/.cache", description="Path inside container for NIM cache.")
 
+    vllm_container_cache_path: str = Field(
+        default="/opt/cache/huggingface", description="Hugging Face cache path inside the vLLM container."
+    )
+
     # Network settings
-    bind_address: str = Field(default="127.0.0.1", description="Host interface to bind the NIM HTTP port to.")
+    bind_address: str = Field(default="127.0.0.1", description="Host interface to bind the service HTTP port to.")
     host_port: int = Field(default=8000, ge=1, le=65535, description="Port to expose on host.")
     container_port: int = Field(default=8000, ge=1, le=65535, description="Port inside container.")
 
@@ -135,6 +135,32 @@ class DeployConfig(RecipeSettings):
         default="NGC_API_KEY",
         description="Host environment variable name for the NGC API key.",
     )
+
+    @model_validator(mode="after")
+    def _validate_backend(self) -> DeployConfig:
+        if self.backend == "vllm" and (not self.vllm_image.strip() or not self.vllm_model.strip()):
+            raise ValueError("vllm_image and vllm_model must be nonempty when backend=vllm")
+        return self
+
+    @property
+    def container_image(self) -> str:
+        return self.vllm_image if self.backend == "vllm" else self.nim_image
+
+
+# vLLM's scoring endpoints require an explicit template. Extract the checkpoint's
+# template inside the serving environment so deploy does not need Transformers.
+_VLLM_LAUNCH = """import os, sys, tempfile
+from transformers import AutoTokenizer
+model, revision = sys.argv[1:3]
+tokenizer = AutoTokenizer.from_pretrained(model, revision=revision or None)
+template = tokenizer.get_chat_template()
+if not template:
+    raise ValueError("The reranker checkpoint has no query-document chat template")
+with tempfile.NamedTemporaryFile(mode="w", suffix=".jinja", delete=False) as output:
+    output.write(template)
+    template_path = output.name
+os.execvp("vllm", ["vllm", "serve", model, "--chat-template", template_path, *sys.argv[3:]])
+"""
 
 
 def check_docker() -> bool:
@@ -200,7 +226,6 @@ def stop_existing_container(container_name: str, replace_existing: bool) -> None
     subprocess.run(["docker", "rm", container_name], capture_output=True)
 
 
-
 def _format_command(cmd: list[str]) -> str:
     """Return a shell-escaped command string with no secret values embedded."""
     return " ".join(shlex.quote(part) for part in cmd)
@@ -243,39 +268,94 @@ def build_docker_command(cfg: DeployConfig) -> tuple[list[str], dict[str, str]]:
         cmd.extend(["-u", cfg.container_user])
     cmd.extend(["-p", f"{cfg.bind_address}:{cfg.host_port}:{cfg.container_port}"])
 
-    ngc_key = os.environ.get(cfg.ngc_api_key_env)
-    if ngc_key:
-        docker_env["NGC_API_KEY"] = ngc_key
-        cmd.extend(["-e", "NGC_API_KEY"])
-    else:
-        print(f"Warning: {cfg.ngc_api_key_env} not set. NIM may not authenticate properly.")
-
-    cmd.extend(["-e", f"NIM_HTTP_API_PORT={cfg.container_port}"])
-    cmd.extend(["-e", f"NIM_CACHE_PATH={cfg.container_cache_path}"])
     if cfg.model_dir is not None:
-        model_dir_abs = cfg.model_dir.resolve()
-        cmd.extend(["-v", f"{model_dir_abs}:{cfg.container_model_path}:ro"])
-        cmd.extend(["-e", f"NIM_CUSTOM_MODEL={cfg.container_model_path}"])
+        cmd.extend(["-v", f"{cfg.model_dir.resolve()}:{cfg.container_model_path}:ro"])
 
-    cache_dir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
-    nim_cache = Path(cache_dir) / "nim"
-    nim_cache.mkdir(parents=True, exist_ok=True)
-    cmd.extend(["-v", f"{nim_cache}:{cfg.container_cache_path}"])
+    cache_dir = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")))
+    host_cache = cache_dir / ("huggingface" if cfg.backend == "vllm" else "nim")
+    host_cache.mkdir(parents=True, exist_ok=True)
+    container_cache = cfg.vllm_container_cache_path if cfg.backend == "vllm" else cfg.container_cache_path
+    cmd.extend(["-v", f"{host_cache}:{container_cache}"])
 
-    cmd.append(cfg.nim_image)
+    if cfg.backend == "nim":
+        ngc_key = os.environ.get(cfg.ngc_api_key_env)
+        if ngc_key:
+            docker_env["NGC_API_KEY"] = ngc_key
+            cmd.extend(["-e", "NGC_API_KEY"])
+        else:
+            print(f"Warning: {cfg.ngc_api_key_env} not set. NIM may not authenticate properly.")
+        cmd.extend(["-e", f"NIM_HTTP_API_PORT={cfg.container_port}"])
+        cmd.extend(["-e", f"NIM_CACHE_PATH={cfg.container_cache_path}"])
+        if cfg.model_dir is not None:
+            cmd.extend(["-e", f"NIM_CUSTOM_MODEL={cfg.container_model_path}"])
+        cmd.append(cfg.nim_image)
+    else:
+        # The image's HOME is /root, but the recipe runs as the host UID.
+        # Keep model/runtime caches writable without changing cache ownership.
+        cmd.extend(
+            [
+                "-e",
+                f"HF_HOME={container_cache}",
+                "-e",
+                f"XDG_CACHE_HOME={container_cache}",
+                "-e",
+                f"XDG_CONFIG_HOME={container_cache}/config",
+                "-e",
+                f"FLASHINFER_WORKSPACE_BASE={container_cache}",
+                "-e",
+                f"TRITON_CACHE_DIR={container_cache}/triton",
+                "-e",
+                f"CUDA_CACHE_PATH={container_cache}/cuda",
+            ]
+        )
+        if os.environ.get("HF_TOKEN"):
+            cmd.extend(["-e", "HF_TOKEN"])
+        cmd.extend(["--entrypoint", "python3", cfg.vllm_image, "-c", _VLLM_LAUNCH])
+        model = cfg.container_model_path if cfg.model_dir is not None else cfg.vllm_model
+        revision = cfg.model_revision if cfg.model_dir is None else None
+        cmd.extend([model, revision or ""])
+        cmd.extend(
+            [
+                "--served-model-name",
+                cfg.vllm_model,
+                "--runner",
+                "pooling",
+                "--dtype",
+                "bfloat16",
+                "--pooler-config",
+                json.dumps({"seq_pooling_type": "MEAN", "use_activation": False}),
+                "--chat-template-content-format",
+                "openai",
+                "--max-model-len",
+                str(cfg.vllm_max_model_len),
+                "--max-num-seqs",
+                str(cfg.vllm_max_num_seqs),
+                "--gpu-memory-utilization",
+                str(cfg.vllm_gpu_memory_utilization),
+                "--limit-mm-per-prompt",
+                json.dumps({"image": 1}),
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(cfg.container_port),
+            ]
+        )
+        if revision:
+            cmd.extend(["--revision", revision])
 
     return cmd, docker_env
 
 
 def wait_for_health(cfg: DeployConfig) -> bool:
-    """Wait for NIM to become healthy."""
+    """Wait for the selected service to become healthy."""
     import urllib.error
     import urllib.request
 
-    health_url = f"{_api_base_url(cfg)}/v1/health/ready"
+    health_path = "/health" if cfg.backend == "vllm" else "/v1/health/ready"
+    health_url = f"{_api_base_url(cfg)}{health_path}"
     start_time = time.time()
 
-    print(f"   Waiting for NIM to become healthy (timeout: {cfg.health_check_timeout}s)...")
+    print(f"   Waiting for {cfg.backend} to become healthy (timeout: {cfg.health_check_timeout}s)...")
 
     while time.time() - start_time < cfg.health_check_timeout:
         try:
@@ -285,6 +365,15 @@ def wait_for_health(cfg: DeployConfig) -> bool:
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
             pass
 
+        state = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Running}}", cfg.container_name],
+            capture_output=True,
+            text=True,
+        )
+        if state.returncode != 0 or state.stdout.strip() == "false":
+            print(f"   Container exited before becoming healthy. Check: docker logs {cfg.container_name}")
+            return False
+
         time.sleep(cfg.health_check_interval)
         elapsed = int(time.time() - start_time)
         print(f"   ... still waiting ({elapsed}s)")
@@ -293,10 +382,10 @@ def wait_for_health(cfg: DeployConfig) -> bool:
 
 
 def run_deploy(cfg: DeployConfig) -> dict:
-    """Run NIM reranker deployment."""
-    print("NIM Reranking Service Deployment")
+    """Run reranker deployment with the selected backend."""
+    print(f"{cfg.backend} Reranking Service Deployment")
     print("=" * 60)
-    print(f"NIM image:       {cfg.nim_image}")
+    print(f"Container image: {cfg.container_image}")
     print(f"Container name:  {cfg.container_name}")
     print(f"Host bind:       {cfg.bind_address}:{cfg.host_port}")
     print(f"Container port:  {cfg.container_port}")
@@ -305,7 +394,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
     if cfg.model_dir is not None:
         print(f"Custom model:    {cfg.model_dir}")
     else:
-        print("NIM model:       image default")
+        print(f"Base model:      {cfg.vllm_model if cfg.backend == 'vllm' else 'image default'}")
     print("=" * 60)
     print()
 
@@ -319,23 +408,33 @@ def run_deploy(cfg: DeployConfig) -> dict:
     if cfg.model_dir is not None and not cfg.model_dir.exists():
         print(f"Error: model_dir not found: {cfg.model_dir}", file=sys.stderr)
         print(
-            "       Run rerank export first, or set model_dir=null to serve the image default model.",
+            "       Select an existing model directory, or set model_dir=null to serve the base model.",
             file=sys.stderr,
         )
         sys.exit(1)
+
+    if cfg.backend == "vllm" and cfg.model_dir is not None:
+        required = ("config.json", "tokenizer_config.json")
+        missing = [name for name in required if not (cfg.model_dir / name).is_file()]
+        if not any(cfg.model_dir.glob("*.safetensors")):
+            missing.append("*.safetensors")
+        if missing:
+            print(f"Error: incomplete consolidated checkpoint: {', '.join(missing)}", file=sys.stderr)
+            sys.exit(1)
 
     print("Stopping existing recipe-owned container (if any)...")
     stop_existing_container(cfg.container_name, cfg.replace_existing)
 
     docker_cmd, docker_env = build_docker_command(cfg)
-    print("Starting NIM container...")
+    print(f"Starting {cfg.backend} container...")
     print(f"   Command: {_format_command(docker_cmd)}")
     print()
 
     result = {
         "container_name": cfg.container_name,
         "host_port": cfg.host_port,
-        "api_url": f"{_api_base_url(cfg)}/v1/ranking",
+        "api_url": f"{_api_base_url(cfg)}{'/classify' if cfg.backend == 'vllm' else '/v1/ranking'}",
+        "backend": cfg.backend,
     }
     if cfg.model_dir is not None:
         result["model_dir"] = str(cfg.model_dir)
@@ -352,19 +451,38 @@ def run_deploy(cfg: DeployConfig) -> dict:
 
         if wait_for_health(cfg):
             print()
-            print("NIM is ready!")
+            print(f"{cfg.backend} is ready!")
             print(f"   API endpoint: {result['api_url']}")
             print()
             print("   Test with:")
-            print(f"   curl -X POST {result['api_url']}")
-            print("     -H 'Content-Type: application/json'")
-            sample_payload = (
-                '{"model": "nvidia/llama-nemotron-rerank-1b-v2", '
-                '"query": {"text": "what is AI?"}, '
-                '"passages": [{"text": "AI is artificial intelligence"}], '
-                '"truncate": "END"}'
+            if cfg.backend == "vllm":
+                sample_payload = json.dumps(
+                    {
+                        "model": cfg.vllm_model,
+                        "messages": [
+                            {"role": "query", "content": [{"type": "text", "text": "What is AI?"}]},
+                            {
+                                "role": "document",
+                                "content": [{"type": "text", "text": "AI is artificial intelligence."}],
+                            },
+                        ],
+                        "add_special_tokens": False,
+                        "use_activation": False,
+                    }
+                )
+            else:
+                sample_payload = json.dumps(
+                    {
+                        "model": "nvidia/llama-nemotron-rerank-1b-v2",
+                        "query": {"text": "what is AI?"},
+                        "passages": [{"text": "AI is artificial intelligence"}],
+                        "truncate": "END",
+                    }
+                )
+            print(
+                f"   curl -X POST {shlex.quote(result['api_url'])} "
+                f"-H 'Content-Type: application/json' -d {shlex.quote(sample_payload)}"
             )
-            print(f"     -d '{sample_payload}'")
             print()
             print(f"   Stop with: docker stop {cfg.container_name}")
         else:

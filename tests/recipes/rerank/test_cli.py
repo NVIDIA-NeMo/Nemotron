@@ -23,7 +23,7 @@ class TestRerankAppStructure:
         result = runner.invoke(app, ["rerank", "--help"])
         assert result.exit_code == 0
         assert "deploy" in result.output
-        assert "Reranking" in result.output
+        assert "reranking" in result.output.lower()
 
     @pytest.mark.parametrize("command", [*STAGE_COMMANDS, "info", "run"])
     def test_command_help_succeeds(self, command):

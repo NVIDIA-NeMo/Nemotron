@@ -40,7 +40,8 @@ then re-ranking with the cross-encoder and measuring nDCG@k improvement.
 
 Supports evaluation of:
 - Local HuggingFace models (base and fine-tuned)
-- NIM API endpoints
+- Text NIM API endpoints
+- Nemotron 3.5 multimodal checkpoints and vLLM classifiers
 
 Usage:
     # With default config
@@ -56,6 +57,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import urllib.error
@@ -80,6 +82,27 @@ class EvalConfig(RecipeSettings):
     """Evaluation configuration for cross-encoder reranking models."""
 
     model_config = ConfigDict(extra="forbid")
+
+    model_family: Literal["text", "nemotron_3_5"] = Field(default="text", description="Reranker model family.")
+    model_revision: str | None = Field(
+        default=None, description="Immutable base-model revision; local paths use their files."
+    )
+    image_root: Path | None = Field(
+        default=None, description="Root for portable corpus image paths; defaults to eval_data_path."
+    )
+    sdg_input_path: Path | None = Field(default=None, description="Optional Embed Stage 0 generation-result manifest.")
+    retrieval_view: Literal["text", "image", "image_and_text", "mixed"] | None = Field(
+        default=None, description="Evaluation view selected from sdg_input_path."
+    )
+    first_stage_results_path: Path | None = Field(
+        default=None, description="Optional saved query-to-document candidate scores."
+    )
+    image_longest_edge: int | None = Field(default=None, gt=0, description="Optional processor image resize override.")
+    use_text_in_document: bool = Field(default=True, description="Retain text alongside document images.")
+    retrieval_query_max_length: int = Field(default=512, gt=0, description="Multimodal retrieval query token limit.")
+    retrieval_passage_max_length: int = Field(
+        default=4096, gt=0, description="Multimodal retrieval document token limit."
+    )
 
     # Model paths
     base_model: str = Field(
@@ -130,8 +153,8 @@ class EvalConfig(RecipeSettings):
 
     # Retrieval model settings
     retrieval_normalize: bool = Field(default=True, description="Whether to L2 normalize retrieval embeddings.")
-    query_prefix: str = Field(default="query:", description="Prefix for query inputs (retrieval model).")
-    passage_prefix: str = Field(default="passage:", description="Prefix for passage inputs (retrieval model).")
+    query_prefix: str | None = Field(default="query:", description="Prefix for query inputs (retrieval model).")
+    passage_prefix: str | None = Field(default="passage:", description="Prefix for passage inputs (retrieval model).")
 
     # Evaluation mode
     eval_base: bool = Field(default=True, description="Whether to evaluate the base reranker.")
@@ -156,12 +179,32 @@ class EvalConfig(RecipeSettings):
         description="NIM truncation strategy for over-length query-passage inputs.",
     )
 
+    eval_vllm: bool = Field(default=False, description="Evaluate the served Nemotron 3.5 classifier.")
+    vllm_url: str = Field(default="http://localhost:8000", description="vLLM service base URL.")
+    vllm_model: str = Field(default="nvidia/Nemotron-3.5-Rerank-8B-BF16", description="Served model name.")
+    vllm_timeout: int = Field(default=120, gt=0, description="Timeout per vLLM query-document request.")
+
     @model_validator(mode="after")
     def _check_eval_settings(self):
         validate_trust_remote_code(
             [self.base_model, self.retrieval_model],
             allow_untrusted_remote_code=self.allow_untrusted_remote_code,
         )
+        if (self.sdg_input_path is None) != (self.retrieval_view is None):
+            raise ValueError("sdg_input_path and retrieval_view must be set together")
+        if self.sdg_input_path is not None and self.model_family != "nemotron_3_5":
+            raise ValueError("Portable evaluation input requires model_family=nemotron_3_5")
+        if not self.k_values or any(value <= 0 for value in self.k_values):
+            raise ValueError("k_values must contain positive cutoffs")
+        if self.model_family == "nemotron_3_5":
+            if self.eval_nim:
+                raise ValueError("Nemotron 3.5 multimodal evaluation uses eval_vllm; eval_nim is the text NIM path")
+            if self.use_data_parallel:
+                raise ValueError("Nemotron 3.5 evaluation supports one local GPU per process")
+            if self.prompt_template != DEFAULT_PROMPT_TEMPLATE:
+                raise ValueError("Nemotron 3.5 evaluation uses the checkpoint's processor template")
+        elif self.eval_vllm:
+            raise ValueError("eval_vllm requires model_family=nemotron_3_5")
         if self.k_values and self.top_k < max(self.k_values):
             raise ValueError(
                 f"top_k ({self.top_k}) must be >= max(k_values) ({max(self.k_values)}) "
@@ -228,6 +271,13 @@ def _get_first_stage_results(
     passage_prefix: str = "passage:",
     normalize_embeddings: bool = True,
     trust_remote_code: bool = True,
+    model_family: str = "text",
+    image_root: Path | None = None,
+    first_stage_results_path: Path | None = None,
+    query_max_length: int = 512,
+    passage_max_length: int = 4096,
+    image_longest_edge: int | None = None,
+    use_text_in_document: bool = True,
 ) -> tuple[dict, dict, dict, dict]:
     """Run first-stage dense retrieval to get candidates for re-ranking.
 
@@ -237,7 +287,6 @@ def _get_first_stage_results(
     try:
         from beir.datasets.data_loader import GenericDataLoader
         from beir.retrieval.evaluation import EvaluateRetrieval
-        from beir.retrieval.search.dense.exact_search import DenseRetrievalExactSearch
     except ImportError:
         print("Error: BEIR is required for evaluation. Install with: pip install beir")
         sys.exit(1)
@@ -245,13 +294,53 @@ def _get_first_stage_results(
     if k_values is None:
         k_values = [1, 5, 10, 100]
 
-    dense_model = _SentenceTransformerRetriever(
-        model_path=str(retrieval_model),
-        query_prefix=query_prefix,
-        passage_prefix=passage_prefix,
-        normalize_embeddings=normalize_embeddings,
-        trust_remote_code=trust_remote_code,
-    )
+    corpus, queries, qrels = GenericDataLoader(str(dataset_path)).load(split="test")
+    if model_family == "nemotron_3_5":
+        from nemotron.recipes.embed.stage3_eval.eval import _restore_corpus_image_paths
+
+        _restore_corpus_image_paths(corpus, dataset_path, image_root=image_root, resolve=True)
+    if first_stage_results_path is not None:
+        results = json.loads(first_stage_results_path.read_text())
+        if not isinstance(results, dict) or set(results) != set(queries):
+            raise ValueError("Saved candidates must contain exactly the evaluation query IDs")
+        for query_id, candidates in results.items():
+            if not isinstance(candidates, dict) or not candidates:
+                raise ValueError(f"Saved candidates for {query_id!r} must be a non-empty score mapping")
+            for document_id, score in candidates.items():
+                if (
+                    document_id not in corpus
+                    or isinstance(score, bool)
+                    or not isinstance(score, (int, float))
+                    or not math.isfinite(score)
+                ):
+                    raise ValueError(f"Invalid saved candidate {document_id!r} for query {query_id!r}")
+        return corpus, queries, qrels, results
+
+    from beir.retrieval.search.dense.exact_search import DenseRetrievalExactSearch
+
+    if model_family == "nemotron_3_5":
+        from nemotron.recipes.embed.mining_encoder import CheckpointMiningEncoderConfig
+        from nemotron.recipes.embed.stage3_eval.automodel_backend import AutoModelBEIREncoder
+
+        dense_model = AutoModelBEIREncoder(
+            retrieval_model,
+            multimodal_config=CheckpointMiningEncoderConfig(
+                q_max_length=query_max_length,
+                p_max_length=passage_max_length,
+                query_prefix=query_prefix,
+                passage_prefix=passage_prefix,
+                image_longest_edge=image_longest_edge,
+                use_text_in_document=use_text_in_document,
+            ),
+        )
+    else:
+        dense_model = _SentenceTransformerRetriever(
+            model_path=str(retrieval_model),
+            query_prefix=query_prefix,
+            passage_prefix=passage_prefix,
+            normalize_embeddings=normalize_embeddings,
+            trust_remote_code=trust_remote_code,
+        )
 
     dres_model = DenseRetrievalExactSearch(
         dense_model,
@@ -265,8 +354,14 @@ def _get_first_stage_results(
         k_values=k_values,
     )
 
-    corpus, queries, qrels = GenericDataLoader(str(dataset_path)).load(split="test")
-    results = retriever.retrieve(corpus, queries)
+    if model_family == "nemotron_3_5":
+        from nemotron.recipes.embed.stage3_eval.eval import _alias_query_ids, _retrieve_rankings
+
+        retrieval_queries, aliases = _alias_query_ids(queries, corpus)
+        rankings = _retrieve_rankings(retriever, corpus, retrieval_queries)
+        results = {aliases[query_id]: scores for query_id, scores in rankings.items()}
+    else:
+        results = retriever.retrieve(corpus, queries)
 
     return corpus, queries, qrels, results
 
@@ -284,6 +379,10 @@ def evaluate_reranker(
     prompt_template: str | None = None,
     trust_remote_code: bool = True,
     use_data_parallel: bool = False,
+    model_family: str = "text",
+    model_revision: str | None = None,
+    image_longest_edge: int | None = None,
+    use_text_in_document: bool = True,
 ) -> tuple[dict, dict]:
     """Evaluate a cross-encoder reranker on first-stage retrieval results.
 
@@ -305,6 +404,27 @@ def evaluate_reranker(
     Returns:
         Tuple of (metrics dict, reranked results dict).
     """
+    if model_family == "nemotron_3_5":
+        from nemotron.recipes.rerank.stage3_eval.multimodal import AutoModelReranker, evaluate_multimodal_reranker
+
+        scorer = AutoModelReranker(
+            model_path,
+            max_length=max_length,
+            image_longest_edge=image_longest_edge,
+            use_text_in_document=use_text_in_document,
+            revision=model_revision,
+        )
+        return evaluate_multimodal_reranker(
+            scorer,
+            corpus=corpus,
+            queries=queries,
+            qrels=qrels,
+            first_stage_results=first_stage_results,
+            top_k=top_k,
+            batch_size=batch_size,
+            k_values=k_values or [1, 5, 10, 100],
+        )
+
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -538,6 +658,12 @@ def run_eval(cfg: EvalConfig) -> dict:
     Returns:
         Dictionary with evaluation results.
     """
+    if cfg.sdg_input_path is not None:
+        from nemotron.recipes.embed.sdg_manifest import resolve_portable_evaluation_input
+
+        evaluation_dir, image_root = resolve_portable_evaluation_input(cfg.sdg_input_path, cfg.retrieval_view)
+        cfg = cfg.model_copy(update={"eval_data_path": evaluation_dir, "image_root": image_root})
+
     print("Reranking Model Evaluation")
     print("=" * 60)
     print(f"Eval data:         {cfg.eval_data_path}")
@@ -555,13 +681,19 @@ def run_eval(cfg: EvalConfig) -> dict:
         print("       Please run 'nemotron rerank prep' first or provide eval data.", file=sys.stderr)
         sys.exit(1)
 
+    if cfg.model_family == "nemotron_3_5" and cfg.eval_finetuned and not cfg.finetuned_model_path.exists():
+        raise FileNotFoundError(f"Fine-tuned checkpoint not found: {cfg.finetuned_model_path}")
+
     # Create output directory
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
 
     results = {}
 
-    # Step 1: Run first-stage dense retrieval
-    print(f"Running first-stage retrieval with: {cfg.retrieval_model}")
+    # Step 1: Load fixed candidates or run first-stage dense retrieval.
+    if cfg.first_stage_results_path is not None:
+        print(f"Loading saved retrieval candidates: {cfg.first_stage_results_path}")
+    else:
+        print(f"Running first-stage retrieval with: {cfg.retrieval_model}")
     retrieval_k_values = sorted({*cfg.k_values, cfg.top_k})
     corpus, queries, qrels, first_stage_results = _get_first_stage_results(
         retrieval_model=cfg.retrieval_model,
@@ -573,14 +705,26 @@ def run_eval(cfg: EvalConfig) -> dict:
         passage_prefix=cfg.passage_prefix,
         normalize_embeddings=cfg.retrieval_normalize,
         trust_remote_code=True,
+        model_family=cfg.model_family,
+        image_root=cfg.image_root,
+        first_stage_results_path=cfg.first_stage_results_path,
+        query_max_length=cfg.retrieval_query_max_length,
+        passage_max_length=cfg.retrieval_passage_max_length,
+        image_longest_edge=cfg.image_longest_edge,
+        use_text_in_document=cfg.use_text_in_document,
     )
+    (cfg.output_dir / "first_stage_results.json").write_text(json.dumps(first_stage_results, indent=2))
+    from nemotron.recipes.embed.stage3_eval.eval import _release_cuda_memory
+
+    if cfg.first_stage_results_path is None:
+        _release_cuda_memory()
     print(f"   Retrieved candidates for {len(queries)} queries")
     print()
 
     # Step 2: Evaluate base reranker
     if cfg.eval_base:
         print(f"Evaluating base reranker: {cfg.base_model}")
-        base_metrics, _ = evaluate_reranker(
+        base_metrics, base_rankings = evaluate_reranker(
             model_path=cfg.base_model,
             corpus=corpus,
             queries=queries,
@@ -593,7 +737,13 @@ def run_eval(cfg: EvalConfig) -> dict:
             prompt_template=cfg.prompt_template,
             trust_remote_code=True,
             use_data_parallel=cfg.use_data_parallel,
+            model_family=cfg.model_family,
+            model_revision=cfg.model_revision,
+            image_longest_edge=cfg.image_longest_edge,
+            use_text_in_document=cfg.use_text_in_document,
         )
+        (cfg.output_dir / "base_rankings.json").write_text(json.dumps(base_rankings, indent=2))
+        _release_cuda_memory()
         results["base"] = base_metrics
         _print_summary_metrics(base_metrics, cfg.k_values)
         print()
@@ -609,7 +759,7 @@ def run_eval(cfg: EvalConfig) -> dict:
             print("         Skipping fine-tuned model evaluation.")
         else:
             print(f"Evaluating fine-tuned reranker: {cfg.finetuned_model_path}")
-            ft_metrics, _ = evaluate_reranker(
+            ft_metrics, ft_rankings = evaluate_reranker(
                 model_path=cfg.finetuned_model_path,
                 corpus=corpus,
                 queries=queries,
@@ -622,7 +772,12 @@ def run_eval(cfg: EvalConfig) -> dict:
                 prompt_template=cfg.prompt_template,
                 trust_remote_code=True,
                 use_data_parallel=cfg.use_data_parallel,
+                model_family=cfg.model_family,
+                image_longest_edge=cfg.image_longest_edge,
+                use_text_in_document=cfg.use_text_in_document,
             )
+            (cfg.output_dir / "finetuned_rankings.json").write_text(json.dumps(ft_rankings, indent=2))
+            _release_cuda_memory()
             results["finetuned"] = ft_metrics
             _print_summary_metrics(ft_metrics, cfg.k_values)
             print()
@@ -664,6 +819,26 @@ def run_eval(cfg: EvalConfig) -> dict:
             except Exception as e:
                 print(f"   Error evaluating NIM: {e}", file=sys.stderr)
                 sys.exit(1)
+
+    if cfg.eval_vllm:
+        from nemotron.recipes.rerank.stage3_eval.multimodal import VLLMReranker, evaluate_multimodal_reranker
+
+        scorer = VLLMReranker(
+            cfg.vllm_url, cfg.vllm_model, timeout=cfg.vllm_timeout, use_text_in_document=cfg.use_text_in_document
+        )
+        metrics, rankings = evaluate_multimodal_reranker(
+            scorer,
+            corpus=corpus,
+            queries=queries,
+            qrels=qrels,
+            first_stage_results=first_stage_results,
+            top_k=cfg.top_k,
+            batch_size=cfg.batch_size,
+            k_values=cfg.k_values,
+        )
+        results["vllm"] = metrics
+        (cfg.output_dir / "vllm_rankings.json").write_text(json.dumps(rankings, indent=2))
+        _print_summary_metrics(metrics, cfg.k_values)
 
     # Print comparison
     if "base" in results and "finetuned" in results:

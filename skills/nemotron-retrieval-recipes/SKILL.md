@@ -76,7 +76,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
    - Retain the default `retrieval_view=mixed` through preparation and evaluation for heterogeneous corpora. Enable `eval_base=true` for a multimodal base comparison.
    - After upgrading the retrieval SDG producer dependency, start a new artifact root because stored run identity includes producer code.
    - Multimodal Stages 1–3 require local execution. Deploy the consolidated model with vLLM after evaluation; skip export.
-   - For Nemotron 3.5 Rerank, load `references/rerank.md`: `nemotron-3.5` is a Stage 2 fine-tuning profile, not a complete rerank pipeline.
+   - For Nemotron 3.5 Rerank, load `references/rerank.md`: use `nemotron-3.5` with `finetune`, `eval`, and `deploy`. Prepare data with the embedding stages, evaluate locally, and deploy the consolidated checkpoint with vLLM. Skip export.
 3. Choose the model family to tune from the retrieval failure mode.
    - Prefer embedding fine-tuning when relevant documents are absent from the candidate set.
    - Prefer reranker fine-tuning when relevant documents are retrieved but ordered poorly near the top.
@@ -108,7 +108,7 @@ For runnable commands, treat the current checkout as authoritative. If a require
 4. Use dotlist overrides instead of editing defaults unless the user asks for reusable config changes. Keep the selected profile, artifact root, sequence length, prefixes, pooling/normalization, prompt templates, and hard-negative counts consistent across stages.
 5. Avoid launching API, GPU, Docker, Slurm, NIM, or long-running jobs unless the user explicitly asked to run them. Offer or run dry-runs, config review, and small pilots first.
 6. For local execution, scope requested GPU IDs with `CUDA_VISIBLE_DEVICES=<ids>`. For `--run` or `--batch`, configure scheduler resources such as `gpus_per_node` in the selected `env.toml` profile and let the scheduler assign devices; do not assume submit-shell `CUDA_VISIBLE_DEVICES` propagates remotely.
-7. For multi-stage local runs, prefer `uv run nemotron <family> run -c <profile> --from <stage> --to <stage>`. Use `default` for rerank. The default `run` target stops at `eval`; `export` and `deploy` are opt-in. For the `embed` profile `nemotron-3.5`, launch `deploy` separately because there is no export profile.
+7. For multi-stage local runs, prefer `uv run nemotron <family> run -c <profile> --from <stage> --to <stage>`. Use `default` for the full rerank text pipeline; launch the Nemotron 3.5 rerank stages explicitly. The default `run` target stops at `eval`; `export` and `deploy` are opt-in. For the `embed` profile `nemotron-3.5`, launch `deploy` separately because there is no export profile.
 8. When evaluating quality, compare against the base model on a fixed held-out evaluation set before recommending deployment. Do not substitute a standalone public-benchmark eval for the recipe's own Stage 3 evaluation.
 9. For long-running SDG, prep, finetune, or eval work, start the process in a session-safe way and poll at human-scale intervals: roughly 60 seconds for small pilots and 120-300 seconds for larger runs.
 10. For failures, localize the failing stage, then inspect the stage config, expected inputs, output directory, and corresponding CLI wrapper or `run_uv.py`.

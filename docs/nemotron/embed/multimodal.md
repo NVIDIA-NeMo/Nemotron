@@ -80,6 +80,8 @@ Set `NVIDIA_API_BASE_URL` for another compatible service. Both roles must accept
 images and structured responses. The default section workflow also calls a
 separate text-embedding endpoint for summary clustering. Refer to
 [Configure Multimodal SDG](sdg-reference.md) to configure each role independently.
+That reference also shows how to enable JSON output mode when your endpoint
+supports it and returns malformed structured responses.
 
 No embedding checkpoint override is required for the 1B model.
 `NEMOTRON_3_5_EMBED_MODEL` changes the checkpoint selected for mining, training,

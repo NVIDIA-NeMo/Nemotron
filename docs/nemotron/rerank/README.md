@@ -6,7 +6,7 @@ matches your model.
 | Model | Profile | Recipe Scope |
 | --- | --- | --- |
 | Llama Nemotron Rerank 1B v2 | `default` | Text data generation, preparation, training, evaluation, export, and NIM deployment |
-| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Multimodal Stage 2 training](#fine-tune-nemotron-35-rerank-8b-on-image-documents) from prepared retrieval data |
+| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Multimodal training, evaluation, and vLLM deployment](#fine-tune-nemotron-35-rerank-8b-on-image-documents) |
 
 ## Overview
 
@@ -17,7 +17,7 @@ documents returned by a first-stage retriever. Measure retrieval quality before
 and after training to determine whether adaptation improves your task.
 
 The pipeline diagram and text-stage instructions below apply to `default`. The
-`nemotron-3.5` profile has separate [training instructions](#fine-tune-nemotron-35-rerank-8b-on-image-documents).
+`nemotron-3.5` profile has separate [multimodal instructions](#fine-tune-nemotron-35-rerank-8b-on-image-documents).
 
 ### Why Fine-Tune Reranking Models?
 
@@ -228,16 +228,32 @@ Stage 0 uses LLM APIs for synthetic data generation. By default, it uses NVIDIA'
 
 ### Fine-Tune Nemotron 3.5 Rerank 8B on Image Documents
 
-Use the `nemotron-3.5` training profile for
+Use the `nemotron-3.5` profile with `rerank finetune`, `rerank eval`, and
+`rerank deploy` for
 [Nemotron 3.5 Rerank 8B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Rerank-8B-BF16).
-This profile covers Stage 2 only. The text-model evaluation, ONNX export, and NIM
-deployment commands on this page do not support this multimodal model. Do not
-select `nemotron-3.5` with `rerank run` or carry it into those stages.
+Prepare data through the embedding workflow described below. Run the rerank
+stages explicitly and deploy the consolidated checkpoint directly with vLLM.
+Skip Stage 4 export for this model.
 
 Complete the [CLI installation](../embed/multimodal.md#prerequisites)
 and use a Linux machine with Python 3.12 and NVIDIA GPUs. Start with local
 execution and inspect memory use with your image sizes, sequence lengths, and
 batch settings before scaling. Full fine-tuning updates all model weights.
+
+Budget disk space for optimizer state, sharded weights, and the consolidated
+model. With `optimizer_backend=flash_adamw` and
+`flash_adamw_master_weight_bits=32`, one full 8B checkpoint is estimated to
+require about 80 GiB, excluding model caches and data. Reserve additional space
+for the next checkpoint while the previous one remains on disk.
+`checkpoint.max_recent_checkpoints=1` limits completed checkpoint history;
+checkpoints referenced by pointers such as `LATEST` or `LOWEST_VAL` can also remain.
+The profiles set `dist_env.timeout_minutes=30` to accommodate checkpoint writes
+that finish at different times across ranks.
+
+Allow host memory for checkpoint saving as well as GPU memory for training.
+The default PyTorch 2.10 writer can retain about 47 GiB of this optimizer's
+tensor data across the training ranks, plus allocator overhead and the rest of
+the workload. Check available host memory and monitor the first checkpoint save.
 
 Provide an Automodel training JSON with a corpus reference, one positive per
 unrolled query row, and at least three negatives. To generate this input from
@@ -271,12 +287,73 @@ bidirectional attention, average pooling, and model score temperature `0.05`.
 It preserves the released scoring head and uses native NeMo Automodel
 cross-encoder training. The processor uses a 4,096-token limit and a 1,120-pixel
 image longest edge. Keep the configured scaled dot product attention (`sdpa`)
-backend for image inputs.
+backend for image inputs. The `0.05` temperature scales logits during training.
+Consolidated checkpoints export the learned head without temperature scaling,
+so local evaluation and vLLM return raw relevance logits.
 
 Checkpoints include a consolidated model under `LATEST/model/consolidated`.
 A completed training run establishes checkpoint creation. Evaluate the trained
 reranker with representative, independently labeled query–document pairs before
 using it in a retrieval application.
+
+#### Evaluate and Deploy the Multimodal Reranker
+
+Compare the base and fine-tuned checkpoints on a fixed evaluation set. For the
+prepared embedding run above, select the same retrieval view used for training:
+
+```bash
+uv run nemotron rerank eval -c nemotron-3.5 \
+  sdg_input_path=./output/embed/multimodal-first-run/stage0_sdg/generation_result.json \
+  retrieval_view=mixed \
+  finetuned_model_path=./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated \
+  output_dir=./output/rerank/multimodal-first-run/eval
+```
+
+Evaluation resolves the selected bundle's BEIR directory and image root. It
+retrieves candidates with Nemotron 3.5 Embed, then scores them with each reranker.
+The output directory contains `eval_results.json`, `first_stage_results.json`,
+`base_rankings.json`, and `finetuned_rankings.json`. Higher reranker scores indicate
+greater predicted relevance.
+
+For independently labeled evaluation data, omit `sdg_input_path` and
+`retrieval_view`. Set `eval_data_path` to a BEIR directory containing
+`corpus.jsonl`, `queries.jsonl`, and `qrels/test.tsv`. Set `image_root` to the root
+for relative `image_path` values in the corpus. Synthetic holdout metrics describe
+the generated query task; use independent labels for broader quality claims.
+
+After local evaluation finishes, start the server with Docker:
+
+```bash
+uv run nemotron rerank deploy -c nemotron-3.5 \
+  model_dir=./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated \
+  detach=true
+curl --fail http://localhost:8000/health
+```
+
+Reuse the saved candidates to evaluate the served model on exactly the same
+query–document pairs:
+
+```bash
+uv run nemotron rerank eval -c nemotron-3.5 \
+  sdg_input_path=./output/embed/multimodal-first-run/stage0_sdg/generation_result.json \
+  retrieval_view=mixed \
+  first_stage_results_path=./output/rerank/multimodal-first-run/eval/first_stage_results.json \
+  eval_base=false eval_finetuned=false eval_vllm=true \
+  vllm_url=http://localhost:8000 \
+  output_dir=./output/rerank/multimodal-first-run/served-eval
+```
+
+The endpoint evaluation uses `/classify` with structured text and image messages
+and requests raw logits. Compare `served-eval/eval_results.json` and
+`served-eval/vllm_rankings.json` with the local evaluation outputs. Keep the
+candidate depth, token limits, and image settings fixed. The profiles use a
+4,096-token limit; shorten longer inputs before comparing local and served scores.
+
+Stop the example server when you finish:
+
+```bash
+docker stop nemotron-3.5-rerank
+```
 
 
 ### Local Execution

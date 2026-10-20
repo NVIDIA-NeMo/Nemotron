@@ -384,7 +384,10 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Validate inputs
     if not cfg.train_data_path.exists():
         print(f"Error: Training data not found: {cfg.train_data_path}", file=sys.stderr)
-        print("       Please run 'nemotron rerank prep' first.", file=sys.stderr)
+        prep_command = (
+            "nemotron embed prep -c nemotron-3.5" if cfg.model_family == "nemotron_3_5" else "nemotron rerank prep"
+        )
+        print(f"       Run '{prep_command}' first and set train_data_path to its output.", file=sys.stderr)
         sys.exit(1)
 
     if cfg.model_family == "nemotron_3_5":

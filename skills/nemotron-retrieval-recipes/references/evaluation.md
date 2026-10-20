@@ -40,4 +40,5 @@ Use Stage 3 metrics as the source of truth for recipe quality. Training loss is 
 - For embedding NIM, use `uv run nemotron embed eval -c default eval_nim=true eval_base=false`.
 - For multimodal vLLM, keep the run root and view, and use `-c nemotron-3.5 eval_nim=true embedding_api_backend=vllm`. Enable `eval_base=true` when comparing against the base model.
 - For rerank NIM, use `uv run nemotron rerank eval -c default eval_nim=true eval_base=false`.
+- For Nemotron 3.5 rerank vLLM, use `rerank eval -c nemotron-3.5 eval_vllm=true eval_base=false eval_finetuned=false`, the same evaluation inputs, and `first_stage_results_path` from local evaluation. Compare `vllm_rankings.json` with local raw scores and check metrics separately.
 - If metrics drift after export or deploy, check ONNX vs TensorRT, quantization, pooling, normalization, prefixes, prompt templates, and sequence length.

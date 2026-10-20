@@ -69,6 +69,24 @@ The producer validates unknown fields and checks both role credentials before
 generation. Use provider-specific request fields only when your endpoint
 supports them.
 
+If your chat endpoint supports JSON object output, you can enable JSON mode for
+both roles. The producer continues to validate every response against its
+requested schema and quality thresholds.
+
+```yaml
+sdg_generator_options:
+  extra_body:
+    response_format:
+      type: json_object
+sdg_judge_options:
+  extra_body:
+    response_format:
+      type: json_object
+```
+
+Use a new `artifact_root` when changing model request settings for an existing
+run, because the response cache is bound to those settings.
+
 ## Summary Embeddings
 
 The default section workflow uses the public text model

@@ -77,6 +77,9 @@ checkpoint:
   # Keep the latest checkpoint plus any pointer-protected best checkpoint.
   max_recent_checkpoints: 1
 
+dist_env:
+  timeout_minutes: 30
+
 distributed:
   strategy: fsdp2
   dp_size: none

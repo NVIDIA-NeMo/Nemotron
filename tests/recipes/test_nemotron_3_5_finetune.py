@@ -122,6 +122,9 @@ def test_training_bounds_native_checkpoint_retention(monkeypatch, module, family
     assert config["checkpoint"]["enabled"] is True
     assert config["checkpoint"]["max_recent_checkpoints"] == 1
     assert config["checkpoint"]["save_consolidated"] in (True, "final", "every")
+    if family == "nemotron_3_5":
+        # Full checkpoints can exceed the upstream one-minute collective timeout.
+        assert config["dist_env"]["timeout_minutes"] == 30
 
 
 def test_vl_flash_adamw_uses_quantized_states_and_full_master_weights(
@@ -393,7 +396,7 @@ def test_rerank_routes_processor_and_revision(tmp_path, monkeypatch, family):
     monkeypatch.setattr(rerank_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
     cfg = rerank_train.FinetuneConfig(
         model_family=family,
-        model_revision="bfa359b67f29ae42b3cef7e1657457b4f6354cb9",
+        model_revision="39aa01525864f736e63f1d5742fc4cf59e754abd",
         train_data_path=_mined_training_file(tmp_path),
         checkpoint_dir=tmp_path / "checkpoints",
         train_n_passages=4,
@@ -450,7 +453,7 @@ def test_released_reranker_profile_and_runtime_pin():
     stage = Path(rerank_train.__file__).parent
     cfg = load_pydantic_config(stage / "config/nemotron-3.5.yaml", [], rerank_train.FinetuneConfig)
     assert cfg.base_model == "nvidia/Nemotron-3.5-Rerank-8B-BF16"
-    assert cfg.model_revision == "bfa359b67f29ae42b3cef7e1657457b4f6354cb9"
+    assert cfg.model_revision == "39aa01525864f736e63f1d5742fc4cf59e754abd"
     assert cfg.model_family == "nemotron_3_5" and cfg.temperature == 0.05
     legacy = load_pydantic_config(stage / "config/default.yaml", [], rerank_train.FinetuneConfig)
     assert cfg.checkpoint_dir != legacy.checkpoint_dir

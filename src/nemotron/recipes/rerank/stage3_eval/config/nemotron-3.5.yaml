@@ -1,0 +1,24 @@
+# Evaluate Nemotron 3.5 rerank checkpoints and the matching vLLM classifier.
+# nemotron rerank eval -c nemotron-3.5 eval_data_path=/path/to/beir image_root=/path/to/bundle
+model_family: nemotron_3_5
+base_model: nvidia/Nemotron-3.5-Rerank-8B-BF16
+model_revision: 39aa01525864f736e63f1d5742fc4cf59e754abd
+finetuned_model_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage2_finetune/checkpoints/LATEST/model/consolidated
+retrieval_model: nvidia/Nemotron-3.5-Embed-1B-BF16
+eval_data_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage1_prep/eval_beir
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage3_eval
+batch_size: 1
+retrieval_batch_size: 1
+max_length: 4096
+retrieval_query_max_length: 512
+retrieval_passage_max_length: 4096
+query_prefix: null
+passage_prefix: null
+use_text_in_document: true
+top_k: 100
+k_values: [1, 5, 10, 100]
+eval_base: true
+eval_finetuned: true
+eval_vllm: false
+vllm_url: http://localhost:8000
+vllm_model: nvidia/Nemotron-3.5-Rerank-8B-BF16

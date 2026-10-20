@@ -80,6 +80,9 @@ checkpoint:
   save_consolidated: final
   max_recent_checkpoints: 1
 
+dist_env:
+  timeout_minutes: 30
+
 distributed:
   strategy: fsdp2
   defer_fsdp_grad_sync: false

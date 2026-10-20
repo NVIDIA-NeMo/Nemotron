@@ -277,7 +277,7 @@ def _validate_query_groups(paths: BundlePaths, units: dict, corpus: set[str], vi
     if not isinstance(by_view, dict):
         raise ValueError("Missing per-view query_assignments")
     assignments = by_view.get(view)
-    if not isinstance(assignments, dict) or not assignments:
+    if not isinstance(assignments, dict):
         raise ValueError("Missing per-view query_assignments")
     partitions = {
         "train": _load_json(paths.train)["data"],

@@ -130,8 +130,14 @@ def resolve_portable_evaluation_input(input_path: Path, view: str) -> tuple[Path
 
     Returns:
         Tuple of the BEIR evaluation directory and portable bundle root.
+
+    Raises:
+        ValueError: If the selected view has no accepted evaluation queries.
     """
     paths = _portable_bundle_paths(input_path, view)
+    with (paths.synthetic_eval / "queries.jsonl").open(encoding="utf-8") as stream:
+        if not any(line.strip() for line in stream):
+            raise ValueError(f"Portable view {view} has no accepted evaluation queries; no fallback is allowed")
     return paths.synthetic_eval, paths.root
 
 

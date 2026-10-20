@@ -97,6 +97,30 @@ def test_shared_full_corpus_and_public_handoffs(tmp_path, view, validation):
     assert (root / f"synthetic_eval/{view}/qrels/test.tsv").read_bytes() == before
 
 
+def test_empty_image_view_passes_audit_but_cannot_supply_training_or_evaluation_data(tmp_path):
+    root = tmp_path / "bundle"
+    _grouped(root, "image")
+    for split in ("train", "validation"):
+        _json(root / f"views/image/{split}.json", {"corpus": {"path": "corpus/shared"}, "data": []})
+    _jsonl(root / "synthetic_eval/image/queries.jsonl", [])
+    (root / "synthetic_eval/image/qrels/test.tsv").write_text("query-id\tcorpus-id\tscore\n")
+    split_path = root / "split_manifest.json"
+    split_manifest = json.loads(split_path.read_text())
+    split_manifest["query_assignments"]["image"] = {}
+    _json(split_path, split_manifest)
+    manifest = _seal(root)
+
+    paths = bundle_validation.validate_bundle(manifest, view="image")
+    handoff = write_generation_manifest(
+        output_dir=tmp_path, output_path=paths.train, dataset_name="fixture", portable_bundle=root
+    )
+    assert len(pq.read_table(paths.train_corpus / "part-00000.parquet")) == 3
+    with pytest.raises(ValueError, match="no accepted training examples; no fallback"):
+        resolve_portable_training_input(handoff, "image")
+    with pytest.raises(ValueError, match="no accepted evaluation queries; no fallback"):
+        resolve_portable_evaluation_input(handoff, "image")
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -104,6 +128,7 @@ def test_shared_full_corpus_and_public_handoffs(tmp_path, view, validation):
         "text",
         "missing-group",
         "assignment",
+        "empty-assignments",
         "extra-assignment",
         "missing-page",
         "scope",
@@ -127,6 +152,8 @@ def test_grouped_protocol_rejects_leakage_and_incomplete_inputs(tmp_path, mutati
         del query["query_group_id"]
     elif mutation == "assignment":
         split["query_assignments"]["image_and_text"]["q-evaluation"]["split"] = "train"
+    elif mutation == "empty-assignments":
+        split["query_assignments"]["image_and_text"] = {}
     elif mutation == "extra-assignment":
         split["query_assignments"]["image_and_text"]["unexported"] = {"split": "train", "query_group_id": "extra"}
     elif mutation == "missing-page":
