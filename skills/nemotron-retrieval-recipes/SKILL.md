@@ -1,15 +1,8 @@
 ---
 name: nemotron-retrieval-recipes
-version: "0.3.0"
-author: "NVIDIA Nemotron Team <noreply@nvidia.com>"
 license: Apache-2.0
-tags:
-  - nemotron
-  - retrieval
-  - fine-tuning
-  - embeddings
-  - reranking
 metadata:
+  version: "0.3.0"
   author: "NVIDIA Nemotron Team <noreply@nvidia.com>"
   tags:
     - nemotron
