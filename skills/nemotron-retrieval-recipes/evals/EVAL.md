@@ -9,10 +9,37 @@ The evaluation is functional: it checks whether agents use the skill when public
 ## Dataset Rules
 
 - Keep prompts realistic. Do not name the skill in user prompts.
-- Include positive cases for embedding planning, reranker selection, deployment debugging, stale artifact diagnosis, secret-safe setup, prerequisite gating, remote execution, long-running job boundaries, docs-to-checkout reconciliation, metric interpretation, stage readiness, and export/deploy boundary debugging.
-- Include negative cases where the skill should not activate, including unrelated factual questions and generic vector database advice.
-- Keep `expected_skill`, `ground_truth`, and ordered `expected_behavior` entries explicit enough for deterministic and judge-based grading.
+- Keep the suite at 12 cases unless a new failure mode justifies the extra live CI cost. Replace or extend an existing case when it covers the same decision.
+- Use realistic recipe tasks and nearby negative cases. Each case must protect a distinct behavior in the coverage table below.
+- Keep `expected_skill`, `expected_output`, and `assertions` explicit. Grade task outcomes in both the with-skill and no-skill arms; do not require skill invocation for a positive case to earn correctness credit.
 - Do not commit generated `evals/results/` output; commit only reusable fixtures and summary reports.
+
+## Case Coverage and Cost
+
+The suite contains 10 positive and two negative cases. With one attempt, two
+agents, and both with-skill and no-skill arms, it requires 48 agent trials.
+The previous 20-case suite required 80 under the same settings.
+
+Each ID below has the prefix `nemotron-retrieval-recipes-`:
+
+| Case ID | Distinct behavior protected |
+| --- | --- |
+| `multimodal-input-plan-001` | Select the current profile and input contract; distinguish directory discovery, paired records, and PDF preprocessing before a bounded preview. |
+| `multimodal-rerank-handoff-001` | Reuse embedding preparation with explicit input paths, a separate rerank artifact root, and the supported stage sequence. |
+| `multimodal-serving-drift-001` | Compare fixed candidates and raw scores across local and vLLM evaluation, with correct Docker GPU selection and preserved results. |
+| `multimodal-resume-001` | Detect producer identity changes before resume and preserve existing artifacts. |
+| `rerank-choice-001` | Choose embedding or reranking from candidate recall and ordering quality. |
+| `llama-profile-export-001` | Preserve the Llama profile's ONNX/NIM contract across stages. |
+| `nemotron3-deploy-001` | Preserve default Nemotron 3 direct deployment and its endpoint-specific evaluation contract. |
+| `export-boundary-001` | Localize a legacy TensorRT regression after checkpoint/ONNX parity. |
+| `remote-batch-001` | Use scheduler GPU allocation and a durable execution handoff for a supported text profile. |
+| `rerank-sdg-governance-001` | Check confidential-corpus egress permission and protect ambient credentials. |
+| `negative-vector-db-001` | Avoid activation for adjacent generic vector database advice. |
+| `negative-nonrecipe-nim-001` | Avoid activation for unrelated embedding-server troubleshooting. |
+
+Input readiness, command freshness, and metric hygiene are checked within the
+relevant tasks. Separate trivial factual negatives and overlapping planning or
+prerequisite cases add little coverage for their execution cost.
 
 ## Usefulness Rubric
 

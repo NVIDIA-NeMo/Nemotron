@@ -28,6 +28,7 @@ artifact_root: ./output/embed
 
 # Corpus identifier (used for output naming)
 corpus_id: nv_pp_random
+sdg_workflow: text_qa
 
 # Path to directory containing document files (local path or hf:// URI)
 # Default uses sample corpus auto-downloaded from HuggingFace; override with your own data

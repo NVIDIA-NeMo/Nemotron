@@ -191,23 +191,24 @@ def unroll_output_path(convert_output_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 # GPU-tier fixtures
 # ---------------------------------------------------------------------------
-_stage_venv_cache: dict[str, Path] = {}
+_stage_venv_cache: dict[tuple[str, str], Path] = {}
 
 
 @pytest.fixture(scope="session")
 def stage_venv_factory(tmp_path_factory: pytest.TempPathFactory):
     """Factory that creates and caches a uv-synced venv for a given stage.
 
-    Returns a callable ``(stage_name) -> Path`` where the path points to
+    Returns a callable ``(stage_name, extra="text") -> Path`` where the path points to
     ``<venv>/bin/python``.  Venvs are session-scoped and reused across tests.
     """
     uv = shutil.which("uv")
     if uv is None:
         pytest.skip("uv not found on PATH")
 
-    def _get_or_create(stage_name: str) -> Path:
-        if stage_name in _stage_venv_cache:
-            return _stage_venv_cache[stage_name]
+    def _get_or_create(stage_name: str, extra: str = "text") -> Path:
+        cache_key = (stage_name, extra)
+        if cache_key in _stage_venv_cache:
+            return _stage_venv_cache[cache_key]
 
         stage_dir = EMBED_DIR / stage_name
         assert stage_dir.is_dir(), f"Stage directory not found: {stage_dir}"
@@ -215,11 +216,11 @@ def stage_venv_factory(tmp_path_factory: pytest.TempPathFactory):
             f"pyproject.toml not found in {stage_dir}"
         )
 
-        venv_dir = tmp_path_factory.mktemp(f"venv_{stage_name}")
+        venv_dir = tmp_path_factory.mktemp(f"venv_{stage_name}_{extra}")
         env = {**subprocess.os.environ, "UV_PROJECT_ENVIRONMENT": str(venv_dir)}
 
         result = subprocess.run(
-            [uv, "sync", "--frozen", "--project", str(stage_dir)],
+            [uv, "sync", "--frozen", "--project", str(stage_dir), "--extra", extra],
             capture_output=True,
             text=True,
             env=env,
@@ -233,7 +234,7 @@ def stage_venv_factory(tmp_path_factory: pytest.TempPathFactory):
 
         python = venv_dir / "bin" / "python"
         assert python.is_file(), f"Python not found at {python}"
-        _stage_venv_cache[stage_name] = python
+        _stage_venv_cache[cache_key] = python
         return python
 
     return _get_or_create

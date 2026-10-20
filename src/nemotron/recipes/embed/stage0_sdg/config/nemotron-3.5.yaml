@@ -1,0 +1,45 @@
+# Directory or prepared-source SDG profile for Nemotron 3.5 Embed 1B.
+# Uses the public plugin's structured parser with released Data Designer.
+
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:26.06-py3
+
+artifact_root: ./output/embed/nemotron-3.5
+corpus_id: multimodal_retrieval
+sources_file: null
+source_directory: null
+sdg_workflow: multimodal
+contexts_file: null
+sdg_max_units_per_context: 8
+sdg_batch_size: 30
+sdg_credential_env: NVIDIA_API_KEY
+sdg_options:
+  context_strategy: sections
+  section_size: 5
+  combination_iterations: 20
+  summary_embedding_model: nvidia/nemotron-3-embed-1b
+  summary_embedding_endpoint: https://integrate.api.nvidia.com/v1
+  summary_embedding_credential_env: NVIDIA_API_KEY
+  summary_embedding_extra_body:
+    input_type: passage
+    truncate: NONE
+  summary_count: 400
+  max_context_chars: null  # concrete prompts are bounded by DD and the model deployment
+  judge_summaries: true
+  group_near_duplicates: true
+  require_verbatim_quotes: false
+  missing_response_attempts: 3
+sdg_generator_options: {}
+sdg_judge_options: {}
+export_train_ratio: 0.8
+export_validation_ratio: 0.0
+export_seed: 42
+output_dir: ${artifact_root}/stage0_sdg
+resume: never
+preview: false
+
+# SDGConfig defaults generation and judging to Nemotron 3.5 Super VL.
+# Optional model overrides:
+# sdg_generator_model: <image-capable-generator-model>
+# sdg_judge_model: <image-capable-judge-model>

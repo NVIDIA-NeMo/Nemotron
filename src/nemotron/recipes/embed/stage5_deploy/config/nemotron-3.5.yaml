@@ -1,0 +1,33 @@
+# Deployment profile for Nemotron 3.5 Embed 1B.
+# This profile serves the consolidated checkpoint through vLLM.
+
+artifact_root: ./output/embed/nemotron-3.5
+model_family: nemotron_3_5
+backend: vllm
+
+nim_image: null
+vllm_image: vllm/vllm-openai:v0.31.0
+nim_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
+vllm_runner: pooling
+vllm_max_model_len: 8192
+
+container_name: nemotron-3.5-embed
+model_dir: ${oc.env:NEMOTRON_3_5_EMBED_DEPLOY_CHECKPOINT,${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated}
+expected_model_fingerprint: null
+
+container_model_path: /model
+container_cache_path: /opt/cache
+vllm_container_cache_path: /root/.cache/huggingface
+
+host_port: 8000
+container_port: 8000
+gpus: all
+shm_size: 16gb
+
+detach: false
+remove_on_exit: true
+health_check_timeout: 600
+health_check_interval: 5
+ngc_api_key_env: NGC_API_KEY
+forward_ngc_api_key: false
+allow_unhealthy_detached: false

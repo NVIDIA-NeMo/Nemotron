@@ -6,7 +6,8 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 
 - Grounding Paths
 - When To Use Rerank
-- Commands
+- Nemotron 3.5 Workflow
+- Default Text-Profile Commands
 - Stage Map
 - Stage Contracts
 - Important Defaults
@@ -16,7 +17,7 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 
 ## Grounding Paths
 
-- Recipe README: `src/nemotron/recipes/rerank/README.md`
+- Recipe README: `docs/nemotron/rerank/README.md`
 - CLI group: `src/nemotron/cli/commands/rerank/_typer_group.py`
 - Pipeline command: `src/nemotron/cli/commands/rerank/run.py`
 - Stage configs: `src/nemotron/recipes/rerank/stage*/config/default.yaml`
@@ -26,7 +27,40 @@ Load this reference for `nemotron rerank ...` work or for questions about cross-
 
 Use reranker fine-tuning when relevant documents are already in the candidate set but the top ranks are wrong, nDCG@k is low while Recall@k is acceptable, or users say the right answer appears below worse answers. A reranker re-scores query-document pairs; it cannot recover documents that first-stage retrieval did not return.
 
-## Commands
+## Nemotron 3.5 Workflow
+
+For `nvidia/Nemotron-3.5-Rerank-8B-BF16`, use `nemotron-3.5` with `finetune`,
+`eval`, and `deploy`. Read the multimodal section of the recipe README before
+preparing inputs. Use the Nemotron 3.5 embedding SDG and preparation stages for
+a text/image directory or explicit source records. Supply the mined, unrolled
+training data through `train_data_path` and retain the corpus at the relative
+location recorded in that JSON. Select a separate rerank `artifact_root`.
+Carry that root through `finetune`, `eval`, and `deploy`. It defaults to
+`output/rerank/nemotron-3.5` and derives the Stage 2 checkpoint, Stage 3 output,
+and Stage 5 model paths. Input paths remain explicit. Per-stage
+`checkpoint_dir`, `finetuned_model_path`, `output_dir`, and `model_dir`
+overrides take priority.
+Run the stages explicitly; skip Stage 4 and deploy the consolidated model with
+vLLM. The default Llama ONNX/NIM path does not apply to this model.
+
+For multimodal evaluation:
+
+- Run locally with `-c nemotron-3.5`; the CLI selects the pinned AutoModel environment.
+- Select portable input with `sdg_input_path=<generation_result.json>` and `retrieval_view=mixed`, or provide independent `eval_data_path` and `image_root` paths.
+- Keep `top_k`, `k_values`, image settings, and the held-out data fixed. Set `first_stage_results_path` to the local evaluation's `first_stage_results.json` to reuse candidates for endpoint comparisons.
+- Read `base_rankings.json` and `finetuned_rankings.json` alongside `eval_results.json`. Scores are raw logits; higher values indicate greater predicted relevance.
+- Deploy with `rerank deploy -c nemotron-3.5 artifact_root=<rerank-run> gpus='device=0' detach=true`, replacing `<rerank-run>` with the training run directory and `0` with the selected host GPU. The shell's `CUDA_VISIBLE_DEVICES` does not apply to Docker. Evaluate that server with the same `artifact_root` and input paths, plus `eval_base=false eval_finetuned=false eval_vllm=true vllm_url=http://localhost:8000`. Set a separate `output_dir` to preserve the local evaluation outputs.
+- Use `/classify` with query/document messages for multimodal requests. Keep raw logits by setting `use_activation=false` and preserve the checkpoint template with `add_special_tokens=false`.
+- Compare `vllm_rankings.json` and metrics against the local checkpoint. Check processor formatting, score-head identity, image resizing, and sequence limits before attributing drift to training.
+
+These profiles provide the execution path; report the actual completed GPU and
+endpoint checks for each run rather than inferring successful validation from a
+configuration preview.
+
+## Default Text-Profile Commands
+
+The remaining sections describe the `default` Llama reranker profile. Read them
+for text-profile tasks or comparisons with the Nemotron 3.5 workflow.
 
 Use `uv run` when `nemotron` is not already available.
 
@@ -65,7 +99,7 @@ uv run nemotron rerank finetune -c default --batch my-cluster
 | 4 export | `rerank export` | Fine-tuned HF checkpoint | `output/rerank/stage4_export` | Default config exports ONNX only; set `export_to_trt=true` for TensorRT. |
 | 5 deploy | `rerank deploy` | ONNX/TensorRT model dir | NIM on `host_port` | Requires Docker/NGC setup and `NGC_API_KEY`. |
 
-The pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `rerank run` defaults to `--to eval`.
+The default text pipeline order is `sdg`, `prep`, `finetune`, `eval`, `export`, `deploy`; `rerank run` defaults to `--to eval`. The stage tables describe that text workflow; use the multimodal instructions above for `nemotron-3.5`.
 
 
 ## Stage Contracts
@@ -105,7 +139,8 @@ Stage 2:
 - Checkpoints: `./output/rerank/stage2_finetune/checkpoints`
 - Defaults: `num_epochs=3`, `global_batch_size=128`, `local_batch_size=4`, `learning_rate=3.0e-6`, `train_n_passages=5`
 - Optimizer backend: `auto`, using Transformer Engine FusedAdam when available and FlashAdamW otherwise.
-- Tokenization: `rerank_max_length=512`, `prompt_template="question:{query} \n \n passage:{passage}"`
+- Sequence limit: `rerank_max_length=512`.
+- Prompt template: `prompt_template="question:{query} \n \n passage:{passage}"`.
 - For real corpora, start with 1-2 epochs unless Stage 3 metrics still improve; the 3 epoch default is for small examples.
 
 Stage 3:

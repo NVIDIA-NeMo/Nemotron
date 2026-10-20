@@ -55,9 +55,9 @@ import math
 import os
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
@@ -69,6 +69,27 @@ _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
 
 # HuggingFace URI prefix for downloading datasets
 _HF_PREFIX = "hf://"
+_MULTIMODAL_SDG_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
+
+
+class SourceDirectorySettings(BaseModel):
+    """Recipe-owned source path with options validated by the installed producer.
+
+    Keeping the producer options here avoids importing the SDG package in the
+    base recipe CLI environment. Its SourceDirectoryConfig validates those
+    options when the stage builds its execution configuration.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    path: Path = Field(description="Directory containing source text files and standalone images.")
+
+    @field_validator("path", mode="before")
+    @classmethod
+    def _require_path(cls, value: Any) -> Any:
+        if isinstance(value, str) and not value.strip():
+            raise ValueError("source_directory.path must not be empty")
+        return value
 
 
 class SDGConfig(RecipeSettings):
@@ -78,6 +99,23 @@ class SDGConfig(RecipeSettings):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_model_defaults(cls, values: Any) -> Any:
+        """Resolve multimodal roles before validation or CLI config persistence."""
+        if not isinstance(values, dict) or values.get("sdg_workflow") != "multimodal":
+            return values
+        values = dict(values)
+        if values.get("sdg_generator_model") is None:
+            values["sdg_generator_model"] = os.environ.get(
+                "NEMOTRON_3_5_SDG_GENERATOR_MODEL", _MULTIMODAL_SDG_MODEL
+            )
+        if values.get("sdg_judge_model") is None:
+            values["sdg_judge_model"] = os.environ.get(
+                "NEMOTRON_3_5_SDG_JUDGE_MODEL", _MULTIMODAL_SDG_MODEL
+            )
+        return values
 
     artifact_root: Path = Field(
         default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
@@ -90,6 +128,60 @@ class SDGConfig(RecipeSettings):
         default="hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random",
         description="Local path or hf:// URI to directory containing document files (.txt, .md, etc.).",
     )
+    sources_file: Path | None = Field(
+        default=None,
+        description=(
+            "Canonical RetrievalSource JSONL with optional page images. When set, replaces corpus_dir "
+            "and bypasses text chunking; relative image paths resolve against the source file."
+        ),
+    )
+    source_directory: SourceDirectorySettings | None = Field(
+        default=None,
+        description=(
+            "Directory source configuration: path plus public SourceDirectoryConfig options. "
+            "Use exactly one of source_directory and sources_file for multimodal SDG."
+        ),
+    )
+    sdg_workflow: Literal["text_qa", "multimodal"] = Field(
+        default="text_qa",
+        description=(
+            "SDG pipeline: text_qa reads text directories; multimodal reads source JSONL or a source directory."
+        ),
+    )
+    contexts_file: Path | None = Field(
+        default=None, description="Optional generic multi-unit generation contexts JSONL."
+    )
+    sdg_max_units_per_context: int = Field(default=8, ge=1)
+    sdg_batch_size: int = Field(default=30, ge=1, le=128)
+    sdg_credential_env: str = Field(default="NVIDIA_API_KEY", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    sdg_generator_model: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Multimodal enrichment, summary, and query generator. Defaults to Nemotron 3.5 Super VL.",
+    )
+    sdg_judge_model: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Shared multimodal judge. Defaults to Nemotron 3.5 Super VL.",
+    )
+    sdg_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Generic producer options (context planning, summary selection, profiles, gates, grouping). "
+            "Validated by the public plugin; recipe paths and execution fields cannot be overridden."
+        ),
+    )
+    sdg_generator_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Public generator ModelSettings overrides. No inline secrets.",
+    )
+    sdg_judge_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Public ModelSettings overrides for the shared multimodal judge. No inline secrets.",
+    )
+    export_train_ratio: float = Field(default=0.8, ge=0, le=1, description="Portable query-group training fraction.")
+    export_validation_ratio: float = Field(default=0.0, ge=0, le=1, description="Portable validation fraction.")
+    export_seed: int = Field(default=42, description="Portable query-group split seed.")
     output_dir: Path = Field(
         default_factory=lambda data: data["artifact_root"] / "stage0_sdg",
         description="Output directory for generated synthetic data.",
@@ -152,6 +244,29 @@ class SDGConfig(RecipeSettings):
     def _check_hops_order(self):
         if self.min_hops > self.max_hops:
             raise ValueError(f"min_hops ({self.min_hops}) must be <= max_hops ({self.max_hops})")
+        if self.export_train_ratio + self.export_validation_ratio > 1:
+            raise ValueError("Portable training and validation fractions must sum to at most one")
+        if self.sdg_workflow == "multimodal":
+            if (self.sources_file is None) == (self.source_directory is None):
+                raise ValueError("multimodal requires exactly one of canonical sources_file or source_directory")
+            if self.preview:
+                raise ValueError("multimodal requires explicit bounded source/context input; preview is unsupported")
+        elif self.sources_file is not None or self.source_directory is not None:
+            raise ValueError(
+                "Canonical sources and source_directory require sdg_workflow='multimodal'; "
+                "text_qa accepts corpus_dir text files."
+            )
+        elif (
+            self.sdg_generator_model is not None
+            or self.sdg_judge_model is not None
+            or self.sdg_options
+            or self.sdg_generator_options
+            or self.sdg_judge_options
+        ):
+            raise ValueError(
+                "sdg_generator_model, sdg_judge_model, sdg_options, sdg_generator_options, and sdg_judge_options "
+                "require sdg_workflow='multimodal'"
+            )
         return self
 
     # --- Data Designer execution -----------------------------------------------
@@ -182,7 +297,8 @@ class SDGConfig(RecipeSettings):
     )
     artifact_extraction_provider: str = Field(default="nvidia", description="Provider for artifact extraction model.")
     qa_generation_model: str = Field(
-        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for QA generation."
+        default="nvidia/nemotron-3-ultra-550b-a55b",
+        description="Model name for text QA generation.",
     )
     qa_generation_provider: str = Field(default="nvidia", description="Provider for QA generation model.")
     quality_judge_model: str = Field(
@@ -419,7 +535,11 @@ def run_sdg(cfg: SDGConfig) -> Path:
     from nemotron.recipes.embed.sdg_manifest import write_generation_manifest
     from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_generation
 
-    # Resolve corpus_dir (handles hf:// URIs and local paths)
+    if cfg.sdg_workflow == "multimodal":
+        from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_multimodal
+
+        return execute_multimodal(cfg)
+
     corpus_dir = _resolve_corpus_dir(cfg.corpus_dir)
 
     # Resolve remaining Path fields to absolute so downstream libraries

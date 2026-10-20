@@ -74,7 +74,7 @@ $ uv run nemotron nano3 pipe --run YOUR-CLUSTER
 - **Model Collection:** [NVIDIA Nemotron v3 Collection](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3)
 - **Training Datasets:**
   - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) (Open pre-training data)
-  - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) (SFT and RL data)
+  - [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-datasets) (SFT and RL data)
 
 <!-- TODO - move whatever customization docs for Nano 3 to this section of the docs.
 ```{seealso}
@@ -270,6 +270,7 @@ wandb login
 
 ## Further Reading
 
+- [Training FAQ](../../train-models/faq/index.md) – common questions about training and fine-tuning Nemotron models
 - [Stage 0: Pretraining](./pretrain.md)
 - [Stage 1: SFT](./sft.md)
 - [Stage 2: RL](./rl.md)

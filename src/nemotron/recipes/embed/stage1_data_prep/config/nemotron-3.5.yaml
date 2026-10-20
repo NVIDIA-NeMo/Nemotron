@@ -1,0 +1,35 @@
+# Data-preparation profile for Nemotron 3.5 Embed 1B.
+# The mixed view retains text, image, and paired units from DataDesignerPlugins.
+
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:26.06-py3
+
+artifact_root: ./output/embed/nemotron-3.5
+corpus_id: multimodal_retrieval
+sdg_input_path: ${artifact_root}/stage0_sdg/generation_result.json
+train_input_file: null
+retrieval_view: mixed
+output_dir: ${artifact_root}/stage1_data_prep
+artifact_recipe: embed
+
+base_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
+model_family: nemotron_3_5
+trust_remote_code: false
+tokenizer_force_default: true
+image_longest_edge: null
+use_text_in_document: true
+
+mining_backend: automodel
+mining_use_images: true
+attn_implementation: sdpa
+hard_negatives_to_mine: 5
+hard_neg_margin: 0.95
+mining_batch_size: 4
+# Separate encoder batches control activation memory, not negative selection.
+query_embedding_batch_size: 1
+document_embedding_batch_size: 1
+query_max_length: 512
+passage_max_length: 4096
+query_prefix: null
+passage_prefix: null

@@ -6,7 +6,7 @@ Load this reference when the user mentions clusters, Slurm, `env.toml`, `--run`,
 
 - Inspect the repo root `env.toml` before composing remote commands.
 - Confirm the requested profile exists and matches the intended executor.
-- Keep secrets in the remote environment; never ask users to paste key values.
+- Keep credential values in the remote environment and out of chat. Ask only whether the required credentials are configured.
 - Start with the same local help or dry-run command before adding `--run` or `--batch`.
 
 ## Modes

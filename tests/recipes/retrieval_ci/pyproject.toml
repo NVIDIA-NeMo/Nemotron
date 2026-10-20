@@ -1,0 +1,25 @@
+# CPU contract tests intentionally exclude the model runtime and hosted SDG.
+# GPU stages keep their own authoritative pyproject.toml and uv.lock files.
+[project]
+name = "nemotron-retrieval-cpu-tests"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "editables==0.5",
+    "fsspec==2026.9.0",
+    "hatchling==1.29.0",
+    "numpy==2.2.6",
+    "omegaconf==2.3.0",
+    "pillow==12.1.1",
+    "pyarrow==23.0.1",
+    "pydantic==2.12.5",
+    "pydantic-settings==2.13.1",
+    "pytest==9.0.3",
+    "pyyaml==6.0.3",
+    "rich==14.3.3",
+    "tomlkit==0.14.0",
+    "typer==0.24.1",
+]
+
+[tool.uv]
+package = false

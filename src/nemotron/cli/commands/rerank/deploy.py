@@ -14,7 +14,7 @@
 
 """Deploy command implementation.
 
-Launches NeMo Retriever Reranking NIM for inference.
+Launches a reranking service with NIM or vLLM.
 Deploy is local-only (it's just a Docker wrapper).
 """
 
@@ -47,7 +47,7 @@ META = RecipeMeta(
     config_dir=str(SPEC.config_dir),
     config_model=DeployConfig,
     default_config=SPEC.config.default,
-    input_artifacts={"manifest": "Optional NIM model manifest"},
+    input_artifacts={"model_dir": "NIM export or consolidated vLLM checkpoint"},
 )
 
 
@@ -90,6 +90,6 @@ def _execute_deploy(cfg: RecipeConfig):
 
 
 def deploy(ctx: typer.Context) -> None:
-    """Deploy NeMo Retriever Reranking NIM for inference."""
+    """Deploy a reranking service with NIM or vLLM."""
     cfg = parse_recipe_config(ctx)
     _execute_deploy(cfg)

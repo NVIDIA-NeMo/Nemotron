@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from nemotron.recipes.embed.stage2_finetune import train
 
@@ -25,16 +26,14 @@ def test_auto_optimizer_uses_fused_adam_when_available(monkeypatch: pytest.Monke
     assert raw_config["model"]["_target_"] == "nemo_automodel.NeMoAutoModelBiEncoder.from_pretrained"
     assert raw_config["tokenizer"]["_target_"] == "nemo_automodel.NeMoAutoTokenizer.from_pretrained"
     assert raw_config["tokenizer"]["add_eos_token"] is False
-    assert raw_config["dataloader"]["dataset"]["n_passages"] == 5
+    assert raw_config["dataset"]["n_passages"] == 5
     assert raw_config["dataloader"]["collate_fn"]["_target_"] == (
         "nemo_automodel.components.datasets.llm.BiEncoderCollator"
     )
     assert raw_config["dataloader"]["collate_fn"]["query_prefix"] == "query: "
     assert raw_config["dataloader"]["collate_fn"]["passage_prefix"] == "passage: "
     assert raw_config["distributed"]["strategy"] == "fsdp2"
-    assert raw_config["optimizer"]["_target_"] == (
-        "transformer_engine.pytorch.optimizers.fused_adam.FusedAdam"
-    )
+    assert raw_config["optimizer"]["_target_"] == ("transformer_engine.pytorch.optimizers.fused_adam.FusedAdam")
     assert raw_config["optimizer"]["adam_w_mode"] is True
     assert raw_config["optimizer"]["master_weights"] is True
 
@@ -95,7 +94,7 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
         "weight_decay": 0.01,
         "betas": [0.9, 0.999],
         "eps": 1.0e-8,
-        "quantize": False,
+        "quantize": True,
         "compress_state_dict": False,
         "master_weight_bits": 24,
         "fused": True,
@@ -103,7 +102,7 @@ def test_flash_adamw_backend_rewrites_optimizer_config(monkeypatch: pytest.Monke
     assert raw_config["model"]["torch_dtype"] == "bfloat16"
 
 
-def test_flash_adamw_disables_master_weights_for_fp32_models(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_flash_adamw_disables_master_weights_when_explicitly_requested(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (False, "missing TE"))
     monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (True, None))
 
@@ -115,6 +114,30 @@ def test_flash_adamw_disables_master_weights_for_fp32_models(monkeypatch: pytest
 
     assert optimizer_backend == "flash_adamw"
     assert raw_config["optimizer"]["master_weight_bits"] is None
+
+
+@pytest.mark.parametrize("profile", ["default", "nemotron-3.5"])
+@pytest.mark.parametrize("use_flags", [False, True])
+@pytest.mark.parametrize(("value", "expected"), [("24", 24), ("32", 32), ("null", None)])
+def test_master_weight_precision_cli_override(profile: str, use_flags: bool, value: str, expected: int | None) -> None:
+    """Both CLI forms preserve the selected precision in text and VL profiles."""
+    field = "flash_adamw_master_weight_bits"
+    overrides = [f"--{field}", value] if use_flags else [f"{field}={value}"]
+
+    cfg = train.load_config(train.STAGE_PATH / "config" / f"{profile}.yaml", overrides, train.FinetuneConfig)
+
+    assert cfg.flash_adamw_master_weight_bits == expected
+
+
+@pytest.mark.parametrize("use_flags", [False, True])
+@pytest.mark.parametrize("value", ["16", "32.0", "invalid"])
+def test_invalid_master_weight_precision_cli_override(use_flags: bool, value: str) -> None:
+    """Unsupported precisions and malformed strings fail before model loading."""
+    field = "flash_adamw_master_weight_bits"
+    overrides = [f"--{field}", value] if use_flags else [f"{field}={value}"]
+
+    with pytest.raises(ValidationError, match=field):
+        train.load_config(train.STAGE_PATH / "config" / "default.yaml", overrides, train.FinetuneConfig)
 
 
 @pytest.mark.parametrize(
@@ -143,7 +166,50 @@ def test_checkpoint_interval_auto_scaling_can_be_disabled() -> None:
         auto_scale_checkpoint_intervals=False,
     )
 
-    _, _, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+    _, _, _, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
 
     assert checkpoint_every == 1000
     assert val_every == 1000
+
+
+def test_checkpoint_interval_auto_scaling_uses_exact_step_budget() -> None:
+    cfg = train.FinetuneConfig(
+        num_epochs=None,
+        max_steps=7,
+        checkpoint_every_steps=1000,
+        val_every_steps=1000,
+        auto_scale_checkpoint_intervals=True,
+    )
+
+    _, num_epochs, max_steps, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+
+    assert num_epochs is None
+    assert max_steps == 7
+    assert checkpoint_every == 2
+    assert val_every == 2
+
+
+def test_epoch_interval_auto_scaling_keeps_legacy_floor_estimate() -> None:
+    cfg = train.FinetuneConfig(
+        num_epochs=3,
+        global_batch_size=32,
+        checkpoint_every_steps=1000,
+        val_every_steps=1000,
+        auto_scale_checkpoint_intervals=True,
+    )
+
+    _, num_epochs, max_steps, checkpoint_every, val_every = train._auto_scale_hyperparams(cfg, num_examples=1145)
+
+    assert num_epochs == 3
+    assert max_steps is None
+    assert checkpoint_every == 35
+    assert val_every == 35
+
+
+def test_text_tokenizer_can_bypass_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The opt-in HF wrapper selection reaches the native text tokenizer config."""
+    monkeypatch.setattr(train, "_can_import_fused_adam", lambda: (True, None))
+    monkeypatch.setattr(train, "_can_import_flash_adamw", lambda: (False, None))
+    cfg = train.FinetuneConfig(tokenizer_force_default=True)
+    raw, _ = train._load_automodel_config(cfg, dict)
+    assert raw["tokenizer"]["force_default"] is True

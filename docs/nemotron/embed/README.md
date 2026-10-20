@@ -2,6 +2,24 @@
 
 Adapt an embedding model to your domain-specific data, then evaluate and deploy it with this complete six-stage pipeline.
 
+## Choose a Model Profile
+
+| Profile | Model | Input and Guide |
+| --- | --- | --- |
+| `nemotron-3.5` | [Nemotron 3.5 Embed 1B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Embed-1B-BF16) | Text and image files; follow [Fine-Tune Multimodal Embeddings](multimodal.md) |
+| `default` | Nemotron 3 Embed 1B BF16 | Text; follow this page |
+| `llama` | Llama Nemotron Embed 1B v2 | Text; use `-c llama` through export and deployment |
+
+For Nemotron 3.5, start with `source_directory.path=./documents`. The recipe
+prepares source records automatically. Use explicit JSONL when you need custom
+units, text/image pairs, or page relationships. The [data reference](data-reference.md)
+and [SDG reference](sdg-reference.md) describe the multimodal contract.
+
+The remaining instructions on this page describe the text profiles. Nemotron
+3.5 preparation, training, and checkpoint evaluation require local execution;
+its consolidated checkpoint deploys directly through vLLM without Stage 4.
+Carry the selected profile and `artifact_root` through every stage.
+
 ## Overview
 
 This recipe fine-tunes the Nemotron 3 Embed checkpoint for domain-specific retrieval and deploys the resulting checkpoint with Retriever NIM or vLLM.
@@ -101,8 +119,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/NVIDIA-NeMo/Nemotron.git
 cd Nemotron
 
-# uv creates a virtual environment at .venv/ and installs all dependencies
-uv sync --all-extras
+# Install the CLI; each stage installs its isolated dependencies when launched.
+uv sync --python 3.12
 ```
 
 ### 3. Get Your NVIDIA API Credential
@@ -1058,3 +1076,11 @@ For issues, questions, or contributions:
 - **Issues**: [GitHub Issues](https://github.com/NVIDIA-NeMo/Nemotron/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/NVIDIA-NeMo/Nemotron/discussions)
 - **Documentation**: [Nemotron Documentation](https://docs.nvidia.com/nemotron/latest)
+
+```{toctree}
+:hidden:
+
+multimodal
+data-reference
+sdg-reference
+```

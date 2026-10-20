@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from omegaconf import OmegaConf
 
 from nemo_runspec import parse as parse_runspec
 from nemo_runspec.config import (
@@ -140,6 +141,10 @@ def _execute_sdg(cfg: RecipeConfig, *, experiment=None):
     """
     # 1. Parse configuration
     train_config = parse_config(cfg.ctx, SPEC.config_dir, SPEC.config.default)
+    if train_config.get("sdg_workflow") == "multimodal":
+        train_config = OmegaConf.create(
+            SDGConfig.resolve_model_defaults(OmegaConf.to_container(train_config, resolve=True))
+        )
     env = parse_env(cfg.ctx)
 
     script_path = SCRIPT_PATH if cfg.mode == "local" else SCRIPT_REMOTE
