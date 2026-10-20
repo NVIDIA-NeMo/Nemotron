@@ -9,14 +9,14 @@ NVIDIA <br>
 ### License/Terms of Use: <br>
 Apache 2.0 <br>
 ## Use Case: <br>
-Developers and ML engineers use this skill to plan, run, debug, tune, evaluate, export, and deploy public Nemotron embedding and reranking recipes, including Nemotron 3.5 multimodal profiles. Planning uses the bundled references without a checkout or network access. Recipe execution requires a prepared Nemotron source checkout. <br>
+Developers and ML engineers use this skill to plan, run, debug, tune, evaluate, export, and deploy public Nemotron embedding and reranking recipes, including Nemotron 3.5 multimodal profiles. Planning uses the bundled references without a checkout or network access, while recipe execution requires a prepared Nemotron source checkout. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
 
 ## Requirements / Dependencies: <br>
-**Requires API Key or External Credential:** Only for stages that use protected services; planning requires none. <br>
-**Credential Type(s):** API key for hosted generation or authenticated model/container access, as required by the selected workflow. <br>
+**Requires API Key or External Credential:** [Yes] <br>
+**Credential Type(s):** [API key] <br>
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate. <br>
 
@@ -27,10 +27,10 @@ Mitigation: Review and scan skill before deployment. <br>
 ## Reference(s): <br>
 - [Embedding Recipe Reference](references/embed.md) <br>
 - [Rerank Recipe Reference](references/rerank.md) <br>
-- [Evaluation Reference](references/evaluation.md) <br>
-- [Remote Execution Reference](references/remote.md) <br>
-- [Multimodal Data Reference](references/multimodal-data.md) <br>
-- [NVIDIA Nemotron Documentation Snapshot](https://github.com/NVIDIA-NeMo/Nemotron/blob/db6312b2d2aac53a341afd6b45c7784ee966b47c/docs/index.md) <br>
+- [Evaluation Practices](references/evaluation.md) <br>
+- [Remote Execution](references/remote.md) <br>
+- [Multimodal Data and Generation](references/multimodal-data.md) <br>
+- [NVIDIA Nemotron Repository](https://github.com/NVIDIA-NeMo/Nemotron) <br>
 
 
 ## Skill Output: <br>
@@ -54,7 +54,7 @@ Reported benchmark dimensions: <br>
 - Correctness: Is the answer correct? <br>
 - Discoverability: Was the right skill loaded when needed? <br>
 - Effectiveness: Did the skill help complete the task? (equal-weight goal completion and expected workflow adherence) <br>
-- Efficiency: Did it avoid wasted tool calls and token usage? <br>
+- Efficiency: Did it avoid wasted tool calls and token usage? (tool-call productivity and token efficiency) <br>
 
 Underlying evaluation signals used in this run: <br>
 - `security`: Unsafe operations, secret leakage, and unauthorized access. <br>
@@ -67,16 +67,14 @@ Underlying evaluation signals used in this run: <br>
 
 
 ## Evaluation Results: <br>
-These results describe version 0.3.0. Live agent evaluation has not been rerun for the portability changes in version 0.4.0. <br>
-
 | Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
 |---|---:|---:|
-| Overall | 91.9% (uplift unavailable) | 94.8% (uplift unavailable) |
-| Security | 100.0% → 100.0% (±0.0 points) | 91.7% → 100.0% (+8.3 points) |
-| Correctness | 63.3% → 100.0% (+36.7 points) | 71.7% → 96.7% (+25.0 points) |
-| Discoverability | 99.8% (uplift unavailable) | 93.5% (uplift unavailable) |
-| Effectiveness | 61.8% → 91.0% (+29.2 points) | 63.5% → 88.7% (+25.2 points) |
-| Efficiency | 68.9% (uplift unavailable) | 95.0% (uplift unavailable) |
+| Overall | 97.5% (uplift unavailable) | 94.3% (uplift unavailable) |
+| Security | 95.8% → 100.0% (+4.2 points) | 100.0% → 100.0% (±0.0 points) |
+| Correctness | 58.3% → 100.0% (+41.7 points) | 80.0% → 96.7% (+16.7 points) |
+| Discoverability | 100.0% (uplift unavailable) | 93.0% (uplift unavailable) |
+| Effectiveness | 58.5% → 90.7% (+32.2 points) | 65.6% → 85.0% (+19.4 points) |
+| Efficiency | 96.7% (uplift unavailable) | 96.7% (uplift unavailable) |
 
 ## Skill Version(s): <br>
 0.4.0 (source: frontmatter) <br>
