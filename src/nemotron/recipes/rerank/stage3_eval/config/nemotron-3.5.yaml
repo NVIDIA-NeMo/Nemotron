@@ -1,12 +1,13 @@
 # Evaluate Nemotron 3.5 rerank checkpoints and the matching vLLM classifier.
 # nemotron rerank eval -c nemotron-3.5 eval_data_path=/path/to/beir image_root=/path/to/bundle
+artifact_root: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5
 model_family: nemotron_3_5
 base_model: nvidia/Nemotron-3.5-Rerank-8B-BF16
 model_revision: 39aa01525864f736e63f1d5742fc4cf59e754abd
-finetuned_model_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage2_finetune/checkpoints/LATEST/model/consolidated
+finetuned_model_path: ${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated
 retrieval_model: nvidia/Nemotron-3.5-Embed-1B-BF16
 eval_data_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage1_prep/eval_beir
-output_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage3_eval
+output_dir: ${artifact_root}/stage3_eval
 batch_size: 1
 retrieval_batch_size: 1
 max_length: 4096

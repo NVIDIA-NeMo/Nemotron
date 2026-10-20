@@ -1,10 +1,11 @@
 # Serve the native Nemotron 3.5 reranker checkpoint without Stage 4 export.
 # Set model_dir=null to serve the pinned public base model instead.
+artifact_root: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5
 backend: vllm
 vllm_image: vllm/vllm-openai:v0.31.0
 vllm_model: nvidia/Nemotron-3.5-Rerank-8B-BF16
 model_revision: 39aa01525864f736e63f1d5742fc4cf59e754abd
-model_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage2_finetune/checkpoints/LATEST/model/consolidated
+model_dir: ${artifact_root}/stage2_finetune/checkpoints/LATEST/model/consolidated
 container_name: nemotron-3.5-rerank
 container_model_path: /model
 vllm_max_model_len: 4096

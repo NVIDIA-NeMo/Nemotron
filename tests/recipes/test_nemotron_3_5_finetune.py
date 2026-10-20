@@ -27,7 +27,7 @@ def _namespace_config() -> SimpleNamespace:
         dataset=SimpleNamespace(),
         dataloader=SimpleNamespace(dataset=SimpleNamespace(), collate_fn=SimpleNamespace()),
         step_scheduler=SimpleNamespace(),
-        optimizer=SimpleNamespace(),
+        optimizer=SimpleNamespace(to_yaml_dict=lambda: {}),
         lr_scheduler=SimpleNamespace(),
         checkpoint=SimpleNamespace(),
     )
@@ -214,6 +214,40 @@ def test_embed_vl_runtime_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert automodel.tokenizer.query_prefix == "query:"
     assert automodel.model.do_distributed_inbatch_negative is False
     assert automodel.dataloader.collate_fn.__dict__ == {}
+
+
+@pytest.mark.parametrize(
+    ("module", "recipe_name"),
+    [(embed_train, "TrainBiEncoderRecipe"), (rerank_train, "TrainCrossEncoderRecipe")],
+)
+@pytest.mark.parametrize("rank", ["0", "1"])
+def test_checkpoint_preflight_stops_every_rank_before_model_setup(tmp_path, monkeypatch, module, recipe_name, rank):
+    captured = {}
+    base = _namespace_config()
+    optimizer = {"_target_": "flashoptim.FlashAdamW", "quantize": False, "master_weight_bits": 32}
+    base.optimizer.to_yaml_dict = lambda: optimizer
+    _install_recipe(monkeypatch, recipe_name=recipe_name, captured=captured)
+    monkeypatch.setattr(module, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
+    monkeypatch.setenv("RANK", rank)
+    cfg = module.FinetuneConfig(
+        model_family="nemotron_3_5",
+        train_data_path=_mined_training_file(tmp_path),
+        checkpoint_dir=tmp_path / "checkpoints",
+        train_n_passages=4,
+        attn_implementation="sdpa",
+    )
+
+    def fail_preflight(checkpoint_dir, **kwargs):
+        assert checkpoint_dir == cfg.checkpoint_dir
+        assert kwargs["base_model"] == cfg.base_model
+        assert kwargs["optimizer_config"] == optimizer
+        assert kwargs["emit"] is (rank == "0")
+        raise ValueError("insufficient checkpoint storage")
+
+    monkeypatch.setattr(module, "report_checkpoint_resources", fail_preflight)
+    with pytest.raises(ValueError, match="insufficient checkpoint storage"):
+        module.run_finetune(cfg)
+    assert "config" not in captured
 
 
 def test_embed_vl_runtime_omits_checkpoint_owned_processor_overrides(

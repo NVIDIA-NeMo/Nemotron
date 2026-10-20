@@ -179,6 +179,12 @@ any directories protected by pointers such as `LATEST` or `LOWEST_VAL`. This
 limits checkpoint history; it does not guarantee that only one directory remains.
 The consolidated model stays inside the retained checkpoint.
 
+Before loading model weights, training reports available checkpoint disk space
+and host RAM. When model metadata is available, it also estimates checkpoint
+size and the space needed while the next checkpoint is written. Review warnings
+before scaling. These estimates exclude model caches, data, and concurrent jobs;
+they do not guarantee that a run fits.
+
 ## 5. Evaluate Both Checkpoints
 
 Keep the default `mixed` view used for preparation and enable the base model
@@ -280,6 +286,44 @@ docker rm nemotron-3.5-embed
 Detached containers remain for log inspection. With `detach=false`, the command
 stays attached and reports server failures through its exit status;
 `remove_on_exit=true` removes only attached containers.
+
+## Run a Basic Verification
+
+The repository includes a small, fictional text-and-image fixture for checking
+the installed workflow. From the repository root, select a new output directory
+on a filesystem with enough space for model caches and checkpoints:
+
+```bash
+python scripts/retrieval/smoke.py \
+  --output /absolute/path/to/new-verification-run --gpu 0
+```
+
+The script uses the stage lockfiles, mines negatives, trains for two steps,
+resumes to four steps, and evaluates the base and saved models. It retains logs,
+checkpoint checks, metrics, and dependency lockfile hashes in the output directory.
+Add `--serve` to check vLLM deployment and endpoint evaluation with Docker.
+The script removes only the serving container it creates.
+
+Add `--rerank --rerank-gpus 0,1` to exercise full 8B reranker checkpoint saving
+and resume with the production writer. Provision GPU and host memory as described
+in the [reranker guide](../rerank/README.md#fine-tune-nemotron-35-rerank-8b-on-image-documents).
+Reserve approximately 160 GiB for two full reranker checkpoints, plus model
+caches, embedding outputs, and other data. The script does not delete checkpoints.
+
+This fixture checks execution. It does not call hosted synthetic data generation
+models or measure adaptation quality.
+
+The focused CPU contract tests also run in GitHub Actions. To reproduce that
+check without GPU workloads or hosted model calls, run:
+
+```bash
+uv sync --frozen --project tests/recipes/retrieval_ci
+uv pip install --python tests/recipes/retrieval_ci/.venv/bin/python \
+  --no-deps --no-build-isolation -e .
+tests/recipes/retrieval_ci/.venv/bin/python tests/recipes/retrieval_ci/run.py
+```
+
+The CPU runner fails if a selected test is skipped because of a missing dependency.
 
 ## Troubleshoot a Run
 

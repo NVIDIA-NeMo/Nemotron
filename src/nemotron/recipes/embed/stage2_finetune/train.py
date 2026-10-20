@@ -64,6 +64,7 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 from nemotron.recipes._retrieval import validate_training_data
+from nemotron.recipes._retrieval.checkpoint import report_checkpoint_resources
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -690,6 +691,15 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Checkpoint settings
     automodel_cfg.checkpoint.checkpoint_dir = str(cfg.checkpoint_dir)
+
+    if cfg.model_family == "nemotron_3_5":
+        report_checkpoint_resources(
+            cfg.checkpoint_dir,
+            base_model=cfg.base_model,
+            model_revision=getattr(automodel_cfg.model, "revision", None),
+            optimizer_config=automodel_cfg.optimizer.to_yaml_dict(),
+            emit=_is_rank_zero(),
+        )
 
     # Create and run the bi-encoder recipe
     recipe = TrainBiEncoderRecipe(automodel_cfg)

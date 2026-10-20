@@ -83,6 +83,11 @@ class EvalConfig(RecipeSettings):
 
     model_config = ConfigDict(extra="forbid")
 
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank",
+        description="Root directory for rerank checkpoints and evaluation outputs.",
+    )
+
     model_family: Literal["text", "nemotron_3_5"] = Field(default="text", description="Reranker model family.")
     model_revision: str | None = Field(
         default=None, description="Immutable base-model revision; local paths use their files."
@@ -109,7 +114,7 @@ class EvalConfig(RecipeSettings):
         default="nvidia/llama-nemotron-rerank-1b-v2", description="Base reranking model for comparison."
     )
     finetuned_model_path: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints/LATEST/model/consolidated",
+        default_factory=lambda data: data["artifact_root"] / "stage2_finetune/checkpoints/LATEST/model/consolidated",
         description="Path to fine-tuned model checkpoint.",
     )
     allow_untrusted_remote_code: bool = Field(
@@ -131,7 +136,7 @@ class EvalConfig(RecipeSettings):
 
     # Output settings
     output_dir: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage3_eval",
+        default_factory=lambda data: data["artifact_root"] / "stage3_eval",
         description="Directory for saving evaluation results.",
     )
 

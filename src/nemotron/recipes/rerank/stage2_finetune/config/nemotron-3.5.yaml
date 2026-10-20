@@ -4,11 +4,12 @@ run:
   env:
     container: nvcr.io/nvidia/pytorch:25.12-py3
 
+artifact_root: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5
 model_family: nemotron_3_5
 base_model: nvidia/Nemotron-3.5-Rerank-8B-BF16
 model_revision: 39aa01525864f736e63f1d5742fc4cf59e754abd
 train_data_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage1_prep/train_mined.automodel_unrolled.json
-checkpoint_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/nemotron-3.5/stage2_finetune/checkpoints
+checkpoint_dir: ${artifact_root}/stage2_finetune/checkpoints
 
 num_epochs: 1
 global_batch_size: 32

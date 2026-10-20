@@ -240,6 +240,9 @@ and use a Linux machine with Python 3.12 and NVIDIA GPUs. Start with local
 execution and inspect memory use with your image sizes, sequence lengths, and
 batch settings before scaling. Full fine-tuning updates all model weights.
 
+For a small save-and-resume verification using the production checkpoint writer,
+refer to [Run a Basic Verification](../../../../docs/nemotron/embed/multimodal.md#run-a-basic-verification).
+
 Budget disk space for optimizer state, sharded weights, and the consolidated
 model. With `optimizer_backend=flash_adamw` and
 `flash_adamw_master_weight_bits=32`, one full 8B checkpoint is estimated to
@@ -255,6 +258,13 @@ The default PyTorch 2.10 writer can retain about 47 GiB of this optimizer's
 tensor data across the training ranks, plus allocator overhead and the rest of
 the workload. Check available host memory and monitor the first checkpoint save.
 
+Before loading weights, training reports available disk space and host RAM,
+checkpoint size, and estimated space needed through the next save. For the
+pinned model, it stops if the destination cannot hold even one model payload.
+Larger checkpoint and memory estimates are advisory and exclude caches, data,
+and concurrent jobs. A dry run with `-d` only previews configuration; it does not
+perform these resource checks.
+
 Provide an Automodel training JSON with a corpus reference, one positive per
 unrolled query row, and at least three negatives. To generate this input from
 a directory of text and image files or explicit source records, follow the
@@ -263,13 +273,21 @@ through Stage 1. The embedding model mines the negatives; the reranker then
 learns to score the resulting query–document pairs. Keep the complete prepared
 corpus with the training JSON so its relative corpus references resolve.
 
+Select the prepared embedding run and a separate directory for reranker
+artifacts. With `-c nemotron-3.5`, pass the same `artifact_root` to training,
+evaluation, and deployment. It selects the checkpoint and evaluation output paths;
+input data paths remain explicit.
+
 For a prepared run at `./output/embed/multimodal-first-run`, inspect the
 configuration before training:
 
 ```bash
+export EMBED_RUN=./output/embed/multimodal-first-run
+export RERANK_RUN=./output/rerank/multimodal-first-run
+
 uv run nemotron rerank finetune -c nemotron-3.5 -d \
-  train_data_path=./output/embed/multimodal-first-run/stage1_data_prep/train_mined.automodel_unrolled.json \
-  checkpoint_dir=./output/rerank/multimodal-first-run/checkpoints
+  artifact_root="$RERANK_RUN" \
+  train_data_path="$EMBED_RUN/stage1_data_prep/train_mined.automodel_unrolled.json"
 ```
 
 Confirm the input and output paths, then start training and check the final
@@ -277,10 +295,14 @@ checkpoint:
 
 ```bash
 uv run nemotron rerank finetune -c nemotron-3.5 \
-  train_data_path=./output/embed/multimodal-first-run/stage1_data_prep/train_mined.automodel_unrolled.json \
-  checkpoint_dir=./output/rerank/multimodal-first-run/checkpoints
-test -f ./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated/config.json
+  artifact_root="$RERANK_RUN" \
+  train_data_path="$EMBED_RUN/stage1_data_prep/train_mined.automodel_unrolled.json"
+test -f "$RERANK_RUN/stage2_finetune/checkpoints/LATEST/model/consolidated/config.json"
 ```
+
+The default artifact root is `./output/rerank/nemotron-3.5`. Explicit
+`checkpoint_dir`, `finetuned_model_path`, `output_dir`, and `model_dir` overrides
+take priority over paths derived from `artifact_root`.
 
 The profile pins the model revision and uses a multimodal processor,
 bidirectional attention, average pooling, and model score temperature `0.05`.
@@ -303,17 +325,16 @@ prepared embedding run above, select the same retrieval view used for training:
 
 ```bash
 uv run nemotron rerank eval -c nemotron-3.5 \
-  sdg_input_path=./output/embed/multimodal-first-run/stage0_sdg/generation_result.json \
-  retrieval_view=mixed \
-  finetuned_model_path=./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated \
-  output_dir=./output/rerank/multimodal-first-run/eval
+  artifact_root="$RERANK_RUN" \
+  sdg_input_path="$EMBED_RUN/stage0_sdg/generation_result.json" \
+  retrieval_view=mixed
 ```
 
 Evaluation resolves the selected bundle's BEIR directory and image root. It
 retrieves candidates with Nemotron 3.5 Embed, then scores them with each reranker.
-The output directory contains `eval_results.json`, `first_stage_results.json`,
-`base_rankings.json`, and `finetuned_rankings.json`. Higher reranker scores indicate
-greater predicted relevance.
+The `$RERANK_RUN/stage3_eval` directory contains `eval_results.json`,
+`first_stage_results.json`, `base_rankings.json`, and `finetuned_rankings.json`.
+Higher reranker scores indicate greater predicted relevance.
 
 For independently labeled evaluation data, omit `sdg_input_path` and
 `retrieval_view`. Set `eval_data_path` to a BEIR directory containing
@@ -327,7 +348,7 @@ shell does not select the container's GPU.
 
 ```bash
 uv run nemotron rerank deploy -c nemotron-3.5 \
-  model_dir=./output/rerank/multimodal-first-run/checkpoints/LATEST/model/consolidated \
+  artifact_root="$RERANK_RUN" \
   gpus='device=0' detach=true
 curl --fail http://localhost:8000/health
 ```
@@ -337,18 +358,19 @@ query–document pairs:
 
 ```bash
 uv run nemotron rerank eval -c nemotron-3.5 \
-  sdg_input_path=./output/embed/multimodal-first-run/stage0_sdg/generation_result.json \
+  artifact_root="$RERANK_RUN" \
+  sdg_input_path="$EMBED_RUN/stage0_sdg/generation_result.json" \
   retrieval_view=mixed \
-  first_stage_results_path=./output/rerank/multimodal-first-run/eval/first_stage_results.json \
+  first_stage_results_path="$RERANK_RUN/stage3_eval/first_stage_results.json" \
   eval_base=false eval_finetuned=false eval_vllm=true \
   vllm_url=http://localhost:8000 \
-  output_dir=./output/rerank/multimodal-first-run/served-eval
+  output_dir="$RERANK_RUN/stage3_eval_served"
 ```
 
 The endpoint evaluation uses `/classify` with structured text and image messages
-and requests raw logits. Compare `served-eval/eval_results.json` and
-`served-eval/vllm_rankings.json` with the local evaluation outputs. Keep the
-candidate depth, token limits, and image settings fixed. The profiles use a
+and requests raw logits. Compare `stage3_eval_served/eval_results.json` and
+`stage3_eval_served/vllm_rankings.json` under `$RERANK_RUN` with the local evaluation
+outputs. Keep the candidate depth, token limits, and image settings fixed. The profiles use a
 4,096-token limit; shorten longer inputs before comparing local and served scores.
 
 Stop the example server when you finish:

@@ -61,6 +61,7 @@ from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 from nemotron.recipes._retrieval import validate_training_data
+from nemotron.recipes._retrieval.checkpoint import report_checkpoint_resources
 from nemotron.recipes.rerank._trust import validate_trust_remote_code
 
 STAGE_PATH = Path(__file__).parent
@@ -79,6 +80,11 @@ class FinetuneConfig(RecipeSettings):
     """Fine-tuning configuration for cross-encoder reranking models."""
 
     model_config = ConfigDict(extra="forbid")
+
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank",
+        description="Root directory for rerank checkpoints and evaluation outputs.",
+    )
 
     # Model settings
     base_model: str = Field(
@@ -103,7 +109,7 @@ class FinetuneConfig(RecipeSettings):
 
     # Output settings
     checkpoint_dir: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints",
+        default_factory=lambda data: data["artifact_root"] / "stage2_finetune/checkpoints",
         description="Directory for saving checkpoints.",
     )
 
@@ -510,6 +516,15 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Checkpoint settings
     automodel_cfg.checkpoint.checkpoint_dir = str(cfg.checkpoint_dir)
+
+    if cfg.model_family == "nemotron_3_5":
+        report_checkpoint_resources(
+            cfg.checkpoint_dir,
+            base_model=cfg.base_model,
+            model_revision=cfg.model_revision,
+            optimizer_config=automodel_cfg.optimizer.to_yaml_dict(),
+            emit=_is_rank_zero(),
+        )
 
     # Create and run the cross-encoder recipe
     recipe = TrainCrossEncoderRecipe(automodel_cfg)

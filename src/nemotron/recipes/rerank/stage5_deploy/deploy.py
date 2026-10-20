@@ -70,6 +70,11 @@ class DeployConfig(RecipeSettings):
 
     model_config = ConfigDict(extra="forbid")
 
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank",
+        description="Root directory for rerank checkpoints and evaluation outputs.",
+    )
+
     # Container settings
     backend: Literal["nim", "vllm"] = Field(default="nim", description="Serving backend to launch.")
     vllm_image: str = Field(default="vllm/vllm-openai:v0.31.0", description="vLLM container image.")
@@ -90,7 +95,14 @@ class DeployConfig(RecipeSettings):
 
     # NIM consumes Stage 4 exports; vLLM consumes native Stage 2 checkpoints.
     model_dir: Path | None = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage4_export/onnx",
+        default_factory=lambda data: (
+            data["artifact_root"]
+            / (
+                "stage2_finetune/checkpoints/LATEST/model/consolidated"
+                if data["backend"] == "vllm"
+                else "stage4_export/onnx"
+            )
+        ),
         description="Local NIM export or vLLM consolidated checkpoint; null selects the backend base model.",
     )
 
