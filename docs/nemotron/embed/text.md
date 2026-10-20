@@ -1,14 +1,18 @@
-# Fine-Tune Nemotron 3 and Llama Embeddings
+# Fine-Tune Embeddings on Text Data
 
-Adapt a Nemotron 3 or Llama Nemotron text embedding model to your domain, then
-evaluate and deploy it. For all supported profiles, refer to
-[Embedding Fine-Tuning](index.md).
+Adapt an embedding model for text retrieval in your domain, then evaluate and
+deploy it. The command examples in this guide use the `nemotron-3` and `llama`
+profiles. For all supplied profiles, refer to [Embedding Fine-Tuning](index.md).
+
+Nemotron 3.5 also supports text-only retrieval. For its `nemotron-3.5` profile,
+follow the [Nemotron 3.5 workflow](multimodal.md); images are optional. Choose a
+profile that supplies the model's runtime settings and artifact contracts.
 
 ## Choose a Model Profile
 
 | Profile | Model | Input and Guide |
 | --- | --- | --- |
-| `nemotron-3.5` | [Nemotron 3.5 Embed 1B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Embed-1B-BF16) | Text and image files; follow [Fine-Tune Multimodal Embeddings](multimodal.md) |
+| `nemotron-3.5` | [Nemotron 3.5 Embed 1B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Embed-1B-BF16) | Text-only, image-only, or paired documents; follow the [Nemotron 3.5 workflow](multimodal.md) |
 | `nemotron-3` | Nemotron 3 Embed 1B BF16 | Text; follow this page |
 | `llama` | Llama Nemotron Embed 1B v2 | Text; use `-c llama` through export and deployment |
 
@@ -17,19 +21,21 @@ The `nemotron-3` profile replaces the former `default` profile. Update
 `config/nemotron-3.yaml`. Model settings and artifact paths are unchanged.
 Omitting `-c` still selects `nemotron-3`; use an explicit profile in scripts.
 
-For Nemotron 3.5, start with `source_directory.path=./documents`. The recipe
+With `-c nemotron-3.5`, start with `source_directory.path=./documents`. The recipe
 prepares source records automatically. Use explicit JSONL when you need custom
 units, text/image pairs, or page relationships. The [data reference](data-reference.md)
 and [SDG reference](sdg-reference.md) describe the multimodal contract.
 
-The remaining instructions on this page describe the text profiles. Nemotron
-3.5 preparation, training, and checkpoint evaluation require local execution;
-its consolidated checkpoint deploys directly through vLLM without Stage 4.
+The remaining instructions describe the `nemotron-3` and `llama` examples.
+The `nemotron-3.5` profile requires local preparation, training, and checkpoint
+evaluation; its consolidated checkpoint deploys through vLLM without Stage 4.
 Carry the selected profile and `artifact_root` through every stage.
 
 ## Overview
 
-This recipe fine-tunes the Nemotron 3 Embed checkpoint for domain-specific retrieval and deploys the resulting checkpoint with Retriever NIM or vLLM.
+This workflow generates text question-and-answer training data, mines hard
+negatives, fine-tunes an embedding model, and evaluates retrieval quality.
+The selected profile determines the checkpoint and deployment path.
 
 ### Why Fine-Tune Embedding Models?
 

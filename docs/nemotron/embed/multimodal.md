@@ -3,8 +3,9 @@
 Use `nemotron-3.5` to fine-tune the public
 [Nemotron 3.5 Embed 1B BF16 checkpoint](https://huggingface.co/nvidia/Nemotron-3.5-Embed-1B-BF16)
 for text queries over text, images, or paired documents. This guide takes you
-from a directory of text and image files to a mined training set, a consolidated
-checkpoint, and a base-versus-fine-tuned retrieval comparison.
+from a directory of text files, images, or both to a mined training set, a
+consolidated checkpoint, and a base-versus-fine-tuned retrieval comparison.
+Images are optional; text-only directories use the same workflow.
 
 The profile uses `output/embed/nemotron-3.5` by default. To continue an existing
 run, pass its original `artifact_root` to every stage.

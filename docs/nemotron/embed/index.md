@@ -14,8 +14,8 @@ The profile determines the data format, training environment, and deployment pat
 
 | Model | Profile | Input | Start Here |
 | --- | --- | --- | --- |
-| Nemotron 3.5 Embed 1B | `nemotron-3.5` | Text, images, or paired documents | [Fine-tune multimodal embeddings](multimodal.md) |
-| Nemotron 3 Embed 1B | `nemotron-3` | Text | [Fine-tune Nemotron 3 embeddings](text.md) |
+| Nemotron 3.5 Embed 1B | `nemotron-3.5` | Text-only, image-only, or paired documents | [Nemotron 3.5 workflow](multimodal.md) |
+| Nemotron 3 Embed 1B | `nemotron-3` | Text | [Fine-tune embeddings on text data](text.md) |
 | Llama Nemotron Embed 1B v2 | `llama` | Text | [Llama profile selection](text.md#choose-a-model-profile) |
 
 Keep the selected profile and `artifact_root` consistent across stages.
@@ -48,7 +48,7 @@ queries and labels support broader quality claims.
 :hidden:
 
 Multimodal Workflow <multimodal>
-Nemotron 3 and Llama Workflows <text>
+Text Data Workflow <text>
 Data Reference <data-reference>
 SDG Reference <sdg-reference>
 ```
