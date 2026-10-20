@@ -1,7 +1,7 @@
-# Embedding Recipes
+# Nemotron Embedding Recipes
 
 This directory contains the `nemotron embed` implementation and stage configs.
-The [official embedding guide](../../../../docs/nemotron/embed/index.md)
+The [Nemotron Embedding Fine-Tuning guide](../../../../docs/nemotron/embed/index.md)
 is maintained in `docs/` and covers model selection, prerequisites, execution,
 evaluation, and deployment.
 

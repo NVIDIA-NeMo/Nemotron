@@ -4,7 +4,7 @@
 
 Adapt an embedding model for text retrieval in your domain, then evaluate and
 deploy it. The command examples in this guide use the `nemotron-3` and `llama`
-profiles. For all supplied profiles, refer to [Embedding Fine-Tuning](index.md).
+profiles. For all supplied profiles, refer to [Nemotron Embedding Fine-Tuning](index.md).
 
 Nemotron 3.5 also supports text-only retrieval. For its `nemotron-3.5` profile,
 follow the [Nemotron 3.5 workflow](multimodal.md); images are optional. Choose a

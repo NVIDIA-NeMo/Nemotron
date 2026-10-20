@@ -1,4 +1,4 @@
-# Embedding Fine-Tuning
+# Nemotron Embedding Fine-Tuning
 
 Adapt an embedding model to retrieve relevant documents from your domain.
 Choose a model below, prepare its training data, and compare the base and
@@ -6,7 +6,7 @@ fine-tuned checkpoints on a fixed evaluation set.
 
 Start here when relevant documents are missing from the candidate set. If
 candidate recall is already acceptable but the top results are ordered poorly,
-refer to [Reranking Fine-Tuning](../rerank/index.md).
+refer to [Nemotron Reranking Fine-Tuning](../rerank/index.md).
 
 ## Choose Your Workflow
 

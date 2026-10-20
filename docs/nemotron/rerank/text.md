@@ -5,7 +5,7 @@
 
 Fine-tune a reranker on your domain's text data. The command examples in this
 guide use the `default` Llama Nemotron profile. For all supplied profiles,
-refer to [Reranking Fine-Tuning](index.md).
+refer to [Nemotron Reranking Fine-Tuning](index.md).
 
 | Model | Profile | Recipe Scope |
 | --- | --- | --- |

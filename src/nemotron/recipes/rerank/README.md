@@ -1,7 +1,7 @@
-# Reranking Recipes
+# Nemotron Reranking Recipes
 
 This directory contains the `nemotron rerank` implementation and stage configs.
-The [official reranking guide](../../../../docs/nemotron/rerank/index.md)
+The [Nemotron Reranking Fine-Tuning guide](../../../../docs/nemotron/rerank/index.md)
 is maintained in `docs/` and covers model selection, prerequisites, execution,
 evaluation, and deployment.
 

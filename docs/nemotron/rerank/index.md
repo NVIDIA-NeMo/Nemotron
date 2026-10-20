@@ -1,9 +1,9 @@
-# Reranking Fine-Tuning
+# Nemotron Reranking Fine-Tuning
 
 Adapt a reranker to order the documents returned by a first-stage retriever.
 Use this workflow when relevant documents reach the candidate set but rank
 below less relevant results. If candidate recall is low, start with
-[Embedding Fine-Tuning](../embed/index.md).
+[Nemotron Embedding Fine-Tuning](../embed/index.md).
 
 ## Choose Your Workflow
 
