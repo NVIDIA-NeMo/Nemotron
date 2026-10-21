@@ -782,6 +782,40 @@
     DATA.schema_version = 20;
     DATA.as_of = "2026-08-24";
     DATA.verified_snapshot_date = "2026-08-19";
+    const super3Model = DATA.models.find((item) => item.key === "super");
+    if (!super3Model) throw new Error("Missing Nemotron-3-Super sizing reference.");
+    const super35VlModel = JSON.parse(JSON.stringify(super3Model));
+    const super35VlProxyNote = "Nemotron-3.5-Super-VL reuses the Nemotron-3-Super language-backbone sizing and performance results at a 1.0× transfer factor. Vision-encoder, vision-projector, multimodal token-shape, and multimodal data-pipeline effects are not separately modeled.";
+    Object.assign(super35VlModel, {
+      key: "super-3.5-vl",
+      name: "NVIDIA Nemotron-3.5-Super-VL",
+      source_url: "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16",
+      config_source_url: "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16/blob/main/config.json",
+      recipe_source_url: "https://github.com/NVIDIA-NeMo/Megatron-Bridge/tree/main/src/megatron/bridge/recipes/nemotronh_multimodal",
+      total_parameters_b: 124.453,
+      sizing_proxy_model_key: "super",
+      sizing_proxy_note: super35VlProxyNote,
+    });
+    super35VlModel.calibration.anchors = {};
+    super35VlModel.benchmarks = [];
+    for (const method of ["lora", "sft"]) {
+      Object.assign(super35VlModel.calibration.planning[method], {
+        model_transfer_applied: true,
+        model_transfer_factor: 1,
+        model_transfer_from: super3Model.name,
+        model_transfer_note: super35VlProxyNote,
+      });
+    }
+    const super3ModelIndex = DATA.models.findIndex((item) => item.key === "super");
+    DATA.models.splice(super3ModelIndex + 1, 0, super35VlModel);
+    DATA.method_defaults.rl.policy_mtp_depths_by_model[super35VlModel.key] = DATA.method_defaults.rl.policy_mtp_depths_by_model.super;
+    DATA.rl.real_runs.model_calibration[super35VlModel.key] = {
+      reference_model_key: "super",
+      model_transfer_factor: 1,
+      proxy_reason: super35VlProxyNote,
+      confidence: "medium-low",
+    };
+
     DATA.defaults.model = "nano-3.5";
     Object.assign(DATA.method_defaults.lora, {
       assumed_samples: 2500,
@@ -845,6 +879,10 @@
     let priorSequence = 4096;
     let priorAverageSequence = 3072;
     let planningFactorUserEdited = false;
+
+    function sizingReferenceModel(model) {
+      return modelMap.get(model.sizing_proxy_model_key) || model;
+    }
 
     const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
     const precise = new Intl.NumberFormat("en-US", { maximumFractionDigits: 3 });
@@ -1067,6 +1105,8 @@
       note.className = "trail-detail";
       note.textContent = input.model === "ultra"
         ? `DeepSeek-V3 supplies the reference efficiency; Ultra’s own ${integer.format(input.policyMtpDepths)}-MTP policy work determines target throughput. No extra model-size multiplier is applied.`
+        : result.model.sizing_proxy_note
+          ? `${result.model.sizing_proxy_note} Target GPU peak and the planning factor are then applied normally.`
         : "Target model work and target GPU peak are applied in the next step; no fitted sequence-length or world-size curve is added.";
       item.append(note);
       return item;
@@ -1114,7 +1154,7 @@
 
       setHelpText(
         "help-model",
-        `Which supported Nemotron model you want to customize. Current: ${model.name}. Default: ${defaultModel.name}, the starting model in this calculator. Lightning uses direct memory-fit rows; DGX Station uses measured performance from the exact or next verified sequence row, while datacenter-GPU estimates use clearly labeled proxy performance where a direct run is unavailable.`,
+        `Which supported Nemotron model you want to customize. Current: ${model.name}. Default: ${defaultModel.name}, the starting model in this calculator. Lightning uses direct memory-fit rows; DGX Station uses measured performance from the exact or next verified sequence row, while datacenter-GPU estimates use clearly labeled proxy performance where a direct run is unavailable.${model.sizing_proxy_note ? ` ${model.sizing_proxy_note}` : ""}`,
       );
       setHelpText(
         "help-gpu",
@@ -1238,12 +1278,13 @@
       const sizingMethod = method === "rl" ? "sft" : method;
       const gpuConfig = gpuMap.get(gpu);
       const topologyGpu = gpuConfig?.topology_proxy_gpu || gpu;
+      const topologyModel = modelMap.get(model)?.sizing_proxy_model_key || model;
       if (gpuConfig?.direct_measured_throughput) {
         if (method === "rl") {
           throw new Error("GRPO RL is N/A on DGX Station because no verified RL sizing or throughput run is available.");
         }
         const rows = DATA.topologies
-          .filter((row) => row.gpu === topologyGpu && row.model === model && row.method === sizingMethod)
+          .filter((row) => row.gpu === topologyGpu && row.model === topologyModel && row.method === sizingMethod)
           .sort((left, right) => left.sequence_length - right.sequence_length);
         const row = rows.find((candidate) => candidate.sequence_length >= requestedSequence);
         if (!row) {
@@ -1257,7 +1298,7 @@
       }
       const lookupSequence = DATA.sequence_lengths.find((value) => value >= requestedSequence);
       if (!lookupSequence) throw new Error(`Sequence length exceeds the verified ceiling of ${integer.format(maxVerifiedSequence)} tokens.`);
-      const row = topologyMap.get(`${topologyGpu}|${model}|${sizingMethod}|${lookupSequence}`);
+      const row = topologyMap.get(`${topologyGpu}|${topologyModel}|${sizingMethod}|${lookupSequence}`);
       if (!row) throw new Error("No verified topology matches this model, method, GPU, and sequence length.");
       return { ...row, gpu, topologyGpu, requestedSequence, rounded: lookupSequence !== requestedSequence };
     }
@@ -2009,6 +2050,7 @@
 
     function renderRlResult(result) {
       const { input, topology } = result;
+      const formulaModel = sizingReferenceModel(result.model);
       $("minimum-gpus").textContent = formatGpuCount(result.totalGpus);
       $("minimum-note").textContent = input.deployment === "colocated"
         ? `${integer.format(result.trainingGpus)} shared training/generation GPUs`
@@ -2059,9 +2101,9 @@
             `Inference / generation: ${formatGflopsPerToken(result.forwardCoefficient.constant_flops_per_token)} constant + (${coefficient.format(result.forwardCoefficient.flops_per_token_per_effective_attention_token / 1e9)} GFLOP/token per attended token × ${number.format(result.processedTokensPerSample)} attended tokens) = ${formatGflopsPerToken(result.forwardFlopsPerToken)}.`,
             `Policy / reference log-probability: ${formatGflopsPerToken(result.forwardCoefficient.constant_flops_per_token)} constant + (${coefficient.format(result.forwardCoefficient.flops_per_token_per_effective_attention_token / 1e9)} GFLOP/token per attended token × ${number.format(result.processedTokensPerSample)} attended tokens) = ${formatGflopsPerToken(result.forwardFlopsPerToken)}.`,
           ],
-          `Policy-training constant = ${formatGflopsPerToken(result.trainingCoefficient.baseConstant)} zero-MTP base + ${integer.format(input.policyMtpDepths)} depths × ${formatGflopsPerToken(result.trainingCoefficient.mtpConstantPerDepth)} per depth = ${formatGflopsPerToken(result.trainingCoefficient.constant_flops_per_token)}. Its sequence-dependent contribution is ${formatGflopsPerToken(trainingSequenceWork)}. Generation and log-probability use zero-MTP forward work, whose sequence-dependent contribution is ${formatGflopsPerToken(forwardSequenceWork)}. Effective length is ${number.format(result.processedTokensPerSample)} processed tokens/rollout: ${integer.format(input.averageSequence)} generated plus ${number.format(result.nonGeneratedTokensPerSample)} inferred non-generated.`,
+          `Policy-training constant = ${formatGflopsPerToken(result.trainingCoefficient.baseConstant)} zero-MTP base + ${integer.format(input.policyMtpDepths)} depths × ${formatGflopsPerToken(result.trainingCoefficient.mtpConstantPerDepth)} per depth = ${formatGflopsPerToken(result.trainingCoefficient.constant_flops_per_token)}. Its sequence-dependent contribution is ${formatGflopsPerToken(trainingSequenceWork)}. Generation and log-probability use zero-MTP forward work, whose sequence-dependent contribution is ${formatGflopsPerToken(forwardSequenceWork)}. Effective length is ${number.format(result.processedTokensPerSample)} processed tokens/rollout: ${integer.format(input.averageSequence)} generated plus ${number.format(result.nonGeneratedTokensPerSample)} inferred non-generated.${result.model.sizing_proxy_note ? ` ${result.model.sizing_proxy_note}` : ""}`,
           [
-            { label: "model configuration", url: result.model.config_source_url },
+            { label: result.model.sizing_proxy_note ? `${formulaModel.name} proxy configuration` : "model configuration", url: formulaModel.config_source_url },
             { label: "AutoModel FLOPs utility", url: DATA.sources.automodel_flops_url },
             { label: "Megatron Bridge FLOPs utility", url: DATA.sources.megatron_bridge_flops_url },
           ],
@@ -2143,6 +2185,7 @@
       $("runtime-note").textContent = `${integer.format(result.tokensPerSecondPerGpu)} tokens/s/GPU; ${number.format(result.gpuHours)} GPU-hours`;
       renderCostSummary(result);
       renderAssumptionSummary(result);
+      const formulaModel = sizingReferenceModel(result.model);
 
       for (const key of ["tp", "pp", "cp", "ep"]) $(key).textContent = topology[key];
       const showStationSftDetails = result.gpu.key === "dgx-station" && input.method === "sft";
@@ -2196,9 +2239,9 @@
         makeTrailStep(
           "Model FLOPs per token",
           workEquation,
-          `This is the floating-point work for one processed training token. The formula comes from the pinned ${result.model.name} configuration and NVIDIA NeMo AutoModel and Megatron Bridge FLOP utilities. It counts attention, Mamba, routed experts, vocabulary output, configured multi-token prediction, and method-specific forward/backward work. For LoRA, the method multiplier already omits frozen base-weight gradients; no separate generic adapter percentage is added. The sequence-dependent term uses ${integer.format(input.effectiveLength)} effective attended tokens.`,
+          `This is the floating-point work for one processed training token. The formula comes from the pinned ${formulaModel.name} configuration and NVIDIA NeMo AutoModel and Megatron Bridge FLOP utilities. It counts attention, Mamba, routed experts, vocabulary output, configured multi-token prediction, and method-specific forward/backward work. For LoRA, the method multiplier already omits frozen base-weight gradients; no separate generic adapter percentage is added. The sequence-dependent term uses ${integer.format(input.effectiveLength)} effective attended tokens.${result.model.sizing_proxy_note ? ` ${result.model.sizing_proxy_note}` : ""}`,
           [
-            { label: "model configuration", url: result.model.config_source_url },
+            { label: result.model.sizing_proxy_note ? `${formulaModel.name} proxy configuration` : "model configuration", url: formulaModel.config_source_url },
             { label: "AutoModel FLOPs utility", url: DATA.sources.automodel_flops_url },
             { label: "Megatron Bridge FLOPs utility", url: DATA.sources.megatron_bridge_flops_url },
           ],

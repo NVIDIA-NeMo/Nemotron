@@ -37,6 +37,8 @@ The calculator separates memory fit from performance estimation:
 
 The calculator applies a configurable planning factor to measured efficiency and a runtime allowance for operational variability. Sequence distribution, batch shape, parallelism, software versions, networking, checkpointing, data loading, reward functions, and tool or environment latency can materially change observed performance.
 
+Nemotron-3.5-Super-VL currently reuses the Nemotron-3-Super language-backbone memory-fit, model-FLOPs, throughput, and GRPO phase-calibration results with a 1.0× transfer factor. The estimate does not separately model its vision encoder, vision projector, multimodal token shapes, or multimodal data pipeline. Validate the configuration with a representative multimodal workload when those components are in scope.
+
 GRPO generation efficiency is especially workload-dependent. Long-running agent tasks can spend substantial time waiting for tools, environments, or external services; the measured generation references may therefore differ from the target workload.
 
 Calibration links in the calculator point to public [Megatron Bridge performance](https://docs.nvidia.com/nemo/megatron-bridge/latest/performance-summary.html), [NeMo AutoModel performance](https://docs.nvidia.com/nemo/automodel/latest/performance/performance-summary), and [NeMo RL performance](https://docs.nvidia.com/nemo/rl/latest/about/performance-summary.html) documentation. Some exact calibration runs or detailed run records may not be publicly available.
