@@ -47,7 +47,7 @@ inspecting the rendered `run.env`.
 - Env profiles are inherited with `extends`; child profiles should override only what the step needs, such as image, node count, startup commands, or output path.
 - Data-prep profiles should be CPU-only by default. For Slurm prep profiles, override the GPU base with CPU partitions, `gpus_per_node = 0`, `build_include_gpus = false`, and enough `cpus_per_task` for Ray/Xenna. For Lepton prep profiles, use a CPU `resource_shape` and `gpus_per_node = 0`. For DGX Cloud prep profiles, keep `gpus_per_node = 0` and provide `RAY_RUNTIME_ENV_PYTHONPATH` for staged source.
 - Keep secrets as `${oc.env:...}` placeholders. Do not write tokens directly into env files.
-- Keep `[wandb]` for run metadata and pass `WANDB_API_KEY`/`WANDB_PROJECT` through profile `env_vars` so subprocess-heavy steps such as ModelOpt pruning/quantization inherit logging settings.
+- Keep `[wandb]` for run metadata. `WANDB_PROJECT` goes in profile `env_vars`; `WANDB_API_KEY` is a credential and belongs in `secret_vars`, which the shipped templates already declare. A name in `secret_vars` must not also appear in `env_vars`.
 - Do not put every NeMo-RL runtime flag in env files. Step YAML `run.env.env_vars` carries runtime-specific flags; the config loader deep-merges those with the selected env profile.
 - If a profile defines `env_vars`, it should usually contain only site/output variables such as `RL_OUTPUT_DIR`, `HF_HOME`, `WANDB_PROJECT`, or `OPTIM_OUTPUT_DIR`.
 - For Ray jobs, avoid job `runtime_env` workdirs when vLLM or NeMo-RL starts nested Ray actors. Use staged source plus `PYTHONPATH` and keep source-transport cleanup in the runner, not in env.toml profiles.

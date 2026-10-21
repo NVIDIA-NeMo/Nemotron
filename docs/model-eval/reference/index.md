@@ -16,7 +16,7 @@ For procedural walk-throughs, refer to {doc}`../how-to/index`.
 :::{grid-item-card} {octicon}`file-code;1.5em;sd-mr-1` Configuration Reference
 :link: config-schema
 :link-type: doc
-YAML schema for `default.yaml` and `tiny_chat.yaml`, field by field.
+YAML schema for launcher mode (`default.yaml`, `tiny_chat.yaml`) and direct mode (`direct.yaml` and the suites), field by field.
 +++
 {bdg-secondary}`yaml`
 :::
@@ -24,7 +24,7 @@ YAML schema for `default.yaml` and `tiny_chat.yaml`, field by field.
 :::{grid-item-card} {octicon}`terminal;1.5em;sd-mr-1` CLI Reference
 :link: cli-reference
 :link-type: doc
-`nemotron steps run eval/model_eval` flags and Hydra overrides.
+`nemotron steps run eval/model_eval` flags, `-t` task selection, direct-mode `EVAL_*` variables, and Hydra overrides.
 +++
 {bdg-secondary}`cli`
 :::
@@ -32,7 +32,7 @@ YAML schema for `default.yaml` and `tiny_chat.yaml`, field by field.
 :::{grid-item-card} {octicon}`archive;1.5em;sd-mr-1` Output Artifacts
 :link: output-artifacts
 :link-type: doc
-The `eval_results` contract and the on-disk directory layout.
+The `eval_results` contract, the direct-mode `summary.json`, `run_manifest.json`, and `failures.txt`, and the launcher-mode layout.
 +++
 {bdg-secondary}`artifacts`
 :::
@@ -40,7 +40,7 @@ The `eval_results` contract and the on-disk directory layout.
 :::{grid-item-card} {octicon}`list-unordered;1.5em;sd-mr-1` Benchmarks Catalog
 :link: benchmarks-catalog
 :link-type: doc
-Benchmark identifiers grouped by family, with endpoint-type guidance.
+Direct-mode suites and benchmark identifiers grouped by family, with endpoint-type guidance.
 +++
 {bdg-secondary}`tasks`
 :::
@@ -48,7 +48,7 @@ Benchmark identifiers grouped by family, with endpoint-type guidance.
 :::{grid-item-card} {octicon}`alert;1.5em;sd-mr-1` Troubleshooting
 :link: troubleshooting
 :link-type: doc
-Named error modes from `step.toml`, with the most common cause and the recovery for each.
+Launcher and direct-mode failure modes, with the most common cause and the recovery for each.
 +++
 {bdg-secondary}`errors`
 :::

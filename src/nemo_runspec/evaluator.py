@@ -160,15 +160,35 @@ def ensure_wandb_host_env() -> None:
             os.environ["WANDB_ENTITY"] = wandb_config.entity
 
 
+def _host_ref(name: str) -> str:
+    """Render an env-var value that reads `name` from the submitting host.
+
+    The supported launcher range (>=0.2.6,<0.3) requires an explicit source
+    prefix on env-var values (``host:`` / ``lit:`` / ``runtime:``); a bare name
+    is rejected at validation.
+    """
+    return f"host:{name}"
+
+
+def _wandb_keys_present() -> tuple[str, ...]:
+    """W&B keys that are actually set on the submitting host.
+
+    A ``host:VAR`` reference makes the variable MANDATORY -- the launcher raises
+    if it is unset. WANDB_PROJECT and WANDB_ENTITY are optional in practice, so
+    injecting them unconditionally turns an optional setting into a hard failure
+    for anyone who has not exported them.
+    """
+    return tuple(k for k in ("WANDB_API_KEY", "WANDB_PROJECT", "WANDB_ENTITY") if os.environ.get(k))
+
+
 def inject_wandb_env_mappings(cfg: Any) -> None:
     """Inject W&B env var mappings into evaluator config.
 
-    The nemo-evaluator-launcher expects:
-    - evaluation.env_vars: mapping of container env var -> host env var name
-    - execution.env_vars.export: env vars for the W&B export container
+    Writes the schema the *installed* launcher accepts:
 
-    This function adds the WANDB_API_KEY (and optionally PROJECT/ENTITY)
-    mappings so the launcher knows to forward these from the host environment.
+    - ``evaluation.env_vars`` — supported by every version.
+    - top-level ``env_vars`` — modern launchers; applies to all jobs, which is
+      what the W&B export container needs.
 
     Note: This only adds string mappings (e.g., "WANDB_API_KEY": "WANDB_API_KEY"),
     not actual secrets. The launcher resolves these via os.getenv() at runtime.
@@ -193,25 +213,21 @@ def inject_wandb_env_mappings(cfg: Any) -> None:
     try:
         eval_env = _ensure_nested(cfg, "evaluation", "env_vars")
         with open_dict(eval_env):
-            if "WANDB_API_KEY" not in eval_env:
-                eval_env["WANDB_API_KEY"] = "WANDB_API_KEY"
-            if "WANDB_PROJECT" not in eval_env:
-                eval_env["WANDB_PROJECT"] = "WANDB_PROJECT"
-            if "WANDB_ENTITY" not in eval_env:
-                eval_env["WANDB_ENTITY"] = "WANDB_ENTITY"
+            for key in _wandb_keys_present():
+                if key not in eval_env:
+                    eval_env[key] = _host_ref(key)
     except Exception:
         pass  # Config structure doesn't support this
 
-    # Inject into execution.env_vars.export (for W&B export container)
+    # Export-container env vars live at the top level. `execution.env_vars` was
+    # removed in the supported launcher range and is rejected outright.
+    target_keys = ("env_vars",)
     try:
-        export_env = _ensure_nested(cfg, "execution", "env_vars", "export")
+        export_env = _ensure_nested(cfg, *target_keys)
         with open_dict(export_env):
-            if "WANDB_API_KEY" not in export_env:
-                export_env["WANDB_API_KEY"] = "WANDB_API_KEY"
-            if "WANDB_PROJECT" not in export_env:
-                export_env["WANDB_PROJECT"] = "WANDB_PROJECT"
-            if "WANDB_ENTITY" not in export_env:
-                export_env["WANDB_ENTITY"] = "WANDB_ENTITY"
+            for key in _wandb_keys_present():
+                if key not in export_env:
+                    export_env[key] = _host_ref(key)
     except Exception:
         pass  # Config structure doesn't support this
 
@@ -283,8 +299,11 @@ def maybe_auto_squash_evaluator(
     # Get env config
     env_config = OmegaConf.to_container(job_config.run.env, resolve=True)
 
-    # Only for Slurm executor
-    if env_config.get("executor") != "slurm":
+    # Only for Slurm executor. Squashing prepares the images the LAUNCHER will
+    # run, so follow `launcher_executor` where the eval config splits the inner
+    # scheduler from the outer one; fall back to `executor` for configs that
+    # do not (every non-eval step).
+    if (env_config.get("launcher_executor") or env_config.get("executor")) != "slurm":
         return
 
     # Need SSH tunnel support
@@ -380,7 +399,7 @@ def save_eval_configs(
     from omegaconf import OmegaConf
 
     from nemo_runspec.config import generate_job_dir
-    from nemo_runspec.utils import rewrite_paths_for_remote, resolve_run_interpolations
+    from nemo_runspec.utils import resolve_run_interpolations, rewrite_paths_for_remote
 
     job_dir = generate_job_dir(recipe_name)
 

@@ -1,0 +1,15 @@
+Benchmark a Vietnamese retail banking assistant over a deterministic core-banking oracle.
+
+The assistant answers customers about account balances, card limits, transaction status,
+recent statement lines, transfer fees, VietQR payment status and card dispute status, and
+it carries out two committing operations: it moves money over the NAPAS or internal rail,
+and it opens a card dispute against a posted debit. Both committing operations are gated:
+the core returns a pending status and changes nothing until the customer confirms. Money
+movement is refused outright when the balance cannot cover the amount plus the rail fee.
+
+Identifiers are prefixed and never guessed: accounts are ACC-, cards CARD-, transactions
+TXN-, VietQR references VQ- and disputes DSP-. A reference the core does not hold is
+reported as not found rather than approximated. Statement reconciliation is an operational
+sweep, not a customer-facing answer.
+
+The benchmark is authored and answered in Vietnamese.

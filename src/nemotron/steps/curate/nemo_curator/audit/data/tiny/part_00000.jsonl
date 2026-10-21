@@ -1,0 +1,3 @@
+{"id": "doc-0001", "source": "wiki", "text": "Nemotron curates text corpora for continued pretraining."}
+{"id": "doc-0002", "source": "wiki", "text": "An audit reports what is on disk rather than what a log claims."}
+{"id": "doc-0003", "source": "news", "text": "A shard can parse cleanly and still be missing rows."}

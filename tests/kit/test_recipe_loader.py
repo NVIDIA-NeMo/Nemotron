@@ -39,6 +39,22 @@ def test_extract_recipe_config_reads_target_and_kwargs():
     assert kwargs == {"alpha": 1, "beta": "x"}
 
 
+def test_extract_recipe_config_drops_null_kwargs():
+    cfg = OmegaConf.create(
+        {
+            "recipe": {
+                "_target_": "m.n.func",
+                "packed_sequence": None,
+                "seq_length": None,
+                "alpha": 1,
+            }
+        }
+    )
+    target, kwargs = extract_recipe_config(cfg, default_target="a.b.c")
+    assert target == "m.n.func"
+    assert kwargs == {"alpha": 1}
+
+
 class _FakeModelConfig:
     """Minimal stand-in for a Megatron-Bridge model provider."""
 

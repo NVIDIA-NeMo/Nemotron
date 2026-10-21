@@ -1,0 +1,83 @@
+pack_id: banking_vn
+version: "0.1.0"
+description: "Executable Vietnamese banking and payments oracle pack."
+languages:
+  - vi
+clock: "2026-03-02T09:00:00+07:00"
+system_prompt: >-
+  Bạn là trợ lý ngân hàng sử dụng công cụ. Hãy gọi các hàm được cung cấp khi chúng
+  trả lời được yêu cầu, chỉ dùng giá trị do khách hàng cung cấp hoặc do một lệnh gọi
+  trước đó trả về. Hỏi lại trước khi thực hiện thao tác cần xác nhận, và nói rõ khi
+  không có công cụ nào xử lý được yêu cầu.
+clock_step: null
+credit_internal_destination: false
+paths:
+  tools: tools.json
+  backend: backend.py
+  fixtures: fixtures.json
+  templates: task_templates.yaml
+  assertions: assertions.py
+  validation_cases: validation_cases.yaml
+primary_keys:
+  accounts: account_id
+  cards: card_id
+  transactions: transaction_id
+  transfers: transfer_id
+  vietqr_payments: payment_ref
+  disputes: dispute_id
+assistant_turn_templates:
+  ask_for_slot:
+    vi: "Bạn vui lòng cung cấp {slot_name} ạ."
+  ask_confirm:
+    vi: "Bạn xác nhận thực hiện với các thông tin đã nêu chứ?"
+  decline:
+    vi: "Xin lỗi, yêu cầu này nằm ngoài phạm vi hỗ trợ hiện tại."
+  final_answer:
+    vi: "Đã xong."
+absent_ids:
+  # Absent identifiers need no fixture row, so each collection lists enough of them
+  # for its documented-failure template to bind a distinct instance per publication
+  # slot instead of repeating one miss.
+  accounts:
+    - ACC-ABSENT-1
+    - ACC-ABSENT-2
+    - ACC-ABSENT-3
+    - ACC-ABSENT-4
+    - ACC-ABSENT-5
+    - ACC-ABSENT-6
+    - ACC-ABSENT-7
+    - ACC-ABSENT-8
+  cards:
+    - CARD-ABSENT-1
+    - CARD-ABSENT-2
+    - CARD-ABSENT-3
+    - CARD-ABSENT-4
+  transactions:
+    - TXN-ABSENT-1
+    - TXN-ABSENT-2
+    - TXN-ABSENT-3
+    - TXN-ABSENT-4
+    - TXN-ABSENT-5
+    - TXN-ABSENT-6
+    - TXN-ABSENT-7
+    - TXN-ABSENT-8
+  transfers:
+    - TRF-ABSENT-1
+  vietqr_payments:
+    - VQ-ABSENT-1
+    - VQ-ABSENT-2
+    - VQ-ABSENT-3
+    - VQ-ABSENT-4
+    - VQ-ABSENT-5
+    - VQ-ABSENT-6
+    - VQ-ABSENT-7
+    - VQ-ABSENT-8
+  disputes:
+    - DSP-ABSENT-1
+    - DSP-ABSENT-2
+    - DSP-ABSENT-3
+    - DSP-ABSENT-4
+    - DSP-ABSENT-5
+    - DSP-ABSENT-6
+    - DSP-ABSENT-7
+    - DSP-ABSENT-8

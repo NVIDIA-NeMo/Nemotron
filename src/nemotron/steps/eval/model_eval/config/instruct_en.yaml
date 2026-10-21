@@ -1,0 +1,47 @@
+# Instruct-model suite: instruction following, reasoning, maths, code.
+#
+#   uv run nemotron steps run eval/model_eval -c instruct_en --batch <profile>
+#
+# CHAT endpoint, not completions -- these tasks apply a chat template and read
+# the model's reply. Point EVAL_ENDPOINT_URL at /v1/chat/completions and set
+# EVAL_ENDPOINT_TYPE=chat (this config does the latter for you).
+#
+# EVAL_TOKENIZER IS required. lm-evaluation-harness loads a tokenizer
+# client-side for chat tasks too -- ifeval, mmlu_instruct and
+# gsm8k_cot_instruct all ship `extra.tokenizer` -- and with none set it
+# tries to load your served-model-name as an HF repo and 404s.
+#
+# These are generative, so they cost far more output tokens than the
+# log-likelihood suites -- serve with enough context and smoke first.
+#
+# NeMo Gym (`eval/model_eval/gym_eval`) is the preferred path for the
+# instruct-model suite; use this when you want the NeMo Evaluator harnesses.
+defaults: direct.yaml
+
+target:
+  api_endpoint:
+    type: chat
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        temperature: 0.0
+        top_p: 1.0
+        max_new_tokens: 2048
+  tasks:
+    - name: ifeval              # instruction following
+    - name: mmlu_instruct       # broad knowledge
+    - name: gsm8k_cot_instruct  # grade-school maths, chain of thought
+
+    # Code benchmarks EXECUTE model-generated code in the eval job. lm-eval
+    # refuses to run them unless you say so, so `humaneval_instruct` is opt-in
+    # rather than shipped enabled -- it would otherwise fail 1 of 4 tasks out of
+    # the box. Uncomment once you are content to run untrusted code here:
+    #
+    # - name: humaneval_instruct
+    #   nemo_evaluator_config:
+    #     config:
+    #       params:
+    #         extra:
+    #           args: '--confirm_run_unsafe_code'

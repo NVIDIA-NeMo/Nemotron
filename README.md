@@ -47,7 +47,7 @@ This repo ships a Claude Code plugin called **`nemotron-customize`** that turns 
 Install once:
 
 ```text
-/plugin marketplace add NVIDIA/Nemotron
+/plugin marketplace add NVIDIA-NeMo/Nemotron
 /plugin install nemotron-customize@nvidia-nemotron
 ```
 
@@ -125,6 +125,8 @@ The catalog covers the full training lifecycle.
 
 - Data curation and preparation with `curate/*` and `data_prep/*`.
 - Synthetic data generation (SDG) with `sdg/*`.
+  This includes the [Persona MCQ pipeline](src/nemotron/steps/sdg/persona_mcq/README.md),
+  available as `nemotron steps run sdg/persona_mcq`.
 - Corpus translation with `translate/*`.
 - Bring-your-own benchmark generation with `byob/*`.
 - Pretraining, supervised fine-tuning (SFT), parameter-efficient fine-tuning (PEFT), and reinforcement learning (RL) with `pretrain/*`, `sft/*`, `peft/*`, and `rl/*`.

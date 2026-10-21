@@ -103,7 +103,6 @@ class CuratorTranslationModule:
         symbols = _load_curator_symbols()
         stage = self._build_translation_stage(symbols, source_lang=source_lang, target_lang=target_lang)
         batch = symbols.document_batch(
-            task_id=f"{self.config.expt_name}-translation",
             dataset_name=self.config.expt_name,
             data=dataframe.reset_index(drop=True).copy(),
         )

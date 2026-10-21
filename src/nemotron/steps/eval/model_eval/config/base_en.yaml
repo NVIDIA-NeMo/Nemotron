@@ -1,0 +1,14 @@
+# English base-model suite: reasoning, commonsense, grade-school maths.
+#
+#   uv run nemotron steps run eval/model_eval -c base_en --batch <profile>
+#
+# All three are English-only with no subsets to pin, so they share one job and
+# one endpoint. Log-likelihood tasks (ARC-C, HellaSwag) need EVAL_TOKENIZER;
+# gsm8k is generative.
+defaults: direct.yaml
+
+evaluation:
+  tasks:
+    - name: adlr_arc_challenge_llama_25_shot
+    - name: hellaswag
+    - name: gsm8k

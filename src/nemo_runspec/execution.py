@@ -129,6 +129,67 @@ def run_startup_commands_local(startup_commands: list[str]) -> None:
 # =============================================================================
 
 
+def _job_uses_wandb(job_config: Any) -> bool:
+    """Whether this job actually needs W&B credentials.
+
+    W&B artifact resolution needs ``run.wandb.project``, and W&B export needs an
+    ``export.wandb`` section or ``wandb`` in ``execution.auto_export`` -- so a
+    config with none of these cannot use W&B for anything. An explicitly
+    exported ``WANDB_API_KEY`` counts as the operator opting in by hand.
+    """
+    from omegaconf import OmegaConf
+
+    if os.environ.get("WANDB_API_KEY"):
+        return True
+    try:
+        cfg = OmegaConf.to_container(job_config, resolve=False) if hasattr(job_config, "_content") else job_config
+        if not isinstance(cfg, dict):
+            return False
+    except Exception:  # noqa: BLE001 - an unresolvable config must not block submission
+        return False
+
+    wandb_cfg = (cfg.get("run") or {}).get("wandb")
+    if isinstance(wandb_cfg, dict) and (wandb_cfg.get("project") or wandb_cfg.get("entity")):
+        return True
+    if (cfg.get("export") or {}).get("wandb") is not None:
+        return True
+    destinations = ((cfg.get("execution") or {}).get("auto_export") or {}).get("destinations") or []
+    return "wandb" in destinations
+
+
+def _detect_wandb_api_key(env_vars: dict[str, str]) -> str | None:
+    """Find and validate the ambient W&B key, writing it into ``env_vars``.
+
+    The key is never bound to a local of its own. A frame local holding a
+    credential is rendered into the traceback of anything that escapes this
+    function, and the auth check below exists precisely to raise. It lives in
+    ``env_vars`` instead, which is the payload it was always destined for.
+    """
+    try:
+        import wandb
+
+        if not wandb.api.api_key:
+            return None
+        env_vars["WANDB_API_KEY"] = wandb.api.api_key
+        # Quick auth check — this is what the container will do later.
+        _ = wandb.Api(timeout=10).viewer
+    except Exception as e:
+        err_str = str(e)
+        err_type = type(e).__name__
+        # wandb raises AuthenticationError for an unreachable server too, and
+        # re-logging in cannot fix a network fault.
+        unreachable = any(m in err_str.lower() for m in ("unable to connect", "connection refused", "timed out"))
+        if not unreachable and ("401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type):
+            raise RuntimeError(
+                "WANDB_API_KEY is set but authentication failed (401 Unauthorized). "
+                "Artifact resolution will fail inside the container. "
+                "Fix: run 'wandb login --relogin' to refresh your credentials."
+            ) from e
+        # For non-auth errors (network timeout, etc.), still pass the key through:
+        # it is already in env_vars above.
+    return env_vars.get("WANDB_API_KEY")
+
+
 def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str, str]:
     """Build environment variables for nemo-run execution.
 
@@ -182,28 +243,15 @@ def build_env_vars(job_config: Any, env_config: dict | None = None) -> dict[str,
     # Auto-detect Weights & Biases API key and validate it before forwarding.
     # Validating early avoids wasting time on Slurm allocation + container import
     # only to fail with a 401 inside the container.
-    api_key = None
-    try:
-        import wandb
-
-        api_key = wandb.api.api_key
-        if api_key:
-            # Quick auth check — this is what the container will do later
-            test_api = wandb.Api(timeout=10)
-            _ = test_api.viewer  # triggers the actual auth request
-            env_vars["WANDB_API_KEY"] = api_key
-    except Exception as e:
-        err_str = str(e)
-        err_type = type(e).__name__
-        if "401" in err_str or "Unauthorized" in err_str or "AuthenticationError" in err_type:
-            raise RuntimeError(
-                "WANDB_API_KEY is set but authentication failed (401 Unauthorized). "
-                "Artifact resolution will fail inside the container. "
-                "Fix: run 'wandb login --relogin' to refresh your credentials."
-            ) from e
-        # For non-auth errors (network timeout, etc.), still pass the key through
-        if api_key:
-            env_vars["WANDB_API_KEY"] = api_key
+    #
+    # Only for jobs that actually use W&B. This block otherwise made a stale
+    # `wandb login` on the submitting host abort steps that never asked for W&B
+    # -- an eval against a hosted endpoint would fail at submission with a 401
+    # about artifact resolution it does not perform. It also skips a network
+    # round-trip on every submission, and stops forwarding a credential to
+    # containers that have no use for it.
+    if _job_uses_wandb(job_config):
+        _detect_wandb_api_key(env_vars)
 
     # Extract W&B entity and project from job config
     try:
@@ -680,9 +728,9 @@ def _slurm_secret_cleanup_setup(remote_path: str) -> str:
             "    exit 1",
             "fi",
             "set -vx",
-            "trap 'status=$?; if [ \"$status\" -eq 0 ] || "
-            "[ \"${SLURM_RESTART_COUNT:-0}\" -ge \"${TORCHX_MAX_RETRIES:-0}\" ]; then "
-            "rm -f \"$_nemotron_secret_env_file\"; fi' EXIT",
+            'trap \'status=$?; if [ "$status" -eq 0 ] || '
+            '[ "${SLURM_RESTART_COUNT:-0}" -ge "${TORCHX_MAX_RETRIES:-0}" ]; then '
+            'rm -f "$_nemotron_secret_env_file"; fi\' EXIT',
         ]
     )
 
@@ -835,9 +883,7 @@ def create_slurm_executor(
     setup_lines = _get_env(env, "setup_lines")
     if secret_setup_lines:
         setup_lines = "\n".join(
-            line
-            for line in (secret_setup_lines, str(setup_lines) if setup_lines else None)
-            if line
+            line for line in (secret_setup_lines, str(setup_lines) if setup_lines else None) if line
         )
 
     executor_kwargs: dict[str, Any] = {
@@ -983,7 +1029,8 @@ def _create_lepton_executor(
         container_image, nodes, gpus_per_node, nprocs_per_node,
         resource_shape, node_group, node_reservation,
         shared_memory_size, mounts (list of mount dicts),
-        image_pull_secrets, custom_spec, pre_launch_commands
+        image_pull_secrets, secret_vars (env var name -> Lepton secret name),
+        custom_spec, pre_launch_commands
     """
     import nemo_run as run
 
@@ -1031,6 +1078,25 @@ def _create_lepton_executor(
     image_pull_secrets = _get_env(env, "image_pull_secrets")
     if image_pull_secrets:
         executor_kwargs["image_pull_secrets"] = list(image_pull_secrets)
+
+    # Map ENV_VAR_NAME -> Lepton secret name. Values are injected by the
+    # platform via `valueFrom.secretNameRef`, so the token never appears in the
+    # profile, the job spec, `lep job get`, or any log line -- unlike env_vars,
+    # whose values are stored verbatim in the submitted spec.
+    secret_vars = _get_env(env, "secret_vars")
+    if secret_vars:
+        secret_map = {str(k): str(v) for k, v in _to_plain(secret_vars).items()}
+        executor_kwargs["secret_vars"] = secret_map
+        # A name carried by secret_vars must not also be an env_var. build_env_vars
+        # resolves HF_TOKEN and WANDB_API_KEY from the ambient environment, so
+        # without this the spec would carry both the secret reference and the
+        # value it was meant to replace -- which Lepton rejects as a duplicate
+        # environment entry, and which would defeat the point if it did not.
+        env_vars = executor_kwargs.get("env_vars")
+        if isinstance(env_vars, dict):
+            executor_kwargs["env_vars"] = {
+                k: v for k, v in env_vars.items() if k not in secret_map
+            }
 
     # LeptonRayCluster needs a plain version ("2.48.0"), not the default
     # image-tag string 'ray:2.48.0-py312-gpu' that nemo-run supplies.
@@ -1127,6 +1193,22 @@ def _derive_cloud_workspace(env: Any) -> str:
 
     logging.getLogger(__name__).warning("No workspace, mounts, or pvcs configured — output goes to ephemeral /tmp")
     return "/tmp"
+
+
+def _pip_extra_cmd(pkg: str) -> str:
+    """Install one `pip_extras` package, loudly on failure.
+
+    Kept non-fatal: some profiles list packages that are already present or
+    unavailable in a given image, and hard-failing here would break pipelines
+    that work today. But `-q ... 2>/dev/null || true` hid the failure entirely,
+    so a missing dependency surfaced minutes later as a ModuleNotFoundError in
+    a job whose logs were already gone. The marker below is greppable.
+    """
+    return (
+        f"pip install -q {pkg} || "
+        f'echo "[nemotron][pip_extras] FAILED to install {pkg} -- '
+        f'a later ModuleNotFoundError for it starts here" >&2'
+    )
 
 
 def _transport_env_cleanup_cmd() -> str:
@@ -1386,7 +1468,7 @@ def execute_cloud(
     parts.append(_transport_env_cleanup_cmd())
     # Extra pip packages from env.toml (CLI deps, experimental libs, etc.)
     for pkg in pip_extras:
-        parts.append(f"pip install -q {pkg} 2>/dev/null || true")
+        parts.append(_pip_extra_cmd(pkg))
     # Clone auto_mount git repos (Megatron-LM, Megatron-Bridge, etc.)
     # On Slurm these are bind-mounted; on cloud we clone inside the container.
     parts.extend(_git_mount_commands())
@@ -1500,7 +1582,7 @@ def execute_cloud_ray(
     # commands run here so workers have source on disk before Ray actors start.
     pre_ray_commands: list[str] = list(transport.pre_script_cmds)
     for pkg in pip_extras:
-        pre_ray_commands.append(f"pip install -q {pkg} 2>/dev/null || true")
+        pre_ray_commands.append(_pip_extra_cmd(pkg))
     pre_ray_commands.extend(_git_mount_commands())
     if setup_commands:
         pre_ray_commands.extend(setup_commands)
@@ -1650,10 +1732,7 @@ def execute_cloud_ray(
                     else:
                         cluster.stop()
                 except Exception as exc:  # noqa: BLE001
-                    typer.echo(
-                        f"[ray] failed to stop RayCluster {cluster_name} "
-                        f"({type(exc).__name__}: {exc})"
-                    )
+                    typer.echo(f"[ray] failed to stop RayCluster {cluster_name} ({type(exc).__name__}: {exc})")
         if final_state in {"FAILED", "STOPPED", "CANCELLED", "TIMEOUT", "NOT_FOUND"}:
             raise RuntimeError(f"Ray job {job_name} ended in {final_state}")
 
@@ -1685,12 +1764,7 @@ def _wait_for_ray_job(ray_job: Any, *, poll_seconds: int = 30) -> str:
 def _ray_job_status_state(status: Any) -> str:
     """Normalize nemo-run Ray status return shapes."""
     if isinstance(status, dict):
-        return str(
-            status.get("state")
-            or status.get("status")
-            or status.get("job_status")
-            or "UNKNOWN"
-        )
+        return str(status.get("state") or status.get("status") or status.get("job_status") or "UNKNOWN")
     return str(getattr(status, "value", status))
 
 
@@ -1769,9 +1843,7 @@ def execute_uv_local(
     # Avoid leaking an ambient venv into the stage-local project environment.
     env.pop("VIRTUAL_ENV", None)
     src_path = str(repo_root / "src")
-    env["PYTHONPATH"] = os.pathsep.join(
-        part for part in [src_path, env.get("PYTHONPATH", "")] if part
-    )
+    env["PYTHONPATH"] = os.pathsep.join(part for part in [src_path, env.get("PYTHONPATH", "")] if part)
 
     typer.echo(f"Executing: {' '.join(cmd)}")
     result = subprocess.run(cmd, env=env)

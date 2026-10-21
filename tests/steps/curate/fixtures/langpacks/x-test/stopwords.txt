@@ -1,0 +1,23 @@
+# Invented function words. Seven carry the removable mark so that folding
+# collapses them onto their unmarked twins, exercising the collision path.
+աա
+բդ
+գէ
+դժ
+եխ
+զհ
+էճ
+ըն
+թչ
+ժռ
+իտ
+լւ
+խօ
+ծբ
+ա́ա
+բ́դ
+գ́է
+դ́ժ
+ե́խ
+զ́հ
+է́ճ

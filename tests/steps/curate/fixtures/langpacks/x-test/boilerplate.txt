@@ -1,0 +1,3 @@
+# Invented boilerplate patterns.
+աաա
+բբբ\s+\d+

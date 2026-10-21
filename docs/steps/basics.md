@@ -21,7 +21,7 @@ Each step packages four things:
 
 The step identifier is the only piece of information you need to invoke a job.
 Steps live under `src/nemotron/steps/` in the source tree, and the CLI discovers them at startup.
-Use `nemotron steps list` to see every available step, and use `nemotron steps show <id>` to inspect a single step.
+Use `uv run nemotron steps list` to see every available step, and use `uv run nemotron steps show <id>` to inspect a single step.
 
 ## Configurations
 
@@ -66,14 +66,14 @@ The following procedure generates a starter profile file, reviews it, and points
    List the available configurations with the following command.
 
    ```console
-   $ nemotron steps show env/env_toml
+   $ uv run nemotron steps show env/env_toml
    ```
 
 2. Run the step from the repository root so the output lands beside `pyproject.toml`.
    The following command generates an `env.lepton.toml` from the `lepton` configuration.
 
    ```console
-   $ nemotron steps run env/env_toml -c lepton
+   $ uv run nemotron steps run env/env_toml -c lepton
    ```
 
    Substitute `-c slurm` or `-c dgxcloud` for the other targets.
@@ -98,12 +98,12 @@ The following procedure generates a starter profile file, reviews it, and points
    Pick a step that already has a generated profile and run it with the `tiny` configuration.
 
    ```console
-   $ nemotron steps run sft/automodel -c tiny -r lepton_sft_automodel
+   $ uv run nemotron steps run sft/automodel -c tiny -r lepton_sft_automodel
    ```
 
    A successful submission proves that the CLI loaded the profile file, matched the named profile, and accepted the resource shape.
 
-After the file passes step (5), you can add new profiles by editing the YAML template under `src/nemotron/steps/env/env_toml/config/` and rerunning `nemotron steps run env/env_toml` with `force=true`.
+After the file passes step (5), you can add new profiles by editing the YAML template under `src/nemotron/steps/env/env_toml/config/` and rerunning `uv run nemotron steps run env/env_toml` with `force=true`.
 Child profiles can use `extends` to inherit from an existing profile and override only the image, the mounts, the environment variables, or the resource shape that differ.
 
 ## Artifacts Between Steps
@@ -119,8 +119,8 @@ For example, `convert/megatron_to_hf` turns a `checkpoint_megatron` artifact int
 You can list the producers and consumers of a given artifact type from the CLI:
 
 ```console
-$ nemotron steps list --produces training_jsonl
-$ nemotron steps list --consumes training_jsonl
+$ uv run nemotron steps list --produces training_jsonl
+$ uv run nemotron steps list --consumes training_jsonl
 ```
 
 See [Getting Started With Steps](getting-started.md) for a guided tour of these commands.
@@ -130,7 +130,7 @@ See [Getting Started With Steps](getting-started.md) for a guided tour of these 
 The following command composes all three concepts into one invocation.
 
 ```console
-$ nemotron steps run sft/automodel -c tiny -r lepton_sft_automodel
+$ uv run nemotron steps run sft/automodel -c tiny -r lepton_sft_automodel
 ```
 
 The CLI reads the `sft/automodel` step, applies the `tiny` configuration, and submits the job to the cluster the `lepton_sft_automodel` profile describes.

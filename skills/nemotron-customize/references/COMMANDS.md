@@ -38,6 +38,15 @@ Collect only fields needed by the selected step:
 - Training/prep/RL: model or checkpoint, data schema, tokenizer/template where
   relevant, sequence length when packing/training, hardware/GPU count, and
   checkpoint save/load paths.
+- Governed curation: input format/glob, stable ID source or derivation fields,
+  language pack, policy approval/evidence paths, held-out split, and tokenizer
+  revision/token budgets when subsetting.
+- Tokenizer extension: base HF model, target language, training and held-out
+  corpora, fixed extension budget, add/replace/expand arm, embedding-init
+  method, and CPT destination.
+- Persona MCQ/BFCL: training-data versus benchmark intent, experiment/release
+  identity, model endpoints, oracle pack or source corpus, stage, and durable
+  output paths.
 - Translation/eval with hosted services: endpoint/model identifiers, source
   and target task settings, runtime-visible paths, and the variable name the
   runtime uses for service access. Name the variable, never its value.
@@ -104,9 +113,16 @@ and replace placeholders before final output.
 | Route | Step | Base command |
 |---|---|---|
 | Env profile generation | `env/env_toml` | `uv run nemotron steps run env/env_toml -c <lepton-or-slurm-or-dgxcloud> output_path=<env-file>` |
+| Curator ingestion | `curate/ingest` | `uv run nemotron steps run curate/ingest -c <config> --dry-run input=<raw-corpus> output_dir=<prepared-output-dir>` |
+| Curator policy profiling | `curate/profile` | `uv run nemotron steps run curate/profile -c <config> --dry-run input_glob=<prepared-jsonl-glob> output_dir=<profile-output-dir> language=<bcp47> langpack_dir=<reviewed-pack-root>` |
 | Curator JSONL cleaning | `curate/nemo_curator` | `uv run nemotron steps run curate/nemo_curator -c <config> --dry-run input_glob=<raw-jsonl-glob> output_dir=<cleaned-output-dir>` |
+| Curator integrity audit | `curate/audit` | `uv run nemotron steps run curate/audit -c <config> --dry-run target_glob=<filtered-jsonl-glob> output_dir=<audit-output-dir>` |
+| Holdout decontamination | `curate/decontamination` | `uv run nemotron steps run curate/decontamination -c <config> --dry-run train_glob=<training-jsonl-glob> holdout_glob=<holdout-jsonl-glob> output_dir=<decontaminated-output-dir> id_field=<stable-id>` |
+| Nested corpus subsets | `curate/subset` | `uv run nemotron steps run curate/subset -c <config> --dry-run input_glob=<post-decontamination-glob> output_dir=<subset-output-dir> id_field=<stable-id>` |
 | Corpus translation | `translate/nemo_curator` | `uv run nemotron steps run translate/nemo_curator input_path=<input> output_dir=<output> source_language=<src> target_language=<tgt> backend=<backend>` |
 | BYOB MCQ benchmark | `byob/mcq` | `uv run nemotron steps run byob/mcq -c <config> --dry-run stage=<prepare-generate-translate-or-all> family=mcq` |
+| BYOB function-calling benchmark | `byob/bfcl` | `uv run nemotron steps run byob/bfcl -c <config> --dry-run stage=<prepare-generate-translate-eval-or-all> family=bfcl` |
+| Persona MCQ training data | `sdg/persona_mcq` | `uv run nemotron steps run sdg/persona_mcq -c <tiny-or-default> --dry-run pipeline.experiment_name=<new-name>` |
 | SFT packing | `data_prep/sft_packing` | `uv run nemotron steps run data_prep/sft_packing -c <config> --dry-run` |
 | Pretrain prep | `data_prep/pretrain_prep` | `uv run nemotron steps run data_prep/pretrain_prep -c <config> --dry-run` |
 | RL prep | `data_prep/rl_prep` | `uv run nemotron steps run data_prep/rl_prep -c <config> --dry-run` |
@@ -117,6 +133,8 @@ and replace placeholders before final output.
 | Checkpoint conversion | `convert/hf_to_megatron`, `convert/megatron_to_hf`, `convert/merge_lora` | `uv run nemotron steps run <step-id> -c default --dry-run` |
 | ModelOpt | `optimize/modelopt/quantize`, `optimize/modelopt/prune`, `optimize/modelopt/distill` | `uv run nemotron steps run <step-id> -c <config> --dry-run` |
 | Evaluation | `eval/model_eval` | `uv run nemotron steps run eval/model_eval -c <config> --dry-run` |
+| Tokenizer build/fertility | `tokenizer_extension/extend`, `tokenizer_extension/evaluate` | `uv run nemotron steps run <step-id> -c default --dry-run` |
+| Embedding init/BPB | `tokenizer_extension/init_embeddings`, `tokenizer_extension/eval_init` | `uv run nemotron steps run <step-id> -c default --dry-run` |
 
 ## Translation Examples
 
@@ -192,6 +210,56 @@ Megatron checkpoint evaluation uses `-c default` with
 come from `nemo-evaluator-launcher ls tasks` or the checked-in config, never
 guessed.
 
+Direct-mode evaluation against an already hosted endpoint uses the selected
+Nemotron env profile as the only scheduler. `EVAL_ENDPOINT_URL`,
+`EVAL_MODEL_HANDLE`, `EVAL_RESULTS_DIR`, `EVAL_TOKENIZER`, and optionally
+`EVAL_API_KEY_NAME` must be exported; values are not inlined in the command.
+The selected profile must run a harness image that actually contains the tasks.
+
+```bash
+uv run nemotron steps run eval/model_eval -c direct --batch <verified-profile> \
+  -t <exact-harness-task> \
+  dry_run=true \
+  target.api_endpoint.type=<chat-or-completions>
+```
+
+This step-level `dry_run` is distinct from CLI compilation-only `--dry-run`.
+Direct mode blocks and writes `summary.json`; Launcher mode returns after the
+invocation is accepted, so poll the Launcher invocation until terminal state.
+
+## Specialized Workflow Notes
+
+### Governed curation
+
+Use standalone step commands when the user needs one stage. The all-six flow is
+a repo script, not a registered step:
+
+```bash
+uv run --extra curate --extra xenna \
+  python -m nemotron.steps.curate.nemo_curator.scripts.run_flow \
+  --config <flow-config.yaml>
+```
+
+The flow has two separate runs for thresholded curation: measure/profile first,
+then approve/apply. Do not combine approval with re-profiling or route Parquet
+straight into `curate/nemo_curator`; normalize it with `curate/ingest`.
+
+### Persona MCQ
+
+Start with `tiny` and a fresh experiment name. A resumed run must keep the same
+config identity. Production needs configured teacher endpoints, at least three
+answer models, managed persona assets, and typically one GPU for semantic
+deduplication. Auth values stay in `NGC_API_KEY`, `NVIDIA_API_KEY`, `HF_TOKEN`,
+and configured endpoint variables, never in YAML.
+
+### Tokenizer extension
+
+Run one arm per build. `extend method=add|replace|expand` produces the tokenizer;
+`init_embeddings arm=replace` is valid only for replace output, while both add
+and expand use `arm=add`. Use identical corpora and extension budgets for
+comparisons. `eval_init` should compare BPB with `max_docs`, not PPL under a
+token cap.
+
 ## Common Sequences
 
 Build sequences by artifact matching, not fixed recipes: chain a step only when
@@ -206,3 +274,7 @@ the artifact graph, not discretionary combinations.
   `data_prep/pretrain_prep` first; preserve the emitted `blend.json`.
 - Insert a converter only when adjacent stages disagree on checkpoint type.
 - Add `eval/model_eval` around a stage only when a quality claim is being made.
+- A tokenizer extension requires CPT after row initialization before claiming
+  model adaptation; tokenizer fertility alone is not a downstream quality test.
+- If governed curation includes decontamination, subset its
+  `decontaminated_jsonl`, never the earlier filtered corpus.

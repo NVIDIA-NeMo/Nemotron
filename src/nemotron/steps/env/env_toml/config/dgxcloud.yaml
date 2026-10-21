@@ -33,9 +33,12 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch dgxcloud_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch dgxcloud_optimize_modelopt_prune
   #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch dgxcloud_eval_model_eval
+  #   uv run nemotron steps run eval/model_eval -c direct --batch dgxcloud_eval_direct
   #   uv run nemotron steps run byob/mcq -c tiny --batch dgxcloud_byob_cpu stage=all
   #   uv run nemotron steps run byob/mcq -c tiny --batch dgxcloud_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch dgxcloud_sdg_data_designer_tiny
+  #   uv run nemotron steps run sdg/persona_mcq -c tiny --batch dgxcloud_sdg_persona_mcq_tiny
+  #   uv run nemotron steps run sdg/persona_mcq -c default --batch dgxcloud_sdg_persona_mcq
   #   uv run nemotron steps run translate/nemo_curator -c default --batch dgxcloud_translate
   #   uv run nemotron steps run curate/nemo_curator -c tiny --batch dgxcloud_curate
 
@@ -54,6 +57,10 @@ checks:
     - dgxcloud_peft_megatron_bridge
     - dgxcloud_peft_automodel
     - dgxcloud_convert_model
+    - dgxcloud_tokenizer_extend
+    - dgxcloud_tokenizer_init_embeddings
+    - dgxcloud_tokenizer_evaluate
+    - dgxcloud_tokenizer_eval_init
     - dgxcloud_rl_nemo_rl_dpo
     - dgxcloud_rl_nemo_rl_rlvr
     - dgxcloud_rl_nemo_rl_rlhf
@@ -61,6 +68,7 @@ checks:
     - dgxcloud_optimize_modelopt_distill
     - dgxcloud_optimize_modelopt_prune
     - dgxcloud_eval_model_eval
+    - dgxcloud_eval_direct
     - dgxcloud_byob_cpu
     - dgxcloud_byob_full
     - dgxcloud_sdg_data_designer
@@ -68,6 +76,8 @@ checks:
     - dgxcloud_sdg_data_designer_default
     - dgxcloud_sdg_data_designer_customer_support_tools
     - dgxcloud_sdg_data_designer_rl_pref
+    - dgxcloud_sdg_persona_mcq
+    - dgxcloud_sdg_persona_mcq_tiny
     - dgxcloud_translate
     - dgxcloud_curate
   recommended_min_nodes:
@@ -152,7 +162,7 @@ sections:
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   dgxcloud_curator_base:
     extends: dgxcloud_base
-    container_image: nvcr.io/nvidia/nemo-curator:26.02
+    container_image: nvcr.io/nvidia/nemo-curator:26.07
     nodes: 1
     gpus_per_node: 0
     nprocs_per_node: 1
@@ -206,6 +216,30 @@ sections:
     extends: dgxcloud_sdg_data_designer
     env_vars:
       SDG_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg/rl/rl_pref
+
+  # sdg/persona_mcq on DGX Cloud (Run:ai). Endpoint inference is remote; one
+  # local GPU is used for multilingual semantic deduplication.
+  dgxcloud_sdg_persona_mcq:
+    extends: dgxcloud_sdg_data_designer
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    startup_commands:
+      - "python -m pip install --quiet --break-system-packages 'data-designer>=0.5.9,<0.6' 'sentence-transformers>=5.0.0,<6.0.0' 'torch>=2.10,<2.11'"
+      # Shadow a torchvision build tied to the image's original Torch.
+      - "python -m pip install --quiet --break-system-packages 'torchvision>=0.25,<0.26'"
+    env_vars:
+      NEMOTRON_RUN_DIR: ${oc.env:NEMOTRON_RUN_DIR,${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/sdg}
+      DATA_DESIGNER_HOME: ${oc.env:DATA_DESIGNER_HOME,${oc.env:NEMOTRON_WORKSPACE,/workspace}/data-designer}
+      DATA_DESIGNER_MANAGED_ASSETS_PATH: ${oc.env:DATA_DESIGNER_MANAGED_ASSETS_PATH,${oc.env:NEMOTRON_WORKSPACE,/workspace}/data-designer/managed-assets}
+      NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
+      NGC_API_KEY: ${oc.env:NGC_API_KEY,''}
+      QWEN_API_BASE: ${oc.env:QWEN_API_BASE,''}
+      OSS_API_BASE: ${oc.env:OSS_API_BASE,''}
+      GEMMA_API_BASE: ${oc.env:GEMMA_API_BASE,''}
+
+  dgxcloud_sdg_persona_mcq_tiny:
+    extends: dgxcloud_sdg_persona_mcq
+    gpus_per_node: 0
 
   # translate/nemo_curator: uses the translate Curator runtime profile.
   dgxcloud_translate:
@@ -296,6 +330,58 @@ sections:
     env_vars:
       CONVERT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/convert
 
+  # ---------------------------------------------------------------------------
+  # tokenizer_extension/*: build an extended tokenizer, initialise the new
+  # embedding rows, and measure the result. Four sub-steps with genuinely
+  # different shapes, so one profile each.
+  #
+  # Optional dependencies (declared as the `tokenizer-extension` extra):
+  #   indic-nlp-library  extend, when the target language uses a script
+  #                      normalizer (Devanagari family). Missing, the step
+  #                      raises rather than silently normalising with NFKC only,
+  #                      which would train a different tokenizer.
+  #   fasttext-wheel     init_embeddings, method=focus only. The import is lazy,
+  #                      so the other init methods run without it.
+  # ---------------------------------------------------------------------------
+
+  dgxcloud_tokenizer_extend:
+    extends: dgxcloud_base
+    nodes: 1
+    gpus_per_node: 0
+    nprocs_per_node: 1
+    startup_commands:
+      - python -m pip install --quiet --break-system-packages indic-nlp-library
+    env_vars:
+      TOKEXT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/tokenizer_extension
+
+  dgxcloud_tokenizer_init_embeddings:
+    extends: dgxcloud_base
+    nodes: 1
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    startup_commands:
+      - python -m pip install --quiet --break-system-packages fasttext-wheel indic-nlp-library
+    env_vars:
+      TOKEXT_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/tokenizer_extension
+      FASTTEXT_CACHE_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/tokenizer_extension/aux
+
+  dgxcloud_tokenizer_evaluate:
+    extends: dgxcloud_base
+    nodes: 1
+    gpus_per_node: 0
+    nprocs_per_node: 1
+
+  dgxcloud_tokenizer_eval_init:
+    extends: dgxcloud_base
+    nodes: 1
+    # dgxcloud_base allocates no GPU, and eval_init runs the model, so it asks
+    # for one here rather than inheriting a CPU-only shape.
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    # bpb.py loads each model with device_map="auto" when CUDA is visible, which
+    # transformers refuses without accelerate.
+    startup_commands:
+      - python -m pip install --quiet --break-system-packages accelerate
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   dgxcloud_rl_nemo_rl_dpo:
     extends: dgxcloud_base
@@ -348,7 +434,10 @@ sections:
     env_vars:
       OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/optimize/prune
 
-  # eval/model_eval: lightweight profile for model evaluation steps.
+  # eval/model_eval (launcher mode, `-c default`): NOTE the launcher has no
+  # Run:ai executor at all, so launcher mode cannot schedule onto DGX Cloud --
+  # this profile only runs the launcher itself here. For Run:ai, use direct
+  # mode (`dgxcloud_eval_direct` below).
   dgxcloud_eval_model_eval:
     extends: dgxcloud_base
     nodes: 1
@@ -361,3 +450,46 @@ sections:
       - nemo-evaluator-launcher
     env_vars:
       EVAL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/eval/model_eval
+
+  # eval/model_eval (direct mode, `-c direct`): the harness runs in THIS job
+  # against an endpoint you host yourself, so the job needs no GPU -- the GPUs
+  # are wherever the model is served.
+  #
+  # Two things deliberately absent:
+  #   container_image -- direct.yaml owns the harness image via
+  #     EVAL_HARNESS_IMAGE, and build_job_config() re-applies YAML-owned
+  #     resource keys after merging this file, so a profile image is ignored.
+  #   EVAL_HARNESS_IMAGE in env_vars -- profile env_vars merge OVER the
+  #     config's, so a default here would overwrite direct.yaml's
+  #     self-forwarding `EVAL_HARNESS_IMAGE: ${run.env.container_image}` and the
+  #     pod would resolve its own image to an empty string.
+  #
+  # This is the ONLY way to evaluate on Run:ai: the launcher ships no Run:ai
+  # executor, so launcher mode cannot place a job here.
+  dgxcloud_eval_direct:
+    extends: dgxcloud_base
+    nodes: 1
+    gpus_per_node: 0
+    nprocs_per_node: 1
+    # The harness image ships nemo_evaluator and the benchmark venvs -- it is
+    # NOT a Nemotron image and has none of Nemotron's own runtime deps. This
+    # list is redeclared in full because pip_extras is a list: a child value
+    # REPLACES the parent's rather than extending it.
+    pip_extras:
+      - typer
+      - rich
+      - pydantic-settings
+      - omegaconf
+      - tomli
+      - wandb
+    # direct.yaml resolves these INSIDE the job, so every one it reads must be
+    # forwarded here; exporting them in your shell only affects submission.
+    env_vars:
+      EVAL_ENDPOINT_URL: ${oc.env:EVAL_ENDPOINT_URL,''}
+      EVAL_MODEL_HANDLE: ${oc.env:EVAL_MODEL_HANDLE,''}
+      EVAL_RESULTS_DIR: ${oc.env:EVAL_RESULTS_DIR,${oc.env:NEMOTRON_WORKSPACE,/workspace}/output/eval/model_eval}
+      EVAL_ENDPOINT_TYPE: ${oc.env:EVAL_ENDPOINT_TYPE,completions}
+      EVAL_API_KEY_NAME: ${oc.env:EVAL_API_KEY_NAME,ENDPOINT_TOKEN}
+      EVAL_TOKENIZER: ${oc.env:EVAL_TOKENIZER,null}
+      EVAL_LIMIT_SAMPLES: ${oc.env:EVAL_LIMIT_SAMPLES,null}
+      ENDPOINT_TOKEN: ${oc.env:ENDPOINT_TOKEN,''}

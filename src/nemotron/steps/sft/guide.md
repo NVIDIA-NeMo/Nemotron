@@ -5,6 +5,10 @@
 | **Megatron-Bridge** | Large-scale distributed training with TP / PP / CP control | 8 | packed_parquet (needs `data_prep/sft_packing`) | checkpoint_megatron |
 | **AutoModel** | Simpler setup, fewer GPUs, LoRA / PEFT, quick iteration | 4 | training_jsonl (no packing) | checkpoint_hf |
 
+> **Choosing a recipe?** See the customer-facing
+> [Supervised Fine-Tuning Guidebook](guidebook/README.md) for measured data-volume knees,
+> what SFT breaks and how to repair it, and full-SFT-versus-LoRA results.
+
 ## Quick decision tree
 
 - Need TP / PP / CP parallelism or official Nano3 / Super3 recipe patterns? → **Megatron-Bridge**
