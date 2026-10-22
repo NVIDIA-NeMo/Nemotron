@@ -1,14 +1,15 @@
 # LoRA config for the French public-service assistant example.
 # Derived from usage-cookbook/Nemotron-3.5-Lightning/dgx-station-recipes/lora_lightning35_station.yaml.
-# Only the batch size, checkpoint/validation cadence, sequence length and data/output paths changed;
-# the model backend, MTP and LoRA settings are tuned for Lightning and are left as in the recipe.
-# Values below are for a DGX Spark; the comments give the DGX Station recipe defaults.
+# Only the checkpoint/validation cadence and data/output paths changed (batch size and sequence length
+# match the recipe, with DGX Spark values in comments); the model backend, MTP and LoRA settings are
+# tuned for Lightning and are left as in the recipe.
+# Values below are the DGX Station recipe defaults; the comments give the DGX Spark values.
 
 recipe: TrainFinetuneRecipeForNextTokenPrediction
 
 step_scheduler:
   global_batch_size: 8
-  local_batch_size: 1  # DGX Station recipe default: 2
+  local_batch_size: 2  # DGX Spark: 1
   ckpt_every_steps: 100
   val_every_steps: 50  # Runs every N gradient steps.
   max_steps: 100
@@ -74,7 +75,7 @@ dataset:
   truncation: true
   truncate_history: true
   drop_history_reasoning_content: true
-  seq_length: 8192  # DGX Station recipe default: 32768
+  seq_length: 32768  # DGX Spark: 8192
 
   # false trains the model on the supplied reasoning traces.
   # Set true to render reasoning but exclude it from loss.
@@ -101,7 +102,7 @@ validation_dataset:
   path: use-case-examples/french-public-service-assistant/data/validation.jsonl
   truncation: true
   truncate_history: true
-  seq_length: 8192  # DGX Station recipe default: 32768
+  seq_length: 32768  # DGX Spark: 8192
   drop_history_reasoning_content: true
   tokenizer:
     pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16

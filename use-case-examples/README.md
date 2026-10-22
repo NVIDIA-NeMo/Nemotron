@@ -17,5 +17,9 @@ These examples showcase **complete implementations** of agentic workflows, RAG s
 | [RAG Agent with Nemotron RAG Models](RAG Agent with Nemotron RAG Models/README.md) | End-to-end example of a Retrieval-Augmented Generation (RAG) agent workflow using Nemotron RAG models through Hugging Face and Nemotron 9B hosted through build.nvidia.com models |
 | [Data Science ML Agent](Data Science ML Agent/README.md) | End-to-end example of a natural language-driven data science and machine learning agent powered by NVIDIA GPUs. The agent allows users to perform data exploration, model training, and hyperparameter optimization interactively using RAPIDS cuDF and cuML for GPU acceleration.|
 | [LangGraph CLI Agent with Synthetic Data and GRPO](Build_a_Bash_Agent_with_Synthetic_Data/README.md) | Generate deterministic CLI training labels with NeMo Data Designer, train Nemotron 3 Nano with Gym-backed GRPO rewards, and run validated human-confirmed LangGraph CLI tool calls. |
+<<<<<<< HEAD
 | [Long-Context Chat Synthetic Data Generation](long-context-chat-sdg/README.md) | Generate multi-turn, retrieval-grounded tool-call SFT conversations with an external HTTP retriever or an explicitly labeled simulation mode. |
+=======
+| [French Public-Service Assistant](french-public-service-assistant/README.md) | Companion code for the blog on post-training Nemotron 3.5 Lightning for French public-service questions: grounded synthetic data with Nemotron-Personas-France and NeMo Data Designer, LoRA fine-tuning with NeMo AutoModel, and a base-vs-adapted comparison. |
+>>>>>>> c48adaf (fixes to match blog)
 | [Build Your Own Benchmark](build-your-own-benchmark/README.md) | End-to-end BYOB MCQ benchmark example using the `src/nemotron/steps/byob` step, packaged step configs, and the `nemotron steps run byob/mcq` CLI. |

@@ -17,7 +17,7 @@
 
 output_dir: use-case-examples/french-public-service-assistant/data/sdg
 output_path: use-case-examples/french-public-service-assistant/data/sdg/sft_raw.jsonl
-num_records: 1200   # use preview=true num_records=8 first
+num_records: 2000   # use preview=true num_records=8 first
 
 seed_dataset:
   path: use-case-examples/french-public-service-assistant/data/seeds.jsonl
@@ -39,7 +39,7 @@ providers:
   - name: judge_provider
     endpoint: ${oc.env:JUDGE_BASE_URL,https://integrate.api.nvidia.com/v1}
     provider_type: openai
-    api_key: JUDGE_API_KEY   # env var NAME (not the key itself); export it in your shell
+    api_key: NVIDIA_API_KEY   # env var NAME (not the key itself); the same key the rest of the repo uses
     extra_body:
       chat_template_kwargs:
         enable_thinking: false
@@ -61,7 +61,7 @@ models:
     inference_parameters:
       temperature: 0.8
       top_p: 1.0
-      max_tokens: 1024
+      max_tokens: 2048   # hosted endpoint (DGX Spark): 1024
       max_parallel_requests: 64
 
 columns:
