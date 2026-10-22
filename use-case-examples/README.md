@@ -6,7 +6,7 @@ This directory contains end-to-end examples demonstrating practical applications
 
 ## 📋 Overview
 
-These examples showcase **complete implementations** of agentic workflows, RAG systems, and other advanced use cases. Unlike the [usage-cookbook](../usage-cookbook/README) which focuses on deployment and basic model usage, these examples demonstrate how to build production-ready applications.
+These examples showcase **complete implementations** of agentic workflows, RAG systems, and other advanced use cases. Unlike the [usage-cookbook](../usage-cookbook/README.md) which focuses on deployment and basic model usage, these examples demonstrate how to build production-ready applications.
 
 ---
 
@@ -19,3 +19,5 @@ These examples showcase **complete implementations** of agentic workflows, RAG s
 | [LangGraph CLI Agent with Synthetic Data and GRPO](Build_a_Bash_Agent_with_Synthetic_Data/README.md) | Generate deterministic CLI training labels with NeMo Data Designer, train Nemotron 3 Nano with Gym-backed GRPO rewards, and run validated human-confirmed LangGraph CLI tool calls. |
 | [Long-Context Chat Synthetic Data Generation](long-context-chat-sdg/README.md) | Generate multi-turn, retrieval-grounded tool-call SFT conversations with an external HTTP retriever or an explicitly labeled simulation mode. |
 | [Build Your Own Benchmark](build-your-own-benchmark/README.md) | End-to-end BYOB MCQ benchmark example using the `src/nemotron/steps/byob` step, packaged step configs, and the `nemotron steps run byob/mcq` CLI. |
+| [Nemotron 3.5 Super VL RxnCaption LoRA](nemotron-3.5-super-vl-rxncaption/lora-1-node/README.md) | Single-node LoRA fine-tuning, adapter merge, and evaluation for structured chemical-reaction parsing from numbered diagrams. |
+| [Nemotron 3.5 Super VL RxnCaption Full SFT](nemotron-3.5-super-vl-rxncaption/sft-4-node/README.md) | Four-node, 16-GPU full-SFT workflow with shared data preparation, checkpoint export, and benchmark evaluation utilities. |
