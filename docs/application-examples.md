@@ -44,6 +44,15 @@ End-to-end LoRA fine-tuning of Nemotron 3 Nano on Text2SQL (BIRD SQL) with deplo
 {bdg-secondary}`Local GPU` {bdg-info}`Fine-tuning` {bdg-muted-line}`Mar 11, 2026`
 :::
 
+:::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` French Public-Service Assistant
+:link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/french-public-service-assistant
+:link-type: url
+
+Companion code for adapting Nemotron 3.5 Lightning to French public-service questions: grounded synthetic data from Nemotron-Personas-France and official procedure text with NeMo Data Designer, LoRA fine-tuning with NeMo AutoModel, and a base-vs-adapted comparison.
++++
+{bdg-secondary}`Local GPU` {bdg-info}`Fine-tuning` {bdg-muted-line}`Oct 22, 2026`
+:::
+
 :::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Intelligent Document Processing
 :link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/use-case-examples/Intelligent%20Document%20Processing%20with%20Nemotron%20RAG
 :link-type: url

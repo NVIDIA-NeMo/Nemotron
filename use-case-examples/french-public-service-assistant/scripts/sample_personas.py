@@ -1,7 +1,9 @@
 """Step 2: sample a balanced slice of Nemotron-Personas-France into compact seed records.
 
 Selects at most --per-group personas for each (departement, occupation) pair, keeps the source UUID
-for lineage, and writes data/persona_seeds.jsonl.
+for lineage, and writes data/persona_seeds.jsonl. It then runs build_seeds.py, which joins each persona
+with a procedure and its official facts into data/seeds.jsonl, the file the Data Designer config reads.
+Pass --no-build-seeds to stop after the persona sample.
 
     uv run python use-case-examples/french-public-service-assistant/scripts/sample_personas.py
 
@@ -17,6 +19,8 @@ from pathlib import Path
 
 from datasets import load_dataset
 
+import build_seeds
+
 EXAMPLE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -25,6 +29,7 @@ def main() -> None:
     parser.add_argument("--size", type=int, default=2000, help="number of persona seeds to keep")
     parser.add_argument("--per-group", type=int, default=3, help="max personas per (departement, occupation)")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--no-build-seeds", action="store_true", help="only write the persona sample")
     parser.add_argument("--out", type=Path, default=EXAMPLE_DIR / "data" / "persona_seeds.jsonl")
     args = parser.parse_args()
 
@@ -61,6 +66,9 @@ def main() -> None:
     print(f"Saved {len(seeds)} persona seeds to {args.out}")
     print("Départements covered:", len({s["departement"] for s in seeds}))
     print("Top occupations:", Counter(s["occupation"] for s in seeds).most_common(5))
+
+    if not args.no_build_seeds:
+        build_seeds.main(["--personas", str(args.out), "--seed", str(args.seed)])
 
 
 if __name__ == "__main__":
