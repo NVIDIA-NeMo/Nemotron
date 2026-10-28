@@ -1,0 +1,38 @@
+version = 1
+model = "nemotron-transcribe"
+default_entry = "quick-reference"
+
+[[entries]]
+id = "quick-reference"
+topic = "overview"
+file = "quick-reference.md"
+kind = "compact"
+description = "Compact checkpoint, task-boundary, routing, and serving reference for Nemotron 3.5 Transcribe."
+
+[[entries]]
+id = "skill"
+topic = "routing"
+file = "../SKILL.md"
+kind = "compact"
+description = "Source priority, intent routing, precision selection, and response constraints."
+
+[[entries]]
+id = "model-card"
+topic = "identity"
+file = "../model-card.md"
+kind = "release"
+description = "Release identity, checkpoints, capability boundary, prompting, and timestamp contract."
+
+[[entries]]
+id = "recipe-overview"
+topic = "recipes"
+file = "../recipes/overview.md"
+kind = "tracking"
+description = "Public workflow coverage, canonical NeMo Speech assets, artifact flow, and missing stages."
+
+[[entries]]
+id = "cookbook"
+topic = "inference"
+file = "../../../usage-cookbook/Nemotron-3.5-Transcribe/README.md"
+kind = "usage"
+description = "BF16, FP8, and NVFP4 vLLM launch and usage entry point."

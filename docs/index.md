@@ -179,6 +179,15 @@ Add target-language tokens to a base tokenizer and initialize their embeddings w
 **Stages:** Pretraining → SFT → RL → Quantization
 :::
 
+:::{grid-item-card} Nemotron 3.5 Transcribe
+:link: nemotron/transcribe35/README
+:link-type: doc
+
+34B total / 4.3B active offline speech-and-audio model with contextual transcription, speaker attribution, timestamps, translation, and English-only evaluated audio understanding.
+
+**Public workflow:** Main-stage SALM construction or released-checkpoint adaptation → target branches (optional DFlash2 draft; optional quantization) → Inference (canonical execution in NeMo Speech)
+:::
+
 :::{grid-item-card} Nemotron 3 Omni
 :link: nemotron/omni3/README
 :link-type: doc
@@ -220,7 +229,8 @@ Nemotron keeps **data-producing recipes** separate from **model-family training 
 
 ## Training Pipeline
 
-Each recipe family has its own stage layout, and all of them can be tracked through [artifact lineage](nemotron/artifacts.md):
+Nemotron-native recipe families can be tracked through
+[artifact lineage](nemotron/artifacts.md).
 
 | Family | Stage layout |
 |--------|--------------|
@@ -232,6 +242,16 @@ Each recipe family has its own stage layout, and all of them can be tracked thro
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
 | [Embed](nemotron/embed/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
 | [Rerank](nemotron/rerank/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
+
+### Externally maintained workflow maps
+
+Some model integrations use Nemotron for discovery and model-specific guidance
+while their executable pipeline remains canonical in another NVIDIA repository.
+They do not emit Nemotron artifact lineage unless a native recipe is added.
+
+| Family | Public workflow | Canonical execution |
+|---|---|---|
+| [Transcribe35](nemotron/transcribe35/README.md) | Main-stage SALM construction or released-checkpoint adaptation → target branches (optional DFlash2 draft; optional quantization) → Inference | [NeMo Speech](https://github.com/NVIDIA-NeMo/Speech) |
 
 ## Why Nemotron?
 
@@ -383,6 +403,7 @@ Nemotron 3.5 Lightning <nemotron/lightning35/README.md>
 Nemotron 3 Omni <nemotron/omni3/README.md>
 Nemotron 3 Super <nemotron/super3/README.md>
 Nemotron 3.5 Super <nemotron/super35/README.md>
+Nemotron 3.5 Transcribe <nemotron/transcribe35/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Nemotron Embed <nemotron/embed/index.md>
 Nemotron Rerank <nemotron/rerank/index.md>
