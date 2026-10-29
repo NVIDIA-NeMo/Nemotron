@@ -4,18 +4,18 @@ Load this reference when the user mentions clusters, Slurm, `env.toml`, `--run`,
 
 ## Profile Checks
 
-- Inspect the repo root `env.toml` before composing remote commands.
+- Inspect the selected execution environment's `env.toml` before composing remote commands. In a source checkout, it normally lives at the repository root. A copied skill does not provide an execution profile.
 - Confirm the requested profile exists and matches the intended executor.
-- Keep secrets in the remote environment; never ask users to paste key values.
+- Keep credential values in the remote environment and out of chat. Ask only whether the required credentials are configured.
 - Start with the same local help or dry-run command before adding `--run` or `--batch`.
 
 ## Modes
 
 | Mode | Use When | Pattern |
 | --- | --- | --- |
-| Local dry-run | Validate config rendering before scheduling | `uv run nemotron <family> <stage> -c default -d ...` |
-| Remote run | User wants an interactive remote execution path | `uv run nemotron <family> <stage> -c default --run <profile> ...` |
-| Remote batch | User wants a scheduled detached job | `uv run nemotron <family> <stage> -c default --batch <profile> ...` |
+| Local dry-run | Validate config rendering before scheduling | `uv run nemotron <family> <stage> -c <model-profile> -d ...` |
+| Remote run | User wants an interactive remote execution path | `uv run nemotron <family> <stage> -c <model-profile> --run <profile> ...` |
+| Remote batch | User wants a scheduled detached job | `uv run nemotron <family> <stage> -c <model-profile> --batch <profile> ...` |
 
 ## Operating Pattern
 

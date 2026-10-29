@@ -12,7 +12,7 @@
 #
 # [tool.runspec.config]
 # dir = "./config"
-# default = "default"
+# default = "nemotron-3"
 #
 # [tool.runspec.resources]
 # nodes = 1
@@ -40,14 +40,14 @@ to TensorRT for optimized inference. Based on the NeMo Export-Deploy tutorial:
 https://github.com/NVIDIA-NeMo/Export-Deploy/blob/main/tutorials/onnx_tensorrt/embedding/llama_embedding.ipynb
 
 Usage:
-    # With default config
-    nemotron embed export -c default
+    # With the Nemotron 3 config
+    nemotron embed export -c nemotron-3
 
     # Export to ONNX only
-    nemotron embed export -c default export_to_trt=false
+    nemotron embed export -c nemotron-3 export_to_trt=false
 
     # With custom model path
-    nemotron embed export -c default model_path=/path/to/model
+    nemotron embed export -c nemotron-3 model_path=/path/to/model
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ from pydantic import ConfigDict, Field, model_validator
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
 
 STAGE_PATH = Path(__file__).parent
-DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
 
 # Use NEMO_RUN_DIR for output when running via nemo-run
 _OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))

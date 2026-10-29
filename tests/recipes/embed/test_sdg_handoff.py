@@ -20,6 +20,12 @@ from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig
 from nemotron.recipes.embed.stage1_data_prep.plugin_adapter import build_conversion_config
 
 
+@pytest.mark.parametrize("options", [{"sources_file": Path("sources.jsonl")}, {"source_directory": {"path": "docs"}}])
+def test_canonical_inputs_require_multimodal(options: dict) -> None:
+    with pytest.raises(ValueError, match="sdg_workflow='multimodal'"):
+        SDGConfig(**options)
+
+
 def _touch_jsonl(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("{}\n", encoding="utf-8")

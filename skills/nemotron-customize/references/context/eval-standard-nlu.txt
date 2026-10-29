@@ -11,6 +11,10 @@ endpoint behavior.
   wiring.
 - Use checked-in step configs and the evaluator runner before inventing a new
   launcher.
+- `mode=launcher` submits through NeMo Evaluator Launcher and exits after the
+  invocation is accepted; poll it to terminal state and inspect artifacts.
+- `mode=direct` runs the harness inside the selected Nemotron job, blocks to
+  completion, and never creates or deletes the separately hosted endpoint.
 
 ## Benchmark Selection
 
@@ -23,11 +27,14 @@ endpoint behavior.
 
 ## Required Runtime Inputs
 
-- `evaluation.tasks`: concrete NeMo Evaluator Launcher task entries.
+- `evaluation.tasks`: exact task names from the relevant registry. Launcher
+  names come from `nemo-evaluator-launcher ls tasks`; direct-mode names come
+  from `nemo-evaluator ls` inside the selected harness image.
 - `target.api_endpoint.url`: OpenAI-compatible endpoint URL when
   `deployment.type=none`.
 - `target.api_endpoint.type`: `chat` or `completions`.
-- Tokenizer path/model handle for logprob benchmarks.
+- Matching tokenizer path/model handle. Both chat and completions harnesses may
+  load it client-side; tokenizer-extended models must use their own tokenizer.
 - API key environment variable when the endpoint requires auth.
 
 ## Rules
@@ -37,9 +44,18 @@ endpoint behavior.
 - Keep generation budgets explicit for reasoning tasks.
 - Preserve result directories per run so before/after comparisons do not
   overwrite each other.
+- Direct mode needs a harness image containing the task and a durable
+  `output_dir`; use caching for large tasks to avoid buffering all traffic.
+- A step-level `dry_run` validates the task plan and writes
+  `summary.dry-run.json`; CLI `--dry-run` only compiles the Nemotron job.
 
 ## Failure Modes
 
 - `wrong_endpoint_type`: switch chat/completions to match the task.
 - `missing_tokenizer_for_logprobs`: provide tokenizer path or choose chat tasks.
 - `no_endpoint`: deploy first or provide an existing endpoint URL.
+- `served_model_name_404`: make endpoint `model_id` exactly match the served
+  model name and configure the client-side tokenizer explicitly.
+- `reasoning_output_scored_as_answer`: serve reasoning models with the matching
+  reasoning parser and inspect a raw completion before trusting generative
+  metrics.

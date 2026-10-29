@@ -1,0 +1,29 @@
+{
+  "metrics": [
+    {"bias_id": "B1", "evidence_complete": true, "name": "category_balance_score", "passed": true, "value": 1.0},
+    {"bias_id": "B2", "evidence_complete": true, "name": "difficulty_mix_max_abs", "passed": true, "value": 0.0},
+    {"bias_id": "B3", "evidence_complete": true, "name": "edge_policy_coverage", "passed": true, "value": 1.0},
+    {"bias_id": "B4", "evidence_complete": true, "name": "tool_usage_balance_score", "passed": true, "value": 0.9444444444444444},
+    {"bias_id": "B5", "evidence_complete": true, "name": "tool_call_count_mix_max_abs", "passed": true, "value": 0.0},
+    {"bias_id": "B6", "evidence_complete": true, "name": "id_concentration_max", "passed": true, "value": null},
+    {"bias_id": "B7", "evidence_complete": true, "name": "held_out_leak_count", "passed": true, "value": null},
+    {"bias_id": "B8", "evidence_complete": true, "name": "paraphrase_leak_escape_count", "passed": true, "value": null},
+    {"bias_id": "B9", "evidence_complete": true, "name": "contamination_violations", "passed": true, "value": null},
+    {"bias_id": "B10", "evidence_complete": true, "name": "distractor_gold_agreement", "passed": true, "value": null},
+    {"bias_id": "B11", "evidence_complete": true, "name": "post_dedup_edge_coverage", "passed": true, "value": 1.0},
+    {"bias_id": "B12", "evidence_complete": true, "name": "agnostic_portability_pass", "passed": true, "value": null},
+    {"bias_id": "B13", "evidence_complete": true, "name": "truth_creep_incidents", "passed": true, "value": 0},
+    {"bias_id": "B14", "evidence_complete": true, "name": "negative_or_irrelevant_rate", "passed": true, "value": 0.2222222222222222},
+    {"bias_id": "B15", "evidence_complete": true, "name": "intent_balance_score", "passed": true, "value": null},
+    {"bias_id": "B16", "evidence_complete": true, "name": "turn_mix_abs_error", "passed": true, "value": 0.0}
+  ],
+  "summary": {
+    "applicable": 9,
+    "approved_exception_bias_ids": [],
+    "failed_bias_ids": [],
+    "not_applicable": 7,
+    "passed": 9,
+    "status": "passed",
+    "unexcepted_failure_bias_ids": []
+  }
+}

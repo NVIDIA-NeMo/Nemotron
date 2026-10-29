@@ -35,8 +35,8 @@ PROFILE_CONFIGS = [
 ]
 
 
-def _load_default_config(stage_dir: str, model_cls: type):
-    config_path = CONFIG_ROOT / stage_dir / "config/default.yaml"
+def _load_nemotron_3_config(stage_dir: str, model_cls: type):
+    config_path = CONFIG_ROOT / stage_dir / "config/nemotron-3.yaml"
     config = load_config(config_path)
     config_dict = OmegaConf.to_container(config, resolve=True)
     config_dict.pop("run", None)
@@ -52,7 +52,7 @@ def profile_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("NEMOTRON3_EMBED_DEPLOY_CHECKPOINT", raising=False)
 
 
-def test_public_default_uses_optional_endpoint_and_default_nim_image(
+def test_public_nemotron_3_uses_optional_endpoint_and_default_nim_image(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from nemo_runspec.config import load_pydantic_config
@@ -61,13 +61,13 @@ def test_public_default_uses_optional_endpoint_and_default_nim_image(
     monkeypatch.delenv("NEMOTRON3_EMBED_NIM_IMAGE")
 
     sdg = load_pydantic_config(
-        CONFIG_ROOT / "stage0_sdg/config/default.yaml",
+        CONFIG_ROOT / "stage0_sdg/config/nemotron-3.yaml",
         [],
         SDGConfig,
     )
     assert sdg.nvidia_api_base_url is None
     nim = load_pydantic_config(
-        CONFIG_ROOT / "stage5_deploy/config/default.yaml",
+        CONFIG_ROOT / "stage5_deploy/config/nemotron-3.yaml",
         [],
         DeployConfig,
     )
@@ -75,7 +75,7 @@ def test_public_default_uses_optional_endpoint_and_default_nim_image(
     assert nim.container_image == DEFAULT_NIM_IMAGE
 
     vllm = load_pydantic_config(
-        CONFIG_ROOT / "stage5_deploy/config/default.yaml",
+        CONFIG_ROOT / "stage5_deploy/config/nemotron-3.yaml",
         ["backend=vllm"],
         DeployConfig,
     )
@@ -84,23 +84,25 @@ def test_public_default_uses_optional_endpoint_and_default_nim_image(
 
 
 @pytest.mark.parametrize("stage_dir,model_cls", PROFILE_CONFIGS)
-def test_default_config_inherits_and_validates(stage_dir: str, model_cls: type) -> None:
-    config = _load_default_config(stage_dir, model_cls)
+def test_nemotron_3_config_inherits_and_validates(stage_dir: str, model_cls: type) -> None:
+    config = _load_nemotron_3_config(stage_dir, model_cls)
     assert config is not None
 
 
-def test_default_base_model_is_shared_across_model_stages() -> None:
-    prep = _load_default_config("stage1_data_prep", DataPrepConfig)
-    finetune = _load_default_config("stage2_finetune", FinetuneConfig)
-    evaluate = _load_default_config("stage3_eval", EvalConfig)
-    export = _load_default_config("stage4_export", ExportConfig)
+def test_nemotron_3_base_model_is_shared_across_model_stages() -> None:
+    prep = _load_nemotron_3_config("stage1_data_prep", DataPrepConfig)
+    finetune = _load_nemotron_3_config("stage2_finetune", FinetuneConfig)
+    evaluate = _load_nemotron_3_config("stage3_eval", EvalConfig)
+    export = _load_nemotron_3_config("stage4_export", ExportConfig)
 
     assert prep.base_model == BASE_MODEL
     assert prep.trust_remote_code is True
+    assert prep.tokenizer_force_default is True
     assert prep.output_dir == Path("output/embed/nemotron-3-1b/stage1_data_prep")
     assert finetune.base_model == BASE_MODEL
     assert finetune.trust_remote_code is True
-    assert finetune.flash_adamw_master_weight_bits is None
+    assert finetune.tokenizer_force_default is True
+    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.train_data_path == Path(
         "output/embed/nemotron-3-1b/stage1_data_prep/train_mined.automodel_unrolled.json"
     )
@@ -118,15 +120,15 @@ def test_default_base_model_is_shared_across_model_stages() -> None:
     assert export.trust_remote_code is True
 
 
-@pytest.mark.parametrize("profile", ["default", "llama"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama"])
 def test_finetune_profiles_use_current_automodel_image(profile: str) -> None:
     config = load_config(CONFIG_ROOT / f"stage2_finetune/config/{profile}.yaml")
 
     assert config.run.env.container == AUTOMODEL_IMAGE
 
 
-def test_default_sdg_uses_configured_api() -> None:
-    sdg = _load_default_config("stage0_sdg", SDGConfig)
+def test_nemotron_3_sdg_uses_configured_api() -> None:
+    sdg = _load_nemotron_3_config("stage0_sdg", SDGConfig)
 
     assert sdg.nvidia_api_base_url == TEST_SDG_API_BASE_URL
     assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
@@ -138,9 +140,9 @@ def test_default_sdg_uses_configured_api() -> None:
     assert sum(sdg.reasoning_counts.values()) == sdg.num_pairs
 
 
-def test_default_nim_identity_is_shared_by_eval_and_deploy() -> None:
-    evaluate = _load_default_config("stage3_eval", EvalConfig)
-    deploy = _load_default_config("stage5_deploy", DeployConfig)
+def test_nemotron_3_nim_identity_is_shared_by_eval_and_deploy() -> None:
+    evaluate = _load_nemotron_3_config("stage3_eval", EvalConfig)
+    deploy = _load_nemotron_3_config("stage5_deploy", DeployConfig)
 
     assert evaluate.nim_model == "nvidia/nemotron-3-embed-1b"
     assert evaluate.nim_invalid_embedding_retries == 32
@@ -195,10 +197,10 @@ def _load_profile_config(profile: str, stage_dir: str, model_cls: type):
 
 
 @pytest.mark.parametrize("stage_dir,model_cls", PROFILE_CONFIGS)
-@pytest.mark.parametrize("profile", ["default", "llama"])
-def test_default_and_llama_profiles_validate(profile: str, stage_dir: str, model_cls: type) -> None:
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama"])
+def test_nemotron_3_and_llama_profiles_validate(profile: str, stage_dir: str, model_cls: type) -> None:
     config = _load_profile_config(profile, stage_dir, model_cls)
-    expected_root = Path("output/embed/nemotron-3-1b" if profile == "default" else "output/embed")
+    expected_root = Path("output/embed/nemotron-3-1b" if profile == "nemotron-3" else "output/embed")
     assert config.artifact_root == expected_root
 
 
@@ -210,7 +212,7 @@ def test_artifact_root_override_rehomes_default_pipeline() -> None:
 
     def load(stage: str, model: type):
         return load_pydantic_config(
-            CONFIG_ROOT / stage / "config/default.yaml",
+            CONFIG_ROOT / stage / "config/nemotron-3.yaml",
             overrides,
             model,
         )
@@ -237,13 +239,13 @@ def test_artifact_root_override_rehomes_default_pipeline() -> None:
     assert deploy.model_dir == evaluate.finetuned_model_path
 
 
-def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
-    sdg = _load_profile_config("default", "stage0_sdg", SDGConfig)
-    prep = _load_profile_config("default", "stage1_data_prep", DataPrepConfig)
-    finetune = _load_profile_config("default", "stage2_finetune", FinetuneConfig)
-    evaluate = _load_profile_config("default", "stage3_eval", EvalConfig)
-    export = _load_profile_config("default", "stage4_export", ExportConfig)
-    deploy = _load_profile_config("default", "stage5_deploy", DeployConfig)
+def test_nemotron_3_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
+    sdg = _load_profile_config("nemotron-3", "stage0_sdg", SDGConfig)
+    prep = _load_profile_config("nemotron-3", "stage1_data_prep", DataPrepConfig)
+    finetune = _load_profile_config("nemotron-3", "stage2_finetune", FinetuneConfig)
+    evaluate = _load_profile_config("nemotron-3", "stage3_eval", EvalConfig)
+    export = _load_profile_config("nemotron-3", "stage4_export", ExportConfig)
+    deploy = _load_profile_config("nemotron-3", "stage5_deploy", DeployConfig)
 
     assert sdg.output_dir == Path("output/embed/nemotron-3-1b/stage0_sdg")
     assert sdg.artifact_extraction_model == "nvidia/nemotron-3-ultra-550b-a55b"
@@ -254,7 +256,7 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert prep.passage_prefix == "passage: "
     assert finetune.query_prefix == "query: "
     assert finetune.passage_prefix == "passage: "
-    assert finetune.flash_adamw_master_weight_bits is None
+    assert finetune.flash_adamw_master_weight_bits == 32
     assert finetune.auto_scale_checkpoint_intervals is False
     assert evaluate.base_model == BASE_MODEL
     assert evaluate.batch_size == 4
@@ -267,6 +269,63 @@ def test_default_profile_is_ministral_with_direct_checkpoint_deploy() -> None:
     assert deploy.model_path_env == "NIM_MODEL_PATH"
     assert deploy.use_onnx is False
     assert deploy.model_dir == finetune.checkpoint_dir / "LATEST/model/consolidated"
+
+
+@pytest.mark.parametrize(
+    "source_field,source_value",
+    [
+        ("sources_file", "/operator/sources.jsonl"),
+        ("source_directory", {"path": "/operator/documents"}),
+    ],
+)
+def test_multimodal_profile_connects_portable_train_and_synthetic_eval(
+    monkeypatch: pytest.MonkeyPatch,
+    source_field: str,
+    source_value: str | dict,
+) -> None:
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_ARTIFACT_MODEL", raising=False)
+    monkeypatch.setenv("NEMOTRON_3_5_SDG_GENERATOR_MODEL", "public/image-generator-model")
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_JUDGE_MODEL", raising=False)
+    monkeypatch.delenv("NEMOTRON_3_5_SDG_EMBED_MODEL", raising=False)
+    monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "nvidia/test-nemotron-3.5-embed")
+    raw_sdg = OmegaConf.to_container(load_config(CONFIG_ROOT / "stage0_sdg/config/nemotron-3.5.yaml"), resolve=True)
+    raw_sdg.pop("run", None)
+    raw_sdg[source_field] = source_value
+    sdg = SDGConfig.model_validate(raw_sdg)
+    prep = _load_profile_config("nemotron-3.5", "stage1_data_prep", DataPrepConfig)
+    finetune = _load_profile_config("nemotron-3.5", "stage2_finetune", FinetuneConfig)
+    evaluate = _load_profile_config("nemotron-3.5", "stage3_eval", EvalConfig)
+
+    if source_field == "sources_file":
+        assert sdg.sources_file == Path("/operator/sources.jsonl")
+        assert sdg.source_directory is None
+    else:
+        assert sdg.sources_file is None
+        assert sdg.source_directory.path == Path("/operator/documents")
+    assert sdg.sdg_workflow == "multimodal"
+    assert sdg.sdg_generator_model == "public/image-generator-model"
+    assert sdg.sdg_judge_model == "nvidia/nemotron-3.5-super-vl-120b-a12b"
+    assert sdg.sdg_options["summary_embedding_model"] == "nvidia/nemotron-3-embed-1b"
+    assert sdg.sdg_options["summary_embedding_endpoint"] == "https://integrate.api.nvidia.com/v1"
+    assert sdg.sdg_options["summary_embedding_credential_env"] == "NVIDIA_API_KEY"
+    assert sdg.sdg_options["summary_embedding_extra_body"] == {"input_type": "passage", "truncate": "NONE"}
+    assert "summary_embedding_revision" not in sdg.sdg_options
+    assert prep.sdg_input_path == sdg.output_dir / "generation_result.json"
+    assert prep.train_input_file is None
+    assert prep.retrieval_view == "mixed"
+    assert prep.base_model == finetune.base_model == evaluate.base_model
+    assert finetune.train_data_path == prep.output_dir / "train_mined.automodel_unrolled.json"
+    assert finetune.attn_implementation == "sdpa"
+    assert finetune.optimizer_backend == "flash_adamw"
+    assert (prep.query_prefix, prep.passage_prefix, prep.image_longest_edge) == (None, None, None)
+    assert (finetune.query_prefix, finetune.passage_prefix, finetune.image_longest_edge) == (None, None, None)
+    assert (evaluate.query_prefix, evaluate.passage_prefix, evaluate.image_longest_edge) == (None, None, None)
+    assert evaluate.sdg_input_path == sdg.output_dir / "generation_result.json"
+    assert evaluate.retrieval_view == "mixed"
+    assert evaluate.eval_data_path == sdg.output_dir / "RESOLVED_FROM_GENERATION_MANIFEST"
+    assert evaluate.image_root is None
+    assert evaluate.eval_finetuned is True
+    assert evaluate.eval_nim is False
 
 
 def test_llama_profile_preserves_export_and_nim_contract() -> None:
@@ -322,7 +381,7 @@ def test_disabled_export_returns_checkpoint_without_loading_model(tmp_path: Path
 
 
 @pytest.mark.parametrize("stage_dir,model_cls", PROFILE_CONFIGS)
-@pytest.mark.parametrize("profile", ["default", "llama"])
+@pytest.mark.parametrize("profile", ["nemotron-3", "llama"])
 def test_self_contained_profiles_load_in_direct_stage_runner(profile: str, stage_dir: str, model_cls: type) -> None:
     from nemo_runspec.config import load_pydantic_config
 
@@ -364,3 +423,22 @@ def test_enabled_llama_export_branch(monkeypatch, tmp_path: Path) -> None:
 
     assert result == {"model_path": str(checkpoint), "onnx_path": str(tmp_path / "onnx")}
     assert calls == [("model", "tokenizer"), ("onnx-exporter", True)]
+
+
+def test_multimodal_profile_defaults_to_public_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("NEMOTRON_3_5_EMBED_MODEL", raising=False)
+    for stage, cls in [
+        ("stage1_data_prep", DataPrepConfig),
+        ("stage2_finetune", FinetuneConfig),
+        ("stage3_eval", EvalConfig),
+    ]:
+        cfg = _load_profile_config("nemotron-3.5", stage, cls)
+        assert cfg.base_model == "nvidia/Nemotron-3.5-Embed-1B-BF16"
+    deploy = _load_profile_config("nemotron-3.5", "stage5_deploy", DeployConfig)
+    assert deploy.nim_model == "nvidia/Nemotron-3.5-Embed-1B-BF16"
+
+
+@pytest.mark.parametrize("cls", [DataPrepConfig, FinetuneConfig])
+def test_multimodal_flash_attention_fails_before_model_loading(cls) -> None:
+    with pytest.raises(ValueError, match="Transformers 5.18.0; use sdpa"):
+        cls(model_family="nemotron_3_5", attn_implementation="flash_attention_2")

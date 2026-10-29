@@ -35,6 +35,15 @@ Use the [Nemotron Post-training Calculator](train-models/sizing-calculator.md) f
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3.5 Transcribe
+:link: https://github.com/NVIDIA-NeMo/Nemotron/tree/main/usage-cookbook/Nemotron-3.5-Transcribe
+:link-type: url
+
+Serve BF16, FP8, or NVFP4 speech checkpoints with the NeMo Speech vLLM plugin, then run multilingual transcription, context biasing, translation, English audio understanding, and optional word timestamps.
++++
+{bdg-secondary}`Local GPU` {bdg-muted-line}`Oct 28, 2026`
+:::
+
 :::{grid-item-card} {octicon}`mark-github;1.5em;sd-mr-1` Nemotron 3 Ultra
 :link: https://github.com/NVIDIA-NeMo/nemotron/tree/main/usage-cookbook/Nemotron-3-Ultra
 :link-type: url

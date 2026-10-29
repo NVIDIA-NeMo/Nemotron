@@ -11,7 +11,7 @@
 :::{grid-item-card}
 :columns: 8
 
-**What You'll Build**: one NeMo Evaluator Launcher result directory for a single hosted chat smoke-test task, written by the `eval/model_eval` step.
+**What You Will Build**: one NeMo Evaluator Launcher result directory for a single hosted chat verification task, written by the `eval/model_eval` step.
 
 ^^^
 
@@ -44,6 +44,8 @@ Run a one-sample hosted chat evaluation with `eval/model_eval` and `tiny_chat.ya
 - A reachable OpenAI-compatible chat-completions endpoint.
 - A model identifier advertised by that endpoint.
 - A bearer token exported as the environment variable referenced by `target.api_endpoint.api_key_name`.
+
+If the served model name is its Hugging Face model ID, the evaluator loads that tokenizer automatically. If you used Tokenizer Extension, use the generated tokenizer.
 
 ## About The Sample Configuration
 
@@ -85,7 +87,7 @@ It sets `deployment.type: none`, points NeMo Evaluator Launcher at `target.api_e
    $ uv run --no-sync nemotron steps show eval/model_eval
    ```
 
-1. Run the hosted chat smoke test.
+1. Run the hosted chat verification run.
 
    ```console
    $ uv run --no-sync nemotron steps run eval/model_eval \
@@ -105,6 +107,7 @@ It sets `deployment.type: none`, points NeMo Evaluator Launcher at `target.api_e
 
    To inspect the merged Nemotron job config without invoking the launcher, add `--dry-run`.
    To pass NeMo Evaluator Launcher's own dry-run flag, use the config override `dry_run=true`.
+   If you used Tokenizer Extension, also pass `evaluation.nemo_evaluator_config.config.params.extra.tokenizer="<generated-tokenizer>"`.
 
 1. List the files written under the output directory after the launcher job
    reaches a terminal status.

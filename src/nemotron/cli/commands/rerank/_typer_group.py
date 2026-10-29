@@ -21,7 +21,7 @@ reranking model fine-tuning workflow:
 - finetune: Fine-tune the cross-encoder reranking model
 - eval: Evaluate models on reranking metrics
 - export: Export model to ONNX/TensorRT for optimized inference
-- deploy: Deploy NeMo Retriever Reranking NIM
+- deploy: Deploy a reranking service with NIM or vLLM
 """
 
 from __future__ import annotations
@@ -61,20 +61,23 @@ def info() -> None:
     console.print("  Fine-tune cross-encoder reranking models for domain-adapted re-ranking.")
     console.print()
     console.print("[bold]Workflow Stages:[/bold]")
-    console.print("  1. [cyan]sdg[/]      - Generate synthetic Q&A pairs from documents")
-    console.print("  2. [cyan]prep[/]     - Prepare training data (convert, mine, unroll)")
-    console.print("  3. [cyan]finetune[/] - Fine-tune the cross-encoder reranking model")
-    console.print("  4. [cyan]eval[/]     - Evaluate base vs fine-tuned rerankers")
-    console.print("  5. [cyan]export[/]   - Export model to ONNX/TensorRT")
-    console.print("  6. [cyan]deploy[/]   - Deploy NeMo Retriever Reranking NIM")
+    console.print("  0. [cyan]sdg[/]      - Generate synthetic Q&A pairs from documents")
+    console.print("  1. [cyan]prep[/]     - Prepare training data (convert, mine, unroll)")
+    console.print("  2. [cyan]finetune[/] - Fine-tune the cross-encoder reranking model")
+    console.print("  3. [cyan]eval[/]     - Evaluate base vs fine-tuned rerankers")
+    console.print("  4. [cyan]export[/]   - Export model to ONNX/TensorRT")
+    console.print("  5. [cyan]deploy[/]   - Deploy a reranking service with NIM or vLLM")
     console.print()
     console.print("[bold]Key Components:[/bold]")
     console.print("  - retriever-sdg (synthetic data generation)")
     console.print("  - Automodel (cross-encoder model training)")
     console.print("  - BEIR (reranking evaluation framework)")
     console.print()
-    console.print("[bold]Base Model:[/bold]")
-    console.print("  - nvidia/llama-nemotron-rerank-1b-v2")
+    console.print("[bold]Model Profiles:[/bold]")
+    console.print("  - default: nvidia/llama-nemotron-rerank-1b-v2 (text QA workflow)")
+    console.print("  - nemotron-3.5: nvidia/Nemotron-3.5-Rerank-8B-BF16 (text and images)")
+    console.print("  Nemotron 3.5 reuses embedding data, then runs finetune, eval, and deploy.")
+    console.print("  Guides: docs/nemotron/rerank/index.md")
 
 
 # Register stage commands

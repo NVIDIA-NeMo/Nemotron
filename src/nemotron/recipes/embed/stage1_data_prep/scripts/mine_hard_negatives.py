@@ -31,45 +31,23 @@
 
 from __future__ import annotations
 
-from nemo_automodel._transformers.auto_model import NeMoAutoModelBiEncoder
 from nemo_automodel.components.config._arg_parser import parse_args_and_load_config
 from nemo_automodel.recipes.retrieval import mine_hard_negatives as automodel_mining
 
 
 class MineHardNegativesRecipe(automodel_mining.MineHardNegativesRecipe):
-    """Automodel miner that explicitly supports trusted custom HF architectures."""
+    """Native AutoModel miner retaining the recipe's source annotations."""
 
-    def setup(self):
-        """Build the miner, forwarding ``trust_remote_code`` to AutoModel."""
-        self.dist_env = automodel_mining.build_distributed(self.cfg.get("dist_env", {}))
+    def _write_output(self) -> None:
+        """Retain source query annotations after AutoModel writes mined scores."""
+        import json
+        from pathlib import Path
 
-        self.mining_cfg = self.cfg.get("mining", None)
-        if self.mining_cfg is None:
-            raise ValueError("Missing mining configuration")
+        from nemotron.recipes.embed.stage1_data_prep.mining_output import restore_mining_provenance
 
-        self._extract_mining_params()
-        self._validate_mining_params()
-
-        model_kwargs = {
-            "use_liger_kernel": False,
-            "use_sdpa_patching": True,
-            "trust_remote_code": self._get_mining_param("trust_remote_code", False),
-        }
-        if self.attn_implementation is not None:
-            model_kwargs["attn_implementation"] = self.attn_implementation
-
-        automodel_mining.logger.info(f"Loading encoder model from {self.model_name_or_path}...")
-        self.model = NeMoAutoModelBiEncoder.from_pretrained(
-            self.model_name_or_path,
-            **model_kwargs,
-        )
-        self.model = self.model.to(self.dist_env.device)
-        self.model.eval()
-
-        self._configure_tokenizer()
-        self._load_data()
-        self._build_document_mappings()
-        self._prepare_data()
+        source = json.loads(Path(self.train_qa_file_path).read_text())
+        super()._write_output()
+        restore_mining_provenance(source, Path(self.train_file_output_path))
 
 
 def main(default_config_path="examples/biencoder/mining_config.yaml"):

@@ -1,0 +1,37 @@
+[
+  {
+    "args": [],
+    "kwargs": {
+      "name": "curate_nemo_curator"
+    },
+    "stage": "Pipeline"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "fields": [
+        "text"
+      ],
+      "file_paths": [
+        "<TMP>/in/a.jsonl"
+      ],
+      "read_kwargs": {
+        "convert_dates": false,
+        "dtype": false
+      }
+    },
+    "stage": "JsonlReader"
+  },
+  {
+    "args": [],
+    "kwargs": {
+      "path": "<TMP>/out"
+    },
+    "stage": "JsonlWriter"
+  },
+  {
+    "args": [],
+    "kwargs": {},
+    "stage": "RayClient"
+  }
+]

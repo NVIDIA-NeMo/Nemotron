@@ -7,9 +7,17 @@
 description = "Raw downloaded JSONL records"
 is_a = ["training_jsonl"]
 
+[prepared_jsonl]
+description = "Raw JSONL normalized to the canonical text/id/source column names, with a stable document id minted where the source had none. Usable anywhere raw_jsonl is, and additionally safe for steps that must name individual documents"
+is_a = ["raw_jsonl"]
+
 [filtered_jsonl]
 description = "JSONL with domain/language annotations (from NeMo Curator)"
 is_a = ["training_jsonl"]
+
+[decontaminated_jsonl]
+description = "A curated corpus with documents overlapping a held-out evaluation split removed. Usable anywhere filtered_jsonl is; the distinct name is what lets a step declare that it must read the corpus AFTER decontamination rather than before"
+is_a = ["filtered_jsonl"]
 
 [translated_jsonl]
 description = "JSONL with translated messages + FAITH quality scores"
@@ -32,6 +40,9 @@ description = "Megatron bin/idx tokenized data with blend.json"
 description = "Megatron distributed checkpoint (sharded across TP/PP)"
 convert_to = { checkpoint_hf = "convert/megatron_to_hf" }
 
+[tokenizer]
+description = "Extended tokenizer directory (vocab + merges) produced by tokenizer_extension/extend"
+
 [checkpoint_hf]
 description = "HuggingFace safetensors format"
 convert_to = { checkpoint_megatron = "convert/hf_to_megatron" }
@@ -42,6 +53,30 @@ convert_to = { checkpoint_hf = "convert/merge_lora" }
 
 [eval_results]
 description = "Evaluation metrics and benchmark scores"
+
+[curation_report]
+description = "Integrity evidence for a curated corpus: per-shard readability, row counts, content digest, and comparison against a producer-emitted run manifest"
+
+[profile_report]
+description = "Per-signal distributions, retention surfaces, and candidate threshold bands measured on a specific corpus"
+
+[filter_policy]
+description = "A filtering policy for a specific corpus, with provenance and an approval state; only an approved policy is executable"
+
+[curation_manifest]
+description = "The producing step's own account of a run: shard names with row counts and digests, the policy that was applied and its approval state, and a completed_at written only at the write barrier. Absent completed_at is how a corpus left by a killed writer is told from a finished one"
+
+[curation_ledger]
+description = "Per-stage record accounting written by the producing step: inputs, successes, filtered counts by reason, and failed or quarantined units. What makes loss attributable rather than merely detectable"
+
+[decontamination_report]
+description = "Training documents removed for near-duplicate overlap with a held-out split, each with the holdout document and exact similarity that justified it, plus the normalization and shingling used"
+
+[subset_plan]
+description = "Per-stratum quotas for every requested token budget, with the seed and tokenizer revision, written before any subset is materialized"
+
+[subset_report]
+description = "What each budget tier actually delivered: achieved tokens, shortfall, per-stratum deviation, and which strata were exhausted"
 
 [env_toml]
 description = "nemo-run environment profile TOML with cluster, image, mount, and env-var settings"
@@ -59,3 +94,48 @@ is_a = ["benchmark_parquet"]
 [translated_mcq_benchmark_parquet]
 description = "Translated multiple-choice BYOB benchmark parquet"
 is_a = ["mcq_benchmark_parquet"]
+
+[oracle_pack]
+description = "Executable function-calling oracle: tools, fixtures, templates, assertions, and validation cases"
+
+[bfcl_benchmark_parquet]
+description = "Function-calling BYOB benchmark parquet with expected tool calls and provenance"
+is_a = ["benchmark_parquet"]
+
+[bfcl_localized_benchmark]
+description = "Target-language function-calling benchmark preserving executable calls and task identity"
+is_a = ["bfcl_benchmark_parquet"]
+
+[bfcl_translation_manifest]
+description = "Content-addressed binding from a localized function-calling benchmark to its published source"
+
+[bfcl_run_manifest]
+description = "Function-calling generation lineage: oracle clock, generation mode, and publication hashes"
+
+[bfcl_stage_cache]
+description = "Per-stage function-calling generation parquets, reference samples, and rejection reports"
+
+[bfcl_compatibility_exports]
+description = "Optional BFCL JSONL and Evaluator bundles derived from the published function-calling parquet"
+
+[bfcl_export_validation_report]
+description = "Proof that enabled function-calling exports match the published parquet row for row"
+
+[bfcl_source_verification_report]
+description = "Proof that the evaluated function-calling source is the committed publication"
+
+[bfcl_contamination_report]
+description = "Which models read which published function-calling rows, and what each candidate may answer"
+
+[bfcl_candidate_io_cache]
+description = "Append-only, hash-verified candidate requests for network-free function-calling replay"
+
+[bfcl_tool_trace_cache]
+description = "Append-only, hash-verified executable episodes for oracle-free function-calling replay"
+
+[bfcl_eval_artifacts]
+description = "Function-calling evaluation report, per-task results, and the manifest binding them"
+is_a = ["eval_results"]
+
+[bfcl_bias_audit_reports]
+description = "Recomputed bias audit over frozen function-calling release and evaluation evidence"

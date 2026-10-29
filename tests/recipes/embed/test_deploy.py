@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import urllib.request
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -103,7 +106,8 @@ def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_pat
     command = deploy.build_docker_command(cfg)
 
     image_index = command.index(TEST_VLLM_IMAGE)
-    assert command[image_index + 1 : image_index + 4] == ["vllm", "serve", "/model"]
+    assert command[command.index("--entrypoint") + 1] == "vllm"
+    assert command[image_index + 1 : image_index + 3] == ["serve", "/model"]
     assert command[command.index("--served-model-name") + 1] == "nvidia/nemotron-3-embed-1b"
     assert "--runner" not in command
     assert "--convert" not in command
@@ -113,6 +117,32 @@ def test_vllm_docker_contract_relies_on_checkpoint_metadata(monkeypatch, tmp_pat
     assert not any(argument.startswith("NIM_") for argument in command)
     assert f"{model_dir.resolve()}:/model:ro" in command
     assert f"{tmp_path / 'cache' / 'huggingface'}:/root/.cache/huggingface" in command
+
+
+def test_vl_vllm_docker_contract_includes_validated_runtime_overrides(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    model_dir = tmp_path / "checkpoint"
+    model_dir.mkdir()
+
+    cfg = _deploy_config(
+        model_family="nemotron_3_5",
+        backend="vllm",
+        vllm_image=TEST_VLLM_IMAGE,
+        nim_model="example-org/nemotron-3.5-embed",
+        model_dir=model_dir,
+        vllm_runner="pooling",
+        vllm_max_model_len=8192,
+    )
+    command = deploy.build_docker_command(cfg)
+
+    assert command[command.index("--chat-template-content-format") + 1] == "openai"
+    assert command[command.index("--runner") + 1] == "pooling"
+    assert command[command.index("--max-model-len") + 1] == "8192"
+
+
+def test_vl_deployment_rejects_nim_backend() -> None:
+    with pytest.raises(ValueError, match="supports backend=vllm only"):
+        _deploy_config(model_family="nemotron_3_5", backend="nim")
 
 
 def test_huggingface_checkpoint_artifact_validation(tmp_path) -> None:
@@ -309,3 +339,31 @@ def test_detached_success_prints_valid_smoke_payload(monkeypatch, tmp_path, caps
         "model": cfg.nim_model,
         "input_type": "query",
     }
+
+
+def test_vl_profile_preserves_checkpoint_config(tmp_path, monkeypatch):
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.config.loader import load_config
+
+    monkeypatch.setenv("NEMOTRON_3_5_EMBED_MODEL", "operator/generic-vl-checkpoint")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    path = Path(deploy.__file__).parent / "config/nemotron-3.5.yaml"
+    cfg = deploy.DeployConfig.model_validate(OmegaConf.to_container(load_config(path), resolve=True))
+    command = deploy.build_docker_command(cfg)
+    assert "--hf-overrides" not in command
+    assert "--trust-remote-code" not in command
+
+
+def test_foreground_server_failure_is_not_reported_as_success(monkeypatch, tmp_path) -> None:
+    cfg = _deploy_config(model_dir=tmp_path, detach=False)
+    monkeypatch.setattr(deploy, "check_docker", lambda: True)
+    monkeypatch.setattr(deploy, "check_nvidia_docker", lambda: True)
+    monkeypatch.setattr(deploy, "model_artifact_errors", lambda cfg: [])
+    monkeypatch.setattr(deploy, "stop_existing_container", lambda name: None)
+    monkeypatch.setattr(deploy.signal, "signal", lambda *args: None)
+    monkeypatch.setattr(deploy, "build_docker_command", lambda cfg: [sys.executable, "-c", "raise SystemExit(7)"])
+
+    with pytest.raises(subprocess.CalledProcessError) as exc:
+        deploy.run_deploy(cfg)
+    assert exc.value.returncode == 7

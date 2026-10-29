@@ -2,7 +2,7 @@
 
 This stage fine-tunes the pretrained model for instruction following using [Megatron-Bridge](../nvidia-stack.md#megatron-bridge).
 
-> **Open-Source Data Only**: This recipe uses exclusively open-sourced SFT data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe includes datasets from Nemotron-Instruction-Following-Chat-v1, Nemotron-Math-Proofs-v1, Nemotron-SWE-v1, Nemotron-Agentic-v1, and Nemotron-Competitive-Programming-v1 (see [Recipe Data Blend](#recipe-data-blend)). Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
+> **Open-Source Data Only**: This recipe uses exclusively open-sourced SFT data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-datasets) collection, which is a subset of the full data used to train the released model. The recipe includes datasets from Nemotron-Instruction-Following-Chat-v1, Nemotron-Math-Proofs-v1, Nemotron-SWE-v1, Nemotron-Agentic-v1, and Nemotron-Competitive-Programming-v1 (see [Recipe Data Blend](#recipe-data-blend)). Results will differ from the published benchmarks on the [model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16). Use this recipe as a reference implementation to apply the methodology with your own data.
 
 ---
 
@@ -236,6 +236,28 @@ python scripts/training/setup_experiment.py \
 
 See the [Nemotron 3.5 Lightning verification card](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/main/examples/model_verification_cards/nemotron-3.5-lightning/card.yaml) for the exact
 validated invocations (convergence, performance, and FSDP variants).
+
+#### Generic Steps Execution
+
+The generic Megatron-Bridge steps also accept a `lightning35` configuration, so Lightning SFT can run inside the [Nemotron Steps](../../train-models/index.md) workflow instead of this recipe CLI.
+The `lightning35` SFT and PEFT configurations do not load Hugging Face weights, so convert the base model to a Megatron checkpoint first and pass the paths through the `L35_*` environment variables:
+
+```bash
+export L35_PRETRAINED_CHECKPOINT=/lustre/checkpoints/lightning35-megatron
+export L35_PACKED_DIR=/lustre/packed/lightning35
+export L35_OUTPUT_DIR=/lustre/runs/lightning35
+
+# 1. Convert the Hugging Face base model to a Megatron checkpoint
+uv run nemotron steps run convert/hf_to_megatron -c lightning35 --batch <batch-profile>
+
+# 2. Full-parameter SFT on packed shards
+uv run nemotron steps run sft/megatron_bridge -c lightning35 --batch <batch-profile>
+
+# 2 (alternative). LoRA adapters instead of full SFT
+uv run nemotron steps run peft/megatron_bridge -c lightning35 --batch <batch-profile>
+```
+
+Refer to the step references for the configuration contents and the consumed variables: [convert/hf_to_megatron](../../train-models/reference/convert/hf-to-megatron.md), [sft/megatron_bridge](../../train-models/reference/sft/megatron-bridge.md), and [peft/megatron_bridge](../../train-models/reference/peft/megatron-bridge.md).
 
 ### Configuration
 

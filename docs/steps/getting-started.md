@@ -44,6 +44,27 @@ For each activity, such as model training or data generation, refer to the getti
 
 The output lists the step-catalog subcommands that this guide uses: `list`, `show`, and `run`.
 
+## Tokenizer Extension Prerequisites
+
+The default `tokenizer_extension/init_embeddings` model is a Mamba-hybrid and
+needs Python 3.11 or later and the GPU-specific packages in addition to the
+common dependencies:
+
+```console
+$ uv sync --extra tokenizer-extension --extra tokenizer-extension-gpu
+```
+
+On Linux x86-64, `mamba-ssm` and `causal-conv1d` build CUDA extensions from
+source. Install a CUDA toolkit that provides `nvcc` and is compatible with the
+PyTorch/CUDA environment before running that command. The repository's uv
+configuration supplies PyTorch during their isolated builds. Verify the compiler
+is visible with `nvcc --version` before initializing the default checkpoint.
+
+The CPU-only tokenizer construction step does not need
+`tokenizer-extension-gpu`. See
+`src/nemotron/steps/tokenizer_extension/guide.md` in the repository for the
+complete workflow and remote-profile requirements.
+
 ## List the Available Steps
 
 Use `nemotron steps list` to see every step that the CLI discovers.
@@ -120,7 +141,7 @@ $ uv run nemotron steps list --consumes training_jsonl
 The output lists the fine-tuning and reinforcement-learning (RL) steps that take training JSONL as input.
 
 Together, the two queries show you which steps you can chain.
-For example, the `sdg/data_designer` step produces `training_jsonl`, and the `sft/automodel` step consumes `training_jsonl`, so you can pipe the synthetic dataset directly into supervised fine-tuning without an intermediate conversion.
+For example, the `sdg/data_designer` step consumes `training_jsonl` as seed examples and produces `synthetic_jsonl`. `sft/automodel` consumes `training_jsonl`, so the generated data needs converting to that shape before it can be fine-tuned on — nothing currently consumes `synthetic_jsonl` directly.
 
 The same pattern works for other artifact types, such as `packed_parquet`, `binidx`, `checkpoint_hf`, `checkpoint_megatron`, `checkpoint_lora`, `synthetic_jsonl`, `eval_results`, and `mcq_benchmark_parquet`.
 

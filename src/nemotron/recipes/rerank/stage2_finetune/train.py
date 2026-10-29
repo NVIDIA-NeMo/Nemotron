@@ -60,6 +60,8 @@ from typing import Any, Literal
 from pydantic import ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from nemotron.recipes._retrieval import validate_training_data
+from nemotron.recipes._retrieval.checkpoint import report_checkpoint_resources
 from nemotron.recipes.rerank._trust import validate_trust_remote_code
 
 STAGE_PATH = Path(__file__).parent
@@ -79,6 +81,11 @@ class FinetuneConfig(RecipeSettings):
 
     model_config = ConfigDict(extra="forbid")
 
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/rerank",
+        description="Root directory for rerank checkpoints and evaluation outputs.",
+    )
+
     # Model settings
     base_model: str = Field(
         default="nvidia/llama-nemotron-rerank-1b-v2",
@@ -89,6 +96,11 @@ class FinetuneConfig(RecipeSettings):
         description="Allow trust_remote_code for non-NVIDIA remote model refs.",
     )
 
+    model_family: Literal["text", "nemotron_3_5"] = Field(
+        default="text", description="Select text or Nemotron 3.5 multimodal training."
+    )
+    model_revision: str | None = Field(default=None, description="Model and processor Hub revision.")
+
     # Data paths
     train_data_path: Path = Field(
         default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage1_prep/train_mined.automodel_unrolled.json",
@@ -97,7 +109,7 @@ class FinetuneConfig(RecipeSettings):
 
     # Output settings
     checkpoint_dir: Path = Field(
-        default_factory=lambda: _OUTPUT_BASE / "output/rerank/stage2_finetune/checkpoints",
+        default_factory=lambda data: data["artifact_root"] / "stage2_finetune/checkpoints",
         description="Directory for saving checkpoints.",
     )
 
@@ -135,7 +147,9 @@ class FinetuneConfig(RecipeSettings):
         default=1,
         description="Rerank eval/export/deploy expects a single scalar relevance logit.",
     )
-    temperature: float = Field(default=1.0, gt=0, description="Temperature for cross-entropy loss.")
+    temperature: float = Field(
+        default=1.0, gt=0, description="Model score temperature; the native recipe temperature remains 1.0."
+    )
     pooling: Literal["avg", "cls", "last"] = Field(default="avg", description="Pooling strategy.")
 
     # Tokenization
@@ -152,6 +166,13 @@ class FinetuneConfig(RecipeSettings):
     # Checkpointing
     checkpoint_every_steps: int = Field(default=100, gt=0, description="Save checkpoint every N steps.")
     val_every_steps: int = Field(default=100, gt=0, description="Run validation every N steps.")
+
+    @model_validator(mode="after")
+    def _validate_multimodal_attention(self):
+        """Avoid the pinned Transformers Flash Attention 2 image regression."""
+        if self.model_family == "nemotron_3_5" and self.attn_implementation == "flash_attention_2":
+            raise ValueError("Multimodal Flash Attention 2 is unsupported with Transformers 5.18.0; use sdpa or eager")
+        return self
 
     @model_validator(mode="after")
     def _check_remote_code_trust(self):
@@ -310,7 +331,10 @@ def _load_automodel_config(cfg: FinetuneConfig, config_node_cls: type) -> tuple[
     """Load Automodel YAML after choosing an optimizer that is importable here."""
     import yaml
 
-    base_config_path = STAGE_PATH / "crossencoder_base.yaml"
+    base_name = (
+        "nemotron_3_5_crossencoder_base.yaml" if cfg.model_family == "nemotron_3_5" else "crossencoder_base.yaml"
+    )
+    base_config_path = STAGE_PATH / base_name
     with open(base_config_path) as f:
         raw_config = yaml.safe_load(f)
 
@@ -366,8 +390,16 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Validate inputs
     if not cfg.train_data_path.exists():
         print(f"Error: Training data not found: {cfg.train_data_path}", file=sys.stderr)
-        print("       Please run 'nemotron rerank prep' first.", file=sys.stderr)
+        prep_command = (
+            "nemotron embed prep -c nemotron-3.5" if cfg.model_family == "nemotron_3_5" else "nemotron rerank prep"
+        )
+        print(f"       Run '{prep_command}' first and set train_data_path to its output.", file=sys.stderr)
         sys.exit(1)
+
+    if cfg.model_family == "nemotron_3_5":
+        validate_training_data(
+            cfg.train_data_path, required_negatives=cfg.train_n_passages - 1, require_mined_negatives=False
+        )
 
     # Count training examples and check negative passage availability
     num_examples = _count_training_examples(cfg.train_data_path)
@@ -436,6 +468,9 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Model settings
     automodel_cfg.model.pretrained_model_name_or_path = cfg.base_model
     automodel_cfg.tokenizer.pretrained_model_name_or_path = cfg.base_model
+    if cfg.model_revision is not None:
+        automodel_cfg.model.revision = cfg.model_revision
+        automodel_cfg.tokenizer.revision = cfg.model_revision
     automodel_cfg.model.num_labels = cfg.num_labels
     automodel_cfg.model.temperature = cfg.temperature
     automodel_cfg.model.pooling = cfg.pooling
@@ -443,6 +478,8 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Auto-detect attention implementation if not explicitly set
     if cfg.attn_implementation is not None:
         attn_impl = cfg.attn_implementation
+    elif cfg.model_family == "nemotron_3_5":
+        attn_impl = "sdpa"
     else:
         try:
             import flash_attn  # noqa: F401
@@ -454,10 +491,13 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     automodel_cfg.model.attn_implementation = attn_impl
 
     # Data settings
-    automodel_cfg.dataloader.dataset.data_dir_list = [str(cfg.train_data_path)]
-    automodel_cfg.dataloader.dataset.n_passages = cfg.train_n_passages
-    automodel_cfg.dataloader.collate_fn.rerank_max_length = cfg.rerank_max_length
-    automodel_cfg.dataloader.collate_fn.prompt_template = cfg.prompt_template
+    automodel_cfg.dataset.data_dir_list = [str(cfg.train_data_path)]
+    automodel_cfg.dataset.n_passages = cfg.train_n_passages
+    if cfg.model_family == "nemotron_3_5":
+        automodel_cfg.tokenizer.rerank_max_length = cfg.rerank_max_length
+    else:
+        automodel_cfg.dataloader.collate_fn.rerank_max_length = cfg.rerank_max_length
+        automodel_cfg.dataloader.collate_fn.prompt_template = cfg.prompt_template
 
     # Training settings — use auto-scaled values
     automodel_cfg.step_scheduler.num_epochs = num_epochs
@@ -476,6 +516,15 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
 
     # Checkpoint settings
     automodel_cfg.checkpoint.checkpoint_dir = str(cfg.checkpoint_dir)
+
+    if cfg.model_family == "nemotron_3_5":
+        report_checkpoint_resources(
+            cfg.checkpoint_dir,
+            base_model=cfg.base_model,
+            model_revision=cfg.model_revision,
+            optimizer_config=automodel_cfg.optimizer.to_yaml_dict(),
+            emit=_is_rank_zero(),
+        )
 
     # Create and run the cross-encoder recipe
     recipe = TrainCrossEncoderRecipe(automodel_cfg)

@@ -110,7 +110,7 @@ execution_images:
     required_imports: []
 
   nemo-curator:
-    base_image: nvcr.io/nvidia/nemo-curator:25.07
+    base_image: nvcr.io/nvidia/nemo-curator:26.07
     tag: nemotron-customizer-nemo-curator-airgap:latest
     tar: execution-nemo-curator-image.tar
     required_imports: []

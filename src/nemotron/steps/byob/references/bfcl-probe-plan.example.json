@@ -1,0 +1,381 @@
+{
+  "cases": [
+    {
+      "arguments": {
+        "account_id": "ACC-001"
+      },
+      "case_id": "a_balance_of_a_held_account",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "get_account_balance"
+    },
+    {
+      "arguments": {
+        "card_id": "CARD-001"
+      },
+      "case_id": "b_limit_of_a_held_card",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "get_card_limit"
+    },
+    {
+      "arguments": {
+        "transaction_id": "TXN-1001"
+      },
+      "case_id": "c_status_of_a_posted_transaction",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "get_transaction_status"
+    },
+    {
+      "arguments": {
+        "account_id": "ACC-001",
+        "limit": 5
+      },
+      "case_id": "d_recent_statement_lines",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "list_recent_transactions"
+    },
+    {
+      "arguments": {
+        "amount_vnd": 250000,
+        "from_account_id": "ACC-001",
+        "rail": "napas",
+        "to_account_number": "9876543210",
+        "to_bank_code": "970436"
+      },
+      "case_id": "e_fee_for_a_napas_transfer",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "get_transfer_fee"
+    },
+    {
+      "arguments": {
+        "amount_vnd": 250000,
+        "confirm": true,
+        "from_account_id": "ACC-001",
+        "rail": "napas",
+        "to_account_number": "9876543210",
+        "to_bank_code": "970436"
+      },
+      "case_id": "f_confirmed_transfer_commits",
+      "expectation": "success",
+      "expected_state_change": true,
+      "tool": "create_transfer"
+    },
+    {
+      "arguments": {
+        "payment_ref": "VQ-1001"
+      },
+      "case_id": "g_status_of_a_vietqr_payment",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "get_vietqr_payment_status"
+    },
+    {
+      "arguments": {
+        "dispute_id": "DSP-0001"
+      },
+      "case_id": "h_status_of_an_open_dispute",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "get_dispute_status"
+    },
+    {
+      "arguments": {
+        "confirm": true,
+        "reason": "duplicate_charge",
+        "transaction_id": "TXN-1111"
+      },
+      "case_id": "i_confirmed_dispute_opens",
+      "expectation": "success",
+      "expected_state_change": true,
+      "tool": "create_dispute"
+    },
+    {
+      "arguments": {
+        "full": false
+      },
+      "case_id": "j_incremental_reconciliation",
+      "expectation": "success",
+      "expected_state_change": false,
+      "tool": "reconcile_statements"
+    },
+    {
+      "arguments": {
+        "account_id": "ACC-ABSENT-1"
+      },
+      "case_id": "k_balance_of_an_unheld_account",
+      "expectation": "structured_error",
+      "expected_error_code": "not_found",
+      "tool": "get_account_balance"
+    },
+    {
+      "arguments": {
+        "card_id": "CARD-ABSENT-1"
+      },
+      "case_id": "l_limit_of_an_unheld_card",
+      "expectation": "structured_error",
+      "expected_error_code": "not_found",
+      "tool": "get_card_limit"
+    },
+    {
+      "arguments": {
+        "transaction_id": "TXN-ABSENT-1"
+      },
+      "case_id": "m_status_of_an_unposted_transaction",
+      "expectation": "structured_error",
+      "expected_error_code": "not_found",
+      "tool": "get_transaction_status"
+    },
+    {
+      "arguments": {
+        "full": "yes"
+      },
+      "case_id": "n_reconciliation_scope_must_be_boolean",
+      "expectation": "structured_error",
+      "expected_error_code": "invalid_argument",
+      "tool": "reconcile_statements"
+    },
+    {
+      "arguments": {
+        "full": true
+      },
+      "case_id": "o_full_reconciliation_never_returns",
+      "expectation": "timeout",
+      "tool": "reconcile_statements"
+    }
+  ],
+  "clock": "2026-03-02T09:00:00+07:00",
+  "confirmation_parameter": "confirm",
+  "fixtures": {
+    "accounts": [
+      {
+        "account_id": "ACC-001",
+        "account_number": "1012345678901",
+        "account_type": "payment",
+        "balance_vnd": 5000000,
+        "customer_name": "Nguyen Van An"
+      },
+      {
+        "account_id": "ACC-003",
+        "account_number": "1023456789012",
+        "account_type": "payment",
+        "balance_vnd": 2500000,
+        "customer_name": "Tran Thi Bich"
+      },
+      {
+        "account_id": "ACC-006",
+        "account_number": "1056789012345",
+        "account_type": "payment",
+        "balance_vnd": 10000,
+        "customer_name": "Hoang Van Em",
+        "scenario_tags": [
+          "low_balance"
+        ]
+      },
+      {
+        "account_id": "ACC-007",
+        "account_number": "1067890123456",
+        "account_type": "payment",
+        "balance_vnd": 500000,
+        "customer_name": "Vo Thi Phuong",
+        "scenario_tags": [
+          "fee_gap_napas_500k"
+        ]
+      },
+      {
+        "account_id": "ACC-015",
+        "account_number": "1000000000015",
+        "account_type": "payment",
+        "balance_vnd": 7625000,
+        "customer_name": "Pham Binh"
+      }
+    ],
+    "cards": [
+      {
+        "account_id": "ACC-001",
+        "card_id": "CARD-001",
+        "remaining_limit_vnd": 5000000
+      },
+      {
+        "account_id": "ACC-003",
+        "card_id": "CARD-003",
+        "remaining_limit_vnd": 9000000
+      },
+      {
+        "account_id": "ACC-006",
+        "card_id": "CARD-006",
+        "remaining_limit_vnd": 15000000
+      },
+      {
+        "account_id": "ACC-007",
+        "card_id": "CARD-007",
+        "remaining_limit_vnd": 17000000
+      },
+      {
+        "account_id": "ACC-015",
+        "card_id": "CARD-015",
+        "remaining_limit_vnd": 9000000
+      }
+    ],
+    "disputes": [
+      {
+        "dispute_id": "DSP-0001",
+        "opened_at": "2026-02-18T09:00:00+07:00",
+        "reason": "goods_not_received",
+        "status": "open",
+        "transaction_id": "TXN-1013"
+      }
+    ],
+    "fee_schedule": [
+      {
+        "eta_hint": "vai phut",
+        "fee_vnd": 5500,
+        "max_amount_vnd": 1000000,
+        "min_amount_vnd": 0,
+        "rail": "napas"
+      },
+      {
+        "eta_hint": "vai phut",
+        "fee_vnd": 11000,
+        "max_amount_vnd": 10000000,
+        "min_amount_vnd": 1000000,
+        "rail": "napas"
+      },
+      {
+        "eta_hint": "trong ngay",
+        "fee_vnd": 22000,
+        "max_amount_vnd": null,
+        "min_amount_vnd": 10000000,
+        "rail": "napas"
+      }
+    ],
+    "transactions": [
+      {
+        "account_id": "ACC-001",
+        "amount_vnd": 250000,
+        "channel": "napas",
+        "counterparty_name": "Cafe Trung Nguyen",
+        "direction": "debit",
+        "dispute_eligible": false,
+        "status": "succeeded",
+        "timestamp": "2026-02-28T10:00:00+07:00",
+        "transaction_id": "TXN-1001"
+      },
+      {
+        "account_id": "ACC-001",
+        "amount_vnd": 1000000,
+        "channel": "internal",
+        "counterparty_name": "Luong T2",
+        "direction": "credit",
+        "dispute_eligible": false,
+        "status": "succeeded",
+        "timestamp": "2026-02-27T09:00:00+07:00",
+        "transaction_id": "TXN-1002"
+      },
+      {
+        "account_id": "ACC-003",
+        "amount_vnd": 189000,
+        "channel": "vietqr",
+        "counterparty_name": "Shop Sao Mai",
+        "direction": "debit",
+        "dispute_eligible": false,
+        "status": "succeeded",
+        "timestamp": "2026-02-25T16:20:00+07:00",
+        "transaction_id": "TXN-1005"
+      },
+      {
+        "account_id": "ACC-007",
+        "amount_vnd": 220000,
+        "channel": "napas",
+        "counterparty_name": "Shop Da disputed",
+        "direction": "debit",
+        "dispute_eligible": false,
+        "status": "succeeded",
+        "timestamp": "2026-02-17T12:30:00+07:00",
+        "transaction_id": "TXN-1013"
+      },
+      {
+        "account_id": "ACC-001",
+        "amount_vnd": 362500,
+        "channel": "atm",
+        "counterparty_name": "Doi tac 13",
+        "direction": "debit",
+        "dispute_eligible": false,
+        "status": "pending",
+        "timestamp": "2026-02-16T12:00:00+07:00",
+        "transaction_id": "TXN-1049"
+      },
+      {
+        "account_id": "ACC-001",
+        "amount_vnd": 662500,
+        "channel": "vietqr",
+        "counterparty_name": "Doi tac 24",
+        "direction": "debit",
+        "dispute_eligible": false,
+        "status": "pending",
+        "timestamp": "2026-02-04T12:00:00+07:00",
+        "transaction_id": "TXN-1097"
+      },
+      {
+        "account_id": "ACC-015",
+        "amount_vnd": 1187500,
+        "channel": "internal",
+        "counterparty_name": "Doi tac 01",
+        "direction": "debit",
+        "dispute_eligible": true,
+        "status": "succeeded",
+        "timestamp": "2026-02-01T00:00:00+07:00",
+        "transaction_id": "TXN-1111"
+      }
+    ],
+    "transfer_scenarios": [
+      {
+        "amount_vnd": 500000,
+        "expected_outcome": "rejected_insufficient_funds",
+        "from_account_id": "ACC-007",
+        "rail": "napas",
+        "scenario_id": "fee_gap_napas_500k",
+        "to_account_number": "9988776655",
+        "to_bank_code": "970436"
+      },
+      {
+        "amount_vnd": 500000,
+        "expected_outcome": "rejected_insufficient_funds",
+        "from_account_id": "ACC-006",
+        "rail": "napas",
+        "scenario_id": "low_balance_napas_500k",
+        "to_account_number": "9988776655",
+        "to_bank_code": "970436"
+      }
+    ],
+    "transfers": [
+      {
+        "amount_vnd": 250000,
+        "fee_vnd": 5500,
+        "from_account_id": "ACC-001",
+        "rail": "napas",
+        "status": "succeeded",
+        "to_account_number": "9876543210",
+        "to_bank_code": "970436",
+        "transaction_id": "TXN-1001",
+        "transfer_id": "TRF-0001"
+      }
+    ],
+    "vietqr_payments": [
+      {
+        "amount_vnd": 189000,
+        "merchant_name": "Shop Sao Mai",
+        "payment_ref": "VQ-1001",
+        "status": "paid",
+        "transaction_id": "TXN-1005"
+      }
+    ]
+  },
+  "pending_status": "awaiting_confirmation",
+  "schema_version": "bfcl-local-probe-plan-v1",
+  "seed": 42,
+  "status_field": "status"
+}

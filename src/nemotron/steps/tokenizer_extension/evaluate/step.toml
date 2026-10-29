@@ -1,0 +1,62 @@
+[step]
+id = "tokenizer_extension/evaluate"
+name = "Tokenizer Fertility Evaluation"
+category = "tokenizer_extension"
+description = """\
+Report corpus-level token fertility (sum(tokens)/sum(words)) for a tokenizer on
+an eval corpus (HF dataset or local parquet/jsonl). TOKENIZER-level only — model
+and downstream evaluation after CPT is handled by the existing steps/eval
+catalog. CPU-only; streams so it is memory-safe on 10M+ rows."""
+tags = ["tokenizer", "fertility", "evaluation", "cpu"]
+
+[[consumes]]
+type = "tokenizer"
+description = "Extended (or base) tokenizer to score"
+required = true
+
+[[produces]]
+type = "eval_results"
+description = "Fertility report JSON (fertility, chars/token, vocab coverage, timing)"
+
+[[parameters]]
+name = "tokenizer"
+description = "HF id or local extended-tokenizer directory to evaluate"
+
+[[parameters]]
+name = "corpus.hf_dataset"
+description = "Eval dataset name, e.g. ai4bharat/samanantar (with corpus.hf_config / corpus.hf_split)"
+
+[[parameters]]
+name = "corpus.path"
+description = "Local eval corpus dir/glob (parquet or jsonl) as an alternative to corpus.hf_dataset"
+
+[[parameters]]
+name = "corpus.text_field"
+description = "Column/field holding the eval text (e.g. 'tgt' for Samanantar Hindi)"
+default = "tgt"
+
+[[parameters]]
+name = "corpus.num_docs"
+description = "Number of docs to score; 0 = full corpus"
+default = 0
+
+[[strategies]]
+when = "comparing multiple tokenizers"
+then = "run this step once per tokenizer with the same corpus block so fertility numbers are comparable"
+
+[[strategies]]
+when = "the eval corpus shares a source with the training corpus"
+then = "set corpus.skip_docs to skip the slice the extend step trained on, avoiding train/eval overlap"
+
+[[errors]]
+name = "corpus_source_unset"
+recovery = "Set either corpus.hf_dataset (+hf_config/hf_split) or corpus.path (+glob)."
+
+[[errors]]
+name = "wrong_text_field"
+recovery = "Set corpus.text_field to the actual text column (e.g. 'tgt' for Samanantar, 'text' for wiki/Sangraha)."
+
+[reference]
+readme = "src/nemotron/steps/tokenizer_extension/evaluate/README.md"
+guide = "src/nemotron/steps/tokenizer_extension/guide.md"
+lib = "src/nemotron/steps/tokenizer_extension/evaluate/fertility.py"

@@ -58,6 +58,14 @@ Generate DPO preference pairs (prompt / chosen / rejected) from `rl_pref.yaml`.
 {bdg-success}`15 min` {bdg-secondary}`intermediate`
 :::
 
+:::{grid-item-card} {octicon}`globe;1.5em;sd-mr-1` Generate Persona-Grounded MCQ Data
+:link: persona-mcq-data
+:link-type: doc
+Run `sdg/persona_mcq` to author, deduplicate, answer, and vote on multilingual MCQ SFT data.
++++
+{bdg-success}`30 min` {bdg-secondary}`intermediate`
+:::
+
 :::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` Dispatch to a Cluster
 :link: dispatch-to-cluster
 :link-type: doc
@@ -75,6 +83,7 @@ Configure an env.toml profile and run SDG on Lepton or Slurm.
 Create a Domain Dataset <create-domain-dataset>
 Create Tool-Calling Dataset <tool-call-data>
 preference-data
+Generate Persona MCQ Data <persona-mcq-data>
 dispatch-to-cluster
 run
 ```

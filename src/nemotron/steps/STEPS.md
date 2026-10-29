@@ -4,6 +4,7 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
+| [byob/bfcl](byob/bfcl/) | Generate function-calling benchmark parquet artifacts from an executable oracle pack with process-worker isolation. | oracle_pack (optional) | bfcl_benchmark_parquet (optional), bfcl_run_manifest (optional), bfcl_stage_cache (optional), bfcl_compatibility_exports (optional), bfcl_export_validation_report (optional), bfcl_localized_benchmark (optional), bfcl_translation_manifest (optional), bfcl_source_verification_report (optional), bfcl_contamination_report (optional), bfcl_candidate_io_cache (optional), bfcl_tool_trace_cache (optional), bfcl_eval_artifacts (optional) |
 | [byob/mcq](byob/mcq/) | Generate and translate BYOB MCQ benchmark parquet artifacts from domain documents with an extensible benchmark-family runtime. | benchmark_source_corpus, benchmark_parquet (optional) | mcq_benchmark_parquet, translated_mcq_benchmark_parquet (optional) |
 
 ## convert — Conversion
@@ -18,7 +19,12 @@
 
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
+| [curate/audit](curate/nemo_curator/audit/) | Integrity evidence for a curated corpus: per-shard readability, row counts, and a content digest, compared against a manifest declared by the producing step. Completeness is claimed only relative to that manifest. Detection only: attributing loss to a cause requires a producer-emitted ledger. | curation_ledger, filtered_jsonl | curation_report |
+| [curate/decontamination](curate/nemo_curator/decontamination/) | Remove training documents that near-duplicate a held-out split, using exact source-document identity plus MinHash/LSH candidates verified by exact Jaccard. Detects whole-document near-duplicates only; a benchmark question embedded in a long document is substring contamination and is out of scope. | filtered_jsonl | filtered_jsonl, decontamination_report |
+| [curate/ingest](curate/nemo_curator/ingest/) | Read a raw parquet or JSONL corpus, mint a content-derived document id when it carries none, map source columns onto the names the curate steps expect, and write JSONL. Runs without Ray or a GPU so preparing data does not require a cluster. | raw_jsonl | raw_jsonl |
 | [curate/nemo_curator](curate/nemo_curator/) | Read JSONL text with NeMo Curator, optionally hydrate a Hugging Face snapshot, apply light language, word-count, and domain filters, and write downstream-ready JSONL. | raw_jsonl | filtered_jsonl |
+| [curate/profile](curate/nemo_curator/profile/) | Measure quality-signal distributions on a target corpus and report what candidate thresholds would do to it. Curator's default heuristic thresholds are inherited from English-language work. This step reports retention impact and proposes candidate policies. It does not approve any policy; promotion is a separate, recorded act. | filtered_jsonl | profile_report, filter_policy |
+| [curate/subset](curate/nemo_curator/subset/) | Draw stratified subsets of a corpus at several fixed token budgets in one run, guaranteeing that every smaller tier is contained in every larger one, so a filtering ablation compares policies rather than dataset sizes. | filtered_jsonl | filtered_jsonl, subset_plan, subset_report |
 
 ## data_prep — Data Preparation
 
@@ -75,6 +81,7 @@
 | Step | Description | Consumes | Produces |
 | --- | --- | --- | --- |
 | [sdg/data_designer](sdg/data_designer/) | Build a NeMo Data Designer pipeline declaratively and generate synthetic data. Three recipes ship in config/: 'default' produces SFT chat data, 'customer_support_tools' produces tool-call SFT data, and 'rl_pref' produces preference pairs (chosen / rejected) for DPO.  Customisation lives in YAML — step.py just translates declarative column specs into the upstream DataDesignerConfigBuilder API. | training_jsonl (optional) | synthetic_jsonl |
+| [sdg/persona_mcq](sdg/persona_mcq/) | Generate, deduplicate, answer, vote, and export English/Hindi persona-grounded MCQ SFT data. | - | synthetic_jsonl |
 
 ## sft — Supervised Fine-Tuning
 
@@ -82,6 +89,15 @@
 | --- | --- | --- | --- |
 | [sft/automodel](sft/automodel/) | Supervised fine-tuning with the AutoModel stack for HF-format models and JSONL datasets that already use OpenAI chat-format messages. Supports full SFT and LoRA-style adapter tuning from the same step. | training_jsonl | checkpoint_hf |
 | [sft/megatron_bridge](sft/megatron_bridge/) | Supervised fine-tuning using NVIDIA Megatron-Bridge. Best for large-scale distributed training with tensor/pipeline/context parallelism. Requires packed Parquet data from data_prep/sft_packing. | packed_parquet, checkpoint_megatron (optional) | checkpoint_megatron |
+
+## tokenizer_extension — Tokenizer Extension
+
+| Step | Description | Consumes | Produces |
+| --- | --- | --- | --- |
+| [tokenizer_extension/eval_init](tokenizer_extension/eval_init/) | Score one or more extended checkpoints (freshly resized, or after CPT) for embedding-initialization quality: cross-entropy loss, perplexity, and bits-per-byte (BPB) on a validation corpus, with an optional base-model reference and a regression check. BPB is the only cross-vocabulary-comparable metric here. Wraps the bpb.py engine. | checkpoint_hf | eval_results |
+| [tokenizer_extension/evaluate](tokenizer_extension/evaluate/) | Report corpus-level token fertility (sum(tokens)/sum(words)) for a tokenizer on an eval corpus (HF dataset or local parquet/jsonl). TOKENIZER-level only — model and downstream evaluation after CPT is handled by the existing steps/eval catalog. CPU-only; streams so it is memory-safe on 10M+ rows. | tokenizer | eval_results |
+| [tokenizer_extension/extend](tokenizer_extension/extend/) | Extend a base tokenizer with target-language subwords. Trains one BPE on a corpus (HF dataset or local parquet/jsonl) and splices it in two ways: Add (keep the base's residual script tokens and append new ones) and/or Replace (prune the target script's residual tokens, then splice fresh corpus-optimal ones into the pruned base). CPU-only; the splice is rank-dead-safe. | checkpoint_hf | tokenizer |
+| [tokenizer_extension/init_embeddings](tokenizer_extension/init_embeddings/) | Attach an extended (append-style) tokenizer to the base model and initialize the new embedding (and LM-head) rows, producing a resized HF checkpoint ready for continued pretraining. embeddings.py dispatches to one of three init engines selected by `method`: baseline (hf_default/mean_all/mean_hindi), subword (uniform/char/max_char/bert/gemma weighted subword averaging), or focus (FOCUS + fastText + sparsemax). | tokenizer, checkpoint_hf | checkpoint_hf |
 
 ## translate — Translation
 

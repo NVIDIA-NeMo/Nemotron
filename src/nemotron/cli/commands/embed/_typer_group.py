@@ -16,7 +16,7 @@
 
 Contains the embed command group with subcommands for embedding model
 fine-tuning workflow:
-- sdg: Generate synthetic Q&A pairs from documents
+- sdg: Generate retrieval queries from text or image sources
 - prep: Prepare training data (convert, mine, unroll)
 - finetune: Fine-tune the embedding model
 - eval: Evaluate models on retrieval metrics
@@ -61,12 +61,12 @@ def info() -> None:
     console.print("  Fine-tune embedding models for domain-adapted retrieval.")
     console.print()
     console.print("[bold]Workflow Stages:[/bold]")
-    console.print("  1. [cyan]sdg[/]      - Generate synthetic Q&A pairs from documents")
-    console.print("  2. [cyan]prep[/]     - Prepare training data (convert, mine, unroll)")
-    console.print("  3. [cyan]finetune[/] - Fine-tune the embedding model")
-    console.print("  4. [cyan]eval[/]     - Evaluate base vs fine-tuned models")
-    console.print("  5. [cyan]export[/]   - Export Llama model (default skips)")
-    console.print("  6. [cyan]deploy[/]   - Deploy checkpoint or exported model with NIM or vLLM")
+    console.print("  0. [cyan]sdg[/]      - Generate retrieval queries from text or image sources")
+    console.print("  1. [cyan]prep[/]     - Prepare training data (convert, mine, unroll)")
+    console.print("  2. [cyan]finetune[/] - Fine-tune the embedding model")
+    console.print("  3. [cyan]eval[/]     - Evaluate base vs fine-tuned models")
+    console.print("  4. [cyan]export[/]   - Export Llama model (Nemotron 3 skips)")
+    console.print("  5. [cyan]deploy[/]   - Deploy checkpoint or exported model with NIM or vLLM")
     console.print()
     console.print("[bold]Key Components:[/bold]")
     console.print("  - Data Designer retrieval SDG package (generation and conversion)")
@@ -74,8 +74,12 @@ def info() -> None:
     console.print("  - BEIR (evaluation framework)")
     console.print()
     console.print("[bold]Model Profiles:[/bold]")
-    console.print("  - default: nvidia/Nemotron-3-Embed-1B-BF16")
+    console.print("  - nemotron-3.5: nvidia/Nemotron-3.5-Embed-1B-BF16 (text and images; local stages 1-3)")
+    console.print("  - nemotron-3: nvidia/Nemotron-3-Embed-1B-BF16 (text)")
     console.print("  - llama: nvidia/llama-nemotron-embed-1b-v2 (export path)")
+    console.print()
+    console.print("  Multimodal: run sdg through eval, then deploy separately with vLLM.")
+    console.print("  Guides: docs/nemotron/embed/index.md")
 
 
 # Register stage commands

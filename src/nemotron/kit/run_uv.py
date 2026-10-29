@@ -55,6 +55,7 @@ def main(stage_dir: Path) -> None:
     nemotron_cfg = pyproject_data.get("tool", {}).get("nemotron", {})
     entry_point = nemotron_cfg.get("entry-point")
     exclude_deps = nemotron_cfg.get("container-exclude-dependencies", _BASE_EXCLUDE)
+    extras = nemotron_cfg.get("container-extras", [])
 
     if not entry_point:
         print("[run_uv.py] ERROR: [tool.nemotron] entry-point not set in pyproject.toml")
@@ -155,6 +156,8 @@ def main(stage_dir: Path) -> None:
                 "--active",
                 "--project", str(temp_dir),
             ]
+            for extra in extras:
+                sync_cmd.extend(["--extra", extra])
             print(f"[run_uv.py] Running: {' '.join(sync_cmd)}")
             result = subprocess.run(sync_cmd, env=env, cwd=str(temp_dir))
             if result.returncode != 0:

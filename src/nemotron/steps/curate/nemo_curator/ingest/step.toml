@@ -1,0 +1,122 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "curate/ingest"
+name = "Corpus Ingestion"
+category = "curate"
+description = """Read a raw parquet or JSONL corpus, mint a content-derived document id when it carries none, map source columns onto the names the curate steps expect, and write JSONL. Runs without Ray or a GPU so preparing data does not require a cluster."""
+tags = ["curate", "ingest", "parquet", "jsonl", "identity"]
+
+[[consumes]]
+type = "raw_jsonl"
+description = "A raw corpus as parquet or JSONL, in whatever column layout it arrived with."
+
+[[produces]]
+type = "prepared_jsonl"
+description = "JSONL with text, a unique id, and optionally source plus any carried columns. Written alongside ingest_report.json, which records how each id was derived. Declared apart from raw_jsonl because the id is the whole point: every step after this one names individual documents, and a raw corpus does not guarantee one."
+
+[[parameters]]
+name = "input"
+description = "The raw corpus: a glob, a directory, or a list of either, in parquet or JSONL."
+
+[[parameters]]
+name = "output_dir"
+description = "Directory receiving part_<n>.jsonl shards and ingest_report.json."
+
+[[parameters]]
+name = "format"
+description = "parquet, jsonl, or auto. auto infers from the file extensions and refuses a mixed set rather than reading the half that happens to match."
+default = "auto"
+
+[[parameters]]
+name = "text_field"
+description = "The column holding document text in the source corpus."
+default = "text"
+
+[[parameters]]
+name = "id_from"
+description = "Column carrying the corpus's own document id. Null mints one from content instead, which survives resharding — Curator's AddId is positional, so re-splitting a corpus renames every document and invalidates any claim made about the old ids."
+default = "null"
+
+[[parameters]]
+name = "id_fields"
+description = "Which columns a minted full SHA-256 id is derived from. Values are framed as a canonical JSON array so embedded newlines cannot erase field boundaries. Must include text_field so content changes cannot retain the same derived identity. Part of the recipe, not an implementation detail: an id built from text alone and one built from url plus text are different ids, and the recipe is recorded in ingest_report.json."
+default = ["url", "text"]
+
+[[parameters]]
+name = "id_prefix"
+description = "Prefix on minted ids, so documents from different corpora stay distinguishable after they are mixed."
+default = ""
+
+[[parameters]]
+name = "source_from"
+description = "Column to map onto source. Sangraha's type column is web/pdf/speech, and per-source figures are how the OCR and ASR portions of a corpus become visible."
+default = "null"
+
+[[parameters]]
+name = "source"
+description = "A single literal source value, for a corpus that has only one."
+default = "null"
+
+[[parameters]]
+name = "keep_fields"
+description = "Columns carried into the output. Everything else is dropped at ingestion, so a later step cannot depend on a column nobody asked for."
+default = ["url"]
+
+[[parameters]]
+name = "on_duplicate"
+description = "refuse, drop, or suffix. Documents with the same configured identity fields, or records with the same corpus-provided id, collide. drop keeps the first of each group and suffix keeps every copy under a distinguishable id — both change what the corpus is, so refuse is the default and the run stops with a count."
+default = "refuse"
+
+[[strategies]]
+when = "Your corpus is parquet"
+then = "Point input at the parquet glob and leave format on auto. Parquet is read with pyarrow rather than Curator's ParquetReader, so ingestion needs no Ray cluster — which is where someone first tries the pipeline."
+
+[[strategies]]
+when = "Your corpus has no document id"
+then = "Leave id_from null. An id is minted from the columns in id_fields, so it survives resharding. Set id_prefix when the corpus will later be mixed with another."
+
+[[strategies]]
+when = "Your corpus already has a stable id"
+then = "Set id_from to that column. Nothing is minted and ingest_report.json records that identity came from the corpus rather than from content."
+
+[[strategies]]
+when = "The run refuses duplicate derived identities or corpus ids"
+then = "That is a real property of the corpus, not a tooling problem — one Hindi corpus measured here held 328 duplicate texts across 20,000 documents, the largest group 293 copies. Decide deliberately: drop to deduplicate, or suffix to keep every copy."
+
+[[errors]]
+name = "duplicate_documents"
+recovery = "Repeated configured identity fields or corpus-provided ids create a non-unique id, which subset and decontamination refuse. The message reports how many occurrences and groups without claiming different texts under one corpus id are identical. Set on_duplicate to drop or suffix."
+
+[[errors]]
+name = "mixed_formats"
+recovery = "The glob matched both parquet and JSONL. Set format explicitly, or narrow the glob — reading only the matching half would describe a corpus you did not ask for."
+
+[[errors]]
+name = "no_usable_documents"
+recovery = "Every record lacked text, or every line was unparsable. Check text_field against the corpus's actual column names, which ingest_report.json lists under columns_available."
+
+[[errors]]
+name = "input_matched_no_files"
+recovery = "Check the glob. A directory is accepted and searched recursively for JSONL and parquet corpus files; known report and accounting sidecars are excluded."
+
+[[errors]]
+name = "invalid_identity_fields"
+recovery = "id_fields must be a list of column names that includes text_field. Add the text column so edited content cannot keep the same derived id, or set id_from to use a stable corpus-provided identifier."
+
+[reference]
+skill = "src/nemotron/steps/curate/nemo_curator/ingest/README.md"
+script = "src/nemotron/steps/curate/nemo_curator/scripts/run_ingest.py"
+docs = "https://docs.nvidia.com/nemo/curator/latest/"

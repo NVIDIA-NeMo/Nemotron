@@ -213,6 +213,9 @@ def test_deploy_health_retries_transient_socket_reset(monkeypatch):
 
     monkeypatch.setattr(urllib.request, "urlopen", flaky_urlopen)
     monkeypatch.setattr(deploy_module.time, "sleep", lambda _: None)
+    monkeypatch.setattr(
+        deploy_module.subprocess, "run", lambda *args, **kwargs: types.SimpleNamespace(returncode=0, stdout="true")
+    )
 
     assert deploy_module.wait_for_health(cfg) is True
     assert calls["count"] == 2

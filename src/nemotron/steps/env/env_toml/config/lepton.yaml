@@ -35,9 +35,12 @@ preamble: |
   #   uv run nemotron steps run optimize/modelopt/distill -c tiny --batch lepton_optimize_modelopt_distill
   #   uv run nemotron steps run optimize/modelopt/prune -c tiny --batch lepton_optimize_modelopt_prune
   #   uv run nemotron steps run eval/model_eval -c tiny_chat --batch lepton_eval_model_eval
+  #   uv run nemotron steps run eval/model_eval -c direct --batch lepton_eval_direct
   #   uv run nemotron steps run byob/mcq -c tiny --batch lepton_byob_cpu stage=all
   #   uv run nemotron steps run byob/mcq -c tiny --batch lepton_byob_full stage=all
   #   uv run nemotron steps run sdg/data_designer -c tiny --batch lepton_sdg_data_designer_tiny
+  #   uv run nemotron steps run sdg/persona_mcq -c tiny --batch lepton_sdg_persona_mcq_tiny
+  #   uv run nemotron steps run sdg/persona_mcq -c default --batch lepton_sdg_persona_mcq
   #   uv run nemotron steps run translate/nemo_curator -c default --batch lepton_translate
   #   uv run nemotron steps run curate/nemo_curator -c tiny --batch lepton_curate
 
@@ -56,6 +59,10 @@ checks:
     - lepton_peft_megatron_bridge
     - lepton_peft_automodel
     - lepton_convert_model
+    - lepton_tokenizer_extend
+    - lepton_tokenizer_init_embeddings
+    - lepton_tokenizer_evaluate
+    - lepton_tokenizer_eval_init
     - lepton_rl_nemo_rl_dpo
     - lepton_rl_nemo_rl_rlvr
     - lepton_rl_nemo_rl_rlhf
@@ -63,6 +70,7 @@ checks:
     - lepton_optimize_modelopt_distill
     - lepton_optimize_modelopt_prune
     - lepton_eval_model_eval
+    - lepton_eval_direct
     - lepton_byob_cpu
     - lepton_byob_full
     - lepton_sdg_data_designer
@@ -70,6 +78,8 @@ checks:
     - lepton_sdg_data_designer_default
     - lepton_sdg_data_designer_customer_support_tools
     - lepton_sdg_data_designer_rl_pref
+    - lepton_sdg_persona_mcq
+    - lepton_sdg_persona_mcq_tiny
     - lepton_translate
     - lepton_curate
   recommended_min_nodes:
@@ -113,10 +123,8 @@ sections:
         mount_path: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}
         from: ${oc.env:NEMOTRON_MOUNT_FROM,node-nfs:amlfs}
     env_vars:
-      HF_TOKEN: ${oc.env:HF_TOKEN,''}
       # HF_HOME: HuggingFace cache (models/datasets/tokenizers); on shared storage so it is reused across jobs.
       HF_HOME: ${oc.env:HF_HOME,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/hf}
-      WANDB_API_KEY: ${oc.env:WANDB_API_KEY,''}
       WANDB_PROJECT: ${oc.env:WANDB_PROJECT,nemotron}
       RAY_ENABLE_UV_RUN_RUNTIME_ENV: "0"
       RAY_DEDUP_LOGS: "0"
@@ -124,6 +132,16 @@ sections:
 
   # data_prep/*: prep jobs are CPU-only. Override the GPU base so Lepton
   # schedules a CPU shape and the executor does not request GPUs.
+    # Credentials reach the worker as platform secret references, never as
+    # values. env_vars are stored verbatim in the submitted job spec and are
+    # readable by anyone with workspace read access; secret_vars names a
+    # Lepton secret instead, so the value never enters the profile, the spec,
+    # `lep job get`, or a log line. Create the secrets once with
+    #   lep secret create -n <NAME> -v <value>
+    # and override a name here with NEMOTRON_<VAR>_SECRET if yours differ.
+    secret_vars:
+      HF_TOKEN: ${oc.env:NEMOTRON_HF_TOKEN_SECRET,HF_TOKEN}
+      WANDB_API_KEY: ${oc.env:NEMOTRON_WANDB_API_KEY_SECRET,WANDB_API_KEY}
   lepton_prep_base:
     extends: lepton_base
     resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
@@ -160,7 +178,7 @@ sections:
   # bootstrap, using requirements generated from pyproject/uv.lock at submission time.
   lepton_curator_base:
     extends: lepton_base
-    container_image: nvcr.io/nvidia/nemo-curator:26.02
+    container_image: nvcr.io/nvidia/nemo-curator:26.07
     resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
     nodes: 1
     gpus_per_node: 0
@@ -177,11 +195,12 @@ sections:
     extends: lepton_curator_base
     run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile byob -- python -m nemotron.steps.byob.mcq.step --config {config}
     env_vars:
-      NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
-      NGC_API_KEY: ${oc.env:NGC_API_KEY,''}
 
   # byob full: adds the heavy GPU stack required by Curator semantic dedup and
   # related embedding/semantic quality stages.
+    secret_vars:
+      NVIDIA_API_KEY: ${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}
+      NGC_API_KEY: ${oc.env:NEMOTRON_NGC_API_KEY_SECRET,NGC_API_KEY}
   lepton_byob_full:
     extends: lepton_byob_cpu
     resource_shape: ${oc.env:LEPTON_BYOB_GPU_SHAPE,gpu.a100-80gb}
@@ -201,8 +220,9 @@ sections:
       - python -m pip install --quiet --break-system-packages data-designer==0.5.5
     env_vars:
       SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg}
-      NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
 
+    secret_vars:
+      NVIDIA_API_KEY: ${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}
   lepton_sdg_data_designer_tiny:
     extends: lepton_sdg_data_designer
     env_vars:
@@ -223,6 +243,45 @@ sections:
     env_vars:
       SDG_OUTPUT_DIR: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg/rl/rl_pref}
 
+  # sdg/persona_mcq: persona authoring and teacher inference use remote model
+  # endpoints; the single GPU is used by multilingual semantic deduplication.
+  # Persona assets and outputs live on the shared mount so retries can resume.
+  lepton_sdg_persona_mcq:
+    extends: lepton_sdg_data_designer
+    resource_shape: ${oc.env:LEPTON_PERSONA_MCQ_GPU_SHAPE,gpu.a100-80gb}
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    shared_memory_size: 8192
+    startup_commands:
+      - "python -m pip install --quiet --break-system-packages 'data-designer>=0.5.9,<0.6' 'sentence-transformers>=5.0.0,<6.0.0' 'torch>=2.10,<2.11'"
+      # NeMo images may carry a torchvision build tied to their original Torch.
+      # Shadow it with the build paired with Torch 2.10 so transformers imports
+      # the venv package rather than an ABI-incompatible system package.
+      - "python -m pip install --quiet --break-system-packages 'torchvision>=0.25,<0.26'"
+      # The base NeMo image does not include NGC CLI. Install NVIDIA's official
+      # client in the ephemeral worker; NGC_API_KEY remains environment-only.
+      - "curl --fail --location --silent --show-error https://ngc.nvidia.com/downloads/ngccli_linux.zip --output /tmp/ngccli_linux.zip"
+      - "python -m zipfile -e /tmp/ngccli_linux.zip /opt/ngc-cli"
+      - "chmod 0755 /opt/ngc-cli/ngc-cli/ngc"
+      - "ln -sf /opt/ngc-cli/ngc-cli/ngc /usr/local/bin/ngc"
+    env_vars:
+      NEMOTRON_RUN_DIR: ${oc.env:NEMOTRON_RUN_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/sdg}
+      DATA_DESIGNER_HOME: ${oc.env:DATA_DESIGNER_HOME,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/data-designer}
+      DATA_DESIGNER_MANAGED_ASSETS_PATH: ${oc.env:DATA_DESIGNER_MANAGED_ASSETS_PATH,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/data-designer/managed-assets}
+      QWEN_API_BASE: ${oc.env:QWEN_API_BASE,''}
+      OSS_API_BASE: ${oc.env:OSS_API_BASE,''}
+      GEMMA_API_BASE: ${oc.env:GEMMA_API_BASE,''}
+
+  # The tiny config performs semantic deduplication on CPU and needs no GPU.
+    secret_vars:
+      NVIDIA_API_KEY: ${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}
+      NGC_API_KEY: ${oc.env:NEMOTRON_NGC_API_KEY_SECRET,NGC_API_KEY}
+  lepton_sdg_persona_mcq_tiny:
+    extends: lepton_sdg_persona_mcq
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
+    gpus_per_node: 0
+    shared_memory_size: 4096
+
   # translate/nemo_curator: uses the translate Curator runtime profile.
   lepton_translate:
     extends: lepton_curator_base
@@ -231,11 +290,12 @@ sections:
     shared_memory_size: 8192
     run_command: python -m nemotron.steps._bootstrap.curator_runtime --profile translate -- python -m nemotron.steps.translate.nemo_curator.step --config {config}
     env_vars:
-      NVIDIA_API_KEY: ${oc.env:NVIDIA_API_KEY,''}
-      NGC_API_KEY: ${oc.env:NGC_API_KEY,''}
 
   # curate/nemo_curator: runs directly in the Curator container. Keep this
   # simple; translate/byob use curator_runtime because they need extra deps.
+    secret_vars:
+      NVIDIA_API_KEY: ${oc.env:NEMOTRON_NVIDIA_API_KEY_SECRET,NVIDIA_API_KEY}
+      NGC_API_KEY: ${oc.env:NEMOTRON_NGC_API_KEY_SECRET,NGC_API_KEY}
   lepton_curate:
     extends: lepton_curator_base
     env_vars:
@@ -306,6 +366,79 @@ sections:
     env_vars:
       CONVERT_OUTPUT_DIR: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/convert}
 
+  # ---------------------------------------------------------------------------
+  # tokenizer_extension/*: build an extended tokenizer, initialise the new
+  # embedding rows, and measure the result. Four sub-steps with genuinely
+  # different shapes, so one profile each.
+  #
+  # Optional dependencies (declared as the `tokenizer-extension` extra):
+  #   indic-nlp-library  extend, when the target language uses a script
+  #                      normalizer (Devanagari family). Missing, the step
+  #                      raises rather than silently normalising with NFKC only,
+  #                      which would train a different tokenizer.
+  #   fasttext-wheel     init_embeddings, method=focus only. The import is lazy,
+  #                      so the other init methods run without it.
+  # ---------------------------------------------------------------------------
+
+  # extend: CPU-only BPE training. No GPUs, but the trainer holds the whole
+  # word-count table in RAM, so pick a large-memory shape for big corpora.
+  lepton_tokenizer_extend:
+    extends: lepton_base
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
+    nodes: 1
+    gpus_per_node: 0
+    nprocs_per_node: 1
+    # No cpu.* shape can satisfy the base profile's 64 GB /dev/shm; Lepton
+    # rejects the submission with HTTP 400 and creates no job. Neither env.toml
+    # generation nor --dry-run talks to the scheduler, so this only appears live.
+    shared_memory_size: 8192
+    pip_extras: [typer, rich, pydantic-settings, indic-nlp-library]
+    env_vars:
+      TOKEXT_OUTPUT_DIR: ${oc.env:TOKEXT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/tokenizer_extension}
+
+  # init_embeddings: embedding surgery, no forward pass on the base model, so it
+  # is host-resident. GPUs are used only by the auxiliary encoder (bert/gemma
+  # averaging); a single GPU is enough unless you use gemma_weighted.
+  lepton_tokenizer_init_embeddings:
+    extends: lepton_base
+    resource_shape: ${oc.env:LEPTON_INIT_SHAPE,gpu.a100-80gb}
+    nodes: 1
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    pip_extras: [typer, rich, pydantic-settings, fasttext-wheel, indic-nlp-library]
+    env_vars:
+      TOKEXT_OUTPUT_DIR: ${oc.env:TOKEXT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/tokenizer_extension}
+      # FASTTEXT_CACHE_DIR: shared cache for the cc.<lang>.300 vectors (multi-GB).
+      FASTTEXT_CACHE_DIR: ${oc.env:FASTTEXT_CACHE_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/tokenizer_extension/aux}
+
+  # evaluate: fertility only. Tokenises a corpus, no model, no GPU.
+  lepton_tokenizer_evaluate:
+    extends: lepton_base
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
+    nodes: 1
+    gpus_per_node: 0
+    nprocs_per_node: 1
+    # No cpu.* shape can satisfy the base profile's 64 GB /dev/shm; Lepton
+    # rejects the submission with HTTP 400 and creates no job. Neither env.toml
+    # generation nor --dry-run talks to the scheduler, so this only appears live.
+    shared_memory_size: 8192
+    # pip_extras REPLACES the parent's list rather than extending it, so every
+    # profile restates the base packages it still needs.
+    pip_extras: [typer, rich, pydantic-settings]
+
+  # eval_init: BPB/perplexity. Runs the model, so it needs GPUs.
+  lepton_tokenizer_eval_init:
+    extends: lepton_base
+    resource_shape: ${oc.env:LEPTON_BPB_SHAPE,gpu.a100-80gb}
+    nodes: 1
+    gpus_per_node: 1
+    nprocs_per_node: 1
+    # accelerate: bpb.py loads each model with device_map="auto" whenever CUDA is
+    # visible, which transformers refuses without it. One GPU is enough; give the
+    # profile more only to shard a large auxiliary model.
+    pip_extras: [typer, rich, pydantic-settings, accelerate]
+    env_vars:
+      TOKEXT_OUTPUT_DIR: ${oc.env:TOKEXT_OUTPUT_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/tokenizer_extension}
   # rl/nemo_rl/dpo: NeMo-RL image plus output override. Runtime RL knobs stay in step YAML.
   lepton_rl_nemo_rl_dpo:
     extends: lepton_base
@@ -354,7 +487,8 @@ sections:
     env_vars:
       OPTIM_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/optimize/prune
 
-  # eval/model_eval: lightweight profile for model evaluation steps.
+  # eval/model_eval (launcher mode, `-c default`): the launcher owns scheduling
+  # and can deploy a Megatron checkpoint itself, so this keeps the GPU base.
   lepton_eval_model_eval:
     extends: lepton_base
     nodes: 1
@@ -362,6 +496,57 @@ sections:
       - typer
       - rich
       - pydantic-settings
+      # omegaconf is imported at module scope by the step's runtime; without it
+      # the job dies with ModuleNotFoundError before doing any work.
+      - omegaconf
       - nemo-evaluator-launcher
     env_vars:
       EVAL_OUTPUT_DIR: ${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/eval/model_eval
+
+  # eval/model_eval (direct mode, `-c direct`): the harness runs in THIS job
+  # against an endpoint you host yourself, so the job is CPU-only -- the GPUs
+  # are wherever the model is served.
+  #
+  # Two things deliberately absent:
+  #   container_image -- direct.yaml owns the harness image via
+  #     EVAL_HARNESS_IMAGE, and build_job_config() re-applies YAML-owned
+  #     resource keys after merging this file, so a profile image is ignored.
+  #   EVAL_HARNESS_IMAGE in env_vars -- profile env_vars merge OVER the
+  #     config's, so a default here would overwrite direct.yaml's
+  #     self-forwarding `EVAL_HARNESS_IMAGE: ${run.env.container_image}` and the
+  #     pod would resolve its own image to an empty string.
+  lepton_eval_direct:
+    secret_vars:
+      ENDPOINT_TOKEN: ${oc.env:NEMOTRON_ENDPOINT_TOKEN_SECRET,ENDPOINT_TOKEN}
+    extends: lepton_base
+    resource_shape: ${oc.env:LEPTON_CPU_SHAPE,cpu.large}
+    nodes: 1
+    gpus_per_node: 0
+    nprocs_per_node: 1
+    # lepton_base asks for 64 GB of /dev/shm, which no cpu.* shape can satisfy:
+    # Lepton rejects the submission with HTTP 400 before a job is ever created.
+    # Neither env.toml generation nor --dry-run catches this -- neither talks to
+    # the scheduler.
+    shared_memory_size: 8192
+    # The harness image ships nemo_evaluator and the benchmark venvs -- it is
+    # NOT a Nemotron image and has none of Nemotron's own runtime deps. This
+    # list is redeclared in full because pip_extras is a list: a child value
+    # REPLACES the parent's rather than extending it.
+    pip_extras:
+      - typer
+      - rich
+      - pydantic-settings
+      - omegaconf
+      - tomli
+      - wandb
+    # direct.yaml resolves these INSIDE the pod, so every one it reads must be
+    # forwarded here; exporting them in your shell only affects submission.
+    env_vars:
+      EVAL_ENDPOINT_URL: ${oc.env:EVAL_ENDPOINT_URL,''}
+      EVAL_MODEL_HANDLE: ${oc.env:EVAL_MODEL_HANDLE,''}
+      EVAL_RESULTS_DIR: ${oc.env:EVAL_RESULTS_DIR,${oc.env:NEMOTRON_WORKSPACE,/mnt/lustre-shared}/output/eval/model_eval}
+      EVAL_ENDPOINT_TYPE: ${oc.env:EVAL_ENDPOINT_TYPE,completions}
+      EVAL_API_KEY_NAME: ${oc.env:EVAL_API_KEY_NAME,ENDPOINT_TOKEN}
+      EVAL_TOKENIZER: ${oc.env:EVAL_TOKENIZER,null}
+      EVAL_LIMIT_SAMPLES: ${oc.env:EVAL_LIMIT_SAMPLES,null}
+      # Prefer a Lepton platform secret over this; see the step's README.

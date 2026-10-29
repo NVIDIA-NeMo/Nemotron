@@ -4,6 +4,10 @@ Pick a pretraining backend and lock the token budget + data blend before
 requesting cluster time. Pretraining is the highest-cost stage in the
 catalog — the budget contract decides everything downstream.
 
+> **Planning continued pretraining?** See the customer-facing
+> [Continued Pretraining Guidebook](guidebook/README.md) for replay, target-token
+> scaling, scheduler, and retention guidance backed by the current ablations.
+
 ## Developer Journey
 
 Pretraining and continued pretraining are data-budget decisions before they are

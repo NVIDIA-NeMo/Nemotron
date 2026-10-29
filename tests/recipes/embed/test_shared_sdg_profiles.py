@@ -16,7 +16,7 @@ from nemotron.recipes.embed.stage1_data_prep.data_prep import DataPrepConfig
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILE_PATHS = [
-    REPO_ROOT / "src/nemotron/recipes/embed/stage0_sdg/config/default.yaml",
+    REPO_ROOT / "src/nemotron/recipes/embed/stage0_sdg/config/nemotron-3.yaml",
     REPO_ROOT / "src/nemotron/recipes/embed/stage0_sdg/config/llama.yaml",
     REPO_ROOT / "src/nemotron/recipes/rerank/stage0_sdg/config/default.yaml",
 ]

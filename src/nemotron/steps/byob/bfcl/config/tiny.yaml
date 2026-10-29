@@ -1,0 +1,61 @@
+# BFCL end-to-end plumbing config — tiny_library oracle pack.
+# Not publication-eligible: lineage.policy = smoke_no_publication.
+
+family: bfcl
+expt_name: bfcl_tiny_library_validation
+stage: all
+random_seed: 7
+config_status: resolved
+
+# Paths are resolved relative to the BYOB skill root when not absolute.
+output_dir: /tmp/bfcl/tiny_out
+
+oracle_pack:
+  manifest_path: data/tiny_oracle_pack/manifest.yaml
+
+oracle_runtime:
+  clock: "2026-03-02T09:00:00+07:00"
+  tool_timeout_s: 5.0
+  assertion_timeout_s: 5.0
+  import_timeout_s: 10.0
+  reset_timeout_s: 5.0
+  episode_timeout_s: 60.0
+  worker: process
+  allowed_roots:
+    - data
+
+lineage:
+  policy: smoke_no_publication
+  profile_influenced_surface: false
+  judge_advisory: null
+  roles:
+    profile:
+      enabled: false
+      model_config: null
+    paraphrase:
+      enabled: false
+      model_config: null
+    surface_judge:
+      enabled: false
+      model_config: null
+
+surface_generation:
+  model_paraphrase_enabled: false
+  paraphrases_per_template: 0
+  preserve_slot_values: true
+  prevent_tool_name_leakage: true
+
+surface_quality_validation:
+  enabled: false
+  drop_authority: false
+
+task_generation:
+  # Shared by every template in a category; tiny_library declares four.
+  tasks_per_category: 4
+
+semantic_deduplication_config:
+  enabled: false
+
+exports:
+  bfcl_json: false
+  nemo_evaluator_bundle: false
