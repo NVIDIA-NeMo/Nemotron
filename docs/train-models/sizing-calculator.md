@@ -42,3 +42,11 @@ GRPO generation efficiency is especially workload-dependent. Long-running agent 
 Calibration links in the calculator point to public [Megatron Bridge performance](https://docs.nvidia.com/nemo/megatron-bridge/latest/performance-summary.html), [NeMo AutoModel performance](https://docs.nvidia.com/nemo/automodel/latest/performance/performance-summary), and [NeMo RL performance](https://docs.nvidia.com/nemo/rl/latest/about/performance-summary.html) documentation. Some exact calibration runs or detailed run records may not be publicly available.
 
 The calculator assumes BF16 training. Its training-time estimate covers the modeled GPU execution; it does not include queueing, data preparation, evaluation, deployment, or other work outside the modeled training run.
+
+### Nemotron-3.5-Super-VL sizing notes
+
+Nemotron-3.5-Super-VL uses Nemotron-3-Super as the reference for GPU sizing and training-time estimates because both models share the same language-backbone architecture.
+
+- **Text-only training:** Assumes the vision encoder and projector are excluded, resulting in memory requirements and training performance similar to Nemotron-3-Super.
+- **Vision-language training:** Assumes the vision encoder is frozen and the projector and language model are trainable, consistent with the published Megatron Bridge SFT recipes. The additional parameter-state memory is relatively small compared with the language backbone, so the calculator uses Nemotron-3-Super as the sizing and performance reference.
+- **Visual-token estimation:** Both text and visual tokens contribute to maximum sequence length and total dataset tokens. Visual-token counts depend on image or video resolution and preprocessing. Estimate them with the [Nemotron-3.5-Super-VL Hugging Face image processor](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16/blob/main/image_processing_nemotron_h_omni.py).
