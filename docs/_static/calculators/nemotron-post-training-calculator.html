@@ -880,7 +880,9 @@
     let priorAverageSequence = 3072;
     let planningFactorUserEdited = false;
 
-    function sizingReferenceModel(model) {
+    function referenceModelFor(modelOrKey) {
+      const model = typeof modelOrKey === "string" ? modelMap.get(modelOrKey) : modelOrKey;
+      if (!model) throw new Error("Choose a supported model.");
       return modelMap.get(model.sizing_proxy_model_key) || model;
     }
 
@@ -1278,13 +1280,13 @@
       const sizingMethod = method === "rl" ? "sft" : method;
       const gpuConfig = gpuMap.get(gpu);
       const topologyGpu = gpuConfig?.topology_proxy_gpu || gpu;
-      const topologyModel = modelMap.get(model)?.sizing_proxy_model_key || model;
+      const referenceModel = referenceModelFor(model);
       if (gpuConfig?.direct_measured_throughput) {
         if (method === "rl") {
           throw new Error("GRPO RL is N/A on DGX Station because no verified RL sizing or throughput run is available.");
         }
         const rows = DATA.topologies
-          .filter((row) => row.gpu === topologyGpu && row.model === topologyModel && row.method === sizingMethod)
+          .filter((row) => row.gpu === topologyGpu && row.model === referenceModel.key && row.method === sizingMethod)
           .sort((left, right) => left.sequence_length - right.sequence_length);
         const row = rows.find((candidate) => candidate.sequence_length >= requestedSequence);
         if (!row) {
@@ -1298,7 +1300,7 @@
       }
       const lookupSequence = DATA.sequence_lengths.find((value) => value >= requestedSequence);
       if (!lookupSequence) throw new Error(`Sequence length exceeds the verified ceiling of ${integer.format(maxVerifiedSequence)} tokens.`);
-      const row = topologyMap.get(`${topologyGpu}|${topologyModel}|${sizingMethod}|${lookupSequence}`);
+      const row = topologyMap.get(`${topologyGpu}|${referenceModel.key}|${sizingMethod}|${lookupSequence}`);
       if (!row) throw new Error("No verified topology matches this model, method, GPU, and sequence length.");
       return { ...row, gpu, topologyGpu, requestedSequence, rounded: lookupSequence !== requestedSequence };
     }
@@ -2050,7 +2052,7 @@
 
     function renderRlResult(result) {
       const { input, topology } = result;
-      const formulaModel = sizingReferenceModel(result.model);
+      const referenceModel = referenceModelFor(result.model);
       $("minimum-gpus").textContent = formatGpuCount(result.totalGpus);
       $("minimum-note").textContent = input.deployment === "colocated"
         ? `${integer.format(result.trainingGpus)} shared training/generation GPUs`
@@ -2103,7 +2105,7 @@
           ],
           `Policy-training constant = ${formatGflopsPerToken(result.trainingCoefficient.baseConstant)} zero-MTP base + ${integer.format(input.policyMtpDepths)} depths × ${formatGflopsPerToken(result.trainingCoefficient.mtpConstantPerDepth)} per depth = ${formatGflopsPerToken(result.trainingCoefficient.constant_flops_per_token)}. Its sequence-dependent contribution is ${formatGflopsPerToken(trainingSequenceWork)}. Generation and log-probability use zero-MTP forward work, whose sequence-dependent contribution is ${formatGflopsPerToken(forwardSequenceWork)}. Effective length is ${number.format(result.processedTokensPerSample)} processed tokens/rollout: ${integer.format(input.averageSequence)} generated plus ${number.format(result.nonGeneratedTokensPerSample)} inferred non-generated.${result.model.sizing_proxy_note ? ` ${result.model.sizing_proxy_note}` : ""}`,
           [
-            { label: result.model.sizing_proxy_note ? `${formulaModel.name} proxy configuration` : "model configuration", url: formulaModel.config_source_url },
+            { label: result.model.sizing_proxy_note ? `${referenceModel.name} proxy configuration` : "model configuration", url: referenceModel.config_source_url },
             { label: "AutoModel FLOPs utility", url: DATA.sources.automodel_flops_url },
             { label: "Megatron Bridge FLOPs utility", url: DATA.sources.megatron_bridge_flops_url },
           ],
@@ -2185,7 +2187,7 @@
       $("runtime-note").textContent = `${integer.format(result.tokensPerSecondPerGpu)} tokens/s/GPU; ${number.format(result.gpuHours)} GPU-hours`;
       renderCostSummary(result);
       renderAssumptionSummary(result);
-      const formulaModel = sizingReferenceModel(result.model);
+      const referenceModel = referenceModelFor(result.model);
 
       for (const key of ["tp", "pp", "cp", "ep"]) $(key).textContent = topology[key];
       const showStationSftDetails = result.gpu.key === "dgx-station" && input.method === "sft";
@@ -2239,9 +2241,9 @@
         makeTrailStep(
           "Model FLOPs per token",
           workEquation,
-          `This is the floating-point work for one processed training token. The formula comes from the pinned ${formulaModel.name} configuration and NVIDIA NeMo AutoModel and Megatron Bridge FLOP utilities. It counts attention, Mamba, routed experts, vocabulary output, configured multi-token prediction, and method-specific forward/backward work. For LoRA, the method multiplier already omits frozen base-weight gradients; no separate generic adapter percentage is added. The sequence-dependent term uses ${integer.format(input.effectiveLength)} effective attended tokens.${result.model.sizing_proxy_note ? ` ${result.model.sizing_proxy_note}` : ""}`,
+          `This is the floating-point work for one processed training token. The formula comes from the pinned ${referenceModel.name} configuration and NVIDIA NeMo AutoModel and Megatron Bridge FLOP utilities. It counts attention, Mamba, routed experts, vocabulary output, configured multi-token prediction, and method-specific forward/backward work. For LoRA, the method multiplier already omits frozen base-weight gradients; no separate generic adapter percentage is added. The sequence-dependent term uses ${integer.format(input.effectiveLength)} effective attended tokens.${result.model.sizing_proxy_note ? ` ${result.model.sizing_proxy_note}` : ""}`,
           [
-            { label: result.model.sizing_proxy_note ? `${formulaModel.name} proxy configuration` : "model configuration", url: formulaModel.config_source_url },
+            { label: result.model.sizing_proxy_note ? `${referenceModel.name} proxy configuration` : "model configuration", url: referenceModel.config_source_url },
             { label: "AutoModel FLOPs utility", url: DATA.sources.automodel_flops_url },
             { label: "Megatron Bridge FLOPs utility", url: DATA.sources.megatron_bridge_flops_url },
           ],
