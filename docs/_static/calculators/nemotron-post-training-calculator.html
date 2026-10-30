@@ -785,7 +785,7 @@
     const super3Model = DATA.models.find((item) => item.key === "super");
     if (!super3Model) throw new Error("Missing Nemotron-3-Super sizing reference.");
     const super35VlModel = JSON.parse(JSON.stringify(super3Model));
-    const super35VlProxyNote = "Nemotron-3.5-Super-VL reuses the Nemotron-3-Super language-backbone sizing and performance results at a 1.0× transfer factor. Vision-encoder, vision-projector, multimodal token-shape, and multimodal data-pipeline effects are not separately modeled.";
+    const super35VlProxyNote = "Nemotron-3.5-Super-VL uses Nemotron-3-Super as its GPU-sizing and training-time reference because they share the same language backbone. Text-only estimates assume the vision encoder and projector are excluded. Vision-language estimates assume a frozen vision encoder with a trainable projector and language model, consistent with the published Megatron Bridge SFT recipes; the additional parameter-state memory is small relative to the language backbone. Count both text and visual tokens in maximum sequence length and total dataset tokens; visual-token counts depend on image or video resolution and preprocessing.";
     Object.assign(super35VlModel, {
       key: "super-3.5-vl",
       name: "NVIDIA Nemotron-3.5-Super-VL",
