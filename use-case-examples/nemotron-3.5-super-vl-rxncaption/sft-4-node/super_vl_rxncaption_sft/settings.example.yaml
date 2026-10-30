@@ -1,0 +1,34 @@
+# Set the environment variables below, or enter values directly in this file.
+# Relative workspace paths resolve beside this settings file.
+workspace: ./super-vl-workspace
+run_id: sft_rxn_01
+model:
+  # Public BF16 release. Optional SUPER_VL_MODEL_ID / SUPER_VL_MODEL_REVISION override both.
+  repo_id: nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16
+  revision: 97e009758ae21747ee3752d2e43b005fb1e23a61  # GA release pin verified 2026-10-15
+data:
+  # HTTPS ZIP created by ../../lora-1-node/prepare_rxncaption_data.py. Source/converted data:
+  # CC BY-NC 4.0; attribution required and commercial use prohibited.
+  url: ${RXN_DATA_URL}
+  sha256: ${RXN_DATA_SHA256}
+benchmark:
+  url: ${RXN_BENCHMARK_URL}           # HTTPS ZIP from the same public-data conversion
+  sha256: ${RXN_BENCHMARK_SHA256}
+automodel:
+  url: https://github.com/NVIDIA-NeMo/Automodel.git
+  revision: ${AUTOMODEL_REVISION}     # commit with support for your Super-VL checkpoint
+train_image: ${AUTOMODEL_IMAGE}       # NGC: nvcr.io/nvidia/nemo-automodel:<tag> (or digest)
+eval_image: ${VLLM_IMAGE}             # compatible vLLM image, preferably pinned by digest
+# Python executables inside your selected containers, resolved through their PATH.
+# Set an absolute executable path here only if your image requires it.
+train_python: python3
+eval_python: python3
+eval_port: 12520
+# Multi-node coordination timeouts. Increase ready_timeout_seconds when first-time
+# model/data/container downloads are slow.
+ready_timeout_seconds: 21600
+shared_fs_timeout_seconds: 1800
+peer_completion_timeout_seconds: 3600
+# Optional CPU NUMA nodes and networking variables for your hardware.
+cpu_memory_nodes: ""
+runtime_env: {}
