@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import typer
 
+from nemotron.cli.kit.slurm.app import kit_slurm_app
 from nemotron.cli.kit.squash import squash
 
 # Create kit app
@@ -30,5 +31,8 @@ kit_app = typer.Typer(
     no_args_is_help=True,
 )
 
-# Register commands
-kit_app.command(name="squash")(squash)
+# Slurm-only cluster container operations: `kit slurm build` / `kit slurm squash`.
+kit_app.add_typer(kit_slurm_app, name="slurm")
+
+# Back-compat alias: `kit squash` still works (canonical home is `kit slurm squash`).
+kit_app.command(name="squash", hidden=True)(squash)

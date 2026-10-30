@@ -1,0 +1,262 @@
+"""Unit tests for embed recipe Pydantic config models.
+
+Tests validation constraints, defaults, and model validators without any I/O.
+"""
+
+from __future__ import annotations
+
+import importlib
+import json
+import os
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from pydantic import ValidationError
+
+from .conftest import STAGES, _import_config_class
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _all_config_classes():
+    """Return (id_string, ConfigClass) for each stage."""
+    return [(s["name"], _import_config_class(s)) for s in STAGES]
+
+
+ALL_CONFIGS = _all_config_classes()
+
+
+# ---------------------------------------------------------------------------
+# TestExtraForbid — extra="forbid" catches unknown fields
+# ---------------------------------------------------------------------------
+class TestExtraForbid:
+    @pytest.mark.parametrize("name,cls", ALL_CONFIGS, ids=[c[0] for c in ALL_CONFIGS])
+    def test_unknown_field_raises(self, name, cls):
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            cls(bogus_field="x")
+
+
+# ---------------------------------------------------------------------------
+# TestDefaults — all config classes constructible with no args
+# ---------------------------------------------------------------------------
+class TestDefaults:
+    # DataPrepConfig requires sdg_input_path or train_input_file
+    _REQUIRED_KWARGS = {
+        "prep": {"sdg_input_path": "/tmp/fake"},
+        "deploy": {"nim_image": "example.invalid/nim:test"},
+    }
+
+    @pytest.mark.parametrize("name,cls", ALL_CONFIGS, ids=[c[0] for c in ALL_CONFIGS])
+    def test_construct_with_defaults(self, name, cls):
+        kwargs = self._REQUIRED_KWARGS.get(name, {})
+        instance = cls(**kwargs)
+        assert instance is not None
+
+
+# ---------------------------------------------------------------------------
+# TestSDGConfigValidation
+# ---------------------------------------------------------------------------
+class TestSDGConfigValidation:
+    @pytest.fixture()
+    def SDGConfig(self):
+        mod = importlib.import_module("nemotron.recipes.embed.stage0_sdg.data_prep")
+        return mod.SDGConfig
+
+    def test_min_hops_exceeds_max_hops(self, SDGConfig):
+        with pytest.raises(ValidationError, match="min_hops"):
+            SDGConfig(min_hops=5, max_hops=2)
+
+    def test_min_complexity_out_of_range_low(self, SDGConfig):
+        with pytest.raises(ValidationError):
+            SDGConfig(min_complexity=0)
+
+    def test_min_complexity_out_of_range_high(self, SDGConfig):
+        with pytest.raises(ValidationError):
+            SDGConfig(min_complexity=6)
+
+    def test_zero_buffer_size(self, SDGConfig):
+        with pytest.raises(ValidationError):
+            SDGConfig(buffer_size=0)
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("batch_size", 64),
+            ("start_batch_index", 1),
+            ("end_batch_index", 2),
+        ],
+    )
+    def test_removed_manual_batch_fields_are_rejected(self, SDGConfig, field, value):
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            SDGConfig(**{field: value})
+
+
+# ---------------------------------------------------------------------------
+# TestDataPrepConfigValidation
+# ---------------------------------------------------------------------------
+class TestDataPrepConfigValidation:
+    @pytest.fixture()
+    def DataPrepConfig(self):
+        mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")
+        return mod.DataPrepConfig
+
+    def test_ratios_not_summing_to_one(self, DataPrepConfig):
+        with pytest.raises(ValidationError, match="1.0"):
+            DataPrepConfig(train_ratio=0.5, val_ratio=0.1, test_ratio=0.1)
+
+    def test_valid_ratios(self, DataPrepConfig):
+        cfg = DataPrepConfig(sdg_input_path="/tmp/fake", train_ratio=0.7, val_ratio=0.2, test_ratio=0.1)
+        assert abs(cfg.train_ratio + cfg.val_ratio + cfg.test_ratio - 1.0) < 1e-6
+
+    def test_group_split_requires_group_files(self, DataPrepConfig):
+        with pytest.raises(ValidationError, match="groups_json is required"):
+            DataPrepConfig(sdg_input_path="/tmp/fake", split_strategy="dedupped")
+
+    def test_quality_threshold_below_range(self, DataPrepConfig):
+        with pytest.raises(ValidationError):
+            DataPrepConfig(quality_threshold=-1)
+
+    def test_quality_threshold_above_range(self, DataPrepConfig):
+        with pytest.raises(ValidationError):
+            DataPrepConfig(quality_threshold=11)
+
+    def test_mining_uses_visible_gpu_count_default(self, DataPrepConfig, tmp_path, monkeypatch):
+        mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")
+        captured = {}
+        input_dir = tmp_path / "prepared" / "tiny-train"
+        output_dir = tmp_path / "smoke-mined"
+        input_dir.mkdir(parents=True)
+        output_dir.mkdir()
+        train_file = input_dir / "train.json"
+        train_file.write_text("{}")
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            output_index = cmd.index("--mining.train_file_output_path")
+            Path(cmd[output_index + 1]).write_text(
+                json.dumps({"corpus": {"path": "./corpus/"}, "data": [{"question": "retained"}]})
+            )
+            return SimpleNamespace(returncode=0, stderr="")
+
+        monkeypatch.setattr(mod.subprocess, "run", fake_run)
+
+        cfg = DataPrepConfig(
+            sdg_input_path="/tmp/fake",
+            output_dir=output_dir,
+            tokenizer_force_default=True,
+        )
+        output_file = mod.run_mining(cfg, train_file)
+
+        nproc_index = captured["cmd"].index("--nproc_per_node")
+        assert "--standalone" in captured["cmd"]
+        assert captured["cmd"][nproc_index + 1] == "gpu"
+        query_prefix_index = captured["cmd"].index("--mining.query_prefix")
+        assert captured["cmd"][query_prefix_index + 1] == "query: "
+        passage_prefix_index = captured["cmd"].index("--mining.passage_prefix")
+        assert captured["cmd"][passage_prefix_index + 1] == "passage: "
+        trust_index = captured["cmd"].index("--mining.trust_remote_code")
+        assert captured["cmd"][trust_index + 1] == "true"
+        tokenizer_index = captured["cmd"].index("--mining.tokenizer_force_default")
+        assert captured["cmd"][tokenizer_index + 1] == "true"
+        assert output_file == output_dir / "train_mined.automodel.json"
+        mined = json.loads(output_file.read_text())
+        assert mined["corpus"]["path"] == os.path.relpath(input_dir / "corpus", output_dir)
+        assert mined["data"] == [{"question": "retained"}]
+
+    @pytest.mark.parametrize("corpus_path", ["/data/corpus", "hf://org/dataset/corpus"])
+    def test_mining_preserves_nonrelative_corpus_reference(self, tmp_path, corpus_path):
+        mod = importlib.import_module("nemotron.recipes.embed.stage1_data_prep.data_prep")
+        train_file = tmp_path / "input" / "train.json"
+        output_file = tmp_path / "output" / "mined.json"
+        train_file.parent.mkdir()
+        output_file.parent.mkdir()
+        output_file.write_text(json.dumps({"corpus": {"path": corpus_path}, "data": [1]}))
+        original = output_file.read_bytes()
+
+        mod._rebase_mined_corpus_path(train_file, output_file)
+
+        assert output_file.read_bytes() == original
+
+
+# ---------------------------------------------------------------------------
+# TestFinetuneConfigValidation
+# ---------------------------------------------------------------------------
+class TestFinetuneConfigValidation:
+    @pytest.fixture()
+    def FinetuneConfig(self):
+        mod = importlib.import_module("nemotron.recipes.embed.stage2_finetune.train")
+        return mod.FinetuneConfig
+
+    def test_zero_epochs(self, FinetuneConfig):
+        with pytest.raises(ValidationError):
+            FinetuneConfig(num_epochs=0)
+
+    def test_negative_learning_rate(self, FinetuneConfig):
+        with pytest.raises(ValidationError):
+            FinetuneConfig(learning_rate=-1e-5)
+
+    def test_zero_temperature(self, FinetuneConfig):
+        with pytest.raises(ValidationError):
+            FinetuneConfig(temperature=0)
+
+
+# ---------------------------------------------------------------------------
+# TestExportConfigValidation
+# ---------------------------------------------------------------------------
+class TestExportConfigValidation:
+    @pytest.fixture()
+    def ExportConfig(self):
+        mod = importlib.import_module("nemotron.recipes.embed.stage4_export.export")
+        return mod.ExportConfig
+
+    def test_trt_batch_profile_order(self, ExportConfig):
+        with pytest.raises(ValidationError, match="trt_min_batch"):
+            ExportConfig(trt_min_batch=32, trt_opt_batch=16)
+
+    def test_trt_seq_len_profile_order(self, ExportConfig):
+        with pytest.raises(ValidationError, match="trt_opt_seq_len"):
+            ExportConfig(trt_opt_seq_len=512, trt_max_seq_len=256)
+
+    def test_invalid_quant_cfg(self, ExportConfig):
+        with pytest.raises(ValidationError):
+            ExportConfig(quant_cfg="bad")
+
+    def test_invalid_export_dtype(self, ExportConfig):
+        with pytest.raises(ValidationError):
+            ExportConfig(export_dtype="bf16")
+
+
+# ---------------------------------------------------------------------------
+# TestDeployConfigValidation
+# ---------------------------------------------------------------------------
+class TestDeployConfigValidation:
+    @pytest.fixture()
+    def DeployConfig(self):
+        mod = importlib.import_module("nemotron.recipes.embed.stage5_deploy.deploy")
+        return mod.DeployConfig
+
+    def test_port_zero(self, DeployConfig):
+        with pytest.raises(ValidationError):
+            DeployConfig(host_port=0)
+
+    def test_port_too_high(self, DeployConfig):
+        with pytest.raises(ValidationError):
+            DeployConfig(host_port=70000)
+
+
+@pytest.mark.parametrize(
+    "module_name,class_name",
+    [
+        ("nemotron.recipes.embed.stage1_data_prep.data_prep", "DataPrepConfig"),
+        ("nemotron.recipes.embed.stage3_eval.eval", "EvalConfig"),
+    ],
+)
+def test_mixed_view_is_explicit_stage_selection(module_name, class_name):
+    """Both public stages accept the additive view without accepting unknown views."""
+    cls = getattr(importlib.import_module(module_name), class_name)
+    cfg = cls(sdg_input_path="/tmp/fake", retrieval_view="mixed")
+    assert cfg.retrieval_view == "mixed"
+    with pytest.raises(ValidationError):
+        cls(sdg_input_path="/tmp/fake", retrieval_view="arbitrary-view")

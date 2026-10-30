@@ -44,11 +44,8 @@
 Uses NeMo-RL's GRPO algorithm for reinforcement learning training.
 This script is designed to run inside a container with NeMo-RL installed.
 
-CLI:
-    nemotron super3 rl              # local execution
-    nemotron super3 rl --run dgx    # submit to cluster
-
-Execution logic: src/nemotron/cli/commands/super3/rl.py
+This single-stage script has no CLI command; the RL stages run as
+``nemotron super3 rl {rlvr,swe1,swe2,rlhf}`` (see src/nemotron/cli/commands/super3/rl/).
 
 Direct usage:
     python /path/to/train.py --config /path/to/grpo_config.yaml

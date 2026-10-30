@@ -1,0 +1,22 @@
+──────────────────────────── sft/automodel — SFT Training (AutoModel) ────────────────────────────
+~/nemotron/src/nemotron/steps/sft/automodel
+
+Supervised fine-tuning with the AutoModel stack for HF-format models and JSONL
+datasets that already use OpenAI chat-format messages. Supports full SFT and
+LoRA-style adapter tuning from the same step.
+
+Consumes
+  • training_jsonl — Instruction data in JSONL with a messages field
+
+Produces
+  • checkpoint_hf — HuggingFace checkpoint directory (full model or adapter-style PEFT output)
+
+Parameters
+  • peft (default=null) — Use 'lora' for adapter tuning, or 'null' for full fine-tuning.
+
+Runspec
+  launcher: torchrun
+  image: -
+  resources: nodes=1 gpus_per_node=4
+  config dir: ~/nemotron/src/nemotron/steps/sft/automodel/config
+  default config: default

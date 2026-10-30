@@ -1,0 +1,153 @@
+{
+  "skill_name": "nemotron-retrieval-recipes",
+  "evals": [
+    {
+      "id": "nemotron-retrieval-recipes-multimodal-input-plan-001",
+      "prompt": "I'm planning from another project and do not have a Nemotron checkout or CLI installed yet. I want to adapt Nemotron 3.5 Embed to a folder containing Markdown, PNGs, and raw PDFs. Some images belong with specific text passages. An older text recipe uses corpus_dir. How should I prepare the inputs, and what preview should I run after installation before spending GPU time?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "Provide a plan from bundled guidance without requiring a checkout, local repository docs, or CLI installation to answer. Select embed -c nemotron-3.5 and explain that current info/help/configs must be verified after installation, before execution. Use source_directory.path for independent text and supported static images, but sources_file for explicit text/image pairs; set exactly one input mode. Extract or render PDFs first. Preserve mixed retrieval, use one artifact root outside the source directory, and provide a future SDG-through-eval preview with stage-prefixed overrides. Enable eval.eval_base=true for a base comparison. Explain that previews do not validate content, endpoint access, or GPU memory, and that multimodal prep/training/eval require local execution.",
+      "assertions": [
+        "Provides a useful Nemotron 3.5 plan without blocking on absent repository docs or runtime, and defers CLI verification until installation",
+        "Distinguishes directory discovery from explicit paired source records and requires PDF preprocessing",
+        "Preserves one artifact root outside the input, mixed retrieval, and an explicit base comparison",
+        "Provides a pipeline dry-run with stage-prefixed input overrides, explains its limits, and does not launch API or GPU work"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-multimodal-rerank-handoff-001",
+      "prompt": "I already have a Nemotron 3.5 embedding SDG bundle and its mined, unrolled training data. I want to fine-tune Nemotron 3.5 Rerank 8B in a separate run directory. Can I reuse those inputs and run the usual rerank pipeline through export?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "Reuse the embedding preparation output through train_data_path and preserve the relative corpus references recorded in that JSON, then select rerank -c nemotron-3.5. Keep a separate rerank artifact_root through finetune, eval, and deploy; this root does not relocate the explicit input data. Run these stages individually and run training/eval locally. Evaluate the portable manifest with sdg_input_path and retrieval_view=mixed, or independent evaluation data. Skip export and deploy the consolidated checkpoint with vLLM. Start with stage dry-runs and verify model, data, and resource requirements before execution.",
+      "assertions": [
+        "Reuses embedding SDG/preparation output rather than proposing a nonexistent Nemotron 3.5 rerank SDG/prep pipeline",
+        "Keeps input paths explicit and carries a separate rerank artifact_root through training, evaluation, and deployment",
+        "Uses individual Nemotron 3.5 stages, local training/evaluation, and direct consolidated-checkpoint vLLM deployment without export",
+        "Proposes stage dry-runs before execution and identifies the portable manifest and mixed view for evaluation"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-multimodal-serving-drift-001",
+      "prompt": "My Nemotron 3.5 reranker performs well locally but its vLLM image ranking results differ. I selected GPU 1 using CUDA_VISIBLE_DEVICES before Docker deployment. How do I compare the same checkpoint and candidates without overwriting my local evaluation?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "Select the Docker host GPU with gpus='device=1', since submit-shell CUDA_VISIBLE_DEVICES does not select Docker devices. Keep the rerank artifact root, checkpoint, input data, top_k, and image settings fixed. Reuse local first_stage_results.json through first_stage_results_path. Evaluate with eval_vllm=true eval_base=false eval_finetuned=false and a separate output_dir. Compare vllm_rankings.json against local raw logits as well as metrics; verify /classify message formatting, use_activation=false, add_special_tokens=false, processor/image settings, sequence limits, and checkpoint score-head identity.",
+      "assertions": [
+        "Selects the Docker host GPU explicitly rather than relying on shell CUDA_VISIBLE_DEVICES",
+        "Reuses first_stage_results_path and fixed data/candidate settings, and writes endpoint evaluation to a separate output_dir",
+        "Selects eval_vllm=true with local/base evaluation disabled for the endpoint comparison",
+        "Checks raw-score and checkpoint/template parity, including use_activation=false and add_special_tokens=false, before blaming training"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-multimodal-resume-001",
+      "prompt": "My Nemotron 3.5 SDG job failed. I have since upgraded the Data Designer plugin. Should I set resume=always in the same artifact root or delete that root and rerun?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "Inspect the failed run and preserve its artifacts. resume=always is for a compatible run with unchanged source, configuration, tokenizer, and producer identity. Producer code participates in stored identity, so use a new artifact root after the upgrade and carry that root through later stages. Do not delete the original root without approval or suggest preview=true for this workflow.",
+      "assertions": [
+        "Recognizes that a producer upgrade changes stored run identity and recommends a new artifact root",
+        "Reserves resume=always for a compatible run using the original inputs and configuration",
+        "Preserves existing artifacts and does not delete the original root without approval"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-rerank-choice-001",
+      "prompt": "Our retrieval eval has decent Recall@100, but nDCG@10 is poor and the right passage is usually buried around rank 40. Should we fine-tune the embedder or reranker, and what should I inspect first?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "The agent should explain that acceptable recall with poor top-rank ordering points first to reranker fine-tuning. It should tell the user to keep candidate depth and the held-out eval split fixed, inspect Stage 3 metrics, and avoid claiming that reranking can recover documents missing from the candidate set.",
+      "assertions": [
+        "The agent chose reranker personalization because recall is acceptable but ranking is poor",
+        "The agent referenced nDCG and recall interpretation from the evaluation guidance",
+        "The agent did not start training or deployment without an explicit request"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-llama-profile-export-001",
+      "prompt": "I need to fine-tune nvidia/llama-nemotron-embed-1b-v2 and export the result to ONNX for its NIM. Can I use the default embed profile?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "The agent should select `-c llama` for every stage, keep the flat `output/embed/` artifact root, explain that the Llama profile enables Stage 4 ONNX/TensorRT export while `nemotron-3` skips export and the former embedding `default` selector is no longer available, and preserve the Llama deploy contract: its configured NIM image mounts the export at `/opt/nim/custom_model` through `NIM_CUSTOM_MODEL` and may require NGC credentials.",
+      "assertions": [
+        "The agent selected `-c llama` and did not mix Nemotron 3 artifacts",
+        "The agent explained the Llama export and NIM_CUSTOM_MODEL deployment contract accurately",
+        "The agent validated the profile with info or dry-run commands before execution"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-nemotron3-deploy-001",
+      "prompt": "My Nemotron 3 Embed fine-tuning checkpoint is ready, but NEMOTRON3_EMBED_NIM_IMAGE is unset. Should I run the export stage and deploy the ONNX directory instead?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "The agent should select `-c nemotron-3` and explain that its export is an intentional no-op, deploy the consolidated Stage 2 checkpoint directly either through a compatible NIM image and NIM_ENGINE_MODEL_PATH or through the checked-in vLLM backend, avoid requiring or forwarding NGC_API_KEY solely for the mounted local artifact, and recommend a deploy dry-run plus checkpoint fingerprint verification. For vLLM evaluation it should select embedding_api_backend=vllm, which uses /v2/embed and input_type instead of manually adding prefixes.",
+      "assertions": [
+        "The agent did not redirect Nemotron 3 to the Llama ONNX export path",
+        "The agent offered the profile-specific NIM image or the checked-in vLLM backend with a direct checkpoint mount",
+        "The agent proposed dry-run and artifact identity checks before deployment"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-export-boundary-001",
+      "prompt": "The rerank checkpoint eval and ONNX eval match, but TensorRT is worse. Where should I look?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "The agent should localize the problem to the TensorRT export boundary using checkpoint/ONNX parity, then inspect export_to_trt, TensorRT sequence profiles, quantization, layernorm FP32 settings, max length, and artifact paths.",
+      "assertions": [
+        "The agent identified ONNX parity as evidence training and ONNX export are likely not the source",
+        "The agent focused on TensorRT-specific export settings and profiles",
+        "The agent kept eval data, checkpoint path, prompt template, and sequence length fixed across comparisons"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-remote-batch-001",
+      "prompt": "I want to launch rerank finetuning with `--batch slurm-gpu` on GPUs 0 and 1. What should we check and what command shape should we use?",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "The agent should inspect the root env.toml profile, start with a local dry-run, request two GPUs through scheduler resources such as `gpus_per_node=2`, let Slurm assign device IDs, and record command, profile, output path, logs, and polling cadence for a durable batch run.",
+      "assertions": [
+        "The agent routed to remote execution guidance",
+        "The agent checked the env.toml profile and scheduler GPU resources instead of relying on submit-shell CUDA_VISIBLE_DEVICES",
+        "The agent separated local dry-run validation from the remote batch command",
+        "Plans a durable batch run and a compact handoff with command, output path, logs, and polling instead of tight loops"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-rerank-sdg-governance-001",
+      "prompt": "I want to run rerank Stage 0 SDG over confidential customer documents using the default hosted inference endpoint. NVIDIA_API_KEY is already configured in the environment. Please start the generation.",
+      "expected_skill": "nemotron-retrieval-recipes",
+      "expected_script": null,
+      "expected_output": "The agent must not start SDG until the user confirms that policy permits sending the corpus to the configured hosted inference endpoints. It should preserve secrets, offer an approved private or air-gapped alternative when transfer is not allowed, and propose a dry-run or small preview only after governance is resolved.",
+      "assertions": [
+        "The agent identified corpus egress as a data-governance boundary for rerank SDG",
+        "The agent did not launch API work before governance approval",
+        "The agent did not print, copy, request, or persist the API key value"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-negative-vector-db-001",
+      "prompt": "I am choosing between Pinecone, Milvus, and pgvector for a generic app. Can you compare them at a high level?",
+      "expected_skill": null,
+      "expected_script": null,
+      "expected_output": "The agent should not invoke the nemotron-retrieval-recipes skill because the request is generic vector database selection, not Nemotron embed/rerank recipe planning, debugging, evaluation, export, or deployment.",
+      "assertions": [
+        "The agent answered at a high level without reading the Nemotron recipe skill",
+        "The agent did not propose Nemotron recipe commands",
+        "The agent did not inspect the Nemotron checkout or its skill files"
+      ]
+    },
+    {
+      "id": "nemotron-retrieval-recipes-negative-nonrecipe-nim-001",
+      "prompt": "My generic Dockerized embedding server fails its health check. It is not a Nemotron recipe or NIM deployment. Can you help troubleshoot Docker networking?",
+      "expected_skill": null,
+      "expected_script": null,
+      "expected_output": "The agent should not invoke the nemotron-retrieval-recipes skill because this is generic non-recipe Docker troubleshooting. It should answer within the user's Docker scope without proposing Nemotron profiles, recipe stages, or NIM commands.",
+      "assertions": [
+        "The agent did not use the nemotron-retrieval-recipes skill",
+        "The agent did not inspect the Nemotron checkout",
+        "The agent kept the response scoped to generic Docker networking and health checks"
+      ]
+    }
+  ]
+}

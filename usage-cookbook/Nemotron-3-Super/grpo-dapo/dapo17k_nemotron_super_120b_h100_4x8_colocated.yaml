@@ -1,0 +1,265 @@
+defaults: ../../grpo_math_1B_megatron.yaml
+
+grpo:
+  max_num_epochs: 1
+  max_num_steps: 2000
+
+  # Rollout shape
+  num_prompts_per_step: 32
+  num_generations_per_prompt: 16
+  max_rollout_turns: 1
+
+  # GRPO/DAPO basics
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  seed: 42
+
+  # Validation
+  val_at_start: true
+  val_period: 5
+  max_val_samples: 256
+  val_batch_size: 256
+
+  # ----- DAPO features -----
+  use_dynamic_sampling: true
+  batch_multiplier: 2
+  dynamic_sampling_max_gen_batches: 10
+
+  # Overlong reward shaping (penalize excessively long generations)
+  reward_shaping:
+    enabled: true
+    overlong_buffer_length: 512
+    overlong_buffer_penalty: 1.0
+    max_response_length: ${policy.max_total_sequence_length}
+
+  # Optional linear reward scaling (keeps reward magnitude stable)
+  reward_scaling:
+    enabled: true
+    source_min: 0.0
+    source_max: 1.0
+    target_min: -1.0
+    target_max: 1.0
+
+  # Run a final validation pass after the last training step
+  val_at_end: true
+
+  # Safety rails
+  overlong_filtering: false
+  seq_logprob_error_threshold: 2
+
+loss_fn:
+  # DAPO clip-higher: set max > min.
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: null
+
+  # Generally recommended for long-CoT RL
+  token_level_loss: true
+
+  # Keep it simple for getting started
+  reference_policy_kl_penalty: 0.0
+  reference_policy_kl_type: "k3"
+  kl_input_clamp_value: 20.0
+  kl_output_clamp_value: 10.0
+
+  use_on_policy_kl_approximation: false
+  truncated_importance_sampling_ratio: null
+  use_importance_sampling_correction: false
+  force_on_policy_ratio: false
+
+checkpointing:
+  enabled: true
+  checkpoint_dir: "/shared/checkpoints/dapo17k_nemotron_super_120b_h100_4x8_colocated-v2"
+  metric_name: "val:accuracy"
+  higher_is_better: true
+  keep_top_k: 3
+  save_period: 5
+  checkpoint_must_save_by: 00:01:55:00
+
+policy:
+  model_name: "/shared/models/NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16"
+  load_optimizer_from_checkpoint: false
+  tokenizer:
+    name: ${policy.model_name}
+    # Base Nemotron-Super checkpoints do not ship an instruction chat template.
+    # Math data is passed as a user message; add_generation_prompt=true appends the answer cue.
+    chat_template: "{% for message in messages %}{%- if message['role'] == 'system' %}{{ 'Context: ' + message['content'].strip() + '\n\n' }}{%- elif message['role'] == 'user' %}{{ 'Question: ' + message['content'].strip() }}{%- elif message['role'] == 'assistant' %}{{ ' ' + message['content'].strip() }}{%- endif %}{% endfor %}{% if add_generation_prompt %}{{ ' Answer:' }}{% endif %}"
+    chat_template_kwargs: null
+  hf_config_overrides: {}
+
+  # Keep batch sizes tied to rollout count (stable for GRPO)
+  train_global_batch_size: ${mul:${grpo.num_prompts_per_step}, ${grpo.num_generations_per_prompt}}
+  train_micro_batch_size: 1
+  logprob_batch_size: 1
+
+  # Long-context RL can be expensive; start smaller and scale up.
+  max_total_sequence_length: 1024
+  precision: "bfloat16"
+  logprob_chunk_size: 512
+
+  # For very large models, Megatron training is typically required.
+  megatron_cfg:
+    enabled: true
+    error_path: "/shared/logs/megatron_error.log"
+    # Colocated: aggressively free unused memory after each phase to make room for vLLM.
+    empty_unused_memory_level: 2
+    activation_checkpointing: true
+    tensor_model_parallel_size: 8
+    pipeline_model_parallel_size: 1
+    context_parallel_size: 4
+    expert_tensor_parallel_size: 1
+    expert_model_parallel_size: 32
+    pipeline_dtype: ${policy.precision}
+    sequence_parallel: true
+
+    apply_rope_fusion: true
+    defer_fp32_logits: true
+    bias_activation_fusion: false
+
+    # MoE routing: all keys are read directly (no defaults) by _apply_moe_config in setup.py.
+    moe_token_dispatcher_type: "alltoall"
+    moe_permute_fusion: true
+    # DeepEP is DeepSeek's custom expert-parallel kernel. Not used here (standard alltoall).
+    moe_enable_deepep: false
+    # Nemotron-Super has no shared expert (unlike some DeepSeek variants); disable overlap.
+    moe_shared_expert_overlap: false
+    # Router config
+    moe_router_dtype: "fp32"
+    moe_router_load_balancing_type: "none"
+    moe_router_enable_expert_bias: true
+    moe_router_bias_update_rate: 1.0e-3
+    freeze_moe_router: false       # Keep the router trainable during RL.
+    moe_aux_loss_coeff: 0.0
+    # Metrics
+    track_moe_metrics: true
+    moe_per_layer_logging: true
+
+    mtp_num_layers: 0
+    mtp_use_repeated_layer: true
+    mtp_loss_scaling_factor: 0.0
+    mtp_detach_heads: true
+
+    optimizer:
+      optimizer: "adam"
+      lr: 1.0e-6
+      min_lr: 1.0e-6
+      weight_decay: 0.0
+      bf16: true
+      fp16: false
+      params_dtype: "bfloat16"
+      adam_beta1: 0.9
+      adam_beta2: 0.999
+      adam_eps: 1e-8
+      use_distributed_optimizer: true
+      use_precision_aware_optimizer: true
+      clip_grad: ${policy.max_grad_norm}
+      optimizer_cpu_offload: true
+      optimizer_offload_fraction: 1.0
+
+    scheduler:
+      lr_decay_style: "constant"
+      lr_warmup_iters: 20
+      lr_warmup_init: 1.0e-7
+
+    distributed_data_parallel_config:
+      grad_reduce_in_fp32: false
+      overlap_grad_reduce: false
+      overlap_param_gather: false
+      use_custom_fsdp: false
+      data_parallel_sharding_strategy: "optim_grads_params"
+
+  # Disable the dtensor path for this getting-started config.
+  dtensor_cfg:
+    _v2: true
+    enabled: false
+
+  sequence_packing:
+    enabled: true
+    train_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.train_micro_batch_size}}
+    logprob_mb_tokens: ${mul:${policy.max_total_sequence_length}, ${policy.logprob_batch_size}}
+    algorithm: "modified_first_fit_decreasing"
+    sequence_length_round: 64
+
+  make_sequence_length_divisible_by: ${policy.megatron_cfg.tensor_model_parallel_size}
+  max_grad_norm: 1.0
+
+  generation:
+    backend: "vllm"
+    max_new_tokens: ${policy.max_total_sequence_length}
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    stop_token_ids: null
+    stop_strings: null
+    vllm_cfg:
+      async_engine: false
+      precision: ${policy.precision}
+      # Colocated: vLLM shares GPUs with Megatron.
+      # TP=8 (intra-node NVLink), EP=8
+      tensor_parallel_size: 8
+      pipeline_parallel_size: 1
+      expert_parallel_size: 8
+      gpu_memory_utilization: 0.5
+      max_model_len: ${policy.max_total_sequence_length}
+      enforce_eager: false
+      use_deep_gemm: false
+      # Required when vLLM and Megatron share the same tokenizer path; avoids double initialization.
+      skip_tokenizer_init: false
+      enable_vllm_metrics_logger: true
+      vllm_metrics_logger_interval: 0.5
+    vllm_kwargs:
+      # NemotronH (Mamba/SSM hybrid) needs float32 SSM state cache for numerical stability.
+      mamba_ssm_cache_dtype: "float32"
+    colocated:
+      enabled: true
+      resources:
+        # vLLM colocated across all 4 nodes (same GPU pool as Megatron)
+        gpus_per_node: 8
+        num_nodes: 4
+
+data:
+  max_input_seq_length: 1024
+  train:
+    dataset_name: DAPOMath17K
+    env_name: "math"
+    processor: "math_hf_data_processor"
+    prompt_file: null
+    system_prompt_file: null
+  validation:
+    dataset_name: DAPOMathAIME2024
+    env_name: "math"
+    processor: "math_hf_data_processor"
+    prompt_file: null
+    system_prompt_file: null
+  shuffle: true
+  num_workers: 0
+
+env:
+  # Math env verifier implementation. "dapo_math_verify" matches the DAPO dataset ground-truth formatting.
+  math:
+    num_workers: 16
+    math_verify_impl: "dapo_math_verify"
+  # Unused by this entrypoint, but kept for compatibility with other configs.
+  dapo:
+    num_workers: 16
+    math_verify_impl: "dapo_math_verify"
+
+logger:
+  log_dir: "logs"
+  num_val_samples_to_print: 10
+  wandb_enabled: true # Set to true to enable Weights & Biases logging.
+  tensorboard_enabled: false
+  mlflow_enabled: false
+  swanlab_enabled: false
+  monitor_gpus: false
+  wandb:
+    entity: nv-default-onboard
+    project: "superv3-dapo-h100-colocated"
+    name: "dapo17k-nemotron-super-120b-h100-4x8-colocated"
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+
+cluster:
+  gpus_per_node: 8
+  num_nodes: 4

@@ -23,7 +23,12 @@ Design: LLM-Native Recipe Architecture
 
 from __future__ import annotations
 
-from nemotron.cli.commands.super3.data import data_app
+try:
+    from nemotron.cli.commands.super3.data import data_app
+
+    _has_data_app = True
+except ModuleNotFoundError:
+    _has_data_app = False
 from nemotron.cli.commands.super3.eval import META as EVAL_META
 from nemotron.cli.commands.super3.eval import eval as eval_cmd
 from nemotron.cli.commands.super3.model import model_app
@@ -40,8 +45,9 @@ super3_app = RecipeTyper(
     rich_markup_mode="rich",
 )
 
-# Register data subgroup
-super3_app.add_typer(data_app, name="data")
+# Register data subgroup (may not exist yet)
+if _has_data_app:
+    super3_app.add_typer(data_app, name="data")
 
 # Register model subgroup
 super3_app.add_typer(model_app, name="model")

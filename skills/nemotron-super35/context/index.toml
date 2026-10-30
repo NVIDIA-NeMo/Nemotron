@@ -1,0 +1,185 @@
+version = 1
+model = "nemotron-super35"
+default_entry = "quick-reference"
+
+[[entries]]
+id = "quick-reference"
+topic = "overview"
+file = "quick-reference.md"
+kind = "compact"
+description = "Compact reference for identity, architecture, pretraining, SFT, RL/MOPD, MTP boosting, evaluation, quantization, inference, and best next files."
+
+[[entries]]
+id = "skill"
+topic = "routing"
+file = "../SKILL.md"
+kind = "compact"
+description = "Reference-desk instructions, source priority, routing table, caveats, and handoff boundaries for Nemotron 3.5 Super."
+
+[[entries]]
+id = "model-card"
+topic = "identity"
+file = "../model-card.md"
+kind = "release"
+description = "Release identity, checkpoints, NVFP4 deployment, intended use, open data, and caveats."
+
+[[entries]]
+id = "paper-overview"
+topic = "overview"
+file = "../paper/_overview.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Overview: Abstract, Introduction, Released Checkpoints, Conclusion"
+
+[[entries]]
+id = "paper-architecture"
+topic = "architecture"
+file = "../paper/architecture.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Architecture: Inherited Hybrid Mamba-Transformer LatentMoE, Recursive Shared MTP Head, Vision Stack"
+
+[[entries]]
+id = "paper-pretraining"
+topic = "pretraining"
+file = "../paper/pretraining.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Pretraining: MTP Warm-up, 1T-Token Distillation from Ultra 3, 1M Context, Agentic Mid-training, LC Recovery"
+
+[[entries]]
+id = "paper-data"
+topic = "data"
+file = "../paper/data.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Pretraining Data: Nemotron-Pretraining-Indic-v1, Indic CPT Mixture, Agentic Mid-training Blend"
+
+[[entries]]
+id = "paper-sft"
+topic = "sft"
+file = "../paper/sft.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Post-Training: Stage Order and Two-Stage Vision-Language SFT"
+
+[[entries]]
+id = "paper-rl-overview"
+topic = "post-training"
+file = "../paper/rl/overview.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Post-Training Pipeline Overview: RLVR, Specialist Teachers, Two-Stage MOPD, MTP Boosting"
+
+[[entries]]
+id = "paper-rl-rlvr"
+topic = "rlvr"
+file = "../paper/rl/rlvr.md"
+kind = "paper"
+description = "Nemotron 3.5 Super RL Trunk: Joint RLVR + RLHF, New Environments, and Hyperparameters"
+
+[[entries]]
+id = "paper-rl-teachers"
+topic = "teachers"
+file = "../paper/rl/teachers.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Specialist Teachers: Agentic, Reasoning, Video, Vision Tool Use, Vision Reasoning, Alignment"
+
+[[entries]]
+id = "paper-rl-mopd"
+topic = "mopd"
+file = "../paper/rl/mopd.md"
+kind = "paper"
+description = "Nemotron 3.5 Super MOPD: Two-Stage Multi-Teacher On-Policy Distillation with Self-Anchor and Proximal Teacher"
+
+[[entries]]
+id = "paper-rl-mtp-boosting"
+topic = "mtp"
+file = "../paper/rl/mtp-boosting.md"
+kind = "paper"
+description = "Nemotron 3.5 Super MTP Boosting: Head-Only LK-Loss Distillation, Hidden-State Mixing, and Acceptance Lengths"
+
+[[entries]]
+id = "paper-safety"
+topic = "safety"
+file = "../paper/safety.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Safety and Alignment: What the Report Says and What It Does Not"
+
+[[entries]]
+id = "paper-evaluation"
+topic = "evaluation"
+file = "../paper/evaluation.md"
+kind = "paper"
+description = "Base-model and Post-trained Evaluations: Table 6, Table 10, Text Arena, Reasoning Control, Harnesses, Test-time Scaling"
+
+[[entries]]
+id = "paper-decontamination"
+topic = "evaluation"
+file = "../paper/decontamination.md"
+kind = "paper"
+description = "Benchmark Decontamination of Post-training Data: n-gram + Embedding Retrieval, LLM-Judge Verification"
+
+[[entries]]
+id = "paper-long-translation"
+topic = "evaluation"
+file = "../paper/long-translation.md"
+kind = "paper"
+description = "Long-Document Translation: PG19 / FinePDFs-Edu SFT Data and PG19 Book-level Evaluation (Figure 12)"
+
+[[entries]]
+id = "paper-quantization"
+topic = "quantization"
+file = "../paper/quantization.md"
+kind = "paper"
+description = "Nemotron 3.5 Super VL Quantization: aggressive NVFP4 recipe, MSE PTQ, AutoQuant, 200-iteration QAD, KV cache, MTP, W4A4/W4A16"
+
+[[entries]]
+id = "paper-quantization-ablations"
+topic = "quantization"
+file = "../paper/quantization-ablations.md"
+kind = "paper"
+description = "Nemotron 3.5 Super VL Quantization Ablations: runaway loops, FP4 stop-vs-continue margin, attention-score dilution, Mamba out-proj, unembedding"
+
+[[entries]]
+id = "paper-inference"
+topic = "inference"
+file = "../paper/inference.md"
+kind = "paper"
+description = "Nemotron 3.5 Super Inference: 20-turn proxy workload, NVFP4 vs BF16, cross-platform throughput vs Qwen, prefix reuse with MTP, ReplaySSM, Mamba checkpoints, disaggregated serving on Vera Rubin"
+
+[[entries]]
+id = "recipes-overview"
+topic = "recipes"
+file = "../recipes/overview.md"
+kind = "tracking"
+description = "How the paper maps to the nemotron super35 recipes: stage map, CLI, artifact chain, reproduction gaps."
+
+[[entries]]
+id = "recipes-stage2-rl"
+topic = "recipes"
+file = "../recipes/stage2_rl.md"
+kind = "tracking"
+description = "RL recipes: lineage, selected steps, key config values, runner behaviour, and gaps."
+
+[[entries]]
+id = "recipes-stage0-pretrain"
+topic = "recipes"
+file = "../recipes/stage0_pretrain.md"
+kind = "tracking"
+description = "Stage 0: Megatron-Bridge vision-language image-caption pretraining; why it is not the paper's text pretraining."
+
+[[entries]]
+id = "recipes-stage1-sft"
+topic = "recipes"
+file = "../recipes/stage1_sft.md"
+kind = "tracking"
+description = "Stage 1: two-stage VL SFT, PEFT and long-context configs vs the paper's production settings."
+
+[[entries]]
+id = "recipes-stage3-eval"
+topic = "recipes"
+file = "../recipes/stage3_eval.md"
+kind = "tracking"
+description = "Stage 3: NeMo Evaluator subset of Table 10 and why scores will not match exactly."
+
+[[entries]]
+id = "customize-handoff"
+topic = "build"
+file = "quick-reference.md"
+kind = "compact"
+description = "Maps Super 3.5 stages to nemotron-customize steps or Explorer-mode fallbacks (no catalog step lists Super 3.5 VL yet)."

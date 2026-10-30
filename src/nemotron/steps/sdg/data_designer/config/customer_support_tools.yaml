@@ -1,0 +1,186 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Multi-turn customer-support SFT data with OpenAI-style tool calls.
+#
+# Output records are training-ready JSONL:
+#   {"messages": [...], "tools": [...], ...metadata}
+#
+# Each generated conversation includes one assistant tool call, one matching
+# tool response, and a final assistant answer grounded in that tool result.
+
+output_dir: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/sdg}
+output_path: ${output_dir}/customer_support_tool_sft.jsonl
+num_records: 100
+
+seed_dataset:
+  path: ${oc.env:PWD}/src/nemotron/steps/sdg/data_designer/data/customer_support_tool_seeds.jsonl
+  strategy: shuffle
+  fields: [customer_name, issue, order_id, product, policy_hint]
+
+# Optional custom endpoint example:
+#
+# To route this pipeline through an OpenAI-compatible endpoint instead of the
+# built-in NVIDIA provider, uncomment and edit both blocks below.
+# Keep providers[].api_key as the environment variable name. Data Designer
+# resolves it at request time; using `${oc.env:OPENAI_API_KEY}` here would put
+# the secret into the resolved config.
+#
+# providers:
+#   - name: my-provider
+#     endpoint: ${oc.env:OPENAI_BASE_URL}
+#     provider_type: openai
+#     api_key: OPENAI_API_KEY
+#
+# models:
+#   - alias: nvidia-text
+#     model: google/gemma-4-31B-it
+#     provider: my-provider
+#     skip_health_check: true
+#     inference_parameters:
+#       temperature: 0.75
+#       top_p: 0.95
+#       max_tokens: 1800
+
+models:
+  - alias: nvidia-text
+    model: openai/gpt-oss-20b
+    provider: nvidia
+    skip_health_check: false
+    inference_parameters:
+      temperature: 0.75
+      top_p: 0.95
+      max_tokens: 1800
+
+columns:
+  - name: urgency
+    type: category
+    values: [calm, frustrated, rushed, confused]
+
+  - name: channel
+    type: category
+    values: [web_chat, mobile_app, email_followup]
+
+  - name: conversation
+    # Keep this as text instead of llm_structured: Designer writes intermediate
+    # batches to parquet before this step can project records, and complex
+    # nested objects can produce mixed object schemas across rows.
+    type: llm_text
+    model_alias: nvidia-text
+    prompt: |
+      Generate one realistic multi-turn ecommerce customer-support chat for SFT.
+
+      Seed facts:
+      - customer_name: {{ customer_name }}
+      - customer_issue: {{ issue }}
+      - order_id: {{ order_id }}
+      - product: {{ product }}
+      - policy_hint: {{ policy_hint }}
+      - customer_tone: {{ urgency }}
+      - channel: {{ channel }}
+
+      Requirements:
+      - Return ONLY a JSON object. The first character MUST be `{`, the last MUST be `}`.
+      - No prose, no preamble, no apology, no commentary, no markdown fences (no ```).
+      - Top-level keys MUST be exactly "tools" and "messages".
+      - Produce 6 to 10 messages in OpenAI chat format.
+      - Include a brief system message that defines the support-agent behavior.
+      - The user should speak naturally and provide imperfect information at first.
+      - The assistant should ask at least one clarifying question before using a tool.
+      - Include exactly one assistant message with tool_calls.
+      - Include exactly one tool message that has the matching tool_call_id.
+      - The assistant's final answer must use the tool result and the policy_hint.
+      - Do not include markdown in message content.
+      - In the generated JSON object, function arguments must be JSON objects, not escaped JSON strings.
+      - In the generated JSON object, tool message content must be a JSON object, not an escaped JSON string.
+
+      Available tool functions:
+      - lookup_order(order_id: string)
+      - check_refund_eligibility(order_id: string, reason: string)
+      - update_shipping_address(order_id: string, new_address: string)
+      - verify_warranty(order_id: string, product: string)
+      - get_subscription_status(order_id: string)
+
+      Example assistant tool-call message shape:
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_lookup_001",
+            "type": "function",
+            "function": {
+              "name": "lookup_order",
+              "arguments": {"order_id": "ORD-10492"}
+            }
+          }
+        ]
+      }
+
+      Example tool message shape:
+      {
+        "role": "tool",
+        "tool_call_id": "call_lookup_001",
+        "name": "lookup_order",
+        "content": {"status": "delayed", "eta": "tomorrow"}
+      }
+      Schema:
+      {
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "lookup_order",
+              "description": "Look up an order by ID.",
+              "parameters": {
+                "type": "object",
+                "properties": {"order_id": {"type": "string"}},
+                "required": ["order_id"]
+              }
+            }
+          }
+        ],
+        "messages": [
+          {"role": "system", "content": "You are a helpful support agent."},
+          {"role": "user", "content": "User message"},
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_lookup_001",
+                "type": "function",
+                "function": {
+                  "name": "lookup_order",
+                  "arguments": {"order_id": "ORD-10492"}
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_lookup_001",
+            "name": "lookup_order",
+            "content": {"status": "delayed", "eta": "tomorrow"}
+          },
+          {"role": "assistant", "content": "Final grounded answer"}
+        ]
+      }
+
+output_projection:
+  type: structured_messages
+  source_field: conversation
+  messages_field: messages
+  tools_field: tools
+  metadata_fields: [customer_name, issue, order_id, product, urgency, channel]

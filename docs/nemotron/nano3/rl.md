@@ -2,7 +2,7 @@
 
 This stage aligns the instruction-tuned model using GRPO (Group Relative Policy Optimization) with [NeMo-RL](../nvidia-stack.md#nemo-rl).
 
-> **Open-Source Data Only**: This recipe uses exclusively open-sourced RL data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) collection, which is a subset of the full data used to train the released model. The recipe uses the [Nemotron-3-Nano-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend) dataset. Results will differ from the benchmarks in the [tech report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf). Use this recipe as a reference implementation to apply the methodology with your own data.
+> **Open-Source Data Only**: This recipe uses exclusively open-sourced RL data from the [Nemotron Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-datasets) collection, which is a subset of the full data used to train the released model. The recipe uses the [Nemotron-3-Nano-RL-Training-Blend](https://huggingface.co/datasets/nvidia/Nemotron-3-Nano-RL-Training-Blend) dataset. Results will differ from the benchmarks in the [tech report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf). Use this recipe as a reference implementation to apply the methodology with your own data.
 
 ---
 
@@ -216,7 +216,7 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 ### Running in NeMo-RL Repository
 
-For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/nightly/guides/nemotron-3-nano.html):
+For direct execution using NeMo-RL (without the nemotron CLI wrapper), follow the [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html):
 
 **1. Download and prepare the dataset:**
 
@@ -498,7 +498,7 @@ After RL completes, proceed to [Stage 3: Evaluation](./evaluate.md) to benchmark
 
 - [Tech Report Section 3.2](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf) – RL methodology
 - [NeMo-RL Documentation](https://docs.nvidia.com/nemo/rl/latest/) – GRPO, DPO, environments
-- [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/nightly/guides/nemotron-3-nano.html) — upstream training guide
+- [NeMo-RL Nemotron 3 Nano Guide](https://docs.nvidia.com/nemo/rl/latest/guides/nemotron-3-nano.html) — upstream training guide
 - [NVIDIA AI Stack](../nvidia-stack.md) – NeMo-RL, Megatron-Core
 - [Artifact Lineage](../artifacts.md) – W&B artifact system
 - [Stage 0: Pretraining](./pretrain.md) – pretrain the base model

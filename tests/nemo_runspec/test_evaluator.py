@@ -25,7 +25,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from omegaconf import DictConfig, OmegaConf
 
 from nemo_runspec.config import apply_dotlist_overrides, load_config
@@ -48,6 +47,7 @@ NANO3_EVAL_CONFIG = REPO_ROOT / "src/nemotron/recipes/nano3/stage3_eval/config/d
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _compile_eval_config(config_path: Path, dotlist: list[str] | None = None) -> dict:
     """Simulate the evaluator compile pipeline: load -> merge -> strip run -> resolve.
@@ -78,6 +78,7 @@ def _compile_eval_config(config_path: Path, dotlist: list[str] | None = None) ->
 # ===========================================================================
 # Config Compile Tests
 # ===========================================================================
+
 
 class TestEvaluatorConfigCompile:
     """Test the evaluator config compile pipeline."""
@@ -172,6 +173,7 @@ class TestEvaluatorConfigCompile:
 # Pure Function Tests
 # ===========================================================================
 
+
 class TestParseTaskFlags:
     """Tests for parse_task_flags."""
 
@@ -214,9 +216,7 @@ class TestNeedsWandb:
     """Tests for needs_wandb."""
 
     def test_auto_export_wandb(self):
-        cfg = OmegaConf.create(
-            {"execution": {"auto_export": {"destinations": ["wandb"]}}}
-        )
+        cfg = OmegaConf.create({"execution": {"auto_export": {"destinations": ["wandb"]}}})
         assert needs_wandb(cfg) is True
 
     def test_export_wandb_section(self):
@@ -235,22 +235,35 @@ class TestNeedsWandb:
 class TestInjectWandbEnvMappings:
     """Tests for inject_wandb_env_mappings."""
 
-    def test_injects_evaluation_env_vars(self):
+    def test_injects_evaluation_env_vars(self, monkeypatch):
+        for k in ("WANDB_API_KEY", "WANDB_PROJECT", "WANDB_ENTITY"):
+            monkeypatch.setenv(k, "set-on-host")
         cfg = OmegaConf.create({"evaluation": {}, "execution": {}})
         inject_wandb_env_mappings(cfg)
-        assert cfg.evaluation.env_vars.WANDB_API_KEY == "WANDB_API_KEY"
-        assert cfg.evaluation.env_vars.WANDB_PROJECT == "WANDB_PROJECT"
-        assert cfg.evaluation.env_vars.WANDB_ENTITY == "WANDB_ENTITY"
+        # 0.2.x requires an explicit source prefix; a bare name fails validation
+        assert cfg.evaluation.env_vars.WANDB_API_KEY == "host:WANDB_API_KEY"
+        assert cfg.evaluation.env_vars.WANDB_PROJECT == "host:WANDB_PROJECT"
+        assert cfg.evaluation.env_vars.WANDB_ENTITY == "host:WANDB_ENTITY"
 
-    def test_injects_export_env_vars(self):
+    def test_injects_export_env_vars_top_level(self, monkeypatch):
+        """The supported launcher range rejects execution.env_vars; export vars
+        go at the top level.
+
+        Regression test: emitting execution.env_vars made every model_eval run
+        with W&B export die in the launcher's config validation before any job
+        was submitted.
+        """
+        for k in ("WANDB_API_KEY", "WANDB_PROJECT", "WANDB_ENTITY"):
+            monkeypatch.setenv(k, "set-on-host")
         cfg = OmegaConf.create({"evaluation": {}, "execution": {}})
         inject_wandb_env_mappings(cfg)
-        assert cfg.execution.env_vars.export.WANDB_API_KEY == "WANDB_API_KEY"
+        assert cfg.env_vars.WANDB_API_KEY == "host:WANDB_API_KEY"
+        assert cfg.env_vars.WANDB_PROJECT == "host:WANDB_PROJECT"
+        assert cfg.env_vars.WANDB_ENTITY == "host:WANDB_ENTITY"
+        assert "env_vars" not in cfg.execution
 
     def test_does_not_overwrite_existing(self):
-        cfg = OmegaConf.create(
-            {"evaluation": {"env_vars": {"WANDB_API_KEY": "CUSTOM"}}, "execution": {}}
-        )
+        cfg = OmegaConf.create({"evaluation": {"env_vars": {"WANDB_API_KEY": "CUSTOM"}}, "execution": {}})
         inject_wandb_env_mappings(cfg)
         assert cfg.evaluation.env_vars.WANDB_API_KEY == "CUSTOM"
 
@@ -278,3 +291,16 @@ class TestCollectEvaluatorImages:
         cfg = OmegaConf.create({})
         images = collect_evaluator_images(cfg)
         assert images == []
+
+    def test_optional_wandb_vars_absent_on_host_are_not_injected(self, monkeypatch):
+        """A `host:VAR` reference makes VAR mandatory -- the launcher raises if it
+        is unset. Injecting optional keys unconditionally turned an optional
+        setting into a hard failure for anyone who had not exported them."""
+        monkeypatch.setenv("WANDB_API_KEY", "set-on-host")
+        monkeypatch.delenv("WANDB_PROJECT", raising=False)
+        monkeypatch.delenv("WANDB_ENTITY", raising=False)
+        cfg = OmegaConf.create({"evaluation": {}, "execution": {}})
+        inject_wandb_env_mappings(cfg)
+        assert cfg.evaluation.env_vars.WANDB_API_KEY == "host:WANDB_API_KEY"
+        assert "WANDB_PROJECT" not in cfg.evaluation.env_vars
+        assert "WANDB_ENTITY" not in cfg.evaluation.env_vars

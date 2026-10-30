@@ -17,6 +17,7 @@
 This package provides:
 - Config loading pipeline (YAML, dotlist overrides, env profile merging)
 - OmegaConf custom resolvers for artifact and git-mount resolution
+- Pydantic-based config loading for type-safe recipe settings
 """
 
 # Config loading and merging
@@ -31,6 +32,15 @@ from nemo_runspec.config.loader import (
     save_configs,
 )
 
+# Pydantic-based config loading (type-safe alternative to OmegaConf loader)
+from nemo_runspec.config.pydantic_loader import (
+    RecipeSettings,
+    parse_config_and_overrides,
+)
+from nemo_runspec.config.pydantic_loader import (
+    load_config as load_pydantic_config,
+)
+
 # OmegaConf resolvers
 from nemo_runspec.config.resolvers import (
     ResolverMode,
@@ -38,6 +48,7 @@ from nemo_runspec.config.resolvers import (
     clear_git_mounts,
     get_git_mounts,
     register_auto_mount_resolver,
+    register_manifest_resolver,
     register_resolvers,
     register_resolvers_from_config,
     resolve_artifact_pre_init,
@@ -53,11 +64,16 @@ __all__ = [
     "extract_train_config",
     "generate_job_dir",
     "save_configs",
+    # Pydantic loader
+    "RecipeSettings",
+    "load_pydantic_config",
+    "parse_config_and_overrides",
     # Resolvers
     "ResolverMode",
     "register_resolvers",
     "register_resolvers_from_config",
     "register_auto_mount_resolver",
+    "register_manifest_resolver",
     "resolve_artifact_pre_init",
     "clear_artifact_cache",
     "get_git_mounts",

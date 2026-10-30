@@ -1,0 +1,18 @@
+{
+  "TAT-DQA": {
+    "repo_id": "next-tat/TAT-DQA",
+    "revision": "bc46208b22f0bfe47152c98fd0938d238ce868c2",
+    "license": "CC-BY-4.0",
+    "local_dir": "data/sources/tat-dqa"
+  },
+  "BizBench": {
+    "repo_id": "kensho/bizbench",
+    "revision": "0a793f2f886156902c72b4a22cab82bb9dceaecf",
+    "license": "Apache-2.0",
+    "included_tasks": [
+      "CodeFinQA",
+      "CodeTAT-QA"
+    ],
+    "local_dir": "data/sources/bizbench"
+  }
+}

@@ -1,0 +1,51 @@
+# Tiny hosted chat endpoint smoke-test config.
+#
+# Export endpoint settings before running:
+#   export NEMO_EVALUATOR_MODEL_ID=<exact model id>
+#   export NEMO_EVALUATOR_MODEL_URL=<OpenAI-compatible chat completions endpoint URL>
+#   export NEMO_EVALUATOR_API_KEY_NAME=NVIDIA_API_KEY
+#   export NEMO_EVALUATOR_ENDPOINT_TYPE=chat
+
+dry_run: false
+output_dir: ./results-tiny-chat
+task_filters: null
+
+execution:
+  type: local
+  mode: sequential
+  output_dir: ${output_dir}
+
+deployment:
+  type: none
+
+target:
+  api_endpoint:
+    model_id: ${oc.env:NEMO_EVALUATOR_MODEL_ID,''}
+    url: ${oc.env:NEMO_EVALUATOR_MODEL_URL,''}
+    api_key_name: ${oc.env:NEMO_EVALUATOR_API_KEY_NAME,NVIDIA_API_KEY}
+    type: ${oc.env:NEMO_EVALUATOR_ENDPOINT_TYPE,chat}
+
+evaluation:
+  nemo_evaluator_config:
+    config:
+      params:
+        temperature: 0.0
+        top_p: 1.0
+        max_new_tokens: 1024
+        max_retries: 5
+        parallelism: 1
+        request_timeout: 3600
+        limit_samples: 1
+    target:
+      api_endpoint:
+        adapter_config:
+          output_dir: /results
+          use_progress_tracking: false
+          use_caching: true
+          caching_dir: /results/cache
+          use_response_logging: true
+          max_logged_responses: 5
+          use_request_logging: true
+          max_logged_requests: 5
+  tasks:
+    - name: mmlu_instruct

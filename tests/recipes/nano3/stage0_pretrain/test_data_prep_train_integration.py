@@ -33,8 +33,8 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from nemotron.data_prep.filesystem import get_filesystem
-from nemotron.data_prep.pipeline import _distribute_shards_to_splits
+from nemotron.data_prep.utils.filesystem import get_filesystem
+from nemotron.data_prep.utils.splits import distribute_shards_to_splits
 from nemotron.kit import PretrainBlendsArtifact
 
 
@@ -42,10 +42,10 @@ class TestNano3DataPrepTrainIntegration:
     """Test integration between data_prep.py output and train.py consumption."""
 
     def test_distribute_shards_produces_valid_per_split_format(self):
-        """Test _distribute_shards_to_splits produces correct format."""
+        """Test distribute_shards_to_splits produces correct format."""
         data_paths = ["1.0", "/path/to/shard", "0.5", "/path/to/other"]
 
-        result = _distribute_shards_to_splits(
+        result = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=4,
             valid_shards=1,
@@ -69,7 +69,7 @@ class TestNano3DataPrepTrainIntegration:
         """Test that valid_shards and test_shards control split sizes."""
         data_paths = ["1.0", "/path/to/shard"]
 
-        result = _distribute_shards_to_splits(
+        result = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=10,
             valid_shards=2,
@@ -174,7 +174,7 @@ class TestNano3DataPrepTrainIntegration:
         """Test that shard paths follow the expected naming convention."""
         data_paths = ["1.0", "/output/shard"]
 
-        result = _distribute_shards_to_splits(
+        result = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=10,
             valid_shards=1,
@@ -194,7 +194,7 @@ class TestNano3DataPrepTrainIntegration:
         """Test that shard distribution is deterministic with same seed."""
         data_paths = ["1.0", "/path/to/shard"]
 
-        result1 = _distribute_shards_to_splits(
+        result1 = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=10,
             valid_shards=2,
@@ -202,7 +202,7 @@ class TestNano3DataPrepTrainIntegration:
             seed=42,
         )
 
-        result2 = _distribute_shards_to_splits(
+        result2 = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=10,
             valid_shards=2,
@@ -216,7 +216,7 @@ class TestNano3DataPrepTrainIntegration:
         """Test that different seeds produce different distributions."""
         data_paths = ["1.0", "/path/to/shard"]
 
-        result1 = _distribute_shards_to_splits(
+        result1 = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=10,
             valid_shards=2,
@@ -224,7 +224,7 @@ class TestNano3DataPrepTrainIntegration:
             seed=42,
         )
 
-        result2 = _distribute_shards_to_splits(
+        result2 = distribute_shards_to_splits(
             data_paths=data_paths,
             num_shards=10,
             valid_shards=2,
@@ -249,7 +249,7 @@ class TestWandbArtifactIntegration:
 
         This is the key integration test for the data_prep -> train contract.
         """
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -341,7 +341,7 @@ class TestWandbArtifactIntegration:
 
     def test_artifact_without_blend_json_should_fail_gracefully(self, monkeypatch, tmp_path):
         """Test that missing blend.json is detected early with clear error."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -387,7 +387,7 @@ class TestWandbArtifactIntegration:
 
     def test_wandb_artifact_resolution_for_train(self, monkeypatch, tmp_path):
         """Test ${art:data,path} resolver works with train.py config pattern."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 

@@ -1,0 +1,30 @@
+# BF16 serving configuration. New checkpoint/GB200 runtime still requires validation.
+version: 2
+runtime:
+  image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.5.0
+  container_name: nemotron-finance-dynamo
+  frontend_port: 8002
+  system_port: 8081
+  discovery_backend: file
+  request_plane: tcp
+  tensor_parallel_size: 4
+  max_model_len: 8192
+  gpu_memory_utilization: 0.88
+  max_lora_rank: 64
+  max_loras: 3
+base_model:
+  id: nvidia/Nemotron-3.5-Super-VL-120B-A12B-GA-candidate-MTP-boosted-20261001
+  revision: 37ba16a44ba0679f0ab286de726d03adef6d5fd3
+  snapshot: artifacts/model-bf16
+  quantization: null
+  dtype: bfloat16
+routes:
+  visual_ocr:
+    model: finance-visual-ocr
+    adapter: checkpoints/finance_visual_ocr_lora_bf16_20261001/LOWEST_VAL/model
+  reasoning:
+    model: finance-reasoning
+    adapter: checkpoints/finance_reasoning_lora_bf16_20261001/LOWEST_VAL/model
+  code_generation:
+    model: finance-code-generation
+    adapter: checkpoints/finance_code_generation_lora_bf16_20261001/LOWEST_VAL/model

@@ -1,0 +1,118 @@
+recipe: TrainFinetuneRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 2
+  ckpt_every_steps: 1000
+  val_every_steps: 1000  # Runs every N gradient steps.
+  max_steps: 100
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 1
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+  # MTP is auto-enabled from the checkpoint config's num_nextn_predict_layers
+  # and mtp_layers_block_type fields (one MTP depth = attention sublayer then
+  # MoE sublayer). The overrides below configure 2 weight-tied MTP iterations
+  # (predicting t+2 and t+3) that reuse the checkpoint's single physical MTP
+  # layer; the HF export only retains the physical depth count, so the
+  # iteration count must be set explicitly.
+  num_nextn_predict_layers: 2
+  mtp_use_repeated_layer: true
+  mtp_loss_scaling_factor: 0.1
+  backend:
+    _target_: nemo_automodel.components.models.common.BackendConfig
+    attn: te
+    linear: torch
+    rms_norm: torch_fp32
+    experts: torch_mm
+    dispatcher: torch
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: /shared/lora/checkpoints/
+  model_save_format: safetensors
+  save_consolidated: final
+
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  # Mamba layers pass out_proj.weight directly to custom kernels, so LoRA
+  # cannot wrap that projection.
+  exclude_modules: ["*.out_proj"]
+  dim: 8
+  alpha: 32
+  use_triton: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  ep_size: 1
+  sequence_parallel: false
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.agent_chat.make_agent_chat_dataset
+  path: /shared/lora/data/train.jsonl
+  truncation: true
+  truncate_history: true
+  drop_history_reasoning_content: true
+  seq_length: 32768
+
+  # false trains the model on the supplied reasoning traces.
+  # Set true to render reasoning but exclude it from loss.
+  mask_reasoning_content: false
+
+  # Supervise every assistant turn.
+  train_on_last_turn_only: false
+
+  tokenizer:
+    pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+    truncation_side: left
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: true
+  num_workers: 4
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.agent_chat.make_agent_chat_dataset
+  path: /shared/lora/data/validation.jsonl
+  truncation: true
+  truncate_history: true
+  seq_length: 32768
+  drop_history_reasoning_content: true
+  tokenizer:
+    pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16
+    truncation_side: left
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+
+optimizer:
+  _target_: torch.optim.AdamW
+  betas: [0.9, 0.95]
+  eps: 1.0e-8
+  lr: 1.0e-4
+  weight_decay: 0.1
+
+lr_scheduler:
+  lr_decay_style: cosine
+  lr_warmup_steps: 10
+  min_lr: 1.0e-5

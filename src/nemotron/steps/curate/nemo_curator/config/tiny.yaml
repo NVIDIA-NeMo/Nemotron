@@ -1,0 +1,22 @@
+# Tiny NeMo Curator smoke using the Curator container as-is.
+# Optional filters are disabled so this verifies reader, writer, Ray startup,
+# and the packaged tiny JSONL path without downloading models.
+
+language_codes: []
+
+domains: []
+text_field: text
+input_glob: ./src/nemotron/steps/curate/nemo_curator/data/tiny.jsonl
+output_dir: ${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/curate_nemo_curator_tiny
+
+dataset: null
+
+# The packaged tiny JSONL has no id/source columns, so both stay null.
+metadata_fields: []
+id_field: null
+source_field: null
+emit_manifest: null
+
+models: {}
+
+quality_filters: {}

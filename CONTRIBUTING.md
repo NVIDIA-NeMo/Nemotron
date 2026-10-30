@@ -84,7 +84,7 @@ When contributing a new recipe:
 
 ## Questions?
 
-- Review examples in `examples/`
+- Review examples in [`usage-cookbook/`](./usage-cookbook/)
 - Open an issue for discussions
 
 ---

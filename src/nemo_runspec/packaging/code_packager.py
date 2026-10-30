@@ -89,18 +89,26 @@ class CodePackager(Packager):
         rel_script = script_file.relative_to(repo_root)
 
         # The launcher runs in the extracted package root.
-        # Add `src/` so `import nemotron` works without installation.
         # Change working directory to ROOT so ${oc.env:PWD} resolves correctly.
+        # Always run script in subprocess to ensure clean Python environment.
         return (
             "from __future__ import annotations\n\n"
             "import os\n"
-            "import runpy\n"
+            "import subprocess\n"
             "import sys\n\n"
             "ROOT = os.path.dirname(__file__)\n"
             "os.chdir(ROOT)\n"
-            "sys.path.insert(0, ROOT)\n"
-            "sys.path.insert(0, os.path.join(ROOT, 'src'))\n\n"
-            f"runpy.run_path(os.path.join(ROOT, {rel_script.as_posix()!r}), run_name='__main__')\n"
+            "print('[launcher] Starting...', file=sys.stderr)\n\n"
+            "# Run script in subprocess for clean environment\n"
+            "script_path = os.path.join(ROOT, " + repr(rel_script.as_posix()) + ")\n"
+            "config_path = os.path.join(ROOT, 'config.yaml')\n"
+            "env = os.environ.copy()\n"
+            "env['PYTHONPATH'] = os.pathsep.join([ROOT, os.path.join(ROOT, 'src')]) + os.pathsep + env.get('PYTHONPATH', '')\n"
+            "result = subprocess.run(\n"
+            "    [sys.executable, script_path, '--config', config_path] + sys.argv[1:],\n"
+            "    env=env,\n"
+            ")\n"
+            "sys.exit(result.returncode)\n"
         )
 
     def _iter_repo_paths(self, repo_root: Path):
@@ -108,13 +116,16 @@ class CodePackager(Packager):
 
         Prefer git-aware file listing when available to avoid packaging ignored
         run outputs (e.g. output/, artifacts/, wandb/).
+        Also includes submodule contents.
         """
         git_dir = repo_root / ".git"
         if git_dir.exists():
             try:
                 tracked = self._git_ls_files(repo_root)
                 others = self._git_ls_files(repo_root, others=True)
-                yield from sorted({*tracked, *others})
+                # Also get submodule contents
+                submodule_files = self._git_ls_files_with_submodules(repo_root)
+                yield from sorted({*tracked, *others, *submodule_files})
                 return
             except (CalledProcessError, FileNotFoundError, OSError):
                 pass
@@ -136,6 +147,52 @@ class CodePackager(Packager):
             if not chunk:
                 continue
             result.append(Path(chunk.decode("utf-8")))
+        return result
+
+    @staticmethod
+    def _git_ls_files_with_submodules(repo_root: Path) -> list[Path]:
+        """Get files from git submodules.
+
+        Uses git ls-files --recurse-submodules to get all tracked files
+        including those in submodules.
+        """
+        import subprocess
+
+        try:
+            cmd = ["git", "-C", str(repo_root), "ls-files", "-z", "--recurse-submodules"]
+            out = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+            result: list[Path] = []
+            for chunk in out.split(b"\x00"):
+                if not chunk:
+                    continue
+                result.append(Path(chunk.decode("utf-8")))
+            return result
+        except (CalledProcessError, FileNotFoundError, OSError):
+            # Fallback: manually iterate submodules
+            return CodePackager._iter_submodule_files(repo_root)
+
+    @staticmethod
+    def _iter_submodule_files(repo_root: Path) -> list[Path]:
+        """Fallback: iterate submodule directories directly."""
+        import subprocess
+
+        result: list[Path] = []
+        try:
+            # Get list of submodule paths
+            cmd = ["git", "-C", str(repo_root), "submodule", "foreach", "--quiet", "echo $sm_path"]
+            out = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+            submodule_paths = [p.strip() for p in out.decode("utf-8").split("\n") if p.strip()]
+
+            for sm_path in submodule_paths:
+                sm_dir = repo_root / sm_path
+                if sm_dir.exists():
+                    # Get tracked files in this submodule
+                    sm_files = CodePackager._git_ls_files(sm_dir)
+                    for f in sm_files:
+                        result.append(Path(sm_path) / f)
+        except (CalledProcessError, FileNotFoundError, OSError):
+            pass
+
         return result
 
     @staticmethod

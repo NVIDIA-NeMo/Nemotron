@@ -1,0 +1,688 @@
+#!/usr/bin/env python3
+# /// script
+# [tool.runspec]
+# schema = "1"
+# docs = "https://raw.githubusercontent.com/NVIDIA-NeMo/Nemotron/main/docs/runspec/v1/spec.md"
+# name = "embed/sdg"
+# image = "nvcr.io/nvidia/pytorch:25.12-py3"
+# setup = "PyTorch pre-installed. Stage dependencies resolved via UV at runtime."
+#
+# [tool.runspec.run]
+# launch = "direct"
+#
+# [tool.runspec.config]
+# dir = "./config"
+# default = "nemotron-3"
+#
+# [tool.runspec.resources]
+# nodes = 1
+# gpus_per_node = 1
+# ///
+
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Synthetic Data Generation for embedding fine-tuning.
+
+Generates synthetic Q&A pairs from a document corpus using the retrieval SDG plugin.
+This step uses NVIDIA's LLM APIs to create high-quality training data.
+
+Usage:
+    # With the Nemotron 3 config
+    nemotron embed sdg -c nemotron-3
+
+    # With custom config
+    nemotron embed sdg -c /path/to/config.yaml
+
+    # With CLI overrides
+    nemotron embed sdg -c nemotron-3 corpus_dir=/path/to/docs
+"""
+
+from __future__ import annotations
+
+import math
+import os
+import sys
+from pathlib import Path
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+
+STAGE_PATH = Path(__file__).parent
+DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
+
+# Use NEMO_RUN_DIR for output when running via nemo-run
+_OUTPUT_BASE = Path(os.environ.get("NEMO_RUN_DIR", "."))
+
+# HuggingFace URI prefix for downloading datasets
+_HF_PREFIX = "hf://"
+_MULTIMODAL_SDG_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
+
+
+class SourceDirectorySettings(BaseModel):
+    """Recipe-owned source path with options validated by the installed producer.
+
+    Keeping the producer options here avoids importing the SDG package in the
+    base recipe CLI environment. Its SourceDirectoryConfig validates those
+    options when the stage builds its execution configuration.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    path: Path = Field(description="Directory containing source text files and standalone images.")
+
+    @field_validator("path", mode="before")
+    @classmethod
+    def _require_path(cls, value: Any) -> Any:
+        if isinstance(value, str) and not value.strip():
+            raise ValueError("source_directory.path must not be empty")
+        return value
+
+
+class SDGConfig(RecipeSettings):
+    """Synthetic Data Generation configuration.
+
+    Maps recipe settings into the installed retrieval SDG plugin's typed API.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_model_defaults(cls, values: Any) -> Any:
+        """Resolve multimodal roles before validation or CLI config persistence."""
+        if not isinstance(values, dict) or values.get("sdg_workflow") != "multimodal":
+            return values
+        values = dict(values)
+        if values.get("sdg_generator_model") is None:
+            values["sdg_generator_model"] = os.environ.get(
+                "NEMOTRON_3_5_SDG_GENERATOR_MODEL", _MULTIMODAL_SDG_MODEL
+            )
+        if values.get("sdg_judge_model") is None:
+            values["sdg_judge_model"] = os.environ.get(
+                "NEMOTRON_3_5_SDG_JUDGE_MODEL", _MULTIMODAL_SDG_MODEL
+            )
+        return values
+
+    artifact_root: Path = Field(
+        default_factory=lambda: _OUTPUT_BASE / "output/embed/nemotron-3-1b",
+        description="Root directory for this model profile's pipeline artifacts.",
+    )
+
+    # --- Core paths -----------------------------------------------------------
+    corpus_id: str = Field(default="nv_pp_random", description="Identifier for your corpus (used in output naming).")
+    corpus_dir: str = Field(
+        default="hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random",
+        description="Local path or hf:// URI to directory containing document files (.txt, .md, etc.).",
+    )
+    sources_file: Path | None = Field(
+        default=None,
+        description=(
+            "Canonical RetrievalSource JSONL with optional page images. When set, replaces corpus_dir "
+            "and bypasses text chunking; relative image paths resolve against the source file."
+        ),
+    )
+    source_directory: SourceDirectorySettings | None = Field(
+        default=None,
+        description=(
+            "Directory source configuration: path plus public SourceDirectoryConfig options. "
+            "Use exactly one of source_directory and sources_file for multimodal SDG."
+        ),
+    )
+    sdg_workflow: Literal["text_qa", "multimodal"] = Field(
+        default="text_qa",
+        description=(
+            "SDG pipeline: text_qa reads text directories; multimodal reads source JSONL or a source directory."
+        ),
+    )
+    contexts_file: Path | None = Field(
+        default=None, description="Optional generic multi-unit generation contexts JSONL."
+    )
+    sdg_max_units_per_context: int = Field(default=8, ge=1)
+    sdg_batch_size: int = Field(default=30, ge=1, le=128)
+    sdg_credential_env: str = Field(default="NVIDIA_API_KEY", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    sdg_generator_model: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Multimodal enrichment, summary, and query generator. Defaults to Nemotron 3.5 Super VL.",
+    )
+    sdg_judge_model: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Shared multimodal judge. Defaults to Nemotron 3.5 Super VL.",
+    )
+    sdg_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Generic producer options (context planning, summary selection, profiles, gates, grouping). "
+            "Validated by the public plugin; recipe paths and execution fields cannot be overridden."
+        ),
+    )
+    sdg_generator_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Public generator ModelSettings overrides. No inline secrets.",
+    )
+    sdg_judge_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Public ModelSettings overrides for the shared multimodal judge. No inline secrets.",
+    )
+    export_train_ratio: float = Field(default=0.8, ge=0, le=1, description="Portable query-group training fraction.")
+    export_validation_ratio: float = Field(default=0.0, ge=0, le=1, description="Portable validation fraction.")
+    export_seed: int = Field(default=42, description="Portable query-group split seed.")
+    output_dir: Path = Field(
+        default_factory=lambda data: data["artifact_root"] / "stage0_sdg",
+        description="Output directory for generated synthetic data.",
+    )
+    file_extensions: str | None = Field(
+        default=None, description="Comma-separated list of file extensions to process."
+    )
+    nvidia_api_key: str | None = Field(
+        default=None, description="NVIDIA API key for LLM access. If None, uses NVIDIA_API_KEY env var."
+    )
+    nvidia_api_base_url: str | None = Field(
+        default_factory=lambda: os.environ.get("NVIDIA_API_BASE_URL"),
+        description=(
+            "OpenAI-compatible NVIDIA API base URL. If None, Data Designer uses its built-in NVIDIA provider endpoint."
+        ),
+    )
+
+    # --- Document processing ---------------------------------------------------
+    min_text_length: int = Field(
+        default=50, ge=0, description="Minimum text length (characters) for documents to include."
+    )
+    sentences_per_chunk: int = Field(default=5, gt=0, description="Number of sentences per chunk for text splitting.")
+    num_sections: int = Field(default=1, gt=0, description="Number of sections to divide chunks into.")
+    num_files: int | None = Field(
+        default=None, gt=0, description="Maximum number of files to process. None means process all files."
+    )
+
+    # --- Generation parameters -------------------------------------------------
+    max_artifacts_per_type: int = Field(
+        default=2, gt=0, description="Maximum number of artifacts to extract per type."
+    )
+    num_pairs: int = Field(default=7, gt=0, description="Number of question-answer pairs to generate per document.")
+    query_counts: dict[str, int] = Field(
+        default_factory=lambda: {"multi_hop": 3, "structural": 2, "contextual": 2},
+        description="Question-type distribution; values must sum to num_pairs.",
+    )
+    min_hops: int = Field(default=1, ge=1, description="Minimum number of hops for multi-hop questions.")
+    max_hops: int = Field(default=3, ge=1, description="Maximum number of hops for multi-hop questions.")
+    reasoning_counts: dict[str, int] = Field(
+        default_factory=lambda: {
+            "factual": 1,
+            "relational": 1,
+            "inferential": 1,
+            "temporal": 1,
+            "procedural": 1,
+            "causal": 1,
+            "visual": 1,
+        },
+        description="Reasoning-type distribution; values must sum to num_pairs.",
+    )
+    min_complexity: int = Field(default=2, ge=1, le=5, description="Minimum complexity level for questions (1-5).")
+    similarity_threshold: float = Field(
+        default=0.9,
+        ge=0,
+        le=1,
+        description="Embedding cosine-similarity threshold used to deduplicate generated questions.",
+    )
+
+    @model_validator(mode="after")
+    def _check_hops_order(self):
+        if self.min_hops > self.max_hops:
+            raise ValueError(f"min_hops ({self.min_hops}) must be <= max_hops ({self.max_hops})")
+        if self.export_train_ratio + self.export_validation_ratio > 1:
+            raise ValueError("Portable training and validation fractions must sum to at most one")
+        if self.sdg_workflow == "multimodal":
+            if (self.sources_file is None) == (self.source_directory is None):
+                raise ValueError("multimodal requires exactly one of canonical sources_file or source_directory")
+            if self.preview:
+                raise ValueError("multimodal requires explicit bounded source/context input; preview is unsupported")
+        elif self.sources_file is not None or self.source_directory is not None:
+            raise ValueError(
+                "Canonical sources and source_directory require sdg_workflow='multimodal'; "
+                "text_qa accepts corpus_dir text files."
+            )
+        elif (
+            self.sdg_generator_model is not None
+            or self.sdg_judge_model is not None
+            or self.sdg_options
+            or self.sdg_generator_options
+            or self.sdg_judge_options
+        ):
+            raise ValueError(
+                "sdg_generator_model, sdg_judge_model, sdg_options, sdg_generator_options, and sdg_judge_options "
+                "require sdg_workflow='multimodal'"
+            )
+        return self
+
+    # --- Data Designer execution -----------------------------------------------
+    dataset_name: str | None = Field(
+        default=None,
+        description="Stable Data Designer dataset name. Defaults to corpus_id.",
+    )
+    buffer_size: int = Field(default=200, gt=0, description="Data Designer checkpoint/write buffer size.")
+    resume: Literal["never", "always", "if_possible"] = Field(
+        default="never",
+        description="Data Designer native resume mode.",
+    )
+
+    # --- Multi-document bundling -----------------------------------------------
+    multi_doc: bool = Field(default=False, description="Enable multi-document bundling mode.")
+    bundle_size: int = Field(default=2, gt=0, description="Number of documents per bundle in multi-doc mode.")
+    bundle_strategy: Literal["sequential", "doc_balanced", "interleaved"] = Field(
+        default="sequential", description="Segment splitting strategy: 'sequential', 'doc_balanced', or 'interleaved'."
+    )
+    max_docs_per_bundle: int = Field(default=3, gt=0, description="Maximum documents allowed per bundle.")
+    multi_doc_manifest: str | None = Field(
+        default=None, description="Path to manifest file defining explicit bundles (JSON/YAML)."
+    )
+
+    # --- Model configuration ---------------------------------------------------
+    artifact_extraction_model: str = Field(
+        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for artifact extraction."
+    )
+    artifact_extraction_provider: str = Field(default="nvidia", description="Provider for artifact extraction model.")
+    qa_generation_model: str = Field(
+        default="nvidia/nemotron-3-ultra-550b-a55b",
+        description="Model name for text QA generation.",
+    )
+    qa_generation_provider: str = Field(default="nvidia", description="Provider for QA generation model.")
+    quality_judge_model: str = Field(
+        default="nvidia/nemotron-3-ultra-550b-a55b", description="Model name for quality judge."
+    )
+    quality_judge_provider: str = Field(default="nvidia", description="Provider for quality judge model.")
+    embed_model: str = Field(default="nvidia/nemotron-3-embed-1b", description="Model name for embeddings.")
+    embed_provider: str = Field(default="nvidia", description="Provider for embedding model.")
+    max_parallel_requests_for_gen: int | None = Field(
+        default=None,
+        gt=0,
+        description="Maximum parallel requests for generation models. None uses the library default.",
+    )
+
+    # --- Runtime options -------------------------------------------------------
+    artifact_path: Path = Field(
+        default_factory=lambda data: data["artifact_root"] / "stage0_sdg/artifacts",
+        description="Path to store Data Designer artifacts.",
+    )
+    preview: bool = Field(default=False, description="Preview the generation without actually running.")
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
+        default="INFO", description="Logging level: DEBUG, INFO, WARNING, or ERROR."
+    )
+
+
+def _resolve_corpus_dir(corpus_dir: str) -> Path:
+    """Resolve corpus_dir, downloading from HuggingFace if it uses the hf:// scheme.
+
+    Supports URIs of the form::
+
+        hf://org/dataset/subdir/path
+        hf://org/dataset@revision/subdir/path
+
+    Files are cached by huggingface_hub so subsequent calls are a no-op.
+
+    Args:
+        corpus_dir: Local path or ``hf://`` URI.
+
+    Returns:
+        Resolved local Path to the corpus directory.
+    """
+    if not corpus_dir.startswith(_HF_PREFIX):
+        return Path(corpus_dir).resolve()
+
+    from huggingface_hub import snapshot_download
+
+    # Parse hf://org/dataset[@revision][/subdir/path]
+    rest = corpus_dir[len(_HF_PREFIX) :]
+    parts = rest.split("/", 2)
+    if len(parts) < 2:
+        print(f"Error: Invalid hf:// URI: {corpus_dir}", file=sys.stderr)
+        print("  Expected: hf://org/dataset[@revision][/subdir/path]", file=sys.stderr)
+        sys.exit(1)
+
+    # Extract optional revision from dataset name (org/dataset@revision)
+    repo_id = f"{parts[0]}/{parts[1]}"
+    revision = None
+    if "@" in parts[1]:
+        dataset_name, revision = parts[1].rsplit("@", 1)
+        repo_id = f"{parts[0]}/{dataset_name}"
+
+    subdir = parts[2] if len(parts) > 2 else None
+
+    print(f"📥 Downloading corpus from HuggingFace ({repo_id})...")
+    kwargs = {
+        "repo_id": repo_id,
+        "repo_type": "dataset",
+    }
+    if revision:
+        kwargs["revision"] = revision
+    if subdir:
+        kwargs["allow_patterns"] = f"{subdir}/**"
+
+    local_dir = snapshot_download(**kwargs)
+    corpus_path = Path(local_dir) / subdir if subdir else Path(local_dir)
+    print(f"   Downloaded to: {corpus_path}")
+    return corpus_path
+
+
+def _validate_corpus(
+    corpus_dir: Path,
+    file_extensions: list[str] | None,
+    min_text_length: int,
+    num_pairs: int,
+    buffer_size: int,
+    num_files: int | None,
+) -> None:
+    """Validate the corpus directory and print a summary before generation.
+
+    Scans files matching *file_extensions*, checks sizes against
+    *min_text_length*, and prints a human-readable summary with warnings.
+    Exits with an error if no usable files are found.
+    """
+    # Default extensions match the public retrieval SDG package.
+    # load_text_files_from_directory when no explicit list is provided.
+    if file_extensions is None:
+        extensions = [".txt", ".md", ".text", ""]
+    else:
+        extensions = file_extensions
+
+    ext_display = ", ".join(repr(e) for e in extensions if e) or "(any)"
+
+    matched_files: list[Path] = []
+    for file_path in sorted(corpus_dir.rglob("*")):
+        if not file_path.is_file():
+            continue
+        # Replicate the extension-matching logic used downstream.
+        suffix = file_path.suffix.lower()
+        # Simple check: either the suffix is in the list, or "" is in the
+        # list and the suffix doesn't look like a traditional short extension.
+        if suffix in extensions or ("" in extensions and (len(suffix) > 11 or not suffix)):
+            pass  # matches
+        else:
+            continue
+
+        matched_files.append(file_path)
+
+    # The plugin caps its sorted, extension-filtered manifest before hydration.
+    # Mirror that order so the preflight summary describes the records it will see.
+    if num_files is not None:
+        matched_files = matched_files[:num_files]
+
+    char_sizes: list[int] = []
+    skipped_short: list[Path] = []
+    empty_files: list[Path] = []
+
+    for file_path in matched_files:
+        try:
+            size = file_path.stat().st_size
+        except OSError:
+            continue
+
+        if size == 0:
+            empty_files.append(file_path)
+            skipped_short.append(file_path)
+            continue
+
+        # Read the file to get character count (matching downstream behaviour
+        # which filters on character length, not byte size).
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        char_len = len(text)
+        if min_text_length > 0 and char_len < min_text_length:
+            skipped_short.append(file_path)
+            continue
+
+        char_sizes.append(char_len)
+
+    total_scanned = len(char_sizes) + len(skipped_short)
+
+    # --- Hard error: nothing usable -------------------------------------------
+    if not char_sizes:
+        if total_scanned == 0:
+            print(
+                f"Error: No files found in {corpus_dir} matching extensions: {ext_display}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"Error: All {total_scanned} files were skipped (below min_text_length={min_text_length}).",
+                file=sys.stderr,
+            )
+        sys.exit(1)
+
+    # --- Gather size stats ----------------------------------------------------
+    total_chars = sum(char_sizes)
+    avg_chars = total_chars // len(char_sizes) if char_sizes else 0
+    min_chars = min(char_sizes) if char_sizes else 0
+    max_chars = max(char_sizes) if char_sizes else 0
+
+    def _fmt_size(chars: int) -> str:
+        if chars >= 1_000_000:
+            return f"{chars / 1_000_000:,.1f} MB"
+        if chars >= 1_000:
+            return f"{chars / 1_000:,.0f} KB"
+        return f"{chars:,} chars"
+
+    num_docs = len(char_sizes)
+    expected_pairs = num_docs * num_pairs
+    num_buffers = math.ceil(num_docs / buffer_size)
+
+    # --- Print summary --------------------------------------------------------
+    print("\nCorpus summary:")
+    print(f"  Files found:       {num_docs} (matching extensions: {ext_display})")
+    if skipped_short:
+        print(f"  Skipped:           {len(skipped_short)} (below min_text_length={min_text_length})")
+    print(f"  Total text:        {_fmt_size(total_chars)}")
+    print(f"  Avg file size:     {avg_chars:,} chars")
+    print(f"  Size range:        {min_chars:,} - {max_chars:,} chars")
+    print()
+    print("Generation plan:")
+    print(f"  Documents:         {num_docs}")
+    print(f"  QA pairs/doc:      {num_pairs}")
+    print(f"  Expected QA pairs: ~{expected_pairs:,}")
+    print(f"  Buffers:           {num_buffers} (buffer_size={buffer_size})")
+    print("  API stages/record: 4 (artifact extraction -> QA generation -> dedup -> quality eval)")
+
+    # --- Warnings -------------------------------------------------------------
+    warnings_printed = False
+    if num_docs < 20:
+        print(f"\n  Warning: Very few documents ({num_docs}). Consider adding more for better training data.")
+        warnings_printed = True
+    if total_scanned > 0 and len(skipped_short) / total_scanned > 0.5:
+        pct = len(skipped_short) * 100 // total_scanned
+        print(
+            f"\n  Warning: {pct}% of files were too short (skipped {len(skipped_short)}/{total_scanned}). "
+            f"Check min_text_length={min_text_length} or file content."
+        )
+        warnings_printed = True
+    if empty_files:
+        print(f"\n  Warning: {len(empty_files)} empty file(s):")
+        for ef in empty_files[:10]:
+            print(f"    - {ef}")
+        if len(empty_files) > 10:
+            print(f"    ... and {len(empty_files) - 10} more")
+        warnings_printed = True
+
+    if warnings_printed:
+        print()
+
+
+def run_sdg(cfg: SDGConfig) -> Path:
+    """Run synthetic data generation through the installed retrieval SDG plugin.
+
+    Args:
+        cfg: SDG configuration.
+
+    Returns:
+        Exact JSONL output path, or the configured output directory for preview.
+    """
+    from nemotron.recipes.embed.sdg_manifest import write_generation_manifest
+    from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_generation
+
+    if cfg.sdg_workflow == "multimodal":
+        from nemotron.recipes.embed.stage0_sdg.plugin_adapter import execute_multimodal
+
+        return execute_multimodal(cfg)
+
+    corpus_dir = _resolve_corpus_dir(cfg.corpus_dir)
+
+    # Resolve remaining Path fields to absolute so downstream libraries
+    # don't depend on CWD and error messages show full paths.
+    output_dir = cfg.output_dir.resolve()
+    artifact_path = cfg.artifact_path.resolve()
+
+    # Validate input corpus directory
+    if not corpus_dir.exists():
+        print(f"Error: Corpus directory not found: {corpus_dir}", file=sys.stderr)
+        sys.exit(1)
+    if not any(corpus_dir.iterdir()):
+        print(f"Error: Corpus directory is empty: {corpus_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    # Get API key from config or environment
+    api_key = cfg.nvidia_api_key or os.environ.get("NVIDIA_API_KEY")
+    if not api_key:
+        print("Error: NVIDIA_API_KEY not set. Please set it in the environment or config.")
+        sys.exit(1)
+
+    # Set API key in environment for data-designer
+    os.environ["NVIDIA_API_KEY"] = api_key
+
+    # Parse file extensions from comma-separated string to list
+    file_extensions = None
+    if cfg.file_extensions:
+        file_extensions = [ext.strip() for ext in cfg.file_extensions.split(",") if ext.strip()]
+
+    print("🚀 Starting synthetic data generation...")
+    print(f"   Corpus ID: {cfg.corpus_id}")
+    print(f"   Input:  {corpus_dir}")
+    print(f"   Output: {output_dir}")
+    print(f"   Artifacts: {artifact_path}")
+    print(f"   Model (QA generation): {cfg.qa_generation_model}")
+    print(f"   Num pairs: {cfg.num_pairs}")
+    print(f"   Dataset name: {cfg.dataset_name or cfg.corpus_id}")
+    print(f"   Buffer size: {cfg.buffer_size}")
+    print(f"   Resume mode: {cfg.resume}")
+    print()
+
+    # Validate corpus and print summary before spending API credits
+    _validate_corpus(
+        corpus_dir=corpus_dir,
+        file_extensions=file_extensions,
+        min_text_length=cfg.min_text_length,
+        num_pairs=cfg.num_pairs,
+        buffer_size=cfg.buffer_size,
+        num_files=cfg.num_files,
+    )
+
+    # The adapter only translates recipe policy into the public plugin contract.
+    try:
+        result = execute_generation(cfg, corpus_dir)
+    except FileNotFoundError as exc:
+        print("\nError: SDG pipeline could not find an intermediate file.", file=sys.stderr)
+        print(f"  Missing: {exc}", file=sys.stderr)
+        print(f"  Artifacts dir: {artifact_path}", file=sys.stderr)
+        print("\nThis usually means a previous step produced no output.", file=sys.stderr)
+        print("Common causes:", file=sys.stderr)
+        print("  - NVIDIA_API_KEY is invalid or expired", file=sys.stderr)
+        print("  - The LLM API returned errors (check output above for 4xx/5xx)", file=sys.stderr)
+        print("  - The corpus documents were too short after chunking", file=sys.stderr)
+        print(f"\nCheck {artifact_path} for partial output to diagnose.", file=sys.stderr)
+        sys.exit(1)
+    except Exception as exc:
+        exc_name = type(exc).__name__
+        exc_str = str(exc)
+
+        # Authentication / API key errors
+        if "Authentication" in exc_name or "api key" in exc_str.lower():
+            print("\nError: NVIDIA API key is invalid or expired.", file=sys.stderr)
+            print("  Set a valid key via:  export NVIDIA_API_KEY=your_key_here", file=sys.stderr)
+            print("  Or in your config:    nvidia_api_key: your_key_here", file=sys.stderr)
+            sys.exit(1)
+
+        # Generation errors (wraps auth errors and other data-designer failures)
+        if "Generation" in exc_name:
+            # Extract the inner message — data-designer wraps it with an emoji prefix
+            inner = exc_str.removeprefix("🛑 Error generating dataset:").strip()
+            print("\nError: SDG generation failed.", file=sys.stderr)
+            print(f"  {inner}", file=sys.stderr)
+            sys.exit(1)
+
+        # Profiling errors (missing intermediate files)
+        if "Profiling" in exc_name or "profiling" in exc_str.lower():
+            print("\nError: SDG data profiling failed — intermediate files are missing.", file=sys.stderr)
+            print(f"  {exc_name}: {exc}", file=sys.stderr)
+            print(f"  Artifacts dir: {artifact_path}", file=sys.stderr)
+            print("\nThis usually means the LLM generation step produced no output.", file=sys.stderr)
+            print("Common causes:", file=sys.stderr)
+            print("  - NVIDIA_API_KEY is invalid or expired", file=sys.stderr)
+            print("  - The LLM API returned errors (check output above for 4xx/5xx)", file=sys.stderr)
+            print("  - The corpus documents were too short after chunking", file=sys.stderr)
+            print(f"\nCheck {artifact_path} for partial output to diagnose.", file=sys.stderr)
+            sys.exit(1)
+
+        raise
+
+    if cfg.preview:
+        print("\nSynthetic data generation preview complete!")
+        print(f"   Seed records: {result.num_seed_records}")
+        print(f"   Preview records: {result.num_preview_records}")
+        return output_dir
+
+    manifest_path = write_generation_manifest(
+        output_dir=output_dir,
+        output_path=result.output_path,
+        dataset_name=result.dataset_name,
+    )
+
+    print("\nSynthetic data generation complete!")
+    print(f"   Output: {result.output_path}")
+    print(f"   Handoff: {manifest_path}")
+    print(f"   Dataset: {result.dataset_name}")
+    print(f"   Records: {result.num_records}")
+    if result.resolved_config_path:
+        print(f"   Resolved config: {result.resolved_config_path}")
+
+    return result.output_path
+
+
+def main(cfg: SDGConfig | None = None) -> Path:
+    """Entry point for synthetic data generation.
+
+    Args:
+        cfg: Config from CLI framework, or None when run directly as script.
+
+    Returns:
+        Exact JSONL output path, or the configured output directory for preview.
+    """
+    if cfg is None:
+        # Called directly as script - parse config ourselves
+        config_path, cli_overrides = parse_config_and_overrides(default_config=DEFAULT_CONFIG_PATH)
+
+        try:
+            cfg = load_config(config_path, cli_overrides, SDGConfig)
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    return run_sdg(cfg)
+
+
+if __name__ == "__main__":
+    main()

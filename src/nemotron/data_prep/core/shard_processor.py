@@ -297,6 +297,8 @@ def _process_file_core(
             tokenize=tokenize,
             rows_processed=rows_processed,
             max_rows=max_rows,
+            row_modulus=file_info.row_modulus,
+            row_remainder=file_info.row_remainder,
         )
     else:
         rows_processed, tokenize_time = _process_jsonl_file_core(
@@ -310,6 +312,8 @@ def _process_file_core(
             tokenize=tokenize,
             rows_processed=rows_processed,
             max_rows=max_rows,
+            row_modulus=file_info.row_modulus,
+            row_remainder=file_info.row_remainder,
         )
 
     return rows_processed, tokenize_time
@@ -350,6 +354,8 @@ def _process_parquet_file_core(
     tokenize: Callable[[list[str]], list[list[int]]],
     rows_processed: int,
     max_rows: int | None,
+    row_modulus: int | None = None,
+    row_remainder: int | None = None,
 ) -> tuple[int, float]:
     """Process parquet file with optimized Arrow-level filtering.
 
@@ -370,10 +376,14 @@ def _process_parquet_file_core(
         if is_remote:
             with input_fs.open(local_path, "rb") as f:
                 parquet_file = pq.ParquetFile(f)
-                yield from _iter_parquet_batches_internal(parquet_file, text_field, min_doc_chars)
+                yield from _iter_parquet_batches_internal(
+                    parquet_file, text_field, min_doc_chars, row_modulus, row_remainder
+                )
         else:
             parquet_file = pq.ParquetFile(local_path)
-            yield from _iter_parquet_batches_internal(parquet_file, text_field, min_doc_chars)
+            yield from _iter_parquet_batches_internal(
+                parquet_file, text_field, min_doc_chars, row_modulus, row_remainder
+            )
 
     for texts, num_filtered_by_length in iter_parquet_batches():
         if hit_max_rows:
@@ -421,15 +431,30 @@ def _iter_parquet_batches_internal(
     parquet_file: pq.ParquetFile,
     text_field: str,
     min_doc_chars: int | None,
+    row_modulus: int | None = None,
+    row_remainder: int | None = None,
 ) -> Iterator[tuple[list[str | None], int]]:
     """Iterate batches from parquet file efficiently."""
+    import pyarrow as pa
     import pyarrow.compute as pc
 
+    row_offset = 0
     for batch in parquet_file.iter_batches(
         columns=[text_field],
         batch_size=10000,
     ):
         column = batch.column(text_field)
+
+        # Keep only this shard's rows (row_index % row_modulus == row_remainder).
+        # Applied on the raw row index, before any length filtering, so shards stay
+        # disjoint and together cover every row exactly once.
+        if row_modulus is not None and row_remainder is not None:
+            keep = pa.array(
+                [(row_offset + i) % row_modulus == row_remainder for i in range(len(column))]
+            )
+            column = column.filter(keep)
+        row_offset += len(batch)
+
         original_len = len(column)
         num_filtered = 0
 
@@ -456,6 +481,8 @@ def _process_jsonl_file_core(
     tokenize: Callable[[list[str]], list[list[int]]],
     rows_processed: int,
     max_rows: int | None,
+    row_modulus: int | None = None,
+    row_remainder: int | None = None,
 ) -> tuple[int, float]:
     """Process JSONL file.
 
@@ -480,7 +507,16 @@ def _process_jsonl_file_core(
                     if line.strip():
                         yield json.loads(line)
 
-    for record in iter_records():
+    for row_index, record in enumerate(iter_records()):
+        # Keep only this shard's rows (row_index % row_modulus == row_remainder),
+        # matching the per-shard partition recorded in the plan.
+        if (
+            row_modulus is not None
+            and row_remainder is not None
+            and row_index % row_modulus != row_remainder
+        ):
+            continue
+
         # Check max_rows limit
         if max_rows and rows_processed >= max_rows:
             break

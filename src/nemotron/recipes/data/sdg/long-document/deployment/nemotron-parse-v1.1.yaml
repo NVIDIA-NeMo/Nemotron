@@ -1,0 +1,45 @@
+# Default deployment config for the long-document OCR stage's model.
+#
+# Schema mirrors Evaluator's `vllm.yaml` so we can converge later if both
+# orgs pick a shared deploy orchestrator.  Values here are the defaults used
+# when `nemotron data sdg long-document ocr --serve --run dlw ...` is invoked
+# without `--serve-config`.
+
+name: nemotron-parse-v1.1
+hf_model_handle: nvidia/NVIDIA-Nemotron-Parse-v1.1
+served_model_name: nvidia/NVIDIA-Nemotron-Parse-v1.1
+
+# Container image — must include `vllm serve`.
+image: vllm/vllm-openai:v0.14.1
+
+# vLLM tuning knobs.
+# port: null   # default null = pick free port at runtime; pin only on dedicated nodes
+tensor_parallel_size: 1
+pipeline_parallel_size: 1
+gpu_memory_utilization: 0.85
+max_model_len: 9000
+max_num_seqs: 128
+trust_remote_code: true
+
+# Slurm resources for the serve task.
+nodes: 1
+gpus_per_node: 1
+walltime: "03:59:00"
+# Read from env.toml's [dlw] sdg_serve_partition unless explicitly set here.
+partition: null
+
+# Extra `vllm serve` flags (appended verbatim).
+extra_args: ""
+
+# vLLM env vars set inside the container.
+env_vars: {}
+
+# Optional pre-serve shell preamble (runs inside the container before `vllm serve`).
+# Nemotron-Parse needs `open-clip-torch albumentations timm` at runtime, per its docstring.
+pre_cmd: |
+  pip install --quiet open-clip-torch albumentations timm
+
+# Optional Jinja chat-template injected into the container as `--chat-template <path>`.
+# Nemotron-Parse requires this template to inject its special tokens.
+chat_template_jinja: |
+  {% for message in messages %}{% if message["role"] == "user" %}{{ "</s><s><predict_bbox><predict_classes><output_markdown>" }}{% endif %}{% endfor %}

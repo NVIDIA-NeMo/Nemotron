@@ -1,3 +1,7 @@
+<!--
+  SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+  SPDX-License-Identifier: Apache-2.0
+-->
 # Nemotron Training Recipes
 
 **Open and efficient models for agentic AI.** Reproducible training pipelines with transparent data, techniques, and weights.
@@ -12,8 +16,11 @@
 
 ```console
 // Install the Nemotron training recipes
-$ git clone https://github.com/NVIDIA/nemotron
-$ cd nemotron && uv sync
+$ git clone https://github.com/NVIDIA-NeMo/Nemotron
+$ cd Nemotron && uv sync
+
+// Run a tiny SFT job on your cluster
+$ uv run nemotron steps run sft/automodel -c tiny --run YOUR-CLUSTER
 
 // Run the Nano3 pipeline stage by stage
 $ uv run nemotron nano3 data prep pretrain --run YOUR-CLUSTER
@@ -28,31 +35,131 @@ $ uv run nemotron nano3 rl --run YOUR-CLUSTER
 
 > **Note**: The `--run YOUR-CLUSTER` flag submits jobs to your configured Slurm cluster via [NeMo-Run](nemo_runspec/nemo-run.md). See [Execution through NeMo-Run](nemo_runspec/nemo-run.md) for setup instructions.
 
-## Usage Cookbook & Examples
+## Deploy, Customize, and Use Nemotron
 
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Usage Cookbook
-:link: usage-cookbook/README
+:::{grid-item-card} Deployment Guides
+:link: deployment-guides
 :link-type: doc
 
-Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, and Hugging Face.
+Deployment guides for Nemotron models: TensorRT-LLM, vLLM, SGLang, NIM, Hugging Face, and agent harnesses.
 :::
 
-:::{grid-item-card} Use Case Examples
-:link: use-case-examples/README
+:::{grid-item-card} Sample Applications
+:link: application-examples
 :link-type: doc
 
 End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 :::
 
+:::{grid-item-card} Nemotron Post-training Calculator
+:link: train-models/sizing-calculator
+:link-type: doc
+
+Estimate GPU count, training time, and compute cost for customizing a released Nemotron checkpoint with SFT, LoRA, or GRPO.
++++
+`Planning Tool`
+:::
+
 ::::
 
-## Available Training Recipes
+## Customization Workflows with Nemotron Steps
 
 ::::{grid} 1 2 2 2
 :gutter: 3
+
+:::{grid-item-card} Adapting Nemotron to a New Language
+:link: sovereign-ai
+:link-type: doc
+
+How tokenizer extension, curation, continued pretraining, synthetic SFT data, fine-tuning, and evaluation connect into one workflow.
+:::
+
+:::{grid-item-card} Translation
+:link: translation/index
+:link-type: doc
+
+Translate JSONL or Parquet corpora with `translate/nemo_curator`, NeMo Curator
+backends, and optional FAITH quality scoring.
+:::
+
+:::{grid-item-card} Build MCQ Benchmarks
+:link: build-benchmarks/index
+:link-type: doc
+
+Generate and translate custom multiple-choice benchmarks with `byob/mcq`.
+:::
+
+:::{grid-item-card} Build Function-Calling Benchmarks
+:link: build-benchmarks/function-calling/index
+:link-type: doc
+
+Generate and evaluate custom function-calling benchmarks from an executable oracle pack with `byob/bfcl`.
+:::
+
+:::{grid-item-card} Data Curation
+:link: curate/index
+:link-type: doc
+
+Ingest, profile, filter, audit, decontaminate, and subset multilingual text corpora with the `curate` steps.
+:::
+
+:::{grid-item-card} Synthetic Data Generation
+:link: sdg/index
+:link-type: doc
+
+Use `sdg/data_designer` to produce SFT, tool-use, and preference datasets.
+:::
+
+:::{grid-item-card} Model Evaluation
+:link: model-eval/index
+:link-type: doc
+
+Evaluate hosted endpoints or checkpoints with `eval/model_eval`.
+:::
+
+:::{grid-item-card} Tokenizer Extension
+:link: tokenizer-extension/index
+:link-type: doc
+
+Add target-language tokens to a base tokenizer and initialize their embeddings with `tokenizer_extension/*` before continued pretraining.
+:::
+
+::::
+
+## Training Recipes
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card} Nemotron 3 Ultra
+:link: nemotron/ultra3/README
+:link-type: doc
+
+550B total / 55B active parameters, 20T tokens, up to 1M context. Hybrid Mamba-Attention MoE with LatentMoE and MTP.
+
+**Stages:** Pretraining → SFT → RLVR → MOPD
+:::
+
+:::{grid-item-card} Nemotron 3 Super
+:link: nemotron/super3/README
+:link-type: doc
+
+120.6B total / 12.7B active parameters, up to 1M context. Hybrid Mamba-Transformer with sparse Latent MoE.
+
+**Stages:** Pretraining → SFT → RL → Quantization → Eval
+:::
+
+:::{grid-item-card} Nemotron 3.5 Super
+:link: nemotron/super35/README
+:link-type: doc
+
+120B total / 12B active vision-language model with native MTP, post-trained with specialist teachers and multi-teacher on-policy distillation.
+
+**Stages:** Pretraining → SFT → RLVR → Teachers → MOPD → Eval
+:::
 
 :::{grid-item-card} Nemotron 3 Nano
 :link: nemotron/nano3/README
@@ -63,17 +170,88 @@ End-to-end applications: RAG agents, ML agents, and multi-agent systems.
 **Stages:** Pretraining → SFT → RL
 :::
 
+:::{grid-item-card} Nemotron 3.5 Lightning
+:link: nemotron/lightning35/README
+:link-type: doc
+
+30B total / 3B active parameters. Hybrid Mamba-Transformer with sparse MoE and Multi-Token Prediction, built for the high-volume execution layer of long-running agents.
+
+**Stages:** Pretraining → SFT → RL → Quantization
+:::
+
+:::{grid-item-card} Nemotron 3.5 Transcribe
+:link: nemotron/transcribe35/README
+:link-type: doc
+
+34B total / 4.3B active offline speech-and-audio model with contextual transcription, speaker attribution, timestamps, translation, and English-only evaluated audio understanding.
+
+**Public workflow:** Main-stage SALM construction or released-checkpoint adaptation → target branches (optional DFlash2 draft; optional quantization) → Inference (canonical execution in NeMo Speech)
+:::
+
+:::{grid-item-card} Nemotron 3 Omni
+:link: nemotron/omni3/README
+:link-type: doc
+
+GA-checkpoint multimodal post-training recipe with stage-local container builds and a three-step RL stack.
+
+**Stages:** SFT → RL MPO → RL text → RL vision → Eval
+:::
+
+:::{grid-item-card} Nemotron Embed
+:link: nemotron/embed/index
+:link-type: doc
+
+Fine-tune Nemotron text and multimodal embedding models with synthetic data generation, retrieval evaluation, and NIM or vLLM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+:::
+
+:::{grid-item-card} Nemotron Rerank
+:link: nemotron/rerank/index
+:link-type: doc
+
+Train text and multimodal cross-encoder rerankers. The Llama recipe includes synthetic data generation, evaluation, export, and NIM deployment.
+
+**Stages:** SDG → Data Prep → Finetune → Eval → Export → Deploy
+:::
+
 ::::
+
+## Recipe Layout
+
+Nemotron keeps **data-producing recipes** separate from **model-family training recipes**:
+
+| Path | Purpose | Example |
+|------|---------|---------|
+| `src/nemotron/recipes/data/curation/` | Filter, dedup, and curate existing corpora | [Nemotron-CC](nemotron/data/curation/nemotron-cc.md) |
+| `src/nemotron/recipes/data/sdg/` | Generate synthetic datasets that can feed multiple families | [Long-document SDG](nemotron/data/sdg/long-document.md) feeding [Omni3 SFT](nemotron/omni3/sft.md) |
+| `src/nemotron/recipes/<family>/` | Family-specific training, RL, evaluation, and model lifecycle commands | [Nano3](nemotron/nano3/README.md), [Omni3](nemotron/omni3/README.md) |
 
 ## Training Pipeline
 
-The Nemotron training pipeline has three stages, each tracked through [artifact lineage](nemotron/artifacts.md):
+Nemotron-native recipe families can be tracked through
+[artifact lineage](nemotron/artifacts.md).
 
-| Stage | Name | Description |
-|-------|------|-------------|
-| 0 | [Pretraining](nemotron/nano3/pretrain.md) | Base model training on large text corpus |
-| 1 | [SFT](nemotron/nano3/sft.md) | Supervised fine-tuning for instruction following |
-| 2 | [RL](nemotron/nano3/rl.md) | Reinforcement learning for alignment |
+| Family | Stage layout |
+|--------|--------------|
+| [Nano3](nemotron/nano3/README.md) | Pretraining → SFT → RL |
+| [Lightning35](nemotron/lightning35/README.md) | Pretraining → SFT → RL → Quantization |
+| [Omni3](nemotron/omni3/README.md) | SFT → RL MPO → RL text → RL vision → Eval |
+| [Super3](nemotron/super3/README.md) | Pretraining → SFT → RL → Quantization → Eval |
+| [Super35](nemotron/super35/README.md) | Pretraining → SFT → RLVR → Teachers → MOPD → Eval |
+| [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
+| [Embed](nemotron/embed/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
+| [Rerank](nemotron/rerank/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
+
+### Externally maintained workflow maps
+
+Some model integrations use Nemotron for discovery and model-specific guidance
+while their executable pipeline remains canonical in another NVIDIA repository.
+They do not emit Nemotron artifact lineage unless a native recipe is added.
+
+| Family | Public workflow | Canonical execution |
+|---|---|---|
+| [Transcribe35](nemotron/transcribe35/README.md) | Main-stage SALM construction or released-checkpoint adaptation → target branches (optional DFlash2 draft; optional quantization) → Inference | [NeMo Speech](https://github.com/NVIDIA-NeMo/Speech) |
 
 ## Why Nemotron?
 
@@ -96,72 +274,140 @@ The Nemotron training pipeline has three stages, each tracked through [artifact 
 - [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Nano-Technical-Report.pdf) – Nemotron 3 Nano methodology
 - [Model Weights](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3) – pre-trained checkpoints on HuggingFace
 - [Pre-training Datasets](https://huggingface.co/collections/nvidia/nemotron-pre-training-datasets) – open pre-training data
-- [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-v3) – SFT and RL data
+- [Post-training Datasets](https://huggingface.co/collections/nvidia/nemotron-post-training-datasets) – SFT and RL data
 - [Artifact Lineage](nemotron/artifacts.md) – W&B integration guide
+- [Model training steps](train-models/index.md) – SFT, PEFT, RL, and optimization with `nemotron step run`
+- [Training FAQ](train-models/faq/index.md) – answers to common questions about training and fine-tuning Nemotron models
 
 ```{toctree}
-:caption: Usage Cookbook
+:caption: Nemotron
 :hidden:
 
-usage-cookbook/README.md
-usage-cookbook/Nemotron-Nano2-VL/README.md
-usage-cookbook/Nemotron-Parse-v1.1/README.md
-usage-cookbook/Nemotron-3-Super/README.md
-usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md
-usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md
-usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-automodel/README.md
-usage-cookbook/Nemotron-3-Super/lora-text2sql/nemo-megatron-bridge/README.md
-usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.md
-usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.md
+Home <self>
+application-examples.md
+deployment-guides.md
+Adapting Nemotron to a New Language <sovereign-ai.md>
 ```
 
 ```{toctree}
-:caption: Use Case Examples
+:caption: Nemotron Step Basics
 :hidden:
 
-use-case-examples/README.md
-use-case-examples/Simple Nemotron-3-Nano Usage Example/README.md
-use-case-examples/Data Science ML Agent/README.md
-use-case-examples/RAG Agent with Nemotron RAG Models/README.md
-use-case-examples/Intelligent Document Processing with Nemotron RAG/README.md
-use-case-examples/nemotron-voice-rag-agent-example/README.md
-use-case-examples/sql-lora-finetuning-and-deployment/README.md
+About <steps/index.md>
+Basics <steps/basics.md>
+Getting Started <steps/getting-started.md>
+Airgap Environment <steps/airgap.md>
+```
+
+```{toctree}
+:caption: Data Curation
+:hidden:
+
+About <curate/index.md>
+Getting Started <curate/getting-started.md>
+Concepts <curate/explanation/index.md>
+Tasks <curate/how-to/index.md>
+Reference <curate/reference/index.md>
+```
+
+```{toctree}
+:caption: Synthetic Data Generation
+:hidden:
+
+About <sdg/index>
+Getting Started <sdg/getting-started>
+Tips for Using Agents <sdg/using-skills>
+Planning <sdg/planning>
+Tasks <sdg/how-to/index>
+Reference <sdg/reference/index>
+```
+
+```{toctree}
+:caption: Translation
+:hidden:
+
+About <translation/index.md>
+Getting Started <translation/getting-started.md>
+Tips for Using Agents <translation/using-skills.md>
+translation/explanation/index.md
+Tasks <translation/how-to/index.md>
+Reference <translation/reference/index.md>
+```
+
+```{toctree}
+:caption: Build MCQ Benchmarks
+:hidden:
+
+About <build-benchmarks/index.md>
+Getting Started <build-benchmarks/getting-started.md>
+Concepts <build-benchmarks/explanation/index.md>
+Tasks <build-benchmarks/how-to/index.md>
+Reference <build-benchmarks/reference/index.md>
+```
+
+```{toctree}
+:caption: Build Function-Calling Benchmarks
+:hidden:
+
+About <build-benchmarks/function-calling/index.md>
+Tutorials <build-benchmarks/function-calling/tutorials/index.md>
+Concepts <build-benchmarks/function-calling/explanation/index.md>
+Tasks <build-benchmarks/function-calling/how-to/index.md>
+Reference <build-benchmarks/function-calling/reference/index.md>
+```
+
+```{toctree}
+:caption: Tokenizer Extension
+:hidden:
+
+About <tokenizer-extension/index.md>
+Prerequisites <tokenizer-extension/prerequisites.md>
+Getting Started <tokenizer-extension/getting-started.md>
+Concepts <tokenizer-extension/explanation/index.md>
+Tasks <tokenizer-extension/how-to/index.md>
+Reference <tokenizer-extension/reference/index.md>
+```
+
+```{toctree}
+:caption: Model Training
+:hidden:
+
+About <train-models/index.md>
+Post-training Calculator <train-models/sizing-calculator.md>
+Getting Started <train-models/getting-started.md>
+Tips for Using Agents <train-models/using-skill.md>
+Concepts <train-models/explanation/index.md>
+Tasks <train-models/how-to/index.md>
+Reference <train-models/reference/index.md>
+FAQ <train-models/faq/index.md>
+```
+
+```{toctree}
+:caption: Model Evaluation
+:hidden:
+
+About <model-eval/index.md>
+Getting Started <model-eval/getting-started.md>
+Tips for Using Agents <model-eval/using-skills.md>
+Concepts <model-eval/explanation/index.md>
+Tasks <model-eval/how-to/index.md>
+Reference <model-eval/reference/index.md>
 ```
 
 ```{toctree}
 :caption: Training Recipes
 :hidden:
 
-nemotron/nano3/README.md
-nemotron/super3/README.md
+Nemotron 3 Nano <nemotron/nano3/README.md>
+Nemotron 3.5 Lightning <nemotron/lightning35/README.md>
+Nemotron 3 Omni <nemotron/omni3/README.md>
+Nemotron 3 Super <nemotron/super3/README.md>
+Nemotron 3.5 Super <nemotron/super35/README.md>
+Nemotron 3.5 Transcribe <nemotron/transcribe35/README.md>
+Nemotron 3 Ultra <nemotron/ultra3/README.md>
+Nemotron Embed <nemotron/embed/index.md>
+Nemotron Rerank <nemotron/rerank/index.md>
 nemotron/artifacts.md
-```
-
-```{toctree}
-:caption: Nano3 Stages
-:hidden:
-
-nemotron/nano3/pretrain.md
-nemotron/nano3/sft.md
-nemotron/nano3/rl.md
-nemotron/nano3/evaluate.md
-nemotron/nano3/import.md
-```
-
-```{toctree}
-:caption: Super3 Stages
-:hidden:
-
-nemotron/super3/README.md
-nemotron/super3/pretrain.md
-nemotron/super3/sft.md
-nemotron/super3/rl/index.md
-nemotron/super3/rl/rlvr.md
-nemotron/super3/rl/swe.md
-nemotron/super3/rl/rlhf.md
-nemotron/super3/rl/data-prep.md
-nemotron/super3/evaluate.md
-nemotron/super3/quantization.md
 ```
 
 ```{toctree}
@@ -178,6 +424,14 @@ nemotron/wandb.md
 nemotron/cli.md
 nemotron/data-prep.md
 nemotron/xenna-observability.md
+```
+
+```{toctree}
+:caption: Data Recipes
+:hidden:
+
+nemotron/data/curation/nemotron-cc.md
+nemotron/data/sdg/long-document.md
 ```
 
 ```{toctree}

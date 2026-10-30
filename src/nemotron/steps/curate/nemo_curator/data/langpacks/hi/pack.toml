@@ -1,0 +1,53 @@
+# Hindi example language pack.
+#
+# Example data, not a curation default. Shipped as the third language because it
+# is not like the other two: Devanagari is an abugida whose matras split across
+# Unicode categories Mn and Mc with Mc in the majority, where Vietnamese NFD
+# produces only Mn. Sentences end with the danda, not a full stop, and digits
+# exist in two scripts. Each breaks a different assumption.
+
+[pack]
+pack_id      = "hi-example"
+language_tag = "hi"
+version      = "1.0.0"
+schema       = 1
+
+[sources]
+stopwords = { file = "stopwords.txt", n = 89, origin = "assembled for this repository for cross-script transfer validation", license = "CC0-1.0" }
+charset = { file = "charset.txt", script = "Deva", origin = "Unicode Standard Devanagari repertoire, curated by hand for Hindi (letters, matras across Mn and Mc, and Devanagari digits)", license = "Unicode-3.0" }
+boilerplate = { file = "boilerplate.txt", n = 12, origin = "patterns written for this repository from observed Hindi news sites", license = "Apache-2.0" }
+
+# The danda U+0964 is the sentence terminator. Curator's PunctuationFilter looks
+# for '.', '!' and '?' only, so a correct Hindi paragraph scores zero against it.
+[orthography]
+sentence_terminators = ["।", "॥", ".", "!", "?"]
+
+# No fold_map. Devanagari matras are obligatory vowels, not removable marks.
+
+[capabilities]
+supports = [
+    "script_ratio",
+    "stopword_ratio",
+    "boilerplate_hits",
+    "sentence_end_ratio",
+    # Hindi DOES delimit words with whitespace, so the word-based signals
+    # are valid here -- this is the contrast that makes the rule a rule.
+    "word_segmentation",
+    # NOT ascii_digits: Devanagari digits are category Nd and do not match
+    # [0-9], so numbers_ratio reads 0 on correct text.
+    # NOT ascii_punctuation: sentences end with the danda U+0964, which
+    # Curator's PunctuationFilter does not look for.
+]
+
+[notes]
+scope = """Example data, not an implicit language or threshold default. Profile every target \
+corpus before approving a gate."""
+absent_capabilities = """diacritic_ratio and stopword_ratio_folded are not declared, and that is \
+the finding rather than a shortfall. Vietnamese tone marks strip to degraded but readable text, so \
+measuring their density says something. Devanagari matras strip to nonsense, so the same \
+measurement would be meaningless -- and because the capability is undeclared, every figure derived \
+from it is absent from the Hindi report with a recorded warning instead of computed on a false \
+premise."""
+digits = """Devanagari digits are Unicode category Nd and satisfy str.isdigit(), but do not match \
+[0-9]. Curator's NumbersFilter therefore reads 0 on Devanagari-digit text. Recorded here; \
+correcting NumbersFilter is upstream work."""

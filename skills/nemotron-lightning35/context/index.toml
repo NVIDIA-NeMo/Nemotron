@@ -1,0 +1,143 @@
+version = 1
+model = "nemotron-lightning35"
+default_entry = "quick-reference"
+
+[[entries]]
+id = "quick-reference"
+topic = "identity"
+file = "quick-reference.md"
+kind = "compact"
+description = "Compact Lightning 3.5 identity, base-model lineage, results, quantization, recipe map, and nemotron-customize step map."
+
+[[entries]]
+id = "skill"
+topic = "routing"
+file = "../SKILL.md"
+kind = "compact"
+description = "Reference-desk instructions, routing table, caveats (Base-card vs report lineage, NVFP4 Mamba precision and calibration, removed Nano 3 text), and handoff for Lightning 3.5."
+
+[[entries]]
+id = "model-card"
+topic = "identity"
+file = "../model-card.md"
+kind = "release"
+description = "Identity, checkpoints, NVFP4 deployment, intended use."
+
+[[entries]]
+id = "paper-overview"
+topic = "overview"
+file = "../paper/_overview.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Overview: Identity, Lineage, Stage Order, Released Checkpoints, Report vs Repo Docs"
+
+[[entries]]
+id = "paper-architecture"
+topic = "architecture"
+file = "../paper/architecture.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Architecture: Nano 3 Hybrid Mamba-Transformer MoE Backbone, MTP Head Built by Projection Fusion and Pruning"
+
+[[entries]]
+id = "paper-pretraining"
+topic = "pretraining"
+file = "../paper/pretraining.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Pretraining: MTP Warm-up, 1T-Token Distillation from Super 3 Base, Long Context"
+
+[[entries]]
+id = "paper-data"
+topic = "data"
+file = "../paper/data.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Pretraining Data: Ultra 3 Phase 2 Distillation Data, Indic-Share Ablations (Table 3), Open Recipe Blend"
+
+[[entries]]
+id = "paper-evaluation-base"
+topic = "evaluation"
+file = "../paper/evaluation-base.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Base-Model Evaluation: Table 6 (Lightning 3.5 30B-A3B Base)"
+
+[[entries]]
+id = "paper-sft"
+topic = "sft"
+file = "../paper/sft.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Post-Training: Single-Stage Text-Only SFT"
+
+[[entries]]
+id = "paper-rl"
+topic = "rl"
+file = "../paper/rl.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning RL: RLVR Only (Report) vs the Repo's GRPO Recipe"
+
+[[entries]]
+id = "paper-mtp"
+topic = "mtp"
+file = "../paper/mtp.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning MTP: Head Initialization from Super 3, Warm-Up, 48k-Step Boosting, Acceptance Lengths"
+
+[[entries]]
+id = "paper-evaluation"
+topic = "evaluation"
+file = "../paper/evaluation.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Evaluation: Base (Table 6), BF16 and NVFP4 Post-Trained (Table 21)"
+
+[[entries]]
+id = "paper-quantization"
+topic = "quantization"
+file = "../paper/quantization.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning NVFP4: W4A16 on Every SKU, 99.24% Median Recovery, Report vs Repo Recipe"
+
+[[entries]]
+id = "paper-safety"
+topic = "safety"
+file = "../paper/safety.md"
+kind = "paper"
+description = "Nemotron 3.5 Lightning Safety: What Is and Is Not Reported"
+
+[[entries]]
+id = "recipes-overview"
+topic = "recipes"
+file = "../recipes/overview.md"
+kind = "tracking"
+description = "Stage map, CLI, artifact chain, and reproduction caveats for the nemotron lightning35 recipes."
+
+[[entries]]
+id = "recipes-stage0-pretrain"
+topic = "recipes"
+file = "../recipes/stage0_pretrain.md"
+kind = "tracking"
+description = "Stage 0 pretraining recipe vs the report's distillation-built base."
+
+[[entries]]
+id = "recipes-stage1-sft"
+topic = "recipes"
+file = "../recipes/stage1_sft.md"
+kind = "tracking"
+description = "Stage 1 SFT recipe; maps to sft/megatron_bridge."
+
+[[entries]]
+id = "recipes-stage2-rl"
+topic = "recipes"
+file = "../recipes/stage2_rl.md"
+kind = "tracking"
+description = "Stage 2 GRPO recipe config values and gaps."
+
+[[entries]]
+id = "recipes-stage3-eval"
+topic = "recipes"
+file = "../recipes/stage3_eval.md"
+kind = "tracking"
+description = "Stage 3 NeMo Gym evaluation recipe."
+
+[[entries]]
+id = "customize-handoff"
+topic = "build"
+file = "quick-reference.md"
+kind = "compact"
+description = "Maps Lightning stages to nemotron-customize steps (only sft/megatron_bridge lists Lightning) or recipe-grounded fallbacks."

@@ -1,0 +1,65 @@
+# Tiny Ultra3 packed-Parquet SFT config for a functional 550B-A55B smoke test.
+#
+# This is not a convergence run and not the paper packed-length run. It inherits
+# the default packed-Parquet data wiring, then overrides sequence length and
+# schedule downward for a minimal step test. The smoke test needs a distinct
+# tiny packed data artifact (pack_size=2048) for an actual execution.
+#
+# Smallest defensible smoke shape: 36 nodes / 288 GPUs with TP=2, PP=36,
+# EP=4, CP=1. PP=36 gives three of 108 layers per pipeline stage, EP=4 divides
+# 512 experts, TP=2 is the smallest plausible tensor shard, and full uniform
+# recompute minimizes activation memory.
+
+defaults:
+  - default
+
+run:
+  # Smoke test requires a 2048-packed artifact, not the default 294912-packed SFT data.
+  data: ultra3-sft-data-tiny:latest
+  env:
+    nodes: 36
+
+recipe:
+  seq_length: 2048
+
+dataset:
+  seq_length: 2048
+  packed_sequence_specs:
+    packed_sequence_size: 2048
+
+model:
+  tensor_model_parallel_size: 2
+  pipeline_model_parallel_size: 36
+  expert_model_parallel_size: 4
+  expert_tensor_parallel_size: 1
+  context_parallel_size: 1
+  sequence_parallel: true
+  seq_length: 2048
+  mtp_loss_scaling_factor: 0.1
+  recompute_granularity: full
+  recompute_method: uniform
+  recompute_num_layers: 1
+  recompute_modules: null
+
+train:
+  train_iters: 10
+  global_batch_size: 8
+  micro_batch_size: 1
+
+validation:
+  eval_interval: 5
+  eval_iters: 1
+
+scheduler:
+  lr_decay_style: cosine
+  lr_warmup_iters: 2
+  lr_decay_iters: 10
+  override_opt_param_scheduler: true
+
+logger:
+  log_interval: 1
+  wandb_exp_name: nemotron_3_ultra_packed_sft_tiny_tp2_pp36_ep4
+
+checkpoint:
+  save: /nemo_run/ultra3-sft-model-tiny
+  save_interval: 5

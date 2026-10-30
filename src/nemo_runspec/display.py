@@ -37,6 +37,7 @@ CONSOLE = Console()
 
 # Default theme for syntax highlighting
 DEFAULT_THEME = "monokai"
+SENSITIVE_KEY_MARKERS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL")
 
 
 def _get_theme() -> str:
@@ -45,6 +46,25 @@ def _get_theme() -> str:
     if cli_config and "theme" in cli_config:
         return str(cli_config.theme)
     return DEFAULT_THEME
+
+
+def _is_sensitive_key(key: str) -> bool:
+    upper_key = key.upper()
+    return any(marker in upper_key for marker in SENSITIVE_KEY_MARKERS)
+
+
+def _redact_sensitive_values(value):
+    """Recursively redact values whose keys look like secrets."""
+    if isinstance(value, dict):
+        return {
+            key: ("******" if item else item)
+            if _is_sensitive_key(str(key))
+            else _redact_sensitive_values(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_sensitive_values(item) for item in value]
+    return value
 
 
 def display_job_config(job_config: DictConfig, *, for_remote: bool = False) -> None:
@@ -76,7 +96,8 @@ def _display_run_section(job_config: DictConfig) -> None:
         return
 
     # Convert to YAML string
-    yaml_str = OmegaConf.to_yaml(run, resolve=False)
+    run_dict = OmegaConf.to_container(run, resolve=False)
+    yaml_str = OmegaConf.to_yaml(OmegaConf.create(_redact_sensitive_values(run_dict)), resolve=False)
 
     syntax = Syntax(yaml_str.rstrip(), "yaml", theme=_get_theme(), line_numbers=False)
     CONSOLE.print(
@@ -108,6 +129,7 @@ def _display_config_section(job_config: DictConfig, *, for_remote: bool = False)
     else:
         # Resolve ${run.*} interpolations for display
         config_dict = resolve_run_interpolations(config_dict, run_section)
+    config_dict = _redact_sensitive_values(config_dict)
 
     # Convert back to OmegaConf for YAML serialization
     config_without_run = OmegaConf.create(config_dict)
@@ -156,7 +178,7 @@ def display_job_submission(
         env_section = tree.add("[cyan]env[/cyan]")
         for key in sorted(interesting_vars.keys()):
             # Mask sensitive values
-            if "KEY" in key or "TOKEN" in key or "SECRET" in key:
+            if _is_sensitive_key(key):
                 env_section.add(f"[dim]{key}:[/dim] [green]✓ detected[/green]")
             else:
                 env_section.add(f"[dim]{key}:[/dim] {interesting_vars[key]}")
@@ -221,7 +243,7 @@ def display_ray_job_submission(
         env_section = tree.add("[cyan]env[/cyan]")
         for key in sorted(interesting_vars.keys()):
             # Mask sensitive values
-            if "KEY" in key or "TOKEN" in key or "SECRET" in key:
+            if _is_sensitive_key(key):
                 env_section.add(f"[dim]{key}:[/dim] [green]✓ detected[/green]")
             else:
                 env_section.add(f"[dim]{key}:[/dim] {interesting_vars[key]}")

@@ -1,0 +1,22 @@
+# AutoModel overlay: GB200. Applied to the upstream Nemotron VL CORD-v2 PEFT recipe.
+# This template has not yet been validated in an end-to-end GB200 training run.
+# Paths, task datasets, step counts and ep_size are resolved by the notebook.
+# ep_size below is the 4-GPU default; a detected 8-GPU allocation uses ep_size=8.
+model:
+  torch_dtype: torch.bfloat16
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 1
+distributed:
+  strategy: fsdp2
+  tp_size: 1
+  cp_size: 1
+  pp_size: 1
+  ep_size: 4
+  sequence_parallel: false
+  activation_checkpointing: true
+  reshard_after_forward: true
+  moe:
+    reshard_after_forward: true
+optimizer:
+  lr: 1.0e-4

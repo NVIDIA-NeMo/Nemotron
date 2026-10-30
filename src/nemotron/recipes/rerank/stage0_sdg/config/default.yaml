@@ -1,0 +1,73 @@
+# Stage 0: Synthetic Data Generation Configuration (Rerank)
+#
+# Generates synthetic Q&A pairs using the released retrieval SDG plugin.
+# Uses the same SDG pipeline as the embed recipe but outputs to rerank directory.
+#
+# Usage:
+#   nemotron rerank sdg -c default
+#   nemotron rerank sdg -c default corpus_dir=/path/to/docs
+
+# Execution environment configuration
+run:
+  env:
+    container: nvcr.io/nvidia/pytorch:25.12-py3
+
+# Core paths
+corpus_id: nv_pp_random
+corpus_dir: hf://nvidia/Retrieval-Synthetic-NVDocs-v1@1c0d1856f3fb595b2dda98d4b61061fa6d782d51/sample_corpus/nv_pp_random
+
+# Output directory for generated synthetic data
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage0_sdg
+
+# Document processing
+min_text_length: 50
+sentences_per_chunk: 5
+num_sections: 1
+
+# Generation parameters
+max_artifacts_per_type: 2
+num_pairs: 7
+query_counts:
+  multi_hop: 3
+  structural: 2
+  contextual: 2
+min_hops: 1
+max_hops: 3
+reasoning_counts:
+  factual: 1
+  relational: 1
+  inferential: 1
+  temporal: 1
+  procedural: 1
+  causal: 1
+  visual: 1
+min_complexity: 2
+similarity_threshold: 0.9
+
+# Data Designer execution
+dataset_name: nv_pp_random
+buffer_size: 200
+# Start fresh by default. Use always to require a compatible checkpoint, or
+# if_possible to resume when compatible and otherwise start fresh.
+resume: never
+
+# Multi-document bundling
+multi_doc: false
+bundle_size: 2
+bundle_strategy: sequential
+max_docs_per_bundle: 3
+
+# Model configuration
+artifact_extraction_model: nvidia/nemotron-3-nano-30b-a3b
+artifact_extraction_provider: nvidia
+qa_generation_model: nvidia/nemotron-3-nano-30b-a3b
+qa_generation_provider: nvidia
+quality_judge_model: nvidia/nemotron-3-nano-30b-a3b
+quality_judge_provider: nvidia
+embed_model: nvidia/llama-3.2-nv-embedqa-1b-v2
+embed_provider: nvidia
+
+# Runtime options
+artifact_path: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage0_sdg/artifacts
+preview: false
+log_level: INFO

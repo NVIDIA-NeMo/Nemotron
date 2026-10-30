@@ -1,0 +1,13 @@
+cases:
+  - id: route_byob_mcq_generation
+    user: Generate a custom MCQ benchmark from these banking documents.
+    expected_skill: byob
+    expected_stage: generate
+  - id: route_byob_translation
+    user: Translate the BYOB benchmark to Hindi and keep the options aligned.
+    expected_skill: byob
+    expected_stage: translate
+  - id: route_byob_family_extension
+    user: Add a GSM8K style benchmark family to the BYOB flow.
+    expected_skill: byob
+    expected_stage: extend

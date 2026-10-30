@@ -1,0 +1,88 @@
+# Super35 stage 0 — Megatron-Bridge vision-language pretraining (default)
+#
+# Megatron-Bridge's `nemotron_35_super_vl_pretrain_config` (64x H100, BF16):
+# image-caption training on an Energon dataset with every model stack trainable
+# (language model + MTP, RADIO vision encoder, projector, temporal video
+# embedder), warm-started from a converted Super-VL checkpoint.
+#
+# This is NOT the tech report's text pretraining (MTP warmup -> 1T-token
+# distillation -> Indic CPT -> 1M long-context -> agentic mid-training -> LC
+# recovery); that pipeline is not publicly reproducible. See ../README.md.
+#
+# Values follow Megatron-Bridge's verified H100 pretrain card (2026-09-25):
+# 8 nodes x 8 H100, TP2/PP2/EP32/ETP1 with sequence parallelism, sequence
+# length 4096, GBS/MBS 1280/1, natural HybridEP routing, FP32 optimizer state,
+# two shared MTP prediction depths at loss scale 0.3. The card ran 200 steps
+# on a DataComp image-caption Energon dataset.
+#
+# Inputs (both must be on storage visible to the cluster):
+#   SUPER35_PRETRAIN_DATA        Energon WebDataset root (image-caption samples;
+#                                text/image/video allowed, no audio)
+#   SUPER35_INIT_CHECKPOINT      Megatron-format Super-VL checkpoint converted
+#                                from Hugging Face (see ../README.md); the card
+#                                passes the converted `iter_0000000` directory
+
+run:
+  env:
+    # Public NeMo 26.08 container (same as lightning35).
+    container: nvcr.io/nvidia/nemo:26.08
+    env_vars:
+      # Triton/Inductor/FlashInfer JIT caches default under /root, whose
+      # container overlay is tiny — use node-local /tmp instead.
+      TRITON_CACHE_DIR: /tmp/triton_cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor_cache
+      TORCH_EXTENSIONS_DIR: /tmp/torch_extensions
+      XDG_CACHE_HOME: /tmp/xdg_cache
+    # The Super-VL recipes (megatron.bridge.recipes.nemotronh_multimodal)
+    # exist only on recent Megatron-Bridge main. Mount the pinned MB commit
+    # over the container's copy, plus the Megatron-LM revision that commit
+    # pins as its 3rdparty/Megatron-LM submodule (megatron.core resolves from
+    # MB's vendored submodule path in this container).
+    mounts:
+      - ${auto_mount:git+https://github.com/NVIDIA-NeMo/Megatron-Bridge.git@f7f37b263307812702ee57bbc413a8a26c0924b5,/opt/Megatron-Bridge}
+      - ${auto_mount:git+https://github.com/NVIDIA/Megatron-LM.git@bab851bfe3abc805256155962389ec0fe5de7571,/opt/Megatron-Bridge/3rdparty/Megatron-LM}
+
+recipe:
+  _target_: megatron.bridge.recipes.nemotronh_multimodal.nemotron_35_super_vl_pretrain_config
+  step_func: nemotron_omni_step
+
+dataset:
+  path: ${oc.env:SUPER35_PRETRAIN_DATA,/path/to/energon/image-caption-dataset}
+  seq_length: 4096
+  num_workers: 2
+  do_validation: false
+
+model:
+  seq_length: 4096
+  # Verified-card overrides on top of the recipe's TP1/PP2/EP32 layout.
+  tensor_model_parallel_size: 2
+  sequence_parallel: true
+  cross_entropy_fusion_impl: native
+
+train:
+  train_iters: 200
+  global_batch_size: 1280
+  micro_batch_size: 1
+
+scheduler:
+  lr_decay_iters: 200
+
+validation:
+  eval_iters: 0
+  eval_interval: 0
+
+logger:
+  log_interval: 1
+  log_throughput: true
+  wandb_project: ${run.wandb.project}   # Set from env.toml [wandb]
+  wandb_entity: ${run.wandb.entity}     # Set from env.toml [wandb]
+  wandb_exp_name: super35-pretrain
+
+checkpoint:
+  save: /nemo_run/super35-pretrain-model
+  save_interval: 100
+  pretrained_checkpoint: ${oc.env:SUPER35_INIT_CHECKPOINT,/path/to/megatron/super35-vl/iter_0000000}
+  load: null
+  load_optim: false
+  load_rng: false
+  async_save: false

@@ -1,0 +1,58 @@
+# Stage 5: Deploy Configuration
+#
+# Launches NVIDIA NeMo Retriever Reranking NIM. By default deploy mounts the
+# Stage 4 ONNX export directory and sets NIM_CUSTOM_MODEL. The NIM discovers
+# the mounted artifact and creates its runtime manifest during startup.
+#
+# Usage:
+#   nemotron rerank deploy -c default
+#   nemotron rerank deploy -c default detach=true
+#   nemotron rerank deploy -c default model_dir=/path/to/stage4_export/tensorrt
+#   nemotron rerank deploy -c default model_dir=null
+#
+# Test the deployed service:
+#   curl -X POST http://localhost:8000/v1/ranking \
+#     -H 'Content-Type: application/json' \
+#     -d '{"model": "nvidia/llama-nemotron-rerank-1b-v2", "query": {"text": "what is AI?"}, "passages": [{"text": "AI is artificial intelligence"}]}'
+
+# NIM container image
+nim_image: nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0
+
+# Container name (for management)
+container_name: nemotron-rerank-nim
+
+# Replace an existing recipe-owned container with the same name. This is
+# explicit by default because replacement stops the old service before starting
+# the new one.
+replace_existing: false
+
+# Optional custom ONNX/TensorRT export directory. Set null to serve the image
+# default model instead of a fine-tuned export.
+model_dir: ${oc.env:NEMO_RUN_DIR,.}/output/rerank/stage4_export/onnx
+
+# Container internal paths
+container_model_path: /opt/nim/custom_model
+container_cache_path: /opt/nim/.cache
+
+# Network settings
+bind_address: 127.0.0.1
+host_port: 8000
+container_port: 8000
+
+# GPU allocation
+gpus: all
+
+# Shared memory size
+shm_size: 16gb
+
+# Runtime settings
+detach: false
+remove_on_exit: true
+keep_failed_container: false
+
+# Health check settings
+health_check_timeout: 120
+health_check_interval: 5
+
+# Environment variable for NGC API key
+ngc_api_key_env: NGC_API_KEY

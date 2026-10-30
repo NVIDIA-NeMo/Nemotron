@@ -1,0 +1,57 @@
+# Source: Unicode CLDR 48, common/main/en.xml main exemplar characters [a-z].
+# URL: https://unicode.org/Public/cldr/48/core.zip
+# Upstream en.xml SHA-256: a1d2dfc2fb283be056209f04c5a4b3b89e7fa8a12d7a0bc4e3a1625890d2bd4a
+# SPDX-License-Identifier: Unicode-3.0
+# Transformation: added Unicode uppercase mappings to the CLDR main set.
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z

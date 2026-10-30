@@ -1,0 +1,132 @@
+# BFCL gold template — point oracle_pack at an allowlisted pack, then run
+# stage=prepare followed by stage=generate (or stage=all).
+# Domain content enters only via oracle_pack paths (agnostic core rule).
+#
+# The optional profile / paraphrase / surface-judge roles are disabled here so
+# this config runs end to end. A gold run may disable them: disabled roles are
+# recorded with null identity and make generation_mode template_only, which does
+# not change gold eligibility. Profile and paraphrase are available; settings
+# unsupported by the selected stage are refused rather than silently skipped.
+
+schema_version: "1.1"
+config_status: template
+family: bfcl
+expt_name: bfcl_default_gold_v0
+stage: all
+random_seed: 42
+
+output_dir: /tmp/bfcl/default_out
+
+oracle_pack:
+  # Point at an allowlisted pack under data/ (or extend allowed_roots). Left as a
+  # placeholder on purpose: a publication template that defaults to an example pack
+  # would publish the example domain to anyone who forgot to edit this line.
+  manifest_path: REPLACE_ME_ORACLE_PACK_MANIFEST
+
+oracle_runtime:
+  clock: "2026-03-02T09:00:00+07:00"
+  tool_timeout_s: 5.0
+  assertion_timeout_s: 5.0
+  import_timeout_s: 10.0
+  reset_timeout_s: 5.0
+  episode_timeout_s: 60.0
+  worker: process
+  allowed_roots:
+    - data
+
+lineage:
+  policy: strict_separation
+  # Only true when an enabled profile role actually shaped the surface text.
+  profile_influenced_surface: false
+  # Null while no judge runs; a judge that never runs must not claim advisory.
+  judge_advisory: null
+  roles:
+    profile:
+      enabled: false
+      model_config: &profile_model
+        alias: profile_style
+        model: REPLACE_ME_PROFILE_MODEL
+        provider: nvidia
+        canonical_id: REPLACE_ME_PROFILE_CANONICAL_ID
+        inference_parameters:
+          temperature: 0.0
+          max_tokens: 4000
+          max_parallel_requests: 4
+    paraphrase:
+      enabled: false
+      model_config: &paraphrase_model
+        alias: paraphrase_vi
+        model: REPLACE_ME_PARAPHRASE_MODEL
+        provider: nvidia
+        canonical_id: REPLACE_ME_PARAPHRASE_CANONICAL_ID
+        inference_parameters:
+          temperature: 0.7
+          max_tokens: 2048
+          max_parallel_requests: 8
+    surface_judge:
+      enabled: false
+      model_config: &surface_judge_model
+        alias: surface_judge
+        model: REPLACE_ME_SURFACE_JUDGE_MODEL
+        provider: nvidia
+        canonical_id: REPLACE_ME_SURFACE_JUDGE_CANONICAL_ID
+        inference_parameters:
+          temperature: 0.0
+          max_tokens: 2000
+          max_parallel_requests: 4
+
+# Required when lineage.roles.profile.enabled is true. The JSONL is style-only:
+# expected calls, oracle state, tool results, and assertion verdicts are rejected.
+# reference_benchmark:
+#   name: REPLACE_ME_REFERENCE_NAME
+#   samples_path: REPLACE_ME_REFERENCE_JSONL
+#   content_hash: sha256:REPLACE_ME_64_HEX_DIGEST
+
+# Inert while every model role is disabled; kept so enabling a role needs no
+# other edit than its enabled flag and its REPLACE_ME_* identity.
+
+surface_generation:
+  model_paraphrase_enabled: false
+  # Bounded by the number of surface style axes, one axis per variant.
+  paraphrases_per_template: 0
+  preserve_slot_values: true
+  prevent_tool_name_leakage: true
+  # Optional: replace the framework style axes with registers that suit this
+  # domain or language. Each axis must select phrasing only, never which values a
+  # request carries, or the must_preserve guard will reject the variant.
+  # surface_style_axes: []
+
+surface_quality_validation:
+  contract_version: "1.1"
+  enabled: false
+  drop_authority: false
+
+task_generation:
+  tasks_per_category: 30
+  # candidate_tasks_per_category: 45
+  # target_published_tasks: 180
+  # Stage 11 targets (uncomment together after semantic balancing is enabled):
+  # max_turns: 6
+  # max_tool_calls: 3
+  # difficulty_mix: {easy: 0.30, medium: 0.50, hard: 0.20}
+  # turn_mix: {single_turn: 0.60, multi_turn: 0.40}
+  # tool_call_count_mix: {"1": 0.75, "2": 0.20, "3+": 0.05}
+
+semantic_deduplication_config:
+  contract_version: "1.0"
+  enabled: false
+  model_identifier: sentence-transformers/all-MiniLM-L6-v2
+  n_clusters: 20
+  eps: 0.08
+  remove_duplicates: true
+  # max_exact_surface_reuse: 8
+  # min_exact_surface_ratio: 0.15
+  representative_source_preference: [template, model]
+  unmet_target_policy: abort
+
+exports:
+  # Both formats are derived from benchmark.parquet, read back for equivalence,
+  # and recorded in run_manifest.json. The NeMo bundle still requires a native
+  # function-calling adapter; evaluator.yaml is not a Launcher run config.
+  bfcl_json: false
+  nemo_evaluator_bundle: false

@@ -42,12 +42,13 @@ from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.execution import (
     build_env_vars,
-    clone_git_repos_via_tunnel,
+    create_slurm_executor,
+    execute_cloud,
     execute_local,
+    get_executor_type,
     get_startup_commands,
     prepend_startup_to_cmd,
 )
-from nemo_runspec.squash import ensure_squashed_image
 from nemo_runspec.recipe_config import RecipeConfig, parse_recipe_config
 from nemo_runspec.recipe_typer import RecipeMeta
 
@@ -131,6 +132,14 @@ def _execute_data_prep_rl(cfg: RecipeConfig):
             env_vars=env_vars,
             startup_commands=startup_commands,
         )
+    elif get_executor_type(env_for_executor) in ("dgxcloud", "lepton"):
+        execute_cloud(
+            SCRIPT_PATH, train_path, env=env_for_executor,
+            env_vars=env_vars, passthrough=cfg.passthrough,
+            attached=cfg.attached, default_image=SPEC.image,
+            script_resources=SPEC.resources,
+            startup_commands=startup_commands,
+        )
     else:
         _execute_ray_code_packager(
             train_path=train_path,
@@ -156,9 +165,12 @@ def _execute_ray_code_packager(
     startup_commands: list[str] | None,
     force_squash: bool,
 ):
-    """Execute via Ray with code packager."""
+    """Execute via Ray with code packager (Slurm backend).
+
+    FORK POINT: For Lepton/DGXCloud, see sft.py's _execute_cloud pattern.
+    """
     try:
-        import nemo_run as run
+        import nemo_run  # noqa: F401 -- availability check
         from nemo_run.run.ray.job import RayJob
     except ImportError:
         typer.echo("Error: nemo-run is required for --run/--batch execution", err=True)
@@ -174,71 +186,22 @@ def _execute_ray_code_packager(
     patch_nemo_run_rsync_accept_new_host_keys()
     patch_nemo_run_ray_template_for_cpu()
 
-    # Helper for accessing env config (OmegaConf or dict)
     def _get(key: str, default=None):
         if env is None:
             return default
         return env.get(key, default) if hasattr(env, "get") else getattr(env, key, default)
 
-    tunnel = None
-    remote_job_dir = _get("remote_job_dir")
-    if _get("tunnel") == "ssh":
-        tunnel = run.SSHTunnel(
-            host=_get("host", "localhost"),
-            user=_get("user"),
-            job_dir=remote_job_dir,
-        )
-
-    # Build packager - code packager rsyncs full codebase
     packager = CodePackager(
         script_path=SCRIPT_PATH,
         train_path=str(train_path),
         exclude_dirs=("usage-cookbook", "use-case-examples"),
     )
 
-    container_image = _get("container_image") or _get("container") or SPEC.image
-
-    if container_image and tunnel and remote_job_dir:
-        tunnel.connect()
-        container_image = ensure_squashed_image(
-            tunnel, container_image, remote_job_dir, env, force=force_squash
-        )
-
-    git_mounts = []
-    if tunnel and remote_job_dir:
-        tunnel.connect()
-        git_mounts = clone_git_repos_via_tunnel(tunnel, remote_job_dir)
-
-    if attached:
-        partition = _get("run_partition") or _get("partition")
-    else:
-        partition = _get("batch_partition") or _get("partition")
-
-    raw_mounts = list(_get("mounts") or [])
-    mounts = [m for m in raw_mounts if not m.startswith("__auto_mount__:")]
-    mounts.extend(git_mounts)
-    mounts.append("/lustre:/lustre")
-
-    if remote_job_dir:
-        ray_temp_path = f"{remote_job_dir}/ray_temp"
-        mounts.append(f"{ray_temp_path}:/ray-cluster")
-        if tunnel:
-            tunnel.run(f"mkdir -p {ray_temp_path}", hide=True)
-
-    executor = run.SlurmExecutor(
-        account=_get("account"),
-        partition=partition,
-        nodes=_get("nodes", 1),
-        ntasks_per_node=_get("ntasks_per_node", 1),
-        gpus_per_node=_get("gpus_per_node"),
-        cpus_per_task=_get("cpus_per_task"),
-        time=_get("time", "04:00:00"),
-        container_image=container_image,
-        container_mounts=mounts,
-        tunnel=tunnel,
-        packager=packager,
-        mem=_get("mem"),
-        env_vars=env_vars,
+    executor = create_slurm_executor(
+        env, env_vars, packager,
+        default_image=SPEC.image,
+        attached=attached,
+        force_squash=force_squash,
         launcher=None,
     )
 
@@ -250,7 +213,6 @@ def _execute_ray_code_packager(
     shutil.copy2(train_path, repo_config)
 
     setup_commands = list(SETUP_COMMANDS)
-
     remote_script = SCRIPT_PATH
     effective_run_command = _get("run_command", SPEC.run.cmd)
 
@@ -263,6 +225,7 @@ def _execute_ray_code_packager(
     runtime_env: dict = {"env_vars": dict(env_vars)}
 
     import tempfile
+
     import yaml as pyyaml
 
     runtime_env_yaml = None
@@ -278,8 +241,9 @@ def _execute_ray_code_packager(
         runtime_env_yaml=runtime_env_yaml,
     )
 
-    remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
-    executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
+    if hasattr(executor, "tunnel") and executor.tunnel:
+        remote_code_dir = f"{executor.tunnel.job_dir}/{job_name}/code"
+        executor.tunnel.put(str(repo_config), f"{remote_code_dir}/config.yaml")
 
     if ray_job.backend.job_id is None:
         try:

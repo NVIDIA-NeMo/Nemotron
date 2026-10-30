@@ -1,0 +1,34 @@
+[BFCL-SKELETON: Replace every bracketed block below, brackets and all; a finished brief holds
+none. Keep it to plain UTF-8 under 16 KiB, and name no credential, customer or hostname:
+this file is stored, sanitized, and shown to a model. Write only what you know the source
+does. Nothing here is treated as truth about behaviour, because the probes decide that, so
+an unverified claim buys nothing and misleads the reviewer who reads it next.]
+
+[BFCL-SKELETON: WHAT THIS IS FOR: one sentence naming the domain, who the assistant serves, and what the
+oracle behind it stands in for. Task templates are phrased around this sentence, so write
+it the way someone in that domain would say it.]
+
+[BFCL-SKELETON: WHAT THE ASSISTANT ANSWERS: the questions it handles that only read state. Name them as
+capabilities in your own words rather than as tool names, since the tool schemas are read
+separately and this is the part that says which of them matter together.]
+
+[BFCL-SKELETON: WHAT THE ASSISTANT CHANGES: the operations that commit. If there are none, say so plainly
+rather than leaving it out. Every operation named here is expected to show a state change
+when probed, so one listed by mistake turns into a failing case.]
+
+[BFCL-SKELETON: WHETHER A CHANGE IS ASKED ABOUT FIRST: for each committing operation, whether the source
+commits straight away or answers with a pending status and waits, and what the caller sends
+back to confirm. A source that asks first and a source that does not are probed
+differently, and this sentence is what decides which. If the source has no committing
+operation, say that confirmation does not apply.]
+
+[BFCL-SKELETON: WHEN A WELL-FORMED REQUEST IS STILL REFUSED: the rules that turn a valid-looking call into
+an error, such as a limit, a state that forbids the operation, or a precondition that has
+to hold first. These are where the negative cases come from, so a rule left out is a class
+of error the benchmark never exercises.]
+
+[BFCL-SKELETON: HOW IDENTIFIERS LOOK, AND WHAT HAPPENS TO ONE THE SOURCE DOES NOT HOLD: the shape or
+prefix of each kind of identifier, and whether an unknown one is refused or quietly
+approximated. This is what lets a case ask for something absent on purpose.]
+
+[BFCL-SKELETON: LANGUAGE: the language the benchmark is authored and answered in.]

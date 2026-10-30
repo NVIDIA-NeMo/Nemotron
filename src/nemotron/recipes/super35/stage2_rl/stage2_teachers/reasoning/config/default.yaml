@@ -1,0 +1,494 @@
+# Nemotron 3.5 Super VL -- RL stage 2 teacher: reasoning (math / STEM / competitive coding).
+#
+# GRPO from RLVR step 120 on a mixed math + STEM + competitive-coding set with
+# 128K-token generations (262,144 context). Math and STEM answers are graded by
+# an LLM judge (DeepSeek V4 Flash; hosted API or your own vLLM server, see
+# README); code by the competitive-coding-challenges verifier (needs a sandbox).
+# Selected checkpoint: step 80 (this config stops at 80 steps). Used in MOPD phase 1.
+#
+# Nodes (GB200, 4 GPUs/node): 64 = 16 training (TP4/CP16/EP32) + 48 generation.
+# The judge needs no allocated nodes when it is a hosted endpoint.
+#
+# Deviations from the historical run (kept from the maintained reference-run recipe):
+# - DeepSeek V4 Flash judge throughout (historically the judge changed at step 30).
+# - Reasoning stays enabled for coding prompts; fresh rerun, not an exact replay.
+# - Five repeated, detached MTP heads trained (coefficient 0.3, historically 1);
+#   policy inference still uses one MTP speculative token.
+# - Policy serving: 256 sequences / 32,768 batched tokens (historically 64 / 8,480).
+# Legacy inactive base keys are retained for parity.
+# Requires NeMo-RL super-v3.5-posttraining @ f299847f1 (Gym e24db4e6); see ../../../Dockerfile.
+# Several keys below (reward_penalties, router_replay, ...) only exist on that branch.
+
+run:
+  model: super35-rl-rlvr-model:latest
+  data: super35-rl-teacher-reasoning-data:latest
+  output_artifact: super35-rl-teacher-reasoning-model
+  hf_architecture: nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/super35-rl.sqsh
+    nodes: 64  # Slurm allocation: 16 training + 48 generation; hosted judge needs no nodes
+    gpus_per_node: 4
+    sandbox:
+      container: ""  # Set to a NeMo-Skills sandbox image (needed for code execution / CCC)
+      port: 6000
+      command: "/start-with-nginx.sh"
+    persistent_cache: ""  # Shared dir for vLLM/Triton/Inductor caches
+    env_vars:
+      NRL_WG_USE_RAY_REF: "1"
+      OMP_NUM_THREADS: "16"
+      RAY_ENABLE_UV_RUN_RUNTIME_ENV: "0"
+      UV_HTTP_TIMEOUT: "10"
+      UV_LOCK_TIMEOUT: "1800"
+      WANDB_INIT_TIMEOUT: "300"
+      VLLM_USE_FLASHINFER_MOE_FP8: "1"
+      VLLM_FLASHINFER_MOE_BACKEND: "latency"
+      NEMO_GYM_VENV_DIR: "/opt/gym_venvs"
+      NRL_VLLM_USE_V1: "1"
+      NRL_VLLM_ASYNC_TIMEOUT_SECONDS: "3600"
+      NRL_IGNORE_VERSION_MISMATCH: "1"
+      NRL_FORCE_REBUILD_VENVS: "false"
+      NRL_USE_FASTOKENS: "1"
+      VLLM_USE_PRECOMPILED: "1"
+      CUDA_DEVICE_MAX_CONNECTIONS: "1"
+      RAY_DEDUP_LOGS: "0"
+      # CCC metadata and a compile dir shared with the sandbox (also read by the YAML below).
+      CCC_TEST_FILE: ${oc.env:CCC_TEST_FILE,/path/to/ccc_multi5_metadata.jsonl}
+      CCC_SHARED_TEMP_DIR: ${oc.env:CCC_SHARED_TEMP_DIR,/path/to/shared/ccc_shared_tmp}
+      # The judge API key is read from NVIDIA_API_KEY in the job environment; never put it here.
+checkpointing:
+  enabled: true
+  checkpoint_dir: results/super35-rl-teacher-reasoning/checkpoints
+  metric_name: val:total_reward/mean
+  higher_is_better: true
+  keep_top_k: 1000000
+  save_period: 5
+  ft_keep_latest_k: 1
+  ft_save_period: 1
+  checkpoint_must_save_by: null
+  model_save_format: safetensors
+  save_consolidated: false
+  save_optimizer: true
+  save_replay_buffer: true
+  load_replay_buffer: false
+grpo:
+  num_prompts_per_step: 256
+  num_generations_per_prompt: 16
+  max_rollout_turns: 1
+  max_num_epochs: 1
+  max_num_steps: 80
+  normalize_rewards: true
+  use_leave_one_out_baseline: true
+  advantage_clip_low: -20
+  advantage_clip_high: 20
+  val_period: 1000000
+  val_at_start: false
+  val_at_end: false
+  val_batch_size: 256
+  val_num_generations_per_prompt: 2
+  max_val_samples: null
+  seed: 42
+  overlong_filtering: false
+  use_dynamic_sampling: false
+  dynamic_sampling_max_gen_batches: 10
+  batch_multiplier: 1
+  invalid_tool_call_advantage: -5.0
+  reward_shaping:
+    enabled: false
+    overlong_buffer_length: 128
+    overlong_buffer_penalty: 1
+    max_response_length: ${policy.max_total_sequence_length}
+    stop_properly_penalty_coef: null
+  reward_scaling:
+    enabled: false
+    source_min: 0.0
+    source_max: 1.0
+    target_min: 0.0
+    target_max: 1.0
+  async_grpo:
+    enabled: true
+    max_trajectory_age_steps: 2
+    in_flight_weight_updates: true
+    recompute_kv_cache_after_weight_updates: false
+  use_best_at_k: false
+  best_at_k_k: 8
+  best_at_k_m: 1000
+  use_combined_training: false
+  combined_training_weight_mode: auto
+  combined_training_best_at_k_weight: 0.2
+  combined_training_pass_at_1_weight: 1.0
+  adv_estimator:
+    name: grpo
+  use_orm_advantage: false
+  orm_advantage_weight: 0.0
+  seq_logprob_error_threshold: 2
+loss_fn:
+  reference_policy_kl_penalty: 0.0
+  reference_policy_kl_type: k3
+  kl_input_clamp_value: null
+  kl_output_clamp_value: null
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.28
+  ratio_clip_c: null
+  use_on_policy_kl_approximation: true
+  disable_ppo_ratio: false
+  use_importance_sampling_correction: true
+  truncated_importance_sampling_ratio: 5.0
+  truncated_importance_sampling_ratio_min: 0.2
+  truncated_importance_sampling_type: tis
+  sequence_level_importance_ratios: false
+  token_level_loss: true
+  force_on_policy_ratio: true
+  use_kl_in_reward: false
+policy:
+  model_name: ${art:model,path}
+  tokenizer:
+    name: ${policy.model_name}
+    chat_template_kwargs: null
+  hf_config_overrides: {}
+  generation_batch_size: 64
+  train_global_batch_size: 4096
+  train_micro_batch_size: 1
+  logprob_batch_size: 1
+  max_total_sequence_length: 262144
+  logprob_chunk_size: 2048
+  precision: bfloat16
+  offload_optimizer_for_logprob: false
+  dtensor_cfg:
+    _v2: true
+    enabled: false
+    cpu_offload: false
+    sequence_parallel: false
+    activation_checkpointing: false
+    tensor_parallel_size: 1
+    context_parallel_size: 1
+    custom_parallel_plan: null
+  megatron_cfg:
+    enabled: true
+    empty_unused_memory_level: 2
+    activation_checkpointing: true
+    tensor_model_parallel_size: 4
+    expert_tensor_parallel_size: 1
+    expert_model_parallel_size: 32
+    context_parallel_size: 16
+    pipeline_model_parallel_size: 1
+    num_layers_in_first_pipeline_stage: null
+    num_layers_in_last_pipeline_stage: null
+    pipeline_dtype: ${policy.precision}
+    sequence_parallel: true
+    gradient_accumulation_fusion: false
+    freeze_moe_router: true
+    moe_router_dtype: fp32
+    moe_router_load_balancing_type: none
+    moe_router_bias_update_rate: 0.001
+    moe_router_enable_expert_bias: true
+    moe_permute_fusion: true
+    moe_enable_deepep: false
+    moe_token_dispatcher_type: alltoall
+    moe_flex_dispatcher_backend: alltoall
+    moe_hybridep_num_sms: 32
+    moe_aux_loss_coeff: 0.0
+    moe_shared_expert_overlap: false
+    track_moe_metrics: true
+    moe_per_layer_logging: true
+    apply_rope_fusion: true
+    bias_activation_fusion: false
+    use_fused_weighted_squared_relu: true
+    defer_fp32_logits: true
+    do_not_average_loss: true
+    cp_normalize: true
+    calculate_per_token_loss: true
+    scale_loss_by_dp_cp_size: false
+    fp32_lm_head: tf32
+    mtp_loss_scaling_factor: 0.3
+    mtp_use_repeated_layer: true
+    mtp_num_layers: 5
+    mtp_detach_heads: true
+    optimizer:
+      optimizer: adam
+      lr: 4.0e-06
+      min_lr: 4.0e-06
+      weight_decay: 0.0
+      bf16: true
+      fp16: false
+      params_dtype: float32
+      adam_beta1: 0.9
+      adam_beta2: 0.999
+      adam_eps: 1.0e-08
+      sgd_momentum: 0.9
+      use_distributed_optimizer: true
+      use_precision_aware_optimizer: true
+      clip_grad: ${policy.max_grad_norm}
+      optimizer_cpu_offload: false
+      optimizer_offload_fraction: 0.0
+    scheduler:
+      start_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      end_weight_decay: ${policy.megatron_cfg.optimizer.weight_decay}
+      weight_decay_incr_style: constant
+      lr_decay_style: constant
+      lr_decay_iters: null
+      lr_warmup_iters: 10
+      lr_warmup_init: 4.0e-07
+      override_opt_param_scheduler: true
+    distributed_data_parallel_config:
+      grad_reduce_in_fp32: false
+      overlap_grad_reduce: false
+      overlap_param_gather: true
+      average_in_collective: false
+      use_custom_fsdp: false
+      data_parallel_sharding_strategy: optim_grads_params
+    fp8_cfg:
+      enabled: false
+      fp8: e4m3
+      fp8_recipe: mxfp8
+      fp8_param: false
+    first_last_layers_bf16: true
+    num_layers_at_start_in_bf16: 1
+    num_layers_at_end_in_bf16: 1
+    use_gloo_process_groups: false
+    checkpoint:
+      async_save: false
+      ckpt_assume_constant_structure: true
+      fully_parallel_save_process_group: ep_dp
+      fully_parallel_load_process_group: ep_dp
+      fully_parallel_load_exchange_algo: broadcast
+    env_vars: null
+    distributed_timeout_minutes: 45
+    force_reconvert_from_hf: false
+  router_replay:
+    enabled: false
+    transport: ray
+  dynamic_batching:
+    enabled: false
+    train_mb_tokens: 262144
+    logprob_mb_tokens: 262144
+    sequence_length_round: 128
+  sequence_packing:
+    enabled: true
+    train_mb_tokens: 262144
+    logprob_mb_tokens: 262144
+    algorithm: modified_first_fit_decreasing
+    sequence_length_round: 128
+    fuse_loss: true
+  make_sequence_length_divisible_by: 128
+  max_grad_norm: 1.0
+  optimizer: null
+  scheduler: null
+  generation:
+    port_range_low: 3000
+    port_range_high: 4999
+    backend: vllm
+    max_new_tokens: 131072
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    val_temperature: ${.temperature}
+    val_top_p: ${.top_p}
+    val_top_k: ${.top_k}
+    stop_token_ids: null
+    stop_strings: null
+    vllm_cfg:
+      async_engine: true
+      precision: ${policy.precision}
+      kv_cache_dtype: auto
+      tensor_parallel_size: 4
+      expert_parallel_size: 4
+      pipeline_parallel_size: 1
+      gpu_memory_utilization: 0.85
+      max_model_len: 262144
+      enforce_eager: false
+      use_deep_gemm: false
+      num_last_layers_in_bf16: 0
+      num_first_layers_in_bf16: 0
+      enable_vllm_metrics_logger: false
+      vllm_metrics_logger_interval: 0.5
+      expose_http_server: true
+      enable_prefix_caching: true
+      reasoning_parser_plugin: nemo_rl/models/generation/vllm/reasoning_parsers/nano_v3_reasoning_parser.py
+      http_server_serving_chat_kwargs:
+        enable_auto_tools: true
+        tool_parser: qwen3_coder
+        reasoning_parser: nano_v3
+      env_vars:
+        NRL_VLLM_FP32_LM_HEAD: '1'
+        HF_MODULES_CACHE: /tmp/nemo_rl_hf_modules
+    vllm_kwargs:
+      moe_backend: flashinfer_trtllm
+      enable_chunked_prefill: true
+      max_num_seqs: 256
+      max_num_batched_tokens: 32768
+      mamba_ssm_cache_dtype: float32
+      compilation_config:
+        pass_config:
+          fuse_allreduce_rms: false
+      mamba_cache_mode: align
+      speculative_config:
+        num_speculative_tokens: 1
+        method: mtp
+    colocated:
+      enabled: false
+      resources:
+        gpus_per_node: 4
+        num_nodes: 48
+data:
+  max_input_seq_length: null
+  shuffle: false
+  num_workers: 1
+  use_multiple_dataloader: false
+  train:
+    data_path: ${art:data,train}
+  validation:
+    data_path: ${art:data,val}
+  default:
+    dataset_name: NemoGymDataset
+    env_name: nemo_gym
+    prompt_file: null
+    system_prompt_file: null
+    processor: nemo_gym_data_processor
+env:
+  should_use_nemo_gym: true
+  should_log_nemo_gym_responses: true
+  use_genrm_compare: false
+  genrm_agent_names: []
+  nemo_gym:
+    global_aiohttp_client_request_debug: false
+    nemo_gym_log_dir: ${logger.log_dir}/nemo_gym
+    skip_venv_if_present: true
+    num_gpu_nodes: 0
+    port_range_low: 5000
+    port_range_high: 5999
+    invalid_tool_call_patterns:
+    - <tool_call>
+    - </tool_call>
+    - <function_call>
+    - </function_call>
+    thinking_tags:
+    - <think>
+    - </think>
+    effort_levels:
+      low_string: '{reasoning effort: efficient}'
+      low_weight: 0.0
+      low_penalty: 1
+      low_ub: 15000
+    config_paths:
+    - responses_api_models/vllm_model/configs/vllm_model_for_training.yaml
+    # (the DeepSeek V4 Flash judge model server is defined inline below as
+    # deepseek_v4_flash_judge_model instead of in a separate Gym YAML)
+    - resources_servers/math_with_judge/configs/math_with_judge.yaml
+    - resources_servers/equivalence_llm_judge/configs/equivalence_llm_judge.yaml
+    - resources_servers/competitive_coding_challenges/configs/competitive_coding_challenges.yaml
+    - responses_api_agents/simple_agent/configs/simple_agent.yaml
+    policy_model:
+      responses_api_models:
+        vllm_model:
+          num_workers: 16
+          num_groups_nemo_rl: ${add:${grpo.async_grpo.max_trajectory_age_steps}, 1}
+          chat_template_kwargs:
+            enable_thinking: true
+            truncate_history_thinking: false
+          sequential_reasoning_allowed: false
+    simple_agent:
+      _copy: competitive_coding_challenges_simple_agent
+      responses_api_agents:
+        simple_agent:
+          max_steps: 1
+          resources_server:
+            name: competitive_coding_challenges_resources_server
+          model_server:
+            name: policy_model
+    competitive_coding_challenges_resources_server:
+      resources_servers:
+        competitive_coding_challenges:
+          test_batch_size: 128
+          test_file: ${oc.env:CCC_TEST_FILE,/path/to/ccc_multi5_metadata.jsonl}
+          shared_dir: ${oc.env:CCC_SHARED_TEMP_DIR,results/super35-rl-teacher-reasoning/ccc_shared_tmp}
+          num_parallel_requests: 128
+          time_scale: 2.0
+    math_with_judge_simple_agent:
+      responses_api_agents:
+        simple_agent:
+          max_steps: 1
+    equivalence_llm_judge_simple_agent:
+      responses_api_agents:
+        simple_agent:
+          max_steps: 1
+    equivalence_llm_judge:
+      resources_servers:
+        equivalence_llm_judge:
+          judge_model_server:
+            name: deepseek_v4_flash_judge_model
+            type: responses_api_models
+          judge_responses_create_params:
+            max_output_tokens: 8192
+            temperature: 0.0
+            reasoning:
+              effort: medium
+          judge_endpoint_max_concurrency: 256
+          # STEM semantic-equivalence judge prompt, shipped in the NeMo-RL checkout baked into the RL container.
+          judge_prompt_template_fpath: ${oc.env:REASONING_JUDGE_PROMPT_FILE,/opt/nemo-rl/examples/nemo_gym/nemotron-3.5-super/prompts/reasoning_semantic.txt}
+          use_per_record_regex: true
+          extraction_length_threshold: null
+          check_full_generation_on_fail: false
+          reward_if_full_generation_succeeds: 0.0
+    math_with_judge:
+      resources_servers:
+        math_with_judge:
+          judge_model_server:
+            name: deepseek_v4_flash_judge_model
+            type: responses_api_models
+          judge_responses_create_params:
+            max_output_tokens: 8192
+            temperature: 0.0
+            reasoning:
+              effort: medium
+          should_use_judge: true
+    uv_venv_dir: ${oc.env:NEMO_GYM_VENV_DIR,/opt/gym_venvs}
+    # DeepSeek V4 Flash judge for math + STEM. Point it at a hosted OpenAI-compatible
+    # endpoint (export NVIDIA_API_KEY) or at your own vLLM server (any non-empty key).
+    deepseek_v4_flash_judge_model:
+      responses_api_models:
+        inference_provider:
+          entrypoint: app.py
+          base_url: ${oc.env:DSV4_JUDGE_BASE_URL,http://127.0.0.1:8000/v1}
+          api_key: ${oc.env:NVIDIA_API_KEY}
+          model: ${oc.env:DSV4_JUDGE_MODEL,deepseek-ai/DeepSeek-V4-Flash}
+          uses_reasoning_parser: true
+          num_concurrent_requests: 256
+logger:
+  log_dir: results/super35-rl-teacher-reasoning/logs
+  num_val_samples_to_print: 0
+  wandb_enabled: true
+  tensorboard_enabled: false
+  mlflow_enabled: false
+  swanlab_enabled: false
+  monitor_gpus: false
+  wandb:
+    project: super35-rl-teacher-reasoning
+    name: super35-rl-teacher-reasoning
+  tensorboard: {}
+  mlflow:
+    experiment_name: grpo-dev
+    run_name: grpo-dev-logger
+  gpu_monitoring:
+    collection_interval: 10
+    flush_interval: 10
+cluster:
+  gpus_per_node: 4
+  num_nodes: 64
+  segment_size: 4
+reward_penalties:
+  penalize_duplicated_reasoning: true
+  penalize_empty_final_answer: true
+  penalize_unwanted_tokens: false
+  penalize_malformed_think_tag: false
+  token_ids:
+    unwanted:
+    - 2
+    think_open: 12
+    think_close: 13
+async_rl:
+  rollout_failure:
+    nemo_gym:
+      rollout_timeout_s: 3600
+      max_row_attempts: 3
+  stall_watchdog:
+    stall_timeout_s: 3900

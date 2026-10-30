@@ -1,0 +1,130 @@
+{
+  "_comment": "Nemotron 3 Ultra SFT blend. Ultra adapts the same open SFT data families as Super3 (\u00a73.1: long-context, efficiency/control, safety, search, terminal-use, tool-calling, SWE, math/proof, science, chat, code, CUDA, RTL, multilingual). Open data covers a subset of the internal blend; _missing_categories lists internal-only domains to backfill. Confirm the Ultra chat template and used_in filter tag before a run. Weights unnormalized; normalized at runtime.",
+  "_missing_categories": {
+    "science": {
+      "weight": 12.8,
+      "description": "Science QA and reasoning (STEM subjects)."
+    },
+    "math": {
+      "weight": 9.9,
+      "description": "Math reasoning and problem solving (SFT-specific, not pretrain math)."
+    },
+    "multilingual": {
+      "weight": 7.4,
+      "description": "Translated SFT data in 6 languages (de, es, fr, it, ja, zh)."
+    },
+    "math-w-tools": {
+      "weight": 4.9,
+      "description": "Math problems solved using tool calls (code interpreter)."
+    },
+    "genselect-financial": {
+      "weight": 3.0,
+      "description": "Financial reasoning QA from SEC filings (GenSelect pipeline)."
+    },
+    "long-context": {
+      "weight": 2.0,
+      "description": "Multi-document reasoning at 128K-512K token lengths."
+    },
+    "terminal-use": {
+      "weight": 1.5,
+      "description": "Terminal/CLI task solving with step-by-step traces."
+    },
+    "cuda": {
+      "weight": 0.5,
+      "description": "CUDA kernel generation, repair, and optimization."
+    },
+    "safety": {
+      "weight": 0.5,
+      "description": "Safety-aligned responses with deliberative reasoning."
+    },
+    "sql": {
+      "weight": 0.5,
+      "description": "Text-to-SQL across MySQL, PostgreSQL, SQLite."
+    },
+    "search": {
+      "weight": 0.5,
+      "description": "Multi-hop search agent with tool calls."
+    },
+    "low-effort-reasoning": {
+      "weight": 2.0,
+      "description": "Low-effort reasoning mode training samples."
+    },
+    "agentic-programming": {
+      "weight": 2.0,
+      "description": "Agentic CLI programming traces (Codex/OpenCode style)."
+    }
+  },
+  "datasets": [
+    {
+      "name": "instruction-following-chat",
+      "path": "hf://nvidia/Nemotron-Instruction-Following-Chat-v1",
+      "subset": "chat_if",
+      "weight": 14.3
+    },
+    {
+      "name": "instruction-following-structured",
+      "path": "hf://nvidia/Nemotron-Instruction-Following-Chat-v1",
+      "subset": "structured_outputs",
+      "weight": 14.3
+    },
+    {
+      "name": "competitive-cpp-00",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_cpp.part_00",
+      "weight": 5.2
+    },
+    {
+      "name": "competitive-cpp-01",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_cpp.part_01",
+      "weight": 5.2
+    },
+    {
+      "name": "competitive-python-00",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_python.part_00",
+      "weight": 5.2
+    },
+    {
+      "name": "competitive-python-01",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "competitive_coding_python.part_01",
+      "weight": 5.1
+    },
+    {
+      "name": "swe",
+      "path": "hf://nvidia/Nemotron-SWE-v1",
+      "weight": 3.0
+    },
+    {
+      "name": "math-proofs-lean",
+      "path": "hf://nvidia/Nemotron-Math-Proofs-v1",
+      "subset": "lean",
+      "weight": 2.0
+    },
+    {
+      "name": "agentic-interactive",
+      "path": "hf://nvidia/Nemotron-Agentic-v1",
+      "subset": "interactive_agent",
+      "weight": 1.0
+    },
+    {
+      "name": "agentic-tool-calling",
+      "path": "hf://nvidia/Nemotron-Agentic-v1",
+      "subset": "tool_calling",
+      "weight": 1.0
+    },
+    {
+      "name": "infinibyte-00",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "infinibyte.part_00",
+      "weight": 1.0
+    },
+    {
+      "name": "infinibyte-01",
+      "path": "hf://nvidia/Nemotron-Competitive-Programming-v1",
+      "subset": "infinibyte.part_01",
+      "weight": 1.0
+    }
+  ]
+}

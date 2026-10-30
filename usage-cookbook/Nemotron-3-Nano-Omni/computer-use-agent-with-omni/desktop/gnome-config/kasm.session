@@ -1,0 +1,3 @@
+[GNOME Session]
+Name=GNOME (Kasm)
+RequiredComponents=org.gnome.Shell;org.gnome.SettingsDaemon.A11ySettings;org.gnome.SettingsDaemon.Color;org.gnome.SettingsDaemon.Datetime;org.gnome.SettingsDaemon.Housekeeping;org.gnome.SettingsDaemon.Keyboard;org.gnome.SettingsDaemon.MediaKeys;org.gnome.SettingsDaemon.ScreensaverProxy;org.gnome.SettingsDaemon.Sound;org.gnome.SettingsDaemon.XSettings;

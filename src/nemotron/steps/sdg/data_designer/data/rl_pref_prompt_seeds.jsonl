@@ -1,0 +1,5 @@
+{"prompt":"Explain why retrieval-augmented generation can reduce hallucinations in enterprise assistants."}
+{"prompt":"Compare two practical strategies for evaluating synthetic training data before fine-tuning."}
+{"prompt":"Describe the tradeoffs between low-latency inference and long-form answer quality."}
+{"prompt":"Give a concise plan for monitoring model behavior after deployment in a support workflow."}
+{"prompt":"Explain how preference data can improve an assistant's helpfulness and factuality."}

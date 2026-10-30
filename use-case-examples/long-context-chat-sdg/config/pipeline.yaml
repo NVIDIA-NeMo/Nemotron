@@ -1,0 +1,188 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# long_context_chat_sdg pipeline config — every knob lives here (domain-agnostic).
+# All run artifacts land under experiments/<exp_name>/output/ :
+#   query_gen -> queries.jsonl  ->  query_prep -> seeds.jsonl  ->
+#   generate  -> raw.jsonl       ->  evaluate   -> sft.jsonl + summary.json
+exp_name: demo                                    # names the experiment folder (reuse overwrites)
+exp_root: ../experiments
+
+# ── query_gen — OPTIONAL: synthesize seed queries from the corpus ──────────────
+# Cluster a bounded sample of chunks in embedding space, generate diverse questions
+# (topic-cluster x kind). Omit chunks_path/lancedb to skip and bring your own queries.
+query_gen:
+  source: jsonl                                   # jsonl (embed chunks) | lancedb (precomputed vectors)
+  chunks_path: ${oc.env:LONG_CONTEXT_CHAT_SDG_CHUNKS_PATH,../data/chunks.jsonl}
+  # lancedb: {uri: ./lancedb, table: my-table}
+
+  n_queries: 2000                                 # THE knob — cluster count & pool size derive from it
+  max_workers: 16                                 # concurrency
+  validate: false                                 # no answerability gate (quality is judged downstream)
+  coarse: {enabled: true}                         # MiniLM coarse pre-clustering for topic diversity
+
+  embedding:                                      # hosted embedding model
+    backend: cohere                               # cohere (/v2/embed) | nim (/v1/embeddings) | minilm (local)
+    endpoint: ${oc.env:EMBEDDING_ENDPOINT,http://localhost:8001/v2/embed}
+    api_key_env: EMBEDDING_API_KEY
+
+  # ── advanced (code defaults; uncomment to tune) ──────────────────────────────
+  # queries_per_cluster: 4   multi_hop_chunks: 3   cross_doc: true   candidate_headroom: 1.5
+  # min_coverage: 0.35   model_alias: user_model   max_rounds: 3   seed: 7
+  # kind_weights: {multi_hop: 4, comparative: 3, exploratory: 2, factual: 2, ambiguous: 2}
+  # coarse: {enabled: true, candidate_size: 10000, coarse_k: 64}
+  # clustering: {algo: kmeans, k: null, min_cluster_size: 5}
+  # field_map: {text_field: text, id_field: chunk_id, doc_id_field: source_id, path_field: source_path}
+  # embedding alt: {backend: nim, model: nvidia/llama-nemotron-embed-1b-v2, endpoint: http://127.0.0.1:8001/v1, input_type: passage}
+
+# ── query_prep — dedup + cluster + sample (offline, MiniLM) ────────────────────
+query_prep:
+  query_field: query
+  dedup:
+    threshold: 0.92                               # cosine >= this collapses near-duplicates
+    embed_model: sentence-transformers/all-MiniLM-L6-v2
+  clustering:
+    algo: kmeans                                  # kmeans | hdbscan | agglomerative
+    k: null                                       # null => heuristic
+    min_cluster_size: 5                           # hdbscan only
+  sample:
+    n_target: null                                # null => keep all (query_gen.n_queries is the count when it runs)
+    seed: 7
+
+# ── persona — one constant persona per trajectory ─────────────────────────────
+# Two sources (pick one):
+#   A) Hugging Face / local file — set hf_dataset (repo id OR full HF URL) and/or
+#      local_path. Personas are attached to seeds at query_prep; DD sampler is off.
+#      Example: hf_dataset: nvidia/Nemotron-Personas-Vietnam
+#               hf_dataset: https://huggingface.co/datasets/nvidia/Nemotron-Personas-Vietnam
+#   B) DD-native Person sampler — leave hf_dataset unset; needs NGC:
+#      `data-designer download personas --locale en_IN`
+persona:
+  enabled: true
+  # hf_dataset: nvidia/Nemotron-Personas-Vietnam   # HF repo id or full dataset URL
+  # hf_split: train
+  # local_path: ./personas.parquet                 # optional; skips HF download
+  # seed: 7                                        # persona sampling seed (query_prep)
+  locale: en_IN                                   # DD sampler only: en_US | en_IN | en_SG | fr_FR | hi_Deva_IN | hi_Latn_IN | ja_JP | ko_KR | pt_BR
+  with_synthetic_personas: true                   # DD sampler only
+
+# ── models & providers ────────────────────────────────────────────────────────
+providers:
+  - name: assistant_provider
+    endpoint: ${oc.env:ASSISTANT_ENDPOINT,http://localhost:8000/v1}
+    api_key: ASSISTANT_API_KEY                  # env var name holding the key (open endpoints: unset is fine)
+  - name: user_sim_provider
+    endpoint: ${oc.env:USER_MODEL_ENDPOINT,http://localhost:8000/v1}
+    api_key: USER_MODEL_API_KEY
+
+# Context capacity is deployment-specific. Check the endpoint's /v1/models
+# response or deployment configuration. Ensure prompt tokens + max_tokens
+# fit within the endpoint's advertised maximum context length.
+models:
+  - alias: assistant_model                        # research agent — gpt-oss-120b
+    model: openai/gpt-oss-120b
+    provider: assistant_provider
+    inference_parameters: {temperature: 0.7, max_tokens: 16384}
+  - alias: user_model                             # user simulator — Gemma
+    model: google/gemma-4-31B-it
+    provider: user_sim_provider
+    inference_parameters: {temperature: 0.8, max_tokens: 2000}
+  - alias: aux_response_model                     # simulates non-retrieval tools — gpt-oss-120b
+    model: openai/gpt-oss-120b
+    provider: assistant_provider
+    inference_parameters: {temperature: 0.4, max_tokens: 8192}
+  - alias: judge_model                            # evaluate.py judge — gpt-oss-120b
+    model: openai/gpt-oss-120b
+    provider: assistant_provider
+    inference_parameters: {temperature: 0.2, max_tokens: 16384}
+
+# ── retrieval service (external HTTP) ─────────────────────────────────────────
+retrieval:
+  mode: http                                      # http; CLI --simulate-retrieval overrides for demos
+  endpoint: ${oc.env:RETRIEVAL_ENDPOINT,""}       # required for generation in HTTP mode
+  tools: [search]                                 # tools routed to the service (others LLM-simulated)
+  top_k: 4
+  oversample_factor: 2                            # fetch top_k*factor, keep a random top_k (drives depth)
+  timeout: 120
+  max_retries: 2                                  # bounded retries on transient endpoint blips
+  headers: {}
+  field_map:                                      # this service: {query, num_chunks} -> {chunks:[{rank,text}]}
+    query_field: query
+    top_k_field: num_chunks
+    results_path: chunks                          # "" => body is the list
+    id_field: id                                  # absent -> content-hash fallback
+    text_field: text
+    score_field: score                            # absent -> 0.0
+    doc_id_field: doc_id                          # absent -> ""
+
+# ── tools — `search` -> retrieval service; others LLM-simulated by aux_response_model ─
+tools:
+  - function:
+      name: search
+      description: Retrieve the most relevant passages (chunks) from the knowledge base for a query.
+      parameters:
+        type: object
+        properties:
+          query: {type: string, description: The search query.}
+        required: [query]
+  - function:
+      name: memory_read
+      description: Read stored user preferences or facts remembered from earlier interactions.
+      parameters:
+        type: object
+        properties:
+          key: {type: string, description: The preference/fact key to look up (e.g. "preferred_citation_style").}
+        required: [key]
+  - function:
+      name: memory_write
+      description: Persist a user preference or fact for use in future turns/sessions.
+      parameters:
+        type: object
+        properties:
+          key: {type: string, description: The preference/fact key to store.}
+          value: {type: string, description: The value to remember.}
+        required: [key, value]
+
+# ── engine — seeds -> raw trajectories ────────────────────────────────────────
+engine:
+  resume: if_possible                             # never | if_possible | always (re-run --stage generate to resume)
+  column_name: conversation_messages
+  metadata_fields: [cluster_id, hops_taken, conversation_status, trajectory_judgment, retrieval_log,
+                    retrieval_mode, compression, persona]
+
+  max_parallel_workers: 8                          # trajectories generated in parallel (raise = faster, bounded by endpoint)
+  # buffer_size: 50                                # optional; default = max(max_parallel_workers, num_records//10)
+
+  # length: center-weighted, so 3-6 averages ~4-5 turns
+  min_turns: 3
+  max_turns: 6
+  # depth: search rounds (hops) per turn
+  min_hops: 2
+  max_steps: 6
+
+  max_correction_attempts: 3
+  max_tool_calls_per_turn: 1                       # many endpoints reject >1
+  force_first_tool: false                          # let the assistant decide when to search
+  allow_clarify: true                              # clarify-kind turns may ask a question first
+  gate_query: false                                # inline query gate off
+  inline_judge: false                              # inline per-trajectory judge off
+  majority_vote_n: 1
+  max_tools: 12                                    # tool subset offered per row
+  persona_voice: true                              # voice the opening in-persona (intent/type preserved)
+
+  # context compression
+  context_window_k: 2                              # recent tool results kept raw
+  compaction_mode: reference
+  compression_token_limit: 30000
+  use_scratchpad: true

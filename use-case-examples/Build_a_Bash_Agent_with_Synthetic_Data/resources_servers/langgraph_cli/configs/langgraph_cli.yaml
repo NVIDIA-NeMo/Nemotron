@@ -1,0 +1,10 @@
+langgraph_cli:
+  resources_servers:
+    langgraph_cli:
+      entrypoint: app.py
+      host: 127.0.0.1
+      port: 8000
+      num_workers: 1
+      domain: agent
+      verified: false
+      description: Verifies natural-language-to-LangGraph-CLI JSON tool calls.

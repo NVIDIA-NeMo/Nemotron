@@ -1,0 +1,32 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hi! I'm traveling internationally for the first time soon and need to add a service animal to my booking. Could you let me know what documentation I need to provide?"
+    },
+    {
+      "role": "assistant",
+      "content": "Thank you for contacting Greenteme Airlines. Please provide a valid government-issued health certificate and a signed service animal relief form for your destination country. You can upload these documents through the Manage Booking section of our website at least 48 hours before departure."
+    }
+  ],
+  "traveler_segment": "first_time_international",
+  "inquiry_type": "rebooking",
+  "channel": "app",
+  "scenario": "Customer needs to add a service animal to an upcoming international flight and wants to know what documentation is required."
+}
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "\"Hi, I just rebooked my flight online and realized my companion and I are now seated in different rows. Is there any way you can help us get seats together?\""
+    },
+    {
+      "role": "assistant",
+      "content": "Hello, thank you for reaching out to Greenteme Airlines. Please provide your booking reference, and we will check for available adjacent seats to move you and your companion together. Note that depending on your fare class, a seat selection fee may apply."
+    }
+  ],
+  "traveler_segment": "first_time_international",
+  "inquiry_type": "refund_request",
+  "channel": "phone",
+  "scenario": "Customer rebooked through self-service and is now seated apart from a travel companion; they want to be reseated together."
+}

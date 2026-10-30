@@ -1,0 +1,42 @@
+[project]
+name = "build-a-bash-agent-with-synthetic-data"
+version = "0.3.0"
+description = "Train CLI agents using NeMo Gym + Unsloth GRPO with synthetic data"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "jupyter==1.1.1",
+    "langgraph-cli[inmem]==0.4.30",
+    "nemo-gym==0.3.0",
+    "pydantic>=2.12,<3",
+    "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+generation = [
+    "data-designer==0.7.0",
+    "scikit-learn>=1.8,<1.9",
+]
+api = [
+    # NeMo Gym 0.3 currently caps the OpenAI SDK at 2.7.2.
+    "openai==2.7.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3,<2",
+    "ruff>=0.14,<0.15",
+]
+
+[tool.uv]
+required-version = "==0.11.25"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "resources_servers/langgraph_cli/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"

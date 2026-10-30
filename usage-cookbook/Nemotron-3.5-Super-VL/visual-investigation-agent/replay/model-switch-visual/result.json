@@ -1,0 +1,311 @@
+{
+ "scenario": "model-switch-visual",
+ "ablate": null,
+ "config": "agent",
+ "config_hash": "06adac9ebd66d189",
+ "report": {
+  "how_it_happened": "The gateway router had no per-ticket-type routes, so every ticket used the default model. CHG-5120 (Sep 8, 25% to Osric 2 Thinking), CHG-5124 (Sep 9, 60%), and CHG-5129 (Sep 10, 100%) rolled Osric to all tickets. Daily spend stepped from ~$5.2k to ~$7.6k on weekdays starting Sep 8\u201310. Osric 2 Thinking generates far more output units per ticket (e.g., 32,300 reasoning units for Technical troubleshooting vs 300 for Vesk 4) at a higher output price, so cost per ticket rose from $0.0430 to $0.0542 even as ticket volume was flat and unit prices fell.",
+  "quality_impact": "Resolution rate fell from 84.5% to 83.0%. Osric 2 Thinking is below the quality bar (Vesk 4 minus 2 points) for Technical troubleshooting (72% vs 74% bar) and Integrations & API (64% vs 69% bar), so the setup running today does not meet the quality bar for those two types. The proposed setup meets the bar for every type: Vesk 4 Lite (92.1% vs 91% bar for Account & password; 88.2% vs 87% bar for Billing) and Vesk 4 (76% vs 74% for Technical troubleshooting; 71% vs 69% for Integrations & API).",
+  "drivers": [
+   {
+    "metric": "AI spend",
+    "before": 94384.22,
+    "after": 122685.44,
+    "unit": "USD",
+    "period": "Aug 1-21 vs Sep 1-21 (21 days each)",
+    "source": "usage_daily + billing_daily, reconciled to dashboard KPI cards"
+   },
+   {
+    "metric": "Cost per ticket",
+    "before": 0.043,
+    "after": 0.0542,
+    "unit": "USD",
+    "period": "Aug 1-21 vs Sep 1-21 (21 days each)",
+    "source": "usage_daily + billing_daily, reconciled to dashboard KPI cards"
+   },
+   {
+    "metric": "Resolution rate",
+    "before": 84.5,
+    "after": 83.0,
+    "unit": "%",
+    "period": "Aug 1-21 vs Sep 1-21 (21 days each)",
+    "source": "usage_daily + billing_daily, reconciled to dashboard KPI cards"
+   }
+  ],
+  "attribution": {
+   "change_ids": [
+    "CHG-5120",
+    "CHG-5124",
+    "CHG-5129"
+   ],
+   "documents": [
+    "price-schedule-2026-08",
+    "eval-report-2026-08"
+   ],
+   "explanation": "The Osric 2 Thinking rollout (CHG-5120/5124/5129) made Osric the default model for all ticket types. Per the eval report, Osric uses vastly more output units per ticket than Vesk 4 (e.g., 32,300 vs 300 reasoning units for Technical troubleshooting), and per the price schedule Osric's output price is $1.90 per 1M units. The combination of much higher unit volume and the rollout to 100% of tickets drove daily spend from ~$5.2k to ~$7.6k on weekdays, raising cost per ticket from $0.0430 to $0.0542. The earlier changes (CHG-5031 on Aug 19 and CHG-5107 on Sep 3) did not coincide with any metric move."
+  },
+  "key_figures": [
+   {
+    "name": "AI spend",
+    "value": 94384.22,
+    "unit": "USD",
+    "period": "Aug 1-21",
+    "source": "usage_daily + billing_daily"
+   },
+   {
+    "name": "AI spend",
+    "value": 122685.44,
+    "unit": "USD",
+    "period": "Sep 1-21",
+    "source": "usage_daily + billing_daily"
+   },
+   {
+    "name": "Cost per ticket",
+    "value": 0.043,
+    "unit": "USD",
+    "period": "Aug 1-21",
+    "source": "usage_daily + billing_daily"
+   },
+   {
+    "name": "Cost per ticket",
+    "value": 0.0542,
+    "unit": "USD",
+    "period": "Sep 1-21",
+    "source": "usage_daily + billing_daily"
+   },
+   {
+    "name": "Resolution rate",
+    "value": 84.5,
+    "unit": "%",
+    "period": "Aug 1-21",
+    "source": "usage_daily + billing_daily"
+   },
+   {
+    "name": "Resolution rate",
+    "value": 83.0,
+    "unit": "%",
+    "period": "Sep 1-21",
+    "source": "usage_daily + billing_daily"
+   },
+   {
+    "name": "Projected cost per ticket",
+    "value": 0.029,
+    "unit": "USD",
+    "period": "proposal (Sep 1-21 volumes)",
+    "source": "eval-report-2026-08 tokens + price-schedule-2026-08"
+   },
+   {
+    "name": "Projected monthly savings",
+    "value": 102583.42,
+    "unit": "USD",
+    "period": "30 days at ~105k tickets/day",
+    "source": "proposal projection"
+   }
+  ],
+  "confidence": "high",
+  "manager_summary": "Your AI help-desk bill rose about 30% this month (Sep 1\u201321 vs Aug 1\u201321), from $94.4k to $122.7k. Ticket volume only grew about 3%, while the unit price fell by half. The real cause is a sharp jump in units used per ticket, which began when the team switched the default model to Osric 2 Thinking between Sep 8 and Sep 10. That model uses far more output units per ticket, especially for technical and integration questions, and quality slipped: resolution fell from 84.5% to 83.0%. I prepared a routing change (pending your approval) that sends simpler tickets to a cheaper model and keeps a stronger model for the harder ones. It is projected to cut cost per ticket from $0.0542 to about $0.0290, saving roughly $102.6k per month, while meeting the quality bar for every ticket type.",
+  "evidence": [
+   {
+    "claim": "Spend +30% ($94.4k to $122.7k), tickets +3%, price per 1M tokens -49.6% for Sep 1-21 vs Aug 1-21",
+    "source": "dashboard KPI cards, reconciled to usage_daily + billing_daily SQL"
+   },
+   {
+    "claim": "Daily spend stepped from ~$5.2k to ~$7.6k on weekdays starting Sep 8-10",
+    "source": "usage_daily + billing_daily SQL"
+   },
+   {
+    "claim": "Sep 10-21 is 100% Osric 2 Thinking",
+    "source": "usage_daily + billing_daily SQL"
+   },
+   {
+    "claim": "Osric 2 Thinking uses far more output units per ticket (e.g., 32,300 reasoning units for Technical troubleshooting vs 300 for Vesk 4)",
+    "source": "eval-report-2026-08 page 2"
+   },
+   {
+    "claim": "Osric 2 Thinking below quality bar for Technical troubleshooting (72% vs 74%) and Integrations & API (64% vs 69%)",
+    "source": "eval-report-2026-08 page 1"
+   },
+   {
+    "claim": "Vesk 4 Lite meets bar for Account & password (92.1% vs 91%) and Billing (88.2% vs 87%) at lower cost",
+    "source": "eval-report-2026-08 page 1 + price-schedule-2026-08"
+   }
+  ],
+  "engineer_summary": "Reconciled dashboard KPIs to SQL (usage_daily + billing_daily, 216 rows each, join lossless). Spend rose 30% ($94,384.22 \u2192 $122,685.44) for Aug 1\u201321 vs Sep 1\u201321 (21 days each) while tickets rose 3% (2,195,792 \u2192 2,261,784) and price per 1M tokens fell 49.6%. Cost per ticket rose $0.0430 \u2192 $0.0542; resolution fell 84.5% \u2192 83.0%. Daily spend stepped from ~$5.2k to ~$7.6k on weekdays starting Sep 8\u201310, matching CHG-5120/5124/5129 (Osric 2 Thinking rollout 25% \u2192 60% \u2192 100%, completed Sep 10). Sep 10\u201321 is 100% Osric. Eval report + price schedule show Osric uses far more output units per ticket and is below the Vesk4-minus-2pp bar for Technical troubleshooting and Integrations & API. Proposal PRP-0001 routes Account & password and Billing to Vesk 4 Lite, and Technical troubleshooting and Integrations & API to Vesk 4; projected cost/ticket $0.0542 \u2192 $0.0290, saving ~$102,583/month at ~105k tickets/day, meeting the quality bar for all types. Pending review; nothing changed.",
+  "ruled_out": [
+   {
+    "candidate": "Ticket volume growth",
+    "reason": "Tickets rose only ~3% (2.20M to 2.26M), far too small to explain a 30% spend increase."
+   },
+   {
+    "candidate": "Price increase",
+    "reason": "Average price per 1M tokens fell ~49.6% ($2.33 to $1.18), so prices did not drive the increase."
+   },
+   {
+    "candidate": "CHG-5031 help-center search index rebuild (Aug 19)",
+    "reason": "No spend or quality metric moved around Aug 19."
+   },
+   {
+    "candidate": "CHG-5107 help-center articles refresh (Sep 3)",
+    "reason": "No metric moved on Sep 3; the spend step-up aligns with the Osric rollout beginning Sep 8."
+   }
+  ],
+  "finding": "AI spend rose about 30% for Sep 1\u201321 vs Aug 1\u201321 ($94.4k \u2192 $122.7k) while tickets grew only ~3% and the price per 1M tokens fell ~49.6%. The driver is a step-up in units used per ticket that began when the default model was switched to Osric 2 Thinking between Sep 8 and Sep 10 (CHG-5120/5124/5129); Osric uses far more output units per ticket, especially for technical and integration questions, and resolution slipped from 84.5% to 83.0%. I prepared one routing change (PRP-0001, pending review) that sends Account & password and Billing to Vesk 4 Lite, and Technical troubleshooting and Integrations & API to Vesk 4, projected to cut cost per ticket from $0.0542 to $0.0290 (~$102.6k/month) while meeting the quality bar for every ticket type. Nothing has changed yet.",
+  "recommendation": "Approve proposal PRP-0001: route Account & password and Billing to Vesk 4 Lite, and Technical troubleshooting and Integrations & API to Vesk 4. This is projected to cut cost per ticket from $0.0542 to $0.0290, saving about $102.6k per month at ~105k tickets/day, while meeting the quality bar for every ticket type. No change takes effect until you approve.",
+  "proposal_id": "PRP-0001"
+ },
+ "proposals": [
+  {
+   "proposal_id": "PRP-0001",
+   "expected_monthly_savings_usd": 102583.42,
+   "rationale": "Osric 2 Thinking (100% of tickets since Sep 10) raised cost per ticket to $0.0616 and falls below the Vesk 4 minus 2pp quality bar for Technical troubleshooting (72% vs 74% bar) and Integrations & API (64% vs 69% bar). Vesk 4 Lite meets the bar for Account & password (92.1% vs 91%) and Billing (88.2% vs 87%) at far lower cost; Vesk 4 meets the bar for the two harder types. Projected cost/ticket drops from $0.0616 to $0.0290, saving ~$102.6k/month at ~105k tickets/day.",
+   "title": "Route Account & password and Billing to Vesk 4 Lite; Technical troubleshooting and Integrations & API to Vesk 4",
+   "why": "The Osric 2 Thinking rollout (CHG-5120/5124/5129) drove the 30% spend increase; this proposal cuts cost while restoring quality to at least the bar for every ticket type.",
+   "routes": {
+    "Account & password": "Vesk 4 Lite",
+    "Billing": "Vesk 4 Lite",
+    "Technical troubleshooting": "Vesk 4",
+    "Integrations & API": "Vesk 4"
+   }
+  }
+ ],
+ "error": null,
+ "seconds": 153.9,
+ "turns": 8,
+ "nudges": 0,
+ "truncations": 0,
+ "rejected_reports": 0,
+ "why_missing": 0,
+ "image_budget_rejections": 0,
+ "forced_tool_retries": 0,
+ "rejected_proposals": 0,
+ "tool_counts": {
+  "list_dashboards": 1,
+  "render_dashboard": 1,
+  "list_documents": 1,
+  "view_document": 4,
+  "run_sql": 8,
+  "run_python": 1,
+  "propose_change": 1,
+  "submit_report": 1
+ },
+ "notes": null,
+ "images": [
+  {
+   "image_id": "img-0",
+   "path": "images/img-0.png",
+   "description": "screenshot attached by the user"
+  },
+  {
+   "image_id": "img-2",
+   "path": "images/img-2.png",
+   "description": "Models"
+  },
+  {
+   "image_id": "img-3",
+   "path": "images/img-3.jpg",
+   "description": "price-schedule-2026-08, page 1"
+  },
+  {
+   "image_id": "img-4",
+   "path": "images/img-4.png",
+   "description": "eval-report-2026-08, page 1"
+  },
+  {
+   "image_id": "img-5",
+   "path": "images/img-5.png",
+   "description": "eval-report-2026-08, page 2"
+  }
+ ],
+ "turn_log": [
+  {
+   "turn": 0,
+   "seconds": 11.5,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 4851,
+   "completion_tokens": 2410,
+   "tool_calls": [
+    "list_dashboards",
+    "list_documents",
+    "run_sql",
+    "run_sql"
+   ]
+  },
+  {
+   "turn": 1,
+   "seconds": 6.7,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 9551,
+   "completion_tokens": 1256,
+   "tool_calls": [
+    "run_sql",
+    "run_sql",
+    "view_document",
+    "render_dashboard"
+   ]
+  },
+  {
+   "turn": 2,
+   "seconds": 2.5,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 12109,
+   "completion_tokens": 291,
+   "tool_calls": [
+    "view_document",
+    "view_document"
+   ]
+  },
+  {
+   "turn": 3,
+   "seconds": 20.3,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 13816,
+   "completion_tokens": 2688,
+   "tool_calls": [
+    "run_sql",
+    "view_document",
+    "run_sql"
+   ]
+  },
+  {
+   "turn": 4,
+   "seconds": 34.0,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 14919,
+   "completion_tokens": 7463,
+   "tool_calls": [
+    "run_sql",
+    "run_sql"
+   ]
+  },
+  {
+   "turn": 5,
+   "seconds": 28.0,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 15799,
+   "completion_tokens": 5998,
+   "tool_calls": [
+    "run_python"
+   ]
+  },
+  {
+   "turn": 6,
+   "seconds": 20.9,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 18392,
+   "completion_tokens": 4442,
+   "tool_calls": [
+    "propose_change"
+   ]
+  },
+  {
+   "turn": 7,
+   "seconds": 29.0,
+   "finish_reason": "tool_calls",
+   "prompt_tokens": 18842,
+   "completion_tokens": 6266,
+   "tool_calls": [
+    "submit_report"
+   ]
+  }
+ ]
+}

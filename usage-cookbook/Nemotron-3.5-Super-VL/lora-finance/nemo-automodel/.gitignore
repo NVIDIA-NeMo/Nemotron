@@ -1,0 +1,34 @@
+# User-downloaded or generated assets
+/artifacts/
+/data/
+/Automodel/
+/checkpoints/
+/evaluation/
+/logs/
+/hf-cache/
+/uv-cache/
+/dynamo-lora-cache/
+/.container-home/
+/.jupyter/
+/.notebook-control/
+/.secrets/
+/.env
+/.env.*
+
+# Runtime-generated, path-specific AutoModel YAML files
+/configs/finance_visual_ocr_lora_v1.yaml
+/configs/finance_reasoning_lora_v1.yaml
+/configs/finance_code_generation_lora_v1.yaml
+/configs/finance_*_lora_nvfp4_v1.yaml
+/configs/finance_*_lora_nvfp4_v1.model-contract.json
+/configs/finance_*_lora_bf16_20261001.yaml
+/configs/finance_*_lora_bf16_20261001.model-contract.json
+
+# Python/editor artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.venv/
+.DS_Store

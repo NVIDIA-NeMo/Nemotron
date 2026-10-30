@@ -1,0 +1,248 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Stage 3: Evaluation Configuration for Nemotron 3.5 Super VL
+#
+# This config integrates with nemo-evaluator-launcher. The 'run' section is
+# used for Nemotron's artifact resolution and env.toml profile injection,
+# then stripped before passing to the evaluator launcher.
+#
+# The model is served with vLLM, which needs a Hugging Face checkpoint. RL
+# stages save NeMo-RL checkpoints: export one with NeMo-RL's
+# examples/converters/convert_megatron_to_hf.py, register it with
+# `nemotron super35 model import rl`, and pass it as run.model (see README). Task names and per-task settings follow the NeMo
+# Evaluator Nemotron 3 Super example
+# (packages/nemo-evaluator-launcher/examples/nemotron/nemotron-3-super/ in
+# github.com/NVIDIA-NeMo/Evaluator) and cover the tech report's Table 10
+# benchmarks that NeMo Evaluator supports.
+#
+# The report's numbers were collected with NeMo Gym, not NeMo Evaluator.
+# To reproduce them, use NeMo Gym's Super 3.5 reproducibility guide:
+# github.com/NVIDIA-NeMo/Gym/blob/jakub/marlin/nemotron_recipes/super-3.5/reproducibility.md
+# (on the jakub/marlin branch until it is merged to main).
+#
+# Usage:
+#   nemotron super35 eval --run MY-CLUSTER
+#   nemotron super35 eval --run MY-CLUSTER run.model=super35-rl-mopd-phase2-hf-model:latest
+#   nemotron super35 eval --run MY-CLUSTER -t nemo_skills.ns_gpqa -t ns_ifbench
+#   nemotron super35 eval --dry-run
+
+# =============================================================================
+# Defaults - Use local executor and vLLM deployment
+# =============================================================================
+defaults:
+  - execution: local
+  - deployment: vllm
+  - _self_
+
+# =============================================================================
+# Nemotron run section (artifact resolution + env.toml injection)
+# This section is used for interpolation and stripped before calling the launcher
+# =============================================================================
+run:
+  # Model artifact to evaluate; must be HF format (export RL checkpoints first)
+  model: super35-rl-mopd-phase2-model:latest
+
+  # Environment config - populated from env.toml profile via --run
+  # These defaults allow local execution without env.toml
+  env:
+    executor: local
+    # vLLM release used for the published NeMo Gym runs of Super 3.5 VL.
+    container: vllm/vllm-openai:v0.30.0
+    host: ${oc.env:HOSTNAME,localhost}
+    user: ${oc.env:USER}
+    account: null
+    partition: null
+    remote_job_dir: ${oc.env:PWD}/.nemotron
+    time: "04:00:00"
+
+  # W&B config - populated from env.toml [wandb] section
+  wandb:
+    entity: null
+    project: null
+
+# =============================================================================
+# NeMo-Evaluator Launcher Configuration
+# Everything below is passed directly to nemo-evaluator-launcher
+# =============================================================================
+
+# Execution configuration
+# Maps env.toml profile fields to evaluator's execution section
+execution:
+  type: ${run.env.executor}
+  hostname: ${run.env.host}
+  username: ${run.env.user}
+  account: ${run.env.account}
+  partition: ${run.env.partition}
+  output_dir: ${run.env.remote_job_dir}/evaluations
+  walltime: ${run.env.time}
+  num_nodes: 1
+
+  # Auto-export results after evaluation completes
+  auto_export:
+    destinations:
+      - wandb
+
+  # Environment variables for deployment and evaluation containers
+  env_vars:
+    deployment:
+      HF_HOME: lit:/cache/huggingface
+      HF_TOKEN: host:HF_TOKEN
+      VLLM_CACHE_ROOT: lit:/cache/vllm
+    evaluation:
+      HF_HOME: lit:/cache/huggingface
+      HF_TOKEN: host:HF_TOKEN
+
+  # Mount configuration — add your shared filesystem here (checkpoint path
+  # must be visible to the deployment container), e.g.
+  #   deployment: {/shared/storage: /shared/storage}
+  mounts:
+    deployment: {}
+    evaluation: {}
+    mount_home: false
+
+# Deployment configuration
+# vLLM serving of the Hugging Face checkpoint on one 8-GPU node.
+deployment:
+  type: vllm
+  image: ${run.env.container}
+  checkpoint_path: ${art:model,path}
+  served_model_name: nemotron-3.5-super-vl
+  port: 8000
+  tensor_parallel_size: 8
+  pipeline_parallel_size: 1
+  data_parallel_size: 1
+  gpu_memory_utilization: 0.8
+  # Serving flags follow the Nemotron 3 Super model card; check the
+  # Nemotron 3.5 Super VL model card for the recommended reasoning /
+  # tool-call parsers and MTP speculative-decoding settings.
+  extra_args: >-
+    --trust-remote-code
+    --mamba_ssm_cache_dtype float32
+    --enable-auto-tool-choice
+    --tool-call-parser qwen3_coder
+    --reasoning-parser nemotron_v3
+    --no-enable-prefix-caching
+
+# Evaluation configuration
+# Defines tasks and evaluation parameters
+evaluation:
+  env_vars:
+    HF_TOKEN: host:HF_TOKEN
+
+  # Global config settings that apply to all tasks
+  nemo_evaluator_config:
+    config:
+      params:
+        parallelism: 16
+        max_new_tokens: 131072
+        temperature: 1.0
+        top_p: 0.95
+        request_timeout: 3600
+        max_retries: 10
+        extra:
+          tokenizer: ${deployment.checkpoint_path}
+          tokenizer_backend: huggingface
+        # Uncomment for quick testing:
+        # limit_samples: 10
+    target:
+      api_endpoint:
+        adapter_config:
+          params_to_add: {"chat_template_kwargs": {"enable_thinking": true}, "skip_special_tokens": false}
+          output_dir: /results
+          use_caching: true
+          caching_dir: /results/cache
+          use_response_logging: true
+          max_logged_responses: 10
+          use_request_logging: true
+          max_logged_requests: 10
+
+  # Tasks to run (can be filtered with -t flag). The defaults need no judge
+  # model or external API key. Table 10 benchmarks that need one are listed
+  # (commented) below; enable them once the judge / user-simulator endpoint
+  # is configured.
+  tasks:
+    # Math and Science — GPQA-Diamond
+    - name: nemo_skills.ns_gpqa
+      nemo_evaluator_config:
+        config:
+          params:
+            extra:
+              num_repeats: 8
+              args: "++prompt_config=eval/aai/mcq-4choices"
+    # Code Generation — SciCode
+    - name: ns_scicode
+      nemo_evaluator_config:
+        config:
+          params:
+            extra:
+              num_repeats: 8
+    # Code Generation — LiveCodeBench v6
+    - name: ns_livecodebench
+      nemo_evaluator_config:
+        config:
+          params:
+            extra:
+              num_repeats: 3  # tech report §3.8: pass@1 averaged over three samples
+              dataset_split: test_v6_2408_2505
+    # Instruction Following — IFBench
+    - name: ns_ifbench
+      nemo_evaluator_config:
+        config:
+          params:
+            extra:
+              num_repeats: 8
+    # Multilingual — MMLU-ProX
+    - name: ns_mmlu_prox
+      nemo_evaluator_config:
+        config:
+          params:
+            extra:
+              num_repeats: 1
+
+    # --- Need a judge model / API key (enable once configured) ---------------
+    # HLE (text) — judge model via JUDGE_API_KEY
+    # - name: ns_hle
+    #   nemo_evaluator_config:
+    #     config:
+    #       params:
+    #         extra:
+    #           judge_support: true
+    #           judge: {model_id: ..., url: ..., api_key: JUDGE_API_KEY}
+    # AA-LCR (long context) — judge model
+    # - name: ns_aa_lcr
+    # AA-Omniscience — judge model
+    # - name: ns_omniscience
+    # CritPt — Artificial Analysis API key
+    # - name: nemo_skills.ns_critpt
+    # Tau2 Retail / Airline / Telecom — user-simulator model
+    # - name: tau2_bench_retail
+    # - name: tau2_bench_airline
+    # - name: tau2_bench_telecom
+    # WMT24pp COMET — local XCOMET-XXL checkpoint
+    # - name: ns_wmt24pp_comet
+    #
+    # Not covered here: SWE-bench (OpenCode harness), Terminal-Bench 2.1,
+    # Tau3 Banking, GDPVal-AA, BrowseComp, Apex-Shortlist, GraphWalks and
+    # OSWorld were run with NeMo Gym. The report lists BabyVision, CharXiv-RQ,
+    # MathVision, MMLongBench-Doc, OCR-Reasoning, OCRBench-v2, V* and
+    # Video-MME-v2 as not yet onboarded in open-source tools, and NV Chat
+    # Benchmark is internal.
+
+# Export configuration
+# W&B export for results logging - populated from env.toml [wandb] section
+export:
+  wandb:
+    entity: ${run.wandb.entity}
+    project: ${run.wandb.project}

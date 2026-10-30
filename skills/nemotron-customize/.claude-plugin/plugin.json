@@ -1,0 +1,10 @@
+{
+  "name": "nemotron-customize",
+  "description": "Plan and configure repo-native Nemotron customization workflows, including governed curation, tokenizer extension, Persona MCQ and BYOB benchmarks, training, conversion, optimization, and direct or launcher evaluation.",
+  "version": "0.1.1",
+  "author": {
+    "name": "NVIDIA Nemotron Team"
+  },
+  "homepage": "https://github.com/NVIDIA/Nemotron",
+  "skills": ["./"]
+}

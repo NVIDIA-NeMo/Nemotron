@@ -1,0 +1,87 @@
+
+Compiled Configuration
+
+╭──────────────────────────────────────── run ────────────────────────────────────────╮
+│ mode: local                                                                         │
+│ profile: null                                                                       │
+│ env: {}                                                                             │
+│ cli:                                                                                │
+│   argv:                                                                             │
+│   - preview=true                                                                    │
+│   - num_records=2                                                                   │
+│   dotlist:                                                                          │
+│   - preview=true                                                                    │
+│   - num_records=2                                                                   │
+│   passthrough: []                                                                   │
+│   config: default                                                                   │
+│ recipe:                                                                             │
+│   name: steps/sdg/data_designer                                                     │
+│   script: /local/var/tmp/nvidia/nemotron/src/nemotron/steps/sdg/data_designer/step.py │
+╰─────────────────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────────────────────────── config ────────────────────────────────────────╮
+│ output_dir: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/sdg}  │
+│ output_path: ${output_dir}/sft.jsonl                                                  │
+│ num_records: 2                                                                        │
+│ seed_dataset:                                                                         │
+│   path: ${oc.env:PWD}/src/nemotron/steps/sdg/data_designer/data/sft_topic_seeds.jsonl │
+│   strategy: shuffle                                                                   │
+│   fields:                                                                             │
+│   - topic                                                                             │
+│ models:                                                                               │
+│ - alias: nvidia-text                                                                  │
+│   model: nvidia/nemotron-3-nano-30b-a3b                                               │
+│   provider: nvidia                                                                    │
+│   skip_health_check: true                                                             │
+│   inference_parameters:                                                               │
+│     temperature: 0.8                                                                  │
+│     top_p: 1.0                                                                        │
+│     max_tokens: '******'                                                              │
+│ columns:                                                                              │
+│ - name: persona                                                                       │
+│   type: category                                                                      │
+│   values:                                                                             │
+│   - teacher                                                                           │
+│   - engineer                                                                          │
+│   - student                                                                           │
+│   - researcher                                                                        │
+│   - support_agent                                                                     │
+│ - name: user_query                                                                    │
+│   type: llm_text                                                                      │
+│   model_alias: nvidia-text                                                            │
+│   prompt: 'Write a single user message for a {{ persona }} asking about: {{ topic     │
+│     }}.                                                                               │
+│                                                                                       │
+│     Keep it natural, 1-3 sentences.                                                   │
+│                                                                                       │
+│     '                                                                                 │
+│ - name: assistant_response                                                            │
+│   type: llm_text                                                                      │
+│   model_alias: nvidia-text                                                            │
+│   prompt: 'Helpful assistant reply to: "{{ user_query }}".                            │
+│                                                                                       │
+│     Style: concise, factual, no markdown.                                             │
+│                                                                                       │
+│     '                                                                                 │
+│ output_projection:                                                                    │
+│   type: openai_messages                                                               │
+│   user_field: user_query                                                              │
+│   assistant_field: assistant_response                                                 │
+│   metadata_fields:                                                                    │
+│   - persona                                                                           │
+│   - topic                                                                             │
+│ preview: true                                                                         │
+╰───────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Job Submission                                                                                                │
+│ ├── configs                                                                                                   │
+│ │   ├── job:   /local/var/tmp/nvidia/nemotron/.nemotron/jobs/20260509-133530-steps-sdg-data_designer/job.yaml   │
+│ │   └── train: /local/var/tmp/nvidia/nemotron/.nemotron/jobs/20260509-133530-steps-sdg-data_designer/train.yaml │
+│ └── mode: local                                                                                               │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Executing: /local/var/tmp/nvidia/nemotron/.venv/bin/python3 /local/var/tmp/nvidia/nemotron/src/nemotron/steps/sdg/data_designer/step.py --config /local/var/tmp/nvidia/nemotron/.nemotron/jobs/20260509-133530-steps-sdg-data_designer/train.yaml
+Preview 2 records → /local/var/tmp/nvidia/nemotron/output/sdg/sft.jsonl

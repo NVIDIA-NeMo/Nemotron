@@ -386,7 +386,7 @@ class TestOmegaConfResolverIntegration:
 
     def test_art_resolver_resolves_data_path(self, monkeypatch, tmp_path):
         """Test ${art:data,path} resolves to artifact download path."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -428,7 +428,7 @@ class TestOmegaConfResolverIntegration:
 
     def test_art_resolver_resolves_pack_size(self, monkeypatch, tmp_path):
         """Test ${art:data,pack_size} resolves to artifact pack_size field."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -479,7 +479,7 @@ class TestOmegaConfResolverIntegration:
 
     def test_art_resolver_resolves_training_path(self, monkeypatch, tmp_path):
         """Test ${art:data,training_path} resolves to training file path."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -531,27 +531,27 @@ class TestOmegaConfResolverIntegration:
 
     def test_run_wandb_project_interpolation(self, monkeypatch, tmp_path):
         """Test ${run.wandb.project} resolves from run section."""
-        from nemotron.kit.cli.config import _resolve_run_interpolations
+        from nemo_runspec.utils import resolve_run_interpolations
 
         config_dict = {
             "logger": {"wandb_project": "${run.wandb.project}"},
         }
         run_section = {"wandb": {"project": "test-project", "entity": "test-entity"}}
 
-        result = _resolve_run_interpolations(config_dict, run_section)
+        result = resolve_run_interpolations(config_dict, run_section)
 
         assert result["logger"]["wandb_project"] == "test-project"
 
     def test_run_wandb_entity_interpolation(self, monkeypatch, tmp_path):
         """Test ${run.wandb.entity} resolves from run section."""
-        from nemotron.kit.cli.config import _resolve_run_interpolations
+        from nemo_runspec.utils import resolve_run_interpolations
 
         config_dict = {
             "logger": {"wandb_entity": "${run.wandb.entity}"},
         }
         run_section = {"wandb": {"project": "test-project", "entity": "test-entity"}}
 
-        result = _resolve_run_interpolations(config_dict, run_section)
+        result = resolve_run_interpolations(config_dict, run_section)
 
         assert result["logger"]["wandb_entity"] == "test-entity"
 
@@ -561,7 +561,7 @@ class TestWandbArtifactIntegration:
 
     def test_wandb_artifact_resolution_for_sft_train(self, monkeypatch, tmp_path):
         """Test ${art:data,path} resolver works with SFT train.py config pattern."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 
@@ -678,7 +678,7 @@ class TestSFTDataPrepTrainContract:
 
     def test_full_data_prep_to_train_flow(self, monkeypatch, tmp_path):
         """Test complete flow: data_prep output -> train consumption."""
-        from nemotron.kit import resolvers
+        from nemo_runspec.config import resolvers
 
         resolvers.clear_artifact_cache()
 

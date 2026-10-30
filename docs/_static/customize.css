@@ -1,0 +1,4 @@
+.admonition.pattern-metadata { border-left-color: #f0ad4e; }
+.admonition.paper-reference { border-left-color: #5bc0de; }
+
+.scrollable pre { max-height: 400px; overflow-y: auto; }

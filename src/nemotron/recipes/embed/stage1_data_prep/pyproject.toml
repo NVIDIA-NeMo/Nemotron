@@ -1,0 +1,40 @@
+[project]
+name = "recipe-runner-data-prep"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "data-designer-retrieval-sdg",
+    "data-designer==0.9.4",
+    "omegaconf>=2.3.0",
+    "pydantic-settings>=2.0.0",
+    "torch>=2.10.0,<2.11.0",
+    "sentence-transformers>=3.0.0",
+    "faiss-cpu>=1.7.4",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
+]
+
+[project.optional-dependencies]
+text = ["nemo-automodel", "transformers==5.18.0"]
+vl = ["nemo-automodel", "transformers==5.18.0", "torchvision>=0.25,<0.26"]
+
+[tool.uv]
+conflicts = [[{ extra = "text" }, { extra = "vl" }]]
+
+[tool.uv.sources]
+data-designer-retrieval-sdg = { git = "https://github.com/NVIDIA-NeMo/DataDesignerPlugins.git", rev = "a4c57f8013a6190a2a101b744ac82c90f67da937", subdirectory = "plugins/data-designer-retrieval-sdg" }
+nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/497b995339e234fc492368e8c470669a04cdb9b7.tar.gz" }
+torch = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
+torchvision = { index = "pytorch-cu129", marker = "sys_platform == 'linux'" }
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[tool.nemotron]
+entry-point = "data_prep.py"
+container-extras = ["text"]
+container-exclude-dependencies = [
+    "torch", "torchvision", "flash-attn", "triton", "scipy", "opencv-python-headless",
+]

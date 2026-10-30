@@ -1,0 +1,13 @@
+# Default config for `01-seed-dataset-preparation.py`.
+#
+# Override on the CLI with Hydra-style dotlist:
+#   uv run --no-project 01-seed-dataset-preparation.py --config config/01-seed.yaml num_docs=50 subset=fra_Latn
+#   nemotron data sdg long-document seed --run dlw -c 01-seed num_docs=50
+
+output_dir: ./seed_data
+num_docs: 10
+subset: eng_Latn
+timeout: 20
+dpi: 144
+max_pages: 50
+min_window_pages: 2

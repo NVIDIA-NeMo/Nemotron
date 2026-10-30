@@ -1,0 +1,71 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Stage 3: Tiny evaluation smoke config (single node, NeMo Gym)
+#
+# Runs a 5-row GPQA smoke against the tiny-pipeline output artifact
+# (a Qwen3-8B smoke model, matching the stage0/1/2 tiny chain). This
+# validates serving + Gym wiring, NOT model quality.
+#
+# Usage:
+#   nemotron lightning35 eval -c tiny --run MY-CLUSTER
+
+run:
+  # Tiny pipeline publishes versions of the same artifact name
+  model: lightning35-rl-model:latest
+  env:
+    container: nvcr.io/nvidia/nemo-rl:v0.4.0.nemotron_3_5_lightning
+  wandb:
+    entity: null
+    project: null
+
+serving:
+  model_path: ${art:model,path}
+  host: 127.0.0.1
+  port: 8000
+  # Qwen3-8B smoke model: dense, fits on one GPU
+  tensor_parallel_size: 1
+  data_parallel_size: 1
+  enable_expert_parallel: false
+  gpu_memory_utilization: 0.9
+  kv_cache_dtype: auto
+  mamba_ssm_cache_dtype: float32
+  tool_call_parser: qwen3_coder
+  # Smoke model has no Nemotron reasoning format or MTP heads
+  reasoning_parser: qwen3
+  speculative_config: null
+  max_model_len: 8192
+  extra_args: []
+  startup_timeout_s: 1800
+
+gym:
+  workdir: /opt/nemo-rl/3rdparty/Gym-workspace/Gym
+  command: uv run gym
+  model_type: vllm_model
+  api_key: dummy
+
+  benchmarks:
+    - gpqa
+
+  common_overrides:
+    - '++overwrite_metrics_conflicts=true'
+    - '++policy_model.responses_api_models.vllm_model.chat_template_kwargs={enable_thinking: true}'
+    - '++policy_model.responses_api_models.vllm_model.extra_body={skip_special_tokens: false}'
+
+  split: benchmark
+  concurrency: 8
+  limit: 5
+  num_repeats: 1
+  output_dir: /nemo_run/lightning35-eval-results-tiny
+  extra_overrides: []

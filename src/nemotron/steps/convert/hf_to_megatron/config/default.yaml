@@ -1,0 +1,44 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Convert a HuggingFace checkpoint or model id into Megatron distributed layout.
+#
+# Usage:
+#   nemotron steps run convert/hf_to_megatron -c default \
+#     hf_model_id=/path/to/hf_checkpoint \
+#     megatron_path=/path/to/output_megatron_checkpoint
+
+run:
+  env:
+    container_image: nvcr.io/nvidia/nemo:26.04
+
+hf_model_id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-Base-BF16
+megatron_path: ${oc.env:CONVERT_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/convert}/hf_to_megatron/megatron
+
+script:
+  path: /opt/Megatron-Bridge/examples/conversion/convert_checkpoints_multi_gpu.py
+
+torch_dtype: bfloat16
+device_map: null
+trust_remote_code: true
+
+# Distributed conversion is the default path so large checkpoints can be
+# imported without materializing the full model on one GPU.
+distributed: true
+tp: ${oc.env:NEMOTRON_CONVERT_TP,1}
+pp: ${oc.env:NEMOTRON_CONVERT_PP,1}
+ep: ${oc.env:NEMOTRON_CONVERT_EP,8}
+etp: ${oc.env:NEMOTRON_CONVERT_ETP,1}
+torchrun:
+  nproc_per_node: ${oc.env:NEMOTRON_CONVERT_NPROC_PER_NODE,8}

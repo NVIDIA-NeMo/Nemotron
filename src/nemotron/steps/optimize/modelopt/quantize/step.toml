@@ -1,0 +1,107 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[step]
+id = "optimize/modelopt/quantize"
+name = "Quantization (ModelOpt + Megatron-Bridge)"
+category = "optimize"
+description = """\
+Post-training quantization with NVIDIA Model Optimizer through Megatron-Bridge.
+Supports PTQ recipes accepted by the installed Megatron-Bridge script, producing
+Megatron distributed checkpoints ready for export/evaluation."""
+tags = ["optimize", "modelopt", "quantization", "ptq", "fp8", "nvfp4", "megatron-bridge"]
+
+[[consumes]]
+type = "checkpoint_hf"
+description = "HuggingFace base or aligned checkpoint to quantize."
+required = true
+
+[[produces]]
+type = "checkpoint_megatron"
+description = "Quantized Megatron distributed checkpoint."
+
+[[parameters]]
+name = "args.hf_model_id"
+description = "HF model id or local HF checkpoint path to quantize. Use a clean, merged checkpoint rather than an adapter."
+
+[[parameters]]
+name = "args.export_quant_cfg"
+description = "ModelOpt/Megatron-Bridge quantization recipe: int8_sq, fp8, fp8_blockwise, int4_awq, w4a8_awq, or nvfp4."
+default = "fp8"
+
+[[parameters]]
+name = "args.calib_size"
+description = "Number of calibration samples."
+default = 512
+
+[[parameters]]
+name = "args.megatron_save_path"
+description = "Output Megatron checkpoint path. Keep it outside the source checkpoint directory."
+
+[[parameters]]
+name = "args.tp"
+description = "Tensor parallel size. torchrun world size must be divisible by tp * pp and compatible with MoE/Mamba group counts."
+
+[[parameters]]
+name = "args.pp"
+description = "Pipeline parallel size. Use with args.tp to keep torchrun world size and model divisibility valid."
+
+[[parameters]]
+name = "extra_args"
+description = "Literal upstream args for newly added ModelOpt/Megatron-Bridge flags."
+default = []
+
+[[strategies]]
+when = "Target hardware is Hopper/H100"
+then = "Start with config/fp8.yaml and args.export_quant_cfg=fp8."
+
+[[strategies]]
+when = "Target hardware is Blackwell/B200"
+then = "Start with config/nvfp4.yaml and args.export_quant_cfg=nvfp4."
+
+[[strategies]]
+when = "Need a HuggingFace checkpoint"
+then = "Export the produced Megatron checkpoint with /opt/Megatron-Bridge/examples/quantization/export.py."
+
+[[strategies]]
+when = "Calibrating for quality rather than launch validation"
+then = "Use representative prompts and a realistic calib_size; tiny configs only prove the wrapper starts."
+
+[[errors]]
+name = "unsupported_quant_recipe"
+recovery = "Use a recipe accepted by the installed upstream quantize.py --help, such as int8_sq, fp8, fp8_blockwise, int4_awq, w4a8_awq, or nvfp4."
+
+[[errors]]
+name = "world_size_not_divisible"
+recovery = "Adjust torchrun.nproc_per_node/nnodes or args.tp/args.pp so world size is divisible by tensor times pipeline parallelism."
+
+[[errors]]
+name = "source_checkpoint_overwritten"
+recovery = "Keep args.megatron_save_path separate from args.hf_model_id so failed exports do not corrupt the source model."
+
+[[errors]]
+name = "tiny_calibration_used_as_quality_signal"
+recovery = "Treat tiny calibration runs as launch validation only. Re-run with representative calibration data before evaluating quality."
+
+[reference]
+skill = "src/nemotron/steps/optimize/modelopt/quantize/README.md"
+nemotron_quantization = "https://github.com/NVIDIA-NeMo/Nemotron/blob/main/docs/nemotron/super3/quantization.md"
+modelopt_repo = "https://github.com/NVIDIA/Model-Optimizer"
+modelopt_readme = "https://github.com/NVIDIA/Model-Optimizer/blob/main/README.md"
+modelopt_docs = "https://nvidia.github.io/Model-Optimizer/"
+modelopt_megatron_bridge_readme = "https://github.com/NVIDIA/Model-Optimizer/blob/main/examples/megatron_bridge/README.md"
+megatron_bridge_repo = "https://github.com/NVIDIA-NeMo/Megatron-Bridge"
+megatron_bridge_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/"
+megatron_bridge_quantization_docs = "https://docs.nvidia.com/nemo/megatron-bridge/latest/modelopt/quantization.html"
+skills = ["skills/nemotron-customize/references/context/modelopt-optimization.txt"]

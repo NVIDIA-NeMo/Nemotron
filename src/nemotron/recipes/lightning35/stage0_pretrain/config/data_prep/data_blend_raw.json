@@ -1,0 +1,165 @@
+{
+  "datasets": [
+    {
+      "name": "nemotron-math-3",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "3",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-math-4plus",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "4plus",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-math-4plus-mind",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "4plus_MIND",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2-diverse-qa",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Diverse-QA",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "High-Quality",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "High-Quality-Synthetic",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2-medium-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Medium-High-Quality",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2-medium-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Medium-Quality",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2-translated-diverse-qa",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Translated-Diverse-QA",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Synthetic",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-translated-to-english",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Translated-To-English",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-translated-to-english-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Translated-To-English-Synthetic",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality-Synthetic",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality-translated-to-english",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality-Translated-To-English",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-Quality",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-pretraining-infinibyte-reasoning",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-InfiniByte-Reasoning",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-pretraining-math-textbooks",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Math-Textbooks",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-pretraining-rqa",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-RQA",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-pretraining-stem-sft",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-STEM-SFT",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-pretraining-scientific-coding",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Scientific-Coding",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-pretraining-wiki-rewrite",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Wiki-Rewrite",
+      "text_field": "text",
+      "weight": 1.0
+    }
+  ]
+}

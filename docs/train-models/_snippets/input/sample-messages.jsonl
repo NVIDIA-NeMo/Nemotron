@@ -1,0 +1,16 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You answer arithmetic questions in one sentence."
+    },
+    {
+      "role": "user",
+      "content": "What is twelve times seven?"
+    },
+    {
+      "role": "assistant",
+      "content": "Twelve times seven is eighty-four."
+    }
+  ]
+}

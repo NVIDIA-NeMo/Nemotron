@@ -1,0 +1,29 @@
+# Remote Execution
+
+Load this reference when the user mentions clusters, Slurm, `env.toml`, `--run`, `--batch`, remote logs, GPU placement, or session-safe long-running jobs.
+
+## Profile Checks
+
+- Inspect the selected execution environment's `env.toml` before composing remote commands. In a source checkout, it normally lives at the repository root. A copied skill does not provide an execution profile.
+- Confirm the requested profile exists and matches the intended executor.
+- Keep credential values in the remote environment and out of chat. Ask only whether the required credentials are configured.
+- Start with the same local help or dry-run command before adding `--run` or `--batch`.
+
+## Modes
+
+| Mode | Use When | Pattern |
+| --- | --- | --- |
+| Local dry-run | Validate config rendering before scheduling | `uv run nemotron <family> <stage> -c <model-profile> -d ...` |
+| Remote run | User wants an interactive remote execution path | `uv run nemotron <family> <stage> -c <model-profile> --run <profile> ...` |
+| Remote batch | User wants a scheduled detached job | `uv run nemotron <family> <stage> -c <model-profile> --batch <profile> ...` |
+
+## Operating Pattern
+
+1. Render the config locally with `-d`.
+2. Use `CUDA_VISIBLE_DEVICES=<ids>` only for local execution. For `--run` or `--batch`, set scheduler resources such as `gpus_per_node` in the selected profile and let the scheduler assign devices; use profile `env_vars` only when an executor explicitly requires an environment override.
+3. Add dotlist overrides only after confirming the stage contract inputs and outputs.
+4. For multi-stage `rerank run --run` or `rerank run --batch`, verify the profile provides `remote_job_dir` or `env_vars.NEMO_RUN_DIR` so stage outputs share one run directory.
+5. Stop remote pipelines before `deploy`; deploy is local-only. For rerank, avoid `--stage` on `rerank run` and use the single-stage command with `--dry-run` instead.
+6. Record the command, profile, output directory, expected log path, and next poll time.
+7. Poll at human-scale intervals: roughly 60 seconds for pilots and 120-300 seconds for larger jobs.
+8. If the remote job fails before the recipe starts, inspect environment, mount paths, image, and scheduler logs before changing recipe configs.

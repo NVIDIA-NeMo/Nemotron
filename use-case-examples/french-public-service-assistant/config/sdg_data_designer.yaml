@@ -1,0 +1,149 @@
+# Data Designer config for the French public-service assistant example.
+#
+# Generates short user/assistant conversations about French public-service procedures,
+# grounded in official procedure text (see sources/procedures.json). Run from the repo root:
+#
+#   uv run nemotron steps run sdg/data_designer \
+#     -c use-case-examples/french-public-service-assistant/config/sdg_data_designer.yaml \
+#     preview=true num_records=8
+#
+# The generator runs against a local vLLM server (see README). For a DGX Spark, point the
+# local_vllm provider at a hosted endpoint instead and lower max_parallel_requests.
+#
+# Judge notes (learned while building this example):
+#  - Data Designer structured columns expect the answer inside a ```json fenced block, so the
+#    judge prompt asks for one.
+#  - Records the judge cannot parse are dropped by Data Designer; the audit step handles the rest.
+
+output_dir: use-case-examples/french-public-service-assistant/data/sdg
+output_path: use-case-examples/french-public-service-assistant/data/sdg/sft_raw.jsonl
+num_records: 2000   # use preview=true num_records=8 first
+
+seed_dataset:
+  path: use-case-examples/french-public-service-assistant/data/seeds.jsonl
+  strategy: shuffle
+  fields: [source_uuid, professional_persona, persona, commune, departement,
+           occupation, procedure, procedure_facts, local_note]
+
+providers:
+  - name: local_vllm
+    endpoint: http://localhost:8000/v1
+    provider_type: openai
+    api_key: EMPTY
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+  # Judge provider. Use a DIFFERENT model from the generator so the generator does not grade
+  # its own output. Defaults point at the NVIDIA hosted API; override with environment variables.
+  - name: judge_provider
+    endpoint: ${oc.env:JUDGE_BASE_URL,https://integrate.api.nvidia.com/v1}
+    provider_type: openai
+    api_key: NVIDIA_API_KEY   # env var NAME (not the key itself); the same key the rest of the repo uses
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+models:
+  - alias: judge
+    model: ${oc.env:JUDGE_MODEL,nvidia/llama-3.3-nemotron-super-49b-v1.5}
+    provider: judge_provider
+    skip_health_check: true
+    inference_parameters:
+      temperature: 0.0
+      max_tokens: 3000
+      max_parallel_requests: 8
+
+  - alias: generator
+    model: lightning
+    provider: local_vllm
+    skip_health_check: false
+    inference_parameters:
+      temperature: 0.8
+      top_p: 1.0
+      max_tokens: 2048   # hosted endpoint (DGX Spark): 1024
+      max_parallel_requests: 64
+
+columns:
+  - name: local_constraint
+    type: category
+    values:
+      - n'a pas accès à internet
+      - est âgé et peu à l'aise avec l'informatique
+      - a du mal à se déplacer pour des raisons de santé
+      - travaille en horaires décalés et ne peut pas se déplacer en journée
+      - habite en ville et est pressé
+
+  - name: tone
+    type: category
+    values: [calme, confus, pressé, poli et hésitant]
+
+  - name: scenario
+    type: llm_text
+    model_alias: generator
+    prompt: |
+      Écris le message qu'un usager envoie au service d'aide d'une administration française.
+      Démarche concernée : {{ procedure }}.
+      L'usager habite à {{ commune }} ({{ departement }}) et {{ local_constraint }}.
+      Ton : {{ tone }}.
+      Profil de l'usager (à utiliser uniquement pour varier le vocabulaire et le registre) :
+      {{ professional_persona }}
+      Écris 1 à 4 phrases en français naturel, comme un vrai message, avec une question
+      concrète liée à sa situation locale. N'inclus ni nom, ni âge, ni attribut sensible, et ne te présente pas.
+      N'écris que le message.
+
+  - name: answer
+    type: llm_text
+    model_alias: generator
+    prompt: |
+      Tu es l'assistant d'une administration française. Réponds au message suivant, au vouvoiement,
+      en français simple et poli, en 2 à 6 phrases.
+
+      Message : "{{ scenario }}"
+
+      Utilise UNIQUEMENT les informations officielles ci-dessous :
+      {{ procedure_facts }}
+      {{ local_note }}
+
+      Règles : n'invente aucun délai, montant, document, condition ou numéro de téléphone absent
+      du texte. Ne confirme jamais une possibilité qui n'est pas écrite dans le texte (horaires
+      d'ouverture, créneaux le soir ou le week-end, guichets, aides numériques, services de la
+      commune) : dis plutôt que tu ne peux pas le confirmer.
+      N'invente aucune façon de déposer ou d'envoyer un dossier (courrier, téléphone, e-mail,
+      borne ou terminal en mairie). Si la voie que l'usager souhaite n'existe pas d'après le
+      texte, décris uniquement les options qui y figurent. Si l'information demandée n'y figure pas, dis-le simplement et oriente l'usager
+      vers sa mairie ou vers le site service-public.gouv.fr. Tiens compte de la situation locale
+      de l'usager sans inventer de détails sur son territoire. Ne demande jamais de mot de passe,
+      de coordonnées bancaires ni d'installer un logiciel.
+
+  - name: grounding
+    type: llm_judge
+    model_alias: judge
+    prompt: |
+      Informations officielles : {{ procedure_facts }}
+      Situation de l'usager : habite {{ commune }} ({{ departement }}). {{ local_note }}
+      Question de l'usager : {{ scenario }}
+      Réponse de l'assistant : {{ answer }}
+
+      Cherche UNIQUEMENT les affirmations de la réponse qui sont FAUSSES ou qui ajoutent un fait
+      absent des informations officielles ou contraire à elles (document, délai, montant,
+      possibilité, service, lieu, site ou organisme où faire une démarche).
+      Ne signale PAS : les omissions, le manque de détail, les renvois génériques vers la mairie
+      ou service-public.gouv.fr, ni les phrases où l'assistant dit qu'il ne peut pas confirmer.
+      Réponds grounded=true s'il n'y a aucune affirmation fausse ou ajoutée.
+      Réponds uniquement par un bloc de code markdown ```json contenant l'objet
+      {"grounded": true ou false, "unsupported_claims": "..."}.
+    output_format:
+      type: object
+      properties:
+        grounded:
+          type: boolean
+        unsupported_claims:
+          type: string
+      required: [grounded]
+
+output_projection:
+  type: openai_messages
+  user_field: scenario
+  assistant_field: answer
+  metadata_fields: [source_uuid, procedure, local_constraint, grounding]

@@ -1,0 +1,53 @@
+# Curator Processing, Language, And Quality Context
+
+Use this pack for `curate/nemo_curator` when configuring filtering after input
+loading has been verified.
+
+## Product Contract
+
+- This pack covers only `curate/nemo_curator`: read JSONL, optionally apply
+  language/domain/word-count or an approved heuristic policy, and write
+  filtered JSONL plus optional manifest/ledger evidence.
+- Route profiling, audit, whole-document holdout decontamination, and nested
+  subsets to their dedicated catalog steps; do not force them into this filter
+  step.
+
+## Filter Controls
+
+| Need | Config |
+|---|---|
+| Preserve all records for smoke test | `language_codes=[]`, `domains=[]`, `quality_filters={}` |
+| Language gating | `language_codes=[...]`, `models.fasttext_langid`, optional `quality_filters.min_langid_score` |
+| Word-count gate | set both `quality_filters.min_words` and `quality_filters.max_words` |
+| Domain gate | set `domains=[...]` and optional `models.hf_cache_dir` |
+| Preserve IDs/URLs/source | list every required field in `metadata_fields` |
+| Apply measured heuristic thresholds | set `heuristic_filters.approved_policy` to an explicitly approved policy |
+| Keep signal scores | use `mode=annotate` or `mode=both`; independent filters may still drop rows |
+
+## Practical Defaults
+
+- Start with a tiny sample and permissive filters.
+- Add one filter family at a time so failures are attributable.
+- Keep `text_field` aligned with the input schema.
+- Record filter thresholds in the generated project config; they materially
+  affect downstream data quality.
+- Do not add word-count defaults for a language without verified whitespace
+  segmentation; the bundled default intentionally omits
+  `min_words`/`max_words`.
+
+## Remote Runtime Notes
+
+- Language and domain models may need cache directories available on the remote
+  filesystem.
+- For CPU-only curation profiles, constrain Ray CPU count instead of relying on
+  all machine CPUs.
+- If output is unexpectedly empty, inspect the intermediate record counts before
+  changing downstream training configs.
+
+## Failure Modes
+
+- `missing_language_model`: disable language filtering or provide the FastText
+  model path.
+- `incomplete_word_filter`: provide both min and max word thresholds or remove
+  both.
+- `empty_or_tiny_output`: relax filters and inspect a few rejected examples.

@@ -1,0 +1,264 @@
+{
+  "_comment": "Nemotron 3 Ultra pretrain PHASE 1 blend (diversity bias). Weights are the Figure 4 phase-1 high-level category shares (%), distributed across the open HF datasets mapped to each category (see each entry's \"category\"). Phase 1 covers ~15T of the 20T horizon (transition at ~75%). New-for-Ultra datasets are tagged \"_new_in_ultra\" and use the released repos (Legal-v1, Specialized-v1.2 subsets). Internal-only categories are in _missing_categories. Weights are unnormalized; the pipeline normalizes at runtime.",
+  "_mixture_source": "Figure 4 (skills/nemotron-ultra/paper/data.md), NVIDIA Nemotron 3 Ultra v3 Tech Report",
+  "_missing_categories": {
+    "code": {
+      "weight": 14.0,
+      "description": "Source code. Nemotron-Pretraining-Code-v3 (\u00a72.3.1, 173B new GitHub tokens) is released as metadata only \u2014 a manifest of GitHub repos to scrape, not text \u2014 so it cannot feed the tokenization pipeline directly. To fill this 14% category, scrape the listed repos into raw text (out of scope here), add it as a blend dataset, and `data prep pretrain` will tokenize it."
+    },
+    "nemotron-cc-code": {
+      "weight": 2.1,
+      "description": "Nemotron-CC code-classified web documents (internal-only) (internal-only). Add your own raw-text dataset at this weight; data prep tokenizes it."
+    },
+    "academic": {
+      "weight": 1.6,
+      "description": "Academic papers and text (internal-only) (internal-only). Add your own raw-text dataset at this weight; data prep tokenizes it."
+    },
+    "crawl++": {
+      "weight": 1.4,
+      "description": "OpenWebText + BigScience + Reddit (internal-only) (internal-only). Add your own raw-text dataset at this weight; data prep tokenizes it."
+    }
+  },
+  "datasets": [
+    {
+      "name": "nemotron-cc-v2-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "High-Quality-Synthetic",
+      "category": "syn-crawl-high",
+      "text_field": "text",
+      "weight": 7.5
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Synthetic",
+      "category": "syn-crawl-high",
+      "text_field": "text",
+      "weight": 14.9
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality-Synthetic",
+      "category": "syn-crawl-medium",
+      "text_field": "text",
+      "weight": 10.3
+    },
+    {
+      "name": "nemotron-cc-v2-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "High-Quality",
+      "category": "crawl-high",
+      "text_field": "text",
+      "weight": 2.2
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality",
+      "category": "crawl-high",
+      "text_field": "text",
+      "weight": 4.3
+    },
+    {
+      "name": "nemotron-cc-v2-medium-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Medium-High-Quality",
+      "category": "crawl-medium-high",
+      "text_field": "text",
+      "weight": 1.9
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality",
+      "category": "crawl-medium-high",
+      "text_field": "text",
+      "weight": 3.8
+    },
+    {
+      "name": "nemotron-cc-v2-medium-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Medium-Quality",
+      "category": "crawl-medium",
+      "text_field": "text",
+      "weight": 1.433
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-quality",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-Quality",
+      "category": "crawl-medium",
+      "text_field": "text",
+      "weight": 2.867
+    },
+    {
+      "name": "nemotron-pretraining-stem-sft",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-STEM-SFT",
+      "category": "sft-stem",
+      "text_field": "text",
+      "weight": 9.2
+    },
+    {
+      "name": "nemotron-pretraining-code-concepts",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.1",
+      "subset": "Nemotron-Pretraining-Code-Concepts",
+      "category": "sft-code",
+      "text_field": "text",
+      "weight": 3.12
+    },
+    {
+      "name": "nemotron-pretraining-scientific-coding",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Scientific-Coding",
+      "category": "sft-code",
+      "text_field": "text",
+      "weight": 0.78
+    },
+    {
+      "name": "nemotron-pretraining-multiple-choice",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.2",
+      "subset": "Nemotron-Pretraining-Multiple-Choice",
+      "category": "sft-general",
+      "text_field": "text",
+      "weight": 0.544,
+      "_new_in_ultra": true,
+      "_note": "\u00a72.3.2 \u2014 synthetic multiple-choice Q&A; subset of Nemotron-Pretraining-Specialized-v1.2."
+    },
+    {
+      "name": "nemotron-pretraining-generative",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.2",
+      "subset": "Nemotron-Pretraining-Generative",
+      "category": "sft-general",
+      "text_field": "text",
+      "weight": 0.352,
+      "_new_in_ultra": true,
+      "_note": "\u00a72.3.2 \u2014 synthetic generative Q&A; subset of Nemotron-Pretraining-Specialized-v1.2."
+    },
+    {
+      "name": "nemotron-pretraining-fact-seeking",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.2",
+      "subset": "Nemotron-Pretraining-Fact-Seeking",
+      "category": "sft-general",
+      "text_field": "text",
+      "weight": 0.224,
+      "_new_in_ultra": true,
+      "_note": "\u00a72.3.3 \u2014 fact-seeking Q from Finewiki; subset of Nemotron-Pretraining-Specialized-v1.2."
+    },
+    {
+      "name": "nemotron-pretraining-moral-scenarios",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.2",
+      "subset": "Nemotron-Pretraining-Moral-Scenarios",
+      "category": "sft-general",
+      "text_field": "text",
+      "weight": 0.096,
+      "_new_in_ultra": true,
+      "_note": "\u00a72.3.4 \u2014 moral-scenario MC; subset of Nemotron-Pretraining-Specialized-v1.2."
+    },
+    {
+      "name": "nemotron-pretraining-economics",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.1",
+      "subset": "Nemotron-Pretraining-Economics",
+      "category": "sft-general",
+      "text_field": "text",
+      "weight": 0.224
+    },
+    {
+      "name": "nemotron-pretraining-formal-logic",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1.1",
+      "subset": "Nemotron-Pretraining-Formal-Logic",
+      "category": "sft-general",
+      "text_field": "text",
+      "weight": 0.16
+    },
+    {
+      "name": "nemotron-math-3",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "3",
+      "category": "math",
+      "text_field": "text",
+      "weight": 1.3
+    },
+    {
+      "name": "nemotron-math-4plus",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "4plus",
+      "category": "math",
+      "text_field": "text",
+      "weight": 2.9
+    },
+    {
+      "name": "nemotron-math-4plus-mind",
+      "path": "hf://nvidia/Nemotron-CC-Math-v1",
+      "subset": "4plus_MIND",
+      "category": "math",
+      "text_field": "text",
+      "weight": 1.7
+    },
+    {
+      "name": "nemotron-pretraining-math-textbooks",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Math-Textbooks",
+      "category": "math",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-cc-v2-diverse-qa",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Diverse-QA",
+      "category": "multilingual",
+      "text_field": "text",
+      "weight": 2.5
+    },
+    {
+      "name": "nemotron-cc-v2-translated-diverse-qa",
+      "path": "hf://nvidia/Nemotron-CC-v2",
+      "subset": "Translated-Diverse-QA",
+      "category": "multilingual",
+      "text_field": "text",
+      "weight": 1.0
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-translated-to-english",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Translated-To-English",
+      "category": "multilingual",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-cc-v2.1-high-quality-translated-to-english-synthetic",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "High-Quality-Translated-To-English-Synthetic",
+      "category": "multilingual",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "nemotron-cc-v2.1-medium-high-quality-translated-to-english",
+      "path": "hf://nvidia/Nemotron-CC-v2.1",
+      "subset": "Medium-High-Quality-Translated-To-English",
+      "category": "multilingual",
+      "text_field": "text",
+      "weight": 0.5
+    },
+    {
+      "name": "finepdfs",
+      "path": "hf://HuggingFaceFW/finepdfs",
+      "subset": "eng_Latn",
+      "category": "finepdfs-unfiltered",
+      "text_field": "text",
+      "weight": 4.9
+    },
+    {
+      "name": "nemotron-pretraining-wiki-rewrite",
+      "path": "hf://nvidia/Nemotron-Pretraining-Specialized-v1",
+      "subset": "Nemotron-Pretraining-Wiki-Rewrite",
+      "category": "wiki",
+      "text_field": "text",
+      "weight": 0.6
+    }
+  ]
+}

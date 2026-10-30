@@ -1,0 +1,38 @@
+# Nemotron CLI envelope for the NeMo Evaluator native BFCL bridge.
+# Resolve eval.default.yaml first and replace every REPLACE_ME path below.
+schema_version: "1.0"
+family: bfcl
+stage: eval
+eval_config_path: ./eval.default.yaml
+execution_backend: nemo_launcher
+output_format: human
+# Pinned into the adapter config, because a Launcher task is submitted once and
+# cannot be told later whether it may execute the oracle pack.
+probe_oracle: true
+# For this backend, dry_run submits the job as a Launcher dry run. Use
+# launcher.submit to control whether anything is submitted at all.
+dry_run: false
+
+launcher:
+  # Optional when the published source tree contains exports/nemo_evaluator_bundle.
+  bundle_root: null
+  # Every path below must lie outside bundle_root: the bundle is verified by exact
+  # file set, so one extra file would fail the next verification of that export.
+  native_output_dir: REPLACE_ME_NATIVE_OUTPUT_DIR
+  adapter_config_path: REPLACE_ME_ADAPTER_CONFIG_YAML
+  framework_build_dir: REPLACE_ME_FRAMEWORK_BUILD_DIR
+  task_config_path: REPLACE_ME_LAUNCHER_TASK_YAML
+  launcher_base_config_path: ../../../eval/model_eval/config/tiny_chat.yaml
+  launcher_config_path: REPLACE_ME_MATERIALIZED_LAUNCHER_YAML
+  launcher_output_dir: REPLACE_ME_LAUNCHER_OUTPUT_DIR
+  dataset_mount_path: /datasets/bfcl
+  container: null
+  # Required whenever the merged Launcher config names an evaluation container,
+  # here or in launcher_base_config_path. Use identity mappings because the
+  # immutable configs contain absolute paths. Every adapter/eval config, published
+  # source, executable oracle resource, and writable output must be beneath one of
+  # these roots; for example: {"/shared/bfcl": "/shared/bfcl"}.
+  evaluation_mounts: {}
+  # First run with false, explicitly install the generated framework package in
+  # the Launcher environment, then set true to submit through eval/model_eval.
+  submit: false

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for nemotron.kit.cli.utils module."""
+"""Tests for nemo_runspec.utils module."""
 
 import pytest
 
-from nemotron.kit.cli.utils import (
+from nemo_runspec.utils import (
     CONFIG_FILE_KEYS,
     extract_run_args,
     filter_config_file_args,

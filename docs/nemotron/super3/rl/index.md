@@ -216,7 +216,7 @@ This stage uses the following components from the [NVIDIA AI Stack](../../nvidia
 | Component | Role | Documentation |
 |-----------|------|---------------|
 | [NeMo-RL](../../nvidia-stack.md#nemo-rl) | Async GRPO algorithm, policy training, reward computation | [Docs](https://docs.nvidia.com/nemo/rl/latest/) |
-| [NeMo-Gym](https://github.com/NVIDIA-NeMo/NeMo-Gym) | Multi-environment reward evaluation (21+ environments) | [GitHub](https://github.com/NVIDIA-NeMo/NeMo-Gym) |
+| [NeMo-Gym](https://github.com/NVIDIA-NeMo/Gym) | Multi-environment reward evaluation (21+ environments) | [GitHub](https://github.com/NVIDIA-NeMo/Gym) |
 | [Megatron-Core](../../nvidia-stack.md#megatron-core) | Distributed training primitives (TP, PP, CP, EP) | [GitHub](https://github.com/NVIDIA/Megatron-LM) |
 | [Ray](https://ray.io/) | Distributed actor coordination and resource management | [Docs](https://docs.ray.io/) |
 | vLLM | Fast rollout generation | [GitHub](https://github.com/vllm-project/vllm) |
@@ -229,7 +229,7 @@ All RL stages use the base NeMo-RL container:
 nvcr.io/nvidia/nemo-rl:v0.5.0.nemotron_3_super
 ```
 
-To build the container yourself (e.g. for ARM), see the [upstream training guide](https://github.com/NVIDIA-NeMo/RL/blob/super-v3/examples/nemotron_3_super/README.md).
+To build the container yourself, such as for ARM64, refer to [Build Docker Images](https://docs.nvidia.com/nemo/rl/0.5.0/docker.html) in the RL documentation.
 
 #### SWE Container
 

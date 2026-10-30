@@ -1,0 +1,29 @@
+run:
+  model: omni3-rl-mpo-model:latest
+  data: omni3/rl/text/data:latest
+  env:
+    container: /home/${oc.env:USER}/.cache/nemotron/containers/omni3-rl.sqsh
+    workdir: /opt/nemo-rl-omni
+    env_vars:
+      OMNI_SHARED_ROOT: ${oc.env:OMNI_SHARED_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias}
+      DATA_ROOT: ${oc.env:OMNI3_DATA_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/data}
+      MODEL_ROOT: ${oc.env:OMNI3_MODEL_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/checkpoints}
+      CHECKPOINT_ROOT: ${oc.env:OMNI3_CHECKPOINT_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/checkpoints}
+      CONTAINER_ROOT: ${oc.env:OMNI3_CONTAINER_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/containers}
+      USER_ROOT: ${oc.env:OMNI3_USER_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias}
+      CACHE_ROOT: ${oc.env:OMNI3_CACHE_ROOT,/lustre/fs1/portfolios/coreai/users/aroshanghias/.cache}
+      NEMORL: ${oc.env:OMNI3_RL_ROOT,/opt/nemo-rl-omni}
+      CONTAINER: ${oc.env:OMNI3_RL_SQSH,/lustre/fs1/portfolios/coreai/users/aroshanghias/containers/omni3-rl.sqsh}
+      JOB_NAME: ${oc.env:OMNI3_TEXT_JOB_NAME,text-only-rl-stage-1}
+      NUM_NODES: ${oc.env:OMNI3_TEXT_NUM_NODES,16}
+      CONTEXT_PARALLEL_SIZE: ${oc.env:CONTEXT_PARALLEL_SIZE,4}
+      TRAIN_GLOBAL_BATCH_SIZE: ${oc.env:TRAIN_GLOBAL_BATCH_SIZE,2048}
+      NUM_PROMPTS_PER_STEP: ${oc.env:NUM_PROMPTS_PER_STEP,128}
+      NUM_GENERATIONS_PER_PROMPT: ${oc.env:NUM_GENERATIONS_PER_PROMPT,16}
+      WANDB_PROJECT: ${oc.env:WANDB_PROJECT,grpo-dev}
+      MODEL_NAME: ${art:model,path}
+      TRAIN_DATA_PATH: ${art:data,train}
+      VALIDATION_DATA_PATH: ${art:data,val}
+
+launcher:
+  command: bash scripts/omni/step_2_nanov3_text_only_stage_1.sh

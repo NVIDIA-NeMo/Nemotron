@@ -45,14 +45,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any
 
 import cosmos_xenna.pipelines.v1 as pipelines_v1
-
-from collections.abc import Callable
 from fsspec import AbstractFileSystem
 
 from nemotron.data_prep.config import (
@@ -63,10 +63,11 @@ from nemotron.data_prep.config import (
     ObservabilityConfig,
     TokenizerConfig,
 )
-from nemotron.data_prep.observability import pipeline_wandb_hook
-from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
 from nemotron.data_prep.core.finalize import scan_dataset_receipts
 from nemotron.data_prep.core.planning import PlanRequest, resolve_tokenizer, verify_parquet_output
+from nemotron.data_prep.core.work_items import SftDatasetWorkItem, SftShardWorkItem
+from nemotron.data_prep.observability import pipeline_wandb_hook
+from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, resolve_execution_mode
 from nemotron.data_prep.stages import (
     DownloadStage,
     DownloadStageConfig,
@@ -76,9 +77,10 @@ from nemotron.data_prep.stages import (
     PlanStage,
     SftPlanStageConfig,
 )
+from nemotron.data_prep.utils.filesystem import ensure_dir, get_filesystem, write_json
 from nemotron.data_prep.utils.hf_env import detect_hf_env_vars
-from nemotron.data_prep.core.work_items import SftDatasetWorkItem, SftShardWorkItem
-from nemotron.data_prep.recipes.execution_mode import ExecutionModeRequest, resolve_execution_mode
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from nemotron.data_prep.blend import DataBlend
@@ -168,9 +170,7 @@ class SftPlanAdapter:
             parquet_compression=item.parquet_compression,
         )
 
-    def get_output_verifier(
-        self, fs: AbstractFileSystem
-    ) -> Callable[[dict, str, AbstractFileSystem], bool] | None:
+    def get_output_verifier(self, fs: AbstractFileSystem) -> Callable[[dict, str, AbstractFileSystem], bool] | None:
         return verify_parquet_output
 
 
@@ -189,7 +189,7 @@ def _normalize_tokenizer(tokenizer: TokenizerConfig | Mapping[str, Any] | str) -
 
 
 def setup_sft_run(
-    blend: "DataBlend",
+    blend: DataBlend,
     output_dir: str | Path,
     tokenizer: TokenizerConfig | Mapping[str, Any] | str,
     *,
@@ -336,7 +336,7 @@ def setup_sft_run(
 
 def finalize_sft_run(
     context: SftRunContext,
-    blend: "DataBlend",
+    blend: DataBlend,
     output_dir: str | Path,
 ) -> FormatResult:
     """
@@ -363,6 +363,15 @@ def finalize_sft_run(
             "total_packed_sequences": 0,
             "total_tokens": 0,
             "total_parquet_bytes": 0,
+            # Row-drop accounting (NVIDIA-NeMo/Megatron-Bridge#5080 §3): these
+            # per-shard tokenization counters must surface in the final stats
+            # so filtered/errored rows are never silently lost.
+            "total_input_rows": 0,
+            "total_filtered": 0,
+            "total_validation_errors": 0,
+            "total_errors": 0,
+            "total_truncated": 0,
+            "total_empty_after_masking": 0,
         }
         for receipt in dataset_receipts.completed:
             st = receipt.get("stats", {}) or {}
@@ -370,9 +379,27 @@ def finalize_sft_run(
             stats["total_sequences"] += int(st.get("num_sequences", 0) or 0)
             stats["total_packed_sequences"] += int(st.get("num_packed_sequences", 0) or 0)
             stats["total_tokens"] += int(st.get("total_tokens", 0) or 0)
+            stats["total_input_rows"] += int(st.get("num_input_rows", 0) or 0)
+            stats["total_filtered"] += int(st.get("num_filtered", 0) or 0)
+            stats["total_validation_errors"] += int(st.get("num_validation_errors", 0) or 0)
+            stats["total_errors"] += int(st.get("num_errors", 0) or 0)
+            stats["total_truncated"] += int(st.get("num_truncated", 0) or 0)
+            stats["total_empty_after_masking"] += int(st.get("num_empty_after_masking", 0) or 0)
             files = receipt.get("files", {}) or {}
             stats["total_parquet_bytes"] += int(((files.get("parquet") or {}).get("bytes", 0)) or 0)
         dataset_stats[d.name] = stats
+
+        if stats["total_filtered"] or stats["total_errors"]:
+            input_rows = stats["total_input_rows"]
+            dropped = stats["total_filtered"]
+            pct = f" ({dropped / input_rows:.1%} of input rows)" if input_rows else ""
+            logger.warning(
+                f"Dataset '{d.name}': {dropped} rows dropped during SFT prep{pct} "
+                f"(validation_errors={stats['total_validation_errors']}, "
+                f"errors={stats['total_errors']}, "
+                f"no_trainable_turns={stats['total_empty_after_masking']}). "
+                "Inspect shard logs if this is unexpected."
+            )
 
         if d.weight > 0:
             data_paths.extend([str(d.weight), dataset_receipts.prefix])
@@ -399,7 +426,7 @@ def finalize_sft_run(
 
 
 def run_sft_pipeline(
-    blend: "DataBlend",
+    blend: DataBlend,
     output_dir: str | Path,
     tokenizer: TokenizerConfig | Mapping[str, Any] | str,
     *,

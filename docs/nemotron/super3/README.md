@@ -8,7 +8,7 @@ A complete, reproducible training pipeline for Nemotron 3 Super—an open, high-
 
 - **Slurm cluster** with GPU nodes (B200 recommended for NVFP4 support) — see [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - **[Weights & Biases](../wandb.md) account** for experiment tracking and [artifact lineage](../../nemo_runspec/artifacts.md)
-- **Container image**: `nvcr.io/nvidian/nemo:26.02.super.rc4`
+- **Container image**: `nvcr.io/nvidia/nemo:26.02.nemotron_3_super`
 
 ### Installation
 
@@ -51,8 +51,9 @@ $ uv run nemotron super3 data prep sft --run YOUR-CLUSTER
 $ uv run nemotron super3 sft --run YOUR-CLUSTER
 
 // Stage 2: Reinforcement Learning
-$ uv run nemotron super3 data prep rl --run YOUR-CLUSTER
-$ uv run nemotron super3 rl --run YOUR-CLUSTER
+$ uv run nemotron super3 data prep rl rlvr --run YOUR-CLUSTER
+$ uv run nemotron super3 rl rlvr --run YOUR-CLUSTER
+// ...then swe1, swe2 and rlhf; see the RL guide
 
 // Stage 3: Evaluation
 $ uv run nemotron super3 eval --run YOUR-CLUSTER
@@ -62,15 +63,21 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 
 ## Resources
 
-- **Tech Report**: Nemotron 3 Super Technical Report (coming soon)
+- **Tech Report**: [Nemotron 3 Super Technical Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf)
 - **Model Weights**:
-  - NVIDIA-Nemotron-3-Super-120B-A12B-BF16 (Post-trained model, coming soon)
-  - NVIDIA-Nemotron-3-Super-120B-A12B-FP8 (FP8 quantized, coming soon)
-  - NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4 (NVFP4 quantized, coming soon)
-  - NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16 (Base model, coming soon)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16) (Post-trained model)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8) (FP8 quantized)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4) (NVFP4 quantized)
+  - [NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-Base-BF16) (Base model)
 - **Training Datasets**:
   - [Nemotron-Pretraining-Specialized-v1.1](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-Specialized-v1.1) (Synthetic pretraining data)
 - **Megatron-Bridge Docs**: [Nemotron 3 Super](https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/super-v3/docs/models/llm/nemotron3-super.md)
+
+<!-- TODO - Move whatever customization docs for Super 3 to this section of the docs.
+```{seealso}
+For model cards, technical report chunks, and recipe summaries, see {doc}`/customize/models/super3/index`.
+```
+-->
 
 ## Training Pipeline
 
@@ -104,7 +111,7 @@ $ uv run nemotron super3 eval --run YOUR-CLUSTER
 | **MTP Layers** | 2 (shared weight) |
 | **Precision** | BF16 mixed (NVFP4 for pretrain on B200) |
 
-> For architecture details, see the Tech Report (coming soon).
+> For architecture details, see the [Tech Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Super-Technical-Report.pdf).
 
 ## Stage Summaries
 
@@ -247,6 +254,7 @@ wandb login
 
 ## Further Reading
 
+- [Training FAQ](../../train-models/faq/index.md) – common questions about training and fine-tuning Nemotron models
 - [Stage 0: Pretraining](./pretrain.md)
 - [Stage 1: SFT](./sft.md)
 - [Stage 2: RL](./rl/index.md)
@@ -258,3 +266,13 @@ wandb login
 - [NVIDIA AI Stack](../nvidia-stack.md)
 - [Execution through NeMo-Run](../../nemo_runspec/nemo-run.md)
 - [Data Preparation Module](../data-prep.md)
+
+```{toctree}
+:hidden:
+
+pretrain.md
+sft.md
+rl/index.md
+evaluate.md
+quantization.md
+```

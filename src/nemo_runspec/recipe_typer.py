@@ -29,10 +29,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import typer
 
-from nemo_runspec.help import make_recipe_command
+from nemo_runspec.help import ConfigModelProvider, make_recipe_command
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class RecipeMeta:
     - default_config: Default config name
     - input_artifacts: What data the recipe consumes
     - output_artifacts: What the recipe produces
+    - config_model: Pydantic config class or LazyConfigModel for rich help
 
     Example:
         META = RecipeMeta(
@@ -64,6 +66,7 @@ class RecipeMeta:
     default_config: str = "default"
     input_artifacts: dict[str, str] = field(default_factory=dict)
     output_artifacts: dict[str, str] = field(default_factory=dict)
+    config_model: ConfigModelProvider | None = None
 
 
 class RecipeTyper(typer.Typer):
@@ -86,12 +89,19 @@ class RecipeTyper(typer.Typer):
         )
     """
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # Mounted under the root app its settings govern, but a recipe app run
+        # on its own needs the same guard against credentials in a traceback.
+        kwargs.setdefault("pretty_exceptions_show_locals", False)
+        super().__init__(*args, **kwargs)
+
     def recipe_command(
         self,
         *,
         config_dir: str | None = None,
         input_artifacts: dict[str, str] | None = None,
         output_artifacts: dict[str, str] | None = None,
+        config_model: ConfigModelProvider | None = None,
         rich_help_panel: str | None = None,
         name: str | None = None,
     ) -> Callable[[Callable], Callable]:
@@ -120,6 +130,7 @@ class RecipeTyper(typer.Typer):
             cmd_class = make_recipe_command(
                 artifact_overrides=effective_artifact_overrides,
                 config_dir=config_dir,
+                config_model=config_model,
             )
 
             # Register with standard recipe context settings
@@ -143,6 +154,7 @@ class RecipeTyper(typer.Typer):
         config_dir: str | None = None,
         input_artifacts: dict[str, str] | None = None,
         output_artifacts: dict[str, str] | None = None,
+        config_model: ConfigModelProvider | None = None,
         rich_help_panel: str | None = None,
         name: str | None = None,
     ) -> None:
@@ -165,11 +177,13 @@ class RecipeTyper(typer.Typer):
             config_dir = meta.config_dir
             input_artifacts = meta.input_artifacts
             output_artifacts = meta.output_artifacts
+            config_model = config_model or meta.config_model
 
         self.recipe_command(
             config_dir=config_dir,
             input_artifacts=input_artifacts,
             output_artifacts=output_artifacts,
+            config_model=config_model,
             rich_help_panel=rich_help_panel,
             name=name,
         )(fn)

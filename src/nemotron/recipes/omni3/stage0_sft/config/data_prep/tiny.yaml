@@ -1,0 +1,15 @@
+# Omni3 SFT data prep — tiny smoke test (open dataset, HF Hub pull)
+#
+# Matches tiny.yaml training config: CORD-v2 from HuggingFace, sample=32 for
+# quick iteration. No Cosmos-Xenna pipeline runs for the HF flow — this is
+# manifest-only.
+
+dataset_name: cord_v2-tiny
+hf_dataset_id: naver-clova-ix/cord-v2
+dataset_path: null
+metadata_dir: ${oc.env:NEMO_RUN_DIR,.}/stage0_sft/data_prep/tiny
+link_path: null
+modality_filter: null
+sample: 32
+force: true
+config_name: tiny

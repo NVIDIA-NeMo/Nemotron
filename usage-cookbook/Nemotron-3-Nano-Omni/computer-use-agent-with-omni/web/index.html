@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Computer Use Agent with Omni - Nemotron-3 Nano Omni</title>
+  <link rel="stylesheet" href="/web/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Computer Use Agent with Omni</h1>
+    <span class="subtitle">Nemotron-3 Nano Omni driving a live desktop</span>
+    <span id="env-badge" class="badge offline">checking…</span>
+  </header>
+
+  <main>
+    <section id="vnc-pane">
+      <div id="vnc-placeholder">
+        <p>Desktop container not detected.</p>
+        <p>Run <code>docker compose up -d</code> to start it.</p>
+      </div>
+      <iframe id="vnc-frame" hidden src="about:blank"
+              allow="clipboard-read; clipboard-write; fullscreen"
+              referrerpolicy="no-referrer"></iframe>
+    </section>
+
+    <aside id="side-panel">
+      <div class="card">
+        <div class="card-title-row">
+          <h2>Desktop Environment</h2>
+          <button id="btn-restart-desktop" class="secondary" disabled>Restart</button>
+        </div>
+        <p class="status" id="env-status">checking…</p>
+      </div>
+
+      <div class="card">
+        <h2>Task Instruction</h2>
+        <textarea id="instruction" rows="4"
+          placeholder="e.g. Open Firefox and search for the weather in Tokyo"></textarea>
+        <div class="row">
+          <button id="btn-run" disabled>▶ Run</button>
+          <button id="btn-stop" disabled>■ Stop</button>
+        </div>
+        <p class="status" id="agent-status">idle</p>
+      </div>
+
+      <div class="card grow">
+        <h2>Live Agent Trace</h2>
+        <div id="event-log"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/web/sidepanel.js"></script>
+</body>
+</html>

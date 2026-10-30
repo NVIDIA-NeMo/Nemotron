@@ -1,0 +1,64 @@
+run:
+  env:
+    container: anyscale/ray:2.55.1-py312
+
+# Default Ultra3 SFT data-prep config: apply chat template, role-mask, pack to Parquet.
+
+# Path to data blend JSON file
+blend_path: ${oc.env:PWD}/src/nemotron/recipes/ultra3/stage1_sft/config/data_prep/data_blend_raw.json
+
+# Output directory for packed Parquet data
+output_dir: ${oc.env:PWD}/../output/ultra3/stage1_sft/default
+
+num_shards: 128
+
+# Tokenizer configuration (nested)
+tokenizer:
+  model: nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+  add_bos: false
+  add_eos: true
+
+pack_size: 294912  # match training seq_length (paper §3.1 packed SFT length)
+algorithm: first_fit_shuffle
+seed: null
+# Rows per Parquet row group. Each packed row is ~1.2 MB at 294,912 int32 tokens,
+# so the writer buffers row_group_size packs before flushing — keep this small
+# (16 ≈ ~24 MB/group) to avoid OOM. (Was 1000, which is ~1.5 GB/group at this pack.)
+parquet_row_group_size: 16
+parquet_compression: zstd
+train_ratio: 0.98
+valid_ratio: 0.01
+test_ratio: 0.01
+
+# Chat template: 'ultra3', path to .jinja, or inline.
+# Reuse the shared nano3 template (super3 does the same; the tech report does not specify an Ultra template). Swap to templates/ultra3.jinja only if the released Ultra tokenizer ships a different chat_template.
+chat_template: nano3
+
+messages_field: messages
+tools_field: tools
+
+# Filter to records whose used_in contains this tag.
+# Matches the open SFT datasets' used_in tag (same as nano3/super3). Update if the released Ultra SFT data uses a distinct tag.
+used_in_filter: nano_v3
+used_in_field: used_in
+
+max_doc_tokens: null
+sample: null
+sample_seed: 42
+force: false
+config_name: default
+
+plan:
+  planner_cpus: 0.5
+download:
+  batch_size: 1
+  stage_cpus: 0.5
+  hf_xet_high_performance: true
+  hf_xet_concurrent_range_gets: 32
+  max_retries: 3
+  timeout_sec: 300
+tokenization:
+  cpus_per_worker: 4
+observability:
+  pipeline_logging_interval_s: 30
+  wandb_log_pipeline_stats: true

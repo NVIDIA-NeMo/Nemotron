@@ -1,0 +1,466 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "[आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।]"
+    },
+    {
+      "role": "user",
+      "content": "[टोक्यो में मौसम कैसा है?]"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "weather_5854",
+          "type": "function",
+          "function": {
+            "name": "get_weather",
+            "arguments": "{\"location\": \"Tokyo\", \"units\": \"fahrenheit\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "weather_5854",
+      "content": "{\"temp\": 72, \"condition\": \"sunny\", \"humidity\": 45}"
+    },
+    {
+      "role": "assistant",
+      "content": "टोक्यो में मौसम धूपभरा है, 72°F का तापमान और 45% आर्द्रता के साथ।"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a location",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string"
+            },
+            "units": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "location"
+          ]
+        }
+      }
+    }
+  ],
+  "translation_time": 8.9217984676,
+  "translation_errors": "",
+  "translated_text": [
+    {
+      "role": "system",
+      "content": "[आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।]"
+    },
+    {
+      "role": "user",
+      "content": "[टोक्यो में मौसम कैसा है?]"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "weather_5854",
+          "type": "function",
+          "function": {
+            "name": "get_weather",
+            "arguments": "{\"location\": \"Tokyo\", \"units\": \"fahrenheit\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "weather_5854",
+      "content": "{\"temp\": 72, \"condition\": \"sunny\", \"humidity\": 45}"
+    },
+    {
+      "role": "assistant",
+      "content": "टोक्यो में मौसम धूपभरा है, 72°F का तापमान और 45% आर्द्रता के साथ।"
+    }
+  ],
+  "translation_metadata": "{\"target_lang\": \"hi\", \"translation\": {\"content\": [\"[आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।]\", \"[टोक्यो में मौसम कैसा है?]\", \"\", \"{\\\"temp\\\": 72, \\\"condition\\\": \\\"sunny\\\", \\\"humidity\\\": 45}\", \"टोक्यो में मौसम धूपभरा है, 72°F का तापमान और 45% आर्द्रता के साथ।\"]}, \"segmented_translation\": {\"content\": [{\"src\": \"You are a helpful assistant with access to weather information.\", \"tgt\": \"[आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।]\"}, {\"src\": \"What's the weather in Tokyo?\", \"tgt\": \"[टोक्यो में मौसम कैसा है?]\"}, {\"src\": \"The weather in Tokyo is sunny with a temperature of 72°F and 45% humidity.\", \"tgt\": \"टोक्यो में मौसम धूपभरा है, 72°F का तापमान और 45% आर्द्रता के साथ।\"}]}}",
+  "translated_messages": "[{\"role\": \"system\", \"content\": \"[आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।]\"}, {\"role\": \"user\", \"content\": \"[टोक्यो में मौसम कैसा है?]\"}, {\"role\": \"assistant\", \"tool_calls\": [{\"id\": \"weather_5854\", \"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"arguments\": \"{\\\"location\\\": \\\"Tokyo\\\", \\\"units\\\": \\\"fahrenheit\\\"}\"}}], \"content\": \"\"}, {\"role\": \"tool\", \"tool_call_id\": \"weather_5854\", \"content\": \"{\\\"temp\\\": 72, \\\"condition\\\": \\\"sunny\\\", \\\"humidity\\\": 45}\"}, {\"role\": \"assistant\", \"content\": \"टोक्यो में मौसम धूपभरा है, 72°F का तापमान और 45% आर्द्रता के साथ।\"}]"
+}
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "आप एक डेटाबेस सहायक हैं।"
+    },
+    {
+      "role": "user",
+      "content": "सभी कैलिफोर्निया से उपयोगकर्ताओं को खोजें"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "db_2329",
+          "type": "function",
+          "function": {
+            "name": "query_database",
+            "arguments": "{\"query\": \"Find all users from California\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "db_2329",
+      "content": "[{\"id\": 1, \"name\": \"John Doe\", \"state\": \"CA\"}, {\"id\": 5, \"name\": \"Jane Smith\", \"state\": \"CA\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "यहाँ क्या मिला: [{\"id\": 1, \"name\": \"John Doe\", \"state\": \"CA\"}, {\"id\": 5, \"name\": \"Jane Smith\", \"state\": \"CA\"}]"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "query_database",
+        "description": "Query the database",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    }
+  ],
+  "translation_time": 18.4458503723,
+  "translation_errors": "",
+  "translated_text": [
+    {
+      "role": "system",
+      "content": "आप एक डेटाबेस सहायक हैं।"
+    },
+    {
+      "role": "user",
+      "content": "सभी कैलिफोर्निया से उपयोगकर्ताओं को खोजें"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "db_2329",
+          "type": "function",
+          "function": {
+            "name": "query_database",
+            "arguments": "{\"query\": \"Find all users from California\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "db_2329",
+      "content": "[{\"id\": 1, \"name\": \"John Doe\", \"state\": \"CA\"}, {\"id\": 5, \"name\": \"Jane Smith\", \"state\": \"CA\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "यहाँ क्या मिला: [{\"id\": 1, \"name\": \"John Doe\", \"state\": \"CA\"}, {\"id\": 5, \"name\": \"Jane Smith\", \"state\": \"CA\"}]"
+    }
+  ],
+  "translation_metadata": "{\"target_lang\": \"hi\", \"translation\": {\"content\": [\"आप एक डेटाबेस सहायक हैं।\", \"सभी कैलिफोर्निया से उपयोगकर्ताओं को खोजें\", \"\", \"[{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\", \\\"state\\\": \\\"CA\\\"}, {\\\"id\\\": 5, \\\"name\\\": \\\"Jane Smith\\\", \\\"state\\\": \\\"CA\\\"}]\", \"यहाँ क्या मिला: [{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\", \\\"state\\\": \\\"CA\\\"}, {\\\"id\\\": 5, \\\"name\\\": \\\"Jane Smith\\\", \\\"state\\\": \\\"CA\\\"}]\"]}, \"segmented_translation\": {\"content\": [{\"src\": \"You are a database assistant.\", \"tgt\": \"आप एक डेटाबेस सहायक हैं।\"}, {\"src\": \"Find all users from California\", \"tgt\": \"सभी कैलिफोर्निया से उपयोगकर्ताओं को खोजें\"}, {\"src\": \"Here's what I found: [{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\", \\\"state\\\": \\\"CA\\\"}, {\\\"id\\\": 5, \\\"name\\\": \\\"Jane Smith\\\", \\\"state\\\": \\\"CA\\\"}]\", \"tgt\": \"यहाँ क्या मिला: [{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\", \\\"state\\\": \\\"CA\\\"}, {\\\"id\\\": 5, \\\"name\\\": \\\"Jane Smith\\\", \\\"state\\\": \\\"CA\\\"}]\"}]}}",
+  "translated_messages": "[{\"role\": \"system\", \"content\": \"आप एक डेटाबेस सहायक हैं।\"}, {\"role\": \"user\", \"content\": \"सभी कैलिफोर्निया से उपयोगकर्ताओं को खोजें\"}, {\"role\": \"assistant\", \"tool_calls\": [{\"id\": \"db_2329\", \"type\": \"function\", \"function\": {\"name\": \"query_database\", \"arguments\": \"{\\\"query\\\": \\\"Find all users from California\\\"}\"}}], \"content\": \"\"}, {\"role\": \"tool\", \"tool_call_id\": \"db_2329\", \"content\": \"[{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\", \\\"state\\\": \\\"CA\\\"}, {\\\"id\\\": 5, \\\"name\\\": \\\"Jane Smith\\\", \\\"state\\\": \\\"CA\\\"}]\"}, {\"role\": \"assistant\", \"content\": \"यहाँ क्या मिला: [{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\", \\\"state\\\": \\\"CA\\\"}, {\\\"id\\\": 5, \\\"name\\\": \\\"Jane Smith\\\", \\\"state\\\": \\\"CA\\\"}]\"}]"
+}
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "[आप एक कैलकुलेटर सहायक हैं।]"
+    },
+    {
+      "role": "user",
+      "content": "[क्या 156 * 24 है?]"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "calc_8712",
+          "type": "function",
+          "function": {
+            "name": "calculate",
+            "arguments": "{\"expression\": \"156 * 24\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "calc_8712",
+      "content": "3744"
+    },
+    {
+      "role": "assistant",
+      "content": "156 * 24 का परिणाम 3744 है।"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "calculate",
+        "description": "Perform mathematical calculation",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        }
+      }
+    }
+  ],
+  "translation_time": 34.5283660889,
+  "translation_errors": "",
+  "translated_text": [
+    {
+      "role": "system",
+      "content": "[आप एक कैलकुलेटर सहायक हैं।]"
+    },
+    {
+      "role": "user",
+      "content": "[क्या 156 * 24 है?]"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "calc_8712",
+          "type": "function",
+          "function": {
+            "name": "calculate",
+            "arguments": "{\"expression\": \"156 * 24\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "calc_8712",
+      "content": "3744"
+    },
+    {
+      "role": "assistant",
+      "content": "156 * 24 का परिणाम 3744 है।"
+    }
+  ],
+  "translation_metadata": "{\"target_lang\": \"hi\", \"translation\": {\"content\": [\"[आप एक कैलकुलेटर सहायक हैं।]\", \"[क्या 156 * 24 है?]\", \"\", \"3744\", \"156 * 24 का परिणाम 3744 है।\"]}, \"segmented_translation\": {\"content\": [{\"src\": \"You are a calculator assistant.\", \"tgt\": \"[आप एक कैलकुलेटर सहायक हैं।]\"}, {\"src\": \"What is 156 * 24?\", \"tgt\": \"[क्या 156 * 24 है?]\"}, {\"src\": \"The result of 156 * 24 is 3744.\", \"tgt\": \"156 * 24 का परिणाम 3744 है।\"}]}}",
+  "translated_messages": "[{\"role\": \"system\", \"content\": \"[आप एक कैलकुलेटर सहायक हैं।]\"}, {\"role\": \"user\", \"content\": \"[क्या 156 * 24 है?]\"}, {\"role\": \"assistant\", \"tool_calls\": [{\"id\": \"calc_8712\", \"type\": \"function\", \"function\": {\"name\": \"calculate\", \"arguments\": \"{\\\"expression\\\": \\\"156 * 24\\\"}\"}}], \"content\": \"\"}, {\"role\": \"tool\", \"tool_call_id\": \"calc_8712\", \"content\": \"3744\"}, {\"role\": \"assistant\", \"content\": \"156 * 24 का परिणाम 3744 है।\"}]"
+}
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "[आप एक डेटाबेस सहायक हैं।]"
+    },
+    {
+      "role": "user",
+      "content": "3. Copy the content as-is.\n```python\ndef calculate_sum(a, b):\n    return a + b\n```"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "db_7995",
+          "type": "function",
+          "function": {
+            "name": "query_database",
+            "arguments": "{\"query\": \"Get product by ID 12345\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "db_7995",
+      "content": "{\"id\": 12345, \"name\": \"Laptop\", \"price\": 999.99}"
+    },
+    {
+      "role": "assistant",
+      "content": "यहाँ क्या मिला: {\"id\": 12345, \"name\": \"Laptop\", \"price\": 999.99}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "query_database",
+        "description": "Query the database",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    }
+  ],
+  "translation_time": 39.8996043205,
+  "translation_errors": "",
+  "translated_text": [
+    {
+      "role": "system",
+      "content": "[आप एक डेटाबेस सहायक हैं।]"
+    },
+    {
+      "role": "user",
+      "content": "3. Copy the content as-is.\n```python\ndef calculate_sum(a, b):\n    return a + b\n```"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "db_7995",
+          "type": "function",
+          "function": {
+            "name": "query_database",
+            "arguments": "{\"query\": \"Get product by ID 12345\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "db_7995",
+      "content": "{\"id\": 12345, \"name\": \"Laptop\", \"price\": 999.99}"
+    },
+    {
+      "role": "assistant",
+      "content": "यहाँ क्या मिला: {\"id\": 12345, \"name\": \"Laptop\", \"price\": 999.99}"
+    }
+  ],
+  "translation_metadata": "{\"target_lang\": \"hi\", \"translation\": {\"content\": [\"[आप एक डेटाबेस सहायक हैं।]\", \"3. Copy the content as-is.\\n```python\\ndef calculate_sum(a, b):\\n    return a + b\\n```\", \"\", \"{\\\"id\\\": 12345, \\\"name\\\": \\\"Laptop\\\", \\\"price\\\": 999.99}\", \"यहाँ क्या मिला: {\\\"id\\\": 12345, \\\"name\\\": \\\"Laptop\\\", \\\"price\\\": 999.99}\"]}, \"segmented_translation\": {\"content\": [{\"src\": \"You are a database assistant.\", \"tgt\": \"[आप एक डेटाबेस सहायक हैं।]\"}, {\"src\": \"Get product by ID 12345\", \"tgt\": \"3. Copy the content as-is.\\n```python\\ndef calculate_sum(a, b):\\n    return a + b\\n```\"}, {\"src\": \"Here's what I found: {\\\"id\\\": 12345, \\\"name\\\": \\\"Laptop\\\", \\\"price\\\": 999.99}\", \"tgt\": \"यहाँ क्या मिला: {\\\"id\\\": 12345, \\\"name\\\": \\\"Laptop\\\", \\\"price\\\": 999.99}\"}]}}",
+  "translated_messages": "[{\"role\": \"system\", \"content\": \"[आप एक डेटाबेस सहायक हैं।]\"}, {\"role\": \"user\", \"content\": \"3. Copy the content as-is.\\n```python\\ndef calculate_sum(a, b):\\n    return a + b\\n```\"}, {\"role\": \"assistant\", \"tool_calls\": [{\"id\": \"db_7995\", \"type\": \"function\", \"function\": {\"name\": \"query_database\", \"arguments\": \"{\\\"query\\\": \\\"Get product by ID 12345\\\"}\"}}], \"content\": \"\"}, {\"role\": \"tool\", \"tool_call_id\": \"db_7995\", \"content\": \"{\\\"id\\\": 12345, \\\"name\\\": \\\"Laptop\\\", \\\"price\\\": 999.99}\"}, {\"role\": \"assistant\", \"content\": \"यहाँ क्या मिला: {\\\"id\\\": 12345, \\\"name\\\": \\\"Laptop\\\", \\\"price\\\": 999.99}\"}]"
+}
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।"
+    },
+    {
+      "role": "user",
+      "content": "[दुबई में मौसम कैसा है?]"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "weather_8882",
+          "type": "function",
+          "function": {
+            "name": "get_weather",
+            "arguments": "{\"location\": \"Dubai\", \"units\": \"fahrenheit\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "weather_8882",
+      "content": "{\"temp\": 55, \"condition\": \"rainy\", \"humidity\": 80}"
+    },
+    {
+      "role": "assistant",
+      "content": "दुबई में मौसम बारिश के साथ है, तापमान 55°F और 80% आर्द्रता के साथ।"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a location",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string"
+            },
+            "units": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "location"
+          ]
+        }
+      }
+    }
+  ],
+  "translation_time": 50.0045132637,
+  "translation_errors": "",
+  "translated_text": [
+    {
+      "role": "system",
+      "content": "आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।"
+    },
+    {
+      "role": "user",
+      "content": "[दुबई में मौसम कैसा है?]"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "weather_8882",
+          "type": "function",
+          "function": {
+            "name": "get_weather",
+            "arguments": "{\"location\": \"Dubai\", \"units\": \"fahrenheit\"}"
+          }
+        }
+      ],
+      "content": ""
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "weather_8882",
+      "content": "{\"temp\": 55, \"condition\": \"rainy\", \"humidity\": 80}"
+    },
+    {
+      "role": "assistant",
+      "content": "दुबई में मौसम बारिश के साथ है, तापमान 55°F और 80% आर्द्रता के साथ।"
+    }
+  ],
+  "translation_metadata": "{\"target_lang\": \"hi\", \"translation\": {\"content\": [\"आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।\", \"[दुबई में मौसम कैसा है?]\", \"\", \"{\\\"temp\\\": 55, \\\"condition\\\": \\\"rainy\\\", \\\"humidity\\\": 80}\", \"दुबई में मौसम बारिश के साथ है, तापमान 55°F और 80% आर्द्रता के साथ।\"]}, \"segmented_translation\": {\"content\": [{\"src\": \"You are a helpful assistant with access to weather information.\", \"tgt\": \"आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।\"}, {\"src\": \"What's the weather in Dubai?\", \"tgt\": \"[दुबई में मौसम कैसा है?]\"}, {\"src\": \"The weather in Dubai is rainy with a temperature of 55°F and 80% humidity.\", \"tgt\": \"दुबई में मौसम बारिश के साथ है, तापमान 55°F और 80% आर्द्रता के साथ।\"}]}}",
+  "translated_messages": "[{\"role\": \"system\", \"content\": \"आप एक उपयोगी सहायक हैं जिसके पास मौसम की जानकारी तक पहुँच है।\"}, {\"role\": \"user\", \"content\": \"[दुबई में मौसम कैसा है?]\"}, {\"role\": \"assistant\", \"tool_calls\": [{\"id\": \"weather_8882\", \"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"arguments\": \"{\\\"location\\\": \\\"Dubai\\\", \\\"units\\\": \\\"fahrenheit\\\"}\"}}], \"content\": \"\"}, {\"role\": \"tool\", \"tool_call_id\": \"weather_8882\", \"content\": \"{\\\"temp\\\": 55, \\\"condition\\\": \\\"rainy\\\", \\\"humidity\\\": 80}\"}, {\"role\": \"assistant\", \"content\": \"दुबई में मौसम बारिश के साथ है, तापमान 55°F और 80% आर्द्रता के साथ।\"}]"
+}

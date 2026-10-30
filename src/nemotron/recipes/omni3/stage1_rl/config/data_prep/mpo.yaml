@@ -1,0 +1,17 @@
+stage: mpo
+dataset_name: mmpr_public
+source_uri: hf://OpenGVLab/MMPR
+input_dir: ${oc.env:OMNI3_MMPR_PUBLIC_RAW,data/mmpr_public/raw}
+output_dir: ${oc.env:NEMO_RUN_DIR,.}/stage1_rl/data_prep/mpo/MMPR-v1.2
+meta_name: meta_public.json
+# TODO: drop builder_command once prepare_public_mmpr_for_mpo.py is vendored
+# into nemotron.data_prep.stages.vlm_preference_prep alongside the tiny-flavor logic.
+# Until then, we shell out to the upstream script *inside* the Xenna stage so
+# we still get run-hash caching, receipts, and W&B lineage. The actual
+# image-extraction + annotation-merge work runs single-threaded via subprocess.
+builder_command: >-
+  uvx --with tqdm python scripts/prepare_public_mmpr_for_mpo.py
+  --input-dir {input_dir}
+  --output-dir {output_dir}
+  --meta-name {meta_name}
+force: false

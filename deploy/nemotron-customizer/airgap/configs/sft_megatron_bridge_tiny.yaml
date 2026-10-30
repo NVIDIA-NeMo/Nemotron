@@ -1,0 +1,12 @@
+# Airgap runtime overlay for sft/megatron_bridge:tiny.
+#
+# The connected-machine airgap runner bakes the auto_mount repos from the base
+# config into the derivative execution image. At runtime, clear those git auto-mounts
+# so the airgapped job does not clone from GitHub. Env-profile persistent
+# storage mounts still append normally.
+
+defaults: ../../../../src/nemotron/steps/sft/megatron_bridge/config/tiny.yaml
+
+run:
+  env:
+    mounts: []

@@ -1,0 +1,75 @@
+output_dir: ${oc.env:SDG_OUTPUT_DIR,${oc.env:NEMO_RUN_DIR,${oc.env:PWD}/output}/sdg}
+output_path: ${output_dir}/greenteme_sft.jsonl
+num_records: 100
+
+seed_dataset:
+  path: ${oc.env:PWD}/src/nemotron/steps/sdg/data_designer/data/greenteme_inquiry_seeds.jsonl
+  strategy: shuffle
+  fields: [scenario]
+
+models:
+  - alias: nvidia-text
+    model: nvidia/nemotron-3-nano-30b-a3b
+    provider: nvidia
+    skip_health_check: true
+    inference_parameters:
+      temperature: 0.8
+      top_p: 1.0
+      max_tokens: 1200
+
+columns:
+  - name: traveler_segment
+    type: category
+    values:
+      - frequent_flyer
+      - business_traveler
+      - family_with_children
+      - first_time_international
+      - elite_loyalty_member
+      - leisure_couple
+
+  - name: inquiry_type
+    type: category
+    values:
+      - rebooking
+      - baggage_issue
+      - refund_request
+      - loyalty_status
+      - fare_rules
+      - flight_status
+
+  - name: channel
+    type: category
+    values: [chat, phone, app]
+
+  - name: user_query
+    type: llm_text
+    model_alias: nvidia-text
+    prompt: |
+      You are role-playing a {{ traveler_segment }} contacting Greenteme Airlines
+      via {{ channel }} about a {{ inquiry_type }}. The scenario is:
+      "{{ scenario }}"
+
+      Write the customer's first message. Keep it natural, 1-3 sentences.
+      Do not reference any real airline name, real flight number, or real
+      loyalty program.
+
+  - name: assistant_response
+    type: llm_text
+    model_alias: nvidia-text
+    prompt: |
+      You are a customer-service agent at Greenteme Airlines, a fictional airline.
+      Reply to this customer message:
+
+      "{{ user_query }}"
+
+      Provide a concise, professional, compliant response, 2-4 sentences. Stay
+      realistic and grounded in standard airline policy. Do not invent real
+      airline names, real flight numbers, real PNR codes, or real loyalty
+      program details. No markdown.
+
+output_projection:
+  type: openai_messages
+  user_field: user_query
+  assistant_field: assistant_response
+  metadata_fields: [traveler_segment, inquiry_type, channel, scenario]
