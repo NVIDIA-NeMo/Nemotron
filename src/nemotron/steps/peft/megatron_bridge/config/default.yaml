@@ -28,14 +28,11 @@ run:
 # the CLI override below).
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_peft_config
-  packed_sequence: true
-  peft: lora
-  seq_length: 4096
 
 dataset:
-  nano3_packed_sft_dir: ${oc.env:SFT_PACKED_DIR}
   seq_length: 4096
   packed_sequence_specs:
+    packed_train_data_path: ${oc.env:SFT_PACKED_DIR}
     packed_sequence_size: 4096
 
 train:
@@ -45,6 +42,7 @@ train:
 model:
   seq_length: 4096
   tensor_model_parallel_size: 4
+  sequence_parallel: true
   pipeline_model_parallel_size: 1
   context_parallel_size: 1
 

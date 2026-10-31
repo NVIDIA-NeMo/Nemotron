@@ -36,13 +36,13 @@ type = "checkpoint_megatron"
 description = "Pretrained Megatron distributed checkpoint."
 
 [[parameters]]
-name = "seq_length"
+name = "model.seq_length"
 description = "Training sequence length."
 default = 8192
 choices = [2048, 4096, 8192, 16384]
 
 [[parameters]]
-name = "dataset.data_paths"
+name = "per_split_data_args_path"
 description = "Path to data_prep/pretrain_prep emitted blend.json. Do not use SFT packed Parquet here."
 
 [[parameters]]
@@ -70,11 +70,11 @@ then = "Lower LR (1e-5 - 5e-5) and shorter warmup; keep load_hf_weights=true."
 
 [[errors]]
 name = "missing_blend_json"
-recovery = "Run data_prep/pretrain_prep and point dataset.data_paths at the produced blend.json."
+recovery = "Run data_prep/pretrain_prep and point top-level per_split_data_args_path at the produced blend.json."
 
 [[errors]]
 name = "sequence_length_mismatch"
-recovery = "Keep recipe.seq_length, model.seq_length, dataset.seq_length, and pretrain token-budget assumptions identical."
+recovery = "Keep model.seq_length, dataset.seq_length, and pretrain token-budget assumptions identical."
 
 [[errors]]
 name = "transformer_engine_userbuffer_failure"

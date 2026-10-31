@@ -29,11 +29,17 @@ corpus:
 - **add** keeps the base residual script tokens and appends new ones.
 - **replace** prunes them (script chosen by `language:`, or `remove_script:`) and
   refills with corpus-optimal tokens spliced into the merge table.
-- **expand** adds the decoded surfaces atomically via `add_tokens()` with **no
-  merge rules** — the naive baseline. Cheaper to build. Usually worse fertility
+- **expand** matches selected tokens atomically with **no new merge rules** —
+  the naive baseline. Usually worse fertility
   than `add`, but not always: where the base vocabulary barely covers the target
   script there is little for merge training to add, and `expand` has measured
   *better* (Malayalam). Compare on your own language rather than assuming.
+
+ByteLevel Expand requires deterministic BPE with `ignore_merges=true` and a final
+ByteLevel pre-tokenizer. New entries use `get_vocab()` rather than
+`get_added_vocab()`; initialize with `arm: add`. Incompatible pipelines or
+unreachable candidates fail before saving. Other decoders use AddedTokens without
+consuming whitespace.
 
 Set `language:` (hindi, vietnamese, malayalam, ...) to pick the normalizer and the
 Replace prune script; see `../LANGUAGES.md`. See also the category `guide.md`.

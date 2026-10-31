@@ -22,7 +22,7 @@ shape. Developers usually change:
 
 - `dataset.packed_sequence_specs.packed_train_data_path`: packed Parquet glob,
   usually `<packed>/splits/train/*.parquet`.
-- `seq_length`, `dataset.seq_length`, and packed sequence size: keep these equal
+- `model.seq_length`, `dataset.seq_length`, and packed sequence size: keep these equal
   to the `data_prep/sft_packing` `pack_size`.
 - `checkpoint.pretrained_checkpoint`: optional Megatron base or resume checkpoint.
 - `peft`: keep LoRA only when intentionally running adapter-style SFT; set full SFT explicitly when memory allows.
@@ -35,7 +35,9 @@ Example shape:
 uv run nemotron steps run sft/megatron_bridge \
   -c <project>/config/sft_megatron_bridge.yaml \
   dataset.packed_sequence_specs.packed_train_data_path='<packed>/splits/train/*.parquet' \
-  seq_length=<pack-size>
+  model.seq_length=<pack-size> \
+  dataset.seq_length=<pack-size> \
+  dataset.packed_sequence_specs.packed_sequence_size=<pack-size>
 ```
 
 Related patterns:
@@ -45,9 +47,10 @@ Related patterns:
 
 ## Config Nuances
 
-- Set `recipe.packed_sequence: true` when consuming packed Parquet. Lightning
-  overlays null inherited Nano recipe kwargs (`packed_sequence`, `seq_length`)
-  because `nemotron_3_5_lightning_sft_config` is zero-arg.
+- Configure packed Parquet through `dataset.packed_sequence_specs`. The default
+  Nano and Lightning recipe factories take no kwargs; set sequence length and
+  parallelism through `model` and `dataset` overrides. The older Nano `tiny`
+  recipe accepts its own packing and sequence-length kwargs.
 - Keep `dataset.seq_length`, `dataset.packed_sequence_specs.packed_sequence_size`, and `model.seq_length` equal.
 - Use `model.sequence_parallel: true` for MoE plus tensor parallelism.
 - Start with `train.micro_batch_size: 1` when validating a new distributed shape and choose `train.global_batch_size` as a multiple of the resulting data-parallel size.

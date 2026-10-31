@@ -29,11 +29,13 @@ one, and every built arm is asserted free of rank-dead tokens.
 
 from __future__ import annotations
 
+import copy
 import glob as _glob
 import json
 import logging
 import math
 import os
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -45,8 +47,8 @@ from continued_bpe import (
     extend_tokenizer,
     find_rank_dead_tokens,
 )
-from languages import get_normalizer
 from languages import describe as describe_language
+from languages import get_normalizer
 from languages import resolve as resolve_language
 from replace_bpe import (
     identify_script_tokens,
@@ -54,6 +56,7 @@ from replace_bpe import (
     resolve_ranges,
     wrap_fast,
 )
+from tokenizers import AddedToken, Regex, Tokenizer, pre_tokenizers
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 log = logging.getLogger(__name__)
@@ -75,9 +78,7 @@ def _require_text_field(example: Any, text_field: str, where: str) -> None:
         return
     if text_field in keys:
         return
-    raise ValueError(
-        f"corpus.text_field={text_field!r} is not a column of {where}. Available: {keys}."
-    )
+    raise ValueError(f"corpus.text_field={text_field!r} is not a column of {where}. Available: {keys}.")
 
 
 def corpus_stream(corpus: dict, normalizer: Any) -> Iterator[str]:
@@ -245,6 +246,102 @@ def _build_arm(base_like, trained_tok, base_tok, extension_size: int):
     return ext, len(art.new_vocab), len(ext) - before
 
 
+def _expand_pattern(keys: list[str]) -> str:
+    """Match literal keys longest-first."""
+    return "|".join(re.escape(key) for key in sorted(keys, key=len, reverse=True))
+
+
+def _build_expand(
+    base_tok: PreTrainedTokenizerBase, trained_tok: PreTrainedTokenizerBase, extension_size: int
+) -> tuple[PreTrainedTokenizerBase, int, int]:
+    """Build an atomic extension while preserving existing token identities."""
+    if extension_size < 1:
+        raise ValueError("expand: extension_size must be positive")
+    original = base_tok.get_vocab()
+    state = json.loads(base_tok.backend_tokenizer.to_str())
+    decoder = state.get("decoder") or {}
+    trained_vocab = trained_tok.get_vocab()
+    ranked = sorted((key for key in trained_vocab if key not in original), key=trained_vocab.get)
+    bytelevel = decoder.get("type") == "ByteLevel"
+    if bytelevel:
+        model = state["model"]
+        if model.get("type") != "BPE" or not model.get("ignore_merges") or model.get("dropout") not in (None, 0):
+            raise ValueError("expand: requires deterministic ByteLevel BPE with ignore_merges=true")
+        pretokenizer = state.get("pre_tokenizer") or {}
+        while pretokenizer.get("type") == "Sequence" and pretokenizer.get("pretokenizers"):
+            pretokenizer = pretokenizer["pretokenizers"][-1]
+        if pretokenizer.get("type") != "ByteLevel":
+            raise ValueError("expand: ByteLevel expansion requires ByteLevel as the final pre-tokenizer")
+        if set(original.values()) != set(range(len(original))):
+            raise ValueError("expand: existing vocabulary IDs must be dense for embedding initialization")
+
+        encoder = pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False)
+        keys: list[str] = []
+        incomplete = 0
+        for key in ranked:
+            surface = trained_tok.convert_tokens_to_string([key])
+            encoded = "".join(piece for piece, _ in encoder.pre_tokenize_str(surface))
+            if not surface or encoded != key:
+                incomplete += 1
+                continue
+            keys.append(key)
+            if len(keys) == extension_size:
+                break
+        if len(keys) < extension_size:
+            raise ValueError(
+                f"expand: found {len(keys)} complete UTF-8 candidates for {extension_size} requested tokens "
+                f"({incomplete} incomplete byte fragments)"
+            )
+
+        # Include reserved AddedToken IDs before appending so stock reload cannot
+        # allocate them over the new model entries. Their match flags stay intact.
+        model["vocab"] = {**original, **{key: len(original) + i for i, key in enumerate(keys)}}
+        backend = Tokenizer.from_str(json.dumps(state))
+        backend.pre_tokenizer = pre_tokenizers.Sequence(
+            [backend.pre_tokenizer, pre_tokenizers.Split(Regex(_expand_pattern(keys)), behavior="isolated")]
+        )
+        result = copy.deepcopy(base_tok)
+        result.backend_tokenizer.model = backend.model
+        result.backend_tokenizer.pre_tokenizer = backend.pre_tokenizer
+    else:
+        pending = list(decoder.get("decoders", []))
+        while pending:
+            component = pending.pop()
+            if component.get("type") == "ByteLevel":
+                raise ValueError("expand: composed ByteLevel decoders require an explicit representation mapping")
+            pending.extend(component.get("decoders", []))
+        surfaces: list[str] = []
+        seen = set(original)
+        for key in ranked:
+            surface = trained_tok.convert_tokens_to_string([key])
+            if surface and surface not in seen:
+                surfaces.append(surface)
+                seen.add(surface)
+                if len(surfaces) == extension_size:
+                    break
+        if len(surfaces) < extension_size:
+            raise ValueError(f"expand: only {len(surfaces)} novel surfaces for {extension_size} requested tokens")
+        result = copy.deepcopy(base_tok)
+        result.add_tokens(
+            [
+                AddedToken(surface, lstrip=False, rstrip=False, normalized=False, single_word=False)
+                for surface in surfaces
+            ]
+        )
+        keys = surfaces
+
+    vocab = result.get_vocab()
+    if len(result) - len(base_tok) != extension_size or any(vocab.get(key) != idx for key, idx in original.items()):
+        raise RuntimeError("expand: vocabulary growth or original ID preservation failed")
+    for key in keys:
+        surface = trained_tok.convert_tokens_to_string([key]) if bytelevel else key
+        if result.encode(surface, add_special_tokens=False) != [vocab[key]]:
+            raise ValueError(
+                f"expand: candidate {surface!r} cannot be atomic with the original pre-tokenizer/normalizer"
+            )
+    return result, len(keys), extension_size
+
+
 def run_extension(cfg: dict) -> dict:
     """Train one BPE from `cfg` and build ONE arm (add OR replace).
 
@@ -323,56 +420,7 @@ def run_extension(cfg: dict) -> dict:
     if method == "add":
         arm_tok, cand, spliced = _build_arm(base_tok, trained_tok, base_tok, ext_size)
     elif method == "expand":
-        # Naive expansion: decode the novel BPE tokens to Unicode and add_tokens()
-        # them ATOMICALLY (no merge rules) — the baseline arm.
-        base_keys = set(base_tok.get_vocab().keys())
-        tvocab = trained_tok.get_vocab()
-        # Rank order over ALL novel tokens, not a pre-truncated slice: the strip()
-        # below collapses `Ġfoo` and `foo` onto one surface, so slicing to ext_size
-        # first silently delivered FEWER than the requested rows. Take candidates in
-        # rank order until ext_size distinct surfaces are collected.
-        new_keys = sorted((t for t in tvocab if t not in base_keys), key=lambda t: tvocab[t])
-        # NB: byte-level BPE encodes a leading space into word-initial tokens. Adding the
-        # bare decoded surface orphans that space (stray `Ġ`), inflating fertility ~+0.24.
-        # Add with lstrip=True + stripped surface so the token absorbs the preceding space.
-        from tokenizers import AddedToken
-
-        # add_tokens() silently drops surfaces already present in the base vocab, so
-        # a single pass can splice fewer than ext_size rows. Keep pulling candidates
-        # in rank order until ext_size are actually spliced (or we run out).
-        def _mk(surface: str) -> AddedToken:
-            return AddedToken(surface, lstrip=True, rstrip=False, normalized=False, single_word=False)
-
-        seen: set[str] = set()
-        pending = iter(new_keys)
-        new_unicode: list[str] = []
-        spliced = 0
-        while spliced < ext_size:
-            batch: list[str] = []
-            for bt in pending:
-                surface = trained_tok.convert_tokens_to_string([bt]).strip()
-                if surface and surface not in seen:
-                    seen.add(surface)
-                    batch.append(surface)
-                    if len(batch) >= ext_size - spliced:
-                        break
-            if not batch:
-                break  # candidates exhausted
-            added = int(base_tok.add_tokens([_mk(x) for x in batch]))
-            new_unicode.extend(batch)
-            spliced += added
-        cand = len(new_unicode)
-        if spliced < ext_size:
-            log.warning(
-                "expand: spliced %d of the requested %d tokens from %d novel "
-                "candidates (%d distinct surfaces tried; the rest collided with "
-                "the base vocab). Widen the corpus or lower extension_size.",
-                spliced,
-                ext_size,
-                len(new_keys),
-                cand,
-            )
-        arm_tok = base_tok
+        arm_tok, cand, spliced = _build_expand(base_tok, trained_tok, ext_size)
     else:  # replace
         ranges = resolve_ranges([s for s in remove_script.split(",") if s.strip()])
         remove_tokens = identify_script_tokens(base_tok, ranges)

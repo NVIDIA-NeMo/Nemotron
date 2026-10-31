@@ -28,21 +28,24 @@ hf_model_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
 load_hf_weights: true
 trust_remote_code: true
 
+per_split_data_args_path: ${oc.env:PRETRAIN_BLEND_PATH}
+
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_pretrain_config
-  seq_length: 8192
-  tensor_model_parallel_size: 4
-  pipeline_model_parallel_size: 1
-  context_parallelism: 1
-  sequence_parallelism: true
 
 dataset:
-  data_paths: ${oc.env:PRETRAIN_BLEND_PATH}
   seq_length: 8192
   reset_attention_mask: false
   reset_position_ids: false
   eod_mask_loss: false
   data_sharding: true
+
+model:
+  seq_length: 8192
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+  context_parallel_size: 1
+  sequence_parallel: true
 
 train:
   train_iters: 20000

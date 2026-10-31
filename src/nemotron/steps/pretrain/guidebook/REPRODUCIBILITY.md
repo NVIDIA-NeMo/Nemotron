@@ -151,7 +151,7 @@ nemotron steps run pretrain/megatron_bridge -c <cpt-config>         -b <profile>
 ```
 
 `<profile>` is a scheduler profile from your `env.toml`. The mixture is a
-`blend.json` per ratio, referenced as `dataset.per_split_data_args_path`.
+`blend.json` per ratio, referenced as top-level `per_split_data_args_path`.
 
 For the tokenizer-extension track see its
 [reproducibility notes](../../tokenizer_extension/guidebook/REPRODUCIBILITY.md).

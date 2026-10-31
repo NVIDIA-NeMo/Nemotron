@@ -26,10 +26,8 @@ def test_sft_megatron_bridge_static() -> None:
 def test_lightning35_overlay_inherits_default_yaml() -> None:
     cfg = load_config(STEP_DIR / "config" / "lightning35.yaml")
     assert "defaults" not in cfg
-    assert cfg.recipe._target_ == (
-        "megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_sft_config"
-    )
-    assert cfg.recipe.packed_sequence is None
+    assert cfg.recipe._target_ == ("megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_sft_config")
+    assert "packed_sequence" not in cfg.recipe
     assert cfg.hf_model_path is None
     assert cfg.load_hf_weights is False
     assert cfg.model.tensor_model_parallel_size == 2
@@ -40,4 +38,3 @@ def test_lightning35_overlay_inherits_default_yaml() -> None:
     assert cfg.checkpoint.finetune is True
     assert cfg.run.env.container_image == "nvcr.io/nvidia/nemo:26.08"
     assert OmegaConf.select(cfg, "logger.wandb_exp_name") is not None
-
