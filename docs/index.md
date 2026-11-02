@@ -286,6 +286,7 @@ They do not emit Nemotron artifact lineage unless a native recipe is added.
 Home <self>
 application-examples.md
 deployment-guides.md
+Post-training Calculator <train-models/sizing-calculator.md>
 Adapting Nemotron to a New Language <sovereign-ai.md>
 ```
 
@@ -373,7 +374,6 @@ Reference <tokenizer-extension/reference/index.md>
 :hidden:
 
 About <train-models/index.md>
-Post-training Calculator <train-models/sizing-calculator.md>
 Getting Started <train-models/getting-started.md>
 Tips for Using Agents <train-models/using-skill.md>
 Concepts <train-models/explanation/index.md>
