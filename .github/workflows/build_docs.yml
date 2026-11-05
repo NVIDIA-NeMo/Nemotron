@@ -39,8 +39,11 @@ jobs:
       )
       && !cancelled()
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      # GITHUB_TOKEN needs PR write access for the gh summary step.
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Result
         run: |
