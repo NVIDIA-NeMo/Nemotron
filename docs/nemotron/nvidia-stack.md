@@ -18,6 +18,7 @@ The Nemotron recipes focus on the **Pre-training & SFT** (via Megatron-Bridge) a
 |-----------|---------|---------|
 | [Megatron-Core](https://github.com/NVIDIA/Megatron-LM) | Distributed training primitives (TP, PP, DP, CP) | All stages |
 | [Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) | Model definitions, training loops, HF conversion | Pretrain, SFT |
+| [AutoModel](https://github.com/NVIDIA-NeMo/AutoModel) | Model definitions, training loops. Conversion NOT needed | Pretrain, SFT |
 | [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) | RL algorithms (GRPO, DPO), reward environments | RL stage |
 
 ## Megatron-Core
@@ -183,8 +184,8 @@ NeMo-RL provides several built-in reward environments:
 
 | Backend | Best For | Parallelism |
 |---------|----------|-------------|
-| **DTensor (FSDP2)** | Models up to ~32B | FSDP, TP, CP, SP |
-| **Megatron** | Large models (>100B) | Full 6D parallelism |
+| **DTensor (Automodel)** | Models up to 800B| Full 6D parallelism|
+| **Megatron** | Large models (>800B) | Full 6D parallelism |
 
 Backend selection is automatic based on YAML configuration.
 
