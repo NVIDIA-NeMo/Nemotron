@@ -196,7 +196,10 @@ def setup_rl_run(
         dataset_path = dataset_path[5:]
 
     # Discover available splits from HF
-    available_splits = get_dataset_split_names(dataset_path)
+    available_splits = get_dataset_split_names(
+        dataset_path,
+        config_name=dataset.subset,
+    )
 
     # Normalize split names for output directories
     split_name_mapping = {
