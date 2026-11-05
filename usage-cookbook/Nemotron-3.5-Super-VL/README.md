@@ -24,7 +24,7 @@ multimodal RL post-training, and a visual investigation agent.
 
 ### Fine-Tuning
 
-You may use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/latest/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
+You may use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/nightly/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
 
 - **[RL](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Super-VL/RL/README.md)** - Full-weight multimodal GRPO training on synthetic star-count images with NeMo RL and NeMo Gym.
 - **[lora-finance/nemo-megatron-bridge](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Super-VL/lora-finance/nemo-megatron-bridge/README.md)** - LoRA fine-tuning recipe for financial question answering over document images and text using NeMo Megatron-Bridge.

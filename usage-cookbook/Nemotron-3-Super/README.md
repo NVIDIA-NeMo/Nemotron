@@ -17,7 +17,7 @@ These notebooks provide end-to-end recipes for deploying and customizing Nemotro
 
 ### Fine-Tuning
 
-You may use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/latest/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
+You may use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/nightly/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
 
 - **[grpo-dapo](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3-Super/grpo-dapo/README.md)** — Full-weight RL training with GRPO/DAPO algorithm, reproducing emergent math reasoning from a base model.
 - **[lora-text2sql](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3-Super/lora-text2sql/README.md)** — Supervised fine-tuning (LoRA) recipe for the Text2SQL use case, including dataset preparation and training with [NeMo Megatron-Bridge](https://github.com/NVIDIA-NeMo/Megatron-Bridge) and [NeMo AutoModel](https://github.com/NVIDIA-NeMo/Automodel) libraries.

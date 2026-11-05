@@ -4,7 +4,7 @@ Examples on how to get started with Nemotron models
 
 ---
 
-Planning to customize a released Nemotron checkpoint? Use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/latest/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
+Planning to customize a released Nemotron checkpoint? Use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/nightly/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO.
 
 ## What's Inside
 
