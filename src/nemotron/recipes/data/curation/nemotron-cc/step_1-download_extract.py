@@ -51,7 +51,8 @@ class LanguageFilter(ProcessingStage[DocumentBatch, DocumentBatch]):
 
     FastTextLangId produces scores in the format "[0.95, 'EN']" (stringified list).
     This stage parses that field and replaces it with just the language code.
-    If target_languages is provided, only documents matching those languages are kept.
+    If target_languages is provided, language matching is case-insensitive.
+    Output labels retain their original casing.
     """
 
     def __init__(
@@ -68,7 +69,7 @@ class LanguageFilter(ProcessingStage[DocumentBatch, DocumentBatch]):
         # Parse "[0.95, 'EN']" -> 'EN'
         df[self.language_field] = df[self.language_field].apply(lambda v: ast.literal_eval(v)[1])
         if self.target_languages:
-            df = df[df[self.language_field].isin(self.target_languages)]
+            df = df[df[self.language_field].str.upper().isin(self.target_languages)]
             if len(df) == 0:
                 return None
         task.data = df
