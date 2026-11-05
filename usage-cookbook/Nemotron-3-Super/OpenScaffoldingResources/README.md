@@ -62,9 +62,10 @@ npm install -g opencode-ai
             },
             "models": {
                 "nvidia-nemotron-3-super": {
+                    "id": "nvidia/nemotron-3-super-120b-a12b:free",
                     "name": "nvidia/nemotron-3-super",
                     "limit": {
-                        "context": 1000000,
+                        "context": 262144,
                         "output": 32768
                     }
                 }
@@ -85,6 +86,8 @@ npm install -g opencode-ai
     }
 }
 ```
+
+The local `nvidia-nemotron-3-super` alias maps to OpenRouter's model ID through `id`; `name` is only a display label. The context limit above matches this [OpenRouter endpoint](https://openrouter.ai/nvidia/nemotron-3-super-120b-a12b:free), which can differ from the model's native context capacity.
 
 **Run**
 
@@ -121,7 +124,7 @@ Edit `~/.openclaw/openclaw.json`. OpenClaw model refs use `openrouter/<provider>
     "agents": {
         "defaults": {
             "model": {
-                "primary": "openrouter/nvidia/nemotron-3-super"
+                "primary": "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
             }
         }
     }
