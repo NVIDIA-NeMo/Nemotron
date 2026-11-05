@@ -1,0 +1,4 @@
+PyYAML>=6,<7
+huggingface_hub>=0.34,<2
+Pillow>=10.1,<13
+numpy>=1.26,<3
