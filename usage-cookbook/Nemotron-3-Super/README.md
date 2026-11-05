@@ -13,6 +13,7 @@ These notebooks provide end-to-end recipes for deploying and customizing Nemotro
 - **[vllm_cookbook.ipynb](vllm_cookbook.ipynb)** — Deploy Nemotron-3-Super with vLLM.
 - **[sglang_cookbook.ipynb](sglang_cookbook.ipynb)** — Deploy Nemotron-3-Super with SGLang.
 - **[trtllm_cookbook.ipynb](trtllm_cookbook.ipynb)** — Deploy Nemotron-3-Super with TensorRT-LLM.
+- **[batch_throughput_cookbook.ipynb](batch_throughput_cookbook.ipynb)** — High-throughput batch processing with vLLM: offline batch inference, concurrent server requests, bulk document classification, and throughput benchmarking.
 - **[SparkDeploymentGuide](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3-Super/SparkDeploymentGuide/README.md)** — DGX Spark single-GPU deployment guide for Nemotron 3 Super with vLLM (nightly) and TensorRT-LLM, including NVFP4 quantization and MTP speculative decoding.
 
 ### Fine-Tuning
