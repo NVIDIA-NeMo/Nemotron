@@ -20,7 +20,7 @@ structured tool calling.
 
 ### Fine-Tuning
 
-You may use the [Nemotron Post-training Calculator](../../docs/train-models/sizing-calculator.md) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO. DGX Station estimates cover SFT and LoRA; DGX Station GRPO estimates are not available.
+You may use the [Nemotron Post-training Calculator](https://docs.nvidia.com/nemotron/nightly/train-models/sizing-calculator.html) for directional estimates of GPU count, runtime, and compute cost for SFT, LoRA, or GRPO. DGX Station estimates cover SFT and LoRA; DGX Station GRPO estimates are not available.
 
 - **[DGX Station customization](dgx-station-recipes/README.md)** - End-to-end LoRA, full-weight SFT, and GRPO recipes for Nemotron 3.5 Lightning on one or two DGX Station GB300 systems.
 - **[RL](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/usage-cookbook/Nemotron-3.5-Lightning/RL/README.md)** - DAPO/GRPO RL training with NeMo RL, including native math-environment and NeMo Gym variants.
