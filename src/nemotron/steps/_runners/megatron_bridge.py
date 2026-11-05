@@ -400,6 +400,13 @@ def run_megatron_bridge(
     if enable_peft:
         skip_sections.add("peft")
     _apply_section_overrides(cfg, container, skip=skip_sections)
+    if dataset_mode == "override" and container.get("per_split_data_args_path") is not None:
+        from megatron.bridge.recipes.utils.dataset_utils import get_blend_fields_from_data_paths
+
+        cfg.dataset.blend, cfg.dataset.blend_per_split, cfg.dataset.split = get_blend_fields_from_data_paths(
+            per_split_data_args_path=container["per_split_data_args_path"]
+        )
+        cfg.dataset.mock = False
 
     if enable_hf_weights:
         _maybe_load_hf_weights(cfg, container)

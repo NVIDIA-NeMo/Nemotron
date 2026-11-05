@@ -39,20 +39,25 @@ def test_extract_recipe_config_reads_target_and_kwargs():
     assert kwargs == {"alpha": 1, "beta": "x"}
 
 
-def test_extract_recipe_config_drops_null_kwargs():
+def test_extract_recipe_config_preserves_explicit_null_kwargs():
     cfg = OmegaConf.create(
         {
             "recipe": {
                 "_target_": "m.n.func",
-                "packed_sequence": None,
-                "seq_length": None,
+                "peft": None,
                 "alpha": 1,
             }
         }
     )
     target, kwargs = extract_recipe_config(cfg, default_target="a.b.c")
     assert target == "m.n.func"
-    assert kwargs == {"alpha": 1}
+    assert kwargs == {"peft": None, "alpha": 1}
+
+    def recipe(peft="lora", alpha=0):
+        return peft, alpha
+
+    assert recipe(**kwargs) == (None, 1)
+    assert recipe(alpha=1) == ("lora", 1)
 
 
 class _FakeModelConfig:

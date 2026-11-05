@@ -44,8 +44,6 @@ load_hf_weights: false
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_sft_config
-  packed_sequence: null
-  seq_length: null
 
 dataset:
   packed_sequence_specs:

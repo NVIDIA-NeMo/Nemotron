@@ -69,9 +69,8 @@ Related patterns:
 - `dataset.packed_sequence_specs.packed_train_data_path` should point at `splits/train/*.parquet` produced by `data_prep/sft_packing`.
 - Packed `pack_size`, model `seq_length`, and packed sequence size must match
   the assumptions used by the SFT packing step.
-- Lightning overlays null inherited Nano recipe kwargs (`packed_sequence`,
-  `peft`, `seq_length`) because `nemotron_3_5_lightning_peft_config` is not the
-  Nano PEFT callable.
+- Configure packing and sequence length through dataset/model overrides and
+  adapters through the `peft` block. The legacy `tiny` factory has separate kwargs.
 
 ## Run It
 

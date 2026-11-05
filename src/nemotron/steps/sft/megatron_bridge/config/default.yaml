@@ -34,8 +34,6 @@ load_hf_weights: true
 
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_nano.nemotron_3_nano_sft_config
-  packed_sequence: true
-  seq_length: 4096
 
 dataset:
   seq_length: 4096

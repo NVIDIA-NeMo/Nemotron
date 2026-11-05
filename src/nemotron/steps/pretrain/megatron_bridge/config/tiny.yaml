@@ -23,6 +23,8 @@ run:
     env_vars:
       UB_SKIPMC: "1"
 
+per_split_data_args_path: ${oc.env:PRETRAIN_BLEND_PATH,./output/data_prep/pretrain_prep/tiny/blend.json}
+
 recipe:
   seq_length: 4096
 
@@ -39,7 +41,6 @@ model:
   recompute_num_layers: 1
 
 dataset:
-  data_paths: ${oc.env:PRETRAIN_BLEND_PATH,./output/data_prep/pretrain_prep/tiny/blend.json}
   seq_length: 4096
 
 train:
