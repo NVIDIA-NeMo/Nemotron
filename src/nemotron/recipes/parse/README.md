@@ -30,9 +30,12 @@ Parse uses an isolated environment because the main Nemotron environment has
 different Torch/Transformers requirements. The installer resolves the complete
 dependency set, checks it, applies bundled patches to pinned NeMo Automodel and
 NeMo RL sources, and records the resolved packages. It does not modify the
-main Nemotron environment. The default CUDA backend is the tested `cu132`;
-`--torch-backend auto` is available but may select another build. The current
-vLLM wheel requires CUDA 13, so selecting CUDA 12 Torch alone is insufficient.
+main Nemotron environment. The installer defaults to `--torch-backend auto`,
+matching the reference installer. Run it with the target GPU visible and retain
+the resolved package freeze. The successful reference selection combined CUDA
+13.2 Torch/torchvision/torchao with CPU torchaudio; forcing all packages to
+`cu132` fails because the required torchaudio build is unavailable there.
+The current vLLM wheel requires CUDA 13, so selecting CUDA 12 Torch alone is insufficient.
 
 From the repository root, on a compute host:
 
@@ -76,8 +79,10 @@ PARSE_PYTHON="$PARSE_RUNTIME/venv/bin/python"
   sft_output="$PARSE_RUN/sft" output_dir="$PARSE_RUN/rlvr"
 ```
 
-An existing Nemotron installation can use `nemotron parse ...` with the same
-arguments. Every command launches a separate runtime process, releasing GPU
+An editable Nemotron installation from this source checkout can use
+`nemotron parse ...` with the same arguments. A standalone wheel installation
+is not supported by this v1 launcher: adding its host `site-packages` directory
+to the worker path would defeat dependency isolation. Every command launches a separate runtime process, releasing GPU
 resources between stages. Native NeMo-Run `--run`/`--batch` submission is not
 part of this v1; submit the local commands through your cluster scheduler.
 

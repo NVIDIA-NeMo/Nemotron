@@ -11,6 +11,18 @@ import pytest
 from nemotron.recipes.parse.runtime import launch, setup
 
 
+def checkout(tmp_path):
+    root = tmp_path / "checkout"
+    root.mkdir()
+    (root / "pyproject.toml").write_text('[project]\nname = "nemotron"\n')
+    src = root / "src"
+    for name in ("nemotron/__init__.py", "nemo_runspec/__init__.py", "nemotron/recipes/parse/runtime/launch.py"):
+        path = src / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# source fixture\n")
+    return src
+
+
 def git(directory: Path, *args: str) -> str:
     return subprocess.check_output(["git", "-C", str(directory), *args], text=True).strip()
 
@@ -62,7 +74,7 @@ def test_runtime_environment_prevents_host_dependency_leakage(tmp_path):
         "TMPDIR": "/tmp/ray-short-path",
         "PATH": "/usr/bin",
     }
-    root, src = tmp_path / "runtime", tmp_path / "source"
+    root, src = tmp_path / "runtime", checkout(tmp_path)
     env = launch.runtime_environment(root, source_root=src, environ=host)
     assert env["PYTHONPATH"] == str(src)
     assert "PYTHONHOME" not in env
@@ -73,6 +85,51 @@ def test_runtime_environment_prevents_host_dependency_leakage(tmp_path):
     assert env["HF_HOME"] == host["HF_HOME"]
     assert env["TMPDIR"] == host["TMPDIR"]
     assert host["VLLM_USE_FLASHINFER_SAMPLER"] == "1"
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_runtime_environment_rejects_host_wheel_site_packages(tmp_path, monkeypatch, explicit):
+    site = tmp_path / "site-packages"
+    monkeypatch.setattr(launch, "__file__", str(site / "nemotron/recipes/parse/runtime/launch.py"))
+    with pytest.raises(RuntimeError, match="source checkout"):
+        launch.runtime_environment(tmp_path / "runtime", source_root=site if explicit else None)
+
+
+def test_wheel_dispatch_fails_before_starting_worker(tmp_path, monkeypatch):
+    site = tmp_path / "site-packages"
+    monkeypatch.setattr(launch, "__file__", str(site / "nemotron/recipes/parse/runtime/launch.py"))
+    python = tmp_path / "runtime/venv/bin/python"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    monkeypatch.setattr(launch.subprocess, "run", lambda *a, **kw: pytest.fail("must not launch from host wheel"))
+    with pytest.raises(RuntimeError, match="source checkout"):
+        launch.run_module("nemotron.recipes.parse.stage1_sft.train", runtime_dir=tmp_path / "runtime")
+
+
+def test_explicit_checkout_does_not_expose_inferred_host_site_packages(tmp_path, monkeypatch):
+    src = checkout(tmp_path)
+    site = tmp_path / "site-packages"
+    monkeypatch.setattr(launch, "__file__", str(site / "nemotron/recipes/parse/runtime/launch.py"))
+    env = launch.runtime_environment(tmp_path / "runtime", source_root=src, environ={"PYTHONPATH": str(site)})
+    assert env["PYTHONPATH"] == str(src)
+
+
+def test_wheel_setup_fails_before_creating_runtime(tmp_path, monkeypatch):
+    monkeypatch.setattr(setup.sys, "platform", "linux")
+    site = tmp_path / "site-packages"
+    monkeypatch.setattr(launch, "__file__", str(site / "nemotron/recipes/parse/runtime/launch.py"))
+    runtime = tmp_path / "runtime"
+    with pytest.raises(RuntimeError, match="source checkout"):
+        setup.install(runtime)
+    assert not runtime.exists()
+
+
+def test_setup_cli_preserves_original_automatic_backend_selection(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(setup.sys, "argv", ["setup.py", "--runtime-dir", str(tmp_path)])
+    monkeypatch.setattr(setup, "install", lambda *a, **kw: calls.append((a, kw)))
+    setup.main()
+    assert calls == [((tmp_path,), {"torch_backend": "auto", "python_version": "3.13.16"})]
 
 
 def test_missing_runtime_fails_before_dispatch(tmp_path, monkeypatch):

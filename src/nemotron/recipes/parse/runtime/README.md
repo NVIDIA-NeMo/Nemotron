@@ -6,19 +6,29 @@ The CLI launches stages with this environment's Python and the checked-out
 Nemotron `src` directory on `PYTHONPATH`. The root package is not installed into
 the training environment, and dependency resolution is not bypassed.
 
+This v1 requires a source checkout or editable install, including the root
+`pyproject.toml` and both packages under `src/`. A standalone wheel installation
+is rejected: adding its entire host `site-packages` directory to worker
+`PYTHONPATH` could import incompatible launcher dependencies into the runtime.
+
 From the Nemotron checkout on a Linux GPU host:
 
 ```bash
 python3 -m pip install uv==0.13.1
 PYTHONPATH=src python3 -m nemotron.recipes.parse.runtime.setup \
-  --runtime-dir "$PWD/.nemotron/parse-runtime" --torch-backend cu132
+  --runtime-dir "$PWD/.nemotron/parse-runtime"
 ```
 
 On a Slurm cluster, perform installation and all runtime checks inside a compute
-allocation. The tested profile uses Python 3.13.16, Torch 2.14.0+cu132,
-Transformers 5.16.1 and vLLM 0.33.0. It was validated on H200 with driver
-580.126.20. `--torch-backend auto` is available for explicit compatibility
-experiments; use a visible target GPU when relying on automatic selection.
+allocation with the target GPU visible. The installer preserves the original
+`--torch-backend auto` behavior. The reference H200 run resolved Python 3.13.16,
+Torch 2.14.0+cu132, Transformers 5.16.1 and vLLM 0.33.0 with driver 580.126.20.
+Automatic selection also allowed the required torchaudio 2.11.0+cpu package.
+Forcing `--torch-backend cu132` instead prevents that mixed package resolution
+and was rejected by the dependency resolver before training. Explicit backend
+overrides are available for compatibility experiments, not as equivalent
+reproductions of automatic selection. Actual package builds are recorded in
+`runtime.json` and the full freeze; automatic selection is not a transitive lock.
 The vLLM wheel uses CUDA 13, so selecting a CUDA 12 Torch build alone does not
 make this environment CUDA 12 compatible.
 

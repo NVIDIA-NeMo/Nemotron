@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tomllib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -24,6 +25,26 @@ def runtime_python(runtime_dir: str | Path | None = None) -> Path:
     return python
 
 
+def checkout_source_root(source_root: str | Path | None = None) -> Path:
+    """Reject wheel installs instead of exposing their host site-packages to workers."""
+    src = Path(source_root).resolve() if source_root is not None else Path(__file__).resolve().parents[4]
+    project = src.parent / "pyproject.toml"
+    required = (
+        src / "nemotron" / "__init__.py",
+        src / "nemo_runspec" / "__init__.py",
+        src / "nemotron" / "recipes" / "parse" / "runtime" / "launch.py",
+    )
+    if src.name == "src" and project.is_file() and all(path.is_file() for path in required):
+        with project.open("rb") as stream:
+            if tomllib.load(stream).get("project", {}).get("name") == "nemotron":
+                return src
+    raise RuntimeError(
+        "Parse v1 requires a Nemotron source checkout (or editable install) with "
+        "src/nemotron, src/nemo_runspec and the root pyproject.toml. "
+        f"Refusing to expose a wheel/host package directory to the training runtime: {src}"
+    )
+
+
 def runtime_environment(
     runtime_dir: str | Path | None = None,
     *,
@@ -37,7 +58,7 @@ def runtime_environment(
     including existing model/cache locations and node-local TMPDIR, are retained.
     """
     root = Path(runtime_dir).expanduser().resolve() if runtime_dir is not None else default_runtime_dir()
-    src = Path(source_root).resolve() if source_root is not None else Path(__file__).resolve().parents[4]
+    src = checkout_source_root(source_root)
     env = dict(os.environ if environ is None else environ)
     env.pop("PYTHONHOME", None)
     env["PYTHONPATH"] = str(src)

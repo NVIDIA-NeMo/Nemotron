@@ -115,11 +115,13 @@ def install_request(torch_backend: str, python_version: str) -> dict:
     }
 
 
-def install(root: Path, *, torch_backend: str = "cu132", python_version: str = "3.13.16") -> Path:
+def install(root: Path, *, torch_backend: str = "auto", python_version: str = "3.13.16") -> Path:
     """Install once, or verify an identical completed installation without upgrading it."""
     if sys.platform != "linux":
         raise RuntimeError("The Parse training runtime requires Linux and a compatible NVIDIA driver")
     root = root.expanduser().resolve()
+    # Validate the source boundary before cloning frameworks or writing a runtime.
+    env = runtime_environment(root)
     requested = install_request(torch_backend, python_version)
     with installation_lock(root):
         request_path = root / "requested.json"
@@ -128,7 +130,6 @@ def install(root: Path, *, torch_backend: str = "cu132", python_version: str = "
         request_path.write_text(json.dumps(requested, indent=2) + "\n")
         sources = {name: ensure_source(root, name, repo, rev) for name, repo, rev in SOURCES}
         python = root / "venv" / "bin" / "python"
-        env = runtime_environment(root)
         env["UV_NO_CONFIG"] = "1"
         env.setdefault("UV_CACHE_DIR", str(root / "cache" / "uv"))
         env.setdefault("UV_PYTHON_INSTALL_DIR", str(root / "python"))
@@ -164,7 +165,8 @@ def install(root: Path, *, torch_backend: str = "cu132", python_version: str = "
             python, "-c",
             "import importlib.metadata as m,json,platform; "
             "print(json.dumps({'python':platform.python_version(),'packages':"
-            "{n:m.version(n) for n in ['torch','torchvision','torchao','transformers','vllm','ray','Pillow']}}))",
+            "{n:m.version(n) for n in ['torch','torchvision','torchao','torchaudio',"
+            "'transformers','vllm','ray','Pillow']}}))",
             env=env,
         ))
         receipt = {
@@ -185,7 +187,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime-dir", type=Path, default=default_runtime_dir())
     parser.add_argument(
-        "--torch-backend", default="cu132", help="Validated H200 profile: cu132; auto is also accepted"
+        "--torch-backend", default="auto", help="Use uv's GPU-aware package build selection (default: auto)"
     )
     parser.add_argument("--python-version", default="3.13.16")
     args = parser.parse_args()
